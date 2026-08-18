@@ -46,6 +46,23 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Outline editor palette — ported from the Claude Design prototype's Template Builder.
+     Prefixed `outline-*` so it never collides with (or restyles) the shadcn neutral tokens above. */
+  --color-outline-accent: var(--outline-accent);
+  --color-outline-accent-strong: var(--outline-accent-strong);
+  --color-outline-sidebar-bg: var(--outline-sidebar-bg);
+  --color-outline-sidebar-text: var(--outline-sidebar-text);
+  --color-outline-sidebar-text-muted: var(--outline-sidebar-text-muted);
+  --color-outline-sidebar-input-bg: var(--outline-sidebar-input-bg);
+  --color-outline-sidebar-input-border: var(--outline-sidebar-input-border);
+  --color-outline-sidebar-divider: var(--outline-sidebar-divider);
+  --color-outline-page-bg: var(--outline-page-bg);
+  --color-outline-board-fill: var(--outline-board-fill);
+  --color-outline-construction: var(--outline-construction);
+  --color-outline-station-line: var(--outline-station-line);
+  --color-outline-widepoint-knot: var(--outline-widepoint-knot);
+  --color-outline-ink: var(--outline-ink);
 }
 
 :root {
@@ -81,6 +98,22 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Outline editor palette (see @theme inline mapping above for the Tailwind utility names). */
+  --outline-accent: #c98d3a;
+  --outline-accent-strong: color-mix(in srgb, var(--outline-accent) 82%, black);
+  --outline-sidebar-bg: #2b2924;
+  --outline-sidebar-text: #f7f4ee;
+  --outline-sidebar-text-muted: #a39a86;
+  --outline-sidebar-input-bg: #3a372f;
+  --outline-sidebar-input-border: #4a463c;
+  --outline-sidebar-divider: #4a463c;
+  --outline-page-bg: #f7f4ee;
+  --outline-board-fill: color-mix(in srgb, var(--outline-accent) 14%, white);
+  --outline-construction: #4d8a86;
+  --outline-station-line: #4472c4;
+  --outline-widepoint-knot: #a8425f;
+  --outline-ink: #1c1b19;
 }
 
 .dark {
