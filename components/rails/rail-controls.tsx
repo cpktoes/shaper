@@ -1,0 +1,406 @@
+"use client";
+
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
+import {
+  railFamilyLabel,
+  type RailBandSpec,
+  type RailFamily,
+  type RailSectionKey,
+  type RailSectionOutput,
+  type RailSectionSpec,
+} from "@/lib/geometry/rail-bands";
+import { formatInchesFraction, inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
+
+interface RailControlsProps {
+  spec: RailBandSpec;
+  bands: Record<RailSectionKey, RailSectionOutput>;
+  onChangeSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
+  onToggleHardEdge: () => void;
+  sectionOpen: Record<RailSectionKey, boolean>;
+  onToggleSectionOpen: (key: RailSectionKey) => void;
+  advancedOpen: Record<RailSectionKey, boolean>;
+  onToggleAdvancedOpen: (key: RailSectionKey) => void;
+}
+
+const NT_THICKNESS_BOUNDS = { min: 1, max: 2.5, step: 1 / 16 };
+const CENTER_THICKNESS_BOUNDS = { min: 1.75, max: 3.5, step: 1 / 16 };
+const TUCK_BOUNDS = { min: 0, max: 1.5, step: 1 / 16 };
+
+const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose Rail", center: "Center Rail", tail: "Tail Rail" };
+const SECTION_THICKNESS_LABEL: Record<RailSectionKey, string> = {
+  nose: 'Thickness @12"',
+  center: "Board Thickness",
+  tail: 'Thickness @12"',
+};
+
+function clampFinite(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+function sliderValue(v: number | readonly number[]): number {
+  return typeof v === "number" ? v : (v[0] ?? 0);
+}
+
+/** rawStep/steps/percentStep from the prototype's `deckProfileFor`, so both slider endpoints
+ * (including 100% Flat) stay exactly reachable regardless of the section's own thickness. */
+function deckProfileStep(thicknessIn: number): number {
+  const rawStep = Math.max(0.01, (0.0625 / thicknessIn) * 100);
+  const steps = Math.max(1, Math.round(34 / rawStep));
+  return 34 / steps;
+}
+
+function SectionHeading({
+  children,
+  onToggle,
+  open,
+  small,
+}: {
+  children: React.ReactNode;
+  onToggle: () => void;
+  open: boolean;
+  small?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={
+        small
+          ? "flex w-full items-center justify-between border-b border-outline-sidebar-divider pb-1.5 pl-3 text-[11px] font-bold tracking-wide text-outline-accent uppercase"
+          : "mt-1.5 flex w-full items-center justify-between border-b border-outline-sidebar-divider pb-1.5 text-sm font-bold tracking-wide text-outline-accent uppercase"
+      }
+    >
+      <span>{children}</span>
+      <span>{open ? "▾" : "▸"}</span>
+    </button>
+  );
+}
+
+function ControlSlider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onValueChange,
+  disabled,
+  hintLeft,
+  hintRight,
+  note,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onValueChange: (value: number) => void;
+  disabled?: boolean;
+  hintLeft?: string;
+  hintRight?: string;
+  note?: string;
+}) {
+  return (
+    <div className={disabled ? "opacity-40" : undefined}>
+      <div className="mb-2 text-[11px] tracking-wide text-outline-sidebar-text-muted uppercase">{label}</div>
+      <Slider
+        value={value}
+        min={min}
+        max={max}
+        step={step}
+        disabled={disabled}
+        onValueChange={(v) => onValueChange(sliderValue(v))}
+        className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
+      />
+      {(hintLeft || hintRight) && (
+        <div className="mt-0.5 flex justify-between text-[10px] text-outline-sidebar-text-muted">
+          <span>{hintLeft}</span>
+          <span>{hintRight}</span>
+        </div>
+      )}
+      {note && <div className="mt-0.5 text-[10px] text-outline-accent">{note}</div>}
+    </div>
+  );
+}
+
+function RatioTickCaptions() {
+  return (
+    <div className="relative mt-0.5 h-3">
+      <span className="absolute left-0 text-[9px] text-outline-sidebar-text-muted">30/70</span>
+      <span className="absolute left-1/2 -translate-x-1/2 text-[9px] text-outline-sidebar-text-muted">50/50</span>
+      <span className="absolute left-3/4 -translate-x-1/2 text-[9px] text-outline-sidebar-text-muted">60/40</span>
+      <span className="absolute right-0 text-[9px] text-outline-sidebar-text-muted">70/30</span>
+    </div>
+  );
+}
+
+interface RailSectionControlsProps {
+  sectionKey: RailSectionKey;
+  spec: RailSectionSpec;
+  output: RailSectionOutput;
+  onChange: (patch: Partial<RailSectionSpec>) => void;
+  open: boolean;
+  onToggleOpen: () => void;
+  advancedOpen: boolean;
+  onToggleAdvancedOpen: () => void;
+  tailHardEdge?: boolean;
+  onToggleHardEdge?: () => void;
+}
+
+function RailSectionControls({
+  sectionKey,
+  spec,
+  output,
+  onChange,
+  open,
+  onToggleOpen,
+  advancedOpen,
+  onToggleAdvancedOpen,
+  tailHardEdge,
+  onToggleHardEdge,
+}: RailSectionControlsProps) {
+  const isTail = sectionKey === "tail";
+  const thicknessBounds = sectionKey === "center" ? CENTER_THICKNESS_BOUNDS : NT_THICKNESS_BOUNDS;
+  const boardThicknessIn = mmToInches(spec.boardThickness);
+  const deckProfileSliderStep = deckProfileStep(boardThicknessIn);
+  const deckProfileSliderValue = 166 - spec.deckPercent;
+  const cornerCutOffsetIn = output.result.cornerCutOffset !== null ? mmToInches(output.result.cornerCutOffset) : 0;
+  const bottomTuck3In = mmToInches(output.result.bottomTuck3);
+  const hardEdgeOn = isTail ? !!tailHardEdge : false;
+
+  const resetAdvanced = () => {
+    onChange({
+      cornerCutOffsetOverride: null,
+      bottomTuck3Override: null,
+      removeCornerCut: false,
+      singleTuck: false,
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-3.5">
+      <SectionHeading open={open} onToggle={onToggleOpen}>
+        {SECTION_TITLE[sectionKey]}
+      </SectionHeading>
+      {open && (
+        <>
+          <ControlSlider
+            label={`${SECTION_THICKNESS_LABEL[sectionKey]} — ${formatInchesFraction(spec.boardThickness)}`}
+            value={boardThicknessIn}
+            min={thicknessBounds.min}
+            max={thicknessBounds.max}
+            step={thicknessBounds.step}
+            onValueChange={(v) =>
+              onChange({ boardThickness: inchesToMm(clampFinite(v, thicknessBounds.min, thicknessBounds.max)) })
+            }
+          />
+
+          <ControlSlider
+            label={`Deck Profile — ${formatInchesFraction(output.railThicknessClamped)} (Tapered Thickness)`}
+            value={deckProfileSliderValue}
+            min={66}
+            max={100}
+            step={deckProfileSliderStep}
+            onValueChange={(v) => onChange({ deckPercent: clampFinite(166 - v, 66, 100) })}
+            hintLeft="Flat"
+            hintRight="Heavily Domed"
+          />
+
+          <div className="flex gap-3.5">
+            <div className="min-w-0 flex-1">
+              <div className="mb-2 h-4 text-[11px] leading-4 tracking-wide text-outline-sidebar-text-muted uppercase">
+                Family — {railFamilyLabel(spec.family)}
+              </div>
+              <Slider
+                value={spec.family}
+                min={1}
+                max={5}
+                step={1}
+                onValueChange={(v) => onChange({ family: clampFinite(sliderValue(v), 1, 5) as RailFamily })}
+                className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
+              />
+              <div className="mt-0.5 flex justify-between text-[10px] text-outline-sidebar-text-muted">
+                <span>Boxy</span>
+                <span>Medium</span>
+                <span>Knifey</span>
+              </div>
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="mb-2 flex h-4 items-center justify-between leading-4">
+                <div className="text-[11px] tracking-wide text-outline-sidebar-text-muted uppercase">
+                  Ratio — {spec.ratioTopPercent}/{100 - spec.ratioTopPercent}
+                </div>
+                <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-outline-sidebar-text">
+                  <Checkbox
+                    checked={spec.symmetrical}
+                    onCheckedChange={() => onChange({ symmetrical: !spec.symmetrical })}
+                  />
+                  Sym
+                </label>
+              </div>
+              <Slider
+                value={spec.ratioTopPercent}
+                min={30}
+                max={70}
+                step={1}
+                onValueChange={(v) => onChange({ ratioTopPercent: clampFinite(sliderValue(v), 30, 70) })}
+                className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
+              />
+              <RatioTickCaptions />
+              {isTail && (
+                <label className="mt-2 flex cursor-pointer items-center gap-1.5 text-[11px] text-outline-sidebar-text">
+                  <Checkbox checked={hardEdgeOn} onCheckedChange={() => onToggleHardEdge?.()} />
+                  Hard Edge
+                </label>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <SectionHeading small open={advancedOpen} onToggle={onToggleAdvancedOpen}>
+              Advanced
+            </SectionHeading>
+            {advancedOpen && (
+              <div className="flex flex-col gap-3 pl-3 pt-3">
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <div className="text-[11px] text-outline-sidebar-text-muted">
+                      Corner Cut Offset — {formatInchesFraction(mm(inchesToMm(cornerCutOffsetIn)))}
+                    </div>
+                    <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-outline-sidebar-text">
+                      <Checkbox
+                        checked={spec.removeCornerCut}
+                        onCheckedChange={() => onChange({ removeCornerCut: !spec.removeCornerCut })}
+                      />
+                      Remove
+                    </label>
+                  </div>
+                  <div className={spec.removeCornerCut ? "opacity-40" : undefined}>
+                    <Slider
+                      value={cornerCutOffsetIn}
+                      min={TUCK_BOUNDS.min}
+                      max={TUCK_BOUNDS.max}
+                      step={TUCK_BOUNDS.step}
+                      disabled={spec.removeCornerCut}
+                      onValueChange={(v) =>
+                        onChange({
+                          cornerCutOffsetOverride: inchesToMm(
+                            clampFinite(sliderValue(v), TUCK_BOUNDS.min, TUCK_BOUNDS.max),
+                          ),
+                        })
+                      }
+                      className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
+                    />
+                  </div>
+                  <div className="mt-0.5 text-[10px] text-outline-sidebar-text-muted">
+                    0 = falls on Rail Mark 1
+                  </div>
+                </div>
+
+                {(!isTail || !hardEdgeOn) && (
+                  <div>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <div className="text-[11px] text-outline-sidebar-text-muted">
+                        Bottom Tuck 3 — {formatInchesFraction(output.result.bottomTuck3)}
+                      </div>
+                      <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-outline-sidebar-text">
+                        <Checkbox
+                          checked={spec.singleTuck}
+                          onCheckedChange={() => onChange({ singleTuck: !spec.singleTuck })}
+                        />
+                        Use Single Tuck
+                      </label>
+                    </div>
+                    <Slider
+                      value={bottomTuck3In}
+                      min={TUCK_BOUNDS.min}
+                      max={TUCK_BOUNDS.max}
+                      step={TUCK_BOUNDS.step}
+                      onValueChange={(v) =>
+                        onChange({
+                          bottomTuck3Override: inchesToMm(
+                            clampFinite(sliderValue(v), TUCK_BOUNDS.min, TUCK_BOUNDS.max),
+                          ),
+                        })
+                      }
+                      className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
+                    />
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={resetAdvanced}
+                  className="cursor-pointer text-left text-[11px] font-bold text-outline-accent"
+                >
+                  ↺ Reset Advanced Settings
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function RailControls({
+  spec,
+  bands,
+  onChangeSection,
+  onToggleHardEdge,
+  sectionOpen,
+  onToggleSectionOpen,
+  advancedOpen,
+  onToggleAdvancedOpen,
+}: RailControlsProps) {
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <div className="text-[22px] font-bold text-outline-sidebar-text">Rail Band Calculator</div>
+        <div className="mt-0.5 text-xs text-outline-sidebar-text-muted">
+          Rail band calculator for shaping consistent rails
+        </div>
+      </div>
+
+      <RailSectionControls
+        sectionKey="nose"
+        spec={spec.nose}
+        output={bands.nose}
+        onChange={(patch) => onChangeSection("nose", patch)}
+        open={sectionOpen.nose}
+        onToggleOpen={() => onToggleSectionOpen("nose")}
+        advancedOpen={advancedOpen.nose}
+        onToggleAdvancedOpen={() => onToggleAdvancedOpen("nose")}
+      />
+
+      <RailSectionControls
+        sectionKey="center"
+        spec={spec.center}
+        output={bands.center}
+        onChange={(patch) => onChangeSection("center", patch)}
+        open={sectionOpen.center}
+        onToggleOpen={() => onToggleSectionOpen("center")}
+        advancedOpen={advancedOpen.center}
+        onToggleAdvancedOpen={() => onToggleAdvancedOpen("center")}
+      />
+
+      <RailSectionControls
+        sectionKey="tail"
+        spec={spec.tail}
+        output={bands.tail}
+        onChange={(patch) => onChangeSection("tail", patch)}
+        open={sectionOpen.tail}
+        onToggleOpen={() => onToggleSectionOpen("tail")}
+        advancedOpen={advancedOpen.tail}
+        onToggleAdvancedOpen={() => onToggleAdvancedOpen("tail")}
+        tailHardEdge={spec.tailHardEdge}
+        onToggleHardEdge={onToggleHardEdge}
+      />
+    </div>
+  );
+}
+
+export type { RailControlsProps };
