@@ -1,0 +1,8088 @@
+{
+  "default": {
+    "state": {
+      "units": "in",
+      "centerDeckPercent": 100,
+      "centerBoardThickness": 2.5,
+      "centerFamily": 3,
+      "centerRatioTop": 60,
+      "centerSymmetrical": false,
+      "noseDeckPercent": 100,
+      "noseFamily": 3,
+      "noseRatioTop": 60,
+      "noseSymmetrical": false,
+      "tailDeckPercent": 100,
+      "tailFamily": 3,
+      "tailRatioTop": 60,
+      "tailSymmetrical": false,
+      "noseThickness": 1.31,
+      "tailThickness": 1.56,
+      "noseCornerCutOffsetOverride": null,
+      "centerCornerCutOffsetOverride": null,
+      "tailCornerCutOffsetOverride": null,
+      "noseRemoveCornerCut": false,
+      "centerRemoveCornerCut": false,
+      "tailRemoveCornerCut": false,
+      "noseSingleTuck": false,
+      "centerSingleTuck": false,
+      "tailSingleTuck": false,
+      "noseBottomTuck3Override": null,
+      "centerBottomTuck3Override": null,
+      "tailBottomTuck3Override": null,
+      "tailHardEdge": true
+    },
+    "sections": {
+      "nose": {
+        "domed": false,
+        "boardThicknessIn": 1.31,
+        "railThicknessClampedIn": 1.3125,
+        "thicknessEffIn": 1.31,
+        "result": {
+          "thickness": 1.31,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.524,
+          "railMark1": 0.80525,
+          "railTuck1": 0.24275000000000002,
+          "cornerCutRail": 0.74275,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 0.12137500000000001,
+          "bottomTuck2": 0.060687500000000005,
+          "bottomTuck3": 0.24275000000000002,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.31
+          ],
+          [
+            -3,
+            1.31
+          ],
+          [
+            -0.9375,
+            1.057625
+          ],
+          [
+            -1.875,
+            1.31
+          ],
+          [
+            0,
+            0.80525
+          ],
+          [
+            0,
+            0.24275000000000002
+          ],
+          [
+            -0.060687500000000005,
+            0.12137500000000001
+          ],
+          [
+            -0.24275000000000002,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              -1.875,
+              1.31
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.057625
+            ],
+            "p2": [
+              -3,
+              1.31
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.74275
+            ],
+            "p2": [
+              -0.0625,
+              0.822075
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.24275000000000002
+            ],
+            "p2": [
+              -0.12137500000000001,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.060687500000000005,
+              0.12137500000000001
+            ],
+            "p2": [
+              -0.24275000000000002,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -0.24275000000000002,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              0,
+              0.24275000000000002
+            ]
+          }
+        ],
+        "card": {
+          "title": "Nose",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 5/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1/2\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "13/16\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "1/4\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "3/4\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "1/8\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "1/4\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "center": {
+        "domed": false,
+        "boardThicknessIn": 2.5,
+        "railThicknessClampedIn": 2.5,
+        "thicknessEffIn": 2.5,
+        "result": {
+          "thickness": 2.5,
+          "apexLenRange": 0.75,
+          "apexCenter": 1,
+          "railMark1": 1.375,
+          "railTuck1": 0.625,
+          "cornerCutRail": 1.3125,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 6,
+          "deckMark1": 2.5,
+          "deckMark2": 1.25,
+          "deckMark3": 4,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 0.3125,
+          "bottomTuck2": 0.15625,
+          "bottomTuck3": 0.625,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -6,
+            2.5
+          ],
+          [
+            -4,
+            2.5
+          ],
+          [
+            -1.25,
+            1.9375
+          ],
+          [
+            -2.5,
+            2.5
+          ],
+          [
+            0,
+            1.375
+          ],
+          [
+            0,
+            0.625
+          ],
+          [
+            -0.15625,
+            0.3125
+          ],
+          [
+            -0.625,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              1.375
+            ],
+            "p2": [
+              -2.5,
+              2.5
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -1.25,
+              1.9375
+            ],
+            "p2": [
+              -4,
+              2.5
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              1.3125
+            ],
+            "p2": [
+              -0.0625,
+              1.403125
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.625
+            ],
+            "p2": [
+              -0.3125,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.15625,
+              0.3125
+            ],
+            "p2": [
+              -0.625,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -8,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -8,
+              0
+            ],
+            "p2": [
+              -0.625,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              1.375
+            ],
+            "p2": [
+              0,
+              0.625
+            ]
+          }
+        ],
+        "card": {
+          "title": "Center",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1 3/8\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "1 5/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "1 1/4\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "4\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "5/16\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "3/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "5/8\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "tail": {
+        "domed": false,
+        "boardThicknessIn": 1.56,
+        "railThicknessClampedIn": 1.5625,
+        "thicknessEffIn": 1.56,
+        "result": {
+          "thickness": 1.56,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.6240000000000001,
+          "railMark1": 0.9052500000000001,
+          "railTuck1": 0.3427500000000001,
+          "cornerCutRail": 0.8427500000000001,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "hardEdge": true,
+          "bottomTuck1": 0.17137500000000006,
+          "bottomTuck2": 0.08568750000000003,
+          "bottomTuck3": 0,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.56
+          ],
+          [
+            -3,
+            1.56
+          ],
+          [
+            -0.9375,
+            1.232625
+          ],
+          [
+            -1.875,
+            1.56
+          ],
+          [
+            0,
+            0.9052500000000001
+          ],
+          [
+            0,
+            0.3427500000000001
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              -1.875,
+              1.56
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.232625
+            ],
+            "p2": [
+              -3,
+              1.56
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.8427500000000001
+            ],
+            "p2": [
+              -0.0625,
+              0.9270750000000001
+            ]
+          },
+          {
+            "key": "hardEdge",
+            "label": "Hard Edge",
+            "p1": [
+              0,
+              0.3427500000000001
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              0,
+              0.3427500000000001
+            ]
+          }
+        ],
+        "card": {
+          "title": "Tail",
+          "subtitle": "Flat · Family med · Ratio 60/40 · Hard Edge",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 9/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "7/8\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "13/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "Hard Edge"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "domedCenter": {
+    "state": {
+      "units": "in",
+      "centerDeckPercent": 80,
+      "centerBoardThickness": 2.5,
+      "centerFamily": 3,
+      "centerRatioTop": 60,
+      "centerSymmetrical": false,
+      "noseDeckPercent": 100,
+      "noseFamily": 3,
+      "noseRatioTop": 60,
+      "noseSymmetrical": false,
+      "tailDeckPercent": 100,
+      "tailFamily": 3,
+      "tailRatioTop": 60,
+      "tailSymmetrical": false,
+      "noseThickness": 1.31,
+      "tailThickness": 1.56,
+      "noseCornerCutOffsetOverride": null,
+      "centerCornerCutOffsetOverride": null,
+      "tailCornerCutOffsetOverride": null,
+      "noseRemoveCornerCut": false,
+      "centerRemoveCornerCut": false,
+      "tailRemoveCornerCut": false,
+      "noseSingleTuck": false,
+      "centerSingleTuck": false,
+      "tailSingleTuck": false,
+      "noseBottomTuck3Override": null,
+      "centerBottomTuck3Override": null,
+      "tailBottomTuck3Override": null,
+      "tailHardEdge": true
+    },
+    "sections": {
+      "nose": {
+        "domed": false,
+        "boardThicknessIn": 1.31,
+        "railThicknessClampedIn": 1.3125,
+        "thicknessEffIn": 1.31,
+        "result": {
+          "thickness": 1.31,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.524,
+          "railMark1": 0.80525,
+          "railTuck1": 0.24275000000000002,
+          "cornerCutRail": 0.74275,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 0.12137500000000001,
+          "bottomTuck2": 0.060687500000000005,
+          "bottomTuck3": 0.24275000000000002,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.31
+          ],
+          [
+            -3,
+            1.31
+          ],
+          [
+            -0.9375,
+            1.057625
+          ],
+          [
+            -1.875,
+            1.31
+          ],
+          [
+            0,
+            0.80525
+          ],
+          [
+            0,
+            0.24275000000000002
+          ],
+          [
+            -0.060687500000000005,
+            0.12137500000000001
+          ],
+          [
+            -0.24275000000000002,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              -1.875,
+              1.31
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.057625
+            ],
+            "p2": [
+              -3,
+              1.31
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.74275
+            ],
+            "p2": [
+              -0.0625,
+              0.822075
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.24275000000000002
+            ],
+            "p2": [
+              -0.12137500000000001,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.060687500000000005,
+              0.12137500000000001
+            ],
+            "p2": [
+              -0.24275000000000002,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -0.24275000000000002,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              0,
+              0.24275000000000002
+            ]
+          }
+        ],
+        "card": {
+          "title": "Nose",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 5/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1/2\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "13/16\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "1/4\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "3/4\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "1/8\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "1/4\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "center": {
+        "domed": true,
+        "boardThicknessIn": 2.5,
+        "railThicknessClampedIn": 2,
+        "thicknessEffIn": 2,
+        "result": {
+          "thickness": 2,
+          "apexLenRange": 0.75,
+          "apexCenter": 0.8,
+          "railMark1": 1.175,
+          "railTuck1": 0.42500000000000004,
+          "cornerCutRail": 1.1125,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 6,
+          "deckMark1": 2.5,
+          "deckMark2": 1.25,
+          "deckMark3": 4,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 0.21250000000000002,
+          "bottomTuck2": 0.10625000000000001,
+          "bottomTuck3": 0.42500000000000004,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -6,
+            2.5
+          ],
+          [
+            -4,
+            2.3333333333333335
+          ],
+          [
+            -1.25,
+            1.6916666666666669
+          ],
+          [
+            -2.5,
+            2.2083333333333335
+          ],
+          [
+            0,
+            1.175
+          ],
+          [
+            0,
+            0.42500000000000004
+          ],
+          [
+            -0.10625000000000001,
+            0.21250000000000002
+          ],
+          [
+            -0.42500000000000004,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              2
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              1.175
+            ],
+            "p2": [
+              -2.5,
+              2.2083333333333335
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -1.25,
+              1.6916666666666669
+            ],
+            "p2": [
+              -4,
+              2.3333333333333335
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              1.1125
+            ],
+            "p2": [
+              -0.0625,
+              1.2008333333333334
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.42500000000000004
+            ],
+            "p2": [
+              -0.21250000000000002,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.10625000000000001,
+              0.21250000000000002
+            ],
+            "p2": [
+              -0.42500000000000004,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -8,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -8,
+              0
+            ],
+            "p2": [
+              -0.42500000000000004,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              1.175
+            ],
+            "p2": [
+              0,
+              0.42500000000000004
+            ]
+          }
+        ],
+        "card": {
+          "title": "Center",
+          "subtitle": "Domed · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Tapered Rail Thickness",
+                  "value": "2\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "13/16\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1 3/16\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "7/16\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "1 1/8\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Domed Deck Band",
+                  "value": "6\""
+                },
+                {
+                  "label": "Deck Mark 1",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "1 1/4\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "4\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "3/16\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1/8\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "7/16\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "tail": {
+        "domed": false,
+        "boardThicknessIn": 1.56,
+        "railThicknessClampedIn": 1.5625,
+        "thicknessEffIn": 1.56,
+        "result": {
+          "thickness": 1.56,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.6240000000000001,
+          "railMark1": 0.9052500000000001,
+          "railTuck1": 0.3427500000000001,
+          "cornerCutRail": 0.8427500000000001,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "hardEdge": true,
+          "bottomTuck1": 0.17137500000000006,
+          "bottomTuck2": 0.08568750000000003,
+          "bottomTuck3": 0,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.56
+          ],
+          [
+            -3,
+            1.56
+          ],
+          [
+            -0.9375,
+            1.232625
+          ],
+          [
+            -1.875,
+            1.56
+          ],
+          [
+            0,
+            0.9052500000000001
+          ],
+          [
+            0,
+            0.3427500000000001
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              -1.875,
+              1.56
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.232625
+            ],
+            "p2": [
+              -3,
+              1.56
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.8427500000000001
+            ],
+            "p2": [
+              -0.0625,
+              0.9270750000000001
+            ]
+          },
+          {
+            "key": "hardEdge",
+            "label": "Hard Edge",
+            "p1": [
+              0,
+              0.3427500000000001
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              0,
+              0.3427500000000001
+            ]
+          }
+        ],
+        "card": {
+          "title": "Tail",
+          "subtitle": "Flat · Family med · Ratio 60/40 · Hard Edge",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 9/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "7/8\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "13/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "Hard Edge"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "domedAll": {
+    "state": {
+      "units": "in",
+      "centerDeckPercent": 80,
+      "centerBoardThickness": 2.5,
+      "centerFamily": 3,
+      "centerRatioTop": 60,
+      "centerSymmetrical": false,
+      "noseDeckPercent": 72,
+      "noseFamily": 3,
+      "noseRatioTop": 60,
+      "noseSymmetrical": false,
+      "tailDeckPercent": 85,
+      "tailFamily": 3,
+      "tailRatioTop": 60,
+      "tailSymmetrical": false,
+      "noseThickness": 1.31,
+      "tailThickness": 1.56,
+      "noseCornerCutOffsetOverride": null,
+      "centerCornerCutOffsetOverride": null,
+      "tailCornerCutOffsetOverride": null,
+      "noseRemoveCornerCut": false,
+      "centerRemoveCornerCut": false,
+      "tailRemoveCornerCut": false,
+      "noseSingleTuck": false,
+      "centerSingleTuck": false,
+      "tailSingleTuck": false,
+      "noseBottomTuck3Override": null,
+      "centerBottomTuck3Override": null,
+      "tailBottomTuck3Override": null,
+      "tailHardEdge": true
+    },
+    "sections": {
+      "nose": {
+        "domed": true,
+        "boardThicknessIn": 1.31,
+        "railThicknessClampedIn": 0.9375,
+        "thicknessEffIn": 0.9375,
+        "result": {
+          "thickness": 0.9375,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.375,
+          "railMark1": 0.65625,
+          "railTuck1": 0.09375,
+          "cornerCutRail": 0.59375,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 0.046875,
+          "bottomTuck2": 0.0234375,
+          "bottomTuck3": 0.09375,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.31
+          ],
+          [
+            -3,
+            1.1858333333333333
+          ],
+          [
+            -0.9375,
+            0.8744791666666667
+          ],
+          [
+            -1.875,
+            1.0927083333333334
+          ],
+          [
+            0,
+            0.65625
+          ],
+          [
+            0,
+            0.09375
+          ],
+          [
+            -0.0234375,
+            0.046875
+          ],
+          [
+            -0.09375,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              0.9375
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.65625
+            ],
+            "p2": [
+              -1.875,
+              1.0927083333333334
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              0.8744791666666667
+            ],
+            "p2": [
+              -3,
+              1.1858333333333333
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.59375
+            ],
+            "p2": [
+              -0.0625,
+              0.6707986111111112
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.09375
+            ],
+            "p2": [
+              -0.046875,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.0234375,
+              0.046875
+            ],
+            "p2": [
+              -0.09375,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -0.09375,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.65625
+            ],
+            "p2": [
+              0,
+              0.09375
+            ]
+          }
+        ],
+        "card": {
+          "title": "Nose",
+          "subtitle": "Domed · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 5/16\""
+                },
+                {
+                  "label": "Tapered Rail Thickness",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "3/8\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "11/16\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "1/8\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "5/8\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Domed Deck Band",
+                  "value": "4 1/2\""
+                },
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "1/16\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "—"
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "1/8\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "center": {
+        "domed": true,
+        "boardThicknessIn": 2.5,
+        "railThicknessClampedIn": 2,
+        "thicknessEffIn": 2,
+        "result": {
+          "thickness": 2,
+          "apexLenRange": 0.75,
+          "apexCenter": 0.8,
+          "railMark1": 1.175,
+          "railTuck1": 0.42500000000000004,
+          "cornerCutRail": 1.1125,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 6,
+          "deckMark1": 2.5,
+          "deckMark2": 1.25,
+          "deckMark3": 4,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 0.21250000000000002,
+          "bottomTuck2": 0.10625000000000001,
+          "bottomTuck3": 0.42500000000000004,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -6,
+            2.5
+          ],
+          [
+            -4,
+            2.3333333333333335
+          ],
+          [
+            -1.25,
+            1.6916666666666669
+          ],
+          [
+            -2.5,
+            2.2083333333333335
+          ],
+          [
+            0,
+            1.175
+          ],
+          [
+            0,
+            0.42500000000000004
+          ],
+          [
+            -0.10625000000000001,
+            0.21250000000000002
+          ],
+          [
+            -0.42500000000000004,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              2
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              1.175
+            ],
+            "p2": [
+              -2.5,
+              2.2083333333333335
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -1.25,
+              1.6916666666666669
+            ],
+            "p2": [
+              -4,
+              2.3333333333333335
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              1.1125
+            ],
+            "p2": [
+              -0.0625,
+              1.2008333333333334
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.42500000000000004
+            ],
+            "p2": [
+              -0.21250000000000002,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.10625000000000001,
+              0.21250000000000002
+            ],
+            "p2": [
+              -0.42500000000000004,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -8,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -8,
+              0
+            ],
+            "p2": [
+              -0.42500000000000004,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              1.175
+            ],
+            "p2": [
+              0,
+              0.42500000000000004
+            ]
+          }
+        ],
+        "card": {
+          "title": "Center",
+          "subtitle": "Domed · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Tapered Rail Thickness",
+                  "value": "2\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "13/16\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1 3/16\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "7/16\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "1 1/8\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Domed Deck Band",
+                  "value": "6\""
+                },
+                {
+                  "label": "Deck Mark 1",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "1 1/4\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "4\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "3/16\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1/8\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "7/16\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "tail": {
+        "domed": true,
+        "boardThicknessIn": 1.56,
+        "railThicknessClampedIn": 1.3125,
+        "thicknessEffIn": 1.3125,
+        "result": {
+          "thickness": 1.3125,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.525,
+          "railMark1": 0.80625,
+          "railTuck1": 0.24375000000000002,
+          "cornerCutRail": 0.74375,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "hardEdge": true,
+          "bottomTuck1": 0.12187500000000001,
+          "bottomTuck2": 0.060937500000000006,
+          "bottomTuck3": 0,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.56
+          ],
+          [
+            -3,
+            1.4775
+          ],
+          [
+            -0.9375,
+            1.1109375
+          ],
+          [
+            -1.875,
+            1.415625
+          ],
+          [
+            0,
+            0.80625
+          ],
+          [
+            0,
+            0.24375000000000002
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.3125
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.80625
+            ],
+            "p2": [
+              -1.875,
+              1.415625
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.1109375
+            ],
+            "p2": [
+              -3,
+              1.4775
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.74375
+            ],
+            "p2": [
+              -0.0625,
+              0.8265625
+            ]
+          },
+          {
+            "key": "hardEdge",
+            "label": "Hard Edge",
+            "p1": [
+              0,
+              0.24375000000000002
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.80625
+            ],
+            "p2": [
+              0,
+              0.24375000000000002
+            ]
+          }
+        ],
+        "card": {
+          "title": "Tail",
+          "subtitle": "Domed · Family med · Ratio 60/40 · Hard Edge",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 9/16\""
+                },
+                {
+                  "label": "Tapered Rail Thickness",
+                  "value": "1 5/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1/2\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "13/16\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "3/4\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Domed Deck Band",
+                  "value": "4 1/2\""
+                },
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "Hard Edge"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "familyBoxy": {
+    "state": {
+      "units": "in",
+      "centerDeckPercent": 100,
+      "centerBoardThickness": 2.5,
+      "centerFamily": 1,
+      "centerRatioTop": 60,
+      "centerSymmetrical": false,
+      "noseDeckPercent": 100,
+      "noseFamily": 1,
+      "noseRatioTop": 60,
+      "noseSymmetrical": false,
+      "tailDeckPercent": 100,
+      "tailFamily": 1,
+      "tailRatioTop": 60,
+      "tailSymmetrical": false,
+      "noseThickness": 1.31,
+      "tailThickness": 1.56,
+      "noseCornerCutOffsetOverride": null,
+      "centerCornerCutOffsetOverride": null,
+      "tailCornerCutOffsetOverride": null,
+      "noseRemoveCornerCut": false,
+      "centerRemoveCornerCut": false,
+      "tailRemoveCornerCut": false,
+      "noseSingleTuck": false,
+      "centerSingleTuck": false,
+      "tailSingleTuck": false,
+      "noseBottomTuck3Override": null,
+      "centerBottomTuck3Override": null,
+      "tailBottomTuck3Override": null,
+      "tailHardEdge": true
+    },
+    "sections": {
+      "nose": {
+        "domed": false,
+        "boardThicknessIn": 1.31,
+        "railThicknessClampedIn": 1.3125,
+        "thicknessEffIn": 1.31,
+        "result": {
+          "thickness": 1.31,
+          "apexLenRange": 0.75,
+          "apexCenter": 0.524,
+          "railMark1": 0.899,
+          "railTuck1": 0.14900000000000002,
+          "cornerCutRail": 0.774,
+          "cornerCutOffset": 0.125,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.5,
+          "deckMark2": 0.75,
+          "deckMark3": 2.625,
+          "cornerCutDeck": 0.125,
+          "bottomTuck1": 0.07450000000000001,
+          "bottomTuck2": 0.037250000000000005,
+          "bottomTuck3": 0.14900000000000002,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.31
+          ],
+          [
+            -2.625,
+            1.31
+          ],
+          [
+            -0.75,
+            1.1045
+          ],
+          [
+            -1.5,
+            1.31
+          ],
+          [
+            0,
+            0.899
+          ],
+          [
+            0,
+            0.14900000000000002
+          ],
+          [
+            -0.037250000000000005,
+            0.07450000000000001
+          ],
+          [
+            -0.14900000000000002,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.899
+            ],
+            "p2": [
+              -1.5,
+              1.31
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.75,
+              1.1045
+            ],
+            "p2": [
+              -2.625,
+              1.31
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.774
+            ],
+            "p2": [
+              -0.125,
+              0.93325
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.14900000000000002
+            ],
+            "p2": [
+              -0.07450000000000001,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.037250000000000005,
+              0.07450000000000001
+            ],
+            "p2": [
+              -0.14900000000000002,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -0.14900000000000002,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.899
+            ],
+            "p2": [
+              0,
+              0.14900000000000002
+            ]
+          }
+        ],
+        "card": {
+          "title": "Nose",
+          "subtitle": "Flat · Family boxy · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 5/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1/2\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "7/8\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "1/8\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "3/4\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 1/2\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "2 5/8\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/8\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "1/16\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "1/8\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "center": {
+        "domed": false,
+        "boardThicknessIn": 2.5,
+        "railThicknessClampedIn": 2.5,
+        "thicknessEffIn": 2.5,
+        "result": {
+          "thickness": 2.5,
+          "apexLenRange": 1,
+          "apexCenter": 1,
+          "railMark1": 1.5,
+          "railTuck1": 0.5,
+          "cornerCutRail": 1.375,
+          "cornerCutOffset": 0.125,
+          "domedDeckBand": 6,
+          "deckMark1": 2,
+          "deckMark2": 1,
+          "deckMark3": 3.5,
+          "cornerCutDeck": 0.125,
+          "bottomTuck1": 0.25,
+          "bottomTuck2": 0.125,
+          "bottomTuck3": 0.5,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -6,
+            2.5
+          ],
+          [
+            -3.5,
+            2.5
+          ],
+          [
+            -1,
+            2
+          ],
+          [
+            -2,
+            2.5
+          ],
+          [
+            0,
+            1.5
+          ],
+          [
+            0,
+            0.5
+          ],
+          [
+            -0.125,
+            0.25
+          ],
+          [
+            -0.5,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              1.5
+            ],
+            "p2": [
+              -2,
+              2.5
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -1,
+              2
+            ],
+            "p2": [
+              -3.5,
+              2.5
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              1.375
+            ],
+            "p2": [
+              -0.125,
+              1.5625
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.5
+            ],
+            "p2": [
+              -0.25,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.125,
+              0.25
+            ],
+            "p2": [
+              -0.5,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -8,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -8,
+              0
+            ],
+            "p2": [
+              -0.5,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              1.5
+            ],
+            "p2": [
+              0,
+              0.5
+            ]
+          }
+        ],
+        "card": {
+          "title": "Center",
+          "subtitle": "Flat · Family boxy · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "1\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1 1/2\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "1/2\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "1 3/8\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "2\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "1\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3 1/2\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/8\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "1/4\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1/8\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "1/2\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "tail": {
+        "domed": false,
+        "boardThicknessIn": 1.56,
+        "railThicknessClampedIn": 1.5625,
+        "thicknessEffIn": 1.56,
+        "result": {
+          "thickness": 1.56,
+          "apexLenRange": 0.75,
+          "apexCenter": 0.6240000000000001,
+          "railMark1": 0.9990000000000001,
+          "railTuck1": 0.2490000000000001,
+          "cornerCutRail": 0.8740000000000001,
+          "cornerCutOffset": 0.125,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.5,
+          "deckMark2": 0.75,
+          "deckMark3": 2.625,
+          "cornerCutDeck": 0.125,
+          "hardEdge": true,
+          "bottomTuck1": 0.12450000000000006,
+          "bottomTuck2": 0.06225000000000003,
+          "bottomTuck3": 0,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.56
+          ],
+          [
+            -2.625,
+            1.56
+          ],
+          [
+            -0.75,
+            1.2795
+          ],
+          [
+            -1.5,
+            1.56
+          ],
+          [
+            0,
+            0.9990000000000001
+          ],
+          [
+            0,
+            0.2490000000000001
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.9990000000000001
+            ],
+            "p2": [
+              -1.5,
+              1.56
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.75,
+              1.2795
+            ],
+            "p2": [
+              -2.625,
+              1.56
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.8740000000000001
+            ],
+            "p2": [
+              -0.125,
+              1.0457500000000002
+            ]
+          },
+          {
+            "key": "hardEdge",
+            "label": "Hard Edge",
+            "p1": [
+              0,
+              0.2490000000000001
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.9990000000000001
+            ],
+            "p2": [
+              0,
+              0.2490000000000001
+            ]
+          }
+        ],
+        "card": {
+          "title": "Tail",
+          "subtitle": "Flat · Family boxy · Ratio 60/40 · Hard Edge",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 9/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "7/8\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 1/2\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "2 5/8\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/8\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "Hard Edge"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "familyKnifey": {
+    "state": {
+      "units": "in",
+      "centerDeckPercent": 100,
+      "centerBoardThickness": 2.5,
+      "centerFamily": 5,
+      "centerRatioTop": 60,
+      "centerSymmetrical": false,
+      "noseDeckPercent": 100,
+      "noseFamily": 5,
+      "noseRatioTop": 60,
+      "noseSymmetrical": false,
+      "tailDeckPercent": 100,
+      "tailFamily": 5,
+      "tailRatioTop": 60,
+      "tailSymmetrical": false,
+      "noseThickness": 1.31,
+      "tailThickness": 1.56,
+      "noseCornerCutOffsetOverride": null,
+      "centerCornerCutOffsetOverride": null,
+      "tailCornerCutOffsetOverride": null,
+      "noseRemoveCornerCut": false,
+      "centerRemoveCornerCut": false,
+      "tailRemoveCornerCut": false,
+      "noseSingleTuck": false,
+      "centerSingleTuck": false,
+      "tailSingleTuck": false,
+      "noseBottomTuck3Override": null,
+      "centerBottomTuck3Override": null,
+      "tailBottomTuck3Override": null,
+      "tailHardEdge": true
+    },
+    "sections": {
+      "nose": {
+        "domed": false,
+        "boardThicknessIn": 1.31,
+        "railThicknessClampedIn": 1.3125,
+        "thicknessEffIn": 1.31,
+        "result": {
+          "thickness": 1.31,
+          "apexLenRange": 0.375,
+          "apexCenter": 0.524,
+          "railMark1": 0.7115,
+          "railTuck1": 0.3365,
+          "cornerCutRail": 0.7115,
+          "cornerCutOffset": 0,
+          "domedDeckBand": 4.5,
+          "deckMark1": 2.25,
+          "deckMark2": 1.125,
+          "deckMark3": 3.375,
+          "cornerCutDeck": 0,
+          "bottomTuck1": 0.16825,
+          "bottomTuck2": 0.084125,
+          "bottomTuck3": 0.3365,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.31
+          ],
+          [
+            -3.375,
+            1.31
+          ],
+          [
+            -1.125,
+            1.01075
+          ],
+          [
+            -2.25,
+            1.31
+          ],
+          [
+            0,
+            0.7115
+          ],
+          [
+            0,
+            0.3365
+          ],
+          [
+            -0.084125,
+            0.16825
+          ],
+          [
+            -0.3365,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.7115
+            ],
+            "p2": [
+              -2.25,
+              1.31
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -1.125,
+              1.01075
+            ],
+            "p2": [
+              -3.375,
+              1.31
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.7115
+            ],
+            "p2": [
+              0,
+              0.7115
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.3365
+            ],
+            "p2": [
+              -0.16825,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.084125,
+              0.16825
+            ],
+            "p2": [
+              -0.3365,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -0.3365,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.7115
+            ],
+            "p2": [
+              0,
+              0.3365
+            ]
+          }
+        ],
+        "card": {
+          "title": "Nose",
+          "subtitle": "Flat · Family knifey · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 5/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "3/8\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1/2\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "11/16\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "5/16\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "11/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "2 1/4\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "1 1/8\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3 3/8\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "—"
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "3/16\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "5/16\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "center": {
+        "domed": false,
+        "boardThicknessIn": 2.5,
+        "railThicknessClampedIn": 2.5,
+        "thicknessEffIn": 2.5,
+        "result": {
+          "thickness": 2.5,
+          "apexLenRange": 0.5,
+          "apexCenter": 1,
+          "railMark1": 1.25,
+          "railTuck1": 0.75,
+          "cornerCutRail": 1.25,
+          "cornerCutOffset": 0,
+          "domedDeckBand": 6,
+          "deckMark1": 3,
+          "deckMark2": 1.5,
+          "deckMark3": 4.5,
+          "cornerCutDeck": 0,
+          "bottomTuck1": 0.375,
+          "bottomTuck2": 0.1875,
+          "bottomTuck3": 0.75,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -6,
+            2.5
+          ],
+          [
+            -4.5,
+            2.5
+          ],
+          [
+            -1.5,
+            1.875
+          ],
+          [
+            -3,
+            2.5
+          ],
+          [
+            0,
+            1.25
+          ],
+          [
+            0,
+            0.75
+          ],
+          [
+            -0.1875,
+            0.375
+          ],
+          [
+            -0.75,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              1.25
+            ],
+            "p2": [
+              -3,
+              2.5
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -1.5,
+              1.875
+            ],
+            "p2": [
+              -4.5,
+              2.5
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              1.25
+            ],
+            "p2": [
+              0,
+              1.25
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.75
+            ],
+            "p2": [
+              -0.375,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.1875,
+              0.375
+            ],
+            "p2": [
+              -0.75,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -8,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -8,
+              0
+            ],
+            "p2": [
+              -0.75,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              1.25
+            ],
+            "p2": [
+              0,
+              0.75
+            ]
+          }
+        ],
+        "card": {
+          "title": "Center",
+          "subtitle": "Flat · Family knifey · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "1/2\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1 1/4\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "1 1/4\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "3\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "1 1/2\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "4 1/2\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "—"
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "3/8\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "3/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "3/4\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "tail": {
+        "domed": false,
+        "boardThicknessIn": 1.56,
+        "railThicknessClampedIn": 1.5625,
+        "thicknessEffIn": 1.56,
+        "result": {
+          "thickness": 1.56,
+          "apexLenRange": 0.375,
+          "apexCenter": 0.6240000000000001,
+          "railMark1": 0.8115000000000001,
+          "railTuck1": 0.4365000000000001,
+          "cornerCutRail": 0.8115000000000001,
+          "cornerCutOffset": 0,
+          "domedDeckBand": 4.5,
+          "deckMark1": 2.25,
+          "deckMark2": 1.125,
+          "deckMark3": 3.375,
+          "cornerCutDeck": 0,
+          "hardEdge": true,
+          "bottomTuck1": 0.21825000000000006,
+          "bottomTuck2": 0.10912500000000003,
+          "bottomTuck3": 0,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.56
+          ],
+          [
+            -3.375,
+            1.56
+          ],
+          [
+            -1.125,
+            1.18575
+          ],
+          [
+            -2.25,
+            1.56
+          ],
+          [
+            0,
+            0.8115000000000001
+          ],
+          [
+            0,
+            0.4365000000000001
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.8115000000000001
+            ],
+            "p2": [
+              -2.25,
+              1.56
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -1.125,
+              1.18575
+            ],
+            "p2": [
+              -3.375,
+              1.56
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.8115000000000001
+            ],
+            "p2": [
+              0,
+              0.8115000000000001
+            ]
+          },
+          {
+            "key": "hardEdge",
+            "label": "Hard Edge",
+            "p1": [
+              0,
+              0.4365000000000001
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.8115000000000001
+            ],
+            "p2": [
+              0,
+              0.4365000000000001
+            ]
+          }
+        ],
+        "card": {
+          "title": "Tail",
+          "subtitle": "Flat · Family knifey · Ratio 60/40 · Hard Edge",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 9/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "3/8\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "13/16\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "13/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "2 1/4\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "1 1/8\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3 3/8\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "—"
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "Hard Edge"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "symmetrical": {
+    "state": {
+      "units": "in",
+      "centerDeckPercent": 100,
+      "centerBoardThickness": 2.5,
+      "centerFamily": 3,
+      "centerRatioTop": 60,
+      "centerSymmetrical": true,
+      "noseDeckPercent": 100,
+      "noseFamily": 3,
+      "noseRatioTop": 60,
+      "noseSymmetrical": true,
+      "tailDeckPercent": 100,
+      "tailFamily": 3,
+      "tailRatioTop": 60,
+      "tailSymmetrical": true,
+      "noseThickness": 1.31,
+      "tailThickness": 1.56,
+      "noseCornerCutOffsetOverride": null,
+      "centerCornerCutOffsetOverride": null,
+      "tailCornerCutOffsetOverride": null,
+      "noseRemoveCornerCut": false,
+      "centerRemoveCornerCut": false,
+      "tailRemoveCornerCut": false,
+      "noseSingleTuck": false,
+      "centerSingleTuck": false,
+      "tailSingleTuck": false,
+      "noseBottomTuck3Override": null,
+      "centerBottomTuck3Override": null,
+      "tailBottomTuck3Override": null,
+      "tailHardEdge": false
+    },
+    "sections": {
+      "nose": {
+        "domed": false,
+        "boardThicknessIn": 1.31,
+        "railThicknessClampedIn": 1.3125,
+        "thicknessEffIn": 1.31,
+        "result": {
+          "thickness": 1.31,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.524,
+          "railMark1": 0.80525,
+          "railTuck1": 0.24275000000000002,
+          "cornerCutRail": 0.74275,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 1.875,
+          "bottomTuck2": 0.9375,
+          "bottomTuck3": 3,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.31
+          ],
+          [
+            -3,
+            1.31
+          ],
+          [
+            -0.9375,
+            1.057625
+          ],
+          [
+            -1.875,
+            1.31
+          ],
+          [
+            0,
+            0.80525
+          ],
+          [
+            0,
+            0.24275000000000002
+          ],
+          [
+            -0.9375,
+            0.12137500000000001
+          ],
+          [
+            -3,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              -1.875,
+              1.31
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.057625
+            ],
+            "p2": [
+              -3,
+              1.31
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.74275
+            ],
+            "p2": [
+              -0.0625,
+              0.822075
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.24275000000000002
+            ],
+            "p2": [
+              -1.875,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.9375,
+              0.12137500000000001
+            ],
+            "p2": [
+              -3,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -3,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              0,
+              0.24275000000000002
+            ]
+          }
+        ],
+        "card": {
+          "title": "Nose",
+          "subtitle": "Flat · Family med · Ratio 60/40 · Symmetrical",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 5/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1/2\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "13/16\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "1/4\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "3/4\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "3\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "center": {
+        "domed": false,
+        "boardThicknessIn": 2.5,
+        "railThicknessClampedIn": 2.5,
+        "thicknessEffIn": 2.5,
+        "result": {
+          "thickness": 2.5,
+          "apexLenRange": 0.75,
+          "apexCenter": 1,
+          "railMark1": 1.375,
+          "railTuck1": 0.625,
+          "cornerCutRail": 1.3125,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 6,
+          "deckMark1": 2.5,
+          "deckMark2": 1.25,
+          "deckMark3": 4,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 2.5,
+          "bottomTuck2": 1.25,
+          "bottomTuck3": 4,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -6,
+            2.5
+          ],
+          [
+            -4,
+            2.5
+          ],
+          [
+            -1.25,
+            1.9375
+          ],
+          [
+            -2.5,
+            2.5
+          ],
+          [
+            0,
+            1.375
+          ],
+          [
+            0,
+            0.625
+          ],
+          [
+            -1.25,
+            0.3125
+          ],
+          [
+            -4,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              1.375
+            ],
+            "p2": [
+              -2.5,
+              2.5
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -1.25,
+              1.9375
+            ],
+            "p2": [
+              -4,
+              2.5
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              1.3125
+            ],
+            "p2": [
+              -0.0625,
+              1.403125
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.625
+            ],
+            "p2": [
+              -2.5,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -1.25,
+              0.3125
+            ],
+            "p2": [
+              -4,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -8,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -8,
+              0
+            ],
+            "p2": [
+              -4,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              1.375
+            ],
+            "p2": [
+              0,
+              0.625
+            ]
+          }
+        ],
+        "card": {
+          "title": "Center",
+          "subtitle": "Flat · Family med · Ratio 60/40 · Symmetrical",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1 3/8\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "1 5/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "1 1/4\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "4\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1 1/4\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "4\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "tail": {
+        "domed": false,
+        "boardThicknessIn": 1.56,
+        "railThicknessClampedIn": 1.5625,
+        "thicknessEffIn": 1.56,
+        "result": {
+          "thickness": 1.56,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.6240000000000001,
+          "railMark1": 0.9052500000000001,
+          "railTuck1": 0.3427500000000001,
+          "cornerCutRail": 0.8427500000000001,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "hardEdge": false,
+          "bottomTuck1": 1.875,
+          "bottomTuck2": 0.9375,
+          "bottomTuck3": 3,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.56
+          ],
+          [
+            -3,
+            1.56
+          ],
+          [
+            -0.9375,
+            1.232625
+          ],
+          [
+            -1.875,
+            1.56
+          ],
+          [
+            0,
+            0.9052500000000001
+          ],
+          [
+            0,
+            0.3427500000000001
+          ],
+          [
+            -0.9375,
+            0.17137500000000006
+          ],
+          [
+            -3,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              -1.875,
+              1.56
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.232625
+            ],
+            "p2": [
+              -3,
+              1.56
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.8427500000000001
+            ],
+            "p2": [
+              -0.0625,
+              0.9270750000000001
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.3427500000000001
+            ],
+            "p2": [
+              -1.875,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.9375,
+              0.17137500000000006
+            ],
+            "p2": [
+              -3,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -3,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              0,
+              0.3427500000000001
+            ]
+          }
+        ],
+        "card": {
+          "title": "Tail",
+          "subtitle": "Flat · Family med · Ratio 60/40 · Symmetrical",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 9/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "7/8\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "5/16\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "13/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "3\""
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "hardEdgeOff": {
+    "state": {
+      "units": "in",
+      "centerDeckPercent": 100,
+      "centerBoardThickness": 2.5,
+      "centerFamily": 3,
+      "centerRatioTop": 60,
+      "centerSymmetrical": false,
+      "noseDeckPercent": 100,
+      "noseFamily": 3,
+      "noseRatioTop": 60,
+      "noseSymmetrical": false,
+      "tailDeckPercent": 100,
+      "tailFamily": 3,
+      "tailRatioTop": 60,
+      "tailSymmetrical": false,
+      "noseThickness": 1.31,
+      "tailThickness": 1.56,
+      "noseCornerCutOffsetOverride": null,
+      "centerCornerCutOffsetOverride": null,
+      "tailCornerCutOffsetOverride": null,
+      "noseRemoveCornerCut": false,
+      "centerRemoveCornerCut": false,
+      "tailRemoveCornerCut": false,
+      "noseSingleTuck": false,
+      "centerSingleTuck": false,
+      "tailSingleTuck": false,
+      "noseBottomTuck3Override": null,
+      "centerBottomTuck3Override": null,
+      "tailBottomTuck3Override": null,
+      "tailHardEdge": false
+    },
+    "sections": {
+      "nose": {
+        "domed": false,
+        "boardThicknessIn": 1.31,
+        "railThicknessClampedIn": 1.3125,
+        "thicknessEffIn": 1.31,
+        "result": {
+          "thickness": 1.31,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.524,
+          "railMark1": 0.80525,
+          "railTuck1": 0.24275000000000002,
+          "cornerCutRail": 0.74275,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 0.12137500000000001,
+          "bottomTuck2": 0.060687500000000005,
+          "bottomTuck3": 0.24275000000000002,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.31
+          ],
+          [
+            -3,
+            1.31
+          ],
+          [
+            -0.9375,
+            1.057625
+          ],
+          [
+            -1.875,
+            1.31
+          ],
+          [
+            0,
+            0.80525
+          ],
+          [
+            0,
+            0.24275000000000002
+          ],
+          [
+            -0.060687500000000005,
+            0.12137500000000001
+          ],
+          [
+            -0.24275000000000002,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              -1.875,
+              1.31
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.057625
+            ],
+            "p2": [
+              -3,
+              1.31
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.74275
+            ],
+            "p2": [
+              -0.0625,
+              0.822075
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.24275000000000002
+            ],
+            "p2": [
+              -0.12137500000000001,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.060687500000000005,
+              0.12137500000000001
+            ],
+            "p2": [
+              -0.24275000000000002,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -0.24275000000000002,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              0,
+              0.24275000000000002
+            ]
+          }
+        ],
+        "card": {
+          "title": "Nose",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 5/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1/2\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "13/16\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "1/4\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "3/4\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "1/8\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "1/4\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "center": {
+        "domed": false,
+        "boardThicknessIn": 2.5,
+        "railThicknessClampedIn": 2.5,
+        "thicknessEffIn": 2.5,
+        "result": {
+          "thickness": 2.5,
+          "apexLenRange": 0.75,
+          "apexCenter": 1,
+          "railMark1": 1.375,
+          "railTuck1": 0.625,
+          "cornerCutRail": 1.3125,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 6,
+          "deckMark1": 2.5,
+          "deckMark2": 1.25,
+          "deckMark3": 4,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 0.3125,
+          "bottomTuck2": 0.15625,
+          "bottomTuck3": 0.625,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -6,
+            2.5
+          ],
+          [
+            -4,
+            2.5
+          ],
+          [
+            -1.25,
+            1.9375
+          ],
+          [
+            -2.5,
+            2.5
+          ],
+          [
+            0,
+            1.375
+          ],
+          [
+            0,
+            0.625
+          ],
+          [
+            -0.15625,
+            0.3125
+          ],
+          [
+            -0.625,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              1.375
+            ],
+            "p2": [
+              -2.5,
+              2.5
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -1.25,
+              1.9375
+            ],
+            "p2": [
+              -4,
+              2.5
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              1.3125
+            ],
+            "p2": [
+              -0.0625,
+              1.403125
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.625
+            ],
+            "p2": [
+              -0.3125,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.15625,
+              0.3125
+            ],
+            "p2": [
+              -0.625,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -8,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -8,
+              0
+            ],
+            "p2": [
+              -0.625,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              1.375
+            ],
+            "p2": [
+              0,
+              0.625
+            ]
+          }
+        ],
+        "card": {
+          "title": "Center",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1 3/8\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "1 5/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "1 1/4\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "4\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "5/16\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "3/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "5/8\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "tail": {
+        "domed": false,
+        "boardThicknessIn": 1.56,
+        "railThicknessClampedIn": 1.5625,
+        "thicknessEffIn": 1.56,
+        "result": {
+          "thickness": 1.56,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.6240000000000001,
+          "railMark1": 0.9052500000000001,
+          "railTuck1": 0.3427500000000001,
+          "cornerCutRail": 0.8427500000000001,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "hardEdge": false,
+          "bottomTuck1": 0.17137500000000006,
+          "bottomTuck2": 0.08568750000000003,
+          "bottomTuck3": 0.3427500000000001,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.56
+          ],
+          [
+            -3,
+            1.56
+          ],
+          [
+            -0.9375,
+            1.232625
+          ],
+          [
+            -1.875,
+            1.56
+          ],
+          [
+            0,
+            0.9052500000000001
+          ],
+          [
+            0,
+            0.3427500000000001
+          ],
+          [
+            -0.08568750000000003,
+            0.17137500000000006
+          ],
+          [
+            -0.3427500000000001,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              -1.875,
+              1.56
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.232625
+            ],
+            "p2": [
+              -3,
+              1.56
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.8427500000000001
+            ],
+            "p2": [
+              -0.0625,
+              0.9270750000000001
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.3427500000000001
+            ],
+            "p2": [
+              -0.17137500000000006,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.08568750000000003,
+              0.17137500000000006
+            ],
+            "p2": [
+              -0.3427500000000001,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -0.3427500000000001,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              0,
+              0.3427500000000001
+            ]
+          }
+        ],
+        "card": {
+          "title": "Tail",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 9/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "7/8\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "5/16\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "13/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "3/16\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "5/16\""
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "singleTuck": {
+    "state": {
+      "units": "in",
+      "centerDeckPercent": 100,
+      "centerBoardThickness": 2.5,
+      "centerFamily": 3,
+      "centerRatioTop": 60,
+      "centerSymmetrical": false,
+      "noseDeckPercent": 100,
+      "noseFamily": 3,
+      "noseRatioTop": 60,
+      "noseSymmetrical": false,
+      "tailDeckPercent": 100,
+      "tailFamily": 3,
+      "tailRatioTop": 60,
+      "tailSymmetrical": false,
+      "noseThickness": 1.31,
+      "tailThickness": 1.56,
+      "noseCornerCutOffsetOverride": null,
+      "centerCornerCutOffsetOverride": null,
+      "tailCornerCutOffsetOverride": null,
+      "noseRemoveCornerCut": false,
+      "centerRemoveCornerCut": false,
+      "tailRemoveCornerCut": false,
+      "noseSingleTuck": true,
+      "centerSingleTuck": true,
+      "tailSingleTuck": true,
+      "noseBottomTuck3Override": null,
+      "centerBottomTuck3Override": null,
+      "tailBottomTuck3Override": null,
+      "tailHardEdge": false
+    },
+    "sections": {
+      "nose": {
+        "domed": false,
+        "boardThicknessIn": 1.31,
+        "railThicknessClampedIn": 1.3125,
+        "thicknessEffIn": 1.31,
+        "result": {
+          "thickness": 1.31,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.524,
+          "railMark1": 0.80525,
+          "railTuck1": 0.24275000000000002,
+          "cornerCutRail": 0.74275,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 0.12137500000000001,
+          "bottomTuck2": 0.060687500000000005,
+          "bottomTuck3": 0.24275000000000002,
+          "removeCornerCut": false,
+          "singleTuck": true
+        },
+        "profile": [
+          [
+            -4.5,
+            1.31
+          ],
+          [
+            -3,
+            1.31
+          ],
+          [
+            -0.9375,
+            1.057625
+          ],
+          [
+            -1.875,
+            1.31
+          ],
+          [
+            0,
+            0.80525
+          ],
+          [
+            0,
+            0.24275000000000002
+          ],
+          [
+            -0.24275000000000002,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              -1.875,
+              1.31
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.057625
+            ],
+            "p2": [
+              -3,
+              1.31
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.74275
+            ],
+            "p2": [
+              -0.0625,
+              0.822075
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.24275000000000002
+            ],
+            "p2": [
+              -0.24275000000000002,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -0.24275000000000002,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              0,
+              0.24275000000000002
+            ]
+          }
+        ],
+        "card": {
+          "title": "Nose",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 5/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1/2\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "13/16\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "1/4\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "3/4\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "1/4\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "center": {
+        "domed": false,
+        "boardThicknessIn": 2.5,
+        "railThicknessClampedIn": 2.5,
+        "thicknessEffIn": 2.5,
+        "result": {
+          "thickness": 2.5,
+          "apexLenRange": 0.75,
+          "apexCenter": 1,
+          "railMark1": 1.375,
+          "railTuck1": 0.625,
+          "cornerCutRail": 1.3125,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 6,
+          "deckMark1": 2.5,
+          "deckMark2": 1.25,
+          "deckMark3": 4,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 0.3125,
+          "bottomTuck2": 0.15625,
+          "bottomTuck3": 0.625,
+          "removeCornerCut": false,
+          "singleTuck": true
+        },
+        "profile": [
+          [
+            -6,
+            2.5
+          ],
+          [
+            -4,
+            2.5
+          ],
+          [
+            -1.25,
+            1.9375
+          ],
+          [
+            -2.5,
+            2.5
+          ],
+          [
+            0,
+            1.375
+          ],
+          [
+            0,
+            0.625
+          ],
+          [
+            -0.625,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              1.375
+            ],
+            "p2": [
+              -2.5,
+              2.5
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -1.25,
+              1.9375
+            ],
+            "p2": [
+              -4,
+              2.5
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              1.3125
+            ],
+            "p2": [
+              -0.0625,
+              1.403125
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.625
+            ],
+            "p2": [
+              -0.625,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -8,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -8,
+              0
+            ],
+            "p2": [
+              -0.625,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              1.375
+            ],
+            "p2": [
+              0,
+              0.625
+            ]
+          }
+        ],
+        "card": {
+          "title": "Center",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1 3/8\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "1 5/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "1 1/4\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "4\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "5/8\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "tail": {
+        "domed": false,
+        "boardThicknessIn": 1.56,
+        "railThicknessClampedIn": 1.5625,
+        "thicknessEffIn": 1.56,
+        "result": {
+          "thickness": 1.56,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.6240000000000001,
+          "railMark1": 0.9052500000000001,
+          "railTuck1": 0.3427500000000001,
+          "cornerCutRail": 0.8427500000000001,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "hardEdge": false,
+          "bottomTuck1": 0.17137500000000006,
+          "bottomTuck2": 0.08568750000000003,
+          "bottomTuck3": 0.3427500000000001,
+          "removeCornerCut": false,
+          "singleTuck": true
+        },
+        "profile": [
+          [
+            -4.5,
+            1.56
+          ],
+          [
+            -3,
+            1.56
+          ],
+          [
+            -0.9375,
+            1.232625
+          ],
+          [
+            -1.875,
+            1.56
+          ],
+          [
+            0,
+            0.9052500000000001
+          ],
+          [
+            0,
+            0.3427500000000001
+          ],
+          [
+            -0.3427500000000001,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              -1.875,
+              1.56
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.232625
+            ],
+            "p2": [
+              -3,
+              1.56
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.8427500000000001
+            ],
+            "p2": [
+              -0.0625,
+              0.9270750000000001
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.3427500000000001
+            ],
+            "p2": [
+              -0.3427500000000001,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -0.3427500000000001,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              0,
+              0.3427500000000001
+            ]
+          }
+        ],
+        "card": {
+          "title": "Tail",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 9/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "7/8\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "5/16\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "13/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "5/16\""
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "removeCornerCut": {
+    "state": {
+      "units": "in",
+      "centerDeckPercent": 100,
+      "centerBoardThickness": 2.5,
+      "centerFamily": 3,
+      "centerRatioTop": 60,
+      "centerSymmetrical": false,
+      "noseDeckPercent": 100,
+      "noseFamily": 3,
+      "noseRatioTop": 60,
+      "noseSymmetrical": false,
+      "tailDeckPercent": 100,
+      "tailFamily": 3,
+      "tailRatioTop": 60,
+      "tailSymmetrical": false,
+      "noseThickness": 1.31,
+      "tailThickness": 1.56,
+      "noseCornerCutOffsetOverride": null,
+      "centerCornerCutOffsetOverride": null,
+      "tailCornerCutOffsetOverride": null,
+      "noseRemoveCornerCut": true,
+      "centerRemoveCornerCut": true,
+      "tailRemoveCornerCut": true,
+      "noseSingleTuck": false,
+      "centerSingleTuck": false,
+      "tailSingleTuck": false,
+      "noseBottomTuck3Override": null,
+      "centerBottomTuck3Override": null,
+      "tailBottomTuck3Override": null,
+      "tailHardEdge": true
+    },
+    "sections": {
+      "nose": {
+        "domed": false,
+        "boardThicknessIn": 1.31,
+        "railThicknessClampedIn": 1.3125,
+        "thicknessEffIn": 1.31,
+        "result": {
+          "thickness": 1.31,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.524,
+          "railMark1": 0.80525,
+          "railTuck1": 0.24275000000000002,
+          "cornerCutRail": null,
+          "cornerCutOffset": null,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": null,
+          "bottomTuck1": 0.12137500000000001,
+          "bottomTuck2": 0.060687500000000005,
+          "bottomTuck3": 0.24275000000000002,
+          "removeCornerCut": true,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.31
+          ],
+          [
+            -3,
+            1.31
+          ],
+          [
+            -0.9375,
+            1.057625
+          ],
+          [
+            -1.875,
+            1.31
+          ],
+          [
+            0,
+            0.80525
+          ],
+          [
+            0,
+            0.24275000000000002
+          ],
+          [
+            -0.060687500000000005,
+            0.12137500000000001
+          ],
+          [
+            -0.24275000000000002,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              -1.875,
+              1.31
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.057625
+            ],
+            "p2": [
+              -3,
+              1.31
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.24275000000000002
+            ],
+            "p2": [
+              -0.12137500000000001,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.060687500000000005,
+              0.12137500000000001
+            ],
+            "p2": [
+              -0.24275000000000002,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -0.24275000000000002,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              0,
+              0.24275000000000002
+            ]
+          }
+        ],
+        "card": {
+          "title": "Nose",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 5/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1/2\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "13/16\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "1/4\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "1/8\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "1/4\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "center": {
+        "domed": false,
+        "boardThicknessIn": 2.5,
+        "railThicknessClampedIn": 2.5,
+        "thicknessEffIn": 2.5,
+        "result": {
+          "thickness": 2.5,
+          "apexLenRange": 0.75,
+          "apexCenter": 1,
+          "railMark1": 1.375,
+          "railTuck1": 0.625,
+          "cornerCutRail": null,
+          "cornerCutOffset": null,
+          "domedDeckBand": 6,
+          "deckMark1": 2.5,
+          "deckMark2": 1.25,
+          "deckMark3": 4,
+          "cornerCutDeck": null,
+          "bottomTuck1": 0.3125,
+          "bottomTuck2": 0.15625,
+          "bottomTuck3": 0.625,
+          "removeCornerCut": true,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -6,
+            2.5
+          ],
+          [
+            -4,
+            2.5
+          ],
+          [
+            -1.25,
+            1.9375
+          ],
+          [
+            -2.5,
+            2.5
+          ],
+          [
+            0,
+            1.375
+          ],
+          [
+            0,
+            0.625
+          ],
+          [
+            -0.15625,
+            0.3125
+          ],
+          [
+            -0.625,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              1.375
+            ],
+            "p2": [
+              -2.5,
+              2.5
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -1.25,
+              1.9375
+            ],
+            "p2": [
+              -4,
+              2.5
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.625
+            ],
+            "p2": [
+              -0.3125,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.15625,
+              0.3125
+            ],
+            "p2": [
+              -0.625,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -8,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -8,
+              0
+            ],
+            "p2": [
+              -0.625,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              1.375
+            ],
+            "p2": [
+              0,
+              0.625
+            ]
+          }
+        ],
+        "card": {
+          "title": "Center",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1 3/8\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "5/8\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "1 1/4\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "4\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "5/16\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "3/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "5/8\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "tail": {
+        "domed": false,
+        "boardThicknessIn": 1.56,
+        "railThicknessClampedIn": 1.5625,
+        "thicknessEffIn": 1.56,
+        "result": {
+          "thickness": 1.56,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.6240000000000001,
+          "railMark1": 0.9052500000000001,
+          "railTuck1": 0.3427500000000001,
+          "cornerCutRail": null,
+          "cornerCutOffset": null,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": null,
+          "hardEdge": true,
+          "bottomTuck1": 0.17137500000000006,
+          "bottomTuck2": 0.08568750000000003,
+          "bottomTuck3": 0,
+          "removeCornerCut": true,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.56
+          ],
+          [
+            -3,
+            1.56
+          ],
+          [
+            -0.9375,
+            1.232625
+          ],
+          [
+            -1.875,
+            1.56
+          ],
+          [
+            0,
+            0.9052500000000001
+          ],
+          [
+            0,
+            0.3427500000000001
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              -1.875,
+              1.56
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.232625
+            ],
+            "p2": [
+              -3,
+              1.56
+            ]
+          },
+          {
+            "key": "hardEdge",
+            "label": "Hard Edge",
+            "p1": [
+              0,
+              0.3427500000000001
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              0,
+              0.3427500000000001
+            ]
+          }
+        ],
+        "card": {
+          "title": "Tail",
+          "subtitle": "Flat · Family med · Ratio 60/40 · Hard Edge",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 9/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "7/8\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "Hard Edge"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "overrides": {
+    "state": {
+      "units": "in",
+      "centerDeckPercent": 100,
+      "centerBoardThickness": 2.5,
+      "centerFamily": 3,
+      "centerRatioTop": 60,
+      "centerSymmetrical": false,
+      "noseDeckPercent": 100,
+      "noseFamily": 3,
+      "noseRatioTop": 60,
+      "noseSymmetrical": false,
+      "tailDeckPercent": 100,
+      "tailFamily": 3,
+      "tailRatioTop": 60,
+      "tailSymmetrical": false,
+      "noseThickness": 1.31,
+      "tailThickness": 1.56,
+      "noseCornerCutOffsetOverride": null,
+      "centerCornerCutOffsetOverride": 0.09375,
+      "tailCornerCutOffsetOverride": null,
+      "noseRemoveCornerCut": false,
+      "centerRemoveCornerCut": false,
+      "tailRemoveCornerCut": false,
+      "noseSingleTuck": false,
+      "centerSingleTuck": false,
+      "tailSingleTuck": false,
+      "noseBottomTuck3Override": 0.5,
+      "centerBottomTuck3Override": null,
+      "tailBottomTuck3Override": 0.75,
+      "tailHardEdge": false
+    },
+    "sections": {
+      "nose": {
+        "domed": false,
+        "boardThicknessIn": 1.31,
+        "railThicknessClampedIn": 1.3125,
+        "thicknessEffIn": 1.31,
+        "result": {
+          "thickness": 1.31,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.524,
+          "railMark1": 0.80525,
+          "railTuck1": 0.24275000000000002,
+          "cornerCutRail": 0.74275,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 0.12137500000000001,
+          "bottomTuck2": 0.060687500000000005,
+          "bottomTuck3": 0.5,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.31
+          ],
+          [
+            -3,
+            1.31
+          ],
+          [
+            -0.9375,
+            1.057625
+          ],
+          [
+            -1.875,
+            1.31
+          ],
+          [
+            0,
+            0.80525
+          ],
+          [
+            0,
+            0.24275000000000002
+          ],
+          [
+            -0.060687500000000005,
+            0.12137500000000001
+          ],
+          [
+            -0.5,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              -1.875,
+              1.31
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.057625
+            ],
+            "p2": [
+              -3,
+              1.31
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.74275
+            ],
+            "p2": [
+              -0.0625,
+              0.822075
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.24275000000000002
+            ],
+            "p2": [
+              -0.12137500000000001,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.060687500000000005,
+              0.12137500000000001
+            ],
+            "p2": [
+              -0.5,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -0.5,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.80525
+            ],
+            "p2": [
+              0,
+              0.24275000000000002
+            ]
+          }
+        ],
+        "card": {
+          "title": "Nose",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 5/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1/2\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "13/16\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "1/4\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "3/4\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "1/8\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "1/2\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "center": {
+        "domed": false,
+        "boardThicknessIn": 2.5,
+        "railThicknessClampedIn": 2.5,
+        "thicknessEffIn": 2.5,
+        "result": {
+          "thickness": 2.5,
+          "apexLenRange": 0.75,
+          "apexCenter": 1,
+          "railMark1": 1.375,
+          "railTuck1": 0.625,
+          "cornerCutRail": 1.28125,
+          "cornerCutOffset": 0.09375,
+          "domedDeckBand": 6,
+          "deckMark1": 2.5,
+          "deckMark2": 1.25,
+          "deckMark3": 4,
+          "cornerCutDeck": 0.09375,
+          "bottomTuck1": 0.3125,
+          "bottomTuck2": 0.15625,
+          "bottomTuck3": 0.625,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -6,
+            2.5
+          ],
+          [
+            -4,
+            2.5
+          ],
+          [
+            -1.25,
+            1.9375
+          ],
+          [
+            -2.5,
+            2.5
+          ],
+          [
+            0,
+            1.375
+          ],
+          [
+            0,
+            0.625
+          ],
+          [
+            -0.15625,
+            0.3125
+          ],
+          [
+            -0.625,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              1.375
+            ],
+            "p2": [
+              -2.5,
+              2.5
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -1.25,
+              1.9375
+            ],
+            "p2": [
+              -4,
+              2.5
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              1.28125
+            ],
+            "p2": [
+              -0.09375,
+              1.4171875
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.625
+            ],
+            "p2": [
+              -0.3125,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.15625,
+              0.3125
+            ],
+            "p2": [
+              -0.625,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -8,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -8,
+              0
+            ],
+            "p2": [
+              -0.625,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              1.375
+            ],
+            "p2": [
+              0,
+              0.625
+            ]
+          }
+        ],
+        "card": {
+          "title": "Center",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1 3/8\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "1 5/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "1 1/4\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "4\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/8\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "5/16\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "3/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "5/8\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "tail": {
+        "domed": false,
+        "boardThicknessIn": 1.56,
+        "railThicknessClampedIn": 1.5625,
+        "thicknessEffIn": 1.56,
+        "result": {
+          "thickness": 1.56,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.6240000000000001,
+          "railMark1": 0.9052500000000001,
+          "railTuck1": 0.3427500000000001,
+          "cornerCutRail": 0.8427500000000001,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "hardEdge": false,
+          "bottomTuck1": 0.17137500000000006,
+          "bottomTuck2": 0.08568750000000003,
+          "bottomTuck3": 0.75,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.56
+          ],
+          [
+            -3,
+            1.56
+          ],
+          [
+            -0.9375,
+            1.232625
+          ],
+          [
+            -1.875,
+            1.56
+          ],
+          [
+            0,
+            0.9052500000000001
+          ],
+          [
+            0,
+            0.3427500000000001
+          ],
+          [
+            -0.08568750000000003,
+            0.17137500000000006
+          ],
+          [
+            -0.75,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              -1.875,
+              1.56
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.232625
+            ],
+            "p2": [
+              -3,
+              1.56
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              0.8427500000000001
+            ],
+            "p2": [
+              -0.0625,
+              0.9270750000000001
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.3427500000000001
+            ],
+            "p2": [
+              -0.17137500000000006,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.08568750000000003,
+              0.17137500000000006
+            ],
+            "p2": [
+              -0.75,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -0.75,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              0.9052500000000001
+            ],
+            "p2": [
+              0,
+              0.3427500000000001
+            ]
+          }
+        ],
+        "card": {
+          "title": "Tail",
+          "subtitle": "Flat · Family med · Ratio 60/40",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 9/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "7/8\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "5/16\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "13/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "3/16\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "3/4\""
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "ratioExtremes": {
+    "state": {
+      "units": "in",
+      "centerDeckPercent": 100,
+      "centerBoardThickness": 2.5,
+      "centerFamily": 3,
+      "centerRatioTop": 70,
+      "centerSymmetrical": false,
+      "noseDeckPercent": 100,
+      "noseFamily": 3,
+      "noseRatioTop": 30,
+      "noseSymmetrical": false,
+      "tailDeckPercent": 100,
+      "tailFamily": 3,
+      "tailRatioTop": 30,
+      "tailSymmetrical": false,
+      "noseThickness": 1.31,
+      "tailThickness": 1.56,
+      "noseCornerCutOffsetOverride": null,
+      "centerCornerCutOffsetOverride": null,
+      "tailCornerCutOffsetOverride": null,
+      "noseRemoveCornerCut": false,
+      "centerRemoveCornerCut": false,
+      "tailRemoveCornerCut": false,
+      "noseSingleTuck": false,
+      "centerSingleTuck": false,
+      "tailSingleTuck": false,
+      "noseBottomTuck3Override": null,
+      "centerBottomTuck3Override": null,
+      "tailBottomTuck3Override": null,
+      "tailHardEdge": true
+    },
+    "sections": {
+      "nose": {
+        "domed": false,
+        "boardThicknessIn": 1.31,
+        "railThicknessClampedIn": 1.3125,
+        "thicknessEffIn": 1.31,
+        "result": {
+          "thickness": 1.31,
+          "apexLenRange": 0.5625,
+          "apexCenter": 0.9169999999999999,
+          "railMark1": 1.1982499999999998,
+          "railTuck1": 0.6357499999999999,
+          "cornerCutRail": 1.1357499999999998,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 0.31787499999999996,
+          "bottomTuck2": 0.15893749999999998,
+          "bottomTuck3": 0.6357499999999999,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.31
+          ],
+          [
+            -3,
+            1.31
+          ],
+          [
+            -0.9375,
+            1.254125
+          ],
+          [
+            -1.875,
+            1.31
+          ],
+          [
+            0,
+            1.1982499999999998
+          ],
+          [
+            0,
+            0.6357499999999999
+          ],
+          [
+            -0.15893749999999998,
+            0.31787499999999996
+          ],
+          [
+            -0.6357499999999999,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              1.1982499999999998
+            ],
+            "p2": [
+              -1.875,
+              1.31
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.254125
+            ],
+            "p2": [
+              -3,
+              1.31
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              1.1357499999999998
+            ],
+            "p2": [
+              -0.0625,
+              1.2019749999999998
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.6357499999999999
+            ],
+            "p2": [
+              -0.31787499999999996,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.15893749999999998,
+              0.31787499999999996
+            ],
+            "p2": [
+              -0.6357499999999999,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.31
+            ],
+            "p2": [
+              -4.5,
+              1.31
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              -0.6357499999999999,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              1.1982499999999998
+            ],
+            "p2": [
+              0,
+              0.6357499999999999
+            ]
+          }
+        ],
+        "card": {
+          "title": "Nose",
+          "subtitle": "Flat · Family med · Ratio 30/70",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 5/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1 3/16\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "5/8\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "1 1/8\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "5/16\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "3/16\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "5/8\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "center": {
+        "domed": false,
+        "boardThicknessIn": 2.5,
+        "railThicknessClampedIn": 2.5,
+        "thicknessEffIn": 2.5,
+        "result": {
+          "thickness": 2.5,
+          "apexLenRange": 0.75,
+          "apexCenter": 0.7500000000000001,
+          "railMark1": 1.125,
+          "railTuck1": 0.3750000000000001,
+          "cornerCutRail": 1.0625,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 6,
+          "deckMark1": 2.5,
+          "deckMark2": 1.25,
+          "deckMark3": 4,
+          "cornerCutDeck": 0.0625,
+          "bottomTuck1": 0.18750000000000006,
+          "bottomTuck2": 0.09375000000000003,
+          "bottomTuck3": 0.3750000000000001,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -6,
+            2.5
+          ],
+          [
+            -4,
+            2.5
+          ],
+          [
+            -1.25,
+            1.8125
+          ],
+          [
+            -2.5,
+            2.5
+          ],
+          [
+            0,
+            1.125
+          ],
+          [
+            0,
+            0.3750000000000001
+          ],
+          [
+            -0.09375000000000003,
+            0.18750000000000006
+          ],
+          [
+            -0.3750000000000001,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              1.125
+            ],
+            "p2": [
+              -2.5,
+              2.5
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -1.25,
+              1.8125
+            ],
+            "p2": [
+              -4,
+              2.5
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              1.0625
+            ],
+            "p2": [
+              -0.0625,
+              1.159375
+            ]
+          },
+          {
+            "key": "tuck1",
+            "label": "Rail Tuck 1",
+            "p1": [
+              0,
+              0.3750000000000001
+            ],
+            "p2": [
+              -0.18750000000000006,
+              0
+            ]
+          },
+          {
+            "key": "tuck2",
+            "label": "Rail Tuck 2",
+            "p1": [
+              -0.09375000000000003,
+              0.18750000000000006
+            ],
+            "p2": [
+              -0.3750000000000001,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -8,
+              2.5
+            ],
+            "p2": [
+              -6,
+              2.5
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -8,
+              0
+            ],
+            "p2": [
+              -0.3750000000000001,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              1.125
+            ],
+            "p2": [
+              0,
+              0.3750000000000001
+            ]
+          }
+        ],
+        "card": {
+          "title": "Center",
+          "subtitle": "Flat · Family med · Ratio 70/30",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "3/4\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1 1/8\""
+                },
+                {
+                  "label": "Rail Tuck 1",
+                  "value": "3/8\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "1 1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "2 1/2\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "1 1/4\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "4\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 1",
+                  "value": "3/16\""
+                },
+                {
+                  "label": "Bottom Tuck 2",
+                  "value": "1/8\""
+                },
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "3/8\""
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "tail": {
+        "domed": false,
+        "boardThicknessIn": 1.56,
+        "railThicknessClampedIn": 1.5625,
+        "thicknessEffIn": 1.56,
+        "result": {
+          "thickness": 1.56,
+          "apexLenRange": 0.5625,
+          "apexCenter": 1.0919999999999999,
+          "railMark1": 1.3732499999999999,
+          "railTuck1": 0.8107499999999999,
+          "cornerCutRail": 1.3107499999999999,
+          "cornerCutOffset": 0.0625,
+          "domedDeckBand": 4.5,
+          "deckMark1": 1.875,
+          "deckMark2": 0.9375,
+          "deckMark3": 3,
+          "cornerCutDeck": 0.0625,
+          "hardEdge": true,
+          "bottomTuck1": 0.40537499999999993,
+          "bottomTuck2": 0.20268749999999996,
+          "bottomTuck3": 0,
+          "removeCornerCut": false,
+          "singleTuck": false
+        },
+        "profile": [
+          [
+            -4.5,
+            1.56
+          ],
+          [
+            -3,
+            1.56
+          ],
+          [
+            -0.9375,
+            1.466625
+          ],
+          [
+            -1.875,
+            1.56
+          ],
+          [
+            0,
+            1.3732499999999999
+          ],
+          [
+            0,
+            0.8107499999999999
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "segments": [
+          {
+            "key": "domedBand",
+            "label": "Domed Deck Band",
+            "p1": [
+              0,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "band1",
+            "label": "Rail Band 1",
+            "p1": [
+              0,
+              1.3732499999999999
+            ],
+            "p2": [
+              -1.875,
+              1.56
+            ]
+          },
+          {
+            "key": "band2",
+            "label": "Rail Band 2",
+            "p1": [
+              -0.9375,
+              1.466625
+            ],
+            "p2": [
+              -3,
+              1.56
+            ]
+          },
+          {
+            "key": "cornerCut",
+            "label": "Corner Cut",
+            "p1": [
+              0,
+              1.3107499999999999
+            ],
+            "p2": [
+              -0.0625,
+              1.3794749999999998
+            ]
+          },
+          {
+            "key": "hardEdge",
+            "label": "Hard Edge",
+            "p1": [
+              0,
+              0.8107499999999999
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "boardConn",
+            "label": "Board Thickness",
+            "p1": [
+              -6.5,
+              1.56
+            ],
+            "p2": [
+              -4.5,
+              1.56
+            ]
+          },
+          {
+            "key": "bottomConn",
+            "label": "Left Edge → Bottom Tuck 3",
+            "p1": [
+              -6.5,
+              0
+            ],
+            "p2": [
+              0,
+              0
+            ]
+          },
+          {
+            "key": "railConn",
+            "label": "Rail Mark 1 → Tuck 1",
+            "p1": [
+              0,
+              1.3732499999999999
+            ],
+            "p2": [
+              0,
+              0.8107499999999999
+            ]
+          }
+        ],
+        "card": {
+          "title": "Tail",
+          "subtitle": "Flat · Family med · Ratio 30/70 · Hard Edge",
+          "groups": [
+            {
+              "heading": "Rail Side",
+              "rows": [
+                {
+                  "label": "Board Thickness",
+                  "value": "1 9/16\""
+                },
+                {
+                  "label": "Apex Thickness",
+                  "value": "9/16\""
+                },
+                {
+                  "label": "Apex Center",
+                  "value": "1 1/16\""
+                },
+                {
+                  "label": "Rail Mark 1",
+                  "value": "1 3/8\""
+                },
+                {
+                  "label": "Corner Cut (Rail)",
+                  "value": "1 5/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Deck Side",
+              "rows": [
+                {
+                  "label": "Deck Mark 1",
+                  "value": "1 7/8\""
+                },
+                {
+                  "label": "Deck Mark 2",
+                  "value": "15/16\""
+                },
+                {
+                  "label": "Deck Mark 3",
+                  "value": "3\""
+                },
+                {
+                  "label": "Corner Cut (Deck)",
+                  "value": "1/16\""
+                }
+              ]
+            },
+            {
+              "heading": "Bottom",
+              "rows": [
+                {
+                  "label": "Bottom Tuck 3",
+                  "value": "Hard Edge"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

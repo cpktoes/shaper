@@ -48,7 +48,14 @@ export function formatInchesFraction(
 ): string {
   const inches = mmToInches(value);
   const sign = inches < 0 ? "-" : "";
-  const rounded = Math.abs(Math.round(inches * denominator) / denominator);
+  // Nudge away from zero by a tiny epsilon before rounding: a value that started life as an
+  // exact N.5 sixteenth (e.g. an inch measurement round-tripped once through Mm) can land a few
+  // floating-point ULPs on the wrong side of that boundary purely from the unit conversion, which
+  // would otherwise flip Math.round's tie-break to the wrong sixteenth. 1e-9 is far larger than
+  // that round-trip noise and far smaller than half of the coarsest supported denominator's unit
+  // (1/16 at denominator=8), so it never changes a genuinely different value's rounding.
+  const nudge = inches < 0 ? -1e-9 : 1e-9;
+  const rounded = Math.abs(Math.round(inches * denominator + nudge) / denominator);
   let whole = Math.floor(rounded + 1e-9);
   let fracUnits = Math.round((rounded - whole) * denominator);
   if (fracUnits === denominator) {
@@ -65,6 +72,18 @@ export function formatInchesFraction(
     den /= 2;
   }
   return `${sign}${whole > 0 ? whole + " " : ""}${num}/${den}"`;
+}
+
+/**
+ * Snaps a millimetre value to the nearest 1/16 inch. Ported from the prototype's `round16`
+ * (reference/project/Rails.dc.html line 652: `Math.round(x * 16) / 16`), applied here in the
+ * inch domain then converted back to Mm. This is not a display nicety — it's the taper clamp
+ * the rail-band calculator applies to Deck Profile's tapered rail thickness before that value
+ * ever reaches a shaper's slider label, so it belongs on the model, not the formatter.
+ */
+export function roundToSixteenthInch(value: Mm): Mm {
+  const inches = mmToInches(value);
+  return inchesToMm(Math.round(inches * 16) / 16);
 }
 
 /**

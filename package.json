@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "golden": "node scripts/extract-prototype-golden.mjs"
+    "golden": "node scripts/extract-prototype-golden.mjs && node scripts/extract-prototype-rails-golden.mjs",
+    "golden:rails": "node scripts/extract-prototype-rails-golden.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
