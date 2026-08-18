@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  @font-face { font-family: 'Sys'; src: local('Helvetica Neue'), local('Helvetica'), local('Arial'); }
+  html, body { height: 100%; }
+  body { margin: 0; background: #f7f4ee; }
+  * { box-sizing: border-box; font-family: Helvetica, Arial, sans-serif; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #cbbf9e; border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: #f0ead9; }
+  a { color: var(--accent); }
+  a:hover { color: var(--accent-strong); }
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="{{ compactPosition }}{{ themeVars }}display:flex;flex-wrap:wrap;align-content:stretch;width:100%;height:{{ rootHeight }};overflow:hidden;background:{{ rootBg }};color:#1c1b19;">
+
+  <sc-if value="{{ !compact }}" hint-placeholder-val="{{ true }}">
+  <aside style="flex:1 1 340px;max-width:400px;background:var(--sidebar-bg);color:var(--sidebar-text);padding:28px 26px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;max-height:{{ rootHeight }};">
+    <div>
+      <div style="font-size:22px;font-weight:700;">Rail Band Calculator</div>
+      <div style="font-size:12px;color:var(--sidebar-text-muted);margin-top:2px;">Rail band calculator for shaping consistent rails</div>
+    </div>
+
+    <button onClick="{{ onToggleNoseOpen }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:transparent;border:none;color:var(--accent);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;padding:0 0 6px;border-bottom:1px solid #3a362f;">
+      <span>Nose Rail</span><span>{{ noseCaret }}</span>
+    </button>
+    <sc-if value="{{ noseOpen }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Thickness @12" — {{ noseThicknessDisplay }}</div>
+        <input type="range" min="{{ ntThicknessMin }}" max="{{ ntThicknessMax }}" step="{{ ntThicknessStep }}" value="{{ noseThicknessValue }}" onChange="{{ onNoseThicknessChange }}" style="width:100%;accent-color:var(--accent);">
+      </div>
+
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Deck Profile — {{ noseDeckLabel }}</div>
+        <input type="range" min="66" max="100" step="{{ noseDeckPercentStep }}" value="{{ noseDeckSliderValue }}" onChange="{{ onNoseDeckPercentChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Flat</span><span>Heavily Domed</span></div>
+      </div>
+
+
+      <div style="display:flex;gap:14px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;height:16px;line-height:16px;">Family — {{ noseFamilyLabel }}</div>
+        <input type="range" min="1" max="5" step="1" value="{{ noseFamilyValue }}" onChange="{{ onNoseFamilyChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Boxy</span><span>Medium</span><span>Knifey</span></div>
+      </div>
+
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;height:16px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);line-height:16px;">Ratio — {{ noseRatioLabel }}</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sidebar-text-secondary);cursor:pointer;">
+            <input type="checkbox" checked="{{ noseSymmetrical }}" onChange="{{ onNoseSymmetricalToggle }}">
+            Sym
+          </label>
+        </div>
+        <input type="range" min="30" max="70" step="1" value="{{ noseRatioTopValue }}" onChange="{{ onNoseRatioChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="position:relative;height:12px;margin-top:2px;">
+          <span style="position:absolute;left:0%;font-size:9px;color:var(--sidebar-text-muted);">30/70</span>
+          <span style="position:absolute;left:50%;transform:translateX(-50%);font-size:9px;color:var(--sidebar-text-muted);">50/50</span>
+          <span style="position:absolute;left:75%;transform:translateX(-50%);font-size:9px;color:var(--sidebar-text-muted);">60/40</span>
+          <span style="position:absolute;right:0%;font-size:9px;color:var(--sidebar-text-muted);">70/30</span>
+        </div>
+      </div>
+      </div>
+
+      <div>
+        <button onClick="{{ onToggleNoseAdvanced }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:transparent;border:none;color:var(--accent);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;padding:0 0 6px 12px;border-bottom:1px solid #3a362f;">
+          <span>Advanced</span><span>{{ noseAdvancedCaret }}</span>
+        </button>
+        <sc-if value="{{ noseAdvancedOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:12px;padding-left:12px;">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-size:11px;color:var(--sidebar-text-muted);">Corner Cut Offset — {{ noseCornerCutDisplay }}</div>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sidebar-text-secondary);cursor:pointer;">
+                  <input type="checkbox" checked="{{ noseRemoveCornerCut }}" onChange="{{ onNoseRemoveCornerCutToggle }}">
+                  Remove
+                </label>
+              </div>
+              <input type="range" min="{{ tuckInputMin }}" max="{{ tuckInputMax }}" step="{{ tuckInputStep }}" value="{{ noseCornerCutValue }}" onChange="{{ onNoseCornerCutChange }}" disabled="{{ noseRemoveCornerCut }}" style="width:100%;accent-color:var(--accent);opacity:{{ noseRemoveCornerCutOpacity }};">
+              <div style="font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;">0 = falls on Rail Mark 1</div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-size:11px;color:var(--sidebar-text-muted);">Bottom Tuck 3 — {{ noseBottomTuck3Display }}</div>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sidebar-text-secondary);cursor:pointer;">
+                  <input type="checkbox" checked="{{ noseSingleTuck }}" onChange="{{ onNoseSingleTuckToggle }}">
+                  Use Single Tuck
+                </label>
+              </div>
+              <input type="range" min="{{ tuckInputMin }}" max="{{ tuckInputMax }}" step="{{ tuckInputStep }}" value="{{ noseBottomTuck3Value }}" onChange="{{ onNoseBottomTuck3Change }}" style="width:100%;accent-color:var(--accent);">
+            </div>
+            <button onClick="{{ onResetNoseAdvanced }}" style="background:transparent;border:none;color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;text-align:left;padding:0;">↺ Reset Advanced Settings</button>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <button onClick="{{ onToggleCenterOpen }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:transparent;border:none;color:var(--accent);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;padding:0 0 6px;border-bottom:1px solid #3a362f;margin-top:6px;">
+      <span>Center Rail</span><span>{{ centerCaret }}</span>
+    </button>
+    <sc-if value="{{ centerOpen }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Board Thickness — {{ centerBoardThicknessDisplay }}</div>
+        <input type="range" min="{{ centerBoardThicknessMin }}" max="{{ centerBoardThicknessMax }}" step="{{ centerBoardThicknessStep }}" value="{{ centerBoardThicknessValue }}" onChange="{{ onCenterBoardThicknessChange }}" style="width:100%;accent-color:var(--accent);">
+        
+      </div>
+
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Deck Profile — {{ centerDeckLabel }}</div>
+        <input type="range" min="66" max="100" step="{{ centerDeckPercentStep }}" value="{{ centerDeckSliderValue }}" onChange="{{ onCenterDeckPercentChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Flat</span><span>Heavily Domed</span></div>
+      </div>
+
+
+      <div style="display:flex;gap:14px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;height:16px;line-height:16px;">Family — {{ centerFamilyLabel }}</div>
+        <input type="range" min="1" max="5" step="1" value="{{ centerFamilyValue }}" onChange="{{ onCenterFamilyChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Boxy</span><span>Medium</span><span>Knifey</span></div>
+      </div>
+
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;height:16px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);line-height:16px;">Ratio — {{ centerRatioLabel }}</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sidebar-text-secondary);cursor:pointer;">
+            <input type="checkbox" checked="{{ centerSymmetrical }}" onChange="{{ onCenterSymmetricalToggle }}">
+            Sym
+          </label>
+        </div>
+        <input type="range" min="30" max="70" step="1" value="{{ centerRatioTopValue }}" onChange="{{ onCenterRatioChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="position:relative;height:12px;margin-top:2px;">
+          <span style="position:absolute;left:0%;font-size:9px;color:var(--sidebar-text-muted);">30/70</span>
+          <span style="position:absolute;left:50%;transform:translateX(-50%);font-size:9px;color:var(--sidebar-text-muted);">50/50</span>
+          <span style="position:absolute;left:75%;transform:translateX(-50%);font-size:9px;color:var(--sidebar-text-muted);">60/40</span>
+          <span style="position:absolute;right:0%;font-size:9px;color:var(--sidebar-text-muted);">70/30</span>
+        </div>
+      </div>
+      </div>
+
+      <div>
+        <button onClick="{{ onToggleCenterAdvanced }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:transparent;border:none;color:var(--accent);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;padding:0 0 6px 12px;border-bottom:1px solid #3a362f;">
+          <span>Advanced</span><span>{{ centerAdvancedCaret }}</span>
+        </button>
+        <sc-if value="{{ centerAdvancedOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:12px;padding-left:12px;">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-size:11px;color:var(--sidebar-text-muted);">Corner Cut Offset — {{ centerCornerCutDisplay }}</div>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sidebar-text-secondary);cursor:pointer;">
+                  <input type="checkbox" checked="{{ centerRemoveCornerCut }}" onChange="{{ onCenterRemoveCornerCutToggle }}">
+                  Remove
+                </label>
+              </div>
+              <input type="range" min="{{ tuckInputMin }}" max="{{ tuckInputMax }}" step="{{ tuckInputStep }}" value="{{ centerCornerCutValue }}" onChange="{{ onCenterCornerCutChange }}" disabled="{{ centerRemoveCornerCut }}" style="width:100%;accent-color:var(--accent);opacity:{{ centerRemoveCornerCutOpacity }};">
+              <div style="font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;">0 = falls on Rail Mark 1</div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-size:11px;color:var(--sidebar-text-muted);">Bottom Tuck 3 — {{ centerBottomTuck3Display }}</div>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sidebar-text-secondary);cursor:pointer;">
+                  <input type="checkbox" checked="{{ centerSingleTuck }}" onChange="{{ onCenterSingleTuckToggle }}">
+                  Use Single Tuck
+                </label>
+              </div>
+              <input type="range" min="{{ tuckInputMin }}" max="{{ tuckInputMax }}" step="{{ tuckInputStep }}" value="{{ centerBottomTuck3Value }}" onChange="{{ onCenterBottomTuck3Change }}" style="width:100%;accent-color:var(--accent);">
+            </div>
+            <button onClick="{{ onResetCenterAdvanced }}" style="background:transparent;border:none;color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;text-align:left;padding:0;">↺ Reset Advanced Settings</button>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <button onClick="{{ onToggleTailOpen }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:transparent;border:none;color:var(--accent);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;padding:0 0 6px;border-bottom:1px solid #3a362f;margin-top:6px;">
+      <span>Tail Rail</span><span>{{ tailCaret }}</span>
+    </button>
+    <sc-if value="{{ tailOpen }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Thickness @12" — {{ tailThicknessDisplay }}</div>
+        <input type="range" min="{{ ntThicknessMin }}" max="{{ ntThicknessMax }}" step="{{ ntThicknessStep }}" value="{{ tailThicknessValue }}" onChange="{{ onTailThicknessChange }}" style="width:100%;accent-color:var(--accent);">
+      </div>
+
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Deck Profile — {{ tailDeckLabel }}</div>
+        <input type="range" min="66" max="100" step="{{ tailDeckPercentStep }}" value="{{ tailDeckSliderValue }}" onChange="{{ onTailDeckPercentChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Flat</span><span>Heavily Domed</span></div>
+      </div>
+
+
+      <div style="display:flex;gap:14px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;height:16px;line-height:16px;">Family — {{ tailFamilyLabel }}</div>
+        <input type="range" min="1" max="5" step="1" value="{{ tailFamilyValue }}" onChange="{{ onTailFamilyChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Boxy</span><span>Medium</span><span>Knifey</span></div>
+      </div>
+
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;height:16px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);line-height:16px;">Ratio — {{ tailRatioLabel }}</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sidebar-text-secondary);cursor:pointer;">
+            <input type="checkbox" checked="{{ tailSymmetrical }}" onChange="{{ onTailSymmetricalToggle }}">
+            Sym
+          </label>
+        </div>
+        <input type="range" min="30" max="70" step="1" value="{{ tailRatioTopValue }}" onChange="{{ onTailRatioChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="position:relative;height:12px;margin-top:2px;">
+          <span style="position:absolute;left:0%;font-size:9px;color:var(--sidebar-text-muted);">30/70</span>
+          <span style="position:absolute;left:50%;transform:translateX(-50%);font-size:9px;color:var(--sidebar-text-muted);">50/50</span>
+          <span style="position:absolute;left:75%;transform:translateX(-50%);font-size:9px;color:var(--sidebar-text-muted);">60/40</span>
+          <span style="position:absolute;right:0%;font-size:9px;color:var(--sidebar-text-muted);">70/30</span>
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sidebar-text-secondary);cursor:pointer;margin-top:8px;">
+          <input type="checkbox" checked="{{ tailHardEdge }}" onChange="{{ onTailHardEdgeToggle }}">
+          Hard Edge
+        </label>
+      </div>
+      </div>
+
+      <div>
+        <button onClick="{{ onToggleTailAdvanced }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:transparent;border:none;color:var(--accent);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;padding:0 0 6px 12px;border-bottom:1px solid #3a362f;">
+          <span>Advanced</span><span>{{ tailAdvancedCaret }}</span>
+        </button>
+        <sc-if value="{{ tailAdvancedOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:12px;padding-left:12px;">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-size:11px;color:var(--sidebar-text-muted);">Corner Cut Offset — {{ tailCornerCutDisplay }}</div>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sidebar-text-secondary);cursor:pointer;">
+                  <input type="checkbox" checked="{{ tailRemoveCornerCut }}" onChange="{{ onTailRemoveCornerCutToggle }}">
+                  Remove
+                </label>
+              </div>
+              <input type="range" min="{{ tuckInputMin }}" max="{{ tuckInputMax }}" step="{{ tuckInputStep }}" value="{{ tailCornerCutValue }}" onChange="{{ onTailCornerCutChange }}" disabled="{{ tailRemoveCornerCut }}" style="width:100%;accent-color:var(--accent);opacity:{{ tailRemoveCornerCutOpacity }};">
+              <div style="font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;">0 = falls on Rail Mark 1</div>
+            </div>
+            <sc-if value="{{ !tailHardEdge }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-size:11px;color:var(--sidebar-text-muted);">Bottom Tuck 3 — {{ tailBottomTuck3Display }}</div>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sidebar-text-secondary);cursor:pointer;">
+                  <input type="checkbox" checked="{{ tailSingleTuck }}" onChange="{{ onTailSingleTuckToggle }}">
+                  Use Single Tuck
+                </label>
+              </div>
+              <input type="range" min="{{ tuckInputMin }}" max="{{ tuckInputMax }}" step="{{ tuckInputStep }}" value="{{ tailBottomTuck3Value }}" onChange="{{ onTailBottomTuck3Change }}" style="width:100%;accent-color:var(--accent);">
+            </div>
+            </sc-if>
+            <button onClick="{{ onResetTailAdvanced }}" style="background:transparent;border:none;color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;text-align:left;padding:0;">↺ Reset Advanced Settings</button>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <div style="margin-top:auto;">
+      <button onClick="{{ onToggleGlobalSettings }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:transparent;border:none;color:var(--accent);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;padding:0 0 6px 12px;border-bottom:1px solid #3a362f;">
+        <span>Settings</span><span>{{ globalSettingsCaret }}</span>
+      </button>
+      <sc-if value="{{ globalSettingsOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:12px;padding-left:12px;">
+
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="display:flex;gap:8px;padding-top:12px;">
+      <button onClick="{{ onCopySpecs }}" style="flex:1;background:var(--accent);color:#1c1b19;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;">
+        {{ copyButtonLabel }}
+      </button>
+      <button onClick="{{ onPrintSpecs }}" style="flex:1;background:transparent;color:var(--sidebar-text);border:1px solid #6b6355;border-radius:8px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;">Print Rails &amp; Data</button>
+    </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sidebar-text-secondary);cursor:pointer;margin-top:8px;">
+      <input type="checkbox" checked="{{ printIncludeInstructions }}" onChange="{{ onTogglePrintInstructions }}">Include Rail Band Instructions in Print
+    </label>
+  </aside>
+  </sc-if>
+<main style="flex:3 1 480px;padding:8px 8px;display:flex;flex-direction:column;gap:0;min-width:0;min-height:0;height:100%;overflow-y:auto;">
+    <sc-if value="{{ !compact }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;gap:6px;flex:none;">
+      <sc-for list="{{ pageOptions }}" as="opt" hint-placeholder-count="3">
+        <button onClick="{{ opt.onSelect }}" style="{{ opt.style }}">{{ opt.label }}</button>
+      </sc-for>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isViewerPage }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;min-height:0;overflow:hidden;background: #fff; border: 1px solid #e4ddc9; border-radius: 12px; padding: {{ viewerCardPadding }}; display: flex; flex-direction: column;">
+      <sc-if value="{{ !compact }}" hint-placeholder-val="{{ true }}">
+      <div style="font-size: 20px; font-weight: 800; align-self: flex-start; margin-bottom: 12px; text-align: left; color: #1c1b19">Rail Viewer</div>
+      </sc-if>
+      <div ref="{{ railWrapRef }}" style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:{{ railStackDirection }};align-items:center;justify-content:{{ railStackJustify }};gap:{{ railStackGap }};">
+        <sc-for list="{{ outputCards }}" as="card" hint-placeholder-count="3">
+        <div style="flex:none;{{ railCardWrapWidth }};display:flex;flex-direction:column;align-items:center;">
+          <sc-if value="{{ !compact }}" hint-placeholder-val="{{ true }}">
+          <div style="position:relative;display:flex;align-items:center;justify-content:center;height:24px;margin-bottom:8px;width:100%;">
+            <div style="font-size:16px;font-weight:800;color:#1c1b19;">{{ card.title }}</div>
+            <button onClick="{{ card.onViewActualSize }}" style="position:absolute;right:0;top:50%;transform:translateY(-50%);white-space:nowrap;background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;">View Full Sized: {{ card.title }} Rail</button>
+          </div>
+          </sc-if>
+          <div style="position:relative;width:{{ card.plot.renderWidth }}px;max-width:100%;">
+            <sc-if value="{{ compact }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:{{ card.titleFontSize }};font-weight:800;color:#1c1b19;z-index:1;">{{ card.title }}</div>
+            </sc-if>
+            <svg width="{{ card.plot.renderWidth }}" height="{{ card.plot.renderHeight }}" viewBox="0 0 {{ card.plot.width }} {{ card.plot.height }}" style="width:100%;height:100%;display:block;">
+              <sc-for list="{{ card.plot.gridLines }}" as="gl" hint-placeholder-count="8">
+                <line x1="{{ gl.x1 }}" y1="{{ gl.y1 }}" x2="{{ gl.x2 }}" y2="{{ gl.y2 }}" stroke="#ece5d4" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+              </sc-for>
+              <sc-for list="{{ card.plot.refLines }}" as="rl" hint-placeholder-count="3">
+                <line x1="{{ rl.x1 }}" y1="{{ rl.y1 }}" x2="{{ rl.x2 }}" y2="{{ rl.y2 }}" stroke="{{ rl.color }}" stroke-width="1" stroke-dasharray="{{ rl.dash }}" vector-effect="non-scaling-stroke"></line>
+              </sc-for>
+              <sc-for list="{{ card.plot.segments }}" as="sg" hint-placeholder-count="6">
+                <line x1="{{ sg.x1 }}" y1="{{ sg.y1 }}" x2="{{ sg.x2 }}" y2="{{ sg.y2 }}" stroke="{{ sg.color }}" stroke-width="{{ sg.strokeWidth }}" stroke-dasharray="{{ sg.dash }}" vector-effect="non-scaling-stroke"></line>
+              </sc-for>
+              <sc-if value="{{ !compact }}" hint-placeholder-val="{{ true }}">
+              <sc-for list="{{ card.plot.dots }}" as="dt" hint-placeholder-count="6">
+                <circle cx="{{ dt.cx }}" cy="{{ dt.cy }}" r="{{ dt.r }}" fill="{{ dt.color }}"></circle>
+              </sc-for>
+              </sc-if>
+              <sc-for list="{{ card.plot.xTicks }}" as="tk" hint-placeholder-count="4">
+                <line x1="{{ tk.x1 }}" y1="{{ tk.y1 }}" x2="{{ tk.x2 }}" y2="{{ tk.y2 }}" stroke="#8a8272" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+              </sc-for>
+              <sc-for list="{{ card.plot.yTicks }}" as="tk" hint-placeholder-count="4">
+                <line x1="{{ tk.x1 }}" y1="{{ tk.y1 }}" x2="{{ tk.x2 }}" y2="{{ tk.y2 }}" stroke="#8a8272" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+              </sc-for>
+            </svg>
+            <div style="position:absolute;inset:0;pointer-events:none;">
+              <sc-if value="{{ !compact }}" hint-placeholder-val="{{ true }}">
+              <sc-for list="{{ card.plot.xTicks }}" as="tk" hint-placeholder-count="4">
+                <span style="position:absolute;left:{{ tk.pctLeft }};top:{{ tk.pctTop }};transform:translate(-50%,-50%);font-size:10px;font-weight:700;color:#6b6355;white-space:nowrap;">{{ tk.label }}</span>
+              </sc-for>
+              <sc-for list="{{ card.plot.yTicks }}" as="tk" hint-placeholder-count="4">
+                <span style="position:absolute;left:{{ tk.pctLeft }};top:{{ tk.pctTop }};transform:translate(-100%,-50%);font-size:10px;font-weight:700;color:#6b6355;white-space:nowrap;">{{ tk.label }}</span>
+              </sc-for>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+        </sc-for>
+      </div>
+        <sc-if value="{{ !compact }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-wrap:wrap;flex-direction:row;justify-content:center;align-items:center;gap:8px 24px;flex:none;margin-top:16px;">
+          <sc-for list="{{ railSharedLegend }}" as="lg" hint-placeholder-count="6">
+            <span style="display:flex;align-items:center;gap:5px;font-size:10px;color:#8a8272;">
+              <span style="width:9px;height:9px;border-radius:50%;background:{{ lg.color }};display:inline-block;flex-shrink:0;"></span>{{ lg.label }}
+            </span>
+          </sc-for>
+        </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isInstructionsPage }}" hint-placeholder-val="{{ false }}">
+    <div style="background: #fff; border: 1px solid #e4ddc9; border-radius: 12px; padding: 22px 20px; color: #1c1b19; height: 350px; display: flex; flex-direction: column">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:4px;">
+        <div style="font-size:20px;font-weight:800;color:#1c1b19;">Understanding Rail Markings</div>
+        <div style="display:flex;gap:6px;">
+          <sc-for list="{{ howToReadDomedOptions }}" as="opt" hint-placeholder-count="2">
+            <button onClick="{{ opt.onSelect }}" style="{{ opt.style }}">{{ opt.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:400;color:var(--accent-strong);margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid #e4ddc9;">Example rail with mark definitions</div>
+      <div style="width:100%;flex:1;min-height:0;overflow:hidden;border:1px solid #e4ddc9;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+        <div style="position:relative;height:100%;">
+          <svg width="{{ howToRead.plot.width }}" height="{{ howToRead.plot.height }}" viewBox="0 0 {{ howToRead.plot.width }} {{ howToRead.plot.height }}" style="height:100%;width:auto;display:block;">
+            <sc-for list="{{ howToRead.plot.gridLines }}" as="gl" hint-placeholder-count="8">
+              <line x1="{{ gl.x1 }}" y1="{{ gl.y1 }}" x2="{{ gl.x2 }}" y2="{{ gl.y2 }}" stroke="#ece5d4" stroke-width="1"></line>
+            </sc-for>
+            <sc-for list="{{ howToRead.plot.refLines }}" as="rl" hint-placeholder-count="3">
+              <line x1="{{ rl.x1 }}" y1="{{ rl.y1 }}" x2="{{ rl.x2 }}" y2="{{ rl.y2 }}" stroke="{{ rl.color }}" stroke-width="1" stroke-dasharray="{{ rl.dash }}"></line>
+            </sc-for>
+            <sc-for list="{{ howToRead.plot.segments }}" as="sg" hint-placeholder-count="6">
+              <line x1="{{ sg.x1 }}" y1="{{ sg.y1 }}" x2="{{ sg.x2 }}" y2="{{ sg.y2 }}" stroke="{{ sg.color }}" stroke-width="3" stroke-dasharray="{{ sg.dash }}"></line>
+            </sc-for>
+            <sc-for list="{{ howToRead.plot.dots }}" as="dt" hint-placeholder-count="6">
+              <circle cx="{{ dt.cx }}" cy="{{ dt.cy }}" r="5" fill="{{ dt.color }}"></circle>
+            </sc-for>
+            <sc-for list="{{ howToRead.plot.xTicks }}" as="tk" hint-placeholder-count="4">
+              <line x1="{{ tk.x1 }}" y1="{{ tk.y1 }}" x2="{{ tk.x2 }}" y2="{{ tk.y2 }}" stroke="#8a8272" stroke-width="1"></line>
+            </sc-for>
+            <sc-for list="{{ howToRead.plot.yTicks }}" as="tk" hint-placeholder-count="4">
+              <line x1="{{ tk.x1 }}" y1="{{ tk.y1 }}" x2="{{ tk.x2 }}" y2="{{ tk.y2 }}" stroke="#8a8272" stroke-width="1"></line>
+            </sc-for>
+          </svg>
+          <div style="position: absolute; inset: 0; pointer-events: none">
+            <sc-for list="{{ howToRead.plot.callouts }}" as="c" hint-placeholder-count="6">
+              <span style="position:absolute;left:{{ c.pctLeft }};top:{{ c.pctTop }};transform:translate({{ c.tx }},-50%);font-size:13px;font-weight:700;color:{{ c.color }};white-space:nowrap;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 5px #fff;">{{ c.text }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div><div style="background: #fff; border: 1px solid #e4ddc9; border-radius: 12px; padding: 22px 20px; color: #1c1b19;">
+        <div style="font-size:20px;font-weight:800;color:#1c1b19;margin-bottom:4px;">Turning Marks Into Rail Bands</div>
+        
+        <div style="font-size: 13px; font-weight: 400; color: var(--accent-strong); margin-bottom: 16px; padding-bottom: 6px; border-bottom: 2px solid #e4ddc9; line-height: 1.2">Toggle on/off Markings and Bands using the check boxes.<br><ol><li style="padding-top: 4px; padding-bottom: 4px">Use Deck Marks (solid lines) as a guide to blend the Deck Bands into the nose and tail (dashed lines) smoothly. The green Deck Mark 3 Center (full board) line is an example of what the band would look like without tapering.&nbsp;</li><li style="padding-top: 4px; padding-bottom: 4px">Use Rail Marks (solid lines) as a guide to blend the rail side of the Deck Bands toward the nose and tail (dashed line).</li><li style="padding-top: 4px; padding-bottom: 4px">The Bottom Tuck (solid line) band should blend into a hard edge around 16-22" from the tail (dashed line).&nbsp;</li></ol></div><div style="display:flex;flex-wrap:wrap;gap:10px 18px;margin-bottom:14px;">
+          <sc-for list="{{ boardOutlineLegend }}" as="lg" hint-placeholder-count="5">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#6b6355;cursor:pointer;">
+              <span style="position:relative;width:22px;height:22px;flex-shrink:0;display:inline-block;">
+                <input type="checkbox" checked="{{ lg.checked }}" onChange="{{ lg.onToggle }}" style="position:absolute;inset:0;margin:0;width:100%;height:100%;opacity:0;cursor:pointer;">
+                <span style="position:absolute;inset:0;border-radius:4px;border:2.5px solid {{ lg.color }};background:{{ lg.boxBg }};display:flex;align-items:center;justify-content:center;pointer-events:none;">
+                  <sc-if value="{{ lg.checked }}" hint-placeholder-val="{{ true }}">
+                    <span style="color:#fff;font-size:14px;font-weight:900;line-height:1;">✓</span>
+                  </sc-if>
+                </span>
+              </span>{{ lg.label }}
+            </label>
+          </sc-for>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: center; border: 1px solid #e4ddc9; border-radius: 8px; padding: 14px; overflow: hidden; height: 500px">
+          <div style="width: 373.87px; height: 472px; position: relative;">
+          <div style="width: 499px; height: 630px; display: flex; gap: 14px; align-items: flex-start; justify-content: center; transform: scale(0.7492); transform-origin: top left;">
+          <div style="position:relative;width:223px;height:630px;flex-shrink:0;">
+            <img src="assets/rail-bands-plan-bg.png" alt="Board plan outline" style="position:absolute;inset:0;width:100%;height:100%;">
+            <svg width="223" height="630" viewBox="0 0 3.7135 10.4996" style="position:absolute;inset:0;">
+              <sc-for list="{{ planRefSvgPaths }}" as="rp" hint-placeholder-count="6">
+                <path d="{{ rp.d }}" fill="none" stroke="{{ rp.color }}" stroke-width="{{ rp.width }}" stroke-dasharray="{{ rp.dash }}"></path>
+              </sc-for>
+            </svg>
+          </div>
+          
+          <div style="position:relative;width:19px;height:630px;flex-shrink:0;">
+            <span style="position: absolute; left: -15px; right: 0; top: 19.01%; transform: translateY(-50%); text-align: center; font-size: 16px; color: #1c1b19; white-space: nowrap">@12"</span>
+            <span style="position: absolute; left: -15px; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-size: 16px; color: #1c1b19; white-space: nowrap">@Center</span>
+            <span style="position: absolute; left: -15px; right: 0; top: 81.23%; transform: translateY(-50%); text-align: center; font-size: 16px; color: #1c1b19; white-space: nowrap">@12"</span>
+          </div><div style="position:relative;width:65px;height:630px;flex-shrink:0;">
+            <svg width="65" height="630" viewBox="3.98 0.32 1.09 9.87" style="position:absolute;inset:0;">
+              <sc-for list="{{ sideRefSvgPaths }}" as="rp" hint-placeholder-count="4">
+                <path d="{{ rp.d }}" fill="none" stroke="{{ rp.color }}" stroke-width="{{ rp.width }}" stroke-dasharray="{{ rp.dash }}"></path>
+              </sc-for>
+            </svg>
+          </div>
+          <div style="width: 8px; flex-shrink: 0; padding-top: 78%; height: 214px">
+            <div style="font-size: 16px; color: #1c1b19; line-height: 1.4; width: 144px; height: 76px">Taper Tuck to <br>a Sharp Edge at<br>16-22" off Tail</div>
+          </div>
+          </div>
+          </div>
+        </div>
+      </div><div style="background:#fff;border:1px solid #e4ddc9;border-radius:12px;padding:16px 20px;font-size:12px;color:#8a8272;font-style:italic;line-height:1.6;">This rail band calculator is intended to provide a quantitative aspect to shaping consistent surfboard rails.&nbsp; It's recommended to understand how rail shapes affects surfboard performance, and how these marks can result in producing your desired outcome.&nbsp;</div>
+    </sc-if>
+
+    <sc-if value="{{ isDataPage }}" hint-placeholder-val="{{ false }}">
+    <div data-print-unfold="true" style="flex:1;min-height:0;overflow-y:auto;background: {{ compactDataContainerBg }}; border: {{ compactDataContainerBorder }}; border-radius: 12px; padding: {{ compactDataContainerPadding }}; color: #1c1b19;">
+      
+      <div style="overflow-x:auto;">
+      <div style="min-width:{{ dataTableMinWidth }};">
+      <div style="display:flex;gap:8px;padding-bottom:{{ compactDataHeaderPadBottom }};border-bottom:2px solid #e4ddc9;margin-bottom:{{ compactDataHeaderMarginBottom }};">
+        <div style="flex:1.4;min-width:0;"></div>
+        <sc-for list="{{ railDataColumns }}" as="col" hint-placeholder-count="3">
+          <div style="flex:1;min-width:0;text-align:right;font-size:{{ compactDataHeaderFontSize }};font-weight:800;color:#1c1b19;">{{ col.title }}</div>
+        </sc-for>
+      </div>
+      <sc-for list="{{ railDataGroups }}" as="grp" hint-placeholder-count="3">
+        <div style="margin-bottom:{{ compactDataGroupMarginBottom }};">
+          <div style="font-size: {{ compactDataGroupFontSize }}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); margin-bottom: {{ compactDataGroupHeadingMarginBottom }};">{{ grp.heading }}</div>
+          <sc-for list="{{ grp.rows }}" as="row" hint-placeholder-count="4">
+            <div style="display:flex;gap:8px;padding:{{ compactDataRowPadding }} 0;font-size:{{ compactDataRowFontSize }};border-bottom:1px solid #f3efe3;">
+              <div style="flex:1.4;color:#8a8272;min-width:0;">{{ row.label }}</div>
+              <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="3">
+                <div style="flex:1;text-align:right;font-weight:700;color:#1c1b19;min-width:0;white-space:nowrap;">{{ cell }}</div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+      </div>
+      </div>
+    </div>
+    </sc-if>
+  </main></div>
+
+
+
+<sc-if value="{{ actualSizeOpen }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;background:rgba(28,27,25,0.72);z-index:1000;display:flex;align-items:center;justify-content:center;padding:32px;" onClick="{{ onCloseActualSize }}">
+    <div style="background:#fff;border-radius:12px;max-width:min(94vw,1100px);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;" onClick="{{ stopClickPropagation }}">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid #e4ddc9;">
+        <div style="font-size:18px;font-weight:800;color:#1c1b19;">{{ actualSizeTitle }} — Actual Size</div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <button onClick="{{ onPrintActualSize }}" style="background:var(--accent);border:none;color:#1c1b19;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;">Print</button>
+          <button onClick="{{ onCloseActualSize }}" style="background:transparent;border:none;color:#8a8272;font-size:20px;line-height:1;cursor:pointer;padding:4px 8px;">×</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#8a8272;padding:12px 22px 0;max-width:640px;">Plotted at true 1:1 scale, assuming your browser renders CSS inches at the standard 96px/in. Hold a ruler to the screen — if it doesn't match, adjust your browser zoom until it does.</div>
+      <div style="overflow:auto;padding:18px 22px 22px;" dangerouslySetInnerHTML="{{ actualSizeHtml }}"></div>
+    </div>
+  </div>
+</sc-if>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{},&quot;brandName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Branding&quot;},&quot;seed&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;seedVersion&quot;:{&quot;editor&quot;:null,&quot;default&quot;:0,&quot;tsType&quot;:&quot;number&quot;},&quot;onSync&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;(v:any)=&gt;void&quot;},&quot;compact&quot;:{&quot;editor&quot;:null,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;compactView&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;plots&quot;,&quot;tsType&quot;:&quot;'plots'|'data'&quot;}}">
+class Component extends DCLogic {
+  _themeVars() {
+    const raw = (this.props && this.props.accentColor) || '#c98d3a';
+    let h = String(raw).replace('#','');
+    if (h.length === 3) h = h.split('').map(c=>c+c).join('');
+    const r=parseInt(h.slice(0,2),16)||201, g=parseInt(h.slice(2,4),16)||141, b=parseInt(h.slice(4,6),16)||58;
+    const mix=t=>`rgb(${Math.round(r+(255-r)*t)},${Math.round(g+(255-g)*t)},${Math.round(b+(255-b)*t)})`;
+    const dk=t=>`rgb(${Math.round(r*(1-t))},${Math.round(g*(1-t))},${Math.round(b*(1-t))})`;
+    return { vars:`--accent:${raw};--accent-strong:${dk(0.18)};--board-fill:${mix(0.86)};`, pageBg:mix(0.93) };
+  }
+  state = {
+    units: 'in',
+    globalSettingsOpen: false,
+    centerDeckPercent: 100, centerBoardThickness: 2.5, centerFamily: 3, centerRatioTop: 60, centerSymmetrical: false,
+    noseDeckPercent: 100, noseFamily: 3, noseRatioTop: 60, noseSymmetrical: false,
+    tailDeckPercent: 100, tailFamily: 3, tailRatioTop: 60, tailSymmetrical: false,
+    noseThickness: 1.31,
+    tailThickness: 1.56,
+    noseOpen: true, centerOpen: true, tailOpen: true,
+    noseAdvancedOpen: false, centerAdvancedOpen: false, tailAdvancedOpen: false,
+    noseCornerCutOffsetOverride: null, centerCornerCutOffsetOverride: null, tailCornerCutOffsetOverride: null,
+    noseRemoveCornerCut: false, centerRemoveCornerCut: false, tailRemoveCornerCut: false,
+    noseSingleTuck: false, centerSingleTuck: false, tailSingleTuck: false,
+    noseBottomTuck3Override: null, centerBottomTuck3Override: null, tailBottomTuck3Override: null,
+    howToReadDomed: false,
+    tailHardEdge: true,
+    activePage: 'viewer',
+    printIncludeInstructions: true,
+    copyToast: false,
+    actualSizeKey: null,
+    showDeckMark1: true, showDeckBand1: true, showDeckMark3: true, showDeckBand2: true, showDeckMark3Full: true, showRailMark1: true, showRailBand1: true, showRailTuck1: true, showTuckBlend: true,
+    railWrapW: 0, railWrapH: 0,
+    rootAvailH: 0,
+  };
+
+  applySeed() {
+    const seed = this.props.seed; if (!seed) return;
+    const skip = new Set(['noseProfile', 'centerProfile', 'tailProfile', 'noseRailThickness', 'centerRailThickness', 'tailRailThickness']);
+    const patch = {};
+    Object.keys(seed).forEach(k => {
+      if (skip.has(k)) return;
+      if (k === 'centerThickness') { patch.centerBoardThickness = seed[k]; return; }
+      if (Object.prototype.hasOwnProperty.call(this.state, k)) patch[k] = seed[k];
+    });
+    if (Object.keys(patch).length) this.setState(patch);
+  }
+  syncSnapshot() {
+    const s = this.state;
+    const noseDomed = s.noseDeckPercent < 100, centerDomed = s.centerDeckPercent < 100, tailDomed = s.tailDeckPercent < 100;
+    const centerRailThicknessClamped = this.round16(s.centerBoardThickness * s.centerDeckPercent / 100);
+    const noseRailThicknessClamped = this.round16(s.noseThickness * s.noseDeckPercent / 100);
+    const tailRailThicknessClamped = this.round16(s.tailThickness * s.tailDeckPercent / 100);
+    const centerThickness = centerDomed ? centerRailThicknessClamped : s.centerBoardThickness;
+    const noseThicknessEff = noseDomed ? noseRailThicknessClamped : s.noseThickness;
+    const tailThicknessEff = tailDomed ? tailRailThicknessClamped : s.tailThickness;
+    const centerResult = this.computeSection({ thickness: centerThickness, ratioTopPct: s.centerRatioTop, family: s.centerFamily, domed: centerDomed, domedBandBase: 6, scale: 1, cornerCutOffsetOverride: s.centerCornerCutOffsetOverride, removeCornerCut: s.centerRemoveCornerCut, singleTuck: s.centerSingleTuck, bottomTuck3Override: s.centerBottomTuck3Override, symmetrical: s.centerSymmetrical });
+    const noseResult = this.computeSection({ thickness: noseThicknessEff, ratioTopPct: s.noseRatioTop, family: s.noseFamily, domed: noseDomed, domedBandBase: 4.5, scale: 0.75, cornerCutOffsetOverride: s.noseCornerCutOffsetOverride, removeCornerCut: s.noseRemoveCornerCut, singleTuck: s.noseSingleTuck, bottomTuck3Override: s.noseBottomTuck3Override, symmetrical: s.noseSymmetrical });
+    const tailResult = this.computeSection({ thickness: tailThicknessEff, ratioTopPct: s.tailRatioTop, family: s.tailFamily, domed: tailDomed, domedBandBase: 4.5, scale: 0.75, cornerCutOffsetOverride: s.tailCornerCutOffsetOverride, removeCornerCut: s.tailRemoveCornerCut, singleTuck: s.tailSingleTuck, bottomTuck3Override: s.tailBottomTuck3Override, symmetrical: s.tailSymmetrical, hardEdge: s.tailHardEdge });
+    const rawExclude = new Set(['railWrapW', 'railWrapH', 'rootAvailH', 'activePage', 'actualSizeKey']);
+    const rawState = {};
+    Object.keys(s).forEach(k => { if (!rawExclude.has(k)) rawState[k] = s[k]; });
+    return {
+      units: s.units, noseThickness: s.noseThickness, centerThickness: s.centerBoardThickness, tailThickness: s.tailThickness,
+      noseRailThickness: noseRailThicknessClamped, centerRailThickness: centerRailThicknessClamped, tailRailThickness: tailRailThicknessClamped,
+      noseProfile: this.buildProfilePoints(noseResult, noseThicknessEff, noseDomed, { boardThickness: s.noseThickness, railThicknessVal: noseRailThicknessClamped, domedBandBase: 4.5 }),
+      centerProfile: this.buildProfilePoints(centerResult, centerThickness, centerDomed, { boardThickness: s.centerBoardThickness, railThicknessVal: centerRailThicknessClamped, domedBandBase: 6 }),
+      tailProfile: this.buildProfilePoints(tailResult, tailThicknessEff, tailDomed, { boardThickness: s.tailThickness, railThicknessVal: tailRailThicknessClamped, domedBandBase: 4.5 }),
+      ...rawState,
+    };
+  }
+  componentDidMount() {
+    const cur = this.syncSnapshot();
+    this._lastSynced = cur;
+    this.props.onSync && this.props.onSync(cur);
+  }
+  measureRootAvail = () => {
+    const el = this._rootEl; if (!el) return;
+    // Ancestor wrapper nodes (dc-import/mount shells) can auto-size to mirror our own
+    // current height rather than constraining it, which makes measuring ancestor boxes
+    // unreliable (it can shrink but never grow back). Instead derive available height
+    // directly from where our root actually sits vs. the live window bottom.
+    const rect = el.getBoundingClientRect();
+    const avail = Math.max(200, window.innerHeight - rect.top);
+    const patch = {};
+    if (Math.abs(avail - this.state.rootAvailH) > 1) patch.rootAvailH = avail;
+    if (Math.abs(rect.height - this.state.compactBoxH) > 1) patch.compactBoxH = rect.height;
+    if (Object.keys(patch).length) this.setState(patch);
+  }
+  rootRef = (el) => {
+    this._rootEl = el;
+    if (!el) return;
+    if (!this._rootRO) this._rootRO = new ResizeObserver(() => this.measureRootAvail());
+    this._rootRO.observe(document.body);
+    this._rootRO.observe(el);
+    this.measureRootAvail();
+    // The host page (e.g. a surrounding nav bar, or an outer frame that negotiates our
+    // size asynchronously) can settle well after our own mount, with no local DOM event
+    // to hook — poll for a while so we self-correct without needing a manual resize.
+    requestAnimationFrame(() => this.measureRootAvail());
+    if (!this._rootPollInterval) {
+      let ticks = 0;
+      this._rootPollInterval = setInterval(() => {
+        this.measureRootAvail();
+        ticks++;
+        if (ticks > 40) { clearInterval(this._rootPollInterval); this._rootPollInterval = null; }
+      }, 150);
+    }
+    if (!this._rootResizeBound) {
+      this._rootResizeBound = true;
+      window.addEventListener('resize', this.measureRootAvail);
+    }
+  }
+  measureRailWrap = () => {
+    const el = this._railWrapEl; if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (Math.abs(r.width - this.state.railWrapW) > 1 || Math.abs(r.height - this.state.railWrapH) > 1) {
+      this.setState({ railWrapW: r.width, railWrapH: r.height });
+    }
+  }
+  railWrapRef = (el) => {
+    if (this._railWrapEl === el) return;
+    if (this._railWrapEl && this._railRO) this._railRO.unobserve(this._railWrapEl);
+    this._railWrapEl = el;
+    if (!el) return;
+    if (!this._railRO) this._railRO = new ResizeObserver(() => this.measureRailWrap());
+    this._railRO.observe(el);
+    this._railRO.observe(document.body);
+    this.measureRailWrap();
+    requestAnimationFrame(() => this.measureRailWrap());
+    if (!this._railPollInterval) {
+      let ticks = 0;
+      this._railPollInterval = setInterval(() => {
+        this.measureRailWrap();
+        ticks++;
+        if (ticks > 40) { clearInterval(this._railPollInterval); this._railPollInterval = null; }
+      }, 150);
+    }
+  }
+  componentWillUnmount() {
+    if (this._railRO) this._railRO.disconnect();
+    if (this._rootRO) this._rootRO.disconnect();
+    if (this._rootResizeBound) window.removeEventListener('resize', this.measureRootAvail);
+    if (this._rootPollInterval) clearInterval(this._rootPollInterval);
+    if (this._railPollInterval) clearInterval(this._railPollInterval);
+  }
+  componentDidUpdate(prevProps) {
+    if (prevProps.seedVersion !== this.props.seedVersion) this.applySeed();
+    const cur = this.syncSnapshot();
+    const last = this._lastSynced || {};
+    const changed = {};
+    const sig = (v) => (v != null && typeof v === 'object') ? JSON.stringify(v) : v;
+    Object.keys(cur).forEach(k => { if (sig(cur[k]) !== sig(last[k])) changed[k] = cur[k]; });
+    if (Object.keys(changed).length) { this._lastSynced = cur; this.props.onSync && this.props.onSync(changed); }
+  }
+
+  round16(x) { return Math.round(x * 16) / 16; }
+
+  toFrac(x) {
+    const sign = x < 0 ? '-' : '';
+    x = Math.abs(this.round16(x));
+    let whole = Math.floor(x + 1e-9);
+    let sixteenths = Math.round((x - whole) * 16);
+    if (sixteenths === 16) { whole += 1; sixteenths = 0; }
+    if (sixteenths === 0) return `${sign}${whole}"`;
+    let num = sixteenths, den = 16;
+    while (num % 2 === 0) { num /= 2; den /= 2; }
+    return `${sign}${whole > 0 ? whole + ' ' : ''}${num}/${den}"`;
+  }
+
+  // Real vector line art traced out of the source PPT (Freeform shapes, colors & dash styles resolved from
+  // their theme/line fills) — plan-view marks overlay the PPT's own background artwork; side-view marks are
+  // pure vector. Grouping by mark lets the legend checkboxes truly show/hide each one (no pixel-color guessing).
+  // Left sides are a programmatic mirror of the right (about the plan's true centerline, x=1.85675) —
+  // the PPT's independently hand-drawn left/right curves weren't exact mirrors of each other.
+  planRefPaths() {
+    return [{"group":"deckMark3Full","dash":"none","d":"M 1.3917 0.3908 C 1.7216 0.8017 2.0514 1.2126 2.2674 2.0287 C 2.4834 2.8448 2.6731 4.1983 2.6877 5.2874 C 2.7023 6.3764 2.5214 7.7529 2.3550 8.5632 C 2.1886 9.3736 1.9390 9.7615 1.6895 10.1494"},{"group":"deckMark3Full","dash":"none","d":"M 2.1865 0.3908 C 1.8566 0.8017 1.5268 1.2126 1.3108 2.0287 C 1.0948 2.8448 0.9051 4.1983 0.8905 5.2874 C 0.8759 6.3764 1.0568 7.7529 1.2232 8.5632 C 1.3896 9.3736 1.6392 9.7615 1.8887 10.1494"},{"group":"deckBand2","dash":"6 4","d":"M 1.8050 0.3908 C 2.0200 0.8017 2.2350 1.2126 2.3757 2.0287 C 2.5165 2.8448 2.6402 4.1983 2.6497 5.2874 C 2.6592 6.3764 2.5413 7.7529 2.4328 8.5632 C 2.3244 9.3736 2.1617 9.7615 1.9990 10.1494"},{"group":"deckBand2","dash":"6 4","d":"M 1.7732 0.3908 C 1.5582 0.8017 1.3432 1.2126 1.2025 2.0287 C 1.0617 2.8448 0.9380 4.1983 0.9285 5.2874 C 0.9190 6.3764 1.0369 7.7529 1.1454 8.5632 C 1.2538 9.3736 1.4165 9.7615 1.5792 10.1494"},{"group":"deckMark3","dash":"none","d":"M 2.4561 8.4119 L 2.4163 8.6459"},{"group":"deckMark3","dash":"none","d":"M 1.1221 8.4119 L 1.1619 8.6459"},{"group":"deckMark3","dash":"none","d":"M 2.4021 2.1121 L 2.3501 1.8805"},{"group":"deckMark3","dash":"none","d":"M 1.1761 2.1121 L 1.2281 1.8805"},{"group":"deckMark3","dash":"none","d":"M 2.5897 3.7280 C 2.6272 4.2681 2.6646 4.8083 2.6646 5.3603 C 2.6646 5.9123 2.6272 6.4761 2.5897 7.0400"},{"group":"deckMark3","dash":"none","d":"M 0.9885 3.7280 C 0.9510 4.2681 0.9136 4.8083 0.9136 5.3603 C 0.9136 5.9123 0.9510 6.4761 0.9885 7.0400"},{"group":"deckBand1","dash":"6 4","d":"M 1.8050 0.3793 C 2.0681 0.7902 2.3312 1.2012 2.5035 2.0172 C 2.6758 2.8333 2.8272 4.1868 2.8388 5.2759 C 2.8504 6.3649 2.7061 7.7414 2.5734 8.5517 C 2.4406 9.3621 2.2416 9.7500 2.0425 10.1379"},{"group":"deckBand1","dash":"6 4","d":"M 1.7732 0.3793 C 1.5101 0.7902 1.2470 1.2012 1.0747 2.0172 C 0.9024 2.8333 0.7510 4.1868 0.7394 5.2759 C 0.7278 6.3649 0.8721 7.7414 1.0048 8.5517 C 1.1376 9.3621 1.3366 9.7500 1.5357 10.1379"},{"group":"deckMark1","dash":"none","d":"M 2.6068 8.4119 L 2.5671 8.6459"},{"group":"deckMark1","dash":"none","d":"M 0.9714 8.4119 L 1.0111 8.6459"},{"group":"deckMark1","dash":"none","d":"M 2.5295 2.1121 L 2.4775 1.8805"},{"group":"deckMark1","dash":"none","d":"M 1.0487 2.1121 L 1.1007 1.8805"},{"group":"deckMark1","dash":"none","d":"M 2.7600 3.7280 C 2.8084 4.2681 2.8567 4.8083 2.8567 5.3603 C 2.8567 5.9123 2.8084 6.4761 2.7600 7.0400"},{"group":"deckMark1","dash":"none","d":"M 0.8182 3.7280 C 0.7698 4.2681 0.7215 4.8083 0.7215 5.3603 C 0.7215 5.9123 0.7698 6.4761 0.8182 7.0400"}];
+  }
+  sideRefPaths() {
+    return [{"group":"black","dash":"none","d":"M 4.1920 0.3750 C 4.4190 0.7800 4.6459 1.1850 4.7788 2.0000 C 4.9117 2.8150 4.9594 4.1792 4.9895 5.2650 C 5.0196 6.3509 5.0020 7.7051 4.9594 8.5150 C 4.9168 9.3250 4.8252 9.7250 4.7337 10.1250"},{"group":"black","dash":"none","d":"M 4.1060 0.3844 C 4.2292 0.8131 4.3524 1.2418 4.4394 2.0655 C 4.5263 2.8892 4.5939 4.2467 4.6278 5.3264 C 4.6616 6.4061 4.6422 7.7418 4.6422 8.5438 C 4.6422 9.3457 4.6350 9.7418 4.6278 10.1380"},{"group":"black","dash":"none","d":"M 4.0937 0.3947 L 4.2037 0.3681"},{"group":"black","dash":"none","d":"M 4.6202 10.1266 L 4.7406 10.1218"},{"group":"railTuck1","dash":"none","d":"M 4.1292 0.3810 C 4.3515 0.8353 4.5737 1.2897 4.7007 2.0000 C 4.8276 2.7103 4.8534 3.8075 4.8911 4.6429 C 4.9288 5.4782 4.9278 6.2450 4.9268 7.0119"},{"group":"tuckBlend","dash":"2 3","d":"M 4.9217 5.4048 L 4.9581 7.9854"},{"group":"railBand1","dash":"2 3","d":"M 4.1204 0.4017 C 4.2770 0.8318 4.4336 1.2620 4.5351 2.0849 C 4.6365 2.9078 4.7030 4.2623 4.7293 5.3391 C 4.7555 6.4160 4.7065 7.7468 4.6926 8.5460 C 4.6786 9.3452 4.6621 9.7399 4.6456 10.1345"},{"group":"railMark1","dash":"none","d":"M 4.5064 1.8868 L 4.5350 2.1059"},{"group":"railMark1","dash":"none","d":"M 4.7086 8.4185 L 4.6987 8.6393"},{"group":"railMark1","dash":"none","d":"M 4.6633 3.5054 C 4.6893 4.0905 4.7153 4.6756 4.7278 5.2581 C 4.7403 5.8405 4.7395 6.4203 4.7386 7.0000"}];
+  }  disp(inches) {
+    if (this.state.units === 'cm') return `${(Math.round(inches * 2.54 * 100) / 100).toFixed(2)} cm`;
+    return this.toFrac(inches);
+  }
+
+  toU(inches) { return this.state.units === 'cm' ? Math.round(inches * 2.54 * 100) / 100 : inches; }
+  fromU(v) { return this.state.units === 'cm' ? v / 2.54 : v; }
+
+  familyLabel(x) {
+    const names = { 1: 'boxy', 2: 'boxy/med', 3: 'med', 4: 'med/knifey', 5: 'knifey' };
+    return names[Math.round(x)] || x;
+  }
+
+  // ---- Rail Bands equations, from "Chris's Rails" (Center / Nose & Tail) ----
+  apexLenRangeFor(x) { return -0.125 * x + 1.125; }
+  cornerCutRailOffsetFor(x) {
+    const table = { 1: 0.125, 2: (0.125 + 0.0625) / 2, 3: 0.0625, 4: 0.0625 / 2, 5: 0 };
+    return table[Math.round(x)] ?? 0;
+  }
+  railTuck1For(x) { return 0.0625 * x + 0.4375; }
+  deckMark1For(x) { return 0.25 * x + 1.75; }
+  deckMark3For(x) { return 0.25 * x + 3.25; }
+  cornerCutDeckFor(x) { return -0.03125 * x + 0.15625; }
+
+  // ---- Formulas below are transcribed from column C's live <f> cells in the source workbook (Chriss
+  // Rails Center / Chriss Rails Nose&Tail). `scale` = the sheet's "Scaled from center by" constant
+  // (1 for Center, 0.75 for Nose&Tail). Corner Cut (Rail) uses the user-supplied IFS offset table off
+  // Rail Mark 1.
+  computeSection({ thickness, ratioTopPct, family, domed, domedBandBase, scale = 1, cornerCutOffsetOverride, removeCornerCut, singleTuck, bottomTuck3Override, symmetrical, hardEdge }) {
+    const bottomRatio = 1 - ratioTopPct / 100; // C5: =100%-C4
+    const apexLenRange = this.apexLenRangeFor(family) * scale; // C13: =-0.125*C12+1.125 [*C3 for Nose&Tail]
+    const apexCenter = thickness * bottomRatio; // C14: =C11*C5
+    const railMark1 = apexCenter + apexLenRange / 2; // C15: =C14+C13/2
+    const railTuck1 = apexCenter - apexLenRange / 2; // C16: =C14-C13/2
+    // Corner Cut offset: distance the mark falls BELOW Rail Mark 1 (0 = lands on Rail Mark 1 itself).
+    // Sheet default: =IFS(family=1,0.125, family=2,(0.125+0.0625)/2, family=3,0.0625, family=4,0.0625/2, family=5,0)
+    const cornerCutOffset = removeCornerCut ? null : (cornerCutOffsetOverride ?? this.cornerCutRailOffsetFor(family));
+    const cornerCutRail = removeCornerCut ? null : (railMark1 - cornerCutOffset);
+    const domedDeckBand = domedBandBase; // C18: plain constant, always on (visibility is a display concern, not a value one)
+    const deckMark1 = this.deckMark1For(family) * scale; // C19: =(0.25*C12+1.75) [*C3 for Nose&Tail]
+    const deckMark2 = deckMark1 / 2; // C20: =C19/2
+    const deckMark3 = this.deckMark3For(family) * scale; // C21: =0.25*C12+3.25 [*C3 for Nose&Tail]
+    const cornerCutDeck = removeCornerCut ? null : (railMark1 - cornerCutRail); // C22: =C15-C17
+    const bottomTuck1 = symmetrical ? deckMark1 : railTuck1 / 2; // C23: =IF(Symmetrical,C19,C16/2)
+    const bottomTuck2 = bottomTuck1 / 2; // C24: =C23/2
+    const bottomTuck3 = hardEdge ? 0 : (bottomTuck3Override ?? (symmetrical ? deckMark3 : railTuck1)); // C25: =IF(Symmetrical,C21,C16)
+    return { thickness, apexLenRange, apexCenter, railMark1, railTuck1, cornerCutRail, cornerCutOffset, domedDeckBand, deckMark1, deckMark2, deckMark3, cornerCutDeck, hardEdge, bottomTuck1, bottomTuck2, bottomTuck3, removeCornerCut: !!removeCornerCut, singleTuck: !!singleTuck };
+  }
+
+  // Catmull-Rom-through-points smoothing, converted to cubic Bezier commands (tension 1/6) — used to draw
+  // the surfboard plan outline as a real spline through measured stations rather than a hand-drawn shape.
+  catmullRomC(pts) {
+    let d = '';
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)} ${c2x.toFixed(2)} ${c2y.toFixed(2)} ${p2[0].toFixed(2)} ${p2[1].toFixed(2)}`;
+    }
+    return d;
+  }
+
+  polylinePath(ptsPx) {
+    return `M ${ptsPx[0][0].toFixed(2)} ${ptsPx[0][1].toFixed(2)}` + ptsPx.slice(1).map(p => ` L ${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join('');
+  }
+
+  // Dense sample of the right-half outline curve (inches) along the same Catmull-Rom bezier segments used
+  // to draw it, so an offset curve can be built at a true constant perpendicular distance from the outline.
+  sampleOutlineCurve(pts, stepsPerSeg) {
+    const samples = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+      const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+      for (let s = (i === 0 ? 0 : 1); s <= stepsPerSeg; s++) {
+        const t = s / stepsPerSeg, mt = 1 - t;
+        samples.push([
+          mt ** 3 * p1[0] + 3 * mt ** 2 * t * c1[0] + 3 * mt * t ** 2 * c2[0] + t ** 3 * p2[0],
+          mt ** 3 * p1[1] + 3 * mt ** 2 * t * c1[1] + 3 * mt * t ** 2 * c2[1] + t ** 3 * p2[1],
+        ]);
+      }
+    }
+    return samples;
+  }
+
+  // Constant-distance offset of the outline curve (right half, inches) restricted to [xMin, xMax].
+  buildOffsetOutline(controlPts, mark, xMin, xMax) {
+    const dense = this.sampleOutlineCurve(controlPts, 24);
+    const offset = [];
+    for (let i = 0; i < dense.length; i++) {
+      const [x, y] = dense[i];
+      if (x < xMin - 1e-6 || x > xMax + 1e-6) continue;
+      const prev = dense[Math.max(0, i - 1)], next = dense[Math.min(dense.length - 1, i + 1)];
+      let dx = next[0] - prev[0], dy = next[1] - prev[1];
+      const len = Math.hypot(dx, dy) || 1;
+      dx /= len; dy /= len;
+      let nx = -dy, ny = dx;
+      if (y !== 0 && Math.sign(ny) === Math.sign(y)) { nx = -nx; ny = -ny; }
+      offset.push([x + nx * mark, Math.max(y + ny * mark, 0)]);
+    }
+    return offset;
+  }
+
+  // Side profile (rocker + thickness), sharing the plan view's length scale so the two align vertically.
+  // Rocker heights (nose/tail tip and @12" lift) are generic shortboard assumptions — thickness at the
+  // 12" and center stations follows the actual board-thickness inputs; tip thickness tapers to a thin edge.
+  buildSideProfile(lenToY, height, thicknesses) {
+    const THICK_SCALE = 16, THICK_PAD = 16, tipThickness = 0.3;
+    const bottomStations = [
+      { x: 0, h: 4.5 }, { x: 12, h: 1.25 }, { x: 36, h: 0 }, { x: 60, h: 0.375 }, { x: 72, h: 2 },
+    ];
+    const deckStations = [
+      { x: 0, h: bottomStations[0].h + tipThickness },
+      { x: 12, h: bottomStations[1].h + thicknesses.nose, label: `Nose @ 12" — ${this.disp(thicknesses.nose)}` },
+      { x: 36, h: bottomStations[2].h + thicknesses.center, label: `Center — ${this.disp(thicknesses.center)}` },
+      { x: 60, h: bottomStations[3].h + thicknesses.tail, label: `Tail @ 12" — ${this.disp(thicknesses.tail)}` },
+      { x: 72, h: bottomStations[4].h + tipThickness },
+    ];
+    const maxH = Math.max(...deckStations.map(s => s.h));
+    const width = maxH * THICK_SCALE + THICK_PAD * 2 + 130;
+    const hToX = (h) => THICK_PAD + h * THICK_SCALE;
+
+    const bottomPts = bottomStations.map(st => [hToX(st.h), lenToY(st.x)]);
+    const deckPtsRev = deckStations.slice().reverse().map(st => [hToX(st.h), lenToY(st.x)]);
+    const pathD = `M ${bottomPts[0][0].toFixed(2)} ${bottomPts[0][1].toFixed(2)}` + this.catmullRomC(bottomPts)
+      + ` L ${deckPtsRev[0][0].toFixed(2)} ${deckPtsRev[0][1].toFixed(2)}` + this.catmullRomC(deckPtsRev) + ' Z';
+
+    const measured = [1, 2, 3]; // nose@12, center, tail@12 indices
+    const guides = measured.map(i => ({ x1: hToX(bottomStations[i].h), y1: lenToY(bottomStations[i].x), x2: hToX(deckStations[i].h), y2: lenToY(deckStations[i].x) }));
+    const labels = measured.map(i => ({ pctLeft: ((hToX(deckStations[i].h) + 10) / width * 100).toFixed(3) + '%', pctTop: (lenToY(deckStations[i].x) / height * 100).toFixed(3) + '%', text: deckStations[i].label }));
+
+    return { width, height, pathD, groundLine: { x1: hToX(0), y1: lenToY(0), x2: hToX(0), y2: lenToY(72) }, guides, labels };
+  }
+
+  // Generic 6'0" shortboard plan outline: nose tip, nose@12", center, tail@12", and a 5" square tail block.
+  // Drawn vertically — nose at top, tail at bottom — length running down the Y axis, width across the X axis.
+  buildBoardOutlinePlot(marks, thicknesses) {
+    const SCALE = 6, PAD = 26, SIDE_PAD = 40, L = 72;
+    const stations = [
+      { x: 0, half: 0, widthLabel: null, lenLabel: 'Nose' },
+      { x: 12, half: 6.5, widthLabel: '13"', lenLabel: '12"' },
+      { x: 36, half: 9.5, widthLabel: '19"', lenLabel: '36" (Center)' },
+      { x: 60, half: 7.125, widthLabel: '14 1/4"', lenLabel: '60"' },
+      { x: 72, half: 2.5, widthLabel: '5" block', lenLabel: 'Tail' },
+    ];
+    const maxHalf = 9.5;
+    const centerlineX = PAD + SIDE_PAD + maxHalf * SCALE;
+    const width = maxHalf * SCALE * 2 + PAD * 2 + SIDE_PAD * 2;
+    const height = L * SCALE + PAD * 2;
+    const widthToX = (w) => centerlineX + w * SCALE;
+    const lenToY = (len) => PAD + len * SCALE;
+
+    const rightPts = stations.map(st => [widthToX(st.half), lenToY(st.x)]);
+    const leftPts = stations.slice().reverse().map(st => [widthToX(-st.half), lenToY(st.x)]);
+    const pathD = `M ${rightPts[0][0].toFixed(2)} ${rightPts[0][1].toFixed(2)}` + this.catmullRomC(rightPts)
+      + ` L ${leftPts[0][0].toFixed(2)} ${leftPts[0][1].toFixed(2)}` + this.catmullRomC(leftPts) + ' Z';
+
+    const guides = stations.filter(st => st.half > 0).map(st => ({ x1: widthToX(st.half), y1: lenToY(st.x), x2: widthToX(-st.half), y2: lenToY(st.x) }));
+    const labels = [];
+    stations.forEach(st => {
+      const pctTop = (lenToY(st.x) / height * 100).toFixed(3) + '%';
+      labels.push({ pctLeft: (((PAD + SIDE_PAD * 0.4) / width) * 100).toFixed(3) + '%', pctTop, text: st.lenLabel });
+      if (st.widthLabel) labels.push({ pctLeft: (((widthToX(st.half) + SIDE_PAD * 0.5) / width) * 100).toFixed(3) + '%', pctTop, text: st.widthLabel });
+    });
+
+    // Deck Mark lines: traced parallel to the rail, inset by the mark distance, each spanning the stations
+    // local to its section — center ±2' of the center station, nose/tail the 12" nearest their tip.
+    const insetPair = (subset, mark) => {
+      const right = subset.map(st => [widthToX(Math.max(st.half - mark, 0)), lenToY(st.x)]);
+      const left = subset.slice().reverse().map(st => [widthToX(-Math.max(st.half - mark, 0)), lenToY(st.x)]);
+      return {
+        right: `M ${right[0][0].toFixed(2)} ${right[0][1].toFixed(2)}` + this.catmullRomC(right),
+        left: `M ${left[0][0].toFixed(2)} ${left[0][1].toFixed(2)}` + this.catmullRomC(left),
+      };
+    };
+    const centerStations = stations.filter(st => st.x >= 12 && st.x <= 60);
+    const centerDm1 = insetPair(centerStations, marks.centerDm1);
+    const centerDm3 = insetPair(centerStations, marks.centerDm3);
+    const centerRm1 = insetPair(centerStations, marks.centerRailMark1);
+    const centerRt1 = insetPair(centerStations, marks.centerRailTuck1);
+    // Full-board Deck Mark 3: a width-based inset across ALL stations (tip to tip) — a single smooth,
+    // continuous Catmull-Rom curve, unlike a true constant-distance offset which destabilizes at the tips.
+    const dm3Full = insetPair(stations, marks.centerDm3);
+
+    // Nose/tail marks: a true constant-distance offset of the outline (not a width inset), run to the tip
+    // and 1' past their station toward center.
+    const controlInches = stations.map(st => [st.x, st.half]);
+    const toPath = (offPts, mirror) => this.polylinePath(offPts.map(pt => [widthToX(mirror ? -pt[1] : pt[1]), lenToY(pt[0])]));
+    const noseDm1Off = this.buildOffsetOutline(controlInches, marks.noseDm1, 0, 24);
+    const noseDm3Off = this.buildOffsetOutline(controlInches, marks.noseDm3, 0, 24);
+    const tailDm1Off = this.buildOffsetOutline(controlInches, marks.tailDm1, 48, 72);
+    const tailDm3Off = this.buildOffsetOutline(controlInches, marks.tailDm3, 48, 72);
+    const noseRm1Off = this.buildOffsetOutline(controlInches, marks.noseRailMark1, 0, 24);
+    const noseRt1Off = this.buildOffsetOutline(controlInches, marks.noseRailTuck1, 0, 24);
+    const tailRm1Off = this.buildOffsetOutline(controlInches, marks.tailRailMark1, 48, 72);
+    const tailRt1Off = this.buildOffsetOutline(controlInches, marks.tailRailTuck1, 48, 72);
+
+    const side = this.buildSideProfile(lenToY, height, thicknesses);
+
+    return {
+      plan: {
+        width, height, pathD, centerline: { x1: widthToX(0), y1: lenToY(0), x2: widthToX(0), y2: lenToY(L) }, guides, labels,
+        deckMarkPathRight: centerDm1.right, deckMarkPathLeft: centerDm1.left,
+        deckMark3PathRight: centerDm3.right, deckMark3PathLeft: centerDm3.left,
+        railMark1PathRight: centerRm1.right, railMark1PathLeft: centerRm1.left,
+        railTuck1PathRight: centerRt1.right, railTuck1PathLeft: centerRt1.left,
+        deckMark3FullPathRight: dm3Full.right, deckMark3FullPathLeft: dm3Full.left,
+        noseDeckMarkPathRight: toPath(noseDm1Off, false), noseDeckMarkPathLeft: toPath(noseDm1Off, true),
+        noseDeckMark3PathRight: toPath(noseDm3Off, false), noseDeckMark3PathLeft: toPath(noseDm3Off, true),
+        noseRailMark1PathRight: toPath(noseRm1Off, false), noseRailMark1PathLeft: toPath(noseRm1Off, true),
+        noseRailTuck1PathRight: toPath(noseRt1Off, false), noseRailTuck1PathLeft: toPath(noseRt1Off, true),
+        tailDeckMarkPathRight: toPath(tailDm1Off, false), tailDeckMarkPathLeft: toPath(tailDm1Off, true),
+        tailDeckMark3PathRight: toPath(tailDm3Off, false), tailDeckMark3PathLeft: toPath(tailDm3Off, true),
+        tailRailMark1PathRight: toPath(tailRm1Off, false), tailRailMark1PathLeft: toPath(tailRm1Off, true),
+        tailRailTuck1PathRight: toPath(tailRt1Off, false), tailRailTuck1PathLeft: toPath(tailRt1Off, true),
+      },
+      side,
+    };
+  }
+
+  plotSvgHtml(plot, cropXMin) {
+    const SCALE = 56; // matches buildPlot's default scale used for all output-card plots
+    const LEFT_PAD = 22;
+    const minX = plot.xAxisMin - 0.15;
+    const px = (x) => (x - minX) * SCALE + LEFT_PAD;
+    // The interactive preview renders tick labels as absolutely-positioned HTML spans that can overflow the
+    // <svg> box; this static export bakes them in as SVG <text>, so pad the canvas or the x-axis labels clip.
+    const PAD_BOTTOM = 22, PAD_X = 14;
+    const cropped = cropXMin != null;
+    const svgLeft = cropped ? px(cropXMin) - PAD_X : -PAD_X;
+    const svgRight = cropped ? px(0) + PAD_X : plot.width + PAD_X;
+    const svgW = svgRight - svgLeft, svgH = plot.height + PAD_BOTTOM;
+    const wIn = (svgW / SCALE).toFixed(3), hIn = (svgH / SCALE).toFixed(3);
+    // When cropped, the thickness (Y-axis) reference ticks — normally drawn at the plot's true left edge —
+    // are redrawn at the new crop edge so they stay visible instead of being clipped away with it.
+    const yTicks = cropped ? plot.yTicks.map(tk => ({ ...tk, x1: px(cropXMin) - 4, x2: px(cropXMin) + 4 })) : plot.yTicks;
+    let s = `<svg width="${wIn}in" height="${hIn}in" viewBox="${svgLeft} 0 ${svgW} ${svgH}" style="display:block;">`;
+    plot.gridLines.forEach(gl => { s += `<line x1="${gl.x1}" y1="${gl.y1}" x2="${gl.x2}" y2="${gl.y2}" stroke="#ece5d4" stroke-width="1"></line>`; });
+    plot.refLines.forEach(rl => { s += `<line x1="${rl.x1}" y1="${rl.y1}" x2="${rl.x2}" y2="${rl.y2}" stroke="${rl.color}" stroke-width="1" stroke-dasharray="${rl.dash}"></line>`; });
+    plot.segments.forEach(sg => { s += `<line x1="${sg.x1}" y1="${sg.y1}" x2="${sg.x2}" y2="${sg.y2}" stroke="${sg.color}" stroke-width="1.5" stroke-dasharray="${sg.dash}"></line>`; });
+    plot.dots.forEach(dt => { s += `<circle cx="${dt.cx}" cy="${dt.cy}" r="2.4" fill="${dt.color}"></circle>`; });
+    plot.xTicks.forEach(tk => { s += `<line x1="${tk.x1}" y1="${tk.y1}" x2="${tk.x2}" y2="${tk.y2}" stroke="#8a8272" stroke-width="1"></line><text x="${tk.x1}" y="${tk.y1 + 16}" font-size="9" fill="#6b6355" text-anchor="middle">${tk.label}</text>`; });
+    yTicks.forEach(tk => { s += `<line x1="${tk.x1}" y1="${tk.y1}" x2="${tk.x2}" y2="${tk.y2}" stroke="#8a8272" stroke-width="1"></line><text x="${tk.x1 - 6}" y="${tk.y1 + 3}" font-size="9" fill="#6b6355" text-anchor="end">${tk.label}</text>`; });
+    (plot.callouts || []).forEach(c => {
+      const cx = parseFloat(c.pctLeft) / 100 * plot.width, cy = parseFloat(c.pctTop) / 100 * plot.height;
+      const anchorEnd = c.tx !== '4px';
+      const x = anchorEnd ? cx - 4 : cx + 4;
+      s += `<text x="${x}" y="${cy + 4}" font-size="11" font-weight="700" fill="${c.color}" text-anchor="${anchorEnd ? 'end' : 'start'}">${c.text}</text>`;
+    });
+    s += '</svg>';
+    return s;
+  }
+
+  cardFromResult(title, subtitle, r, domed, boardThickness) {
+    const d = (v) => (this.round16(Math.abs(v)) < 1/16 ? '—' : this.disp(v));
+    const railRows = [];
+    if (domed) railRows.push({ label: 'Board Thickness', value: d(boardThickness) });
+    railRows.push(
+      { label: domed ? 'Tapered Rail Thickness' : 'Board Thickness', value: d(r.thickness) },
+      { label: 'Apex Thickness', value: d(r.apexLenRange) },
+      { label: 'Apex Center', value: d(r.apexCenter) },
+      { label: 'Rail Mark 1', value: d(r.railMark1) },
+    );
+    if (!r.hardEdge) railRows.push({ label: 'Rail Tuck 1', value: d(r.railTuck1) });
+    if (!r.removeCornerCut) railRows.push({ label: 'Corner Cut (Rail)', value: d(r.cornerCutRail) });
+    const deckRows = [];
+    if (domed) deckRows.push({ label: 'Domed Deck Band', value: d(r.domedDeckBand) });
+    deckRows.push(
+      { label: 'Deck Mark 1', value: d(r.deckMark1) },
+      { label: 'Deck Mark 2', value: d(r.deckMark2) },
+      { label: 'Deck Mark 3', value: d(r.deckMark3) },
+    );
+    if (!r.removeCornerCut) deckRows.push({ label: 'Corner Cut (Deck)', value: d(r.cornerCutDeck) });
+    return {
+      title, subtitle,
+      groups: [
+        { heading: 'Rail Side', rows: railRows },
+        { heading: 'Deck Side', rows: deckRows },
+        { heading: 'Bottom', rows: r.hardEdge ? [{ label: 'Bottom Tuck 3', value: 'Hard Edge' }] : (r.singleTuck ? [] : [
+          { label: 'Bottom Tuck 1', value: d(r.bottomTuck1) },
+          { label: 'Bottom Tuck 2', value: d(r.bottomTuck2) },
+        ]).concat([{ label: 'Bottom Tuck 3', value: d(r.bottomTuck3) }]) },
+      ],
+    };
+  }
+
+  // Ordered cross-section profile for volume/geometry math: the true point-to-point path of foam removed
+  // by the rail bands at one station, from the innermost deck point (where the board is still full/board
+  // thickness) over the rail apex to the innermost bottom point. Same points buildSegmentDefs draws as
+  // separate labeled segments, but strung into one continuous path instead. x=0 is the rail apex; x runs
+  // negative moving inboard toward the stringer; y is height off the bottom (0 = bottom skin, thickness =
+  // deck skin at that x).
+  buildProfilePoints(r, thickness, domed, opts) {
+    opts = opts || {};
+    const bt = domed ? (opts.boardThickness ?? thickness) : thickness;
+    const rt = domed ? (opts.railThicknessVal ?? thickness) : thickness;
+    const bandWidth = domed ? (r.domedDeckBand || opts.domedBandBase || 1) : (opts.domedBandBase || Math.max(r.deckMark3, 1));
+    const domedY = (x) => (bt === rt) ? thickness : rt + (bt - rt) * Math.min(1, Math.max(0, -x / bandWidth));
+    const band1EndY = domedY(-r.deckMark1);
+    const band1Y = (x) => { const t = r.deckMark1 > 0 ? (-x) / r.deckMark1 : 0; return r.railMark1 + (band1EndY - r.railMark1) * t; };
+    const pts = [
+      [-bandWidth, bt],
+      [-r.deckMark3, domedY(-r.deckMark3)],
+      [-r.deckMark2, band1Y(-r.deckMark2)],
+      [-r.deckMark1, domedY(-r.deckMark1)],
+      [0, r.railMark1],
+      [0, r.railTuck1],
+    ];
+    if (r.hardEdge) pts.push([0, 0]);
+    else if (r.singleTuck) pts.push([-r.bottomTuck3, 0]);
+    else { pts.push([-r.bottomTuck2, r.railTuck1 / 2]); pts.push([-r.bottomTuck3, 0]); }
+    return pts;
+  }
+
+  // ---- Rail band cross-section plot, following the sheet's chart segments ----
+  buildSegmentDefs(r, thickness, domed, opts) {
+    opts = opts || {};
+    const segs = [];
+    // Domed deck line: tapered rail thickness at the apex (x=0, right) sloping to full board thickness inboard (left).
+    const bt = domed ? (opts.boardThickness ?? thickness) : thickness;
+    const rt = domed ? (opts.railThicknessVal ?? thickness) : thickness;
+    const bandWidth = domed ? (r.domedDeckBand || opts.domedBandBase || 1) : (opts.domedBandBase || Math.max(r.deckMark3, 1));
+    const domedY = (x) => (bt === rt) ? thickness : rt + (bt - rt) * Math.min(1, Math.max(0, -x / bandWidth));
+    segs.push({ key: 'domedBand', label: 'Domed Deck Band', color: '#6b8e4e', dash: 'none', p1: [0, rt], p2: [-bandWidth, bt] });
+    segs.push({ key: 'band1', label: 'Rail Band 1', color: 'var(--accent)', dash: 'none', p1: [0, r.railMark1], p2: [-r.deckMark1, domedY(-r.deckMark1)] });
+    // Deck Mark 2 must sit exactly on the Rail Band 1 line at its own X position.
+    const band1EndY = domedY(-r.deckMark1);
+    const band1Y = (x) => { const t = r.deckMark1 > 0 ? (-x) / r.deckMark1 : 0; return r.railMark1 + (band1EndY - r.railMark1) * t; };
+    segs.push({ key: 'band2', label: 'Rail Band 2', color: '#b5563a', dash: 'none', p1: [-r.deckMark2, band1Y(-r.deckMark2)], p2: [-r.deckMark3, domedY(-r.deckMark3)] });
+    // Corner Cut (Deck) also lands exactly on the Rail Band 1 line at its own X value.
+    if (!r.removeCornerCut) segs.push({ key: 'cornerCut', label: 'Corner Cut', color: '#4d8a86', dash: 'none', p1: [0, r.cornerCutRail], p2: [-r.cornerCutDeck, band1Y(-r.cornerCutDeck)] });
+    const leftEdge = -(bandWidth + 2);
+    if (r.hardEdge) {
+      segs.push({ key: 'hardEdge', label: 'Hard Edge', color: '#1c1b19', dash: 'none', p1: [0, r.railTuck1], p2: [0, 0] });
+    } else if (r.singleTuck) {
+      // Single Tuck: Bottom Tuck 1/2 removed — Rail Tuck 1 connects straight to Bottom Tuck 3.
+      segs.push({ key: 'tuck1', label: 'Rail Tuck 1', color: '#7d5ba6', dash: 'none', p1: [0, r.railTuck1], p2: [-r.bottomTuck3, 0] });
+    } else {
+      segs.push({ key: 'tuck1', label: 'Rail Tuck 1', color: '#7d5ba6', dash: 'none', p1: [0, r.railTuck1], p2: [-r.bottomTuck1, 0] });
+      // Bottom Tuck 2 always sits on the midpoint of the Rail Tuck 1 line (0,railTuck1)→(-bottomTuck1,0):
+      // that midpoint's Y is railTuck1/2, which only equals bottomTuck1 when Bottom Tuck 1 isn't overridden
+      // by Symmetrical (Deck Mark 1) — using railTuck1/2 directly keeps it correct in both cases.
+      segs.push({ key: 'tuck2', label: 'Rail Tuck 2', color: '#3a6ea5', dash: 'none', p1: [-r.bottomTuck2, r.railTuck1 / 2], p2: [-r.bottomTuck3, 0] });
+    }
+    // Reference connectors (solid black), always drawn.
+    segs.push({ key: 'boardConn', label: 'Board Thickness', color: '#1c1b19', dash: 'none', p1: [leftEdge, bt], p2: [-bandWidth, bt] });
+    segs.push({ key: 'bottomConn', label: 'Left Edge → Bottom Tuck 3', color: '#1c1b19', dash: 'none', p1: [leftEdge, 0], p2: [-r.bottomTuck3, 0] });
+    segs.push({ key: 'railConn', label: 'Rail Mark 1 → Tuck 1', color: '#1c1b19', dash: 'none', p1: [0, r.railMark1], p2: [0, r.railTuck1] });
+    return segs;
+  }
+
+  buildPlot(r, thickness, domed, opts) {
+    opts = opts || {};
+    const SCALE = opts.scale || 56;
+    const segs = this.buildSegmentDefs(r, thickness, domed, opts);
+    const blankThickness = domed ? (opts.boardThickness ?? thickness) : thickness;
+    const bandWidth = domed ? (r.domedDeckBand || opts.domedBandBase || 1) : (opts.domedBandBase || Math.max(r.deckMark3, 1));
+    // Axis range is data-driven, not fixed: X stops 2" beyond the board-thickness location (the domed
+    // taper end / deck band extent); Y stops 1/4" above the board/flat thickness.
+    const xAxisMin = opts.cropXMin != null ? opts.cropXMin : Math.min(-(bandWidth + 2), opts.xAxisMinShared ?? 0), yAxisMax = blankThickness + 0.25;
+    const minX = xAxisMin - 0.15 - (opts.callouts ? 0.3 : 0), maxX = opts.callouts ? 1.7 : 0.15;
+    const minY = -0.15, maxY = yAxisMax + (opts.callouts ? 0.3 : 0.15);
+    const LEFT_PAD = 22;
+    const AXIS_LABEL_PAD = 20; // room for the absolutely-positioned x-axis tick labels below the plot
+    const width = (maxX - minX) * SCALE + LEFT_PAD, height = (maxY - minY) * SCALE + AXIS_LABEL_PAD;
+    const px = (x) => (x - minX) * SCALE + LEFT_PAD;
+    const py = (y) => (maxY - y) * SCALE;
+
+    const refLines = [
+      { x1: px(minX), y1: py(0), x2: px(0.1), y2: py(0), color: '#cbbf9e', dash: '3 3' },
+      { x1: px(minX), y1: py(blankThickness), x2: px(0.1), y2: py(blankThickness), color: '#cbbf9e', dash: '3 3' },
+      { x1: px(0), y1: py(-0.35), x2: px(0), y2: py(blankThickness + 0.35), color: '#cbbf9e', dash: '2 3' },
+    ];
+
+    // Faint 1in grid so the 1:1 X:Y scale is visually verifiable (squares, not rectangles).
+    const gridLines = [];
+    const xGridMin = Math.max(-40, Number.isFinite(Math.floor(xAxisMin)) ? Math.floor(xAxisMin) : 0);
+    const yGridMax = Math.min(40, Number.isFinite(Math.floor(yAxisMax)) ? Math.floor(yAxisMax) : 0);
+    for (let i = 0; i >= xGridMin; i--) gridLines.push({ x1: px(i), y1: py(minY), x2: px(i), y2: py(maxY) });
+    for (let j = 0; j <= yGridMax; j++) gridLines.push({ x1: px(xGridMin), y1: py(j), x2: px(0), y2: py(j) });
+
+    const segments = segs.map(sg => ({
+      x1: px(sg.p1[0]), y1: py(sg.p1[1]), x2: px(sg.p2[0]), y2: py(sg.p2[1]), color: sg.color, dash: sg.dash, strokeWidth: 2,
+    }));
+
+    const noDotKeys = r.hardEdge ? ['boardConn', 'bottomConn', 'railConn', 'hardEdge'] : ['boardConn', 'bottomConn', 'railConn'];
+    const dots = [];
+    segs.forEach(sg => {
+      if (noDotKeys.includes(sg.key)) return;
+      dots.push({ cx: px(sg.p1[0]), cy: py(sg.p1[1]), color: sg.color, r: 2.75 });
+      dots.push({ cx: px(sg.p2[0]), cy: py(sg.p2[1]), color: sg.color, r: 2.75 });
+    });
+    dots.push({ cx: px(0), cy: py(r.apexCenter), color: '#a8425f', r: 2.75 });
+    if (domed) {
+      const taperY = segs.find(sg => sg.key === 'domedBand').p1[1];
+      dots.push({ cx: px(0), cy: py(taperY), color: '#6b8e4e', r: 2.75 });
+    }
+
+    const legendHiddenKeys = ['bottomConn', 'railConn'];
+    const legend = [{ label: 'Apex Center', color: '#a8425f' }]
+      .concat(segs.filter(sg => !legendHiddenKeys.includes(sg.key)).map(sg => ({ label: sg.label, color: sg.color })))
+      .concat(domed ? [{ label: 'Tapered Rail Thickness', color: '#6b8e4e' }] : []);
+
+    const xTicks = [];
+    for (let i = 0; i >= xGridMin; i--) {
+      const tx = px(i), ty = py(0) + 16;
+      xTicks.push({ x1: px(i), y1: py(0) - 4, x2: px(i), y2: py(0) + 4, label: `${Math.abs(i)}`, x: tx, y: ty + 4, pctLeft: (tx / width * 100).toFixed(3) + '%', pctTop: (ty / height * 100).toFixed(3) + '%' });
+    }
+    const yTicks = [];
+    for (let j = 0; j <= yGridMax; j++) {
+      const tx = px(minX) - 6, ty = py(j);
+      yTicks.push({ x1: px(minX) - 4, y1: py(j), x2: px(minX) + 4, y2: py(j), label: `${j}`, x: tx - 2, y: ty + 3, pctLeft: (tx / width * 100).toFixed(3) + '%', pctTop: (ty / height * 100).toFixed(3) + '%' });
+    }
+
+    let callouts = [];
+    let scrollLeftHint = null;
+    if (opts.callouts) {
+      const raw = [
+        { x: px(0), y: py(r.apexCenter), text: `Apex`, color: '#1c1b19', side: 1 },
+        { x: px(0), y: py(segs.find(s => s.key === 'domedBand').p1[1]), text: `Domed Taper`, color: '#6b8e4e', side: 1 },
+        { x: px(0), y: py(r.railMark1), text: `Rail Mk1`, color: 'var(--accent)', side: 1 },
+        { x: px(-r.cornerCutDeck), y: py(r.railMark1), text: `Corner Cut`, color: '#4d8a86', side: -1 },
+        { x: px(-r.deckMark3), y: py(thickness), text: `Deck 3`, color: '#b5563a', side: -1 },
+        { x: px(-r.deckMark2), y: (() => { const b1 = segs.find(s => s.key === 'band1'); const t = r.deckMark1 > 0 ? r.deckMark2 / r.deckMark1 : 0; return py(b1.p1[1] + (b1.p2[1] - b1.p1[1]) * t); })(), text: `Deck 2`, color: 'var(--accent)', side: -1 },
+        { x: px(-r.deckMark1), y: py(thickness), text: `Deck 1`, color: 'var(--accent)', side: -1 },
+        { x: px(0), y: py(r.railTuck1), text: `Tuck 1`, color: '#1c1b19', side: 1 },
+        { x: px(-r.bottomTuck1), y: py(0), text: `Bottom Tuck 1`, color: '#1c1b19', side: -1 },
+        { x: px(-r.bottomTuck3), y: py(0), text: `Bottom Tuck 3`, color: '#8a8272', side: -1 },
+      ];
+      // Stack-layout pass: enforce a minimum vertical gap within each side's column so labels never overlap.
+      // Only labels whose text would actually occupy overlapping horizontal space need vertical separation.
+      // Cluster by X-proximity via single-linkage chaining (sort by x, break the chain wherever the gap to
+      // the previous point exceeds BUCKET_PX) — independent per-point rounding (the previous approach) can
+      // split two points just a few px apart into different "buckets" if they straddle a rounding boundary,
+      // silently skipping the de-overlap pass between them.
+      const MIN_GAP = 17;
+      const BUCKET_PX = 95;
+      const maxAllowedY = py(0) - 10; // keep callouts clear of the x-axis tick label row below
+      [-1, 1].forEach(sideVal => {
+        const bySide = raw.filter(c => c.side === sideVal).sort((a, b) => a.x - b.x);
+        let cluster = [];
+        const flush = () => {
+          if (!cluster.length) return;
+          cluster.sort((a, b) => a.y - b.y);
+          for (let i = 1; i < cluster.length; i++) {
+            if (cluster[i].y - cluster[i - 1].y < MIN_GAP) cluster[i].y = cluster[i - 1].y + MIN_GAP;
+          }
+          const overflow = cluster[cluster.length - 1].y - maxAllowedY;
+          if (overflow > 0) cluster.forEach(c => { c.y -= overflow; });
+          cluster = [];
+        };
+        bySide.forEach((c, i) => {
+          if (i > 0 && c.x - bySide[i - 1].x > BUCKET_PX) flush();
+          cluster.push(c);
+        });
+        flush();
+      });
+      callouts = raw.map(c => ({
+        pctLeft: (c.x / width * 100).toFixed(3) + '%', pctTop: (c.y / height * 100).toFixed(3) + '%',
+        tx: c.side >= 0 ? '4px' : 'calc(-100% - 4px)', text: c.text, color: c.color,
+      }));
+      // Preferred scroll center: the container is often narrower than the full label spread (left-side
+      // Deck marks to right-side apex-column labels), so no fixed scrollLeft can guarantee both ends are
+      // visible — center on the midpoint of the full label extent instead of biasing to either edge, and
+      // resolve against the container's REAL clientWidth at scroll-time (not a guessed one) in the ref.
+      const leftmostPx = Math.min(...raw.map(c => c.x - (c.side === -1 ? 95 : 0)));
+      const rightmostPx = Math.max(...raw.map(c => c.x + (c.side === 1 ? 120 : 0)));
+      scrollLeftHint = (leftmostPx + rightmostPx) / 2;
+    }
+
+    return { width, height, aspectRatio: `${width} / ${height}`, xAxisMin, gridLines, refLines, segments, dots, legend, callouts, xTicks, yTicks, scrollLeftHint };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const set = (patch) => this.setState(patch);
+    const cm = s.units === 'cm';
+    const toU = (v) => this.toU(v), fromU = (v) => this.fromU(v);
+    const unitBounds = (minIn, maxIn, stepIn, cmMin, cmMax, cmStep) => cm
+      ? { min: cmMin, max: cmMax, step: cmStep }
+      : { min: minIn, max: maxIn, step: stepIn };
+
+    const boardThicknessBounds = unitBounds(1.75, 3.5, 0.0625, 4.4, 8.9, 0.1);
+    const ntThicknessBounds = unitBounds(1, 2.5, 0.0625, 2.5, 6.4, 0.1);
+    const tuckBounds = unitBounds(0, 1.5, 0.0625, 0, 3.8, 0.1);
+
+    const onCheckIn = () => set({ units: 'in' });
+    const onCheckCm = () => set({ units: 'cm' });
+    const unitsOptions = ['in', 'cm'].map(k => ({
+      value: k, label: k === 'in' ? 'Inches' : 'Centimeters',
+      onSelect: () => set({ units: k }),
+      style: `flex:1;padding:10px;border-radius:6px;border:1px solid ${s.units===k?'var(--accent)':'var(--sidebar-input-border)'};background:${s.units===k?'var(--accent)':'transparent'};color:${s.units===k?'#1c1b19':'var(--sidebar-text)'};font-size:13px;font-weight:700;cursor:pointer;`
+    }));
+
+    const lightDomedOptionsFor = (current, onSet) => [false, true].map(v => ({
+      value: v, label: v ? 'Domed' : 'Flat',
+      onSelect: () => onSet(v),
+      style: `padding:7px 14px;border-radius:6px;border:1px solid ${current===v?'var(--accent)':'#e4ddc9'};background:${current===v?'var(--accent)':'transparent'};color:${current===v?'#1c1b19':'#8a8272'};font-size:12px;font-weight:700;cursor:pointer;`
+    }));
+
+    // Tapered Rail Thickness is now driven by a Deck Profile scale-factor slider (100% flat → 66% heavily
+    // domed) instead of an absolute inch slider; the output snaps to the nearest 1/16".
+    const centerRailThicknessClamped = this.round16(s.centerBoardThickness * s.centerDeckPercent / 100);
+    const noseRailThicknessClamped = this.round16(s.noseThickness * s.noseDeckPercent / 100);
+    const tailRailThicknessClamped = this.round16(s.tailThickness * s.tailDeckPercent / 100);
+    const noseDomed = s.noseDeckPercent < 100, centerDomed = s.centerDeckPercent < 100, tailDomed = s.tailDeckPercent < 100;
+    const deckProfileFor = (thicknessVal, percentVal, key) => {
+      const rawStep = Math.max(0.01, (0.0625 / thicknessVal) * 100);
+      const steps = Math.max(1, Math.round(34 / rawStep));
+      const percentStep = 34 / steps; // divides the 66-100 range evenly so both endpoints (incl. 100%) are always reachable
+      const outVal = this.round16(thicknessVal * percentVal / 100);
+      return {
+        percent: percentVal,
+        sliderValue: 166 - percentVal, // flipped so 100% (Flat) sits at the slider's left/min end
+        percentStep,
+        label: `${this.disp(outVal)} (Tapered Thickness)`,
+        onChange: (e) => set({ [key]: 166 - parseFloat(e.target.value) }),
+      };
+    };
+    const noseDeckProfile = deckProfileFor(s.noseThickness, s.noseDeckPercent, 'noseDeckPercent');
+    const centerDeckProfile = deckProfileFor(s.centerBoardThickness, s.centerDeckPercent, 'centerDeckPercent');
+    const tailDeckProfile = deckProfileFor(s.tailThickness, s.tailDeckPercent, 'tailDeckPercent');
+
+    const centerRatioTop = s.centerRatioTop;
+    const noseRatioTop = s.noseRatioTop;
+    const tailRatioTop = s.tailRatioTop;
+
+    const centerThickness = centerDomed ? centerRailThicknessClamped : s.centerBoardThickness;
+    const centerResult = this.computeSection({ thickness: centerThickness, ratioTopPct: centerRatioTop, family: s.centerFamily, domed: centerDomed, domedBandBase: 6, scale: 1, cornerCutOffsetOverride: s.centerCornerCutOffsetOverride, removeCornerCut: s.centerRemoveCornerCut, singleTuck: s.centerSingleTuck, bottomTuck3Override: s.centerBottomTuck3Override, symmetrical: s.centerSymmetrical });
+
+    const noseThicknessEff = noseDomed ? noseRailThicknessClamped : s.noseThickness;
+    const tailThicknessEff = tailDomed ? tailRailThicknessClamped : s.tailThickness;
+    const noseResult = this.computeSection({ thickness: noseThicknessEff, ratioTopPct: noseRatioTop, family: s.noseFamily, domed: noseDomed, domedBandBase: 4.5, scale: 0.75, cornerCutOffsetOverride: s.noseCornerCutOffsetOverride, removeCornerCut: s.noseRemoveCornerCut, singleTuck: s.noseSingleTuck, bottomTuck3Override: s.noseBottomTuck3Override, symmetrical: s.noseSymmetrical });
+    const tailResult = this.computeSection({ thickness: tailThicknessEff, ratioTopPct: tailRatioTop, family: s.tailFamily, domed: tailDomed, domedBandBase: 4.5, scale: 0.75, cornerCutOffsetOverride: s.tailCornerCutOffsetOverride, removeCornerCut: s.tailRemoveCornerCut, singleTuck: s.tailSingleTuck, bottomTuck3Override: s.tailBottomTuck3Override, symmetrical: s.tailSymmetrical, hardEdge: s.tailHardEdge });
+
+    const makeActualSizeHandler = (key) => () => set({ actualSizeKey: key });
+
+    const outputCards = [];
+    if (s.noseOpen) { const c = { ...this.cardFromResult('Nose', `${noseDomed ? 'Domed' : 'Flat'} · Family ${this.familyLabel(s.noseFamily)} · Ratio ${noseRatioTop}/${100-noseRatioTop}${s.noseSymmetrical ? ' · Symmetrical' : ''}`, noseResult, noseDomed, s.noseThickness), plot: this.buildPlot(noseResult, noseThicknessEff, noseDomed, { boardThickness: s.noseThickness, railThicknessVal: noseRailThicknessClamped, domedBandBase: 4.5, cropXMin: this.props.compact ? -5 : null }) }; c.key = 'nose'; c.onViewActualSize = makeActualSizeHandler('nose'); outputCards.push(c); }
+    if (s.centerOpen) { const c = { ...this.cardFromResult('Center', `${centerDomed ? 'Domed' : 'Flat'} · Family ${this.familyLabel(s.centerFamily)} · Ratio ${centerRatioTop}/${100-centerRatioTop}${s.centerSymmetrical ? ' · Symmetrical' : ''}`, centerResult, centerDomed, s.centerBoardThickness), plot: this.buildPlot(centerResult, centerThickness, centerDomed, { boardThickness: s.centerBoardThickness, railThicknessVal: centerRailThicknessClamped, domedBandBase: 6, cropXMin: this.props.compact ? -6.5 : null }) }; c.key = 'center'; c.onViewActualSize = makeActualSizeHandler('center'); outputCards.push(c); }
+    if (s.tailOpen) { const c = { ...this.cardFromResult('Tail', `${tailDomed ? 'Domed' : 'Flat'} · Family ${this.familyLabel(s.tailFamily)} · Ratio ${tailRatioTop}/${100-tailRatioTop}${s.tailHardEdge ? ' · Hard Edge' : (s.tailSymmetrical ? ' · Symmetrical' : '')}`, tailResult, tailDomed, s.tailThickness), plot: this.buildPlot(tailResult, tailThicknessEff, tailDomed, { boardThickness: s.tailThickness, railThicknessVal: tailRailThicknessClamped, domedBandBase: 4.5, cropXMin: this.props.compact ? -5 : null }) }; c.key = 'tail'; c.onViewActualSize = makeActualSizeHandler('tail'); outputCards.push(c); }
+
+    const RAIL_STACK_GAP = 28;
+    const sharedXAxisMin = outputCards.length ? Math.min(...outputCards.map(c => c.plot.xAxisMin)) : 0;
+    outputCards.forEach(c => {
+      if (c.plot.xAxisMin > sharedXAxisMin) {
+        const opts = c.key === 'center'
+          ? { boardThickness: s.centerBoardThickness, railThicknessVal: centerRailThicknessClamped, domedBandBase: 6 }
+          : c.key === 'nose'
+            ? { boardThickness: s.noseThickness, railThicknessVal: noseRailThicknessClamped, domedBandBase: 4.5 }
+            : { boardThickness: s.tailThickness, railThicknessVal: tailRailThicknessClamped, domedBandBase: 4.5 };
+        const r = c.key === 'center' ? centerResult : (c.key === 'nose' ? noseResult : tailResult);
+        const thick = c.key === 'center' ? centerThickness : (c.key === 'nose' ? noseThicknessEff : tailThicknessEff);
+        const domedFlag = c.key === 'center' ? centerDomed : (c.key === 'nose' ? noseDomed : tailDomed);
+        const cropXMinFor = c.key === 'center' ? -6.5 : -5;
+        c.plot = this.buildPlot(r, thick, domedFlag, { ...opts, xAxisMinShared: sharedXAxisMin, cropXMin: this.props.compact ? cropXMinFor : null });
+      }
+    });
+    const railViewButtons = outputCards.map(c => ({ key: c.key, label: `View Full Sized ${c.title} Rail`, onSelect: c.onViewActualSize, title: c.title }));
+    const railSharedLegend = outputCards.length ? outputCards[0].plot.legend : [];
+
+    // Uniform scale for all rail plots: pick one render dimension so the combined natural
+    // (aspect-true) sizes exactly fill the measured wrapper with no scrolling. In row layout
+    // (wide/short wrapper, e.g. the Summary bar) plots sit side-by-side sharing one render
+    // height; in the normal stacked layout they share one render width.
+    const isRowLayout = this.props.compact && !!this.props.compactRow;
+    const RAIL_TITLE_ROW_H = this.props.compact ? 0 : 32, RAIL_CARD_GAP = this.props.compact ? 4 : 18;
+    const railChrome = outputCards.length * RAIL_TITLE_ROW_H + Math.max(0, outputCards.length - 1) * RAIL_CARD_GAP;
+    const railCommonPlotW = outputCards.length ? outputCards[0].plot.width : 1;
+    const railDotR = 3; // desired constant on-screen px, compensated below per plot's own scale
+    if (isRowLayout) {
+      const railAvailW = Math.max(1, s.railWrapW - railChrome - 4);
+      const railInvHeightSum = outputCards.reduce((sum, c) => sum + 1 / c.plot.height, 0);
+      const railFitH = railInvHeightSum > 0 ? (railAvailW / (railCommonPlotW * railInvHeightSum)) : (s.railWrapH || 1);
+      const railRenderH = s.railWrapH > 0 ? Math.max(1, Math.min(s.railWrapH, railFitH)) : railFitH;
+      const n = outputCards.length || 1;
+      const slotW = n > 0 ? (railAvailW - Math.max(0, n - 1) * RAIL_CARD_GAP) / n : railAvailW;
+      outputCards.forEach(c => {
+        const renderScale = railRenderH / c.plot.height;
+        let renderWidth = c.plot.width * renderScale, renderHeight = railRenderH;
+        if (slotW > 0 && renderWidth > slotW) { renderHeight = renderHeight * (slotW / renderWidth); renderWidth = slotW; }
+        c.titleFontSize = Math.max(9, Math.min(13, renderWidth / (c.title.length * 0.65))).toFixed(1) + 'px';
+        c.plot = {
+          ...c.plot,
+          renderWidth,
+          renderHeight,
+          dots: [],
+        };
+      });
+    } else {
+      const railAvailH = Math.max(1, s.railWrapH - railChrome - 4);
+      const railHeightSum = outputCards.reduce((sum, c) => sum + c.plot.height, 0);
+      const railFitW = railHeightSum > 0 ? (railAvailH * railCommonPlotW / railHeightSum) : railCommonPlotW;
+      const railRenderW = s.railWrapW > 0 ? Math.max(40, Math.min(s.railWrapW, railFitW)) : railCommonPlotW;
+      outputCards.forEach(c => {
+        const renderScale = railRenderW / c.plot.width;
+        c.plot = {
+          ...c.plot,
+          renderWidth: railRenderW,
+          renderHeight: c.plot.height * renderScale,
+          dots: c.plot.dots.map(dt => ({ ...dt, r: railDotR / renderScale })),
+        };
+      });
+    }
+
+    const boardOutlinePlot = this.buildBoardOutlinePlot({
+      centerDm1: centerResult.deckMark1, centerDm3: centerResult.deckMark3,
+      noseDm1: noseResult.deckMark1, noseDm3: noseResult.deckMark3,
+      tailDm1: tailResult.deckMark1, tailDm3: tailResult.deckMark3,
+      centerRailMark1: centerResult.railMark1, centerRailTuck1: centerResult.railTuck1,
+      noseRailMark1: noseResult.railMark1, noseRailTuck1: noseResult.railTuck1,
+      tailRailMark1: tailResult.railMark1, tailRailTuck1: tailResult.railTuck1,
+    }, { nose: s.noseThickness, center: s.centerBoardThickness, tail: s.tailThickness });
+    const boardOutlineLegend = [
+      { key: 'showDeckMark1', label: 'Deck Marks 1', color: '#ED7D31', checked: s.showDeckMark1 },
+      { key: 'showDeckBand1', label: 'Deck Band 1', color: '#ED7D31', checked: s.showDeckBand1 },
+      { key: 'showDeckMark3', label: 'Deck Marks 3', color: '#4472C4', checked: s.showDeckMark3 },
+      { key: 'showDeckBand2', label: 'Deck Band 2', color: '#4472C4', checked: s.showDeckBand2 },
+      { key: 'showDeckMark3Full', label: 'Deck Mark 3 Center (full board)', color: '#70AD47', checked: s.showDeckMark3Full },
+      { key: 'showRailMark1', label: 'Rail Marks 1', color: '#C00000', checked: s.showRailMark1 },
+      { key: 'showRailBand1', label: 'Rail Band 1', color: '#C00000', checked: s.showRailBand1 },
+      { key: 'showRailTuck1', label: 'Rail Tucks 1', color: '#7030A0', checked: s.showRailTuck1 },
+      { key: 'showTuckBlend', label: 'Tuck blend to hard tail', color: '#7030A0', checked: s.showTuckBlend },
+    ].map(item => ({ ...item, onToggle: () => set({ [item.key]: !s[item.key] }), boxBg: item.checked ? item.color : '#ffffff' }));
+    const boardOutlineRows = [
+      { label: 'Length', value: '6\'0" (72")' },
+      { label: 'Nose @ 12"', value: '13"' },
+      { label: 'Center', value: '19"' },
+      { label: 'Tail @ 12"', value: '14 1/4"' },
+      { label: 'Tail Block', value: '5"' },
+      { label: 'Deck Mark 1 (Nose)', value: this.disp(noseResult.deckMark1) },
+      { label: 'Deck Mark 3 (Nose)', value: this.disp(noseResult.deckMark3) },
+      { label: 'Deck Mark 1 (Center)', value: this.disp(centerResult.deckMark1) },
+      { label: 'Deck Mark 3 (Center)', value: this.disp(centerResult.deckMark3) },
+      { label: 'Deck Mark 1 (Tail)', value: this.disp(tailResult.deckMark1) },
+      { label: 'Deck Mark 3 (Tail)', value: this.disp(tailResult.deckMark3) },
+    ];
+
+    // Rail Data: a single merged table (mark name + one value column per open section) instead of three
+    // separate per-section cards, since all three share the same mark names.
+    const railDataColumns = outputCards.map(c => ({ key: c.key, title: c.title }));
+    // Fixed canonical order (matches cardFromResult's own push order) — never re-derived from whichever
+    // card happens to include a label first, so rows never shuffle based on which sections are open/hardEdge.
+    const railDataHeadings = ['Rail Side', 'Deck Side', 'Bottom'];
+    const railDataLabelOrder = {
+      'Rail Side': ['Board Thickness', 'Tapered Rail Thickness', 'Apex Thickness', 'Apex Center', 'Rail Mark 1', 'Rail Tuck 1', 'Corner Cut (Rail)'],
+      'Deck Side': ['Domed Deck Band', 'Deck Mark 1', 'Deck Mark 2', 'Deck Mark 3', 'Corner Cut (Deck)'],
+      'Bottom': ['Bottom Tuck 1', 'Bottom Tuck 2', 'Bottom Tuck 3'],
+    };
+    const railDataGroups = railDataHeadings.map(heading => {
+      const labelOrder = railDataLabelOrder[heading];
+      const rows = labelOrder.map(label => ({
+        label,
+        cells: outputCards.map(c => {
+          const g = c.groups.find(x => x.heading === heading);
+          const row = g ? g.rows.find(r => r.label === label) : null;
+          return row ? row.value : '—';
+        }),
+      }));
+      return { heading, rows };
+    });
+
+    const actualSizeCard = s.actualSizeKey ? outputCards.find(c => c.key === s.actualSizeKey) : null;
+    const actualSizeHtml = actualSizeCard ? { __html: this.plotSvgHtml(actualSizeCard.plot) } : null;
+
+    // Marking The Board: reassembles the same per-section groups already computed for outputCards,
+    // just regrouped by mark type (deck vs. rail/bottom) instead of by section.
+    const deckMarkingCards = outputCards.map(card => ({
+      title: card.title, subtitle: card.subtitle,
+      rows: card.groups.find(g => g.heading === 'Deck Side').rows,
+    }));
+    const railMarkingCards = outputCards.map(card => ({
+      title: card.title, subtitle: card.subtitle,
+      rows: card.groups.find(g => g.heading === 'Rail Side').rows.concat(card.groups.find(g => g.heading === 'Bottom').rows),
+    }));
+
+    const pageOptions = ['viewer', 'data', 'instructions'].map(k => ({
+      value: k, label: k === 'viewer' ? 'VIEWER' : (k === 'data' ? 'DATA' : 'INSTRUCTIONS'),
+      onSelect: () => set({ activePage: k }),
+      style: `padding:10px 18px;border-radius:8px 8px 0 0;border:1px solid ${s.activePage===k?'#e4ddc9':'transparent'};border-bottom:none;background:${s.activePage===k?'#fff':'transparent'};color:${s.activePage===k?'#1c1b19':'#8a8272'};font-size:14px;font-weight:700;cursor:pointer;`
+    }));
+
+    const howToReadThickness = s.howToReadDomed ? 3 : 3.5;
+    const howToReadResult = this.computeSection({ thickness: howToReadThickness, ratioTopPct: 60, family: 3, domed: s.howToReadDomed, domedBandBase: 6, scale: 1, halveDeckMark1: true });
+    const howToRead = {
+      domed: s.howToReadDomed, onToggleHowToReadDomed: (v) => set({ howToReadDomed: v }),
+      plot: this.buildPlot(howToReadResult, howToReadThickness, s.howToReadDomed, { callouts: true, boardThickness: 3.5, railThicknessVal: 3, domedBandBase: 6 }),
+    };
+
+    const specLines = ['RAIL BAND SPEC', ''];
+    outputCards.forEach(card => {
+      specLines.push(`${card.title} — ${card.subtitle}`);
+      card.groups.forEach(g => {
+        specLines.push(`  ${g.heading}:`);
+        g.rows.forEach(r => specLines.push(`    ${r.label}: ${r.value}`));
+      });
+      specLines.push('');
+    });
+
+    const planRefSvgPaths = (() => {
+        const colors = { deckMark1: '#ED7D31', deckBand1: '#ED7D31', deckMark3: '#4472C4', deckBand2: '#4472C4', deckMark3Full: '#70AD47' };
+        const widths = { deckMark1: '0.055', deckMark3: '0.055' };
+        const dashPx = { 'none': 'none', '6 4': '0.14 0.09', '2 3': '0.035 0.07' };
+        const show = { deckMark1: s.showDeckMark1, deckBand1: s.showDeckBand1, deckMark3: s.showDeckMark3, deckBand2: s.showDeckBand2, deckMark3Full: s.showDeckMark3Full };
+        return this.planRefPaths().filter(p => show[p.group]).map(p => ({ d: p.d, dash: dashPx[p.dash] || 'none', color: colors[p.group], width: widths[p.group] || '0.035' }));
+      })();
+    const sideRefSvgPaths = (() => {
+        const colors = { black: '#1c1b19', railMark1: '#C00000', railBand1: '#C00000', railTuck1: '#7030A0', tuckBlend: '#7030A0' };
+        const widths = { railMark1: '0.055' };
+        const dashPx = { 'none': 'none', '6 4': '0.14 0.09', '2 3': '0.035 0.07' };
+        const show = { black: true, railMark1: s.showRailMark1, railBand1: s.showRailBand1, railTuck1: s.showRailTuck1, tuckBlend: s.showTuckBlend };
+        return this.sideRefPaths().filter(p => show[p.group]).map(p => ({ d: p.d, dash: dashPx[p.dash] || 'none', color: colors[p.group], width: widths[p.group] || '0.035' }));
+      })();
+
+    return {
+      units: s.units, unitsOptions, unitsIsIn: !cm, unitsIsCm: cm, onCheckIn, onCheckCm,
+      printIncludeInstructions: s.printIncludeInstructions, onTogglePrintInstructions: () => set({ printIncludeInstructions: !s.printIncludeInstructions }),
+      globalSettingsOpen: s.globalSettingsOpen, globalSettingsCaret: s.globalSettingsOpen ? '▾' : '▸',
+      onToggleGlobalSettings: () => set({ globalSettingsOpen: !s.globalSettingsOpen }),
+
+      centerDeckPercent: centerDeckProfile.percent, centerDeckSliderValue: centerDeckProfile.sliderValue, centerDeckPercentStep: centerDeckProfile.percentStep, centerDeckLabel: centerDeckProfile.label, onCenterDeckPercentChange: centerDeckProfile.onChange,
+      centerBoardThicknessDisplay: this.disp(s.centerBoardThickness),
+      centerBoardThicknessValue: toU(s.centerBoardThickness), centerBoardThicknessMin: boardThicknessBounds.min, centerBoardThicknessMax: boardThicknessBounds.max, centerBoardThicknessStep: boardThicknessBounds.step,
+      onCenterBoardThicknessChange: (e) => set({ centerBoardThickness: fromU(parseFloat(e.target.value)) }),
+      centerFamilyValue: s.centerFamily, centerFamilyLabel: this.familyLabel(s.centerFamily),
+      onCenterFamilyChange: (e) => set({ centerFamily: parseFloat(e.target.value) }),
+      centerRatioLabel: `${centerRatioTop}/${100 - centerRatioTop}`,
+      centerRatioTopValue: centerRatioTop, onCenterRatioChange: (e) => set({ centerRatioTop: parseInt(e.target.value) }),
+      centerSymmetrical: s.centerSymmetrical, centerRatioOpacity: s.centerSymmetrical ? '0.4' : '1',
+      onCenterSymmetricalToggle: () => set({ centerSymmetrical: !s.centerSymmetrical }),
+      centerOpen: s.centerOpen, centerCaret: s.centerOpen ? '▾' : '▸', onToggleCenterOpen: () => set({ centerOpen: !s.centerOpen }),
+      centerAdvancedOpen: s.centerAdvancedOpen, centerAdvancedCaret: s.centerAdvancedOpen ? '▾' : '▸', onToggleCenterAdvanced: () => set({ centerAdvancedOpen: !s.centerAdvancedOpen }),
+      centerCornerCutDisplay: this.disp(centerResult.cornerCutOffset ?? 0), centerCornerCutValue: toU(centerResult.cornerCutOffset ?? 0),
+      onCenterCornerCutChange: (e) => set({ centerCornerCutOffsetOverride: fromU(parseFloat(e.target.value)) }),
+      centerRemoveCornerCut: s.centerRemoveCornerCut, centerRemoveCornerCutOpacity: s.centerRemoveCornerCut ? '0.4' : '1',
+      onCenterRemoveCornerCutToggle: () => set({ centerRemoveCornerCut: !s.centerRemoveCornerCut }),
+      centerSingleTuck: s.centerSingleTuck, onCenterSingleTuckToggle: () => set({ centerSingleTuck: !s.centerSingleTuck }),
+      centerBottomTuck3Display: this.disp(centerResult.bottomTuck3), centerBottomTuck3Value: toU(centerResult.bottomTuck3),
+      onCenterBottomTuck3Change: (e) => set({ centerBottomTuck3Override: fromU(parseFloat(e.target.value)) }),
+      onResetCenterAdvanced: () => set({ centerCornerCutOffsetOverride: null, centerRemoveCornerCut: false, centerSingleTuck: false, centerBottomTuck3Override: null }),
+
+      noseDeckPercent: noseDeckProfile.percent, noseDeckSliderValue: noseDeckProfile.sliderValue, noseDeckPercentStep: noseDeckProfile.percentStep, noseDeckLabel: noseDeckProfile.label, onNoseDeckPercentChange: noseDeckProfile.onChange,
+      noseFamilyValue: s.noseFamily, noseFamilyLabel: this.familyLabel(s.noseFamily),
+      onNoseFamilyChange: (e) => set({ noseFamily: parseFloat(e.target.value) }),
+      noseRatioLabel: `${noseRatioTop}/${100 - noseRatioTop}`,
+      noseRatioTopValue: noseRatioTop, onNoseRatioChange: (e) => set({ noseRatioTop: parseInt(e.target.value) }),
+      noseSymmetrical: s.noseSymmetrical, noseRatioOpacity: s.noseSymmetrical ? '0.4' : '1',
+      onNoseSymmetricalToggle: () => set({ noseSymmetrical: !s.noseSymmetrical }),
+      noseOpen: s.noseOpen, noseCaret: s.noseOpen ? '▾' : '▸', onToggleNoseOpen: () => set({ noseOpen: !s.noseOpen }),
+      noseAdvancedOpen: s.noseAdvancedOpen, noseAdvancedCaret: s.noseAdvancedOpen ? '▾' : '▸', onToggleNoseAdvanced: () => set({ noseAdvancedOpen: !s.noseAdvancedOpen }),
+      noseCornerCutDisplay: this.disp(noseResult.cornerCutOffset ?? 0), noseCornerCutValue: toU(noseResult.cornerCutOffset ?? 0),
+      onNoseCornerCutChange: (e) => set({ noseCornerCutOffsetOverride: fromU(parseFloat(e.target.value)) }),
+      noseRemoveCornerCut: s.noseRemoveCornerCut, noseRemoveCornerCutOpacity: s.noseRemoveCornerCut ? '0.4' : '1',
+      onNoseRemoveCornerCutToggle: () => set({ noseRemoveCornerCut: !s.noseRemoveCornerCut }),
+      noseSingleTuck: s.noseSingleTuck, onNoseSingleTuckToggle: () => set({ noseSingleTuck: !s.noseSingleTuck }),
+      noseBottomTuck3Display: this.disp(noseResult.bottomTuck3), noseBottomTuck3Value: toU(noseResult.bottomTuck3),
+      onNoseBottomTuck3Change: (e) => set({ noseBottomTuck3Override: fromU(parseFloat(e.target.value)) }),
+      onResetNoseAdvanced: () => set({ noseCornerCutOffsetOverride: null, noseRemoveCornerCut: false, noseSingleTuck: false, noseBottomTuck3Override: null }),
+
+      tailDeckPercent: tailDeckProfile.percent, tailDeckSliderValue: tailDeckProfile.sliderValue, tailDeckPercentStep: tailDeckProfile.percentStep, tailDeckLabel: tailDeckProfile.label, onTailDeckPercentChange: tailDeckProfile.onChange,
+      tailFamilyValue: s.tailFamily, tailFamilyLabel: this.familyLabel(s.tailFamily),
+      onTailFamilyChange: (e) => set({ tailFamily: parseFloat(e.target.value) }),
+      tailRatioLabel: `${tailRatioTop}/${100 - tailRatioTop}`,
+      tailRatioTopValue: tailRatioTop, onTailRatioChange: (e) => set({ tailRatioTop: parseInt(e.target.value) }),
+      tailSymmetrical: s.tailSymmetrical, tailRatioOpacity: s.tailSymmetrical ? '0.4' : '1',
+      onTailSymmetricalToggle: () => set({ tailSymmetrical: !s.tailSymmetrical, tailHardEdge: s.tailSymmetrical ? s.tailHardEdge : false }),
+      tailHardEdge: s.tailHardEdge, onTailHardEdgeToggle: () => set({ tailHardEdge: !s.tailHardEdge, tailSymmetrical: s.tailHardEdge ? s.tailSymmetrical : false }),
+      tailOpen: s.tailOpen, tailCaret: s.tailOpen ? '▾' : '▸', onToggleTailOpen: () => set({ tailOpen: !s.tailOpen }),
+      tailAdvancedOpen: s.tailAdvancedOpen, tailAdvancedCaret: s.tailAdvancedOpen ? '▾' : '▸', onToggleTailAdvanced: () => set({ tailAdvancedOpen: !s.tailAdvancedOpen }),
+      tailCornerCutDisplay: this.disp(tailResult.cornerCutOffset ?? 0), tailCornerCutValue: toU(tailResult.cornerCutOffset ?? 0),
+      onTailCornerCutChange: (e) => set({ tailCornerCutOffsetOverride: fromU(parseFloat(e.target.value)) }),
+      tailRemoveCornerCut: s.tailRemoveCornerCut, tailRemoveCornerCutOpacity: s.tailRemoveCornerCut ? '0.4' : '1',
+      onTailRemoveCornerCutToggle: () => set({ tailRemoveCornerCut: !s.tailRemoveCornerCut }),
+      tailSingleTuck: s.tailSingleTuck, onTailSingleTuckToggle: () => set({ tailSingleTuck: !s.tailSingleTuck }),
+      tailBottomTuck3Display: this.disp(tailResult.bottomTuck3), tailBottomTuck3Value: toU(tailResult.bottomTuck3),
+      onTailBottomTuck3Change: (e) => set({ tailBottomTuck3Override: fromU(parseFloat(e.target.value)) }),
+      onResetTailAdvanced: () => set({ tailCornerCutOffsetOverride: null, tailRemoveCornerCut: false, tailSingleTuck: false, tailBottomTuck3Override: null, tailHardEdge: true }),
+      tuckInputMin: tuckBounds.min, tuckInputMax: tuckBounds.max, tuckInputStep: tuckBounds.step,
+
+      ntThicknessMin: ntThicknessBounds.min, ntThicknessMax: ntThicknessBounds.max, ntThicknessStep: ntThicknessBounds.step,
+      noseThicknessDisplay: this.disp(s.noseThickness), noseThicknessValue: toU(s.noseThickness),
+      onNoseThicknessChange: (e) => set({ noseThickness: fromU(parseFloat(e.target.value)) }),
+      tailThicknessDisplay: this.disp(s.tailThickness), tailThicknessValue: toU(s.tailThickness),
+      onTailThicknessChange: (e) => set({ tailThickness: fromU(parseFloat(e.target.value)) }),
+
+      outputCards, railViewButtons, railSharedLegend, railWrapRef: this.railWrapRef, howToRead, deckMarkingCards, railMarkingCards, boardOutlinePlot, boardOutlineRows, boardOutlineLegend, railDataColumns, railDataGroups,
+      planRefSvgPaths,
+      sideRefSvgPaths,
+      showDeckMark1: s.showDeckMark1, showDeckBand1: s.showDeckBand1, showDeckMark3: s.showDeckMark3, showDeckBand2: s.showDeckBand2, showDeckMark3Full: s.showDeckMark3Full, showRailMark1: s.showRailMark1, showRailBand1: s.showRailBand1, showRailTuck1: s.showRailTuck1, showTuckBlend: s.showTuckBlend,
+      actualSizeOpen: !!actualSizeCard, actualSizeTitle: actualSizeCard ? actualSizeCard.title : '', actualSizeHtml,
+      onCloseActualSize: () => set({ actualSizeKey: null }),
+      stopClickPropagation: (e) => e.stopPropagation(),
+      onPrintActualSize: () => {
+        if (!actualSizeCard) return;
+        const html = `<!DOCTYPE html><html><head><title>${actualSizeCard.title} — Actual Size</title></head><body style="margin:0;padding:28px;font-family:Helvetica,Arial,sans-serif;color:#1c1b19;">
+          <p style="font-size:12px;color:#8a8272;margin:0 0 16px;max-width:520px;">${actualSizeCard.title} rail band cross-section, plotted at true 1:1 scale.</p>
+          ${this.plotSvgHtml(actualSizeCard.plot)}
+        </body></html>`;
+        const frame = document.createElement('iframe');
+        frame.style.position = 'fixed'; frame.style.right = '0'; frame.style.bottom = '0';
+        frame.style.width = '0'; frame.style.height = '0'; frame.style.border = '0';
+        document.body.appendChild(frame);
+        const doc = frame.contentWindow.document;
+        doc.open(); doc.write(html); doc.close();
+        setTimeout(() => { frame.contentWindow.focus(); frame.contentWindow.print(); setTimeout(() => document.body.removeChild(frame), 1000); }, 300);
+      },
+      activePage: s.activePage, pageOptions,
+      compact: !!this.props.compact, railStackGap: this.props.compact ? '4px' : '18px', rootHeight: this.props.compact ? '100%' : (s.rootAvailH > 0 ? `${s.rootAvailH}px` : '100vh'), rootRef: this.rootRef,
+      railStackDirection: isRowLayout ? 'row' : 'column', railCardWrapWidth: isRowLayout ? 'flex:1 1 0;height:100%;width:auto' : 'width:100%',
+      railStackJustify: isRowLayout ? 'space-evenly' : 'center',
+      dataTableMinWidth: this.props.compact ? '0' : '380px', viewerCardPadding: this.props.compact ? '4px' : '20px',
+      compactPosition: this.props.compact ? 'position:absolute;top:0;left:0;right:0;bottom:0;' : '',
+      rootBg: this.props.compact ? 'transparent' : this._themeVars().pageBg,
+      themeVars: this._themeVars().vars,
+      compactDataHeaderFontSize: this.props.compact ? (12 * (this.props.compactFontScale ?? 1)).toFixed(1) + 'px' : '15px',
+      compactDataGroupFontSize: this.props.compact ? (9 * (this.props.compactFontScale ?? 1)).toFixed(1) + 'px' : '11px',
+      compactDataRowFontSize: this.props.compact ? (11 * (this.props.compactFontScale ?? 1)).toFixed(1) + 'px' : '13px',
+      compactDataContainerPadding: this.props.compact ? '6px 8px' : '22px 20px',
+      compactDataContainerBg: this.props.compact ? 'transparent' : '#fff',
+      compactDataContainerBorder: this.props.compact ? 'none' : '1px solid #e4ddc9',
+      compactDataHeaderPadBottom: this.props.compact ? '4px' : '8px',
+      compactDataHeaderMarginBottom: this.props.compact ? '3px' : '6px',
+      compactDataGroupMarginBottom: this.props.compact ? '6px' : '14px',
+      compactDataGroupHeadingMarginBottom: this.props.compact ? '2px' : '6px',
+      compactDataRowPadding: this.props.compact ? '2px' : '5px',
+      isViewerPage: this.props.compact ? this.props.compactView !== 'data' : s.activePage === 'viewer',
+      isDataPage: this.props.compact ? this.props.compactView === 'data' : s.activePage === 'data',
+      isInstructionsPage: !this.props.compact && s.activePage === 'instructions', howToReadDomedOptions: lightDomedOptionsFor(s.howToReadDomed, (v) => set({ howToReadDomed: v })),
+      scrollRightRef: (el) => { if (el) requestAnimationFrame(() => { el.scrollLeft = el.scrollWidth; }); },
+      howToReadScrollRef: (el) => { if (el) requestAnimationFrame(() => {
+        const hint = howToRead.plot.scrollLeftHint;
+        const target = hint == null ? el.scrollWidth : Math.max(0, Math.min(el.scrollWidth - el.clientWidth, hint - el.clientWidth / 2));
+        el.scrollLeft = target;
+      }); },
+      copyButtonLabel: s.copyToast ? 'Copied!' : 'Copy Rail Markings',
+      onCopySpecs: () => {
+        const text = specLines.join('\n');
+        const showToast = () => { set({ copyToast: true }); setTimeout(() => this.setState({ copyToast: false }), 1800); };
+        const fallbackCopy = () => {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.focus(); ta.select();
+          try { document.execCommand('copy'); } catch (e) {}
+          document.body.removeChild(ta);
+          showToast();
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(showToast).catch(fallbackCopy);
+        } else fallbackCopy();
+      },
+      onPrintSpecs: () => {
+        const dataTableHtml = `
+          <table style="width:100%;border-collapse:collapse;font-size:11pt;">
+            <thead><tr>
+              <th style="text-align:left;padding:6px 10px;border-bottom:2px solid #1c1b19;"></th>
+              ${railDataColumns.map(col => `<th style="text-align:right;padding:6px 10px;border-bottom:2px solid #1c1b19;">${col.title}</th>`).join('')}
+            </tr></thead>
+            <tbody>
+              ${railDataGroups.map(grp => `
+                <tr><td colspan="${railDataColumns.length + 1}" style="padding:12px 10px 4px;font-size:10pt;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent);">${grp.heading}</td></tr>
+                ${grp.rows.map(row => `<tr><td style="padding:4px 10px;border-bottom:1px solid #e4ddc9;">${row.label}</td>${row.cells.map(v => `<td style="text-align:right;padding:4px 10px;border-bottom:1px solid #e4ddc9;">${v}</td>`).join('')}</tr>`).join('')}
+              `).join('')}
+            </tbody>
+          </table>`;
+        const plotsHtml = outputCards.map(card => `
+          <div style="margin-bottom:28px;page-break-inside:avoid;">
+            <h3 style="margin:0 0 2px;">${card.title}</h3>
+            <p style="color:#8a8272;font-size:11px;margin:0 0 10px;">${card.subtitle} · plotted 1:1 actual size (cropped to 7" off centerline)</p>
+            ${this.plotSvgHtml(card.plot, -7)}
+          </div>`).join('');
+        const instructionsHtml = s.printIncludeInstructions ? `
+          <div style="page-break-before:always;display:flex;justify-content:center;">
+          <div style="width:700px;zoom:0.74;">
+          <div>
+            <h2 style="margin:0 0 4px;">Understanding Rail Markings</h2>
+            <div style="display:flex;justify-content:center;margin-bottom:10px;">
+              ${this.plotSvgHtml(howToRead.plot)}
+            </div>
+            <h2 style="margin:10px 0 4px;">Turning Marks Into Rail Bands</h2>
+            <div style="font-size:12px;color:var(--accent-strong);margin-bottom:8px;line-height:1.3;">
+              Toggle on/off Markings and Bands using the check boxes.
+              <ol style="margin:8px 0 0;padding-left:18px;">
+                <li style="padding:4px 0;">Use Deck Marks (solid lines) as a guide to blend the Deck Bands into the nose and tail (dashed lines) smoothly. The green Deck Mark 3 Center (full board) line is an example of what the band would look like without tapering.</li>
+                <li style="padding:4px 0;">Use Rail Marks (solid lines) as a guide to blend the rail side of the Deck Bands toward the nose and tail (dashed line).</li>
+                <li style="padding:4px 0;">The Bottom Tuck (solid line) band should blend into a hard edge around 16-22" from the tail (dashed line).</li>
+              </ol>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-bottom:8px;font-size:11px;color:#6b6355;">
+              ${boardOutlineLegend.filter(lg => lg.checked).map(lg => `<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;border:2px solid ${lg.color};background:${lg.color};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="color:#fff;font-size:10px;font-weight:900;line-height:1;">✓</span></span>${lg.label}</span>`).join('')}
+            </div>
+            <div style="display:flex;gap:14px;align-items:flex-start;justify-content:center;">
+              <div style="position:relative;width:159px;height:450px;flex-shrink:0;">
+                <img src="assets/rail-bands-plan-bg.png" style="position:absolute;inset:0;width:100%;height:100%;">
+                <svg width="159" height="450" viewBox="0 0 3.7135 10.4996" style="position:absolute;inset:0;">
+                  ${planRefSvgPaths.map(rp => `<path d="${rp.d}" fill="none" stroke="${rp.color}" stroke-width="${rp.width}" stroke-dasharray="${rp.dash}"></path>`).join('')}
+                </svg>
+              </div>
+              <div style="position:relative;width:46px;height:450px;flex-shrink:0;">
+                <svg width="46" height="450" viewBox="3.98 0.32 1.09 9.87" style="position:absolute;inset:0;">
+                  ${sideRefSvgPaths.map(rp => `<path d="${rp.d}" fill="none" stroke="${rp.color}" stroke-width="${rp.width}" stroke-dasharray="${rp.dash}"></path>`).join('')}
+                </svg>
+              </div>
+            </div>
+            <p style="font-size:11px;color:#8a8272;font-style:italic;margin-top:8px;line-height:1.4;">This rail band calculator is intended to provide a quantitative aspect to shaping consistent surfboard rails. It's recommended to understand how rail shapes affects surfboard performance, and how these marks can result in producing your desired outcome.</p>
+          </div>
+          </div>
+          </div>` : '';
+        const html = `<!DOCTYPE html><html><head><title>Rail Band Spec</title><base href="${location.href}"><style>@page { size: portrait; }</style></head><body style="font-family:Helvetica,Arial,sans-serif;padding:32px;color:#1c1b19;max-width:700px;margin:0 auto;">
+          <h2 style="margin:0 0 4px;">Rail Band Spec</h2>
+          <p style="color:#8a8272;font-size:12px;margin:0 0 20px;">Reference calculator</p>
+          ${dataTableHtml}
+          <h2 style="margin:24px 0 4px;">Rail Band Plots (1:1 scale)</h2>
+          ${plotsHtml}
+          ${instructionsHtml}
+        </body></html>`;
+        const w = window.open('', '_blank');
+        if (w && !w.closed) { w.document.write(html); w.document.close(); setTimeout(() => { w.focus(); w.print(); }, 300); return; }
+        const frame = document.createElement('iframe');
+        frame.style.position = 'fixed'; frame.style.right = '0'; frame.style.bottom = '0';
+        frame.style.width = '0'; frame.style.height = '0'; frame.style.border = '0';
+        document.body.appendChild(frame);
+        const doc = frame.contentWindow.document;
+        doc.open(); doc.write(html); doc.close();
+        setTimeout(() => { frame.contentWindow.focus(); frame.contentWindow.print(); setTimeout(() => document.body.removeChild(frame), 1000); }, 300);
+      },
+    };
+  }
+}
+
+</script>
+</body>
+</html>

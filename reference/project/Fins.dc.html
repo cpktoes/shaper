@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  @font-face { font-family: 'Sys'; src: local('Helvetica Neue'), local('Helvetica'), local('Arial'); }
+  html, body { height: 100%; }
+  body { margin: 0; background: #f7f4ee; }
+  * { box-sizing: border-box; font-family: Helvetica, Arial, sans-serif; }
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #cbbf9e; border-radius: 4px; }
+  a { color: var(--accent); }
+  a:hover { color: var(--accent-strong); }
+</style>
+<script src="./toe-aim-tables.js"></script>
+</helmet>
+<div ref="{{ rootRef }}" style="{{ compactPosition }}{{ themeVars }}display:flex;flex-wrap:wrap;width:100%;height:{{ rootHeight }};overflow:hidden;background:{{ rootBg }};color:#1c1b19;">
+
+  <sc-if value="{{ compact }}" hint-placeholder-val="{{ false }}">
+  <div style="width:100%;height:100%;display:flex;flex-direction:column;">
+    <sc-if value="{{ compactIsDiagram }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;min-height:0;width:100%;display:flex;justify-content:center;position:relative;">
+        <div style="position:relative;width:auto;height:auto;max-width:100%;max-height:100%;aspect-ratio:530/370;">
+          <svg width="530" height="370" viewBox="0 0 530 370" style="width:100%;height:100%;display:block;">
+            <defs>
+              <marker id="arrowCompact" markerWidth="8" markerHeight="7" refX="7" refY="3.5" orient="auto-start-reverse">
+                <path d="M0,0 L8,3.5 L0,7 Z" fill="#4472C4"></path>
+              </marker>
+            </defs>
+            <path d="{{ svgOutlinePath }}" fill="var(--board-fill)" stroke="none"></path>
+            <path d="{{ svgOutlinePathOpen }}" fill="none" stroke="#1c1b19" stroke-width="2"></path>
+            <line x1="{{ svgOriginX }}" y1="{{ svgTopY }}" x2="{{ svgOriginX }}" y2="{{ svgTailY }}" stroke="#4472C4" stroke-width="1" stroke-dasharray="6 4"></line>
+            <sc-for list="{{ finMarks }}" as="mk" hint-placeholder-count="3">
+              <line x1="{{ mk.baselineX1 }}" y1="{{ mk.baselineY1 }}" x2="{{ mk.baselineX2 }}" y2="{{ mk.baselineY2 }}" stroke="var(--accent)" stroke-width="{{ mk.baseStrokeWidth }}" stroke-dasharray="{{ mk.baseStrokeDasharray }}"></line>
+              <sc-for list="{{ mk.dims }}" as="d" hint-placeholder-count="2">
+                <sc-if value="{{ d.isRailV }}" hint-placeholder-val="{{ false }}">
+                  <line x1="{{ d.x1 }}" y1="{{ d.y1 }}" x2="{{ d.x2a }}" y2="{{ d.y1 }}" stroke="#4472C4" stroke-width="1" marker-end="url(#arrowCompact)"></line>
+                  <line x1="{{ d.x1 }}" y1="{{ d.y1 }}" x2="{{ d.x2b }}" y2="{{ d.y1 }}" stroke="#4472C4" stroke-width="1" marker-end="url(#arrowCompact)"></line>
+                  <line x1="{{ d.extAX }}" y1="{{ d.extY1 }}" x2="{{ d.extAX }}" y2="{{ d.extY2 }}" stroke="#4472C4" stroke-width="1"></line>
+                  <line x1="{{ d.extBX }}" y1="{{ d.extY1 }}" x2="{{ d.extBX }}" y2="{{ d.extY2 }}" stroke="#4472C4" stroke-width="1"></line>
+                </sc-if>
+                <sc-if value="{{ d.isBelow }}" hint-placeholder-val="{{ false }}">
+                  <line x1="{{ d.extLeftX }}" y1="{{ d.extLeftY1 }}" x2="{{ d.extLeftX }}" y2="{{ d.extLeftY2 }}" stroke="#4472C4" stroke-width="1" stroke-dasharray="2 2"></line>
+                  <line x1="{{ d.extRightX }}" y1="{{ d.extRightY1 }}" x2="{{ d.extRightX }}" y2="{{ d.extRightY2 }}" stroke="#4472C4" stroke-width="1" stroke-dasharray="2 2"></line>
+                  <line x1="{{ d.dimX1 }}" y1="{{ d.dimY }}" x2="{{ d.dimX2 }}" y2="{{ d.dimY }}" stroke="#4472C4" stroke-width="1" marker-start="url(#arrowCompact)" marker-end="url(#arrowCompact)"></line>
+                </sc-if>
+                <sc-if value="{{ d.isPlain }}" hint-placeholder-val="{{ false }}">
+                  <line x1="{{ d.x1 }}" y1="{{ d.y1 }}" x2="{{ d.x2 }}" y2="{{ d.y2 }}" stroke="#4472C4" stroke-width="1" marker-start="url(#arrowCompact)" marker-end="url(#arrowCompact)"></line>
+                  <sc-if value="{{ d.extTopY }}" hint-placeholder-val="{{ false }}">
+                    <line x1="{{ d.extTopX1 }}" y1="{{ d.extTopY }}" x2="{{ d.extTopX2 }}" y2="{{ d.extTopY }}" stroke="#4472C4" stroke-width="1" stroke-dasharray="2 2"></line>
+                    <line x1="{{ d.extBotX1 }}" y1="{{ d.extBotY }}" x2="{{ d.extBotX2 }}" y2="{{ d.extBotY }}" stroke="#4472C4" stroke-width="1" stroke-dasharray="2 2"></line>
+                  </sc-if>
+                </sc-if>
+              </sc-for>
+              <circle cx="{{ mk.baselineX1 }}" cy="{{ mk.baselineY1 }}" r="3.5" fill="#1c1b19"></circle>
+              <circle cx="{{ mk.baselineX2 }}" cy="{{ mk.baselineY2 }}" r="3.5" fill="#1c1b19"></circle>
+            </sc-for>
+          </svg>
+          <div style="position:absolute;inset:0;pointer-events:none;">
+            <span style="position:absolute;left:{{ compactLengthPctLeft }};top:{{ compactLengthPctTop }};transform:translate(-50%,calc(-100% - 6px));white-space:nowrap;text-align:center;font-size:{{ compactLengthFontSize }};font-weight:800;color:#1c1b19;text-shadow: 0 0 3px var(--sidebar-text),0 0 3px var(--sidebar-text),0 0 5px var(--sidebar-text);">{{ compactLengthText }}</span>
+            <sc-for list="{{ finMarks }}" as="mk" hint-placeholder-count="3">
+              <sc-for list="{{ mk.dims }}" as="d" hint-placeholder-count="2">
+                <span style="position: absolute; left: {{ d.pctLeft }}; top: {{ d.pctTop }}; transform: translate({{ d.transformX }},-50%); font-size: {{ compactCalloutFontSize }}; font-weight: 700; line-height: 1; color: #1c1b19; white-space: nowrap; text-shadow: 0 0 3px var(--sidebar-text),0 0 3px var(--sidebar-text),0 0 5px var(--sidebar-text);">{{ d.text }}</span>
+              </sc-for>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ compactIsData }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;min-height:0;overflow-y:auto;color:#1c1b19;">
+        <div style="font-size:14px;font-weight:800;color:#1c1b19;margin-bottom:8px;">{{ summaryLengthDisplay }} · {{ summaryTailWidthDisplay }} tail @12" · {{ summaryFinSetupDisplay }}</div>
+        <sc-for list="{{ summarySections }}" as="sec" hint-placeholder-count="2">
+          <div style="margin-bottom:12px;">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:6px;">{{ sec.label }}</div>
+            <sc-for list="{{ sec.groups }}" as="grp" hint-placeholder-count="2">
+              <div style="margin-left:8px;margin-bottom:6px;">
+                <sc-for list="{{ grp.rows }}" as="row" hint-placeholder-count="2">
+                  <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:{{ compactDataRowFontSize }};">
+                    <span style="color:#8a8272;">{{ row.label }}</span>
+                    <span style="font-weight:700;color:#1c1b19;">{{ row.value }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ !compact }}" hint-placeholder-val="{{ true }}">
+  <aside style="flex:1 1 340px;max-width:400px;background:var(--sidebar-bg);color:var(--sidebar-text);padding:28px 26px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;max-height:{{ rootHeight }};">
+    <div>
+      <div style="font-size:22px;font-weight:700;">Fin Setup &amp; Placement</div>
+      <div style="font-size:12px;color:var(--sidebar-text-muted);margin-top:2px;">Quantitative reference · trailing-edge convention</div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--sidebar-divider);padding-bottom:6px;">
+      <div style="font-size:14px;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);font-weight:700;">Inputs</div>
+      <sc-if value="{{ templateAvailable }}" hint-placeholder-val="{{ false }}">
+        <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--sidebar-text-muted);cursor:pointer;white-space:nowrap;">
+          <input type="checkbox" checked="{{ importTemplate }}" onChange="{{ onToggleImportTemplate }}" style="accent-color:var(--accent);">
+          Import Template Values
+        </label>
+      </sc-if>
+    </div>
+
+    <div style="opacity:{{ manualInputsOpacity }};">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Board Length — {{ lengthDisplay }}</div>
+        <sc-if value="{{ unitsIsInches }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <select value="{{ lengthFeet }}" onChange="{{ onFeetChange }}" disabled="{{ !manualInputs }}" style="flex:1;background:var(--sidebar-input-bg);color:var(--sidebar-text);border:1px solid var(--sidebar-input-border);border-radius:6px;padding:8px;font-size:14px;">
+              <sc-for list="{{ feetOptions }}" as="f" hint-placeholder-count="9">
+                <option value="{{ f }}">{{ f }}'</option>
+              </sc-for>
+            </select>
+            <select value="{{ lengthInches }}" onChange="{{ onInchesChange }}" disabled="{{ !manualInputs }}" style="flex:1;background:var(--sidebar-input-bg);color:var(--sidebar-text);border:1px solid var(--sidebar-input-border);border-radius:6px;padding:8px;font-size:14px;">
+              <sc-for list="{{ inchOptions }}" as="i" hint-placeholder-count="12">
+                <option value="{{ i }}">{{ i }}"</option>
+              </sc-for>
+            </select>
+          </div>
+          <input type="range" min="48" max="144" step="1" value="{{ lengthTotalIn }}" onChange="{{ onLengthSlider }}" disabled="{{ !manualInputs }}" style="width:100%;accent-color:var(--accent);">
+        </sc-if>
+        <sc-if value="{{ unitsIsCm }}" hint-placeholder-val="{{ false }}">
+          <input type="number" min="{{ lengthCmInputMin }}" max="{{ lengthCmInputMax }}" step="{{ lengthCmInputStep }}" value="{{ lengthCmInputValue }}" onChange="{{ onLengthCmChange }}" disabled="{{ !manualInputs }}" style="width:100%;margin-bottom:8px;background:var(--sidebar-input-bg);color:var(--sidebar-text);border:1px solid var(--sidebar-input-border);border-radius:6px;padding:8px;font-size:14px;">
+          <input type="range" min="{{ lengthCmInputMin }}" max="{{ lengthCmInputMax }}" step="0.5" value="{{ lengthCmInputValue }}" onChange="{{ onLengthCmChange }}" disabled="{{ !manualInputs }}" style="width:100%;accent-color:var(--accent);">
+        </sc-if>
+        
+    </div>
+
+    <div style="opacity:{{ manualInputsOpacity }};">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Tail Width @ 12" — {{ w12Display }}</div>
+        <input type="range" min="{{ w12InputMin }}" max="{{ w12InputMax }}" step="{{ w12InputStep }}" value="{{ w12InputValue }}" onChange="{{ onW12Change }}" disabled="{{ !manualInputs }}" style="width:100%;accent-color:var(--accent);">
+    </div>
+
+    <div style="opacity:{{ manualInputsOpacity }};">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Tail Shape — {{ tailShapeDisplay }}</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;pointer-events:{{ tailShapePointerEvents }};">
+          <sc-for list="{{ tailShapeOptions }}" as="opt" hint-placeholder-count="5">
+            <button onClick="{{ opt.onSelect }}" style="{{ opt.buttonStyle }}">
+              <svg width="34" height="34" viewBox="0 0 64 64">
+                <path d="{{ opt.iconPath }}" fill="none" stroke="{{ opt.strokeColor }}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+                <line x1="32" y1="6" x2="32" y2="52" stroke="{{ opt.strokeColor }}" stroke-width="1.5" opacity="0.5"></line>
+              </svg>
+              <span style="font-size:10px;font-weight:700;">{{ opt.label }}</span>
+            </button>
+          </sc-for>
+        </div>
+    </div>
+
+    <div style="font-size:14px;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);font-weight:700;border-bottom:1px solid var(--sidebar-divider);padding-bottom:6px;margin-top:6px;">Fin Selection</div>
+
+    <div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Fin Setup</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
+        <sc-for list="{{ finSetupOptions }}" as="opt" hint-placeholder-count="5">
+          <button onClick="{{ opt.onSelect }}" style="{{ opt.buttonStyle }}">
+            <svg width="34" height="34" viewBox="0 0 64 64">
+              <path d="{{ opt.iconPath }}" fill="none" stroke="{{ opt.strokeColor }}" stroke-width="2.5" stroke-linecap="round"></path>
+              <sc-for list="{{ opt.ticks }}" as="t" hint-placeholder-count="3">
+                <path d="{{ t.d }}" fill="{{ opt.strokeColor }}"></path>
+              </sc-for>
+            </svg>
+            <span style="font-size:10px;font-weight:700;">{{ opt.label }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+
+    <sc-if value="{{ isThruster }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Thruster Model</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <sc-for list="{{ frontModelOptions }}" as="opt" hint-placeholder-count="4">
+            <button onClick="{{ opt.onSelect }}" style="{{ opt.style }}">{{ opt.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isQuad }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Quad Model</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <sc-for list="{{ quadRearModelOptions }}" as="opt" hint-placeholder-count="4">
+            <button onClick="{{ opt.onSelect }}" style="{{ opt.style }}">{{ opt.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <sc-if value="{{ quadCenterFinAvailable }}" hint-placeholder-val="{{ true }}">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sidebar-text-secondary);">
+          <input type="checkbox" checked="{{ quadCenterFinOn }}" onChange="{{ onQuadCenterFinToggle }}">
+          Add 5th/Center fin
+        </label>
+      </sc-if>
+      <sc-if value="{{ isLongboardQuad }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11px;color:var(--sidebar-text-muted);">Longboard quad model has no center-fin option.</div>
+      </sc-if>
+    </sc-if>
+
+    <sc-if value="{{ isTwin }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Twin Template</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <sc-for list="{{ twinTypeOptions }}" as="opt" hint-placeholder-count="3">
+              <button onClick="{{ opt.onSelect }}" style="{{ opt.style }}">{{ opt.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSingle }}" hint-placeholder-val="{{ false }}">
+      
+    </sc-if>
+
+    <sc-if value="{{ showAdvanced }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <button onClick="{{ onToggleAdvanced }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:transparent;border:none;color:var(--accent);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;padding:0 0 6px 12px;border-bottom:1px solid var(--sidebar-divider);">
+          <span>Advanced</span><span>{{ advancedCaret }}</span>
+        </button>
+
+        <sc-if value="{{ advancedOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:18px;margin-top:14px;padding-left:12px;">
+
+            <sc-if value="{{ hasCenterSection }}" hint-placeholder-val="{{ false }}">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--sidebar-text-secondary);margin-bottom:10px;">{{ centerSectionLabel }}</div>
+                <div style="margin-bottom:10px;">
+                  <div style="font-size:11px;color:var(--sidebar-text-muted);margin-bottom:6px;">{{ centerBaseLenFieldLabel }}</div>
+                  <sc-if value="{{ baseLenCenterEditing }}" hint-placeholder-val="{{ false }}">
+                    <input type="number" min="{{ baseLenCenterInputMin }}" max="{{ baseLenCenterInputMax }}" step="{{ baseLenCenterInputStep }}" value="{{ baseLenCenterInputValue }}" onChange="{{ onBaseLenCenterChange }}" style="width:100%;background:var(--sidebar-input-bg);color:var(--sidebar-text);border:1px solid var(--sidebar-input-border);border-radius:6px;padding:6px 8px;font-size:13px;">
+                  </sc-if>
+                  <sc-if value="{{ baseLenCenterNotEditing }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                      <span style="font-size:14px;font-weight:700;">{{ baseLenCenterLabelText }}</span>
+                      <button onClick="{{ onToggleBaseLenCenterEdit }}" style="background:transparent;border:1px solid #6b6355;color:var(--sidebar-text);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">Override</button>
+                    </div>
+                  </sc-if>
+                </div>
+                <div>
+                  <div style="font-size:11px;color:var(--sidebar-text-muted);margin-bottom:6px;">Forward/Aft position — {{ centerFinalDisplay }}</div>
+                  <input type="range" min="{{ centerPositionInputMin }}" max="{{ centerPositionInputMax }}" step="{{ centerPositionInputStep }}" value="{{ centerPositionInputValue }}" onChange="{{ onCenterPositionChange }}" style="width:100%;accent-color:var(--accent);">
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Drivey (near tail)</span><span>Loose (far from tail)</span></div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ hasForwardSection }}" hint-placeholder-val="{{ false }}">
+              <div style="border-top:1px solid var(--sidebar-divider);padding-top:16px;">
+                <div style="font-size:12px;font-weight:700;color:var(--sidebar-text-secondary);margin-bottom:10px;">Forward Fins — {{ forwardSectionLabel }}</div>
+                <div style="margin-bottom:10px;">
+                  <div style="font-size:11px;color:var(--sidebar-text-muted);margin-bottom:6px;">Fin Base Length</div>
+                  <sc-if value="{{ baseLenForwardEditing }}" hint-placeholder-val="{{ false }}">
+                    <input type="number" min="{{ baseLenForwardInputMin }}" max="{{ baseLenForwardInputMax }}" step="{{ baseLenForwardInputStep }}" value="{{ baseLenForwardInputValue }}" onChange="{{ onBaseLenForwardChange }}" style="width:100%;background:var(--sidebar-input-bg);color:var(--sidebar-text);border:1px solid var(--sidebar-input-border);border-radius:6px;padding:6px 8px;font-size:13px;">
+                  </sc-if>
+                  <sc-if value="{{ baseLenForwardNotEditing }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                      <span style="font-size:14px;font-weight:700;">{{ baseLenForwardLabelText }}</span>
+                      <button onClick="{{ onToggleBaseLenForwardEdit }}" style="background:transparent;border:1px solid #6b6355;color:var(--sidebar-text);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">Override</button>
+                    </div>
+                  </sc-if>
+                </div>
+                <div style="margin-bottom:10px;">
+                  <div style="font-size:11px;color:var(--sidebar-text-muted);margin-bottom:6px;">Forward/Aft position — {{ frontFinalDisplay }} (off-rail unchanged)</div>
+                  <input type="range" min="{{ forwardPositionInputMin }}" max="{{ forwardPositionInputMax }}" step="{{ forwardPositionInputStep }}" value="{{ forwardPositionInputValue }}" onChange="{{ onForwardPositionChange }}" style="width:100%;accent-color:var(--accent);">
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Loose (fwd)</span><span>Drivey (back)</span></div>
+                </div>
+                <div>
+                  <div style="font-size:11px;color:var(--sidebar-text-muted);margin-bottom:6px;">Toe-in — {{ forwardToeDisplay }}</div>
+                  <input type="range" min="{{ forwardToeInputMin }}" max="{{ forwardToeInputMax }}" step="{{ forwardToeInputStep }}" value="{{ forwardToeInputValue }}" onChange="{{ onForwardToeChange }}" style="width:100%;accent-color:var(--accent);">
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Drivey (less)</span><span>Loose (more)</span></div>
+                </div>
+                <sc-if value="{{ showFrontToeTableLink }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ onOpenToeTable }}" style="margin-top:8px;background:transparent;border:none;color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;padding:0;text-decoration:underline;">View precise McKee toe-in aim tables ⤢</button>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ hasRearSection }}" hint-placeholder-val="{{ false }}">
+              <div style="border-top:1px solid var(--sidebar-divider);padding-top:16px;">
+                <div style="font-size:12px;font-weight:700;color:var(--sidebar-text-secondary);margin-bottom:10px;">Rear Fins — {{ rearSectionLabel }}</div>
+                <div style="margin-bottom:10px;">
+                  <div style="font-size:11px;color:var(--sidebar-text-muted);margin-bottom:6px;">Fin Base Length</div>
+                  <sc-if value="{{ baseLenRearEditing }}" hint-placeholder-val="{{ false }}">
+                    <input type="number" min="{{ baseLenRearInputMin }}" max="{{ baseLenRearInputMax }}" step="{{ baseLenRearInputStep }}" value="{{ baseLenRearInputValue }}" onChange="{{ onBaseLenRearChange }}" style="width:100%;background:var(--sidebar-input-bg);color:var(--sidebar-text);border:1px solid var(--sidebar-input-border);border-radius:6px;padding:6px 8px;font-size:13px;">
+                  </sc-if>
+                  <sc-if value="{{ baseLenRearNotEditing }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                      <span style="font-size:14px;font-weight:700;">{{ baseLenRearLabelText }}</span>
+                      <button onClick="{{ onToggleBaseLenRearEdit }}" style="background:transparent;border:1px solid #6b6355;color:var(--sidebar-text);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">Override</button>
+                    </div>
+                  </sc-if>
+                </div>
+                <sc-if value="{{ showRearOffTailOverride }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-bottom:10px;">
+                    <div style="font-size:11px;color:var(--sidebar-text-muted);margin-bottom:6px;">Rear Off-Tail Position (½ front off-tail + 1/4")</div>
+                    <sc-if value="{{ quadRearOffTailEditing }}" hint-placeholder-val="{{ false }}">
+                      <input type="number" min="{{ quadRearOffTailInputMin }}" max="{{ quadRearOffTailInputMax }}" step="{{ quadRearOffTailInputStep }}" value="{{ quadRearOffTailInputValue }}" onChange="{{ onQuadRearOffTailChange }}" style="width:100%;background:var(--sidebar-input-bg);color:var(--sidebar-text);border:1px solid var(--sidebar-input-border);border-radius:6px;padding:6px 8px;font-size:13px;">
+                    </sc-if>
+                    <sc-if value="{{ quadRearOffTailNotEditing }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:14px;font-weight:700;">{{ quadRearOffTailLabelText }}</span>
+                        <button onClick="{{ onToggleQuadRearOffTailEdit }}" style="background:transparent;border:1px solid #6b6355;color:var(--sidebar-text);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;">Override</button>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+                <div style="margin-bottom:10px;">
+                  <div style="font-size:11px;color:var(--sidebar-text-muted);margin-bottom:6px;">Forward/Aft position — {{ pairFinalDisplay }} (off-rail unchanged)</div>
+                  <input type="range" min="{{ rearPositionInputMin }}" max="{{ rearPositionInputMax }}" step="{{ rearPositionInputStep }}" value="{{ rearPositionInputValue }}" onChange="{{ onRearPositionChange }}" style="width:100%;accent-color:var(--accent);">
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Loose (fwd)</span><span>Drivey (back)</span></div>
+                </div>
+                <sc-if value="{{ showRearOffRailSlider }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-bottom:10px;">
+                    <div style="font-size:11px;color:var(--sidebar-text-muted);margin-bottom:6px;">Off-Rail — {{ quadRearOffRailDisplayValue }}</div>
+                    <input type="range" min="{{ quadRearOffRailInputMin }}" max="{{ quadRearOffRailInputMax }}" step="{{ quadRearOffRailInputStep }}" value="{{ quadRearOffRailInputValue }}" onChange="{{ onQuadRearOffRailChange }}" style="width:100%;accent-color:var(--accent);">
+                  </div>
+                </sc-if>
+                <div>
+                  <div style="font-size:11px;color:var(--sidebar-text-muted);margin-bottom:6px;">Toe-in — {{ rearToeDisplay }}</div>
+                  <input type="range" min="{{ rearToeInputMin }}" max="{{ rearToeInputMax }}" step="{{ rearToeInputStep }}" value="{{ rearToeInputValue }}" onChange="{{ onRearToeChange }}" style="width:100%;accent-color:var(--accent);">
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Drivey (less)</span><span>Loose (more)</span></div>
+                </div>
+                <sc-if value="{{ showRearToeTableLink }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ onOpenToeTable }}" style="margin-top:8px;background:transparent;border:none;color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;padding:0;text-decoration:underline;">View precise McKee toe-in aim tables ⤢</button>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <button onClick="{{ onResetAdvanced }}" style="border-top:1px solid var(--sidebar-divider);padding-top:16px;margin-top:2px;background:transparent;border-left:none;border-right:none;border-bottom:none;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;text-align:left;">
+              ↺ Reset Advanced Settings
+            </button>
+
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <div style="margin-top:auto;">
+      <button onClick="{{ onToggleGlobalSettings }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:transparent;border:none;color:var(--accent);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;padding:0 0 6px 12px;border-bottom:1px solid var(--sidebar-divider);">
+        <span>Settings</span><span>{{ globalSettingsCaret }}</span>
+      </button>
+      <sc-if value="{{ globalSettingsOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:12px;padding-left:12px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sidebar-text-secondary);cursor:pointer;margin-bottom:16px;">
+            <input type="checkbox" checked="{{ showCallouts }}" onChange="{{ onToggleCallouts }}">Fin Placement Callouts
+          </label>
+
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="display:flex;gap:8px;padding-top:12px;">
+      <button onClick="{{ onCopySpecs }}" style="flex:1;background:var(--accent);color:#1c1b19;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;">
+        {{ copyButtonLabel }}
+      </button>
+      <button onClick="{{ onPrintSpecs }}" style="flex:1;background:transparent;color:var(--sidebar-text);border:1px solid #6b6355;border-radius:8px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;">Print Fins &amp; Data</button>
+    </div>
+  </aside>
+
+  <main style="flex:3 1 480px;padding:8px 8px;display:flex;flex-direction:column;gap:0;min-width:0;">
+    <div style="display:flex;gap:6px;flex:none;">
+      <sc-for list="{{ viewTabs }}" as="opt" hint-placeholder-count="2">
+        <button onClick="{{ opt.onSelect }}" style="{{ opt.style }}">{{ opt.label }}</button>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ isViewerTab }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;min-height:0;max-height:{{ panelMaxHeight }};overflow:hidden;background: #fff; border: 1px solid #e4ddc9; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center;">
+
+        <div style="font-size: 20px; font-weight: 800; align-self: flex-start; margin-bottom: 12px; text-align: left; color: #1c1b19">Fin Viewer</div>
+        <div style="position:relative;flex:1;min-height:0;width:100%;display:flex;justify-content:center;">
+        <div style="position:relative;width:auto;height:auto;max-width:100%;max-height:100%;aspect-ratio:530/370;">
+        <svg width="530" height="370" viewBox="0 0 530 370" style="width:100%;height:100%;display:block;">
+          <defs>
+            <marker id="arrowViewer" markerWidth="8" markerHeight="7" refX="7" refY="3.5" orient="auto-start-reverse">
+              <path d="M0,0 L8,3.5 L0,7 Z" fill="#4472C4"></path>
+            </marker>
+          </defs>
+          <path d="{{ svgOutlinePath }}" fill="var(--board-fill)" stroke="none"></path>
+          <path d="{{ svgOutlinePathOpen }}" fill="none" stroke="#1c1b19" stroke-width="2"></path>
+          <line x1="{{ svgOriginX }}" y1="{{ svgTopY }}" x2="{{ svgOriginX }}" y2="{{ svgTailY }}" stroke="#4472C4" stroke-width="1" stroke-dasharray="6 4"></line>
+          <line x1="{{ w12LineX1 }}" y1="{{ w12LineY }}" x2="{{ w12LineX2 }}" y2="{{ w12LineY }}" stroke="#4472C4" stroke-width="1" stroke-dasharray="6 4"></line>
+
+          <sc-for list="{{ finMarks }}" as="mk" hint-placeholder-count="3">
+            <line x1="{{ mk.baselineX1 }}" y1="{{ mk.baselineY1 }}" x2="{{ mk.baselineX2 }}" y2="{{ mk.baselineY2 }}" stroke="var(--accent)" stroke-width="{{ mk.baseStrokeWidth }}" stroke-dasharray="{{ mk.baseStrokeDasharray }}"></line>
+            <sc-if value="{{ showCallouts }}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{ mk.dims }}" as="d" hint-placeholder-count="2">
+              <sc-if value="{{ d.isRailV }}" hint-placeholder-val="{{ false }}">
+                <line x1="{{ d.x1 }}" y1="{{ d.y1 }}" x2="{{ d.x2a }}" y2="{{ d.y1 }}" stroke="#4472C4" stroke-width="1" marker-end="url(#arrowViewer)"></line>
+                <line x1="{{ d.x1 }}" y1="{{ d.y1 }}" x2="{{ d.x2b }}" y2="{{ d.y1 }}" stroke="#4472C4" stroke-width="1" marker-end="url(#arrowViewer)"></line>
+                <line x1="{{ d.extAX }}" y1="{{ d.extY1 }}" x2="{{ d.extAX }}" y2="{{ d.extY2 }}" stroke="#4472C4" stroke-width="1"></line>
+                <line x1="{{ d.extBX }}" y1="{{ d.extY1 }}" x2="{{ d.extBX }}" y2="{{ d.extY2 }}" stroke="#4472C4" stroke-width="1"></line>
+              </sc-if>
+              <sc-if value="{{ d.isBelow }}" hint-placeholder-val="{{ false }}">
+                <line x1="{{ d.extLeftX }}" y1="{{ d.extLeftY1 }}" x2="{{ d.extLeftX }}" y2="{{ d.extLeftY2 }}" stroke="#4472C4" stroke-width="1" stroke-dasharray="2 2"></line>
+                <line x1="{{ d.extRightX }}" y1="{{ d.extRightY1 }}" x2="{{ d.extRightX }}" y2="{{ d.extRightY2 }}" stroke="#4472C4" stroke-width="1" stroke-dasharray="2 2"></line>
+                <line x1="{{ d.dimX1 }}" y1="{{ d.dimY }}" x2="{{ d.dimX2 }}" y2="{{ d.dimY }}" stroke="#4472C4" stroke-width="1" marker-start="url(#arrowViewer)" marker-end="url(#arrowViewer)"></line>
+              </sc-if>
+              <sc-if value="{{ d.isPlain }}" hint-placeholder-val="{{ false }}">
+                <line x1="{{ d.x1 }}" y1="{{ d.y1 }}" x2="{{ d.x2 }}" y2="{{ d.y2 }}" stroke="#4472C4" stroke-width="1" marker-start="url(#arrowViewer)" marker-end="url(#arrowViewer)"></line>
+                <sc-if value="{{ d.extTopY }}" hint-placeholder-val="{{ false }}">
+                  <line x1="{{ d.extTopX1 }}" y1="{{ d.extTopY }}" x2="{{ d.extTopX2 }}" y2="{{ d.extTopY }}" stroke="#4472C4" stroke-width="1" stroke-dasharray="2 2"></line>
+                  <line x1="{{ d.extBotX1 }}" y1="{{ d.extBotY }}" x2="{{ d.extBotX2 }}" y2="{{ d.extBotY }}" stroke="#4472C4" stroke-width="1" stroke-dasharray="2 2"></line>
+                </sc-if>
+              </sc-if>
+            </sc-for>
+            </sc-if>
+            <circle cx="{{ mk.baselineX1 }}" cy="{{ mk.baselineY1 }}" r="3.5" fill="#1c1b19"></circle>
+            <circle cx="{{ mk.baselineX2 }}" cy="{{ mk.baselineY2 }}" r="3.5" fill="#1c1b19"></circle>
+          </sc-for>
+        </svg>
+        <div style="position:absolute;inset:0;pointer-events:none;">
+          <span style="position:absolute;left:{{ w12ValuePctLeft }};top:{{ w12LabelPctTop }};transform:translate(-100%,-50%);white-space:nowrap;padding-right:6px;line-height:1;font-size:14px;font-weight:700;color:#3a5f9e;text-transform:uppercase;letter-spacing:0.5px;text-shadow: 0 0 3px var(--sidebar-text),0 0 3px var(--sidebar-text);">{{ w12Display }}</span>
+          <span style="position:absolute;left:{{ w12NamePctLeft }};top:{{ w12LabelPctTop }};transform:translate(0,-50%);white-space:nowrap;padding-left:6px;line-height:1;font-size:13px;font-weight:700;color:#3a5f9e;text-transform:uppercase;letter-spacing:0.5px;text-shadow: 0 0 3px var(--sidebar-text),0 0 3px var(--sidebar-text);">Tail @ 12"</span>
+          <sc-if value="{{ showCallouts }}" hint-placeholder-val="{{ true }}">
+          <sc-for list="{{ finMarks }}" as="mk" hint-placeholder-count="3">
+            <sc-for list="{{ mk.dims }}" as="d" hint-placeholder-count="2">
+              <span style="position: absolute; left: {{ d.pctLeft }}; top: {{ d.pctTop }}; transform: translate({{ d.transformX }},-50%); font-size: 14px; font-weight: 700; line-height: 1; color: #1c1b19; white-space: nowrap; text-shadow: 0 0 3px var(--sidebar-text),0 0 3px var(--sidebar-text),0 0 5px var(--sidebar-text);">{{ d.text }}</span>
+            </sc-for>
+          </sc-for>
+          </sc-if>
+        </div>
+        </div>
+        </div>
+        <div style="font-size:11px;color:#8a8272;display:flex;flex-direction:column;gap:4px;margin-top:4px;flex:none;">
+          <span><span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: rgb(28, 27, 25); margin-right: 4px;"></span>Trailing &amp; Leading Edges<br></span>
+          <sc-for list="{{ legendBaseLens }}" as="bl" hint-placeholder-count="2">
+            <span style="display:flex;align-items:center;">
+              <svg width="16" height="4" style="margin-right:4px;"><line x1="0" y1="2" x2="16" y2="2" stroke="var(--accent)" stroke-width="3" stroke-dasharray="{{ bl.dasharray }}"></line></svg>
+              Base Length ({{ bl.label }}):&nbsp;{{ bl.value }}
+            </span>
+          </sc-for>
+        </div>
+        </div>
+    </sc-if>
+
+    <sc-if value="{{ isDataTab }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;min-height:0;max-height:{{ panelMaxHeight }};overflow-y:auto;background: #fff; border: 1px solid #e4ddc9; border-radius: 12px; padding: 22px 20px; color: #1c1b19;">
+          <div style="font-size: 20px; font-weight: 800; color: #1c1b19; margin-bottom: 10px; letter-spacing: 0.2px">{{ summaryLengthDisplay }} · {{ summaryTailWidthDisplay }} tail @12" · {{ summaryFinSetupDisplay }} · {{ summaryTailShapeDisplay }} tail<sc-if value="{{ isModified }}" hint-placeholder-val="{{ false }}"> · <span style="color:var(--accent);">Modified</span></sc-if></div>
+          <div style="font-size:13px;font-weight:400;color:var(--accent-strong);margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid #e4ddc9;">{{ modelHeader }}</div>
+          <sc-for list="{{ summarySections }}" as="sec" hint-placeholder-count="2">
+            <div style="margin-bottom:16px;">
+              <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 8px">{{ sec.label }}</div>
+              <sc-for list="{{ sec.groups }}" as="grp" hint-placeholder-count="2">
+                <div style="margin-left:12px;margin-bottom:8px;">
+                  <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #a49b86; margin-bottom: 4px; border-bottom: 1px solid #e4ddc9; padding-bottom: 3px;">{{ grp.heading }}</div>
+                  <sc-for list="{{ grp.rows }}" as="row" hint-placeholder-count="2">
+                    <div style="{{ row.rowStyle }}margin-left:10px;">
+                      <span style="{{ row.labelStyle }}">{{ row.label }}</span>
+                      <span style="{{ row.valueStyle }}">{{ row.value }}</span>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ grp.fullSpreadNote }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;justify-content:space-between;font-size:14px;padding:5px 0;margin-left:22px;">
+                      <span style="color:#8a8272;">Full Spread <em>(*Full spread may be &gt;2x due to 1/16" rounding)</em></span>
+                      <span style="font-weight:700;color:#1c1b19;">{{ grp.fullSpreadNote }}</span>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+
+
+        </div>
+    </sc-if>
+
+    <sc-if value="{{ isInfoTab }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;min-height:0;max-height:{{ panelMaxHeight }};overflow-y:auto;background: #fff; border: 1px solid #e4ddc9; border-radius: 12px; padding: 22px 20px; color: #1c1b19;">
+          <div style="font-size:20px;font-weight:800;color:#1c1b19;margin-bottom:12px;">Model Info</div>
+          <div style="font-size:13px;color:#8a8272;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #e4ddc9;">Reference note on where each model's placement guidance comes from.</div>
+
+          <div style="margin-bottom:18px;">
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:8px;">Convention</div>
+            <div style="font-size:14px;color:#1c1b19;line-height:1.6;">All positions use the trailing-edge convention: off-tail and off-rail are measured to the trailing edge of the fin base, toe-in is the leading edge's inward offset from that trailing edge (regardless of fin base length), rears are often defined by a trailing edge spread rather than off-tail measurement, and every value is rounded to the nearest 1/16" (0.1 cm).</div>
+          </div>
+
+          <div style="margin-bottom:18px;">
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:8px;">SINGLE MODEL</div>
+            <div style="font-size:14px;color:#1c1b19;line-height:1.6;">Single fin box placement comes from an established fixed range rather than a length equation — the default value is in a common working range (4 1/2" to 6") and can fine tuned by the forward/aft slider in the advanced menu, rather than solved for.</div>
+          </div>
+
+          <div style="margin-bottom:18px;">
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:8px;">TWIN MODELS</div>
+            <div style="font-size:14px;color:#1c1b19;line-height:1.6;">
+              <div style="margin-bottom:8px;"><strong>Modern/Upright</strong> — Good for shorter base (generally ≤ 5 1/2"), more upright twin fins.</div>
+              <div style="margin-bottom:8px;"><strong>Keel</strong> — Use for wide base (generally &gt; 5 1/2"), retro-style twin fins.</div>
+              <div style="margin-bottom:8px;"><strong>Upright + Trailer</strong> — Typically used with shorter-base, thruster-like, twins with a small trailer fin for added hold and drive.</div>
+              <div>All twin placements come from established fixed ranges rather than a length equation — they're centered in a working range (Modern = 7" to 8", Keel = 6" to 6 1/2", and Upright+Trailer = at ~10")&nbsp;and can be adjusted by the forward/aft slider in the advanced menu, rather than solved for.</div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:18px;">
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:8px;">2+1 MODEL</div>
+            <div style="font-size:14px;color:#1c1b19;line-height:1.6;">The center fin box placement follows the Single Model above. Side bite placements come from an established fixed range, scaled off a length anchor of 9' rather than a length equation — the default value is centered in a working range (15" to 16 1/2") and can be adjusted by the forward/aft slider in the advanced menu, rather than solved for.</div>
+          </div>
+
+          <div style="margin-bottom:18px;">
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:8px;">Thruster &amp; Quad Front Models</div>
+            <div style="font-size:14px;color:#1c1b19;line-height:1.6;">
+              <div style="margin-bottom:8px;"><strong>Proportional</strong> — A straightforward linear length-scaled placement based on a smaller range of short board. It's the simplest of the four and the least tuned for longer boards.</div>
+              <div style="margin-bottom:8px;"><strong>Basic (Half Rate)</strong> — Also scales linearly with length, but more slowly.&nbsp; It follows a "half rate convention" based on the idea that stance width scales slower than board length.</div>
+              <div><strong>McKee Shortboard / Gun</strong> — Fitted to Greg McKee's published fin-placement guidance for shortboards and guns respectively. Also follows a "half rate" style convention.&nbsp;</div>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:8px;">Quad Rear Models</div>
+            <div style="font-size:14px;color:#1c1b19;line-height:1.6;">
+              <div style="margin-bottom:8px;"><b>Basic: Spread</b>&nbsp;—&nbsp;Uses the front Basic Model as input. Rears are placed at 1/2 the front distance from tail as default. Rears use common spread values which tend to put the fins closer to the stringer than the Off-Rail Model, resulting in a looser board.&nbsp;<br></div><div style="margin-bottom:8px;"><b>Basic: Off-Rail</b>&nbsp;—&nbsp;Uses the front Basic Model as input. Rears are placed at 1/2 the front distance +1/4" from tail as default. Rears use common Off-Rail values which tend to put the fins closer to the rail (wider spread) than the Spread Model, resulting in a board with extra drive. The slightly farther forward rear fins help to avoid feeling tracky.&nbsp;</div>
+              <div style="margin-bottom:8px;"><strong>McKee SB/Gun</strong> — McKee's shortboard/gun rear-pair guidance, paired with the matching front model.</div>
+              <div><strong>McKee Longboard</strong> — McKee's dedicated longboard front-and-rear guidance, best suited to boards 8' and up.</div>
+            </div>
+          </div>
+        </div>
+    </sc-if>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ toeTableOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCloseToeTable }}" style="position:fixed;inset:0;background:rgba(28,27,25,0.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px;">
+      <div onClick="{{ stopClick }}" style="background:#fff;border-radius:12px;padding:24px;max-width:92vw;max-height:85vh;overflow:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:6px;">
+          <div style="font-size:14px;font-weight:800;color:#1c1b19;">McKee Toe-In Aim Tables — nearest to {{ toeBoardCaption }}</div>
+          <button onClick="{{ onCloseToeTable }}" style="background:#1c1b19;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">Close</button>
+        </div>
+        <div style="font-size:12px;color:#8a8272;margin-bottom:14px;">Distance off the stringer at the nose. Highlighted column is nearest your tail width; row {{ toeTable.rowLabel }} is nearest your board length (rows 72" and up are identical).</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px;color:#1c1b19;">Front-fin aim distance (in)</div>
+        <div style="overflow-x:auto;margin-bottom:18px;">
+          <table style="border-collapse:collapse;font-size:12px;">
+            <tr><th style="padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;">L\W</th>
+              <sc-for list="{{ toeTable.cols }}" as="c" hint-placeholder-count="10"><th style="{{ c.hiStyle }}">{{ c.value }}</th></sc-for>
+            </tr>
+            <tr><td style="padding:4px 8px;border:1px solid #e4ddc9;font-weight:700;">{{ toeTable.rowLabel }}</td>
+              <sc-for list="{{ toeTable.front }}" as="c" hint-placeholder-count="10"><td style="{{ c.hiStyle }}">{{ c.value }}</td></sc-for>
+            </tr>
+          </table>
+        </div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px;color:#1c1b19;">Rear-fin aim distance (in)</div>
+        <div style="overflow-x:auto;">
+          <table style="border-collapse:collapse;font-size:12px;">
+            <tr><th style="padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;">L\W</th>
+              <sc-for list="{{ toeTable.cols }}" as="c" hint-placeholder-count="10"><th style="{{ c.hiStyle }}">{{ c.value }}</th></sc-for>
+            </tr>
+            <tr><td style="padding:4px 8px;border:1px solid #e4ddc9;font-weight:700;">{{ toeTable.rowLabel }}</td>
+              <sc-for list="{{ toeTable.rear }}" as="c" hint-placeholder-count="10"><td style="{{ c.hiStyle }}">{{ c.value }}</td></sc-for>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {}, &quot;brandName&quot;: {&quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;Chris Kontoes&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Branding&quot;},&quot;seed&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;seedVersion&quot;:{&quot;editor&quot;:null,&quot;default&quot;:0,&quot;tsType&quot;:&quot;number&quot;},&quot;onSync&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;(v:any)=&gt;void&quot;},&quot;templateValues&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;compact&quot;:{&quot;editor&quot;:null,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;compactView&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;diagram&quot;,&quot;tsType&quot;:&quot;'diagram'|'data'&quot;}}">
+const SCALE = 14, ORIGIN_X = 260, TAIL_Y = 320, VIEW_IN = 20, VIEW_TOP_MARGIN = 0.6;
+// compact/compactView: embedding-only display modes (used by the Summary dashboard) — 'diagram' shows just
+// the outline + fin marks (no callouts, no aside/tabs), 'data' shows just the placement numbers.
+
+class Component extends DCLogic {
+  _themeVars() {
+    const raw = (this.props && this.props.accentColor) || '#c98d3a';
+    let h = String(raw).replace('#','');
+    if (h.length === 3) h = h.split('').map(c=>c+c).join('');
+    const r=parseInt(h.slice(0,2),16)||201, g=parseInt(h.slice(2,4),16)||141, b=parseInt(h.slice(4,6),16)||58;
+    const mix=t=>`rgb(${Math.round(r+(255-r)*t)},${Math.round(g+(255-g)*t)},${Math.round(b+(255-b)*t)})`;
+    const dk=t=>`rgb(${Math.round(r*(1-t))},${Math.round(g*(1-t))},${Math.round(b*(1-t))})`;
+    return { vars:`--accent:${raw};--accent-strong:${dk(0.18)};--board-fill:${mix(0.86)};`, pageBg:mix(0.93) };
+  }
+  state = {
+    lengthIn: 72, w12: 13, tailShape: 'squash', finSetup: 'thruster',
+    units: 'in', globalSettingsOpen: false, frontModel: 'mckeeSB',
+    quadRearModel: 'mckeeSB', twinType: 'upright',
+    baseLenTwin: 4.5, quadCenterFinOn: false,
+    advancedOpen: false,
+    baseLenForward: 4.5, baseLenForwardOverridden: false, baseLenForwardEditing: false,
+    baseLenRear: 4.5, baseLenRearOverridden: false, baseLenRearEditing: false,
+    baseLenCenter: 4.5, baseLenCenterOverridden: false, baseLenCenterEditing: false,
+    centerPositionOffset: 0, forwardPositionOffset: 0, forwardToeOverride: null,
+    rearPositionOffset: 0, rearToeOverride: null, quadRearOffRailOverride: null,
+    quadRearOffTailOverride: null, quadRearOffTailOverridden: false, quadRearOffTailEditing: false,
+    copyToast: false, toeTableOpen: false,
+    importTemplate: true,
+    viewTab: 'viewer',
+    showCallouts: true,
+    rootAvailH: 0,
+  };
+  measureRootAvail = () => {
+    const el = this._rootEl; if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const avail = Math.max(200, window.innerHeight - rect.top);
+    const patch = {};
+    if (Math.abs(avail - this.state.rootAvailH) > 1) patch.rootAvailH = avail;
+    if (Math.abs(rect.height - this.state.compactBoxH) > 1) patch.compactBoxH = rect.height;
+    if (Math.abs(rect.width - this.state.compactBoxW) > 1) patch.compactBoxW = rect.width;
+    if (Object.keys(patch).length) this.setState(patch);
+  }
+  rootRef = (el) => {
+    this._rootEl = el;
+    if (!el) return;
+    if (!this._rootRO) this._rootRO = new ResizeObserver(() => this.measureRootAvail());
+    this._rootRO.observe(document.body);
+    this._rootRO.observe(el);
+    this.measureRootAvail();
+    requestAnimationFrame(() => this.measureRootAvail());
+    if (!this._rootPollInterval) {
+      let ticks = 0;
+      this._rootPollInterval = setInterval(() => {
+        this.measureRootAvail();
+        ticks++;
+        if (ticks > 40) { clearInterval(this._rootPollInterval); this._rootPollInterval = null; }
+      }, 150);
+    }
+    if (!this._rootResizeBound) {
+      this._rootResizeBound = true;
+      window.addEventListener('resize', this.measureRootAvail);
+    }
+  }
+
+  applySeed() {
+    const seed = this.props.seed; if (!seed) return;
+    const skip = new Set(['finMarksInches']);
+    const patch = {};
+    Object.keys(seed).forEach(k => {
+      if (skip.has(k)) return;
+      if (Object.prototype.hasOwnProperty.call(this.state, k)) patch[k] = seed[k];
+    });
+    if (Object.keys(patch).length) this.setState(patch);
+  }
+  syncSnapshot() {
+    const rawExclude = new Set(['rootAvailH', 'compactBoxH', 'compactBoxW', 'viewTab']);
+    const rawState = {};
+    Object.keys(this.state).forEach(k => { if (!rawExclude.has(k)) rawState[k] = this.state[k]; });
+    return { units: this.state.units, finMarksInches: this._lastFinMarksInches || [], ...rawState };
+  }
+  syncFromTemplate() {
+    const tv = this.props.templateValues;
+    if (!this.state.importTemplate || !tv || !tv.available) return;
+    const patch = {};
+    if (tv.lengthIn != null && tv.lengthIn !== this.state.lengthIn) patch.lengthIn = tv.lengthIn;
+    if (tv.tailShape != null && tv.tailShape !== this.state.tailShape) patch.tailShape = tv.tailShape;
+    if (tv.w12 != null && tv.w12 !== this.state.w12) patch.w12 = tv.w12;
+    if (Object.keys(patch).length) this.setState(patch);
+  }
+  effectiveHalfWidthAt(w12, y) {
+    const tv = this.props.templateValues;
+    const geom = tv && tv.tailGeom;
+    if (this.state.importTemplate && tv && tv.available && geom && geom.points && geom.points.length) {
+      const pts = geom.points;
+      const yy = Math.max(geom.podY ?? 0, Math.min(24, y));
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [y0, x0] = pts[i], [y1, x1] = pts[i + 1];
+        if (yy >= y0 && yy <= y1) { const t = y1 > y0 ? (yy - y0) / (y1 - y0) : 0; return x0 + (x1 - x0) * t; }
+      }
+      return pts[pts.length - 1][1];
+    }
+    return this.halfWidthAt(this.state.tailShape, w12, y);
+  }
+  importedOutlinePath(geom) {
+    const mapPt = ([x, y]) => [ORIGIN_X + x * SCALE, TAIL_Y - y * SCALE];
+    const pts = geom.points.filter(([y]) => y <= 24);
+    const posSide = pts.map(([y, x]) => [x, y]);
+    const negSide = posSide.slice().reverse().map(([x, y]) => [-x, y]);
+    const negMapped = negSide.map(mapPt);
+    const posMapped = posSide.map(mapPt);
+    let d = this.catmullPath(negMapped);
+    if (geom.connector) {
+      const cm = mapPt([geom.connector.x, geom.connector.y]);
+      d += ` L ${cm[0].toFixed(2)} ${cm[1].toFixed(2)}`;
+    }
+    d += ` L ${posMapped[0][0].toFixed(2)} ${posMapped[0][1].toFixed(2)}`;
+    const posPath = this.catmullPath(posMapped);
+    d += posPath.substring(posPath.indexOf(' C'));
+    return d;
+  }
+  componentDidMount() {
+    this.applySeed();
+    const cur = this.syncSnapshot();
+    this._lastSynced = cur;
+    this.props.onSync && this.props.onSync(cur);
+    this.syncFromTemplate();
+  }
+  componentWillUnmount() {
+    if (this._rootRO) this._rootRO.disconnect();
+    if (this._rootResizeBound) window.removeEventListener('resize', this.measureRootAvail);
+    if (this._rootPollInterval) clearInterval(this._rootPollInterval);
+  }
+  componentDidUpdate(prevProps) {
+    if (prevProps.seedVersion !== this.props.seedVersion) this.applySeed();
+    this.syncFromTemplate();
+    const cur = this.syncSnapshot();
+    const last = this._lastSynced || {};
+    const changed = {};
+    const stable = (v) => (v && typeof v === 'object') ? JSON.stringify(v) : v;
+    Object.keys(cur).forEach(k => { if (stable(cur[k]) !== stable(last[k])) changed[k] = cur[k]; });
+    if (Object.keys(changed).length) { this._lastSynced = cur; this.props.onSync && this.props.onSync(changed); }
+  }
+
+  round16(x) { return Math.round(x * 16) / 16; }
+
+  toFrac(x) {
+    const sign = x < 0 ? '-' : '';
+    x = Math.abs(this.round16(x));
+    let whole = Math.floor(x + 1e-9);
+    let sixteenths = Math.round((x - whole) * 16);
+    if (sixteenths === 16) { whole += 1; sixteenths = 0; }
+    if (sixteenths === 0) return `${sign}${whole}"`;
+    let num = sixteenths, den = 16;
+    while (num % 2 === 0) { num /= 2; den /= 2; }
+    return `${sign}${whole > 0 ? whole + ' ' : ''}${num}/${den}"`;
+  }
+
+  disp(inches) {
+    if (this.state.units === 'cm') return `${(Math.round(inches * 2.54 * 100) / 100).toFixed(2)} cm`;
+    return this.toFrac(inches);
+  }
+
+  toU(inches) { return this.state.units === 'cm' ? Math.round(inches * 2.54 * 100) / 100 : inches; }
+  fromU(v) { return this.state.units === 'cm' ? v / 2.54 : v; }
+
+  centerDefaultFor(setup) {
+    if (setup === 'single' || setup === '2plus1') return 10.5;
+    return 4.5;
+  }
+
+  resetAdvancedPatch(setupOverride) {
+    const setup = setupOverride || this.state.finSetup;
+    return {
+      forwardPositionOffset: 0, forwardToeOverride: null,
+      rearPositionOffset: 0, rearToeOverride: null, quadRearOffRailOverride: null,
+      quadRearOffTailOverride: null, quadRearOffTailOverridden: false, quadRearOffTailEditing: false,
+      centerPositionOffset: 0,
+      baseLenForward: 4.5, baseLenForwardOverridden: false, baseLenForwardEditing: false,
+      baseLenRear: 4.5, baseLenRearOverridden: false, baseLenRearEditing: false,
+      baseLenCenter: this.centerDefaultFor(setup), baseLenCenterOverridden: false, baseLenCenterEditing: false,
+      quadRearOffTailOverride: null, quadRearOffTailOverridden: false, quadRearOffTailEditing: false,
+    };
+  }
+
+  catmullPath(pts) {
+    if (pts.length < 2) return '';
+    let d = `M ${pts[0][0]} ${pts[0][1]}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2] || p2;
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2[0]} ${p2[1]}`;
+    }
+    return d;
+  }
+
+  xBaseAt(shape, y) {
+    const yy = Math.max(0, y);
+    switch (shape) {
+      case 'pin': return 1.1250 * yy - 0.0586 * yy * yy + 0.001214 * yy * yy * yy;
+      case 'squash': return 2.25 + 0.6708 * yy - 0.0285 * yy * yy + 0.000539 * yy * yy * yy;
+      case 'round': return 2.5119 * Math.sqrt(yy) - 0.1340 * yy;
+      case 'swallow': return 4.1078 + 0.3237 * yy - 0.00573 * yy * yy;
+      default: return 1.1250 * yy - 0.0586 * yy * yy + 0.001214 * yy * yy * yy;
+    }
+  }
+
+  scaleFactor(shape, w12) {
+    const baseShape = shape === 'diamond' ? 'round' : shape;
+    return (w12 / 2) / this.xBaseAt(baseShape, 12);
+  }
+
+  outlinePath(shape, w12, scale = SCALE, originX = ORIGIN_X, tailY = TAIL_Y, diamondDepthMult = 1, yMax = 24, closeTop = true) {
+    const mapPt = ([x, y]) => [originX + x * scale, tailY - y * scale];
+    const baseShape = shape === 'diamond' ? 'round' : shape;
+    const S = this.scaleFactor(shape, w12);
+    const yLow = shape === 'diamond' ? 2 * diamondDepthMult : 0;
+    const N = 48;
+    const posSide = [];
+    for (let i = 0; i <= N; i++) {
+      const y = yLow + (Math.min(yMax, 20) - yLow) * (i / N);
+      posSide.push([S * this.xBaseAt(baseShape, y), y]);
+    }
+    const negSide = posSide.slice().reverse().map(([x, y]) => [-x, y]);
+    const negMapped = negSide.map(mapPt);
+    const posMapped = posSide.map(mapPt);
+    let d = this.catmullPath(negMapped);
+    const connectorPt = shape === 'diamond' ? [0, 0] : (shape === 'swallow' ? [0, 2.5] : null);
+    if (connectorPt) {
+      const cm = mapPt(connectorPt);
+      d += ` L ${cm[0].toFixed(2)} ${cm[1].toFixed(2)}`;
+    }
+    d += ` L ${posMapped[0][0].toFixed(2)} ${posMapped[0][1].toFixed(2)}`;
+    const posPath = this.catmullPath(posMapped);
+    d += posPath.substring(posPath.indexOf(' C'));
+    if (closeTop) d += ' Z';
+    return d;
+  }
+
+  halfWidthAt(shape, w12, y) {
+    const yy = Math.max(0, Math.min(24, y));
+    const S = this.scaleFactor(shape, w12);
+    if (shape === 'diamond') {
+      if (yy >= 2) return S * this.xBaseAt('round', yy);
+      const x2 = S * this.xBaseAt('round', 2);
+      return x2 * (yy / 2);
+    }
+    return S * this.xBaseAt(shape, yy);
+  }
+
+  outlineOffTailAtHalfWidth(w12, targetHw) {
+    if (this.effectiveHalfWidthAt(w12, 0) >= targetHw) return 0;
+    let lo = 0, hi = 24;
+    for (let i = 0; i < 24; i++) {
+      const mid = (lo + hi) / 2;
+      if (this.effectiveHalfWidthAt(w12, mid) < targetHw) lo = mid; else hi = mid;
+    }
+    return hi;
+  }
+
+  markerXY(offTail, spread) {
+    return { cx: ORIGIN_X + spread * SCALE, cy: TAIL_Y - offTail * SCALE };
+  }
+
+  finGlyph(x, yTip, yBase, hb = 3.4) {
+    const midY = (yTip + yBase) / 2;
+    return `M ${x - hb} ${yBase} Q ${x - hb - 1.2} ${midY + 2} ${x} ${yTip} Q ${x + hb + 2.5} ${midY + 3} ${x + hb} ${yBase} Z`;
+  }
+
+  straightFinGlyph(x, yTip, yBase, hw = 1.4) {
+    return `M ${x - hw} ${yBase} L ${x - hw} ${yTip} L ${x + hw} ${yTip} L ${x + hw} ${yBase} Z`;
+  }
+
+  buildFinMark({ offTailIn, spreadIn, baseLenIn, toeDeltaIn, lateralKind, lateralValueDisplay, offTailDisplay, toeDisplay, dimsSide = -1, dimRowOffset = 18, calloutSide = -1 }) {
+    const side = spreadIn > 0.01 ? 1 : (spreadIn < -0.01 ? -1 : 0);
+    const teX = ORIGIN_X + spreadIn * SCALE;
+    const teY = TAIL_Y - offTailIn * SCALE;
+    const leX = teX - side * toeDeltaIn * SCALE;
+    const leY = teY - baseLenIn * SCALE;
+    const cross = (x, y) => ({ h: { x1: x - 5, y1: y, x2: x + 5, y2: y }, v: { x1: x, y1: y - 5, x2: x, y2: y + 5 } });
+    const teC = cross(teX, teY), leC = cross(leX, leY);
+    const dims = [];
+    if ((lateralKind === 'none' || lateralKind === 'rail' || lateralKind === 'stringer') && (side === dimsSide || side === 0)) {
+      const w12v = this.state.w12;
+      const GAP = 4;
+      const STACK = this._leftTierStackPx || 55;
+      const tier = (this._leftTierRank && this._leftTierRank[lateralKind]) || 0;
+      const sharedBoundaryPx = this._sharedLeftBoundaryPx || 0;
+      let boundaryPx = sharedBoundaryPx + tier * STACK;
+      if (offTailIn >= 9 && offTailIn <= 15) {
+        boundaryPx = Math.min(Math.max(boundaryPx, (w12v / 2 + 0.4) * SCALE + tier * STACK + STACK), ORIGIN_X - GAP - 70);
+      }
+      const dimX = ORIGIN_X - boundaryPx - GAP;
+      const midY = (TAIL_Y + teY) / 2 + (tier - 1) * 20;
+      const topEdgeX = ORIGIN_X - this.effectiveHalfWidthAt(w12v, 0) * SCALE;
+      const botEdgeX = ORIGIN_X - this.effectiveHalfWidthAt(w12v, offTailIn) * SCALE;
+      dims.push({
+        isPlain: true, x1: dimX, y1: TAIL_Y, x2: dimX, y2: teY,
+        extTopX1: dimX, extTopX2: Math.max(dimX, topEdgeX), extTopY: TAIL_Y,
+        extBotX1: dimX, extBotX2: Math.max(dimX, botEdgeX), extBotY: teY,
+        pctLeft: (dimX / 530 * 100).toFixed(3) + '%', pctTop: (midY / 370 * 100).toFixed(3) + '%',
+        transformX: '-100%', text: offTailDisplay,
+        textX: dimX - 6, textY: midY, anchor: 'end',
+      });
+    }
+    if (lateralKind === 'stringer' && side === -1 && toeDisplay) {
+      const aboveRowY = Math.min(teY, leY) - 16;
+      const midXAbove = (teX + leX) / 2;
+      dims.push({
+        isBelow: true,
+        extLeftX: teX, extLeftY1: teY - 3, extLeftY2: aboveRowY - 4,
+        extRightX: leX, extRightY1: leY - 3, extRightY2: aboveRowY - 4,
+        dimX1: teX, dimX2: leX, dimY: aboveRowY,
+        textX: midXAbove, textY: aboveRowY, anchor: 'middle',
+        pctLeft: (midXAbove / 530 * 100).toFixed(3) + '%', pctTop: ((aboveRowY - 13) / 370 * 100).toFixed(3) + '%',
+        transformX: '-50%', text: toeDisplay,
+      });
+    }
+    if (lateralKind === 'stringer' && side === 1) {
+      const w12v = this.state.w12;
+      const rowY = TAIL_Y + dimRowOffset;
+      const midX = (ORIGIN_X + teX) / 2;
+      const edgeOffTailRight = this.outlineOffTailAtHalfWidth(w12v, spreadIn);
+      const edgeYRight = TAIL_Y - edgeOffTailRight * SCALE;
+      dims.push({
+        isBelow: true,
+        extLeftX: ORIGIN_X, extLeftY1: TAIL_Y, extLeftY2: rowY + 4,
+        extRightX: teX, extRightY1: edgeYRight, extRightY2: rowY + 4,
+        dimX1: ORIGIN_X, dimX2: teX, dimY: rowY,
+        pctLeft: (midX / 530 * 100).toFixed(3) + '%', pctTop: ((rowY - 13) / 370 * 100).toFixed(3) + '%',
+        transformX: '-50%', text: lateralValueDisplay,
+        textX: midX, textY: rowY, anchor: 'middle',
+      });
+    }
+    if (lateralKind === 'rail' && side === -1 && toeDisplay) {
+      const aboveRowY = Math.min(teY, leY) - 16;
+      const midXAbove = (teX + leX) / 2;
+      dims.push({
+        isBelow: true,
+        extLeftX: teX, extLeftY1: teY - 3, extLeftY2: aboveRowY - 4,
+        extRightX: leX, extRightY1: leY - 3, extRightY2: aboveRowY - 4,
+        dimX1: teX, dimX2: leX, dimY: aboveRowY,
+        textX: midXAbove, textY: aboveRowY, anchor: 'middle',
+        pctLeft: (midXAbove / 530 * 100).toFixed(3) + '%', pctTop: ((aboveRowY - 13) / 370 * 100).toFixed(3) + '%',
+        transformX: '-50%', text: toeDisplay,
+      });
+    }
+    if (lateralKind === 'rail' && side === 1) {
+      const w12v = this.state.w12;
+      let edgeHw = this.effectiveHalfWidthAt(w12v, offTailIn) * SCALE;
+      const railEdgeX = ORIGIN_X + edgeHw;
+      const GAP2 = 4, STACK2 = 14;
+      let railEnd = ORIGIN_X + edgeHw + GAP2;
+      if (offTailIn >= 9 && offTailIn <= 15) {
+        railEnd = Math.max(railEnd, ORIGIN_X + (w12v / 2 + 0.4) * SCALE + STACK2 + GAP2 + 65);
+      }
+      dims.push({
+        isRailV: true, x1: railEnd, y1: teY, x2a: railEdgeX, x2b: teX,
+        extAX: railEdgeX, extBX: teX, extY1: teY - 4, extY2: teY + 4,
+        pctLeft: (railEnd / 530 * 100).toFixed(3) + '%', pctTop: (teY / 370 * 100).toFixed(3) + '%',
+        transformX: '0%', text: lateralValueDisplay,
+      });
+    }
+    return {
+      baselineX1: teX, baselineY1: teY, baselineX2: leX, baselineY2: leY,
+      baseStrokeWidth: 2.5,
+      baseStrokeDasharray: lateralKind === 'none' ? 'none' : lateralKind === 'stringer' ? '2 3' : '8 4',
+      teH: teC.h, teV: teC.v, leH: leC.h, leV: leC.v,
+      dims,
+    };
+  }
+
+  // ---- Reference-guide equations ----
+  quadFrontLongboard(L) { return L <= 105 ? 0.1125 * L + 3.9125 : 0.10625 * L + 5.2125; }
+  quadRearLongboard(L) { return L <= 105 ? 0.1125 * L - 2.8375 : 0.110417 * L - 1.9375; }
+  quadSpreadLongboard(L, W) { let s = 0.5 * W - 0.625; if (L > 108) s += (1 / 16) * ((L - 108) / 3); return s; }
+  quadFrontMcKeeShortboard(L) { return 0.05714286 * L + 6.8625; }
+  quadFrontMcKeeGun(L) { return -0.000364 * L * L + 0.165468 * L + 0.862036; }
+  quadRearShortboard(L) { return L <= 83 ? 0.0339 * L + 2.6625 : 0.0651 * L + 0.1599; }
+  quadSpreadSBGun(W) { return W <= 13.5 ? 0.35 * W + 0.6 : 0.748162 * W - 4.724724; }
+  quadRearBasic(L) { return Math.max(4.75, 4.75 + 0.25 * Math.ceil((L - 68) / 5)); }
+  quadSpreadBasic(W) { return W > 13.35 ? 0.75 * W - 4.6125 : 0.25 * W + 1.875; }
+  mckeeFrontToe(L) { return Math.round(16 * (-0.00375 * L + 0.66610)) / 16; }
+  aimToe(baseLen, halfSpread, xMinus) { return baseLen * Math.sin(Math.atan((halfSpread) / xMinus)); }
+
+  toeTableData(L, W) {
+    const t = window.TOE_AIM_TABLES;
+    if (!t) return null;
+    const rowKey = (L >= 72) ? '72+' : String(Math.round(L));
+    const nearestColIdx = t.cols.reduce((best, c, i) => Math.abs(c - W) < Math.abs(t.cols[best] - W) ? i : best, 0);
+    const cols = t.cols.map((c, i) => ({ value: c, hiStyle: i === nearestColIdx ? 'padding:4px 8px;border:1px solid #e4ddc9;background:var(--accent);color:#1c1b19;font-weight:700;' : 'padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;' }));
+    const mkRow = (table) => {
+      const row = table[rowKey] || table['72+'];
+      return row.map((v, i) => ({ value: v, hiStyle: i === nearestColIdx ? 'padding:4px 8px;border:1px solid #e4ddc9;background:#f3e6cf;font-weight:700;' : 'padding:4px 8px;border:1px solid #e4ddc9;' }));
+    };
+    return { cols, rowLabel: rowKey, front: mkRow(t.front), rear: mkRow(t.rear) };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const L = s.lengthIn, w12 = s.w12;
+    const set = (patch) => this.setState(patch);
+    const clampToe = (v) => Math.max(0, Math.min(0.5, v));
+    const cm = s.units === 'cm';
+    const toU = (v) => this.toU(v), fromU = (v) => this.fromU(v);
+    const unitBounds = (minIn, maxIn, stepIn, cmMin, cmMax, cmStep) => cm
+      ? { min: cmMin, max: cmMax, step: cmStep }
+      : { min: minIn, max: maxIn, step: stepIn };
+    const baseLenBounds = unitBounds(2.5, 7.5, 0.125, 6.4, 19, 0.1);
+    const posBounds = unitBounds(-1.5, 1.5, 0.0625, -3.8, 3.8, 0.1);
+    const toeBounds = unitBounds(0, 0.5, 0.0625, 0, 1.3, 0.1);
+
+    const lengthFeet = Math.floor(L / 12), lengthInches = L % 12;
+    const feetOptions = [4,5,6,7,8,9,10,11,12];
+    const inchOptions = [0,1,2,3,4,5,6,7,8,9,10,11];
+
+    const isThruster = s.finSetup === 'thruster', isQuad = s.finSetup === 'quad', isTwin = s.finSetup === 'twin';
+    const isTwoPlusOne = s.finSetup === '2plus1', isSingle = s.finSetup === 'single';
+    const isPintail = s.tailShape === 'pin';
+    const isLongboardQuad = isQuad && s.quadRearModel === 'mckeeLB';
+    const quadCenterFinAvailable = isQuad && !isLongboardQuad;
+    const showAdvanced = true;
+    const hasCenterSection = isThruster || isSingle || isTwoPlusOne || (isQuad && s.quadCenterFinOn && quadCenterFinAvailable) || (isTwin && s.twinType === 'trailer');
+    const hasForwardSection = isThruster || isQuad || isTwoPlusOne || isTwin;
+    const hasRearSection = isQuad;
+
+    // ---- Thruster front + center (§8) ----
+    const narrowShiftShortboard = w12 <= 12.5 ? (-0.4 * w12 + 5.2875) : 0;
+    const narrowShiftGunFront = w12 <= 12.5 ? (0.0625 * w12 * w12 - 1.15 * w12 + 5.517969) : 0;
+
+    const frontProportional = 0.15625 * L;
+    const frontBasicSS = Math.round(8 * (0.08020177 * L + 5.11156999)) / 8;
+    const frontMcKeeSB = this.quadFrontMcKeeShortboard(L) + narrowShiftShortboard;
+    const frontMcKeeGun = this.quadFrontMcKeeGun(L) + narrowShiftGunFront;
+    const centerProportional = 0.0486111 * L;
+    const centerBasicSS = Math.round(8 * (0.01680328 * L + 2.16434426)) / 8;
+    const centerMcKee = L / 48 + 1.8125 + narrowShiftShortboard; // McKee SB & Gun share this eq
+
+    const thrusterFrontModels = {
+      proportional: { front: frontProportional, center: centerProportional, offRail: 1.125, toe: 0.25 },
+      basic: { front: frontBasicSS, center: centerBasicSS, offRail: 1.1875, toe: 0.25 },
+      mckeeSB: { front: frontMcKeeSB, center: centerMcKee, offRail: 1.1875, toe: this.mckeeFrontToe(L) },
+      mckeeGun: { front: frontMcKeeGun, center: centerMcKee, offRail: 1.125, toe: this.mckeeFrontToe(L) },
+    };
+
+    // ---- Quad rear (§9) ----
+    const pintailRearAdd = isPintail ? 0.1875 : 0;
+    const quadShortboardCluster = w12 <= 12.5 ? narrowShiftShortboard : 0;
+    const quadPintailGunCluster = w12 <= 12.5 ? (-0.2875 * w12 + 3.884375) : 0;
+
+    const rearBasicBase = this.quadRearBasic(L) + pintailRearAdd;
+    const rearSBBase = this.quadRearShortboard(L) + (isPintail ? narrowShiftGunFront * 0 : 0) + pintailRearAdd + (isPintail ? quadPintailGunCluster : quadShortboardCluster);
+    const rearLBBase = this.quadRearLongboard(L) + pintailRearAdd;
+
+    const spreadBasic = this.quadSpreadBasic(w12);
+    const spreadSBGun = this.quadSpreadSBGun(w12);
+    const spreadLB = this.quadSpreadLongboard(L, w12);
+
+    const quadModels = {
+      basic: { rear: rearBasicBase, spread: spreadBasic, front: frontBasicSS, offRail: null },
+      basicOffRail: { rear: null, spread: null, front: frontBasicSS, offRail: null },
+      mckeeSB: { rear: rearSBBase, spread: spreadSBGun, front: (isPintail ? frontMcKeeGun : frontMcKeeSB), offRail: (isPintail ? 1.125 : 1.1875) },
+      mckeeLB: { rear: rearLBBase, spread: spreadLB, front: this.quadFrontLongboard(L), offRail: 1.3125 },
+    };
+
+    const isBasicOffRail = s.quadRearModel === 'basicOffRail';
+    const frontModelOptions = ['proportional','basic','mckeeSB','mckeeGun'].map(k => ({
+      value: k, label: k === 'proportional' ? 'Proportional' : k === 'basic' ? 'Basic (Half Rate)' : k === 'mckeeSB' ? 'McKee Shortboard' : 'McKee Gun',
+      onSelect: () => set({ frontModel: k }),
+      style: `flex:1 1 45%;padding:9px 4px;border-radius:6px;border:1px solid ${s.frontModel===k?'var(--accent)':'var(--sidebar-input-border)'};background:${s.frontModel===k?'var(--accent)':'transparent'};color:${s.frontModel===k?'#1c1b19':'var(--sidebar-text)'};font-size:11px;font-weight:700;cursor:pointer;`
+    }));
+    const quadRearModelOptions = ['basic','basicOffRail','mckeeSB','mckeeLB'].map(k => ({
+      value: k, label: k === 'basic' ? 'Basic - Spread' : k === 'basicOffRail' ? 'Basic - Off-Rail' : k === 'mckeeSB' ? 'McKee SB/Gun' : 'McKee Longboard',
+      onSelect: () => set({ quadRearModel: k, quadCenterFinOn: k === 'mckeeLB' ? false : s.quadCenterFinOn }),
+      style: `padding:9px 4px;border-radius:6px;border:1px solid ${s.quadRearModel===k?'var(--accent)':'var(--sidebar-input-border)'};background:${s.quadRearModel===k?'var(--accent)':'transparent'};color:${s.quadRearModel===k?'#1c1b19':'var(--sidebar-text)'};font-size:11px;font-weight:700;cursor:pointer;`
+    }));
+
+    const activeThrusterModel = thrusterFrontModels[s.frontModel];
+    const frontOffRail = isThruster ? activeThrusterModel.offRail : (quadModels[s.quadRearModel].offRail ?? 1.1875);
+    const frontBase = isThruster ? activeThrusterModel.front : (quadModels[s.quadRearModel].front ?? frontMcKeeSB);
+    if (isBasicOffRail) quadModels.basicOffRail.rear = s.quadRearOffTailOverride ?? (frontBase / 2 + 0.25);
+    const frontFinal = frontBase + ((isThruster || isQuad) ? s.forwardPositionOffset : 0);
+    const frontSpread = this.effectiveHalfWidthAt(w12, frontFinal) - frontOffRail;
+
+    const centerSuggestedThruster = activeThrusterModel.center;
+
+    const rearBase = quadModels[s.quadRearModel].rear;
+    const rearFinal = rearBase + (isQuad ? s.rearPositionOffset : 0);
+    const clampOffRail = (v) => Math.max(1, Math.min(2, v));
+    const quadRearOffRailValue = clampOffRail(s.quadRearOffRailOverride ?? 1.25);
+    const spread = isBasicOffRail ? (this.effectiveHalfWidthAt(w12, rearFinal) - quadRearOffRailValue) : quadModels[s.quadRearModel].spread / 2;
+
+    const onCheckIn = () => set({ units: 'in' });
+    const onCheckCm = () => set({ units: 'cm' });
+    const unitsOptions = ['in','cm'].map(k => ({
+      value: k, label: k === 'in' ? 'Inches' : 'Centimeters',
+      onSelect: () => set({ units: k }),
+      style: `flex:1;padding:10px;border-radius:6px;border:1px solid ${s.units===k?'var(--accent)':'var(--sidebar-input-border)'};background:${s.units===k?'var(--accent)':'transparent'};color:${s.units===k?'#1c1b19':'var(--sidebar-text)'};font-size:13px;font-weight:700;cursor:pointer;`
+    }));
+
+    // ---- Twin (§6) ----
+    const twinType = s.twinType;
+    const mainOffTailBase = twinType === 'keel' ? 6.25 : (twinType === 'trailer' ? 10 : 7.5);
+    const mainOffTail = mainOffTailBase + (isTwin ? s.forwardPositionOffset : 0);
+    let mainOffRail = 1.25;
+    const twinToeFixed = twinType === 'keel' ? 0.125 : 0.1875;
+    const trailerOffTail = 4.0;
+
+    const twinTypeOptions = ['upright','keel','trailer'].map(k => ({
+      value: k, label: k === 'upright' ? 'Modern/Upright' : k === 'keel' ? 'Keel' : 'Upright + Trailer',
+      onSelect: () => set({ twinType: k }),
+      style: `flex:1 1 30%;padding:9px 4px;border-radius:6px;border:1px solid ${s.twinType===k?'var(--accent)':'var(--sidebar-input-border)'};background:${s.twinType===k?'var(--accent)':'transparent'};color:${s.twinType===k?'#1c1b19':'var(--sidebar-text)'};font-size:11px;font-weight:700;cursor:pointer;`
+    }));
+
+    // ---- Single / 2+1 / twin-trailer center box (§5) ----
+    const centerSuggested = (isThruster || (isQuad && s.quadCenterFinOn && quadCenterFinAvailable)) ? centerSuggestedThruster
+      : (isSingle || isTwoPlusOne) ? 5.5
+      : (isTwin && twinType === 'trailer') ? trailerOffTail : 0;
+    const centerFinal = centerSuggested + (hasCenterSection ? s.centerPositionOffset : 0);
+
+    // ---- 2+1 side bites (§7) ----
+    const sideBase = L / 48 + 13.5;
+    const sideFinal = sideBase + (isTwoPlusOne ? s.forwardPositionOffset : 0);
+    const activeSideOffRail = 1.25;
+    const sideToeFixedDefault = 0.1875;
+
+    const pairFinalOffTail = isQuad ? rearFinal : isTwoPlusOne ? sideFinal : frontFinal;
+
+    const forwardToeFixed = isThruster ? activeThrusterModel.toe
+      : isTwoPlusOne ? sideToeFixedDefault
+      : isTwin ? twinToeFixed
+      : isQuad ? (s.quadRearModel === 'mckeeLB' ? 0.1875 : ((s.quadRearModel === 'basic' || isBasicOffRail) ? 0.25 : this.mckeeFrontToe(L)))
+      : 0;
+    const forwardToeValue = clampToe(s.forwardToeOverride ?? forwardToeFixed);
+
+    let rearToeFixed = 0;
+    if (isQuad) {
+      if (s.quadRearModel === 'basic') rearToeFixed = 0.125;
+      else if (isBasicOffRail) rearToeFixed = 0.1875;
+      else if (s.quadRearModel === 'mckeeSB') rearToeFixed = this.aimToe(s.baseLenRear, spread, L - 12);
+      else if (s.quadRearModel === 'mckeeLB') rearToeFixed = this.aimToe(s.baseLenRear, spread, L - 18);
+    }
+    const rearToeValue = clampToe(s.rearToeOverride ?? rearToeFixed);
+
+    const forwardSectionLabel = isThruster ? 'Front Pair' : isQuad ? 'Front Pair' : isTwoPlusOne ? 'Side Bites' : '';
+    const rearSectionLabel = 'Rear Pair';
+    const centerSectionLabel = isThruster ? 'Center Fin' : isQuad ? '5th/Center Fin' : 'Center Fin Box Position';
+
+    const showFrontToeTableLink = (isThruster && (s.frontModel === 'mckeeSB' || s.frontModel === 'mckeeGun')) || (isQuad && s.quadRearModel === 'mckeeSB');
+    const showRearToeTableLink = isQuad && (s.quadRearModel === 'mckeeSB' || s.quadRearModel === 'mckeeLB');
+    const onOpenToeTable = () => set({ toeTableOpen: true });
+    const onCloseToeTable = () => set({ toeTableOpen: false });
+    const stopClick = (e) => e.stopPropagation();
+    const toeTable = s.toeTableOpen ? this.toeTableData(L, w12) : null;
+
+    // svg
+    const tv = this.props.templateValues;
+    const importActive = s.importTemplate && tv && tv.available && tv.tailGeom && tv.tailGeom.points && tv.tailGeom.points.length;
+    const svgOutlinePath = importActive ? this.importedOutlinePath(tv.tailGeom) : this.outlinePath(s.tailShape, w12);
+    const svgOutlinePathOpen = svgOutlinePath.replace(/\s*Z\s*$/, '');
+
+    const finMarks = [];
+    const leftDimKinds = [];
+    if (isThruster || isQuad) leftDimKinds.push('rail');
+    if (isThruster || (isQuad && s.quadCenterFinOn && quadCenterFinAvailable)) leftDimKinds.push('none');
+    if (isQuad) leftDimKinds.push('stringer');
+    if (isTwin) { leftDimKinds.push('rail'); if (twinType === 'trailer') leftDimKinds.push('none'); }
+    if (isTwoPlusOne) { leftDimKinds.push('none'); leftDimKinds.push('rail'); }
+    if (isSingle) leftDimKinds.push('none');
+    const KIND_ORDER = ['none', 'stringer', 'rail'];
+    const activeKindsSorted = KIND_ORDER.filter(k => leftDimKinds.includes(k));
+    this._leftTierRank = {};
+    activeKindsSorted.forEach((k, i) => { this._leftTierRank[k] = i; });
+    const maxLeftTier = Math.max(0, activeKindsSorted.length - 1);
+    const leftDimOffTails = [];
+    if (isThruster || isQuad) leftDimOffTails.push(frontFinal);
+    if (isThruster || (isQuad && s.quadCenterFinOn && quadCenterFinAvailable)) leftDimOffTails.push(centerFinal);
+    if (isQuad) leftDimOffTails.push(rearFinal);
+    if (isTwin) { leftDimOffTails.push(mainOffTail); if (twinType === 'trailer') leftDimOffTails.push(centerFinal); }
+    if (isTwoPlusOne) { leftDimOffTails.push(centerFinal); leftDimOffTails.push(sideFinal); }
+    if (isSingle) leftDimOffTails.push(centerFinal);
+    const sharedMaxOffTail = leftDimOffTails.length ? Math.max(...leftDimOffTails) : 0;
+    let sharedBoundaryPx = 0;
+    for (let i = 0; i <= 6; i++) {
+      sharedBoundaryPx = Math.max(sharedBoundaryPx, this.effectiveHalfWidthAt(w12, sharedMaxOffTail * i / 6) * SCALE);
+    }
+    this._sharedLeftBoundaryPx = sharedBoundaryPx;
+    // Space the (up to 3) left-side off-tail tiers evenly within whatever room remains between the
+    // shared boundary and the canvas edge, so they never run off-canvas regardless of board width.
+    const availableSpan = Math.max(0, ORIGIN_X - sharedBoundaryPx - 4 - 70);
+    this._leftTierStackPx = maxLeftTier > 0 ? Math.min(55, availableSpan / maxLeftTier) : 0;
+    if (isThruster || isQuad) {
+      finMarks.push(this.buildFinMark({ offTailIn: frontFinal, spreadIn: -frontSpread, baseLenIn: s.baseLenForward, toeDeltaIn: forwardToeValue, lateralKind: 'rail', lateralValueDisplay: this.disp(frontOffRail), offTailDisplay: this.disp(frontFinal), toeDisplay: this.disp(forwardToeValue), calloutSide: 1 }));
+      finMarks.push(this.buildFinMark({ offTailIn: frontFinal, spreadIn: frontSpread, baseLenIn: s.baseLenForward, toeDeltaIn: forwardToeValue, lateralKind: 'rail', lateralValueDisplay: this.disp(frontOffRail), offTailDisplay: this.disp(frontFinal), toeDisplay: this.disp(forwardToeValue), calloutSide: 1 }));
+    }
+    if (isThruster || (isQuad && s.quadCenterFinOn && quadCenterFinAvailable)) {
+      finMarks.push(this.buildFinMark({ offTailIn: centerFinal, spreadIn: 0, baseLenIn: s.baseLenCenter, toeDeltaIn: 0, lateralKind: 'none', offTailDisplay: this.disp(centerFinal) }));
+    }
+    if (isQuad) {
+      finMarks.push(this.buildFinMark({ offTailIn: rearFinal, spreadIn: -spread, baseLenIn: s.baseLenRear, toeDeltaIn: rearToeValue, lateralKind: isBasicOffRail ? 'rail' : 'stringer', lateralValueDisplay: this.disp(isBasicOffRail ? quadRearOffRailValue : spread), offTailDisplay: this.disp(rearFinal), toeDisplay: this.disp(rearToeValue), dimsSide: 1, dimRowOffset: 38 }));
+      finMarks.push(this.buildFinMark({ offTailIn: rearFinal, spreadIn: spread, baseLenIn: s.baseLenRear, toeDeltaIn: rearToeValue, lateralKind: isBasicOffRail ? 'rail' : 'stringer', lateralValueDisplay: this.disp(isBasicOffRail ? quadRearOffRailValue : spread), offTailDisplay: this.disp(rearFinal), toeDisplay: this.disp(rearToeValue), dimsSide: 1, dimRowOffset: 38 }));
+    }
+    if (isTwin) {
+      const tSpread = this.effectiveHalfWidthAt(w12, mainOffTail) - mainOffRail;
+      finMarks.push(this.buildFinMark({ offTailIn: mainOffTail, spreadIn: -tSpread, baseLenIn: s.baseLenForward, toeDeltaIn: forwardToeValue, lateralKind: 'rail', lateralValueDisplay: this.disp(mainOffRail), offTailDisplay: this.disp(mainOffTail), toeDisplay: this.disp(forwardToeValue), calloutSide: 1 }));
+      finMarks.push(this.buildFinMark({ offTailIn: mainOffTail, spreadIn: tSpread, baseLenIn: s.baseLenForward, toeDeltaIn: forwardToeValue, lateralKind: 'rail', lateralValueDisplay: this.disp(mainOffRail), offTailDisplay: this.disp(mainOffTail), toeDisplay: this.disp(forwardToeValue), calloutSide: 1 }));
+      if (twinType === 'trailer') finMarks.push(this.buildFinMark({ offTailIn: centerFinal, spreadIn: 0, baseLenIn: s.baseLenCenter, toeDeltaIn: 0, lateralKind: 'none', offTailDisplay: this.disp(centerFinal) }));
+    }
+    if (isTwoPlusOne) {
+      finMarks.push(this.buildFinMark({ offTailIn: centerFinal, spreadIn: 0, baseLenIn: s.baseLenCenter, toeDeltaIn: 0, lateralKind: 'none', offTailDisplay: this.disp(centerFinal) }));
+      const sSpread = this.effectiveHalfWidthAt(w12, sideFinal) - activeSideOffRail;
+      finMarks.push(this.buildFinMark({ offTailIn: sideFinal, spreadIn: -sSpread, baseLenIn: s.baseLenForward, toeDeltaIn: forwardToeValue, lateralKind: 'rail', lateralValueDisplay: this.disp(activeSideOffRail), offTailDisplay: this.disp(sideFinal), toeDisplay: this.disp(forwardToeValue), calloutSide: 1 }));
+      finMarks.push(this.buildFinMark({ offTailIn: sideFinal, spreadIn: sSpread, baseLenIn: s.baseLenForward, toeDeltaIn: forwardToeValue, lateralKind: 'rail', lateralValueDisplay: this.disp(activeSideOffRail), offTailDisplay: this.disp(sideFinal), toeDisplay: this.disp(forwardToeValue), calloutSide: 1 }));
+    }
+    if (isSingle) finMarks.push(this.buildFinMark({ offTailIn: centerFinal, spreadIn: 0, baseLenIn: s.baseLenCenter, toeDeltaIn: 0, lateralKind: 'none', offTailDisplay: this.disp(centerFinal) }));
+
+    // Cache in inches (transform-agnostic) so other embeddings (e.g. the Template viewer's compact mode) can
+    // re-plot these same fin positions in their own pixel coordinate system via syncSnapshot.
+    this._lastFinMarksInches = finMarks.map(m => ({
+      teOffTail: (TAIL_Y - m.baselineY1) / SCALE, teLateral: (m.baselineX1 - ORIGIN_X) / SCALE,
+      leOffTail: (TAIL_Y - m.baselineY2) / SCALE, leLateral: (m.baselineX2 - ORIGIN_X) / SCALE,
+    }));
+
+    const svgOriginX = ORIGIN_X, svgTailY = TAIL_Y;
+    const svgTopY = TAIL_Y - (24 - VIEW_TOP_MARGIN) * SCALE;
+    const w12LineY = TAIL_Y - 12 * SCALE;
+    const w12LineX1 = ORIGIN_X - (w12 / 2) * SCALE, w12LineX2 = ORIGIN_X + (w12 / 2) * SCALE;
+    const w12GapPx = (w12 / 2 + 0.4) * SCALE;
+    const w12NamePctLeft = ((ORIGIN_X + w12GapPx) / 530 * 100).toFixed(3) + '%';
+    const w12ValuePctLeft = ((ORIGIN_X - w12GapPx) / 530 * 100).toFixed(3) + '%';
+    const w12LabelPctTop = (w12LineY / 370 * 100).toFixed(3) + '%';
+
+    const isModified = s.baseLenForwardOverridden || s.baseLenRearOverridden || s.baseLenCenterOverridden ||
+      s.centerPositionOffset !== 0 || s.forwardPositionOffset !== 0 || s.forwardToeOverride !== null ||
+      s.rearPositionOffset !== 0 || s.rearToeOverride !== null || s.quadRearOffTailOverridden;
+
+    const frontModelLabel = frontModelOptions.find(o => o.value === s.frontModel).label;
+    const modelHeader = isThruster ? `Thruster — ${frontModelLabel}`
+      : isQuad ? `Quad — ${quadRearModelOptions.find(o => o.value === s.quadRearModel).label}${s.quadCenterFinOn && quadCenterFinAvailable ? ' + Center (Five-fin)' : ''}`
+      : isTwin ? `Twin — ${twinType === 'keel' ? 'Keel' : twinType === 'trailer' ? 'Upright + Trailer' : 'Modern/Upright'}`
+      : isTwoPlusOne ? '2+1' : 'Single Fin';
+
+    const rowStyleMain = 'display:flex;justify-content:space-between;padding:5px 0;font-size:14px;';
+    const labelStyleMain = 'color:#8a8272;';
+    const valueStyleMain = 'font-weight:700;color:#1c1b19;';
+    const mainRow = (label, value) => ({ label, value, rowStyle: rowStyleMain, labelStyle: labelStyleMain, valueStyle: valueStyleMain });
+    const subRow = (label, value) => ({ label, value, rowStyle: rowStyleMain, labelStyle: labelStyleMain, valueStyle: valueStyleMain });
+
+    const legendBaseLens = [];
+    if (hasCenterSection) legendBaseLens.push({ label: (isTwin && twinType === 'trailer') ? 'Center Trailer' : 'Center', value: this.disp(s.baseLenCenter), dasharray: 'none' });
+    if (hasForwardSection) legendBaseLens.push({ label: isTwoPlusOne ? 'Side Bites' : isTwin ? 'Main Twins' : 'Front', value: this.disp(s.baseLenForward), dasharray: '8 4' });
+    if (hasRearSection) legendBaseLens.push({ label: 'Rear', value: this.disp(s.baseLenRear), dasharray: '2 3' });
+
+    const summarySections = [];
+    if (hasCenterSection) {
+      summarySections.push({ label: centerSectionLabel, groups: [
+        { heading: 'Trailing Edge', rows: [ mainRow('Off-Tail', this.disp(centerFinal)) ] },
+        { heading: 'Leading Edge', rows: [ subRow((isSingle || isTwoPlusOne) ? 'Fin Box Length' : 'Fin Base Length', this.disp(s.baseLenCenter)) ] },
+      ] });
+    }
+    if (hasForwardSection) {
+      const label = isTwoPlusOne ? 'Front Fins (Side Bites)' : isTwin ? 'Front Fins (Main Twins)' : 'Front Fins';
+      const offTail = isTwoPlusOne ? this.disp(sideFinal) : isTwin ? this.disp(mainOffTail) : this.disp(frontFinal);
+      const offRail = isTwoPlusOne ? this.disp(activeSideOffRail) : isTwin ? this.disp(mainOffRail) : this.disp(frontOffRail);
+      const toe = this.disp(forwardToeValue);
+      const base = this.disp(s.baseLenForward);
+      summarySections.push({ label, groups: [
+        { heading: 'Trailing Edge', rows: [ mainRow('Off-Tail', offTail), mainRow('Off-Rail', offRail) ] },
+        { heading: 'Leading Edge', rows: [ subRow('Toe-In', toe), subRow('Fin Base Length', base) ] },
+      ] });
+    }
+    if (hasRearSection) {
+      summarySections.push({ label: 'Rear Fins', groups: [
+        { heading: 'Trailing Edge', rows: [
+          mainRow('Off-Tail', this.disp(rearFinal)),
+          mainRow(isBasicOffRail ? 'Off-Rail' : 'Off-Stringer (1/2 Spread)', this.disp(isBasicOffRail ? quadRearOffRailValue : spread)),
+        ], fullSpreadNote: isBasicOffRail ? null : this.disp(spread * 2) },
+        { heading: 'Leading Edge', rows: [
+          subRow('Toe-In', this.disp(rearToeValue)),
+          subRow('Fin Base Length', this.disp(s.baseLenRear)),
+        ] },
+      ] });
+    }
+
+    const notesItems = [];
+    if (isSingle) {
+      notesItems.push(`Single fin: one model, one range for all lengths — no length equation. Off-tail (box trailing edge) 4.5–6" (default 5.5"), centered, 0° toe/cant. Fin box 10.5" standard (8" boxes also exist); fore/aft is tuned by sliding in the box, not routing.`);
+    }
+    if (isTwoPlusOne) {
+      notesItems.push(`2+1: center box uses the single-fin range (4.5–6", default 5.5"). Side bites off-tail = x/48 + 13.5 (≈15.75" @ 9', 15–16.5" typical), off-rail 1¼", toe 3⁄16" — scaled off a 9' anchor.`);
+    }
+    if (isTwin) {
+      if (twinType === 'upright') notesItems.push(`Twin — Modern/Upright: off-tail 7–8" (default 7.5"), base ≈5–5.5"; off-rail 1⅛–1¼" (default 1.25"); toe 3⁄16–¼" (default 0.1875"). No length equation — move the cluster back for wide tails, forward for narrow.`);
+      if (twinType === 'keel') notesItems.push(`Twin — Keel: off-tail 6–6.5" (default 6.25"); off-rail 1⅛–1¼" (default 1.25"); toe ⅛" (default 0.125"). Keel's longer base sets the trailing edge back roughly 1" versus upright.`);
+      if (twinType === 'trailer') notesItems.push(`Twin — Upright + Trailer: mains fixed at 10" off-tail, 1.25" off-rail, 3⁄16" toe. The center trailer sits at 4" off-tail — a smaller anchor fin than a thruster center, not scaled by length.`);
+    }
+    if (isThruster) {
+      if (s.frontModel === 'proportional') notesItems.push(`Thruster — Proportional: center y=0.0486111·x, front y=0.15625·x — a straight proportional fit, not ideal for long boards. Off-rail 1.125", toe ¼" (range ⅛–3⁄8").`);
+      if (s.frontModel === 'basic') notesItems.push(`Thruster — Basic (Shaper Supply): center and front each rounded to the nearest ⅛" per the source table's own convention. Off-rail 1.1875", toe ¼".`);
+      if (s.frontModel === 'mckeeSB') notesItems.push(``);
+      if (s.frontModel === 'mckeeGun') notesItems.push(`Thruster — McKee Gun: center shares the Shortboard equation; front is a quadratic fit, best for pin-tail guns 7'–11'. Off-rail 1.125"; toe from the McKee front equation.`);
+    }
+    if (isQuad) {
+      if (s.quadRearModel === 'basic') notesItems.push(`Quad — Basic - Spread rear: off-tail steps in ¼" increments from a 4.75" floor as length increases; toe fixed ⅛"; spread breaks at W=13.35".`);
+      if (isBasicOffRail) notesItems.push(`Quad — Basic - Off-Rail rear: off-tail is half the front pair's off-tail distance; off-rail defaults to 1.25" (adjustable up to 2"); toe fixed 3⁄16" — less than the front pair's toe.`);
+      if (s.quadRearModel === 'mckeeSB') notesItems.push(`Quad — McKee SB/Gun rear: off-tail formula breaks at 83" length; toe is the nose-aim equation (≈1⁄16" for typical tails, or read it off the precise aim table); spread breaks at W=13.5". Fronts follow the matching McKee thruster front formula.`);
+      if (isLongboardQuad) notesItems.push(`Quad — McKee Longboard: dedicated front AND rear formulas (best ≥8'), no center-fin option. Spread gains 1⁄16" per 3" of length over 9'; rear toe aims 10cm aft of the nose (denominator x−18 vs. x−12 for SB/Gun).`);
+    }
+    if (w12 <= 12.5 && (isThruster || (isQuad && s.quadRearModel !== 'mckeeLB' && s.quadRearModel !== 'basic'))) {
+      notesItems.push(`Tail width is at or under 12.5" — the McKee narrow-tail forward cluster shift is applied automatically to keep the fins from crowding the tail.`);
+    }
+    if (isPintail && isQuad) {
+      notesItems.push(`Pintail shape adds 3⁄16" to the quad rear off-tail across all rear models, per the standard pintail correction.`);
+    }
+    notesItems.push(`All measurements round to the nearest 1/16" (0.1 cm in cm units) — expect a hair of play when routing to these numbers.`);
+
+    const specLines = [
+      `Board: ${lengthFeet}'${lengthInches}" · Tail width @12": ${this.disp(w12)} · Fin Setup: ${s.finSetup === '2plus1' ? '2+1' : s.finSetup} · Tail Shape: ${s.tailShape}${isModified ? ' · [Modified from defaults]' : ''}`,
+      `Model: ${modelHeader}`,
+      '',
+    ];
+    summarySections.forEach(sec => {
+      specLines.push(sec.label + ':');
+      sec.groups.forEach(grp => {
+        specLines.push(`  ${grp.heading}:`);
+        grp.rows.forEach(r => specLines.push(`    ${r.label}: ${r.value}`));
+        if (grp.fullSpreadNote) specLines.push(`    Full Spread (*Full spread may be >2x due to 1/16" rounding): ${grp.fullSpreadNote}`);
+      });
+      specLines.push('');
+    });
+
+    const baseLenCenterLabelText = s.baseLenCenterOverridden ? this.disp(s.baseLenCenter) : `${this.disp(s.baseLenCenter)} standard`;
+    const baseLenForwardLabelText = s.baseLenForwardOverridden ? this.disp(s.baseLenForward) : `${this.disp(s.baseLenForward)} standard`;
+    const baseLenRearLabelText = s.baseLenRearOverridden ? this.disp(s.baseLenRear) : `${this.disp(s.baseLenRear)} standard`;
+
+    return {
+      importTemplate: s.importTemplate,
+      manualInputs: !(s.importTemplate && tv && tv.available),
+      manualInputsOpacity: (s.importTemplate && tv && tv.available) ? '0.45' : '1',
+      tailShapePointerEvents: (s.importTemplate && tv && tv.available) ? 'none' : 'auto',
+      templateAvailable: !!(tv && tv.available),
+      onToggleImportTemplate: () => set({ importTemplate: !s.importTemplate }),
+      tailShapeDisplay: s.tailShape.charAt(0).toUpperCase() + s.tailShape.slice(1),
+      isViewerTab: s.viewTab === 'viewer', isDataTab: s.viewTab === 'data', isInfoTab: s.viewTab === 'info',
+      viewTabs: ['viewer', 'data', 'info'].map(k => ({
+        value: k, label: k === 'viewer' ? 'VIEWER' : k === 'data' ? 'DATA' : 'MODEL INFO',
+        onSelect: () => set({ viewTab: k }),
+        style: `padding:10px 18px;border-radius:8px 8px 0 0;border:1px solid ${s.viewTab===k?'#e4ddc9':'transparent'};border-bottom:none;background:${s.viewTab===k?'#fff':'transparent'};color:${s.viewTab===k?'#1c1b19':'#8a8272'};font-size:14px;font-weight:700;cursor:pointer;`
+      })),
+      lengthDisplay: `${lengthFeet}'${lengthInches}"`, lengthFeet, lengthInches, lengthTotalIn: L, feetOptions, inchOptions,
+      onFeetChange: (e) => set({ lengthIn: parseInt(e.target.value) * 12 + lengthInches }),
+      onInchesChange: (e) => set({ lengthIn: lengthFeet * 12 + parseInt(e.target.value) }),
+      onLengthSlider: (e) => set({ lengthIn: parseInt(e.target.value) }),
+      lengthCaption: cm ? `${(L * 2.54).toFixed(2)} cm total` : `${L} total inches`,
+      unitsIsInches: !cm, unitsIsCm: cm,
+      lengthCmInputValue: toU(L), lengthCmInputMin: 121.92, lengthCmInputMax: 365.76, lengthCmInputStep: 0.01,
+      onLengthCmChange: (e) => set({ lengthIn: fromU(parseFloat(e.target.value)) }),
+      w12, w12Display: this.disp(w12),
+      w12InputValue: toU(w12), w12InputMin: unitBounds(10,18,0.125,25.4,45.7,0.1).min, w12InputMax: unitBounds(10,18,0.125,25.4,45.7,0.1).max, w12InputStep: unitBounds(10,18,0.125,25.4,45.7,0.1).step,
+      onW12Change: (e) => set({ w12: fromU(parseFloat(e.target.value)) }),
+      tailShape: s.tailShape,
+      tailShapeOptions: [
+        { value: 'pin', label: 'Pin', iconPath: this.outlinePath('pin', 15, 4.1667, 32, 58, 1, 12, false) },
+        { value: 'round', label: 'Round', iconPath: this.outlinePath('round', 15, 4.1667, 32, 58, 1, 12, false) },
+        { value: 'diamond', label: 'Diamond', iconPath: this.outlinePath('diamond', 15, 4.1667, 32, 58, 2, 12, false) },
+        { value: 'squash', label: 'Squash', iconPath: this.outlinePath('squash', 15, 4.1667, 32, 58, 1, 12, false) },
+        { value: 'swallow', label: 'Swallow', iconPath: this.outlinePath('swallow', 15, 4.1667, 32, 58, 1, 12, false) },
+      ].map(o => ({
+        ...o,
+        onSelect: () => set({ tailShape: o.value }),
+        strokeColor: s.tailShape === o.value ? '#1c1b19' : '#8a8272',
+        buttonStyle: `display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;border-radius:8px;cursor:pointer;border:1px solid ${s.tailShape===o.value?'var(--accent)':'var(--sidebar-input-border)'};background:${s.tailShape===o.value?'var(--accent)':'#2b2924'};color:${s.tailShape===o.value?'#1c1b19':'var(--sidebar-text)'};`,
+      })),
+      finSetup: s.finSetup,
+      finSetupOptions: [
+        { value: 'single', label: 'Single Fin', ticks: [{ d: this.straightFinGlyph(32, 14, 45, 2.2) }] },
+        { value: 'twin', label: 'Twin', ticks: [{ d: this.finGlyph(18, 13, 34, 4.6) }, { d: this.finGlyph(46, 13, 34, 4.6) }] },
+        { value: 'thruster', label: 'Thruster', ticks: [{ d: this.finGlyph(17, 13, 29, 4.0) }, { d: this.finGlyph(47, 13, 29, 4.0) }, { d: this.straightFinGlyph(32, 26, 46) }] },
+        { value: '2plus1', label: '2+1', ticks: [{ d: this.finGlyph(15, 13, 27, 4.0) }, { d: this.finGlyph(49, 13, 27, 4.0) }, { d: this.straightFinGlyph(32, 19, 50, 2.0) }] },
+        { value: 'quad', label: 'Quad', ticks: [{ d: this.finGlyph(13, 13, 31, 4.0) }, { d: this.finGlyph(26, 24, 44) }, { d: this.finGlyph(38, 24, 44) }, { d: this.finGlyph(51, 13, 31, 4.0) }] },
+      ].map(o => ({
+        ...o,
+        iconPath: this.outlinePath('squash', 15, 4.1667, 32, 58, 1, 12, false),
+        onSelect: () => set({ finSetup: o.value, ...this.resetAdvancedPatch(o.value) }),
+        strokeColor: s.finSetup === o.value ? '#1c1b19' : '#8a8272',
+        buttonStyle: `display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;border-radius:8px;cursor:pointer;border:1px solid ${s.finSetup===o.value?'var(--accent)':'var(--sidebar-input-border)'};background:${s.finSetup===o.value?'var(--accent)':'#2b2924'};color:${s.finSetup===o.value?'#1c1b19':'var(--sidebar-text)'};`,
+      })),
+      units: s.units, unitsOptions, unitsIsIn: !cm, unitsIsCm: cm, onCheckIn, onCheckCm,
+      globalSettingsOpen: s.globalSettingsOpen, globalSettingsCaret: s.globalSettingsOpen ? '▾' : '▸',
+      onToggleGlobalSettings: () => set({ globalSettingsOpen: !s.globalSettingsOpen }),
+      showCallouts: s.showCallouts, onToggleCallouts: () => set({ showCallouts: !s.showCallouts }),
+      compact: !!this.props.compact, compactIsDiagram: (this.props.compactView || 'diagram') === 'diagram', compactIsData: this.props.compactView === 'data',
+      compactLengthText: `${lengthFeet}'${lengthInches}" · ${this.disp(w12)} tail`,
+      rootHeight: this.props.compact ? '100%' : (s.rootAvailH > 0 ? `${s.rootAvailH}px` : '100vh'), rootRef: this.rootRef,
+      panelMaxHeight: this.props.compact ? '100%' : (s.rootAvailH > 0 ? `${Math.max(1, s.rootAvailH - 40)}px` : 'calc(100vh - 140px)'),
+      compactPosition: this.props.compact ? 'position:absolute;top:0;left:0;right:0;bottom:0;' : '',
+      rootBg: this.props.compact ? 'transparent' : this._themeVars().pageBg,
+      themeVars: this._themeVars().vars,
+      compactCalloutFontSize: this.props.compact ? (10 * (this.props.compactFontScale ?? 1)).toFixed(1) + 'px' : '12px',
+      compactLengthFontSize: this.props.compact ? (12 * (this.props.compactFontScale ?? 1)).toFixed(1) + 'px' : '13px',
+      compactDataRowFontSize: this.props.compact ? (11 * (this.props.compactFontScale ?? 1)).toFixed(1) + 'px' : '12px',
+      compactLengthPctLeft: (svgOriginX / 530 * 100).toFixed(3) + '%', compactLengthPctTop: (svgTopY / 370 * 100).toFixed(3) + '%',
+      isThruster, isQuad, isTwin, isTwoPlusOne, isSingle, isLongboardQuad, quadCenterFinAvailable,
+      showAdvanced, advancedOpen: s.advancedOpen, advancedCaret: s.advancedOpen ? '▾' : '▸',
+      onToggleAdvanced: () => set({ advancedOpen: !s.advancedOpen }),
+      onResetAdvanced: () => set(this.resetAdvancedPatch()),
+      hasCenterSection, hasForwardSection, hasRearSection,
+      quadCenterFinOn: s.quadCenterFinOn, onQuadCenterFinToggle: () => set({ quadCenterFinOn: !s.quadCenterFinOn }),
+      centerSectionLabel, forwardSectionLabel, rearSectionLabel,
+      centerBaseLenFieldLabel: (isSingle || isTwoPlusOne) ? 'Fin Box Length' : 'Fin Base Length',
+
+      baseLenCenterEditing: s.baseLenCenterEditing, baseLenCenterNotEditing: !s.baseLenCenterEditing,
+      baseLenCenterLabelText,
+      baseLenCenterInputValue: toU(s.baseLenCenter), baseLenCenterInputMin: baseLenBounds.min, baseLenCenterInputMax: baseLenBounds.max, baseLenCenterInputStep: baseLenBounds.step,
+      onToggleBaseLenCenterEdit: () => set({ baseLenCenterEditing: !s.baseLenCenterEditing, baseLenCenterOverridden: true }),
+      onBaseLenCenterChange: (e) => set({ baseLenCenter: fromU(parseFloat(e.target.value)), baseLenCenterOverridden: true }),
+
+      baseLenForwardEditing: s.baseLenForwardEditing, baseLenForwardNotEditing: !s.baseLenForwardEditing,
+      baseLenForwardLabelText,
+      baseLenForwardInputValue: toU(s.baseLenForward), baseLenForwardInputMin: baseLenBounds.min, baseLenForwardInputMax: baseLenBounds.max, baseLenForwardInputStep: baseLenBounds.step,
+      onToggleBaseLenForwardEdit: () => set({ baseLenForwardEditing: !s.baseLenForwardEditing, baseLenForwardOverridden: true }),
+      onBaseLenForwardChange: (e) => set({ baseLenForward: fromU(parseFloat(e.target.value)), baseLenForwardOverridden: true }),
+
+      baseLenRearEditing: s.baseLenRearEditing, baseLenRearNotEditing: !s.baseLenRearEditing,
+      baseLenRearLabelText,
+      baseLenRearInputValue: toU(s.baseLenRear), baseLenRearInputMin: baseLenBounds.min, baseLenRearInputMax: baseLenBounds.max, baseLenRearInputStep: baseLenBounds.step,
+      onToggleBaseLenRearEdit: () => set({ baseLenRearEditing: !s.baseLenRearEditing, baseLenRearOverridden: true }),
+      onBaseLenRearChange: (e) => set({ baseLenRear: fromU(parseFloat(e.target.value)), baseLenRearOverridden: true }),
+
+      centerFinalDisplay: this.disp(centerFinal),
+      centerPositionInputValue: toU(s.centerPositionOffset), centerPositionInputMin: posBounds.min, centerPositionInputMax: posBounds.max, centerPositionInputStep: posBounds.step,
+      onCenterPositionChange: (e) => set({ centerPositionOffset: fromU(parseFloat(e.target.value)) }),
+
+      frontFinalDisplay: this.disp(isTwoPlusOne ? sideFinal : isTwin ? mainOffTail : frontFinal), frontOffRailDisplay: this.disp(frontOffRail),
+      forwardToeDisplay: this.disp(forwardToeValue),
+      forwardPositionInputValue: toU(s.forwardPositionOffset), forwardPositionInputMin: posBounds.min, forwardPositionInputMax: posBounds.max, forwardPositionInputStep: posBounds.step,
+      onForwardPositionChange: (e) => set({ forwardPositionOffset: fromU(parseFloat(e.target.value)) }),
+      forwardToeInputValue: toU(forwardToeValue), forwardToeInputMin: toeBounds.min, forwardToeInputMax: toeBounds.max, forwardToeInputStep: toeBounds.step,
+      onForwardToeChange: (e) => set({ forwardToeOverride: clampToe(fromU(parseFloat(e.target.value))) }),
+
+      frontModelOptions,
+      quadRearModelOptions, quadRearOffRailDisplay: this.disp(frontOffRail),
+      quadRearSpreadDisplay: this.disp(spread),
+      showRearOffRailSlider: isBasicOffRail,
+      quadRearOffRailDisplayValue: this.disp(quadRearOffRailValue),
+      quadRearOffRailInputValue: toU(quadRearOffRailValue), quadRearOffRailInputMin: toU(1), quadRearOffRailInputMax: toU(2), quadRearOffRailInputStep: cm ? 0.1 : 0.0625,
+      onQuadRearOffRailChange: (e) => set({ quadRearOffRailOverride: clampOffRail(fromU(parseFloat(e.target.value))) }),
+      showRearOffTailOverride: isBasicOffRail,
+      quadRearOffTailEditing: s.quadRearOffTailEditing, quadRearOffTailNotEditing: !s.quadRearOffTailEditing,
+      quadRearOffTailLabelText: s.quadRearOffTailOverridden ? `${this.disp(rearBase)} override` : `${this.disp(rearBase)} auto (½ front off-tail + 1/4")`,
+      quadRearOffTailInputValue: toU(rearBase), quadRearOffTailInputMin: toU(0.5), quadRearOffTailInputMax: toU(12), quadRearOffTailInputStep: cm ? 0.1 : 0.0625,
+      onToggleQuadRearOffTailEdit: () => set({ quadRearOffTailEditing: !s.quadRearOffTailEditing, quadRearOffTailOverridden: true, quadRearOffTailOverride: s.quadRearOffTailOverride ?? rearBase }),
+      onQuadRearOffTailChange: (e) => set({ quadRearOffTailOverride: fromU(parseFloat(e.target.value)), quadRearOffTailOverridden: true }),
+      pairFinalDisplay: this.disp(pairFinalOffTail),
+      rearToeDisplay: this.disp(rearToeValue),
+      rearPositionInputValue: toU(s.rearPositionOffset), rearPositionInputMin: posBounds.min, rearPositionInputMax: posBounds.max, rearPositionInputStep: posBounds.step,
+      onRearPositionChange: (e) => set({ rearPositionOffset: fromU(parseFloat(e.target.value)) }),
+      rearToeInputValue: toU(rearToeValue), rearToeInputMin: toeBounds.min, rearToeInputMax: toeBounds.max, rearToeInputStep: toeBounds.step,
+      onRearToeChange: (e) => set({ rearToeOverride: clampToe(fromU(parseFloat(e.target.value))) }),
+      showFrontToeTableLink, showRearToeTableLink, onOpenToeTable, onCloseToeTable, stopClick,
+      toeTableOpen: s.toeTableOpen, toeTable, toeBoardCaption: `${lengthFeet}'${lengthInches}" · ${this.disp(w12)} tail`,
+
+      twinTypeOptions, twinActiveOffTailDisplay: this.disp(mainOffTail), twinOffRailDisplay: this.disp(mainOffRail),
+      trailerOffTailDisplay: this.disp(trailerOffTail),
+
+      svgOutlinePath, svgOutlinePathOpen, finMarks,
+      svgOriginX, svgTailY, svgTopY, w12LineX1, w12LineX2, w12LineY, w12NamePctLeft, w12ValuePctLeft, w12LabelPctTop,
+      isModified, modelHeader, summarySections, legendBaseLens, notesItems,
+      summaryLengthDisplay: `${lengthFeet}'${lengthInches}"`,
+      summaryTailWidthDisplay: this.disp(w12),
+      summaryFinSetupDisplay: s.finSetup === '2plus1' ? '2+1' : (s.finSetup.charAt(0).toUpperCase() + s.finSetup.slice(1)),
+      summaryTailShapeDisplay: s.tailShape.charAt(0).toUpperCase() + s.tailShape.slice(1),
+      copyButtonLabel: s.copyToast ? 'Copied!' : 'Copy Shaper Specs',
+      onCopySpecs: () => {
+        const text = specLines.join('\n');
+        const showToast = () => { set({ copyToast: true }); setTimeout(() => this.setState({ copyToast: false }), 1800); };
+        const fallbackCopy = () => {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.focus(); ta.select();
+          try { document.execCommand('copy'); } catch (e) {}
+          document.body.removeChild(ta);
+          showToast();
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(showToast).catch(fallbackCopy);
+        } else {
+          fallbackCopy();
+        }
+      },
+      onPrintSpecs: () => {
+        const svgMarksHtml = finMarks.map(mk => {
+          let s2 = `<line x1="${mk.baselineX1}" y1="${mk.baselineY1}" x2="${mk.baselineX2}" y2="${mk.baselineY2}" stroke="var(--accent)" stroke-width="2.25" stroke-dasharray="${mk.baseStrokeDasharray}"></line>`;
+          mk.dims.forEach(d => {
+            if (d.isRailV) s2 += `<line x1="${d.x1}" y1="${d.y1}" x2="${d.x2a}" y2="${d.y1}" stroke="#1c1b19" stroke-width="1" marker-end="url(#arrowPrint)"></line><line x1="${d.x1}" y1="${d.y1}" x2="${d.x2b}" y2="${d.y1}" stroke="#1c1b19" stroke-width="1" marker-end="url(#arrowPrint)"></line><text x="${d.x1}" y="${d.y1 - 4}" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="9pt" font-weight="700" fill="#1c1b19">${d.text}</text>`;
+            else if (d.isBelow) s2 += `<line x1="${d.extLeftX}" y1="${d.extLeftY1}" x2="${d.extLeftX}" y2="${d.extLeftY2}" stroke="#1c1b19" stroke-width="1"></line><line x1="${d.extRightX}" y1="${d.extRightY1}" x2="${d.extRightX}" y2="${d.extRightY2}" stroke="#1c1b19" stroke-width="1"></line><line x1="${d.dimX1}" y1="${d.dimY}" x2="${d.dimX2}" y2="${d.dimY}" stroke="#1c1b19" stroke-width="1" marker-start="url(#arrowPrint)" marker-end="url(#arrowPrint)"></line><text x="${d.textX}" y="${d.textY - 4}" text-anchor="${d.anchor}" font-family="Helvetica, Arial, sans-serif" font-size="9pt" font-weight="700" fill="#1c1b19">${d.text}</text>`;
+            else if (d.isPlain) s2 += `<line x1="${d.x1}" y1="${d.y1}" x2="${d.x2}" y2="${d.y2}" stroke="#1c1b19" stroke-width="1" marker-start="url(#arrowPrint)" marker-end="url(#arrowPrint)"></line><text x="${d.textX}" y="${d.textY - 4}" text-anchor="${d.anchor}" font-family="Helvetica, Arial, sans-serif" font-size="9pt" font-weight="700" fill="#1c1b19">${d.text}</text>`;
+          });
+          s2 += `<circle cx="${mk.baselineX1}" cy="${mk.baselineY1}" r="3.5" fill="#1c1b19"></circle><circle cx="${mk.baselineX2}" cy="${mk.baselineY2}" r="3.5" fill="#1c1b19"></circle>`;
+          return s2;
+        }).join('');
+
+        // Bounding box over every drawn coordinate (outline, baselines, dimension lines and their text) so the
+        // print canvas always fits the marks instead of relying on a fixed guessed size that can clip callouts.
+        let bx0 = ORIGIN_X - (this.state.w12 / 2) * SCALE, bx1 = ORIGIN_X + (this.state.w12 / 2) * SCALE;
+        let by0 = TAIL_Y - (24 - VIEW_TOP_MARGIN) * SCALE, by1 = TAIL_Y;
+        const grow = (x, y, padX = 0, padY = 0) => { bx0 = Math.min(bx0, x - padX); bx1 = Math.max(bx1, x + padX); by0 = Math.min(by0, y - padY); by1 = Math.max(by1, y + padY); };
+        const TEXT_PAD = 60; // rough half-width allowance for the widest dimension label
+        finMarks.forEach(mk => {
+          grow(mk.baselineX1, mk.baselineY1, 10, 10); grow(mk.baselineX2, mk.baselineY2, 10, 10);
+          mk.dims.forEach(d => {
+            if (d.isRailV) { grow(d.x1, d.y1, TEXT_PAD, 14); grow(d.x2a, d.y1); grow(d.x2b, d.y1); }
+            else if (d.isBelow) { grow(d.textX, d.textY, TEXT_PAD, 18); grow(d.extLeftX, d.extLeftY1); grow(d.extLeftX, d.extLeftY2); grow(d.extRightX, d.extRightY1); grow(d.extRightX, d.extRightY2); }
+            else if (d.isPlain) { grow(d.x1, d.y1, TEXT_PAD, 14); grow(d.x2, d.y2, TEXT_PAD, 14); grow(d.extTopX2, d.extTopY); grow(d.extBotX2, d.extBotY); }
+          });
+        });
+        const MARGIN = 20;
+        const vbX = bx0 - MARGIN, vbY = by0 - MARGIN, vbW = (bx1 - bx0) + MARGIN * 2, vbH = (by1 - by0) + MARGIN * 2;
+
+        // Plot floats bottom-right, spec text wraps around its left edge, sized to a fixed print height.
+        const specLineHeight = 11 * 1.5;
+        const preNaturalH = specLines.length * specLineHeight;
+        const svgHeightPx = 4 * 96;
+        const svgWidthPx = svgHeightPx * (vbW / vbH);
+        // Push the plot down so it lands in the bottom-right corner: the text above it runs full width, then
+        // whatever text remains wraps down its left side.
+        const marginTopPx = Math.max(0, preNaturalH - svgHeightPx - 20);
+        const naturalContentH = Math.max(preNaturalH, marginTopPx + svgHeightPx);
+        const PAGE_BUDGET_H = 860; // ~US Letter minus margins/header at 96dpi
+        const zoom = Math.min(1, PAGE_BUDGET_H / naturalContentH);
+
+        const html = `<!DOCTYPE html><html><head><title>Fin Placement Spec</title><style>@page { size: portrait; margin: 0.4in; }</style></head><body style="font-family:Helvetica,Arial,sans-serif;padding:24px;color:#1c1b19;">
+          <h2 style="margin:0 0 4px;font-size:16pt;">${lengthFeet}'${lengthInches}" · ${this.disp(w12)} tail @12" · ${s.finSetup==='2plus1'?'2+1':s.finSetup} · ${s.tailShape} tail</h2>
+          <p style="color:#8a8272;font-size:9pt;margin:0 0 16px;">Trailing-edge convention</p>
+          <div style="zoom:${zoom.toFixed(3)};">
+            <div style="float:right;width:${svgWidthPx.toFixed(0)}px;margin:${marginTopPx.toFixed(0)}px 0 8px 24px;">
+              <svg width="100%" height="auto" viewBox="${vbX.toFixed(1)} ${vbY.toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}" style="display:block;">
+                <defs><marker id="arrowPrint" markerWidth="8" markerHeight="7" refX="7" refY="3.5" orient="auto-start-reverse"><path d="M0,0 L8,3.5 L0,7 Z" fill="#1c1b19"></path></marker></defs>
+                <line x1="${ORIGIN_X}" y1="${by0}" x2="${ORIGIN_X}" y2="${TAIL_Y}" stroke="#cbbf9e" stroke-width="1" stroke-dasharray="4 4"></line>
+                <path d="${svgOutlinePath}" fill="none" stroke="#1c1b19" stroke-width="2"></path>
+                ${svgMarksHtml}
+              </svg>
+            </div>
+            <pre style="font-size:11pt;line-height:1.5;white-space:pre-wrap;margin:0;font-family:Helvetica,Arial,sans-serif;">${specLines.join('\n')}</pre>
+            <div style="clear:both;"></div>
+          </div>
+        </body></html>`;
+        const w = window.open('', '_blank');
+        if (w && !w.closed) {
+          w.document.write(html);
+          w.document.close();
+          setTimeout(() => { w.focus(); w.print(); }, 300);
+          return;
+        }
+        const frame = document.createElement('iframe');
+        frame.style.position = 'fixed';
+        frame.style.right = '0'; frame.style.bottom = '0';
+        frame.style.width = '0'; frame.style.height = '0';
+        frame.style.border = '0';
+        document.body.appendChild(frame);
+        const doc = frame.contentWindow.document;
+        doc.open(); doc.write(html); doc.close();
+        setTimeout(() => {
+          frame.contentWindow.focus();
+          frame.contentWindow.print();
+          setTimeout(() => document.body.removeChild(frame), 1000);
+        }, 300);
+      },
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  @font-face { font-family: 'Sys'; src: local('Helvetica Neue'), local('Helvetica'), local('Arial'); }
+  html, body { height: 100%; }
+  body { margin: 0; background: #f7f4ee; }
+  * { box-sizing: border-box; font-family: Helvetica, Arial, sans-serif; }
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #cbbf9e; border-radius: 4px; }
+  a { color: var(--accent); }
+  a:hover { color: var(--accent-strong); }
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="{{ compactPosition }}{{ themeVars }}display:flex;flex-wrap:wrap;width:100%;height:{{ rootHeight }};overflow:hidden;background:{{ rootBg }};color:#1c1b19;">
+
+  <sc-if value="{{ !compact }}" hint-placeholder-val="{{ true }}">
+  <aside style="flex:1 1 340px;max-width:400px;background:var(--sidebar-bg);color:var(--sidebar-text);padding:28px 26px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;max-height:{{ rootHeight }};">
+    <div>
+      <div style="font-size:22px;font-weight:700;">Template Builder</div>
+      <div style="font-size:12px;color:var(--sidebar-text-muted);margin-top:2px;">Design and print full sized surfboard templates</div>
+    </div>
+
+    <div style="font-size:14px;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);font-weight:700;border-bottom:1px solid var(--sidebar-divider);padding-bottom:6px;">Board Length</div>
+    <div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Board Length — {{ lengthDisplay }}</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <select value="{{ lengthFeet }}" onChange="{{ onFeetChange }}" style="flex:1;background:var(--sidebar-input-bg);color:var(--sidebar-text);border:1px solid var(--sidebar-input-border);border-radius:6px;padding:8px;font-size:14px;">
+          <sc-for list="{{ feetOptions }}" as="f" hint-placeholder-count="6">
+            <option value="{{ f }}">{{ f }}'</option>
+          </sc-for>
+        </select>
+        <select value="{{ lengthInches }}" onChange="{{ onInchesChange }}" style="flex:1;background:var(--sidebar-input-bg);color:var(--sidebar-text);border:1px solid var(--sidebar-input-border);border-radius:6px;padding:8px;font-size:14px;">
+          <sc-for list="{{ inchOptions }}" as="i" hint-placeholder-count="12">
+            <option value="{{ i }}">{{ i }}"</option>
+          </sc-for>
+        </select>
+      </div>
+      <input type="range" min="60" max="120" step="1" value="{{ lengthTotalIn }}" onChange="{{ onLengthSlider }}" style="width:100%;accent-color:var(--accent);">
+    </div>
+
+    <div style="font-size:14px;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);font-weight:700;border-bottom:1px solid var(--sidebar-divider);padding-bottom:6px;margin-top:6px;">Nose Controls</div>
+    <div style="display:flex;gap:16px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Nose Angle — {{ noseAngle }}°</div>
+        <input type="range" min="35" max="90" step="1" value="{{ noseAngle }}" onChange="{{ onNoseAngleChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Pointy</span><span>Round</span></div>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Fullness — {{ noseVectorDisplay }}</div>
+        <input type="range" min="0" max="100" step="0.25" value="{{ noseVector }}" onChange="{{ onNoseVectorChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Thin</span><span>Full</span></div>
+      </div>
+    </div>
+
+    <div style="font-size:14px;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);font-weight:700;border-bottom:1px solid var(--sidebar-divider);padding-bottom:6px;margin-top:6px;">WIDEPOINT CONTROLS</div>
+    <div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Widepoint Width — {{ centerWidthDisplay }}</div>
+      <input type="range" min="{{ centerWidthMin }}" max="{{ centerWidthMax }}" step="{{ widthStep }}" value="{{ centerWidthInputValue }}" onChange="{{ onCenterWidthChange }}" style="width:100%;accent-color:var(--accent);">
+    </div>
+    <div style="display:flex;gap:16px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Offset — {{ wpOffsetDisplay }}</div>
+        <input type="range" min="{{ wpOffsetMin }}" max="{{ wpOffsetMax }}" step="{{ offsetStep }}" value="{{ wpOffsetInputValue }}" onChange="{{ onWpOffsetChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Tail</span><span>Nose</span></div>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Rail Length — {{ widepointVectorDisplay }}</div>
+        <input type="range" min="0" max="100" step="0.25" value="{{ widepointVector }}" onChange="{{ onWidepointVectorChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Short</span><span>Long</span></div>
+      </div>
+    </div>
+
+    <div style="font-size:14px;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);font-weight:700;border-bottom:1px solid var(--sidebar-divider);padding-bottom:6px;margin-top:6px;">TAIL CONTROLS</div>
+
+    <div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
+        <sc-for list="{{ tailTypeOptions }}" as="opt" hint-placeholder-count="5">
+          <button onClick="{{ opt.onSelect }}" style="{{ opt.buttonStyle }}">
+            <svg width="30" height="30" viewBox="0 0 64 64">
+              <path d="{{ opt.iconPath }}" fill="none" stroke="{{ opt.strokeColor }}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+              <line x1="32" y1="6" x2="32" y2="52" stroke="{{ opt.strokeColor }}" stroke-width="1.5" opacity="0.5"></line>
+            </svg>
+            <span style="font-size:9px;font-weight:700;">{{ opt.label }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:16px;">
+      <div style="flex:1;opacity:{{ tailBlockPinnedOpacity }};">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Tail Block — {{ tailBlockDisplay }}</div>
+        <input type="range" min="0" max="16" step="{{ widthStep }}" value="{{ tailBlockInputValue }}" onChange="{{ onTailBlockChange }}" disabled="{{ tailBlockPinned }}" style="width:100%;accent-color:var(--accent);">
+      </div>
+      <div style="flex:1;opacity:{{ depthRowOpacity }};">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">{{ depthRowLabel }} — {{ depthRowDisplay }}</div>
+        <input type="range" min="{{ depthRowMin }}" max="{{ depthRowMax }}" step="{{ depthRowStep }}" value="{{ depthRowValue }}" onChange="{{ depthRowOnChange }}" disabled="{{ depthRowDisabled }}" style="width:100%;accent-color:var(--accent);">
+        <sc-if value="{{ diamondDepthClamped }}" hint-placeholder-val="{{ false }}"><div style="font-size:10px;color:var(--accent);margin-top:2px;">Clamped to 2" less than Tail Block</div></sc-if>
+      </div>
+    </div>
+    <sc-if value="{{ isSwallow }}" hint-placeholder-val="{{ false }}">
+      <div style="display:none;">
+        <input type="range" min="{{ depthMin }}" max="{{ depthMax }}" step="{{ depthStep }}" value="{{ swallowDepthInputValue }}" onChange="{{ onSwallowDepthChange }}">
+      </div>
+    </sc-if>
+    <sc-if value="{{ isDiamond }}" hint-placeholder-val="{{ false }}">
+      <div style="display:none;">
+        <input type="range" min="{{ diamondDepthMin }}" max="{{ diamondDepthMax }}" step="{{ diamondDepthStep }}" value="{{ diamondDepthInputValue }}" onChange="{{ onDiamondDepthChange }}">
+      </div>
+    </sc-if>
+    <div style="display:flex;gap:16px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Tail Angle — {{ tailAngle }}°</div>
+        <input type="range" min="30" max="90" step="1" value="{{ tailAngle }}" onChange="{{ onTailAngleChange }}" disabled="{{ tailAnglePinned }}" style="width:100%;accent-color:var(--accent);opacity:{{ tailAnglePinnedOpacity }};">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Pointy</span><span>Round</span></div>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Fullness — {{ tailVectorDisplay }}</div>
+        <input type="range" min="0" max="100" step="0.25" value="{{ tailVector }}" onChange="{{ onTailVectorChange }}" style="width:100%;accent-color:var(--accent);">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Thin</span><span>Full</span></div>
+      </div>
+    </div>
+
+    <div style="margin-top:auto;">
+      <button onClick="{{ onToggleGlobalSettings }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:transparent;border:none;color:var(--accent);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;padding:0 0 6px 12px;border-bottom:1px solid var(--sidebar-divider);">
+        <span>Settings</span><span>{{ globalSettingsCaret }}</span>
+      </button>
+      <sc-if value="{{ globalSettingsOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:12px;padding-left:12px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sidebar-text-secondary);cursor:pointer;">
+            <input type="checkbox" checked="{{ showConstruction }}" onChange="{{ onToggleConstruction }}">View Construction Lines
+          </label>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="display:flex;gap:8px;padding-top:12px;">
+      <button onClick="{{ onCopySpecs }}" style="flex:1;background:var(--accent);color:#1c1b19;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;">
+        {{ copyButtonLabel }}
+      </button>
+      <button onClick="{{ onPrintSpecs }}" style="flex:1;background:transparent;color:var(--sidebar-text);border:1px solid #6b6355;border-radius:8px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;">Print Overview Sheet</button>
+    </div>
+    <button onClick="{{ onPrintFullTemplate }}" style="width:100%;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;">
+      Print Full Size Template
+    </button>
+  </aside>
+  </sc-if>
+
+  <main style="flex:3 1 480px;padding:8px 8px;display:flex;flex-direction:column;gap:20px;min-width:0;height:{{ mainHeight }};">
+    <div style="display:flex;gap:24px;align-items:stretch;justify-content:center;flex-wrap:wrap;flex:1 1 auto;min-height:0;height:100%;">
+      <div style="flex:1;min-width:{{ viewerMinWidth }};min-height:0;max-height:100%;overflow:hidden;background:{{ viewerCardBg }};border:{{ viewerCardBorder }};border-radius:{{ viewerCardRadius }};padding:{{ viewerCardPadding }};display:flex;flex-direction:column;align-items:center;">
+        <sc-if value="{{ !compact }}" hint-placeholder-val="{{ true }}">
+        <div style="font-size:20px;font-weight:800;align-self:flex-start;margin-bottom:12px;color:#1c1b19;">Template Viewer</div>
+        </sc-if>
+        <div style="position:relative;flex:1;min-height:0;width:100%;display:flex;justify-content:center;">
+        <div style="position:relative;height:100%;min-height:0;min-width:0;max-width:100%;aspect-ratio:340/620;">
+        <svg width="{{ viewW }}" height="{{ viewH }}" viewBox="0 0 {{ viewW }} {{ viewH }}" style="width:100%;height:100%;display:block;">
+          <path d="{{ outlinePath }}" fill="var(--board-fill)" stroke="#1c1b19" stroke-width="2"></path>
+          <line x1="{{ centerlineX }}" y1="{{ tipPy }}" x2="{{ centerlineX }}" y2="{{ tailPy }}" stroke="#4472C4" stroke-width="1" stroke-dasharray="6 4"></line>
+          <sc-for list="{{ refLines }}" as="rl" hint-placeholder-count="4">
+            <line x1="{{ rl.x1 }}" y1="{{ rl.y1 }}" x2="{{ rl.x2 }}" y2="{{ rl.y2 }}" stroke="#4472C4" stroke-width="1" stroke-dasharray="6 4"></line>
+          </sc-for>
+          <sc-if value="{{ showConstruction }}" hint-placeholder-val="{{ false }}">
+            <sc-for list="{{ constructionLines }}" as="cl" hint-placeholder-count="8">
+              <line x1="{{ cl.x1 }}" y1="{{ cl.y1 }}" x2="{{ cl.x2 }}" y2="{{ cl.y2 }}" stroke="{{ cl.color }}" stroke-width="1.5"></line>
+            </sc-for>
+            <sc-for list="{{ constructionDots }}" as="dt" hint-placeholder-count="10">
+              <circle cx="{{ dt.cx }}" cy="{{ dt.cy }}" r="4" fill="{{ dt.color }}"></circle>
+            </sc-for>
+          </sc-if>
+          <sc-for list="{{ finMarksSvg }}" as="fm" hint-placeholder-count="3">
+            <line x1="{{ fm.x1 }}" y1="{{ fm.y1 }}" x2="{{ fm.x2 }}" y2="{{ fm.y2 }}" stroke="var(--accent)" stroke-width="2"></line>
+            <circle cx="{{ fm.x1 }}" cy="{{ fm.y1 }}" r="3.5" fill="#1c1b19"></circle>
+            <circle cx="{{ fm.x2 }}" cy="{{ fm.y2 }}" r="3.5" fill="#1c1b19"></circle>
+          </sc-for>
+        </svg>
+        <div style="position:absolute;inset:0;pointer-events:none;">
+          <sc-for list="{{ callouts }}" as="co" hint-placeholder-count="6">
+            
+            <div style="position: absolute; left: {{ co.valuesPctLeft }}; top: {{ co.pctTop }}; transform: translate(-100%,-50%); text-align: right; white-space: nowrap; padding-right: 5px; font-size: {{ calloutValueFontSize }}; font-weight: 700; color: #1c1b19">{{ co.value }}</div><div style="position: absolute; left: {{ co.namesPctLeft }}; top: {{ co.pctTop }}; transform: translate(0,-50%); white-space: nowrap; padding-left: 4px; font-size: {{ calloutLabelFontSize }}; font-weight: 700; color: #3a5f9e; text-transform: uppercase; letter-spacing: 0.3px; text-shadow: 0 0 3px var(--sidebar-text),0 0 3px var(--sidebar-text);">{{ co.label }}</div>
+          </sc-for>
+          <div style="position:absolute;left:{{ lengthCalloutPctLeft }};top:{{ lengthCalloutPctTop }};transform:translate(-50%,calc(-100% - 4px));white-space:nowrap;text-align:center;font-size:{{ calloutValueFontSize }};font-weight:800;color:#1c1b19;">{{ lengthCalloutText }}</div>
+        </div>
+        </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{},&quot;brandName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Chris Kontoes&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Branding&quot;},&quot;seed&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;seedVersion&quot;:{&quot;editor&quot;:null,&quot;default&quot;:0,&quot;tsType&quot;:&quot;number&quot;},&quot;onSync&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;(v:any)=&gt;void&quot;},&quot;compact&quot;:{&quot;editor&quot;:null,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;finMarks&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;}}">
+const VIEW_W = 340, VIEW_H = 620, PAD_X = 30, PAD_Y = 24;
+
+class Component extends DCLogic {
+  _themeVars() {
+    const raw = (this.props && this.props.accentColor) || '#c98d3a';
+    let h = String(raw).replace('#','');
+    if (h.length === 3) h = h.split('').map(c=>c+c).join('');
+    const r=parseInt(h.slice(0,2),16)||201, g=parseInt(h.slice(2,4),16)||141, b=parseInt(h.slice(4,6),16)||58;
+    const mix=t=>`rgb(${Math.round(r+(255-r)*t)},${Math.round(g+(255-g)*t)},${Math.round(b+(255-b)*t)})`;
+    const dk=t=>`rgb(${Math.round(r*(1-t))},${Math.round(g*(1-t))},${Math.round(b*(1-t))})`;
+    return { vars:`--accent:${raw};--accent-strong:${dk(0.18)};--board-fill:${mix(0.86)};`, pageBg:mix(0.93) };
+  }
+  state = {
+    units: 'in',
+    globalSettingsOpen: false,
+    lengthIn: 72,
+    centerWidth: 19,
+    wpOffset: -0.5,
+    tailBlockWidth: 4,
+    tailType: 'squash',
+    swallowDepth: 3,
+    diamondDepth: 3,
+    tailAdvancedOpen: false,
+    widepointVector: 50,
+    tailAngle: 60,
+    tailVector: 50.5,
+    noseAngle: 55,
+    noseVector: 25,
+    showConstruction: false,
+    copyToast: false,
+    rootAvailH: 0,
+  };
+  measureRootAvail = () => {
+    const el = this._rootEl; if (!el) return;
+    const top = el.getBoundingClientRect().top;
+    const avail = Math.max(200, window.innerHeight - top);
+    if (Math.abs(avail - this.state.rootAvailH) > 1) this.setState({ rootAvailH: avail });
+  }
+  rootRef = (el) => {
+    this._rootEl = el;
+    if (!el) return;
+    if (!this._rootRO) this._rootRO = new ResizeObserver(() => this.measureRootAvail());
+    this._rootRO.observe(document.body);
+    this._rootRO.observe(el);
+    this.measureRootAvail();
+    requestAnimationFrame(() => this.measureRootAvail());
+    if (!this._rootPollInterval) {
+      let ticks = 0;
+      this._rootPollInterval = setInterval(() => {
+        this.measureRootAvail();
+        ticks++;
+        if (ticks > 40) { clearInterval(this._rootPollInterval); this._rootPollInterval = null; }
+      }, 150);
+    }
+    if (!this._rootResizeBound) {
+      this._rootResizeBound = true;
+      window.addEventListener('resize', this.measureRootAvail);
+    }
+  }
+
+  applySeed() {
+    const seed = this.props.seed; if (!seed) return;
+    const skip = new Set(['area', 'w12', 'noseWidthAt12', 'tailWidthAt12', 'tailGeom']);
+    const patch = {};
+    if (seed.widepointWidth != null) patch.centerWidth = seed.widepointWidth;
+    if (seed.tailWidth != null) patch.tailBlockWidth = seed.tailWidth;
+    if (seed.tailShape != null) patch.tailType = seed.tailShape;
+    Object.keys(seed).forEach(k => {
+      if (skip.has(k) || k === 'widepointWidth' || k === 'tailWidth' || k === 'tailShape') return;
+      if (Object.prototype.hasOwnProperty.call(this.state, k)) patch[k] = seed[k];
+    });
+    if (Object.keys(patch).length) this.setState(patch);
+  }
+  syncSnapshot() {
+    const g = this.buildGeometry(this.state);
+    const tailType = this.state.tailType;
+    const connector = tailType === 'diamond' ? { x: 0, y: 0 } : (tailType === 'swallow' ? { x: 0, y: g.centerCloseY } : null);
+    const rawExclude = new Set(['rootAvailH']);
+    const rawState = {};
+    Object.keys(this.state).forEach(k => { if (!rawExclude.has(k)) rawState[k] = this.state[k]; });
+    return {
+      lengthIn: this.state.lengthIn, widepointWidth: this.state.centerWidth, tailWidth: this.state.tailBlockWidth,
+      tailShape: this.state.tailType, units: this.state.units, area: g.area, w12: g.tailWidthAt12,
+      noseWidthAt12: g.noseWidthAt12, tailWidthAt12: g.tailWidthAt12,
+      tailGeom: { points: g.rightPts.filter(([y]) => y <= 24), podX: g.knots[0].p.x, podY: g.knots[0].p.y, connector },
+      ...rawState,
+    };
+  }
+  componentDidMount() {
+    this.applySeed();
+    const cur = this.syncSnapshot();
+    this._lastSynced = cur;
+    this.props.onSync && this.props.onSync(cur);
+  }
+  componentWillUnmount() {
+    if (this._rootRO) this._rootRO.disconnect();
+    if (this._rootResizeBound) window.removeEventListener('resize', this.measureRootAvail);
+    if (this._rootPollInterval) clearInterval(this._rootPollInterval);
+  }
+  componentDidUpdate(prevProps) {
+    if (prevProps.seedVersion !== this.props.seedVersion) this.applySeed();
+    const cur = this.syncSnapshot();
+    const last = this._lastSynced || {};
+    const sig = (v) => (v != null && typeof v === 'object') ? JSON.stringify(v) : v;
+    const changed = {};
+    Object.keys(cur).forEach(k => { if (sig(cur[k]) !== sig(last[k])) changed[k] = cur[k]; });
+    if (Object.keys(changed).length) { this._lastSynced = cur; this.props.onSync && this.props.onSync(changed); }
+  }
+
+  round16(x) { return Math.round(x * 16) / 16; }
+  toFrac(x) {
+    const sign = x < 0 ? '-' : '';
+    x = Math.abs(this.round16(x));
+    let whole = Math.floor(x + 1e-9);
+    let sixteenths = Math.round((x - whole) * 16);
+    if (sixteenths === 16) { whole += 1; sixteenths = 0; }
+    if (sixteenths === 0) return `${sign}${whole}"`;
+    let num = sixteenths, den = 16;
+    while (num % 2 === 0) { num /= 2; den /= 2; }
+    return `${sign}${whole > 0 ? whole + ' ' : ''}${num}/${den}"`;
+  }
+  disp(inches) {
+    if (this.state.units === 'cm') return `${(Math.round(inches * 2.54 * 100) / 100).toFixed(2)} cm`;
+    return this.toFrac(inches);
+  }
+  toU(inches) { return this.state.units === 'cm' ? Math.round(inches * 2.54 * 100) / 100 : inches; }
+  fromU(v) { return this.state.units === 'cm' ? v / 2.54 : v; }
+
+  // Tail-shape icon glyphs — same generator as the Fin Placement Calculator's tail-shape buttons, so the
+  // icons read identically across tools.
+  catmullIconPath(pts) {
+    if (pts.length < 2) return '';
+    let d = `M ${pts[0][0]} ${pts[0][1]}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2[0]} ${p2[1]}`;
+    }
+    return d;
+  }
+  iconXBaseAt(shape, y) {
+    const yy = Math.max(0, y);
+    switch (shape) {
+      case 'pin': return 1.1250 * yy - 0.0586 * yy * yy + 0.001214 * yy * yy * yy;
+      case 'squash': return 2.25 + 0.6708 * yy - 0.0285 * yy * yy + 0.000539 * yy * yy * yy;
+      case 'round': return 2.5119 * Math.sqrt(yy) - 0.1340 * yy;
+      case 'swallow': return 4.1078 + 0.3237 * yy - 0.00573 * yy * yy;
+      default: return 1.1250 * yy - 0.0586 * yy * yy + 0.001214 * yy * yy * yy;
+    }
+  }
+  iconOutlinePath(shape, w12, diamondDepthMult, yMax) {
+    const scale = 4.1667, originX = 32, tailY = 58;
+    const mapPt = ([x, y]) => [originX + x * scale, tailY - y * scale];
+    const baseShape = shape === 'diamond' ? 'round' : shape;
+    const S = (w12 / 2) / this.iconXBaseAt(baseShape, 12);
+    const yLow = shape === 'diamond' ? 2 * diamondDepthMult : 0;
+    const N = 48;
+    const posSide = [];
+    for (let i = 0; i <= N; i++) {
+      const y = yLow + (Math.min(yMax, 20) - yLow) * (i / N);
+      posSide.push([S * this.iconXBaseAt(baseShape, y), y]);
+    }
+    const negSide = posSide.slice().reverse().map(([x, y]) => [-x, y]);
+    const negMapped = negSide.map(mapPt);
+    const posMapped = posSide.map(mapPt);
+    let d = this.catmullIconPath(negMapped);
+    const connectorPt = shape === 'diamond' ? [0, 0] : (shape === 'swallow' ? [0, 2.5] : null);
+    if (connectorPt) { const cm = mapPt(connectorPt); d += ` L ${cm[0].toFixed(2)} ${cm[1].toFixed(2)}`; }
+    d += ` L ${posMapped[0][0].toFixed(2)} ${posMapped[0][1].toFixed(2)}`;
+    const posPath = this.catmullIconPath(posMapped);
+    d += posPath.substring(posPath.indexOf(' C'));
+    return d;
+  }
+
+  // Full-size, tile-to-paper print of the +X half of the board, full board length, on US Letter pages.
+  printFullSizeTemplate() {
+    const s = this.state;
+    const g = this.buildGeometry(s);
+    const L = g.L, cw = g.cw, bw = g.bw, tailPodY = g.knots[0].p.y, centerCloseY = g.centerCloseY;
+    const PAGE_W = 8.5, PAGE_H = 11, LAP = 0.5, PT = 72;
+    const stepX = PAGE_W - LAP, stepY = PAGE_H - LAP;
+    const nCols = Math.max(1, Math.ceil((cw - PAGE_W) / stepX) + 1);
+    const nRows = Math.max(1, Math.ceil((L - PAGE_H) / stepY) + 1);
+
+    const xAtY = (yTarget) => {
+      const pts = g.rightPts;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [y0, x0] = pts[i], [y1, x1] = pts[i + 1];
+        if (yTarget >= y0 && yTarget <= y1) {
+          const t = y1 > y0 ? (yTarget - y0) / (y1 - y0) : 0;
+          return x0 + (x1 - x0) * t;
+        }
+      }
+      return pts[pts.length - 1][1];
+    };
+
+    // Closed half-outline (stringer + tail block edge + rail curve); SVG "Z" closes it straight back to
+    // (0, centerCloseY), which IS the stringer edge — no separate line needed.
+    const loopPts = [[0, centerCloseY]];
+    if (bw > 1e-6) loopPts.push([bw, tailPodY]);
+    g.rightPts.forEach(([y, x]) => loopPts.push([x, y]));
+
+    const centerWidthAtStation = 2 * xAtY(L / 2);
+    const stations = [
+      { y: 12, label: 'TAIL @ 12"', value: this.disp(g.tailWidthAt12), textOffset: 0 },
+      { y: L - 12, label: 'NOSE @ 12"', value: this.disp(g.noseWidthAt12), textOffset: 0 },
+      { y: g.wpY, label: 'WIDEPOINT', value: this.disp(s.centerWidth), textOffset: 0 },
+      { y: L / 2, label: 'CENTER', value: this.disp(centerWidthAtStation), textOffset: 0 },
+    ];
+    // If widepoint and center sit within 1" of each other along the length, their dashes/labels would
+    // land on (near) the same line — stack the text a line apart while each dash still marks its true Y.
+    const wpSt = stations[2], centerSt = stations[3];
+    if (Math.abs(wpSt.y - centerSt.y) < 1) { wpSt.textOffset = -7; centerSt.textOffset = 7; }
+
+    // Row 1 starts at the nose (top-left of the wire box = nose tip, X=0); row number increases toward
+    // the tail. Column 1's box-left edge = the stringer (X=0); column number increases toward the rail.
+    const pages = [];
+    for (let row = 1; row <= nRows; row++) {
+      const rowYTop = L - (row - 1) * stepY;
+      const yLo = rowYTop - PAGE_H, yHi = rowYTop;
+      const yA = Math.max(yLo, 0), yB = Math.min(yHi, L);
+      let maxX = 0;
+      g.rightPts.forEach(([y, x]) => { if (y >= yA - 0.01 && y <= yB + 0.01) maxX = Math.max(maxX, x); });
+      if (bw > 0 && tailPodY >= yA - 0.01 && tailPodY <= yB + 0.01) maxX = Math.max(maxX, bw);
+      for (let col = 1; col <= nCols; col++) {
+        const colXStart = (col - 1) * stepX;
+        if (col > 1 && colXStart > maxX + 0.05) break;
+        pages.push({ col, row, colXStart, rowYTop, stationMarks: [] });
+      }
+    }
+    stations.forEach(st => {
+      const realX = xAtY(Math.max(0, Math.min(L, st.y)));
+      pages.forEach(pg => {
+        if (realX >= pg.colXStart - 0.51 && realX <= pg.colXStart + PAGE_W - 0.49 &&
+            st.y >= pg.rowYTop - PAGE_H - 0.01 && st.y <= pg.rowYTop + 0.51) {
+          pg.stationMarks.push({ label: st.label, value: st.value, textOffset: st.textOffset, realX, realY: st.y });
+        }
+      });
+    });
+
+    const lengthFeet = Math.floor(L / 12), lengthInches = L % 12;
+    const wpFromCenter = g.wpY - L / 2;
+    const wpPosText = Math.abs(wpFromCenter) < 0.01 ? 'at center' : `${this.disp(Math.abs(wpFromCenter))} toward ${wpFromCenter > 0 ? 'nose' : 'tail'}`;
+    const dimsLines = [
+      `BOARD LENGTH: ${lengthFeet}'${lengthInches}"`,
+      `NOSE @12": ${this.disp(g.noseWidthAt12)}`,
+      `WIDEPOINT: ${this.disp(s.centerWidth)} (${wpPosText})`,
+      `TAIL @12": ${this.disp(g.tailWidthAt12)}`,
+    ];
+
+    const pageToLocal = (pg, realX, realY) => [36 + (realX - pg.colXStart) * PT, 36 + (pg.rowYTop - realY) * PT];
+
+    const pagesHtml = pages.map(pg => {
+      const d = 'M ' + loopPts.map(([x, y], i) => {
+        const [px, py] = pageToLocal(pg, x, y);
+        return `${px.toFixed(2)} ${py.toFixed(2)}`;
+      }).join(' L ') + ' Z';
+
+      const marksHtml = pg.stationMarks.map(m => {
+        const [px, py] = pageToLocal(pg, m.realX, m.realY);
+        const ty = py + 4 + (m.textOffset || 0);
+        return `<line x1="${(px - 18).toFixed(2)}" y1="${py.toFixed(2)}" x2="${px.toFixed(2)}" y2="${py.toFixed(2)}" stroke="#000" stroke-width="1"></line>
+          <text x="${(px - 22).toFixed(2)}" y="${ty.toFixed(2)}" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#000">${m.label} — ${m.value}</text>`;
+      }).join('');
+
+      let firstPageExtras = '';
+      if (pg.col === 1 && pg.row === 1) {
+        firstPageExtras = `
+          <rect x="54" y="580" width="144" height="144" fill="none" stroke="#000" stroke-width="1"></rect>
+          <text x="54" y="740" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#000">THIS BOX MUST MEASURE EXACTLY 2" x 2"</text>
+          <text x="54" y="754" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#000">PRINT AT 100% SCALE — DO NOT "FIT TO PAGE"</text>
+          ${dimsLines.map((ln, i) => `<text x="54" y="${534 + i * 14}" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#000">${ln}</text>`).join('')}`;
+      }
+
+      return `<div class="page">
+        <svg viewBox="0 0 612 792" width="8.5in" height="11in" style="overflow:hidden;">
+          <path d="${d}" fill="none" stroke="#000" stroke-width="2"></path>
+          <rect x="36" y="36" width="540" height="720" fill="none" stroke="#000" stroke-width="1"></rect>
+          ${marksHtml}
+          ${firstPageExtras}
+          <text x="576" y="746" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#000">COL ${pg.col} · ROW ${pg.row}</text>
+        </svg>
+      </div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html><head><title>Full Size Template</title><style>
+      @page { size: letter portrait; margin: 0; }
+      html, body { margin: 0; padding: 0; }
+      .page { width: 8.5in; height: 11in; page-break-after: always; }
+      .page:last-child { page-break-after: auto; }
+      svg { display: block; }
+    </style></head><body>${pagesHtml}</body></html>`;
+
+    const w = window.open('', '_blank');
+    if (w && !w.closed) { w.document.write(html); w.document.close(); setTimeout(() => { w.focus(); w.print(); }, 300); return; }
+    const frame = document.createElement('iframe');
+    frame.style.position = 'fixed'; frame.style.right = '0'; frame.style.bottom = '0';
+    frame.style.width = '0'; frame.style.height = '0'; frame.style.border = '0';
+    document.body.appendChild(frame);
+    const doc = frame.contentWindow.document;
+    doc.open(); doc.write(html); doc.close();
+    setTimeout(() => { frame.contentWindow.focus(); frame.contentWindow.print(); setTimeout(() => document.body.removeChild(frame), 1000); }, 300);
+  }
+
+  buildGeometry(s) {
+    const L = s.lengthIn;
+    const cw = s.centerWidth / 2;
+    const bwPinned = s.tailType === 'round' || s.tailType === 'pin';
+    const bw = bwPinned ? 0 : s.tailBlockWidth / 2;
+    const margin = 16;
+    const wpY = Math.max(margin, Math.min(L - margin, L / 2 + s.wpOffset));
+
+    // Only three knots define the outline now: tail pod, wide point, nose tip. There is no longer a
+    // separate tail-12"/nose-12" control point — those widths are simply READ OFF the resulting curve
+    // below, not used to shape it. For a Diamond tail the wing corner (P0, where the tail-angle/vector
+    // controls apply) sits forward of the true tail tip, at Diamond Depth; for a Swallow tail the corner
+    // stays at Y=0 and instead the CENTER closing point (below) is pulled forward, cutting the notch.
+    // Diamond Depth is capped at 5" AND at 2" less than the current Tail Block Width, so the block
+    // corner never sits deeper than the block itself is wide minus that 2" margin.
+    const diamondDepthEff = s.tailType === 'diamond' ? Math.max(0, Math.min(s.diamondDepth, 5, s.tailBlockWidth - 2)) : 0;
+    const tailPodY = s.tailType === 'diamond' ? diamondDepthEff : 0;
+    const centerCloseY = s.tailType === 'swallow' ? s.swallowDepth : 0;
+    const P0 = { y: tailPodY, x: Math.max(0, bw) };
+    const P2 = { y: wpY, x: cw };
+    const P4 = { y: L, x: 0 };
+
+    // Tail/nose ends use the ANGLE directly as a tangent DIRECTION (not a dX/dY slope) — a parametric
+    // Bezier handle can point exactly horizontal (angle=90°) without the infinite-slope problem a
+    // Y-as-function spline would hit, so 90° genuinely reaches a flat, horizontal tangent.
+    const tailRad = s.tailAngle * Math.PI / 180;
+    const noseRad = s.noseAngle * Math.PI / 180;
+    const dir0 = { x: Math.sin(tailRad), y: Math.cos(tailRad) };
+    const dir4 = { x: -Math.sin(noseRad), y: Math.cos(noseRad) };
+    const dir2 = { x: 0, y: 1 };
+
+    const chord = (A, B) => Math.hypot(B.x - A.x, B.y - A.y);
+    const chords = [chord(P0, P2), chord(P2, P4)];
+
+    const HANDLE_FRAC = 0.33, HANDLE_CAP = 0.48;
+    // Tail/Nose Vector Strength scale the tail-pod/nose-tip handle length around the standard 1/3-chord
+    // baseline (tail never below half of it, nose set directly in inches per the spec's literal "length
+    // of the control point handle extending from the nose tip").
+    // Widepoint Vector Strength scales BOTH of the widepoint's own handles against each side's true max
+    // (HANDLE_CAP*chord). Its tangent is purely vertical (dir2.x=0), so a longer handle never carries X
+    // past cw — no overshoot cap needed. The slider's own 0-100% is remapped onto the 80%-180% multiplier
+    // range that actually looks good (below 80% the curve does something visibly odd near the widepoint).
+    const widepointMult = 0.8 + (s.widepointVector / 100) * 0.8;
+    const inLen0 = widepointMult * HANDLE_CAP * chords[0];
+    const outLen1 = widepointMult * HANDLE_CAP * chords[1];
+    // Hard geometric cap: the tail-pod handle and the nose-tip handle must never carry their control point
+    // past the widepoint's own half-width (cw) — with a long tail-to-widepoint chord and a mostly-horizontal
+    // angle, an uncapped length can otherwise overshoot cw well before the curve actually reaches the
+    // widepoint, which flattens into a fake "ceiling" plateau instead of a real taper. Both Vector Strength
+    // sliders' 0-100% are scaled directly against this TRUE achievable max (no other floor/baseline mixed
+    // in), so 100% actually reaches it and every step in between moves the handle proportionally.
+    const outLen0Max = dir0.x > 1e-6 ? Math.min(HANDLE_CAP * chords[0], 0.92 * (cw - P0.x) / dir0.x) : HANDLE_CAP * chords[0];
+    const outLen0 = (s.tailVector / 100) * outLen0Max;
+    const inLen1Max = Math.abs(dir4.x) > 1e-6
+      ? Math.min(HANDLE_CAP * chords[1], 0.92 * cw / Math.abs(dir4.x))
+      : HANDLE_CAP * chords[1];
+    const inLen1 = (s.noseVector / 100) * inLen1Max;
+
+    const knots = [{ p: P0, d: dir0 }, { p: P2, d: dir2 }, { p: P4, d: dir4 }];
+    const outLen = [outLen0, outLen1], inLen = [inLen0, inLen1];
+
+    const ctrl = [];
+    for (let i = 0; i < 2; i++) {
+      const A = knots[i], B = knots[i + 1];
+      ctrl.push({
+        c1: { x: A.p.x + outLen[i] * A.d.x, y: A.p.y + outLen[i] * A.d.y },
+        c2: { x: B.p.x - inLen[i] * B.d.x, y: B.p.y - inLen[i] * B.d.y },
+      });
+    }
+
+    const bez = (p0, p1, p2, p3, t) => {
+      const mt = 1 - t;
+      return mt*mt*mt*p0 + 3*mt*mt*t*p1 + 3*mt*t*t*p2 + t*t*t*p3;
+    };
+
+    const N = 80;
+    const rightPts = [];
+    for (let seg = 0; seg < 2; seg++) {
+      const A = knots[seg].p, B = knots[seg + 1].p, c = ctrl[seg];
+      const start = seg === 0 ? 0 : 1;
+      for (let i = start; i <= N; i++) {
+        const t = i / N;
+        const y = bez(A.y, c.c1.y, c.c2.y, B.y, t);
+        const x = bez(A.x, c.c1.x, c.c2.x, B.x, t);
+        // Absolute bound: no sampled point may exceed the widepoint's half-width, whatever the handle
+        // lengths/angles produce — the widepoint is the true maximum, by definition.
+        rightPts.push([y, Math.max(0, Math.min(x, cw))]);
+      }
+    }
+    rightPts.sort((a, b) => a[0] - b[0]);
+
+    const xAtY = (yTarget) => {
+      for (let i = 0; i < rightPts.length - 1; i++) {
+        const [y0, x0] = rightPts[i], [y1, x1] = rightPts[i + 1];
+        if (yTarget >= y0 && yTarget <= y1) {
+          const t = y1 > y0 ? (yTarget - y0) / (y1 - y0) : 0;
+          return x0 + (x1 - x0) * t;
+        }
+      }
+      return rightPts[rightPts.length - 1][1];
+    };
+    const tailWidthAt12 = 2 * xAtY(Math.min(12, L));
+    const noseWidthAt12 = 2 * xAtY(Math.max(0, L - 12));
+
+    let area = 0;
+    for (let i = 0; i < rightPts.length - 1; i++) {
+      const [y0, x0] = rightPts[i], [y1, x1] = rightPts[i + 1];
+      area += (x0 + x1) / 2 * (y1 - y0);
+    }
+    area *= 2;
+
+    const knotsOut = knots.map(k => ({ p: k.p, dx: k.d.x, dy: k.d.y }));
+    const handles = [];
+    for (let i = 0; i < 2; i++) {
+      handles.push({ from: knots[i].p, to: ctrl[i].c1 });
+      handles.push({ from: knots[i + 1].p, to: ctrl[i].c2 });
+    }
+    return { L, cw, bw, bwPinned, wpY, centerCloseY, diamondDepthEff, knots: knotsOut, handles, rightPts, area, tailWidthAt12, noseWidthAt12 };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const set = (patch) => this.setState(patch);
+    const cm = s.units === 'cm';
+    const toU = (v) => this.toU(v), fromU = (v) => this.fromU(v);
+    const unitBounds = (minIn, maxIn, stepIn, cmStep) => cm ? { min: Math.round(minIn*2.54*100)/100, max: Math.round(maxIn*2.54*100)/100, step: cmStep } : { min: minIn, max: maxIn, step: stepIn };
+
+    const g = this.buildGeometry(s);
+    const L = g.L;
+
+    const lengthFeet = Math.floor(L / 12), lengthInches = L % 12;
+    const feetOptions = [5,6,7,8,9,10];
+    const inchOptions = [0,1,2,3,4,5,6,7,8,9,10,11];
+
+    const onCheckIn = () => set({ units: 'in' });
+    const onCheckCm = () => set({ units: 'cm' });
+    const unitsOptions = ['in','cm'].map(k => ({
+      value: k, label: k === 'in' ? 'Inches' : 'Centimeters',
+      onSelect: () => set({ units: k }),
+      style: `flex:1;padding:10px;border-radius:6px;border:1px solid ${s.units===k?'var(--accent)':'var(--sidebar-input-border)'};background:${s.units===k?'var(--accent)':'transparent'};color:${s.units===k?'#1c1b19':'var(--sidebar-text)'};font-size:13px;font-weight:700;cursor:pointer;`
+    }));
+
+    const widthBounds = unitBounds(0, 25, 0.125, 0.25);
+    const centerBounds = unitBounds(16, 25, 0.125, 0.25);
+    const offsetBounds = unitBounds(-12, 12, 0.25, 0.5);
+
+    // Scale to fit the view box, uniform in X and Y so tangent visuals stay geometrically correct.
+    const scale = Math.min((VIEW_W / 2 - PAD_X) / g.cw, (VIEW_H - PAD_Y * 2) / L);
+    const centerlineX = VIEW_W / 2;
+    const tailPy = VIEW_H - PAD_Y, tipPy = PAD_Y;
+    const lenToY = (y) => tailPy - y * scale;
+    const pxX = (x) => centerlineX + x * scale;
+
+    const rightPx = g.rightPts.map(([y, x]) => [pxX(x), lenToY(y)]);
+    const leftPx = g.rightPts.slice().reverse().map(([y, x]) => [pxX(-x), lenToY(y)]);
+    // Center closing vertex on the stringer (0, centerCloseY) — a Swallow tail pulls this forward to cut
+    // the notch between the two wing corners; standard/Diamond/Round/Pin all sit it at Y=0, where it's
+    // either a harmless collinear point (flat tail block) or coincides with the tip itself (pinned tails).
+    const centerClosePx = [pxX(0), lenToY(g.centerCloseY)].map(v => v.toFixed(2)).join(' ');
+    const outlinePath = `M ${rightPx.map(p => p.map(v=>v.toFixed(2)).join(' ')).join(' L ')} L ${leftPx.map(p => p.map(v=>v.toFixed(2)).join(' ')).join(' L ')} L ${centerClosePx} Z`;
+
+    // Reference stations — center, widepoint, nose @12", tail @12" — drawn in the same blue dashed line
+    // the Rail Band Calculator uses for its board-outline reference marks, as an overlay ON the board
+    // (drawn after the outline fill) and clipped to the ACTUAL half-width the curve has at that station
+    // (not a fixed span), so they sit inside the outline rather than poking out past its edges.
+    const xAtYForDisplay = (yTarget) => {
+      const pts = g.rightPts;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [y0, x0] = pts[i], [y1, x1] = pts[i + 1];
+        if (yTarget >= y0 && yTarget <= y1) {
+          const t = y1 > y0 ? (yTarget - y0) / (y1 - y0) : 0;
+          return x0 + (x1 - x0) * t;
+        }
+      }
+      return pts[pts.length - 1][1];
+    };
+    const refStationsY = [12, L - 12, g.wpY, L / 2];
+    const refLines = refStationsY.map(y => {
+      const hw = xAtYForDisplay(y);
+      return { x1: pxX(-hw), y1: lenToY(y), x2: pxX(hw), y2: lenToY(y) };
+    });
+
+    // Callouts: name + live dimension to the left of the tail-12"/nose-12" stations, the widepoint and
+    // center; plus how far forward/back of center the widepoint sits.
+    const centerWidthAtStation = 2 * xAtYForDisplay(L / 2);
+    const wpFromCenter = g.wpY - L / 2;
+    // Names form one left-justified column, values one right-justified column, both centered on the
+    // stringer with a fixed gap between them of Center Width + 6".
+    const calloutHalfGap = g.cw + 1.16;
+    const namesPctLeft = (pxX(calloutHalfGap) / VIEW_W * 100).toFixed(3) + '%';
+    const valuesPctLeft = (pxX(-calloutHalfGap) / VIEW_W * 100).toFixed(3) + '%';
+    const calloutAt = (y, label, value, pinned) => ({ pxTop: lenToY(y), label, value, pinned: !!pinned });
+    const rawCallouts = [
+      calloutAt(12, 'Tail @ 12"', this.disp(g.tailWidthAt12), true),
+      calloutAt(L - 12, 'Nose @ 12"', this.disp(g.noseWidthAt12), true),
+      calloutAt(g.wpY, 'Widepoint', this.disp(s.centerWidth)),
+      calloutAt(L / 2, 'Center', this.disp(centerWidthAtStation)),
+      { pxTop: (lenToY(g.wpY) + lenToY(L / 2)) / 2,
+        label: 'WP vs Center', value: (wpFromCenter === 0 ? 'At center' : `${this.disp(Math.abs(wpFromCenter))} ${wpFromCenter > 0 ? 'forward' : 'back'}`) },
+    ];
+    // De-overlap pass: when the widepoint sits at/near center (a very common case, e.g. the default),
+    // several of these land at the same Y and would render on top of each other, so push them apart in
+    // sorted order by a minimum gap. Tail@12/Nose@12 are pinned — they must stay lined up with their
+    // dashed station line on the board, so only the unpinned callouts (Widepoint/Center/WP-vs-Center)
+    // move to make room, never the pinned two.
+    const MIN_GAP = 26;
+    rawCallouts.sort((a, b) => a.pxTop - b.pxTop);
+    for (let i = 1; i < rawCallouts.length; i++) {
+      if (rawCallouts[i].pinned) continue;
+      if (rawCallouts[i].pxTop - rawCallouts[i - 1].pxTop < MIN_GAP) rawCallouts[i].pxTop = rawCallouts[i - 1].pxTop + MIN_GAP;
+    }
+    for (let i = rawCallouts.length - 2; i >= 0; i--) {
+      if (rawCallouts[i].pinned) continue;
+      if (rawCallouts[i + 1].pxTop - rawCallouts[i].pxTop < MIN_GAP) rawCallouts[i].pxTop = rawCallouts[i + 1].pxTop - MIN_GAP;
+    }
+    const lengthCalloutText = `${lengthFeet}'${lengthInches}" (${this.disp(L)})`;
+    const lengthCalloutPctLeft = (centerlineX / VIEW_W * 100).toFixed(3) + '%';
+    const lengthCalloutPctTop = (tipPy / VIEW_H * 100).toFixed(3) + '%';
+
+    const callouts = rawCallouts.map(c => ({
+      namesPctLeft, valuesPctLeft, pctTop: (c.pxTop / VIEW_H * 100).toFixed(3) + '%',
+      label: c.label, value: c.value,
+    }));
+
+    const knotColors = ['#1c1b19', '#a8425f', '#1c1b19'];
+    const constructionDots = [], constructionLines = [];
+    g.knots.forEach((k, i) => {
+      [1, -1].forEach(side => {
+        constructionDots.push({ cx: pxX(side * k.p.x), cy: lenToY(k.p.y), color: knotColors[i] });
+      });
+    });
+    // Drawn at the handle's true length in inches -> px, so Vector Strength changes visibly lengthen or
+    // shorten this line instead of a fixed-size stub.
+    g.handles.forEach(h => {
+      [1, -1].forEach(side => {
+        constructionLines.push({
+          x1: pxX(side * h.from.x), y1: lenToY(h.from.y),
+          x2: pxX(side * h.to.x), y2: lenToY(h.to.y),
+          color: '#4d8a86',
+        });
+        constructionDots.push({ cx: pxX(side * h.to.x), cy: lenToY(h.to.y), color: '#4d8a86' });
+      });
+    });
+
+    const wpOffsetSpecDisplay = s.wpOffset === 0 ? this.disp(0) : (s.wpOffset > 0 ? `+${this.disp(s.wpOffset)}` : `-${this.disp(Math.abs(s.wpOffset))}`);
+    const tailShapeLabel = s.tailType.charAt(0).toUpperCase() + s.tailType.slice(1);
+    const specLines = [
+      `Length: ${lengthFeet}'${lengthInches}"`,
+      `Nose Angle: ${s.noseAngle}°  ·  Fullness: ${s.noseVector}%`,
+      `Nose Width @12" (calculated): ${this.disp(g.noseWidthAt12)}`,
+      `Widepoint Width: ${this.disp(s.centerWidth)}`,
+      `WP Offset: ${wpOffsetSpecDisplay}`,
+      `Rail Length: ${s.widepointVector}%`,
+      `Tail Shape: ${tailShapeLabel}`,
+      `Tail Block: ${this.disp(g.bw * 2)}`,
+      ...(s.tailType === 'swallow' ? [`Swallow Depth: ${this.disp(s.swallowDepth)}`] : []),
+      ...(s.tailType === 'diamond' ? [`Diamond Depth: ${this.disp(g.diamondDepthEff)}`] : []),
+      `Tail Angle: ${s.tailAngle}°  ·  Fullness: ${s.tailVector}%`,
+      `Tail Width @12" (calculated): ${this.disp(g.tailWidthAt12)}`,
+      `Template Area: ${(g.area).toFixed(1)} sq in (${(g.area/144).toFixed(2)} sq ft)`,
+    ];
+
+    return {
+      compact: !!this.props.compact, rootRef: this.rootRef, viewerMinWidth: this.props.compact ? '0' : '340px',
+      calloutValueFontSize: this.props.compact ? (10 * (this.props.compactFontScale ?? 1)).toFixed(1) + 'px' : '14px', calloutLabelFontSize: this.props.compact ? (10 * (this.props.compactFontScale ?? 1)).toFixed(1) + 'px' : '13px',
+      compactPosition: this.props.compact ? 'position:absolute;top:0;left:0;right:0;bottom:0;' : '',
+      rootBg: this.props.compact ? 'transparent' : this._themeVars().pageBg,
+      themeVars: this._themeVars().vars,
+      viewerCardBg: this.props.compact ? 'transparent' : '#fff', viewerCardBorder: this.props.compact ? 'none' : '1px solid #e4ddc9',
+      viewerCardRadius: this.props.compact ? '0' : '12px', viewerCardPadding: this.props.compact ? '2px' : '20px',
+      rootHeight: this.props.compact ? '100%' : (s.rootAvailH > 0 ? `${s.rootAvailH}px` : '100vh'),
+      mainHeight: this.props.compact ? '100%' : (s.rootAvailH > 0 ? `${s.rootAvailH}px` : '100vh'),
+      finMarksSvg: (this.props.finMarks || []).map(m => ({
+        x1: pxX(m.teLateral), y1: lenToY(m.teOffTail), x2: pxX(m.leLateral), y2: lenToY(m.leOffTail),
+      })),
+      units: s.units, unitsOptions, unitsIsIn: !cm, unitsIsCm: cm, onCheckIn, onCheckCm,
+      globalSettingsOpen: s.globalSettingsOpen, globalSettingsCaret: s.globalSettingsOpen ? '▾' : '▸',
+      onToggleGlobalSettings: () => set({ globalSettingsOpen: !s.globalSettingsOpen }),
+      lengthDisplay: `${lengthFeet}'${lengthInches}"`, lengthFeet, lengthInches, lengthTotalIn: L, feetOptions, inchOptions,
+      onFeetChange: (e) => set({ lengthIn: Math.max(60, Math.min(120, parseInt(e.target.value) * 12 + lengthInches)) }),
+      onInchesChange: (e) => set({ lengthIn: Math.max(60, Math.min(120, lengthFeet * 12 + parseInt(e.target.value))) }),
+      onLengthSlider: (e) => set({ lengthIn: parseInt(e.target.value) }),
+
+      widthStep: widthBounds.step,
+      centerWidthDisplay: this.disp(s.centerWidth), centerWidthInputValue: toU(s.centerWidth), centerWidthMin: centerBounds.min, centerWidthMax: centerBounds.max,
+      onCenterWidthChange: (e) => set({ centerWidth: fromU(parseFloat(e.target.value)) }),
+
+      wpOffsetDisplay: (s.wpOffset === 0 ? this.disp(0) : (s.wpOffset > 0 ? `+${this.disp(s.wpOffset)}` : `-${this.disp(Math.abs(s.wpOffset))}`)),
+      wpOffsetInputValue: toU(s.wpOffset), wpOffsetMin: offsetBounds.min, wpOffsetMax: offsetBounds.max, offsetStep: offsetBounds.step,
+      onWpOffsetChange: (e) => set({ wpOffset: fromU(parseFloat(e.target.value)) }),
+
+      widepointVector: s.widepointVector, widepointVectorDisplay: `${s.widepointVector}%`,
+      onWidepointVectorChange: (e) => set({ widepointVector: parseFloat(e.target.value) }),
+
+      tailWidthAt12Display: this.disp(g.tailWidthAt12),
+      noseWidthAt12Display: this.disp(g.noseWidthAt12),
+
+      tailBlockDisplay: this.disp(g.bwPinned ? 0 : s.tailBlockWidth), tailBlockInputValue: g.bwPinned ? 0 : toU(s.tailBlockWidth),
+      onTailBlockChange: (e) => set({ tailBlockWidth: fromU(parseFloat(e.target.value)) }),
+      tailBlockPinned: g.bwPinned, tailBlockPinnedOpacity: g.bwPinned ? '0.4' : '1',
+
+      tailAdvancedOpen: s.tailAdvancedOpen, tailAdvancedCaret: s.tailAdvancedOpen ? '▾' : '▸',
+      onToggleTailAdvanced: () => set({ tailAdvancedOpen: !s.tailAdvancedOpen }),
+      isSwallow: s.tailType === 'swallow', isDiamond: s.tailType === 'diamond', isRound: s.tailType === 'round', isPin: s.tailType === 'pin',
+      tailTypeOptions: [
+        { value: 'pin', label: 'Pin', iconPath: this.iconOutlinePath('pin', 15, 1, 12), onSelect: () => set({ tailType: 'pin', tailAngle: 65, tailVector: 50 }) },
+        { value: 'round', label: 'Round', iconPath: this.iconOutlinePath('round', 15, 1, 12), onSelect: () => set({ tailType: 'round', tailAngle: 90, tailVector: 90 }) },
+        { value: 'diamond', label: 'Diamond', iconPath: this.iconOutlinePath('diamond', 15, 2, 12), onSelect: () => set({ tailType: 'diamond', tailBlockWidth: 10, tailAngle: 30, tailVector: 30, diamondDepth: 3 }) },
+        { value: 'squash', label: 'Squash', iconPath: this.iconOutlinePath('squash', 15, 1, 12), onSelect: () => set({ tailType: 'squash', tailBlockWidth: 5, tailAngle: 45, tailVector: 50 }) },
+        { value: 'swallow', label: 'Swallow', iconPath: this.iconOutlinePath('swallow', 15, 1, 12), onSelect: () => set({ tailType: 'swallow', tailBlockWidth: 8, tailAngle: 30, tailVector: 0, swallowDepth: 3 }) },
+      ].map(o => ({
+        ...o,
+        strokeColor: s.tailType === o.value ? '#1c1b19' : '#8a8272',
+        buttonStyle: `display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:8px;cursor:pointer;border:1px solid ${s.tailType===o.value?'var(--accent)':'var(--sidebar-input-border)'};background:${s.tailType===o.value?'var(--accent)':'#2b2924'};color:${s.tailType===o.value?'#1c1b19':'var(--sidebar-text)'};`,
+      })),
+      swallowDepthDisplay: this.disp(s.swallowDepth), swallowDepthInputValue: toU(s.swallowDepth),
+      onSwallowDepthChange: (e) => set({ swallowDepth: fromU(parseFloat(e.target.value)) }),
+      diamondDepthDisplay: this.disp(g.diamondDepthEff), diamondDepthInputValue: toU(s.diamondDepth),
+      diamondDepthClamped: s.tailType === 'diamond' && g.diamondDepthEff < s.diamondDepth - 1e-6,
+      onDiamondDepthChange: (e) => set({ diamondDepth: fromU(parseFloat(e.target.value)) }),
+      depthMin: unitBounds(1, 8, 0.0625, 2.5, 20, 0.1).min, depthMax: unitBounds(1, 8, 0.0625, 2.5, 20, 0.1).max, depthStep: unitBounds(1, 8, 0.0625, 2.5, 20, 0.1).step,
+      diamondDepthMin: unitBounds(1, 5, 0.0625, 2.5, 12.7, 0.1).min, diamondDepthMax: unitBounds(1, 5, 0.0625, 2.5, 12.7, 0.1).max, diamondDepthStep: unitBounds(1, 5, 0.0625, 2.5, 12.7, 0.1).step,
+      depthRowLabel: 'Depth',
+      depthRowDisplay: s.tailType === 'diamond' ? this.disp(g.diamondDepthEff) : this.disp(s.swallowDepth),
+      depthRowMin: s.tailType === 'diamond' ? unitBounds(1, 5, 0.0625, 2.5, 12.7, 0.1).min : unitBounds(1, 8, 0.0625, 2.5, 20, 0.1).min,
+      depthRowMax: s.tailType === 'diamond' ? unitBounds(1, 5, 0.0625, 2.5, 12.7, 0.1).max : unitBounds(1, 8, 0.0625, 2.5, 20, 0.1).max,
+      depthRowStep: s.tailType === 'diamond' ? unitBounds(1, 5, 0.0625, 2.5, 12.7, 0.1).step : unitBounds(1, 8, 0.0625, 2.5, 20, 0.1).step,
+      depthRowValue: s.tailType === 'diamond' ? toU(s.diamondDepth) : toU(s.swallowDepth),
+      depthRowOnChange: s.tailType === 'diamond' ? ((e) => set({ diamondDepth: fromU(parseFloat(e.target.value)) })) : ((e) => set({ swallowDepth: fromU(parseFloat(e.target.value)) })),
+      depthRowDisabled: !(s.tailType === 'diamond' || s.tailType === 'swallow'),
+      depthRowOpacity: (s.tailType === 'diamond' || s.tailType === 'swallow') ? '1' : '0.4',
+      tailAnglePinned: s.tailType === 'diamond', tailAnglePinnedOpacity: s.tailType === 'diamond' ? '0.4' : '1',
+
+      tailAngle: s.tailAngle, onTailAngleChange: (e) => set({ tailAngle: parseFloat(e.target.value) }),
+      tailVector: s.tailVector, tailVectorDisplay: `${s.tailVector}%`, onTailVectorChange: (e) => set({ tailVector: parseFloat(e.target.value) }),
+      noseAngle: s.noseAngle, onNoseAngleChange: (e) => set({ noseAngle: parseFloat(e.target.value) }),
+      noseVector: s.noseVector, noseVectorDisplay: `${s.noseVector}%`, onNoseVectorChange: (e) => set({ noseVector: parseFloat(e.target.value) }),
+
+      showConstruction: s.showConstruction, onToggleConstruction: () => set({ showConstruction: !s.showConstruction }),
+
+      viewW: VIEW_W, viewH: VIEW_H, centerlineX, tailPy, tipPy, outlinePath, refLines, callouts, constructionDots, constructionLines,
+      lengthCalloutText, lengthCalloutPctLeft, lengthCalloutPctTop,
+      wpYDisplay: this.disp(g.wpY),
+      areaSqInDisplay: `${g.area.toFixed(1)} sq in`,
+      areaSqFtDisplay: `${(g.area/144).toFixed(2)} sq ft`,
+
+      copyButtonLabel: s.copyToast ? 'Copied!' : 'Copy Template Specs',
+      onCopySpecs: () => {
+        const text = specLines.join('\n');
+        const showToast = () => { set({ copyToast: true }); setTimeout(() => this.setState({ copyToast: false }), 1800); };
+        const fallbackCopy = () => {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.focus(); ta.select();
+          try { document.execCommand('copy'); } catch (e) {}
+          document.body.removeChild(ta);
+          showToast();
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(showToast).catch(fallbackCopy);
+        } else fallbackCopy();
+      },
+      onPrintFullTemplate: () => this.printFullSizeTemplate(),
+      onPrintSpecs: () => {
+        // Independent print-only coordinate system: scale is chosen to fill the page height (board "as
+        // large as possible"), and the callout gap hugs the board's actual widepoint half-width plus a
+        // small margin (rather than the live viewer's fixed, more generous gap) to keep it skinny.
+        const PX_PER_IN = 96;
+        const printScale = (9.2 * PX_PER_IN) / L;
+        const printGap = g.cw + 0.35;
+        const textReservePx = 58;
+        const totalHalfW = printGap * printScale + textReservePx;
+        const printW = totalHalfW * 2;
+        const printH = L * printScale;
+        const pxX2 = (xIn) => totalHalfW + xIn * printScale;
+        const lenToY2 = (yIn) => printH - yIn * printScale;
+
+        const rightPx2 = g.rightPts.map(([y, x]) => [pxX2(x), lenToY2(y)]);
+        const leftPx2 = g.rightPts.slice().reverse().map(([y, x]) => [pxX2(-x), lenToY2(y)]);
+        const centerClosePx2 = [pxX2(0), lenToY2(g.centerCloseY)].map(v => v.toFixed(2)).join(' ');
+        const printOutlinePath = `M ${rightPx2.map(p => p.map(v => v.toFixed(2)).join(' ')).join(' L ')} L ${leftPx2.map(p => p.map(v => v.toFixed(2)).join(' ')).join(' L ')} L ${centerClosePx2} Z`;
+
+        const printRefLinesSvg = [12, L - 12, g.wpY, L / 2].map(y => {
+          const hw = xAtYForDisplay(y);
+          return `<line x1="${pxX2(-hw).toFixed(2)}" y1="${lenToY2(y).toFixed(2)}" x2="${pxX2(hw).toFixed(2)}" y2="${lenToY2(y).toFixed(2)}" stroke="#4472C4" stroke-width="1" stroke-dasharray="5 3"></line>`;
+        }).join('');
+
+        const namesLeftPct = (pxX2(printGap) / printW * 100).toFixed(3) + '%';
+        const valuesLeftPct = (pxX2(-printGap) / printW * 100).toFixed(3) + '%';
+        const printCallouts = [
+          { y: 12, label: 'Tail @ 12"', value: this.disp(g.tailWidthAt12) },
+          { y: L - 12, label: 'Nose @ 12"', value: this.disp(g.noseWidthAt12) },
+          { y: g.wpY, label: 'Widepoint', value: this.disp(s.centerWidth) },
+          { y: L / 2, label: 'Center', value: this.disp(2 * xAtYForDisplay(L / 2)) },
+        ];
+        printCallouts.forEach(c => c.py = lenToY2(c.y));
+        printCallouts.sort((a, b) => a.py - b.py);
+        for (let i = 1; i < printCallouts.length; i++) { if (printCallouts[i].py - printCallouts[i - 1].py < 14) printCallouts[i].py = printCallouts[i - 1].py + 14; }
+        const calloutsHtml = printCallouts.map(c => `
+          <div style="position:absolute;left:${valuesLeftPct};top:${(c.py / printH * 100).toFixed(3)}%;transform:translate(-100%,-50%);text-align:right;white-space:nowrap;padding-right:4px;font-size:9pt;font-weight:700;color:#1c1b19;">${c.value}</div>
+          <div style="position:absolute;left:${namesLeftPct};top:${(c.py / printH * 100).toFixed(3)}%;transform:translate(0,-50%);white-space:nowrap;padding-left:4px;font-size:7pt;font-weight:700;color:#3a5f9e;text-transform:uppercase;letter-spacing:0.4px;">${c.label}</div>`).join('');
+
+        const printLengthText = `${lengthFeet}'${lengthInches}" - ${this.disp(L)}`;
+        const html = `<!DOCTYPE html><html><head><title>Surfboard Template Specs</title><style>@page { size: portrait; margin: 0.5in; }</style></head><body style="font-family:Helvetica,Arial,sans-serif;padding:0;color:#1c1b19;">
+          <h2 style="margin:0 0 12px;font-size:16pt;">Surfboard Template Specs</h2>
+          <div style="display:flex;align-items:flex-start;gap:20px;">
+            <div style="flex:none;display:inline-block;">
+              <pre style="font-size:11pt;line-height:1.5;white-space:pre;margin:0;font-family:Helvetica,Arial,sans-serif;">${specLines.join('\n')}</pre>
+            </div>
+            <div style="position:relative;width:${printW.toFixed(1)}px;height:${printH.toFixed(1)}px;flex:none;">
+              <svg width="${printW.toFixed(1)}" height="${printH.toFixed(1)}" viewBox="0 0 ${printW.toFixed(1)} ${printH.toFixed(1)}" style="display:block;">
+                <path d="${printOutlinePath}" fill="none" stroke="#1c1b19" stroke-width="2" stroke-linejoin="round"></path>
+                <line x1="${pxX2(0).toFixed(2)}" y1="0" x2="${pxX2(0).toFixed(2)}" y2="${printH.toFixed(2)}" stroke="#4472C4" stroke-width="1" stroke-dasharray="5 3"></line>
+                ${printRefLinesSvg}
+              </svg>
+              <div style="position:absolute;inset:0;pointer-events:none;">
+                ${calloutsHtml}
+                <div style="position:absolute;left:50%;top:0;transform:translate(-50%,calc(-100% - 4px));white-space:nowrap;text-align:center;font-size:9pt;font-weight:800;color:#1c1b19;">${printLengthText}</div>
+              </div>
+            </div>
+          </div>
+        </body></html>`;
+        const w = window.open('', '_blank');
+        if (w && !w.closed) { w.document.write(html); w.document.close(); setTimeout(() => { w.focus(); w.print(); }, 300); return; }
+        const frame = document.createElement('iframe');
+        frame.style.position = 'fixed'; frame.style.right = '0'; frame.style.bottom = '0';
+        frame.style.width = '0'; frame.style.height = '0'; frame.style.border = '0';
+        document.body.appendChild(frame);
+        const doc = frame.contentWindow.document;
+        doc.open(); doc.write(html); doc.close();
+        setTimeout(() => { frame.contentWindow.focus(); frame.contentWindow.print(); setTimeout(() => document.body.removeChild(frame), 1000); }, 300);
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>

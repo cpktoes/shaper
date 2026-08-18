@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-666bddf4-18d0-4929-a783-6c38c5d4a868/styles.css">
+<script src="_ds/modernist-666bddf4-18d0-4929-a783-6c38c5d4a868/_ds_bundle.js"></script>
+<style>
+  body { margin: 0; background: var(--color-bg); }
+  a { color: var(--color-accent-700); }
+  a:hover { color: var(--color-accent); }
+  .tab-btn:hover { color: var(--accent) !important; }
+  .nav .tab-btn { background: transparent; border: none; font-family: var(--font-body); cursor: pointer; padding: var(--space-3) var(--space-2); }
+  .hamburger-btn:hover { color: var(--accent) !important; }
+</style>
+</helmet>
+<div ref="{{ pageRef }}" style="{{ themeVars }}height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);display:flex;flex-direction:column;overflow:hidden;">
+  <nav class="nav" style="position: sticky; top: 0; z-index: 10; flex-wrap: nowrap; background-color: #FFFFFF; justify-content: space-between; position: relative;">
+    <a href="index.dc.html" class="nav-brand" style="color: #1C1B19; font-size: 22px">THE SHAPERS ASSISTANT</a>
+    <div style="display:{{ navRowDisplay }};">
+      <button class="tab-btn" style="{{ templateTabStyle }}" onClick="{{ goTemplate }}">TEMPLATE</button>
+      <button class="tab-btn" style="{{ railTabStyle }}" onClick="{{ goRail }}">RAILS</button>
+      <button class="tab-btn" style="{{ volumeTabStyle }}" onClick="{{ goVolume }}">VOLUME</button>
+      <button class="tab-btn" style="{{ finTabStyle }}" onClick="{{ goFin }}">FINS</button>
+      <button class="tab-btn" style="{{ summaryTabStyle }}" onClick="{{ goSummary }}">SUMMARY</button>
+    </div>
+    <button class="hamburger-btn" style="display:{{ hamburgerDisplay }};background:transparent;border:none;cursor:pointer;color:var(--color-text);font-size:26px;line-height:1;padding:var(--space-2);" onClick="{{ toggleMenu }}">&#9776;</button>
+    <button onClick="{{ onToggleColorPicker }}" title="Accent color" style="background:transparent;border:none;cursor:pointer;color:var(--color-text);font-size:20px;line-height:1;padding:var(--space-2) var(--space-3);">&#9881;</button>
+    <div style="display:{{ colorPickerDisplay }};position:absolute;top:100%;right:0;flex-direction:column;gap:14px;background:#fff;border:1px solid var(--color-neutral-300);padding:18px;min-width:230px;box-shadow:var(--shadow-md);z-index:30;">
+      <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#1c1b19;">Units</div>
+      <div style="display:flex;gap:10px;">
+        <sc-for list="{{ unitOptions }}" as="u" hint-placeholder-count="2">
+          <button onClick="{{ u.onSelect }}" style="{{ u.style }}">{{ u.label }}</button>
+        </sc-for>
+      </div>
+      <div style="height:1px;background:var(--color-neutral-300);margin:2px 0;"></div>
+      <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#1c1b19;">Theme</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <sc-for list="{{ themeOptions }}" as="th" hint-placeholder-count="5">
+          <button onClick="{{ th.onSelect }}" style="{{ th.cardStyle }}">
+            <span style="{{ th.dotStyle }}"></span>
+            <span style="{{ th.labelStyle }}">{{ th.label }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:{{ dropdownDisplay }};position:absolute;top:100%;right:0;flex-direction:column;background:#fff;border:1px solid var(--color-neutral-300);min-width:200px;box-shadow:var(--shadow-md);z-index:20;">
+      <button class="tab-btn" style="{{ templateTabStyle }}text-align:left;" onClick="{{ goTemplate }}">TEMPLATE</button>
+      <button class="tab-btn" style="{{ railTabStyle }}text-align:left;" onClick="{{ goRail }}">RAILS</button>
+      <button class="tab-btn" style="{{ volumeTabStyle }}text-align:left;" onClick="{{ goVolume }}">VOLUME</button>
+      <button class="tab-btn" style="{{ finTabStyle }}text-align:left;" onClick="{{ goFin }}">FINS</button>
+      <button class="tab-btn" style="{{ summaryTabStyle }}text-align:left;" onClick="{{ goSummary }}">SUMMARY</button>
+    </div>
+  </nav>
+
+  <div style="flex:1;position:relative;min-height:0;overflow:hidden;">
+    <div style="display:{{ summaryDisplay }};height:100%;overflow:hidden;">
+      <dc-import accent-color="{{ accentColor }}" name="Summary" pending-seed="{{ pendingSeed }}" seed-versions="{{ seedVersions }}" on-sync-rail="{{ onSyncRail }}" on-sync-volume="{{ onSyncVolume }}" on-sync-fin="{{ onSyncFin }}" on-sync-template="{{ onSyncTemplate }}" template-values-for-fin="{{ templateValuesForFin }}" template-values-for-volume="{{ templateValuesForVolume }}" rail-values-for-volume="{{ railValuesForVolume }}" fin-marks-for-template="{{ finMarksForTemplate }}" hint-size="100%,100%"></dc-import>
+    </div>
+    <div style="display:{{ templateDisplay }};height:100%;">
+      <dc-import accent-color="{{ accentColor }}" name="Template" seed="{{ pendingSeed.template }}" seed-version="{{ seedVersions.template }}" on-sync="{{ onSyncTemplate }}" hint-size="100%,100%"></dc-import>
+    </div>
+    <div style="display:{{ railDisplay }};height:100%;">
+      <dc-import accent-color="{{ accentColor }}" name="Rails" seed="{{ pendingSeed.rail }}" seed-version="{{ seedVersions.rail }}" on-sync="{{ onSyncRail }}" hint-size="100%,100%"></dc-import>
+    </div>
+    <div style="display:{{ volumeDisplay }};height:100%;">
+      <dc-import accent-color="{{ accentColor }}" name="Volume" seed="{{ pendingSeed.volume }}" seed-version="{{ seedVersions.volume }}" on-sync="{{ onSyncVolume }}" template-values="{{ templateValuesForVolume }}" rail-values="{{ railValuesForVolume }}" hint-size="100%,100%"></dc-import>
+    </div>
+    <div style="display:{{ finDisplay }};height:100%;">
+      <dc-import accent-color="{{ accentColor }}" name="Fins" seed="{{ pendingSeed.fin }}" seed-version="{{ seedVersions.fin }}" on-sync="{{ onSyncFin }}" template-values="{{ templateValuesForFin }}" hint-size="100%,100%"></dc-import>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  THEMES = [
+    { id: 'default', label: 'Default', accent: '#c98d3a', sidebarBg: '#1c1b19', sidebarText: '#f2ede1', sidebarTextMuted: '#a49b86', sidebarTextSecondary: '#d8d0bd', sidebarDivider: '#3a362f', sidebarInputBg: '#2b2924', sidebarInputBorder: '#45413a' },
+    { id: 'dark-ink', label: 'Dark — Ink Blue', accent: '#5b9bd5', sidebarBg: '#14181f', sidebarText: '#e8edf3', sidebarTextMuted: '#8b96a5', sidebarTextSecondary: '#c3ccd6', sidebarDivider: '#262d38', sidebarInputBg: '#1c222b', sidebarInputBorder: '#333c48' },
+    { id: 'dark-moss', label: 'Dark — Moss', accent: '#6ea85c', sidebarBg: '#171b16', sidebarText: '#e9efe6', sidebarTextMuted: '#8b9884', sidebarTextSecondary: '#c6d1bf', sidebarDivider: '#2a3226', sidebarInputBg: '#1f251d', sidebarInputBorder: '#38412f' },
+    { id: 'light-linen', label: 'Light — Linen', accent: '#b6562f', sidebarBg: '#f6f1e7', sidebarText: '#2b2620', sidebarTextMuted: '#8f8571', sidebarTextSecondary: '#4d4638', sidebarDivider: '#e2d8c2', sidebarInputBg: '#ffffff', sidebarInputBorder: '#d8cca9' },
+    { id: 'light-mist', label: 'Light — Mist', accent: '#2f6fa8', sidebarBg: '#eef2f5', sidebarText: '#1f2a33', sidebarTextMuted: '#7e8d97', sidebarTextSecondary: '#37454e', sidebarDivider: '#d7e0e6', sidebarInputBg: '#ffffff', sidebarInputBorder: '#c6d3da' },
+  ];
+  themeById = (id) => this.THEMES.find(t => t.id === id) || this.THEMES[0];
+  _themeVars() {
+    const th = this.themeById(this.state.themeId);
+    let h = String(th.accent).replace('#', '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    const r = parseInt(h.slice(0, 2), 16) || 201, g = parseInt(h.slice(2, 4), 16) || 141, b = parseInt(h.slice(4, 6), 16) || 58;
+    const dk = t => `rgb(${Math.round(r * (1 - t))},${Math.round(g * (1 - t))},${Math.round(b * (1 - t))})`;
+    return `--accent:${th.accent};--accent-strong:${dk(0.18)};--sidebar-bg:${th.sidebarBg};--sidebar-text:${th.sidebarText};--sidebar-text-muted:${th.sidebarTextMuted};--sidebar-text-secondary:${th.sidebarTextSecondary};--sidebar-divider:${th.sidebarDivider};--sidebar-input-bg:${th.sidebarInputBg};--sidebar-input-border:${th.sidebarInputBorder};`;
+  }
+  state = {
+    activeTab: 'template',
+    workspace: {},
+    globalUnits: (() => { try { const v = localStorage.getItem('shaperUnits'); return (v === 'in' || v === 'cm') ? v : 'in'; } catch (e) { return 'in'; } })(),
+    seedVersions: { template: 0, rail: 0, volume: 0, fin: 0 },
+    pendingSeed: (() => {
+      const u = (() => { try { const v = localStorage.getItem('shaperUnits'); return (v === 'in' || v === 'cm') ? v : 'in'; } catch (e) { return 'in'; } })();
+      return { template: { units: u }, rail: { units: u }, volume: { units: u }, fin: { units: u } };
+    })(),
+    navCollapsed: false, menuOpen: false,
+    themeId: (() => { try { const v = localStorage.getItem('shaperThemeId'); return v || 'default'; } catch(e) { return 'default'; } })(),
+    colorPickerOpen: false,
+  };
+  setTheme = (id) => {
+    this.setState({ themeId: id });
+    try { localStorage.setItem('shaperThemeId', id); } catch (e) {}
+  }
+  setUnits = (u) => {
+    this.setState(s => {
+      if (u === s.globalUnits) return null;
+      const pendingSeed = { ...s.pendingSeed }, seedVersions = { ...s.seedVersions };
+      ['template', 'rail', 'volume', 'fin'].forEach(t => {
+        pendingSeed[t] = { ...(pendingSeed[t] || {}), units: u };
+        seedVersions[t] = seedVersions[t] + 1;
+      });
+      return { globalUnits: u, pendingSeed, seedVersions };
+    });
+    try { localStorage.setItem('shaperUnits', u); } catch (e) {}
+  }
+
+  measureNav = () => {
+    const el = this._pageEl; if (!el) return;
+    const collapsed = el.getBoundingClientRect().width < 760;
+    if (collapsed !== this.state.navCollapsed) this.setState({ navCollapsed: collapsed, menuOpen: collapsed ? this.state.menuOpen : false });
+  }
+  pageRef = (el) => {
+    this._pageEl = el;
+    if (!el) return;
+    if (!this._pageRO) { this._pageRO = new ResizeObserver(() => this.measureNav()); this._pageRO.observe(el); }
+    this.measureNav();
+  }
+  toggleMenu = () => this.setState(s => ({ menuOpen: !s.menuOpen }));
+  componentWillUnmount() {
+    if (this._pageRO) this._pageRO.disconnect();
+  }
+
+  onSync(tab, patch) {
+    this.setState(s => {
+      const { units, ...rest } = patch;
+      const workspace = { ...s.workspace };
+      Object.entries(rest).forEach(([k, v]) => { workspace[k] = { value: v, source: tab }; });
+      const out = { workspace };
+
+      // Always refresh this tab's own seed so its Summary-page clone mirrors live edits made on the real tab.
+      out.pendingSeed = { ...s.pendingSeed, [tab]: { ...(s.pendingSeed[tab] || {}), ...patch } };
+      out.seedVersions = { ...s.seedVersions, [tab]: s.seedVersions[tab] + 1 };
+
+      if (units != null && units !== s.globalUnits) {
+        out.globalUnits = units;
+        ['template', 'rail', 'volume', 'fin'].forEach(t => {
+          if (t !== tab) {
+            out.pendingSeed[t] = { ...(s.pendingSeed[t] || {}), units };
+            out.seedVersions[t] = s.seedVersions[t] + 1;
+          }
+        });
+      }
+      return out;
+    });
+  }
+
+  setTab(tab) {
+    this.setState({ menuOpen: false });
+    if (this.state.activeTab === tab) return;
+    this.setState({ activeTab: tab });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const active = s.activeTab;
+    const tabStyleFor = (key) => `padding:16px 20px;background:transparent;border:none;border-bottom:3px solid ${active === key ? 'var(--accent)' : 'transparent'};font-family:var(--font-heading);font-weight:800;font-size:13px;letter-spacing:0.05em;text-transform:uppercase;color:${active === key ? 'var(--accent)' : 'var(--color-text)'};cursor:pointer;`;
+
+    const t = s.workspace;
+    const val = (k) => (t[k] ? t[k].value : null);
+    const row = (label, k, fmtFn) => { const v = val(k); return { label, display: v != null ? fmtFn(v) : '— not set', color: v != null ? 'var(--color-text)' : 'var(--color-neutral-600)' }; };
+    const inches = (v) => `${v}"`;
+    const summarySections = [
+      { title: 'Board — Template Maker', rows: [
+        row('Length', 'lengthIn', (v) => `${Math.floor(v / 12)}'${Math.round(v - Math.floor(v / 12) * 12)}"`),
+        row('Widepoint Width', 'widepointWidth', inches),
+        row('Tail Block', 'tailWidth', inches),
+        row('Tail Shape', 'tailShape', (v) => v.charAt(0).toUpperCase() + v.slice(1)),
+        row('Tail Width @12"', 'w12', (v) => inches(Math.round(v * 16) / 16)),
+        row('Planform Area', 'area', (v) => `${v.toFixed(0)} sq in`),
+      ] },
+      { title: 'Thickness — Rail Bands / Volume Estimator', rows: [
+        row('Nose Thickness', 'noseThickness', inches),
+        row('Center Thickness', 'centerThickness', inches),
+        row('Tail Thickness', 'tailThickness', inches),
+      ] },
+      { title: 'Settings', rows: [
+        { label: 'Measurement Units', display: s.globalUnits ? (s.globalUnits === 'cm' ? 'Centimeters' : 'Inches') : '— not set', color: s.globalUnits ? 'var(--color-text)' : 'var(--color-neutral-600)' },
+      ] },
+    ];
+    const templateValuesForFin = {
+      available: true,
+      lengthIn: t.lengthIn && t.lengthIn.value,
+      tailShape: t.tailShape && t.tailShape.value,
+      w12: t.w12 && t.w12.value,
+      tailGeom: t.tailGeom && t.tailGeom.value,
+    };
+    const templateValuesForVolume = {
+      available: true, area: t.area && t.area.value, lengthIn: t.lengthIn && t.lengthIn.value, widepointWidth: t.widepointWidth && t.widepointWidth.value,
+      noseWidthAt12: t.noseWidthAt12 && t.noseWidthAt12.value, tailWidthAt12: t.tailWidthAt12 && t.tailWidthAt12.value,
+    };
+    const railValuesForVolume = {
+      available: true,
+      noseThickness: t.noseThickness && t.noseThickness.value,
+      centerThickness: t.centerThickness && t.centerThickness.value,
+      tailThickness: t.tailThickness && t.tailThickness.value,
+      noseRailThickness: t.noseRailThickness && t.noseRailThickness.value,
+      centerRailThickness: t.centerRailThickness && t.centerRailThickness.value,
+      tailRailThickness: t.tailRailThickness && t.tailRailThickness.value,
+      noseProfile: t.noseProfile && t.noseProfile.value,
+      centerProfile: t.centerProfile && t.centerProfile.value,
+      tailProfile: t.tailProfile && t.tailProfile.value,
+    };
+
+    const accentSwatches = ['#c98d3a', '#4472C4', '#2f9e5b', '#b5462f', '#7a5fc4', '#1c1b19'];
+    const currentTheme = this.themeById(s.themeId);
+    return {
+      pageRef: this.pageRef,
+      themeVars: this._themeVars(),
+      navRowDisplay: s.navCollapsed ? 'none' : 'flex',
+      hamburgerDisplay: s.navCollapsed ? 'block' : 'none',
+      dropdownDisplay: (s.navCollapsed && s.menuOpen) ? 'flex' : 'none',
+      toggleMenu: this.toggleMenu,
+      unitOptions: ['in', 'cm'].map(u => ({
+        label: u === 'in' ? 'Inches' : 'Centimeters',
+        onSelect: () => this.setUnits(u),
+        style: `flex:1;padding:9px 6px;font-size:12px;font-weight:700;border-radius:6px;cursor:pointer;border:1px solid ${s.globalUnits === u ? 'var(--accent)' : 'var(--color-neutral-400)'};background:${s.globalUnits === u ? 'var(--accent)' : 'transparent'};color:${s.globalUnits === u ? '#1c1b19' : '#1c1b19'};`,
+      })),
+      accentColor: currentTheme.accent,
+      colorPickerOpen: s.colorPickerOpen,
+      colorPickerDisplay: s.colorPickerOpen ? 'flex' : 'none',
+      onToggleColorPicker: () => this.setState({ colorPickerOpen: !s.colorPickerOpen }),
+      themeOptions: this.THEMES.map(th => {
+        const selected = s.themeId === th.id;
+        return {
+          label: th.label,
+          onSelect: () => this.setTheme(th.id),
+          cardStyle: `display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;border:1px solid ${selected ? 'var(--accent)' : 'var(--color-neutral-300)'};background:${th.sidebarBg};`,
+          dotStyle: `width:14px;height:14px;border-radius:50%;flex-shrink:0;background:${th.accent};box-shadow:0 0 0 1px rgba(0,0,0,0.15);`,
+          labelStyle: `font-size:11px;font-weight:700;color:${th.sidebarText};`,
+        };
+      }),
+      templateValuesForFin,
+      templateValuesForVolume,
+      railValuesForVolume,
+      finMarksForTemplate: t.finMarksInches && t.finMarksInches.value,
+      summarySections,
+      templateTabStyle: tabStyleFor('template'),
+      railTabStyle: tabStyleFor('rail'),
+      volumeTabStyle: tabStyleFor('volume'),
+      finTabStyle: tabStyleFor('fin'),
+      summaryTabStyle: tabStyleFor('summary'),
+      goTemplate: () => this.setTab('template'),
+      goRail: () => this.setTab('rail'),
+      goVolume: () => this.setTab('volume'),
+      goFin: () => this.setTab('fin'),
+      goSummary: () => this.setTab('summary'),
+      templateDisplay: active === 'template' ? 'block' : 'none',
+      railDisplay: active === 'rail' ? 'block' : 'none',
+      volumeDisplay: active === 'volume' ? 'block' : 'none',
+      finDisplay: active === 'fin' ? 'block' : 'none',
+      summaryDisplay: active === 'summary' ? 'block' : 'none',
+      pendingSeed: s.pendingSeed,
+      seedVersions: s.seedVersions,
+      onSyncTemplate: (patch) => this.onSync('template', patch),
+      onSyncRail: (patch) => this.onSync('rail', patch),
+      onSyncVolume: (patch) => this.onSync('volume', patch),
+      onSyncFin: (patch) => this.onSync('fin', patch),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

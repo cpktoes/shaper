@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  @font-face { font-family: 'Sys'; src: local('Helvetica Neue'), local('Helvetica'), local('Arial'); }
+  html, body { height: 100%; }
+  body { margin: 0; background: #f7f4ee; }
+  * { box-sizing: border-box; font-family: Helvetica, Arial, sans-serif; }
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #cbbf9e; border-radius: 4px; }
+  a { color: var(--accent); }
+  a:hover { color: var(--accent-strong); }
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="{{ compactPosition }}{{ themeVars }}display:flex;flex-wrap:wrap;width:100%;height:{{ rootHeight }};overflow:hidden;background:{{ rootBg }};color:#1c1b19;">
+
+  <sc-if value="{{ !compact }}" hint-placeholder-val="{{ true }}">
+  <aside style="flex:1 1 340px;max-width:400px;background:var(--sidebar-bg);color:var(--sidebar-text);padding:28px 26px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;max-height:{{ rootHeight }};">
+    <div>
+      <div style="font-size:22px;font-weight:700;">Volume Estimator</div>
+      <div style="font-size:12px;color:var(--sidebar-text-muted);margin-top:2px;">Approximate volume of a designed board<br></div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--sidebar-divider);padding-bottom:6px;">
+      <div style="font-size:14px;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);font-weight:700;">Primary Inputs</div>
+    </div>
+
+    <sc-if value="{{ templateAvailable }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--sidebar-text-muted);cursor:pointer;">
+          <input type="checkbox" checked="{{ importTemplateDimensions }}" onChange="{{ onToggleImportTemplateDimensions }}" style="accent-color:var(--accent);">
+          Import Template Area
+        </label>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ railAvailable }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--sidebar-text-muted);cursor:pointer;">
+          <input type="checkbox" checked="{{ importRailThickness }}" onChange="{{ onToggleImportRailThickness }}" disabled="{{ !importTemplateDimensions }}" style="accent-color:var(--accent);">
+          Calculate Volume Based on Template and Rail Data
+        </label>
+      </div>
+    </sc-if>
+
+    <div style="opacity:{{ dimensionsOpacity }};">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Board Length — {{ lengthDisplay }}</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <select key="feet-{{ lengthFeet }}" value="{{ lengthFeet }}" onChange="{{ onFeetChange }}" disabled="{{ dimensionsDisabled }}" style="flex:1;background:var(--sidebar-input-bg);color:var(--sidebar-text);border:1px solid var(--sidebar-input-border);border-radius:6px;padding:8px;font-size:14px;">
+          <sc-for list="{{ feetOptions }}" as="opt" hint-placeholder-count="5">
+            <option value="{{ opt }}">{{ opt }}'</option>
+          </sc-for>
+        </select>
+        <select key="in-{{ lengthInches }}" value="{{ lengthInches }}" onChange="{{ onInchesChange }}" disabled="{{ dimensionsDisabled }}" style="flex:1;background:var(--sidebar-input-bg);color:var(--sidebar-text);border:1px solid var(--sidebar-input-border);border-radius:6px;padding:8px;font-size:14px;">
+          <sc-for list="{{ inchesOptions }}" as="opt" hint-placeholder-count="12">
+            <option value="{{ opt }}">{{ opt }}"</option>
+          </sc-for>
+        </select>
+      </div><input key="len-{{ lengthTotalIn }}" type="range" min="60" max="120" step="1" value="{{ lengthTotalIn }}" onChange="{{ onLengthSlider }}" disabled="{{ dimensionsDisabled }}" style="width:100%;accent-color:var(--accent);">
+      
+    </div>
+
+    <div style="opacity:{{ dimensionsOpacity }};">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Board Width — {{ widthDisplay }}</div>
+      <input type="range" min="{{ widthMin }}" max="{{ widthMax }}" step="{{ widthStep }}" value="{{ widthInputValue }}" onChange="{{ onWidthChange }}" disabled="{{ dimensionsDisabled }}" style="width:100%;accent-color:var(--accent);">
+    </div>
+
+    <div style="opacity:{{ thicknessOpacity }};">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Center Thickness — {{ centerThicknessDisplay }}</div>
+      <input type="range" min="{{ centerThicknessMin }}" max="{{ centerThicknessMax }}" step="{{ centerThicknessStep }}" value="{{ centerThicknessInputValue }}" onChange="{{ onCenterThicknessChange }}" disabled="{{ thicknessDisabled }}" style="width:100%;accent-color:var(--accent);">
+    </div>
+
+    <sc-if value="{{ !importingRailThickness }}" hint-placeholder-val="{{ true }}">
+    <div style="opacity:{{ thicknessOpacity }};">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--sidebar-text-muted);margin-bottom:8px;">Board Type</div>
+      <input type="range" min="0" max="6" step="1" value="{{ boardTypeIndex }}" onChange="{{ onBoardTypeChange }}" disabled="{{ thicknessDisabled }}" style="width:100%;accent-color:var(--accent);">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sidebar-text-muted);margin-top:2px;"><span>Performance</span><span>Beefy</span></div>
+    </div>
+    </sc-if>
+
+    <div style="margin-top:auto;">
+      <button onClick="{{ onToggleGlobalSettings }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:transparent;border:none;color:var(--accent);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;padding:0 0 6px 12px;border-bottom:1px solid var(--sidebar-divider);">
+        <span>Settings</span><span>{{ globalSettingsCaret }}</span>
+      </button>
+      <sc-if value="{{ globalSettingsOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:12px;padding-left:12px;">
+
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="display:flex;gap:8px;padding-top:12px;">
+      <button onClick="{{ onCopySpecs }}" style="flex:1;background:var(--accent);color:#1c1b19;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;">
+        {{ copyButtonLabel }}
+      </button>
+    </div>
+  </aside>
+  </sc-if>
+
+  <main style="flex:3 1 480px;padding:8px 8px;display:flex;flex-direction:column;gap:20px;min-width:0;">
+    <sc-if value="{{ !compact }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;gap:24px;align-items:stretch;flex-wrap:wrap;flex:1;min-height:0;">
+      <div style="flex:1;min-width:340px;min-height:0;max-height:100%;overflow-y:auto;background:#fff;border:1px solid #e4ddc9;border-radius:12px;padding:22px 20px;display:flex;flex-direction:column;color:#1c1b19;">
+        <div style="font-size:20px;font-weight:800;color:#1c1b19;margin-bottom:16px;">Volume Calculation</div>
+        <div style="width:100%;display:flex;flex-direction:column;gap:0;">
+          <sc-if value="{{ showDimensionRows }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3efe3;font-size:14px;">
+              <span style="color:#8a8272;">Board Length</span><span style="font-weight:700;color:#1c1b19;">{{ lengthDisplay }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3efe3;font-size:14px;">
+              <span style="color:#8a8272;">Board Width</span><span style="font-weight:700;color:#1c1b19;">{{ widthDisplay }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3efe3;font-size:14px;">
+              <span style="color:#8a8272;">Center Thickness</span><span style="font-weight:700;color:#1c1b19;">{{ centerThicknessDisplay }}</span>
+            </div>
+          </sc-if>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3efe3;font-size:14px;">
+            <span style="color:#8a8272;">{{ areaRowLabel }}</span><span style="font-weight:700;color:#1c1b19;">{{ areaSqInDisplay }}</span>
+          </div>
+          <sc-if value="{{ showGeomBreakdown }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3efe3;font-size:14px;">
+              <span style="color:#8a8272;">Tail Cross-Section Thickness</span><span style="font-weight:700;color:#1c1b19;">{{ tailEffDisplay }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3efe3;font-size:14px;">
+              <span style="color:#8a8272;">Center Cross-Section Thickness</span><span style="font-weight:700;color:#1c1b19;">{{ centerEffDisplay }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3efe3;font-size:14px;">
+              <span style="color:#8a8272;">Nose Cross-Section Thickness</span><span style="font-weight:700;color:#1c1b19;">{{ noseEffDisplay }}</span>
+            </div>
+          </sc-if>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3efe3;font-size:14px;">
+            <span style="color:#8a8272;">{{ weightedThicknessLabel }}</span><span style="font-weight:700;color:#1c1b19;">{{ weightedThicknessDisplay }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;padding:14px 0 8px;border-top:2px solid #e4ddc9;margin-top:6px;">
+            <span style="color:#8a8272;font-weight:700;font-size:14px;">Estimated Volume</span>
+            <span style="text-align:right;"><span style="display:block;font-weight:800;color:var(--accent-strong);font-size:22px;">{{ volumeLitersDisplay }}</span><span style="display:block;font-weight:600;color:#8a8272;font-size:13px;">({{ volumeCuInDisplay }})</span></span>
+          </div>
+        </div><div style="margin-top:auto;padding-top:16px;font-size:13px;color:#8a8272;line-height:1.5;"><i>This is a rough estimate, not a 3D CAD model accurate calculation of volume.&nbsp; If comparing to a board of known dimensions and volume, you can tune the Board Type slider to calibrate for your purposes.&nbsp;</i></div>
+      </div>
+
+      
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ compact }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;min-height:0;overflow-y:auto;color:#1c1b19;display:flex;flex-direction:column;">
+        <sc-if value="{{ showDimensionRows }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f3efe3;font-size:{{ compactRowFontSize }};">
+            <span style="color:#8a8272;">Board Length</span><span style="font-weight:700;color:#1c1b19;">{{ lengthDisplay }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f3efe3;font-size:{{ compactRowFontSize }};">
+            <span style="color:#8a8272;">Board Width</span><span style="font-weight:700;color:#1c1b19;">{{ widthDisplay }}</span>
+          </div>
+        </sc-if>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f3efe3;font-size:{{ compactRowFontSize }};">
+          <span style="color:#8a8272;">{{ areaRowLabel }}</span><span style="font-weight:700;color:#1c1b19;">{{ areaSqInDisplay }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f3efe3;font-size:{{ compactRowFontSize }};">
+          <span style="color:#8a8272;">{{ weightedThicknessLabel }}</span><span style="font-weight:700;color:#1c1b19;">{{ weightedThicknessDisplay }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0 3px;border-top:2px solid #e4ddc9;margin-top:2px;">
+          <span style="color:#8a8272;font-weight:700;font-size:{{ compactTotalFontSize }};">Estimated Volume</span>
+          <span style="text-align:right;"><span style="display:block;font-weight:800;color:var(--accent-strong);font-size:{{ compactVolumeValueFontSize }};">{{ volumeLitersDisplay }}</span><span style="display:block;font-weight:600;color:#8a8272;font-size:{{ compactRowFontSize }};">({{ volumeCuInDisplay }})</span></span>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{},&quot;brandName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Chris Kontoes&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Branding&quot;},&quot;seed&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;seedVersion&quot;:{&quot;editor&quot;:null,&quot;default&quot;:0,&quot;tsType&quot;:&quot;number&quot;},&quot;onSync&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;(v:any)=&gt;void&quot;},&quot;templateValues&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;railValues&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;compact&quot;:{&quot;editor&quot;:null,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  _themeVars() {
+    const raw = (this.props && this.props.accentColor) || '#c98d3a';
+    let h = String(raw).replace('#','');
+    if (h.length === 3) h = h.split('').map(c=>c+c).join('');
+    const r=parseInt(h.slice(0,2),16)||201, g=parseInt(h.slice(2,4),16)||141, b=parseInt(h.slice(4,6),16)||58;
+    const mix=t=>`rgb(${Math.round(r+(255-r)*t)},${Math.round(g+(255-g)*t)},${Math.round(b+(255-b)*t)})`;
+    const dk=t=>`rgb(${Math.round(r*(1-t))},${Math.round(g*(1-t))},${Math.round(b*(1-t))})`;
+    return { vars:`--accent:${raw};--accent-strong:${dk(0.18)};--board-fill:${mix(0.86)};`, pageBg:mix(0.93) };
+  }
+  state = {
+    units: 'in',
+    globalSettingsOpen: false,
+    lengthIn: 72,
+    width: 20,
+    centerThickness: 2.5,
+    boardTypeIndex: 3,
+    copyToast: false,
+    importTemplateDimensions: true,
+    importRailThickness: true,
+    rootAvailH: 0,
+  };
+  measureRootAvail = () => {
+    const el = this._rootEl; if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const avail = Math.max(200, window.innerHeight - rect.top);
+    const patch = {};
+    if (Math.abs(avail - this.state.rootAvailH) > 1) patch.rootAvailH = avail;
+    if (Math.abs(rect.height - this.state.compactBoxH) > 1) patch.compactBoxH = rect.height;
+    if (Object.keys(patch).length) this.setState(patch);
+  }
+  rootRef = (el) => {
+    this._rootEl = el;
+    if (!el) return;
+    if (!this._rootRO) this._rootRO = new ResizeObserver(() => this.measureRootAvail());
+    this._rootRO.observe(document.body);
+    this._rootRO.observe(el);
+    this.measureRootAvail();
+    requestAnimationFrame(() => this.measureRootAvail());
+    if (!this._rootPollInterval) {
+      let ticks = 0;
+      this._rootPollInterval = setInterval(() => {
+        this.measureRootAvail();
+        ticks++;
+        if (ticks > 40) { clearInterval(this._rootPollInterval); this._rootPollInterval = null; }
+      }, 150);
+    }
+    if (!this._rootResizeBound) {
+      this._rootResizeBound = true;
+      window.addEventListener('resize', this.measureRootAvail);
+    }
+  }
+
+  applySeed() {
+    const seed = this.props.seed; if (!seed) return;
+    if (seed.units != null) this.setState({ units: seed.units });
+  }
+  syncFromTemplate() {
+    const tv = this.props.templateValues;
+    if (!this.state.importTemplateDimensions || !tv || !tv.available) return;
+    const patch = {};
+    if (tv.lengthIn != null && tv.lengthIn !== this.state.lengthIn) patch.lengthIn = tv.lengthIn;
+    if (tv.widepointWidth != null && tv.widepointWidth !== this.state.width) patch.width = tv.widepointWidth;
+    if (Object.keys(patch).length) this.setState(patch);
+  }
+  syncSnapshot() { return { units: this.state.units }; }
+  componentDidMount() {
+    this.applySeed();
+    const cur = this.syncSnapshot();
+    this._lastSynced = cur;
+    this.props.onSync && this.props.onSync(cur);
+    this.syncFromTemplate();
+  }
+  componentWillUnmount() {
+    if (this._rootRO) this._rootRO.disconnect();
+    if (this._rootResizeBound) window.removeEventListener('resize', this.measureRootAvail);
+    if (this._rootPollInterval) clearInterval(this._rootPollInterval);
+  }
+  componentDidUpdate(prevProps) {
+    if (prevProps.seedVersion !== this.props.seedVersion) this.applySeed();
+    this.syncFromTemplate();
+    const cur = this.syncSnapshot();
+    const last = this._lastSynced || {};
+    const changed = {};
+    Object.keys(cur).forEach(k => { if (cur[k] !== last[k]) changed[k] = cur[k]; });
+    if (Object.keys(changed).length) { this._lastSynced = cur; this.props.onSync && this.props.onSync(changed); }
+  }
+
+  round16(x) { return Math.round(x * 16) / 16; }
+  toFrac(x) {
+    const sign = x < 0 ? '-' : '';
+    x = Math.abs(this.round16(x));
+    let whole = Math.floor(x + 1e-9);
+    let sixteenths = Math.round((x - whole) * 16);
+    if (sixteenths === 16) { whole += 1; sixteenths = 0; }
+    if (sixteenths === 0) return `${sign}${whole}"`;
+    let num = sixteenths, den = 16;
+    while (num % 2 === 0) { num /= 2; den /= 2; }
+    return `${sign}${whole > 0 ? whole + ' ' : ''}${num}/${den}"`;
+  }
+  disp(inches) {
+    if (this.state.units === 'cm') return `${(Math.round(inches * 2.54 * 100) / 100).toFixed(2)} cm`;
+    return this.toFrac(inches);
+  }
+  toU(inches) { return this.state.units === 'cm' ? Math.round(inches * 2.54 * 100) / 100 : inches; }
+  fromU(v) { return this.state.units === 'cm' ? v / 2.54 : v; }
+
+  renderVals() {
+    const s = this.state;
+    const set = (patch) => this.setState(patch);
+    const cm = s.units === 'cm';
+    const toU = (v) => this.toU(v), fromU = (v) => this.fromU(v);
+    const unitBounds = (minIn, maxIn, stepIn, cmMin, cmMax, cmStep) => cm
+      ? { min: cmMin, max: cmMax, step: cmStep } : { min: minIn, max: maxIn, step: stepIn };
+
+    const onCheckIn = () => set({ units: 'in' });
+    const onCheckCm = () => set({ units: 'cm' });
+    const unitsOptions = ['in', 'cm'].map(k => ({
+      value: k, label: k === 'in' ? 'Inches' : 'Centimeters',
+      onSelect: () => set({ units: k }),
+      style: `flex:1;padding:10px;border-radius:6px;border:1px solid ${s.units===k?'var(--accent)':'var(--sidebar-input-border)'};background:${s.units===k?'var(--accent)':'transparent'};color:${s.units===k?'#1c1b19':'var(--sidebar-text)'};font-size:13px;font-weight:700;cursor:pointer;`
+    }));
+
+    const widthBounds = unitBounds(16, 24, 0.125, 40.6, 61, 0.3);
+    const centerThicknessBounds = unitBounds(1.75, 3.5, 0.0625, 4.4, 8.9, 0.1);
+
+    const feetOptions = [4, 5, 6, 7, 8, 9, 10];
+    const inchesOptions = Array.from({ length: 12 }, (_, i) => i);
+    const lengthFeet = Math.floor(s.lengthIn / 12), lengthInches = Math.round(s.lengthIn - lengthFeet * 12);
+
+    // 7 fixed steps tuned so a 6'0" x 19" x 2.25" board lands exactly on 26-32L in 1L increments.
+    const AREA_FACTORS = [0.6443, 0.6609, 0.6770, 0.6927, 0.7081, 0.7231, 0.7377];
+    const THICK_FACTORS = [0.80, 0.81, 0.82, 0.83, 0.84, 0.85, 0.86];
+    const TYPE_LABELS = ['Performance', 'Performance', 'Performance', 'Balanced', 'Beefy', 'Beefy', 'Beefy'];
+    const areaFactor = AREA_FACTORS[s.boardTypeIndex];
+    const thicknessFactor = THICK_FACTORS[s.boardTypeIndex];
+    const tv = this.props.templateValues || {};
+    const rv = this.props.railValues || {};
+    const templateAvailable = !!(tv.available && tv.area != null);
+    const railAvailable = !!(rv.available && rv.centerThickness != null);
+    const importingTemplate = s.importTemplateDimensions && templateAvailable;
+    const importingRailThickness = s.importRailThickness && railAvailable && importingTemplate;
+    const areaSqIn = importingTemplate ? tv.area : s.lengthIn * s.width * areaFactor;
+
+    // Real-geometry path: build each station's true half cross-section polygon from the Rail Band
+    // Calculator's actual point-to-point profile (deck marks, rail marks, tucks) plus a flat closing run
+    // from the profile's innermost point to the centerline at full board thickness (the board is solid,
+    // un-tapered foam inboard of the rail bands), shoelace that polygon for its area, and back that out
+    // into an equivalent uniform thickness (area / half-width) — this is exact for that cross-section,
+    // not a fudge factor. The three stations are then length-weighted by trapezoidal integration along
+    // the board, same station layout the estimator always used (tip → @12" → center → @12" → tip).
+    const geomReady = importingRailThickness && rv.noseProfile && rv.centerProfile && rv.tailProfile &&
+      tv.noseWidthAt12 != null && tv.tailWidthAt12 != null && tv.widepointWidth != null &&
+      rv.noseThickness != null && rv.centerThickness != null && rv.tailThickness != null;
+
+    let weightedThickness, volumeCuIn, noseEff = null, centerEff = null, tailEff = null;
+    if (geomReady) {
+      const shoelaceArea = (pts) => {
+        let a = 0;
+        for (let i = 0; i < pts.length; i++) {
+          const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length];
+          a += x1 * y2 - x2 * y1;
+        }
+        return Math.abs(a) / 2;
+      };
+      const stationEffThickness = (profile, boardThickness, halfWidth) => {
+        if (!halfWidth) return 0;
+        const poly = [[-halfWidth, boardThickness], ...profile, [-halfWidth, 0]];
+        return shoelaceArea(poly) / halfWidth;
+      };
+      tailEff = stationEffThickness(rv.tailProfile, rv.tailThickness, tv.tailWidthAt12 / 2);
+      centerEff = stationEffThickness(rv.centerProfile, rv.centerThickness, tv.widepointWidth / 2);
+      noseEff = stationEffThickness(rv.noseProfile, rv.noseThickness, tv.noseWidthAt12 / 2);
+      const L = s.lengthIn;
+      const tipThickness = L < 84 ? 0.5 : 0.375;
+      const halfLen = L / 2;
+      const trapz = (a, b, d) => (a + b) / 2 * d;
+      const totalArea = trapz(tipThickness, tailEff, 12) + trapz(tailEff, centerEff, halfLen - 12) +
+        trapz(centerEff, noseEff, (L - 12) - halfLen) + trapz(noseEff, tipThickness, 12);
+      weightedThickness = totalArea / L;
+      volumeCuIn = areaSqIn * weightedThickness;
+    } else {
+      weightedThickness = importingRailThickness ? s.centerThickness : s.centerThickness * thicknessFactor;
+      volumeCuIn = areaSqIn * weightedThickness;
+    }
+    const volumeLiters = volumeCuIn / 61.0237;
+
+    const boardTypeLabel = TYPE_LABELS[s.boardTypeIndex];
+
+    const specLines = geomReady ? [
+      'BOARD VOLUME ESTIMATE (real rail geometry)', '',
+      `Board Length: ${this.disp(s.lengthIn)}`,
+      `Template Area: ${areaSqIn.toFixed(1)} sq in`,
+      `Tail Cross-Section Thickness: ${this.disp(tailEff)}`,
+      `Center Cross-Section Thickness: ${this.disp(centerEff)}`,
+      `Nose Cross-Section Thickness: ${this.disp(noseEff)}`,
+      `Length-Weighted Effective Thickness: ${this.disp(weightedThickness)}`,
+      `Estimated Volume: ${volumeLiters.toFixed(2)} L (${volumeCuIn.toFixed(1)} cu in)`,
+    ] : [
+      'BOARD VOLUME ESTIMATE', '',
+      `Board Length: ${this.disp(s.lengthIn)}`,
+      `Board Width: ${this.disp(s.width)}`,
+      `Center Thickness: ${this.disp(s.centerThickness)}`,
+      `Board Type: ${boardTypeLabel}`,
+      `Area Factor: ${areaFactor.toFixed(2)}`,
+      `Thickness Factor: ${thicknessFactor.toFixed(2)}`,
+      `Estimated Volume: ${volumeLiters.toFixed(2)} L (${volumeCuIn.toFixed(1)} cu in)`,
+    ];
+
+    return {
+      compact: !!this.props.compact, rootRef: this.rootRef,
+      rootHeight: this.props.compact ? '100%' : (s.rootAvailH > 0 ? `${s.rootAvailH}px` : '100vh'),
+      panelMaxHeight: this.props.compact ? '100%' : (s.rootAvailH > 0 ? `${Math.max(1, s.rootAvailH - 32)}px` : 'calc(100vh - 32px)'),
+      compactPosition: this.props.compact ? 'position:absolute;top:0;left:0;right:0;bottom:0;' : '',
+      rootBg: this.props.compact ? 'transparent' : this._themeVars().pageBg,
+      themeVars: this._themeVars().vars,
+      compactRowFontSize: this.props.compact ? (11 * (this.props.compactFontScale ?? 1)).toFixed(1) + 'px' : '12px',
+      compactTotalFontSize: this.props.compact ? (12 * (this.props.compactFontScale ?? 1)).toFixed(1) + 'px' : '13px',
+      compactVolumeValueFontSize: this.props.compact ? (16 * (this.props.compactFontScale ?? 1)).toFixed(1) + 'px' : '13px',
+      units: s.units, unitsOptions, unitsIsIn: !cm, unitsIsCm: cm, onCheckIn, onCheckCm,
+      globalSettingsOpen: s.globalSettingsOpen, globalSettingsCaret: s.globalSettingsOpen ? '▾' : '▸',
+      onToggleGlobalSettings: () => set({ globalSettingsOpen: !s.globalSettingsOpen }),
+
+      feetOptions, inchesOptions, lengthFeet, lengthInches,
+      lengthDisplay: `${lengthFeet}'${lengthInches}"`, lengthTotalIn: s.lengthIn,
+      onFeetChange: (e) => set({ lengthIn: parseInt(e.target.value) * 12 + lengthInches }),
+      onInchesChange: (e) => set({ lengthIn: lengthFeet * 12 + parseInt(e.target.value) }),
+      onLengthSlider: (e) => set({ lengthIn: parseFloat(e.target.value) }),
+
+      widthMin: widthBounds.min, widthMax: widthBounds.max, widthStep: widthBounds.step,
+      widthDisplay: this.disp(s.width), widthInputValue: toU(s.width),
+      onWidthChange: (e) => set({ width: fromU(parseFloat(e.target.value)) }),
+
+      templateAvailable, importTemplateDimensions: s.importTemplateDimensions,
+      onToggleImportTemplateDimensions: () => {
+        const next = !s.importTemplateDimensions;
+        const patch = { importTemplateDimensions: next };
+        if (!next) patch.importRailThickness = false;
+        const liveTv = this.props.templateValues || {};
+        if (next && liveTv.available) {
+          if (liveTv.lengthIn != null) patch.lengthIn = liveTv.lengthIn;
+          if (liveTv.widepointWidth != null) patch.width = liveTv.widepointWidth;
+        }
+        this.setState(patch);
+      },
+      dimensionsDisabled: importingTemplate, dimensionsOpacity: importingTemplate ? '0.4' : '1',
+
+      centerThicknessMin: centerThicknessBounds.min, centerThicknessMax: centerThicknessBounds.max, centerThicknessStep: centerThicknessBounds.step,
+      centerThicknessDisplay: this.disp(s.centerThickness), centerThicknessInputValue: toU(s.centerThickness),
+      onCenterThicknessChange: (e) => set({ centerThickness: fromU(parseFloat(e.target.value)) }),
+
+      railAvailable, importRailThickness: s.importRailThickness, importingRailThickness,
+      onToggleImportRailThickness: () => {
+        if (!s.importTemplateDimensions) return;
+        const next = !s.importRailThickness;
+        const patch = { importRailThickness: next };
+        const liveRv = this.props.railValues || {};
+        if (next && liveRv.available && liveRv.centerThickness != null) patch.centerThickness = liveRv.centerThickness;
+        this.setState(patch);
+      },
+      thicknessDisabled: importingRailThickness, thicknessOpacity: importingRailThickness ? '0.4' : '1',
+
+      boardTypeIndex: s.boardTypeIndex,
+      onBoardTypeChange: (e) => set({ boardTypeIndex: parseInt(e.target.value) }),
+      areaFactorDisplay: `${areaFactor.toFixed(2)} — ${boardTypeLabel}`,
+      thicknessFactorDisplay: importingRailThickness ? 'Not used — real geometry' : `${thicknessFactor.toFixed(2)} — ${boardTypeLabel}`,
+
+      showDimensionRows: !importingTemplate,
+      areaRowLabel: importingTemplate ? 'Template Area' : 'Board Area (estimated)',
+      areaSqInDisplay: `${areaSqIn.toFixed(1)} sq in${importingTemplate ? ' (imported)' : ''}`,
+      showGeomBreakdown: geomReady,
+      tailEffDisplay: geomReady ? this.disp(tailEff) : '—',
+      centerEffDisplay: geomReady ? this.disp(centerEff) : '—',
+      noseEffDisplay: geomReady ? this.disp(noseEff) : '—',
+      weightedThicknessLabel: geomReady ? 'Length-Weighted Effective Thickness' : 'Weighted Thickness',
+      weightedThicknessDisplay: this.disp(weightedThickness),
+      volumeLitersDisplay: `${volumeLiters.toFixed(2)} L`,
+      volumeCuInDisplay: `${volumeCuIn.toFixed(1)} cu in`,
+      disclaimerText: geomReady
+        ? "Area comes from the Template Builder's planform. Thickness at the tail, center and nose stations is the true cross-section area (shoelace on the Rail Band Calculator's actual deck/rail/tuck profile at each station, plus the flat run of full-thickness foam in from there to the centerline) divided back into an equivalent uniform thickness — not an approximation factor. Those three station thicknesses are then length-weighted by trapezoidal integration from tip to tip (tip thickness 1/2\" under 7', 3/8\" at 7'+) to get Estimated Volume = Template Area × that weighted thickness. It still assumes rocker and rail curvature don't change the cross-section shape between stations, so it isn't CAD-exact — for that, use a shaping-software volume calculation on the actual 3D shape."
+        : "This is a rough approximation, not a CAD-accurate volume. Area is Board Length × Board Width × the Area Factor, and Weighted Thickness is Center Thickness × the Thickness Factor; Estimated Volume is Area × Weighted Thickness. Both factors are derived from the single Board Type slider (7 fixed steps, tuned so a 6'0\" × 19\" × 2.25\" board lands on 26–32L in 1L increments) — Area Factor scaling roughly 0.64–0.74 and Thickness Factor scaling 0.80–0.86 — accounting for how much of the board's bounding box its rails, rocker and outline actually fill. For a precise number, use a shaping-software volume calculation from the actual 3D shape.",
+
+      copyButtonLabel: s.copyToast ? 'Copied!' : 'Copy Volume Spec',
+      onCopySpecs: () => {
+        const text = specLines.join('\n');
+        const showToast = () => { set({ copyToast: true }); setTimeout(() => this.setState({ copyToast: false }), 1800); };
+        const fallbackCopy = () => {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.focus(); ta.select();
+          try { document.execCommand('copy'); } catch (e) {}
+          document.body.removeChild(ta);
+          showToast();
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(showToast).catch(fallbackCopy);
+        } else fallbackCopy();
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>

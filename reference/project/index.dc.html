@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-666bddf4-18d0-4929-a783-6c38c5d4a868/styles.css">
+<script src="_ds/modernist-666bddf4-18d0-4929-a783-6c38c5d4a868/_ds_bundle.js"></script>
+<style>
+  body { margin: 0; background: var(--color-bg); }
+  a { color: var(--color-accent-700); }
+  a:hover { color: var(--color-accent); }
+  .spoke { text-decoration: none; color: inherit; display: block; position: absolute; background: var(--color-surface); border: 2px solid var(--color-divider); padding: 20px 24px; box-sizing: border-box; }
+  .spoke:hover { border-color: var(--color-accent); }
+  .spoke:hover .spoke-title { color: var(--color-accent-700); }
+  .node { position: absolute; width: 10px; height: 10px; background: var(--color-accent); }
+</style>
+</helmet>
+<div style="min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);">
+  <div style="max-width:1040px;margin:0 auto;padding:56px 32px 80px;">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <svg width="44" height="24" viewBox="0 0 200 110" style="flex:none;">
+        <g fill="none" stroke="var(--color-text)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M10,86 L180,86 L180,95 L145,99 L10,95 Z"></path>
+          <path d="M150,86 L172,86 L172,68 L150,68 Z"></path>
+          <path d="M30,86 L30,45 L50,52 L48,86 Z"></path>
+          <path d="M20,86 L20,58"></path>
+          <circle cx="20" cy="52" r="8"></circle>
+          <circle cx="90" cy="55" r="30"></circle>
+          <path d="M120,48 C132,30 148,18 162,18 C176,18 182,30 178,42 C174,52 162,58 148,58 C136,58 126,54 120,48 Z"></path>
+          <rect x="145" y="42" width="12" height="10"></rect>
+          <path d="M170,20 C185,8 200,10 203,22 C206,30 198,35 193,31"></path>
+        </g>
+      </svg>
+      <div style="font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--color-accent-700);font-weight:700;">The Shaping Studio</div>
+    </div>
+    <div style="height:2px;background:var(--color-divider);margin:24px 0 8px;"></div>
+
+    <div style="position:relative;width:1000px;height:760px;margin:32px auto 0;">
+      <svg width="1000" height="760" style="position:absolute;top:0;left:0;">
+        <line x1="500" y1="170" x2="500" y2="260" stroke="var(--color-divider)" stroke-width="2"></line>
+        <line x1="500" y1="500" x2="500" y2="590" stroke="var(--color-divider)" stroke-width="2"></line>
+        <line x1="310" y1="380" x2="380" y2="380" stroke="var(--color-divider)" stroke-width="2"></line>
+        <line x1="620" y1="380" x2="690" y2="380" stroke="var(--color-divider)" stroke-width="2"></line>
+      </svg>
+
+      <div class="node" style="left:495px;top:165px;"></div>
+      <div class="node" style="left:495px;top:585px;"></div>
+      <div class="node" style="left:305px;top:375px;"></div>
+      <div class="node" style="left:685px;top:375px;"></div>
+
+      <div style="position:absolute;left:380px;top:260px;width:240px;height:240px;">
+        <svg width="240" height="240" viewBox="0 0 330 330">
+          <g stroke="var(--color-accent)" stroke-width="4" stroke-linecap="round">
+            <line x1="305" y1="165" x2="325" y2="165"></line>
+            <line x1="286.2" y1="235" x2="303.6" y2="245"></line>
+            <line x1="235" y1="286.2" x2="245" y2="303.6"></line>
+            <line x1="165" y1="305" x2="165" y2="325"></line>
+            <line x1="95" y1="286.2" x2="85" y2="303.6"></line>
+            <line x1="43.8" y1="235" x2="26.4" y2="245"></line>
+            <line x1="25" y1="165" x2="5" y2="165"></line>
+            <line x1="43.8" y1="95" x2="26.4" y2="85"></line>
+            <line x1="95" y1="43.8" x2="85" y2="26.4"></line>
+            <line x1="165" y1="25" x2="165" y2="5"></line>
+            <line x1="235" y1="43.8" x2="245" y2="26.4"></line>
+            <line x1="286.2" y1="95" x2="303.6" y2="85"></line>
+          </g>
+          <circle cx="165" cy="165" r="138" fill="var(--color-surface)" stroke="var(--color-text)" stroke-width="3"></circle>
+          <circle cx="165" cy="165" r="118" fill="none" stroke="var(--color-text)" stroke-width="1.5"></circle>
+          <path id="arcTop" d="M75.8,113.5 A103,103 0 0,1 254.2,113.5" fill="none" stroke="none"></path>
+          <path id="arcBottom" d="M82.7,212.5 A95,95 0 0,0 247.3,212.5" fill="none" stroke="none"></path>
+          <text font-family="var(--font-heading)" font-weight="800" font-size="19" letter-spacing="2.5" fill="var(--color-text)">
+            <textPath href="#arcTop" startOffset="50%" text-anchor="middle">THE SHAPING STUDIO</textPath>
+          </text>
+          <text font-size="10.5" letter-spacing="2" fill="var(--color-text)">
+            <textPath href="#arcBottom" startOffset="50%" text-anchor="middle">CUSTOM SURFBOARDS</textPath>
+          </text>
+          <g transform="translate(95,126.5) scale(0.70)" fill="none" stroke="var(--color-text)" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+            <path d="M10,86 L180,86 L180,95 L145,99 L10,95 Z"></path>
+            <path d="M150,86 L172,86 L172,68 L150,68 Z"></path>
+            <path d="M30,86 L30,45 L50,52 L48,86 Z"></path>
+            <path d="M20,86 L20,58"></path>
+            <circle cx="20" cy="52" r="8"></circle>
+            <circle cx="90" cy="55" r="30"></circle>
+            <path d="M120,48 C132,30 148,18 162,18 C176,18 182,30 178,42 C174,52 162,58 148,58 C136,58 126,54 120,48 Z"></path>
+            <rect x="145" y="42" width="12" height="10"></rect>
+            <path d="M170,20 C185,8 200,10 203,22 C206,30 198,35 193,31"></path>
+          </g>
+        </svg>
+      </div>
+
+      <a href="Template.dc.html" class="spoke" style="left:350px;top:10px;width:300px;height:160px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--color-accent-700);margin-bottom:8px;">Calculator</div>
+        <div class="spoke-title" style="font-family:var(--font-heading);font-size:20px;font-weight:800;">Template Maker</div>
+        <div style="font-size:13px;color:var(--color-neutral-700);margin-top:8px;line-height:1.5;">Generate a surfboard outline from input dimensions, with full-size printable templates.</div>
+      </a>
+
+      <a href="Fins.dc.html" class="spoke" style="left:690px;top:300px;width:300px;height:160px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--color-accent-700);margin-bottom:8px;">Calculator</div>
+        <div class="spoke-title" style="font-family:var(--font-heading);font-size:20px;font-weight:800;">Fin Placement</div>
+        <div style="font-size:13px;color:var(--color-neutral-700);margin-top:8px;line-height:1.5;">Trailing-edge fin placement reference for single, twin, thruster, 2+1 and quad setups.</div>
+      </a>
+
+      <a href="Rails.dc.html" class="spoke" style="left:350px;top:590px;width:300px;height:160px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--color-accent-700);margin-bottom:8px;">Calculator</div>
+        <div class="spoke-title" style="font-family:var(--font-heading);font-size:20px;font-weight:800;">Rail Band</div>
+        <div style="font-size:13px;color:var(--color-neutral-700);margin-top:8px;line-height:1.5;">Rail band markings for nose, center and tail sections to shape consistent rails.</div>
+      </a>
+
+      <a href="Volume.dc.html" class="spoke" style="left:10px;top:300px;width:300px;height:160px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--color-accent-700);margin-bottom:8px;">Calculator</div>
+        <div class="spoke-title" style="font-family:var(--font-heading);font-size:20px;font-weight:800;">Volume Estimator</div>
+        <div style="font-size:13px;color:var(--color-neutral-700);margin-top:8px;line-height:1.5;">Approximate board volume from planform area and thickness.</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+</body>
+</html>

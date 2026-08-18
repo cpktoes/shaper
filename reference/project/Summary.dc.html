@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; background: #f7f4ee; }
+  * { box-sizing: border-box; font-family: Helvetica, Arial, sans-serif; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #cbbf9e; border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: #f0ead9; }
+  a { color: var(--accent); }
+  a:hover { color: var(--accent-strong); }
+  @page { size: landscape; }
+  @media print {
+    html, body { background: #fff !important; }
+    * { box-shadow: none !important; background: transparent !important; }
+    [data-print-unfold] { overflow: visible !important; max-height: none !important; }
+    [data-print-hide] { display: none !important; }
+    [data-print-only] { display: flex !important; }
+  }
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="{{ themeVars }}height:{{ rootHeight }};min-height:{{ rootMinHeight }};overflow:{{ rootOverflow }};display:grid;grid-template-columns:{{ gridCols }};grid-template-rows:{{ gridRows }};gap:8px;padding:8px;box-sizing:border-box;background:#f7f4ee;color:#1c1b19;zoom:{{ printZoom }};">
+  <div style="grid-column:{{ colRailData }};grid-row:{{ topRow }};order:{{ orderRailData }};min-height:{{ cardMinHeight }};min-width:0;background:#fff;border:1px solid #e4ddc9;border-radius:12px;padding:6px;display:flex;flex-direction:column;">
+    <div style="font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:3px;flex:none;">Rail Data</div>
+    <div data-print-unfold="true" style="position:relative;flex:1;min-height:0;min-width:0;overflow:hidden;border-radius:8px;">
+      <dc-import accent-color="{{ accentColor }}" name="Rails" compact="{{ true }}" compact-view="data" compact-font-scale="{{ fontScale }}" seed="{{ pendingSeed.rail }}" seed-version="{{ seedVersions.rail }}" on-sync="{{ onSyncRail }}" hint-size="100%,100%"></dc-import>
+    </div>
+  </div>
+
+  <div style="grid-column:{{ colTemplate }};grid-row:{{ topRow }};order:{{ orderTemplate }};min-height:{{ cardMinHeight }};min-width:0;background:#fff;border:1px solid #e4ddc9;border-radius:12px;padding:0;display:flex;flex-direction:column;">
+    <div style="font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin:6px 0 0 8px;flex:none;">Template</div>
+    <div style="position:relative;flex:1;min-height:0;min-width:0;overflow:hidden;border-radius:0;">
+      <dc-import accent-color="{{ accentColor }}" name="Template" compact="{{ true }}" compact-font-scale="{{ fontScale }}" seed="{{ pendingSeed.template }}" seed-version="{{ seedVersions.template }}" on-sync="{{ onSyncTemplate }}" hint-size="100%,100%"></dc-import>
+    </div>
+  </div>
+
+  <div style="grid-column:{{ colVolumeFin }};grid-row:{{ topRow }};order:{{ orderVolumeFin }};display:flex;flex-direction:column;gap:8px;min-height:{{ cardMinHeight }};min-width:0;">
+    <div style="flex:1;min-height:0;background:#fff;border:1px solid #e4ddc9;border-radius:12px;padding:8px;display:flex;flex-direction:column;">
+      <div style="font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:5px;flex:none;">Volume Estimate</div>
+      <div style="position:relative;flex:1;min-height:0;min-width:0;overflow:hidden;border-radius:8px;">
+        <dc-import accent-color="{{ accentColor }}" name="Volume" compact="{{ true }}" compact-font-scale="{{ fontScale }}" seed="{{ pendingSeed.volume }}" seed-version="{{ seedVersions.volume }}" on-sync="{{ onSyncVolume }}" template-values="{{ templateValuesForVolume }}" rail-values="{{ railValuesForVolume }}" hint-size="100%,100%"></dc-import>
+      </div>
+    </div>
+    <div style="flex:1;min-height:0;background:#fff;border:1px solid #e4ddc9;border-radius:12px;padding:0;display:flex;flex-direction:column;">
+      <div style="font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin:6px 0 0 8px;flex:none;">Fin Placement</div>
+      <div style="position:relative;flex:1;min-height:0;min-width:0;overflow:hidden;border-radius:0;">
+        <dc-import accent-color="{{ accentColor }}" name="Fins" compact="{{ true }}" compact-view="diagram" compact-font-scale="{{ fontScale }}" seed="{{ pendingSeed.fin }}" seed-version="{{ seedVersions.fin }}" on-sync="{{ onSyncFin }}" template-values="{{ templateValuesForFin }}" hint-size="100%,100%"></dc-import>
+      </div>
+    </div>
+  </div>
+
+  <div style="grid-column:{{ plotsColumn }};grid-row:{{ bottomRow }};order:{{ orderRailPlots }};min-height:{{ plotsMinHeight }};min-width:0;background:#fff;border:1px solid #e4ddc9;border-radius:12px;padding:0;display:flex;flex-direction:column;">
+    <div style="font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin:6px 0 0 8px;flex:none;">Rail Plots</div>
+    <div style="position:relative;flex:1;min-height:0;min-width:0;overflow:hidden;border-radius:0;">
+      <dc-import accent-color="{{ accentColor }}" name="Rails" compact="{{ true }}" compact-view="plots" compact-row="{{ true }}" seed="{{ pendingSeed.rail }}" seed-version="{{ seedVersions.rail }}" on-sync="{{ onSyncRail }}" hint-size="100%,100%"></dc-import>
+    </div>
+  </div>
+
+  <div data-print-hide="true" style="grid-column:{{ colPrint }};grid-row:{{ bottomRow }};order:{{ orderPrint }};min-height:{{ plotsMinHeight }};min-width:0;background:#fff;border:1px solid #e4ddc9;border-radius:12px;padding:6px 8px;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;margin-bottom:4px;">
+      <div style="font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);">Board Name</div>
+      <button onClick="{{ printSummary }}" style="flex:none;background:var(--accent);color:#1c1b19;border:1px solid var(--accent);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;letter-spacing:0.3px;cursor:pointer;">Print Summary</button>
+    </div>
+    <textarea value="{{ boardName }}" onChange="{{ onBoardNameChange }}" placeholder="Board Name" rows="2" style="flex:1;min-height:0;width:100%;padding:4px 10px;font-size:13px;font-weight:700;color:#1c1b19;background:#fff;border:1px solid #e4ddc9;border-radius:8px;resize:none;font-family:inherit;"></textarea>
+  </div>
+  <div data-print-only="true" style="display:none;grid-column:{{ colPrint }};grid-row:{{ bottomRow }};order:{{ orderPrint }};min-height:{{ plotsMinHeight }};min-width:0;flex-direction:column;border:1px solid #e4ddc9;border-radius:12px;padding:6px 8px;">
+    <div style="font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:4px;flex:none;">Board Name</div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#1c1b19;text-align:center;white-space:pre-wrap;line-height:1.2;">{{ boardName }}</div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{},&quot;pendingSeed&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;seedVersions&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;onSyncRail&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;(v:any)=&gt;void&quot;},&quot;onSyncVolume&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;(v:any)=&gt;void&quot;},&quot;onSyncFin&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;(v:any)=&gt;void&quot;},&quot;onSyncTemplate&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;(v:any)=&gt;void&quot;},&quot;templateValuesForFin&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;templateValuesForVolume&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;railValuesForVolume&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;},&quot;finMarksForTemplate&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;any&quot;}}">
+class Component extends DCLogic {
+  _themeVars() {
+    const raw = (this.props && this.props.accentColor) || '#c98d3a';
+    let h = String(raw).replace('#','');
+    if (h.length === 3) h = h.split('').map(c=>c+c).join('');
+    const r=parseInt(h.slice(0,2),16)||201, g=parseInt(h.slice(2,4),16)||141, b=parseInt(h.slice(4,6),16)||58;
+    const mix=t=>`rgb(${Math.round(r+(255-r)*t)},${Math.round(g+(255-g)*t)},${Math.round(b+(255-b)*t)})`;
+    const dk=t=>`rgb(${Math.round(r*(1-t))},${Math.round(g*(1-t))},${Math.round(b*(1-t))})`;
+    return { vars:`--accent:${raw};--accent-strong:${dk(0.18)};--board-fill:${mix(0.86)};`, pageBg:mix(0.93) };
+  }
+  state = { rootAvailH: 0, rootAvailW: 0, boardName: '', isPrinting: false, printScale: 1, printNaturalW: 0, printNaturalH: 0 };
+  onBeforePrint = () => {
+    const el = this._rootEl; if (!el) return;
+    this.setState({ isPrinting: true, printScale: 1 }, () => {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const w = el.scrollWidth, h = el.scrollHeight;
+        const PAGE_W = 1030, PAGE_H = 750;
+        const scale = Math.min(1, PAGE_W / w, PAGE_H / h);
+        this.setState({ printScale: scale });
+      }));
+    });
+  }
+  onAfterPrint = () => this.setState({ isPrinting: false, printScale: 1 });
+  measureRootAvail = () => {
+    const el = this._rootEl; if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const avail = Math.max(200, window.innerHeight - rect.top);
+    const patch = {};
+    if (Math.abs(avail - this.state.rootAvailH) > 1) patch.rootAvailH = avail;
+    if (Math.abs(rect.width - this.state.rootAvailW) > 1) patch.rootAvailW = rect.width;
+    if (Object.keys(patch).length) this.setState(patch);
+  }
+  rootRef = (el) => {
+    this._rootEl = el;
+    if (!el) return;
+    if (!this._rootRO) this._rootRO = new ResizeObserver(() => this.measureRootAvail());
+    this._rootRO.observe(document.body);
+    this._rootRO.observe(el);
+    this.measureRootAvail();
+    requestAnimationFrame(() => this.measureRootAvail());
+    if (!this._rootPollInterval) {
+      let ticks = 0;
+      this._rootPollInterval = setInterval(() => {
+        this.measureRootAvail();
+        ticks++;
+        if (ticks > 40) { clearInterval(this._rootPollInterval); this._rootPollInterval = null; }
+      }, 150);
+    }
+    if (!this._rootResizeBound) {
+      this._rootResizeBound = true;
+      window.addEventListener('resize', this.measureRootAvail);
+      window.addEventListener('beforeprint', this.onBeforePrint);
+      window.addEventListener('afterprint', this.onAfterPrint);
+    }
+  }
+  componentWillUnmount() {
+    if (this._rootRO) this._rootRO.disconnect();
+    if (this._rootResizeBound) { window.removeEventListener('resize', this.measureRootAvail); window.removeEventListener('beforeprint', this.onBeforePrint); window.removeEventListener('afterprint', this.onAfterPrint); }
+    if (this._rootPollInterval) clearInterval(this._rootPollInterval);
+  }
+  renderVals() {
+    const s = this.state;
+    const stacked = !s.isPrinting && s.rootAvailW > 0 && s.rootAvailW < 900;
+    return {
+      ...this.props,
+      themeVars: this._themeVars().vars,
+      rootRef: this.rootRef,
+      rootHeight: stacked ? 'auto' : (s.rootAvailH > 0 ? `${s.rootAvailH}px` : '100vh'),
+      rootMinHeight: s.rootAvailH > 0 ? `${s.rootAvailH}px` : '100vh',
+      rootOverflow: stacked ? 'auto' : 'hidden',
+      gridCols: stacked ? '1fr' : 'minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)',
+      gridRows: stacked ? 'auto' : '85fr 15fr',
+      topRow: stacked ? 'auto' : '1', bottomRow: stacked ? 'auto' : '2',
+      plotsColumn: stacked ? 'auto' : '1 / 3',
+      colRailData: stacked ? '1' : '1', colTemplate: stacked ? '1' : '2', colVolumeFin: stacked ? '1' : '3', colPrint: stacked ? '1' : '3',
+      plotsMinHeight: stacked ? '220px' : '0',
+      cardMinHeight: stacked ? '360px' : '0',
+      orderTemplate: 1, orderRailPlots: 2, orderRailData: 3, orderVolumeFin: 4, orderPrint: 5,
+      fontScale: Math.max(0.85, Math.min(1.6, ((s.rootAvailW || 1200) / 3) / 400)),
+      boardName: s.boardName, onBoardNameChange: (e) => this.setState({ boardName: e.target.value }),
+      printSummary: () => window.print(),
+      printZoom: s.isPrinting ? s.printScale : 1,
+    };
+  }
+}
+</script>
+</body>
+</html>
