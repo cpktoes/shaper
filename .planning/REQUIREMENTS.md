@@ -96,30 +96,30 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ACCT-01 | TBD | Pending |
-| ACCT-02 | TBD | Pending |
-| ACCT-03 | TBD | Pending |
-| SETUP-01 | TBD | Pending |
-| OUTL-01 | TBD | Pending |
-| ROCK-01 | TBD | Pending |
-| RAIL-01 | TBD | Pending |
-| FOIL-01 | TBD | Pending |
-| FIN-01 | TBD | Pending |
-| FIN-02 | TBD | Pending |
-| FIN-03 | TBD | Pending |
-| VOL-01 | TBD | Pending |
-| MODL-01 | TBD | Pending |
-| MODL-02 | TBD | Pending |
-| MODL-03 | TBD | Pending |
-| VIZ-01 | TBD | Pending |
-| TMPL-01 | TBD | Pending |
-| UNIT-01 | TBD | Pending |
+| ACCT-01 | Phase 2 | Pending |
+| ACCT-02 | Phase 2 | Pending |
+| ACCT-03 | Phase 2 | Pending |
+| SETUP-01 | Phase 1 | Pending |
+| OUTL-01 | Phase 1 | Pending |
+| ROCK-01 | Phase 4 | Pending |
+| RAIL-01 | Phase 1 | Pending |
+| FOIL-01 | Phase 4 | Pending |
+| FIN-01 | Phase 1 | Pending |
+| FIN-02 | Phase 1 | Pending |
+| FIN-03 | Phase 1 | Pending |
+| VOL-01 | Phase 3 | Pending |
+| MODL-01 | Phase 2 | Pending |
+| MODL-02 | Phase 2 | Pending |
+| MODL-03 | Phase 2 | Pending |
+| VIZ-01 | Phase 1 | Pending |
+| TMPL-01 | Phase 3 | Pending |
+| UNIT-01 | Phase 1 | Pending |
 
 **Coverage:**
 - v1 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18 ⚠️ (roadmap not yet created)
+- Mapped to phases: 18
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-08-18*
-*Last updated: 2026-08-18 after initial definition*
+*Last updated: 2026-08-18 after roadmap creation*
