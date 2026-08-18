@@ -2,8 +2,8 @@
 
 /**
  * Top nav shared by every screen under app/design/*, so a shaper can move between the outline
- * editor and the rail band calculator without editing the URL. Client component because it reads
- * the active path (usePathname) to highlight the current link.
+ * editor, the rail band calculator and the fin placement screen without editing the URL. Client
+ * component because it reads the active path (usePathname) to highlight the current link.
  */
 
 import Link from "next/link";
@@ -12,6 +12,7 @@ import { usePathname } from "next/navigation";
 const NAV_LINKS = [
   { href: "/design/outline", label: "TEMPLATE" },
   { href: "/design/rails", label: "RAILS" },
+  { href: "/design/fins", label: "FINS" },
 ] as const;
 
 export function SiteNav() {

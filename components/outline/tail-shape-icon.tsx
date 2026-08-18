@@ -49,7 +49,9 @@ function iconXBaseAt(shape: IconTailShape, y: number): number {
   }
 }
 
-function iconOutlinePath(
+/** Exported so other icon-scale glyphs (e.g. the Fin Setup buttons, which always draw the
+ * squash outline behind their ticks) can reuse this generator rather than duplicating it. */
+export function iconOutlinePath(
   shape: IconTailShape,
   w12: number,
   diamondDepthMult: number,
