@@ -12,7 +12,6 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **ACCT-01**: User can sign up with email and password
 - [ ] **ACCT-02**: User can log in and stay logged in across sessions
 - [ ] **ACCT-03**: User can reset password via email link
-- [ ] **ACCT-04**: Account tracks free vs paid tier so features can be gated accordingly
 
 ### Board Setup
 
@@ -58,18 +57,22 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **TMPL-01**: User can export a full-size (1:1 scale) printable template of the outline, tiled across multiple standard pages for taping together
 
-### Sharing
-
-- [ ] **SHAR-01**: User can publish a saved model publicly for other users to view
-- [ ] **SHAR-02**: Other users can view publicly published models
-
 ### Units
 
 - [ ] **UNIT-01**: UI displays dimensions in inches and volume in litres, regardless of internal (metric) storage
 
 ## v2 Requirements
 
-Deferred to future release. Tracked but not in current roadmap.
+Deferred to future release. Tracked but not in current roadmap. Per the founder's build guide, free-tier usage should be validated with real shapers before billing and public sharing are built (guide milestones M4–M6).
+
+### Accounts
+
+- **ACCT2-01**: Account tracks free vs paid tier so features can be gated accordingly (billing/subscriptions)
+
+### Sharing
+
+- **SHAR2-01**: User can publish a saved model publicly for other users to view
+- **SHAR2-02**: Other users can view publicly published models
 
 ### Visualization
 
@@ -96,7 +99,6 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ACCT-01 | TBD | Pending |
 | ACCT-02 | TBD | Pending |
 | ACCT-03 | TBD | Pending |
-| ACCT-04 | TBD | Pending |
 | SETUP-01 | TBD | Pending |
 | OUTL-01 | TBD | Pending |
 | ROCK-01 | TBD | Pending |
@@ -111,14 +113,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MODL-03 | TBD | Pending |
 | VIZ-01 | TBD | Pending |
 | TMPL-01 | TBD | Pending |
-| SHAR-01 | TBD | Pending |
-| SHAR-02 | TBD | Pending |
 | UNIT-01 | TBD | Pending |
 
 **Coverage:**
-- v1 requirements: 21 total
+- v1 requirements: 18 total
 - Mapped to phases: 0
-- Unmapped: 21 ⚠️ (roadmap not yet created)
+- Unmapped: 18 ⚠️ (roadmap not yet created)
 
 ---
 *Requirements defined: 2026-08-18*
