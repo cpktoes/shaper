@@ -1,11 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { computeFinPlacement, DEFAULT_FIN_PLACEMENT_SPEC, type FinPlacementSpec } from "@/lib/geometry/fins";
+import { computeFinPlacement, DEFAULT_FIN_PLACEMENT_SPEC, toeAimTableFor, type FinPlacementSpec } from "@/lib/geometry/fins";
 import { FinControls } from "./fin-controls";
+import { FinDataPanel } from "./fin-data-panel";
+import { FinModelInfo } from "./fin-model-info";
 import { FinViewer } from "./fin-viewer";
+import { ToeAimTableModal } from "./toe-aim-table-modal";
 
 type FinTab = "viewer" | "data" | "info";
+
+const TAB_LABEL: Record<FinTab, string> = { viewer: "VIEWER", data: "DATA", info: "MODEL INFO" };
+const TAB_ORDER: FinTab[] = ["viewer", "data", "info"];
 
 /**
  * Owns the design state: a single FinPlacementSpec object plus UI-only state (which disclosures
@@ -20,11 +26,13 @@ export function FinPlacementEditor() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showCallouts, setShowCallouts] = useState(true);
   const [activeTab, setActiveTab] = useState<FinTab>("viewer");
-  // toeTableOpen itself is read starting in Task 3 (the aim-table modal); the setter is wired
-  // now so the "View precise McKee toe-in aim tables" link is functional as soon as it renders.
-  const [, setToeTableOpen] = useState(false);
+  const [toeTableOpen, setToeTableOpen] = useState(false);
 
   const result = useMemo(() => computeFinPlacement(spec), [spec]);
+  const toeTableView = useMemo(
+    () => toeAimTableFor(spec.boardLength, spec.tailWidth12),
+    [spec.boardLength, spec.tailWidth12],
+  );
 
   const updateSpec = (patch: Partial<FinPlacementSpec>) => setSpec((prev) => ({ ...prev, ...patch }));
 
@@ -46,7 +54,7 @@ export function FinPlacementEditor() {
       </aside>
       <main className="flex min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-outline-page-bg p-2">
         <div className="flex flex-none gap-1.5">
-          {(["viewer"] as FinTab[]).map((tab) => (
+          {TAB_ORDER.map((tab) => (
             <button
               key={tab}
               type="button"
@@ -58,7 +66,7 @@ export function FinPlacementEditor() {
                   : "border-transparent bg-transparent text-[#8a8272]")
               }
             >
-              VIEWER
+              {TAB_LABEL[tab]}
             </button>
           ))}
         </div>
@@ -69,7 +77,27 @@ export function FinPlacementEditor() {
             <FinViewer result={result} tailShape={spec.tailShape} tailWidth12={spec.tailWidth12} showCallouts={showCallouts} />
           </div>
         )}
+
+        {activeTab === "data" && (
+          <FinDataPanel
+            result={result}
+            boardLength={spec.boardLength}
+            tailWidth12={spec.tailWidth12}
+            finSetup={spec.finSetup}
+            tailShape={spec.tailShape}
+          />
+        )}
+
+        {activeTab === "info" && <FinModelInfo />}
       </main>
+
+      <ToeAimTableModal
+        open={toeTableOpen}
+        onClose={() => setToeTableOpen(false)}
+        boardLength={spec.boardLength}
+        tailWidth12={spec.tailWidth12}
+        view={toeTableView}
+      />
     </div>
   );
 }
