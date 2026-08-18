@@ -1,0 +1,6260 @@
+{
+  "default": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 13,
+      "tailShape": "squash",
+      "finSetup": "thruster",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Center Fin",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "3 5/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "11\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Center",
+          "value": "4 1/2\"",
+          "dasharray": "none"
+        },
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        }
+      ],
+      "modelHeader": "Thruster — McKee Shortboard",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "13\"",
+      "summaryFinSetupDisplay": "Thruster",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 13\" tail",
+      "centerSectionLabel": "Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": true,
+      "hasForwardSection": true,
+      "hasRearSection": false,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": true,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "3 5/16\"",
+      "frontFinalDisplay": "11\"",
+      "pairFinalDisplay": "11\"",
+      "forwardToeDisplay": "3/8\"",
+      "rearToeDisplay": "0\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.1033,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 10.97678592,
+        "teLateral": -5.0983129909345655,
+        "leOffTail": 15.47678592,
+        "leLateral": -4.7233129909345655,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 10.97678592,
+        "teLateral": 5.0983129909345655,
+        "leOffTail": 15.47678592,
+        "leLateral": 4.7233129909345655,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 3.3125,
+        "teLateral": 0,
+        "leOffTail": 7.8125,
+        "leLateral": 0,
+        "baseStrokeDasharray": "none"
+      }
+    ]
+  },
+  "thrusterProportional": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 13,
+      "tailShape": "squash",
+      "finSetup": "thruster",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "proportional",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Center Fin",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "3 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "11 1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 1/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Center",
+          "value": "4 1/2\"",
+          "dasharray": "none"
+        },
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        }
+      ],
+      "modelHeader": "Thruster — Proportional",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "13\"",
+      "summaryFinSetupDisplay": "Thruster",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 13\" tail",
+      "centerSectionLabel": "Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": true,
+      "hasForwardSection": true,
+      "hasRearSection": false,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": false,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "3 1/2\"",
+      "frontFinalDisplay": "11 1/4\"",
+      "pairFinalDisplay": "11 1/4\"",
+      "forwardToeDisplay": "1/4\"",
+      "rearToeDisplay": "0\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.1033,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 11.25,
+        "teLateral": -5.219882765539443,
+        "leOffTail": 15.75,
+        "leLateral": -4.969882765539443,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 11.25,
+        "teLateral": 5.219882765539443,
+        "leOffTail": 15.75,
+        "leLateral": 4.969882765539443,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 3.4999991999999986,
+        "teLateral": 0,
+        "leOffTail": 7.999999199999999,
+        "leLateral": 0,
+        "baseStrokeDasharray": "none"
+      }
+    ]
+  },
+  "thrusterBasic": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 13,
+      "tailShape": "squash",
+      "finSetup": "thruster",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "basic",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Center Fin",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "3 3/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "10 7/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Center",
+          "value": "4 1/2\"",
+          "dasharray": "none"
+        },
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        }
+      ],
+      "modelHeader": "Thruster — Basic (Half Rate)",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "13\"",
+      "summaryFinSetupDisplay": "Thruster",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 13\" tail",
+      "centerSectionLabel": "Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": true,
+      "hasForwardSection": true,
+      "hasRearSection": false,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": false,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "3 3/8\"",
+      "frontFinalDisplay": "10 7/8\"",
+      "pairFinalDisplay": "10 7/8\"",
+      "forwardToeDisplay": "1/4\"",
+      "rearToeDisplay": "0\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.1033,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 10.875,
+        "teLateral": -5.075935514683343,
+        "leOffTail": 15.375,
+        "leLateral": -4.825935514683343,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 10.875,
+        "teLateral": 5.075935514683343,
+        "leOffTail": 15.375,
+        "leLateral": 4.825935514683343,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 3.375,
+        "teLateral": 0,
+        "leOffTail": 7.875,
+        "leLateral": 0,
+        "baseStrokeDasharray": "none"
+      }
+    ]
+  },
+  "thrusterMcKeeGun": {
+    "state": {
+      "lengthIn": 90,
+      "w12": 12,
+      "tailShape": "pin",
+      "finSetup": "thruster",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeGun",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Center Fin",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "4 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "13 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 1/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "5/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Center",
+          "value": "4 1/2\"",
+          "dasharray": "none"
+        },
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        }
+      ],
+      "modelHeader": "Thruster — McKee Gun",
+      "isModified": false,
+      "summaryLengthDisplay": "7'6\"",
+      "summaryTailWidthDisplay": "12\"",
+      "summaryFinSetupDisplay": "Thruster",
+      "summaryTailShapeDisplay": "Pin",
+      "toeTable": null,
+      "toeBoardCaption": "7'6\" · 12\" tail",
+      "centerSectionLabel": "Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": true,
+      "hasForwardSection": true,
+      "hasRearSection": false,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": true,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "4 3/16\"",
+      "frontFinalDisplay": "13 1/2\"",
+      "pairFinalDisplay": "13 1/2\"",
+      "forwardToeDisplay": "5/16\"",
+      "rearToeDisplay": "0\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 6.640775000000001,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 13.523724999999999,
+        "teLateral": -5.159981011336234,
+        "leOffTail": 18.023725,
+        "leLateral": -4.847481011336234,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 13.523724999999999,
+        "teLateral": 5.159981011336234,
+        "leOffTail": 18.023725,
+        "leLateral": 4.847481011336234,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 4.174999999999999,
+        "teLateral": 0,
+        "leOffTail": 8.674999999999999,
+        "leLateral": 0,
+        "baseStrokeDasharray": "none"
+      }
+    ]
+  },
+  "thrusterNarrowBoundary": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 12.5,
+      "tailShape": "squash",
+      "finSetup": "thruster",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Center Fin",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "3 5/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "11 1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Center",
+          "value": "4 1/2\"",
+          "dasharray": "none"
+        },
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        }
+      ],
+      "modelHeader": "Thruster — McKee Shortboard",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "12 1/2\"",
+      "summaryFinSetupDisplay": "Thruster",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 12 1/2\" tail",
+      "centerSectionLabel": "Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": true,
+      "hasForwardSection": true,
+      "hasRearSection": false,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": true,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "3 5/8\"",
+      "frontFinalDisplay": "11 1/4\"",
+      "pairFinalDisplay": "11 1/4\"",
+      "forwardToeDisplay": "3/8\"",
+      "rearToeDisplay": "0\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.3908,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 11.26428592,
+        "teLateral": -4.916281048025875,
+        "leOffTail": 15.76428592,
+        "leLateral": -4.541281048025875,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 11.26428592,
+        "teLateral": 4.916281048025878,
+        "leOffTail": 15.76428592,
+        "leLateral": 4.541281048025878,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 3.5999999999999983,
+        "teLateral": 0,
+        "leOffTail": 8.099999999999998,
+        "leLateral": 0,
+        "baseStrokeDasharray": "none"
+      }
+    ]
+  },
+  "thrusterJustAboveNarrow": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 12.625,
+      "tailShape": "squash",
+      "finSetup": "thruster",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Center Fin",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "3 5/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "11\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Center",
+          "value": "4 1/2\"",
+          "dasharray": "none"
+        },
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        }
+      ],
+      "modelHeader": "Thruster — McKee Shortboard",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "12 5/8\"",
+      "summaryFinSetupDisplay": "Thruster",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 12 5/8\" tail",
+      "centerSectionLabel": "Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": true,
+      "hasForwardSection": true,
+      "hasRearSection": false,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": true,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "3 5/16\"",
+      "frontFinalDisplay": "11\"",
+      "pairFinalDisplay": "11\"",
+      "forwardToeDisplay": "3/8\"",
+      "rearToeDisplay": "0\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.1033,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 10.97678592,
+        "teLateral": -4.916991462349914,
+        "leOffTail": 15.47678592,
+        "leLateral": -4.541991462349914,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 10.97678592,
+        "teLateral": 4.916991462349914,
+        "leOffTail": 15.47678592,
+        "leLateral": 4.541991462349914,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 3.3125,
+        "teLateral": 0,
+        "leOffTail": 7.8125,
+        "leLateral": 0,
+        "baseStrokeDasharray": "none"
+      }
+    ]
+  },
+  "single": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 13,
+      "tailShape": "squash",
+      "finSetup": "single",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 10.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Center Fin Box Position",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "5 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Fin Box Length",
+                  "value": "10 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Center",
+          "value": "10 1/2\"",
+          "dasharray": "none"
+        }
+      ],
+      "modelHeader": "Single Fin",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "13\"",
+      "summaryFinSetupDisplay": "Single",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 13\" tail",
+      "centerSectionLabel": "Center Fin Box Position",
+      "forwardSectionLabel": "",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Box Length",
+      "hasCenterSection": true,
+      "hasForwardSection": false,
+      "hasRearSection": false,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": false,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "5 1/2\"",
+      "frontFinalDisplay": "11\"",
+      "pairFinalDisplay": "11\"",
+      "forwardToeDisplay": "0\"",
+      "rearToeDisplay": "0\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.1033,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 5.5,
+        "teLateral": 0,
+        "leOffTail": 16,
+        "leLateral": 0,
+        "baseStrokeDasharray": "none"
+      }
+    ]
+  },
+  "twinUpright": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 13,
+      "tailShape": "squash",
+      "finSetup": "twin",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Front Fins (Main Twins)",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "7 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Main Twins",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        }
+      ],
+      "modelHeader": "Twin — Modern/Upright",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "13\"",
+      "summaryFinSetupDisplay": "Twin",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 13\" tail",
+      "centerSectionLabel": "Center Fin Box Position",
+      "forwardSectionLabel": "",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": false,
+      "hasForwardSection": true,
+      "hasRearSection": false,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": false,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "0\"",
+      "frontFinalDisplay": "7 1/2\"",
+      "pairFinalDisplay": "11\"",
+      "forwardToeDisplay": "3/16\"",
+      "rearToeDisplay": "0\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.1033,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 7.5,
+        "teLateral": -4.1357541249520136,
+        "leOffTail": 12,
+        "leLateral": -3.948254124952013,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 7.5,
+        "teLateral": 4.1357541249520136,
+        "leOffTail": 12,
+        "leLateral": 3.948254124952013,
+        "baseStrokeDasharray": "8 4"
+      }
+    ]
+  },
+  "twinKeel": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 13,
+      "tailShape": "squash",
+      "finSetup": "twin",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "keel",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Front Fins (Main Twins)",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "6 1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "1/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Main Twins",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        }
+      ],
+      "modelHeader": "Twin — Keel",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "13\"",
+      "summaryFinSetupDisplay": "Twin",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 13\" tail",
+      "centerSectionLabel": "Center Fin Box Position",
+      "forwardSectionLabel": "",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": false,
+      "hasForwardSection": true,
+      "hasRearSection": false,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": false,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "0\"",
+      "frontFinalDisplay": "6 1/4\"",
+      "pairFinalDisplay": "11\"",
+      "forwardToeDisplay": "1/8\"",
+      "rearToeDisplay": "0\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.1033,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 6.25,
+        "teLateral": -3.7303996629556337,
+        "leOffTail": 10.75,
+        "leLateral": -3.6053996629556337,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 6.25,
+        "teLateral": 3.730399662955636,
+        "leOffTail": 10.75,
+        "leLateral": 3.605399662955636,
+        "baseStrokeDasharray": "8 4"
+      }
+    ]
+  },
+  "twinTrailer": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 13,
+      "tailShape": "squash",
+      "finSetup": "twin",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "trailer",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Center Fin Box Position",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Front Fins (Main Twins)",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "10\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Center Trailer",
+          "value": "4 1/2\"",
+          "dasharray": "none"
+        },
+        {
+          "label": "Main Twins",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        }
+      ],
+      "modelHeader": "Twin — Upright + Trailer",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "13\"",
+      "summaryFinSetupDisplay": "Twin",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 13\" tail",
+      "centerSectionLabel": "Center Fin Box Position",
+      "forwardSectionLabel": "",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": true,
+      "hasForwardSection": true,
+      "hasRearSection": false,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": false,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "4\"",
+      "frontFinalDisplay": "10\"",
+      "pairFinalDisplay": "11\"",
+      "forwardToeDisplay": "3/16\"",
+      "rearToeDisplay": "0\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.1033,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 10,
+        "teLateral": -4.812234951295019,
+        "leOffTail": 14.5,
+        "leLateral": -4.624734951295019,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 10,
+        "teLateral": 4.812234951295019,
+        "leOffTail": 14.5,
+        "leLateral": 4.624734951295019,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 4,
+        "teLateral": 0,
+        "leOffTail": 8.5,
+        "leLateral": 0,
+        "baseStrokeDasharray": "none"
+      }
+    ]
+  },
+  "twoPlusOne": {
+    "state": {
+      "lengthIn": 108,
+      "w12": 15,
+      "tailShape": "round",
+      "finSetup": "2plus1",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 10.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Center Fin Box Position",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "5 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Fin Box Length",
+                  "value": "10 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Front Fins (Side Bites)",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "15 3/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Center",
+          "value": "10 1/2\"",
+          "dasharray": "none"
+        },
+        {
+          "label": "Side Bites",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        }
+      ],
+      "modelHeader": "2+1",
+      "isModified": false,
+      "summaryLengthDisplay": "9'0\"",
+      "summaryTailWidthDisplay": "15\"",
+      "summaryFinSetupDisplay": "2+1",
+      "summaryTailShapeDisplay": "Round",
+      "toeTable": null,
+      "toeBoardCaption": "9'0\" · 15\" tail",
+      "centerSectionLabel": "Center Fin Box Position",
+      "forwardSectionLabel": "Side Bites",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Box Length",
+      "hasCenterSection": true,
+      "hasForwardSection": true,
+      "hasRearSection": false,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": false,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "5 1/2\"",
+      "frontFinalDisplay": "15 3/4\"",
+      "pairFinalDisplay": "15 3/4\"",
+      "forwardToeDisplay": "3/16\"",
+      "rearToeDisplay": "0\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 7.1907000000000005,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 5.5,
+        "teLateral": 0,
+        "leOffTail": 16,
+        "leLateral": 0,
+        "baseStrokeDasharray": "none"
+      },
+      {
+        "teOffTail": 15.75,
+        "teLateral": -7.0586484739638236,
+        "leOffTail": 20.25,
+        "leLateral": -6.8711484739638236,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 15.75,
+        "teLateral": 7.058648473963826,
+        "leOffTail": 20.25,
+        "leLateral": 6.871148473963826,
+        "baseStrokeDasharray": "8 4"
+      }
+    ]
+  },
+  "quadBasic": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 13,
+      "tailShape": "squash",
+      "finSetup": "quad",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "basic",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "10 7/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Rear Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "5\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Stringer (1/2 Spread)",
+                  "value": "2 9/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ],
+              "fullSpreadNote": "5 1/8\""
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "1/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        },
+        {
+          "label": "Rear",
+          "value": "4 1/2\"",
+          "dasharray": "2 3"
+        }
+      ],
+      "modelHeader": "Quad — Basic - Spread",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "13\"",
+      "summaryFinSetupDisplay": "Quad",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 13\" tail",
+      "centerSectionLabel": "5th/Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": false,
+      "hasForwardSection": true,
+      "hasRearSection": true,
+      "quadCenterFinAvailable": true,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": false,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "0\"",
+      "frontFinalDisplay": "10 7/8\"",
+      "pairFinalDisplay": "5\"",
+      "forwardToeDisplay": "1/4\"",
+      "rearToeDisplay": "1/8\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 10.875,
+        "teLateral": -5.075935514683343,
+        "leOffTail": 15.375,
+        "leLateral": -4.825935514683343,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 10.875,
+        "teLateral": 5.075935514683343,
+        "leOffTail": 15.375,
+        "leLateral": 4.825935514683343,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 5,
+        "teLateral": -2.5625,
+        "leOffTail": 9.5,
+        "leLateral": -2.4375,
+        "baseStrokeDasharray": "2 3"
+      },
+      {
+        "teOffTail": 5,
+        "teLateral": 2.5625,
+        "leOffTail": 9.5,
+        "leLateral": 2.4375,
+        "baseStrokeDasharray": "2 3"
+      }
+    ]
+  },
+  "quadBasicWideTail": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 14,
+      "tailShape": "squash",
+      "finSetup": "quad",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "basic",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "10 7/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Rear Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "5\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Stringer (1/2 Spread)",
+                  "value": "2 15/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ],
+              "fullSpreadNote": "5 7/8\""
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "1/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        },
+        {
+          "label": "Rear",
+          "value": "4 1/2\"",
+          "dasharray": "2 3"
+        }
+      ],
+      "modelHeader": "Quad — Basic - Spread",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "14\"",
+      "summaryFinSetupDisplay": "Quad",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 14\" tail",
+      "centerSectionLabel": "5th/Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": false,
+      "hasForwardSection": true,
+      "hasRearSection": true,
+      "quadCenterFinAvailable": true,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": false,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "0\"",
+      "frontFinalDisplay": "10 7/8\"",
+      "pairFinalDisplay": "5\"",
+      "forwardToeDisplay": "1/4\"",
+      "rearToeDisplay": "1/8\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 10.875,
+        "teLateral": -5.557738246582062,
+        "leOffTail": 15.375,
+        "leLateral": -5.307738246582062,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 10.875,
+        "teLateral": 5.557738246582062,
+        "leOffTail": 15.375,
+        "leLateral": 5.307738246582062,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 5,
+        "teLateral": -2.9437500000000005,
+        "leOffTail": 9.5,
+        "leLateral": -2.8187500000000005,
+        "baseStrokeDasharray": "2 3"
+      },
+      {
+        "teOffTail": 5,
+        "teLateral": 2.9437499999999983,
+        "leOffTail": 9.5,
+        "leLateral": 2.8187499999999983,
+        "baseStrokeDasharray": "2 3"
+      }
+    ]
+  },
+  "quadBasicOffRail": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 13,
+      "tailShape": "squash",
+      "finSetup": "quad",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "basicOffRail",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "10 7/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Rear Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "5 11/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ],
+              "fullSpreadNote": null
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        },
+        {
+          "label": "Rear",
+          "value": "4 1/2\"",
+          "dasharray": "2 3"
+        }
+      ],
+      "modelHeader": "Quad — Basic - Off-Rail",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "13\"",
+      "summaryFinSetupDisplay": "Quad",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 13\" tail",
+      "centerSectionLabel": "5th/Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": false,
+      "hasForwardSection": true,
+      "hasRearSection": true,
+      "quadCenterFinAvailable": true,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": false,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": true,
+      "showRearOffTailOverride": true,
+      "centerFinalDisplay": "0\"",
+      "frontFinalDisplay": "10 7/8\"",
+      "pairFinalDisplay": "5 11/16\"",
+      "forwardToeDisplay": "1/4\"",
+      "rearToeDisplay": "3/16\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.6875,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 10.875,
+        "teLateral": -5.075935514683343,
+        "leOffTail": 15.375,
+        "leLateral": -4.825935514683343,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 10.875,
+        "teLateral": 5.075935514683343,
+        "leOffTail": 15.375,
+        "leLateral": 4.825935514683343,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 5.6875,
+        "teLateral": -3.5312314974460883,
+        "leOffTail": 10.1875,
+        "leLateral": -3.3437314974460883,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 5.6875,
+        "teLateral": 3.5312314974460883,
+        "leOffTail": 10.1875,
+        "leLateral": 3.3437314974460883,
+        "baseStrokeDasharray": "8 4"
+      }
+    ]
+  },
+  "quadMcKeeSB": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 13,
+      "tailShape": "squash",
+      "finSetup": "quad",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "11\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Rear Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "5 1/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Stringer (1/2 Spread)",
+                  "value": "2 9/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ],
+              "fullSpreadNote": "5 1/8\""
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        },
+        {
+          "label": "Rear",
+          "value": "4 1/2\"",
+          "dasharray": "2 3"
+        }
+      ],
+      "modelHeader": "Quad — McKee SB/Gun",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "13\"",
+      "summaryFinSetupDisplay": "Quad",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 13\" tail",
+      "centerSectionLabel": "5th/Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": false,
+      "hasForwardSection": true,
+      "hasRearSection": true,
+      "quadCenterFinAvailable": true,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": true,
+      "showRearToeTableLink": true,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "0\"",
+      "frontFinalDisplay": "11\"",
+      "pairFinalDisplay": "5 1/8\"",
+      "forwardToeDisplay": "3/8\"",
+      "rearToeDisplay": "3/16\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.1033,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 10.97678592,
+        "teLateral": -5.0983129909345655,
+        "leOffTail": 15.47678592,
+        "leLateral": -4.7233129909345655,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 10.97678592,
+        "teLateral": 5.0983129909345655,
+        "leOffTail": 15.47678592,
+        "leLateral": 4.7233129909345655,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 5.1033,
+        "teLateral": -2.5750000000000006,
+        "leOffTail": 9.6033,
+        "leLateral": -2.382052607396105,
+        "baseStrokeDasharray": "2 3"
+      },
+      {
+        "teOffTail": 5.1033,
+        "teLateral": 2.5750000000000006,
+        "leOffTail": 9.6033,
+        "leLateral": 2.382052607396105,
+        "baseStrokeDasharray": "2 3"
+      }
+    ]
+  },
+  "quadMcKeeSBLong": {
+    "state": {
+      "lengthIn": 90,
+      "w12": 14,
+      "tailShape": "squash",
+      "finSetup": "quad",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "12\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "5/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Rear Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "6\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Stringer (1/2 Spread)",
+                  "value": "2 7/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ],
+              "fullSpreadNote": "5 3/4\""
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        },
+        {
+          "label": "Rear",
+          "value": "4 1/2\"",
+          "dasharray": "2 3"
+        }
+      ],
+      "modelHeader": "Quad — McKee SB/Gun",
+      "isModified": false,
+      "summaryLengthDisplay": "7'6\"",
+      "summaryTailWidthDisplay": "14\"",
+      "summaryFinSetupDisplay": "Quad",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "7'6\" · 14\" tail",
+      "centerSectionLabel": "5th/Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": false,
+      "hasForwardSection": true,
+      "hasRearSection": true,
+      "quadCenterFinAvailable": true,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": true,
+      "showRearToeTableLink": true,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "0\"",
+      "frontFinalDisplay": "12\"",
+      "pairFinalDisplay": "6\"",
+      "forwardToeDisplay": "5/16\"",
+      "rearToeDisplay": "3/16\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 6.018900000000001,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 12.0053574,
+        "teLateral": -5.813655518127381,
+        "leOffTail": 16.5053574,
+        "leLateral": -5.501155518127381,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 12.0053574,
+        "teLateral": 5.813655518127381,
+        "leOffTail": 16.5053574,
+        "leLateral": 5.501155518127381,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 6.018900000000002,
+        "teLateral": -2.874771999999999,
+        "leOffTail": 10.518900000000002,
+        "leLateral": -2.709032298825544,
+        "baseStrokeDasharray": "2 3"
+      },
+      {
+        "teOffTail": 6.018900000000002,
+        "teLateral": 2.874771999999999,
+        "leOffTail": 10.518900000000002,
+        "leLateral": 2.709032298825544,
+        "baseStrokeDasharray": "2 3"
+      }
+    ]
+  },
+  "quadMcKeeSBPintail": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 12,
+      "tailShape": "pin",
+      "finSetup": "quad",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "11 5/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 1/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Rear Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "5 3/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Stringer (1/2 Spread)",
+                  "value": "2 3/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ],
+              "fullSpreadNote": "4 13/16\""
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        },
+        {
+          "label": "Rear",
+          "value": "4 1/2\"",
+          "dasharray": "2 3"
+        }
+      ],
+      "modelHeader": "Quad — McKee SB/Gun",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "12\"",
+      "summaryFinSetupDisplay": "Quad",
+      "summaryTailShapeDisplay": "Pin",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 12\" tail",
+      "centerSectionLabel": "5th/Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": false,
+      "hasForwardSection": true,
+      "hasRearSection": true,
+      "quadCenterFinAvailable": true,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": true,
+      "showRearToeTableLink": true,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "0\"",
+      "frontFinalDisplay": "11 5/8\"",
+      "pairFinalDisplay": "5 3/4\"",
+      "forwardToeDisplay": "3/8\"",
+      "rearToeDisplay": "3/16\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.725175,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 11.606725,
+        "teLateral": -4.792901599919905,
+        "leOffTail": 16.106725,
+        "leLateral": -4.417901599919905,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 11.606725,
+        "teLateral": 4.792901599919905,
+        "leOffTail": 16.106725,
+        "leLateral": 4.417901599919905,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 5.725174999999999,
+        "teLateral": -2.3999999999999995,
+        "leOffTail": 10.225174999999998,
+        "leLateral": -2.2201438274300784,
+        "baseStrokeDasharray": "2 3"
+      },
+      {
+        "teOffTail": 5.725174999999999,
+        "teLateral": 2.4000000000000017,
+        "leOffTail": 10.225174999999998,
+        "leLateral": 2.2201438274300807,
+        "baseStrokeDasharray": "2 3"
+      }
+    ]
+  },
+  "quadFiveFin": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 13,
+      "tailShape": "squash",
+      "finSetup": "quad",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": true,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "5th/Center Fin",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "3 5/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "11\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Rear Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "5 1/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Stringer (1/2 Spread)",
+                  "value": "2 9/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ],
+              "fullSpreadNote": "5 1/8\""
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Center",
+          "value": "4 1/2\"",
+          "dasharray": "none"
+        },
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        },
+        {
+          "label": "Rear",
+          "value": "4 1/2\"",
+          "dasharray": "2 3"
+        }
+      ],
+      "modelHeader": "Quad — McKee SB/Gun + Center (Five-fin)",
+      "isModified": false,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "13\"",
+      "summaryFinSetupDisplay": "Quad",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 13\" tail",
+      "centerSectionLabel": "5th/Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": true,
+      "hasForwardSection": true,
+      "hasRearSection": true,
+      "quadCenterFinAvailable": true,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": true,
+      "showRearToeTableLink": true,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "3 5/16\"",
+      "frontFinalDisplay": "11\"",
+      "pairFinalDisplay": "5 1/8\"",
+      "forwardToeDisplay": "3/8\"",
+      "rearToeDisplay": "3/16\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.1033,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 10.97678592,
+        "teLateral": -5.0983129909345655,
+        "leOffTail": 15.47678592,
+        "leLateral": -4.7233129909345655,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 10.97678592,
+        "teLateral": 5.0983129909345655,
+        "leOffTail": 15.47678592,
+        "leLateral": 4.7233129909345655,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 3.3125,
+        "teLateral": 0,
+        "leOffTail": 7.8125,
+        "leLateral": 0,
+        "baseStrokeDasharray": "none"
+      },
+      {
+        "teOffTail": 5.1033,
+        "teLateral": -2.5750000000000006,
+        "leOffTail": 9.6033,
+        "leLateral": -2.382052607396105,
+        "baseStrokeDasharray": "2 3"
+      },
+      {
+        "teOffTail": 5.1033,
+        "teLateral": 2.5750000000000006,
+        "leOffTail": 9.6033,
+        "leLateral": 2.382052607396105,
+        "baseStrokeDasharray": "2 3"
+      }
+    ]
+  },
+  "quadMcKeeLB": {
+    "state": {
+      "lengthIn": 108,
+      "w12": 16,
+      "tailShape": "round",
+      "finSetup": "quad",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeLB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "16 11/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 5/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Rear Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "10\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Stringer (1/2 Spread)",
+                  "value": "3 11/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ],
+              "fullSpreadNote": "7 3/8\""
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        },
+        {
+          "label": "Rear",
+          "value": "4 1/2\"",
+          "dasharray": "2 3"
+        }
+      ],
+      "modelHeader": "Quad — McKee Longboard",
+      "isModified": false,
+      "summaryLengthDisplay": "9'0\"",
+      "summaryTailWidthDisplay": "16\"",
+      "summaryFinSetupDisplay": "Quad",
+      "summaryTailShapeDisplay": "Round",
+      "toeTable": null,
+      "toeBoardCaption": "9'0\" · 16\" tail",
+      "centerSectionLabel": "5th/Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": false,
+      "hasForwardSection": true,
+      "hasRearSection": true,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": true,
+      "showFrontToeTableLink": false,
+      "showRearToeTableLink": true,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "0\"",
+      "frontFinalDisplay": "16 11/16\"",
+      "pairFinalDisplay": "10\"",
+      "forwardToeDisplay": "3/16\"",
+      "rearToeDisplay": "3/16\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 9.987536,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 16.6875,
+        "teLateral": -7.738148896218233,
+        "leOffTail": 21.1875,
+        "leLateral": -7.550648896218233,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 16.6875,
+        "teLateral": 7.73814889621823,
+        "leOffTail": 21.1875,
+        "leLateral": 7.55064889621823,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 9.987536,
+        "teLateral": -3.6875,
+        "leOffTail": 14.487536,
+        "leLateral": -3.503279562702222,
+        "baseStrokeDasharray": "2 3"
+      },
+      {
+        "teOffTail": 9.987536,
+        "teLateral": 3.6875,
+        "leOffTail": 14.487536,
+        "leLateral": 3.5032795627022244,
+        "baseStrokeDasharray": "2 3"
+      }
+    ]
+  },
+  "quadMcKeeLBLong": {
+    "state": {
+      "lengthIn": 114,
+      "w12": 16.5,
+      "tailShape": "round",
+      "finSetup": "quad",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeLB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "17 5/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 5/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Rear Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "10 5/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Stringer (1/2 Spread)",
+                  "value": "3 7/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ],
+              "fullSpreadNote": "7 3/4\""
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        },
+        {
+          "label": "Rear",
+          "value": "4 1/2\"",
+          "dasharray": "2 3"
+        }
+      ],
+      "modelHeader": "Quad — McKee Longboard",
+      "isModified": false,
+      "summaryLengthDisplay": "9'6\"",
+      "summaryTailWidthDisplay": "16 1/2\"",
+      "summaryFinSetupDisplay": "Quad",
+      "summaryTailShapeDisplay": "Round",
+      "toeTable": null,
+      "toeBoardCaption": "9'6\" · 16 1/2\" tail",
+      "centerSectionLabel": "5th/Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": false,
+      "hasForwardSection": true,
+      "hasRearSection": true,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": true,
+      "showFrontToeTableLink": false,
+      "showRearToeTableLink": true,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "0\"",
+      "frontFinalDisplay": "17 5/16\"",
+      "pairFinalDisplay": "10 5/8\"",
+      "forwardToeDisplay": "3/16\"",
+      "rearToeDisplay": "3/16\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 10.650038,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 17.325,
+        "teLateral": -8.147448806052864,
+        "leOffTail": 21.824999999999996,
+        "leLateral": -7.959948806052864,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 17.325,
+        "teLateral": 8.147448806052864,
+        "leOffTail": 21.824999999999996,
+        "leLateral": 7.959948806052864,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 10.650038,
+        "teLateral": -3.875,
+        "leOffTail": 15.150038,
+        "leLateral": -3.693507167922998,
+        "baseStrokeDasharray": "2 3"
+      },
+      {
+        "teOffTail": 10.650038,
+        "teLateral": 3.875,
+        "leOffTail": 15.150038,
+        "leLateral": 3.693507167922998,
+        "baseStrokeDasharray": "2 3"
+      }
+    ]
+  },
+  "advancedThruster": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 13,
+      "tailShape": "squash",
+      "finSetup": "thruster",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 5.25,
+      "baseLenForwardOverridden": true,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 5,
+      "baseLenCenterOverridden": true,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0.375,
+      "forwardPositionOffset": -0.5,
+      "forwardToeOverride": 0.1875,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Center Fin",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "3 11/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Fin Base Length",
+                  "value": "5\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "10 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "5 1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Center",
+          "value": "5\"",
+          "dasharray": "none"
+        },
+        {
+          "label": "Front",
+          "value": "5 1/4\"",
+          "dasharray": "8 4"
+        }
+      ],
+      "modelHeader": "Thruster — McKee Shortboard",
+      "isModified": true,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "13\"",
+      "summaryFinSetupDisplay": "Thruster",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 13\" tail",
+      "centerSectionLabel": "Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": true,
+      "hasForwardSection": true,
+      "hasRearSection": false,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": true,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "3 11/16\"",
+      "frontFinalDisplay": "10 1/2\"",
+      "pairFinalDisplay": "10 1/2\"",
+      "forwardToeDisplay": "3/16\"",
+      "rearToeDisplay": "0\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.1033,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 10.47678592,
+        "teLateral": -4.986377669094602,
+        "leOffTail": 15.72678592,
+        "leLateral": -4.798877669094602,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 10.47678592,
+        "teLateral": 4.986377669094602,
+        "leOffTail": 15.72678592,
+        "leLateral": 4.798877669094602,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 3.6875,
+        "teLateral": 0,
+        "leOffTail": 8.6875,
+        "leLateral": 0,
+        "baseStrokeDasharray": "none"
+      }
+    ]
+  },
+  "advancedQuad": {
+    "state": {
+      "lengthIn": 72,
+      "w12": 13,
+      "tailShape": "squash",
+      "finSetup": "quad",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "basicOffRail",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4,
+      "baseLenRearOverridden": true,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0.25,
+      "rearToeOverride": 0.3125,
+      "quadRearOffRailOverride": 1.75,
+      "quadRearOffTailOverride": 6.5,
+      "quadRearOffTailOverridden": true,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": false,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "10 7/8\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "1/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Rear Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "6 3/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ],
+              "fullSpreadNote": null
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "5/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        },
+        {
+          "label": "Rear",
+          "value": "4\"",
+          "dasharray": "2 3"
+        }
+      ],
+      "modelHeader": "Quad — Basic - Off-Rail",
+      "isModified": true,
+      "summaryLengthDisplay": "6'0\"",
+      "summaryTailWidthDisplay": "13\"",
+      "summaryFinSetupDisplay": "Quad",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": null,
+      "toeBoardCaption": "6'0\" · 13\" tail",
+      "centerSectionLabel": "5th/Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": false,
+      "hasForwardSection": true,
+      "hasRearSection": true,
+      "quadCenterFinAvailable": true,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": false,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": true,
+      "showRearOffTailOverride": true,
+      "centerFinalDisplay": "0\"",
+      "frontFinalDisplay": "10 7/8\"",
+      "pairFinalDisplay": "6 3/4\"",
+      "forwardToeDisplay": "1/4\"",
+      "rearToeDisplay": "5/16\"",
+      "quadRearOffRailDisplayValue": "1 3/4\"",
+      "quadRearOffTailInputValue": 6.5,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 10.875,
+        "teLateral": -5.075935514683343,
+        "leOffTail": 15.375,
+        "leLateral": -4.825935514683343,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 10.875,
+        "teLateral": 5.075935514683343,
+        "leOffTail": 15.375,
+        "leLateral": 4.825935514683343,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 6.75,
+        "teLateral": -3.398509687054861,
+        "leOffTail": 10.75,
+        "leLateral": -3.086009687054861,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 6.75,
+        "teLateral": 3.3985096870548626,
+        "leOffTail": 10.75,
+        "leLateral": 3.0860096870548626,
+        "baseStrokeDasharray": "8 4"
+      }
+    ]
+  },
+  "toeTableShort": {
+    "state": {
+      "lengthIn": 66,
+      "w12": 12.4,
+      "tailShape": "squash",
+      "finSetup": "thruster",
+      "units": "in",
+      "globalSettingsOpen": false,
+      "frontModel": "mckeeSB",
+      "quadRearModel": "mckeeSB",
+      "twinType": "upright",
+      "baseLenTwin": 4.5,
+      "quadCenterFinOn": false,
+      "advancedOpen": false,
+      "baseLenForward": 4.5,
+      "baseLenForwardOverridden": false,
+      "baseLenForwardEditing": false,
+      "baseLenRear": 4.5,
+      "baseLenRearOverridden": false,
+      "baseLenRearEditing": false,
+      "baseLenCenter": 4.5,
+      "baseLenCenterOverridden": false,
+      "baseLenCenterEditing": false,
+      "centerPositionOffset": 0,
+      "forwardPositionOffset": 0,
+      "forwardToeOverride": null,
+      "rearPositionOffset": 0,
+      "rearToeOverride": null,
+      "quadRearOffRailOverride": null,
+      "quadRearOffTailOverride": null,
+      "quadRearOffTailOverridden": false,
+      "quadRearOffTailEditing": false,
+      "copyToast": false,
+      "toeTableOpen": true,
+      "importTemplate": true,
+      "viewTab": "viewer",
+      "showCallouts": true,
+      "rootAvailH": 0
+    },
+    "vals": {
+      "summarySections": [
+        {
+          "label": "Center Fin",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "3 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Front Fins",
+          "groups": [
+            {
+              "heading": "Trailing Edge",
+              "rows": [
+                {
+                  "label": "Off-Tail",
+                  "value": "10 15/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Off-Rail",
+                  "value": "1 3/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            },
+            {
+              "heading": "Leading Edge",
+              "rows": [
+                {
+                  "label": "Toe-In",
+                  "value": "7/16\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                },
+                {
+                  "label": "Fin Base Length",
+                  "value": "4 1/2\"",
+                  "rowStyle": "display:flex;justify-content:space-between;padding:5px 0;font-size:14px;",
+                  "labelStyle": "color:#8a8272;",
+                  "valueStyle": "font-weight:700;color:#1c1b19;"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "legendBaseLens": [
+        {
+          "label": "Center",
+          "value": "4 1/2\"",
+          "dasharray": "none"
+        },
+        {
+          "label": "Front",
+          "value": "4 1/2\"",
+          "dasharray": "8 4"
+        }
+      ],
+      "modelHeader": "Thruster — McKee Shortboard",
+      "isModified": false,
+      "summaryLengthDisplay": "5'6\"",
+      "summaryTailWidthDisplay": "12 3/8\"",
+      "summaryFinSetupDisplay": "Thruster",
+      "summaryTailShapeDisplay": "Squash",
+      "toeTable": {
+        "cols": [
+          {
+            "value": 10.75,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 11,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 11.25,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 11.5,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 11.75,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 12,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 12.25,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 12.5,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:var(--accent);color:#1c1b19;font-weight:700;"
+          },
+          {
+            "value": 12.75,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 13,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 13.25,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 13.5,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 13.75,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 14,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 14.25,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 14.5,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 14.75,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 15,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 15.25,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 15.5,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 15.75,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 16,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 16.25,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 16.5,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 16.75,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 17,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 17.25,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 17.5,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 17.75,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          },
+          {
+            "value": 18,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#1c1b19;color:#fff;"
+          }
+        ],
+        "rowLabel": "66",
+        "front": [
+          {
+            "value": 1.5,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.5625,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.625,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.6875,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.75,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.8125,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.875,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.9375,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#f3e6cf;font-weight:700;"
+          },
+          {
+            "value": 2,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.0625,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.125,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.1875,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.25,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.3125,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.375,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.4375,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.5,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.5625,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.625,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.6875,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.75,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.8125,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.875,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 2.9375,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 3,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 3.0625,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 3.125,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 3.1875,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 3.25,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 3.3125,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          }
+        ],
+        "rear": [
+          {
+            "value": 0.6069,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 0.6503,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 0.6937,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 0.7372,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 0.7806,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 0.8241,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 0.8675,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 0.911,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;background:#f3e6cf;font-weight:700;"
+          },
+          {
+            "value": 0.9544,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 0.9979,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.0413,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.0848,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.1282,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.1717,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.1703,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.1977,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.2252,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.2527,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.2801,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.3076,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.335,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.3625,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.3899,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.4174,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.4448,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.4723,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.4998,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.5272,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.5547,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          },
+          {
+            "value": 1.5821,
+            "hiStyle": "padding:4px 8px;border:1px solid #e4ddc9;"
+          }
+        ]
+      },
+      "toeBoardCaption": "5'6\" · 12 3/8\" tail",
+      "centerSectionLabel": "Center Fin",
+      "forwardSectionLabel": "Front Pair",
+      "rearSectionLabel": "Rear Pair",
+      "centerBaseLenFieldLabel": "Fin Base Length",
+      "hasCenterSection": true,
+      "hasForwardSection": true,
+      "hasRearSection": false,
+      "quadCenterFinAvailable": false,
+      "isLongboardQuad": false,
+      "showFrontToeTableLink": true,
+      "showRearToeTableLink": false,
+      "showRearOffRailSlider": false,
+      "showRearOffTailOverride": false,
+      "centerFinalDisplay": "3 1/2\"",
+      "frontFinalDisplay": "10 15/16\"",
+      "pairFinalDisplay": "10 15/16\"",
+      "forwardToeDisplay": "7/16\"",
+      "rearToeDisplay": "0\"",
+      "quadRearOffRailDisplayValue": "1 1/4\"",
+      "quadRearOffTailInputValue": 5.227399999999999,
+      "frontModelOptions": [
+        {
+          "value": "proportional",
+          "label": "Proportional"
+        },
+        {
+          "value": "basic",
+          "label": "Basic (Half Rate)"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee Shortboard"
+        },
+        {
+          "value": "mckeeGun",
+          "label": "McKee Gun"
+        }
+      ],
+      "quadRearModelOptions": [
+        {
+          "value": "basic",
+          "label": "Basic - Spread"
+        },
+        {
+          "value": "basicOffRail",
+          "label": "Basic - Off-Rail"
+        },
+        {
+          "value": "mckeeSB",
+          "label": "McKee SB/Gun"
+        },
+        {
+          "value": "mckeeLB",
+          "label": "McKee Longboard"
+        }
+      ],
+      "twinTypeOptions": [
+        {
+          "value": "upright",
+          "label": "Modern/Upright"
+        },
+        {
+          "value": "keel",
+          "label": "Keel"
+        },
+        {
+          "value": "trailer",
+          "label": "Upright + Trailer"
+        }
+      ],
+      "finSetupOptions": [
+        {
+          "value": "single",
+          "label": "Single Fin"
+        },
+        {
+          "value": "twin",
+          "label": "Twin"
+        },
+        {
+          "value": "thruster",
+          "label": "Thruster"
+        },
+        {
+          "value": "2plus1",
+          "label": "2+1"
+        },
+        {
+          "value": "quad",
+          "label": "Quad"
+        }
+      ]
+    },
+    "marksInches": [
+      {
+        "teOffTail": 10.961428759999999,
+        "teLateral": -4.804990610404843,
+        "leOffTail": 15.461428759999999,
+        "leLateral": -4.367490610404843,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 10.961428759999999,
+        "teLateral": 4.804990610404843,
+        "leOffTail": 15.461428759999999,
+        "leLateral": 4.367490610404843,
+        "baseStrokeDasharray": "8 4"
+      },
+      {
+        "teOffTail": 3.5149999999999983,
+        "teLateral": 0,
+        "leOffTail": 8.014999999999999,
+        "leLateral": 0,
+        "baseStrokeDasharray": "none"
+      }
+    ]
+  }
+}
