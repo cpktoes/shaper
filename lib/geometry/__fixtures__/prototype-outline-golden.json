@@ -1,0 +1,1058 @@
+{
+  "default": {
+    "state": {
+      "lengthIn": 72,
+      "centerWidth": 19,
+      "wpOffset": -0.5,
+      "tailBlockWidth": 4,
+      "tailType": "squash",
+      "swallowDepth": 3,
+      "diamondDepth": 3,
+      "widepointVector": 50,
+      "tailAngle": 60,
+      "tailVector": 50.5,
+      "noseAngle": 55,
+      "noseVector": 25
+    },
+    "tailWidthAt12": 14.719898092606693,
+    "noseWidthAt12": 11.999208503527878,
+    "area": 1041.030821668072,
+    "wpY": 35.5,
+    "cw": 9.5,
+    "bw": 2,
+    "centerCloseY": 0,
+    "diamondDepthEff": 0,
+    "halfWidthAtStations": [
+      {
+        "station": 0,
+        "halfWidth": 2
+      },
+      {
+        "station": 3,
+        "halfWidth": 4.41249933798391
+      },
+      {
+        "station": 6,
+        "halfWidth": 5.693614767749734
+      },
+      {
+        "station": 9,
+        "halfWidth": 6.629929661942107
+      },
+      {
+        "station": 12,
+        "halfWidth": 7.359949046303346
+      },
+      {
+        "station": 15,
+        "halfWidth": 7.941645691892708
+      },
+      {
+        "station": 18,
+        "halfWidth": 8.406273450022521
+      },
+      {
+        "station": 21,
+        "halfWidth": 8.773420498270502
+      },
+      {
+        "station": 24,
+        "halfWidth": 9.056419169058282
+      },
+      {
+        "station": 27,
+        "halfWidth": 9.263602469552021
+      },
+      {
+        "station": 30,
+        "halfWidth": 9.403202302516503
+      },
+      {
+        "station": 33,
+        "halfWidth": 9.48017369124722
+      },
+      {
+        "station": 36,
+        "halfWidth": 9.497900173107096
+      },
+      {
+        "station": 39,
+        "halfWidth": 9.435171375506817
+      },
+      {
+        "station": 42,
+        "halfWidth": 9.27591328062666
+      },
+      {
+        "station": 45,
+        "halfWidth": 9.016182400630356
+      },
+      {
+        "station": 48,
+        "halfWidth": 8.651797876548436
+      },
+      {
+        "station": 51,
+        "halfWidth": 8.176547419421642
+      },
+      {
+        "station": 54,
+        "halfWidth": 7.583528446858562
+      },
+      {
+        "station": 57,
+        "halfWidth": 6.862273436027236
+      },
+      {
+        "station": 60,
+        "halfWidth": 5.999604251763939
+      },
+      {
+        "station": 63,
+        "halfWidth": 4.973740436773135
+      },
+      {
+        "station": 66,
+        "halfWidth": 3.748031064666884
+      },
+      {
+        "station": 69,
+        "halfWidth": 2.241390328604444
+      },
+      {
+        "station": 72,
+        "halfWidth": 0
+      }
+    ]
+  },
+  "pin": {
+    "state": {
+      "lengthIn": 72,
+      "centerWidth": 19,
+      "wpOffset": -0.5,
+      "tailBlockWidth": 4,
+      "tailType": "pin",
+      "swallowDepth": 3,
+      "diamondDepth": 3,
+      "widepointVector": 50,
+      "tailAngle": 65,
+      "tailVector": 50,
+      "noseAngle": 55,
+      "noseVector": 25
+    },
+    "tailWidthAt12": 13.60254276731449,
+    "noseWidthAt12": 11.999208503527878,
+    "area": 1007.0273895526315,
+    "wpY": 35.5,
+    "cw": 9.5,
+    "bw": 0,
+    "centerCloseY": 0,
+    "diamondDepthEff": 0,
+    "halfWidthAtStations": [
+      {
+        "station": 0,
+        "halfWidth": 0
+      },
+      {
+        "station": 3,
+        "halfWidth": 3.052281258076612
+      },
+      {
+        "station": 6,
+        "halfWidth": 4.683495226273401
+      },
+      {
+        "station": 9,
+        "halfWidth": 5.874231028181135
+      },
+      {
+        "station": 12,
+        "halfWidth": 6.801271383657245
+      },
+      {
+        "station": 15,
+        "halfWidth": 7.538215454141849
+      },
+      {
+        "station": 18,
+        "halfWidth": 8.125164978778656
+      },
+      {
+        "station": 21,
+        "halfWidth": 8.58815163736767
+      },
+      {
+        "station": 24,
+        "halfWidth": 8.943982519898627
+      },
+      {
+        "station": 27,
+        "halfWidth": 9.204307777116219
+      },
+      {
+        "station": 30,
+        "halfWidth": 9.37919450873859
+      },
+      {
+        "station": 33,
+        "halfWidth": 9.475317314240751
+      },
+      {
+        "station": 36,
+        "halfWidth": 9.497900173107096
+      },
+      {
+        "station": 39,
+        "halfWidth": 9.435171375506817
+      },
+      {
+        "station": 42,
+        "halfWidth": 9.27591328062666
+      },
+      {
+        "station": 45,
+        "halfWidth": 9.016182400630356
+      },
+      {
+        "station": 48,
+        "halfWidth": 8.651797876548436
+      },
+      {
+        "station": 51,
+        "halfWidth": 8.176547419421642
+      },
+      {
+        "station": 54,
+        "halfWidth": 7.583528446858562
+      },
+      {
+        "station": 57,
+        "halfWidth": 6.862273436027236
+      },
+      {
+        "station": 60,
+        "halfWidth": 5.999604251763939
+      },
+      {
+        "station": 63,
+        "halfWidth": 4.973740436773135
+      },
+      {
+        "station": 66,
+        "halfWidth": 3.748031064666884
+      },
+      {
+        "station": 69,
+        "halfWidth": 2.241390328604444
+      },
+      {
+        "station": 72,
+        "halfWidth": 0
+      }
+    ]
+  },
+  "round": {
+    "state": {
+      "lengthIn": 72,
+      "centerWidth": 19,
+      "wpOffset": -0.5,
+      "tailBlockWidth": 4,
+      "tailType": "round",
+      "swallowDepth": 3,
+      "diamondDepth": 3,
+      "widepointVector": 50,
+      "tailAngle": 90,
+      "tailVector": 90,
+      "noseAngle": 55,
+      "noseVector": 25
+    },
+    "tailWidthAt12": 16.259919711544782,
+    "noseWidthAt12": 11.999208503527878,
+    "area": 1070.9018889935835,
+    "wpY": 35.5,
+    "cw": 9.5,
+    "bw": 0,
+    "centerCloseY": 0,
+    "diamondDepthEff": 0,
+    "halfWidthAtStations": [
+      {
+        "station": 0,
+        "halfWidth": 0
+      },
+      {
+        "station": 3,
+        "halfWidth": 5.106363512556613
+      },
+      {
+        "station": 6,
+        "halfWidth": 6.5967155694511135
+      },
+      {
+        "station": 9,
+        "halfWidth": 7.508399996578826
+      },
+      {
+        "station": 12,
+        "halfWidth": 8.129959855772391
+      },
+      {
+        "station": 15,
+        "halfWidth": 8.572369668119395
+      },
+      {
+        "station": 18,
+        "halfWidth": 8.890936442485957
+      },
+      {
+        "station": 21,
+        "halfWidth": 9.120249735051782
+      },
+      {
+        "station": 24,
+        "halfWidth": 9.281289867321995
+      },
+      {
+        "station": 27,
+        "halfWidth": 9.39016216521151
+      },
+      {
+        "station": 30,
+        "halfWidth": 9.457541767782008
+      },
+      {
+        "station": 33,
+        "halfWidth": 9.491771687091147
+      },
+      {
+        "station": 36,
+        "halfWidth": 9.497900173107096
+      },
+      {
+        "station": 39,
+        "halfWidth": 9.435171375506817
+      },
+      {
+        "station": 42,
+        "halfWidth": 9.27591328062666
+      },
+      {
+        "station": 45,
+        "halfWidth": 9.016182400630356
+      },
+      {
+        "station": 48,
+        "halfWidth": 8.651797876548436
+      },
+      {
+        "station": 51,
+        "halfWidth": 8.176547419421642
+      },
+      {
+        "station": 54,
+        "halfWidth": 7.583528446858562
+      },
+      {
+        "station": 57,
+        "halfWidth": 6.862273436027236
+      },
+      {
+        "station": 60,
+        "halfWidth": 5.999604251763939
+      },
+      {
+        "station": 63,
+        "halfWidth": 4.973740436773135
+      },
+      {
+        "station": 66,
+        "halfWidth": 3.748031064666884
+      },
+      {
+        "station": 69,
+        "halfWidth": 2.241390328604444
+      },
+      {
+        "station": 72,
+        "halfWidth": 0
+      }
+    ]
+  },
+  "diamond": {
+    "state": {
+      "lengthIn": 72,
+      "centerWidth": 19,
+      "wpOffset": -0.5,
+      "tailBlockWidth": 10,
+      "tailType": "diamond",
+      "swallowDepth": 3,
+      "diamondDepth": 3,
+      "widepointVector": 50,
+      "tailAngle": 30,
+      "tailVector": 30,
+      "noseAngle": 55,
+      "noseVector": 25
+    },
+    "tailWidthAt12": 15.077536886461724,
+    "noseWidthAt12": 11.999208503527878,
+    "area": 1029.0711477764376,
+    "wpY": 35.5,
+    "cw": 9.5,
+    "bw": 5,
+    "centerCloseY": 0,
+    "diamondDepthEff": 3,
+    "halfWidthAtStations": [
+      {
+        "station": 0,
+        "halfWidth": 0
+      },
+      {
+        "station": 3,
+        "halfWidth": 5
+      },
+      {
+        "station": 6,
+        "halfWidth": 6.131139297115195
+      },
+      {
+        "station": 9,
+        "halfWidth": 6.913231181082563
+      },
+      {
+        "station": 12,
+        "halfWidth": 7.538768443230862
+      },
+      {
+        "station": 15,
+        "halfWidth": 8.051017169705538
+      },
+      {
+        "station": 18,
+        "halfWidth": 8.47029572536533
+      },
+      {
+        "station": 21,
+        "halfWidth": 8.80821335341858
+      },
+      {
+        "station": 24,
+        "halfWidth": 9.073128051645181
+      },
+      {
+        "station": 27,
+        "halfWidth": 9.270728422358005
+      },
+      {
+        "station": 30,
+        "halfWidth": 9.405495381645824
+      },
+      {
+        "station": 33,
+        "halfWidth": 9.480423954154661
+      },
+      {
+        "station": 36,
+        "halfWidth": 9.497900173107096
+      },
+      {
+        "station": 39,
+        "halfWidth": 9.435171375506817
+      },
+      {
+        "station": 42,
+        "halfWidth": 9.27591328062666
+      },
+      {
+        "station": 45,
+        "halfWidth": 9.016182400630356
+      },
+      {
+        "station": 48,
+        "halfWidth": 8.651797876548436
+      },
+      {
+        "station": 51,
+        "halfWidth": 8.176547419421642
+      },
+      {
+        "station": 54,
+        "halfWidth": 7.583528446858562
+      },
+      {
+        "station": 57,
+        "halfWidth": 6.862273436027236
+      },
+      {
+        "station": 60,
+        "halfWidth": 5.999604251763939
+      },
+      {
+        "station": 63,
+        "halfWidth": 4.973740436773135
+      },
+      {
+        "station": 66,
+        "halfWidth": 3.748031064666884
+      },
+      {
+        "station": 69,
+        "halfWidth": 2.241390328604444
+      },
+      {
+        "station": 72,
+        "halfWidth": 0
+      }
+    ]
+  },
+  "squash": {
+    "state": {
+      "lengthIn": 72,
+      "centerWidth": 19,
+      "wpOffset": -0.5,
+      "tailBlockWidth": 5,
+      "tailType": "squash",
+      "swallowDepth": 3,
+      "diamondDepth": 3,
+      "widepointVector": 50,
+      "tailAngle": 45,
+      "tailVector": 50,
+      "noseAngle": 55,
+      "noseVector": 25
+    },
+    "tailWidthAt12": 14.796280733875331,
+    "noseWidthAt12": 11.999208503527878,
+    "area": 1043.881150474997,
+    "wpY": 35.5,
+    "cw": 9.5,
+    "bw": 2.5,
+    "centerCloseY": 0,
+    "diamondDepthEff": 0,
+    "halfWidthAtStations": [
+      {
+        "station": 0,
+        "halfWidth": 2.5
+      },
+      {
+        "station": 3,
+        "halfWidth": 4.49994905837979
+      },
+      {
+        "station": 6,
+        "halfWidth": 5.744340974067014
+      },
+      {
+        "station": 9,
+        "halfWidth": 6.672117889991859
+      },
+      {
+        "station": 12,
+        "halfWidth": 7.398140366937666
+      },
+      {
+        "station": 15,
+        "halfWidth": 7.975583818087333
+      },
+      {
+        "station": 18,
+        "halfWidth": 8.434915894376521
+      },
+      {
+        "station": 21,
+        "halfWidth": 8.796068484873636
+      },
+      {
+        "station": 24,
+        "halfWidth": 9.071917881864524
+      },
+      {
+        "station": 27,
+        "halfWidth": 9.273113495964429
+      },
+      {
+        "station": 30,
+        "halfWidth": 9.407506137374602
+      },
+      {
+        "station": 33,
+        "halfWidth": 9.481143444395718
+      },
+      {
+        "station": 36,
+        "halfWidth": 9.497900173107096
+      },
+      {
+        "station": 39,
+        "halfWidth": 9.435171375506817
+      },
+      {
+        "station": 42,
+        "halfWidth": 9.27591328062666
+      },
+      {
+        "station": 45,
+        "halfWidth": 9.016182400630356
+      },
+      {
+        "station": 48,
+        "halfWidth": 8.651797876548436
+      },
+      {
+        "station": 51,
+        "halfWidth": 8.176547419421642
+      },
+      {
+        "station": 54,
+        "halfWidth": 7.583528446858562
+      },
+      {
+        "station": 57,
+        "halfWidth": 6.862273436027236
+      },
+      {
+        "station": 60,
+        "halfWidth": 5.999604251763939
+      },
+      {
+        "station": 63,
+        "halfWidth": 4.973740436773135
+      },
+      {
+        "station": 66,
+        "halfWidth": 3.748031064666884
+      },
+      {
+        "station": 69,
+        "halfWidth": 2.241390328604444
+      },
+      {
+        "station": 72,
+        "halfWidth": 0
+      }
+    ]
+  },
+  "swallow": {
+    "state": {
+      "lengthIn": 72,
+      "centerWidth": 19,
+      "wpOffset": -0.5,
+      "tailBlockWidth": 8,
+      "tailType": "swallow",
+      "swallowDepth": 3,
+      "diamondDepth": 3,
+      "widepointVector": 50,
+      "tailAngle": 30,
+      "tailVector": 0,
+      "noseAngle": 55,
+      "noseVector": 25
+    },
+    "tailWidthAt12": 14.340644488317075,
+    "noseWidthAt12": 11.999208503527878,
+    "area": 1042.954064153713,
+    "wpY": 35.5,
+    "cw": 9.5,
+    "bw": 4,
+    "centerCloseY": 3,
+    "diamondDepthEff": 0,
+    "halfWidthAtStations": [
+      {
+        "station": 0,
+        "halfWidth": 4
+      },
+      {
+        "station": 3,
+        "halfWidth": 4.967632146140488
+      },
+      {
+        "station": 6,
+        "halfWidth": 5.7982530200545135
+      },
+      {
+        "station": 9,
+        "halfWidth": 6.5285784465787895
+      },
+      {
+        "station": 12,
+        "halfWidth": 7.1703222441585375
+      },
+      {
+        "station": 15,
+        "halfWidth": 7.729405702997828
+      },
+      {
+        "station": 18,
+        "halfWidth": 8.209850643476324
+      },
+      {
+        "station": 21,
+        "halfWidth": 8.613185057084129
+      },
+      {
+        "station": 24,
+        "halfWidth": 8.941089151498003
+      },
+      {
+        "station": 27,
+        "halfWidth": 9.193510828493833
+      },
+      {
+        "station": 30,
+        "halfWidth": 9.371007782725743
+      },
+      {
+        "station": 33,
+        "halfWidth": 9.47287114811616
+      },
+      {
+        "station": 36,
+        "halfWidth": 9.497900173107096
+      },
+      {
+        "station": 39,
+        "halfWidth": 9.435171375506817
+      },
+      {
+        "station": 42,
+        "halfWidth": 9.27591328062666
+      },
+      {
+        "station": 45,
+        "halfWidth": 9.016182400630356
+      },
+      {
+        "station": 48,
+        "halfWidth": 8.651797876548436
+      },
+      {
+        "station": 51,
+        "halfWidth": 8.176547419421642
+      },
+      {
+        "station": 54,
+        "halfWidth": 7.583528446858562
+      },
+      {
+        "station": 57,
+        "halfWidth": 6.862273436027236
+      },
+      {
+        "station": 60,
+        "halfWidth": 5.999604251763939
+      },
+      {
+        "station": 63,
+        "halfWidth": 4.973740436773135
+      },
+      {
+        "station": 66,
+        "halfWidth": 3.748031064666884
+      },
+      {
+        "station": 69,
+        "halfWidth": 2.241390328604444
+      },
+      {
+        "station": 72,
+        "halfWidth": 0
+      }
+    ]
+  },
+  "longboard": {
+    "state": {
+      "lengthIn": 108,
+      "centerWidth": 23,
+      "wpOffset": 3,
+      "tailBlockWidth": 12,
+      "tailType": "squash",
+      "tailAngle": 50,
+      "tailVector": 60,
+      "noseAngle": 70,
+      "noseVector": 60,
+      "widepointVector": 70,
+      "swallowDepth": 3,
+      "diamondDepth": 3
+    },
+    "tailWidthAt12": 18.950258883447958,
+    "noseWidthAt12": 15.416211984884624,
+    "area": 2117.4509802936795,
+    "wpY": 57,
+    "cw": 11.5,
+    "bw": 6,
+    "centerCloseY": 0,
+    "diamondDepthEff": 0,
+    "halfWidthAtStations": [
+      {
+        "station": 0,
+        "halfWidth": 6
+      },
+      {
+        "station": 3,
+        "halfWidth": 7.633977199361823
+      },
+      {
+        "station": 6,
+        "halfWidth": 8.445781732051147
+      },
+      {
+        "station": 9,
+        "halfWidth": 9.024412778139629
+      },
+      {
+        "station": 12,
+        "halfWidth": 9.475129441723979
+      },
+      {
+        "station": 15,
+        "halfWidth": 9.84051501187147
+      },
+      {
+        "station": 18,
+        "halfWidth": 10.143539649589572
+      },
+      {
+        "station": 21,
+        "halfWidth": 10.398089069404815
+      },
+      {
+        "station": 24,
+        "halfWidth": 10.613500770856747
+      },
+      {
+        "station": 27,
+        "halfWidth": 10.795746124422138
+      },
+      {
+        "station": 30,
+        "halfWidth": 10.95002412157693
+      },
+      {
+        "station": 33,
+        "halfWidth": 11.080033851834424
+      },
+      {
+        "station": 36,
+        "halfWidth": 11.18868474365513
+      },
+      {
+        "station": 39,
+        "halfWidth": 11.277999724480438
+      },
+      {
+        "station": 42,
+        "halfWidth": 11.350011909369268
+      },
+      {
+        "station": 45,
+        "halfWidth": 11.406633452307743
+      },
+      {
+        "station": 48,
+        "halfWidth": 11.448653830166835
+      },
+      {
+        "station": 51,
+        "halfWidth": 11.477553357313344
+      },
+      {
+        "station": 54,
+        "halfWidth": 11.494422658809674
+      },
+      {
+        "station": 57,
+        "halfWidth": 11.5
+      },
+      {
+        "station": 60,
+        "halfWidth": 11.485792624449163
+      },
+      {
+        "station": 63,
+        "halfWidth": 11.443636366740499
+      },
+      {
+        "station": 66,
+        "halfWidth": 11.36949638511271
+      },
+      {
+        "station": 69,
+        "halfWidth": 11.261609513151061
+      },
+      {
+        "station": 72,
+        "halfWidth": 11.115228142978067
+      },
+      {
+        "station": 75,
+        "halfWidth": 10.926333967401634
+      },
+      {
+        "station": 78,
+        "halfWidth": 10.690002507761141
+      },
+      {
+        "station": 81,
+        "halfWidth": 10.399113300489566
+      },
+      {
+        "station": 84,
+        "halfWidth": 10.045229846791472
+      },
+      {
+        "station": 87,
+        "halfWidth": 9.617944580348619
+      },
+      {
+        "station": 90,
+        "halfWidth": 9.101879059697957
+      },
+      {
+        "station": 93,
+        "halfWidth": 8.476024557028863
+      },
+      {
+        "station": 96,
+        "halfWidth": 7.708105992442312
+      },
+      {
+        "station": 99,
+        "halfWidth": 6.746018210910629
+      },
+      {
+        "station": 102,
+        "halfWidth": 5.490459461349875
+      },
+      {
+        "station": 105,
+        "halfWidth": 3.6967030078833667
+      },
+      {
+        "station": 108,
+        "halfWidth": 0
+      }
+    ]
+  },
+  "diamondClamped": {
+    "state": {
+      "lengthIn": 72,
+      "centerWidth": 19,
+      "wpOffset": -0.5,
+      "tailBlockWidth": 4,
+      "tailType": "diamond",
+      "swallowDepth": 3,
+      "diamondDepth": 5,
+      "widepointVector": 50,
+      "tailAngle": 30,
+      "tailVector": 30,
+      "noseAngle": 55,
+      "noseVector": 25
+    },
+    "tailWidthAt12": 12.640276516141657,
+    "noseWidthAt12": 11.999208503527878,
+    "area": 982.8431994506994,
+    "wpY": 35.5,
+    "cw": 9.5,
+    "bw": 2,
+    "centerCloseY": 0,
+    "diamondDepthEff": 2,
+    "halfWidthAtStations": [
+      {
+        "station": 0,
+        "halfWidth": 0
+      },
+      {
+        "station": 3,
+        "halfWidth": 2.5633018682320583
+      },
+      {
+        "station": 6,
+        "halfWidth": 4.06032738819141
+      },
+      {
+        "station": 9,
+        "halfWidth": 5.297036118358415
+      },
+      {
+        "station": 12,
+        "halfWidth": 6.320138258070829
+      },
+      {
+        "station": 15,
+        "halfWidth": 7.163487579946023
+      },
+      {
+        "station": 18,
+        "halfWidth": 7.85118131923547
+      },
+      {
+        "station": 21,
+        "halfWidth": 8.401081206328838
+      },
+      {
+        "station": 24,
+        "halfWidth": 8.827631198947019
+      },
+      {
+        "station": 27,
+        "halfWidth": 9.141869105778856
+      },
+      {
+        "station": 30,
+        "halfWidth": 9.353533166487475
+      },
+      {
+        "station": 33,
+        "halfWidth": 9.469911415960462
+      },
+      {
+        "station": 36,
+        "halfWidth": 9.497900173107096
+      },
+      {
+        "station": 39,
+        "halfWidth": 9.435171375506817
+      },
+      {
+        "station": 42,
+        "halfWidth": 9.27591328062666
+      },
+      {
+        "station": 45,
+        "halfWidth": 9.016182400630356
+      },
+      {
+        "station": 48,
+        "halfWidth": 8.651797876548436
+      },
+      {
+        "station": 51,
+        "halfWidth": 8.176547419421642
+      },
+      {
+        "station": 54,
+        "halfWidth": 7.583528446858562
+      },
+      {
+        "station": 57,
+        "halfWidth": 6.862273436027236
+      },
+      {
+        "station": 60,
+        "halfWidth": 5.999604251763939
+      },
+      {
+        "station": 63,
+        "halfWidth": 4.973740436773135
+      },
+      {
+        "station": 66,
+        "halfWidth": 3.748031064666884
+      },
+      {
+        "station": 69,
+        "halfWidth": 2.241390328604444
+      },
+      {
+        "station": 72,
+        "halfWidth": 0
+      }
+    ]
+  }
+}
