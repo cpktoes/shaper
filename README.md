@@ -34,3 +34,17 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Deployment
+
+Shaper is hosted on [Vercel](https://vercel.com), connected via Git integration to the
+`cpktoes/shaper` GitHub repository.
+
+- **Production branch:** `main` — every push to `main` triggers a new production deployment
+  automatically, with zero manual steps.
+- **Build:** zero-config Next.js detection (default build command, output directory, and install
+  command).
+- **Environment variables:** none required in Phase 1 — this app has no secrets, no auth, and no
+  database yet.
+- **Node.js version:** 20.x or later (Next.js 16 requires Node 20.9+).
+- **Production URL:** _PROD_URL_PLACEHOLDER_ (filled in once the Vercel project is created)
