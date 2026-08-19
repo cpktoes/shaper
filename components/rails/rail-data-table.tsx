@@ -15,6 +15,11 @@ interface RailDataTableSection {
 
 interface RailDataTableProps {
   sections: RailDataTableSection[];
+  /** Embedding-only display used by the Summary dashboard's Rail Data card (Rails.dc.html lines
+   * 448-470): no outer card, no footnote, no min-width floor, and the shared `--summary-font-*`
+   * scale in place of the fixed Tailwind text sizes. Defaults to `false`, the DATA page's own
+   * unchanged full-card treatment. */
+  compact?: boolean;
 }
 
 function formatCell(value: RailDataValue): string {
@@ -23,8 +28,52 @@ function formatCell(value: RailDataValue): string {
   return formatInchesFraction(value, 16);
 }
 
-export function RailDataTable({ sections }: RailDataTableProps) {
+export function RailDataTable({ sections, compact = false }: RailDataTableProps) {
   const merged = mergeRailDataTable(sections.map((s) => ({ key: s.key, dataGroups: s.dataGroups })));
+
+  if (compact) {
+    return (
+      // data-print-unfold lets the Summary print stylesheet release this container's clipped
+      // height so the full table prints instead of cutting off at the card's on-screen height.
+      <div data-print-unfold className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto">
+        <div
+          className="mb-1 flex gap-2 border-b-2 border-[#e4ddc9] pb-1"
+          style={{ fontSize: "var(--summary-font-label, 12px)" }}
+        >
+          <div className="min-w-0 flex-[1.4]" />
+          {sections.map((s) => (
+            <div key={s.key} className="min-w-0 flex-1 text-right font-extrabold text-outline-ink">
+              {s.title}
+            </div>
+          ))}
+        </div>
+        {merged.map((group) => (
+          <div key={group.heading} className="mb-1.5">
+            <div
+              className="mb-0.5 font-bold tracking-wide text-outline-accent uppercase"
+              style={{ fontSize: "var(--summary-font-group, 9px)" }}
+            >
+              {group.heading}
+            </div>
+            {group.rows.map((row) => (
+              <div
+                key={row.label}
+                className="flex gap-2 border-b border-[#f3efe3] py-0.5"
+                style={{ fontSize: "var(--summary-font-row, 11px)" }}
+              >
+                <div className="min-w-0 flex-[1.4] text-[#8a8272]">{row.label}</div>
+                {row.cells.map((cell, i) => (
+                  <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-outline-ink">
+                    {formatCell(cell)}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">

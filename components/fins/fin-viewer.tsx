@@ -18,7 +18,7 @@
 import { useMemo } from "react";
 import type { FinMark, FinPlacementResult, FinRole, FinTailShape, FinLateralKind } from "@/lib/geometry/fins";
 import { tailHalfWidthAt, tailOffTailAtHalfWidth, tailOutlineHalfPoints } from "@/lib/geometry/fins";
-import { formatInchesFraction, inchesToMm, mm, mmToInches, type Mm } from "@/lib/geometry/units";
+import { formatFeetInches, formatInchesFraction, inchesToMm, mm, mmToInches, type Mm } from "@/lib/geometry/units";
 import type { Point2D } from "@/lib/geometry/board";
 
 const SCALE = 14;
@@ -335,9 +335,25 @@ interface FinViewerProps {
    * place of the polynomial tail-shape fallback, when the fins screen is importing template
    * values. `null`/`undefined` falls back to `tailOutlineHalfPoints`. */
   outlineOverride?: { points: Point2D[]; connector: Point2D | null } | null;
+  /** Embedding-only display used by the Summary dashboard's Fin Placement card (Fins.dc.html
+   * lines 25-72, 1363-1373): drops the legend column and the "Tail @ 12"" label pair, adds a
+   * top-centre length heading, and shrinks the dimension callouts to the shared
+   * `--summary-font-*` scale. Defaults to `false`, the Fins screen's own unchanged full viewer. */
+  compact?: boolean;
+  /** The board length, needed only for the compact heading's `6'0" · 12 1/4" tail` text
+   * (`compactLengthText`, Fins.dc.html line 1364). Unused when `compact` is `false`. */
+  boardLength?: Mm;
 }
 
-export function FinViewer({ result, tailShape, tailWidth12, showCallouts, outlineOverride }: FinViewerProps) {
+export function FinViewer({
+  result,
+  tailShape,
+  tailWidth12,
+  showCallouts,
+  outlineOverride,
+  compact = false,
+  boardLength,
+}: FinViewerProps) {
   const { filled, open } = useMemo(
     () => buildOutlinePaths(tailShape, tailWidth12, outlineOverride ?? undefined),
     [tailShape, tailWidth12, outlineOverride],
@@ -439,38 +455,61 @@ export function FinViewer({ result, tailShape, tailWidth12, showCallouts, outlin
             ))}
           </svg>
           <div className="pointer-events-none absolute inset-0">
-            <span
-              className="absolute font-bold tracking-wide uppercase"
-              style={{
-                left: w12ValuePctLeft,
-                top: w12LabelPctTop,
-                transform: "translate(-100%,-50%)",
-                whiteSpace: "nowrap",
-                paddingRight: 6,
-                lineHeight: 1,
-                fontSize: 14,
-                color: "#3a5f9e",
-                textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}`,
-              }}
-            >
-              {formatInchesFraction(tailWidth12, 16)}
-            </span>
-            <span
-              className="absolute font-bold tracking-wide uppercase"
-              style={{
-                left: w12NamePctLeft,
-                top: w12LabelPctTop,
-                transform: "translate(0,-50%)",
-                whiteSpace: "nowrap",
-                paddingLeft: 6,
-                lineHeight: 1,
-                fontSize: 13,
-                color: "#3a5f9e",
-                textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}`,
-              }}
-            >
-              Tail @ 12&quot;
-            </span>
+            {!compact && (
+              <>
+                <span
+                  className="absolute font-bold tracking-wide uppercase"
+                  style={{
+                    left: w12ValuePctLeft,
+                    top: w12LabelPctTop,
+                    transform: "translate(-100%,-50%)",
+                    whiteSpace: "nowrap",
+                    paddingRight: 6,
+                    lineHeight: 1,
+                    fontSize: 14,
+                    color: "#3a5f9e",
+                    textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}`,
+                  }}
+                >
+                  {formatInchesFraction(tailWidth12, 16)}
+                </span>
+                <span
+                  className="absolute font-bold tracking-wide uppercase"
+                  style={{
+                    left: w12NamePctLeft,
+                    top: w12LabelPctTop,
+                    transform: "translate(0,-50%)",
+                    whiteSpace: "nowrap",
+                    paddingLeft: 6,
+                    lineHeight: 1,
+                    fontSize: 13,
+                    color: "#3a5f9e",
+                    textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}`,
+                  }}
+                >
+                  Tail @ 12&quot;
+                </span>
+              </>
+            )}
+            {compact && boardLength !== undefined && (
+              // The Summary dashboard's compact length heading (Fins.dc.html line 1364's
+              // `compactLengthText`), replacing the "Tail @ 12"" label pair above.
+              <span
+                className="absolute font-extrabold"
+                style={{
+                  left: pct(ORIGIN_X, 530),
+                  top: pct(svgTopY, 370),
+                  transform: "translate(-50%, calc(-100% - 6px))",
+                  whiteSpace: "nowrap",
+                  lineHeight: 1,
+                  fontSize: "var(--summary-font-label, 12px)",
+                  color: "#1c1b19",
+                  textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}`,
+                }}
+              >
+                {`${formatFeetInches(boardLength)} · ${formatInchesFraction(tailWidth12, 16)} tail`}
+              </span>
+            )}
             {showCallouts &&
               marksWithDims.map(({ dims }, mi) =>
                 dims.map((d, di) => (
@@ -481,7 +520,7 @@ export function FinViewer({ result, tailShape, tailWidth12, showCallouts, outlin
                       left: d.pctLeft,
                       top: d.pctTop,
                       transform: `translate(${d.transformX},-50%)`,
-                      fontSize: 14,
+                      fontSize: compact ? "var(--summary-font-callout, 10px)" : 14,
                       lineHeight: 1,
                       color: "#1c1b19",
                       whiteSpace: "nowrap",
@@ -495,20 +534,22 @@ export function FinViewer({ result, tailShape, tailWidth12, showCallouts, outlin
           </div>
         </div>
       </div>
-      <div className="flex flex-none flex-col gap-1 text-[11px] text-[#8a8272]">
-        <span>
-          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[#1c1b19]" />
-          Trailing &amp; Leading Edges
-        </span>
-        {result.legend.map((entry) => (
-          <span key={entry.label} className="flex items-center">
-            <svg width={16} height={4} className="mr-1">
-              <line x1={0} y1={2} x2={16} y2={2} stroke="var(--outline-accent)" strokeWidth={3} strokeDasharray={entry.dash} />
-            </svg>
-            Base Length ({entry.label}):&nbsp;{formatInchesFraction(entry.baseLength, 16)}
+      {!compact && (
+        <div className="flex flex-none flex-col gap-1 text-[11px] text-[#8a8272]">
+          <span>
+            <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[#1c1b19]" />
+            Trailing &amp; Leading Edges
           </span>
-        ))}
-      </div>
+          {result.legend.map((entry) => (
+            <span key={entry.label} className="flex items-center">
+              <svg width={16} height={4} className="mr-1">
+                <line x1={0} y1={2} x2={16} y2={2} stroke="var(--outline-accent)" strokeWidth={3} strokeDasharray={entry.dash} />
+              </svg>
+              Base Length ({entry.label}):&nbsp;{formatInchesFraction(entry.baseLength, 16)}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

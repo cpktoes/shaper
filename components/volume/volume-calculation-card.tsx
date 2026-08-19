@@ -14,9 +14,33 @@ interface VolumeCalculationCardProps {
   lengthDisplay: string;
   widthDisplayLabel: string;
   centerThicknessDisplayLabel: string;
+  /** The Summary dashboard's strict-subset compact row set (Volume.dc.html lines 152-172): Board
+   * Length/Width (when not importing a template), the area row, the weighted-thickness row and
+   * the Estimated Volume total — no heading, no cross-section thickness rows, no disclaimer.
+   * Defaults to `false`, the Volume screen's own unchanged full card. */
+  compact?: boolean;
 }
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
+function Row({
+  label,
+  value,
+  compact = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  compact?: boolean;
+}) {
+  if (compact) {
+    return (
+      <div
+        className="flex justify-between border-b border-[#f3efe3] py-0.5"
+        style={{ fontSize: "var(--summary-font-row, 11px)" }}
+      >
+        <span className="text-[#8a8272]">{label}</span>
+        <span className="font-bold text-outline-ink">{value}</span>
+      </div>
+    );
+  }
   return (
     <div className="flex justify-between border-b border-[#f3efe3] py-2 text-sm">
       <span className="text-[#8a8272]">{label}</span>
@@ -30,11 +54,47 @@ export function VolumeCalculationCard({
   lengthDisplay,
   widthDisplayLabel,
   centerThicknessDisplayLabel,
+  compact = false,
 }: VolumeCalculationCardProps) {
   const areaSqIn = result.area / SQMM_PER_SQIN;
   const areaRowLabel = result.importingTemplate ? "Template Area" : "Board Area (estimated)";
   const areaSqInDisplay = `${areaSqIn.toFixed(1)} sq in${result.importingTemplate ? " (imported)" : ""}`;
   const weightedThicknessLabel = result.geomReady ? "Length-Weighted Effective Thickness" : "Weighted Thickness";
+
+  if (compact) {
+    return (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+        {!result.importingTemplate && (
+          <>
+            <Row label="Board Length" value={lengthDisplay} compact />
+            <Row label="Board Width" value={widthDisplayLabel} compact />
+          </>
+        )}
+        <Row label={areaRowLabel} value={areaSqInDisplay} compact />
+        <Row label={weightedThicknessLabel} value={formatInchesFraction(result.weightedThickness)} compact />
+
+        <div className="mt-1 flex items-baseline justify-between border-t-2 border-[#e4ddc9] pt-1.5 pb-1">
+          <span
+            className="font-bold text-[#8a8272]"
+            style={{ fontSize: "var(--summary-font-label, 12px)" }}
+          >
+            Estimated Volume
+          </span>
+          <span className="text-right">
+            <span
+              className="block font-extrabold text-outline-accent-strong"
+              style={{ fontSize: "var(--summary-font-volume, 16px)" }}
+            >
+              {result.volumeLitres.toFixed(2)} L
+            </span>
+            <span className="block font-semibold text-[#8a8272]" style={{ fontSize: "var(--summary-font-row, 11px)" }}>
+              ({result.volumeCubicInches.toFixed(1)} cu in)
+            </span>
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-xl border border-[#e4ddc9] bg-white p-5 text-[#1c1b19]">

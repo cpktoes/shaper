@@ -52,9 +52,15 @@ interface RailSectionPlotProps {
   output: RailSectionOutput;
   /** The smallest xAxisMin across all open sections, so every plot shares one axis. */
   xAxisMin: Mm;
+  /** "width" (default): the SVG sizes from the available width — today's exact, unchanged
+   * behaviour. "height": sizes from the available height instead. The Summary dashboard's Rail
+   * Plots row is the grid's 15fr row (roughly 100px tall) at a third of the screen's width each —
+   * a width-driven plot there wants about twice that height and would overflow the row, so the
+   * three compact plots there fit to height instead. */
+  fit?: "width" | "height";
 }
 
-export function RailSectionPlot({ output, xAxisMin }: RailSectionPlotProps) {
+export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSectionPlotProps) {
   const { result, segments, domed, boardThickness, thicknessEff } = output;
   const xAxisMinIn = mmToInches(xAxisMin);
   const yAxisMaxIn = mmToInches(output.bounds.yAxisMax);
@@ -124,7 +130,15 @@ export function RailSectionPlot({ output, xAxisMin }: RailSectionPlotProps) {
   }
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} width="100%" style={{ aspectRatio: `${width} / ${height}` }} className="block">
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      style={
+        fit === "height"
+          ? { height: "100%", width: "auto", maxWidth: "100%", aspectRatio: `${width} / ${height}` }
+          : { width: "100%", aspectRatio: `${width} / ${height}` }
+      }
+      className="block"
+    >
       {gridLines.map((gl, i) => (
         <line key={`g${i}`} x1={gl.x1} y1={gl.y1} x2={gl.x2} y2={gl.y2} stroke="#ece5d4" strokeWidth={1} vectorEffect="non-scaling-stroke" />
       ))}
