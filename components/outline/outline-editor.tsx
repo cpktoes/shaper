@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
+import type { OutlineSpec } from "@/lib/geometry/board";
+import { mmToInches } from "@/lib/geometry/units";
 import { OutlineControls } from "./outline-controls";
 import { OutlineViewer } from "./outline-viewer";
 
@@ -11,10 +14,62 @@ import { OutlineViewer } from "./outline-viewer";
  * `showConstruction` stays local: it's a view preference, not design data. Everything from the
  * store is millimetres; inches exist only inside the controls/viewer where a label or slider
  * value is rendered.
+ *
+ * Development-only: below `OutlineControls` this file also renders a "Copy preset values" button,
+ * gated on `process.env.NODE_ENV === "development"` so the bundler dead-code-eliminates it from
+ * production. It reads the live `outline` back out as pasteable `lib/geometry/presets.ts` source —
+ * this is how a `BoardPreset` gets shaper-tuned in the real editor (CONTEXT.md D-03) rather than
+ * hand-guessed.
  */
+
+/** Rounds a millimetre value to inches, 3 decimal places, matching the precision the capture affordance emits. */
+function roundedInches(value: OutlineSpec["length"]): number {
+  return Number(mmToInches(value).toFixed(3));
+}
+
+/** Builds a pasteable `BoardPreset["outline"]` source block from the live outline spec. */
+function buildPresetSource(spec: OutlineSpec): string {
+  const tailFields: string[] = [`kind: "${spec.tail.kind}"`];
+  if (spec.tail.kind === "squash" || spec.tail.kind === "diamond" || spec.tail.kind === "swallow") {
+    tailFields.push(`endWidth: inchesToMm(${roundedInches(spec.tail.endWidth)})`);
+  }
+  if (spec.tail.kind === "diamond") {
+    tailFields.push(`depth: inchesToMm(${roundedInches(spec.tail.depth)})`);
+  }
+  if (spec.tail.kind === "swallow") {
+    tailFields.push(`crotchDepth: inchesToMm(${roundedInches(spec.tail.crotchDepth)})`);
+  }
+
+  return [
+    "outline: {",
+    `  length: inchesToMm(${roundedInches(spec.length)}),`,
+    `  widePointWidth: inchesToMm(${roundedInches(spec.widePointWidth)}),`,
+    `  widePointOffset: inchesToMm(${roundedInches(spec.widePointOffset)}),`,
+    `  railLength: ${spec.railLength},`,
+    `  noseAngle: degrees(${spec.noseAngle}),`,
+    `  noseFullness: ${spec.noseFullness},`,
+    `  tailAngle: degrees(${spec.tailAngle}),`,
+    `  tailFullness: ${spec.tailFullness},`,
+    `  tail: { ${tailFields.join(", ")} },`,
+    "},",
+  ].join("\n");
+}
+
 export function OutlineEditor() {
   const { outline, updateOutline, outlineGeometry, finPlacement } = useDesign();
   const [showConstruction, setShowConstruction] = useState(false);
+  const [justCopiedPreset, setJustCopiedPreset] = useState(false);
+
+  function handleCopyPreset() {
+    const text = buildPresetSource(outline);
+    console.log(text);
+    setJustCopiedPreset(true);
+    navigator.clipboard.writeText(text).catch(() => {
+      // Clipboard write rejected (unavailable or permission denied) — the console.log above already
+      // carries the same text, so this is a silent no-op rather than a thrown error.
+    });
+    window.setTimeout(() => setJustCopiedPreset(false), 1500);
+  }
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-nowrap">
@@ -26,6 +81,11 @@ export function OutlineEditor() {
           showConstruction={showConstruction}
           onToggleConstruction={() => setShowConstruction((v) => !v)}
         />
+        {process.env.NODE_ENV === "development" && (
+          <Button variant="outline" size="sm" className="mt-4 w-full" onClick={handleCopyPreset}>
+            {justCopiedPreset ? "Copied!" : "Copy preset values"}
+          </Button>
+        )}
       </aside>
       <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-5 bg-outline-page-bg p-2">
         <div className="flex min-h-0 flex-1 items-stretch justify-center gap-6">
