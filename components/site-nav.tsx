@@ -1,10 +1,12 @@
 "use client";
 
 /**
- * Top nav shared by every screen under app/design/*, so a shaper can move between the outline
- * editor, the rail band calculator, the volume estimator, the fin placement screen and the
- * summary dashboard without editing the URL. Client component because it reads the active path
- * (usePathname) to highlight the current link.
+ * Top nav shared by the whole app (mounted once in app/layout.tsx), so a shaper can move between
+ * the setup screen, the outline editor, the rail band calculator, the volume estimator, the fin
+ * placement screen and the summary dashboard entirely via client-side navigation — never by
+ * editing the URL, which would drop the in-memory board (no persistence until Phase 2). The SHAPER
+ * wordmark links back to `/` for the same reason. Client component because it reads the active
+ * path (usePathname) to highlight the current link.
  */
 
 import Link from "next/link";
@@ -26,7 +28,12 @@ export function SiteNav() {
       data-print-hide
       className="flex flex-none items-center gap-6 border-b border-outline-sidebar-divider bg-outline-sidebar-bg px-6 py-3"
     >
-      <span className="text-sm font-extrabold tracking-[0.15em] text-outline-sidebar-text">SHAPER</span>
+      <Link
+        href="/"
+        className="text-sm font-extrabold tracking-[0.15em] text-outline-sidebar-text"
+      >
+        SHAPER
+      </Link>
       <div className="flex items-center gap-5">
         {NAV_LINKS.map((link) => {
           const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);

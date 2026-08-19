@@ -31,8 +31,15 @@
 }
 
 @media print {
+  /* app/layout.tsx clamps html/body to the viewport height with overflow: hidden so on-screen
+     scrolling stays confined to individual panels (see that file's head comment). Printing must
+     release both — otherwise the printed sheet clips to one screen's worth of content instead of
+     paginating (or, worse, breaks useSummaryPrintFit's scrollHeight-based zoom measurement, which
+     assumes the summary root can grow to its natural size). */
   html,
   body {
+    height: auto !important;
+    overflow: visible !important;
     background: #fff !important;
   }
 
