@@ -15,6 +15,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec, type Point2D } from "@/lib/geometry/board";
 import { buildOutline, type OutlineGeometry } from "@/lib/geometry/outline";
+import type { BoardPreset } from "@/lib/geometry/presets";
 import {
   DEFAULT_RAIL_BAND_SPEC,
   computeRailBands,
@@ -75,6 +76,10 @@ interface DesignContextValue {
   boardName: string;
 
   updateOutline: (patch: Partial<OutlineSpec>) => void;
+  /** Applies a board-type preset (components/setup/setup-screen.tsx) by replacing the outline
+   * wholesale — a preset is a complete spec, not a patch, so this does not merge against
+   * whatever outline was there before. */
+  applyPreset: (preset: BoardPreset) => void;
   updateRailSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   toggleTailHardEdge: () => void;
   updateFins: (patch: Partial<FinPlacementSpec>) => void;
@@ -115,6 +120,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   const updateOutline = (patch: Partial<OutlineSpec>) =>
     setState((prev) => ({ ...prev, outline: { ...prev.outline, ...patch } }));
+
+  const applyPreset = (preset: BoardPreset) =>
+    setState((prev) => ({ ...prev, outline: preset.outline }));
 
   const updateRailSection = (key: RailSectionKey, patch: Partial<RailSectionSpec>) =>
     setState((prev) => ({
@@ -267,6 +275,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     finsImportTemplate: state.finsImportTemplate,
     boardName: state.boardName,
     updateOutline,
+    applyPreset,
     updateRailSection,
     toggleTailHardEdge,
     updateFins,
