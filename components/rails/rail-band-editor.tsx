@@ -1,13 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  DEFAULT_RAIL_BAND_SPEC,
-  computeRailBands,
-  type RailBandSpec,
-  type RailSectionKey,
-  type RailSectionSpec,
-} from "@/lib/geometry/rail-bands";
+import { useState } from "react";
+import { useDesign } from "@/components/design/design-store";
+import { type RailSectionKey } from "@/lib/geometry/rail-bands";
 import { mm, type Mm } from "@/lib/geometry/units";
 import { RailControls } from "./rail-controls";
 import { RailDataTable } from "./rail-data-table";
@@ -19,13 +14,14 @@ const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
 
 /**
- * Owns the design state: a single RailBandSpec object plus UI-only state (which sections/
- * Advanced disclosures are open, which page is active) that never touches the design itself.
- * Everything in `spec` is millimetres; inches exist only inside the controls/plot/table where a
- * label or slider value is rendered.
+ * Reads the design state from the shared `DesignProvider` (components/design/design-store.tsx)
+ * instead of owning it locally — this screen is one of four views onto a single board design.
+ * UI-only state (which sections/Advanced disclosures are open, which page is active) stays local
+ * — it never touches the design itself. Everything in `spec` is millimetres; inches exist only
+ * inside the controls/plot/table where a label or slider value is rendered.
  */
 export function RailBandEditor() {
-  const [spec, setSpec] = useState<RailBandSpec>(DEFAULT_RAIL_BAND_SPEC);
+  const { rails: spec, updateRailSection, toggleTailHardEdge, railBands: bands } = useDesign();
   const [sectionOpen, setSectionOpen] = useState<Record<RailSectionKey, boolean>>({
     nose: true,
     center: true,
@@ -38,12 +34,8 @@ export function RailBandEditor() {
   });
   const [activePage, setActivePage] = useState<RailPage>("viewer");
 
-  const bands = useMemo(() => computeRailBands(spec), [spec]);
-
-  const updateSection = (key: RailSectionKey, patch: Partial<RailSectionSpec>) => {
-    setSpec((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
-  };
-  const toggleHardEdge = () => setSpec((prev) => ({ ...prev, tailHardEdge: !prev.tailHardEdge }));
+  const updateSection = updateRailSection;
+  const toggleHardEdge = toggleTailHardEdge;
   const toggleSectionOpen = (key: RailSectionKey) => setSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   const toggleAdvancedOpen = (key: RailSectionKey) => setAdvancedOpen((prev) => ({ ...prev, [key]: !prev[key] }));
 

@@ -11,6 +11,7 @@
  */
 
 import type { OutlineSpec } from "@/lib/geometry/board";
+import type { FinMark } from "@/lib/geometry/fins";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import { sampleOutline } from "@/lib/geometry/outline";
 import { formatFeetInches, formatInchesFraction, inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
@@ -25,6 +26,10 @@ interface OutlineViewerProps {
   geometry: OutlineGeometry;
   outline: OutlineSpec;
   showConstruction: boolean;
+  /** The calculated fin marks, drawn on the template as one accent line per fin from trailing to
+   * leading edge, with a dot at each end (Template.dc.html lines 178-182). Optional so the
+   * viewer still renders standalone before fins are wired up. */
+  finMarks?: FinMark[];
 }
 
 interface RawCallout {
@@ -34,7 +39,7 @@ interface RawCallout {
   pinned: boolean;
 }
 
-export function OutlineViewer({ geometry, outline, showConstruction }: OutlineViewerProps) {
+export function OutlineViewer({ geometry, outline, showConstruction, finMarks = [] }: OutlineViewerProps) {
   const lengthIn = mmToInches(geometry.length);
   const cwIn = mmToInches(geometry.halfWidePointWidth);
 
@@ -143,6 +148,15 @@ export function OutlineViewer({ geometry, outline, showConstruction }: OutlineVi
     value: c.value,
   }));
 
+  // Ported from the prototype's finMarksSvg (Template.dc.html lines 777-779): a line from
+  // (pxX(lateral), lenToY(offTail)) to (pxX(leadingLateral), lenToY(leadingOffTail)) per fin mark.
+  const finMarksSvg = finMarks.map((m) => ({
+    x1: pxX(mmToInches(m.lateral)),
+    y1: lenToY(mmToInches(m.offTail)),
+    x2: pxX(mmToInches(m.leadingLateral)),
+    y2: lenToY(mmToInches(m.leadingOffTail)),
+  }));
+
   const lengthCalloutText = `${formatFeetInches(geometry.length)} (${formatInchesFraction(geometry.length)})`;
   const lengthCalloutPctLeft = `${((centerlineX / VIEW_W) * 100).toFixed(3)}%`;
   const lengthCalloutPctTop = `${((tipPy / VIEW_H) * 100).toFixed(3)}%`;
@@ -219,6 +233,20 @@ export function OutlineViewer({ geometry, outline, showConstruction }: OutlineVi
             ))}
           </>
         )}
+        {finMarksSvg.map((fm, i) => (
+          <g key={i}>
+            <line
+              x1={fm.x1}
+              y1={fm.y1}
+              x2={fm.x2}
+              y2={fm.y2}
+              stroke="var(--outline-accent)"
+              strokeWidth={2}
+            />
+            <circle cx={fm.x1} cy={fm.y1} r={3.5} fill="#1c1b19" />
+            <circle cx={fm.x2} cy={fm.y2} r={3.5} fill="#1c1b19" />
+          </g>
+        ))}
       </svg>
       <div className="pointer-events-none absolute inset-0">
         {callouts.map((co, i) => (

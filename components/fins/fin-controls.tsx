@@ -211,6 +211,10 @@ interface FinControlsProps {
   showCallouts: boolean;
   onToggleCallouts: () => void;
   onOpenToeTable: () => void;
+  /** Whether board length, tail width @12" and tail shape are driven by the outline screen's
+   * design (Fins.dc.html's `importTemplate`). */
+  importTemplate: boolean;
+  onToggleImportTemplate: () => void;
 }
 
 export function FinControls({
@@ -224,6 +228,8 @@ export function FinControls({
   showCallouts,
   onToggleCallouts,
   onOpenToeTable,
+  importTemplate,
+  onToggleImportTemplate,
 }: FinControlsProps) {
   const [editingForward, setEditingForward] = useState(false);
   const [editingRear, setEditingRear] = useState(false);
@@ -266,14 +272,24 @@ export function FinControls({
         </div>
       </div>
 
-      <SectionHeading>Inputs</SectionHeading>
+      <div className="flex items-center justify-between gap-2.5 border-b border-outline-sidebar-divider pb-1.5">
+        <div className="text-sm font-bold tracking-wide text-outline-accent uppercase">Inputs</div>
+        <label className="flex cursor-pointer items-center gap-1.5 text-[10px] whitespace-nowrap text-outline-sidebar-text-muted">
+          <Checkbox checked={importTemplate} onCheckedChange={() => onToggleImportTemplate()} />
+          Import Template Values
+        </label>
+      </div>
 
-      <div>
+      <div style={{ opacity: importTemplate ? 0.45 : 1 }}>
         <div className="mb-1.5 text-[11px] text-outline-sidebar-text-muted uppercase">
           Board Length — {formatFeetInches(spec.boardLength)}
         </div>
         <div className="mb-2 flex gap-2">
-          <Select value={lengthFeet} onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}>
+          <Select
+            value={lengthFeet}
+            onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
+            disabled={importTemplate}
+          >
             <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
               <SelectValue />
             </SelectTrigger>
@@ -285,7 +301,11 @@ export function FinControls({
               ))}
             </SelectContent>
           </Select>
-          <Select value={lengthInches} onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}>
+          <Select
+            value={lengthInches}
+            onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
+            disabled={importTemplate}
+          >
             <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
               <SelectValue />
             </SelectTrigger>
@@ -303,12 +323,13 @@ export function FinControls({
           min={48}
           max={144}
           step={1}
+          disabled={importTemplate}
           onValueChange={(v) => setLengthIn(sliderValue(v))}
           className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
         />
       </div>
 
-      <div>
+      <div style={{ opacity: importTemplate ? 0.45 : 1 }}>
         <div className="mb-1.5 text-[11px] text-outline-sidebar-text-muted uppercase">
           Tail Width @ 12&quot; — {formatInchesFraction(spec.tailWidth12, 16)}
         </div>
@@ -317,16 +338,20 @@ export function FinControls({
           min={10}
           max={18}
           step={0.125}
+          disabled={importTemplate}
           onValueChange={(v) => onChange({ tailWidth12: inchesToMm(clampFinite(sliderValue(v), 10, 18)) })}
           className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
         />
       </div>
 
-      <div>
+      <div style={{ opacity: importTemplate ? 0.45 : 1 }}>
         <div className="mb-1.5 text-[11px] text-outline-sidebar-text-muted uppercase">
           Tail Shape — {TAIL_SHAPE_LABEL[spec.tailShape as IconTailShape]}
         </div>
-        <div className="grid grid-cols-5 gap-1.5">
+        <div
+          className="grid grid-cols-5 gap-1.5"
+          style={{ pointerEvents: importTemplate ? "none" : "auto" }}
+        >
           {TAIL_SHAPES.map((shape) => (
             <button
               key={shape}

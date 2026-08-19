@@ -58,8 +58,12 @@ function catmullPath(pts: [number, number][]): string {
   return d;
 }
 
-function buildOutlinePaths(shape: FinTailShape, tailWidth12: Mm): { filled: string; open: string } {
-  const { points, connector } = tailOutlineHalfPoints(shape, tailWidth12);
+function buildOutlinePaths(
+  shape: FinTailShape,
+  tailWidth12: Mm,
+  outlineOverride?: { points: Point2D[]; connector: Point2D | null },
+): { filled: string; open: string } {
+  const { points, connector } = outlineOverride ?? tailOutlineHalfPoints(shape, tailWidth12);
   const mapPt = (p: Point2D): [number, number] => [toPxX(mmToInches(p.x)), toPxY(mmToInches(p.y))];
   const negSide = points
     .slice()
@@ -327,10 +331,17 @@ interface FinViewerProps {
   tailShape: FinTailShape;
   tailWidth12: Mm;
   showCallouts: boolean;
+  /** The real designed outline (from the shared design store), drawn behind the fin marks in
+   * place of the polynomial tail-shape fallback, when the fins screen is importing template
+   * values. `null`/`undefined` falls back to `tailOutlineHalfPoints`. */
+  outlineOverride?: { points: Point2D[]; connector: Point2D | null } | null;
 }
 
-export function FinViewer({ result, tailShape, tailWidth12, showCallouts }: FinViewerProps) {
-  const { filled, open } = useMemo(() => buildOutlinePaths(tailShape, tailWidth12), [tailShape, tailWidth12]);
+export function FinViewer({ result, tailShape, tailWidth12, showCallouts, outlineOverride }: FinViewerProps) {
+  const { filled, open } = useMemo(
+    () => buildOutlinePaths(tailShape, tailWidth12, outlineOverride ?? undefined),
+    [tailShape, tailWidth12, outlineOverride],
+  );
 
   const marksGeom: MarkGeom[] = useMemo(
     () =>

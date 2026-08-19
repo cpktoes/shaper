@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { computeFinPlacement, DEFAULT_FIN_PLACEMENT_SPEC, toeAimTableFor, type FinPlacementSpec } from "@/lib/geometry/fins";
+import { useDesign } from "@/components/design/design-store";
+import { toeAimTableFor } from "@/lib/geometry/fins";
 import { FinControls } from "./fin-controls";
 import { FinDataPanel } from "./fin-data-panel";
 import { FinModelInfo } from "./fin-model-info";
@@ -14,27 +15,32 @@ const TAB_LABEL: Record<FinTab, string> = { viewer: "VIEWER", data: "DATA", info
 const TAB_ORDER: FinTab[] = ["viewer", "data", "info"];
 
 /**
- * Owns the design state: a single FinPlacementSpec object plus UI-only state (which disclosures
- * are open, which tab is active, whether the aim-table modal is open) that never touches the
- * design itself. Everything in `spec` is millimetres; inches exist only inside the
- * controls/viewer/data panel where a label or slider value is rendered. Layout mirrors
- * components/rails/rail-band-editor.tsx.
+ * Reads the design state from the shared `DesignProvider` (components/design/design-store.tsx)
+ * instead of owning it locally — this screen is one of four views onto a single board design.
+ * UI-only state (which disclosures are open, which tab is active, whether the aim-table modal is
+ * open) stays local — it never touches the design itself. Everything in `spec`/`effectiveFins` is
+ * millimetres; inches exist only inside the controls/viewer/data panel where a label or slider
+ * value is rendered. Layout mirrors components/rails/rail-band-editor.tsx.
  */
 export function FinPlacementEditor() {
-  const [spec, setSpec] = useState<FinPlacementSpec>(DEFAULT_FIN_PLACEMENT_SPEC);
+  const {
+    effectiveFins: spec,
+    updateFins,
+    finPlacement: result,
+    finTailOutline,
+    finsImportTemplate,
+    setFinsImportTemplate,
+  } = useDesign();
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showCallouts, setShowCallouts] = useState(true);
   const [activeTab, setActiveTab] = useState<FinTab>("viewer");
   const [toeTableOpen, setToeTableOpen] = useState(false);
 
-  const result = useMemo(() => computeFinPlacement(spec), [spec]);
   const toeTableView = useMemo(
     () => toeAimTableFor(spec.boardLength, spec.tailWidth12),
     [spec.boardLength, spec.tailWidth12],
   );
-
-  const updateSpec = (patch: Partial<FinPlacementSpec>) => setSpec((prev) => ({ ...prev, ...patch }));
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-wrap">
@@ -42,7 +48,7 @@ export function FinPlacementEditor() {
         <FinControls
           spec={spec}
           result={result}
-          onChange={updateSpec}
+          onChange={updateFins}
           advancedOpen={advancedOpen}
           onToggleAdvanced={() => setAdvancedOpen((v) => !v)}
           settingsOpen={settingsOpen}
@@ -50,6 +56,8 @@ export function FinPlacementEditor() {
           showCallouts={showCallouts}
           onToggleCallouts={() => setShowCallouts((v) => !v)}
           onOpenToeTable={() => setToeTableOpen(true)}
+          importTemplate={finsImportTemplate}
+          onToggleImportTemplate={() => setFinsImportTemplate(!finsImportTemplate)}
         />
       </aside>
       <main className="flex min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-outline-page-bg p-2">
@@ -74,7 +82,13 @@ export function FinPlacementEditor() {
         {activeTab === "viewer" && (
           <div className="flex min-h-0 flex-1 flex-col items-center rounded-xl border border-[#e4ddc9] bg-white p-5">
             <div className="mb-3 self-start text-xl font-extrabold text-outline-ink">Fin Viewer</div>
-            <FinViewer result={result} tailShape={spec.tailShape} tailWidth12={spec.tailWidth12} showCallouts={showCallouts} />
+            <FinViewer
+              result={result}
+              tailShape={spec.tailShape}
+              tailWidth12={spec.tailWidth12}
+              showCallouts={showCallouts}
+              outlineOverride={finTailOutline}
+            />
           </div>
         )}
 
