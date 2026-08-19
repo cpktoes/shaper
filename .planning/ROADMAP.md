@@ -7,6 +7,7 @@ Shaper starts from a working prototype (built in Claude Design) that already pro
 ## Phases
 
 **Phase Numbering:**
+
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
@@ -20,61 +21,81 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Foundation — Port & Deploy the Design Tool
+
 **Goal**: The ported prototype runs as a real Next.js/TypeScript/Tailwind v4/shadcn app, live on Vercel, letting a user set dimensions, shape an outline, and see rail-band and fin-placement numbers calculated from real formulas — with that math implemented as pure TypeScript functions under `lib/`, per the project's geometry constraint.
 **Mode:** mvp
 **Depends on**: Nothing (first phase)
 **Requirements**: SETUP-01, OUTL-01, RAIL-01, FIN-01, FIN-02, FIN-03, VIZ-01, UNIT-01
 **Success Criteria** (what must be TRUE):
+
   1. User can enter overall board dimensions (length, width, thickness) in inches and start a new design
   2. User can shape an outline curve constrained to those dimensions and view it rendered in a 2D view
   3. User can select a fin configuration (single, thruster, quad, twin/2+1) and view the calculated fin placement (position, angle, toe) overlaid on the outline
   4. User can view calculated rail band dimensions (thickness/apex/tuck) at stations along the board, derived from the outline
   5. The app is live at a public Vercel URL, ported from the `reference/` prototype, with all measurements displayed in inches and litres
+
 **Plans**: 4 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 01-01-PLAN.md — Tracer: preset → outline editor end-to-end, board store promoted to the root layout
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 01-02-PLAN.md — Setup screen per the approved UI contract: preset cards with real outline thumbnails, continue-board card, replace confirm dialog
 - [ ] 01-03-PLAN.md — First Vercel production deployment, auto-deploying from `main`
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 01-04-PLAN.md — Live preset tuning capture (D-03) and the phase acceptance walkthrough
 
 **UI hint**: yes
 
 ### Phase 2: Accounts & Saved Designs
+
 **Goal**: Users have their own account and their designs persist across sessions, completing the "live + saving" milestone.
 **Mode:** mvp
 **Depends on**: Phase 1
 **Requirements**: ACCT-01, ACCT-02, ACCT-03, MODL-01, MODL-02, MODL-03
 **Success Criteria** (what must be TRUE):
+
   1. User can sign up with email and password and log in, staying logged in across browser sessions
   2. User can reset a forgotten password via an emailed link
   3. User can save the current design as a named model tied to their account (persisted in Neon Postgres via Drizzle)
   4. User can reopen a previously saved model and continue editing it
   5. User can view a list of all their saved models
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 3: Volume, Templates & Verified Math
+
 **Goal**: The core geometry math is proven correct by automated tests, board volume updates live as the design changes, and users can print a full-size template to cut foam from — completing the "the math is right" milestone.
 **Mode:** mvp
 **Depends on**: Phase 1
 **Requirements**: VOL-01, TMPL-01
 **Success Criteria** (what must be TRUE):
+
   1. Board volume (in litres) recalculates live as the user adjusts the outline or rocker
   2. Core geometry calculations (outline, rocker, rail band, volume) in `lib/` are covered by Vitest unit tests that pass in CI, validating RAIL-01 and VOL-01 output against known-good values
   3. User can export a full-size (1:1 scale) printable template of the outline, tiled across standard pages for taping together
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 4: Rocker & Foil Editors
+
 **Goal**: Users can shape a rocker curve and a foil profile as first-class, interactive parts of the design, with rail band and volume recalculating live as they adjust either — completing the "shaper features" milestone's editor work.
 **Mode:** mvp
 **Depends on**: Phase 1, Phase 3
 **Requirements**: ROCK-01, FOIL-01
 **Success Criteria** (what must be TRUE):
+
   1. User can define a rocker curve (nose and tail rocker profile) and view the rail band and 2D visualization update live as they adjust it
   2. User can define a foil (thickness distribution along the length of the board) and view the live volume figure update as they adjust it
   3. Rocker and foil inputs are saved and restored correctly when a model is saved and reopened
+
 **Plans**: TBD
 **UI hint**: yes
 
