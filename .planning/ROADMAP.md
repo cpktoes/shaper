@@ -30,7 +30,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can select a fin configuration (single, thruster, quad, twin/2+1) and view the calculated fin placement (position, angle, toe) overlaid on the outline
   4. User can view calculated rail band dimensions (thickness/apex/tuck) at stations along the board, derived from the outline
   5. The app is live at a public Vercel URL, ported from the `reference/` prototype, with all measurements displayed in inches and litres
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Tracer: preset → outline editor end-to-end, board store promoted to the root layout
+- [ ] 01-02-PLAN.md — Setup screen per the approved UI contract: preset cards with real outline thumbnails, continue-board card, replace confirm dialog
+- [ ] 01-03-PLAN.md — First Vercel production deployment, auto-deploying from `main`
+- [ ] 01-04-PLAN.md — Live preset tuning capture (D-03) and the phase acceptance walkthrough
+
 **UI hint**: yes
 
 ### Phase 2: Accounts & Saved Designs
@@ -78,7 +85,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation — Port & Deploy the Design Tool | 0/TBD | Not started | - |
+| 1. Foundation — Port & Deploy the Design Tool | 0/4 | Planned | - |
 | 2. Accounts & Saved Designs | 0/TBD | Not started | - |
 | 3. Volume, Templates & Verified Math | 0/TBD | Not started | - |
 | 4. Rocker & Foil Editors | 0/TBD | Not started | - |
