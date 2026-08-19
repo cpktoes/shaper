@@ -21,3 +21,53 @@
   --summary-font-label: clamp(10.2px, 1vw, 19.2px); /* 12px base */
   --summary-font-volume: clamp(13.6px, 1.3333vw, 25.6px); /* 16px base */
 }
+
+/* Print path, ported from Summary.dc.html's own <style> helmet (lines 12-28). `@page` is the one
+   declaration here that is unavoidably document-global rather than route-scoped — but this file
+   only loads while a shaper is on /design/summary, so it is inert everywhere else (confirmed by
+   the Task 3 human-check printing /design/rails). */
+@page {
+  size: landscape;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  /* Cards print as outlines rather than filled boxes. Scoped under [data-summary-root] so
+     printing is only ever altered where the summary actually is. */
+  [data-summary-root] {
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+  [data-summary-root] * {
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* The rail data table's scrolling container: let the full table print instead of clipping it
+     at the on-screen card height. */
+  [data-print-unfold] {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* The site nav and the Board Name textarea card — gone from the printed sheet. */
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* The Board Name print-only twin — hidden on screen, shown only here. */
+  [data-print-only] {
+    display: flex !important;
+  }
+
+  /* Set by useSummaryPrintFit's beforeprint handler: release the fixed on-screen height so the
+     grid can grow to its natural size before the print-fit `zoom` scale is measured and applied. */
+  [data-summary-root][data-printing] {
+    height: auto !important;
+    overflow: visible !important;
+  }
+}

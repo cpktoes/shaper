@@ -28,9 +28,17 @@ import { FinViewer } from "@/components/fins/fin-viewer";
 import { RailDataTable } from "@/components/rails/rail-data-table";
 import { RailSectionPlot } from "@/components/rails/rail-section-plot";
 import { VolumeCalculationCard } from "@/components/volume/volume-calculation-card";
+import { Button } from "@/components/ui/button";
+import { useSummaryPrintFit } from "./use-print-fit";
 import type { RailSectionKey } from "@/lib/geometry/rail-bands";
 import { formatFeetInches, formatInchesFraction, inchesToMm, mm } from "@/lib/geometry/units";
 import { cn } from "@/lib/utils";
+
+/** Both grid cells below are placed identically (same order/col/row) so the interactive card and
+ * its print-only twin occupy the exact same slot — only one is ever visible: the textarea card
+ * on screen, the centred name block in print (Summary.dc.html lines 68-78). */
+const BOARD_NAME_GRID_PLACEMENT =
+  "order-5 min-[900px]:order-none min-[900px]:col-start-3 min-[900px]:row-start-2 min-[900px]:min-h-0";
 
 const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
@@ -74,8 +82,19 @@ function SummaryCard({
 }
 
 export function BoardSummary() {
-  const { outline, outlineGeometry, finPlacement, railBands, volumeResult, effectiveVolume, effectiveFins, finTailOutline } =
-    useDesign();
+  const {
+    outline,
+    outlineGeometry,
+    finPlacement,
+    railBands,
+    volumeResult,
+    effectiveVolume,
+    effectiveFins,
+    finTailOutline,
+    boardName,
+    setBoardName,
+  } = useDesign();
+  const { rootRef, printSummary } = useSummaryPrintFit();
 
   // Always all three sections, in Nose/Center/Tail order — unlike the rails screen's own DATA/
   // VIEWER pages, the summary has no collapse state to filter by.
@@ -97,6 +116,7 @@ export function BoardSummary() {
 
   return (
     <div
+      ref={rootRef}
       data-summary-root
       className={cn(
         "grid min-h-0 flex-1 grid-cols-1 auto-rows-auto gap-2 overflow-y-auto bg-outline-page-bg p-2",
@@ -178,11 +198,53 @@ export function BoardSummary() {
         </div>
       </SummaryCard>
 
-      {/* Board Name — Task 3 wires the store, the print-only twin and the print-fit hook. */}
-      <SummaryCard
-        title="Board Name"
-        className="order-5 min-h-[360px] min-[900px]:order-none min-[900px]:col-start-3 min-[900px]:row-start-2 min-[900px]:min-h-0"
-      />
+      {/* Board Name — interactive card, hidden in print. */}
+      <div
+        data-print-hide
+        className={cn(
+          "flex min-h-[360px] min-w-0 flex-col rounded-xl border border-[#e4ddc9] bg-white p-1.5",
+          BOARD_NAME_GRID_PLACEMENT,
+        )}
+      >
+        <div className="mb-1 flex flex-none items-center justify-between gap-2">
+          <span className="text-[12px] font-extrabold tracking-[1px] text-outline-accent uppercase">
+            Board Name
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            onClick={printSummary}
+            className="flex-none border-outline-accent bg-outline-accent text-outline-ink hover:bg-outline-accent/85"
+          >
+            Print Summary
+          </Button>
+        </div>
+        <textarea
+          value={boardName}
+          onChange={(e) => setBoardName(e.target.value)}
+          placeholder="Board Name"
+          rows={2}
+          className="min-h-0 w-full flex-1 resize-none rounded-lg border border-[#e4ddc9] bg-white px-2.5 py-1.5 text-sm font-bold text-outline-ink"
+        />
+      </div>
+
+      {/* Board Name — print-only twin, shown only inside @media print (summary.css). Naming the
+          name in JSX means React escapes it (threat T-U1N-01): no dangerouslySetInnerHTML, no
+          string-built markup. */}
+      <div
+        data-print-only
+        className={cn(
+          "hidden min-h-[360px] min-w-0 flex-col rounded-xl border border-[#e4ddc9] p-1.5",
+          BOARD_NAME_GRID_PLACEMENT,
+        )}
+      >
+        <div className="mb-1 flex-none text-[12px] font-extrabold tracking-[1px] text-outline-accent uppercase">
+          Board Name
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center text-center text-[22px] leading-[1.2] font-extrabold whitespace-pre-wrap text-outline-ink">
+          {boardName}
+        </div>
+      </div>
     </div>
   );
 }

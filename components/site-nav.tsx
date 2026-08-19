@@ -22,7 +22,10 @@ export function SiteNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-none items-center gap-6 border-b border-outline-sidebar-divider bg-outline-sidebar-bg px-6 py-3">
+    <nav
+      data-print-hide
+      className="flex flex-none items-center gap-6 border-b border-outline-sidebar-divider bg-outline-sidebar-bg px-6 py-3"
+    >
       <span className="text-sm font-extrabold tracking-[0.15em] text-outline-sidebar-text">SHAPER</span>
       <div className="flex items-center gap-5">
         {NAV_LINKS.map((link) => {

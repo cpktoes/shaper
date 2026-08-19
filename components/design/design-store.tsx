@@ -45,6 +45,10 @@ interface DesignState {
   fins: FinPlacementSpec;
   volume: VolumeSpec;
   finsImportTemplate: boolean;
+  /** The first free-text field in the design — the Summary screen's Board Name box. In-memory
+   * only, like every other value here: it's gone on reload, exactly as the rest of the design is.
+   * Phase 2's named-model saving is where any of this becomes durable. */
+  boardName: string;
 }
 
 const DEFAULT_DESIGN_STATE: DesignState = {
@@ -53,6 +57,7 @@ const DEFAULT_DESIGN_STATE: DesignState = {
   fins: DEFAULT_FIN_PLACEMENT_SPEC,
   volume: DEFAULT_VOLUME_SPEC,
   finsImportTemplate: true,
+  boardName: "",
 };
 
 interface FinTailOutline {
@@ -67,6 +72,7 @@ interface DesignContextValue {
   fins: FinPlacementSpec;
   volume: VolumeSpec;
   finsImportTemplate: boolean;
+  boardName: string;
 
   updateOutline: (patch: Partial<OutlineSpec>) => void;
   updateRailSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
@@ -74,6 +80,7 @@ interface DesignContextValue {
   updateFins: (patch: Partial<FinPlacementSpec>) => void;
   updateVolume: (patch: Partial<VolumeSpec>) => void;
   setFinsImportTemplate: (next: boolean) => void;
+  setBoardName: (next: string) => void;
   /** Toggling off also forces `importRailThickness` off and copies the currently effective
    * length/width into the stored manual fields; toggling on needs no copy (the derived override
    * takes over). Ported from Volume.dc.html's `onToggleImportTemplateDimensions`. */
@@ -125,6 +132,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, volume: { ...prev.volume, ...patch } }));
 
   const setFinsImportTemplate = (next: boolean) => setState((prev) => ({ ...prev, finsImportTemplate: next }));
+
+  const setBoardName = (next: string) => setState((prev) => ({ ...prev, boardName: next }));
 
   const outlineGeometry = useMemo(() => buildOutline(state.outline), [state.outline]);
   const railBands = useMemo(() => computeRailBands(state.rails), [state.rails]);
@@ -256,12 +265,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     fins: state.fins,
     volume: state.volume,
     finsImportTemplate: state.finsImportTemplate,
+    boardName: state.boardName,
     updateOutline,
     updateRailSection,
     toggleTailHardEdge,
     updateFins,
     updateVolume,
     setFinsImportTemplate,
+    setBoardName,
     toggleImportTemplateDimensions,
     toggleImportRailThickness,
     outlineGeometry,
