@@ -37,9 +37,10 @@ interface OutlineViewerProps {
   compact?: boolean;
   /** Thumbnail-scale-only display sizing used by the setup screen's preset cards
    * (components/setup/preset-card.tsx): when true, skips the absolutely-positioned dimension
-   * label/value and length overlay entirely, leaving the SVG path, construction lines, and fin
-   * marks untouched. Changes nothing else — no geometry, no colours, no viewBox. Defaults to
-   * `false`, every existing screen's unchanged callout overlay. */
+   * label/value and length overlay, and the dashed centerline + station reference lines,
+   * leaving the SVG board outline path, construction lines, and fin marks untouched. Changes
+   * nothing else — no geometry, no colours, no viewBox. Defaults to `false`, every existing
+   * screen's unchanged callout and station-line overlay. */
   hideCallouts?: boolean;
 }
 
@@ -220,27 +221,31 @@ export function OutlineViewer({
         className="block h-full w-full"
       >
         <path d={outlinePath} fill="var(--outline-board-fill)" stroke="var(--outline-ink)" strokeWidth={2} />
-        <line
-          x1={centerlineX}
-          y1={tipPy}
-          x2={centerlineX}
-          y2={tailPy}
-          stroke="var(--outline-station-line)"
-          strokeWidth={1}
-          strokeDasharray="6 4"
-        />
-        {refLines.map((rl, i) => (
-          <line
-            key={i}
-            x1={rl.x1}
-            y1={rl.y1}
-            x2={rl.x2}
-            y2={rl.y2}
-            stroke="var(--outline-station-line)"
-            strokeWidth={1}
-            strokeDasharray="6 4"
-          />
-        ))}
+        {!hideCallouts && (
+          <>
+            <line
+              x1={centerlineX}
+              y1={tipPy}
+              x2={centerlineX}
+              y2={tailPy}
+              stroke="var(--outline-station-line)"
+              strokeWidth={1}
+              strokeDasharray="6 4"
+            />
+            {refLines.map((rl, i) => (
+              <line
+                key={i}
+                x1={rl.x1}
+                y1={rl.y1}
+                x2={rl.x2}
+                y2={rl.y2}
+                stroke="var(--outline-station-line)"
+                strokeWidth={1}
+                strokeDasharray="6 4"
+              />
+            ))}
+          </>
+        )}
         {showConstruction && (
           <>
             {constructionLines.map((cl, i) => (
