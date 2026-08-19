@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. User can view calculated rail band dimensions (thickness/apex/tuck) at stations along the board, derived from the outline
   5. The app is live at a public Vercel URL, ported from the `reference/` prototype, with all measurements displayed in inches and litres
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 Plans:
 **Wave 1**
@@ -43,7 +43,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — Setup screen per the approved UI contract: preset cards with real outline thumbnails, continue-board card, replace confirm dialog
+- [x] 01-02-PLAN.md — Setup screen per the approved UI contract: preset cards with real outline thumbnails, continue-board card, replace confirm dialog
 - [ ] 01-03-PLAN.md — First Vercel production deployment, auto-deploying from `main`
 
 **Wave 3** *(blocked on Wave 2 completion)*
@@ -106,7 +106,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation — Port & Deploy the Design Tool | 1/4 | In Progress|  |
+| 1. Foundation — Port & Deploy the Design Tool | 2/4 | In Progress|  |
 | 2. Accounts & Saved Designs | 0/TBD | Not started | - |
 | 3. Volume, Templates & Verified Math | 0/TBD | Not started | - |
 | 4. Rocker & Foil Editors | 0/TBD | Not started | - |

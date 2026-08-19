@@ -51,7 +51,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Visualization
 
-- [ ] **VIZ-01**: User can view a 2D visualization of the outline, rocker, rail contour, and fin placement as they shape the design
+- [x] **VIZ-01**: User can view a 2D visualization of the outline, rocker, rail contour, and fin placement as they shape the design
 
 ### Templates & Export
 
@@ -111,7 +111,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MODL-01 | Phase 2 | Pending |
 | MODL-02 | Phase 2 | Pending |
 | MODL-03 | Phase 2 | Pending |
-| VIZ-01 | Phase 1 | Pending |
+| VIZ-01 | Phase 1 | Complete |
 | TMPL-01 | Phase 3 | Pending |
 | UNIT-01 | Phase 1 | Complete |
 

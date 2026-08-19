@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: foundation-port-deploy-the-design-tool
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-08-19T21:51:35.171Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-08-19T22:29:44.459Z"
 last_activity: 2026-08-19
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 ## Current Position
 
 Phase: 01 (foundation-port-deploy-the-design-tool) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-08-19 — Phase 01 execution started
 
-Progress: [███░░░░░░░] 25%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [███░░░░░░░] 25%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01 P01 | 91min | 3 tasks | 13 files |
+| Phase 01 P02 | 34min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,8 @@ Recent decisions affecting current work:
 - [Phase ?]: 01-01: DesignProvider+SiteNav promoted to root layout so / and /design/* share one board-state instance
 - [Phase ?]: 01-01: body clamped to h-full+overflow-hidden and every aside+main design shell switched from flex-wrap to flex-nowrap+h-full so panels respect the viewport (sidebar scrolls, viewer fits, no page scroll)
 - [Phase ?]: 01-01: mobile/phone-width layout (cards overlapping sidebar below ~640px) explicitly deferred to a later phase per user
+- [Phase ?]: 01-02: hideCallouts on OutlineViewer extended to also suppress the dashed centerline/station reference lines (not just the dimension overlay) so preset-card thumbnails at full editor scale stay clean
+- [Phase ?]: 01-02: hasBoardInProgress is a flag set on write inside applyPreset/updateOutline, never derived by comparing the outline against its default
 
 ### Pending Todos
 
@@ -104,6 +107,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-19T21:51:35.151Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-08-19T22:29:44.446Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
