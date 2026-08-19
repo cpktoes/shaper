@@ -17,8 +17,8 @@ export function OutlineEditor() {
   const [showConstruction, setShowConstruction] = useState(false);
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-wrap">
-      <aside className="min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto bg-outline-sidebar-bg p-6 text-outline-sidebar-text">
+    <div className="flex min-h-0 w-full flex-1 flex-nowrap">
+      <aside className="h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto bg-outline-sidebar-bg p-6 text-outline-sidebar-text">
         <OutlineControls
           outline={outline}
           geometry={outlineGeometry}
@@ -27,8 +27,8 @@ export function OutlineEditor() {
           onToggleConstruction={() => setShowConstruction((v) => !v)}
         />
       </aside>
-      <main className="flex min-w-0 flex-1 basis-[480px] flex-col gap-5 bg-outline-page-bg p-2">
-        <div className="flex flex-1 items-stretch justify-center gap-6">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-5 bg-outline-page-bg p-2">
+        <div className="flex min-h-0 flex-1 items-stretch justify-center gap-6">
           <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center rounded-xl border border-[#e4ddc9] bg-white p-5">
             <div className="mb-3 self-start text-xl font-extrabold text-outline-ink">
               Template Viewer

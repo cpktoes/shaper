@@ -51,8 +51,8 @@ export function RailBandEditor() {
   const legend = openSections.length > 0 ? buildRailLegend(bands[openSections[0]]) : [];
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-wrap">
-      <aside className="min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto bg-outline-sidebar-bg p-6 text-outline-sidebar-text">
+    <div className="flex min-h-0 w-full flex-1 flex-nowrap">
+      <aside className="h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto bg-outline-sidebar-bg p-6 text-outline-sidebar-text">
         <RailControls
           spec={spec}
           bands={bands}
@@ -64,7 +64,7 @@ export function RailBandEditor() {
           onToggleAdvancedOpen={toggleAdvancedOpen}
         />
       </aside>
-      <main className="flex min-w-0 flex-1 basis-[480px] flex-col gap-2 bg-outline-page-bg p-2">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-2 bg-outline-page-bg p-2">
         <div className="flex flex-none gap-1.5">
           {(["viewer", "data"] as RailPage[]).map((page) => (
             <button
