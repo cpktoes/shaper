@@ -30,7 +30,7 @@ export function SiteNav() {
     >
       <Link
         href="/"
-        className="text-sm font-extrabold tracking-[0.15em] text-outline-sidebar-text"
+        className="text-sm font-extrabold tracking-[0.15em] text-outline-sidebar-text transition-colors hover:text-outline-accent"
       >
         SHAPER
       </Link>

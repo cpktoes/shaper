@@ -35,6 +35,12 @@ interface OutlineViewerProps {
    * else — no geometry, no colours, no layout. Defaults to `false`, the outline screen's own
    * unchanged 14px/13px callouts. */
   compact?: boolean;
+  /** Thumbnail-scale-only display sizing used by the setup screen's preset cards
+   * (components/setup/preset-card.tsx): when true, skips the absolutely-positioned dimension
+   * label/value and length overlay entirely, leaving the SVG path, construction lines, and fin
+   * marks untouched. Changes nothing else — no geometry, no colours, no viewBox. Defaults to
+   * `false`, every existing screen's unchanged callout overlay. */
+  hideCallouts?: boolean;
 }
 
 interface RawCallout {
@@ -50,6 +56,7 @@ export function OutlineViewer({
   showConstruction,
   finMarks = [],
   compact = false,
+  hideCallouts = false,
 }: OutlineViewerProps) {
   const lengthIn = mmToInches(geometry.length);
   const cwIn = mmToInches(geometry.halfWidePointWidth);
@@ -259,6 +266,7 @@ export function OutlineViewer({
           </g>
         ))}
       </svg>
+      {!hideCallouts && (
       <div className="pointer-events-none absolute inset-0">
         {callouts.map((co, i) => (
           <div key={i}>
@@ -297,6 +305,7 @@ export function OutlineViewer({
           {lengthCalloutText}
         </div>
       </div>
+      )}
     </>
   );
 }

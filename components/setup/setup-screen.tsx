@@ -1,14 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { PresetCard } from "@/components/setup/preset-card";
 import { useDesign } from "@/components/design/design-store";
 import { BOARD_PRESETS, type BoardPreset } from "@/lib/geometry/presets";
 
 /**
  * The setup screen — `/`'s entire content (D-05). Reads `applyPreset` from the shared
- * `DesignProvider` (now mounted in app/layout.tsx) exactly like a `/design/*` screen reads its own
- * slice, following the `outline-editor.tsx` client-screen pattern. Deliberately unstyled: this is
- * the tracer's proof-of-path surface, not the UI-SPEC card layout — plan 02 replaces this body.
+ * `DesignProvider` (mounted in app/layout.tsx) exactly like a `/design/*` screen reads its own
+ * slice, following the `outline-editor.tsx` client-screen pattern. Layout follows the approved
+ * UI-SPEC: shadcn neutral-theme canvas + cards, `outline-accent` amber as the one borrowed
+ * accent color, so the setup screen reads as part of the same product as the dark-nav design
+ * screens rather than a second visual language.
  */
 export function SetupScreen() {
   const { applyPreset } = useDesign();
@@ -20,20 +23,15 @@ export function SetupScreen() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
-      <h1 className="text-xl font-bold">Start a new board</h1>
-      <div className="flex flex-col gap-2">
-        {BOARD_PRESETS.map((preset) => (
-          <button
-            key={preset.id}
-            type="button"
-            onClick={() => handleSelect(preset)}
-            className="flex flex-col items-start gap-1 rounded-lg border border-outline-sidebar-divider p-4 text-left"
-          >
-            <span className="font-bold">{preset.name}</span>
-            <span className="text-sm text-outline-sidebar-text-muted">{preset.descriptor}</span>
-          </button>
-        ))}
+    <div className="min-h-0 flex-1 overflow-y-auto bg-background">
+      <div className="mx-auto max-w-5xl px-6 pt-16 pb-16 md:px-8">
+        <h1 className="text-[32px] leading-[1.15] font-semibold text-foreground">Shape a New Board</h1>
+        <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {BOARD_PRESETS.map((preset) => (
+            <PresetCard key={preset.id} preset={preset} onSelect={handleSelect} />
+          ))}
+        </div>
+        {/* Phase 2 saved-boards section slots in here, below the preset grid, without a redesign. */}
       </div>
     </div>
   );
