@@ -1,0 +1,3185 @@
+{
+  "manualDefault": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 20,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": false,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": null,
+    "rail": null,
+    "vals": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "997.5 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "2 1/16\"",
+      "volumeLitersDisplay": "33.92 L",
+      "volumeCuInDisplay": "2069.8 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "0.83 — Balanced",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "20\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "997.5 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "5.27 cm",
+      "volumeLitersDisplay": "33.92 L",
+      "volumeCuInDisplay": "2069.8 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "0.83 — Balanced",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "50.80 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "manualPerformance": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 20,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 0,
+      "copyToast": false,
+      "importTemplateDimensions": false,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": null,
+    "rail": null,
+    "vals": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "927.8 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "2\"",
+      "volumeLitersDisplay": "30.41 L",
+      "volumeCuInDisplay": "1855.6 cu in",
+      "areaFactorDisplay": "0.64 — Performance",
+      "thicknessFactorDisplay": "0.80 — Performance",
+      "boardTypeIndex": 0,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "20\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "927.8 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "5.08 cm",
+      "volumeLitersDisplay": "30.41 L",
+      "volumeCuInDisplay": "1855.6 cu in",
+      "areaFactorDisplay": "0.64 — Performance",
+      "thicknessFactorDisplay": "0.80 — Performance",
+      "boardTypeIndex": 0,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "50.80 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "manualBeefy": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 20,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 6,
+      "copyToast": false,
+      "importTemplateDimensions": false,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": null,
+    "rail": null,
+    "vals": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "1062.3 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "2 1/8\"",
+      "volumeLitersDisplay": "37.43 L",
+      "volumeCuInDisplay": "2283.9 cu in",
+      "areaFactorDisplay": "0.74 — Beefy",
+      "thicknessFactorDisplay": "0.86 — Beefy",
+      "boardTypeIndex": 6,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "20\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "1062.3 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "5.46 cm",
+      "volumeLitersDisplay": "37.43 L",
+      "volumeCuInDisplay": "2283.9 cu in",
+      "areaFactorDisplay": "0.74 — Beefy",
+      "thicknessFactorDisplay": "0.86 — Beefy",
+      "boardTypeIndex": 6,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "50.80 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "manualLongboard": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 108,
+      "width": 23,
+      "centerThickness": 3.25,
+      "boardTypeIndex": 4,
+      "copyToast": false,
+      "importTemplateDimensions": false,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": null,
+    "rail": null,
+    "vals": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "1758.9 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "2 3/4\"",
+      "volumeLitersDisplay": "78.69 L",
+      "volumeCuInDisplay": "4801.9 cu in",
+      "areaFactorDisplay": "0.71 — Beefy",
+      "thicknessFactorDisplay": "0.84 — Beefy",
+      "boardTypeIndex": 4,
+      "lengthFeet": 9,
+      "lengthInches": 0,
+      "lengthDisplay": "9'0\"",
+      "widthDisplay": "23\"",
+      "centerThicknessDisplay": "3 1/4\""
+    },
+    "valsCm": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "1758.9 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "6.93 cm",
+      "volumeLitersDisplay": "78.69 L",
+      "volumeCuInDisplay": "4801.9 cu in",
+      "areaFactorDisplay": "0.71 — Beefy",
+      "thicknessFactorDisplay": "0.84 — Beefy",
+      "boardTypeIndex": 4,
+      "lengthFeet": 9,
+      "lengthInches": 0,
+      "lengthDisplay": "9'0\"",
+      "widthDisplay": "58.42 cm",
+      "centerThicknessDisplay": "8.26 cm"
+    }
+  },
+  "calibration0": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.25,
+      "boardTypeIndex": 0,
+      "copyToast": false,
+      "importTemplateDimensions": false,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": null,
+    "rail": null,
+    "vals": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "881.4 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "1 13/16\"",
+      "volumeLitersDisplay": "26.00 L",
+      "volumeCuInDisplay": "1586.5 cu in",
+      "areaFactorDisplay": "0.64 — Performance",
+      "thicknessFactorDisplay": "0.80 — Performance",
+      "boardTypeIndex": 0,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/4\""
+    },
+    "valsCm": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "881.4 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "4.57 cm",
+      "volumeLitersDisplay": "26.00 L",
+      "volumeCuInDisplay": "1586.5 cu in",
+      "areaFactorDisplay": "0.64 — Performance",
+      "thicknessFactorDisplay": "0.80 — Performance",
+      "boardTypeIndex": 0,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "5.72 cm"
+    }
+  },
+  "calibration1": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.25,
+      "boardTypeIndex": 1,
+      "copyToast": false,
+      "importTemplateDimensions": false,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": null,
+    "rail": null,
+    "vals": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "904.1 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "1 13/16\"",
+      "volumeLitersDisplay": "27.00 L",
+      "volumeCuInDisplay": "1647.7 cu in",
+      "areaFactorDisplay": "0.66 — Performance",
+      "thicknessFactorDisplay": "0.81 — Performance",
+      "boardTypeIndex": 1,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/4\""
+    },
+    "valsCm": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "904.1 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "4.63 cm",
+      "volumeLitersDisplay": "27.00 L",
+      "volumeCuInDisplay": "1647.7 cu in",
+      "areaFactorDisplay": "0.66 — Performance",
+      "thicknessFactorDisplay": "0.81 — Performance",
+      "boardTypeIndex": 1,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "5.72 cm"
+    }
+  },
+  "calibration2": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.25,
+      "boardTypeIndex": 2,
+      "copyToast": false,
+      "importTemplateDimensions": false,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": null,
+    "rail": null,
+    "vals": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "926.1 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "1 7/8\"",
+      "volumeLitersDisplay": "28.00 L",
+      "volumeCuInDisplay": "1708.7 cu in",
+      "areaFactorDisplay": "0.68 — Performance",
+      "thicknessFactorDisplay": "0.82 — Performance",
+      "boardTypeIndex": 2,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/4\""
+    },
+    "valsCm": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "926.1 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "4.69 cm",
+      "volumeLitersDisplay": "28.00 L",
+      "volumeCuInDisplay": "1708.7 cu in",
+      "areaFactorDisplay": "0.68 — Performance",
+      "thicknessFactorDisplay": "0.82 — Performance",
+      "boardTypeIndex": 2,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "5.72 cm"
+    }
+  },
+  "calibration3": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.25,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": false,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": null,
+    "rail": null,
+    "vals": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "947.6 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "1 7/8\"",
+      "volumeLitersDisplay": "29.00 L",
+      "volumeCuInDisplay": "1769.7 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "0.83 — Balanced",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/4\""
+    },
+    "valsCm": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "947.6 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "4.74 cm",
+      "volumeLitersDisplay": "29.00 L",
+      "volumeCuInDisplay": "1769.7 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "0.83 — Balanced",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "5.72 cm"
+    }
+  },
+  "calibration4": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.25,
+      "boardTypeIndex": 4,
+      "copyToast": false,
+      "importTemplateDimensions": false,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": null,
+    "rail": null,
+    "vals": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "968.7 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "1 7/8\"",
+      "volumeLitersDisplay": "30.00 L",
+      "volumeCuInDisplay": "1830.8 cu in",
+      "areaFactorDisplay": "0.71 — Beefy",
+      "thicknessFactorDisplay": "0.84 — Beefy",
+      "boardTypeIndex": 4,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/4\""
+    },
+    "valsCm": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "968.7 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "4.80 cm",
+      "volumeLitersDisplay": "30.00 L",
+      "volumeCuInDisplay": "1830.8 cu in",
+      "areaFactorDisplay": "0.71 — Beefy",
+      "thicknessFactorDisplay": "0.84 — Beefy",
+      "boardTypeIndex": 4,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "5.72 cm"
+    }
+  },
+  "calibration5": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.25,
+      "boardTypeIndex": 5,
+      "copyToast": false,
+      "importTemplateDimensions": false,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": null,
+    "rail": null,
+    "vals": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "989.2 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "1 15/16\"",
+      "volumeLitersDisplay": "31.00 L",
+      "volumeCuInDisplay": "1891.8 cu in",
+      "areaFactorDisplay": "0.72 — Beefy",
+      "thicknessFactorDisplay": "0.85 — Beefy",
+      "boardTypeIndex": 5,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/4\""
+    },
+    "valsCm": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "989.2 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "4.86 cm",
+      "volumeLitersDisplay": "31.00 L",
+      "volumeCuInDisplay": "1891.8 cu in",
+      "areaFactorDisplay": "0.72 — Beefy",
+      "thicknessFactorDisplay": "0.85 — Beefy",
+      "boardTypeIndex": 5,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "5.72 cm"
+    }
+  },
+  "calibration6": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.25,
+      "boardTypeIndex": 6,
+      "copyToast": false,
+      "importTemplateDimensions": false,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": null,
+    "rail": null,
+    "vals": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "1009.2 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "1 15/16\"",
+      "volumeLitersDisplay": "32.00 L",
+      "volumeCuInDisplay": "1952.8 cu in",
+      "areaFactorDisplay": "0.74 — Beefy",
+      "thicknessFactorDisplay": "0.86 — Beefy",
+      "boardTypeIndex": 6,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/4\""
+    },
+    "valsCm": {
+      "templateAvailable": false,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "1009.2 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "4.91 cm",
+      "volumeLitersDisplay": "32.00 L",
+      "volumeCuInDisplay": "1952.8 cu in",
+      "areaFactorDisplay": "0.74 — Beefy",
+      "thicknessFactorDisplay": "0.86 — Beefy",
+      "boardTypeIndex": 6,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "5.72 cm"
+    }
+  },
+  "templateOnly": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 1041.030821668072,
+      "lengthIn": 72,
+      "widepointWidth": 19,
+      "noseWidthAt12": 11.999208503527878,
+      "tailWidthAt12": 14.719898092606693
+    },
+    "rail": null,
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": false,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "2 1/16\"",
+      "volumeLitersDisplay": "35.40 L",
+      "volumeCuInDisplay": "2160.1 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "0.83 — Balanced",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": false,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "5.27 cm",
+      "volumeLitersDisplay": "35.40 L",
+      "volumeCuInDisplay": "2160.1 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "0.83 — Balanced",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "templateOnlyLongboard": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 108,
+      "width": 23,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 2117.4509802936795,
+      "lengthIn": 108,
+      "widepointWidth": 23,
+      "noseWidthAt12": 15.416211984884624,
+      "tailWidthAt12": 18.950258883447958
+    },
+    "rail": null,
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": false,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "2117.5 sq in (imported)",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "2 1/16\"",
+      "volumeLitersDisplay": "72.00 L",
+      "volumeCuInDisplay": "4393.7 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "0.83 — Balanced",
+      "boardTypeIndex": 3,
+      "lengthFeet": 9,
+      "lengthInches": 0,
+      "lengthDisplay": "9'0\"",
+      "widthDisplay": "23\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": false,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "2117.5 sq in (imported)",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "5.27 cm",
+      "volumeLitersDisplay": "72.00 L",
+      "volumeCuInDisplay": "4393.7 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "0.83 — Balanced",
+      "boardTypeIndex": 3,
+      "lengthFeet": 9,
+      "lengthInches": 0,
+      "lengthDisplay": "9'0\"",
+      "widthDisplay": "58.42 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "templateOnlyBeefy": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 6,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": false,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 1041.030821668072,
+      "lengthIn": 72,
+      "widepointWidth": 19,
+      "noseWidthAt12": 11.999208503527878,
+      "tailWidthAt12": 14.719898092606693
+    },
+    "rail": null,
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": false,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "2 1/8\"",
+      "volumeLitersDisplay": "36.68 L",
+      "volumeCuInDisplay": "2238.2 cu in",
+      "areaFactorDisplay": "0.74 — Beefy",
+      "thicknessFactorDisplay": "0.86 — Beefy",
+      "boardTypeIndex": 6,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": false,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "5.46 cm",
+      "volumeLitersDisplay": "36.68 L",
+      "volumeCuInDisplay": "2238.2 cu in",
+      "areaFactorDisplay": "0.74 — Beefy",
+      "thicknessFactorDisplay": "0.86 — Beefy",
+      "boardTypeIndex": 6,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "railFallback": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": true,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 1041.030821668072,
+      "lengthIn": 72,
+      "widepointWidth": 19,
+      "noseWidthAt12": 11.999208503527878,
+      "tailWidthAt12": 14.719898092606693
+    },
+    "rail": {
+      "available": true,
+      "noseThickness": 1.31,
+      "centerThickness": 2.5,
+      "tailThickness": 1.56
+    },
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": null,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "2 1/2\"",
+      "volumeLitersDisplay": "42.65 L",
+      "volumeCuInDisplay": "2602.6 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": null,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "6.35 cm",
+      "volumeLitersDisplay": "42.65 L",
+      "volumeCuInDisplay": "2602.6 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "geomDefault": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": true,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 1041.030821668072,
+      "lengthIn": 72,
+      "widepointWidth": 19,
+      "noseWidthAt12": 11.999208503527878,
+      "tailWidthAt12": 14.719898092606693
+    },
+    "rail": {
+      "available": true,
+      "noseThickness": 1.31,
+      "centerThickness": 2.5,
+      "tailThickness": 1.56,
+      "noseProfile": [
+        [
+          -4.5,
+          1.31
+        ],
+        [
+          -3,
+          1.31
+        ],
+        [
+          -0.9375,
+          1.057625
+        ],
+        [
+          -1.875,
+          1.31
+        ],
+        [
+          0,
+          0.80525
+        ],
+        [
+          0,
+          0.24275000000000002
+        ],
+        [
+          -0.060687500000000005,
+          0.12137500000000001
+        ],
+        [
+          -0.24275000000000002,
+          0
+        ]
+      ],
+      "centerProfile": [
+        [
+          -6,
+          2.5
+        ],
+        [
+          -4,
+          2.5
+        ],
+        [
+          -1.25,
+          1.9375
+        ],
+        [
+          -2.5,
+          2.5
+        ],
+        [
+          0,
+          1.375
+        ],
+        [
+          0,
+          0.625
+        ],
+        [
+          -0.15625,
+          0.3125
+        ],
+        [
+          -0.625,
+          0
+        ]
+      ],
+      "tailProfile": [
+        [
+          -4.5,
+          1.56
+        ],
+        [
+          -3,
+          1.56
+        ],
+        [
+          -0.9375,
+          1.232625
+        ],
+        [
+          -1.875,
+          1.56
+        ],
+        [
+          0,
+          0.9052500000000001
+        ],
+        [
+          0,
+          0.3427500000000001
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "1 7/16\"",
+      "centerEffDisplay": "2 5/16\"",
+      "noseEffDisplay": "1 3/16\"",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "1 1/2\"",
+      "volumeLitersDisplay": "25.78 L",
+      "volumeCuInDisplay": "1573.2 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "3.69 cm",
+      "centerEffDisplay": "5.82 cm",
+      "noseEffDisplay": "3.06 cm",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "3.84 cm",
+      "volumeLitersDisplay": "25.78 L",
+      "volumeCuInDisplay": "1573.2 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "geomDomed": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": true,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 1041.030821668072,
+      "lengthIn": 72,
+      "widepointWidth": 19,
+      "noseWidthAt12": 11.999208503527878,
+      "tailWidthAt12": 14.719898092606693
+    },
+    "rail": {
+      "available": true,
+      "noseThickness": 1.31,
+      "centerThickness": 2.5,
+      "tailThickness": 1.56,
+      "noseProfile": [
+        [
+          -4.5,
+          1.31
+        ],
+        [
+          -3,
+          1.1858333333333333
+        ],
+        [
+          -0.9375,
+          0.8744791666666667
+        ],
+        [
+          -1.875,
+          1.0927083333333334
+        ],
+        [
+          0,
+          0.65625
+        ],
+        [
+          0,
+          0.09375
+        ],
+        [
+          -0.0234375,
+          0.046875
+        ],
+        [
+          -0.09375,
+          0
+        ]
+      ],
+      "centerProfile": [
+        [
+          -6,
+          2.5
+        ],
+        [
+          -4,
+          2.3333333333333335
+        ],
+        [
+          -1.25,
+          1.6916666666666669
+        ],
+        [
+          -2.5,
+          2.2083333333333335
+        ],
+        [
+          0,
+          1.175
+        ],
+        [
+          0,
+          0.42500000000000004
+        ],
+        [
+          -0.10625000000000001,
+          0.21250000000000002
+        ],
+        [
+          -0.42500000000000004,
+          0
+        ]
+      ],
+      "tailProfile": [
+        [
+          -4.5,
+          1.56
+        ],
+        [
+          -3,
+          1.4775
+        ],
+        [
+          -0.9375,
+          1.1109375
+        ],
+        [
+          -1.875,
+          1.415625
+        ],
+        [
+          0,
+          0.80625
+        ],
+        [
+          0,
+          0.24375000000000002
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "1 3/8\"",
+      "centerEffDisplay": "2 3/16\"",
+      "noseEffDisplay": "1 1/8\"",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "1 7/16\"",
+      "volumeLitersDisplay": "24.62 L",
+      "volumeCuInDisplay": "1502.1 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "3.56 cm",
+      "centerEffDisplay": "5.57 cm",
+      "noseEffDisplay": "2.83 cm",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "3.66 cm",
+      "volumeLitersDisplay": "24.62 L",
+      "volumeCuInDisplay": "1502.1 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "geomHardEdgeOff": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": true,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 1041.030821668072,
+      "lengthIn": 72,
+      "widepointWidth": 19,
+      "noseWidthAt12": 11.999208503527878,
+      "tailWidthAt12": 14.719898092606693
+    },
+    "rail": {
+      "available": true,
+      "noseThickness": 1.31,
+      "centerThickness": 2.5,
+      "tailThickness": 1.56,
+      "noseProfile": [
+        [
+          -4.5,
+          1.31
+        ],
+        [
+          -3,
+          1.31
+        ],
+        [
+          -0.9375,
+          1.057625
+        ],
+        [
+          -1.875,
+          1.31
+        ],
+        [
+          0,
+          0.80525
+        ],
+        [
+          0,
+          0.24275000000000002
+        ],
+        [
+          -0.060687500000000005,
+          0.12137500000000001
+        ],
+        [
+          -0.24275000000000002,
+          0
+        ]
+      ],
+      "centerProfile": [
+        [
+          -6,
+          2.5
+        ],
+        [
+          -4,
+          2.5
+        ],
+        [
+          -1.25,
+          1.9375
+        ],
+        [
+          -2.5,
+          2.5
+        ],
+        [
+          0,
+          1.375
+        ],
+        [
+          0,
+          0.625
+        ],
+        [
+          -0.15625,
+          0.3125
+        ],
+        [
+          -0.625,
+          0
+        ]
+      ],
+      "tailProfile": [
+        [
+          -4.5,
+          1.56
+        ],
+        [
+          -3,
+          1.56
+        ],
+        [
+          -0.9375,
+          1.232625
+        ],
+        [
+          -1.875,
+          1.56
+        ],
+        [
+          0,
+          0.9052500000000001
+        ],
+        [
+          0,
+          0.3427500000000001
+        ],
+        [
+          -0.08568750000000003,
+          0.17137500000000006
+        ],
+        [
+          -0.3427500000000001,
+          0
+        ]
+      ]
+    },
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "1 7/16\"",
+      "centerEffDisplay": "2 5/16\"",
+      "noseEffDisplay": "1 3/16\"",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "1 1/2\"",
+      "volumeLitersDisplay": "25.76 L",
+      "volumeCuInDisplay": "1571.7 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "3.67 cm",
+      "centerEffDisplay": "5.82 cm",
+      "noseEffDisplay": "3.06 cm",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "3.83 cm",
+      "volumeLitersDisplay": "25.76 L",
+      "volumeCuInDisplay": "1571.7 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "geomSingleTuck": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": true,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 1041.030821668072,
+      "lengthIn": 72,
+      "widepointWidth": 19,
+      "noseWidthAt12": 11.999208503527878,
+      "tailWidthAt12": 14.719898092606693
+    },
+    "rail": {
+      "available": true,
+      "noseThickness": 1.31,
+      "centerThickness": 2.5,
+      "tailThickness": 1.56,
+      "noseProfile": [
+        [
+          -4.5,
+          1.31
+        ],
+        [
+          -3,
+          1.31
+        ],
+        [
+          -0.9375,
+          1.057625
+        ],
+        [
+          -1.875,
+          1.31
+        ],
+        [
+          0,
+          0.80525
+        ],
+        [
+          0,
+          0.24275000000000002
+        ],
+        [
+          -0.24275000000000002,
+          0
+        ]
+      ],
+      "centerProfile": [
+        [
+          -6,
+          2.5
+        ],
+        [
+          -4,
+          2.5
+        ],
+        [
+          -1.25,
+          1.9375
+        ],
+        [
+          -2.5,
+          2.5
+        ],
+        [
+          0,
+          1.375
+        ],
+        [
+          0,
+          0.625
+        ],
+        [
+          -0.625,
+          0
+        ]
+      ],
+      "tailProfile": [
+        [
+          -4.5,
+          1.56
+        ],
+        [
+          -3,
+          1.56
+        ],
+        [
+          -0.9375,
+          1.232625
+        ],
+        [
+          -1.875,
+          1.56
+        ],
+        [
+          0,
+          0.9052500000000001
+        ],
+        [
+          0,
+          0.3427500000000001
+        ],
+        [
+          -0.3427500000000001,
+          0
+        ]
+      ]
+    },
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "1 7/16\"",
+      "centerEffDisplay": "2 5/16\"",
+      "noseEffDisplay": "1 3/16\"",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "1 1/2\"",
+      "volumeLitersDisplay": "25.71 L",
+      "volumeCuInDisplay": "1569.0 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "3.67 cm",
+      "centerEffDisplay": "5.81 cm",
+      "noseEffDisplay": "3.05 cm",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "3.83 cm",
+      "volumeLitersDisplay": "25.71 L",
+      "volumeCuInDisplay": "1569.0 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "geomFamilyBoxy": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": true,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 1041.030821668072,
+      "lengthIn": 72,
+      "widepointWidth": 19,
+      "noseWidthAt12": 11.999208503527878,
+      "tailWidthAt12": 14.719898092606693
+    },
+    "rail": {
+      "available": true,
+      "noseThickness": 1.31,
+      "centerThickness": 2.5,
+      "tailThickness": 1.56,
+      "noseProfile": [
+        [
+          -4.5,
+          1.31
+        ],
+        [
+          -2.625,
+          1.31
+        ],
+        [
+          -0.75,
+          1.1045
+        ],
+        [
+          -1.5,
+          1.31
+        ],
+        [
+          0,
+          0.899
+        ],
+        [
+          0,
+          0.14900000000000002
+        ],
+        [
+          -0.037250000000000005,
+          0.07450000000000001
+        ],
+        [
+          -0.14900000000000002,
+          0
+        ]
+      ],
+      "centerProfile": [
+        [
+          -6,
+          2.5
+        ],
+        [
+          -3.5,
+          2.5
+        ],
+        [
+          -1,
+          2
+        ],
+        [
+          -2,
+          2.5
+        ],
+        [
+          0,
+          1.5
+        ],
+        [
+          0,
+          0.5
+        ],
+        [
+          -0.125,
+          0.25
+        ],
+        [
+          -0.5,
+          0
+        ]
+      ],
+      "tailProfile": [
+        [
+          -4.5,
+          1.56
+        ],
+        [
+          -2.625,
+          1.56
+        ],
+        [
+          -0.75,
+          1.2795
+        ],
+        [
+          -1.5,
+          1.56
+        ],
+        [
+          0,
+          0.9990000000000001
+        ],
+        [
+          0,
+          0.2490000000000001
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "1 1/2\"",
+      "centerEffDisplay": "2 3/8\"",
+      "noseEffDisplay": "1 1/4\"",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "1 9/16\"",
+      "volumeLitersDisplay": "26.36 L",
+      "volumeCuInDisplay": "1608.4 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "3.76 cm",
+      "centerEffDisplay": "5.96 cm",
+      "noseEffDisplay": "3.14 cm",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "3.92 cm",
+      "volumeLitersDisplay": "26.36 L",
+      "volumeCuInDisplay": "1608.4 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "geomFamilyKnifey": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": true,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 1041.030821668072,
+      "lengthIn": 72,
+      "widepointWidth": 19,
+      "noseWidthAt12": 11.999208503527878,
+      "tailWidthAt12": 14.719898092606693
+    },
+    "rail": {
+      "available": true,
+      "noseThickness": 1.31,
+      "centerThickness": 2.5,
+      "tailThickness": 1.56,
+      "noseProfile": [
+        [
+          -4.5,
+          1.31
+        ],
+        [
+          -3.375,
+          1.31
+        ],
+        [
+          -1.125,
+          1.01075
+        ],
+        [
+          -2.25,
+          1.31
+        ],
+        [
+          0,
+          0.7115
+        ],
+        [
+          0,
+          0.3365
+        ],
+        [
+          -0.084125,
+          0.16825
+        ],
+        [
+          -0.3365,
+          0
+        ]
+      ],
+      "centerProfile": [
+        [
+          -6,
+          2.5
+        ],
+        [
+          -4.5,
+          2.5
+        ],
+        [
+          -1.5,
+          1.875
+        ],
+        [
+          -3,
+          2.5
+        ],
+        [
+          0,
+          1.25
+        ],
+        [
+          0,
+          0.75
+        ],
+        [
+          -0.1875,
+          0.375
+        ],
+        [
+          -0.75,
+          0
+        ]
+      ],
+      "tailProfile": [
+        [
+          -4.5,
+          1.56
+        ],
+        [
+          -3.375,
+          1.56
+        ],
+        [
+          -1.125,
+          1.18575
+        ],
+        [
+          -2.25,
+          1.56
+        ],
+        [
+          0,
+          0.8115000000000001
+        ],
+        [
+          0,
+          0.4365000000000001
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "1 7/16\"",
+      "centerEffDisplay": "2 1/4\"",
+      "noseEffDisplay": "1 3/16\"",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "1 1/2\"",
+      "volumeLitersDisplay": "25.11 L",
+      "volumeCuInDisplay": "1532.3 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "3.60 cm",
+      "centerEffDisplay": "5.67 cm",
+      "noseEffDisplay": "2.95 cm",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "3.74 cm",
+      "volumeLitersDisplay": "25.11 L",
+      "volumeCuInDisplay": "1532.3 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "geomLongboard": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 108,
+      "width": 23,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": true,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 2117.4509802936795,
+      "lengthIn": 108,
+      "widepointWidth": 23,
+      "noseWidthAt12": 15.416211984884624,
+      "tailWidthAt12": 18.950258883447958
+    },
+    "rail": {
+      "available": true,
+      "noseThickness": 1.31,
+      "centerThickness": 2.5,
+      "tailThickness": 1.56,
+      "noseProfile": [
+        [
+          -4.5,
+          1.31
+        ],
+        [
+          -3,
+          1.31
+        ],
+        [
+          -0.9375,
+          1.057625
+        ],
+        [
+          -1.875,
+          1.31
+        ],
+        [
+          0,
+          0.80525
+        ],
+        [
+          0,
+          0.24275000000000002
+        ],
+        [
+          -0.060687500000000005,
+          0.12137500000000001
+        ],
+        [
+          -0.24275000000000002,
+          0
+        ]
+      ],
+      "centerProfile": [
+        [
+          -6,
+          2.5
+        ],
+        [
+          -4,
+          2.5
+        ],
+        [
+          -1.25,
+          1.9375
+        ],
+        [
+          -2.5,
+          2.5
+        ],
+        [
+          0,
+          1.375
+        ],
+        [
+          0,
+          0.625
+        ],
+        [
+          -0.15625,
+          0.3125
+        ],
+        [
+          -0.625,
+          0
+        ]
+      ],
+      "tailProfile": [
+        [
+          -4.5,
+          1.56
+        ],
+        [
+          -3,
+          1.56
+        ],
+        [
+          -0.9375,
+          1.232625
+        ],
+        [
+          -1.875,
+          1.56
+        ],
+        [
+          0,
+          0.9052500000000001
+        ],
+        [
+          0,
+          0.3427500000000001
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "2117.5 sq in (imported)",
+      "tailEffDisplay": "1 1/2\"",
+      "centerEffDisplay": "2 5/16\"",
+      "noseEffDisplay": "1 1/4\"",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "1 5/8\"",
+      "volumeLitersDisplay": "56.31 L",
+      "volumeCuInDisplay": "3436.4 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 9,
+      "lengthInches": 0,
+      "lengthDisplay": "9'0\"",
+      "widthDisplay": "23\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "2117.5 sq in (imported)",
+      "tailEffDisplay": "3.75 cm",
+      "centerEffDisplay": "5.91 cm",
+      "noseEffDisplay": "3.12 cm",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "4.12 cm",
+      "volumeLitersDisplay": "56.31 L",
+      "volumeCuInDisplay": "3436.4 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 9,
+      "lengthInches": 0,
+      "lengthDisplay": "9'0\"",
+      "widthDisplay": "58.42 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "geomPin": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": true,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 1007.0273895526315,
+      "lengthIn": 72,
+      "widepointWidth": 19,
+      "noseWidthAt12": 11.999208503527878,
+      "tailWidthAt12": 13.60254276731449
+    },
+    "rail": {
+      "available": true,
+      "noseThickness": 1.31,
+      "centerThickness": 2.5,
+      "tailThickness": 1.56,
+      "noseProfile": [
+        [
+          -4.5,
+          1.31
+        ],
+        [
+          -3,
+          1.31
+        ],
+        [
+          -0.9375,
+          1.057625
+        ],
+        [
+          -1.875,
+          1.31
+        ],
+        [
+          0,
+          0.80525
+        ],
+        [
+          0,
+          0.24275000000000002
+        ],
+        [
+          -0.060687500000000005,
+          0.12137500000000001
+        ],
+        [
+          -0.24275000000000002,
+          0
+        ]
+      ],
+      "centerProfile": [
+        [
+          -6,
+          2.5
+        ],
+        [
+          -4,
+          2.3333333333333335
+        ],
+        [
+          -1.25,
+          1.6916666666666669
+        ],
+        [
+          -2.5,
+          2.2083333333333335
+        ],
+        [
+          0,
+          1.175
+        ],
+        [
+          0,
+          0.42500000000000004
+        ],
+        [
+          -0.10625000000000001,
+          0.21250000000000002
+        ],
+        [
+          -0.42500000000000004,
+          0
+        ]
+      ],
+      "tailProfile": [
+        [
+          -4.5,
+          1.56
+        ],
+        [
+          -3,
+          1.56
+        ],
+        [
+          -0.9375,
+          1.232625
+        ],
+        [
+          -1.875,
+          1.56
+        ],
+        [
+          0,
+          0.9052500000000001
+        ],
+        [
+          0,
+          0.3427500000000001
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1007.0 sq in (imported)",
+      "tailEffDisplay": "1 7/16\"",
+      "centerEffDisplay": "2 3/16\"",
+      "noseEffDisplay": "1 3/16\"",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "1 1/2\"",
+      "volumeLitersDisplay": "24.36 L",
+      "volumeCuInDisplay": "1486.6 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1007.0 sq in (imported)",
+      "tailEffDisplay": "3.66 cm",
+      "centerEffDisplay": "5.57 cm",
+      "noseEffDisplay": "3.06 cm",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "3.75 cm",
+      "volumeLitersDisplay": "24.36 L",
+      "volumeCuInDisplay": "1486.6 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "geomSwallow": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": true,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 1042.954064153713,
+      "lengthIn": 72,
+      "widepointWidth": 19,
+      "noseWidthAt12": 11.999208503527878,
+      "tailWidthAt12": 14.340644488317075
+    },
+    "rail": {
+      "available": true,
+      "noseThickness": 1.31,
+      "centerThickness": 2.5,
+      "tailThickness": 1.56,
+      "noseProfile": [
+        [
+          -4.5,
+          1.31
+        ],
+        [
+          -2.625,
+          1.31
+        ],
+        [
+          -0.75,
+          1.1045
+        ],
+        [
+          -1.5,
+          1.31
+        ],
+        [
+          0,
+          0.899
+        ],
+        [
+          0,
+          0.14900000000000002
+        ],
+        [
+          -0.037250000000000005,
+          0.07450000000000001
+        ],
+        [
+          -0.14900000000000002,
+          0
+        ]
+      ],
+      "centerProfile": [
+        [
+          -6,
+          2.5
+        ],
+        [
+          -3.5,
+          2.5
+        ],
+        [
+          -1,
+          2
+        ],
+        [
+          -2,
+          2.5
+        ],
+        [
+          0,
+          1.5
+        ],
+        [
+          0,
+          0.5
+        ],
+        [
+          -0.125,
+          0.25
+        ],
+        [
+          -0.5,
+          0
+        ]
+      ],
+      "tailProfile": [
+        [
+          -4.5,
+          1.56
+        ],
+        [
+          -2.625,
+          1.56
+        ],
+        [
+          -0.75,
+          1.2795
+        ],
+        [
+          -1.5,
+          1.56
+        ],
+        [
+          0,
+          0.9990000000000001
+        ],
+        [
+          0,
+          0.2490000000000001
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1043.0 sq in (imported)",
+      "tailEffDisplay": "1 1/2\"",
+      "centerEffDisplay": "2 3/8\"",
+      "noseEffDisplay": "1 1/4\"",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "1 9/16\"",
+      "volumeLitersDisplay": "26.40 L",
+      "volumeCuInDisplay": "1610.8 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1043.0 sq in (imported)",
+      "tailEffDisplay": "3.76 cm",
+      "centerEffDisplay": "5.96 cm",
+      "noseEffDisplay": "3.14 cm",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "3.92 cm",
+      "volumeLitersDisplay": "26.40 L",
+      "volumeCuInDisplay": "1610.8 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "geomDiamond": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": true,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 1029.0711477764376,
+      "lengthIn": 72,
+      "widepointWidth": 19,
+      "noseWidthAt12": 11.999208503527878,
+      "tailWidthAt12": 15.077536886461724
+    },
+    "rail": {
+      "available": true,
+      "noseThickness": 1.31,
+      "centerThickness": 2.5,
+      "tailThickness": 1.56,
+      "noseProfile": [
+        [
+          -4.5,
+          1.31
+        ],
+        [
+          -3,
+          1.31
+        ],
+        [
+          -0.9375,
+          1.254125
+        ],
+        [
+          -1.875,
+          1.31
+        ],
+        [
+          0,
+          1.1982499999999998
+        ],
+        [
+          0,
+          0.6357499999999999
+        ],
+        [
+          -0.15893749999999998,
+          0.31787499999999996
+        ],
+        [
+          -0.6357499999999999,
+          0
+        ]
+      ],
+      "centerProfile": [
+        [
+          -6,
+          2.5
+        ],
+        [
+          -4,
+          2.5
+        ],
+        [
+          -1.25,
+          1.8125
+        ],
+        [
+          -2.5,
+          2.5
+        ],
+        [
+          0,
+          1.125
+        ],
+        [
+          0,
+          0.3750000000000001
+        ],
+        [
+          -0.09375000000000003,
+          0.18750000000000006
+        ],
+        [
+          -0.3750000000000001,
+          0
+        ]
+      ],
+      "tailProfile": [
+        [
+          -4.5,
+          1.56
+        ],
+        [
+          -3,
+          1.56
+        ],
+        [
+          -0.9375,
+          1.466625
+        ],
+        [
+          -1.875,
+          1.56
+        ],
+        [
+          0,
+          1.3732499999999999
+        ],
+        [
+          0,
+          0.8107499999999999
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1029.1 sq in (imported)",
+      "tailEffDisplay": "1 1/2\"",
+      "centerEffDisplay": "2 1/4\"",
+      "noseEffDisplay": "1 1/4\"",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "1 9/16\"",
+      "volumeLitersDisplay": "25.87 L",
+      "volumeCuInDisplay": "1579.0 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": true,
+      "importingRailThickness": true,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": true,
+      "thicknessOpacity": "0.4",
+      "showDimensionRows": false,
+      "showGeomBreakdown": true,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1029.1 sq in (imported)",
+      "tailEffDisplay": "3.89 cm",
+      "centerEffDisplay": "5.74 cm",
+      "noseEffDisplay": "3.21 cm",
+      "weightedThicknessLabel": "Length-Weighted Effective Thickness",
+      "weightedThicknessDisplay": "3.90 cm",
+      "volumeLitersDisplay": "25.87 L",
+      "volumeCuInDisplay": "1579.0 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "Not used — real geometry",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "railUnavailable": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 19,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": true,
+      "rootAvailH": 0
+    },
+    "template": {
+      "available": true,
+      "area": 1041.030821668072,
+      "lengthIn": 72,
+      "widepointWidth": 19,
+      "noseWidthAt12": 11.999208503527878,
+      "tailWidthAt12": 14.719898092606693
+    },
+    "rail": null,
+    "vals": {
+      "templateAvailable": true,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": false,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "2 1/16\"",
+      "volumeLitersDisplay": "35.40 L",
+      "volumeCuInDisplay": "2160.1 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "0.83 — Balanced",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "19\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": true,
+      "railAvailable": false,
+      "importingRailThickness": false,
+      "dimensionsDisabled": true,
+      "dimensionsOpacity": "0.4",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": false,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Template Area",
+      "areaSqInDisplay": "1041.0 sq in (imported)",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "5.27 cm",
+      "volumeLitersDisplay": "35.40 L",
+      "volumeCuInDisplay": "2160.1 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "0.83 — Balanced",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "48.26 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  },
+  "templateUnavailable": {
+    "state": {
+      "units": "in",
+      "globalSettingsOpen": false,
+      "lengthIn": 72,
+      "width": 20,
+      "centerThickness": 2.5,
+      "boardTypeIndex": 3,
+      "copyToast": false,
+      "importTemplateDimensions": true,
+      "importRailThickness": true,
+      "rootAvailH": 0
+    },
+    "template": null,
+    "rail": {
+      "available": true,
+      "noseThickness": 1.31,
+      "centerThickness": 2.5,
+      "tailThickness": 1.56,
+      "noseProfile": [
+        [
+          -4.5,
+          1.31
+        ],
+        [
+          -3,
+          1.31
+        ],
+        [
+          -0.9375,
+          1.057625
+        ],
+        [
+          -1.875,
+          1.31
+        ],
+        [
+          0,
+          0.80525
+        ],
+        [
+          0,
+          0.24275000000000002
+        ],
+        [
+          -0.060687500000000005,
+          0.12137500000000001
+        ],
+        [
+          -0.24275000000000002,
+          0
+        ]
+      ],
+      "centerProfile": [
+        [
+          -6,
+          2.5
+        ],
+        [
+          -4,
+          2.5
+        ],
+        [
+          -1.25,
+          1.9375
+        ],
+        [
+          -2.5,
+          2.5
+        ],
+        [
+          0,
+          1.375
+        ],
+        [
+          0,
+          0.625
+        ],
+        [
+          -0.15625,
+          0.3125
+        ],
+        [
+          -0.625,
+          0
+        ]
+      ],
+      "tailProfile": [
+        [
+          -4.5,
+          1.56
+        ],
+        [
+          -3,
+          1.56
+        ],
+        [
+          -0.9375,
+          1.232625
+        ],
+        [
+          -1.875,
+          1.56
+        ],
+        [
+          0,
+          0.9052500000000001
+        ],
+        [
+          0,
+          0.3427500000000001
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    "vals": {
+      "templateAvailable": false,
+      "railAvailable": true,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "997.5 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "2 1/16\"",
+      "volumeLitersDisplay": "33.92 L",
+      "volumeCuInDisplay": "2069.8 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "0.83 — Balanced",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "20\"",
+      "centerThicknessDisplay": "2 1/2\""
+    },
+    "valsCm": {
+      "templateAvailable": false,
+      "railAvailable": true,
+      "importingRailThickness": false,
+      "dimensionsDisabled": false,
+      "dimensionsOpacity": "1",
+      "thicknessDisabled": false,
+      "thicknessOpacity": "1",
+      "showDimensionRows": true,
+      "showGeomBreakdown": false,
+      "areaRowLabel": "Board Area (estimated)",
+      "areaSqInDisplay": "997.5 sq in",
+      "tailEffDisplay": "—",
+      "centerEffDisplay": "—",
+      "noseEffDisplay": "—",
+      "weightedThicknessLabel": "Weighted Thickness",
+      "weightedThicknessDisplay": "5.27 cm",
+      "volumeLitersDisplay": "33.92 L",
+      "volumeCuInDisplay": "2069.8 cu in",
+      "areaFactorDisplay": "0.69 — Balanced",
+      "thicknessFactorDisplay": "0.83 — Balanced",
+      "boardTypeIndex": 3,
+      "lengthFeet": 6,
+      "lengthInches": 0,
+      "lengthDisplay": "6'0\"",
+      "widthDisplay": "50.80 cm",
+      "centerThicknessDisplay": "6.35 cm"
+    }
+  }
+}
