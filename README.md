@@ -47,4 +47,4 @@ Shaper is hosted on [Vercel](https://vercel.com), connected via Git integration 
 - **Environment variables:** none required in Phase 1 — this app has no secrets, no auth, and no
   database yet.
 - **Node.js version:** 20.x or later (Next.js 16 requires Node 20.9+).
-- **Production URL:** _PROD_URL_PLACEHOLDER_ (filled in once the Vercel project is created)
+- **Production URL:** [https://shaper-coral.vercel.app](https://shaper-coral.vercel.app)
