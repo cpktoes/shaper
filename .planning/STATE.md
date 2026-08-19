@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 1
-current_phase_name: Foundation — Port & Deploy the Design Tool
+current_phase: 01
+current_phase_name: foundation-port-deploy-the-design-tool
 status: executing
-stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-08-19T19:35:19.242Z"
-last_activity: 2026-08-18
-last_activity_desc: "Completed quick task 260818-u1n: Port Summary screen (six-panel dashboard at /design/summary composing existing views via compact props, board name in shared store, landscape print path)"
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-08-19T21:51:35.171Z"
+last_activity: 2026-08-19
+last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 # Project State
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-18)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 1 — Foundation: Port & Deploy the Design Tool
+**Current focus:** Phase 01 — foundation-port-deploy-the-design-tool
 
 ## Current Position
 
-Phase: 1 of 4 (Foundation — Port & Deploy the Design Tool)
-Plan: 0 of TBD in current phase
+Phase: 01 (foundation-port-deploy-the-design-tool) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-08-18 - Completed quick task 260818-u1n: Port Summary screen (six-panel dashboard at /design/summary composing existing views via compact props, board name in shared store, landscape print path)
+Last activity: 2026-08-19 — Phase 01 execution started
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
@@ -54,6 +54,11 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01 P01 | 91min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -65,6 +70,9 @@ Recent decisions affecting current work:
 - [Roadmap]: Existing Claude Design prototype (rail-band + fin-placement calculators) is ported into `reference/` and rebuilt as the real app in Phase 1, not rebuilt from scratch
 - [Roadmap]: ROCK-01 and FOIL-01 (rocker/foil editors) deferred to Phase 4 — Phase 1's port carries the rail-band/fin-placement calculators forward; volume (Phase 3) initially computes off outline+rocker before foil becomes user-editable in Phase 4
 - [Roadmap]: This roadmap covers build-guide milestones M1-M3 only; M4 (invite shapers), M5 (billing/Pro), M6 (exports/sharing/gallery) are future milestones, not in v1 requirements
+- [Phase ?]: 01-01: DesignProvider+SiteNav promoted to root layout so / and /design/* share one board-state instance
+- [Phase ?]: 01-01: body clamped to h-full+overflow-hidden and every aside+main design shell switched from flex-wrap to flex-nowrap+h-full so panels respect the viewport (sidebar scrolls, viewer fits, no page scroll)
+- [Phase ?]: 01-01: mobile/phone-width layout (cards overlapping sidebar below ~640px) explicitly deferred to a later phase per user
 
 ### Pending Todos
 
@@ -96,6 +104,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-19T16:32:35.042Z
-Stopped at: Phase 1 UI-SPEC approved
-Resume file: .planning/phases/01-foundation-port-deploy-the-design-tool/01-UI-SPEC.md
+Last session: 2026-08-19T21:51:35.151Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None

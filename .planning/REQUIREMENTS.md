@@ -15,11 +15,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Board Setup
 
-- [ ] **SETUP-01**: User can start a new design by entering overall board dimensions (length, width, thickness)
+- [x] **SETUP-01**: User can start a new design by entering overall board dimensions (length, width, thickness)
 
 ### Outline
 
-- [ ] **OUTL-01**: User can shape an outline curve constrained to the board's overall length/width
+- [x] **OUTL-01**: User can shape an outline curve constrained to the board's overall length/width
 
 ### Rocker
 
@@ -59,7 +59,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Units
 
-- [ ] **UNIT-01**: UI displays dimensions in inches and volume in litres, regardless of internal (metric) storage
+- [x] **UNIT-01**: UI displays dimensions in inches and volume in litres, regardless of internal (metric) storage
 
 ## v2 Requirements
 
@@ -99,8 +99,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ACCT-01 | Phase 2 | Pending |
 | ACCT-02 | Phase 2 | Pending |
 | ACCT-03 | Phase 2 | Pending |
-| SETUP-01 | Phase 1 | Pending |
-| OUTL-01 | Phase 1 | Pending |
+| SETUP-01 | Phase 1 | Complete |
+| OUTL-01 | Phase 1 | Complete |
 | ROCK-01 | Phase 4 | Pending |
 | RAIL-01 | Phase 1 | Pending |
 | FOIL-01 | Phase 4 | Pending |
@@ -113,9 +113,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MODL-03 | Phase 2 | Pending |
 | VIZ-01 | Phase 1 | Pending |
 | TMPL-01 | Phase 3 | Pending |
-| UNIT-01 | Phase 1 | Pending |
+| UNIT-01 | Phase 1 | Complete |
 
 **Coverage:**
+
 - v1 requirements: 18 total
 - Mapped to phases: 18
 - Unmapped: 0 ✓
