@@ -30,6 +30,11 @@ interface OutlineViewerProps {
    * leading edge, with a dot at each end (Template.dc.html lines 178-182). Optional so the
    * viewer still renders standalone before fins are wired up. */
   finMarks?: FinMark[];
+  /** Embedding-only display sizing used by the Summary dashboard (Template.dc.html line 769):
+   * shrinks the three callout spans to the shared `--summary-font-callout` scale. Changes nothing
+   * else — no geometry, no colours, no layout. Defaults to `false`, the outline screen's own
+   * unchanged 14px/13px callouts. */
+  compact?: boolean;
 }
 
 interface RawCallout {
@@ -39,7 +44,13 @@ interface RawCallout {
   pinned: boolean;
 }
 
-export function OutlineViewer({ geometry, outline, showConstruction, finMarks = [] }: OutlineViewerProps) {
+export function OutlineViewer({
+  geometry,
+  outline,
+  showConstruction,
+  finMarks = [],
+  compact = false,
+}: OutlineViewerProps) {
   const lengthIn = mmToInches(geometry.length);
   const cwIn = mmToInches(geometry.halfWidePointWidth);
 
@@ -252,17 +263,22 @@ export function OutlineViewer({ geometry, outline, showConstruction, finMarks = 
         {callouts.map((co, i) => (
           <div key={i}>
             <div
-              className="absolute -translate-x-full -translate-y-1/2 pr-[5px] text-right text-[14px] font-bold whitespace-nowrap text-outline-ink"
-              style={{ left: co.valuesPctLeft, top: co.pctTop }}
+              className="absolute -translate-x-full -translate-y-1/2 pr-[5px] text-right font-bold whitespace-nowrap text-outline-ink"
+              style={{
+                left: co.valuesPctLeft,
+                top: co.pctTop,
+                fontSize: compact ? "var(--summary-font-callout, 10px)" : "14px",
+              }}
             >
               {co.value}
             </div>
             <div
-              className="absolute -translate-y-1/2 pl-1 text-[13px] font-bold tracking-[0.3px] whitespace-nowrap text-[#3a5f9e] uppercase"
+              className="absolute -translate-y-1/2 pl-1 font-bold tracking-[0.3px] whitespace-nowrap text-[#3a5f9e] uppercase"
               style={{
                 left: co.namesPctLeft,
                 top: co.pctTop,
                 textShadow: "0 0 3px var(--outline-page-bg), 0 0 3px var(--outline-page-bg)",
+                fontSize: compact ? "var(--summary-font-callout, 10px)" : "13px",
               }}
             >
               {co.label}
@@ -270,11 +286,12 @@ export function OutlineViewer({ geometry, outline, showConstruction, finMarks = 
           </div>
         ))}
         <div
-          className="absolute text-center text-[14px] font-extrabold whitespace-nowrap text-outline-ink"
+          className="absolute text-center font-extrabold whitespace-nowrap text-outline-ink"
           style={{
             left: lengthCalloutPctLeft,
             top: lengthCalloutPctTop,
             transform: "translate(-50%, calc(-100% - 4px))",
+            fontSize: compact ? "var(--summary-font-callout, 10px)" : "14px",
           }}
         >
           {lengthCalloutText}
