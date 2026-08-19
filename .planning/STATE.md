@@ -68,7 +68,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+1 pending:
+- [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 
 ### Blockers/Concerns
 
