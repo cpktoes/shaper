@@ -1,7 +1,7 @@
 ---
 phase: 1
 slug: foundation-port-deploy-the-design-tool
-status: draft
+status: approved
 shadcn_initialized: true
 preset: b2fA
 created: 2026-08-19
@@ -142,19 +142,68 @@ Additional fixed copy for this screen:
 > Empty-state and error-state COPY live in `## Copywriting Contract` above — this section covers
 > state coverage and REFERENCES those rows rather than restating the copy (de-dup).
 
-Applicable state considerations resolved: 7 covered, 1 backstop, 1 unresolved
+Probe run 2026-08-19 (post-verification, interactive). 6 elements, 30 applicable considerations:
+**28 resolved (explicit), 2 resolved (backstop), 0 unresolved.** User-confirmed decisions marked (U).
 
-| Category | Element(s) | Status | Resolution / Reason |
-|----------|------------|--------|---------------------|
-| empty | preset-grid (list-collection) | ✅ covered | Preset roster is a compile-time constant of exactly 4 cards (D-01); the grid can never render with zero cards, so no empty state exists for it |
-| empty | continue-board-card (interactive-control) | ✅ covered | Card is entirely omitted (not rendered) when no board is in progress in the store (D-07) — there is no placeholder/empty version of this card |
-| loading | preset-thumbnail (media) | ✅ covered | Thumbnails render synchronously client-side from `lib/geometry` pure functions against each preset's stored spec — no network fetch, so no loading/skeleton state is needed |
-| error | preset-grid, replace-confirm-dialog | ✅ covered | No async operations or server calls occur on this screen in Phase 1 (client-only state); there is no error path to design for — see Copywriting Contract's Error state row for the future-phase default |
-| populated | preset-grid (list-collection) | ✅ covered | Happy path: 4 preset cards render in a responsive grid, each showing an outline thumbnail (D-08), the preset name, and a one-line descriptor |
-| zero-one-many | continue-board-card | ✅ covered | Zero in-progress boards → card omitted entirely; exactly one in-progress board → exactly one "Continue Current Board" card shown alongside the 4 presets; "many" does not apply — the store holds a single current board (D-07) |
-| overflow | preset descriptor text (static-content) | 🧪 backstop | Descriptor copy is fixed, team-authored, single-line and short (under 40 characters) by construction, so it should never wrap or truncate — verify no descriptor exceeds one line at the card's minimum supported width |
-| long-text | replace-confirm-dialog body (static-content) | ✅ covered | Confirmation dialog body text is fixed copy (see Copywriting Contract), not user input — no long-text/overflow risk |
-| overflow | nav wordmark/tabs (nav) | ⚠ unresolved | Promoting the SHAPER wordmark/tab bar from `/design/*`-only to the root layout (D-06) reuses the existing nav's overflow/wrap behavior unchanged, but that behavior hasn't been explicitly re-verified against the setup screen's (lighter, non-editor) content area — planner should treat as an assumption to confirm during implementation |
+**E1 — Preset grid** (list + media + control)
+
+| Category | Status | Resolution |
+|----------|--------|------------|
+| empty | ✅ covered | Preset roster is a compile-time constant of exactly 4 cards (D-01); the grid can never render with zero cards — no empty state exists |
+| loading | ✅ covered | Cards and thumbnails render synchronously client-side; no network fetch, no skeleton/spinner state |
+| error | ✅ covered | No async operations or server calls on this screen in Phase 1 — no error path; see Copywriting Contract's Error state row for the future-phase default |
+| populated | ✅ covered | Happy path: 4 preset cards in a responsive grid, each showing an outline thumbnail (D-08), the preset name, a one-line descriptor, and the "Start Shaping" action label |
+| partial | ✅ covered | Preset specs are complete compile-time constants — a card can never render with missing fields; no partial state exists |
+| overflow | ✅ covered | Grid reflows to fewer columns at narrow widths; cards never clip or scroll horizontally |
+| zero-one-many | ✅ covered | Always exactly 4 cards — no zero/one/many variance in the roster |
+| long-text | 🧪 backstop | Descriptor copy is fixed, team-authored, single-line (<~40 chars) by construction — verification: backstop — verify no descriptor wraps or truncates at the card's minimum supported width |
+
+**E2 — Continue Current Board card** (control + text; user-confirmed contracts)
+
+| Category | Status | Resolution |
+|----------|--------|------------|
+| empty | ✅ covered | Card is entirely omitted (not rendered) when no board is in progress in the store (D-07) — no placeholder/empty version |
+| loading | ✅ covered | (U) Card pops in after client store hydration; no skeleton and no reserved space — the brief absence during the hydration window is accepted |
+| error | ✅ covered | Client-only store read; no failure path in Phase 1 |
+| populated | ✅ covered | One card: title "Continue Current Board", board-name preview, "Continue This Board" action label |
+| partial | ✅ covered | (U) A board with no name yet displays the fallback name **"Untitled Board"** |
+| overflow | ✅ covered | (U) Board-name preview clamps to one line with ellipsis truncation |
+| zero-one-many | ✅ covered | Zero boards → card omitted; one board → exactly one card beside the 4 presets; "many" impossible — the store holds a single current board (D-07) |
+| long-text | ✅ covered | (U) Same contract as overflow: user-entered name truncates to one line with ellipsis |
+
+**E3 — Replace-board confirm dialog** (dialog)
+
+| Category | Status | Resolution |
+|----------|--------|------------|
+| loading | ✅ covered | Opens synchronously from client state; no loading state |
+| error | ✅ covered | Confirm/cancel mutate the client store only; no failure path in Phase 1 |
+| overflow | ✅ covered | All dialog copy is fixed and short; fits the dialog at all supported widths |
+| long-text | ✅ covered | Body text is fixed copy (see Copywriting Contract's Destructive confirmation row); no user text appears in the dialog |
+
+**E4 — Page hero heading** (static text)
+
+| Category | Status | Resolution |
+|----------|--------|------------|
+| overflow | ✅ covered | Fixed heading wraps naturally on narrow viewports; never clips |
+| long-text | ✅ covered | Copy is fixed at "Shape a New Board" — no variable-length text |
+
+**E5 — Site nav (promoted to root layout)** (nav)
+
+| Category | Status | Resolution |
+|----------|--------|------------|
+| loading | ✅ covered | Static links render with the layout; no loading state |
+| error | ✅ covered | Plain navigation links; no error state |
+| overflow | 🧪 backstop | (U) Promoting the nav to the root layout (D-06) reuses its existing overflow behavior — verification: backstop — verify the SHAPER wordmark + 5 tabs neither wrap nor clip at 375px viewport width on `/` during implementation |
+| long-text | ✅ covered | Wordmark and tab labels are fixed copy |
+
+**E6 — Preset outline thumbnail** (media)
+
+| Category | Status | Resolution |
+|----------|--------|------------|
+| empty | ✅ covered | Every preset carries a complete stored spec; the thumbnail's input can never be absent |
+| loading | ✅ covered | Rendered synchronously client-side from `lib/geometry` pure functions — no async, no placeholder |
+| error | ✅ covered | Pure functions over known-good compile-time constants (covered by `lib/` unit tests); no runtime failure path |
+| populated | ✅ covered | Each card draws its preset's outline curve (D-08) |
 
 <!-- Status vocabulary (locked by probe-core projectTruths):
      ✅ covered   → a plain truth string lifted into must_haves.truths
@@ -177,11 +226,11 @@ No third-party registries declared for this phase — vetting gate not applicabl
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** APPROVED — gsd-ui-checker, 2026-08-19 (6/6 dimensions, no recommendations)
