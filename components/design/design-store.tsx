@@ -50,6 +50,11 @@ interface DesignState {
    * only, like every other value here: it's gone on reload, exactly as the rest of the design is.
    * Phase 2's named-model saving is where any of this becomes durable. */
   boardName: string;
+  /** Set true the first time a board is applied or edited (`applyPreset`/`updateOutline`), never
+   * derived by comparing the outline against its default — a user who drags a slider back to its
+   * default value has still started a board. Backs `hasBoardInProgress` on the setup screen's
+   * replace-board confirmation (D-07). */
+  boardStarted: boolean;
 }
 
 const DEFAULT_DESIGN_STATE: DesignState = {
@@ -59,6 +64,7 @@ const DEFAULT_DESIGN_STATE: DesignState = {
   volume: DEFAULT_VOLUME_SPEC,
   finsImportTemplate: true,
   boardName: "",
+  boardStarted: false,
 };
 
 interface FinTailOutline {
@@ -74,6 +80,10 @@ interface DesignContextValue {
   volume: VolumeSpec;
   finsImportTemplate: boolean;
   boardName: string;
+  /** True once a board has been applied or edited this session — gates the setup screen's
+   * replace-board confirm dialog (D-07). See `DesignState.boardStarted`'s doc comment for why
+   * this is a flag set on write, not a derived default-comparison. */
+  hasBoardInProgress: boolean;
 
   updateOutline: (patch: Partial<OutlineSpec>) => void;
   /** Applies a board-type preset (components/setup/setup-screen.tsx) by replacing the outline
@@ -119,10 +129,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<DesignState>(DEFAULT_DESIGN_STATE);
 
   const updateOutline = (patch: Partial<OutlineSpec>) =>
-    setState((prev) => ({ ...prev, outline: { ...prev.outline, ...patch } }));
+    setState((prev) => ({ ...prev, outline: { ...prev.outline, ...patch }, boardStarted: true }));
 
   const applyPreset = (preset: BoardPreset) =>
-    setState((prev) => ({ ...prev, outline: preset.outline }));
+    setState((prev) => ({ ...prev, outline: preset.outline, boardStarted: true }));
 
   const updateRailSection = (key: RailSectionKey, patch: Partial<RailSectionSpec>) =>
     setState((prev) => ({
@@ -274,6 +284,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     volume: state.volume,
     finsImportTemplate: state.finsImportTemplate,
     boardName: state.boardName,
+    hasBoardInProgress: state.boardStarted,
     updateOutline,
     applyPreset,
     updateRailSection,
