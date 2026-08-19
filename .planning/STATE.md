@@ -23,7 +23,7 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 Phase: 1 of 4 (Foundation — Port & Deploy the Design Tool)
 Plan: 0 of TBD in current phase
 Status: Ready to plan
-Last activity: 2026-08-18 - Completed quick task 260818-nyw: Rebuild Volume Estimator screen (lib/geometry volume port with Vitest golden tests, shared design store wiring outline+rails+fins, volume screen with factor and real-geometry paths)
+Last activity: 2026-08-18 - Completed quick task 260818-u1n: Port Summary screen (six-panel dashboard at /design/summary composing existing views via compact props, board name in shared store, landscape print path)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -73,6 +73,7 @@ None yet.
 | 260818-lm0 | Rebuild Rail Band Calculator screen: lib/geometry rail-bands port with Vitest golden tests, plus rails screen with cross-section plots and data table | 2026-08-18 | 6d01d2e | [260818-lm0-rebuild-rail-band-calculator-screen-lib-](./quick/260818-lm0-rebuild-rail-band-calculator-screen-lib-/) |
 | 260818-mr2 | Rebuild Fin Setup & Placement screen: lib/geometry fins port (placement models, toe equations, McKee aim tables) with Vitest golden tests, plus fins screen with dimensioned diagram, data and model info tabs | 2026-08-18 | 3378684 | [260818-mr2-rebuild-fin-setup-and-placement-screen-l](./quick/260818-mr2-rebuild-fin-setup-and-placement-screen-l/) |
 | 260818-nyw | Rebuild Volume Estimator screen: lib/geometry volume port with Vitest golden tests, shared design store wiring outline+rails+fins, volume screen with factor and real-geometry paths | 2026-08-18 | 14b4834 | [260818-nyw-rebuild-volume-estimator-screen-lib-geom](./quick/260818-nyw-rebuild-volume-estimator-screen-lib-geom/) |
+| 260818-u1n | Port Summary screen: six-panel dashboard at /design/summary composing existing views via additive compact props, board name in shared store, one-page landscape print path | 2026-08-18 | 124f1fc | [260818-u1n-port-the-summary-screen-following-the-es](./quick/260818-u1n-port-the-summary-screen-following-the-es/) |
 
 ## Deferred Items
 
