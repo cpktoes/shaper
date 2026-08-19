@@ -169,8 +169,12 @@ function railValuesFrom(fixtureName, opts = {}) {
     tailProfile: fx.sections.tail.profile,
   };
   if (opts.withoutProfiles) {
-    const { noseProfile, centerProfile, tailProfile, ...rest } = base;
-    return rest;
+    return {
+      available: base.available,
+      noseThickness: base.noseThickness,
+      centerThickness: base.centerThickness,
+      tailThickness: base.tailThickness,
+    };
   }
   return base;
 }
