@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: foundation-port-deploy-the-design-tool
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-08-19T22:29:44.459Z"
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-08-19T23:00:01.033Z"
 last_activity: 2026-08-19
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 ## Current Position
 
 Phase: 01 (foundation-port-deploy-the-design-tool) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-08-19 — Phase 01 execution started
 
-Progress: [█████░░░░░] 50%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [█████░░░░░] 50%
 |------|----------|-------|-------|
 | Phase 01 P01 | 91min | 3 tasks | 13 files |
 | Phase 01 P02 | 34min | 3 tasks | 8 files |
+| Phase 01 P03 | 26min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,8 @@ Recent decisions affecting current work:
 - [Phase ?]: 01-01: mobile/phone-width layout (cards overlapping sidebar below ~640px) explicitly deferred to a later phase per user
 - [Phase ?]: 01-02: hideCallouts on OutlineViewer extended to also suppress the dashed centerline/station reference lines (not just the dimension overlay) so preset-card thumbnails at full editor scale stay clean
 - [Phase ?]: 01-02: hasBoardInProgress is a flag set on write inside applyPreset/updateOutline, never derived by comparing the outline against its default
+- [Phase ?]: 01-03: Deployed live at https://shaper-coral.vercel.app, Git-integrated to main for auto-deploy on push, zero secrets/env vars in the platform
+- [Phase ?]: 01-03: Node version pinned in Vercel's own project setting (not package.json's engines field), keeping package.json untouched per plan 02's concurrency assumption
 
 ### Pending Todos
 
@@ -107,6 +110,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-19T22:29:44.446Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-08-19T23:00:01.019Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None
