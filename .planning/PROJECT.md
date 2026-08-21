@@ -19,22 +19,21 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] User can set overall board dimensions (length, width, thickness) as the starting point for a design — Validated in Phase 1: Foundation — Port & Deploy the Design Tool
+- [x] User can shape an outline curve within those dimension bounds — Validated in Phase 1: Foundation — Port & Deploy the Design Tool
+- [x] App calculates rail band dimensions (thickness/apex/tuck at each station) derived from outline + rocker — Validated in Phase 1: Foundation — Port & Deploy the Design Tool
+- [x] User can place fins using compiled placement formulas (rule-of-thumb and derived equations) per fin system/configuration (single, thruster, quad, twin/2+1) — Validated in Phase 1: Foundation — Port & Deploy the Design Tool
+- [x] App calculates board volume (litres) live from the shaped geometry — Validated in Phase 1: Foundation — Port & Deploy the Design Tool
+- [x] User can view a 2D visualization of outline, rocker, rail, and fin placement — Validated in Phase 1: Foundation — Port & Deploy the Design Tool
+- [x] UI displays measurements in inches and litres while data is stored in metric internally — Validated in Phase 1: Foundation — Port & Deploy the Design Tool
 
 ### Active
 
 - [ ] User can sign up, log in, and reset their password (email/password via Clerk)
-- [ ] User can set overall board dimensions (length, width, thickness) as the starting point for a design
-- [ ] User can shape an outline curve within those dimension bounds
 - [ ] User can define a rocker curve (nose/tail rocker profile)
-- [ ] App calculates rail band dimensions (thickness/apex/tuck at each station) derived from outline + rocker
 - [ ] User can define a foil (thickness distribution along the board)
-- [ ] User can place fins using compiled placement formulas (rule-of-thumb and derived equations) per fin system/configuration (single, thruster, quad, twin/2+1)
-- [ ] App calculates board volume (litres) live from the shaped geometry
 - [ ] User can save a design as a named model, reopen it, and see their list of saved models
-- [ ] User can view a 2D visualization of outline, rocker, rail, and fin placement
 - [ ] User can export/print a full-size template of the board design, tiled across pages
-- [ ] UI displays measurements in inches and litres while data is stored in metric internally
 
 ### Out of Scope
 
@@ -45,6 +44,13 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 - Public sharing / model gallery — deferred alongside billing (build guide milestone M6)
 
 ## Context
+
+**Current state (Phase 1 complete, 2026-08-21):** The prototype is ported and live at
+https://shaper-coral.vercel.app, auto-deploying from `main`. A shaper can pick one of four
+board-type presets, shape an outline, and read calculated rail-band, fin-placement, and volume
+numbers. Rail-band and fin-placement math is pure TypeScript under `lib/` and pinned against
+golden fixtures extracted from the original prototype. No accounts or saved designs yet — that is
+Phase 2.
 
 - Originated from the founder shaping a board with his son and hitting a wall: no good resource for where to start on templates, or how to place fins and shape rail contours for what they were picturing.
 - The founder has already compiled a library of fin-placement formulas — some rule-of-thumb, some complex equations derived from tables — sourced from semi-published shaping resources, organized per fin system/configuration.
@@ -91,4 +97,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-18 after initialization*
+*Last updated: 2026-08-21 after Phase 1 completion*
