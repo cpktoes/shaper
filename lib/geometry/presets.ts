@@ -6,14 +6,20 @@
  * (components/design/design-store.tsx) can overwrite the store's outline
  * wholesale without merging against whatever was there before.
  *
- * All numeric values below are Claude-drafted starting points (CONTEXT.md
- * D-03, RESEARCH.md assumption A1) — bounds-correct against
- * `OutlineControls`' slider ranges, but not yet shaper-tuned. The user tunes
- * each preset live in the outline editor; the tuned values then replace
- * these drafts wholesale in a later plan. Every length/width/offset is
- * authored via `inchesToMm()` and every angle via `degrees()` — never a bare
- * number, never the raw millimetre brand constructor — because this file is
- * the one place preset data crosses the units boundary (lib/geometry/units.ts).
+ * D-03 tuning status (2026-08-21): `midlength` and `longboard` carry the
+ * shaper's own values, captured from the live outline editor via the
+ * development-only "Copy preset values" affordance
+ * (components/outline/outline-editor.tsx) and pasted in wholesale.
+ * `shortboard` and `fish` were reviewed in the same live editor and approved
+ * as accurate without change, so they keep their original Claude-drafted
+ * curve (RESEARCH.md assumption A1) — still bounds-correct against
+ * `OutlineControls`' slider ranges, and now shaper-approved rather than
+ * merely bounds-correct. Any future change to any of the four should go
+ * through the same capture loop rather than being hand-edited. Every
+ * length/width/offset is authored via `inchesToMm()` and every angle via
+ * `degrees()` — never a bare number, never the raw millimetre brand
+ * constructor — because this file is the one place preset data crosses the
+ * units boundary (lib/geometry/units.ts).
  */
 
 import type { OutlineSpec } from "./board";
@@ -66,12 +72,12 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
     outline: {
       length: inchesToMm(84),
       widePointWidth: inchesToMm(21),
-      widePointOffset: inchesToMm(0.5),
+      widePointOffset: inchesToMm(3.5),
       railLength: 55,
       noseAngle: degrees(65),
       noseFullness: 45,
-      tailAngle: degrees(60),
-      tailFullness: 55,
+      tailAngle: degrees(90),
+      tailFullness: 64.5,
       tail: { kind: "round" },
     },
   },
@@ -81,14 +87,14 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
     descriptor: "Smooth glide, nose-to-tail control",
     outline: {
       length: inchesToMm(108),
-      widePointWidth: inchesToMm(23),
-      widePointOffset: inchesToMm(1),
-      railLength: 45,
-      noseAngle: degrees(80),
-      noseFullness: 75,
-      tailAngle: degrees(75),
-      tailFullness: 70,
-      tail: { kind: "squash", endWidth: inchesToMm(10) },
+      widePointWidth: inchesToMm(22.5),
+      widePointOffset: inchesToMm(8),
+      railLength: 50,
+      noseAngle: degrees(90),
+      noseFullness: 90,
+      tailAngle: degrees(30),
+      tailFullness: 53.5,
+      tail: { kind: "squash", endWidth: inchesToMm(8) },
     },
   },
 ];
