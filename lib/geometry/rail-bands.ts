@@ -33,6 +33,12 @@ import { type Mm, inchesToMm, mm, mmToInches, roundToSixteenthInch } from "./uni
 export type RailFamily = 1 | 2 | 3 | 4 | 5;
 export type RailSectionKey = "nose" | "center" | "tail";
 
+// GSD product decision (NOT a source-workbook formula): the minimum meaningful gap between
+// Bottom Tuck 3 and Bottom Tuck 1 when Bottom Tuck 3 is user-overridden. Tied to the app's 1/16"
+// fractional-inch display/slider granularity, so a strictly-greater floor is always representable
+// rather than an unexplainable floating-point epsilon.
+export const MIN_BOTTOM_TUCK_SEPARATION_IN = 1 / 16;
+
 /** Parametric controls for one rail section — the single place a section's sidebar writes to. */
 export interface RailSectionSpec {
   boardThickness: Mm;
@@ -232,10 +238,11 @@ function computeSectionInches(input: ComputeSectionInchesInput): RailSectionResu
     : input.bottomTuck3OverrideIn === null
       ? (input.symmetrical ? deckMark3 : railTuck1)
       : // GSD-added guard (not part of the source workbook): floor a user-supplied override at
-        // Bottom Tuck 1 so it can never sit below it and invert the bottom marks. The derived
-        // branch above already satisfies bottomTuck3 > bottomTuck1 by construction and is never
-        // floored — only the override is guarded.
-        Math.max(input.bottomTuck3OverrideIn, bottomTuck1);
+        // Bottom Tuck 1 plus MIN_BOTTOM_TUCK_SEPARATION_IN so it can never sit at or below it and
+        // invert/collapse the bottom marks. The derived branch above already satisfies
+        // bottomTuck3 > bottomTuck1 by construction and is never floored — only the override is
+        // guarded.
+        Math.max(input.bottomTuck3OverrideIn, bottomTuck1 + MIN_BOTTOM_TUCK_SEPARATION_IN);
   return {
     thickness: input.thicknessIn,
     apexLenRange,
