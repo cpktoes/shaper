@@ -2,6 +2,8 @@
 created: 2026-08-21
 source: user report, post phase 01 ship
 resolves_phase:
+closed: 2026-08-21
+resolution: fixed
 ---
 
 # Rails: Bottom Tuck 3 slider can silently invert the rail geometry
@@ -79,3 +81,37 @@ Sym is checked. One rule, both outcomes.
 
 Relevant code: `lib/geometry/rail-bands.ts:228-232`, `components/rails/rail-controls.tsx`
 (Sym checkbox, Bottom Tuck 3 slider, `resetAdvanced`).
+
+
+---
+
+## RESOLVED 2026-08-21
+
+Fixed across two quick tasks, both verified in a browser against the running app.
+
+**260821-bt3** — floored the override in the geometry layer (`rail-bands.ts`), gave the slider
+dynamic bounds. Verified: a stale override set before Sym was enabled no longer shadows the derived
+value; the slider label and thumb agree.
+
+**260821-bt3b** — made the separation strict and let the slider climb back:
+- `MIN_BOTTOM_TUCK_SEPARATION_IN = 1/16` exported from `rail-bands.ts`, documented as a GSD product
+  decision rather than a ported workbook formula. Override floor is now
+  `max(override, bottomTuck1 + MIN_BOTTOM_TUCK_SEPARATION_IN)`.
+- `bottomTuck3Derived` added to the section result so the UI never re-derives
+  `symmetrical ? deckMark3 : railTuck1` in the component (geometry stays in `lib/`).
+- Slider `min` = `bottomTuck1 + separation`, `max` = `max(1.5", bottomTuck3Derived)`.
+
+**Measured behaviour after the fix (center rail, symmetrical, family MED):**
+
+| State | Label | Slider range |
+|---|---|---|
+| Symmetrical, no override | 4" | 2.5625 – 4 |
+| Dragged to bottom | 2 9/16" | 2.5625 – 4 |
+| Climbed back up | 4" | 2.5625 – 4 |
+| Stale 3/8" override, then Sym on | 2 9/16" | 2.5625 – 4 |
+
+Bottom Tuck 3 is now always strictly greater than Bottom Tuck 1 (2 9/16" vs 2 1/2" at the floor),
+and the derived 4" is always reachable — the "can't come back from" behaviour is gone.
+
+598 tests pass; the 11 golden rail fixtures are byte-identical (the invariant test was tightened to
+strict `>` and still passes against all of them).
