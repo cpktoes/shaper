@@ -171,7 +171,7 @@ function useSharedTierLayout(marks: FinMark[], tailShape: FinTailShape, tailWidt
     const availableSpan = Math.max(0, ORIGIN_X - sharedBoundaryPx - 4 - 70);
     const leftTierStackPx = maxLeftTier > 0 ? Math.min(55, availableSpan / maxLeftTier) : 0;
 
-    return { tierRank, sharedBoundaryPx, leftTierStackPx };
+    return { tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier };
   }, [marks, tailShape, tailWidth12]);
 }
 
@@ -184,6 +184,7 @@ function dimsForMark(
   tierRank: Partial<Record<FinLateralKind, number>>,
   sharedBoundaryPx: number,
   leftTierStackPx: number,
+  maxLeftTier: number,
 ): FinDim[] {
   const { mark, teX, teY, leX, leY } = geom;
   const dims: FinDim[] = [];
@@ -205,7 +206,14 @@ function dimsForMark(
       );
     }
     const dimX = ORIGIN_X - boundaryPx - GAP;
-    const midY = (TAIL_Y + teY) / 2 + (tier - 1) * 20;
+    // Centers the position-callout label on its own dimension line regardless of how many
+    // tiers are actually stacked (fixed 01-04 checkpoint feedback: the ported prototype
+    // formula `(tier - 1) * 20` assumed a line was always drawn among >=2 tiers, so the
+    // common single-tier case landed the label a full 20px off the line's true midpoint).
+    // Offsetting around the tier set's own midpoint keeps the multi-tier anti-overlap stagger
+    // (still +/-20px apart at the extremes) while landing perfectly centered when there is
+    // only one tier.
+    const midY = (TAIL_Y + teY) / 2 + (tier - maxLeftTier / 2) * 20;
     const topEdgeXIn = mmToInches(tailHalfWidthAt(tailShape, tailWidth12, mm(0)));
     const topEdgeX = ORIGIN_X - topEdgeXIn * SCALE;
     const botEdgeXIn = mmToInches(tailHalfWidthAt(tailShape, tailWidth12, mark.offTail));
@@ -371,15 +379,19 @@ export function FinViewer({
     [result.marks],
   );
 
-  const { tierRank, sharedBoundaryPx, leftTierStackPx } = useSharedTierLayout(result.marks, tailShape, tailWidth12);
+  const { tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier } = useSharedTierLayout(
+    result.marks,
+    tailShape,
+    tailWidth12,
+  );
 
   const marksWithDims = useMemo(
     () =>
       marksGeom.map((geom) => ({
         geom,
-        dims: dimsForMark(geom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx),
+        dims: dimsForMark(geom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier),
       })),
-    [marksGeom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx],
+    [marksGeom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier],
   );
 
   const w12In = mmToInches(tailWidth12);
