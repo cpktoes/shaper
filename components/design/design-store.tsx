@@ -50,10 +50,11 @@ interface DesignState {
    * only, like every other value here: it's gone on reload, exactly as the rest of the design is.
    * Phase 2's named-model saving is where any of this becomes durable. */
   boardName: string;
-  /** Set true the first time a board is applied or edited (`applyPreset`/`updateOutline`), never
-   * derived by comparing the outline against its default — a user who drags a slider back to its
-   * default value has still started a board. Backs `hasBoardInProgress` on the setup screen's
-   * replace-board confirmation (D-07). */
+  /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,
+   * `updateRailSection`, `toggleTailHardEdge`, `updateFins`, `updateVolume`,
+   * `setFinsImportTemplate` or `setBoardName` — never derived by comparing state against its
+   * default — a user who drags a slider back to its default value has still started a board.
+   * Backs `hasBoardInProgress` on the setup screen's replace-board confirmation (D-07). */
   boardStarted: boolean;
 }
 
@@ -88,7 +89,9 @@ interface DesignContextValue {
   updateOutline: (patch: Partial<OutlineSpec>) => void;
   /** Applies a board-type preset (components/setup/setup-screen.tsx) by replacing the outline
    * wholesale — a preset is a complete spec, not a patch, so this does not merge against
-   * whatever outline was there before. */
+   * whatever outline was there before. Every other field (rails, fins, volume,
+   * finsImportTemplate, boardName) resets to `DEFAULT_DESIGN_STATE`, so this always produces a
+   * genuinely fresh board rather than carrying over the board the user just discarded. */
   applyPreset: (preset: BoardPreset) => void;
   updateRailSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   toggleTailHardEdge: () => void;
@@ -131,27 +134,41 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const updateOutline = (patch: Partial<OutlineSpec>) =>
     setState((prev) => ({ ...prev, outline: { ...prev.outline, ...patch }, boardStarted: true }));
 
+  // A preset is a complete spec, not a patch (see BoardPreset's own doc comment) — every field
+  // not supplied by the preset resets to DEFAULT_DESIGN_STATE's value rather than carrying over
+  // from whatever board was there before, so "Discard & Start New" produces a genuinely fresh
+  // board (WR-01).
   const applyPreset = (preset: BoardPreset) =>
-    setState((prev) => ({ ...prev, outline: preset.outline, boardStarted: true }));
+    setState(() => ({
+      ...DEFAULT_DESIGN_STATE,
+      outline: preset.outline,
+      boardStarted: true,
+    }));
 
   const updateRailSection = (key: RailSectionKey, patch: Partial<RailSectionSpec>) =>
     setState((prev) => ({
       ...prev,
       rails: { ...prev.rails, [key]: { ...prev.rails[key], ...patch } },
+      boardStarted: true,
     }));
 
   const toggleTailHardEdge = () =>
-    setState((prev) => ({ ...prev, rails: { ...prev.rails, tailHardEdge: !prev.rails.tailHardEdge } }));
+    setState((prev) => ({
+      ...prev,
+      rails: { ...prev.rails, tailHardEdge: !prev.rails.tailHardEdge },
+      boardStarted: true,
+    }));
 
   const updateFins = (patch: Partial<FinPlacementSpec>) =>
-    setState((prev) => ({ ...prev, fins: { ...prev.fins, ...patch } }));
+    setState((prev) => ({ ...prev, fins: { ...prev.fins, ...patch }, boardStarted: true }));
 
   const updateVolume = (patch: Partial<VolumeSpec>) =>
-    setState((prev) => ({ ...prev, volume: { ...prev.volume, ...patch } }));
+    setState((prev) => ({ ...prev, volume: { ...prev.volume, ...patch }, boardStarted: true }));
 
-  const setFinsImportTemplate = (next: boolean) => setState((prev) => ({ ...prev, finsImportTemplate: next }));
+  const setFinsImportTemplate = (next: boolean) =>
+    setState((prev) => ({ ...prev, finsImportTemplate: next, boardStarted: true }));
 
-  const setBoardName = (next: string) => setState((prev) => ({ ...prev, boardName: next }));
+  const setBoardName = (next: string) => setState((prev) => ({ ...prev, boardName: next, boardStarted: true }));
 
   const outlineGeometry = useMemo(() => buildOutline(state.outline), [state.outline]);
   const railBands = useMemo(() => computeRailBands(state.rails), [state.rails]);
@@ -244,7 +261,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setState((prev) => {
       const next = !prev.volume.importTemplateDimensions;
       if (next) {
-        return { ...prev, volume: { ...prev.volume, importTemplateDimensions: true } };
+        return {
+          ...prev,
+          volume: { ...prev.volume, importTemplateDimensions: true },
+          boardStarted: true,
+        };
       }
       return {
         ...prev,
@@ -255,6 +276,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           length: effectiveVolume.length,
           width: effectiveVolume.width,
         },
+        boardStarted: true,
       };
     });
   };
@@ -264,7 +286,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setState((prev) => {
       const next = !prev.volume.importRailThickness;
       if (next) {
-        return { ...prev, volume: { ...prev.volume, importRailThickness: true } };
+        return {
+          ...prev,
+          volume: { ...prev.volume, importRailThickness: true },
+          boardStarted: true,
+        };
       }
       return {
         ...prev,
@@ -273,6 +299,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           importRailThickness: false,
           centerThickness: effectiveVolume.centerThickness,
         },
+        boardStarted: true,
       };
     });
   };
