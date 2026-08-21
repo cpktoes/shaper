@@ -100,6 +100,7 @@ export function OutlineEditor() {
                   outline={outline}
                   showConstruction={showConstruction}
                   finMarks={finPlacement.marks}
+                  hideFinMarks
                 />
               </div>
             </div>

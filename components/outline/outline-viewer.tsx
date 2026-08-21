@@ -42,6 +42,12 @@ interface OutlineViewerProps {
    * nothing else — no geometry, no colours, no viewBox. Defaults to `false`, every existing
    * screen's unchanged callout and station-line overlay. */
   hideCallouts?: boolean;
+  /** Outline-editor-only display gate (components/outline/outline-editor.tsx): when true, skips
+   * drawing the calculated fin-mark lines/dots on the board outline, leaving the outline curve,
+   * callouts, and construction lines untouched. Fin marks are still relevant on the printed
+   * template (components/summary/board-summary.tsx) and the setup-screen thumbnails, so this is
+   * an additive per-consumer gate, not a change to `finMarksSvg` itself. Defaults to `false`. */
+  hideFinMarks?: boolean;
 }
 
 interface RawCallout {
@@ -58,6 +64,7 @@ export function OutlineViewer({
   finMarks = [],
   compact = false,
   hideCallouts = false,
+  hideFinMarks = false,
 }: OutlineViewerProps) {
   const lengthIn = mmToInches(geometry.length);
   const cwIn = mmToInches(geometry.halfWidePointWidth);
@@ -256,20 +263,21 @@ export function OutlineViewer({
             ))}
           </>
         )}
-        {finMarksSvg.map((fm, i) => (
-          <g key={i}>
-            <line
-              x1={fm.x1}
-              y1={fm.y1}
-              x2={fm.x2}
-              y2={fm.y2}
-              stroke="var(--outline-accent)"
-              strokeWidth={2}
-            />
-            <circle cx={fm.x1} cy={fm.y1} r={3.5} fill="#1c1b19" />
-            <circle cx={fm.x2} cy={fm.y2} r={3.5} fill="#1c1b19" />
-          </g>
-        ))}
+        {!hideFinMarks &&
+          finMarksSvg.map((fm, i) => (
+            <g key={i}>
+              <line
+                x1={fm.x1}
+                y1={fm.y1}
+                x2={fm.x2}
+                y2={fm.y2}
+                stroke="var(--outline-accent)"
+                strokeWidth={2}
+              />
+              <circle cx={fm.x1} cy={fm.y1} r={3.5} fill="#1c1b19" />
+              <circle cx={fm.x2} cy={fm.y2} r={3.5} fill="#1c1b19" />
+            </g>
+          ))}
       </svg>
       {!hideCallouts && (
       <div className="pointer-events-none absolute inset-0">
