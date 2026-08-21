@@ -7,7 +7,7 @@ import { type RailBandSpec, type RailSectionKey, type RailSectionSpec } from "@/
 import { mm, mmToInches, type Mm } from "@/lib/geometry/units";
 import { RailControls } from "./rail-controls";
 import { RailDataTable } from "./rail-data-table";
-import { RailSectionPlot, buildRailLegend } from "./rail-section-plot";
+import { RailSectionPlot, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
 
 type RailPage = "viewer" | "data";
 
@@ -155,13 +155,29 @@ export function RailBandEditor() {
         {activePage === "viewer" && (
           <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-[#e4ddc9] bg-white p-5">
             <div className="mb-3 self-start text-xl font-extrabold text-outline-ink">Rail Viewer</div>
-            <div className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto">
-              {openSections.map((key) => (
-                <div key={key} className="flex w-full max-w-[420px] flex-col items-center">
-                  <div className="mb-2 text-base font-extrabold text-outline-ink">{SECTION_TITLE[key]}</div>
-                  <RailSectionPlot sectionKey={key} output={bands[key]} xAxisMin={sharedXAxisMin} />
-                </div>
-              ))}
+            <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
+              {openSections.map((key) => {
+                // Natural plot height (same units as RailSectionPlot's own viewBox) drives this
+                // section's share of the stack: flex-basis 0 + flex-grow set to that height makes
+                // the children divide the available space in proportion to their own natural
+                // heights, so a thicker center section stays visually taller than nose/tail as
+                // everything scales down together — never equal thirds.
+                const { height: naturalHeight } = computeRailPlotBounds(bands[key], sharedXAxisMin);
+                return (
+                  <div
+                    key={key}
+                    className="flex min-h-0 w-full max-w-[420px] flex-col items-center"
+                    style={{ flexGrow: naturalHeight, flexBasis: 0 }}
+                  >
+                    <div className="mb-1 flex-none text-base font-extrabold text-outline-ink">
+                      {SECTION_TITLE[key]}
+                    </div>
+                    <div className="flex min-h-0 w-full flex-1 items-center justify-center">
+                      <RailSectionPlot sectionKey={key} output={bands[key]} xAxisMin={sharedXAxisMin} fit="height" />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             {legend.length > 0 && (
               <div className="mt-4 flex flex-none flex-wrap items-center justify-center gap-x-6 gap-y-2">

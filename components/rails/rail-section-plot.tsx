@@ -60,18 +60,30 @@ interface RailSectionPlotProps {
   fit?: "width" | "height";
 }
 
-export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSectionPlotProps) {
-  const { result, segments, domed, boardThickness, thicknessEff } = output;
+/**
+ * The plot's viewBox bounds and pixel dimensions, computed from the same inputs the SVG render
+ * uses. Exported so callers (rail-band-editor.tsx) can learn a section's natural height — driven
+ * by its thickness, same as the rendered plot — without duplicating this geometry-free layout
+ * math or reaching into `lib/` for it (this is diagram sizing, not shaping geometry).
+ */
+export function computeRailPlotBounds(output: RailSectionOutput, xAxisMin: Mm) {
   const xAxisMinIn = mmToInches(xAxisMin);
   const yAxisMaxIn = mmToInches(output.bounds.yAxisMax);
-  const blankThicknessIn = domed ? mmToInches(boardThickness) : mmToInches(thicknessEff);
-
   const minX = xAxisMinIn - 0.15;
-  const maxX = 0.15;
   const minY = -0.15;
   const maxY = yAxisMaxIn + 0.15;
-  const width = (maxX - minX) * SCALE + LEFT_PAD;
+  const width = (0.15 - minX) * SCALE + LEFT_PAD;
   const height = (maxY - minY) * SCALE + AXIS_LABEL_PAD;
+  return { minX, minY, maxY, width, height };
+}
+
+export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSectionPlotProps) {
+  const { result, segments, domed, boardThickness, thicknessEff } = output;
+  const blankThicknessIn = domed ? mmToInches(boardThickness) : mmToInches(thicknessEff);
+
+  const { minX, minY, maxY, width, height } = computeRailPlotBounds(output, xAxisMin);
+  const xAxisMinIn = minX + 0.15;
+  const yAxisMaxIn = maxY - 0.15;
   const px = (x: number) => (x - minX) * SCALE + LEFT_PAD;
   const py = (y: number) => (maxY - y) * SCALE;
 
