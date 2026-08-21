@@ -229,7 +229,13 @@ function computeSectionInches(input: ComputeSectionInchesInput): RailSectionResu
   const bottomTuck2 = bottomTuck1 / 2; // C24: =C23/2
   const bottomTuck3 = input.hardEdge // C25: =IF(Symmetrical,C21,C16)
     ? 0
-    : (input.bottomTuck3OverrideIn ?? (input.symmetrical ? deckMark3 : railTuck1));
+    : input.bottomTuck3OverrideIn === null
+      ? (input.symmetrical ? deckMark3 : railTuck1)
+      : // GSD-added guard (not part of the source workbook): floor a user-supplied override at
+        // Bottom Tuck 1 so it can never sit below it and invert the bottom marks. The derived
+        // branch above already satisfies bottomTuck3 > bottomTuck1 by construction and is never
+        // floored — only the override is guarded.
+        Math.max(input.bottomTuck3OverrideIn, bottomTuck1);
   return {
     thickness: input.thicknessIn,
     apexLenRange,
