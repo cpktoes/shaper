@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
-import { type RailSectionKey } from "@/lib/geometry/rail-bands";
-import { mm, type Mm } from "@/lib/geometry/units";
+import { type RailBandSpec, type RailSectionKey, type RailSectionSpec } from "@/lib/geometry/rail-bands";
+import { mm, mmToInches, type Mm } from "@/lib/geometry/units";
 import { RailControls } from "./rail-controls";
 import { RailDataTable } from "./rail-data-table";
 import { RailSectionPlot, buildRailLegend } from "./rail-section-plot";
@@ -13,15 +14,73 @@ type RailPage = "viewer" | "data";
 const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
 
+/** Rounds a millimetre value to inches, 3 decimal places — matches outline-editor.tsx's own helper. */
+function roundedInches(value: Mm): number {
+  return Number(mmToInches(value).toFixed(3));
+}
+
+/** Builds a pasteable `RailSectionSpec` source block, nested `indent` spaces inside its caller. */
+function buildSectionSource(spec: RailSectionSpec, indent: string): string {
+  const pad = `${indent}  `;
+  const cornerCutOffsetOverride =
+    spec.cornerCutOffsetOverride === null ? "null" : `inchesToMm(${roundedInches(spec.cornerCutOffsetOverride)})`;
+  const bottomTuck3Override =
+    spec.bottomTuck3Override === null ? "null" : `inchesToMm(${roundedInches(spec.bottomTuck3Override)})`;
+
+  return [
+    "{",
+    `${pad}boardThickness: inchesToMm(${roundedInches(spec.boardThickness)}),`,
+    `${pad}deckPercent: ${spec.deckPercent},`,
+    `${pad}family: ${spec.family},`,
+    `${pad}ratioTopPercent: ${spec.ratioTopPercent},`,
+    `${pad}symmetrical: ${spec.symmetrical},`,
+    `${pad}cornerCutOffsetOverride: ${cornerCutOffsetOverride},`,
+    `${pad}removeCornerCut: ${spec.removeCornerCut},`,
+    `${pad}singleTuck: ${spec.singleTuck},`,
+    `${pad}bottomTuck3Override: ${bottomTuck3Override},`,
+    `${indent}}`,
+  ].join("\n");
+}
+
+/** Builds a pasteable `BoardPreset["rails"]` source block from the live rail-band spec. */
+function buildPresetSource(spec: RailBandSpec): string {
+  return [
+    "rails: {",
+    `  nose: ${buildSectionSource(spec.nose, "  ")},`,
+    `  center: ${buildSectionSource(spec.center, "  ")},`,
+    `  tail: ${buildSectionSource(spec.tail, "  ")},`,
+    `  tailHardEdge: ${spec.tailHardEdge},`,
+    "},",
+  ].join("\n");
+}
+
 /**
  * Reads the design state from the shared `DesignProvider` (components/design/design-store.tsx)
  * instead of owning it locally — this screen is one of four views onto a single board design.
  * UI-only state (which sections/Advanced disclosures are open, which page is active) stays local
  * — it never touches the design itself. Everything in `spec` is millimetres; inches exist only
  * inside the controls/plot/table where a label or slider value is rendered.
+ *
+ * Development-only: below `RailControls` this file also renders a "Copy preset values" button,
+ * gated on `process.env.NODE_ENV === "development"` so the bundler dead-code-eliminates it from
+ * production. It reads the live `rails` spec back out as pasteable `lib/geometry/presets.ts`
+ * source — the Rails half of the same shaper-tuning capture loop as
+ * components/outline/outline-editor.tsx (CONTEXT.md D-03).
  */
 export function RailBandEditor() {
   const { rails: spec, updateRailSection, toggleTailHardEdge, railBands: bands } = useDesign();
+  const [justCopiedPreset, setJustCopiedPreset] = useState(false);
+
+  function handleCopyPreset() {
+    const text = buildPresetSource(spec);
+    console.log(text);
+    setJustCopiedPreset(true);
+    navigator.clipboard.writeText(text).catch(() => {
+      // Clipboard write rejected (unavailable or permission denied) — the console.log above already
+      // carries the same text, so this is a silent no-op rather than a thrown error.
+    });
+    window.setTimeout(() => setJustCopiedPreset(false), 1500);
+  }
   const [sectionOpen, setSectionOpen] = useState<Record<RailSectionKey, boolean>>({
     nose: true,
     center: true,
@@ -63,6 +122,16 @@ export function RailBandEditor() {
           advancedOpen={advancedOpen}
           onToggleAdvancedOpen={toggleAdvancedOpen}
         />
+        {process.env.NODE_ENV === "development" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-4 w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-outline-accent hover:bg-outline-accent hover:text-outline-ink"
+            onClick={handleCopyPreset}
+          >
+            {justCopiedPreset ? "Copied!" : "Copy preset values"}
+          </Button>
+        )}
       </aside>
       <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-2 bg-outline-page-bg p-2">
         <div className="flex flex-none gap-1.5">
