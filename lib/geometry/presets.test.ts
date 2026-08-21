@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_FIN_PLACEMENT_SPEC } from "./fins";
 import { buildOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
+import { computeRailBands, DEFAULT_RAIL_BAND_SPEC } from "./rail-bands";
 import { inchesToMm, mmToInches } from "./units";
 
 describe("BOARD_PRESETS", () => {
@@ -91,5 +93,14 @@ describe("BOARD_PRESETS", () => {
   it.each(BOARD_PRESETS)("$id: has non-empty name and descriptor copy", (preset) => {
     expect(preset.name.length).toBeGreaterThan(0);
     expect(preset.descriptor.length).toBeGreaterThan(0);
+  });
+
+  it.each(BOARD_PRESETS)("$id: carries a complete, structurally valid rails spec", (preset) => {
+    expect(preset.rails).toEqual(DEFAULT_RAIL_BAND_SPEC);
+    expect(() => computeRailBands(preset.rails)).not.toThrow();
+  });
+
+  it.each(BOARD_PRESETS)("$id: carries a complete, structurally valid fins spec", (preset) => {
+    expect(preset.fins).toEqual(DEFAULT_FIN_PLACEMENT_SPEC);
   });
 });

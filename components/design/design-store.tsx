@@ -87,11 +87,11 @@ interface DesignContextValue {
   hasBoardInProgress: boolean;
 
   updateOutline: (patch: Partial<OutlineSpec>) => void;
-  /** Applies a board-type preset (components/setup/setup-screen.tsx) by replacing the outline
-   * wholesale — a preset is a complete spec, not a patch, so this does not merge against
-   * whatever outline was there before. Every other field (rails, fins, volume,
-   * finsImportTemplate, boardName) resets to `DEFAULT_DESIGN_STATE`, so this always produces a
-   * genuinely fresh board rather than carrying over the board the user just discarded. */
+  /** Applies a board-type preset (components/setup/setup-screen.tsx) by replacing outline, rails
+   * and fins wholesale — a preset is a complete spec, not a patch, so none of the three merges
+   * against whatever was there before. Every other field (volume, finsImportTemplate, boardName)
+   * resets to `DEFAULT_DESIGN_STATE`, so this always produces a genuinely fresh board rather than
+   * carrying over the board the user just discarded. */
   applyPreset: (preset: BoardPreset) => void;
   updateRailSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   toggleTailHardEdge: () => void;
@@ -142,6 +142,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setState(() => ({
       ...DEFAULT_DESIGN_STATE,
       outline: preset.outline,
+      rails: preset.rails,
+      fins: preset.fins,
       boardStarted: true,
     }));
 
