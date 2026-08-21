@@ -82,7 +82,12 @@ export function OutlineEditor() {
           onToggleConstruction={() => setShowConstruction((v) => !v)}
         />
         {process.env.NODE_ENV === "development" && (
-          <Button variant="outline" size="sm" className="mt-4 w-full" onClick={handleCopyPreset}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-4 w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-outline-accent hover:bg-outline-accent hover:text-outline-ink"
+            onClick={handleCopyPreset}
+          >
             {justCopiedPreset ? "Copied!" : "Copy preset values"}
           </Button>
         )}
