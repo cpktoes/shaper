@@ -26,6 +26,10 @@ interface RailControlsProps {
 const NT_THICKNESS_BOUNDS = { min: 1, max: 2.5, step: 1 / 16 };
 const CENTER_THICKNESS_BOUNDS = { min: 1.75, max: 3.5, step: 1 / 16 };
 const TUCK_BOUNDS = { min: 0, max: 1.5, step: 1 / 16 };
+// Corner Cut Offset's computed defaults (cornerCutRailOffsetForInches in lib/geometry/rail-bands.ts)
+// are 1/8, 3/32, 1/16, 1/32, and 0 — a 1/16 step can't represent the 3/32 or 1/32 defaults, so this
+// slider needs its own finer-grained, narrower-range bounds. TUCK_BOUNDS stays as-is for Bottom Tuck 3.
+const CORNER_CUT_BOUNDS = { min: 0, max: 0.25, step: 1 / 32 };
 
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose Rail", center: "Center Rail", tail: "Tail Rail" };
 const SECTION_THICKNESS_LABEL: Record<RailSectionKey, string> = {
@@ -280,14 +284,14 @@ function RailSectionControls({
                   <div className={spec.removeCornerCut ? "opacity-40" : undefined}>
                     <Slider
                       value={cornerCutOffsetIn}
-                      min={TUCK_BOUNDS.min}
-                      max={TUCK_BOUNDS.max}
-                      step={TUCK_BOUNDS.step}
+                      min={CORNER_CUT_BOUNDS.min}
+                      max={CORNER_CUT_BOUNDS.max}
+                      step={CORNER_CUT_BOUNDS.step}
                       disabled={spec.removeCornerCut}
                       onValueChange={(v) =>
                         onChange({
                           cornerCutOffsetOverride: inchesToMm(
-                            clampFinite(sliderValue(v), TUCK_BOUNDS.min, TUCK_BOUNDS.max),
+                            clampFinite(sliderValue(v), CORNER_CUT_BOUNDS.min, CORNER_CUT_BOUNDS.max),
                           ),
                         })
                       }
