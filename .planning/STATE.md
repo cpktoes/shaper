@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 2
 current_phase_name: Accounts & Saved Designs
 status: planning
-stopped_at: Completed quick task 260821-prf (preset rails/fins)
-last_updated: "2026-08-21T17:31:02.000Z"
+stopped_at: Completed quick task 260821-bt3 (bottom tuck 3 floor)
+last_updated: "2026-08-21T15:08:00.000Z"
 last_activity: 2026-08-21
-last_activity_desc: Completed quick task 260821-prf (preset rails/fins)
+last_activity_desc: Completed quick task 260821-bt3 (bottom tuck 3 floor)
 progress:
   total_phases: 1
   completed_phases: 1
@@ -87,6 +87,8 @@ Recent decisions affecting current work:
 - [Quick 260821-prf]: applyPreset rebuilds state as `{ ...DEFAULT_DESIGN_STATE, outline, rails, fins, boardStarted: true }` so any future DesignState field resets safely by default instead of silently carrying over
 - [Quick 260821-prf]: Volume-import toggle actions (toggleImportTemplateDimensions, toggleImportRailThickness) also set boardStarted: true for consistency with WR-02, even though not explicitly named in the plan
 - [Quick 260821-prf]: BoardPreset extended with rails/fins, all four presets seeded (not hand-tuned) from DEFAULT_RAIL_BAND_SPEC/DEFAULT_FIN_PLACEMENT_SPEC per user decision — real per-board-type tuning happens via the new Rails/Fins capture affordances in a follow-up session
+- [Quick 260821-bt3]: Bottom Tuck 3 override floor enforced in rail-bands.ts's computeSectionInches (geometry layer), not only in the UI slider bounds — a UI-only guard would leave a stale override permanently shadowing the symmetrical derivation, which was the unrecoverable part of the original bug
+- [Quick 260821-bt3]: Rail Controls Bottom Tuck 3 slider min/max now computed per-section (bottomTuck1 floor, max(1.5", current value)) instead of the shared static TUCK_BOUNDS constant, since the legal range depends on symmetrical/family/scale/thickness
 
 ### Pending Todos
 
@@ -109,6 +111,7 @@ None yet.
 | 260818-u1n | Port Summary screen: six-panel dashboard at /design/summary composing existing views via additive compact props, board name in shared store, one-page landscape print path | 2026-08-18 | 124f1fc | [260818-u1n-port-the-summary-screen-following-the-es](./quick/260818-u1n-port-the-summary-screen-following-the-es/) |
 | 260821-dmg | Fix two phase 01 UAT UI issues: dev-only "Copy preset values" button restyled for dark sidebar legibility; Corner Cut Offset slider given its own narrower/finer bounds separate from Bottom Tuck 3 | 2026-08-21 | e08614a | [20260821-uat-ui-fixes](./quick/20260821-uat-ui-fixes/) |
 | 260821-prf | Extend presets to rail bands and fin setups (seeded from defaults); fix applyPreset board-replacement and boardStarted tracking (REVIEW.md WR-01, WR-02); dev-only preset-capture affordances added to Rails and Fins screens | 2026-08-21 | 329872f | [20260821-preset-rails-fins](./quick/20260821-preset-rails-fins/) |
+| 260821-bt3 | Fix Bottom Tuck 3 slider inverting rail geometry: floor override at Bottom Tuck 1 in rail-bands.ts geometry layer (not just UI), dynamic slider bounds in rail-controls.tsx, golden-wide invariant test coverage | 2026-08-21 | 8fff110 | [20260821-bottom-tuck3-floor](./quick/20260821-bottom-tuck3-floor/) |
 
 ## Deferred Items
 
@@ -120,6 +123,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-21T17:31:02.000Z
-Stopped at: Completed quick task 260821-prf (preset rails/fins)
+Last session: 2026-08-21T15:08:00.000Z
+Stopped at: Completed quick task 260821-bt3 (bottom tuck 3 floor)
 Resume file: None
