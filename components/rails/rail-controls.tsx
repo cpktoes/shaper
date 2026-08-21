@@ -3,6 +3,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import {
+  MIN_BOTTOM_TUCK_SEPARATION_IN,
   railFamilyLabel,
   type RailBandSpec,
   type RailFamily,
@@ -171,13 +172,15 @@ function RailSectionControls({
   const deckProfileSliderValue = 166 - spec.deckPercent;
   const cornerCutOffsetIn = output.result.cornerCutOffset !== null ? mmToInches(output.result.cornerCutOffset) : 0;
   const bottomTuck3In = mmToInches(output.result.bottomTuck3);
+  const bottomTuck3DerivedIn = mmToInches(output.result.bottomTuck3Derived);
   // Dynamic bounds (GSD-added, not a static constant like TUCK_BOUNDS): Bottom Tuck 3 must never
-  // be draggable below Bottom Tuck 1 (which itself depends on symmetrical/family/scale/thickness),
-  // and the max must track the current derived value so a symmetrical 4" value isn't pinned at a
-  // static 1.5" max that can't represent it.
+  // be draggable at or below Bottom Tuck 1 (which itself depends on symmetrical/family/scale/
+  // thickness) — the min enforces the same strict separation as the geometry-layer floor. The max
+  // tracks the un-overridden derived value (computed in lib/, not here) so a symmetrical 4" value
+  // is always reachable and never pinned below a static 1.5" max that can't represent it.
   const bottomTuck3Bounds = {
-    min: mmToInches(output.result.bottomTuck1),
-    max: Math.max(TUCK_BOUNDS.max, bottomTuck3In),
+    min: mmToInches(output.result.bottomTuck1) + MIN_BOTTOM_TUCK_SEPARATION_IN,
+    max: Math.max(TUCK_BOUNDS.max, bottomTuck3DerivedIn),
     step: TUCK_BOUNDS.step,
   };
   const hardEdgeOn = isTail ? !!tailHardEdge : false;

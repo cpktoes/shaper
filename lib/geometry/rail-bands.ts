@@ -105,6 +105,10 @@ export interface RailSectionResult {
   bottomTuck1: Mm;
   bottomTuck2: Mm;
   bottomTuck3: Mm;
+  /** GSD-added (not part of the source workbook): the value bottomTuck3 would take with no
+   * override present, including the hardEdge rule. Lets the UI offer this as the Bottom Tuck 3
+   * slider's reachable max without recomputing symmetrical/hardEdge derivation logic itself. */
+  bottomTuck3Derived: Mm;
   removeCornerCut: boolean;
   singleTuck: boolean;
 }
@@ -165,6 +169,7 @@ interface RailSectionResultInches {
   bottomTuck1: number;
   bottomTuck2: number;
   bottomTuck3: number;
+  bottomTuck3Derived: number;
   removeCornerCut: boolean;
   singleTuck: boolean;
 }
@@ -233,16 +238,21 @@ function computeSectionInches(input: ComputeSectionInchesInput): RailSectionResu
   const cornerCutDeck = input.removeCornerCut ? null : railMark1 - (cornerCutRail as number); // C22: =C15-C17
   const bottomTuck1 = input.symmetrical ? deckMark1 : railTuck1 / 2; // C23: =IF(Symmetrical,C19,C16/2)
   const bottomTuck2 = bottomTuck1 / 2; // C24: =C23/2
+  const bottomTuck3NoOverride = input.symmetrical ? deckMark3 : railTuck1; // C25 derivation itself
   const bottomTuck3 = input.hardEdge // C25: =IF(Symmetrical,C21,C16)
     ? 0
     : input.bottomTuck3OverrideIn === null
-      ? (input.symmetrical ? deckMark3 : railTuck1)
+      ? bottomTuck3NoOverride
       : // GSD-added guard (not part of the source workbook): floor a user-supplied override at
         // Bottom Tuck 1 plus MIN_BOTTOM_TUCK_SEPARATION_IN so it can never sit at or below it and
         // invert/collapse the bottom marks. The derived branch above already satisfies
         // bottomTuck3 > bottomTuck1 by construction and is never floored — only the override is
         // guarded.
         Math.max(input.bottomTuck3OverrideIn, bottomTuck1 + MIN_BOTTOM_TUCK_SEPARATION_IN);
+  // GSD-added (not part of the source workbook): the value bottomTuck3 would take with NO
+  // override, including the hardEdge rule — exposed so the UI can offer it as the slider's
+  // reachable max without recomputing symmetrical/hardEdge logic in the component.
+  const bottomTuck3Derived = input.hardEdge ? 0 : bottomTuck3NoOverride;
   return {
     thickness: input.thicknessIn,
     apexLenRange,
@@ -260,6 +270,7 @@ function computeSectionInches(input: ComputeSectionInchesInput): RailSectionResu
     bottomTuck1,
     bottomTuck2,
     bottomTuck3,
+    bottomTuck3Derived,
     removeCornerCut: !!input.removeCornerCut,
     singleTuck: !!input.singleTuck,
   };
@@ -453,6 +464,7 @@ function resultToInches(r: RailSectionResult): RailSectionResultInches {
     bottomTuck1: mmToInches(r.bottomTuck1),
     bottomTuck2: mmToInches(r.bottomTuck2),
     bottomTuck3: mmToInches(r.bottomTuck3),
+    bottomTuck3Derived: mmToInches(r.bottomTuck3Derived),
     removeCornerCut: r.removeCornerCut,
     singleTuck: r.singleTuck,
   };
@@ -505,6 +517,7 @@ export function computeRailSection(input: ComputeRailSectionInput): RailSectionR
     bottomTuck1: inchesToMm(rIn.bottomTuck1),
     bottomTuck2: inchesToMm(rIn.bottomTuck2),
     bottomTuck3: inchesToMm(rIn.bottomTuck3),
+    bottomTuck3Derived: inchesToMm(rIn.bottomTuck3Derived),
     removeCornerCut: rIn.removeCornerCut,
     singleTuck: rIn.singleTuck,
   };
