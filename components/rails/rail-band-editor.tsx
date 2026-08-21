@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
 import { type RailBandSpec, type RailSectionKey, type RailSectionSpec } from "@/lib/geometry/rail-bands";
@@ -13,6 +13,10 @@ type RailPage = "viewer" | "data";
 
 const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
+
+// The pre-existing width cap each plot wrapper used to carry as `max-w-[420px]` — now the ceiling
+// on the single shared width solved for below, rather than a per-plot CSS class.
+const MAX_PLOT_W = 420;
 
 /** Rounds a millimetre value to inches, 3 decimal places — matches outline-editor.tsx's own helper. */
 function roundedInches(value: Mm): number {
@@ -109,6 +113,68 @@ export function RailBandEditor() {
 
   const legend = openSections.length > 0 ? buildRailLegend(bands[openSections[0]]) : [];
 
+  // Every open section's viewBox WIDTH is identical (computeRailPlotBounds derives it from
+  // sharedXAxisMin alone, not per-section thickness) -- only viewBox HEIGHT differs. Rendering
+  // every plot at one common pixel width `plotWidth` therefore automatically gives every plot the
+  // same scale (renderedWidth / viewBoxWidth) and the same left/right edges, which is exactly the
+  // user's "shared scale, aligned x-axes" requirement -- see PLAN.md's derivation. `vbW` reads
+  // openSections[0] only because every open section agrees on it; `sumOfVbH` is the one value that
+  // actually varies per section and drives how much of the container's height the stack needs.
+  const vbW = openSections.length > 0 ? computeRailPlotBounds(bands[openSections[0]], sharedXAxisMin).width : MAX_PLOT_W;
+  const sumOfVbH = openSections.reduce(
+    (sum, key) => sum + computeRailPlotBounds(bands[key], sharedXAxisMin).height,
+    0,
+  );
+  const openSectionsKey = openSections.join(",");
+
+  const plotsContainerRef = useRef<HTMLDivElement | null>(null);
+  const titleRefs = useRef<Partial<Record<RailSectionKey, HTMLDivElement | null>>>({});
+  const [plotWidth, setPlotWidth] = useState(MAX_PLOT_W);
+
+  // Solves for the single width every open plot renders at. Re-measures the actual title heights
+  // and inter-section gap (rather than hardcoding them) so a font or spacing change can't silently
+  // throw the fit off -- and re-runs whenever the container resizes, a section opens/closes, any
+  // thickness change alters a plot's natural viewBox height (sumOfVbH), or the VIEWER/DATA tab
+  // switch mounts a fresh container node (the plots container unmounts on the DATA tab, so the
+  // previous ResizeObserver's node goes stale and must be re-attached on return to VIEWER).
+  useLayoutEffect(() => {
+    const container = plotsContainerRef.current;
+    if (!container) return;
+
+    const recompute = () => {
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      // Degenerate measurement (initial paint before layout, or a hidden/zero-size pane): fall
+      // back to the width cap rather than emitting a 0-width plot.
+      if (containerWidth <= 0 || containerHeight <= 0 || sumOfVbH <= 0) {
+        setPlotWidth(containerWidth > 0 ? Math.min(containerWidth, MAX_PLOT_W) : MAX_PLOT_W);
+        return;
+      }
+
+      const rowGap = parseFloat(getComputedStyle(container).rowGap || "0") || 0;
+      const chrome = openSections.reduce((sum, key) => {
+        const titleEl = titleRefs.current[key];
+        if (!titleEl) return sum;
+        const marginBottom = parseFloat(getComputedStyle(titleEl).marginBottom) || 0;
+        return sum + titleEl.offsetHeight + marginBottom;
+      }, rowGap * Math.max(0, openSections.length - 1));
+
+      const availablePlotH = containerHeight - chrome;
+      const widthFromHeight = availablePlotH > 0 ? (availablePlotH * vbW) / sumOfVbH : 0;
+      // Floor to a whole pixel and bias down (never up) -- offsetHeight measurements above already
+      // round to the nearest pixel, so rounding the solved width up here could compound into a
+      // sub-pixel stack overflow; rounding down cannot.
+      const solvedWidth = widthFromHeight > 0 ? Math.floor(Math.min(containerWidth, MAX_PLOT_W, widthFromHeight)) : Math.floor(Math.min(containerWidth, MAX_PLOT_W));
+      setPlotWidth(Number.isFinite(solvedWidth) && solvedWidth > 0 ? solvedWidth : Math.floor(Math.min(containerWidth, MAX_PLOT_W)));
+    };
+
+    recompute();
+    const observer = new ResizeObserver(recompute);
+    observer.observe(container);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSectionsKey, vbW, sumOfVbH, activePage]);
+
   return (
     <div className="flex min-h-0 w-full flex-1 flex-nowrap">
       <aside className="h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto bg-outline-sidebar-bg p-6 text-outline-sidebar-text">
@@ -155,29 +221,20 @@ export function RailBandEditor() {
         {activePage === "viewer" && (
           <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-[#e4ddc9] bg-white p-5">
             <div className="mb-3 self-start text-xl font-extrabold text-outline-ink">Rail Viewer</div>
-            <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
-              {openSections.map((key) => {
-                // Natural plot height (same units as RailSectionPlot's own viewBox) drives this
-                // section's share of the stack: flex-basis 0 + flex-grow set to that height makes
-                // the children divide the available space in proportion to their own natural
-                // heights, so a thicker center section stays visually taller than nose/tail as
-                // everything scales down together — never equal thirds.
-                const { height: naturalHeight } = computeRailPlotBounds(bands[key], sharedXAxisMin);
-                return (
+            <div ref={plotsContainerRef} className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
+              {openSections.map((key) => (
+                <div key={key} className="flex flex-none flex-col items-center" style={{ width: plotWidth }}>
                   <div
-                    key={key}
-                    className="flex min-h-0 w-full max-w-[420px] flex-col items-center"
-                    style={{ flexGrow: naturalHeight, flexBasis: 0 }}
+                    ref={(el) => {
+                      titleRefs.current[key] = el;
+                    }}
+                    className="mb-1 flex-none text-base font-extrabold text-outline-ink"
                   >
-                    <div className="mb-1 flex-none text-base font-extrabold text-outline-ink">
-                      {SECTION_TITLE[key]}
-                    </div>
-                    <div className="flex min-h-0 w-full flex-1 items-center justify-center">
-                      <RailSectionPlot sectionKey={key} output={bands[key]} xAxisMin={sharedXAxisMin} fit="height" />
-                    </div>
+                    {SECTION_TITLE[key]}
                   </div>
-                );
-              })}
+                  <RailSectionPlot sectionKey={key} output={bands[key]} xAxisMin={sharedXAxisMin} />
+                </div>
+              ))}
             </div>
             {legend.length > 0 && (
               <div className="mt-4 flex flex-none flex-wrap items-center justify-center gap-x-6 gap-y-2">
