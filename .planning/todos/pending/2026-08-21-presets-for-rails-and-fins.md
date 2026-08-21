@@ -1,5 +1,11 @@
 ---
 created: 2026-08-21
+title: Extend presets beyond outline to rail bands and fin setups
+area: general
+severity: minor
+files:
+  - lib/geometry/presets.ts
+  - components/design/design-store.tsx
 source: UAT feedback, phase 01
 resolves_phase:
 ---

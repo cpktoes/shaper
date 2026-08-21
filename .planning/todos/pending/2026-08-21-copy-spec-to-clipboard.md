@@ -1,5 +1,13 @@
 ---
 created: 2026-08-21
+title: Copy-spec-to-clipboard across the design screens
+area: ui
+severity: minor
+files:
+  - components/rails/rail-band-editor.tsx
+  - components/fins/fin-placement-editor.tsx
+  - components/volume/volume-estimator.tsx
+  - components/outline/outline-editor.tsx
 source: sweep of deferred items in quick tasks 260818-lm0 / -mr2 / -nyw / -kvp
 resolves_phase:
 ---

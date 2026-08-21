@@ -1,5 +1,12 @@
 ---
 created: 2026-08-21
+title: Rails viewer: View Full Sized modal and board-outline plan view
+area: ui
+severity: minor
+files:
+  - components/rails/rail-band-editor.tsx
+  - components/rails/rail-section-plot.tsx
+  - reference/project/Rails.dc.html
 source: sweep of deferred items in quick task 260818-lm0
 resolves_phase:
 ---

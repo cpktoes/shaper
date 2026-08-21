@@ -1,5 +1,13 @@
 ---
 created: 2026-08-21
+title: Rails: port the INSTRUCTIONS page (third tab)
+area: ui
+severity: minor
+files:
+  - components/rails/rail-band-editor.tsx
+  - lib/geometry/rail-bands.ts
+  - reference/project/Rails.dc.html
+  - reference/project/assets/rail-bands-plan-bg.png
 source: user report; deferred in quick task 260818-lm0
 resolves_phase:
 ---
