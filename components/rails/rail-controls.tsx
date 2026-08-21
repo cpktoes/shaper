@@ -171,6 +171,15 @@ function RailSectionControls({
   const deckProfileSliderValue = 166 - spec.deckPercent;
   const cornerCutOffsetIn = output.result.cornerCutOffset !== null ? mmToInches(output.result.cornerCutOffset) : 0;
   const bottomTuck3In = mmToInches(output.result.bottomTuck3);
+  // Dynamic bounds (GSD-added, not a static constant like TUCK_BOUNDS): Bottom Tuck 3 must never
+  // be draggable below Bottom Tuck 1 (which itself depends on symmetrical/family/scale/thickness),
+  // and the max must track the current derived value so a symmetrical 4" value isn't pinned at a
+  // static 1.5" max that can't represent it.
+  const bottomTuck3Bounds = {
+    min: mmToInches(output.result.bottomTuck1),
+    max: Math.max(TUCK_BOUNDS.max, bottomTuck3In),
+    step: TUCK_BOUNDS.step,
+  };
   const hardEdgeOn = isTail ? !!tailHardEdge : false;
 
   const resetAdvanced = () => {
@@ -319,13 +328,13 @@ function RailSectionControls({
                     </div>
                     <Slider
                       value={bottomTuck3In}
-                      min={TUCK_BOUNDS.min}
-                      max={TUCK_BOUNDS.max}
-                      step={TUCK_BOUNDS.step}
+                      min={bottomTuck3Bounds.min}
+                      max={bottomTuck3Bounds.max}
+                      step={bottomTuck3Bounds.step}
                       onValueChange={(v) =>
                         onChange({
                           bottomTuck3Override: inchesToMm(
-                            clampFinite(sliderValue(v), TUCK_BOUNDS.min, TUCK_BOUNDS.max),
+                            clampFinite(sliderValue(v), bottomTuck3Bounds.min, bottomTuck3Bounds.max),
                           ),
                         })
                       }
