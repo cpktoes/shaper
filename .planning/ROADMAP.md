@@ -13,7 +13,7 @@ Shaper starts from a working prototype (built in Claude Design) that already pro
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation — Port & Deploy the Design Tool** - Port the Claude Design prototype into a real Next.js app, live on Vercel, with outline shaping, rail-band calc, and fin-placement calc working
+- [x] **Phase 1: Foundation — Port & Deploy the Design Tool** - Port the Claude Design prototype into a real Next.js app, live on Vercel, with outline shaping, rail-band calc, and fin-placement calc working (completed 2026-08-21)
 - [ ] **Phase 2: Accounts & Saved Designs** - Users sign up/log in via Clerk and their designs persist in Neon Postgres across sessions
 - [ ] **Phase 3: Volume, Templates & Verified Math** - Live volume calculation, printable full-size templates, and automated tests proving the geometry math correct
 - [ ] **Phase 4: Rocker & Foil Editors** - Interactive rocker and foil editors complete the design surface, feeding rail band and volume live
@@ -106,7 +106,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation — Port & Deploy the Design Tool | 4/4 | In Progress|  |
+| 1. Foundation — Port & Deploy the Design Tool | 4/4 | Complete    | 2026-08-21 |
 | 2. Accounts & Saved Designs | 0/TBD | Not started | - |
 | 3. Volume, Templates & Verified Math | 0/TBD | Not started | - |
 | 4. Rocker & Foil Editors | 0/TBD | Not started | - |
