@@ -27,7 +27,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Rail Contour
 
-- [ ] **RAIL-01**: App calculates rail band dimensions (thickness/apex/tuck) at each station along the board, derived from the outline and rocker
+- [x] **RAIL-01**: App calculates rail band dimensions (thickness/apex/tuck) at each station along the board, derived from the outline and rocker
 
 ### Foil
 
@@ -35,9 +35,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Fins
 
-- [ ] **FIN-01**: User can select a fin configuration (single, thruster, quad, twin/2+1) for the design
-- [ ] **FIN-02**: App calculates fin placement (position, angle, toe) using compiled formulas per fin configuration
-- [ ] **FIN-03**: User can view calculated fin placement overlaid on the board outline
+- [x] **FIN-01**: User can select a fin configuration (single, thruster, quad, twin/2+1) for the design
+- [x] **FIN-02**: App calculates fin placement (position, angle, toe) using compiled formulas per fin configuration
+- [x] **FIN-03**: User can view calculated fin placement overlaid on the board outline
 
 ### Volume
 
@@ -102,11 +102,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SETUP-01 | Phase 1 | Complete |
 | OUTL-01 | Phase 1 | Complete |
 | ROCK-01 | Phase 4 | Pending |
-| RAIL-01 | Phase 1 | Pending |
+| RAIL-01 | Phase 1 | Complete |
 | FOIL-01 | Phase 4 | Pending |
-| FIN-01 | Phase 1 | Pending |
-| FIN-02 | Phase 1 | Pending |
-| FIN-03 | Phase 1 | Pending |
+| FIN-01 | Phase 1 | Complete |
+| FIN-02 | Phase 1 | Complete |
+| FIN-03 | Phase 1 | Complete |
 | VOL-01 | Phase 3 | Pending |
 | MODL-01 | Phase 2 | Pending |
 | MODL-02 | Phase 2 | Pending |

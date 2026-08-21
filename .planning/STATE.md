@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 01
 current_phase_name: foundation-port-deploy-the-design-tool
-status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-08-19T23:00:01.033Z"
+status: verifying
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-08-21T16:08:38.957Z"
 last_activity: 2026-08-19
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 
 Phase: 01 (foundation-port-deploy-the-design-tool) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-19 — Phase 01 execution started
 
-Progress: [████████░░] 75%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [████████░░] 75%
 | Phase 01 P01 | 91min | 3 tasks | 13 files |
 | Phase 01 P02 | 34min | 3 tasks | 8 files |
 | Phase 01 P03 | 26min | 3 tasks | 2 files |
+| Phase 01 P04 | 20min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,10 @@ Recent decisions affecting current work:
 - [Phase ?]: 01-02: hasBoardInProgress is a flag set on write inside applyPreset/updateOutline, never derived by comparing the outline against its default
 - [Phase ?]: 01-03: Deployed live at https://shaper-coral.vercel.app, Git-integrated to main for auto-deploy on push, zero secrets/env vars in the platform
 - [Phase ?]: 01-03: Node version pinned in Vercel's own project setting (not package.json's engines field), keeping package.json untouched per plan 02's concurrency assumption
+- [Phase ?]: [Phase 1] 01-04: turbopackSourceMaps disabled in next.config.ts — server-chunk .js.map was leaking the dev-only preset-capture affordance's label text even though the compiled .js correctly dead-code-eliminated it
+- [Phase ?]: [Phase 1] 01-04: only Mid-length and Longboard presets were captured/tuned; Shortboard and Fish reviewed live and kept at their original drafted values by the shaper's own approval
+- [Phase ?]: [Phase 1] 01-04: hideFinMarks added to OutlineViewer (per-consumer gate, following hideCallouts) to suppress fin marks on the outline editor screen only, per checkpoint feedback
+- [Phase ?]: [Phase 1] 01-04: fin-callout centering fix in components/fins/fin-viewer.tsx (outside plan's declared files) treated as a contained deviation and fixed directly — maxLeftTier now centers the tier-stacking vertical offset instead of assuming a fixed reference tier
 
 ### Pending Todos
 
@@ -110,6 +115,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-19T23:00:01.019Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-08-21T16:08:38.929Z
+Stopped at: Completed 01-04-PLAN.md
 Resume file: None
