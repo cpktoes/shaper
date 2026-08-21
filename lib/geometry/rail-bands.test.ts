@@ -221,6 +221,85 @@ describe("computeRailSection null alignment", () => {
   });
 });
 
+describe("Bottom Tuck 3 override floor", () => {
+  // family=3, scale=1, ratioTopPercent=60, thickness=2.5in (same shape as the center section
+  // defaults). Derived values by hand: apexLenRange=0.75, apexCenter=1.0, railTuck1=0.625,
+  // bottomTuck1(non-sym)=0.3125, bottomTuck1(sym)=deckMark1=2.5, deckMark3=4.0. These match the
+  // measured repro in the todo (Bottom Tuck 1 = 2 1/2", Bottom Tuck 3 derived = 4" when symmetrical).
+  const baseInput: ComputeRailSectionInput = {
+    thickness: inchesToMm(2.5),
+    ratioTopPercent: 60,
+    family: 3,
+    domedBandBase: inchesToMm(6),
+    scale: 1,
+    cornerCutOffsetOverride: null,
+    removeCornerCut: false,
+    singleTuck: false,
+    bottomTuck3Override: null,
+    symmetrical: false,
+    hardEdge: false,
+  };
+
+  it("floors a symmetrical override below Bottom Tuck 1 to Bottom Tuck 1 (never inverts)", () => {
+    // Reproduces the exact reported bug: Sym on, slider touched down to 1.5" (below the 2.5"
+    // Bottom Tuck 1), must floor instead of collapsing below Bottom Tuck 1.
+    const r = computeRailSection({ ...baseInput, symmetrical: true, bottomTuck3Override: inchesToMm(1.5) });
+    expectCloseIn(mmToInches(r.bottomTuck1), 2.5);
+    expectCloseIn(mmToInches(r.bottomTuck3), 2.5);
+    expect(r.bottomTuck3).toBeGreaterThanOrEqual(r.bottomTuck1);
+  });
+
+  it("floors a non-symmetrical override below Bottom Tuck 1 to Bottom Tuck 1", () => {
+    const r = computeRailSection({ ...baseInput, symmetrical: false, bottomTuck3Override: inchesToMm(0.1) });
+    expectCloseIn(mmToInches(r.bottomTuck1), 0.3125);
+    expectCloseIn(mmToInches(r.bottomTuck3), 0.3125);
+    expect(r.bottomTuck3).toBeGreaterThanOrEqual(r.bottomTuck1);
+  });
+
+  it("passes a symmetrical override above the floor through unchanged", () => {
+    const r = computeRailSection({ ...baseInput, symmetrical: true, bottomTuck3Override: inchesToMm(3.0) });
+    expectCloseIn(mmToInches(r.bottomTuck3), 3.0);
+  });
+
+  it("passes a non-symmetrical override above the floor through unchanged", () => {
+    const r = computeRailSection({ ...baseInput, symmetrical: false, bottomTuck3Override: inchesToMm(0.5) });
+    expectCloseIn(mmToInches(r.bottomTuck3), 0.5);
+  });
+
+  it("still yields exactly 0 for hardEdge even with an override present", () => {
+    const symmetricalHardEdge = computeRailSection({
+      ...baseInput,
+      symmetrical: true,
+      hardEdge: true,
+      bottomTuck3Override: inchesToMm(5),
+    });
+    expect(symmetricalHardEdge.bottomTuck3).toBe(0);
+
+    const nonSymmetricalHardEdge = computeRailSection({
+      ...baseInput,
+      symmetrical: false,
+      hardEdge: true,
+      bottomTuck3Override: inchesToMm(5),
+    });
+    expect(nonSymmetricalHardEdge.bottomTuck3).toBe(0);
+  });
+
+  it("holds bottomTuck3 >= bottomTuck1 (or exactly 0 under hardEdge) for every section across every golden fixture", () => {
+    for (const [, fixture] of goldenEntries) {
+      const spec = toRailBandSpec(fixture.state as GoldenState);
+      const bands = computeRailBands(spec);
+      for (const section of SECTION_KEYS) {
+        const r = bands[section].result;
+        if (r.hardEdge) {
+          expect(r.bottomTuck3).toBe(0);
+        } else {
+          expect(r.bottomTuck3).toBeGreaterThanOrEqual(r.bottomTuck1 - 1e-9);
+        }
+      }
+    }
+  });
+});
+
 describe("roundToSixteenthInch", () => {
   it("snaps 2.5in x 80% to exactly 2in", () => {
     const snapped = roundToSixteenthInch(inchesToMm(2.5 * 0.8));
