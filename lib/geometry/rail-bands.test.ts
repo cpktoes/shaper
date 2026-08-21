@@ -4,6 +4,7 @@ import {
   computeRailBands,
   computeRailSection,
   mergeRailDataTable,
+  MIN_BOTTOM_TUCK_SEPARATION_IN,
   railFamilyLabel,
   type ComputeRailSectionInput,
   type RailBandSpec,
@@ -240,20 +241,20 @@ describe("Bottom Tuck 3 override floor", () => {
     hardEdge: false,
   };
 
-  it("floors a symmetrical override below Bottom Tuck 1 to Bottom Tuck 1 (never inverts)", () => {
+  it("floors a symmetrical override below Bottom Tuck 1 to Bottom Tuck 1 + MIN_BOTTOM_TUCK_SEPARATION_IN (strictly greater, never inverts or collapses)", () => {
     // Reproduces the exact reported bug: Sym on, slider touched down to 1.5" (below the 2.5"
-    // Bottom Tuck 1), must floor instead of collapsing below Bottom Tuck 1.
+    // Bottom Tuck 1), must floor to strictly above Bottom Tuck 1, not collapse onto it.
     const r = computeRailSection({ ...baseInput, symmetrical: true, bottomTuck3Override: inchesToMm(1.5) });
     expectCloseIn(mmToInches(r.bottomTuck1), 2.5);
-    expectCloseIn(mmToInches(r.bottomTuck3), 2.5);
-    expect(r.bottomTuck3).toBeGreaterThanOrEqual(r.bottomTuck1);
+    expectCloseIn(mmToInches(r.bottomTuck3), 2.5 + MIN_BOTTOM_TUCK_SEPARATION_IN);
+    expect(r.bottomTuck3).toBeGreaterThan(r.bottomTuck1);
   });
 
-  it("floors a non-symmetrical override below Bottom Tuck 1 to Bottom Tuck 1", () => {
+  it("floors a non-symmetrical override below Bottom Tuck 1 to Bottom Tuck 1 + MIN_BOTTOM_TUCK_SEPARATION_IN", () => {
     const r = computeRailSection({ ...baseInput, symmetrical: false, bottomTuck3Override: inchesToMm(0.1) });
     expectCloseIn(mmToInches(r.bottomTuck1), 0.3125);
-    expectCloseIn(mmToInches(r.bottomTuck3), 0.3125);
-    expect(r.bottomTuck3).toBeGreaterThanOrEqual(r.bottomTuck1);
+    expectCloseIn(mmToInches(r.bottomTuck3), 0.3125 + MIN_BOTTOM_TUCK_SEPARATION_IN);
+    expect(r.bottomTuck3).toBeGreaterThan(r.bottomTuck1);
   });
 
   it("passes a symmetrical override above the floor through unchanged", () => {
@@ -266,7 +267,7 @@ describe("Bottom Tuck 3 override floor", () => {
     expectCloseIn(mmToInches(r.bottomTuck3), 0.5);
   });
 
-  it("still yields exactly 0 for hardEdge even with an override present", () => {
+  it("still yields exactly 0 for hardEdge even with an override present, including bottomTuck3Derived", () => {
     const symmetricalHardEdge = computeRailSection({
       ...baseInput,
       symmetrical: true,
@@ -274,6 +275,7 @@ describe("Bottom Tuck 3 override floor", () => {
       bottomTuck3Override: inchesToMm(5),
     });
     expect(symmetricalHardEdge.bottomTuck3).toBe(0);
+    expect(symmetricalHardEdge.bottomTuck3Derived).toBe(0);
 
     const nonSymmetricalHardEdge = computeRailSection({
       ...baseInput,
@@ -282,9 +284,10 @@ describe("Bottom Tuck 3 override floor", () => {
       bottomTuck3Override: inchesToMm(5),
     });
     expect(nonSymmetricalHardEdge.bottomTuck3).toBe(0);
+    expect(nonSymmetricalHardEdge.bottomTuck3Derived).toBe(0);
   });
 
-  it("holds bottomTuck3 >= bottomTuck1 (or exactly 0 under hardEdge) for every section across every golden fixture", () => {
+  it("holds bottomTuck3 > bottomTuck1 strictly (or exactly 0 under hardEdge) for every section across every golden fixture", () => {
     for (const [, fixture] of goldenEntries) {
       const spec = toRailBandSpec(fixture.state as GoldenState);
       const bands = computeRailBands(spec);
@@ -293,10 +296,40 @@ describe("Bottom Tuck 3 override floor", () => {
         if (r.hardEdge) {
           expect(r.bottomTuck3).toBe(0);
         } else {
-          expect(r.bottomTuck3).toBeGreaterThanOrEqual(r.bottomTuck1 - 1e-9);
+          expect(r.bottomTuck3).toBeGreaterThan(r.bottomTuck1);
         }
       }
     }
+  });
+
+  it("bottomTuck3Derived equals the un-overridden value in both modes, unaffected by an override's presence", () => {
+    const symmetricalNoOverride = computeRailSection({ ...baseInput, symmetrical: true, bottomTuck3Override: null });
+    const symmetricalWithOverride = computeRailSection({
+      ...baseInput,
+      symmetrical: true,
+      bottomTuck3Override: inchesToMm(1.5),
+    });
+    expectCloseIn(mmToInches(symmetricalNoOverride.bottomTuck3Derived), 4.0);
+    expectCloseIn(mmToInches(symmetricalWithOverride.bottomTuck3Derived), 4.0);
+    // With no override, bottomTuck3 itself equals the derived value.
+    expectCloseIn(mmToInches(symmetricalNoOverride.bottomTuck3), mmToInches(symmetricalNoOverride.bottomTuck3Derived));
+
+    const nonSymmetricalNoOverride = computeRailSection({
+      ...baseInput,
+      symmetrical: false,
+      bottomTuck3Override: null,
+    });
+    const nonSymmetricalWithOverride = computeRailSection({
+      ...baseInput,
+      symmetrical: false,
+      bottomTuck3Override: inchesToMm(0.1),
+    });
+    expectCloseIn(mmToInches(nonSymmetricalNoOverride.bottomTuck3Derived), 0.625);
+    expectCloseIn(mmToInches(nonSymmetricalWithOverride.bottomTuck3Derived), 0.625);
+    expectCloseIn(
+      mmToInches(nonSymmetricalNoOverride.bottomTuck3),
+      mmToInches(nonSymmetricalNoOverride.bottomTuck3Derived),
+    );
   });
 });
 
