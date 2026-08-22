@@ -233,7 +233,7 @@ export function OutlineControls({
       <SectionHeading>Widepoint Controls</SectionHeading>
       <div className="flex gap-4">
         <SliderRow
-          label="Widepoint Width"
+          label="Width"
           displayValue={formatInchesFraction(outline.widePointWidth)}
           value={mmToInches(outline.widePointWidth)}
           min={16}
@@ -265,7 +265,7 @@ export function OutlineControls({
       </div>
       <div className="flex gap-4">
         <SliderRow
-          label="Tail Rail Length"
+          label="Tail Rail"
           displayValue={`${outline.tailRailLength}%`}
           value={outline.tailRailLength}
           min={0}
@@ -276,7 +276,7 @@ export function OutlineControls({
           rightHint="Long"
         />
         <SliderRow
-          label="Nose Rail Length"
+          label="Nose Rail"
           displayValue={`${outline.noseRailLength}%`}
           value={outline.noseRailLength}
           min={0}
