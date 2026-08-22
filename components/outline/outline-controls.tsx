@@ -231,22 +231,18 @@ export function OutlineControls({
       </div>
 
       <SectionHeading>Widepoint Controls</SectionHeading>
-      <div>
-        <div className="mb-2 text-[11px] tracking-wide text-outline-sidebar-text-muted uppercase">
-          Widepoint Width — {formatInchesFraction(outline.widePointWidth)}
-        </div>
-        <Slider
+      <div className="flex gap-4">
+        <SliderRow
+          label="Widepoint Width"
+          displayValue={formatInchesFraction(outline.widePointWidth)}
           value={mmToInches(outline.widePointWidth)}
           min={16}
           max={25}
           step={0.125}
           onValueChange={(v) =>
-            onChange({ widePointWidth: inchesToMm(clampFinite(sliderValue(v), 16, 25)) })
+            onChange({ widePointWidth: inchesToMm(clampFinite(v, 16, 25)) })
           }
-          className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
         />
-      </div>
-      <div className="flex gap-4">
         <SliderRow
           label="Offset"
           displayValue={
@@ -266,6 +262,8 @@ export function OutlineControls({
           leftHint="Tail"
           rightHint="Nose"
         />
+      </div>
+      <div className="flex gap-4">
         <SliderRow
           label="Rail Length"
           displayValue={`${outline.railLength}%`}
