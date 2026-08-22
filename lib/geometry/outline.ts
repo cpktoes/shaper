@@ -32,9 +32,9 @@ const DIAMOND_BLOCK_MARGIN_MM = inchesToMm(2);
 const MEASURE_STATION_MM = inchesToMm(12);
 
 /** Handle length cap as a fraction of the chord between adjacent knots. */
-const HANDLE_CAP = 0.48;
+export const HANDLE_CAP = 0.48;
 /** Overshoot factor used when capping a handle so it doesn't carry its control point past the widepoint. */
-const OVERSHOOT = 0.92;
+export const OVERSHOOT = 0.92;
 const SAMPLES_PER_SEGMENT = 80;
 /** Guard against dividing by a direction component that is (numerically) zero. */
 const EPSILON = 1e-6;
@@ -42,6 +42,41 @@ const EPSILON = 1e-6;
 interface Direction2D {
   x: number;
   y: number;
+}
+
+/**
+ * Widepoint Vector Strength (0-100) as a multiplier against a side's max handle length.
+ *
+ * Exported with its inverse because `lib/geometry/outline-drag.ts` has to run this backwards: a
+ * dragged handle arrives as a length and must become the percentage the slider shows. Keeping both
+ * directions next to each other is what stops them drifting apart.
+ */
+export const railMult = (pct: number) => 0.8 + (pct / 100) * 0.8;
+export const railPctFromMult = (multiplier: number) => ((multiplier - 0.8) / 0.8) * 100;
+
+/**
+ * Hard geometric cap on the tail-pod handle: it must never carry its control point past the
+ * widepoint's own half-width. Depends on the tail angle through `dirY`, so a drag that changes the
+ * angle must recompute this at the NEW angle before deriving a fullness from a length.
+ */
+export function tailHandleMaxLength(
+  dirY: number,
+  chord: number,
+  halfWidePointWidth: number,
+  tailPodHalfWidth: number,
+): number {
+  if (Math.abs(dirY) <= EPSILON) return HANDLE_CAP * chord;
+  return Math.min(HANDLE_CAP * chord, (OVERSHOOT * (halfWidePointWidth - tailPodHalfWidth)) / dirY);
+}
+
+/** The same cap for the nose-tip handle, whose knot sits at half-width zero. */
+export function noseHandleMaxLength(
+  dirY: number,
+  chord: number,
+  halfWidePointWidth: number,
+): number {
+  if (Math.abs(dirY) <= EPSILON) return HANDLE_CAP * chord;
+  return Math.min(HANDLE_CAP * chord, (OVERSHOOT * halfWidePointWidth) / Math.abs(dirY));
 }
 
 export interface OutlineKnot {
@@ -177,22 +212,13 @@ export function buildOutline(spec: OutlineSpec): OutlineGeometry {
   // (controls[0].c2 = P2 - inLen0*dir2), outLen1 the one pointing toward the nose
   // (controls[1].c1 = P2 + outLen1*dir2). The prototype drove both from a single Widepoint Vector
   // slider; equal values here reproduce it exactly.
-  const railMult = (pct: number) => 0.8 + (pct / 100) * 0.8;
   const inLen0 = railMult(spec.tailRailLength) * HANDLE_CAP * chords[0];
   const outLen1 = railMult(spec.noseRailLength) * HANDLE_CAP * chords[1];
 
-  // Hard geometric cap: the tail-pod handle and the nose-tip handle must never carry their control
-  // point past the widepoint's own half-width.
-  const outLen0Max =
-    Math.abs(dir0.y) > EPSILON
-      ? Math.min(HANDLE_CAP * chords[0], (OVERSHOOT * (halfWidePointWidth - P0.y)) / dir0.y)
-      : HANDLE_CAP * chords[0];
+  const outLen0Max = tailHandleMaxLength(dir0.y, chords[0], halfWidePointWidth, P0.y);
   const outLen0 = (spec.tailFullness / 100) * outLen0Max;
 
-  const inLen1Max =
-    Math.abs(dir4.y) > EPSILON
-      ? Math.min(HANDLE_CAP * chords[1], (OVERSHOOT * halfWidePointWidth) / Math.abs(dir4.y))
-      : HANDLE_CAP * chords[1];
+  const inLen1Max = noseHandleMaxLength(dir4.y, chords[1], halfWidePointWidth);
   const inLen1 = (spec.noseFullness / 100) * inLen1Max;
 
   const outLen = [outLen0, outLen1];
