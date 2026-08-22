@@ -131,6 +131,7 @@ None yet.
 | 260822-vcs | Implement the viewer callout system (sketches 001-004): new callout-system CSS tokens, shared components/viewer/callout-primitives.tsx module, outline/fin viewers rebuilt with SVG-text chips/output-rail replacing the HTML overlay, board-summary/outline-editor aspect fixes for the widened viewBox | 2026-08-22 | b3fc9b3 | [20260822-viewer-callout-system](./quick/20260822-viewer-callout-system/) |
 | 260822-wcs | Widepoint Controls: Width and Offset onto one line; split railLength into independent tailRailLength/noseRailLength across spec, geometry, presets and tests | 2026-08-22 | 9991f0c | [20260822-widepoint-controls-split](./quick/20260822-widepoint-controls-split/) |
 | 260822-lg3 | Draggable outline control points: new lib/geometry/outline-drag.ts inverse solve with round-trip tests, construction overlay reduced to the input side, OutlineViewer onOutlineDrag pointer handling wired to the shared store; widepoint drag constrained to offset only; viewer frame grows for wide boards instead of shrinking the drawing | 2026-08-22 | 59b3f75 | [20260822-draggable-control-points](./quick/20260822-draggable-control-points/) |
+| 260822-n02 | Fix the Summary's clipped fin placement diagram: fin-viewer viewBox widened to contain its own drawing (heading and outline top were rendering outside it), Volume Estimate card made content-height so Fin Placement takes the remaining column height | 2026-08-22 | adc5c24 | [20260822-fin-placement-not-clipped](./quick/20260822-fin-placement-not-clipped/) |
 
 ## Deferred Items
 
