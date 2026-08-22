@@ -8,6 +8,12 @@
  * computed from lib/geometry — never string-built markup, never
  * `dangerouslySetInnerHTML`, no `document.write`/`window.open` (threat
  * T-QO-01; the prototype's print paths are out of scope for this screen).
+ *
+ * The callout system (chips, output rail, reference lines) implements the grammar locked in
+ * `.planning/sketches/` 001-004: nothing inside the outline but faint lines, computed values read
+ * out to the shared right-hand rail, and every input a named chip in the left gutter. All labels
+ * are SVG `<text>` — there is no absolutely-positioned HTML overlay. Rails/gutters are canonical
+ * constants imported from `components/viewer/callout-primitives.tsx`, never invented per call.
  */
 
 import type { OutlineSpec } from "@/lib/geometry/board";
@@ -15,12 +21,30 @@ import type { FinMark } from "@/lib/geometry/fins";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import { sampleOutline } from "@/lib/geometry/outline";
 import { formatFeetInches, formatInchesFraction, inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
+import {
+  CalloutChip,
+  OUTLINE_CHIP_HEIGHT,
+  OUTLINE_CHIP_RIGHT_X,
+  OUTLINE_VIEW_HEIGHT,
+  OUTLINE_VIEW_MIN_X,
+  OUTLINE_VIEW_MIN_Y,
+  OUTLINE_VIEW_WIDTH,
+  OutputRail,
+  outlineMaxHalfWidthPx,
+} from "@/components/viewer/callout-primitives";
 
 const VIEW_W = 340;
 const VIEW_H = 620;
-const PAD_X = 30;
 const PAD_Y = 24;
-const MIN_GAP = 26;
+/** The board's own historic half-width bound (from the centreline), used only when the callout
+ * system is hidden entirely (`hideCallouts`) — this keeps preset-card thumbnails pixel-identical
+ * to their pre-callout-system rendering; nothing about the board's own coordinate space changed. */
+const LEGACY_MAX_HALF_WIDTH_PX = VIEW_W / 2 - 30;
+/** Vertical gap between the Widepoint chip and the leaderless WP Offset chip stacked beneath it. */
+const CHIP_STACK_GAP = 6;
+/** How far the static stringer/centreline overhangs the board's own tip/tail — a drafting nicety
+ * (sketch 004's reference render), not load-bearing geometry. */
+const STRINGER_OVERHANG = 8;
 
 interface OutlineViewerProps {
   geometry: OutlineGeometry;
@@ -31,16 +55,18 @@ interface OutlineViewerProps {
    * viewer still renders standalone before fins are wired up. */
   finMarks?: FinMark[];
   /** Embedding-only display sizing used by the Summary dashboard (Template.dc.html line 769):
-   * shrinks the three callout spans to the shared `--summary-font-callout` scale. Changes nothing
-   * else — no geometry, no colours, no layout. Defaults to `false`, the outline screen's own
-   * unchanged 14px/13px callouts. */
+   * shrinks the callout text to the shared `--summary-font-callout`/`--summary-font-label` scale,
+   * and suppresses the left-gutter input chips (the Volume Estimate card already lists length,
+   * width and centre thickness, so chips would duplicate it) while keeping the output rail, since
+   * the derived widths appear nowhere else on the dashboard. Defaults to `false`, the outline
+   * screen's own unchanged full callout set. */
   compact?: boolean;
   /** Thumbnail-scale-only display sizing used by the setup screen's preset cards
-   * (components/setup/preset-card.tsx): when true, skips the absolutely-positioned dimension
-   * label/value and length overlay, and the dashed centerline + station reference lines,
-   * leaving the SVG board outline path, construction lines, and fin marks untouched. Changes
-   * nothing else — no geometry, no colours, no viewBox. Defaults to `false`, every existing
-   * screen's unchanged callout and station-line overlay. */
+   * (components/setup/preset-card.tsx): when true, suppresses the entire callout system (chips,
+   * output rail, reference lines, widepoint dots), leaving the SVG board outline path,
+   * construction lines, and fin marks untouched, and keeps the board's original tight viewBox so
+   * the thumbnail's scale/position never changes. Defaults to `false`, every existing screen's
+   * unchanged callout and station-line overlay. */
   hideCallouts?: boolean;
   /** Outline-editor-only display gate (components/outline/outline-editor.tsx): when true, skips
    * drawing the calculated fin-mark lines/dots on the board outline, leaving the outline curve,
@@ -48,13 +74,6 @@ interface OutlineViewerProps {
    * template (components/summary/board-summary.tsx) and the setup-screen thumbnails, so this is
    * an additive per-consumer gate, not a change to `finMarksSvg` itself. Defaults to `false`. */
   hideFinMarks?: boolean;
-}
-
-interface RawCallout {
-  pxTop: number;
-  label: string;
-  value: string;
-  pinned: boolean;
 }
 
 export function OutlineViewer({
@@ -68,9 +87,13 @@ export function OutlineViewer({
 }: OutlineViewerProps) {
   const lengthIn = mmToInches(geometry.length);
   const cwIn = mmToInches(geometry.halfWidePointWidth);
-
-  const scale = Math.min((VIEW_W / 2 - PAD_X) / cwIn, (VIEW_H - PAD_Y * 2) / lengthIn);
   const centerlineX = VIEW_W / 2;
+
+  // The callout system reserves gutter space on both sides of the board; when it's hidden
+  // entirely, fall back to the board's original padding so hideCallouts renders (preset-card
+  // thumbnails) never change.
+  const maxHalfWidthPx = hideCallouts ? LEGACY_MAX_HALF_WIDTH_PX : outlineMaxHalfWidthPx(centerlineX);
+  const scale = Math.min(maxHalfWidthPx / cwIn, (VIEW_H - PAD_Y * 2) / lengthIn);
   const tailPy = VIEW_H - PAD_Y;
   const tipPy = PAD_Y;
   const lenToY = (stationIn: number) => tailPy - stationIn * scale;
@@ -94,85 +117,21 @@ export function OutlineViewer({
     mmToInches(sampleOutline(geometry, inchesToMm(stationIn)));
 
   const wpYIn = mmToInches(geometry.widePointStation);
-  const refStationsIn = [12, lengthIn - 12, wpYIn, lengthIn / 2];
-  const refLines = refStationsIn.map((stationIn) => {
-    const hw = xAtStationIn(stationIn);
-    return {
-      x1: pxX(-hw),
-      y1: lenToY(stationIn),
-      x2: pxX(hw),
-      y2: lenToY(stationIn),
-    };
-  });
+  const wpHalfWidthIn = xAtStationIn(wpYIn);
+  const midHalfWidthIn = xAtStationIn(lengthIn / 2);
+  const noseStationIn = lengthIn - 12;
+  const tailStationIn = 12;
+  const noseHalfWidthIn = xAtStationIn(noseStationIn);
+  const tailHalfWidthIn = xAtStationIn(tailStationIn);
 
-  const centerWidthAtStationIn = 2 * xAtStationIn(lengthIn / 2);
+  const centerWidthAtStationIn = 2 * midHalfWidthIn;
   const wpFromCenterIn = wpYIn - lengthIn / 2;
-  const calloutHalfGapIn = cwIn + 1.16;
-  const namesPctLeft = `${((pxX(calloutHalfGapIn) / VIEW_W) * 100).toFixed(3)}%`;
-  const valuesPctLeft = `${((pxX(-calloutHalfGapIn) / VIEW_W) * 100).toFixed(3)}%`;
-
-  const rawCallouts: RawCallout[] = [
-    {
-      pxTop: lenToY(12),
-      label: "Tail @ 12\"",
-      value: formatInchesFraction(geometry.tailWidthAt12in),
-      pinned: true,
-    },
-    {
-      pxTop: lenToY(lengthIn - 12),
-      label: "Nose @ 12\"",
-      value: formatInchesFraction(geometry.noseWidthAt12in),
-      pinned: true,
-    },
-    {
-      pxTop: lenToY(wpYIn),
-      label: "Widepoint",
-      value: formatInchesFraction(outline.widePointWidth),
-      pinned: false,
-    },
-    {
-      pxTop: lenToY(lengthIn / 2),
-      label: "Center",
-      value: formatInchesFraction(mm(inchesToMm(centerWidthAtStationIn))),
-      pinned: false,
-    },
-    {
-      pxTop: (lenToY(wpYIn) + lenToY(lengthIn / 2)) / 2,
-      label: "WP vs Center",
-      value:
-        Math.abs(wpFromCenterIn) < 1e-9
-          ? "At center"
-          : `${formatInchesFraction(inchesToMm(Math.abs(wpFromCenterIn)))} ${
-              wpFromCenterIn > 0 ? "forward" : "back"
-            }`,
-      pinned: false,
-    },
-  ];
-
-  // De-overlap pass: push unpinned callouts apart to a minimum gap, sorted by vertical
-  // position; the two 12" station callouts are pinned and never move (they must stay
-  // aligned with their dashed reference lines on the board).
-  rawCallouts.sort((a, b) => a.pxTop - b.pxTop);
-  for (let i = 1; i < rawCallouts.length; i++) {
-    if (rawCallouts[i].pinned) continue;
-    if (rawCallouts[i].pxTop - rawCallouts[i - 1].pxTop < MIN_GAP) {
-      rawCallouts[i].pxTop = rawCallouts[i - 1].pxTop + MIN_GAP;
-    }
-  }
-  for (let i = rawCallouts.length - 2; i >= 0; i--) {
-    if (rawCallouts[i].pinned) continue;
-    if (rawCallouts[i + 1].pxTop - rawCallouts[i].pxTop < MIN_GAP) {
-      rawCallouts[i].pxTop = rawCallouts[i + 1].pxTop - MIN_GAP;
-    }
-  }
-
-  const callouts = rawCallouts.map((c) => ({
-    namesPctLeft,
-    valuesPctLeft,
-    pctTop: `${((c.pxTop / VIEW_H) * 100).toFixed(3)}%`,
-    label: c.label,
-    value: c.value,
-  }));
+  const wpOffsetText =
+    Math.abs(wpFromCenterIn) < 1e-9
+      ? "At center"
+      : `${formatInchesFraction(inchesToMm(Math.abs(wpFromCenterIn)))} ${
+          wpFromCenterIn > 0 ? "forward" : "back"
+        }`;
 
   // Ported from the prototype's finMarksSvg (Template.dc.html lines 777-779): a line from
   // (pxX(lateral), lenToY(offTail)) to (pxX(leadingLateral), lenToY(leadingOffTail)) per fin mark.
@@ -184,8 +143,6 @@ export function OutlineViewer({
   }));
 
   const lengthCalloutText = `${formatFeetInches(geometry.length)} (${formatInchesFraction(geometry.length)})`;
-  const lengthCalloutPctLeft = `${((centerlineX / VIEW_W) * 100).toFixed(3)}%`;
-  const lengthCalloutPctTop = `${((tipPy / VIEW_H) * 100).toFixed(3)}%`;
 
   const knotColors = ["var(--outline-ink)", "var(--outline-widepoint-knot)", "var(--outline-ink)"];
   const constructionDots: { cx: number; cy: number; color: string }[] = [];
@@ -219,107 +176,167 @@ export function OutlineViewer({
     }
   });
 
+  // Inputs: left gutter chips. Length sits at the nose tip; Widepoint leaders to the rail at its
+  // own station; WP Offset carries no leader (grouped beneath Widepoint — sketch 004); Tail Block
+  // only exists for tail shapes that actually have one (pin/round have none).
+  const lengthChipY = tipPy;
+  const widepointChipY = lenToY(wpYIn);
+  const wpOffsetChipY = widepointChipY + OUTLINE_CHIP_HEIGHT + CHIP_STACK_GAP;
+  const tailPodStationIn = mmToInches(geometry.tailPodStation);
+  const tailBlockChipY = lenToY(tailPodStationIn);
+  const halfTailBlockWidthIn = mmToInches(geometry.halfTailBlockWidth);
+  const tailBlockValue = `${formatInchesFraction(mm(geometry.halfTailBlockWidth * 2))} wide`;
+
+  const viewBox = hideCallouts
+    ? `0 0 ${VIEW_W} ${VIEW_H}`
+    : `${OUTLINE_VIEW_MIN_X} ${OUTLINE_VIEW_MIN_Y} ${OUTLINE_VIEW_WIDTH} ${OUTLINE_VIEW_HEIGHT}`;
+
   return (
-    <>
-      <svg
-        width={VIEW_W}
-        height={VIEW_H}
-        viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-        className="block h-full w-full"
-      >
-        <path d={outlinePath} fill="var(--outline-board-fill)" stroke="var(--outline-ink)" strokeWidth={2} />
-        {!hideCallouts && (
-          <>
-            <line
-              x1={centerlineX}
-              y1={tipPy}
-              x2={centerlineX}
-              y2={tailPy}
-              stroke="var(--outline-station-line)"
-              strokeWidth={1}
-              strokeDasharray="6 4"
-            />
-            {refLines.map((rl, i) => (
-              <line
-                key={i}
-                x1={rl.x1}
-                y1={rl.y1}
-                x2={rl.x2}
-                y2={rl.y2}
-                stroke="var(--outline-station-line)"
-                strokeWidth={1}
-                strokeDasharray="6 4"
-              />
-            ))}
-          </>
-        )}
-        {showConstruction && (
-          <>
-            {constructionLines.map((cl, i) => (
-              <line key={i} x1={cl.x1} y1={cl.y1} x2={cl.x2} y2={cl.y2} stroke={cl.color} strokeWidth={1.5} />
-            ))}
-            {constructionDots.map((dt, i) => (
-              <circle key={i} cx={dt.cx} cy={dt.cy} r={4} fill={dt.color} />
-            ))}
-          </>
-        )}
-        {!hideFinMarks &&
-          finMarksSvg.map((fm, i) => (
-            <g key={i}>
-              <line
-                x1={fm.x1}
-                y1={fm.y1}
-                x2={fm.x2}
-                y2={fm.y2}
-                stroke="var(--outline-accent)"
-                strokeWidth={2}
-              />
-              <circle cx={fm.x1} cy={fm.y1} r={3.5} fill="var(--outline-ink)" />
-              <circle cx={fm.x2} cy={fm.y2} r={3.5} fill="var(--outline-ink)" />
-            </g>
-          ))}
-      </svg>
+    <svg
+      width={hideCallouts ? VIEW_W : OUTLINE_VIEW_WIDTH}
+      height={hideCallouts ? VIEW_H : OUTLINE_VIEW_HEIGHT}
+      viewBox={viewBox}
+      className="block h-full w-full"
+    >
+      <path d={outlinePath} fill="var(--outline-board-fill)" stroke="var(--outline-ink)" strokeWidth={2} />
+
       {!hideCallouts && (
-      <div className="pointer-events-none absolute inset-0">
-        {callouts.map((co, i) => (
-          <div key={i}>
-            <div
-              className="absolute -translate-x-full -translate-y-1/2 pr-[5px] text-right font-bold whitespace-nowrap text-outline-ink"
-              style={{
-                left: co.valuesPctLeft,
-                top: co.pctTop,
-                fontSize: compact ? "var(--summary-font-callout, 10px)" : "14px",
-              }}
-            >
-              {co.value}
-            </div>
-            <div
-              className="absolute -translate-y-1/2 pl-1 font-bold tracking-[0.3px] whitespace-nowrap uppercase"
-              style={{
-                left: co.namesPctLeft,
-                top: co.pctTop,
-                color: "var(--outline-callout-label)",
-                textShadow: "0 0 3px var(--outline-page-bg), 0 0 3px var(--outline-page-bg)",
-                fontSize: compact ? "var(--summary-font-callout, 10px)" : "13px",
-              }}
-            >
-              {co.label}
-            </div>
-          </div>
-        ))}
-        <div
-          className="absolute text-center font-extrabold whitespace-nowrap text-outline-ink"
-          style={{
-            left: lengthCalloutPctLeft,
-            top: lengthCalloutPctTop,
-            transform: "translate(-50%, calc(-100% - 4px))",
-            fontSize: compact ? "var(--summary-font-callout, 10px)" : "14px",
-          }}
-        >
-          {lengthCalloutText}
-        </div>
-      </div>
+        <>
+          {/* Interior: faint lines only, never text (sketch 004). Stringer and the mid-length
+              centreline are both static, so they share one dash; nose/tail 12" stations are
+              derived, so they get the shorter uniform dash; the widepoint is an input and is
+              marked with rail dots only, never a line across the board. */}
+          <line
+            x1={centerlineX}
+            y1={tipPy - STRINGER_OVERHANG}
+            x2={centerlineX}
+            y2={tailPy + STRINGER_OVERHANG}
+            stroke="var(--outline-station-line)"
+            strokeWidth={1}
+            strokeDasharray="var(--outline-stringer-dash)"
+          />
+          <line
+            x1={pxX(-midHalfWidthIn)}
+            y1={lenToY(lengthIn / 2)}
+            x2={pxX(midHalfWidthIn)}
+            y2={lenToY(lengthIn / 2)}
+            stroke="var(--outline-station-line)"
+            strokeWidth={1}
+            strokeDasharray="var(--outline-stringer-dash)"
+          />
+          <line
+            x1={pxX(-noseHalfWidthIn)}
+            y1={lenToY(noseStationIn)}
+            x2={pxX(noseHalfWidthIn)}
+            y2={lenToY(noseStationIn)}
+            stroke="var(--outline-station-line)"
+            strokeWidth={1}
+            strokeDasharray="var(--outline-station-dash)"
+          />
+          <line
+            x1={pxX(-tailHalfWidthIn)}
+            y1={lenToY(tailStationIn)}
+            x2={pxX(tailHalfWidthIn)}
+            y2={lenToY(tailStationIn)}
+            stroke="var(--outline-station-line)"
+            strokeWidth={1}
+            strokeDasharray="var(--outline-station-dash)"
+          />
+          <circle cx={pxX(-wpHalfWidthIn)} cy={lenToY(wpYIn)} r={2.6} fill="var(--outline-widepoint-knot)" />
+          <circle cx={pxX(wpHalfWidthIn)} cy={lenToY(wpYIn)} r={2.6} fill="var(--outline-widepoint-knot)" />
+        </>
       )}
-    </>
+
+      {showConstruction && (
+        <>
+          {constructionLines.map((cl, i) => (
+            <line key={i} x1={cl.x1} y1={cl.y1} x2={cl.x2} y2={cl.y2} stroke={cl.color} strokeWidth={1.5} />
+          ))}
+          {constructionDots.map((dt, i) => (
+            <circle key={i} cx={dt.cx} cy={dt.cy} r={4} fill={dt.color} />
+          ))}
+        </>
+      )}
+      {!hideFinMarks &&
+        finMarksSvg.map((fm, i) => (
+          <g key={i}>
+            <line
+              x1={fm.x1}
+              y1={fm.y1}
+              x2={fm.x2}
+              y2={fm.y2}
+              stroke="var(--outline-accent)"
+              strokeWidth={2}
+            />
+            <circle cx={fm.x1} cy={fm.y1} r={3.5} fill="var(--outline-ink)" />
+            <circle cx={fm.x2} cy={fm.y2} r={3.5} fill="var(--outline-ink)" />
+          </g>
+        ))}
+
+      {!hideCallouts && (
+        <>
+          {/* Outputs: one shared right rail — the derived widths appear nowhere else on the
+              Summary dashboard, so these stay even in compact mode. */}
+          <OutputRail
+            edgeX={pxX(noseHalfWidthIn)}
+            y={lenToY(noseStationIn)}
+            value={formatInchesFraction(geometry.noseWidthAt12in)}
+            station={'Nose @ 12"'}
+          />
+          <OutputRail
+            edgeX={pxX(midHalfWidthIn)}
+            y={lenToY(lengthIn / 2)}
+            value={formatInchesFraction(mm(inchesToMm(centerWidthAtStationIn)))}
+            station="Centre"
+          />
+          <OutputRail
+            edgeX={pxX(tailHalfWidthIn)}
+            y={lenToY(tailStationIn)}
+            value={formatInchesFraction(geometry.tailWidthAt12in)}
+            station={'Tail @ 12"'}
+          />
+
+          {!compact && (
+            <>
+              {/* Inputs: left gutter chips, each naming its own value (sketch 004). */}
+              <text
+                x={centerlineX}
+                y={lengthChipY - OUTLINE_CHIP_HEIGHT / 2 - 6}
+                textAnchor="middle"
+                style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", fontFamily: "var(--font-sans)" }}
+                fill="var(--outline-callout-label)"
+              >
+                YOUR SETTINGS
+              </text>
+              <CalloutChip
+                x={OUTLINE_CHIP_RIGHT_X}
+                y={lengthChipY}
+                name="LENGTH"
+                value={lengthCalloutText}
+                leaderToX={centerlineX}
+              />
+              <CalloutChip
+                x={OUTLINE_CHIP_RIGHT_X}
+                y={widepointChipY}
+                name="WIDEPOINT"
+                value={formatInchesFraction(outline.widePointWidth)}
+                nameColor="var(--outline-widepoint-knot)"
+                leaderToX={pxX(-wpHalfWidthIn)}
+              />
+              <CalloutChip x={OUTLINE_CHIP_RIGHT_X} y={wpOffsetChipY} name="WP OFFSET" value={wpOffsetText} />
+              {!geometry.tailBlockPinned && (
+                <CalloutChip
+                  x={OUTLINE_CHIP_RIGHT_X}
+                  y={tailBlockChipY}
+                  name="TAIL BLOCK"
+                  value={tailBlockValue}
+                  leaderToX={pxX(-halfTailBlockWidthIn)}
+                />
+              )}
+            </>
+          )}
+        </>
+      )}
+    </svg>
   );
 }
