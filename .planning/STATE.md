@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 2
 current_phase_name: Accounts & Saved Designs
 status: planning
-stopped_at: Completed quick task 260821-rss (rails plots shared scale)
-last_updated: "2026-08-21T23:51:00.000Z"
-last_activity: 2026-08-21
-last_activity_desc: Completed quick task 260821-rss (rails plots shared scale)
+stopped_at: Completed quick task 260822-vcs (viewer callout system)
+last_updated: "2026-08-22T09:03:00.000Z"
+last_activity: 2026-08-22
+last_activity_desc: Completed quick task 260822-vcs (viewer callout system)
 progress:
   total_phases: 1
   completed_phases: 1
@@ -92,6 +92,7 @@ Recent decisions affecting current work:
 - [Quick 260821-bt3b]: Bottom Tuck 3 override floor tightened from inclusive to strict via a named exported MIN_BOTTOM_TUCK_SEPARATION_IN (1/16in) constant, not a floating-point epsilon — tied to the app's fractional-inch display/slider granularity
 - [Quick 260821-bt3b]: New bottomTuck3Derived result field (geometry layer) exposes the un-overridden bottomTuck3 value including the hardEdge rule, so rail-controls.tsx's slider max can track it instead of recomputing symmetrical/hardEdge branching in the component
 - [Quick 260821-rss]: Rail Viewer plots solve for one shared measured WIDTH (not height) since every open section's viewBox width is identical by construction -- rendering all plots at that one width forces one shared scale and aligned x-axes, superseding 260821-rpf's proportional-height flex-grow approach which let scale/left-edge drift between plots
+- [Quick 260822-vcs]: Outline/fin viewers rebuilt on the callout-system grammar (sketches 001-004): shared components/viewer/callout-primitives.tsx module with rail/gutter constants (not per-call arguments), SVG <text> throughout (no more absolutely-positioned HTML overlay), hideCallouts keeps the legacy tight viewBox so preset-card thumbnails stay pixel-identical; fin mark's own lateralKind dash preserved (keys result.legend's Front/Rear/Center grouping) rather than collapsed with the callout leader-line dashes
 
 ### Pending Todos
 
@@ -118,6 +119,7 @@ None yet.
 | 260821-bt3b | Refine Bottom Tuck 3 fix: strict (not merely non-inverting) separation via named MIN_BOTTOM_TUCK_SEPARATION_IN constant, plus new bottomTuck3Derived geometry field so the slider can always climb back to its natural value | 2026-08-21 | e717db5 | [20260821-bottom-tuck3-refine](./quick/20260821-bottom-tuck3-refine/) |
 | 260821-rpf | Rail plots scale to fit height instead of forcing scroll: removed overflow-y-auto from Rail Viewer plots container, added computeRailPlotBounds export in rail-section-plot.tsx, proportional flex-grow stack (by natural viewBox height) with fit="height" per section | 2026-08-21 | fc80f3d | [20260821-rails-plots-fit-height](./quick/20260821-rails-plots-fit-height/) |
 | 260821-rss | Fix Rail Viewer plots' scale/alignment drift left by 260821-rpf: revert proportional flex-grow to a single measured shared plotWidth (ResizeObserver + measured title chrome), so all open plots share one scale and aligned x-axes | 2026-08-21 | dd8571b | [20260821-rails-plots-shared-scale](./quick/20260821-rails-plots-shared-scale/) |
+| 260822-vcs | Implement the viewer callout system (sketches 001-004): new callout-system CSS tokens, shared components/viewer/callout-primitives.tsx module, outline/fin viewers rebuilt with SVG-text chips/output-rail replacing the HTML overlay, board-summary/outline-editor aspect fixes for the widened viewBox | 2026-08-22 | b3fc9b3 | [20260822-viewer-callout-system](./quick/20260822-viewer-callout-system/) |
 
 ## Deferred Items
 
@@ -129,6 +131,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-21T23:51:00.000Z
-Stopped at: Completed quick task 260821-rss (rails plots shared scale)
+Last session: 2026-08-22T09:03:00.000Z
+Stopped at: Completed quick task 260822-vcs (viewer callout system)
 Resume file: None
