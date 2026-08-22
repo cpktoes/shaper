@@ -159,7 +159,10 @@ export function BoardSummary() {
       </SummaryCard>
 
       <div className="order-4 flex min-h-[360px] flex-col gap-2 min-[900px]:order-none min-[900px]:col-start-3 min-[900px]:row-start-1 min-[900px]:min-h-0">
-        <SummaryCard title="Volume Estimate" className="flex-1 min-h-0">
+        {/* Content-height, not an equal share: Volume is four rows of text, and splitting the
+            column 50/50 left it with dead space while the fin diagram scaled down to fit what was
+            left. Fin Placement takes everything Volume does not need. */}
+        <SummaryCard title="Volume Estimate" className="flex-none">
           <VolumeCalculationCard
             result={volumeResult}
             lengthDisplay={formatFeetInches(effectiveVolume.length)}

@@ -36,6 +36,19 @@ const SCALE = 14;
 const ORIGIN_X = 260;
 const TAIL_Y = 320;
 const VIEW_TOP_MARGIN = 0.6;
+
+/**
+ * The drawing frame.
+ *
+ * `VIEW_MIN_Y` is negative because the drawing's own top edge is: `svgTopY` works out at -7.6 for
+ * every board (all four terms above are constants), the tail outline's stroke reaches about -15.7,
+ * and the compact heading sits higher again at roughly -25. A viewBox starting at zero clipped all
+ * three — on the Summary the heading was never visible at all. The value below clears the highest
+ * of them with margin to spare, including room for `--summary-font-label` being restyled for print.
+ */
+const VIEW_MIN_Y = -36;
+const VIEW_WIDTH = 530;
+const VIEW_HEIGHT = 370 - VIEW_MIN_Y;
 /** The halo colour behind callout text, so it reads over the tinted board fill instead of
  * colliding with the line it sits on — the halo stands in for a literal break in the line.
  * Matches the white viewer-card background this diagram always sits on. */
@@ -416,8 +429,16 @@ export function FinViewer({
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center gap-4">
       <div className="relative flex min-h-0 flex-1 w-full justify-center">
-        <div className="relative aspect-[530/370] h-auto max-h-full w-auto max-w-full">
-          <svg width={530} height={370} viewBox="0 0 530 370" className="block h-full w-full">
+        <div
+          className="relative h-auto max-h-full w-auto max-w-full"
+          style={{ aspectRatio: `${VIEW_WIDTH} / ${VIEW_HEIGHT}` }}
+        >
+          <svg
+            width={VIEW_WIDTH}
+            height={VIEW_HEIGHT}
+            viewBox={`0 ${VIEW_MIN_Y} ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
+            className="block h-full w-full"
+          >
             <path d={filled} fill="var(--outline-board-fill)" stroke="none" />
             <path d={open} fill="none" stroke="var(--outline-ink)" strokeWidth={2} />
             {/* Reference lines: the centreline is static (stringer dash); the tail-width-12"
