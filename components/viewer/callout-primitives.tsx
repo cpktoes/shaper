@@ -42,6 +42,48 @@ export function outlineMaxHalfWidthPx(centerlineX: number): number {
   return OUTLINE_OUTPUT_VALUE_X - OUTLINE_GUTTER_GAP - centerlineX;
 }
 
+/** The outline drawing's frame: the viewBox plus the two rails everything else hangs off. */
+export interface OutlineViewFrame {
+  minX: number;
+  minY: number;
+  width: number;
+  height: number;
+  /** Shared right edge for every input chip. */
+  chipRightX: number;
+  /** Shared x where every output value's text begins. */
+  outputValueX: number;
+  /** How far past the baseline half-width budget this board reaches. Zero for boards that fit. */
+  overflow: number;
+}
+
+/**
+ * The frame for a board of a given drawn half-width.
+ *
+ * The constants above dimension a board that fits inside `outlineMaxHalfWidthPx` — which, at the
+ * board's own 340-unit coordinate space, works out at almost exactly a 19" board. A wider board used
+ * to be handled by shrinking the whole drawing to fit, which meant a 25" board rendered 24% SHORTER
+ * than a 19" one: uniform scale is right (a template cannot fake proportion) but the frame was
+ * sized for one board.
+ *
+ * So the frame grows instead. The board keeps its length-fit scale at any width, and the overflow
+ * pushes the viewBox out on both sides while carrying both rails with it. Every sketch-004
+ * relationship is preserved — the gutter gap between the board's edge and each rail is unchanged;
+ * there is simply more frame. A board that fits gets `overflow: 0` and the original numbers back,
+ * unchanged.
+ */
+export function outlineViewFrame(halfWidthPx: number, centerlineX: number): OutlineViewFrame {
+  const overflow = Math.max(0, halfWidthPx - outlineMaxHalfWidthPx(centerlineX));
+  return {
+    minX: OUTLINE_VIEW_MIN_X - overflow,
+    minY: OUTLINE_VIEW_MIN_Y,
+    width: OUTLINE_VIEW_WIDTH + 2 * overflow,
+    height: OUTLINE_VIEW_HEIGHT,
+    chipRightX: OUTLINE_CHIP_RIGHT_X - overflow,
+    outputValueX: OUTLINE_OUTPUT_VALUE_X + overflow,
+    overflow,
+  };
+}
+
 /** A single 45-degree drafting tick, centred on the measured point `(x, y)`. */
 export function DimensionTick({
   x,
@@ -185,19 +227,25 @@ export interface OutputRailProps {
   y: number;
   value: string;
   station: string;
+  /**
+   * Where this rail's value text begins. Still one shared rail, never a per-call choice: it must
+   * come from the drawing's `OutlineViewFrame`, so every output in a drawing lands on the same x.
+   * Defaults to the baseline constant for a board that needs no extra frame.
+   */
+  valueX?: number;
 }
 
 /** A derived value read out to the shared output rail: extension line from the board edge, a tick
  * at the measured point, the value, and the station name beneath it — every output in the system
  * lands its value at the same `OUTLINE_OUTPUT_VALUE_X`, never a per-call x. */
-export function OutputRail({ edgeX, y, value, station }: OutputRailProps) {
-  const reachX = OUTLINE_OUTPUT_VALUE_X - CALLOUT_VALUE_GAP;
+export function OutputRail({ edgeX, y, value, station, valueX = OUTLINE_OUTPUT_VALUE_X }: OutputRailProps) {
+  const reachX = valueX - CALLOUT_VALUE_GAP;
   return (
     <g>
       <line x1={edgeX} y1={y} x2={reachX} y2={y} stroke="var(--outline-station-line)" strokeWidth={1} />
       <DimensionTick x={edgeX} y={y} color="var(--outline-dim-ink)" />
       <text
-        x={OUTLINE_OUTPUT_VALUE_X}
+        x={valueX}
         y={y - 2}
         style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-sans)" }}
         fill="var(--outline-ink)"
@@ -205,7 +253,7 @@ export function OutputRail({ edgeX, y, value, station }: OutputRailProps) {
         {value}
       </text>
       <text
-        x={OUTLINE_OUTPUT_VALUE_X}
+        x={valueX}
         y={y + 10}
         style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-sans)", letterSpacing: "0.1em" }}
         fill="var(--outline-callout-label)"

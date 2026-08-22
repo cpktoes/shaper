@@ -27,13 +27,8 @@ import { formatFeetInches, formatInchesFraction, inchesToMm, mm, mmToInches } fr
 import {
   CalloutChip,
   OUTLINE_CHIP_HEIGHT,
-  OUTLINE_CHIP_RIGHT_X,
-  OUTLINE_VIEW_HEIGHT,
-  OUTLINE_VIEW_MIN_X,
-  OUTLINE_VIEW_MIN_Y,
-  OUTLINE_VIEW_WIDTH,
   OutputRail,
-  outlineMaxHalfWidthPx,
+  outlineViewFrame,
 } from "@/components/viewer/callout-primitives";
 
 const VIEW_W = 340;
@@ -88,6 +83,36 @@ interface OutlineViewerProps {
   onOutlineDrag?: (patch: Partial<OutlineSpec>) => void;
 }
 
+/**
+ * The drawing's scale and frame, for a given board.
+ *
+ * Exported because the containers that host this SVG have to size themselves to the same frame —
+ * a wide board produces a wider viewBox (see `outlineViewFrame`), so a hardcoded aspect ratio would
+ * letterbox or squash it. One definition, called by the component and by its consumers.
+ *
+ * **Two different fits, deliberately.** The `hideCallouts` path (preset-card thumbnails) keeps the
+ * original two-way fit so those renders stay pixel-identical. Every other render fits on LENGTH
+ * alone and lets the frame widen instead: fitting on width too meant a 25" board drew 24% shorter
+ * than a 19" one, because the gutters' share of a fixed frame grew with the board.
+ */
+export function outlineViewMetrics(geometry: OutlineGeometry, hideCallouts = false) {
+  const lengthIn = mmToInches(geometry.length);
+  const cwIn = mmToInches(geometry.halfWidePointWidth);
+  const centerlineX = VIEW_W / 2;
+  const lengthFitScale = (VIEW_H - PAD_Y * 2) / lengthIn;
+  const scale = hideCallouts
+    ? Math.min(LEGACY_MAX_HALF_WIDTH_PX / cwIn, lengthFitScale)
+    : lengthFitScale;
+  return {
+    lengthIn,
+    centerlineX,
+    scale,
+    frame: outlineViewFrame(cwIn * scale, centerlineX),
+    tailPy: VIEW_H - PAD_Y,
+    tipPy: PAD_Y,
+  };
+}
+
 export function OutlineViewer({
   geometry,
   outline,
@@ -101,17 +126,10 @@ export function OutlineViewer({
   /** Which control point the active gesture owns, if any. A ref, not state: it changes on
    * pointerdown and is read on pointermove, and re-rendering for it would be a wasted pass. */
   const draggingRef = useRef<OutlineDragTarget | null>(null);
-  const lengthIn = mmToInches(geometry.length);
-  const cwIn = mmToInches(geometry.halfWidePointWidth);
-  const centerlineX = VIEW_W / 2;
-
-  // The callout system reserves gutter space on both sides of the board; when it's hidden
-  // entirely, fall back to the board's original padding so hideCallouts renders (preset-card
-  // thumbnails) never change.
-  const maxHalfWidthPx = hideCallouts ? LEGACY_MAX_HALF_WIDTH_PX : outlineMaxHalfWidthPx(centerlineX);
-  const scale = Math.min(maxHalfWidthPx / cwIn, (VIEW_H - PAD_Y * 2) / lengthIn);
-  const tailPy = VIEW_H - PAD_Y;
-  const tipPy = PAD_Y;
+  const { lengthIn, centerlineX, scale, frame, tailPy, tipPy } = outlineViewMetrics(
+    geometry,
+    hideCallouts,
+  );
   const lenToY = (stationIn: number) => tailPy - stationIn * scale;
   const pxX = (halfWidthIn: number) => centerlineX + halfWidthIn * scale;
 
@@ -250,13 +268,13 @@ export function OutlineViewer({
 
   const viewBox = hideCallouts
     ? `0 0 ${VIEW_W} ${VIEW_H}`
-    : `${OUTLINE_VIEW_MIN_X} ${OUTLINE_VIEW_MIN_Y} ${OUTLINE_VIEW_WIDTH} ${OUTLINE_VIEW_HEIGHT}`;
+    : `${frame.minX} ${frame.minY} ${frame.width} ${frame.height}`;
 
   return (
     <svg
       ref={svgRef}
-      width={hideCallouts ? VIEW_W : OUTLINE_VIEW_WIDTH}
-      height={hideCallouts ? VIEW_H : OUTLINE_VIEW_HEIGHT}
+      width={hideCallouts ? VIEW_W : frame.width}
+      height={hideCallouts ? VIEW_H : frame.height}
       viewBox={viewBox}
       className="block h-full w-full"
       onPointerMove={onOutlineDrag ? handleDragMove : undefined}
@@ -367,18 +385,21 @@ export function OutlineViewer({
           {/* Outputs: one shared right rail — the derived widths appear nowhere else on the
               Summary dashboard, so these stay even in compact mode. */}
           <OutputRail
+            valueX={frame.outputValueX}
             edgeX={pxX(noseHalfWidthIn)}
             y={lenToY(noseStationIn)}
             value={formatInchesFraction(geometry.noseWidthAt12in)}
             station={'Nose @ 12"'}
           />
           <OutputRail
+            valueX={frame.outputValueX}
             edgeX={pxX(midHalfWidthIn)}
             y={lenToY(lengthIn / 2)}
             value={formatInchesFraction(mm(inchesToMm(centerWidthAtStationIn)))}
             station="Centre"
           />
           <OutputRail
+            valueX={frame.outputValueX}
             edgeX={pxX(tailHalfWidthIn)}
             y={lenToY(tailStationIn)}
             value={formatInchesFraction(geometry.tailWidthAt12in)}
@@ -390,24 +411,24 @@ export function OutlineViewer({
               the shaper needs the settings on the drawing itself. */}
           <>
               <CalloutChip
-                x={OUTLINE_CHIP_RIGHT_X}
+                x={frame.chipRightX}
                 y={lengthChipY}
                 name="LENGTH"
                 value={lengthCalloutText}
                 leaderToX={centerlineX}
               />
               <CalloutChip
-                x={OUTLINE_CHIP_RIGHT_X}
+                x={frame.chipRightX}
                 y={widepointChipY}
                 name="WIDEPOINT"
                 value={formatInchesFraction(outline.widePointWidth)}
                 nameColor="var(--outline-widepoint-knot)"
                 leaderToX={pxX(-wpHalfWidthIn)}
               />
-              <CalloutChip x={OUTLINE_CHIP_RIGHT_X} y={wpOffsetChipY} name="WP OFFSET" value={wpOffsetText} />
+              <CalloutChip x={frame.chipRightX} y={wpOffsetChipY} name="WP OFFSET" value={wpOffsetText} />
               {!geometry.tailBlockPinned && (
                 <CalloutChip
-                  x={OUTLINE_CHIP_RIGHT_X}
+                  x={frame.chipRightX}
                   y={tailBlockChipY}
                   name="TAIL BLOCK"
                   value={tailBlockValue}

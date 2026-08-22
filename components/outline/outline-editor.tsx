@@ -6,7 +6,7 @@ import { useDesign } from "@/components/design/design-store";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import { mmToInches } from "@/lib/geometry/units";
 import { OutlineControls } from "./outline-controls";
-import { OutlineViewer } from "./outline-viewer";
+import { OutlineViewer, outlineViewMetrics } from "./outline-viewer";
 
 /**
  * Reads the design state from the shared `DesignProvider` (components/design/design-store.tsx)
@@ -58,6 +58,7 @@ function buildPresetSource(spec: OutlineSpec): string {
 
 export function OutlineEditor() {
   const { outline, updateOutline, outlineGeometry, finPlacement } = useDesign();
+  const { frame: outlineFrame } = outlineViewMetrics(outlineGeometry);
   const [showConstruction, setShowConstruction] = useState(false);
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
 
@@ -100,11 +101,14 @@ export function OutlineEditor() {
               Template Viewer
             </div>
             <div className="relative flex min-h-0 w-full flex-1 justify-center">
-              {/* Matches OutlineViewer's widened callout-system viewBox (-50 -16 410 638, sketch
-                  004) -- not in the quick task's declared file list, but this screen shows the
-                  full callout system (not hideCallouts), so it needed the same aspect fix as
-                  board-summary's Template card or the drawing would letterbox/shrink. */}
-              <div className="relative aspect-[410/638] h-full min-h-0 min-w-0 max-w-full">
+              {/* Sized from OutlineViewer's own frame rather than a fixed ratio: the viewBox
+                  widens for boards too wide for the baseline gutter budget, so a hardcoded aspect
+                  would letterbox or squash them. `outlineViewMetrics` is the single definition
+                  the viewer itself uses. */}
+              <div
+                className="relative h-full min-h-0 min-w-0 max-w-full"
+                style={{ aspectRatio: `${outlineFrame.width} / ${outlineFrame.height}` }}
+              >
                 <OutlineViewer
                   geometry={outlineGeometry}
                   outline={outline}
