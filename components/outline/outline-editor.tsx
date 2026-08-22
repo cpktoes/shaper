@@ -99,7 +99,11 @@ export function OutlineEditor() {
               Template Viewer
             </div>
             <div className="relative flex min-h-0 w-full flex-1 justify-center">
-              <div className="relative aspect-[340/620] h-full min-h-0 min-w-0 max-w-full">
+              {/* Matches OutlineViewer's widened callout-system viewBox (-50 -16 410 638, sketch
+                  004) -- not in the quick task's declared file list, but this screen shows the
+                  full callout system (not hideCallouts), so it needed the same aspect fix as
+                  board-summary's Template card or the drawing would letterbox/shrink. */}
+              <div className="relative aspect-[410/638] h-full min-h-0 min-w-0 max-w-full">
                 <OutlineViewer
                   geometry={outlineGeometry}
                   outline={outline}

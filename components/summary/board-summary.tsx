@@ -137,7 +137,10 @@ export function BoardSummary() {
         className="order-1 min-h-[360px] min-[900px]:order-none min-[900px]:col-start-2 min-[900px]:row-start-1 min-[900px]:min-h-0"
       >
         <div className="relative flex h-full w-full justify-center">
-          <div className="relative aspect-[340/620] h-full max-w-full">
+          {/* Matches OutlineViewer's widened callout-system viewBox (-50 -16 410 638, sketch 004) --
+              the old 340/620 ratio was the viewer's pre-callout-system tight board bounds and would
+              letterbox/shrink the drawing now that the gutters are part of the SVG's own aspect. */}
+          <div className="relative aspect-[410/638] h-full max-w-full">
             <OutlineViewer
               geometry={outlineGeometry}
               outline={outline}
