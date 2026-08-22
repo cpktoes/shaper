@@ -27,7 +27,7 @@ const TAIL_Y = 320;
 const VIEW_TOP_MARGIN = 0.6;
 /** The halo color behind callout text, so it reads over the tinted board fill. Matches the
  * white viewer-card background this diagram always sits on. */
-const HALO = "#fff";
+const HALO = "var(--background)";
 
 function pct(px: number, total: number): string {
   return `${((px / total) * 100).toFixed(3)}%`;
@@ -411,13 +411,13 @@ export function FinViewer({
           <svg width={530} height={370} viewBox="0 0 530 370" className="block h-full w-full">
             <defs>
               <marker id="finViewerArrow" markerWidth={8} markerHeight={7} refX={7} refY={3.5} orient="auto-start-reverse">
-                <path d="M0,0 L8,3.5 L0,7 Z" fill="#4472C4" />
+                <path d="M0,0 L8,3.5 L0,7 Z" fill="var(--outline-station-line)" />
               </marker>
             </defs>
             <path d={filled} fill="var(--outline-board-fill)" stroke="none" />
-            <path d={open} fill="none" stroke="#1c1b19" strokeWidth={2} />
-            <line x1={ORIGIN_X} y1={svgTopY} x2={ORIGIN_X} y2={TAIL_Y} stroke="#4472C4" strokeWidth={1} strokeDasharray="6 4" />
-            <line x1={w12LineX1} y1={w12LineY} x2={w12LineX2} y2={w12LineY} stroke="#4472C4" strokeWidth={1} strokeDasharray="6 4" />
+            <path d={open} fill="none" stroke="var(--outline-ink)" strokeWidth={2} />
+            <line x1={ORIGIN_X} y1={svgTopY} x2={ORIGIN_X} y2={TAIL_Y} stroke="var(--outline-station-line)" strokeWidth={1} strokeDasharray="6 4" />
+            <line x1={w12LineX1} y1={w12LineY} x2={w12LineX2} y2={w12LineY} stroke="var(--outline-station-line)" strokeWidth={1} strokeDasharray="6 4" />
 
             {marksWithDims.map(({ geom, dims }, mi) => (
               <g key={mi}>
@@ -437,32 +437,32 @@ export function FinViewer({
                     if (d.kind === "railV") {
                       return (
                         <g key={di}>
-                          <line x1={d.x1} y1={d.y1} x2={d.x2a} y2={d.y1} stroke="#4472C4" strokeWidth={1} markerEnd="url(#finViewerArrow)" />
-                          <line x1={d.x1} y1={d.y1} x2={d.x2b} y2={d.y1} stroke="#4472C4" strokeWidth={1} markerEnd="url(#finViewerArrow)" />
-                          <line x1={d.extAX} y1={d.extY1} x2={d.extAX} y2={d.extY2} stroke="#4472C4" strokeWidth={1} />
-                          <line x1={d.extBX} y1={d.extY1} x2={d.extBX} y2={d.extY2} stroke="#4472C4" strokeWidth={1} />
+                          <line x1={d.x1} y1={d.y1} x2={d.x2a} y2={d.y1} stroke="var(--outline-station-line)" strokeWidth={1} markerEnd="url(#finViewerArrow)" />
+                          <line x1={d.x1} y1={d.y1} x2={d.x2b} y2={d.y1} stroke="var(--outline-station-line)" strokeWidth={1} markerEnd="url(#finViewerArrow)" />
+                          <line x1={d.extAX} y1={d.extY1} x2={d.extAX} y2={d.extY2} stroke="var(--outline-station-line)" strokeWidth={1} />
+                          <line x1={d.extBX} y1={d.extY1} x2={d.extBX} y2={d.extY2} stroke="var(--outline-station-line)" strokeWidth={1} />
                         </g>
                       );
                     }
                     if (d.kind === "below") {
                       return (
                         <g key={di}>
-                          <line x1={d.extLeftX} y1={d.extLeftY1} x2={d.extLeftX} y2={d.extLeftY2} stroke="#4472C4" strokeWidth={1} strokeDasharray="2 2" />
-                          <line x1={d.extRightX} y1={d.extRightY1} x2={d.extRightX} y2={d.extRightY2} stroke="#4472C4" strokeWidth={1} strokeDasharray="2 2" />
-                          <line x1={d.dimX1} y1={d.dimY} x2={d.dimX2} y2={d.dimY} stroke="#4472C4" strokeWidth={1} markerStart="url(#finViewerArrow)" markerEnd="url(#finViewerArrow)" />
+                          <line x1={d.extLeftX} y1={d.extLeftY1} x2={d.extLeftX} y2={d.extLeftY2} stroke="var(--outline-station-line)" strokeWidth={1} strokeDasharray="2 2" />
+                          <line x1={d.extRightX} y1={d.extRightY1} x2={d.extRightX} y2={d.extRightY2} stroke="var(--outline-station-line)" strokeWidth={1} strokeDasharray="2 2" />
+                          <line x1={d.dimX1} y1={d.dimY} x2={d.dimX2} y2={d.dimY} stroke="var(--outline-station-line)" strokeWidth={1} markerStart="url(#finViewerArrow)" markerEnd="url(#finViewerArrow)" />
                         </g>
                       );
                     }
                     return (
                       <g key={di}>
-                        <line x1={d.x1} y1={d.y1} x2={d.x2} y2={d.y2} stroke="#4472C4" strokeWidth={1} markerStart="url(#finViewerArrow)" markerEnd="url(#finViewerArrow)" />
-                        <line x1={d.extTopX1} y1={d.extTopY} x2={d.extTopX2} y2={d.extTopY} stroke="#4472C4" strokeWidth={1} strokeDasharray="2 2" />
-                        <line x1={d.extBotX1} y1={d.extBotY} x2={d.extBotX2} y2={d.extBotY} stroke="#4472C4" strokeWidth={1} strokeDasharray="2 2" />
+                        <line x1={d.x1} y1={d.y1} x2={d.x2} y2={d.y2} stroke="var(--outline-station-line)" strokeWidth={1} markerStart="url(#finViewerArrow)" markerEnd="url(#finViewerArrow)" />
+                        <line x1={d.extTopX1} y1={d.extTopY} x2={d.extTopX2} y2={d.extTopY} stroke="var(--outline-station-line)" strokeWidth={1} strokeDasharray="2 2" />
+                        <line x1={d.extBotX1} y1={d.extBotY} x2={d.extBotX2} y2={d.extBotY} stroke="var(--outline-station-line)" strokeWidth={1} strokeDasharray="2 2" />
                       </g>
                     );
                   })}
-                <circle cx={geom.teX} cy={geom.teY} r={3.5} fill="#1c1b19" />
-                <circle cx={geom.leX} cy={geom.leY} r={3.5} fill="#1c1b19" />
+                <circle cx={geom.teX} cy={geom.teY} r={3.5} fill="var(--outline-ink)" />
+                <circle cx={geom.leX} cy={geom.leY} r={3.5} fill="var(--outline-ink)" />
               </g>
             ))}
           </svg>
@@ -479,7 +479,7 @@ export function FinViewer({
                     paddingRight: 6,
                     lineHeight: 1,
                     fontSize: 14,
-                    color: "#3a5f9e",
+                    color: "var(--outline-callout-label)",
                     textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}`,
                   }}
                 >
@@ -495,7 +495,7 @@ export function FinViewer({
                     paddingLeft: 6,
                     lineHeight: 1,
                     fontSize: 13,
-                    color: "#3a5f9e",
+                    color: "var(--outline-callout-label)",
                     textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}`,
                   }}
                 >
@@ -515,7 +515,7 @@ export function FinViewer({
                   whiteSpace: "nowrap",
                   lineHeight: 1,
                   fontSize: "var(--summary-font-label, 12px)",
-                  color: "#1c1b19",
+                  color: "var(--outline-ink)",
                   textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}`,
                 }}
               >
@@ -534,7 +534,7 @@ export function FinViewer({
                       transform: `translate(${d.transformX},-50%)`,
                       fontSize: compact ? "var(--summary-font-callout, 10px)" : 14,
                       lineHeight: 1,
-                      color: "#1c1b19",
+                      color: "var(--outline-ink)",
                       whiteSpace: "nowrap",
                       textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}, 0 0 5px ${HALO}`,
                     }}
@@ -547,9 +547,9 @@ export function FinViewer({
         </div>
       </div>
       {!compact && (
-        <div className="flex flex-none flex-col gap-1 text-[11px] text-[#8a8272]">
+        <div className="flex flex-none flex-col gap-1 text-[11px] text-muted-foreground">
           <span>
-            <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[#1c1b19]" />
+            <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--outline-ink)]" />
             Trailing &amp; Leading Edges
           </span>
           {result.legend.map((entry) => (

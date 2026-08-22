@@ -274,8 +274,8 @@ export function OutlineViewer({
                 stroke="var(--outline-accent)"
                 strokeWidth={2}
               />
-              <circle cx={fm.x1} cy={fm.y1} r={3.5} fill="#1c1b19" />
-              <circle cx={fm.x2} cy={fm.y2} r={3.5} fill="#1c1b19" />
+              <circle cx={fm.x1} cy={fm.y1} r={3.5} fill="var(--outline-ink)" />
+              <circle cx={fm.x2} cy={fm.y2} r={3.5} fill="var(--outline-ink)" />
             </g>
           ))}
       </svg>
@@ -294,10 +294,11 @@ export function OutlineViewer({
               {co.value}
             </div>
             <div
-              className="absolute -translate-y-1/2 pl-1 font-bold tracking-[0.3px] whitespace-nowrap text-[#3a5f9e] uppercase"
+              className="absolute -translate-y-1/2 pl-1 font-bold tracking-[0.3px] whitespace-nowrap uppercase"
               style={{
                 left: co.namesPctLeft,
                 top: co.pctTop,
+                color: "var(--outline-callout-label)",
                 textShadow: "0 0 3px var(--outline-page-bg), 0 0 3px var(--outline-page-bg)",
                 fontSize: compact ? "var(--summary-font-callout, 10px)" : "13px",
               }}

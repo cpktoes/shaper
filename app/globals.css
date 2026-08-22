@@ -114,6 +114,14 @@
   --outline-station-line: #4472c4;
   --outline-widepoint-knot: #a8425f;
   --outline-ink: #1c1b19;
+
+  /* Callout-system tokens (sketches 001-004, see .planning/sketches/MANIFEST.md).
+     Dash patterns are shared across every plan-view board viewer so a reference line always
+     means the same thing regardless of which screen draws it. */
+  --outline-stringer-dash: 16 4 4 4; /* stringer and the static mid-length centreline */
+  --outline-station-dash: 5 4; /* derived station lines (12" marks, etc) */
+  --outline-dim-ink: var(--outline-ink); /* dimension lines, ticks and values */
+  --outline-callout-label: #3a5f9e; /* station/chip name text — replaces the old hardcoded #3a5f9e */
 }
 
 .dark {
