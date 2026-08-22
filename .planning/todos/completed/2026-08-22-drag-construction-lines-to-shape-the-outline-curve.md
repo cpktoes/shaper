@@ -55,7 +55,6 @@ Per-element mapping to solve back to:
 
 | Drag target | Writes |
 |---|---|
-| Widepoint knot, across the board | `widePointWidth` |
 | Widepoint knot, along the board | `widePointOffset` |
 | Widepoint handle, tail side (`inLen0`) | `tailRailLength` |
 | Widepoint handle, nose side (`outLen1`) | `noseRailLength` |
@@ -108,6 +107,12 @@ alongside it.
 - Golden tests in `lib/geometry/` still pass — the inversion must not perturb the forward path.
 - Fore and aft rail lengths set to visibly different values produce an asymmetric outline (already
   true as of 260822-wcs — the drag must not regress it).
+
+## Shipped scope note
+
+Widepoint **width** was deliberately left out of the drag (user decision, 2026-08-22): it is a
+headline number a shaper dials to a spec, not something to eyeball, so it stays slider-only. The
+widepoint knot drags along the board only.
 
 ## Note on the sliders
 

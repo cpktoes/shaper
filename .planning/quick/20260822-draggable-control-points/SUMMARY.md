@@ -16,8 +16,8 @@ provides:
 affects: [any future rocker/foil editor wanting direct manipulation -- this is the first pointer-drag interaction in the codebase and sets the pattern]
 
 actuals:
-  tasks: 4
-  commits: 4
+  tasks: 5
+  commits: 5
 
 tech-stack:
   added: []
@@ -45,8 +45,8 @@ dragging one reshapes the board while its sliders track the gesture.
 ## What changed
 
 **The inverse.** `lib/geometry/outline-drag.ts` runs `buildOutline` backwards. Five targets: the
-widepoint knot (2 DOF -> width and offset), the two widepoint rail handles (1 DOF each -> tail/nose
-rail length), and the two end handles (2 DOF each -> angle from the drag direction, fullness from its
+widepoint knot (1 DOF -> offset), the two widepoint rail handles (1 DOF each -> tail/nose rail
+length), and the two end handles (2 DOF each -> angle from the drag direction, fullness from its
 length). The caps and the rail multiplier are imported from `outline.ts`, which now exports them, so
 the forward pass and the inverse cannot drift apart.
 
@@ -78,7 +78,8 @@ whole gesture, so the solve recomputes the cap at the new angle before dividing.
   control point IS, feed it straight back to the solve, and get the spec's own values back. Forward
   and inverse agreeing is the whole correctness claim.
 - In the browser, all four control types driven with real pointer events:
-  - widepoint knot dragged to client y=488, landed at y=487 — the 1px is the 0.25" offset snap
+  - widepoint knot dragged diagonally to client (388,410): y followed to 409 (the 1px is the 0.25"
+    offset snap), x held at 435, Width still 19" — the cross-board component discarded
   - nose rail handle dragged diagonally to (386,286): y followed to 286, x held at 429 (axis lock),
     Nose Rail 50% -> 94%, every other slider untouched
   - tail handle dragged: Tail Angle 60° -> 49°, Tail Fullness 50.5% -> 100%, stopping short of the
@@ -90,6 +91,23 @@ whole gesture, so the solve recomputes the cap at the new angle before dividing.
 `CONSTRUCTION_SIDE is not defined` appeared in the console during development. It came from an
 intermediate HMR compile between the two edits that added the usage and the declaration. It does not
 reproduce on a fresh tab, and `tsc --noEmit` is clean.
+
+## Amendment: widepoint width is not draggable (user decision, same day)
+
+The widepoint knot first solved for both width and offset. The user asked for offset only, leaving
+width to its slider.
+
+The reasoning is sound and worth keeping: widepoint width is a headline number a shaper states or
+dials to a spec ("a 19in board"), not something to eyeball. So the knot now slides along the board
+and nothing else — the cross-board component of the drag is discarded exactly as it is for the rail
+handles, and `widePointWidth` is never returned from a solve.
+
+`LIMITS.widePointWidthIn` went with it rather than being left as dead configuration. The tests moved
+with the behaviour: the round trip now asserts offset only, and a new case drags the knot 4in off
+the rail and proves the redrawn board is exactly as wide as it was.
+
+Three of the five control points are now station-axis-locked (widepoint knot, both rail handles) and
+two are free (the end handles).
 
 ## What is left of the original todo
 
