@@ -427,18 +427,18 @@ export function FinViewer({
   const valueFontSize = compact ? "var(--summary-font-callout, 10px)" : 14;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center gap-4">
-      <div className="relative flex min-h-0 flex-1 w-full justify-center">
-        <div
-          className="relative h-auto max-h-full w-auto max-w-full"
-          style={{ aspectRatio: `${VIEW_WIDTH} / ${VIEW_HEIGHT}` }}
+    <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-4">
+      {/* The SVG fills the whole available box and `meet` scales the drawing up inside it. It used
+          to sit in an aspect-ratio wrapper, but the `width`/`height` attributes gave the svg an
+          intrinsic 530px that the wrapper could not override — so on the Fins screen the drawing
+          rendered at 1:1 in a 530px column while 654px of the card's width went unused. Sizing is
+          the container's job now; `preserveAspectRatio` keeps the proportion. */}
+      <div className="flex min-h-0 w-full flex-1 justify-center">
+        <svg
+          viewBox={`0 ${VIEW_MIN_Y} ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
+          preserveAspectRatio="xMidYMid meet"
+          className="block h-full w-full"
         >
-          <svg
-            width={VIEW_WIDTH}
-            height={VIEW_HEIGHT}
-            viewBox={`0 ${VIEW_MIN_Y} ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
-            className="block h-full w-full"
-          >
             <path d={filled} fill="var(--outline-board-fill)" stroke="none" />
             <path d={open} fill="none" stroke="var(--outline-ink)" strokeWidth={2} />
             {/* Reference lines: the centreline is static (stringer dash); the tail-width-12"
@@ -556,8 +556,7 @@ export function FinViewer({
                   </text>
                 )),
               )}
-          </svg>
-        </div>
+        </svg>
       </div>
       {!compact && (
         <div className="flex flex-none flex-col gap-1 text-[11px] text-muted-foreground">
