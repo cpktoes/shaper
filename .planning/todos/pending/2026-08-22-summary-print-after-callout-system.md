@@ -35,6 +35,20 @@ The rebuild changed things the print sheet depends on:
   change — the printed sheet is read at the blank where there is no sidebar. That adds content to
   the printed drawing that was not there when the print path was last verified.
 
+## New since this was written: the Template card's aspect is now dynamic
+
+Quick task `260822-lg3` stopped the viewer shrinking wide boards by letting the viewBox widen
+instead of scaling the drawing down. Two consequences for print:
+
+- `board-summary.tsx`'s Template card no longer carries a fixed `aspect-[410/638]`. It computes the
+  ratio from `outlineViewMetrics(outlineGeometry).frame`, so **the card's aspect now depends on the
+  board being printed** — a 25in board is a wider card than a 19in one.
+- `useSummaryPrintFit` measures and scales the sheet. It has now been written against two different
+  frame widths and verified against neither.
+
+Print a wide board (widepoint at or near 25in) as well as a default one — the fit logic has never
+seen a non-baseline aspect.
+
 ## What to check
 
 1. Print preview `/design/summary` — the whole sheet fits one page, nothing clipped at the gutters.

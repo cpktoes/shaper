@@ -13,11 +13,12 @@ provides:
   - Exported HANDLE_CAP, OVERSHOOT, railMult, railPctFromMult, tailHandleMaxLength, noseHandleMaxLength from lib/geometry/outline.ts -- one definition each, shared by the forward pass and the inverse
   - OutlineViewer onOutlineDrag prop -- opt-in direct manipulation; absent means no hit targets and no handlers
   - Construction overlay drawn on the input (left) side only
+  - outlineViewFrame()/outlineViewMetrics() -- the outline drawing's frame as one shared definition, so a wide board widens the viewBox instead of shrinking the board
 affects: [any future rocker/foil editor wanting direct manipulation -- this is the first pointer-drag interaction in the codebase and sets the pattern]
 
 actuals:
-  tasks: 5
-  commits: 5
+  tasks: 6
+  commits: 6
 
 tech-stack:
   added: []
@@ -108,6 +109,43 @@ the rail and proves the redrawn board is exactly as wide as it was.
 
 Three of the five control points are now station-axis-locked (widepoint knot, both rail handles) and
 two are free (the end handles).
+
+## Follow-on fix: wide boards no longer shrink the drawing
+
+Reported while testing the drag: a very wide board renders SMALLER in the viewer.
+
+`scale` was the smaller of a length fit and a width fit. Those two are equal at width 19.01in — the
+default board — so the sketch-004 frame was dimensioned around exactly one board, and anything wider
+flipped to width-limited and got uniformly scaled DOWN. Measured: a 25in board drew its length at 435
+units against 572, i.e. **24% shorter** than a 19in board, while already using its entire horizontal
+allowance (151 of 410 frame units; the other 63% is chip rail, output text and the two gutter gaps).
+
+Uniform scale is correct — a template cannot fake proportion — so the frame grows instead. The
+callout path now fits on LENGTH only; `outlineViewFrame(halfWidthPx, centerlineX)` pushes the viewBox
+out on both sides by however far the board overflows the baseline budget, carrying the chip rail and
+the output rail with it. Every sketch-004 relationship survives: the gutter gap between the board's
+edge and each rail is unchanged, there is simply more frame. A board that fits gets `overflow: 0` and
+the original `-50 -16 410 638` back, byte for byte.
+
+The `hideCallouts` path keeps the old two-way fit so preset thumbnails stay pixel-identical —
+verified, all four still render `0 0 340 620`.
+
+Because the viewBox is no longer a constant, the containers had to stop hardcoding
+`aspect-[410/638]`. Both call the same exported `outlineViewMetrics(geometry)` the viewer uses, so
+there is one definition of the frame rather than three.
+
+Measured after the fix, at a 1440px viewport:
+
+| Width | viewBox width | Board height | Rendered height |
+|---|---|---|---|
+| 16in | 410 (baseline) | 572 units | 678.7 px |
+| 25in | 457.6 (widened) | 572 units | 678.7 px |
+
+Identical rendered height at both extremes; the board just gets wider (150.8px to 235.7px).
+
+**Caveat worth knowing:** on a narrow viewport the drawing can still end up smaller, but for a
+different reason — the panel runs out of horizontal room and the SVG letterboxes inside it. That is
+the layout being narrow, not the scale being wrong, and it is the mobile-layout todo's territory.
 
 ## What is left of the original todo
 
