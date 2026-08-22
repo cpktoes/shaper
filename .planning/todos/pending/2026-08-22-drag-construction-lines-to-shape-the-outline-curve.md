@@ -11,6 +11,7 @@ files:
   - lib/geometry/outline.ts
   - lib/geometry/board.ts
 source: user request 2026-08-22; flagged high priority — take this first
+partially_done: part 2 (the fore/aft split) shipped in quick task 260822-wcs, 2026-08-22
 resolves_phase:
 ---
 
@@ -20,8 +21,12 @@ resolves_phase:
 user wants it at the front of the queue.
 
 Two changes that belong together: make the construction overlay draggable, and split the one
-symmetric Widepoint slider into independent forward/aft controls. The second is a *consequence* of
-the first — see "Why they are one todo" below.
+symmetric Widepoint slider into independent forward/aft controls.
+
+**Part 2 is done** — quick task `260822-wcs` (2026-08-22) split `railLength` into
+`tailRailLength` and `noseRailLength`. The spec can now represent an asymmetric widepoint, so the
+drag work in part 1 has somewhere to write to. Part 1 is the remaining work; part 2 is kept below
+as the record of what the drag has to target.
 
 ## 1. Drag the construction lines instead of using the sliders
 
@@ -51,7 +56,8 @@ Per-element mapping to solve back to:
 |---|---|
 | Widepoint knot, across the board | `widePointWidth` |
 | Widepoint knot, along the board | `widePointOffset` |
-| Widepoint handles (either side) | `railLength` — see part 2 |
+| Widepoint handle, tail side (`inLen0`) | `tailRailLength` |
+| Widepoint handle, nose side (`outLen1`) | `noseRailLength` |
 | Tail-pod handle | `tailFullness` (and `tailAngle` if the angle is draggable too) |
 | Nose-tip handle | `noseFullness` (and `noseAngle`) |
 
@@ -66,7 +72,7 @@ Notes:
 - Steps are quarter/eighth-inch on the sliders. A drag should snap to the same grid, or the numbers
   will land on values the sliders cannot represent.
 
-## 2. Split the Widepoint controls fore/aft
+## 2. Split the Widepoint controls fore/aft — DONE (260822-wcs)
 
 `railLength` ("Rail Length", `outline-controls.tsx:269-279`) is one 0-100 value that scales **both**
 widepoint handles at once — `widepointMult` multiplies `inLen0` (tail side) and `outLen1` (nose
@@ -81,21 +87,17 @@ UI: two sliders, or one dual-thumb slider anchored at the widepoint (the user's 
 into two parts"). The dual-thumb version reads truer to the geometry — one control, one thumb per
 rail — and it is what the drag interaction manipulates anyway.
 
-**Migration:** `railLength` is a persisted field on `OutlineSpec` (`lib/geometry/board.ts:62`,
-default `50`). Splitting it changes the saved-design shape, and Phase 2 is saved designs. Cheapest
-path is to do this **before** Phase 2 ships, so no stored design ever carries the old field. If it
-lands after, an old `railLength: n` has to read back as both new fields set to `n`.
+**Migration:** resolved by doing it before Phase 2. `railLength` was a persisted `OutlineSpec`
+field, but nothing had been stored yet (the design store is in-memory only), so no saved design ever
+carried the old field. The four presets in `lib/geometry/presets.ts` were rewritten to carry both
+fields at their old value, so every preset draws exactly the board it drew before.
 
-Also check the presets — `TAIL_PRESETS` and the captured presets from quick task `260821-prf` carry
-outline spec values and will need the same treatment.
-
-## Why they are one todo
+## Why the split came first
 
 Once you can drag the fore and aft widepoint handles to different lengths, a single symmetric
-`railLength` slider **cannot represent what the drawing shows**. The split is not a nice-to-have
-next to the drag — it is what stops the sliders from lying about the curve the moment someone drags
-one side. Doing the drag first without it means shipping a control that has to snap both sides
-together on every drag.
+`railLength` slider **cannot represent what the drawing shows** — it would have to snap both sides
+together on every drag. That is why the split was done first, ahead of the drag work, rather than
+alongside it.
 
 ## Verify
 
@@ -103,5 +105,12 @@ together on every drag.
 - The geometry caps still hold under drag: no control point past the widepoint half-width, and the
   sampled outline never exceeds it (`outline.ts:223-225`).
 - Golden tests in `lib/geometry/` still pass — the inversion must not perturb the forward path.
-- Fore and aft rail lengths set to visibly different values produce an asymmetric outline that
-  survives a reload.
+- Fore and aft rail lengths set to visibly different values produce an asymmetric outline (already
+  true as of 260822-wcs — the drag must not regress it).
+
+## Note on the sliders
+
+They are **Base UI** (`@base-ui/react/slider`), not Radix. `SliderPrimitive.Thumb` renders a plain
+div wrapping a hidden `input[type=range]`; the input holds the focus, role and value and the thumb
+div holds none of them. Anything driving a slider programmatically — including whatever keeps the
+sliders in sync during a drag — has to go through that inner input.

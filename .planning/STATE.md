@@ -130,6 +130,7 @@ None yet.
 | 260821-rpf | Rail plots scale to fit height instead of forcing scroll: removed overflow-y-auto from Rail Viewer plots container, added computeRailPlotBounds export in rail-section-plot.tsx, proportional flex-grow stack (by natural viewBox height) with fit="height" per section | 2026-08-21 | fc80f3d | [20260821-rails-plots-fit-height](./quick/20260821-rails-plots-fit-height/) |
 | 260821-rss | Fix Rail Viewer plots' scale/alignment drift left by 260821-rpf: revert proportional flex-grow to a single measured shared plotWidth (ResizeObserver + measured title chrome), so all open plots share one scale and aligned x-axes | 2026-08-21 | dd8571b | [20260821-rails-plots-shared-scale](./quick/20260821-rails-plots-shared-scale/) |
 | 260822-vcs | Implement the viewer callout system (sketches 001-004): new callout-system CSS tokens, shared components/viewer/callout-primitives.tsx module, outline/fin viewers rebuilt with SVG-text chips/output-rail replacing the HTML overlay, board-summary/outline-editor aspect fixes for the widened viewBox | 2026-08-22 | b3fc9b3 | [20260822-viewer-callout-system](./quick/20260822-viewer-callout-system/) |
+| 260822-wcs | Widepoint Controls: Width and Offset onto one line; split railLength into independent tailRailLength/noseRailLength across spec, geometry, presets and tests | 2026-08-22 | 9991f0c | [20260822-widepoint-controls-split](./quick/20260822-widepoint-controls-split/) |
 
 ## Deferred Items
 
