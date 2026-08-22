@@ -29,6 +29,7 @@ happens to fit.
 | 001 | viewer-callout-system | What grammar should dimension callouts use? | **D — Hybrid** (rails) | viewer, callouts, svg, drafting |
 | 002 | input-output-distinction | How to distinguish computed values from user inputs? | **C — Dual system** (chips vs dimension lines) | viewer, information-design |
 | 003 | stringer-and-station-lines | Should the stringer read differently from station lines? | **B — Distinct centreline** | viewer, reference-lines, consistency |
+| 004 | clean-interior-svg | Where do values go once nothing may sit inside the outline? | **A — Aligned rail** | viewer, callouts, svg, refinement |
 
 ## Decisions These Lock In
 
@@ -38,14 +39,18 @@ happens to fit.
    get gutter chips under a labelled header. Not by colour, not by punctuation.
 3. **Per-page content** — Fins shows outputs only (inputs are in the sidebar and were judged
    clutter). Template shows both, because its dimensions are the subject of the screen.
-4. **Reference lines** — stringer `16 4 4 4`, station lines `5 4`, both on
-   `--outline-station-line`, identical on every page.
+4. **Reference lines** — stringer `16 4 4 4`, station lines `5 4`, both faint and identical on
+   every page. The mid-length **centreline is static too**, so it shares the stringer's dash.
+5. **Nothing inside the outline but faint lines** — no text crosses the silhouette (sketch 004).
+6. **Outputs right, inputs left** — derived widths on one aligned right rail; input chips in the
+   left gutter, each naming its own value. Length centred above the nose.
+7. **Widepoint is an input even at centre** — drawn as rail markers, never a line across the board.
+   Centre width is a derived output. On the current board they are 0.36" apart and both read 19",
+   which is precisely why they need different treatments.
+8. **Labels are SVG `<text>`**, not absolutely-positioned HTML.
 
 ## Open Questions
 
-- Labels are currently absolutely-positioned HTML over the SVG rather than SVG `<text>`. Moving to
-  SVG text would let `text-anchor` do the alignment work instead of hand-computed offsets. Decide
-  during implementation.
 - If the fins diagram is ever printed standalone, its inputs lose the sidebar. Reintroduce as chips,
   or use sketch 002 variant B's parenthesised reference dimensions for print only. Undecided.
 

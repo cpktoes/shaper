@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sketch 004 — Clean interior, SVG text</title>
+<link rel="stylesheet" href="../themes/default.css">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;padding-top:52px;background:var(--color-bg);color:var(--color-text);
+       font-family:var(--font-sans);line-height:1.55}
+  #variant-nav{position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--color-surface);
+    border-bottom:1px solid var(--color-border);padding:8px 16px;display:flex;gap:8px;
+    align-items:center;flex-wrap:wrap}
+  .variant-tab{font:600 12px var(--font-sans);padding:6px 12px;border-radius:var(--radius-full);
+    border:1px solid var(--color-border);background:transparent;color:var(--color-text-muted);cursor:pointer}
+  .variant-tab:hover{border-color:var(--color-primary)}
+  .variant-tab.active{background:var(--color-text);color:var(--color-surface);border-color:var(--color-text)}
+  .variant-tab:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  .wrap{max-width:1040px;margin:0 auto;padding:var(--space-8) var(--space-6) var(--space-12)}
+  h1{font-family:var(--font-serif);font-size:var(--text-2xl);margin:0 0 var(--space-2)}
+  .q{color:var(--color-text-muted);font-size:var(--text-base);margin:0 0 var(--space-6);max-width:64ch}
+  .rulebar{display:flex;gap:var(--space-4);flex-wrap:wrap;margin:0 0 var(--space-8);
+    padding:var(--space-3) var(--space-4);background:var(--color-surface);
+    border:1px solid var(--color-border);border-radius:var(--radius-md);font-size:var(--text-sm)}
+  .rulebar b{font-weight:700}
+  .card{background:var(--color-surface);border:1px solid var(--color-border);
+        border-radius:var(--radius-lg);overflow:hidden}
+  .card.win{border-color:color-mix(in srgb,var(--color-primary) 55%,var(--color-border))}
+  .card-head{padding:var(--space-4) var(--space-6) var(--space-3);border-bottom:1px solid var(--color-border)}
+  .card-head h2{margin:0;font-family:var(--font-serif);font-size:var(--text-lg)}
+  .card-head p{margin:var(--space-1) 0 0;color:var(--color-text-muted);font-size:var(--text-sm)}
+  .body{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.85fr)}
+  @media(max-width:840px){.body{grid-template-columns:1fr}}
+  .stage{padding:var(--space-4)}
+  svg{display:block;width:100%;height:auto}
+  .notes{border-left:1px solid var(--color-border);padding:var(--space-6);display:grid;gap:var(--space-4);align-content:start}
+  @media(max-width:840px){.notes{border-left:none;border-top:1px solid var(--color-border)}}
+  .note h3{margin:0 0 2px;font-size:var(--text-xs);letter-spacing:.14em;text-transform:uppercase;color:var(--color-text-muted)}
+  .note p{margin:0;font-size:var(--text-sm)}
+  .badge{display:inline-block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+    padding:3px 8px;border-radius:var(--radius-full);margin-bottom:var(--space-2)}
+  .badge.alt{color:var(--color-success);border:1px solid color-mix(in srgb,var(--color-success) 40%,transparent)}
+  .badge.win{color:var(--color-primary);border:1px solid color-mix(in srgb,var(--color-primary) 50%,transparent)}
+  /* SVG type — all labels are SVG <text>, no HTML overlay anywhere */
+  .val{font:700 13px var(--font-sans);font-variant-numeric:tabular-nums}
+  .len{font:800 15px var(--font-sans);font-variant-numeric:tabular-nums}
+  .nm {font:700 9px var(--font-sans);letter-spacing:.12em;text-transform:uppercase}
+  .sta{font:600 10px var(--font-sans);letter-spacing:.1em;text-transform:uppercase}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div id="variant-nav">
+  <strong style="font:700 12px var(--font-sans);margin-right:4px">004 Clean interior</strong>
+  <button class="variant-tab active" onclick="showVariant('a',this)">A: Aligned rail ★ Selected</button>
+  <button class="variant-tab" onclick="showVariant('b',this)">B: Hug the edge</button>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <path id="board" d="M 185.9,596.0 L 199.1,582.3 L 208.3,565.4 L 215.5,547.6 L 221.3,529.3 L 226.2,510.7 L 230.3,491.9 L 233.7,473.0 L 236.6,454.0 L 239.1,435.0 L 241.0,415.9 L 242.6,396.7 L 243.8,377.5 L 244.7,358.3 L 245.2,339.1 L 245.5,319.9 L 245.4,300.7 L 244.8,281.5 L 243.7,262.3 L 242.1,243.1 L 240.0,224.0 L 237.3,205.0 L 234.1,186.1 L 230.3,167.2 L 225.9,148.5 L 220.9,130.0 L 215.2,111.6 L 208.8,93.5 L 201.6,75.7 L 193.4,58.3 L 184.0,41.5 L 172.5,26.2 L 159.6,35.9 L 149.7,52.4 L 141.2,69.6 L 133.6,87.3 L 127.0,105.3 L 121.0,123.6 L 115.8,142.1 L 111.2,160.7 L 107.2,179.5 L 103.7,198.4 L 100.9,217.4 L 98.6,236.5 L 96.8,255.6 L 95.6,274.8 L 94.8,294.0 L 94.5,313.2 L 94.7,332.5 L 95.1,351.7 L 95.8,370.9 L 96.9,390.1 L 98.4,409.2 L 100.2,428.4 L 102.5,447.4 L 105.2,466.5 L 108.5,485.4 L 112.3,504.2 L 116.9,522.9 L 122.4,541.3 L 129.0,559.3 L 137.4,576.6 L 148.8,592.0 L 166.7,596.0 L 185.9,596.0 Z"/>
+
+  <!-- Everything inside the outline: faint lines only, never text. -->
+  <g id="interior">
+    <!-- stringer and centreline are both STATIC, so they share one treatment -->
+    <line x1="170" y1="18" x2="170" y2="604" stroke="var(--color-faint)" stroke-width="1" stroke-dasharray="16 4 4 4"/>
+    <line x1="94.6" y1="311.1" x2="245.4" y2="311.1" stroke="var(--color-faint)" stroke-width="1" stroke-dasharray="16 4 4 4"/>
+    <!-- derived stations: one uniform short dash -->
+    <line x1="122.34" y1="119.33" x2="217.66" y2="119.33" stroke="var(--color-faint)" stroke-width="1" stroke-dasharray="5 4"/>
+    <line x1="111.53" y1="500.67" x2="228.47" y2="500.67" stroke="var(--color-faint)" stroke-width="1" stroke-dasharray="5 4"/>
+    <!-- widepoint is an INPUT: marked on the rails, never a line across the board -->
+    <circle cx="94.62" cy="313.97" r="2.6" fill="var(--color-widepoint)"/>
+    <circle cx="245.38" cy="313.97" r="2.6" fill="var(--color-widepoint)"/>
+  </g>
+
+  <!-- chips carry their own name, so no value is ever unlabelled -->
+  <g id="chips-a">
+    <g>
+      <rect x="0" y="298" width="92" height="31" rx="4" fill="var(--color-bg)" stroke="var(--color-border)"/>
+      <text class="nm"  x="46" y="311" fill="var(--color-widepoint)" text-anchor="middle">Widepoint</text>
+      <text class="val" x="46" y="324" fill="var(--color-text)" text-anchor="middle">19"</text>
+    </g>
+    <g>
+      <rect x="0" y="337" width="92" height="31" rx="4" fill="var(--color-bg)" stroke="var(--color-border)"/>
+      <text class="nm"  x="46" y="350" fill="var(--color-text-muted)" text-anchor="middle">WP offset</text>
+      <text class="val" x="46" y="363" fill="var(--color-text)" text-anchor="middle">1/2" back</text>
+    </g>
+    <g>
+      <rect x="0" y="570" width="92" height="31" rx="4" fill="var(--color-bg)" stroke="var(--color-border)"/>
+      <text class="nm"  x="46" y="583" fill="var(--color-text-muted)" text-anchor="middle">Tail block</text>
+      <text class="val" x="46" y="596" fill="var(--color-text)" text-anchor="middle">4" wide</text>
+    </g>
+    <text class="sta" x="46" y="288" fill="var(--color-text-muted)" text-anchor="middle">Your settings</text>
+    <g stroke="var(--color-faint)" stroke-width="1">
+      <line x1="92" y1="313.97" x2="94.6" y2="313.97"/>
+      <line x1="92" y1="352" x2="112" y2="330"/>
+      <line x1="92" y1="585" x2="150" y2="592"/>
+    </g>
+  </g>
+</defs></svg>
+
+<div class="wrap">
+  <h1>Clean interior, SVG text</h1>
+  <p class="q">Same Template drawing under four new constraints: nothing but faint lines inside the
+    outline, no text in there at all, length centred above the nose, and every chip naming its own
+    value. All labels are SVG <code>&lt;text&gt;</code> — no HTML overlay.</p>
+
+  <div class="rulebar">
+    <span><b>Stringer + centreline</b> — static, matching dash</span>
+    <span><b>Nose / centre / tail widths</b> — derived, short dash</span>
+    <span><b>Widepoint</b> — input, rail markers only</span>
+  </div>
+
+  <!-- ============ A: ALIGNED RAIL (WINNER) ============ -->
+  <div id="variant-a" class="variant">
+    <div class="card win">
+      <div class="card-head">
+        <span class="badge win">★ Selected</span>
+        <h2>Outputs on one aligned rail</h2>
+        <p>Every derived width reads out to a single right-hand rail. Inputs stay in the left gutter.</p>
+      </div>
+      <div class="body">
+        <div class="stage">
+          <svg viewBox="-6 -14 400 632" role="img" aria-label="Clean interior with outputs on an aligned right rail">
+            <use href="#board" fill="var(--color-board)" stroke="var(--color-text)" stroke-width="1.6" stroke-linejoin="round"/>
+            <use href="#interior"/>
+            <use href="#chips-a"/>
+
+            <!-- length: always centred above the nose -->
+            <text class="len" x="170" y="4" fill="var(--color-text)" text-anchor="middle">6'0" (72")</text>
+            <text class="sta" x="170" y="16" fill="var(--color-text-muted)" text-anchor="middle">Length</text>
+
+            <!-- extension lines carry each station out past the rail edge -->
+            <g stroke="var(--color-faint)" stroke-width="1">
+              <line x1="217.66" y1="119.33" x2="266" y2="119.33"/>
+              <line x1="245.4"  y1="311.1"  x2="266" y2="311.1"/>
+              <line x1="228.47" y1="500.67" x2="266" y2="500.67"/>
+            </g>
+            <!-- tick where each output leaves the board -->
+            <g stroke="var(--color-text)" stroke-width="1.1">
+              <line x1="213.66" y1="123.33" x2="221.66" y2="115.33"/>
+              <line x1="241.4"  y1="315.1"  x2="249.4"  y2="307.1"/>
+              <line x1="224.47" y1="504.67" x2="232.47" y2="496.67"/>
+            </g>
+            <!-- values on one rail, x=272 -->
+            <text class="val" x="272" y="117" fill="var(--color-text)">12"</text>
+            <text class="sta" x="272" y="129" fill="var(--color-text-muted)">Nose @ 12"</text>
+            <text class="val" x="272" y="309" fill="var(--color-text)">19"</text>
+            <text class="sta" x="272" y="321" fill="var(--color-text-muted)">Centre</text>
+            <text class="val" x="272" y="498" fill="var(--color-text)">14 3/4"</text>
+            <text class="sta" x="272" y="510" fill="var(--color-text-muted)">Tail @ 12"</text>
+          </svg>
+        </div>
+        <div class="notes">
+          <div class="note"><h3>Interior is only faint lines</h3><p>No text crosses the outline. Every
+            value sits outside the silhouette, so the board itself stays readable as a shape.</p></div>
+          <div class="note"><h3>Inputs left, outputs right</h3><p>Side alone tells you which kind of
+            number you are looking at, before you read the treatment.</p></div>
+          <div class="note"><h3>Chips name themselves</h3><p>"Tail block / 4" wide" instead of a bare
+            4". No chip depends on the reader inferring what it measures.</p></div>
+          <div class="note"><h3>Centre and widepoint can coincide</h3><p>On this board they are 0.36"
+            apart and <em>both read 19"</em>. Centre gets the static centreline plus a rail value;
+            widepoint gets two rail markers and a chip. Same number, visibly different kinds of thing.</p></div>
+          <div class="note"><h3>Length above the nose</h3><p>Centred on the stringer, outside the
+            board, in the one place it can never fight another label.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ B: HUG THE EDGE ============ -->
+  <div id="variant-b" class="variant" style="display:none">
+    <div class="card">
+      <div class="card-head">
+        <span class="badge alt">Option B</span>
+        <h2>Outputs hugging the outline</h2>
+        <p>Each value sits just outside the edge at its own station rather than on a shared rail.</p>
+      </div>
+      <div class="body">
+        <div class="stage">
+          <svg viewBox="-6 -14 400 632" role="img" aria-label="Clean interior with outputs hugging the outline edge">
+            <use href="#board" fill="var(--color-board)" stroke="var(--color-text)" stroke-width="1.6" stroke-linejoin="round"/>
+            <use href="#interior"/>
+            <use href="#chips-a"/>
+
+            <text class="len" x="170" y="4" fill="var(--color-text)" text-anchor="middle">6'0" (72")</text>
+            <text class="sta" x="170" y="16" fill="var(--color-text-muted)" text-anchor="middle">Length</text>
+
+            <g stroke="var(--color-faint)" stroke-width="1">
+              <line x1="217.66" y1="119.33" x2="226" y2="119.33"/>
+              <line x1="245.4"  y1="311.1"  x2="253" y2="311.1"/>
+              <line x1="228.47" y1="500.67" x2="236" y2="500.67"/>
+            </g>
+            <g stroke="var(--color-text)" stroke-width="1.1">
+              <line x1="213.66" y1="123.33" x2="221.66" y2="115.33"/>
+              <line x1="241.4"  y1="315.1"  x2="249.4"  y2="307.1"/>
+              <line x1="224.47" y1="504.67" x2="232.47" y2="496.67"/>
+            </g>
+            <!-- ragged: each value starts at a different x -->
+            <text class="val" x="230" y="117" fill="var(--color-text)">12"</text>
+            <text class="sta" x="230" y="129" fill="var(--color-text-muted)">Nose @ 12"</text>
+            <text class="val" x="257" y="309" fill="var(--color-text)">19"</text>
+            <text class="sta" x="257" y="321" fill="var(--color-text-muted)">Centre</text>
+            <text class="val" x="240" y="498" fill="var(--color-text)">14 3/4"</text>
+            <text class="sta" x="240" y="510" fill="var(--color-text-muted)">Tail @ 12"</text>
+          </svg>
+        </div>
+        <div class="notes">
+          <div class="note"><h3>Closer to what it measures</h3><p>Each value sits right against its own
+            station, with the shortest possible leader.</p></div>
+          <div class="note"><h3>Why it loses</h3><p>Three values start at three different x positions
+            (230, 257, 240) because the outline curves. The ragged left edge reads as carelessness, and
+            it drifts as the board's shape changes.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="sketch-tools" style="position:fixed;bottom:12px;right:12px;z-index:9999;font-family:var(--font-sans);font-size:12px;background:rgba(0,0,0,.72);color:#fff;padding:8px 12px;border-radius:8px;opacity:.4;transition:opacity .2s;display:flex;gap:10px;align-items:center"
+     onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.4'">
+  <label>Theme
+    <select onchange="document.documentElement.setAttribute('data-theme',this.value)"
+            style="background:transparent;color:#fff;border:1px solid #666;border-radius:4px">
+      <option value="light">Light</option><option value="dark">Dark</option>
+    </select>
+  </label>
+  <span>|</span>
+  <button onclick="setW('375px')" style="background:none;border:1px solid #666;color:#fff;border-radius:4px;cursor:pointer">Phone</button>
+  <button onclick="setW('768px')" style="background:none;border:1px solid #666;color:#fff;border-radius:4px;cursor:pointer">Tablet</button>
+  <button onclick="setW('1040px')" style="background:none;border:1px solid #666;color:#fff;border-radius:4px;cursor:pointer">Desktop</button>
+</div>
+
+<script>
+function showVariant(id, btn){
+  document.querySelectorAll('.variant').forEach(v=>v.style.display='none');
+  document.querySelectorAll('.variant-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('variant-'+id).style.display='block';
+  btn.classList.add('active');
+}
+function setW(w){ document.querySelector('.wrap').style.maxWidth = w; }
+</script>
+</body>
+</html>
