@@ -146,7 +146,7 @@ export function CalloutChip({ x, y, name, value, nameColor = "var(--outline-call
   return (
     <g>
       {leaderToX !== undefined && (
-        <line x1={x} y1={y} x2={leaderToX} y2={y} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+        <line x1={x} y1={y} x2={leaderToX} y2={y} stroke="var(--outline-station-line)" strokeWidth={1} />
       )}
       <rect
         x={rectX}
@@ -194,7 +194,7 @@ export function OutputRail({ edgeX, y, value, station }: OutputRailProps) {
   const reachX = OUTLINE_OUTPUT_VALUE_X - CALLOUT_VALUE_GAP;
   return (
     <g>
-      <line x1={edgeX} y1={y} x2={reachX} y2={y} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+      <line x1={edgeX} y1={y} x2={reachX} y2={y} stroke="var(--outline-station-line)" strokeWidth={1} />
       <DimensionTick x={edgeX} y={y} color="var(--outline-dim-ink)" />
       <text
         x={OUTLINE_OUTPUT_VALUE_X}

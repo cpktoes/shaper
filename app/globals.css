@@ -111,7 +111,7 @@
   --outline-page-bg: #f7f4ee;
   --outline-board-fill: color-mix(in srgb, var(--outline-accent) 14%, white);
   --outline-construction: #4d8a86;
-  --outline-station-line: #4472c4;
+  --outline-station-line: #c9c0ab; /* faint: stringer, stations, leaders, extension lines */
   --outline-widepoint-knot: #a8425f;
   --outline-ink: #1c1b19;
 
@@ -121,7 +121,7 @@
   --outline-stringer-dash: 16 4 4 4; /* stringer and the static mid-length centreline */
   --outline-station-dash: 5 4; /* derived station lines (12" marks, etc) */
   --outline-dim-ink: var(--outline-ink); /* dimension lines, ticks and values */
-  --outline-callout-label: #3a5f9e; /* station/chip name text — replaces the old hardcoded #3a5f9e */
+  --outline-callout-label: #8a7f6b; /* muted: station names and chip names */ /* station/chip name text — replaces the old hardcoded #3a5f9e */
 }
 
 .dark {
