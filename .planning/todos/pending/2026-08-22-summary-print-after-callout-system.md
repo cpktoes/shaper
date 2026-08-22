@@ -49,6 +49,18 @@ instead of scaling the drawing down. Two consequences for print:
 Print a wide board (widepoint at or near 25in) as well as a default one — the fit logic has never
 seen a non-baseline aspect.
 
+## Pagination is fixed (260822-nbz, 2026-08-22)
+
+The sheet no longer runs to multiple pages. The `@page` margin is pinned at 8mm, the page box is
+derived from the smaller of Letter and A4 landscape instead of a hardcoded 1030x750 that was taller
+than either, and the summary grid moved from a viewport media query to container queries so the
+layout measured at `beforeprint` is the layout that actually prints. Measured: 996x613 from a 1600px
+window and 972x728 from a narrow one, both inside Letter and A4.
+
+**So what is left here is legibility at print scale, not pagination** — items 3, 4 and 5 below. The
+sheet prints at roughly 0.69 zoom, so the faint reference lines and the low-alpha widepoint dash are
+the real risk, and that needs a printer rather than a measurement.
+
 ## What to check
 
 1. Print preview `/design/summary` — the whole sheet fits one page, nothing clipped at the gutters.
