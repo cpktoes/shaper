@@ -54,13 +54,6 @@ interface OutlineViewerProps {
    * leading edge, with a dot at each end (Template.dc.html lines 178-182). Optional so the
    * viewer still renders standalone before fins are wired up. */
   finMarks?: FinMark[];
-  /** Embedding-only display sizing used by the Summary dashboard (Template.dc.html line 769):
-   * shrinks the callout text to the shared `--summary-font-callout`/`--summary-font-label` scale,
-   * and suppresses the left-gutter input chips (the Volume Estimate card already lists length,
-   * width and centre thickness, so chips would duplicate it) while keeping the output rail, since
-   * the derived widths appear nowhere else on the dashboard. Defaults to `false`, the outline
-   * screen's own unchanged full callout set. */
-  compact?: boolean;
   /** Thumbnail-scale-only display sizing used by the setup screen's preset cards
    * (components/setup/preset-card.tsx): when true, suppresses the entire callout system (chips,
    * output rail, reference lines, widepoint dots), leaving the SVG board outline path,
@@ -81,7 +74,6 @@ export function OutlineViewer({
   outline,
   showConstruction,
   finMarks = [],
-  compact = false,
   hideCallouts = false,
   hideFinMarks = false,
 }: OutlineViewerProps) {
@@ -296,9 +288,10 @@ export function OutlineViewer({
             station={'Tail @ 12"'}
           />
 
-          {!compact && (
-            <>
-              {/* Inputs: left gutter chips, each naming its own value (sketch 004). */}
+          {/* Inputs: left gutter chips, each naming its own value (sketch 004). Shown in compact
+              too — the Summary sheet is read at the blank, where the sidebar is not available, so
+              the shaper needs the settings on the drawing itself. */}
+          <>
               <text
                 x={centerlineX}
                 y={lengthChipY - OUTLINE_CHIP_HEIGHT / 2 - 6}
@@ -333,8 +326,7 @@ export function OutlineViewer({
                   leaderToX={pxX(-halfTailBlockWidthIn)}
                 />
               )}
-            </>
-          )}
+          </>
         </>
       )}
     </svg>

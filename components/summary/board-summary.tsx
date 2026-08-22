@@ -149,7 +149,6 @@ export function BoardSummary() {
               showConstruction={false}
               // The fin marks belong on the printed template, same as the outline screen.
               finMarks={finPlacement.marks}
-              compact
             />
           </div>
         </div>

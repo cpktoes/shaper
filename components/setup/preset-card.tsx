@@ -40,7 +40,6 @@ export function PresetCard({ preset, onSelect, className }: PresetCardProps) {
           geometry={geometry}
           outline={preset.outline}
           showConstruction={false}
-          compact
           hideCallouts
         />
       </div>
