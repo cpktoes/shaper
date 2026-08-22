@@ -14,10 +14,12 @@ interface VolumeCalculationCardProps {
   lengthDisplay: string;
   widthDisplayLabel: string;
   centerThicknessDisplayLabel: string;
-  /** The Summary dashboard's strict-subset compact row set (Volume.dc.html lines 152-172): Board
-   * Length/Width (when not importing a template), the area row, the weighted-thickness row and
-   * the Estimated Volume total — no heading, no cross-section thickness rows, no disclaimer.
-   * Defaults to `false`, the Volume screen's own unchanged full card. */
+  /** The Summary dashboard's dense treatment: the same rows as the Volume screen, at the summary's
+   * smaller type. What compact drops is chrome, not data — the "Volume Calculation" heading (the
+   * summary card carries its own title) and the closing estimate disclaimer. It used to drop the
+   * Center Thickness and the three cross-section rows too, which meant the Summary quietly showed
+   * less than the Volume screen for exactly the case a shaper cares about: importing real geometry
+   * from the template and rails. Defaults to `false`, the Volume screen's own full card. */
   compact?: boolean;
 }
 
@@ -68,9 +70,29 @@ export function VolumeCalculationCard({
           <>
             <Row label="Board Length" value={lengthDisplay} compact />
             <Row label="Board Width" value={widthDisplayLabel} compact />
+            <Row label="Center Thickness" value={centerThicknessDisplayLabel} compact />
           </>
         )}
         <Row label={areaRowLabel} value={areaSqInDisplay} compact />
+        {result.geomReady && (
+          <>
+            <Row
+              label="Tail Cross-Section Thickness"
+              value={formatInchesFraction(result.tailCrossSectionThickness!)}
+              compact
+            />
+            <Row
+              label="Center Cross-Section Thickness"
+              value={formatInchesFraction(result.centerCrossSectionThickness!)}
+              compact
+            />
+            <Row
+              label="Nose Cross-Section Thickness"
+              value={formatInchesFraction(result.noseCrossSectionThickness!)}
+              compact
+            />
+          </>
+        )}
         <Row label={weightedThicknessLabel} value={formatInchesFraction(result.weightedThickness)} compact />
 
         <div className="mt-1 flex items-baseline justify-between border-t-2 border-[#e4ddc9] pt-1.5 pb-1">

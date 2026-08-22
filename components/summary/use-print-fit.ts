@@ -12,12 +12,62 @@
  * natively) or set directly on the node inside the handler — this hook works imperatively on the
  * DOM element and sets no React state, on purpose, even though that looks like a React
  * anti-pattern at a glance.
+ *
+ * Two things this originally got wrong, both of which put the sheet onto a second page:
+ *
+ * 1. **The page box was a magic number** (1030x750 CSS px), taller than either paper it had to fit:
+ *    a US Letter landscape page at 0.4in margins is 979x739 and A4 landscape is 1045x717, so the
+ *    sheet overflowed by 11px and 33px respectively. The margins were not pinned either, so the
+ *    real printable area moved with whatever was set in the print dialog. Both are now derived —
+ *    the margin is declared in `app/design/summary/summary.css` and mirrored here, and the target is
+ *    the smaller of Letter and A4 on each axis so the sheet fits whichever paper the printer holds.
+ *
+ * 2. **It measured the wrong layout.** `beforeprint` fires before the browser relays out for print,
+ *    so `scrollHeight` described the grid at the *window's* width. The page prints at about 995px,
+ *    where the same grid reflows taller — and from a narrow window the summary is a tall single
+ *    column on screen, nothing like what prints. The handler now pins the root to the printable
+ *    width before measuring, so the layout it measures is the layout that prints.
  */
 
 import { useEffect, useRef } from "react";
 
-const PAGE_W = 1030;
-const PAGE_H = 750;
+/** Must match the `@page` margin declared in `app/design/summary/summary.css`. */
+const PAGE_MARGIN_MM = 8;
+const MM_PER_INCH = 25.4;
+
+/**
+ * Landscape paper, in inches. The sheet has to fit whichever of these the shaper's printer holds,
+ * so the target below takes the smaller of the two on each axis — Letter is the narrower, A4 the
+ * shorter.
+ */
+const LANDSCAPE_PAPER_IN = [
+  { width: 11, height: 8.5 }, // US Letter
+  { width: 11.69, height: 8.27 }, // A4
+];
+
+/**
+ * A hair off the computed box. Printer page boxes are fractional and the browser rounds; landing
+ * exactly on the boundary is what a second page is made of.
+ */
+const FIT_SAFETY = 0.995;
+
+/** CSS px per inch, measured rather than assumed — a zoomed or high-DPI context is not 96. */
+function measurePxPerInch(): number {
+  const probe = document.createElement("div");
+  probe.style.cssText = "width:1in;height:0;position:absolute;visibility:hidden;pointer-events:none";
+  document.body.appendChild(probe);
+  const px = probe.getBoundingClientRect().width;
+  probe.remove();
+  return px > 0 ? px : 96;
+}
+
+function printableBoxPx(): { width: number; height: number } {
+  const pxPerInch = measurePxPerInch();
+  const marginIn = PAGE_MARGIN_MM / MM_PER_INCH;
+  const widthIn = Math.min(...LANDSCAPE_PAPER_IN.map((p) => p.width)) - 2 * marginIn;
+  const heightIn = Math.min(...LANDSCAPE_PAPER_IN.map((p) => p.height)) - 2 * marginIn;
+  return { width: widthIn * pxPerInch, height: heightIn * pxPerInch };
+}
 
 export function useSummaryPrintFit() {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -29,13 +79,32 @@ export function useSummaryPrintFit() {
       // Releases the fixed on-screen height so the grid can grow to its natural size — the CSS
       // rule this attribute triggers lives in app/design/summary/summary.css.
       el.setAttribute("data-printing", "true");
-      // Reading scrollWidth/scrollHeight after setting the attribute forces the reflow that
-      // makes them reflect the now-unfixed layout; no extra measuring pass needed.
-      const w = el.scrollWidth;
-      const h = el.scrollHeight;
-      const rawScale = Math.min(1, PAGE_W / w, PAGE_H / h);
-      const scale = Number.isFinite(rawScale) && rawScale > 0 ? rawScale : 1;
-      el.style.zoom = String(scale);
+
+      const page = printableBoxPx();
+
+      // Pass one: lay the grid out at the width it will actually print at, and see how tall it is.
+      // Reading scrollHeight after setting the width forces the reflow that makes it reflect the
+      // new layout; no extra measuring pass needed.
+      el.style.width = `${page.width}px`;
+      const firstScale = Math.min(1, (page.height * FIT_SAFETY) / el.scrollHeight);
+
+      let scale = firstScale;
+      if (firstScale < 1) {
+        // `zoom` shrinks the width we just set along with everything else, which would print the
+        // sheet letterboxed inside the page. Laying out wider by the same factor cancels that, so
+        // the scaled result fills the page. The wider layout reflows shorter, so re-measure.
+        const layoutWidth = page.width / firstScale;
+        el.style.width = `${layoutWidth}px`;
+        // `page.width / layoutWidth` is firstScale, so this can only ever shrink the scale further:
+        // whichever axis binds, both end up inside the page.
+        scale = Math.min(
+          1,
+          (page.height * FIT_SAFETY) / el.scrollHeight,
+          page.width / layoutWidth,
+        );
+      }
+
+      el.style.zoom = String(Number.isFinite(scale) && scale > 0 ? scale : 1);
     };
 
     const afterPrint = () => {
@@ -43,6 +112,7 @@ export function useSummaryPrintFit() {
       if (!el) return;
       el.removeAttribute("data-printing");
       el.style.zoom = "";
+      el.style.width = "";
     };
 
     window.addEventListener("beforeprint", beforePrint);

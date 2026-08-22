@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
  * its print-only twin occupy the exact same slot — only one is ever visible: the textarea card
  * on screen, the centred name block in print (Summary.dc.html lines 68-78). */
 const BOARD_NAME_GRID_PLACEMENT =
-  "order-5 min-[900px]:order-none min-[900px]:col-start-3 min-[900px]:row-start-2 min-[900px]:min-h-0";
+  "order-5 @min-[900px]:order-none @min-[900px]:col-start-3 @min-[900px]:row-start-2 @min-[900px]:min-h-0";
 
 const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
@@ -120,13 +120,13 @@ export function BoardSummary() {
       ref={rootRef}
       data-summary-root
       className={cn(
-        "grid min-h-0 flex-1 grid-cols-1 auto-rows-auto gap-2 overflow-y-auto bg-outline-page-bg p-2",
-        "min-[900px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] min-[900px]:grid-rows-[85fr_15fr] min-[900px]:overflow-hidden",
+        "@container grid min-h-0 flex-1 grid-cols-1 auto-rows-auto gap-2 overflow-y-auto bg-outline-page-bg p-2",
+        "@min-[900px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] @min-[900px]:grid-rows-[85fr_15fr] @min-[900px]:overflow-hidden",
       )}
     >
       <SummaryCard
         title="Rail Data"
-        className="order-3 min-h-[360px] min-[900px]:order-none min-[900px]:col-start-1 min-[900px]:row-start-1 min-[900px]:min-h-0"
+        className="order-3 min-h-[360px] @min-[900px]:order-none @min-[900px]:col-start-1 @min-[900px]:row-start-1 @min-[900px]:min-h-0"
       >
         <RailDataTable sections={sections} compact />
       </SummaryCard>
@@ -135,7 +135,7 @@ export function BoardSummary() {
       <SummaryCard
         title="Template"
         variant="flush"
-        className="order-1 min-h-[360px] min-[900px]:order-none min-[900px]:col-start-2 min-[900px]:row-start-1 min-[900px]:min-h-0"
+        className="order-1 min-h-[360px] @min-[900px]:order-none @min-[900px]:col-start-2 @min-[900px]:row-start-1 @min-[900px]:min-h-0"
       >
         <div className="relative flex h-full w-full justify-center">
           {/* Sized from OutlineViewer's own frame, not a fixed ratio: the viewBox widens for boards
@@ -158,7 +158,7 @@ export function BoardSummary() {
         </div>
       </SummaryCard>
 
-      <div className="order-4 flex min-h-[360px] flex-col gap-2 min-[900px]:order-none min-[900px]:col-start-3 min-[900px]:row-start-1 min-[900px]:min-h-0">
+      <div className="order-4 flex min-h-[360px] flex-col gap-2 @min-[900px]:order-none @min-[900px]:col-start-3 @min-[900px]:row-start-1 @min-[900px]:min-h-0">
         {/* Content-height, not an equal share: Volume is four rows of text, and splitting the
             column 50/50 left it with dead space while the fin diagram scaled down to fit what was
             left. Fin Placement takes everything Volume does not need. */}
@@ -189,7 +189,7 @@ export function BoardSummary() {
       <SummaryCard
         title="Rail Plots"
         variant="flush"
-        className="order-2 min-h-[220px] min-[900px]:order-none min-[900px]:col-start-1 min-[900px]:col-span-2 min-[900px]:row-start-2 min-[900px]:min-h-0"
+        className="order-2 min-h-[220px] @min-[900px]:order-none @min-[900px]:col-start-1 @min-[900px]:col-span-2 @min-[900px]:row-start-2 @min-[900px]:min-h-0"
       >
         {/* No per-section titles, no legend — matches the prototype's compact row
             (RAIL_TITLE_ROW_H 0, Rails.dc.html line 1241). */}
