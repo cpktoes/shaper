@@ -14,7 +14,9 @@ Refinement of sketches 001-003 after review. Four new constraints from the shape
 2. **Stringer and centreline are both static** and can share one treatment.
 3. **Widepoint is an input** even when it sits at centre; **centre width is a derived output**
    like the nose and tail stations.
-4. **Length always centred above the nose**, and **tail block must say what it measures**.
+4. **Every input is a chip**, including length; **tail block must say what it measures**.
+5. **All input leaders horizontal** — no angled leaders.
+6. **Board centred between the two callout columns**, with the inputs given real breathing room.
 
 Plus a technique decision: labels are **SVG `<text>`**, not absolutely-positioned HTML.
 
@@ -68,7 +70,7 @@ input/output split.
 | Interior text | **None** |
 | Outputs | Right rail, aligned, with station name beneath |
 | Inputs | Left gutter chips, each naming its own value |
-| Length | Centred above the nose, on the stringer |
+| Length | Input chip, top of the left gutter, horizontal leader to the nose |
 
 Chips are name + value pairs (`TAIL BLOCK / 4" wide`), so no chip depends on the reader inferring
 what it measures — that fixes the bare `4"` specifically and every future chip generally.
@@ -82,3 +84,20 @@ what it measures — that fixes the bare `4"` specifically and every future chip
   positioned HTML overlays.
 - The output rail x is a single constant. Adding a station means adding a row, never choosing a new
   offset.
+
+## Layout Constants (revision 2)
+
+Set numerically so the board sits centred between the two callout columns:
+
+| | Value |
+|---|---|
+| Chip width | 96 |
+| Chip right edge | x = 58 |
+| Board | x = 94.5 -> 245.5 |
+| Output value left edge | x = 282 |
+| **Left gap** (chips -> board) | **36.5** |
+| **Right gap** (board -> outputs) | **36.5** |
+
+Every input leader is horizontal, verified in-browser (zero leaders with `y1 != y2`). WP offset
+carries no leader at all — it modifies the widepoint and is grouped directly beneath it, which
+avoids inventing a target for a value that has no single point on the board.

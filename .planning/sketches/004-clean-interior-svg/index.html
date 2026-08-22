@@ -76,35 +76,42 @@
 
   <!-- chips carry their own name, so no value is ever unlabelled -->
   <g id="chips-a">
+    <text class="sta" x="10" y="0" fill="var(--color-text-muted)" text-anchor="middle">Your settings</text>
     <g>
-      <rect x="0" y="298" width="92" height="31" rx="4" fill="var(--color-bg)" stroke="var(--color-border)"/>
-      <text class="nm"  x="46" y="311" fill="var(--color-widepoint)" text-anchor="middle">Widepoint</text>
-      <text class="val" x="46" y="324" fill="var(--color-text)" text-anchor="middle">19"</text>
+      <rect x="-38" y="10.7" width="96" height="31" rx="4" fill="var(--color-bg)" stroke="var(--color-border)"/>
+      <text class="nm"  x="10" y="23.7" fill="var(--color-text-muted)" text-anchor="middle">Length</text>
+      <text class="val" x="10" y="36.7" fill="var(--color-text)" text-anchor="middle">6'0" (72")</text>
     </g>
     <g>
-      <rect x="0" y="337" width="92" height="31" rx="4" fill="var(--color-bg)" stroke="var(--color-border)"/>
-      <text class="nm"  x="46" y="350" fill="var(--color-text-muted)" text-anchor="middle">WP offset</text>
-      <text class="val" x="46" y="363" fill="var(--color-text)" text-anchor="middle">1/2" back</text>
+      <rect x="-38" y="298.5" width="96" height="31" rx="4" fill="var(--color-bg)" stroke="var(--color-border)"/>
+      <text class="nm"  x="10" y="311.5" fill="var(--color-widepoint)" text-anchor="middle">Widepoint</text>
+      <text class="val" x="10" y="324.5" fill="var(--color-text)" text-anchor="middle">19"</text>
     </g>
     <g>
-      <rect x="0" y="570" width="92" height="31" rx="4" fill="var(--color-bg)" stroke="var(--color-border)"/>
-      <text class="nm"  x="46" y="583" fill="var(--color-text-muted)" text-anchor="middle">Tail block</text>
-      <text class="val" x="46" y="596" fill="var(--color-text)" text-anchor="middle">4" wide</text>
+      <rect x="-38" y="335.5" width="96" height="31" rx="4" fill="var(--color-bg)" stroke="var(--color-border)"/>
+      <text class="nm"  x="10" y="348.5" fill="var(--color-text-muted)" text-anchor="middle">WP offset</text>
+      <text class="val" x="10" y="361.5" fill="var(--color-text)" text-anchor="middle">1/2" back</text>
     </g>
-    <text class="sta" x="46" y="288" fill="var(--color-text-muted)" text-anchor="middle">Your settings</text>
+    <g>
+      <rect x="-38" y="576.5" width="96" height="31" rx="4" fill="var(--color-bg)" stroke="var(--color-border)"/>
+      <text class="nm"  x="10" y="589.5" fill="var(--color-text-muted)" text-anchor="middle">Tail block</text>
+      <text class="val" x="10" y="602.5" fill="var(--color-text)" text-anchor="middle">4" wide</text>
+    </g>
+    <!-- every input leader is horizontal; WP offset is grouped under Widepoint and needs none -->
     <g stroke="var(--color-faint)" stroke-width="1">
-      <line x1="92" y1="313.97" x2="94.6" y2="313.97"/>
-      <line x1="92" y1="352" x2="112" y2="330"/>
-      <line x1="92" y1="585" x2="150" y2="592"/>
+      <line x1="58" y1="26.2"   x2="170"  y2="26.2"/>
+      <line x1="58" y1="313.97" x2="94.6" y2="313.97"/>
+      <line x1="58" y1="592"    x2="148.8" y2="592"/>
     </g>
   </g>
 </defs></svg>
 
 <div class="wrap">
   <h1>Clean interior, SVG text</h1>
-  <p class="q">Same Template drawing under four new constraints: nothing but faint lines inside the
-    outline, no text in there at all, length centred above the nose, and every chip naming its own
-    value. All labels are SVG <code>&lt;text&gt;</code> — no HTML overlay.</p>
+  <p class="q">Same Template drawing under the agreed constraints: nothing but faint lines inside
+    the outline and no text in there at all; every input a named chip on the left, every derived
+    value on a rail to the right; all leaders horizontal; the board centred between the two columns.
+    All labels are SVG <code>&lt;text&gt;</code> — no HTML overlay.</p>
 
   <div class="rulebar">
     <span><b>Stringer + centreline</b> — static, matching dash</span>
@@ -122,20 +129,16 @@
       </div>
       <div class="body">
         <div class="stage">
-          <svg viewBox="-6 -14 400 632" role="img" aria-label="Clean interior with outputs on an aligned right rail">
+          <svg viewBox="-50 -16 410 638" role="img" aria-label="Clean interior with outputs on an aligned right rail">
             <use href="#board" fill="var(--color-board)" stroke="var(--color-text)" stroke-width="1.6" stroke-linejoin="round"/>
             <use href="#interior"/>
             <use href="#chips-a"/>
 
-            <!-- length: always centred above the nose -->
-            <text class="len" x="170" y="4" fill="var(--color-text)" text-anchor="middle">6'0" (72")</text>
-            <text class="sta" x="170" y="16" fill="var(--color-text-muted)" text-anchor="middle">Length</text>
-
             <!-- extension lines carry each station out past the rail edge -->
             <g stroke="var(--color-faint)" stroke-width="1">
-              <line x1="217.66" y1="119.33" x2="266" y2="119.33"/>
-              <line x1="245.4"  y1="311.1"  x2="266" y2="311.1"/>
-              <line x1="228.47" y1="500.67" x2="266" y2="500.67"/>
+              <line x1="217.66" y1="119.33" x2="276" y2="119.33"/>
+              <line x1="245.4"  y1="311.1"  x2="276" y2="311.1"/>
+              <line x1="228.47" y1="500.67" x2="276" y2="500.67"/>
             </g>
             <!-- tick where each output leaves the board -->
             <g stroke="var(--color-text)" stroke-width="1.1">
@@ -144,12 +147,12 @@
               <line x1="224.47" y1="504.67" x2="232.47" y2="496.67"/>
             </g>
             <!-- values on one rail, x=272 -->
-            <text class="val" x="272" y="117" fill="var(--color-text)">12"</text>
-            <text class="sta" x="272" y="129" fill="var(--color-text-muted)">Nose @ 12"</text>
-            <text class="val" x="272" y="309" fill="var(--color-text)">19"</text>
-            <text class="sta" x="272" y="321" fill="var(--color-text-muted)">Centre</text>
-            <text class="val" x="272" y="498" fill="var(--color-text)">14 3/4"</text>
-            <text class="sta" x="272" y="510" fill="var(--color-text-muted)">Tail @ 12"</text>
+            <text class="val" x="282" y="117" fill="var(--color-text)">12"</text>
+            <text class="sta" x="282" y="129" fill="var(--color-text-muted)">Nose @ 12"</text>
+            <text class="val" x="282" y="309" fill="var(--color-text)">19"</text>
+            <text class="sta" x="282" y="321" fill="var(--color-text-muted)">Centre</text>
+            <text class="val" x="282" y="498" fill="var(--color-text)">14 3/4"</text>
+            <text class="sta" x="282" y="510" fill="var(--color-text-muted)">Tail @ 12"</text>
           </svg>
         </div>
         <div class="notes">
@@ -179,13 +182,10 @@
       </div>
       <div class="body">
         <div class="stage">
-          <svg viewBox="-6 -14 400 632" role="img" aria-label="Clean interior with outputs hugging the outline edge">
+          <svg viewBox="-50 -16 410 638" role="img" aria-label="Clean interior with outputs hugging the outline edge">
             <use href="#board" fill="var(--color-board)" stroke="var(--color-text)" stroke-width="1.6" stroke-linejoin="round"/>
             <use href="#interior"/>
             <use href="#chips-a"/>
-
-            <text class="len" x="170" y="4" fill="var(--color-text)" text-anchor="middle">6'0" (72")</text>
-            <text class="sta" x="170" y="16" fill="var(--color-text-muted)" text-anchor="middle">Length</text>
 
             <g stroke="var(--color-faint)" stroke-width="1">
               <line x1="217.66" y1="119.33" x2="226" y2="119.33"/>
