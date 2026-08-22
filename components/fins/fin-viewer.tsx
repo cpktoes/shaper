@@ -13,6 +13,16 @@
  * with the Basic-Off-Rail rear model (whose rear pair is actually `'rail'`-kind), which this
  * port does not reserve. No layout ever overlaps either way; the only effect is marginally
  * tighter horizontal spacing in that one case.
+ *
+ * Callout grammar follows the system locked in `.planning/sketches/` 001-004: this page shows
+ * outputs only (fin positions from tail, toe, off-rail) — the tail-width input already lives in
+ * the sidebar, so its label pair is not repeated here. Every dimension line is ticked with the
+ * shared `DimensionTick` primitive instead of an arrowhead marker, every callout leader/extension/
+ * dimension line is solid ink (no more ad hoc dashes), and the two reference lines (the centreline
+ * and the tail-width-12" line) use the two shared dash tokens instead of both reusing one
+ * non-descript pattern. All labels are SVG `<text>` — there is no absolutely-positioned HTML
+ * overlay. The one dash that survives outside this system is the fin mark's own line, which stays
+ * keyed to `result.legend`'s Front/Rear/Center dash — see the inline comment at that line.
  */
 
 import { useMemo } from "react";
@@ -20,18 +30,19 @@ import type { FinMark, FinPlacementResult, FinRole, FinTailShape, FinLateralKind
 import { tailHalfWidthAt, tailOffTailAtHalfWidth, tailOutlineHalfPoints } from "@/lib/geometry/fins";
 import { formatFeetInches, formatInchesFraction, inchesToMm, mm, mmToInches, type Mm } from "@/lib/geometry/units";
 import type { Point2D } from "@/lib/geometry/board";
+import { DimensionTick } from "@/components/viewer/callout-primitives";
 
 const SCALE = 14;
 const ORIGIN_X = 260;
 const TAIL_Y = 320;
 const VIEW_TOP_MARGIN = 0.6;
-/** The halo color behind callout text, so it reads over the tinted board fill. Matches the
- * white viewer-card background this diagram always sits on. */
+/** The halo colour behind callout text, so it reads over the tinted board fill instead of
+ * colliding with the line it sits on — the halo stands in for a literal break in the line.
+ * Matches the white viewer-card background this diagram always sits on. */
 const HALO = "var(--background)";
-
-function pct(px: number, total: number): string {
-  return `${((px / total) * 100).toFixed(3)}%`;
-}
+/** Small correction so a label's SVG baseline lands roughly where a CSS `-50%` vertical
+ * transform used to centre it. */
+const LABEL_BASELINE_NUDGE = 4;
 
 function toPxX(xIn: number): number {
   return ORIGIN_X + xIn * SCALE;
@@ -94,9 +105,9 @@ interface PlainDim {
   extBotX1: number;
   extBotX2: number;
   extBotY: number;
-  pctLeft: string;
-  pctTop: string;
-  transformX: string;
+  labelX: number;
+  labelY: number;
+  labelAnchor: "start" | "middle" | "end";
   text: string;
 }
 interface BelowDim {
@@ -110,9 +121,9 @@ interface BelowDim {
   dimX1: number;
   dimX2: number;
   dimY: number;
-  pctLeft: string;
-  pctTop: string;
-  transformX: string;
+  labelX: number;
+  labelY: number;
+  labelAnchor: "start" | "middle" | "end";
   text: string;
 }
 interface RailVDim {
@@ -125,9 +136,9 @@ interface RailVDim {
   extBX: number;
   extY1: number;
   extY2: number;
-  pctLeft: string;
-  pctTop: string;
-  transformX: string;
+  labelX: number;
+  labelY: number;
+  labelAnchor: "start" | "middle" | "end";
   text: string;
 }
 type FinDim = PlainDim | BelowDim | RailVDim;
@@ -230,9 +241,9 @@ function dimsForMark(
       extBotX1: dimX,
       extBotX2: Math.max(dimX, botEdgeX),
       extBotY: teY,
-      pctLeft: pct(dimX, 530),
-      pctTop: pct(midY, 370),
-      transformX: "-100%",
+      labelX: dimX - 4,
+      labelY: midY + LABEL_BASELINE_NUDGE,
+      labelAnchor: "end",
       text: offTailDisplay,
     });
   }
@@ -251,9 +262,9 @@ function dimsForMark(
       dimX1: teX,
       dimX2: leX,
       dimY: aboveRowY,
-      pctLeft: pct(midXAbove, 530),
-      pctTop: pct(aboveRowY - 13, 370),
-      transformX: "-50%",
+      labelX: midXAbove,
+      labelY: aboveRowY - 13 + LABEL_BASELINE_NUDGE,
+      labelAnchor: "middle",
       text: toeDisplay,
     });
   }
@@ -276,9 +287,9 @@ function dimsForMark(
       dimX1: ORIGIN_X,
       dimX2: teX,
       dimY: rowY,
-      pctLeft: pct(midX, 530),
-      pctTop: pct(rowY - 13, 370),
-      transformX: "-50%",
+      labelX: midX,
+      labelY: rowY - 13 + LABEL_BASELINE_NUDGE,
+      labelAnchor: "middle",
       text: lateralValueDisplay,
     });
   }
@@ -297,9 +308,9 @@ function dimsForMark(
       dimX1: teX,
       dimX2: leX,
       dimY: aboveRowY,
-      pctLeft: pct(midXAbove, 530),
-      pctTop: pct(aboveRowY - 13, 370),
-      transformX: "-50%",
+      labelX: midXAbove,
+      labelY: aboveRowY - 13 + LABEL_BASELINE_NUDGE,
+      labelAnchor: "middle",
       text: toeDisplay,
     });
   }
@@ -324,9 +335,9 @@ function dimsForMark(
       extBX: teX,
       extY1: teY - 4,
       extY2: teY + 4,
-      pctLeft: pct(railEnd, 530),
-      pctTop: pct(teY, 370),
-      transformX: "0%",
+      labelX: railEnd + 4,
+      labelY: teY + LABEL_BASELINE_NUDGE,
+      labelAnchor: "start",
       text: lateralValueDisplay,
     });
   }
@@ -344,9 +355,9 @@ interface FinViewerProps {
    * values. `null`/`undefined` falls back to `tailOutlineHalfPoints`. */
   outlineOverride?: { points: Point2D[]; connector: Point2D | null } | null;
   /** Embedding-only display used by the Summary dashboard's Fin Placement card (Fins.dc.html
-   * lines 25-72, 1363-1373): drops the legend column and the "Tail @ 12"" label pair, adds a
-   * top-centre length heading, and shrinks the dimension callouts to the shared
-   * `--summary-font-*` scale. Defaults to `false`, the Fins screen's own unchanged full viewer. */
+   * lines 25-72, 1363-1373): drops the legend column, adds a top-centre length heading, and
+   * shrinks the dimension callouts to the shared `--summary-font-*` scale. Defaults to `false`,
+   * the Fins screen's own unchanged full viewer. */
   compact?: boolean;
   /** The board length, needed only for the compact heading's `6'0" · 12 1/4" tail` text
    * (`compactLengthText`, Fins.dc.html line 1364). Unused when `compact` is `false`. */
@@ -399,25 +410,37 @@ export function FinViewer({
   const w12LineY = TAIL_Y - 12 * SCALE;
   const w12LineX1 = ORIGIN_X - (w12In / 2) * SCALE;
   const w12LineX2 = ORIGIN_X + (w12In / 2) * SCALE;
-  const w12GapPx = (w12In / 2 + 0.4) * SCALE;
-  const w12NamePctLeft = pct(ORIGIN_X + w12GapPx, 530);
-  const w12ValuePctLeft = pct(ORIGIN_X - w12GapPx, 530);
-  const w12LabelPctTop = pct(w12LineY, 370);
+
+  const valueFontSize = compact ? "var(--summary-font-callout, 10px)" : 14;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center gap-4">
       <div className="relative flex min-h-0 flex-1 w-full justify-center">
         <div className="relative aspect-[530/370] h-auto max-h-full w-auto max-w-full">
           <svg width={530} height={370} viewBox="0 0 530 370" className="block h-full w-full">
-            <defs>
-              <marker id="finViewerArrow" markerWidth={8} markerHeight={7} refX={7} refY={3.5} orient="auto-start-reverse">
-                <path d="M0,0 L8,3.5 L0,7 Z" fill="var(--outline-station-line)" />
-              </marker>
-            </defs>
             <path d={filled} fill="var(--outline-board-fill)" stroke="none" />
             <path d={open} fill="none" stroke="var(--outline-ink)" strokeWidth={2} />
-            <line x1={ORIGIN_X} y1={svgTopY} x2={ORIGIN_X} y2={TAIL_Y} stroke="var(--outline-station-line)" strokeWidth={1} strokeDasharray="6 4" />
-            <line x1={w12LineX1} y1={w12LineY} x2={w12LineX2} y2={w12LineY} stroke="var(--outline-station-line)" strokeWidth={1} strokeDasharray="6 4" />
+            {/* Reference lines: the centreline is static (stringer dash); the tail-width-12"
+                line is a derived station (station dash) — the input value itself lives in the
+                sidebar, not repeated here (outputs only, sketch 002). */}
+            <line
+              x1={ORIGIN_X}
+              y1={svgTopY}
+              x2={ORIGIN_X}
+              y2={TAIL_Y}
+              stroke="var(--outline-station-line)"
+              strokeWidth={1}
+              strokeDasharray="var(--outline-stringer-dash)"
+            />
+            <line
+              x1={w12LineX1}
+              y1={w12LineY}
+              x2={w12LineX2}
+              y2={w12LineY}
+              stroke="var(--outline-station-line)"
+              strokeWidth={1}
+              strokeDasharray="var(--outline-station-dash)"
+            />
 
             {marksWithDims.map(({ geom, dims }, mi) => (
               <g key={mi}>
@@ -428,6 +451,10 @@ export function FinViewer({
                   y2={geom.leY}
                   stroke="var(--outline-accent)"
                   strokeWidth={2.5}
+                  // Not a "leader line" — this is the fin mark itself. Its dash keys the same
+                  // Front/Rear/Center grouping as `result.legend`'s dash-per-role swatches below
+                  // the diagram, so it stays even though every callout leader/extension/dimension
+                  // line above has collapsed to the two shared reference-line dash tokens.
                   strokeDasharray={
                     geom.mark.lateralKind === "none" ? "none" : geom.mark.lateralKind === "stringer" ? "2 3" : "8 4"
                   }
@@ -437,27 +464,33 @@ export function FinViewer({
                     if (d.kind === "railV") {
                       return (
                         <g key={di}>
-                          <line x1={d.x1} y1={d.y1} x2={d.x2a} y2={d.y1} stroke="var(--outline-station-line)" strokeWidth={1} markerEnd="url(#finViewerArrow)" />
-                          <line x1={d.x1} y1={d.y1} x2={d.x2b} y2={d.y1} stroke="var(--outline-station-line)" strokeWidth={1} markerEnd="url(#finViewerArrow)" />
-                          <line x1={d.extAX} y1={d.extY1} x2={d.extAX} y2={d.extY2} stroke="var(--outline-station-line)" strokeWidth={1} />
-                          <line x1={d.extBX} y1={d.extY1} x2={d.extBX} y2={d.extY2} stroke="var(--outline-station-line)" strokeWidth={1} />
+                          <line x1={d.x1} y1={d.y1} x2={d.x2a} y2={d.y1} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+                          <line x1={d.x1} y1={d.y1} x2={d.x2b} y2={d.y1} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+                          <DimensionTick x={d.x2a} y={d.y1} />
+                          <DimensionTick x={d.x2b} y={d.y1} />
+                          <line x1={d.extAX} y1={d.extY1} x2={d.extAX} y2={d.extY2} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+                          <line x1={d.extBX} y1={d.extY1} x2={d.extBX} y2={d.extY2} stroke="var(--outline-dim-ink)" strokeWidth={1} />
                         </g>
                       );
                     }
                     if (d.kind === "below") {
                       return (
                         <g key={di}>
-                          <line x1={d.extLeftX} y1={d.extLeftY1} x2={d.extLeftX} y2={d.extLeftY2} stroke="var(--outline-station-line)" strokeWidth={1} strokeDasharray="2 2" />
-                          <line x1={d.extRightX} y1={d.extRightY1} x2={d.extRightX} y2={d.extRightY2} stroke="var(--outline-station-line)" strokeWidth={1} strokeDasharray="2 2" />
-                          <line x1={d.dimX1} y1={d.dimY} x2={d.dimX2} y2={d.dimY} stroke="var(--outline-station-line)" strokeWidth={1} markerStart="url(#finViewerArrow)" markerEnd="url(#finViewerArrow)" />
+                          <line x1={d.extLeftX} y1={d.extLeftY1} x2={d.extLeftX} y2={d.extLeftY2} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+                          <line x1={d.extRightX} y1={d.extRightY1} x2={d.extRightX} y2={d.extRightY2} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+                          <line x1={d.dimX1} y1={d.dimY} x2={d.dimX2} y2={d.dimY} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+                          <DimensionTick x={d.dimX1} y={d.dimY} />
+                          <DimensionTick x={d.dimX2} y={d.dimY} />
                         </g>
                       );
                     }
                     return (
                       <g key={di}>
-                        <line x1={d.x1} y1={d.y1} x2={d.x2} y2={d.y2} stroke="var(--outline-station-line)" strokeWidth={1} markerStart="url(#finViewerArrow)" markerEnd="url(#finViewerArrow)" />
-                        <line x1={d.extTopX1} y1={d.extTopY} x2={d.extTopX2} y2={d.extTopY} stroke="var(--outline-station-line)" strokeWidth={1} strokeDasharray="2 2" />
-                        <line x1={d.extBotX1} y1={d.extBotY} x2={d.extBotX2} y2={d.extBotY} stroke="var(--outline-station-line)" strokeWidth={1} strokeDasharray="2 2" />
+                        <line x1={d.x1} y1={d.y1} x2={d.x2} y2={d.y2} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+                        <DimensionTick x={d.x1} y={d.y1} />
+                        <DimensionTick x={d.x2} y={d.y2} />
+                        <line x1={d.extTopX1} y1={d.extTopY} x2={d.extTopX2} y2={d.extTopY} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+                        <line x1={d.extBotX1} y1={d.extBotY} x2={d.extBotX2} y2={d.extBotY} stroke="var(--outline-dim-ink)" strokeWidth={1} />
                       </g>
                     );
                   })}
@@ -465,85 +498,44 @@ export function FinViewer({
                 <circle cx={geom.leX} cy={geom.leY} r={3.5} fill="var(--outline-ink)" />
               </g>
             ))}
-          </svg>
-          <div className="pointer-events-none absolute inset-0">
-            {!compact && (
-              <>
-                <span
-                  className="absolute font-bold tracking-wide uppercase"
-                  style={{
-                    left: w12ValuePctLeft,
-                    top: w12LabelPctTop,
-                    transform: "translate(-100%,-50%)",
-                    whiteSpace: "nowrap",
-                    paddingRight: 6,
-                    lineHeight: 1,
-                    fontSize: 14,
-                    color: "var(--outline-callout-label)",
-                    textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}`,
-                  }}
-                >
-                  {formatInchesFraction(tailWidth12, 16)}
-                </span>
-                <span
-                  className="absolute font-bold tracking-wide uppercase"
-                  style={{
-                    left: w12NamePctLeft,
-                    top: w12LabelPctTop,
-                    transform: "translate(0,-50%)",
-                    whiteSpace: "nowrap",
-                    paddingLeft: 6,
-                    lineHeight: 1,
-                    fontSize: 13,
-                    color: "var(--outline-callout-label)",
-                    textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}`,
-                  }}
-                >
-                  Tail @ 12&quot;
-                </span>
-              </>
-            )}
+
             {compact && boardLength !== undefined && (
               // The Summary dashboard's compact length heading (Fins.dc.html line 1364's
-              // `compactLengthText`), replacing the "Tail @ 12"" label pair above.
-              <span
-                className="absolute font-extrabold"
+              // `compactLengthText`).
+              <text
+                x={ORIGIN_X}
+                y={svgTopY - 6}
+                textAnchor="middle"
                 style={{
-                  left: pct(ORIGIN_X, 530),
-                  top: pct(svgTopY, 370),
-                  transform: "translate(-50%, calc(-100% - 6px))",
-                  whiteSpace: "nowrap",
-                  lineHeight: 1,
                   fontSize: "var(--summary-font-label, 12px)",
-                  color: "var(--outline-ink)",
+                  fontWeight: 800,
+                  fill: "var(--outline-ink)",
                   textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}`,
                 }}
               >
                 {`${formatFeetInches(boardLength)} · ${formatInchesFraction(tailWidth12, 16)} tail`}
-              </span>
+              </text>
             )}
             {showCallouts &&
               marksWithDims.map(({ dims }, mi) =>
                 dims.map((d, di) => (
-                  <span
+                  <text
                     key={`${mi}-${di}`}
-                    className="absolute font-bold"
+                    x={d.labelX}
+                    y={d.labelY}
+                    textAnchor={d.labelAnchor}
                     style={{
-                      left: d.pctLeft,
-                      top: d.pctTop,
-                      transform: `translate(${d.transformX},-50%)`,
-                      fontSize: compact ? "var(--summary-font-callout, 10px)" : 14,
-                      lineHeight: 1,
-                      color: "var(--outline-ink)",
-                      whiteSpace: "nowrap",
+                      fontSize: valueFontSize,
+                      fontWeight: 700,
+                      fill: "var(--outline-ink)",
                       textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}, 0 0 5px ${HALO}`,
                     }}
                   >
                     {d.text}
-                  </span>
+                  </text>
                 )),
               )}
-          </div>
+          </svg>
         </div>
       </div>
       {!compact && (
