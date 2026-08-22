@@ -50,7 +50,10 @@ function toOutlineSpec(state: GoldenState) {
     length: inchesToMm(state.lengthIn),
     widePointWidth: inchesToMm(state.centerWidth),
     widePointOffset: inchesToMm(state.wpOffset),
-    railLength: state.widepointVector,
+    // The prototype had one symmetric Widepoint Vector control; driving both split fields
+    // from it is what makes these goldens a proof that the split changed no behaviour.
+    tailRailLength: state.widepointVector,
+    noseRailLength: state.widepointVector,
     noseAngle: degrees(state.noseAngle),
     noseFullness: state.noseVector,
     tailAngle: degrees(state.tailAngle),
@@ -217,5 +220,32 @@ describe("widepoint station clamp", () => {
 
     const backward = buildOutline(toOutlineSpec({ ...base, wpOffset: -30 }));
     expect(mmToInches(backward.widePointStation)).toBeCloseTo(16, 6);
+  });
+});
+
+describe("independent nose and tail rail lengths", () => {
+  const base = toOutlineSpec(golden.default.state as GoldenState);
+  const wpStationIn = mmToInches(buildOutline(base).widePointStation);
+  const halfWidthAt = (spec: typeof base, stationIn: number) =>
+    mmToInches(sampleOutline(buildOutline(spec), inchesToMm(stationIn)));
+
+  it("each field moves only its own half of the curve", () => {
+    // Sampled midway between the widepoint and each end, where that side's handle has the most say.
+    const tailSampleIn = wpStationIn / 2;
+    const noseSampleIn = wpStationIn + (mmToInches(base.length) - wpStationIn) / 2;
+
+    const longTail = { ...base, tailRailLength: 100, noseRailLength: 0 };
+    const longNose = { ...base, tailRailLength: 0, noseRailLength: 100 };
+
+    // A long tail rail pushes the tail half wider; the nose half is untouched by it, and vice versa.
+    expect(halfWidthAt(longTail, tailSampleIn)).toBeGreaterThan(halfWidthAt(longNose, tailSampleIn));
+    expect(halfWidthAt(longNose, noseSampleIn)).toBeGreaterThan(halfWidthAt(longTail, noseSampleIn));
+  });
+
+  it("changing one side leaves the other side's samples untouched", () => {
+    const noseSampleIn = wpStationIn + (mmToInches(base.length) - wpStationIn) / 2;
+    const a = { ...base, tailRailLength: 10, noseRailLength: 50 };
+    const b = { ...base, tailRailLength: 90, noseRailLength: 50 };
+    expect(halfWidthAt(a, noseSampleIn)).toBeCloseTo(halfWidthAt(b, noseSampleIn), 9);
   });
 });

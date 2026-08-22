@@ -265,13 +265,24 @@ export function OutlineControls({
       </div>
       <div className="flex gap-4">
         <SliderRow
-          label="Rail Length"
-          displayValue={`${outline.railLength}%`}
-          value={outline.railLength}
+          label="Tail Rail Length"
+          displayValue={`${outline.tailRailLength}%`}
+          value={outline.tailRailLength}
           min={0}
           max={100}
           step={0.25}
-          onValueChange={(v) => onChange({ railLength: clampFinite(v, 0, 100) })}
+          onValueChange={(v) => onChange({ tailRailLength: clampFinite(v, 0, 100) })}
+          leftHint="Short"
+          rightHint="Long"
+        />
+        <SliderRow
+          label="Nose Rail Length"
+          displayValue={`${outline.noseRailLength}%`}
+          value={outline.noseRailLength}
+          min={0}
+          max={100}
+          step={0.25}
+          onValueChange={(v) => onChange({ noseRailLength: clampFinite(v, 0, 100) })}
           leftHint="Short"
           rightHint="Long"
         />

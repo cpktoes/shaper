@@ -169,12 +169,17 @@ export function buildOutline(spec: OutlineSpec): OutlineGeometry {
     Math.hypot(b.x - a.x, b.y - a.y);
   const chords = [chord(P0, P2), chord(P2, P4)];
 
-  // Widepoint Vector Strength scales both of the widepoint's own handles against each side's true max
+  // Widepoint Vector Strength scales each of the widepoint's own handles against that side's true max
   // (HANDLE_CAP*chord). Its tangent is purely along the station axis (dir2.y=0), so a longer handle
-  // never carries the half-width past halfWidePointWidth — no overshoot cap needed.
-  const widepointMult = 0.8 + (spec.railLength / 100) * 0.8;
-  const inLen0 = widepointMult * HANDLE_CAP * chords[0];
-  const outLen1 = widepointMult * HANDLE_CAP * chords[1];
+  // never carries the half-width past halfWidePointWidth — no overshoot cap needed, on either side.
+  //
+  // The two sides are independent: inLen0 is the handle pointing back toward the tail
+  // (controls[0].c2 = P2 - inLen0*dir2), outLen1 the one pointing toward the nose
+  // (controls[1].c1 = P2 + outLen1*dir2). The prototype drove both from a single Widepoint Vector
+  // slider; equal values here reproduce it exactly.
+  const railMult = (pct: number) => 0.8 + (pct / 100) * 0.8;
+  const inLen0 = railMult(spec.tailRailLength) * HANDLE_CAP * chords[0];
+  const outLen1 = railMult(spec.noseRailLength) * HANDLE_CAP * chords[1];
 
   // Hard geometric cap: the tail-pod handle and the nose-tip handle must never carry their control
   // point past the widepoint's own half-width.

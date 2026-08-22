@@ -58,8 +58,10 @@ export interface OutlineSpec {
   widePointWidth: Mm;
   /** Widepoint offset from the board's centre, positive toward the nose. */
   widePointOffset: Mm;
-  /** Rail Length / widepoint vector strength, 0-100. */
-  railLength: number;
+  /** Tail-side Rail Length / widepoint vector strength, 0-100. Scales the widepoint's tail-facing handle. */
+  tailRailLength: number;
+  /** Nose-side Rail Length / widepoint vector strength, 0-100. Scales the widepoint's nose-facing handle. */
+  noseRailLength: number;
   /** Nose angle in degrees, 35-90. */
   noseAngle: Degrees;
   /** Nose fullness, 0-100. */
@@ -85,7 +87,8 @@ export const DEFAULT_BOARD_SPEC: BoardSpec = {
     length: inchesToMm(72),
     widePointWidth: inchesToMm(19),
     widePointOffset: inchesToMm(-0.5),
-    railLength: 50,
+    tailRailLength: 50,
+    noseRailLength: 50,
     noseAngle: degrees(55),
     noseFullness: 25,
     tailAngle: degrees(60),

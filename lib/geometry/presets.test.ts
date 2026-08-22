@@ -42,8 +42,10 @@ describe("BOARD_PRESETS", () => {
     expect(outline.tailAngle).toBeGreaterThanOrEqual(30);
     expect(outline.tailAngle).toBeLessThanOrEqual(90);
 
-    expect(outline.railLength).toBeGreaterThanOrEqual(0);
-    expect(outline.railLength).toBeLessThanOrEqual(100);
+    expect(outline.tailRailLength).toBeGreaterThanOrEqual(0);
+    expect(outline.tailRailLength).toBeLessThanOrEqual(100);
+    expect(outline.noseRailLength).toBeGreaterThanOrEqual(0);
+    expect(outline.noseRailLength).toBeLessThanOrEqual(100);
 
     expect(outline.noseFullness).toBeGreaterThanOrEqual(0);
     expect(outline.noseFullness).toBeLessThanOrEqual(100);
