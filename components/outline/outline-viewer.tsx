@@ -16,8 +16,11 @@
  * constants imported from `components/viewer/callout-primitives.tsx`, never invented per call.
  */
 
+import { type PointerEvent as ReactPointerEvent, useRef } from "react";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import type { FinMark } from "@/lib/geometry/fins";
+import type { OutlineDragPoint, OutlineDragTarget } from "@/lib/geometry/outline-drag";
+import { outlineDragPoints, solveOutlineDrag } from "@/lib/geometry/outline-drag";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import { sampleOutline } from "@/lib/geometry/outline";
 import { formatFeetInches, formatInchesFraction, inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
@@ -42,6 +45,12 @@ const PAD_Y = 24;
 const LEGACY_MAX_HALF_WIDTH_PX = VIEW_W / 2 - 30;
 /** Vertical gap between the Widepoint chip and the leaderless WP Offset chip stacked beneath it. */
 const CHIP_STACK_GAP = 6;
+/** Which rail the construction overlay draws on: -1 is the left, the input side (see the overlay
+ * build below). Negative because `pxX` puts positive half-widths on the right. */
+const CONSTRUCTION_SIDE = -1;
+/** Invisible grab radius around each control point — big enough to catch with a mouse or a thumb
+ * without drawing anything heavier than the 4px dot already there. */
+const DRAG_HIT_RADIUS = 11;
 /** How far the static stringer/centreline overhangs the board's own tip/tail — a drafting nicety
  * (sketch 004's reference render), not load-bearing geometry. */
 const STRINGER_OVERHANG = 8;
@@ -67,6 +76,16 @@ interface OutlineViewerProps {
    * template (components/summary/board-summary.tsx) and the setup-screen thumbnails, so this is
    * an additive per-consumer gate, not a change to `finMarksSvg` itself. Defaults to `false`. */
   hideFinMarks?: boolean;
+  /**
+   * Direct manipulation, outline-editor only: called with the spec fields a dragged control point
+   * implies, on every pointer move. Omitted (Summary, preset cards) means no hit targets and no
+   * handlers at all — those consumers render exactly what they rendered before.
+   *
+   * Only reachable while `showConstruction` is on, since the control points are the construction
+   * overlay. The solve itself lives in `lib/geometry/outline-drag.ts`; this component only converts
+   * screen coordinates into board coordinates and passes the result up.
+   */
+  onOutlineDrag?: (patch: Partial<OutlineSpec>) => void;
 }
 
 export function OutlineViewer({
@@ -76,7 +95,12 @@ export function OutlineViewer({
   finMarks = [],
   hideCallouts = false,
   hideFinMarks = false,
+  onOutlineDrag,
 }: OutlineViewerProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  /** Which control point the active gesture owns, if any. A ref, not state: it changes on
+   * pointerdown and is read on pointermove, and re-rendering for it would be a wasted pass. */
+  const draggingRef = useRef<OutlineDragTarget | null>(null);
   const lengthIn = mmToInches(geometry.length);
   const cwIn = mmToInches(geometry.halfWidePointWidth);
   const centerlineX = VIEW_W / 2;
@@ -136,37 +160,82 @@ export function OutlineViewer({
 
   const lengthCalloutText = `${formatFeetInches(geometry.length)} (${formatInchesFraction(geometry.length)})`;
 
+  // The construction overlay draws on the INPUT side only — the left rail, where the input chips
+  // already live (outputs read out to the right rail). The board is symmetric, so a mirrored copy
+  // showed nothing the left one did not, and two grabbable dots per control is two places to grab
+  // for one effect. CONSTRUCTION_SIDE is negative because pxX puts positive half-widths on the
+  // right.
   const knotColors = ["var(--outline-ink)", "var(--outline-widepoint-knot)", "var(--outline-ink)"];
   const constructionDots: { cx: number; cy: number; color: string }[] = [];
   const constructionLines: { x1: number; y1: number; x2: number; y2: number; color: string }[] = [];
 
   geometry.knots.forEach((k, i) => {
-    const stationIn = mmToInches(k.point.x);
-    const halfWidthIn = mmToInches(k.point.y);
-    for (const side of [1, -1]) {
-      constructionDots.push({ cx: pxX(side * halfWidthIn), cy: lenToY(stationIn), color: knotColors[i] });
-    }
+    constructionDots.push({
+      cx: pxX(CONSTRUCTION_SIDE * mmToInches(k.point.y)),
+      cy: lenToY(mmToInches(k.point.x)),
+      color: knotColors[i],
+    });
   });
   geometry.handles.forEach((h) => {
-    const fromStationIn = mmToInches(h.from.x);
-    const fromHalfWidthIn = mmToInches(h.from.y);
-    const toStationIn = mmToInches(h.to.x);
-    const toHalfWidthIn = mmToInches(h.to.y);
-    for (const side of [1, -1]) {
-      constructionLines.push({
-        x1: pxX(side * fromHalfWidthIn),
-        y1: lenToY(fromStationIn),
-        x2: pxX(side * toHalfWidthIn),
-        y2: lenToY(toStationIn),
-        color: "var(--outline-construction)",
-      });
-      constructionDots.push({
-        cx: pxX(side * toHalfWidthIn),
-        cy: lenToY(toStationIn),
-        color: "var(--outline-construction)",
-      });
-    }
+    constructionLines.push({
+      x1: pxX(CONSTRUCTION_SIDE * mmToInches(h.from.y)),
+      y1: lenToY(mmToInches(h.from.x)),
+      x2: pxX(CONSTRUCTION_SIDE * mmToInches(h.to.y)),
+      y2: lenToY(mmToInches(h.to.x)),
+      color: "var(--outline-construction)",
+    });
+    constructionDots.push({
+      cx: pxX(CONSTRUCTION_SIDE * mmToInches(h.to.y)),
+      cy: lenToY(mmToInches(h.to.x)),
+      color: "var(--outline-construction)",
+    });
   });
+
+  // Grabbable points, in the same left-side px space as the dots above. Only built when a drag
+  // handler is present, so every other consumer renders exactly what it did before.
+  const dragTargets = onOutlineDrag
+    ? outlineDragPoints(geometry).map((d) => ({
+        target: d.target,
+        cx: pxX(CONSTRUCTION_SIDE * mmToInches(d.point.halfWidth)),
+        cy: lenToY(mmToInches(d.point.station)),
+      }))
+    : [];
+
+  /** Screen point -> board coordinates: undo the SVG transform, then invert pxX/lenToY. */
+  function toBoardPoint(event: ReactPointerEvent<SVGElement>): OutlineDragPoint | null {
+    const svg = svgRef.current;
+    const ctm = svg?.getScreenCTM();
+    if (!svg || !ctm) return null;
+    const local = new DOMPoint(event.clientX, event.clientY).matrixTransform(ctm.inverse());
+    return {
+      station: inchesToMm((tailPy - local.y) / scale),
+      // Negated back off the left side, so the solver always sees a positive half-width.
+      halfWidth: inchesToMm(CONSTRUCTION_SIDE * ((local.x - centerlineX) / scale)),
+    };
+  }
+
+  function handleDragMove(event: ReactPointerEvent<SVGElement>) {
+    if (!draggingRef.current || !onOutlineDrag) return;
+    const boardPoint = toBoardPoint(event);
+    if (!boardPoint) return;
+    // Every move writes the spec and the redraw arrives back through props — the viewer keeps no
+    // copy of the geometry, which is what keeps the sliders in step with the drawing mid-drag.
+    onOutlineDrag(solveOutlineDrag(geometry, draggingRef.current, boardPoint));
+  }
+
+  function handleDragStart(target: OutlineDragTarget, event: ReactPointerEvent<SVGElement>) {
+    if (!onOutlineDrag) return;
+    event.preventDefault();
+    draggingRef.current = target;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleDragEnd(event: ReactPointerEvent<SVGElement>) {
+    draggingRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
 
   // Inputs: left gutter chips. Length sits at the nose tip; Widepoint leaders to the rail at its
   // own station; WP Offset carries no leader (grouped beneath Widepoint — sketch 004); Tail Block
@@ -185,10 +254,14 @@ export function OutlineViewer({
 
   return (
     <svg
+      ref={svgRef}
       width={hideCallouts ? VIEW_W : OUTLINE_VIEW_WIDTH}
       height={hideCallouts ? VIEW_H : OUTLINE_VIEW_HEIGHT}
       viewBox={viewBox}
       className="block h-full w-full"
+      onPointerMove={onOutlineDrag ? handleDragMove : undefined}
+      onPointerUp={onOutlineDrag ? handleDragEnd : undefined}
+      onPointerCancel={onOutlineDrag ? handleDragEnd : undefined}
     >
       <path d={outlinePath} fill="var(--outline-board-fill)" stroke="var(--outline-ink)" strokeWidth={2} />
 
@@ -257,6 +330,19 @@ export function OutlineViewer({
           ))}
           {constructionDots.map((dt, i) => (
             <circle key={i} cx={dt.cx} cy={dt.cy} r={4} fill={dt.color} />
+          ))}
+          {/* Transparent grab targets, last so they sit above the dots they cover.
+              touch-action:none stops a touch drag scrolling the page instead of shaping the board. */}
+          {dragTargets.map((d) => (
+            <circle
+              key={d.target}
+              cx={d.cx}
+              cy={d.cy}
+              r={DRAG_HIT_RADIUS}
+              fill="transparent"
+              className="cursor-grab touch-none active:cursor-grabbing"
+              onPointerDown={(event) => handleDragStart(d.target, event)}
+            />
           ))}
         </>
       )}

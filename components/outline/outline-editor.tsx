@@ -109,6 +109,7 @@ export function OutlineEditor() {
                   geometry={outlineGeometry}
                   outline={outline}
                   showConstruction={showConstruction}
+                  onOutlineDrag={updateOutline}
                   finMarks={finPlacement.marks}
                   hideFinMarks
                 />
