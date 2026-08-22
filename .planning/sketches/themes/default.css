@@ -1,0 +1,72 @@
+/* Shaper sketch theme.
+   Mirrors the app's real --outline-* palette (app/globals.css) so sketches and
+   implementation share one visual vocabulary. Variables only — no component styles. */
+:root {
+  /* Colours — taken from the app, not invented */
+  --color-bg:            #f4f0e6;
+  --color-surface:       #fffdf8;
+  --color-border:        #e4ddc9;
+  --color-text:          #1c1b19;   /* --outline-ink */
+  --color-text-muted:    #8a7f6b;
+  --color-faint:         #c9c0ab;   /* extension lines, leaders */
+  --color-primary:       #c98d3a;   /* --outline-accent */
+  --color-board:         #f6efe0;   /* --outline-board-fill */
+  --color-construction:  #4d8a86;   /* --outline-construction */
+  --color-widepoint:     #a8425f;   /* --outline-widepoint-knot */
+  --color-danger:        #a8462f;
+  --color-success:       #4f6b3f;
+
+  /* Legacy values, shown only to depict today's state */
+  --legacy-line:         #4472c4;   /* --outline-station-line */
+  --legacy-label:        #3a5f9e;   /* hardcoded, not a token */
+
+  /* Typography */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: Georgia, "Iowan Old Style", serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.75rem;
+
+  /* Spacing */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-6: 24px; --space-8: 32px; --space-12: 48px;
+
+  /* Shapes */
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-full: 9999px;
+
+  /* Drawing grammar — the decisions these sketches encode */
+  --dim-stroke:        var(--color-text);
+  --dim-weight:        1.1;
+  --ext-stroke:        var(--color-faint);
+  --ext-weight:        1;
+  --station-dash:      5 4;         /* every station line, every page */
+  --stringer-dash:     16 4 4 4;    /* centreline convention, distinct */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg:         #16150f;
+    --color-surface:    #201e17;
+    --color-border:     #3a352a;
+    --color-text:       #f2ede1;
+    --color-text-muted: #9a907c;
+    --color-faint:      #4b4537;
+    --color-primary:    #d9a25a;
+    --color-board:      #2a2619;
+    --color-danger:     #d9755c;
+    --color-success:    #8fae76;
+    --legacy-line:      #6d90d8;
+    --legacy-label:     #7f9fd4;
+  }
+}
+:root[data-theme="dark"] {
+  --color-bg:#16150f; --color-surface:#201e17; --color-border:#3a352a;
+  --color-text:#f2ede1; --color-text-muted:#9a907c; --color-faint:#4b4537;
+  --color-primary:#d9a25a; --color-board:#2a2619;
+  --color-danger:#d9755c; --color-success:#8fae76;
+  --legacy-line:#6d90d8; --legacy-label:#7f9fd4;
+}
