@@ -11,7 +11,8 @@ files:
   - lib/geometry/outline.ts
   - lib/geometry/board.ts
 source: user request 2026-08-22; flagged high priority — take this first
-partially_done: part 2 (the fore/aft split) shipped in quick task 260822-wcs, 2026-08-22
+completed: 2026-08-22
+resolved_by: part 2 (fore/aft split) in quick task 260822-wcs; part 1 (draggable control points) in 260822-lg3
 resolves_phase:
 ---
 
