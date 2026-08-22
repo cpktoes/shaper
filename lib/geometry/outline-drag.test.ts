@@ -81,13 +81,9 @@ describe("round trip — solving an undragged point returns the spec it came fro
 
   for (const [name, spec] of specs) {
     describe(name, () => {
-      it("widepoint returns its width and offset", () => {
+      it("widepoint returns its offset", () => {
         const { geometry, point } = pointFor(spec, "widepoint");
         const patch = solveOutlineDrag(geometry, "widepoint", point);
-        expect(mmToInches(patch.widePointWidth as Mm)).toBeCloseTo(
-          mmToInches(spec.widePointWidth),
-          6,
-        );
         expect(mmToInches(patch.widePointOffset as Mm)).toBeCloseTo(
           mmToInches(spec.widePointOffset),
           6,
@@ -133,7 +129,7 @@ describe("round trip — solving an undragged point returns the spec it came fro
 
 describe("each target writes only its own fields", () => {
   const owned: Record<OutlineDragTarget, string[]> = {
-    widepoint: ["widePointWidth", "widePointOffset"],
+    widepoint: ["widePointOffset"],
     tailRailHandle: ["tailRailLength"],
     noseRailHandle: ["noseRailLength"],
     tailHandle: ["tailAngle", "tailFullness"],
@@ -150,8 +146,8 @@ describe("each target writes only its own fields", () => {
   }
 });
 
-describe("rail handles ignore the cross-board component", () => {
-  it("gives the same answer however far off-axis the drag strays", () => {
+describe("station-axis targets ignore the cross-board component", () => {
+  it("rail handles give the same answer however far off-axis the drag strays", () => {
     const { geometry, point } = pointFor(BASE, "tailRailHandle");
     const onAxis = solveOutlineDrag(geometry, "tailRailHandle", point);
     const wayOff = solveOutlineDrag(geometry, "tailRailHandle", {
@@ -160,19 +156,35 @@ describe("rail handles ignore the cross-board component", () => {
     });
     expect(wayOff.tailRailLength).toBe(onAxis.tailRailLength);
   });
+
+  it("the widepoint knot slides along the board without ever widening it", () => {
+    const { geometry, point } = pointFor(BASE, "widepoint");
+    const dragged = solveOutlineDrag(geometry, "widepoint", {
+      station: mm(point.station + inchesToMm(3)),
+      halfWidth: mm(point.halfWidth + inchesToMm(4)), // hauled well off the rail
+    });
+    // Width is a slider-only input: the drag must not return it at all.
+    expect(dragged.widePointWidth).toBeUndefined();
+    expect(mmToInches(dragged.widePointOffset as Mm)).toBeCloseTo(
+      mmToInches(BASE.widePointOffset) + 3,
+      6,
+    );
+    // And the redrawn board is exactly as wide as it was.
+    const redrawn = buildOutline({ ...BASE, ...dragged });
+    expect(mmToInches(redrawn.halfWidePointWidth)).toBeCloseTo(
+      mmToInches(geometry.halfWidePointWidth),
+      9,
+    );
+  });
 });
 
 describe("clamping and snapping keep every result slider-representable", () => {
-  it("clamps a drag far past the widepoint's legal width and offset", () => {
+  it("clamps a widepoint dragged far past its legal offset", () => {
     const { geometry, point } = pointFor(BASE, "widepoint");
     const patch = solveOutlineDrag(geometry, "widepoint", {
       station: mm(point.station + 10_000),
-      halfWidth: mm(point.halfWidth + 10_000),
+      halfWidth: point.halfWidth,
     });
-    expect(mmToInches(patch.widePointWidth as Mm)).toBeCloseTo(
-      OUTLINE_DRAG_LIMITS.widePointWidthIn.max,
-      6,
-    );
     expect(mmToInches(patch.widePointOffset as Mm)).toBeCloseTo(
       OUTLINE_DRAG_LIMITS.widePointOffsetIn.max,
       6,
@@ -202,13 +214,14 @@ describe("clamping and snapping keep every result slider-representable", () => {
   it("snaps an off-grid drag onto the slider's own step", () => {
     const { geometry, point } = pointFor(BASE, "widepoint");
     const patch = solveOutlineDrag(geometry, "widepoint", {
-      station: point.station,
-      halfWidth: inchesToMm(9.3617), // 18.7234" full width — nothing like an eighth
+      // 2.837" forward of centre — nothing like a quarter.
+      station: mm(geometry.length / 2 + inchesToMm(2.837)),
+      halfWidth: point.halfWidth,
     });
-    const widthIn = mmToInches(patch.widePointWidth as Mm);
-    const steps = widthIn / OUTLINE_DRAG_LIMITS.widePointWidthIn.step;
+    const offsetIn = mmToInches(patch.widePointOffset as Mm);
+    const steps = offsetIn / OUTLINE_DRAG_LIMITS.widePointOffsetIn.step;
     expect(steps).toBeCloseTo(Math.round(steps), 9);
-    expect(widthIn).toBeCloseTo(18.75, 9);
+    expect(offsetIn).toBeCloseTo(2.75, 9);
   });
 
   it("never returns a non-finite field, even for a nonsense drag", () => {
@@ -226,15 +239,15 @@ describe("clamping and snapping keep every result slider-representable", () => {
 });
 
 describe("dragging actually moves the board", () => {
-  it("pulling the widepoint wider widens the drawn outline", () => {
+  it("sliding the widepoint toward the nose moves the drawn widepoint station", () => {
     const { geometry, point } = pointFor(BASE, "widepoint");
     const patch = solveOutlineDrag(geometry, "widepoint", {
-      station: point.station,
-      halfWidth: mm(point.halfWidth + inchesToMm(1)),
+      station: mm(point.station + inchesToMm(4)),
+      halfWidth: point.halfWidth,
     });
-    const widened = buildOutline({ ...BASE, ...patch });
-    expect(mmToInches(widened.halfWidePointWidth)).toBeCloseTo(
-      mmToInches(geometry.halfWidePointWidth) + 1,
+    const moved = buildOutline({ ...BASE, ...patch });
+    expect(mmToInches(moved.widePointStation)).toBeCloseTo(
+      mmToInches(geometry.widePointStation) + 4,
       6,
     );
   });

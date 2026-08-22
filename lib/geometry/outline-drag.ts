@@ -29,8 +29,8 @@ import {
 import { type Mm, degrees, inchesToMm, mm, mmToInches } from "./units";
 
 /**
- * The five grabbable points. The widepoint knot moves in two dimensions; the four handle ends are
- * each anchored to a knot.
+ * The five grabbable points: the widepoint knot, which slides along the board, and the four handle
+ * ends, each anchored to a knot.
  */
 export type OutlineDragTarget =
   | "widepoint"
@@ -61,7 +61,6 @@ export interface OutlineDragPointAt {
  * a value the slider could not reproduce.
  */
 const LIMITS = {
-  widePointWidthIn: { min: 16, max: 25, step: 0.125 },
   widePointOffsetIn: { min: -12, max: 12, step: 0.25 },
   railLength: { min: 0, max: 100, step: 0.25 },
   fullness: { min: 0, max: 100, step: 0.25 },
@@ -149,17 +148,19 @@ export function solveOutlineDrag(
 
   switch (target) {
     case "widepoint": {
-      // Half-width across, station along. The station clamp to the 16" end margins already lives in
-      // buildOutline; here the offset only has to land on the slider.
-      const widthIn = quantise(mmToInches(mm(dragged.halfWidth * 2)), LIMITS.widePointWidthIn);
+      // Station only — the knot slides along the board, it does not widen it. Widepoint width stays
+      // a slider-only input by design: it is a headline number a shaper types or dials to a spec
+      // ("a 19in board"), not something to eyeball by dragging, and the drawn rail already reads its
+      // value off the Width chip. So the cross-board component of the drag is discarded, exactly as
+      // it is for the rail handles.
+      //
+      // The clamp to the 16in end margins already lives in buildOutline; here the offset only has to
+      // land on its slider.
       const offsetIn = quantise(
         mmToInches(mm(dragged.station - geometry.length / 2)),
         LIMITS.widePointOffsetIn,
       );
-      return {
-        widePointWidth: inchesToMm(widthIn),
-        widePointOffset: inchesToMm(offsetIn),
-      };
+      return { widePointOffset: inchesToMm(offsetIn) };
     }
 
     case "tailRailHandle":
