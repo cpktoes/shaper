@@ -292,15 +292,6 @@ export function OutlineViewer({
               too — the Summary sheet is read at the blank, where the sidebar is not available, so
               the shaper needs the settings on the drawing itself. */}
           <>
-              <text
-                x={centerlineX}
-                y={lengthChipY - OUTLINE_CHIP_HEIGHT / 2 - 6}
-                textAnchor="middle"
-                style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", fontFamily: "var(--font-sans)" }}
-                fill="var(--outline-callout-label)"
-              >
-                YOUR SETTINGS
-              </text>
               <CalloutChip
                 x={OUTLINE_CHIP_RIGHT_X}
                 y={lengthChipY}
