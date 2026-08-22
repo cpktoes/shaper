@@ -53,8 +53,13 @@ Centre and widepoint are a third of an inch apart and read the *same number*. Tw
 there would collide and two identical labels would be indistinguishable. So:
 
 - **Centre** — static centreline (shared with the stringer) plus a value on the output rail.
-- **Widepoint** — two markers on the rails in `--outline-widepoint-knot`, plus a chip. Never a line
-  across the board.
+- **Widepoint** — a station line in the widepoint colour on its own dotted dash, plus rail dots and
+  a chip.
+
+  *Revised 2026-08-22.* This originally specified dots only, with no line across the board. In the
+  built screen that read as an absence rather than a station, so the widepoint now gets a line too.
+  What keeps it apart from the centreline it can sit 4px from is **colour, not dash** — at that
+  separation a dash difference alone is not legible.
 
 Same number, visibly different kinds of thing. This is the case that justifies the whole
 input/output split.
@@ -66,7 +71,7 @@ input/output split.
 | Stringer | Static — `16 4 4 4`, faint |
 | Centreline (mid-length) | Static — `16 4 4 4`, faint — matches the stringer |
 | Nose / tail 12" stations | Derived — `5 4`, faint |
-| Widepoint | Input — rail markers only, widepoint colour |
+| Widepoint | Input — station line in `2 3` at 45% widepoint colour, plus rail dots |
 | Interior text | **None** |
 | Outputs | Right rail, aligned, with station name beneath |
 | Inputs | Left gutter chips, each naming its own value |

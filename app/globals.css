@@ -119,6 +119,8 @@
      Dash patterns are shared across every plan-view board viewer so a reference line always
      means the same thing regardless of which screen draws it. */
   --outline-stringer-dash: 16 4 4 4; /* stringer and the static mid-length centreline */
+  --outline-widepoint-dash: 2 3; /* widepoint station line — input, distinct from the static centreline it can sit within 1/2" of */
+  --outline-widepoint-line: color-mix(in srgb, var(--outline-widepoint-knot) 45%, transparent);
   --outline-station-dash: 5 4; /* derived station lines (12" marks, etc) */
   --outline-dim-ink: var(--outline-ink); /* dimension lines, ticks and values */
   --outline-callout-label: #8a7f6b; /* muted: station names and chip names */ /* station/chip name text — replaces the old hardcoded #3a5f9e */

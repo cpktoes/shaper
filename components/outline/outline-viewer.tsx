@@ -196,8 +196,10 @@ export function OutlineViewer({
         <>
           {/* Interior: faint lines only, never text (sketch 004). Stringer and the mid-length
               centreline are both static, so they share one dash; nose/tail 12" stations are
-              derived, so they get the shorter uniform dash; the widepoint is an input and is
-              marked with rail dots only, never a line across the board. */}
+              derived, so they get the shorter uniform dash. The widepoint is an INPUT, so its
+              station line carries the widepoint colour and its own dotted dash — on a board whose
+              widepoint sits near centre the two lines are only a few pixels apart, so colour, not
+              dash, is what actually tells them apart. */}
           <line
             x1={centerlineX}
             y1={tipPy - STRINGER_OVERHANG}
@@ -233,6 +235,15 @@ export function OutlineViewer({
             stroke="var(--outline-station-line)"
             strokeWidth={1}
             strokeDasharray="var(--outline-station-dash)"
+          />
+          <line
+            x1={pxX(-wpHalfWidthIn)}
+            y1={lenToY(wpYIn)}
+            x2={pxX(wpHalfWidthIn)}
+            y2={lenToY(wpYIn)}
+            stroke="var(--outline-widepoint-line)"
+            strokeWidth={1}
+            strokeDasharray="var(--outline-widepoint-dash)"
           />
           <circle cx={pxX(-wpHalfWidthIn)} cy={lenToY(wpYIn)} r={2.6} fill="var(--outline-widepoint-knot)" />
           <circle cx={pxX(wpHalfWidthIn)} cy={lenToY(wpYIn)} r={2.6} fill="var(--outline-widepoint-knot)" />

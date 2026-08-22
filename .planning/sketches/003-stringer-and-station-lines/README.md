@@ -40,7 +40,8 @@ meaning** to **two that do**: axis, or station.
 | Line | Dash | Weight | Colour |
 |---|---|---|---|
 | Stringer / centreline | `16 4 4 4` | 1 | `--outline-station-line` |
-| Station line | `5 4` | 1 | `--outline-station-line` |
+| Station line (derived) | `5 4` | 1 | `--outline-station-line` |
+| Widepoint station (input) | `2 3` | 1 | `--outline-widepoint-line` (45% of the widepoint knot colour) |
 | Extension line (callouts) | solid | 1 | faint |
 | Dimension line (callouts) | solid | 1.1 | ink |
 

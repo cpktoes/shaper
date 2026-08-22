@@ -44,9 +44,11 @@ happens to fit.
 5. **Nothing inside the outline but faint lines** — no text crosses the silhouette (sketch 004).
 6. **Outputs right, inputs left** — derived widths on one aligned right rail; input chips in the
    left gutter, each naming its own value. Length centred above the nose.
-7. **Widepoint is an input even at centre** — drawn as rail markers, never a line across the board.
-   Centre width is a derived output. On the current board they are 0.36" apart and both read 19",
-   which is precisely why they need different treatments.
+7. **Widepoint is an input even at centre** — it gets its own station line in the widepoint colour
+   on a dotted dash, plus rail dots. Centre width is a derived output on the static centreline. On
+   the current board the two lines land 4px apart and both widths read 19", so **colour is what
+   separates them** — a dash difference alone is not legible at that distance. (Revised 2026-08-22:
+   originally dots only, which read as an absence rather than a station.)
 8. **Labels are SVG `<text>`**, not absolutely-positioned HTML.
 
 ## Open Questions
