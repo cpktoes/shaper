@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 2
 current_phase_name: Accounts & Saved Designs
 status: planning
-stopped_at: Completed quick task 260822-vbo (callout text pinned to constant on-screen size); task 3 of the design pivot pending review
+stopped_at: Completed quick task 260822-vo2 — all three design-pivot tasks done, pending review
 last_updated: "2026-08-23T00:00:00.000Z"
 last_activity: 2026-08-22
-last_activity_desc: Completed quick task 260822-vbo (callout text pinning)
+last_activity_desc: Completed quick task 260822-vo2 (cyan selection / orange warnings)
 progress:
   total_phases: 1
   completed_phases: 1
@@ -146,9 +146,10 @@ Items acknowledged and carried forward from previous milestone close:
 | 260822-urx | Maximise plot size and callout legibility: reclaim over-generous canvas/heading whitespace, promote the SVG callout type scale to derived constants and raise it, lift the artificial 420px rail-plot width cap, move rail plot grid/axis colours onto the surf tokens | 2026-08-22 | 07f3003 | [260822-urx-maximise-plot-size-and-callout-legibilit](./quick/260822-urx-maximise-plot-size-and-callout-legibilit/) |
 | 260822-vwt | Drop the redundant TEMPLATE/RAIL/FIN VIEWER titles from the three editor canvases and give the reclaimed height to the drawings | 2026-08-22 | db5a6d1 | (fast task — no plan dir) |
 | 260822-vbo | Pin callout text to a constant on-screen size across the board viewers (14px values matching table data, 11px names) by countering each SVG's fit scale; Summary stays proportional | 2026-08-22 | 839a9f7 | [260822-vbo-pin-callout-text-to-a-constant-on-screen](./quick/260822-vbo-pin-callout-text-to-a-constant-on-screen/) |
+| 260822-vo2 | Task 3 of the design pivot: cyan for selection (fills, black text) and orange for warnings, with darkened ink siblings for text/strokes since neither accent clears AA on white; deleted the outline-accent aliases; grouped selection chips by whitespace | 2026-08-22 | a9e411d | [260822-vo2-task-3-cyan-for-accent-selection-and-ora](./quick/260822-vo2-task-3-cyan-for-accent-selection-and-ora/) |
 
 ## Session Continuity
 
 Last session: 2026-08-22T09:03:00.000Z
-Stopped at: Completed quick task 260822-vbo (callout text pinning)
+Stopped at: Completed quick task 260822-vo2 (design pivot complete)
 Resume file: None
