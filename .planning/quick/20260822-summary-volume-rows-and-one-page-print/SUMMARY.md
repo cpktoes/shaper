@@ -15,8 +15,8 @@ provides:
 affects: [.planning/todos/pending/2026-08-22-summary-print-after-callout-system.md -- the multi-page symptom is fixed; the remaining checks in that todo are about legibility at print scale, not pagination]
 
 actuals:
-  tasks: 2
-  commits: 2
+  tasks: 3
+  commits: 3
 
 tech-stack:
   added: []
@@ -84,9 +84,57 @@ Before the fix, the 1600px case rendered 919x750 — over both papers — and th
 
 `npm test` 633 pass, `tsc` and `eslint` clean, no console errors.
 
+## 3. Re-laid by card priority (user request, same session)
+
+Priority given: Template, then Fin Placement, Rail Data, Rail Plots, Volume. The old layout led with
+Rail Data in the leftmost column, which read as the sheet's subject.
+
+Twelve columns, four rows, laid out by importance *and* by content shape — the two pull in the same
+direction here. Template is the subject and its drawing is tall, so it takes a full-height column on
+the left where the eye lands first. Fin Placement is second and its drawing is wide, so it banners
+across the top of everything to the right rather than sitting in a tall cell it could not fill. Rail
+Data sits beneath it, Rail Plots take the short full-width strip at the bottom (three wide, short
+curves — stacked in a narrow column they needed 448px of height, over half a landscape page), and
+Volume takes a small cell.
+
+Measured share of the sheet: Template 34%, Fin 18%, Rail Plots 17.5%, Rail Data 16%, Volume 6%.
+
+### Three bugs this uncovered
+
+**Container queries do not match the container.** The `@container` marker and the grid were on the
+same element, so every `@min-[900px]` *track* rule was silently inert — the tracks fell back to
+auto-sized implicit columns, one at 960px and four at zero, the Template card taking 61% of the
+sheet. The per-item placements always worked, because the cards are descendants. The grid is now a
+child of the container, and the track definition moved to `summary.css` where the declaration is
+explicit.
+
+**`vw` fonts measured a layout that never printed.** The `--summary-font-*` clamps were viewport-
+relative, so the print fit measured 14.7px rows from a 1600px window against the 9.35px rows that
+actually print. They are `cqw` now, following the width the hook pins the root to.
+
+**The two-pass fit squared its own scale.** With container-relative fonts the sheet scales linearly
+with its layout width, so laying out wider and re-measuring produced `z²` — a sheet needing 0.69
+came out at 0.48. One pass now, and the fit is identical from any window width.
+
+**Two SVGs sized themselves from their viewBox ratio rather than their box.** Both viewers had
+`width`/`height` attributes that made a percentage width resolve height from the ratio. In the fin
+banner that clipped the drawing outright; in the Template card it made the card demand 809px inside
+a 585px cell, and because `fr` rows go content-proportional when a grid sizes itself, that one card
+inflated every row on the sheet. Both are pinned to their boxes now with `preserveAspectRatio`
+doing the fitting.
+
 ## Not done
 
-The sheet fits one page; whether every line on it is *legible* at 0.69 zoom is the remaining open
-question, and it is what the rest of the print todo covers — the faint reference lines
-(`#c9c0ab`) and the low-alpha widepoint dash were called out there as the first things to disappear
-on paper. That needs a real printer, not a measurement.
+**The sheet prints at 70% of the page width.** 697 x 728 on a 996 x 756 Letter landscape page: the
+height is filled (96%) and about a third of the width is blank. The cause is measured, not guessed —
+the rail table unfolds to its full 19 rows in print (471px) inside a 356px cell, so the fit scales
+the whole sheet to 0.70 to keep every row visible. Filling the page instead would mean clipping
+roughly five rows off the table, which trades a cosmetic problem for a data one.
+
+Ways out, none taken because they are the user's call: tighten the compact table's row padding, give
+Rail Data a taller cell at the expense of the cards around it, or let the sheet fill the width and
+accept the table scrolling on its own.
+
+**Legibility is still unverified.** Smallest text on the sheet lands at about 5.3pt. That is fine-
+print territory but readable in principle; the faint reference lines (`#c9c0ab`) and the low-alpha
+widepoint dash remain the real risk, as the print todo already says. Both need a real printer.
