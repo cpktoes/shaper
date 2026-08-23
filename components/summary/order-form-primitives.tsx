@@ -86,7 +86,8 @@ export function RailLabel({ children, className }: { children: ReactNode; classN
   return (
     <div
       className={cn(
-        "flex flex-none items-center justify-center rounded-[3px] border border-surf-black bg-surf-muted/15 px-[3px]",
+        "flex flex-none items-center justify-center rounded-[3px] border border-surf-black px-[3px]",
+        "bg-(--order-form-shade)",
         className,
       )}
     >
@@ -189,7 +190,7 @@ export function OrderFormTick({ label }: { label: string }) {
  */
 export function LogoBlock() {
   return (
-    <div className="flex h-full min-h-0 flex-col items-center justify-center gap-1 rounded-[3px] border border-surf-black bg-surf-muted/10 px-3 py-2 text-center">
+    <div className="flex h-full min-h-0 flex-col items-center justify-center gap-1 rounded-[3px] border border-surf-black bg-(--order-form-shade) px-3 py-2 text-center">
       <div className="font-display font-extrabold tracking-architectural text-surf-black uppercase leading-none order-form-wordmark">
         Shaper
       </div>

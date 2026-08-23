@@ -20,21 +20,40 @@
  * narrower viewport, so the scale would be computed for a layout that never existed. Tied to the
  * container, they follow the width the hook pins the root to, and measurement and print agree.
  *
- * The `cqw` figures are calibrated against an 880px sheet — this form's on-screen max width and
- * close to a real page's printable width — so the numbers below read as "what this is at full
- * size": caption 8px, value 10px, dimension 15px.
+ * The `cqw` figures are calibrated against an 880px sheet — this form's on-screen max width — but
+ * the size that actually matters is the PRINTED one, and the sheet prints at about 733px. Printed
+ * type is therefore 83% of what the screen shows, which is how the first cut of this scale ended up
+ * putting every field label on the page at 6.7px and the smallest band at 5.8px: legible enough in
+ * a browser, too small to be useful on paper. Each comment below gives both numbers, screen first,
+ * and the floor is that nothing prints under about 8px.
  *
  * The properties are declared on the container itself, which is fine: `cqw` resolves where a
  * property is USED, and every user is a descendant.
  */
 [data-order-form-root] {
-  --order-form-caption: clamp(6.5px, 0.909cqw, 11px); /* 8px at 880 — ALL-CAPS field labels */
-  --order-form-micro: clamp(5.8px, 0.795cqw, 9.6px); /* 7px  — secondary notes, group headings */
-  --order-form-value: clamp(8px, 1.136cqw, 13.5px); /* 10px — written-in and printed values */
-  --order-form-row: clamp(7.2px, 1.023cqw, 12px); /* 9px  — fin placement table rows */
-  --order-form-group: clamp(6.5px, 0.909cqw, 11px); /* 8px  — fin section headings */
-  --order-form-dim: clamp(11px, 1.705cqw, 21px); /* 15px — the dimensions row's measurements */
-  --order-form-wordmark: clamp(15px, 2.5cqw, 32px); /* 22px — the SHAPER logo block */
+  --order-form-caption: clamp(8.2px, 1.132cqw, 14px); /* 10px screen / 8.3px print — field labels */
+  --order-form-micro: clamp(7.8px, 1.077cqw, 13px); /* 9.5px / 7.9px — secondary notes */
+  --order-form-value: clamp(9.4px, 1.309cqw, 16px); /* 11.5px / 9.6px — written-in and printed values */
+  --order-form-row: clamp(8.6px, 1.2cqw, 14.5px); /* 10.6px / 8.8px — table rows */
+  --order-form-group: clamp(8.2px, 1.132cqw, 14px); /* 10px / 8.3px — section headings */
+  --order-form-dim: clamp(11px, 1.705cqw, 21px); /* 15px / 12.5px — the dimensions row */
+  --order-form-wordmark: clamp(15px, 2.5cqw, 32px); /* 22px / 18.3px — the SHAPER logo block */
+}
+
+/*
+ * The sheet's shaded panels — logo block, spine labels, the shaper's sub-box.
+ *
+ * The reduced accent hue rather than a grey wash, mixed the same way globals.css builds
+ * `--outline-board-fill`, so the form borrows this app's existing vocabulary for "accent at low
+ * strength" instead of inventing a second one.
+ *
+ * The percentage is bounded by contrast, not by taste. Any tint darkens the ground under the muted
+ * text sitting on it, and that is precisely what put the logo block's placeholder line at 4.25:1 —
+ * under AA — when it was a grey wash. 7% keeps `--color-surf-muted` clear of 4.5:1 on these panels;
+ * raising it will not.
+ */
+[data-order-form-root] {
+  --order-form-shade: color-mix(in srgb, var(--color-surf-accent-blue) 7%, white);
 }
 
 [data-order-form-root] .order-form-caption {
@@ -118,11 +137,15 @@
 [data-order-form-root] .order-form-band-header {
   flex: 0 0 17%;
 }
+/* These two grew with the type scale: both are caption-over-content boxes, so raising the caption
+   from 8px to 10px cost each of them a couple of lines' worth of room and they began clipping —
+   the dims cells by 2px, the rocker box by 12px. The height comes out of the drawings row below,
+   which is `flex-1` and had the slack to give. */
 [data-order-form-root] .order-form-band-dims {
-  flex: 0 0 5.4%;
+  flex: 0 0 6.2%;
 }
 [data-order-form-root] .order-form-band-rocker {
-  flex: 0 0 7.5%;
+  flex: 0 0 11.5%;
 }
 [data-order-form-root] .order-form-band-glassing {
   flex: 0 0 11%;

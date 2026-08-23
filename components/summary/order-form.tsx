@@ -120,7 +120,10 @@ function DimensionCell({ label, value }: { label: string; value: string }) {
       <span className="font-display font-extrabold tracking-architectural text-surf-muted uppercase leading-none order-form-caption">
         {label}
       </span>
-      <span className="truncate font-extrabold text-surf-black leading-none order-form-dim">{value}</span>
+      {/* `leading-none` would make the line box shorter than the glyphs it holds, so the span's own
+          `overflow: hidden` (from `truncate`) clipped the measurements by ~2px. Tight, but tall
+          enough to contain its own ink. */}
+      <span className="truncate font-extrabold text-surf-black leading-[1.15] order-form-dim">{value}</span>
     </div>
   );
 }
@@ -223,7 +226,7 @@ export function OrderForm() {
 
               <FormBox
                 caption="Shaper Use Only"
-                className="mt-auto bg-surf-muted/10"
+                className="mt-auto bg-(--order-form-shade)"
                 bodyClassName="gap-1 p-1.5"
               >
                 {/* Board Name is live (the store has carried it since the landscape summary); the
