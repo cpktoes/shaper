@@ -230,6 +230,23 @@ export const FIN_SETUPS: { value: FinSetup; label: string }[] = [
   { value: "quad", label: "Quad" },
 ];
 
+/**
+ * The fin *box* system — which manufacturer's plug the fins drop into. Purely a glassing/ordering
+ * choice: it names the hardware the glasser installs and has no effect on any placement number
+ * `computeFinPlacement` produces, which is why it lives beside `FIN_SETUPS` as a plain option list
+ * rather than entering `FinPlacementSpec`. The board summary's order form is its only reader.
+ */
+export type FinSystem = "fcs2" | "fcsOriginal" | "futures" | "lokbox" | "probox" | "glassOn";
+
+export const FIN_SYSTEMS: { value: FinSystem; label: string }[] = [
+  { value: "fcs2", label: "FCS II" },
+  { value: "fcsOriginal", label: "FCS (Original)" },
+  { value: "futures", label: "Futures" },
+  { value: "lokbox", label: "Lokbox" },
+  { value: "probox", label: "Probox" },
+  { value: "glassOn", label: "Glass-On" },
+];
+
 // ============================================================================================
 // Inch-domain core — private. Statement-for-statement port; never exported.
 // ============================================================================================

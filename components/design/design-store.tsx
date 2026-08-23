@@ -29,6 +29,7 @@ import {
   computeFinPlacement,
   type FinPlacementResult,
   type FinPlacementSpec,
+  type FinSystem,
 } from "@/lib/geometry/fins";
 import {
   DEFAULT_VOLUME_SPEC,
@@ -50,9 +51,13 @@ interface DesignState {
    * only, like every other value here: it's gone on reload, exactly as the rest of the design is.
    * Phase 2's named-model saving is where any of this becomes durable. */
   boardName: string;
+  /** Which fin box system the board is glassed for (FCS II, Futures, …). An ordering/glassing
+   * choice, not a placement input — no calculated number depends on it — so it sits here as a
+   * plain stored value rather than inside `fins`. Read only by the summary's order form. */
+  finSystem: FinSystem;
   /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,
    * `updateRailSection`, `toggleTailHardEdge`, `updateFins`, `updateVolume`,
-   * `setFinsImportTemplate` or `setBoardName` — never derived by comparing state against its
+   * `setFinsImportTemplate`, `setBoardName` or `setFinSystem` — never derived by comparing state against its
    * default — a user who drags a slider back to its default value has still started a board.
    * Backs `hasBoardInProgress` on the setup screen's replace-board confirmation (D-07). */
   boardStarted: boolean;
@@ -65,6 +70,7 @@ const DEFAULT_DESIGN_STATE: DesignState = {
   volume: DEFAULT_VOLUME_SPEC,
   finsImportTemplate: true,
   boardName: "",
+  finSystem: "fcs2",
   boardStarted: false,
 };
 
@@ -81,6 +87,7 @@ interface DesignContextValue {
   volume: VolumeSpec;
   finsImportTemplate: boolean;
   boardName: string;
+  finSystem: FinSystem;
   /** True once a board has been applied or edited this session — gates the setup screen's
    * replace-board confirm dialog (D-07). See `DesignState.boardStarted`'s doc comment for why
    * this is a flag set on write, not a derived default-comparison. */
@@ -99,6 +106,7 @@ interface DesignContextValue {
   updateVolume: (patch: Partial<VolumeSpec>) => void;
   setFinsImportTemplate: (next: boolean) => void;
   setBoardName: (next: string) => void;
+  setFinSystem: (next: FinSystem) => void;
   /** Toggling off also forces `importRailThickness` off and copies the currently effective
    * length/width into the stored manual fields; toggling on needs no copy (the derived override
    * takes over). Ported from Volume.dc.html's `onToggleImportTemplateDimensions`. */
@@ -171,6 +179,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, finsImportTemplate: next, boardStarted: true }));
 
   const setBoardName = (next: string) => setState((prev) => ({ ...prev, boardName: next, boardStarted: true }));
+
+  const setFinSystem = (next: FinSystem) =>
+    setState((prev) => ({ ...prev, finSystem: next, boardStarted: true }));
 
   const outlineGeometry = useMemo(() => buildOutline(state.outline), [state.outline]);
   const railBands = useMemo(() => computeRailBands(state.rails), [state.rails]);
@@ -313,6 +324,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     volume: state.volume,
     finsImportTemplate: state.finsImportTemplate,
     boardName: state.boardName,
+    finSystem: state.finSystem,
     hasBoardInProgress: state.boardStarted,
     updateOutline,
     applyPreset,
@@ -322,6 +334,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     updateVolume,
     setFinsImportTemplate,
     setBoardName,
+    setFinSystem,
     toggleImportTemplateDimensions,
     toggleImportRailThickness,
     outlineGeometry,
