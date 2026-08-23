@@ -93,9 +93,13 @@
      at 5.33:1 with headroom while keeping a clear step down from surf-black's 18.9:1. */
   --color-surf-muted: #6b6b6b; /* razor-thin 1px borders & secondary text */
 
-  /* next/font loads these in app/layout.tsx and exposes them as --font-space-grotesk
-     / --font-inter on <html>. The literal fallbacks match the source config. */
-  --font-display: var(--font-space-grotesk), "Space Grotesk", Montserrat, sans-serif;
+  /* next/font loads Inter in app/layout.tsx and exposes it as --font-inter on <html>.
+     Display and body are the same face by choice: the source config specified Space
+     Grotesk for display, but the founder preferred the wordmark's Inter and asked for
+     headings to match it. The two tokens stay separate so the roles remain nameable and
+     display can diverge again later without touching every heading. Headings are now
+     distinguished by weight, tracking and case rather than by family. */
+  --font-display: var(--font-inter), Inter, Roboto, sans-serif;
   --font-body: var(--font-inter), Inter, Roboto, sans-serif;
 
   --tracking-architectural: 0.25em; /* wide tracking for ALL CAPS headers */

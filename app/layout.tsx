@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
+import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { SiteNav } from "@/components/site-nav";
 import { DesignProvider as Provider } from "@/components/design/design-store";
@@ -10,16 +10,11 @@ const geistMono = Geist_Mono({
 });
 
 /**
- * The two faces of the surf design language (see the `@theme` block in app/globals.css).
- * Exposed as CSS variables here so the `font-display` / `font-body` theme tokens can
- * reference them — Space Grotesk carries ALL-CAPS architectural headings, Inter carries
- * body copy, labels and secondary text.
+ * The face of the surf design language (see the `@theme` block in app/globals.css). Both
+ * `font-display` and `font-body` resolve to it: headings are set apart by weight, wide
+ * tracking and ALL CAPS rather than by a second family. Space Grotesk was the source
+ * config's display face and was dropped when the founder chose the wordmark's Inter.
  */
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-});
-
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -49,7 +44,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistMono.variable} ${spaceGrotesk.variable} ${inter.variable} h-full antialiased`}
+      className={`${geistMono.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="flex h-full flex-col overflow-hidden bg-surf-base">
         <Provider>
