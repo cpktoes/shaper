@@ -96,9 +96,6 @@ export function OutlineEditor() {
       <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-3 bg-surf-base px-10 py-5">
         <div className="flex min-h-0 flex-1 items-stretch justify-center gap-6">
           <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center bg-surf-base">
-            <div className="mb-2 flex-none self-start text-sm font-display text-surf-black uppercase tracking-architectural font-bold">
-              Template Viewer
-            </div>
             <div className="relative flex min-h-0 w-full flex-1 justify-center">
               {/* A plain filled box — the drawing sizes itself inside it via preserveAspectRatio.
                   No aspect-ratio wrapper: the viewBox widens for wide boards, so any ratio pinned

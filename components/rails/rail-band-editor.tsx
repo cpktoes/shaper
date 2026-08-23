@@ -223,8 +223,7 @@ export function RailBandEditor() {
         </div>
 
         {activePage === "viewer" && (
-          <div className="flex min-h-0 flex-1 flex-col bg-surf-base pt-3">
-            <div className="mb-2 flex-none self-start text-sm font-display text-surf-black uppercase tracking-architectural font-bold">Rail Viewer</div>
+          <div className="flex min-h-0 flex-1 flex-col bg-surf-base pt-1">
             <div ref={plotsContainerRef} className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
               {openSections.map((key) => (
                 <div key={key} className="flex flex-none flex-col items-center" style={{ width: plotWidth }}>

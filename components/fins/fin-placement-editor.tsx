@@ -170,8 +170,7 @@ export function FinPlacementEditor() {
         </div>
 
         {activeTab === "viewer" && (
-          <div className="flex min-h-0 flex-1 flex-col items-center bg-surf-base pt-3">
-            <div className="mb-2 flex-none self-start text-sm font-display text-surf-black uppercase tracking-architectural font-bold">Fin Viewer</div>
+          <div className="flex min-h-0 flex-1 flex-col items-center bg-surf-base pt-1">
             <FinViewer
               result={result}
               tailShape={spec.tailShape}
