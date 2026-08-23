@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 2
 current_phase_name: Accounts & Saved Designs
 status: planning
-stopped_at: Completed quick task 260822-vws (surf blue accent); design pivot complete, pending review
+stopped_at: Board outline given a 6% accent wash (print-suppressed); design pivot complete
 last_updated: "2026-08-23T00:00:00.000Z"
 last_activity: 2026-08-22
-last_activity_desc: Completed quick task 260822-vws (surf blue accent)
+last_activity_desc: Board outline accent wash, screen only
 progress:
   total_phases: 1
   completed_phases: 1
@@ -148,9 +148,10 @@ Items acknowledged and carried forward from previous milestone close:
 | 260822-vbo | Pin callout text to a constant on-screen size across the board viewers (14px values matching table data, 11px names) by countering each SVG's fit scale; Summary stays proportional | 2026-08-22 | 839a9f7 | [260822-vbo-pin-callout-text-to-a-constant-on-screen](./quick/260822-vbo-pin-callout-text-to-a-constant-on-screen/) |
 | 260822-vo2 | Task 3 of the design pivot: cyan for selection (fills, black text) and orange for warnings, with darkened ink siblings for text/strokes since neither accent clears AA on white; deleted the outline-accent aliases; grouped selection chips by whitespace | 2026-08-22 | a9e411d | [260822-vo2-task-3-cyan-for-accent-selection-and-ora](./quick/260822-vo2-task-3-cyan-for-accent-selection-and-ora/) |
 | 260822-vws | Replace the cyan accent with a deeper surf blue #006994 (6.09:1); collapse the fill and ink tokens into one, flip accent fills to white text, invert the chip icons that sit on the fill | 2026-08-22 | b7fe483 | [260822-vws-replace-the-cyan-accent-with-a-deeper-su](./quick/260822-vws-replace-the-cyan-accent-with-a-deeper-su/) |
+| 260822-bfw | Give the board outline a 6% accent-blue wash on screen, suppressed under @media print so a cut template stays clean; reverses the flat-white call made during the pivot | 2026-08-22 | (see log) | (fast task — no plan dir) |
 
 ## Session Continuity
 
 Last session: 2026-08-22T09:03:00.000Z
-Stopped at: Completed quick task 260822-vws (surf blue accent)
+Stopped at: Board outline accent wash, screen only
 Resume file: None
