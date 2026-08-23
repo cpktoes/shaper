@@ -15,8 +15,10 @@ interface VolumeCalculationCardProps {
   widthDisplayLabel: string;
   centerThicknessDisplayLabel: string;
   /** The Summary dashboard's dense treatment: the same rows as the Volume screen, at the summary's
-   * smaller type. What compact drops is chrome, not data — the "Volume Calculation" heading (the
-   * summary card carries its own title) and the closing estimate disclaimer. It used to drop the
+   * smaller type. What compact drops is chrome, not data — the closing estimate disclaimer. It
+   * also used to drop a "Volume Calculation" heading, until that heading was removed from both
+   * variants: the nav already names the screen and the summary card carries its own title. It
+   * used to drop the
    * Center Thickness and the three cross-section rows too, which meant the Summary quietly showed
    * less than the Volume screen for exactly the case a shaper cares about: importing real geometry
    * from the template and rails. Defaults to `false`, the Volume screen's own full card. */
@@ -120,7 +122,6 @@ export function VolumeCalculationCard({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-base text-surf-black">
-      <div className="mb-8 text-xl font-display text-surf-black uppercase tracking-architectural font-extrabold">Volume Calculation</div>
       <div className="flex w-full flex-col gap-0">
         {!result.importingTemplate && (
           <>
