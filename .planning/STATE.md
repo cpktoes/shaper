@@ -96,7 +96,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-9 pending:
+11 pending:
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Mobile/phone-width layout polish for the design screens — `.planning/todos/pending/2026-08-19-mobile-phone-width-layout-polish.md`
@@ -107,6 +107,8 @@ Recent decisions affecting current work:
 - [minor/ui] Rails viewer: View Full Sized modal and board-outline plan view — `.planning/todos/pending/2026-08-21-rails-viewer-extras.md`
 - [minor/ui] Global settings: units toggle (inches vs cm) and colour themes — `.planning/todos/pending/2026-08-21-units-toggle-global-settings.md`
 - [minor/ui] Verify and refit the Summary print sheet after the callout-system rebuild — `.planning/todos/pending/2026-08-22-summary-print-after-callout-system.md`
+- [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
+- [minor/ui] Horizontal board view (nose left) as an option on the Template screen — `.planning/todos/pending/2026-08-23-horizontal-board-view-option.md`
 
 
 ### Blockers/Concerns
