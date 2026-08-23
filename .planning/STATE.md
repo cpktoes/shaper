@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 2
 current_phase_name: Accounts & Saved Designs
 status: planning
-stopped_at: Completed quick task 260822-urx (plot size + callout legibility); task 3 of the design pivot pending review
+stopped_at: Dropped the per-screen viewer titles; task 3 of the design pivot pending review
 last_updated: "2026-08-23T00:00:00.000Z"
 last_activity: 2026-08-22
-last_activity_desc: Completed quick task 260822-urx (plot size + callout legibility)
+last_activity_desc: Dropped the per-screen viewer titles (fast task db5a6d1)
 progress:
   total_phases: 1
   completed_phases: 1
@@ -144,9 +144,10 @@ Items acknowledged and carried forward from previous milestone close:
 | 260822-o99 | Port the new surf design tokens to Tailwind v4 (@theme static, v3 config was inert) and move every surface onto the white ground: bg-surf-base universally, massive negative space around the 2D previews, border-surf-muted/20 hairlines only where separation is structural | 2026-08-22 | f28cbe8 | [260822-o99-port-the-new-surf-design-tokens-to-tailw](./quick/260822-o99-port-the-new-surf-design-tokens-to-tailw/) |
 | 260822-ubq | Typography overhaul: headings to font-display/caps/tracking-architectural, body labels to Inter text-sm surf-muted; repaired the self-referential --font-sans that was rendering every SVG board callout in the browser default serif | 2026-08-22 | 889b3a9 | [260822-ubq-typography-overhaul-primary-headings-to-](./quick/260822-ubq-typography-overhaul-primary-headings-to-/) |
 | 260822-urx | Maximise plot size and callout legibility: reclaim over-generous canvas/heading whitespace, promote the SVG callout type scale to derived constants and raise it, lift the artificial 420px rail-plot width cap, move rail plot grid/axis colours onto the surf tokens | 2026-08-22 | 07f3003 | [260822-urx-maximise-plot-size-and-callout-legibilit](./quick/260822-urx-maximise-plot-size-and-callout-legibilit/) |
+| 260822-vwt | Drop the redundant TEMPLATE/RAIL/FIN VIEWER titles from the three editor canvases and give the reclaimed height to the drawings | 2026-08-22 | db5a6d1 | (fast task — no plan dir) |
 
 ## Session Continuity
 
 Last session: 2026-08-22T09:03:00.000Z
-Stopped at: Completed quick task 260822-urx (plot size + callout legibility)
+Stopped at: Dropped the per-screen viewer titles
 Resume file: None

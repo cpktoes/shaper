@@ -61,6 +61,10 @@ Both viewers are now height-bound with the vertical chrome squeezed to near zero
 further size gains need viewport height — or dropping the viewer titles and the rail
 legend, which is a design call rather than a fix.
 
+**Followed up (db5a6d1):** the founder took the titles option. TEMPLATE/RAIL/FIN
+VIEWER are gone, taking the outline to 1.240 scale (526x791, callouts 21.1px) and the
+rail plots to 518 wide at 1200x800 / 651 at 1440x900. The rail legend stays.
+
 ## Verification
 
 Summary print sheet re-measured: required scale unchanged at 0.39, no card overflows
