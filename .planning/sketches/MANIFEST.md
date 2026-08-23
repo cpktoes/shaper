@@ -30,6 +30,12 @@ happens to fit.
 | 002 | input-output-distinction | How to distinguish computed values from user inputs? | **C — Dual system** (chips vs dimension lines) | viewer, information-design |
 | 003 | stringer-and-station-lines | Should the stringer read differently from station lines? | **B — Distinct centreline** | viewer, reference-lines, consistency |
 | 004 | clean-interior-svg | Where do values go once nothing may sit inside the outline? | **A — Aligned rail** | viewer, callouts, svg, refinement |
+| 005 | horizontal-board-view | What does the Template screen look like with the board horizontal, nose left? | **C — Full-bleed, nose-anchored length** | viewer, layout, callouts, svg, post-mvp |
+
+**Sketch 005 locks nothing.** It is a post-MVP exploration of an *alternative* view, kept on
+branch `design/horizontal-template-view`; decision 6 below still governs the shipped screen. What
+005 does establish is that the grammar below survives a 90° rotation — outputs and inputs swap to
+rails above and below rather than right and left, and every other rule holds unchanged.
 
 ## Decisions These Lock In
 
