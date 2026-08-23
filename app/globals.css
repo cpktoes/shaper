@@ -168,9 +168,13 @@
   --outline-sidebar-input-border: color-mix(in srgb, var(--color-surf-muted) 20%, transparent);
   --outline-sidebar-divider: color-mix(in srgb, var(--color-surf-muted) 20%, transparent);
   --outline-page-bg: var(--color-surf-base);
-  /* The board reads as white-on-white, defined by its stroke alone — the drawing is the
-     figure, the card is no longer a box around it. */
-  --outline-board-fill: var(--color-surf-base);
+  /* A faint accent wash so the planshape reads as an object rather than as a line. This
+     briefly went to flat white during the design pivot, on the reasoning that the board
+     should be "defined by its stroke alone" — that extended `bg-surf-base` universally
+     from the UI's surfaces into the drawing's interior, which was a step too far: the
+     planshape is the thing being designed and should read as a shape. Suppressed for
+     print below. */
+  --outline-board-fill: color-mix(in srgb, var(--color-surf-accent-blue) 6%, white);
   --outline-construction: #4d8a86;
   --outline-station-line: color-mix(in srgb, var(--color-surf-muted) 36%, transparent); /* faint: stringer, stations, leaders, extension lines — 36% of the darkened muted token renders the same #cacaca the old 55%-of-#9e9e9e did, so the construction lines stay behind the board outline */
   --outline-widepoint-knot: #a8425f;
@@ -232,5 +236,14 @@
     /* Inter, by inheritance — so body copy, labels and secondary text need no per-element
        `font-body`. Only headings opt out, with an explicit `font-display`. */
     @apply font-body;
+  }
+}
+
+@media print {
+  :root {
+    /* The wash is a screen affordance. A template is printed to be cut along and marked
+       on, so ink inside the outline is wasted and can muddy the station lines a shaper
+       measures against. */
+    --outline-board-fill: var(--color-surf-base);
   }
 }
