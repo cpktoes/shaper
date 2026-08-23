@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 Phase: 2 — Accounts & Saved Designs
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-23 - Completed quick task 260823-h6l: Rail plots beside a fixed-scale template window on the order form
+Last activity: 2026-08-23 - Completed quick task 260823-ipc: Accent-tinted shading and AA-compliant type on the order form
 
 Progress: [██████████] 100%
 
@@ -140,6 +140,7 @@ None yet.
 | 260823-gc4 | Remove the widepoint knots and match the station line colour on the order form: two CSS token overrides on the outline panel (--outline-widepoint-line to the station-line grey, --outline-widepoint-knot transparent), leaving the distinguishing dash and the outline editor untouched | 2026-08-23 | 10d8ed0 | [260823-gc4-remove-the-widepoint-knots-and-match-the](./quick/260823-gc4-remove-the-widepoint-knots-and-match-the/) |
 | 260823-ggs | Split the order form into two portrait pages: page 1 keeps the drawings (outline panel recaptioned COLOR DESIGN & LOGOS with blank sketching space) and the rail plots, page 2 carries the rail band marking data and fin placement numbers at a 1.55x type scale with an identification strip; print-fit hook now sizes each sheet independently, fixing a 100%-sizing override and a rounding-induced blank-page risk | 2026-08-23 | 67330b3 | [260823-ggs-move-the-rail-band-and-fin-placement-dat](./quick/260823-ggs-move-the-rail-band-and-fin-placement-dat/) |
 | 260823-h6l | Rail section plots moved to a left column (~1/3) beside the template window (~2/3) on order form page 1; OutlineViewer cropToBoard replaced by fixedFrame, sized from new BOARD_LENGTH_RANGE_IN/WIDEPOINT_WIDTH_RANGE_IN constants in board.ts so one window holds any board (extreme is the shortest-and-widest, 5'0" x 25") without the frame resizing per board | 2026-08-23 | c1c8359 | [260823-h6l-rail-plots-beside-a-fixed-scale-template](./quick/260823-h6l-rail-plots-beside-a-fixed-scale-template/) |
+| 260823-ipc | Order form shading switched from grey to the reduced accent hue (new --order-form-shade token at 7%, held there by contrast) and page 1 type raised so nothing prints under 7.9px (was 5.8px); fixed a latent leading-none clip on the dimension values and raised the dims/rocker bands to suit. Zero AA failures across both sheets, min ratio 4.83:1 | 2026-08-23 | f43dea9 | [260823-ipc-accent-tinted-shading-and-aa-compliant-t](./quick/260823-ipc-accent-tinted-shading-and-aa-compliant-t/) |
 
 ## Deferred Items
 
