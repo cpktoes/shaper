@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 2
 current_phase_name: Accounts & Saved Designs
 status: planning
-stopped_at: Board outline given a 6% accent wash (print-suppressed); design pivot complete
+stopped_at: Accent construction lines + round drag targets; drag interaction wants a human check
 last_updated: "2026-08-23T00:00:00.000Z"
 last_activity: 2026-08-22
-last_activity_desc: Board outline accent wash, screen only
+last_activity_desc: Accent construction lines and round drag targets (260822-was)
 progress:
   total_phases: 1
   completed_phases: 1
@@ -149,9 +149,10 @@ Items acknowledged and carried forward from previous milestone close:
 | 260822-vo2 | Task 3 of the design pivot: cyan for selection (fills, black text) and orange for warnings, with darkened ink siblings for text/strokes since neither accent clears AA on white; deleted the outline-accent aliases; grouped selection chips by whitespace | 2026-08-22 | a9e411d | [260822-vo2-task-3-cyan-for-accent-selection-and-ora](./quick/260822-vo2-task-3-cyan-for-accent-selection-and-ora/) |
 | 260822-vws | Replace the cyan accent with a deeper surf blue #006994 (6.09:1); collapse the fill and ink tokens into one, flip accent fills to white text, invert the chip icons that sit on the fill | 2026-08-22 | b7fe483 | [260822-vws-replace-the-cyan-accent-with-a-deeper-su](./quick/260822-vws-replace-the-cyan-accent-with-a-deeper-su/) |
 | 260822-bfw | Give the board outline a 6% accent-blue wash on screen, suppressed under @media print so a cut template stays clean; reverses the flat-white call made during the pivot | 2026-08-22 | (see log) | (fast task — no plan dir) |
+| 260822-was | Construction lines onto the accent; draggable control points redrawn as three-part round targets (board-fill disc, accent ring, orange core) on exactly the five points that move, counter-scaled to a constant on-screen size | 2026-08-22 | 2b39ef6 | [260822-was-construction-lines-onto-the-accent-colou](./quick/260822-was-construction-lines-onto-the-accent-colou/) |
 
 ## Session Continuity
 
 Last session: 2026-08-22T09:03:00.000Z
-Stopped at: Board outline accent wash, screen only
+Stopped at: Accent construction lines + round drag targets
 Resume file: None
