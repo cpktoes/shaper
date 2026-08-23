@@ -111,7 +111,7 @@ function SliderRow({
         step={step}
         disabled={disabled}
         onValueChange={(v) => onValueChange(sliderValue(v))}
-        className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
+        className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
       />
       {(leftHint || rightHint) && (
         <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
@@ -119,7 +119,7 @@ function SliderRow({
           <span>{rightHint}</span>
         </div>
       )}
-      {note && <div className="mt-0.5 text-[10px] text-outline-accent">{note}</div>}
+      {note && <div className="mt-0.5 text-[10px] text-surf-accent-orange-ink">{note}</div>}
     </div>
   );
 }
@@ -200,7 +200,7 @@ export function OutlineControls({
           max={120}
           step={1}
           onValueChange={(v) => setLengthIn(sliderValue(v))}
-          className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
+          className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
         />
       </div>
 
@@ -289,7 +289,7 @@ export function OutlineControls({
       </div>
 
       <SectionHeading>Tail Controls</SectionHeading>
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="mt-2 mb-6 grid grid-cols-5 gap-2.5">
         {TAIL_SHAPES.map((shape) => {
           const active = outline.tail.kind === shape;
           const preset = TAIL_PRESETS[shape];
@@ -306,9 +306,13 @@ export function OutlineControls({
               }
               className="flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-1.5"
               style={{
-                borderColor: active ? "var(--outline-accent)" : "var(--outline-sidebar-input-border)",
-                background: active ? "var(--outline-accent)" : "var(--outline-sidebar-bg)",
-                color: active ? "var(--outline-ink)" : "var(--outline-sidebar-text)",
+                borderColor: active
+                  ? "var(--color-surf-accent-cyan)"
+                  : "color-mix(in srgb, var(--color-surf-muted) 30%, transparent)",
+                background: active ? "var(--color-surf-accent-cyan)" : "var(--color-surf-base)",
+                // Black on cyan is 12.28:1; the same black off-state keeps the label legible
+                // on white, so the fill alone carries the selected state.
+                color: "var(--color-surf-black)",
               }}
             >
               <TailShapeIcon shape={shape} active={active} />

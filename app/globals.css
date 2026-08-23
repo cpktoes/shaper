@@ -54,8 +54,6 @@
 
   /* Outline editor palette — ported from the Claude Design prototype's Template Builder.
      Prefixed `outline-*` so it never collides with (or restyles) the shadcn neutral tokens above. */
-  --color-outline-accent: var(--outline-accent);
-  --color-outline-accent-strong: var(--outline-accent-strong);
   --color-outline-sidebar-bg: var(--outline-sidebar-bg);
   --color-outline-sidebar-text: var(--outline-sidebar-text);
   --color-outline-sidebar-text-muted: var(--outline-sidebar-text-muted);
@@ -86,8 +84,15 @@
 @theme static {
   --color-surf-base: #ffffff; /* crisp white background */
   --color-surf-black: #111111; /* matte black primary text & major elements */
-  --color-surf-accent-cyan: #00e5ff; /* action/selection option A */
-  --color-surf-accent-orange: #ff5722; /* action/selection option B */
+  /* Cyan is accent/selection, orange is warnings (founder's call). Both are FILL colours:
+     each carries black text (cyan 12.28:1, orange 5.97:1 — white fails on both at 1.54
+     and 3.16). Neither survives as text or a stroke on the white ground, so each has a
+     darkened ink sibling below for anything that is not a fill. */
+  --color-surf-accent-cyan: #00e5ff; /* selection fills — always with text-surf-black */
+  --color-surf-accent-orange: #ff5722; /* warning fills/markers — always with text-surf-black */
+  /* Same hues, darkened to clear WCAG AA as text and to read as strokes in the drawings. */
+  --color-surf-accent-cyan-ink: #00767f; /* 5.39:1 on white */
+  --color-surf-accent-orange-ink: #c93f10; /* 5.00:1 on white */
   /* Darkened from the source config's #9E9E9E, which sat at 2.68:1 on white and failed
      WCAG AA (4.5:1) for the body copy and labels this token carries. #6b6b6b clears AA
      at 5.33:1 with headroom while keeping a clear step down from surf-black's 18.9:1. */
@@ -150,10 +155,9 @@
      files get converted to explicit `surf-*` classes in the typography and controls tasks that
      follow; until then this remap is what keeps them legible.
 
-     `--outline-accent` deliberately stays amber: cyan vs orange is still an open decision, and
-     leaving the accent untouched keeps every screen reviewable between tasks. */
-  --outline-accent: #c98d3a;
-  --outline-accent-strong: color-mix(in srgb, var(--outline-accent) 82%, black);
+     The accent aliases are gone: every call site now names `surf-accent-cyan`,
+     `surf-accent-cyan-ink` or `surf-accent-orange-ink` directly, so the role is legible at
+     the point of use rather than hidden behind a token whose name meant amber. */
   --outline-sidebar-bg: var(--color-surf-base);
   --outline-sidebar-text: var(--color-surf-black);
   --outline-sidebar-text-muted: var(--color-surf-muted);

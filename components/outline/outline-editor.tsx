@@ -86,7 +86,7 @@ export function OutlineEditor() {
           <Button
             variant="ghost"
             size="sm"
-            className="mt-4 w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-outline-accent hover:bg-outline-accent hover:text-surf-black"
+            className="mt-4 w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent-cyan hover:bg-surf-accent-cyan hover:text-surf-black"
             onClick={handleCopyPreset}
           >
             {justCopiedPreset ? "Copied!" : "Copy preset values"}

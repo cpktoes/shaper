@@ -12,7 +12,7 @@ import { BOARD_PRESETS, type BoardPreset } from "@/lib/geometry/presets";
  * The setup screen — `/`'s entire content (D-05). Reads `applyPreset` and `hasBoardInProgress`
  * from the shared `DesignProvider` (mounted in app/layout.tsx) exactly like a `/design/*` screen
  * reads its own slice, following the `outline-editor.tsx` client-screen pattern. Layout follows
- * the approved UI-SPEC: shadcn neutral-theme canvas + cards, `outline-accent` amber as the one
+ * the approved UI-SPEC: shadcn neutral-theme canvas + cards, with the surf accent cyan as the one
  * borrowed accent color, so the setup screen reads as part of the same product as the dark-nav
  * design screens rather than a second visual language.
  *

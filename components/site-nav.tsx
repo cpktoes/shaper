@@ -30,7 +30,7 @@ export function SiteNav() {
     >
       <Link
         href="/"
-        className="text-sm font-extrabold tracking-architectural text-surf-black transition-colors hover:text-outline-accent"
+        className="text-sm font-extrabold tracking-architectural text-surf-black transition-colors hover:text-surf-accent-cyan-ink"
       >
         SHAPER
       </Link>
@@ -44,8 +44,8 @@ export function SiteNav() {
               className={
                 "border-b-2 pb-0.5 text-xs font-bold tracking-architectural uppercase transition-colors " +
                 (active
-                  ? "border-outline-accent text-outline-accent"
-                  : "border-transparent text-surf-muted hover:text-outline-accent")
+                  ? "border-surf-accent-cyan text-surf-black"
+                  : "border-transparent text-surf-muted hover:text-surf-black")
               }
             >
               {link.label}

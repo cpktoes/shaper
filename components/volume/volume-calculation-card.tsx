@@ -104,7 +104,7 @@ export function VolumeCalculationCard({
           </span>
           <span className="text-right">
             <span
-              className="block font-extrabold text-outline-accent-strong"
+              className="block font-extrabold text-surf-black"
               style={{ fontSize: "var(--summary-font-volume, 16px)" }}
             >
               {result.volumeLitres.toFixed(2)} L
@@ -151,7 +151,7 @@ export function VolumeCalculationCard({
         <div className="mt-1.5 flex items-baseline justify-between border-t-2 border-surf-muted/20 pt-3.5 pb-2">
           <span className="text-sm font-bold text-surf-muted">Estimated Volume</span>
           <span className="text-right">
-            <span className="block text-[22px] font-extrabold text-outline-accent-strong">
+            <span className="block text-[22px] font-extrabold text-surf-black">
               {result.volumeLitres.toFixed(2)} L
             </span>
             <span className="block text-[13px] font-semibold text-surf-muted">

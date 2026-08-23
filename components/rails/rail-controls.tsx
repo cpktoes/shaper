@@ -116,7 +116,7 @@ function ControlSlider({
         step={step}
         disabled={disabled}
         onValueChange={(v) => onValueChange(sliderValue(v))}
-        className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
+        className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
       />
       {(hintLeft || hintRight) && (
         <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
@@ -124,7 +124,7 @@ function ControlSlider({
           <span>{hintRight}</span>
         </div>
       )}
-      {note && <div className="mt-0.5 text-[10px] text-outline-accent">{note}</div>}
+      {note && <div className="mt-0.5 text-[10px] text-surf-accent-orange-ink">{note}</div>}
     </div>
   );
 }
@@ -234,7 +234,7 @@ function RailSectionControls({
                 max={5}
                 step={1}
                 onValueChange={(v) => onChange({ family: clampFinite(sliderValue(v), 1, 5) as RailFamily })}
-                className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
+                className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
               />
               <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
                 <span>Boxy</span>
@@ -262,7 +262,7 @@ function RailSectionControls({
                 max={70}
                 step={1}
                 onValueChange={(v) => onChange({ ratioTopPercent: clampFinite(sliderValue(v), 30, 70) })}
-                className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
+                className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
               />
               <RatioTickCaptions />
               {isTail && (
@@ -307,7 +307,7 @@ function RailSectionControls({
                           ),
                         })
                       }
-                      className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
+                      className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
                     />
                   </div>
                   <div className="mt-0.5 text-xs text-surf-muted font-normal">
@@ -341,7 +341,7 @@ function RailSectionControls({
                           ),
                         })
                       }
-                      className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
+                      className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
                     />
                   </div>
                 )}
@@ -349,7 +349,7 @@ function RailSectionControls({
                 <button
                   type="button"
                   onClick={resetAdvanced}
-                  className="cursor-pointer text-left text-[11px] font-bold text-outline-accent"
+                  className="cursor-pointer text-left text-[11px] font-bold text-surf-accent-cyan-ink"
                 >
                   ↺ Reset Advanced Settings
                 </button>
