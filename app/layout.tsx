@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { SiteNav } from "@/components/site-nav";
 import { DesignProvider as Provider } from "@/components/design/design-store";
@@ -11,6 +11,22 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+/**
+ * The two faces of the surf design language (see the `@theme` block in app/globals.css).
+ * Exposed as CSS variables here so the `font-display` / `font-body` theme tokens can
+ * reference them — Space Grotesk carries ALL-CAPS architectural headings, Inter carries
+ * body copy, labels and secondary text.
+ */
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -38,9 +54,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="flex h-full flex-col overflow-hidden">
+      <body className="flex h-full flex-col overflow-hidden bg-surf-base">
         <Provider>
           <div className="flex min-h-0 flex-1 flex-col">
             <SiteNav />
