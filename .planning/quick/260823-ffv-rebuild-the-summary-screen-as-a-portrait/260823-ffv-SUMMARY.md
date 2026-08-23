@@ -8,7 +8,7 @@ branch: design/order-form-summary
 commits:
   - c3a8bbf feat(summary): add fin box system to the design store
   - 59f9366 feat(summary): rebuild the summary as a portrait order form
-  - 90e9597 feat(summary): draw deck and bottom in one unfilled outline panel
+  - a093c1c feat(summary): draw deck and bottom in one unfilled outline panel
 ---
 
 # Quick Task 260823-ffv — Summary as a shop order form
