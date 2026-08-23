@@ -6,7 +6,7 @@ import { useDesign } from "@/components/design/design-store";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import { mmToInches } from "@/lib/geometry/units";
 import { OutlineControls } from "./outline-controls";
-import { OutlineViewer, outlineViewMetrics } from "./outline-viewer";
+import { OutlineViewer } from "./outline-viewer";
 
 /**
  * Reads the design state from the shared `DesignProvider` (components/design/design-store.tsx)
@@ -58,7 +58,6 @@ function buildPresetSource(spec: OutlineSpec): string {
 
 export function OutlineEditor() {
   const { outline, updateOutline, outlineGeometry, finPlacement } = useDesign();
-  const { frame: outlineFrame } = outlineViewMetrics(outlineGeometry);
   const [showConstruction, setShowConstruction] = useState(false);
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
 
@@ -101,14 +100,11 @@ export function OutlineEditor() {
               Template Viewer
             </div>
             <div className="relative flex min-h-0 w-full flex-1 justify-center">
-              {/* Sized from OutlineViewer's own frame rather than a fixed ratio: the viewBox
-                  widens for boards too wide for the baseline gutter budget, so a hardcoded aspect
-                  would letterbox or squash them. `outlineViewMetrics` is the single definition
-                  the viewer itself uses. */}
-              <div
-                className="relative h-full min-h-0 min-w-0 max-w-full"
-                style={{ aspectRatio: `${outlineFrame.width} / ${outlineFrame.height}` }}
-              >
+              {/* A plain filled box — the drawing sizes itself inside it via preserveAspectRatio.
+                  No aspect-ratio wrapper: the viewBox widens for wide boards, so any ratio pinned
+                  here would fight it, and a card that demands a height from its own contents is
+                  what broke the print sheet (see OutlineViewer's svg). */}
+              <div className="relative h-full min-h-0 w-full min-w-0">
                 <OutlineViewer
                   geometry={outlineGeometry}
                   outline={outline}

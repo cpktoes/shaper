@@ -427,17 +427,24 @@ export function FinViewer({
   const valueFontSize = compact ? "var(--summary-font-callout, 10px)" : 14;
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-4">
-      {/* The SVG fills the whole available box and `meet` scales the drawing up inside it. It used
-          to sit in an aspect-ratio wrapper, but the `width`/`height` attributes gave the svg an
-          intrinsic 530px that the wrapper could not override — so on the Fins screen the drawing
-          rendered at 1:1 in a 530px column while 654px of the card's width went unused. Sizing is
-          the container's job now; `preserveAspectRatio` keeps the proportion. */}
-      <div className="flex min-h-0 w-full flex-1 justify-center">
+    // `h-full` as well as `flex-1`: the Summary card's body is a block, not a flex container, so
+    // flex-1 alone resolves to zero height there. It went unnoticed while the svg carried an
+    // intrinsic size and propped the height up from below.
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center gap-4">
+      {/* The SVG is pinned to the whole available box and `meet` scales the drawing to fit inside
+          it. Sizing is the container's job; `preserveAspectRatio` keeps the proportion.
+
+          `absolute inset-0` rather than `h-full w-full`: with no width/height attributes the svg
+          carries its viewBox's intrinsic ratio, so a percentage width makes the height follow the
+          ratio instead of the box. In a tall cell that reads as "fills the box"; in a short wide
+          one — the Summary's fin banner — it computes a height far taller than the cell and the
+          drawing is clipped. Pinning to the edges removes the ratio from the box calculation
+          entirely, leaving it to do the one job it should: scaling the drawing inside. */}
+      <div className="relative flex min-h-0 w-full flex-1 justify-center">
         <svg
           viewBox={`0 ${VIEW_MIN_Y} ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
           preserveAspectRatio="xMidYMid meet"
-          className="block h-full w-full"
+          className="absolute inset-0 block h-full w-full"
         >
             <path d={filled} fill="var(--outline-board-fill)" stroke="none" />
             <path d={open} fill="none" stroke="var(--outline-ink)" strokeWidth={2} />

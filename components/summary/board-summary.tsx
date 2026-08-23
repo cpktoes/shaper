@@ -23,7 +23,7 @@
 
 import type { ReactNode } from "react";
 import { useDesign } from "@/components/design/design-store";
-import { OutlineViewer, outlineViewMetrics } from "@/components/outline/outline-viewer";
+import { OutlineViewer } from "@/components/outline/outline-viewer";
 import { FinViewer } from "@/components/fins/fin-viewer";
 import { RailDataTable } from "@/components/rails/rail-data-table";
 import { RailSectionPlot } from "@/components/rails/rail-section-plot";
@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
  * its print-only twin occupy the exact same slot — only one is ever visible: the textarea card
  * on screen, the centred name block in print (Summary.dc.html lines 68-78). */
 const BOARD_NAME_GRID_PLACEMENT =
-  "order-5 @min-[900px]:order-none @min-[900px]:col-start-3 @min-[900px]:row-start-2 @min-[900px]:min-h-0";
+  "order-6 @min-[900px]:order-none @min-[900px]:col-start-10 @min-[900px]:col-span-3 @min-[900px]:row-start-3 @min-[900px]:min-h-0";
 
 const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
@@ -95,7 +95,6 @@ export function BoardSummary() {
     setBoardName,
   } = useDesign();
   const { rootRef, printSummary } = useSummaryPrintFit();
-  const { frame: outlineFrame } = outlineViewMetrics(outlineGeometry);
 
   // Always all three sections, in Nose/Center/Tail order — unlike the rails screen's own DATA/
   // VIEWER pages, the summary has no collapse state to filter by.
@@ -116,17 +115,27 @@ export function BoardSummary() {
   const croppedSharedXAxisMin = mm(Math.max(rawSharedXAxisMinMm, inchesToMm(-6.5)));
 
   return (
+    // Two elements, not one: the outer div is the *container* the card layout queries, and a
+    // container query never matches the container itself — only its descendants. With the grid on
+    // this same element every `@min-[900px]:` track rule was silently inert and the columns fell
+    // back to auto-sized implicit tracks (one 960px column, four at zero width, the Template card
+    // swallowing 61% of the sheet). The per-item placements below always worked, because the cards
+    // ARE descendants. The outer div is also what `useSummaryPrintFit` sizes, so pinning it to the
+    // printable width re-evaluates the query and the measured layout is the printed one.
     <div
       ref={rootRef}
       data-summary-root
       className={cn(
-        "@container grid min-h-0 flex-1 grid-cols-1 auto-rows-auto gap-2 overflow-y-auto bg-outline-page-bg p-2",
-        "@min-[900px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] @min-[900px]:grid-rows-[85fr_15fr] @min-[900px]:overflow-hidden",
+        "@container flex min-h-0 flex-1 flex-col overflow-y-auto bg-outline-page-bg p-2",
       )}
     >
+      <div
+        data-summary-grid
+        className="grid min-h-0 flex-1 grid-cols-1 auto-rows-auto gap-2"
+      >
       <SummaryCard
         title="Rail Data"
-        className="order-3 min-h-[360px] @min-[900px]:order-none @min-[900px]:col-start-1 @min-[900px]:row-start-1 @min-[900px]:min-h-0"
+        className="order-3 min-h-[360px] @min-[900px]:order-none @min-[900px]:col-start-6 @min-[900px]:col-span-4 @min-[900px]:row-start-2 @min-[900px]:row-span-2 @min-[900px]:min-h-0"
       >
         <RailDataTable sections={sections} compact />
       </SummaryCard>
@@ -135,16 +144,14 @@ export function BoardSummary() {
       <SummaryCard
         title="Template"
         variant="flush"
-        className="order-1 min-h-[360px] @min-[900px]:order-none @min-[900px]:col-start-2 @min-[900px]:row-start-1 @min-[900px]:min-h-0"
+        className="order-1 min-h-[360px] @min-[900px]:order-none @min-[900px]:col-start-1 @min-[900px]:col-span-5 @min-[900px]:row-start-1 @min-[900px]:row-span-3 @min-[900px]:min-h-0"
       >
         <div className="relative flex h-full w-full justify-center">
-          {/* Sized from OutlineViewer's own frame, not a fixed ratio: the viewBox widens for boards
-              too wide for the baseline gutter budget, and the gutters are part of the SVG's aspect,
-              so any hardcoded ratio would letterbox or squash the drawing. */}
-          <div
-            className="relative h-full max-w-full"
-            style={{ aspectRatio: `${outlineFrame.width} / ${outlineFrame.height}` }}
-          >
+          {/* A plain filled box — the drawing sizes itself inside it via preserveAspectRatio. This
+              card must not demand a height of its own: the grid's `fr` rows go content-proportional
+              when the grid sizes itself, so a Template card asking for more height than its cell
+              inflates every other row and shrinks the whole printed sheet. */}
+          <div className="relative h-full min-h-0 w-full min-w-0">
             <OutlineViewer
               geometry={outlineGeometry}
               outline={outline}
@@ -158,41 +165,52 @@ export function BoardSummary() {
         </div>
       </SummaryCard>
 
-      <div className="order-4 flex min-h-[360px] flex-col gap-2 @min-[900px]:order-none @min-[900px]:col-start-3 @min-[900px]:row-start-1 @min-[900px]:min-h-0">
-        {/* Content-height, not an equal share: Volume is four rows of text, and splitting the
-            column 50/50 left it with dead space while the fin diagram scaled down to fit what was
-            left. Fin Placement takes everything Volume does not need. */}
-        <SummaryCard title="Volume Estimate" className="flex-none">
-          <VolumeCalculationCard
-            result={volumeResult}
-            lengthDisplay={formatFeetInches(effectiveVolume.length)}
-            widthDisplayLabel={formatInchesFraction(effectiveVolume.width)}
-            centerThicknessDisplayLabel={formatInchesFraction(effectiveVolume.centerThickness)}
-            compact
-          />
-        </SummaryCard>
-        <SummaryCard title="Fin Placement" variant="flush" className="flex-1 min-h-0">
-          {/* finTailOutline matters here: it draws the *designed* tail outline, the same one the
-              fins screen draws when it's importing template values. */}
-          <FinViewer
-            result={finPlacement}
-            tailShape={effectiveFins.tailShape}
-            tailWidth12={effectiveFins.tailWidth12}
-            boardLength={effectiveFins.boardLength}
-            showCallouts
-            compact
-            outlineOverride={finTailOutline}
-          />
-        </SummaryCard>
-      </div>
+      {/* Fin Placement — second in importance, and a wide drawing, so it banners across the top of
+          everything right of the Template rather than sitting in a tall cell it cannot fill. */}
+      <SummaryCard
+        title="Fin Placement"
+        variant="flush"
+        className="order-2 min-h-[300px] @min-[900px]:order-none @min-[900px]:col-start-6 @min-[900px]:col-span-7 @min-[900px]:row-start-1 @min-[900px]:min-h-0"
+      >
+        {/* finTailOutline matters here: it draws the *designed* tail outline, the same one the
+            fins screen draws when it's importing template values. */}
+        <FinViewer
+          result={finPlacement}
+          tailShape={effectiveFins.tailShape}
+          tailWidth12={effectiveFins.tailWidth12}
+          boardLength={effectiveFins.boardLength}
+          showCallouts
+          compact
+          outlineOverride={finTailOutline}
+        />
+      </SummaryCard>
+
+      {/* Volume — the least of the five, so it takes the short bottom strip. */}
+      <SummaryCard
+        title="Volume Estimate"
+        className="order-5 min-h-[200px] @min-[900px]:order-none @min-[900px]:col-start-10 @min-[900px]:col-span-3 @min-[900px]:row-start-2 @min-[900px]:min-h-0"
+      >
+        <VolumeCalculationCard
+          result={volumeResult}
+          lengthDisplay={formatFeetInches(effectiveVolume.length)}
+          widthDisplayLabel={formatInchesFraction(effectiveVolume.width)}
+          centerThicknessDisplayLabel={formatInchesFraction(effectiveVolume.centerThickness)}
+          compact
+        />
+      </SummaryCard>
 
       <SummaryCard
         title="Rail Plots"
         variant="flush"
-        className="order-2 min-h-[220px] @min-[900px]:order-none @min-[900px]:col-start-1 @min-[900px]:col-span-2 @min-[900px]:row-start-2 @min-[900px]:min-h-0"
+        className="order-4 min-h-[220px] @min-[900px]:order-none @min-[900px]:col-start-1 @min-[900px]:col-span-12 @min-[900px]:row-start-4 @min-[900px]:min-h-0"
       >
         {/* No per-section titles, no legend — matches the prototype's compact row
-            (RAIL_TITLE_ROW_H 0, Rails.dc.html line 1241). */}
+            (RAIL_TITLE_ROW_H 0, Rails.dc.html line 1241).
+
+            Side by side across the full width, which is also what keeps the sheet on one page.
+            Stacked in a narrow column these three wide, short curves needed 448px of height — over
+            half of what a landscape page has — and the whole sheet had to shrink to swallow it.
+            Laid out in a row they are the shortest thing on the page. */}
         <div className="flex h-full items-center justify-center gap-1">
           {SECTION_KEYS.map((key) => (
             <div key={key} className="flex h-full min-w-0 flex-1 items-center justify-center">
@@ -253,6 +271,7 @@ export function BoardSummary() {
         <div className="flex flex-1 flex-col items-center justify-center text-center text-[22px] leading-[1.2] font-extrabold whitespace-pre-wrap text-outline-ink">
           {boardName}
         </div>
+      </div>
       </div>
     </div>
   );

@@ -10,16 +10,53 @@
  */
 
 /* The CSS form of the prototype's `fontScale` (Summary.dc.html line 161:
-   `clamp(0.85, ((rootAvailW || 1200) / 3) / 400, 1.6)`, i.e. `clamp(0.85, viewportWidth / 1200,
-   1.6)`). Expressed per font size as `clamp(base*0.85, base/12 vw, base*1.6)` — worked example:
-   the 10px compact callout becomes `clamp(8.5px, 0.8333vw, 16px)`, which is exactly 10px at a
-   1200px window — this is the identical curve with no ResizeObserver/poll measuring it. */
+   `clamp(0.85, ((rootAvailW || 1200) / 3) / 400, 1.6)`, i.e. `clamp(0.85, rootWidth / 1200, 1.6)`).
+   Expressed per font size as `clamp(base*0.85, base/12 cqw, base*1.6)` — worked example: the 10px
+   compact callout becomes `clamp(8.5px, 0.8333cqw, 16px)`, which is exactly 10px at a 1200px root —
+   the identical curve with no ResizeObserver/poll measuring it.
+
+   `cqw`, not `vw`, and that difference is load-bearing. These sizes decide how tall the sheet lays
+   out, and `useSummaryPrintFit` measures that height while the page is still in screen media. Tied
+   to the viewport, the fonts it measures are the SCREEN's, while the sheet prints against the page's
+   much narrower viewport — so the same design measured 14.7px rows from a 1600px window and printed
+   9.35px ones, and the scale was computed for a layout that never existed. Tied to the container,
+   they follow the width the hook pins the root to, and measurement and print agree.
+
+   The custom properties are declared on the container itself, but that is fine: `cqw` resolves where
+   the property is USED, and every user is a descendant. */
 [data-summary-root] {
-  --summary-font-callout: clamp(8.5px, 0.8333vw, 16px); /* 10px base */
-  --summary-font-group: clamp(7.65px, 0.75vw, 14.4px); /* 9px base  */
-  --summary-font-row: clamp(9.35px, 0.9167vw, 17.6px); /* 11px base */
-  --summary-font-label: clamp(10.2px, 1vw, 19.2px); /* 12px base */
-  --summary-font-volume: clamp(13.6px, 1.3333vw, 25.6px); /* 16px base */
+  --summary-font-callout: clamp(8.5px, 0.8333cqw, 16px); /* 10px base */
+  --summary-font-group: clamp(7.65px, 0.75cqw, 14.4px); /* 9px base  */
+  --summary-font-row: clamp(9.35px, 0.9167cqw, 17.6px); /* 11px base */
+  --summary-font-label: clamp(10.2px, 1cqw, 19.2px); /* 12px base */
+  --summary-font-volume: clamp(13.6px, 1.3333cqw, 25.6px); /* 16px base */
+}
+
+/*
+ * The dashboard grid's tracks.
+ *
+ * Twelve columns and four rows, laid out by how much each card matters and what shape its content
+ * is. Template is the sheet's subject, so it takes a full-height column on the left where the eye
+ * lands first, wide enough that the tall board drawing is not stranded with dead space above and
+ * below it. Fin Placement is second and its drawing is wide, so it banners across the top of
+ * everything to the right rather than sitting in a tall cell it could never fill. Rail Data and the
+ * Rail Plots sit beneath it, and Volume — five rows of text, and the least of the five — takes the
+ * short strip at the bottom.
+ *
+ * A container query, not a media query: printing has a different viewport than the screen, so a
+ * viewport breakpoint would mean the layout measured by `useSummaryPrintFit` is not the one that
+ * prints. See that hook's head comment. The query is written against `[data-summary-grid]`, the
+ * child of the `@container` element — a container query never matches the container itself.
+ *
+ * The doubled attribute selector beats the `grid-cols-1` utility on the same element without
+ * needing `!important`, whatever order the two stylesheets land in.
+ */
+@container (min-width: 900px) {
+  [data-summary-grid][data-summary-grid] {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-rows: 32fr 25fr 25fr 18fr;
+    overflow: hidden;
+  }
 }
 
 /* Print path, ported from Summary.dc.html's own <style> helmet (lines 12-28). `@page` is the one
@@ -75,10 +112,12 @@
     display: flex !important;
   }
 
-  /* Set by useSummaryPrintFit's beforeprint handler: release the fixed on-screen height so the
-     grid can grow to its natural size before the print-fit `zoom` scale is measured and applied. */
+  /* Set by useSummaryPrintFit's beforeprint handler, which also gives this element an inline width
+     and height equal to the printable page box. The height is deliberately NOT forced to `auto`
+     here: that was what let the `fr` rows go content-proportional and inflate the sheet past the
+     page. `overflow: hidden` is the backstop — with the box the exact size of the page, anything
+     that still spills cannot start a second one. */
   [data-summary-root][data-printing] {
-    height: auto !important;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 }

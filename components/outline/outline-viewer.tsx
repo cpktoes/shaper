@@ -273,10 +273,16 @@ export function OutlineViewer({
   return (
     <svg
       ref={svgRef}
-      width={hideCallouts ? VIEW_W : frame.width}
-      height={hideCallouts ? VIEW_H : frame.height}
       viewBox={viewBox}
-      className="block h-full w-full"
+      preserveAspectRatio="xMidYMid meet"
+      // No width/height attributes: they give the svg an intrinsic size, which makes a percentage
+      // width resolve the height from the viewBox ratio instead of from the box it is in. On the
+      // Summary that turned the Template card into the tallest thing on the sheet — it demanded
+      // 809px inside a 585px cell, and since the grid's `fr` rows go content-proportional when the
+      // grid sizes itself, that one card inflated every other row and forced the printed sheet down
+      // to 70% of the page width. Filling the box and letting `meet` scale the drawing inside it
+      // keeps the card honest about how much height it needs, which is none in particular.
+      className="absolute inset-0 block h-full w-full"
       onPointerMove={onOutlineDrag ? handleDragMove : undefined}
       onPointerUp={onOutlineDrag ? handleDragEnd : undefined}
       onPointerCancel={onOutlineDrag ? handleDragEnd : undefined}

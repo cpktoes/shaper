@@ -82,28 +82,23 @@ export function useSummaryPrintFit() {
 
       const page = printableBoxPx();
 
-      // Pass one: lay the grid out at the width it will actually print at, and see how tall it is.
-      // Reading scrollHeight after setting the width forces the reflow that makes it reflect the
-      // new layout; no extra measuring pass needed.
+      // Hand the grid the page box outright — both axes — rather than letting it size itself and
+      // then scaling the result down.
+      //
+      // The difference matters because the grid's rows are `fr`. Given a definite height they
+      // divide it, exactly as they do on screen. Left to size themselves they become
+      // content-proportional instead, so the single tallest card sets the unit and every other row
+      // inflates with it: the sheet came out around 1040px tall against a 756px page and had to be
+      // scaled to 0.70, printing at 70% of the page width with a third of the sheet left blank.
+      // Sized to the page, the layout that prints is the one the design was drawn for.
       el.style.width = `${page.width}px`;
-      const firstScale = Math.min(1, (page.height * FIT_SAFETY) / el.scrollHeight);
+      el.style.height = `${page.height}px`;
 
-      let scale = firstScale;
-      if (firstScale < 1) {
-        // `zoom` shrinks the width we just set along with everything else, which would print the
-        // sheet letterboxed inside the page. Laying out wider by the same factor cancels that, so
-        // the scaled result fills the page. The wider layout reflows shorter, so re-measure.
-        const layoutWidth = page.width / firstScale;
-        el.style.width = `${layoutWidth}px`;
-        // `page.width / layoutWidth` is firstScale, so this can only ever shrink the scale further:
-        // whichever axis binds, both end up inside the page.
-        scale = Math.min(
-          1,
-          (page.height * FIT_SAFETY) / el.scrollHeight,
-          page.width / layoutWidth,
-        );
-      }
-
+      // Guard for content that genuinely cannot compress into its cell — a long rail table on a
+      // small page. `scrollHeight` still reports the overflow even with the box clipped, so this
+      // catches it and falls back to scaling the whole sheet.
+      const overflow = el.scrollHeight - page.height;
+      const scale = overflow > 1 ? (page.height * FIT_SAFETY) / el.scrollHeight : 1;
       el.style.zoom = String(Number.isFinite(scale) && scale > 0 ? scale : 1);
     };
 
@@ -113,6 +108,7 @@ export function useSummaryPrintFit() {
       el.removeAttribute("data-printing");
       el.style.zoom = "";
       el.style.width = "";
+      el.style.height = "";
     };
 
     window.addEventListener("beforeprint", beforePrint);
