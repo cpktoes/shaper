@@ -11,6 +11,26 @@
  * CONSTANTS, not props: nothing in this file accepts an arbitrary x/y gutter offset as an argument.
  */
 
+/**
+ * Callout type scale, in SVG user units.
+ *
+ * These were scattered literals (9, 10, 11, 13) with hand-tuned baseline offsets beside
+ * them. They are constants for the same reason the rails below are: the drawing scales
+ * uniformly to fit its box, so a size chosen per-call is a size that means something
+ * different in every render.
+ *
+ * Sized up from the original scale after review — the outline drawing is height-bound and
+ * was rendering at 0.71, which put dimension values on screen at 9.2px and station names
+ * at 6.4px. The stack offsets below are derived from these rather than re-tuned by hand,
+ * so the scale stays one edit.
+ */
+export const CALLOUT_FONT_VALUE = 17;
+export const CALLOUT_FONT_NAME = 12;
+export const CALLOUT_FONT_DIM = 14;
+/** Baseline offsets for a name-over-value stack, derived from the scale above. */
+export const CALLOUT_STACK_NAME_DY = -CALLOUT_FONT_VALUE * 0.34;
+export const CALLOUT_STACK_VALUE_DY = CALLOUT_FONT_VALUE * 0.76;
+
 /** Half-length of a `DimensionTick`'s 45-degree slash, in SVG user units. */
 export const CALLOUT_TICK_SIZE = 4;
 /** Gap left between an extension line's far end and where its value text begins. */
@@ -21,17 +41,17 @@ export const CALLOUT_VALUE_GAP = 6;
  * Every input chip's right edge sits on `OUTLINE_CHIP_RIGHT_X`; every derived value's text starts
  * at `OUTLINE_OUTPUT_VALUE_X`. Neither is ever passed in by a caller.
  */
-export const OUTLINE_CHIP_WIDTH = 96;
+export const OUTLINE_CHIP_WIDTH = 112;
 export const OUTLINE_CHIP_RIGHT_X = 58;
-export const OUTLINE_CHIP_HEIGHT = 31;
+export const OUTLINE_CHIP_HEIGHT = 38;
 export const OUTLINE_GUTTER_GAP = 36.5;
 export const OUTLINE_OUTPUT_VALUE_X = 282;
 
 /** Widened viewBox (sketch 004) that gives the two gutters room outside the board's own
  * unchanged 340x620 coordinate space — the board's own scale/centreline math never changes. */
-export const OUTLINE_VIEW_MIN_X = -50;
+export const OUTLINE_VIEW_MIN_X = -60;
 export const OUTLINE_VIEW_MIN_Y = -16;
-export const OUTLINE_VIEW_WIDTH = 410;
+export const OUTLINE_VIEW_WIDTH = 424;
 export const OUTLINE_VIEW_HEIGHT = 638;
 
 /** The maximum half-width (in px, from the board's centreline) the outline may render at before
@@ -148,7 +168,7 @@ export function DimensionLine({
           y={labelY}
           textAnchor={labelAnchor}
           style={{
-            fontSize: 11,
+            fontSize: CALLOUT_FONT_DIM,
             fontWeight: 700,
             fontFamily: "var(--font-body)",
             fill: "var(--outline-ink)",
@@ -201,18 +221,18 @@ export function CalloutChip({ x, y, name, value, nameColor = "var(--outline-call
       />
       <text
         x={centerX}
-        y={y - 2.5}
+        y={y + CALLOUT_STACK_NAME_DY}
         textAnchor="middle"
-        style={{ fontSize: 9, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.12em" }}
+        style={{ fontSize: CALLOUT_FONT_NAME, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.12em" }}
         fill={nameColor}
       >
         {name}
       </text>
       <text
         x={centerX}
-        y={y + 10.5}
+        y={y + CALLOUT_STACK_VALUE_DY}
         textAnchor="middle"
-        style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
+        style={{ fontSize: CALLOUT_FONT_VALUE, fontWeight: 700, fontFamily: "var(--font-body)" }}
         fill="var(--outline-ink)"
       >
         {value}
@@ -247,15 +267,15 @@ export function OutputRail({ edgeX, y, value, station, valueX = OUTLINE_OUTPUT_V
       <text
         x={valueX}
         y={y - 2}
-        style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
+        style={{ fontSize: CALLOUT_FONT_VALUE, fontWeight: 700, fontFamily: "var(--font-body)" }}
         fill="var(--outline-ink)"
       >
         {value}
       </text>
       <text
         x={valueX}
-        y={y + 10}
-        style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.1em" }}
+        y={y + CALLOUT_FONT_NAME}
+        style={{ fontSize: CALLOUT_FONT_NAME, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.1em" }}
         fill="var(--outline-callout-label)"
       >
         {station}

@@ -30,7 +30,7 @@ import type { FinMark, FinPlacementResult, FinRole, FinTailShape, FinLateralKind
 import { tailHalfWidthAt, tailOffTailAtHalfWidth, tailOutlineHalfPoints } from "@/lib/geometry/fins";
 import { formatFeetInches, formatInchesFraction, inchesToMm, mm, mmToInches, type Mm } from "@/lib/geometry/units";
 import type { Point2D } from "@/lib/geometry/board";
-import { DimensionTick } from "@/components/viewer/callout-primitives";
+import { CALLOUT_FONT_VALUE, DimensionTick } from "@/components/viewer/callout-primitives";
 
 const SCALE = 14;
 const ORIGIN_X = 260;
@@ -424,7 +424,9 @@ export function FinViewer({
   const w12LineX1 = ORIGIN_X - (w12In / 2) * SCALE;
   const w12LineX2 = ORIGIN_X + (w12In / 2) * SCALE;
 
-  const valueFontSize = compact ? "var(--summary-font-callout, 10px)" : 14;
+  // Non-compact shares the outline viewer's callout scale so a dimension reads the same
+  // size on either screen. Compact keeps the summary scale the print-fit depends on.
+  const valueFontSize = compact ? "var(--summary-font-callout, 10px)" : CALLOUT_FONT_VALUE;
 
   return (
     // `h-full` as well as `flex-1`: the Summary card's body is a block, not a flex container, so

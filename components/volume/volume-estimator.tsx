@@ -26,7 +26,7 @@ export function VolumeEstimator() {
           onToggleImportRailThickness={toggleImportRailThickness}
         />
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-5 bg-surf-base px-16 py-12">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-5 bg-surf-base px-12 py-8">
         <VolumeCalculationCard
           result={volumeResult}
           lengthDisplay={formatFeetInches(effectiveVolume.length)}

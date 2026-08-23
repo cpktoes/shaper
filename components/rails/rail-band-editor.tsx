@@ -14,9 +14,13 @@ type RailPage = "viewer" | "data";
 const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
 
-// The pre-existing width cap each plot wrapper used to carry as `max-w-[420px]` — now the ceiling
-// on the single shared width solved for below, rather than a per-plot CSS class.
-const MAX_PLOT_W = 420;
+// Sanity ceiling only. This was 420 — inherited from the per-plot `max-w-[420px]` class — which
+// made it the *binding* constraint on every normal viewport: at 1200x800 the plots rendered 420
+// wide inside an 800-wide column with height nowhere near binding, wasting 380px and keeping the
+// axis labels small. The solver below already takes the min of container width and the
+// height-derived width, so those are the real limits; this now only stops a plot ballooning on an
+// ultrawide display.
+const MAX_PLOT_W = 900;
 
 /** Rounds a millimetre value to inches, 3 decimal places — matches outline-editor.tsx's own helper. */
 function roundedInches(value: Mm): number {
@@ -199,7 +203,7 @@ export function RailBandEditor() {
           </Button>
         )}
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-2 bg-surf-base px-16 py-12">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-2 bg-surf-base px-10 py-5">
         <div className="flex flex-none gap-1.5">
           {(["viewer", "data"] as RailPage[]).map((page) => (
             <button
@@ -219,8 +223,8 @@ export function RailBandEditor() {
         </div>
 
         {activePage === "viewer" && (
-          <div className="flex min-h-0 flex-1 flex-col bg-surf-base pt-10">
-            <div className="mb-10 self-start text-xl font-display text-surf-black uppercase tracking-architectural font-bold">Rail Viewer</div>
+          <div className="flex min-h-0 flex-1 flex-col bg-surf-base pt-3">
+            <div className="mb-2 flex-none self-start text-sm font-display text-surf-black uppercase tracking-architectural font-bold">Rail Viewer</div>
             <div ref={plotsContainerRef} className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
               {openSections.map((key) => (
                 <div key={key} className="flex flex-none flex-col items-center" style={{ width: plotWidth }}>

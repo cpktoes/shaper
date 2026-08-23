@@ -150,7 +150,7 @@ export function FinPlacementEditor() {
           </Button>
         )}
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-base px-16 py-12">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-base px-10 py-5">
         <div className="flex flex-none gap-1.5">
           {TAB_ORDER.map((tab) => (
             <button
@@ -170,8 +170,8 @@ export function FinPlacementEditor() {
         </div>
 
         {activeTab === "viewer" && (
-          <div className="flex min-h-0 flex-1 flex-col items-center bg-surf-base pt-10">
-            <div className="mb-10 self-start text-xl font-display text-surf-black uppercase tracking-architectural font-bold">Fin Viewer</div>
+          <div className="flex min-h-0 flex-1 flex-col items-center bg-surf-base pt-3">
+            <div className="mb-2 flex-none self-start text-sm font-display text-surf-black uppercase tracking-architectural font-bold">Fin Viewer</div>
             <FinViewer
               result={result}
               tailShape={spec.tailShape}
