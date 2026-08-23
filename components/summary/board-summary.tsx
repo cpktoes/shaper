@@ -70,7 +70,7 @@ function SummaryCard({
     >
       <div
         className={cn(
-          "flex-none text-[13px] font-extrabold tracking-[1px] text-outline-accent uppercase",
+          "flex-none text-[13px] font-display text-surf-black uppercase tracking-architectural font-bold",
           variant === "padded" ? "mb-1" : "mt-1.5 ml-2",
         )}
       >
@@ -234,14 +234,14 @@ export function BoardSummary() {
         )}
       >
         <div className="mb-1 flex flex-none items-center justify-between gap-2">
-          <span className="text-[12px] font-extrabold tracking-[1px] text-outline-accent uppercase">
+          <span className="text-[12px] font-display text-surf-black uppercase tracking-architectural font-bold">
             Board Name
           </span>
           <Button
             type="button"
             size="sm"
             onClick={printSummary}
-            className="flex-none border-outline-accent bg-outline-accent text-outline-ink hover:bg-outline-accent/85"
+            className="flex-none border-outline-accent bg-outline-accent text-surf-black hover:bg-outline-accent/85"
           >
             Print Summary
           </Button>
@@ -251,7 +251,7 @@ export function BoardSummary() {
           onChange={(e) => setBoardName(e.target.value)}
           placeholder="Board Name"
           rows={2}
-          className="min-h-0 w-full flex-1 resize-none rounded-lg border border-surf-muted/20 bg-surf-base px-2.5 py-1.5 text-sm font-bold text-outline-ink"
+          className="min-h-0 w-full flex-1 resize-none rounded-lg border border-surf-muted/20 bg-surf-base px-2.5 py-1.5 text-sm font-bold text-surf-black"
         />
       </div>
 
@@ -265,10 +265,10 @@ export function BoardSummary() {
           BOARD_NAME_GRID_PLACEMENT,
         )}
       >
-        <div className="mb-1 flex-none text-[12px] font-extrabold tracking-[1px] text-outline-accent uppercase">
+        <div className="mb-1 flex-none text-[12px] font-display text-surf-black uppercase tracking-architectural font-bold">
           Board Name
         </div>
-        <div className="flex flex-1 flex-col items-center justify-center text-center text-[22px] leading-[1.2] font-extrabold whitespace-pre-wrap text-outline-ink">
+        <div className="flex flex-1 flex-col items-center justify-center text-center text-[22px] leading-[1.2] font-extrabold whitespace-pre-wrap text-surf-black">
           {boardName}
         </div>
       </div>

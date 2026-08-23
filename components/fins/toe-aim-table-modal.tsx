@@ -40,7 +40,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
     "border border-surf-muted/20 px-2 py-1 " + (i === view.highlightIndex ? "bg-surf-muted/15 font-bold" : "");
   const headerCellClass = (i: number) =>
     "border border-surf-muted/20 px-2 py-1 " +
-    (i === view.highlightIndex ? "bg-outline-accent font-bold text-outline-ink" : "bg-outline-ink text-white");
+    (i === view.highlightIndex ? "bg-outline-accent font-bold text-surf-black" : "bg-outline-ink text-white");
 
   return (
     <div
@@ -56,7 +56,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
         aria-label="McKee Toe-In Aim Tables"
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[85vh] max-w-[92vw] overflow-auto rounded-xl border border-surf-muted/20 bg-surf-base p-6 text-outline-ink outline-none"
+        className="max-h-[85vh] max-w-[92vw] overflow-auto rounded-xl border border-surf-muted/20 bg-surf-base p-6 text-surf-black outline-none"
       >
         <div className="mb-1.5 flex items-center justify-between gap-5">
           <div className="text-sm font-extrabold">
@@ -70,7 +70,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
             Close
           </button>
         </div>
-        <div className="mb-3.5 text-xs text-[#8a8272]">
+        <div className="mb-3.5 text-xs text-surf-muted">
           Distance off the stringer at the nose. Highlighted column is nearest your tail width; row{" "}
           {view.rowLabel} is nearest your board length (rows 72&quot; and up are identical).
         </div>

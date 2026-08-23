@@ -33,32 +33,32 @@ interface FinDataPanelProps {
 
 export function FinDataPanel({ result, boardLength, tailWidth12, finSetup, tailShape }: FinDataPanelProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-base pt-10 text-outline-ink">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-base pt-10 text-surf-black">
       <div className="mb-2.5 text-xl font-extrabold tracking-tight">
         {formatFeetInches(boardLength)} · {formatInchesFraction(tailWidth12, 16)} tail @12&quot; ·{" "}
         {FIN_SETUP_LABEL[finSetup] ?? finSetup} · {TAIL_SHAPE_LABEL[tailShape]} tail
         {result.isModified && <span className="text-outline-accent"> · Modified</span>}
       </div>
-      <div className="mb-4 border-b-2 border-surf-muted/20 pb-4 text-sm font-normal text-outline-accent-strong">
+      <div className="mb-4 border-b-2 border-surf-muted/20 pb-4 text-sm font-normal text-surf-muted">
         {result.modelHeader}
       </div>
       {result.sections.map((sec) => (
         <div key={sec.label} className="mb-4">
-          <div className="mb-2 text-xs font-bold tracking-wide text-outline-accent uppercase">{sec.label}</div>
+          <div className="mb-2 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold">{sec.label}</div>
           {sec.groups.map((grp) => (
             <div key={grp.heading} className="mb-2 ml-3">
-              <div className="mb-1 border-b border-surf-muted/20 pb-0.5 text-[11px] font-bold tracking-wide text-[#a49b86] uppercase">
+              <div className="mb-2 border-b border-surf-muted/20 pb-1 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold">
                 {grp.heading}
               </div>
               {grp.rows.map((row) => (
                 <div key={row.label} className="ml-2.5 flex justify-between py-1.5 text-sm">
-                  <span className="text-[#8a8272]">{row.label}</span>
+                  <span className="text-surf-muted">{row.label}</span>
                   <span className="font-bold">{formatInchesFraction(row.value, 16)}</span>
                 </div>
               ))}
               {grp.fullSpread !== null && (
                 <div className="ml-[22px] flex justify-between py-1.5 text-sm">
-                  <span className="text-[#8a8272]">
+                  <span className="text-surf-muted">
                     Full Spread <em>(*Full spread may be &gt;2x due to 1/16&quot; rounding)</em>
                   </span>
                   <span className="font-bold">{formatInchesFraction(grp.fullSpread, 16)}</span>

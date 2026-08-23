@@ -73,8 +73,8 @@ function SectionHeading({
       onClick={onToggle}
       className={
         small
-          ? "flex w-full items-center justify-between border-b border-outline-sidebar-divider pb-1.5 pl-3 text-[11px] font-bold tracking-wide text-outline-accent uppercase"
-          : "mt-1.5 flex w-full items-center justify-between border-b border-outline-sidebar-divider pb-1.5 text-sm font-bold tracking-wide text-outline-accent uppercase"
+          ? "flex w-full items-center justify-between border-b border-surf-muted/20 pb-2 pl-3 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold"
+          : "mt-1.5 flex w-full items-center justify-between border-b border-surf-muted/20 pb-2 text-xs font-display text-surf-black uppercase tracking-architectural font-bold"
       }
     >
       <span>{children}</span>
@@ -108,7 +108,7 @@ function ControlSlider({
 }) {
   return (
     <div className={disabled ? "opacity-40" : undefined}>
-      <div className="mb-2 text-[11px] tracking-wide text-outline-sidebar-text-muted uppercase">{label}</div>
+      <div className="mb-2 text-sm text-surf-muted font-normal">{label}</div>
       <Slider
         value={value}
         min={min}
@@ -119,7 +119,7 @@ function ControlSlider({
         className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
       />
       {(hintLeft || hintRight) && (
-        <div className="mt-0.5 flex justify-between text-[10px] text-outline-sidebar-text-muted">
+        <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
           <span>{hintLeft}</span>
           <span>{hintRight}</span>
         </div>
@@ -132,10 +132,10 @@ function ControlSlider({
 function RatioTickCaptions() {
   return (
     <div className="relative mt-0.5 h-3">
-      <span className="absolute left-0 text-[9px] text-outline-sidebar-text-muted">30/70</span>
-      <span className="absolute left-1/2 -translate-x-1/2 text-[9px] text-outline-sidebar-text-muted">50/50</span>
-      <span className="absolute left-3/4 -translate-x-1/2 text-[9px] text-outline-sidebar-text-muted">60/40</span>
-      <span className="absolute right-0 text-[9px] text-outline-sidebar-text-muted">70/30</span>
+      <span className="absolute left-0 text-[9px] text-surf-muted font-normal">30/70</span>
+      <span className="absolute left-1/2 -translate-x-1/2 text-[9px] text-surf-muted font-normal">50/50</span>
+      <span className="absolute left-3/4 -translate-x-1/2 text-[9px] text-surf-muted font-normal">60/40</span>
+      <span className="absolute right-0 text-[9px] text-surf-muted font-normal">70/30</span>
     </div>
   );
 }
@@ -225,7 +225,7 @@ function RailSectionControls({
 
           <div className="flex gap-3.5">
             <div className="min-w-0 flex-1">
-              <div className="mb-2 h-4 text-[11px] leading-4 tracking-wide text-outline-sidebar-text-muted uppercase">
+              <div className="mb-2 min-h-5 leading-5 text-sm text-surf-muted font-normal">
                 Family — {railFamilyLabel(spec.family)}
               </div>
               <Slider
@@ -236,7 +236,7 @@ function RailSectionControls({
                 onValueChange={(v) => onChange({ family: clampFinite(sliderValue(v), 1, 5) as RailFamily })}
                 className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
               />
-              <div className="mt-0.5 flex justify-between text-[10px] text-outline-sidebar-text-muted">
+              <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
                 <span>Boxy</span>
                 <span>Medium</span>
                 <span>Knifey</span>
@@ -245,10 +245,10 @@ function RailSectionControls({
 
             <div className="min-w-0 flex-1">
               <div className="mb-2 flex h-4 items-center justify-between leading-4">
-                <div className="text-[11px] tracking-wide text-outline-sidebar-text-muted uppercase">
+                <div className="text-sm text-surf-muted font-normal">
                   Ratio — {spec.ratioTopPercent}/{100 - spec.ratioTopPercent}
                 </div>
-                <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-outline-sidebar-text">
+                <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-muted font-normal">
                   <Checkbox
                     checked={spec.symmetrical}
                     onCheckedChange={() => onChange({ symmetrical: !spec.symmetrical })}
@@ -266,7 +266,7 @@ function RailSectionControls({
               />
               <RatioTickCaptions />
               {isTail && (
-                <label className="mt-2 flex cursor-pointer items-center gap-1.5 text-[11px] text-outline-sidebar-text">
+                <label className="mt-2 flex cursor-pointer items-center gap-1.5 text-sm text-surf-muted font-normal">
                   <Checkbox checked={hardEdgeOn} onCheckedChange={() => onToggleHardEdge?.()} />
                   Hard Edge
                 </label>
@@ -282,10 +282,10 @@ function RailSectionControls({
               <div className="flex flex-col gap-3 pl-3 pt-3">
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
-                    <div className="text-[11px] text-outline-sidebar-text-muted">
+                    <div className="text-sm text-surf-muted font-normal">
                       Corner Cut Offset — {formatInchesFraction(mm(inchesToMm(cornerCutOffsetIn)))}
                     </div>
-                    <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-outline-sidebar-text">
+                    <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-muted font-normal">
                       <Checkbox
                         checked={spec.removeCornerCut}
                         onCheckedChange={() => onChange({ removeCornerCut: !spec.removeCornerCut })}
@@ -310,7 +310,7 @@ function RailSectionControls({
                       className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
                     />
                   </div>
-                  <div className="mt-0.5 text-[10px] text-outline-sidebar-text-muted">
+                  <div className="mt-0.5 text-xs text-surf-muted font-normal">
                     0 = falls on Rail Mark 1
                   </div>
                 </div>
@@ -318,10 +318,10 @@ function RailSectionControls({
                 {(!isTail || !hardEdgeOn) && (
                   <div>
                     <div className="mb-1.5 flex items-center justify-between">
-                      <div className="text-[11px] text-outline-sidebar-text-muted">
+                      <div className="text-sm text-surf-muted font-normal">
                         Bottom Tuck 3 — {formatInchesFraction(output.result.bottomTuck3)}
                       </div>
-                      <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-outline-sidebar-text">
+                      <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-muted font-normal">
                         <Checkbox
                           checked={spec.singleTuck}
                           onCheckedChange={() => onChange({ singleTuck: !spec.singleTuck })}
@@ -375,8 +375,8 @@ export function RailControls({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <div className="text-[22px] font-bold text-outline-sidebar-text">Rail Band Calculator</div>
-        <div className="mt-0.5 text-xs text-outline-sidebar-text-muted">
+        <div className="text-lg leading-tight font-display text-surf-black uppercase tracking-architectural font-bold">Rail Band Calculator</div>
+        <div className="mt-0.5 text-sm text-surf-muted font-normal">
           Rail band calculator for shaping consistent rails
         </div>
       </div>

@@ -55,9 +55,9 @@ export function SetupScreen() {
   };
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto bg-background">
+    <div className="min-h-0 flex-1 overflow-y-auto bg-surf-base">
       <div className="mx-auto max-w-5xl px-6 pt-16 pb-16 md:px-8">
-        <h1 className="text-[32px] leading-[1.15] font-semibold text-foreground">Shape a New Board</h1>
+        <h1 className="text-3xl leading-[1.2] font-display text-surf-black uppercase tracking-architectural font-bold">Shape a New Board</h1>
         <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {BOARD_PRESETS.map((preset) => (
             <PresetCard key={preset.id} preset={preset} onSelect={handleSelect} />

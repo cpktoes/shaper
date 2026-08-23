@@ -192,7 +192,7 @@ export function RailBandEditor() {
           <Button
             variant="ghost"
             size="sm"
-            className="mt-4 w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-outline-accent hover:bg-outline-accent hover:text-outline-ink"
+            className="mt-4 w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-outline-accent hover:bg-outline-accent hover:text-surf-black"
             onClick={handleCopyPreset}
           >
             {justCopiedPreset ? "Copied!" : "Copy preset values"}
@@ -209,8 +209,8 @@ export function RailBandEditor() {
               className={
                 "cursor-pointer rounded-t-lg border px-[18px] py-2.5 text-sm font-bold " +
                 (activePage === page
-                  ? "border-surf-muted/20 border-b-0 bg-surf-base text-outline-ink"
-                  : "border-transparent bg-transparent text-[#8a8272]")
+                  ? "border-surf-muted/20 border-b-0 bg-surf-base text-surf-black"
+                  : "border-transparent bg-transparent text-surf-muted")
               }
             >
               {page === "viewer" ? "VIEWER" : "DATA"}
@@ -220,7 +220,7 @@ export function RailBandEditor() {
 
         {activePage === "viewer" && (
           <div className="flex min-h-0 flex-1 flex-col bg-surf-base pt-10">
-            <div className="mb-10 self-start text-xl font-extrabold text-surf-black">Rail Viewer</div>
+            <div className="mb-10 self-start text-xl font-display text-surf-black uppercase tracking-architectural font-bold">Rail Viewer</div>
             <div ref={plotsContainerRef} className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
               {openSections.map((key) => (
                 <div key={key} className="flex flex-none flex-col items-center" style={{ width: plotWidth }}>
@@ -228,7 +228,7 @@ export function RailBandEditor() {
                     ref={(el) => {
                       titleRefs.current[key] = el;
                     }}
-                    className="mb-1 flex-none text-base font-extrabold text-outline-ink"
+                    className="mb-1 flex-none text-base font-extrabold text-surf-black"
                   >
                     {SECTION_TITLE[key]}
                   </div>
@@ -239,7 +239,7 @@ export function RailBandEditor() {
             {legend.length > 0 && (
               <div className="mt-4 flex flex-none flex-wrap items-center justify-center gap-x-6 gap-y-2">
                 {legend.map((entry) => (
-                  <span key={entry.label} className="flex items-center gap-1.5 text-[10px] text-[#8a8272]">
+                  <span key={entry.label} className="flex items-center gap-1.5 text-[10px] text-surf-muted">
                     <span
                       className="inline-block h-[9px] w-[9px] flex-shrink-0 rounded-full"
                       style={{ background: entry.color }}

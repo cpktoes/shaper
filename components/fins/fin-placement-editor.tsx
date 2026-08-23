@@ -143,7 +143,7 @@ export function FinPlacementEditor() {
           <Button
             variant="ghost"
             size="sm"
-            className="mt-4 w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-outline-accent hover:bg-outline-accent hover:text-outline-ink"
+            className="mt-4 w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-outline-accent hover:bg-outline-accent hover:text-surf-black"
             onClick={handleCopyPreset}
           >
             {justCopiedPreset ? "Copied!" : "Copy preset values"}
@@ -160,8 +160,8 @@ export function FinPlacementEditor() {
               className={
                 "cursor-pointer rounded-t-lg border px-[18px] py-2.5 text-sm font-bold " +
                 (activeTab === tab
-                  ? "border-surf-muted/20 border-b-0 bg-surf-base text-outline-ink"
-                  : "border-transparent bg-transparent text-[#8a8272]")
+                  ? "border-surf-muted/20 border-b-0 bg-surf-base text-surf-black"
+                  : "border-transparent bg-transparent text-surf-muted")
               }
             >
               {TAB_LABEL[tab]}
@@ -171,7 +171,7 @@ export function FinPlacementEditor() {
 
         {activeTab === "viewer" && (
           <div className="flex min-h-0 flex-1 flex-col items-center bg-surf-base pt-10">
-            <div className="mb-10 self-start text-xl font-extrabold text-surf-black">Fin Viewer</div>
+            <div className="mb-10 self-start text-xl font-display text-surf-black uppercase tracking-architectural font-bold">Fin Viewer</div>
             <FinViewer
               result={result}
               tailShape={spec.tailShape}

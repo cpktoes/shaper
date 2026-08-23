@@ -7,7 +7,7 @@
 function InfoBlock({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
     <div className="mb-4.5">
-      <div className="mb-2 text-xs font-bold tracking-wide text-outline-accent uppercase">{heading}</div>
+      <div className="mb-2 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold">{heading}</div>
       <div className="text-sm leading-relaxed">{children}</div>
     </div>
   );
@@ -15,9 +15,9 @@ function InfoBlock({ heading, children }: { heading: string; children: React.Rea
 
 export function FinModelInfo() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-base pt-10 text-outline-ink">
-      <div className="mb-3 text-xl font-extrabold">Model Info</div>
-      <div className="mb-5 border-b-2 border-surf-muted/20 pb-4 text-sm text-[#8a8272]">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-base pt-10 text-surf-black">
+      <div className="mb-6 text-xl font-display text-surf-black uppercase tracking-architectural font-bold">Model Info</div>
+      <div className="mb-5 border-b-2 border-surf-muted/20 pb-4 text-sm text-surf-muted">
         Reference note on where each model&apos;s placement guidance comes from.
       </div>
 
@@ -81,7 +81,7 @@ export function FinModelInfo() {
       </InfoBlock>
 
       <div>
-        <div className="mb-2 text-xs font-bold tracking-wide text-outline-accent uppercase">Quad Rear Models</div>
+        <div className="mb-2 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold">Quad Rear Models</div>
         <div className="text-sm leading-relaxed">
           <div className="mb-2">
             <strong>Basic: Spread</strong> — Uses the front Basic Model as input. Rears are placed

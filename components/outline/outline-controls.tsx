@@ -68,7 +68,7 @@ function withEndWidth(tail: TailShape, endWidthIn: number): TailShape {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-1.5 border-b border-outline-sidebar-divider pb-1.5 text-sm font-bold tracking-wide text-outline-accent uppercase">
+    <div className="mt-1.5 border-b border-surf-muted/20 pb-2 text-xs font-display text-surf-black uppercase tracking-architectural font-bold">
       {children}
     </div>
   );
@@ -101,7 +101,7 @@ function SliderRow({
 }) {
   return (
     <div className={disabled ? "flex-1 opacity-40" : "flex-1"}>
-      <div className="mb-2 text-[11px] tracking-wide text-outline-sidebar-text-muted uppercase">
+      <div className="mb-2 text-sm text-surf-muted font-normal">
         {label} — {displayValue}
       </div>
       <Slider
@@ -114,7 +114,7 @@ function SliderRow({
         className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
       />
       {(leftHint || rightHint) && (
-        <div className="mt-0.5 flex justify-between text-[10px] text-outline-sidebar-text-muted">
+        <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
           <span>{leftHint}</span>
           <span>{rightHint}</span>
         </div>
@@ -151,15 +151,15 @@ export function OutlineControls({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <div className="text-[22px] font-bold text-outline-sidebar-text">Template Builder</div>
-        <div className="mt-0.5 text-xs text-outline-sidebar-text-muted">
+        <div className="text-lg leading-tight font-display text-surf-black uppercase tracking-architectural font-bold">Template Builder</div>
+        <div className="mt-0.5 text-sm text-surf-muted font-normal">
           Design and print full sized surfboard templates
         </div>
       </div>
 
       <SectionHeading>Board Length</SectionHeading>
       <div>
-        <div className="mb-2 text-[11px] tracking-wide text-outline-sidebar-text-muted uppercase">
+        <div className="mb-2 text-sm text-surf-muted font-normal">
           Board Length — {formatFeetInches(outline.length)}
         </div>
         <div className="mb-2 flex gap-2">
@@ -391,10 +391,10 @@ export function OutlineControls({
       </div>
 
       <div className="mt-auto border-t border-outline-sidebar-divider pt-3">
-        <div className="mb-2 text-[11px] font-bold tracking-wide text-outline-accent uppercase">
+        <div className="mb-2 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold">
           Settings
         </div>
-        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-outline-sidebar-text">
+        <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-muted font-normal">
           <Checkbox checked={showConstruction} onCheckedChange={() => onToggleConstruction()} />
           View Construction Lines
         </label>

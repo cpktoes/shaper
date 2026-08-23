@@ -150,7 +150,7 @@ export function DimensionLine({
           style={{
             fontSize: 11,
             fontWeight: 700,
-            fontFamily: "var(--font-sans)",
+            fontFamily: "var(--font-body)",
             fill: "var(--outline-ink)",
             ...(haloColor
               ? { textShadow: `0 0 3px ${haloColor}, 0 0 3px ${haloColor}, 0 0 5px ${haloColor}` }
@@ -203,7 +203,7 @@ export function CalloutChip({ x, y, name, value, nameColor = "var(--outline-call
         x={centerX}
         y={y - 2.5}
         textAnchor="middle"
-        style={{ fontSize: 9, fontWeight: 700, fontFamily: "var(--font-sans)", letterSpacing: "0.12em" }}
+        style={{ fontSize: 9, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.12em" }}
         fill={nameColor}
       >
         {name}
@@ -212,7 +212,7 @@ export function CalloutChip({ x, y, name, value, nameColor = "var(--outline-call
         x={centerX}
         y={y + 10.5}
         textAnchor="middle"
-        style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-sans)" }}
+        style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
         fill="var(--outline-ink)"
       >
         {value}
@@ -247,7 +247,7 @@ export function OutputRail({ edgeX, y, value, station, valueX = OUTLINE_OUTPUT_V
       <text
         x={valueX}
         y={y - 2}
-        style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-sans)" }}
+        style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
         fill="var(--outline-ink)"
       >
         {value}
@@ -255,7 +255,7 @@ export function OutputRail({ edgeX, y, value, station, valueX = OUTLINE_OUTPUT_V
       <text
         x={valueX}
         y={y + 10}
-        style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-sans)", letterSpacing: "0.1em" }}
+        style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.1em" }}
         fill="var(--outline-callout-label)"
       >
         {station}

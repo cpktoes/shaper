@@ -38,15 +38,15 @@ function Row({
         className="flex justify-between border-b border-surf-muted/10 py-0.5"
         style={{ fontSize: "var(--summary-font-row, 11px)" }}
       >
-        <span className="text-[#8a8272]">{label}</span>
-        <span className="font-bold text-outline-ink">{value}</span>
+        <span className="text-surf-muted">{label}</span>
+        <span className="font-bold text-surf-black">{value}</span>
       </div>
     );
   }
   return (
     <div className="flex justify-between border-b border-surf-muted/10 py-2 text-sm">
-      <span className="text-[#8a8272]">{label}</span>
-      <span className="font-bold text-outline-ink">{value}</span>
+      <span className="text-surf-muted">{label}</span>
+      <span className="font-bold text-surf-black">{value}</span>
     </div>
   );
 }
@@ -97,7 +97,7 @@ export function VolumeCalculationCard({
 
         <div className="mt-1 flex items-baseline justify-between border-t-2 border-surf-muted/20 pt-1.5 pb-1">
           <span
-            className="font-bold text-[#8a8272]"
+            className="font-bold text-surf-muted"
             style={{ fontSize: "var(--summary-font-label, 12px)" }}
           >
             Estimated Volume
@@ -109,7 +109,7 @@ export function VolumeCalculationCard({
             >
               {result.volumeLitres.toFixed(2)} L
             </span>
-            <span className="block font-semibold text-[#8a8272]" style={{ fontSize: "var(--summary-font-row, 11px)" }}>
+            <span className="block font-semibold text-surf-muted" style={{ fontSize: "var(--summary-font-row, 11px)" }}>
               ({result.volumeCubicInches.toFixed(1)} cu in)
             </span>
           </span>
@@ -119,8 +119,8 @@ export function VolumeCalculationCard({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-base text-[#1c1b19]">
-      <div className="mb-4 text-xl font-extrabold text-outline-ink">Volume Calculation</div>
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-base text-surf-black">
+      <div className="mb-8 text-xl font-display text-surf-black uppercase tracking-architectural font-bold">Volume Calculation</div>
       <div className="flex w-full flex-col gap-0">
         {!result.importingTemplate && (
           <>
@@ -149,18 +149,18 @@ export function VolumeCalculationCard({
         <Row label={weightedThicknessLabel} value={formatInchesFraction(result.weightedThickness)} />
 
         <div className="mt-1.5 flex items-baseline justify-between border-t-2 border-surf-muted/20 pt-3.5 pb-2">
-          <span className="text-sm font-bold text-[#8a8272]">Estimated Volume</span>
+          <span className="text-sm font-bold text-surf-muted">Estimated Volume</span>
           <span className="text-right">
             <span className="block text-[22px] font-extrabold text-outline-accent-strong">
               {result.volumeLitres.toFixed(2)} L
             </span>
-            <span className="block text-[13px] font-semibold text-[#8a8272]">
+            <span className="block text-[13px] font-semibold text-surf-muted">
               ({result.volumeCubicInches.toFixed(1)} cu in)
             </span>
           </span>
         </div>
       </div>
-      <div className="mt-auto pt-4 text-[13px] leading-relaxed text-[#8a8272] italic">
+      <div className="mt-auto pt-4 text-[13px] leading-relaxed text-surf-muted italic">
         This is a rough estimate, not a 3D CAD model accurate calculation of volume. If comparing
         to a board of known dimensions and volume, you can tune the Board Type slider to calibrate
         for your purposes.

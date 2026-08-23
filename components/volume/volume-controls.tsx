@@ -29,7 +29,7 @@ function sliderValue(v: number | readonly number[]): number {
 function PrimaryInputsHeading() {
   return (
     <div className="flex items-center justify-between gap-2.5 border-b border-outline-sidebar-divider pb-1.5">
-      <div className="text-sm font-bold tracking-wide text-outline-accent uppercase">Primary Inputs</div>
+      <div className="text-xs font-display text-surf-black uppercase tracking-architectural font-bold">Primary Inputs</div>
     </div>
   );
 }
@@ -66,8 +66,8 @@ export function VolumeControls({
   return (
     <div className="flex h-full flex-col gap-5">
       <div>
-        <div className="text-[22px] font-bold text-outline-sidebar-text">Volume Estimator</div>
-        <div className="mt-0.5 text-xs text-outline-sidebar-text-muted">
+        <div className="text-lg leading-tight font-display text-surf-black uppercase tracking-architectural font-bold">Volume Estimator</div>
+        <div className="mt-0.5 text-sm text-surf-muted font-normal">
           Approximate volume of a designed board
         </div>
       </div>
@@ -75,7 +75,7 @@ export function VolumeControls({
       <PrimaryInputsHeading />
 
       {templateAvailable && (
-        <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-outline-sidebar-text-muted">
+        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-surf-muted font-normal">
           <Checkbox
             checked={effectiveVolume.importTemplateDimensions}
             onCheckedChange={() => onToggleImportTemplateDimensions()}
@@ -85,7 +85,7 @@ export function VolumeControls({
       )}
 
       {railAvailable && (
-        <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-outline-sidebar-text-muted">
+        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-surf-muted font-normal">
           <Checkbox
             checked={effectiveVolume.importRailThickness}
             onCheckedChange={() => onToggleImportRailThickness()}
@@ -96,7 +96,7 @@ export function VolumeControls({
       )}
 
       <div style={{ opacity: dimensionsOpacity }}>
-        <div className="mb-1.5 text-[11px] text-outline-sidebar-text-muted uppercase">
+        <div className="mb-1.5 text-sm text-surf-muted font-normal">
           Board Length — {lengthFeet}&apos;{lengthInches}&quot;
         </div>
         <div className="mb-2 flex gap-2">
@@ -145,7 +145,7 @@ export function VolumeControls({
       </div>
 
       <div style={{ opacity: dimensionsOpacity }}>
-        <div className="mb-1.5 text-[11px] text-outline-sidebar-text-muted uppercase">
+        <div className="mb-1.5 text-sm text-surf-muted font-normal">
           Board Width — {formatInchesFraction(effectiveVolume.width)}
         </div>
         <Slider
@@ -164,7 +164,7 @@ export function VolumeControls({
       </div>
 
       <div style={{ opacity: thicknessOpacity }}>
-        <div className="mb-1.5 text-[11px] text-outline-sidebar-text-muted uppercase">
+        <div className="mb-1.5 text-sm text-surf-muted font-normal">
           Center Thickness — {formatInchesFraction(effectiveVolume.centerThickness)}
         </div>
         <Slider
@@ -186,7 +186,7 @@ export function VolumeControls({
 
       {!importingRailThickness && (
         <div style={{ opacity: thicknessOpacity }}>
-          <div className="mb-1.5 text-[11px] text-outline-sidebar-text-muted uppercase">Board Type</div>
+          <div className="mb-1.5 text-sm text-surf-muted font-normal">Board Type</div>
           <Slider
             value={effectiveVolume.boardTypeIndex}
             min={0}
@@ -200,7 +200,7 @@ export function VolumeControls({
             }
             className="[&_[data-slot=slider-range]]:bg-outline-accent [&_[data-slot=slider-thumb]]:border-outline-accent [&_[data-slot=slider-thumb]]:bg-outline-accent"
           />
-          <div className="mt-0.5 flex justify-between text-[10px] text-outline-sidebar-text-muted">
+          <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
             <span>Performance</span>
             <span>Beefy</span>
           </div>

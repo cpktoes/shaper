@@ -42,7 +42,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
         >
           <div className="min-w-0 flex-[1.4]" />
           {sections.map((s) => (
-            <div key={s.key} className="min-w-0 flex-1 text-right font-extrabold text-outline-ink">
+            <div key={s.key} className="min-w-0 flex-1 text-right font-extrabold text-surf-black">
               {s.title}
             </div>
           ))}
@@ -50,7 +50,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
         {merged.map((group) => (
           <div key={group.heading} className="mb-1.5">
             <div
-              className="mb-0.5 font-bold tracking-wide text-outline-accent uppercase"
+              className="mb-0.5 font-display text-surf-black uppercase tracking-architectural font-bold"
               style={{ fontSize: "var(--summary-font-group, 9px)" }}
             >
               {group.heading}
@@ -61,9 +61,9 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
                 className="flex gap-2 border-b border-surf-muted/10 py-0.5"
                 style={{ fontSize: "var(--summary-font-row, 11px)" }}
               >
-                <div className="min-w-0 flex-[1.4] text-[#8a8272]">{row.label}</div>
+                <div className="min-w-0 flex-[1.4] text-surf-muted">{row.label}</div>
                 {row.cells.map((cell, i) => (
-                  <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-outline-ink">
+                  <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-surf-black">
                     {formatCell(cell)}
                   </div>
                 ))}
@@ -83,21 +83,21 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
             <div className="mb-3 flex gap-2 border-b-2 border-surf-muted/20 pb-2">
               <div className="min-w-0 flex-[1.4]" />
               {sections.map((s) => (
-                <div key={s.key} className="min-w-0 flex-1 text-right text-sm font-extrabold text-outline-ink">
+                <div key={s.key} className="min-w-0 flex-1 text-right text-sm font-extrabold text-surf-black">
                   {s.title}
                 </div>
               ))}
             </div>
             {merged.map((group) => (
               <div key={group.heading} className="mb-4">
-                <div className="mb-1.5 text-[11px] font-bold tracking-wide text-outline-accent uppercase">
+                <div className="mb-2 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold">
                   {group.heading}
                 </div>
                 {group.rows.map((row) => (
                   <div key={row.label} className="flex gap-2 border-b border-surf-muted/10 py-1.5 text-sm">
-                    <div className="min-w-0 flex-[1.4] text-[#8a8272]">{row.label}</div>
+                    <div className="min-w-0 flex-[1.4] text-surf-muted">{row.label}</div>
                     {row.cells.map((cell, i) => (
-                      <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-outline-ink">
+                      <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-surf-black">
                         {formatCell(cell)}
                       </div>
                     ))}
@@ -108,7 +108,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
           </div>
         </div>
       </div>
-      <div className="max-w-prose bg-surf-base text-xs leading-relaxed text-[#8a8272] italic">
+      <div className="max-w-prose bg-surf-base text-xs leading-relaxed text-surf-muted italic">
         This rail band calculator is intended to provide a quantitative aspect to shaping
         consistent surfboard rails. It&apos;s recommended to understand how rail shapes affects
         surfboard performance, and how these marks can result in producing your desired outcome.

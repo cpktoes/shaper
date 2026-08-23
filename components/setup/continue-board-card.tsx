@@ -29,7 +29,7 @@ export function ContinueBoardCard({ onContinue, className }: ContinueBoardCardPr
       )}
     >
       <span className="text-[20px] leading-[1.2] font-semibold text-foreground">Continue Current Board</span>
-      <span className="block truncate text-sm leading-[1.5] text-muted-foreground">{displayName}</span>
+      <span className="block truncate text-sm leading-[1.5] text-surf-muted">{displayName}</span>
       <span className="text-xs leading-[1.4] font-semibold tracking-[0.15em] text-outline-accent uppercase">
         Continue This Board
       </span>

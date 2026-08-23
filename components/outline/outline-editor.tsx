@@ -86,7 +86,7 @@ export function OutlineEditor() {
           <Button
             variant="ghost"
             size="sm"
-            className="mt-4 w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-outline-accent hover:bg-outline-accent hover:text-outline-ink"
+            className="mt-4 w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-outline-accent hover:bg-outline-accent hover:text-surf-black"
             onClick={handleCopyPreset}
           >
             {justCopiedPreset ? "Copied!" : "Copy preset values"}
@@ -96,7 +96,7 @@ export function OutlineEditor() {
       <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-5 bg-surf-base px-20 py-14">
         <div className="flex min-h-0 flex-1 items-stretch justify-center gap-6">
           <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center bg-surf-base">
-            <div className="mb-10 self-start text-xl font-extrabold text-surf-black">
+            <div className="mb-10 self-start text-xl font-display text-surf-black uppercase tracking-architectural font-bold">
               Template Viewer
             </div>
             <div className="relative flex min-h-0 w-full flex-1 justify-center">
