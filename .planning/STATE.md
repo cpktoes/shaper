@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 Phase: 2 — Accounts & Saved Designs
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-21 — Phase 01 complete, transitioned to Phase 2
+Last activity: 2026-08-23 - Completed quick task 260823-ffv: Rebuild the Summary screen as a portrait order-form layout
 
 Progress: [██████████] 100%
 
@@ -136,6 +136,7 @@ None yet.
 | 260822-n02 | Fix the Summary's clipped fin placement diagram: fin-viewer viewBox widened to contain its own drawing (heading and outline top were rendering outside it), Volume Estimate card made content-height so Fin Placement takes the remaining column height | 2026-08-22 | adc5c24 | [20260822-fin-placement-not-clipped](./quick/20260822-fin-placement-not-clipped/) |
 | 260822-nbz | Summary Volume card brought to row parity with the Volume screen (center thickness plus the three cross-section rows); print sheet fixed to one landscape page — pinned @page margin, page box derived from Letter/A4 instead of a magic number, and the grid moved to container queries so the measured layout is the printed one | 2026-08-22 | a0c47d0 | [20260822-summary-volume-rows-and-one-page-print](./quick/20260822-summary-volume-rows-and-one-page-print/) |
 | 260823-hbv | Preserve the horizontal board view as a post-MVP option: pending todo on main, live mockup as sketch 005 on branch design/horizontal-template-view | 2026-08-23 | 83ed049 | — |
+| 260823-ffv | Rebuild the Summary as a portrait shop order form on branch design/order-form-summary: LB_order_form.pdf layout muse, deck+bottom outlines (fin marks on bottom only), rail plots and marking data replacing the contours checkboxes, fin placement numbers beside the bottom drawing, fin system selector replacing fin setup, live board name plus write-in fields through one shared field component | 2026-08-23 | 59f9366 | [260823-ffv-rebuild-the-summary-screen-as-a-portrait](./quick/260823-ffv-rebuild-the-summary-screen-as-a-portrait/) |
 
 ## Deferred Items
 
