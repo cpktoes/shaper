@@ -50,8 +50,10 @@ Rather than guess, the same test was run against HEAD with these edits stashed: 
 result**. That establishes this change did not regress dragging, which was the risk worth
 ruling out (the new visuals sit over the hit circles).
 
-It does **not** establish that dragging works end-to-end — that remains unverified by
-automation here and wants a human check with a real mouse.
+It did **not** establish that dragging works end-to-end. **The founder confirmed by hand
+afterwards that the drag is good**, so that gap is closed: the targets are grabbable and
+the outline responds. Recorded because the automation could not reach it — a future change
+to the handle layering needs the same manual check rather than trusting a green test run.
 
 ## Verification
 

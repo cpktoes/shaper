@@ -5,7 +5,7 @@ milestone_name: milestone
 current_phase: 2
 current_phase_name: Accounts & Saved Designs
 status: planning
-stopped_at: Accent construction lines + round drag targets; drag interaction wants a human check
+stopped_at: Design pivot complete and pushed; drag confirmed good by the founder
 last_updated: "2026-08-23T00:00:00.000Z"
 last_activity: 2026-08-22
 last_activity_desc: Accent construction lines and round drag targets (260822-was)
@@ -154,5 +154,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-08-22T09:03:00.000Z
-Stopped at: Accent construction lines + round drag targets
+Stopped at: Design pivot complete and pushed; drag confirmed good
 Resume file: None

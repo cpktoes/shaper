@@ -69,7 +69,12 @@ and selection (260822-vo2), plus four founder-review follow-ups — the AA contr
 plot-size and callout-legibility correction (260822-urx), the viewer-title removal, the
 Inter heading switch, and the callout-size pinning (260822-vbo).
 
-The supplied `tailwind.config.js` is now superseded in three places and is not wired to
-anything (Tailwind v4 reads the `@theme` block in `app/globals.css`): `display` is Inter
-not Space Grotesk, `architectural` is 0.15em not 0.25em, and `muted` is `#6B6B6B` not
-`#9E9E9E`. Two tokens were added that the config did not have — the cyan and orange inks.
+The `tailwind.config.js` the founder supplied was **never a file in this repo** — it was
+pasted into the conversation as a spec, and Tailwind v4 has no JS config to put it in. The
+`@theme` block in `app/globals.css` is and always was the only source of truth. Confirmed
+by `git log --all -- 'tailwind.config*'` returning nothing.
+
+Where the shipped tokens diverge from that spec: `display` is Inter not Space Grotesk,
+`architectural` is 0.15em not 0.25em, `muted` is `#6B6B6B` not `#9E9E9E`, and the accent
+is the sea blue `#006994` rather than cyan. Two tokens exist that the spec did not have —
+the orange ink, and the accent's own dark value.
