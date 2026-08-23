@@ -514,27 +514,45 @@ export function OrderForm() {
           <div className="flex min-h-0 flex-1 gap-1">
             <RailLabel>Shaping Data</RailLabel>
 
-            {/* Both tables, each with a half-page. This is the whole point of the second sheet: on
-                the front they were two narrow columns either side of the drawings, and the type they
-                could afford there was smaller than a number you cut foam to has any business being. */}
-            <FormBox
-              caption="Rail Bands"
-              captionRight="marking data — plots overleaf"
-              className="min-w-0 flex-[1.25]"
-              bodyClassName="p-2"
-            >
-              <RailDataTable sections={sections} compact />
-            </FormBox>
+            {/* Stacked, not side by side. This is the whole point of the second sheet: on the front
+                these were two narrow columns either side of the drawings, and the type they could
+                afford there was smaller than a number you cut foam to has any business being. One
+                above the other, each gets the full width of the page as well as a large share of its
+                height — and the reading order matches the order a blank gets worked: bands marked
+                first, fins set last. */}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
+              <FormBox
+                caption="Rail Bands"
+                captionRight="marking data — plots overleaf"
+                className="min-h-0 min-w-0 flex-[1.6]"
+                bodyClassName="p-2"
+              >
+                <RailDataTable sections={sections} compact />
+              </FormBox>
 
-            <FormBox
-              caption="Fin Placement"
-              captionRight={finSetupLabel}
-              className="min-w-0 flex-1"
-              bodyClassName="gap-1 p-2"
-            >
-              <div data-print-unfold className="min-h-0 flex-1 overflow-y-auto">
+              <FormBox
+                caption="Fin Placement"
+                captionRight={finSetupLabel}
+                className="min-h-0 min-w-0 flex-1"
+                bodyClassName="gap-1 p-2"
+              >
+                {/*
+                 * The sections run in columns rather than straight down the page. Full width, a row
+                 * puts its label at the far left and its measurement at the far right with most of a
+                 * page between them, which is exactly the shape that makes a reader's eye slip a
+                 * line — and a shaper reading the wrong fin number off this sheet drills the wrong
+                 * hole. Columns keep each label within reading distance of its own number.
+                 *
+                 * `columns`, not a fixed grid, because the section count is not fixed: a single fin
+                 * produces one, a thruster two, a quad with its centre fin three. `break-inside:
+                 * avoid` keeps a section whole rather than splitting its rows across the fold.
+                 */}
+                <div
+                  data-print-unfold
+                  className="min-h-0 flex-1 overflow-y-auto [column-gap:1.5rem] [columns:2]"
+                >
                 {finPlacement.sections.map((sec) => (
-                  <div key={sec.label} className="mb-2 last:mb-0">
+                  <div key={sec.label} className="mb-2 break-inside-avoid last:mb-0">
                     <div className="mb-0.5 border-b border-surf-black font-display font-extrabold tracking-architectural text-surf-black uppercase order-form-group">
                       {sec.label}
                     </div>
@@ -566,15 +584,19 @@ export function OrderForm() {
                     ))}
                   </div>
                 ))}
+                </div>
+                {/* Outside the columned container on purpose: the notes qualify every number in the
+                    panel, so flowing them as one more column item — landing them under whichever
+                    section happened to end last — would read as a footnote to that section alone. */}
                 {finPlacement.notes.length > 0 && (
-                  <div className="mt-2 border-t border-surf-muted/25 pt-1 text-surf-muted order-form-micro">
+                  <div className="flex-none border-t border-surf-muted/25 pt-1 text-surf-muted order-form-micro">
                     {finPlacement.notes.map((note) => (
                       <div key={note}>{note}</div>
                     ))}
                   </div>
                 )}
-              </div>
-            </FormBox>
+              </FormBox>
+            </div>
           </div>
 
           <PageMark page={2} title="Shaper Reference" />
