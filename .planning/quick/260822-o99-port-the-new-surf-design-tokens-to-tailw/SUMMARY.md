@@ -57,11 +57,15 @@ six screens checked in-browser at 1440x900 and 1280x720; no console or server er
 
 ## Raised for review
 
-1. **Contrast.** `text-surf-muted` (`#9E9E9E`) on `#FFFFFF` is ~2.6:1, below WCAG AA's
-   4.5:1 for body text. Task 2 as written applies it to all body copy, labels and
-   secondary text. Shapers read these numbers in bright workshops. Worth deciding
-   before Task 2 lands — darkening the muted token to roughly `#6B6B6B` would clear AA
-   while keeping the same visual role.
+1. **Contrast — RESOLVED.** `text-surf-muted` shipped from the source config at
+   `#9E9E9E`, which is 2.68:1 on white and fails WCAG AA's 4.5:1 for the body copy and
+   labels it carries. Founder approved darkening it; the token is now `#6b6b6b` at
+   5.33:1, keeping a clear step down from surf-black's 18.9:1.
+
+   Knock-on: `--outline-station-line` derives from the same token and is specified as
+   faint. Its mix dropped 55% -> 36% so it still composites to `#cacaca` on white and
+   stays behind the board outline rather than competing with it. The `/20` hairlines
+   go `#ececec` -> `#e1e1e1`, marginally more present and still razor-thin.
 2. **Latent bug found in passing.** `@theme inline` declares `--font-sans: var(--font-sans)`,
    which is self-referential — nothing defines `--font-sans` at `:root`, so the
    `font-sans` utility on `<html>` resolves to nothing and Geist Sans never applied.
