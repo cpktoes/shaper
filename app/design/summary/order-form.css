@@ -71,6 +71,34 @@
 }
 
 /*
+ * Page 2's type, about 1.55x the order form's.
+ *
+ * The whole reason the rail and fin tables moved off the front was that the type they could afford
+ * squeezed between the drawings was smaller than a number a shaper cuts foam to should ever be.
+ * Moving them does not by itself fix that: these sizes are `cqw` units against the container, and
+ * the container is the same width whichever page a table sits on. So the reference sheet restates
+ * the scale, and the tables spend their new half-page on legibility rather than on white space.
+ *
+ * Both groups are restated, not just `--order-form-*`. A custom property whose value contains
+ * `var()` is substituted where it is DECLARED, not where it is used — so the `--summary-font-*`
+ * aliases above resolved against the root's `--order-form-*` and inherit down already-resolved.
+ * Redeclaring only the `--order-form-*` half here would leave every embedded view (the whole rail
+ * data table) still at the front page's size.
+ */
+[data-order-form-root] .order-form-sheet-reference {
+  --order-form-caption: clamp(10px, 1.409cqw, 17px); /* 12.4px at 880 */
+  --order-form-micro: clamp(8.5px, 1.232cqw, 15px); /* 10.8px */
+  --order-form-value: clamp(12px, 1.761cqw, 21px); /* 15.5px */
+  --order-form-row: clamp(11px, 1.586cqw, 19px); /* 14px  */
+  --order-form-group: clamp(10px, 1.409cqw, 17px); /* 12.4px */
+
+  --summary-font-callout: clamp(12px, 1.761cqw, 21px);
+  --summary-font-group: clamp(10px, 1.409cqw, 17px);
+  --summary-font-row: clamp(11px, 1.586cqw, 19px);
+  --summary-font-label: clamp(10px, 1.409cqw, 17px);
+}
+
+/*
  * The paper.
  *
  * A fixed portrait aspect box rather than a height in pixels: `aspect-ratio` ties the sheet's
@@ -101,6 +129,11 @@
 }
 [data-order-form-root] .order-form-band-glassing {
   flex: 0 0 11%;
+}
+/* Page 2's identification strip — one line, so it is sized by its own type rather than given a
+   share of the page. */
+[data-order-form-root] .order-form-band-refhead {
+  flex: 0 0 auto;
 }
 
 /* The vertical spine labels are only as wide as their own type — they must never win space from
@@ -134,10 +167,30 @@
     background: #fff !important;
   }
 
-  /* The screen's grey desk and the page padding around the paper are screen furniture — on paper
-     the sheet IS the page. */
+  /* The screen's grey desk, the page padding around the paper, and the gap that separates the two
+     sheets on screen are all screen furniture — on paper each sheet IS a page, and the gap would
+     otherwise push page 2 down into a third. */
   [data-order-form-root] {
     max-width: none !important;
+    gap: 0 !important;
+  }
+
+  /* One break between the two sheets, and none after the last — a trailing `break-after` on the
+     final sheet is what produces a blank third page. */
+  [data-order-form-sheet] {
+    break-after: page;
+    page-break-after: always; /* legacy alias, for print engines that never took the new property */
+  }
+  [data-order-form-sheet]:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  /* Neither sheet may be split across pages: each is sized to exactly one page box, so any
+     fragmentation is a rounding artefact rather than genuine reflow. */
+  [data-order-form-sheet] {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   /* The sheet's own border stays; everything else prints on white. Scoped under the sheet so
@@ -149,13 +202,16 @@
     print-color-adjust: exact;
   }
 
-  /* Fill the printable box exactly. The aspect-ratio that shapes the sheet on screen would fight
-     the page box's own proportions here, so the printed sheet takes its size from the box the hook
-     hands it instead. */
+  /* Release the on-screen aspect ratio so each sheet is sized by the inline width and height
+     `useOrderFormPrintFit` gives it.
+
+     This rule used to say `width: 100% !important; height: 100% !important`, which was right when
+     the hook sized the ROOT and a single sheet filled it. Now the hook sizes each SHEET, and those
+     percentages resolve against the root — which is no longer a page and has no height of its own,
+     so `height: 100%` would resolve to auto and the careful page-box sizing would be thrown away.
+     An `!important` declaration also beats the hook's inline style, so this was not a near miss. */
   [data-order-form-sheet] {
     aspect-ratio: auto !important;
-    width: 100% !important;
-    height: 100% !important;
   }
 
   /* Scrolling containers — the rail data table and the fin placement table — print in full instead
@@ -170,12 +226,12 @@
     display: none !important;
   }
 
-  /* Set by useOrderFormPrintFit's beforeprint handler, which also gives this element an inline
-     width and height equal to the printable page box. The height is deliberately NOT forced to
-     `auto`: that is what lets flex bands go content-proportional and inflate the sheet past the
-     page. `overflow: hidden` is the backstop — with the box the exact size of the page, anything
-     that still spills cannot start a second one. */
-  [data-order-form-root][data-printing] {
+  /* Set by useOrderFormPrintFit's beforeprint handler, which also gives every sheet an inline
+     width and height equal to the printable page box. A sheet's height is deliberately NOT forced
+     to `auto`: that is what lets flex bands go content-proportional and inflate a sheet past its
+     page. `overflow: hidden` is the backstop — with each box the exact size of a page, anything
+     that still spills cannot start another one. */
+  [data-order-form-root][data-printing] [data-order-form-sheet] {
     overflow: hidden !important;
   }
 }

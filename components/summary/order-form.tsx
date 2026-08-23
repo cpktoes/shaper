@@ -1,34 +1,44 @@
 "use client";
 
 /**
- * The Summary screen as a **shop order form** — one portrait page, laid out like the paper form a
- * custom board actually gets ordered on (`LB_order_form.pdf`, Kontoes Surfboards) rather than like
- * a dashboard.
+ * The Summary screen as a **shop order form** — laid out like the paper form a custom board actually
+ * gets ordered on (`LB_order_form.pdf`, Kontoes Surfboards) rather than like a dashboard.
  *
- * The muse's structure is kept intact, because it is what makes the sheet legible to someone who
- * has filled one in before: a boxed header (shop identity, `RIDER INFO`, a `SHAPER USE ONLY`
- * sub-box), a `SURFBOARD SHAPE AND DESIGN` body with vertical spine labels down the left edge, and
- * a `GLASSING` band across the bottom. What changes is that the panels a shaper would have ticked
- * or sketched by hand are replaced by this app's calculated output:
+ * **Two pages, printing front and back.**
+ *
+ * *Page 1 is the order form.* The muse's structure is kept intact, because it is what makes the
+ * sheet legible to someone who has filled one in before: a boxed header (shop identity, `RIDER
+ * INFO`, a `SHAPER USE ONLY` sub-box), a `SURFBOARD SHAPE AND DESIGN` body with vertical spine
+ * labels down the left edge, and a `GLASSING` band across the bottom. What changes is that the
+ * panels a shaper would have ticked or sketched by hand are replaced by this app's calculated
+ * output:
  *
  * - `TAIL SHAPE` is gone — the tail is built into the outline, so ticking it would be a second,
  *   disagreeable source of truth.
- * - `CONTOURS`/`RAILS` checkboxes become the real rail section plots and the rail band marking
- *   data — the numbers a shaper cuts foam to.
+ * - `CENTER` becomes `WIDEPOINT` and `WP OFFSET`, since a width means little without saying where
+ *   along the board it was measured.
+ * - `CONTOURS`/`RAILS` checkboxes become the real rail section plots.
  * - `FIN SETUP` checkboxes become a fin *system* selector, since which fins go on the board is
  *   now designed on the fins screen; only the box hardware is still an ordering choice.
  * - `ROCKER` stays a placeholder box until the rocker screen exists.
+ *
+ * *Page 2 is the shaper's reference* — the rail band marking data and the fin placement numbers.
+ * These were on the front, in two narrow columns either side of the drawings, and the type they
+ * could afford there was smaller than a number you cut foam to has any business being. On their own
+ * page they get a half-page each. What the front gets back is the muse's own use for that space:
+ * its board outlines live inside a big `COLOR DESIGN AND LOGOS` panel, blank around the drawings so
+ * a customer can sketch artwork on it.
  *
  * Every calculated value is read from the shared design store (`components/design/design-store.tsx`)
  * and rendered through the *existing* view components — `OutlineViewer`, `RailSectionPlot`,
  * `RailDataTable`. No panel here reimplements a view or redoes a calculation, so a printed number
  * cannot drift from the screen it came from.
  *
- * **Sizing.** The sheet is a fixed portrait aspect box whose type scales with its own width in
- * `cqw` units (see `app/design/summary/order-form.css`). That is what lets the same layout be
- * measured on screen and printed to paper: `useOrderFormPrintFit` pins the sheet to the printable
- * page box before measuring, and because the type is tied to the *container* rather than the
- * viewport, the layout it measures is the layout that prints.
+ * **Sizing.** Each sheet is a fixed portrait aspect box whose type scales with the *container's*
+ * width in `cqw` units (see `app/design/summary/order-form.css`). That is what lets the same layout
+ * be measured on screen and printed to paper: `useOrderFormPrintFit` pins every sheet to the
+ * printable page box before measuring, and because the type is tied to the container rather than
+ * the viewport, the layout it measures is the layout that prints.
  */
 
 import type { CSSProperties, ReactNode } from "react";
@@ -45,6 +55,7 @@ import {
   RailLabel,
 } from "./order-form-primitives";
 import { useOrderFormPrintFit } from "./use-print-fit";
+import { cn } from "@/lib/utils";
 import { FIN_SETUPS, FIN_SYSTEMS, type FinSystem } from "@/lib/geometry/fins";
 import type { RailSectionKey } from "@/lib/geometry/rail-bands";
 import {
@@ -61,6 +72,43 @@ const SECTION_TITLE: Record<RailSectionKey, string> = {
   center: "Center",
   tail: "Tail",
 };
+
+/**
+ * One sheet of paper. Both pages share the border, the padding and the `data-order-form-sheet` hook
+ * that the print path and the aspect-ratio rule key off, so neither can drift from the other.
+ */
+function Sheet({
+  variant = "form",
+  children,
+}: {
+  /** "reference" is page 2, which carries only two tables and can therefore afford much larger
+   * type than the densely packed order form — see `order-form.css`, where the variant redeclares
+   * the whole type scale. */
+  variant?: "form" | "reference";
+  children: ReactNode;
+}) {
+  return (
+    <div
+      data-order-form-sheet
+      className={cn(
+        "flex flex-col gap-1 border-[1.5px] border-surf-black bg-surf-base p-1.5",
+        variant === "reference" && "order-form-sheet-reference",
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** The `PAGE 1 OF 2` / `PAGE 2 OF 2` marker, so the pair reads as a pair when it comes off the printer. */
+function PageMark({ page, title }: { page: number; title: string }) {
+  return (
+    <div className="flex flex-none items-baseline justify-between gap-2 pt-0.5 text-surf-muted order-form-micro">
+      <span className="font-display font-extrabold tracking-architectural uppercase">{title}</span>
+      <span>Page {page} of 2</span>
+    </div>
+  );
+}
 
 /**
  * One cell of the dimensions row — an ALL-CAPS caption over the measurement, the muse's
@@ -93,8 +141,9 @@ function RockerTicks() {
 }
 
 /**
- * One drawing inside the shared outline panel, captioned beneath it the way the paper muse
- * captions its own pair.
+ * One drawing inside the colour-design panel, captioned beneath it the way the paper muse captions
+ * its own pair. The drawings sit in the middle third of the panel, leaving blank paper either side
+ * for the artwork the panel is named for.
  */
 function OutlineHalf({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -140,18 +189,22 @@ export function OrderForm() {
   const finSetupLabel =
     FIN_SETUPS.find((s) => s.value === effectiveFins.finSetup)?.label ?? effectiveFins.finSetup;
 
+  const thicknessDisplay = formatInchesFraction(railBands.center.boardThickness);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto bg-surf-muted/10 px-6 py-8">
       {/*
-       * Two nested elements, deliberately. The outer one is the `@container` the sheet's type
-       * queries — a container query never matches the container itself — and it is also what
-       * `useOrderFormPrintFit` pins to the printable page box. The inner one is the paper.
+       * The outer element is the `@container` the sheets' type queries — a container query never
+       * matches the container itself — and it is what `useOrderFormPrintFit` walks to find the
+       * sheets. It is no longer itself a page: it is the stack of them.
        */}
-      <div ref={rootRef} data-order-form-root className="@container w-full max-w-[880px] flex-none">
-        <div
-          data-order-form-sheet
-          className="flex flex-col gap-1 border-[1.5px] border-surf-black bg-surf-base p-1.5"
-        >
+      <div
+        ref={rootRef}
+        data-order-form-root
+        className="@container flex w-full max-w-[880px] flex-none flex-col gap-8"
+      >
+        {/* ══════════ PAGE 1 — the order form ══════════════════════════════════════════════ */}
+        <Sheet>
           {/* ─── BAND 1 — header ────────────────────────────────────────────────────────── */}
           <div className="flex flex-none gap-1 order-form-band-header">
             <div className="w-[34%] min-w-0">
@@ -222,10 +275,7 @@ export function OrderForm() {
                   label="Tail"
                   value={formatInchesFraction(outlineGeometry.tailWidthAt12in)}
                 />
-                <DimensionCell
-                  label="Thickness"
-                  value={formatInchesFraction(railBands.center.boardThickness)}
-                />
+                <DimensionCell label="Thickness" value={thicknessDisplay} />
                 <DimensionCell
                   label="Volume"
                   value={`${volumeResult.volumeLitres.toFixed(1)} L`}
@@ -272,60 +322,51 @@ export function OrderForm() {
                 </div>
               </FormBox>
 
-              {/* The body row: marking data, the two board drawings, the fin numbers. */}
-              <div className="flex min-h-0 flex-1 gap-1">
-                <FormBox
-                  caption="Rail Bands"
-                  captionRight="marking data"
-                  className="min-w-0 flex-[2.5]"
-                  bodyClassName="p-1"
-                >
-                  <RailDataTable sections={sections} compact />
-                </FormBox>
-
-                {/*
-                 * Deck and bottom share one box rather than taking a box each: two captions, two
-                 * borders and two sets of padding for what a shaper reads as a single pair of
-                 * views is chrome the sheet cannot spare, and the width it gives back goes to the
-                 * marking data and the fin numbers either side.
-                 *
-                 * Three theming overrides, all of them turning editor affordances back into plain
-                 * draughtsmanship, because this panel is a template to mark a blank from rather
-                 * than a screen to design on:
-                 *
-                 * - `--outline-board-fill` — the interior wash. globals.css already suppresses this
-                 *   token for print, on the grounds that ink inside the outline is wasted on a
-                 *   template meant to be cut along and marked on. This sheet is that template
-                 *   wherever it is looked at, so the override only brings the screen into line with
-                 *   what already prints, leaving both drawings defined by their stroke alone.
-                 * - `--outline-widepoint-line` — the widepoint station arrives rose, to set it
-                 *   apart from the drag handles it sits among on the editor. Here there are no
-                 *   handles, and one ink reads as a drawing rather than as an interface.
-                 * - `--outline-widepoint-knot` — the two rail knots, gone. They carry no stroke, so
-                 *   a transparent fill removes them outright.
-                 *
-                 * `--outline-widepoint-dash` is deliberately NOT overridden. The viewer's own note
-                 * on these lines is that a widepoint near centre lands within a few pixels of the
-                 * mid-length centreline, and that colour was what told the two apart. With the
-                 * colour now matched, the dash is the only thing still doing that job.
-                 *
-                 * Tokens rather than another `OutlineViewer` prop: this is retheming, which is what
-                 * the tokens are for, and that component already carries five display gates.
-                 */}
-                <FormBox
-                  caption="Outline"
-                  captionRight="no dimensions — see above"
-                  variant="flush"
-                  className="min-w-0 flex-[2.1]"
-                  bodyClassName="flex-row gap-1 p-1"
-                  style={
-                    {
-                      "--outline-board-fill": "transparent",
-                      "--outline-widepoint-line": "var(--outline-station-line)",
-                      "--outline-widepoint-knot": "transparent",
-                    } as CSSProperties
-                  }
-                >
+              {/*
+               * The muse's own big panel, and its own name for it. With the two data tables moved to
+               * page 2 this takes the whole body width, which is the point: the drawings are what
+               * the front of an order form is for, and the blank paper around them is where a
+               * customer sketches the colour work. The drawings are held to the middle third so
+               * that blank space falls either side of them rather than in one useless margin.
+               *
+               * Three theming overrides, all of them turning editor affordances back into plain
+               * draughtsmanship, because this panel is a template to mark a blank from rather
+               * than a screen to design on:
+               *
+               * - `--outline-board-fill` — the interior wash. globals.css already suppresses this
+               *   token for print, on the grounds that ink inside the outline is wasted on a
+               *   template meant to be cut along and marked on. This sheet is that template
+               *   wherever it is looked at, so the override only brings the screen into line with
+               *   what already prints, leaving both drawings defined by their stroke alone.
+               * - `--outline-widepoint-line` — the widepoint station arrives rose, to set it
+               *   apart from the drag handles it sits among on the editor. Here there are no
+               *   handles, and one ink reads as a drawing rather than as an interface.
+               * - `--outline-widepoint-knot` — the two rail knots, gone. They carry no stroke, so
+               *   a transparent fill removes them outright.
+               *
+               * `--outline-widepoint-dash` is deliberately NOT overridden. The viewer's own note
+               * on these lines is that a widepoint near centre lands within a few pixels of the
+               * mid-length centreline, and that colour was what told the two apart. With the
+               * colour now matched, the dash is the only thing still doing that job.
+               *
+               * Tokens rather than another `OutlineViewer` prop: this is retheming, which is what
+               * the tokens are for, and that component already carries five display gates.
+               */}
+              <FormBox
+                caption="Color Design &amp; Logos"
+                captionRight="dimensions on the rows above"
+                variant="flush"
+                className="min-h-0 flex-1"
+                bodyClassName="p-1.5"
+                style={
+                  {
+                    "--outline-board-fill": "transparent",
+                    "--outline-widepoint-line": "var(--outline-station-line)",
+                    "--outline-widepoint-knot": "transparent",
+                  } as CSSProperties
+                }
+              >
+                <div className="mx-auto flex min-h-0 w-[46%] min-w-0 flex-1 flex-row gap-3">
                   <OutlineHalf label="Deck">
                     <OutlineViewer
                       geometry={outlineGeometry}
@@ -353,61 +394,16 @@ export function OrderForm() {
                       finMarks={finPlacement.marks}
                     />
                   </OutlineHalf>
-                </FormBox>
+                </div>
+              </FormBox>
 
-                {/* The fin numbers sit next to the drawing that carries the fin marks, so the
-                    table and the picture it describes are read together. */}
-                <FormBox
-                  caption="Fin Placement"
-                  captionRight={finSetupLabel}
-                  className="min-w-0 flex-[2.3]"
-                  bodyClassName="gap-1 overflow-y-auto p-1"
-                >
-                  <div data-print-unfold className="min-h-0 flex-1 overflow-y-auto">
-                    {finPlacement.sections.map((sec) => (
-                      <div key={sec.label} className="mb-1.5 last:mb-0">
-                        <div className="mb-0.5 border-b border-surf-black font-display font-extrabold tracking-architectural text-surf-black uppercase order-form-group">
-                          {sec.label}
-                        </div>
-                        {sec.groups.map((grp) => (
-                          <div key={grp.heading} className="mb-1 last:mb-0">
-                            <div className="font-bold text-surf-muted uppercase order-form-micro">
-                              {grp.heading}
-                            </div>
-                            {grp.rows.map((row) => (
-                              <div
-                                key={row.label}
-                                className="flex justify-between gap-1 border-b border-surf-muted/25 order-form-row"
-                              >
-                                <span className="truncate text-surf-muted">{row.label}</span>
-                                <span className="flex-none font-bold text-surf-black">
-                                  {formatInchesFraction(row.value, 16)}
-                                </span>
-                              </div>
-                            ))}
-                            {grp.fullSpread !== null && (
-                              <div className="flex justify-between gap-1 border-b border-surf-muted/25 order-form-row">
-                                <span className="truncate text-surf-muted">Full Spread</span>
-                                <span className="flex-none font-bold text-surf-black">
-                                  {formatInchesFraction(grp.fullSpread, 16)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                </FormBox>
-              </div>
-
-              {/* The rail cross-sections, across the full width of the body. Side by side on one
-                  shared axis they are directly comparable and the band stays short; stacked in a
-                  column each plot would be a third of this width and three times this tall, which
-                  a portrait page cannot spare. */}
+              {/* The rail cross-sections stay on the front: they are drawings, and the front is the
+                  drawings' page. Their numbers are on the back. Side by side on one shared axis they
+                  are directly comparable and the band stays short; stacked in a column each plot
+                  would be a third of this width and three times this tall. */}
               <FormBox
                 caption="Rail Sections"
-                captionRight="nose · center · tail"
+                captionRight="nose · center · tail — marking data overleaf"
                 className="flex-none order-form-band-plots"
                 bodyClassName="p-1"
               >
@@ -470,7 +466,101 @@ export function OrderForm() {
               </div>
             </FormBox>
           </div>
-        </div>
+
+          <PageMark page={1} title="Custom Surfboard Order" />
+        </Sheet>
+
+        {/* ══════════ PAGE 2 — the shaper's reference ══════════════════════════════════════ */}
+        <Sheet variant="reference">
+          {/*
+           * A back page comes off the printer as a loose sheet and gets carried to the blank on its
+           * own, so it has to say which board it belongs to without the front in hand. Board name
+           * and the four numbers that identify a board — nothing a shaper would have to cross-check
+           * against page 1.
+           */}
+          <div className="flex flex-none items-baseline justify-between gap-3 border-b-[1.5px] border-surf-black pb-1 order-form-band-refhead">
+            <div className="flex min-w-0 items-baseline gap-2">
+              <span className="font-display font-extrabold tracking-architectural text-surf-black uppercase leading-none order-form-wordmark">
+                Shaper
+              </span>
+              <span className="truncate font-bold text-surf-black order-form-value">
+                {boardName || "Unnamed board"}
+              </span>
+            </div>
+            <span className="flex-none font-bold text-surf-muted order-form-value">
+              {formatFeetInches(outline.length)} · {formatInchesFraction(outline.widePointWidth)} ·{" "}
+              {thicknessDisplay} · {volumeResult.volumeLitres.toFixed(1)} L
+            </span>
+          </div>
+
+          <div className="flex min-h-0 flex-1 gap-1">
+            <RailLabel>Shaping Data</RailLabel>
+
+            {/* Both tables, each with a half-page. This is the whole point of the second sheet: on
+                the front they were two narrow columns either side of the drawings, and the type they
+                could afford there was smaller than a number you cut foam to has any business being. */}
+            <FormBox
+              caption="Rail Bands"
+              captionRight="marking data — plots overleaf"
+              className="min-w-0 flex-[1.25]"
+              bodyClassName="p-2"
+            >
+              <RailDataTable sections={sections} compact />
+            </FormBox>
+
+            <FormBox
+              caption="Fin Placement"
+              captionRight={finSetupLabel}
+              className="min-w-0 flex-1"
+              bodyClassName="gap-1 p-2"
+            >
+              <div data-print-unfold className="min-h-0 flex-1 overflow-y-auto">
+                {finPlacement.sections.map((sec) => (
+                  <div key={sec.label} className="mb-2 last:mb-0">
+                    <div className="mb-0.5 border-b border-surf-black font-display font-extrabold tracking-architectural text-surf-black uppercase order-form-group">
+                      {sec.label}
+                    </div>
+                    {sec.groups.map((grp) => (
+                      <div key={grp.heading} className="mb-1 last:mb-0">
+                        <div className="font-bold text-surf-muted uppercase order-form-micro">
+                          {grp.heading}
+                        </div>
+                        {grp.rows.map((row) => (
+                          <div
+                            key={row.label}
+                            className="flex justify-between gap-1 border-b border-surf-muted/25 order-form-row"
+                          >
+                            <span className="truncate text-surf-muted">{row.label}</span>
+                            <span className="flex-none font-bold text-surf-black">
+                              {formatInchesFraction(row.value, 16)}
+                            </span>
+                          </div>
+                        ))}
+                        {grp.fullSpread !== null && (
+                          <div className="flex justify-between gap-1 border-b border-surf-muted/25 order-form-row">
+                            <span className="truncate text-surf-muted">Full Spread</span>
+                            <span className="flex-none font-bold text-surf-black">
+                              {formatInchesFraction(grp.fullSpread, 16)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                {finPlacement.notes.length > 0 && (
+                  <div className="mt-2 border-t border-surf-muted/25 pt-1 text-surf-muted order-form-micro">
+                    {finPlacement.notes.map((note) => (
+                      <div key={note}>{note}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </FormBox>
+          </div>
+
+          <PageMark page={2} title="Shaper Reference" />
+        </Sheet>
       </div>
 
       {/* Below the paper, and never on it. */}
@@ -482,7 +572,9 @@ export function OrderForm() {
         >
           Print Order Form
         </Button>
-        <span className="text-xs text-surf-muted">Prints to one portrait page.</span>
+        <span className="text-xs text-surf-muted">
+          Two portrait pages — print double-sided for a front-and-back form.
+        </span>
       </div>
     </div>
   );

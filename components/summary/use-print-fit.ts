@@ -1,8 +1,13 @@
 "use client";
 
 /**
- * The order form's print-fit: hands the sheet the printable page box and, if anything still
- * overflows, scales the whole thing down with CSS `zoom` so it lands on one **portrait** page.
+ * The order form's print-fit: hands **every sheet** the printable page box and, if one still
+ * overflows, scales that sheet down with CSS `zoom` so it lands on a single **portrait** page.
+ *
+ * The form is two pages — the order form and the shaper's reference — so the element this hook is
+ * attached to is no longer a page, it is the stack of them. Each sheet is sized and measured
+ * independently: a long rail table on page 2 must not shrink page 1's drawings, which is exactly
+ * what would happen if one scale were computed across the pair.
  *
  * The browser snapshots the page as soon as the `beforeprint` handler returns. A React state
  * update scheduled inside that handler is asynchronous and is not guaranteed to have committed by
@@ -71,40 +76,55 @@ export function useOrderFormPrintFit() {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    const sheetsOf = (root: HTMLElement) =>
+      Array.from(root.querySelectorAll<HTMLElement>("[data-order-form-sheet]"));
+
     const beforePrint = () => {
-      const el = rootRef.current;
-      if (!el) return;
-      // Releases the fixed on-screen height so the sheet can grow to its natural size — the CSS
-      // rule this attribute triggers lives in app/design/summary/order-form.css.
-      el.setAttribute("data-printing", "true");
+      const root = rootRef.current;
+      if (!root) return;
+      // Releases the on-screen stacking — the gap between sheets, the aspect-ratio that shapes them
+      // on screen — so each page is sized by the box below instead. The CSS rules this attribute
+      // triggers live in app/design/summary/order-form.css.
+      root.setAttribute("data-printing", "true");
 
       const page = printableBoxPx();
+      // A hair under the page box, not exactly it. A sheet sized to the page's precise height is one
+      // sub-pixel rounding error away from "does not fit", and with `break-inside: avoid` on it the
+      // browser answers that by pushing the whole sheet onto the next page — turning two pages into
+      // four, half of them blank. The shave is well under a printed millimetre.
+      const sheetHeight = page.height * FIT_SAFETY;
 
-      // Hand the sheet the page box outright — both axes — rather than letting it size itself and
-      // then scaling the result down.
-      //
-      // The difference matters because the sheet's rows are `fr`. Given a definite height they
-      // divide it, exactly as they do on screen. Left to size themselves they become
-      // content-proportional instead, so the single tallest band sets the unit and every other row
-      // inflates with it. Sized to the page, the layout that prints is the one it was drawn for.
-      el.style.width = `${page.width}px`;
-      el.style.height = `${page.height}px`;
+      for (const sheet of sheetsOf(root)) {
+        // Hand each sheet the page box outright — both axes — rather than letting it size itself
+        // and then scaling the result down.
+        //
+        // The difference matters because a sheet's bands are `fr`. Given a definite height they
+        // divide it, exactly as they do on screen. Left to size themselves they become
+        // content-proportional instead, so the single tallest band sets the unit and every other
+        // row inflates with it. Sized to the page, the layout that prints is the one it was drawn
+        // for.
+        sheet.style.width = `${page.width}px`;
+        sheet.style.height = `${sheetHeight}px`;
 
-      // Guard for content that genuinely cannot compress into its band — a long rail table on a
-      // small page. `scrollHeight` still reports the overflow even with the box clipped, so this
-      // catches it and falls back to scaling the whole sheet.
-      const overflow = el.scrollHeight - page.height;
-      const scale = overflow > 1 ? (page.height * FIT_SAFETY) / el.scrollHeight : 1;
-      el.style.zoom = String(Number.isFinite(scale) && scale > 0 ? scale : 1);
+        // Guard for content that genuinely cannot compress into its band — a long rail table on a
+        // small page. `scrollHeight` still reports the overflow even with the box clipped, so this
+        // catches it and falls back to scaling that sheet. Per sheet, not across the pair: page 2
+        // overflowing is no reason to shrink page 1's drawings.
+        const overflow = sheet.scrollHeight - sheetHeight;
+        const scale = overflow > 1 ? sheetHeight / sheet.scrollHeight : 1;
+        sheet.style.zoom = String(Number.isFinite(scale) && scale > 0 ? scale : 1);
+      }
     };
 
     const afterPrint = () => {
-      const el = rootRef.current;
-      if (!el) return;
-      el.removeAttribute("data-printing");
-      el.style.zoom = "";
-      el.style.width = "";
-      el.style.height = "";
+      const root = rootRef.current;
+      if (!root) return;
+      root.removeAttribute("data-printing");
+      for (const sheet of sheetsOf(root)) {
+        sheet.style.zoom = "";
+        sheet.style.width = "";
+        sheet.style.height = "";
+      }
     };
 
     window.addEventListener("beforeprint", beforePrint);
