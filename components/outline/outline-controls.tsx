@@ -9,7 +9,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { TAIL_PRESETS, type OutlineSpec, type TailShape } from "@/lib/geometry/board";
+import {
+  BOARD_LENGTH_RANGE_IN,
+  TAIL_PRESETS,
+  WIDEPOINT_WIDTH_RANGE_IN,
+  type OutlineSpec,
+  type TailShape,
+} from "@/lib/geometry/board";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import {
   degrees,
@@ -137,7 +143,11 @@ export function OutlineControls({
   const lengthInches = Math.round(lengthIn - lengthFeet * 12);
 
   const setLengthIn = (totalIn: number) => {
-    onChange({ length: inchesToMm(clampFinite(totalIn, 60, 120)) });
+    onChange({
+      length: inchesToMm(
+        clampFinite(totalIn, BOARD_LENGTH_RANGE_IN.min, BOARD_LENGTH_RANGE_IN.max),
+      ),
+    });
   };
 
   const tailBlockPinned = geometry.tailBlockPinned;
@@ -197,8 +207,8 @@ export function OutlineControls({
         </div>
         <Slider
           value={lengthIn}
-          min={60}
-          max={120}
+          min={BOARD_LENGTH_RANGE_IN.min}
+          max={BOARD_LENGTH_RANGE_IN.max}
           step={1}
           onValueChange={(v) => setLengthIn(sliderValue(v))}
           className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
@@ -237,11 +247,15 @@ export function OutlineControls({
           label="Width"
           displayValue={formatInchesFraction(outline.widePointWidth)}
           value={mmToInches(outline.widePointWidth)}
-          min={16}
-          max={25}
+          min={WIDEPOINT_WIDTH_RANGE_IN.min}
+          max={WIDEPOINT_WIDTH_RANGE_IN.max}
           step={0.125}
           onValueChange={(v) =>
-            onChange({ widePointWidth: inchesToMm(clampFinite(v, 16, 25)) })
+            onChange({
+              widePointWidth: inchesToMm(
+                clampFinite(v, WIDEPOINT_WIDTH_RANGE_IN.min, WIDEPOINT_WIDTH_RANGE_IN.max),
+              ),
+            })
           }
         />
         <SliderRow

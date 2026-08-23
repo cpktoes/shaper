@@ -322,12 +322,45 @@ export function OrderForm() {
                 </div>
               </FormBox>
 
+              {/* The drawings row: the rail cross-sections down the left third, the template
+                  window filling the rest. */}
+              <div className="flex min-h-0 flex-1 gap-1">
+                {/* The plots are stacked now rather than laid side by side, which is what the left
+                    column buys them: each is a third of the sheet wide instead of a ninth, and each
+                    gets its own caption since they are no longer read left-to-right. Their numbers
+                    are on page 2. */}
+                <FormBox
+                  caption="Rail Sections"
+                  captionRight="marking data overleaf"
+                  className="min-w-0 flex-[1]"
+                  bodyClassName="gap-1 p-1"
+                >
+                  {SECTION_KEYS.map((key) => (
+                    <div key={key} className="flex min-h-0 flex-1 flex-col justify-center">
+                      <div className="flex-none font-display font-extrabold tracking-architectural text-surf-muted uppercase order-form-micro">
+                        {SECTION_TITLE[key]}
+                      </div>
+                      <div className="flex min-h-0 flex-1 items-center justify-center">
+                        <RailSectionPlot
+                          sectionKey={key}
+                          output={railBands[key]}
+                          xAxisMin={sharedXAxisMin}
+                          fit="height"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </FormBox>
+
               {/*
-               * The muse's own big panel, and its own name for it. With the two data tables moved to
-               * page 2 this takes the whole body width, which is the point: the drawings are what
-               * the front of an order form is for, and the blank paper around them is where a
-               * customer sketches the colour work. The drawings are held to the middle third so
-               * that blank space falls either side of them rather than in one useless margin.
+               * The muse's own big panel, and its own name for it — the template window.
+               *
+               * Its frame is fixed (`fixedFrame` on the viewer below), sized once from the board
+               * ranges in `lib/geometry/board.ts` so one window holds any board the editor can
+               * produce. The board inside still fits the window's height, so every board prints as
+               * large as the window allows; what a narrower or shorter board leaves behind is blank
+               * paper inside the frame — which on this panel is exactly where the colour design
+               * gets drawn.
                *
                * Three theming overrides, all of them turning editor affordances back into plain
                * draughtsmanship, because this panel is a template to mark a blank from rather
@@ -356,7 +389,7 @@ export function OrderForm() {
                 caption="Color Design &amp; Logos"
                 captionRight="dimensions on the rows above"
                 variant="flush"
-                className="min-h-0 flex-1"
+                className="min-h-0 min-w-0 flex-[2]"
                 bodyClassName="p-1.5"
                 style={
                   {
@@ -366,7 +399,7 @@ export function OrderForm() {
                   } as CSSProperties
                 }
               >
-                <div className="mx-auto flex min-h-0 w-[46%] min-w-0 flex-1 flex-row gap-3">
+                <div className="flex min-h-0 min-w-0 flex-1 flex-row gap-3">
                   <OutlineHalf label="Deck">
                     <OutlineViewer
                       geometry={outlineGeometry}
@@ -378,7 +411,7 @@ export function OrderForm() {
                       // the stringer and the stations, and those are drawing, not annotation.
                       hideCallouts
                       showStationLines
-                      cropToBoard
+                      fixedFrame
                       hideFinMarks
                     />
                   </OutlineHalf>
@@ -390,39 +423,13 @@ export function OrderForm() {
                       showConstruction={false}
                       hideCallouts
                       showStationLines
-                      cropToBoard
+                      fixedFrame
                       finMarks={finPlacement.marks}
                     />
                   </OutlineHalf>
                 </div>
               </FormBox>
-
-              {/* The rail cross-sections stay on the front: they are drawings, and the front is the
-                  drawings' page. Their numbers are on the back. Side by side on one shared axis they
-                  are directly comparable and the band stays short; stacked in a column each plot
-                  would be a third of this width and three times this tall. */}
-              <FormBox
-                caption="Rail Sections"
-                captionRight="nose · center · tail — marking data overleaf"
-                className="flex-none order-form-band-plots"
-                bodyClassName="p-1"
-              >
-                <div className="flex min-h-0 flex-1 items-center justify-center gap-1">
-                  {SECTION_KEYS.map((key) => (
-                    <div
-                      key={key}
-                      className="flex h-full min-w-0 flex-1 items-center justify-center"
-                    >
-                      <RailSectionPlot
-                        sectionKey={key}
-                        output={railBands[key]}
-                        xAxisMin={sharedXAxisMin}
-                        fit="height"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </FormBox>
+              </div>
             </div>
           </div>
 

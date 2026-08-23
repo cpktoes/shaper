@@ -17,7 +17,11 @@
  */
 
 import { type PointerEvent as ReactPointerEvent, useRef } from "react";
-import type { OutlineSpec } from "@/lib/geometry/board";
+import {
+  BOARD_LENGTH_RANGE_IN,
+  WIDEPOINT_WIDTH_RANGE_IN,
+  type OutlineSpec,
+} from "@/lib/geometry/board";
 import type { FinMark } from "@/lib/geometry/fins";
 import type { OutlineDragPoint, OutlineDragTarget } from "@/lib/geometry/outline-drag";
 import { outlineDragPoints, solveOutlineDrag } from "@/lib/geometry/outline-drag";
@@ -42,8 +46,21 @@ const PAD_Y = 24;
  * system is hidden entirely (`hideCallouts`) — this keeps preset-card thumbnails pixel-identical
  * to their pre-callout-system rendering; nothing about the board's own coordinate space changed. */
 const LEGACY_MAX_HALF_WIDTH_PX = VIEW_W / 2 - 30;
-/** Breathing room left either side of the board by `cropToBoard`, in view units. */
+/** Breathing room left either side of the board inside `fixedFrame`, in view units. */
 const CROP_PAD_X = 14;
+
+/**
+ * Half the `fixedFrame` viewBox, in view units — the widest half-width any board can DRAW at.
+ *
+ * Note which extreme this is taken from. The per-board scale fits the board to the view's height,
+ * so it is highest for the SHORTEST board; the widest thing ever rendered is therefore the
+ * shortest-and-widest board, not the widest one. Sizing from `max` length instead would produce a
+ * frame that a 5'0" x 25" board overflows.
+ */
+const FIXED_FRAME_HALF_W =
+  (WIDEPOINT_WIDTH_RANGE_IN.max / 2) *
+    ((VIEW_H - PAD_Y * 2) / BOARD_LENGTH_RANGE_IN.min) +
+  CROP_PAD_X;
 /** Vertical gap between the Widepoint chip and the leaderless WP Offset chip stacked beneath it. */
 const CHIP_STACK_GAP = 6;
 /** Which rail the construction overlay draws on: -1 is the left, the input side (see the overlay
@@ -91,20 +108,27 @@ interface OutlineViewerProps {
    * an additive per-consumer gate, not a change to `finMarksSvg` itself. Defaults to `false`. */
   hideFinMarks?: boolean;
   /**
-   * Framing gate for the `hideCallouts` path, used by the order form's Deck/Bottom panels
-   * (components/summary/order-form.tsx): crops the viewBox to the board's own width plus
-   * `CROP_PAD_X`, instead of keeping the full 340-unit thumbnail frame.
+   * Framing gate for the `hideCallouts` path, used by the order form's template window
+   * (components/summary/order-form.tsx): replaces the 340-unit thumbnail frame with one sized from
+   * the board RANGE (`lib/geometry/board.ts`) — wide enough for any board the editor can produce,
+   * and no wider.
    *
-   * That frame is mostly empty air — a 19" board at this scale draws 151 units wide inside it, so
-   * 55% of the width is padding. `preserveAspectRatio="xMidYMid meet"` fits the whole frame,
-   * padding included, which is harmless in a preset card (roughly as wide as it is tall) and ruinous
-   * in a tall narrow panel: the order form's board came out at 43% of the height it had available,
-   * marooned in white space. Cropped to the board, the drawing fills the panel it was given.
+   * Two problems, one frame. The thumbnail frame is mostly empty air: a 19" board draws 151 units
+   * inside 340, so 55% of the width is padding, and since `preserveAspectRatio="xMidYMid meet"`
+   * fits the whole frame, padding included, the order form's board came out at 43% of the height it
+   * had available. Cropping to the board's own width fixed that but introduced a second problem —
+   * the frame then changed shape with every board, so the printed window resized itself around
+   * whichever board happened to be loaded.
+   *
+   * A range-sized frame is fixed. The board's own scale is untouched (it still fits the view's
+   * height, so every board prints as large as the window allows); what stops moving is the window
+   * around it. A narrower or shorter board simply leaves more blank paper inside the frame — which
+   * on the order form is the space the colour design is drawn in.
    *
    * Only meaningful with `hideCallouts` — the callout frame has its own derivation, and the
    * callouts need that width. Defaults to `false`, every existing consumer's unchanged framing.
    */
-  cropToBoard?: boolean;
+  fixedFrame?: boolean;
   /**
    * Draws the faint interior lines — stringer, mid-length centreline, the nose and tail 12"
    * stations, and the widepoint station with its two rail knots — even when `hideCallouts` is on.
@@ -172,7 +196,7 @@ export function OutlineViewer({
   finMarks = [],
   hideCallouts = false,
   hideFinMarks = false,
-  cropToBoard = false,
+  fixedFrame = false,
   showStationLines = false,
   onOutlineDrag,
   pinCalloutText = false,
@@ -322,18 +346,17 @@ export function OutlineViewer({
   const halfTailBlockWidthIn = mmToInches(geometry.halfTailBlockWidth);
   const tailBlockValue = `${formatInchesFraction(mm(geometry.halfTailBlockWidth * 2))} wide`;
 
-  // The board's own drawn half-width, in view units — what `cropToBoard` frames to.
-  const halfBoardPx = mmToInches(geometry.halfWidePointWidth) * scale;
-  const cropMinX = centerlineX - halfBoardPx - CROP_PAD_X;
-  const cropWidth = 2 * (halfBoardPx + CROP_PAD_X);
+  // The fixed frame, centred on the stringer. Constant for every board, by construction.
+  const fixedMinX = centerlineX - FIXED_FRAME_HALF_W;
+  const fixedWidth = 2 * FIXED_FRAME_HALF_W;
 
   const viewBox = hideCallouts
-    ? cropToBoard
-      ? `${cropMinX.toFixed(2)} 0 ${cropWidth.toFixed(2)} ${VIEW_H}`
+    ? fixedFrame
+      ? `${fixedMinX.toFixed(2)} 0 ${fixedWidth.toFixed(2)} ${VIEW_H}`
       : `0 0 ${VIEW_W} ${VIEW_H}`
     : `${frame.minX} ${frame.minY} ${frame.width} ${frame.height}`;
 
-  const vbW = hideCallouts ? (cropToBoard ? cropWidth : VIEW_W) : frame.width;
+  const vbW = hideCallouts ? (fixedFrame ? fixedWidth : VIEW_W) : frame.width;
   const vbH = hideCallouts ? VIEW_H : frame.height;
   const fitScale = useSvgFitScale(svgRef, vbW, vbH);
   const calloutSizes = pinCalloutText ? pinnedCalloutSizes(fitScale) : UNPINNED_CALLOUT_SIZES;

@@ -74,6 +74,22 @@ export interface OutlineSpec {
 }
 
 /**
+ * The range of boards this app will draw, in inches — 5'0" to 10'0" long, 16" to 25" at the
+ * widepoint.
+ *
+ * These are the bounds the outline editor's sliders have always clamped to; they live here now
+ * because they stopped being a UI detail the moment something other than a slider needed to know
+ * them. The order form's template window is sized from them (see `outline-viewer.tsx`'s
+ * `fixedFrame`), so that one window holds any board the editor can produce rather than resizing
+ * itself around whichever board happens to be loaded.
+ *
+ * Inches rather than `Mm`, deliberately: every consumer is a slider bound or a drawing scale, both
+ * of which work in the inch domain, and a `Mm` constant would only be converted back at each use.
+ */
+export const BOARD_LENGTH_RANGE_IN = { min: 60, max: 120 } as const;
+export const WIDEPOINT_WIDTH_RANGE_IN = { min: 16, max: 25 } as const;
+
+/**
  * The single board-design object. Rocker, foil, rails and fins become
  * sibling keys in later phases, so screens added later extend this object
  * rather than reshaping it.
