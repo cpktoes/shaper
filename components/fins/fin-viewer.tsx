@@ -25,12 +25,12 @@
  * keyed to `result.legend`'s Front/Rear/Center dash — see the inline comment at that line.
  */
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import type { FinMark, FinPlacementResult, FinRole, FinTailShape, FinLateralKind } from "@/lib/geometry/fins";
 import { tailHalfWidthAt, tailOffTailAtHalfWidth, tailOutlineHalfPoints } from "@/lib/geometry/fins";
 import { formatFeetInches, formatInchesFraction, inchesToMm, mm, mmToInches, type Mm } from "@/lib/geometry/units";
 import type { Point2D } from "@/lib/geometry/board";
-import { CALLOUT_FONT_VALUE, DimensionTick } from "@/components/viewer/callout-primitives";
+import { CALLOUT_FONT_VALUE, CALLOUT_PX, DimensionTick, useSvgFitScale } from "@/components/viewer/callout-primitives";
 
 const SCALE = 14;
 const ORIGIN_X = 260;
@@ -426,7 +426,14 @@ export function FinViewer({
 
   // Non-compact shares the outline viewer's callout scale so a dimension reads the same
   // size on either screen. Compact keeps the summary scale the print-fit depends on.
-  const valueFontSize = compact ? "var(--summary-font-callout, 10px)" : CALLOUT_FONT_VALUE;
+  // Non-compact counters the drawing's fit so a dimension reads at CALLOUT_PX.value on screen
+  // no matter how large the drawing is — the same size it reads on the outline editor and the
+  // same size as the data in the tables. Compact keeps the summary scale the print-fit needs.
+  const svgRef = useRef<SVGSVGElement>(null);
+  const fitScale = useSvgFitScale(svgRef, VIEW_WIDTH, VIEW_HEIGHT);
+  const valueFontSize = compact
+    ? "var(--summary-font-callout, 10px)"
+    : (fitScale > 0 ? CALLOUT_PX.value / fitScale : CALLOUT_FONT_VALUE);
 
   return (
     // `h-full` as well as `flex-1`: the Summary card's body is a block, not a flex container, so
@@ -444,6 +451,7 @@ export function FinViewer({
           entirely, leaving it to do the one job it should: scaling the drawing inside. */}
       <div className="relative flex min-h-0 w-full flex-1 justify-center">
         <svg
+          ref={svgRef}
           viewBox={`0 ${VIEW_MIN_Y} ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
           preserveAspectRatio="xMidYMid meet"
           className="absolute inset-0 block h-full w-full"

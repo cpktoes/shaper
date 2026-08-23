@@ -1,3 +1,7 @@
+"use client";
+
+import { createContext, useContext, useLayoutEffect, useState, type RefObject } from "react";
+
 /**
  * Shared callout-system primitives for the plan-view board viewers (outline-viewer.tsx,
  * fin-viewer.tsx). Diagram layout, not board geometry — deliberately lives under `components/`,
@@ -31,6 +35,84 @@ export const CALLOUT_FONT_DIM = 14;
 export const CALLOUT_STACK_NAME_DY = -CALLOUT_FONT_VALUE * 0.34;
 export const CALLOUT_STACK_VALUE_DY = CALLOUT_FONT_VALUE * 0.76;
 
+/**
+ * Target on-screen sizes, in CSS pixels, for a viewer that pins its callout text.
+ *
+ * The board outline is geometry and must scale with the drawing — a template cannot fake
+ * proportion. A dimension *label* is not geometry, it is UI, and should read the same
+ * whether the drawing is large or small. Sizes in SVG user units cannot do that: what
+ * lands on screen is `units x fitScale`, and each viewer has a different fit scale that
+ * moves with window height. Measured at 1280x800 the same callout rendered 18.4px on the
+ * outline, 23.9px on fins and 11.2px on the rail plots.
+ *
+ * `value` matches the data in the tables (`text-sm`), which is what the founder asked
+ * these to equal; `name` sits a step below so a chip does not become the loudest thing on
+ * the drawing. Both stay under the 18px screen title.
+ */
+export const CALLOUT_PX = { value: 14, name: 11, dim: 14, chipW: 104, chipH: 32 } as const;
+
+/** Callout metrics in SVG user units, resolved for one viewer's current fit. */
+export interface CalloutSizes {
+  value: number;
+  name: number;
+  dim: number;
+  chipW: number;
+  chipH: number;
+  stackNameDy: number;
+  stackValueDy: number;
+}
+
+/** `CALLOUT_PX` converted into the user units that render at those pixel sizes under `fitScale`. */
+export function pinnedCalloutSizes(fitScale: number): CalloutSizes {
+  const effective = Math.max(fitScale, MIN_PINNED_FIT_SCALE);
+  const u = effective > 0 ? 1 / effective : 1; // user units per CSS pixel
+  const value = CALLOUT_PX.value * u;
+  return {
+    value,
+    name: CALLOUT_PX.name * u,
+    dim: CALLOUT_PX.dim * u,
+    chipW: CALLOUT_PX.chipW * u,
+    chipH: CALLOUT_PX.chipH * u,
+    stackNameDy: -value * 0.34,
+    stackValueDy: value * 0.76,
+  };
+}
+
+/**
+ * The px-per-user-unit an svg's `preserveAspectRatio="…meet"` fit is currently applying.
+ *
+ * Returns 1 until the element is measured. Callers divide their target pixel sizes by this
+ * to counter the drawing's scale.
+ */
+export function useSvgFitScale(
+  ref: RefObject<SVGSVGElement | null>,
+  viewBoxWidth: number,
+  viewBoxHeight: number,
+): number {
+  const [scale, setScale] = useState(1);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || viewBoxWidth <= 0 || viewBoxHeight <= 0) return;
+
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const next = Math.min(rect.width / viewBoxWidth, rect.height / viewBoxHeight);
+      // Quantise before storing: sub-pixel jitter from a resize would otherwise re-render
+      // every callout on every observer tick for a change nobody can see.
+      setScale((prev) => (Math.abs(prev - next) < 0.005 ? prev : next));
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref, viewBoxWidth, viewBoxHeight]);
+
+  return scale;
+}
+
 /** Half-length of a `DimensionTick`'s 45-degree slash, in SVG user units. */
 export const CALLOUT_TICK_SIZE = 4;
 /** Gap left between an extension line's far end and where its value text begins. */
@@ -47,11 +129,47 @@ export const OUTLINE_CHIP_HEIGHT = 38;
 export const OUTLINE_GUTTER_GAP = 36.5;
 export const OUTLINE_OUTPUT_VALUE_X = 282;
 
+/** The unit-based scale — what a viewer gets when it does not pin its text. */
+export const UNPINNED_CALLOUT_SIZES: CalloutSizes = {
+  value: CALLOUT_FONT_VALUE,
+  name: CALLOUT_FONT_NAME,
+  dim: CALLOUT_FONT_DIM,
+  chipW: OUTLINE_CHIP_WIDTH,
+  chipH: OUTLINE_CHIP_HEIGHT,
+  stackNameDy: CALLOUT_STACK_NAME_DY,
+  stackValueDy: CALLOUT_STACK_VALUE_DY,
+};
+
+const CalloutSizeContext = createContext<CalloutSizes>(UNPINNED_CALLOUT_SIZES);
+
+/** Wraps a viewer's SVG content so every primitive inside reads one resolved size set —
+ * `outline-viewer.tsx` alone has a dozen callout call sites, none of which should have to
+ * carry sizing props. */
+export const CalloutSizeProvider = CalloutSizeContext.Provider;
+
+export function useCalloutSizes(): CalloutSizes {
+  return useContext(CalloutSizeContext);
+}
+
 /** Widened viewBox (sketch 004) that gives the two gutters room outside the board's own
  * unchanged 340x620 coordinate space — the board's own scale/centreline math never changes. */
-export const OUTLINE_VIEW_MIN_X = -60;
+/* Gutters are wider than the chip strictly needs because a pinned chip grows in user units as
+   the fit scale falls (a 104px chip is 104 units at scale 1.0 but 147 at 0.707), and a chip that
+   overruns minX is clipped — measured happening at a 560px-tall window with minX at -84. Costs
+   nothing: these drawings are height-bound, so horizontal slack never shrinks the board. The
+   right gutter carries the same allowance for the output rail's value text. */
+export const OUTLINE_VIEW_MIN_X = -104;
 export const OUTLINE_VIEW_MIN_Y = -16;
-export const OUTLINE_VIEW_WIDTH = 424;
+export const OUTLINE_VIEW_WIDTH = 514;
+
+/**
+ * Floor on the fit scale used for pinning. Below this a pinned chip would outgrow even the
+ * widened gutter above; in a window that short the drawing is small anyway, so letting the
+ * callouts scale down with it is a better failure mode than clipping one. Derived from the
+ * gutter budget: OUTLINE_CHIP_RIGHT_X - OUTLINE_VIEW_MIN_X, less a small margin, against
+ * CALLOUT_PX.chipW.
+ */
+export const MIN_PINNED_FIT_SCALE = 0.66;
 export const OUTLINE_VIEW_HEIGHT = 638;
 
 /** The maximum half-width (in px, from the board's centreline) the outline may render at before
@@ -157,6 +275,7 @@ export function DimensionLine({
   color = "var(--outline-dim-ink)",
   haloColor,
 }: DimensionLineProps) {
+  const sizes = useCalloutSizes();
   return (
     <g>
       <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={1} />
@@ -168,7 +287,7 @@ export function DimensionLine({
           y={labelY}
           textAnchor={labelAnchor}
           style={{
-            fontSize: CALLOUT_FONT_DIM,
+            fontSize: sizes.dim,
             fontWeight: 700,
             fontFamily: "var(--font-body)",
             fill: "var(--outline-ink)",
@@ -202,9 +321,10 @@ export interface CalloutChipProps {
 /** A named input chip: a bordered box holding a name + value pair, optionally leadered to its
  * target station. Chips carry their own name so no value is ever unlabelled (sketch 004). */
 export function CalloutChip({ x, y, name, value, nameColor = "var(--outline-callout-label)", leaderToX }: CalloutChipProps) {
-  const rectX = x - OUTLINE_CHIP_WIDTH;
-  const rectY = y - OUTLINE_CHIP_HEIGHT / 2;
-  const centerX = x - OUTLINE_CHIP_WIDTH / 2;
+  const sizes = useCalloutSizes();
+  const rectX = x - sizes.chipW;
+  const rectY = y - sizes.chipH / 2;
+  const centerX = x - sizes.chipW / 2;
   return (
     <g>
       {leaderToX !== undefined && (
@@ -213,26 +333,26 @@ export function CalloutChip({ x, y, name, value, nameColor = "var(--outline-call
       <rect
         x={rectX}
         y={rectY}
-        width={OUTLINE_CHIP_WIDTH}
-        height={OUTLINE_CHIP_HEIGHT}
+        width={sizes.chipW}
+        height={sizes.chipH}
         rx={4}
         fill="var(--outline-page-bg)"
         stroke="var(--border)"
       />
       <text
         x={centerX}
-        y={y + CALLOUT_STACK_NAME_DY}
+        y={y + sizes.stackNameDy}
         textAnchor="middle"
-        style={{ fontSize: CALLOUT_FONT_NAME, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.12em" }}
+        style={{ fontSize: sizes.name, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.12em" }}
         fill={nameColor}
       >
         {name}
       </text>
       <text
         x={centerX}
-        y={y + CALLOUT_STACK_VALUE_DY}
+        y={y + sizes.stackValueDy}
         textAnchor="middle"
-        style={{ fontSize: CALLOUT_FONT_VALUE, fontWeight: 700, fontFamily: "var(--font-body)" }}
+        style={{ fontSize: sizes.value, fontWeight: 700, fontFamily: "var(--font-body)" }}
         fill="var(--outline-ink)"
       >
         {value}
@@ -259,6 +379,7 @@ export interface OutputRailProps {
  * at the measured point, the value, and the station name beneath it — every output in the system
  * lands its value at the same `OUTLINE_OUTPUT_VALUE_X`, never a per-call x. */
 export function OutputRail({ edgeX, y, value, station, valueX = OUTLINE_OUTPUT_VALUE_X }: OutputRailProps) {
+  const sizes = useCalloutSizes();
   const reachX = valueX - CALLOUT_VALUE_GAP;
   return (
     <g>
@@ -267,15 +388,15 @@ export function OutputRail({ edgeX, y, value, station, valueX = OUTLINE_OUTPUT_V
       <text
         x={valueX}
         y={y - 2}
-        style={{ fontSize: CALLOUT_FONT_VALUE, fontWeight: 700, fontFamily: "var(--font-body)" }}
+        style={{ fontSize: sizes.value, fontWeight: 700, fontFamily: "var(--font-body)" }}
         fill="var(--outline-ink)"
       >
         {value}
       </text>
       <text
         x={valueX}
-        y={y + CALLOUT_FONT_NAME}
-        style={{ fontSize: CALLOUT_FONT_NAME, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.1em" }}
+        y={y + sizes.name}
+        style={{ fontSize: sizes.name, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.1em" }}
         fill="var(--outline-callout-label)"
       >
         {station}

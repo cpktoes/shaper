@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Live SVG cross-section plot for one rail section, ported from the prototype's `buildPlot`
  * pixel math (reference/project/Rails.dc.html lines 1027-1147) restricted to a single, always-
@@ -7,6 +9,8 @@
  * deviation 4).
  */
 
+import { useRef } from "react";
+import { CALLOUT_PX, useSvgFitScale } from "@/components/viewer/callout-primitives";
 import type { RailSectionKey, RailSectionOutput, RailSegmentKey } from "@/lib/geometry/rail-bands";
 import { type Mm, mmToInches } from "@/lib/geometry/units";
 
@@ -78,6 +82,7 @@ export function computeRailPlotBounds(output: RailSectionOutput, xAxisMin: Mm) {
 }
 
 export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSectionPlotProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
   const { result, segments, domed, boardThickness, thicknessEff } = output;
   const blankThicknessIn = domed ? mmToInches(boardThickness) : mmToInches(thicknessEff);
 
@@ -141,8 +146,14 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSection
     });
   }
 
+  // Axis tick labels counter the plot's fit so they read at the same on-screen size as every
+  // other callout in the app, rather than tracking however wide the plot happens to render.
+  const fitScale = useSvgFitScale(svgRef, width, height);
+  const axisFontSize = fitScale > 0 ? CALLOUT_PX.name / fitScale : 10;
+
   return (
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${width} ${height}`}
       style={
         fit === "height"
@@ -167,7 +178,7 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSection
       {xTicks.map((tk, i) => (
         <g key={`xt${i}`}>
           <line x1={tk.x1} y1={tk.y1} x2={tk.x2} y2={tk.y2} stroke="var(--color-surf-muted)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          <text x={tk.lx} y={tk.ly} fontSize={10} fill="var(--color-surf-muted)" textAnchor="middle">
+          <text x={tk.lx} y={tk.ly} fontSize={axisFontSize} fill="var(--color-surf-muted)" textAnchor="middle">
             {tk.label}
           </text>
         </g>
@@ -175,7 +186,7 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSection
       {yTicks.map((tk, i) => (
         <g key={`yt${i}`}>
           <line x1={tk.x1} y1={tk.y1} x2={tk.x2} y2={tk.y2} stroke="var(--color-surf-muted)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          <text x={tk.lx} y={tk.ly} fontSize={10} fill="var(--color-surf-muted)" textAnchor="end">
+          <text x={tk.lx} y={tk.ly} fontSize={axisFontSize} fill="var(--color-surf-muted)" textAnchor="end">
             {tk.label}
           </text>
         </g>

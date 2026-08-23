@@ -29,6 +29,10 @@ import {
   OUTLINE_CHIP_HEIGHT,
   OutputRail,
   outlineViewFrame,
+  CalloutSizeProvider,
+  UNPINNED_CALLOUT_SIZES,
+  pinnedCalloutSizes,
+  useSvgFitScale,
 } from "@/components/viewer/callout-primitives";
 
 const VIEW_W = 340;
@@ -71,6 +75,13 @@ interface OutlineViewerProps {
    * template (components/summary/board-summary.tsx) and the setup-screen thumbnails, so this is
    * an additive per-consumer gate, not a change to `finMarksSvg` itself. Defaults to `false`. */
   hideFinMarks?: boolean;
+  /** Editor-screen display gate: when true, callout text and chips hold a constant on-screen
+   * size (CALLOUT_PX) instead of scaling with the drawing, by countering the svg's fit scale.
+   * The board itself always scales — a template cannot fake proportion — but a dimension label
+   * is UI, and at unit sizes the same callout measured 18.4px here and 23.9px on the fin
+   * viewer at one viewport. Off by default so the Summary's cards, which render this viewer at
+   * roughly half scale into a small cell, keep their own proportional sizing. */
+  pinCalloutText?: boolean;
   /**
    * Direct manipulation, outline-editor only: called with the spec fields a dragged control point
    * implies, on every pointer move. Omitted (Summary, preset cards) means no hit targets and no
@@ -121,6 +132,7 @@ export function OutlineViewer({
   hideCallouts = false,
   hideFinMarks = false,
   onOutlineDrag,
+  pinCalloutText = false,
 }: OutlineViewerProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   /** Which control point the active gesture owns, if any. A ref, not state: it changes on
@@ -270,7 +282,13 @@ export function OutlineViewer({
     ? `0 0 ${VIEW_W} ${VIEW_H}`
     : `${frame.minX} ${frame.minY} ${frame.width} ${frame.height}`;
 
+  const vbW = hideCallouts ? VIEW_W : frame.width;
+  const vbH = hideCallouts ? VIEW_H : frame.height;
+  const fitScale = useSvgFitScale(svgRef, vbW, vbH);
+  const calloutSizes = pinCalloutText ? pinnedCalloutSizes(fitScale) : UNPINNED_CALLOUT_SIZES;
+
   return (
+    <CalloutSizeProvider value={calloutSizes}>
     <svg
       ref={svgRef}
       viewBox={viewBox}
@@ -445,5 +463,6 @@ export function OutlineViewer({
         </>
       )}
     </svg>
+    </CalloutSizeProvider>
   );
 }

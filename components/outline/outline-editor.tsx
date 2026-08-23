@@ -112,6 +112,7 @@ export function OutlineEditor() {
                   onOutlineDrag={updateOutline}
                   finMarks={finPlacement.marks}
                   hideFinMarks
+                  pinCalloutText
                 />
               </div>
             </div>
