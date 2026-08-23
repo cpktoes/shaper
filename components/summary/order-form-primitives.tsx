@@ -10,7 +10,7 @@
  * be re-proportioned by editing this file instead of forty class strings.
  */
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,6 +26,7 @@ export function FormBox({
   captionRight,
   className,
   bodyClassName,
+  style,
   children,
 }: {
   caption?: string;
@@ -34,10 +35,15 @@ export function FormBox({
   captionRight?: ReactNode;
   className?: string;
   bodyClassName?: string;
+  /** Escape hatch for per-panel CSS custom properties — the outline panel uses it to switch off
+   * `--outline-board-fill` for the drawings inside it. Not for one-off layout: that belongs in
+   * `className`. */
+  style?: CSSProperties;
   children?: ReactNode;
 }) {
   return (
     <div
+      style={style}
       className={cn(
         "flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[3px] border border-surf-black",
         className,

@@ -8,6 +8,7 @@ branch: design/order-form-summary
 commits:
   - c3a8bbf feat(summary): add fin box system to the design store
   - 59f9366 feat(summary): rebuild the summary as a portrait order form
+  - 90e9597 feat(summary): draw deck and bottom in one unfilled outline panel
 ---
 
 # Quick Task 260823-ffv — Summary as a shop order form
@@ -48,9 +49,26 @@ print path.
 | `TAIL SHAPE` row | Removed — the tail is built into the outline. |
 | `CONTOURS`/`RAILS` checkboxes | Real rail section plots + the rail band marking data table. |
 | `FIN SETUP` checkboxes | Fin *system* selector (FCS II, FCS Original, Futures, Lokbox, Probox, Glass-On). |
-| Single board outline area | Two drawings — `DECK` and `BOTTOM` — no callout dimensions; fin marks on `BOTTOM` only. |
+| Single board outline area | One `OUTLINE` box holding both drawings — `DECK` and `BOTTOM`, captioned beneath as the muse captions its own pair. No callout dimensions, no interior wash; fin marks on `BOTTOM` only. |
 | `ROCKER` | Kept as a placeholder, ticks and all, until the rocker screen fills it. |
 | `CLEAR FORM` | `Print Order Form`, below the paper and `data-print-hide`. |
+
+## Follow-up: one shared outline panel (user request)
+
+Deck and bottom started as a box each. They now share one, drawn stroke-only:
+
+- **One box, not two.** Two captions, two borders and two sets of padding for what a shaper reads
+  as a single pair of views was chrome the sheet could not spare. The width it gives back went to
+  the marking data and the fin numbers either side — at the final weights all three panels are
+  *wider* than they were as separate boxes (311 / 263 / 288px against 297 / 296 / 271), and each
+  drawing is slightly larger too.
+- **No fill.** Set by overriding `--outline-board-fill` to `transparent` on the panel rather than
+  by changing `OutlineViewer`. That token is a screen affordance which globals.css already
+  suppresses for print, on the grounds that ink inside the outline is wasted on a template meant to
+  be cut along and marked on. This sheet is that template wherever it is looked at, so the override
+  only brings the screen into line with what already printed.
+- `FormBox` gained a `style` passthrough for that override — documented as being for CSS custom
+  properties, not for one-off layout.
 
 ## Notable implementation detail
 

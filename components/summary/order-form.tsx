@@ -31,7 +31,7 @@
  * viewport, the layout it measures is the layout that prints.
  */
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { OutlineViewer } from "@/components/outline/outline-viewer";
 import { RailDataTable } from "@/components/rails/rail-data-table";
@@ -91,21 +91,21 @@ function RockerTicks() {
   );
 }
 
-/** A board drawing panel — `DECK` or `BOTTOM`. */
-function OutlinePanel({
-  caption,
-  children,
-}: {
-  caption: string;
-  children: ReactNode;
-}) {
+/**
+ * One drawing inside the shared outline panel, captioned beneath it the way the paper muse
+ * captions its own pair.
+ */
+function OutlineHalf({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <FormBox caption={caption} variant="flush" className="min-w-0 flex-1" bodyClassName="p-1">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* The viewer's <svg> is absolutely positioned to fill its box, so the box needs to be
           `relative` and to have a size of its own — it must never take its height from the
           drawing, or the panel would demand the drawing's full aspect ratio and inflate the row. */}
       <div className="relative min-h-0 w-full flex-1">{children}</div>
-    </FormBox>
+      <div className="flex-none pt-0.5 text-center font-display font-extrabold tracking-architectural text-surf-black uppercase order-form-caption">
+        {label}
+      </div>
+    </div>
   );
 }
 
@@ -266,42 +266,64 @@ export function OrderForm() {
                 <FormBox
                   caption="Rail Bands"
                   captionRight="marking data"
-                  className="min-w-0 flex-[2.3]"
+                  className="min-w-0 flex-[2.5]"
                   bodyClassName="p-1"
                 >
                   <RailDataTable sections={sections} compact />
                 </FormBox>
 
-                <OutlinePanel caption="Deck">
-                  <OutlineViewer
-                    geometry={outlineGeometry}
-                    outline={outline}
-                    showConstruction={false}
-                    // Dimensions have their own row on this sheet, so the drawings carry none —
-                    // and the deck side carries no fin marks either: fins are cut from the bottom.
-                    hideCallouts
-                    cropToBoard
-                    hideFinMarks
-                  />
-                </OutlinePanel>
+                {/*
+                 * Deck and bottom share one box rather than taking a box each: two captions, two
+                 * borders and two sets of padding for what a shaper reads as a single pair of
+                 * views is chrome the sheet cannot spare, and the width it gives back goes to the
+                 * marking data and the fin numbers either side.
+                 *
+                 * The interior wash is off. `--outline-board-fill` is a screen affordance — the
+                 * globals.css token is already suppressed for print, on the grounds that ink
+                 * inside the outline is wasted on a template meant to be cut along and marked on.
+                 * This sheet is that template wherever it is looked at, so the override here just
+                 * brings the screen into line with what already prints, and both drawings are left
+                 * defined by their stroke alone.
+                 */}
+                <FormBox
+                  caption="Outline"
+                  captionRight="no dimensions — see above"
+                  variant="flush"
+                  className="min-w-0 flex-[2.1]"
+                  bodyClassName="flex-row gap-1 p-1"
+                  style={{ "--outline-board-fill": "transparent" } as CSSProperties}
+                >
+                  <OutlineHalf label="Deck">
+                    <OutlineViewer
+                      geometry={outlineGeometry}
+                      outline={outline}
+                      showConstruction={false}
+                      // Dimensions have their own row on this sheet, so the drawings carry none —
+                      // and the deck side carries no fin marks either: fins are cut from the bottom.
+                      hideCallouts
+                      cropToBoard
+                      hideFinMarks
+                    />
+                  </OutlineHalf>
 
-                <OutlinePanel caption="Bottom">
-                  <OutlineViewer
-                    geometry={outlineGeometry}
-                    outline={outline}
-                    showConstruction={false}
-                    hideCallouts
-                    cropToBoard
-                    finMarks={finPlacement.marks}
-                  />
-                </OutlinePanel>
+                  <OutlineHalf label="Bottom">
+                    <OutlineViewer
+                      geometry={outlineGeometry}
+                      outline={outline}
+                      showConstruction={false}
+                      hideCallouts
+                      cropToBoard
+                      finMarks={finPlacement.marks}
+                    />
+                  </OutlineHalf>
+                </FormBox>
 
                 {/* The fin numbers sit next to the drawing that carries the fin marks, so the
                     table and the picture it describes are read together. */}
                 <FormBox
                   caption="Fin Placement"
                   captionRight={finSetupLabel}
-                  className="min-w-0 flex-[2.1]"
+                  className="min-w-0 flex-[2.3]"
                   bodyClassName="gap-1 overflow-y-auto p-1"
                 >
                   <div data-print-unfold className="min-h-0 flex-1 overflow-y-auto">
