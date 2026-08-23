@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 Phase: 2 — Accounts & Saved Designs
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-23 - Completed quick task 260823-jrn: Taller rocker strip over the template window
+Last activity: 2026-08-23 - Completed quick task 260823-kq8: Stack fin placement under the rail data on page 2
 
 Progress: [██████████] 100%
 
@@ -142,6 +142,7 @@ None yet.
 | 260823-h6l | Rail section plots moved to a left column (~1/3) beside the template window (~2/3) on order form page 1; OutlineViewer cropToBoard replaced by fixedFrame, sized from new BOARD_LENGTH_RANGE_IN/WIDEPOINT_WIDTH_RANGE_IN constants in board.ts so one window holds any board (extreme is the shortest-and-widest, 5'0" x 25") without the frame resizing per board | 2026-08-23 | c1c8359 | [260823-h6l-rail-plots-beside-a-fixed-scale-template](./quick/260823-h6l-rail-plots-beside-a-fixed-scale-template/) |
 | 260823-ipc | Order form shading switched from grey to the reduced accent hue (new --order-form-shade token at 7%, held there by contrast) and page 1 type raised so nothing prints under 7.9px (was 5.8px); fixed a latent leading-none clip on the dimension values and raised the dims/rocker bands to suit. Zero AA failures across both sheets, min ratio 4.83:1 | 2026-08-23 | f43dea9 | [260823-ipc-accent-tinted-shading-and-aa-compliant-t](./quick/260823-ipc-accent-tinted-shading-and-aa-compliant-t/) |
 | 260823-jrn | Rocker box narrowed to sit above the template window only (inside a new right-hand column) and made 58% taller; rail plots column now runs the full height of the drawings row. Class renamed order-form-band-rocker to order-form-rocker since its percentage now reads against the column | 2026-08-23 | a8e1cde | [260823-jrn-rocker-above-the-template-window](./quick/260823-jrn-rocker-above-the-template-window/) |
+| 260823-kq8 | Page 2 tables stacked instead of side by side: fin placement under the rail data, both full width. Fin sections laid out in CSS columns to repair the row stretch full width introduced (label and value were ending up most of a page apart), footnote moved outside the columned flow to span the panel | 2026-08-23 | c88bbba | [260823-kq8-fin-placement-under-the-rail-data](./quick/260823-kq8-fin-placement-under-the-rail-data/) |
 
 ## Deferred Items
 
