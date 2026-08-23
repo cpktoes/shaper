@@ -9,6 +9,7 @@ commits:
   - c3a8bbf feat(summary): add fin box system to the design store
   - 59f9366 feat(summary): rebuild the summary as a portrait order form
   - a093c1c feat(summary): draw deck and bottom in one unfilled outline panel
+  - a5e29ce feat(summary): station lines on the outlines, widepoint and offset as core dims
 ---
 
 # Quick Task 260823-ffv — Summary as a shop order form
@@ -70,6 +71,29 @@ Deck and bottom started as a box each. They now share one, drawn stroke-only:
 - `FormBox` gained a `style` passthrough for that override — documented as being for CSS custom
   properties, not for one-off layout.
 
+## Follow-up: station lines, and widepoint instead of centre width (user request)
+
+**Faint interior lines on both drawings.** The stringer, the mid-length centreline, the nose and
+tail 12" stations, and the widepoint station with its two rail knots. These had shared a gate with
+the callouts (`hideCallouts`) because until now every consumer wanted both or neither; they are now
+separable via a new additive `showStationLines` prop, defaulting off so the preset thumbnails stay
+bare. The order form wants the lines without the callouts — it carries its dimensions in their own
+row, but a shaper marking a blank still works off the stations.
+
+**`WIDEPOINT` + `WP OFFSET` replace the muse's `CENTER`.** `CENTER` assumes the widest point *is*
+the middle of the board, which is only true when the offset happens to be zero — and the offset is
+an input a shaper sets deliberately. Reporting the width without saying where along the board it
+was measured left the sheet's most-used marking number ambiguous. Seven cells now, no clipping at
+print width.
+
+**New `formatSignedInchesFraction` in `lib/geometry/units.ts`,** with tests. The outline editor was
+hand-rolling this sign logic inline for its Offset slider; the order form needed the same thing, so
+it moved to `units.ts` and both call it. Writing the tests turned up a quirk worth knowing about:
+`formatInchesFraction` takes its sign from the *raw* value before rounding, so a value a hair below
+zero comes back as `-0"`. The new function normalises that to `0"` rather than changing
+`formatInchesFraction`, whose output is pinned by golden tests across the rail, fin and volume
+screens.
+
 ## Notable implementation detail
 
 `OutlineViewer` gained one additive, display-only prop, `cropToBoard`, following the same
@@ -85,7 +109,7 @@ so the preset-card thumbnails render exactly as before (verified).
 ## Verification
 
 - `npx tsc --noEmit` — clean.
-- `npx vitest run` — 633 passed / 7 files.
+- `npx vitest run` — 638 passed / 7 files (5 new, covering `formatSignedInchesFraction`).
 - `npx eslint` on all changed paths — clean.
 - Browser: sheet renders at desktop width, no console errors; preset thumbnails on `/` unchanged.
 - **Print fit**: pinned to the printable page box (733.4 × 995.5px = Letter portrait less the 8mm
