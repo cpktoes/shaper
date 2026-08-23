@@ -1,0 +1,181 @@
+/**
+ * Route-scoped stylesheet, imported only by app/design/summary/page.tsx — Next.js loads it only
+ * when the summary route is visited, so nothing declared here can reach the outline/rails/volume/
+ * fins screens. Every element rule below is additionally scoped under `[data-order-form-root]`,
+ * `[data-order-form-sheet]` or an opt-in `data-print-*` attribute for the same reason, in case the
+ * browser ever keeps this file loaded across a client-side navigation away from the route (Next.js
+ * does not always drop a previously-loaded stylesheet on navigation — see
+ * node_modules/next/dist/docs/01-app/01-getting-started/11-css.md, "Global CSS"). The one exception
+ * is `@page { size: portrait }` below, which is unavoidably document-global — it is commented where
+ * it appears.
+ */
+
+/*
+ * The sheet's type scale.
+ *
+ * Every size is `clamp(min, N cqw, max)` — tied to the *container's* width, not the viewport's, and
+ * that difference is load-bearing. These sizes decide how tall each band lays out, and
+ * `useOrderFormPrintFit` measures that height while the page is still in screen media. Tied to the
+ * viewport, the fonts it measures are the screen's while the sheet prints against the page's much
+ * narrower viewport, so the scale would be computed for a layout that never existed. Tied to the
+ * container, they follow the width the hook pins the root to, and measurement and print agree.
+ *
+ * The `cqw` figures are calibrated against an 880px sheet — this form's on-screen max width and
+ * close to a real page's printable width — so the numbers below read as "what this is at full
+ * size": caption 8px, value 10px, dimension 15px.
+ *
+ * The properties are declared on the container itself, which is fine: `cqw` resolves where a
+ * property is USED, and every user is a descendant.
+ */
+[data-order-form-root] {
+  --order-form-caption: clamp(6.5px, 0.909cqw, 11px); /* 8px at 880 — ALL-CAPS field labels */
+  --order-form-micro: clamp(5.8px, 0.795cqw, 9.6px); /* 7px  — secondary notes, group headings */
+  --order-form-value: clamp(8px, 1.136cqw, 13.5px); /* 10px — written-in and printed values */
+  --order-form-row: clamp(7.2px, 1.023cqw, 12px); /* 9px  — fin placement table rows */
+  --order-form-group: clamp(6.5px, 0.909cqw, 11px); /* 8px  — fin section headings */
+  --order-form-dim: clamp(11px, 1.705cqw, 21px); /* 15px — the dimensions row's measurements */
+  --order-form-wordmark: clamp(15px, 2.5cqw, 32px); /* 22px — the SHAPER logo block */
+}
+
+[data-order-form-root] .order-form-caption {
+  font-size: var(--order-form-caption);
+}
+[data-order-form-root] .order-form-micro {
+  font-size: var(--order-form-micro);
+}
+[data-order-form-root] .order-form-value {
+  font-size: var(--order-form-value);
+}
+[data-order-form-root] .order-form-row {
+  font-size: var(--order-form-row);
+}
+[data-order-form-root] .order-form-group {
+  font-size: var(--order-form-group);
+}
+[data-order-form-root] .order-form-dim {
+  font-size: var(--order-form-dim);
+}
+[data-order-form-root] .order-form-wordmark {
+  font-size: var(--order-form-wordmark);
+}
+
+/* The rail data table and the volume card were written for the landscape summary's `--summary-font-*`
+   scale. Rather than fork those components for this sheet, alias their variables onto this one's —
+   one mapping here instead of a `compact`-style prop on every embedded view. */
+[data-order-form-root] {
+  --summary-font-callout: var(--order-form-value);
+  --summary-font-group: var(--order-form-group);
+  --summary-font-row: var(--order-form-row);
+  --summary-font-label: var(--order-form-caption);
+  --summary-font-volume: var(--order-form-dim);
+}
+
+/*
+ * The paper.
+ *
+ * A fixed portrait aspect box rather than a height in pixels: `aspect-ratio` ties the sheet's
+ * height to the width the container query is already driving, so the on-screen sheet and the
+ * printed page are the same shape at any width. 7.87 x 10.37in is US Letter portrait less the 8mm
+ * `@page` margin declared below — the two must be changed together.
+ *
+ * The bands' heights are `fr`-like flex proportions of that box, sized to what each holds: the
+ * header needs room for four fields and the shaper's sub-box, the body row is the sheet's subject
+ * and takes everything left over, and the rocker/plot/glassing bands are fixed strips.
+ */
+[data-order-form-sheet] {
+  aspect-ratio: 7.87 / 10.37;
+  min-height: 0;
+}
+
+[data-order-form-root] .order-form-band-header {
+  flex: 0 0 17%;
+}
+[data-order-form-root] .order-form-band-dims {
+  flex: 0 0 5.4%;
+}
+[data-order-form-root] .order-form-band-rocker {
+  flex: 0 0 7.5%;
+}
+[data-order-form-root] .order-form-band-plots {
+  flex: 0 0 13.5%;
+}
+[data-order-form-root] .order-form-band-glassing {
+  flex: 0 0 11%;
+}
+
+/* The vertical spine labels are only as wide as their own type — they must never win space from
+   the panels they label. */
+[data-order-form-root] .order-form-band-header > :first-child,
+[data-order-form-root] .order-form-band-glassing > :first-child {
+  flex: 0 0 auto;
+}
+
+/* Print path. `@page` is the one declaration here that is unavoidably document-global rather than
+   route-scoped — but this file only loads while a shaper is on /design/summary, so it is inert
+   everywhere else. */
+@page {
+  size: portrait;
+  /* Pinned so the printable box is knowable. Without it the area moves with whatever margin the
+     shaper has set in their print dialog, and `useOrderFormPrintFit` cannot compute a box that
+     fits — the hook mirrors this value as PAGE_MARGIN_MM, so the two must be changed together. */
+  margin: 8mm;
+}
+
+@media print {
+  /* app/layout.tsx clamps html/body to the viewport height with overflow: hidden so on-screen
+     scrolling stays confined to individual panels (see that file's head comment). Printing must
+     release both — otherwise the printed sheet clips to one screen's worth of content instead of
+     paginating (or, worse, breaks the print-fit hook's scrollHeight-based measurement, which
+     assumes the sheet can grow to its natural size). */
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* The screen's grey desk and the page padding around the paper are screen furniture — on paper
+     the sheet IS the page. */
+  [data-order-form-root] {
+    max-width: none !important;
+  }
+
+  /* The sheet's own border stays; everything else prints on white. Scoped under the sheet so
+     printing is only ever altered where the order form actually is. */
+  [data-order-form-sheet],
+  [data-order-form-sheet] * {
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Fill the printable box exactly. The aspect-ratio that shapes the sheet on screen would fight
+     the page box's own proportions here, so the printed sheet takes its size from the box the hook
+     hands it instead. */
+  [data-order-form-sheet] {
+    aspect-ratio: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Scrolling containers — the rail data table and the fin placement table — print in full instead
+     of clipping at their on-screen height. */
+  [data-print-unfold] {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* The site nav and the print button — gone from the printed sheet. */
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* Set by useOrderFormPrintFit's beforeprint handler, which also gives this element an inline
+     width and height equal to the printable page box. The height is deliberately NOT forced to
+     `auto`: that is what lets flex bands go content-proportional and inflate the sheet past the
+     page. `overflow: hidden` is the backstop — with the box the exact size of the page, anything
+     that still spills cannot start a second one. */
+  [data-order-form-root][data-printing] {
+    overflow: hidden !important;
+  }
+}

@@ -42,6 +42,8 @@ const PAD_Y = 24;
  * system is hidden entirely (`hideCallouts`) — this keeps preset-card thumbnails pixel-identical
  * to their pre-callout-system rendering; nothing about the board's own coordinate space changed. */
 const LEGACY_MAX_HALF_WIDTH_PX = VIEW_W / 2 - 30;
+/** Breathing room left either side of the board by `cropToBoard`, in view units. */
+const CROP_PAD_X = 14;
 /** Vertical gap between the Widepoint chip and the leaderless WP Offset chip stacked beneath it. */
 const CHIP_STACK_GAP = 6;
 /** Which rail the construction overlay draws on: -1 is the left, the input side (see the overlay
@@ -88,6 +90,21 @@ interface OutlineViewerProps {
    * template (components/summary/board-summary.tsx) and the setup-screen thumbnails, so this is
    * an additive per-consumer gate, not a change to `finMarksSvg` itself. Defaults to `false`. */
   hideFinMarks?: boolean;
+  /**
+   * Framing gate for the `hideCallouts` path, used by the order form's Deck/Bottom panels
+   * (components/summary/order-form.tsx): crops the viewBox to the board's own width plus
+   * `CROP_PAD_X`, instead of keeping the full 340-unit thumbnail frame.
+   *
+   * That frame is mostly empty air — a 19" board at this scale draws 151 units wide inside it, so
+   * 55% of the width is padding. `preserveAspectRatio="xMidYMid meet"` fits the whole frame,
+   * padding included, which is harmless in a preset card (roughly as wide as it is tall) and ruinous
+   * in a tall narrow panel: the order form's board came out at 43% of the height it had available,
+   * marooned in white space. Cropped to the board, the drawing fills the panel it was given.
+   *
+   * Only meaningful with `hideCallouts` — the callout frame has its own derivation, and the
+   * callouts need that width. Defaults to `false`, every existing consumer's unchanged framing.
+   */
+  cropToBoard?: boolean;
   /** Editor-screen display gate: when true, callout text and chips hold a constant on-screen
    * size (CALLOUT_PX) instead of scaling with the drawing, by countering the svg's fit scale.
    * The board itself always scales — a template cannot fake proportion — but a dimension label
@@ -144,6 +161,7 @@ export function OutlineViewer({
   finMarks = [],
   hideCallouts = false,
   hideFinMarks = false,
+  cropToBoard = false,
   onOutlineDrag,
   pinCalloutText = false,
 }: OutlineViewerProps) {
@@ -292,11 +310,18 @@ export function OutlineViewer({
   const halfTailBlockWidthIn = mmToInches(geometry.halfTailBlockWidth);
   const tailBlockValue = `${formatInchesFraction(mm(geometry.halfTailBlockWidth * 2))} wide`;
 
+  // The board's own drawn half-width, in view units — what `cropToBoard` frames to.
+  const halfBoardPx = mmToInches(geometry.halfWidePointWidth) * scale;
+  const cropMinX = centerlineX - halfBoardPx - CROP_PAD_X;
+  const cropWidth = 2 * (halfBoardPx + CROP_PAD_X);
+
   const viewBox = hideCallouts
-    ? `0 0 ${VIEW_W} ${VIEW_H}`
+    ? cropToBoard
+      ? `${cropMinX.toFixed(2)} 0 ${cropWidth.toFixed(2)} ${VIEW_H}`
+      : `0 0 ${VIEW_W} ${VIEW_H}`
     : `${frame.minX} ${frame.minY} ${frame.width} ${frame.height}`;
 
-  const vbW = hideCallouts ? VIEW_W : frame.width;
+  const vbW = hideCallouts ? (cropToBoard ? cropWidth : VIEW_W) : frame.width;
   const vbH = hideCallouts ? VIEW_H : frame.height;
   const fitScale = useSvgFitScale(svgRef, vbW, vbH);
   const calloutSizes = pinCalloutText ? pinnedCalloutSizes(fitScale) : UNPINNED_CALLOUT_SIZES;

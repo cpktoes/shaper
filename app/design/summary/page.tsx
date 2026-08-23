@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { BoardSummary } from "@/components/summary/board-summary";
-import "./summary.css";
+import { OrderForm } from "@/components/summary/order-form";
+import "./order-form.css";
 
 export const metadata: Metadata = {
-  title: "Board Summary — Shaper",
-  description: "The whole board design on one printable sheet.",
+  title: "Board Order Form — Shaper",
+  description: "The whole board design on one printable order form.",
 };
 
 export default function BoardSummaryPage() {
-  return <BoardSummary />;
+  return <OrderForm />;
 }
