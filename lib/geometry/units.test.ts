@@ -4,6 +4,7 @@ import {
   cubicMmToLitres,
   formatFeetInches,
   formatInchesFraction,
+  formatSignedInchesFraction,
   inchesToMm,
   mmToInches,
   parseImperial,
@@ -49,6 +50,31 @@ describe("units boundary", () => {
 
     it("honours a denominator argument", () => {
       expect(formatInchesFraction(inchesToMm(0.03125), 32)).toBe('1/32"');
+    });
+  });
+
+  describe("formatSignedInchesFraction", () => {
+    it("prefixes a positive value with +", () => {
+      expect(formatSignedInchesFraction(inchesToMm(2.25))).toBe('+2 1/4"');
+    });
+
+    it("keeps the minus on a negative value rather than doubling it", () => {
+      expect(formatSignedInchesFraction(inchesToMm(-1.5))).toBe('-1 1/2"');
+    });
+
+    it("leaves zero unsigned — dead centre has no direction to report", () => {
+      expect(formatSignedInchesFraction(inchesToMm(0))).toBe('0"');
+    });
+
+    it("signs on the ROUNDED value, so a hair off zero prints a bare 0", () => {
+      // 1/64" rounds to 0 at the default sixteenths; a `+` here would claim a nose-side offset
+      // the printed number does not show.
+      expect(formatSignedInchesFraction(inchesToMm(0.015625))).toBe('0"');
+      expect(formatSignedInchesFraction(inchesToMm(-0.015625))).toBe('0"');
+    });
+
+    it("honours a denominator argument", () => {
+      expect(formatSignedInchesFraction(inchesToMm(0.03125), 32)).toBe('+1/32"');
     });
   });
 

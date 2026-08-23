@@ -15,6 +15,7 @@ import {
   degrees,
   formatFeetInches,
   formatInchesFraction,
+  formatSignedInchesFraction,
   inchesToMm,
   mm,
   mmToInches,
@@ -245,13 +246,7 @@ export function OutlineControls({
         />
         <SliderRow
           label="Offset"
-          displayValue={
-            outline.widePointOffset === mm(0)
-              ? formatInchesFraction(outline.widePointOffset)
-              : mmToInches(outline.widePointOffset) > 0
-                ? `+${formatInchesFraction(outline.widePointOffset)}`
-                : `-${formatInchesFraction(mm(-outline.widePointOffset))}`
-          }
+          displayValue={formatSignedInchesFraction(outline.widePointOffset)}
           value={mmToInches(outline.widePointOffset)}
           min={-12}
           max={12}

@@ -50,6 +50,7 @@ import type { RailSectionKey } from "@/lib/geometry/rail-bands";
 import {
   formatFeetInches,
   formatInchesFraction,
+  formatSignedInchesFraction,
   inchesToMm,
   mm,
 } from "@/lib/geometry/units";
@@ -203,9 +204,19 @@ export function OrderForm() {
                   label="Nose"
                   value={formatInchesFraction(outlineGeometry.noseWidthAt12in)}
                 />
+                {/* Widepoint and its offset, not a "center width". The muse's `CENTER` cell assumes
+                    the widest point IS the middle of the board, which is only true of a board whose
+                    offset happens to be zero — and the offset is an input a shaper sets deliberately.
+                    Reporting the width without saying where along the board it was measured leaves
+                    the sheet's most-used marking number ambiguous. Both come straight from the
+                    outline spec, in the same signed form the outline editor's Offset slider shows. */}
                 <DimensionCell
-                  label="Center"
+                  label="Widepoint"
                   value={formatInchesFraction(outline.widePointWidth)}
+                />
+                <DimensionCell
+                  label="WP Offset"
+                  value={formatSignedInchesFraction(outline.widePointOffset)}
                 />
                 <DimensionCell
                   label="Tail"
@@ -300,7 +311,10 @@ export function OrderForm() {
                       showConstruction={false}
                       // Dimensions have their own row on this sheet, so the drawings carry none —
                       // and the deck side carries no fin marks either: fins are cut from the bottom.
+                      // The faint interior lines stay, though: a shaper marking a blank works off
+                      // the stringer and the stations, and those are drawing, not annotation.
                       hideCallouts
+                      showStationLines
                       cropToBoard
                       hideFinMarks
                     />
@@ -312,6 +326,7 @@ export function OrderForm() {
                       outline={outline}
                       showConstruction={false}
                       hideCallouts
+                      showStationLines
                       cropToBoard
                       finMarks={finPlacement.marks}
                     />

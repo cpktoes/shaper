@@ -75,6 +75,30 @@ export function formatInchesFraction(
 }
 
 /**
+ * Formats a millimetre value as a signed inch fraction — `+2 1/4"`, `-1 1/2"`, `0"`.
+ *
+ * For measurements taken *from* a datum rather than *of* something, where the direction is half
+ * the meaning: the widepoint offset is the only one today (positive toward the nose, negative
+ * toward the tail), read on both the outline editor's Offset slider and the order form's
+ * dimensions row. `formatInchesFraction` alone cannot express it — it prints a leading `-` but
+ * never a leading `+`, so a nose-side offset and a measurement of the same size look identical.
+ *
+ * Zero prints unsigned: a widepoint dead on centre has no direction to report.
+ */
+export function formatSignedInchesFraction(
+  value: Mm,
+  denominator: 8 | 16 | 32 = 16,
+): string {
+  // The sign is decided by what was PRINTED, not by the raw value. `formatInchesFraction` takes
+  // its own sign from the input before rounding, so a value a hair below zero comes back as
+  // `-0"` — normalised to `0"` here rather than in that function, whose output is pinned by
+  // golden tests across the rail/fin/volume screens.
+  const formatted = formatInchesFraction(value, denominator);
+  if (formatted === '-0"' || formatted === '0"') return '0"';
+  return formatted.startsWith("-") ? formatted : `+${formatted}`;
+}
+
+/**
  * Snaps a millimetre value to the nearest 1/16 inch. Ported from the prototype's `round16`
  * (reference/project/Rails.dc.html line 652: `Math.round(x * 16) / 16`), applied here in the
  * inch domain then converted back to Mm. This is not a display nicety — it's the taper clamp

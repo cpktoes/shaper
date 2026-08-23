@@ -105,6 +105,17 @@ interface OutlineViewerProps {
    * callouts need that width. Defaults to `false`, every existing consumer's unchanged framing.
    */
   cropToBoard?: boolean;
+  /**
+   * Draws the faint interior lines — stringer, mid-length centreline, the nose and tail 12"
+   * stations, and the widepoint station with its two rail knots — even when `hideCallouts` is on.
+   *
+   * Those lines and the callouts are separate things that happened to share one gate, because
+   * until now every consumer wanted both or neither. The order form wants the lines without the
+   * callouts: it carries its dimensions in their own row, but a shaper marking a blank still needs
+   * to see where the stations fall. Redundant when callouts are shown (they are drawn anyway);
+   * defaults to `false`, so the preset-card thumbnails stay bare.
+   */
+  showStationLines?: boolean;
   /** Editor-screen display gate: when true, callout text and chips hold a constant on-screen
    * size (CALLOUT_PX) instead of scaling with the drawing, by countering the svg's fit scale.
    * The board itself always scales — a template cannot fake proportion — but a dimension label
@@ -162,6 +173,7 @@ export function OutlineViewer({
   hideCallouts = false,
   hideFinMarks = false,
   cropToBoard = false,
+  showStationLines = false,
   onOutlineDrag,
   pinCalloutText = false,
 }: OutlineViewerProps) {
@@ -348,7 +360,7 @@ export function OutlineViewer({
     >
       <path d={outlinePath} fill="var(--outline-board-fill)" stroke="var(--outline-ink)" strokeWidth={2} />
 
-      {!hideCallouts && (
+      {(!hideCallouts || showStationLines) && (
         <>
           {/* Interior: faint lines only, never text (sketch 004). Stringer and the mid-length
               centreline are both static, so they share one dash; nose/tail 12" stations are
