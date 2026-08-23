@@ -137,15 +137,23 @@
 [data-order-form-root] .order-form-band-header {
   flex: 0 0 17%;
 }
-/* These two grew with the type scale: both are caption-over-content boxes, so raising the caption
-   from 8px to 10px cost each of them a couple of lines' worth of room and they began clipping —
-   the dims cells by 2px, the rocker box by 12px. The height comes out of the drawings row below,
-   which is `flex-1` and had the slack to give. */
+/* Grew with the type scale: a caption-over-content box, so raising the caption from 8px to 10px
+   cost it a couple of lines' worth of room and the cells began clipping. The height comes out of
+   the drawings row below, which is `flex-1` and had the slack to give. */
 [data-order-form-root] .order-form-band-dims {
   flex: 0 0 6.2%;
 }
-[data-order-form-root] .order-form-band-rocker {
-  flex: 0 0 11.5%;
+
+/* The rocker strip, over the template window and only as wide as it — a proportion of the RIGHT
+   COLUMN's height, not of the whole band, since it moved inside that column.
+ *
+ * At the full body width it fitted in 11.5%; narrowed to the template's width, the tick columns
+ * either side squeeze the profile between them and it needs the height back. The drawings pay for
+ * it: at this width they are now height-constrained rather than width-constrained, so every point
+ * given here comes off the boards. 18% is where the profile stops looking cramped without the
+ * drawings visibly shrinking. */
+[data-order-form-root] .order-form-rocker {
+  flex: 0 0 18%;
 }
 [data-order-form-root] .order-form-band-glassing {
   flex: 0 0 11%;

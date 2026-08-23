@@ -285,46 +285,6 @@ export function OrderForm() {
                 />
               </div>
 
-              {/* Rocker — a placeholder box, exactly as the muse draws it, until the rocker screen
-                  exists to fill it. Kept rather than dropped so the sheet's proportions do not have
-                  to be redrawn when that feature lands. */}
-              <FormBox
-                caption="Rocker"
-                captionRight="added with the rocker screen"
-                className="flex-none order-form-band-rocker"
-                bodyClassName="p-0"
-              >
-                <div className="flex min-h-0 flex-1 items-stretch gap-1 px-1.5 py-1">
-                  {/* The muse's own placeholder: a nose/tail rocker height ticked either side of a
-                      drawn profile. Kept whole so the box does not have to be redrawn when the
-                      rocker screen fills it — only its contents get replaced. */}
-                  <RockerTicks />
-                  <div className="relative min-h-0 min-w-0 flex-1">
-                    <svg
-                      viewBox="0 0 600 80"
-                      preserveAspectRatio="none"
-                      className="absolute inset-0 block h-full w-full"
-                    >
-                      <path
-                        d="M 10 14 Q 150 60 300 64 Q 450 60 590 22"
-                        fill="none"
-                        stroke="var(--color-surf-muted)"
-                        strokeWidth={2}
-                        strokeDasharray="7 5"
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    </svg>
-                    <span className="absolute bottom-0 left-1 font-display font-extrabold tracking-architectural text-surf-muted uppercase order-form-micro">
-                      Nose
-                    </span>
-                    <span className="absolute right-1 bottom-0 font-display font-extrabold tracking-architectural text-surf-muted uppercase order-form-micro">
-                      Tail
-                    </span>
-                  </div>
-                  <RockerTicks />
-                </div>
-              </FormBox>
-
               {/* The drawings row: the rail cross-sections down the left third, the template
                   window filling the rest. */}
               <div className="flex min-h-0 flex-1 gap-1">
@@ -355,8 +315,55 @@ export function OrderForm() {
                   ))}
                 </FormBox>
 
-              {/*
-               * The muse's own big panel, and its own name for it — the template window.
+              {/* The right-hand column: the rocker strip over the template window. */}
+              <div className="flex min-h-0 min-w-0 flex-[2] flex-col gap-1">
+{/* Rocker — a placeholder box, exactly as the muse draws it, until the rocker
+                     screen exists to fill it. Kept rather than dropped so the sheet's proportions
+                     do not have to be redrawn when that feature lands.
+
+                     It sits above the template window and only as wide as it, rather than spanning
+                     the whole body: a rocker profile is the board seen from the side, so the one
+                     panel it belongs over is the one showing the board from above. Narrowing it also
+                     let the rail plots take the full height of the row beside it. */}
+                <FormBox
+                  caption="Rocker"
+                  captionRight="added with the rocker screen"
+                  className="flex-none order-form-rocker"
+                  bodyClassName="p-0"
+                >
+                  <div className="flex min-h-0 flex-1 items-stretch gap-1 px-1.5 py-1">
+                    {/* The muse's own placeholder: a nose/tail rocker height ticked either side of a
+                        drawn profile. Kept whole so the box does not have to be redrawn when the
+                        rocker screen fills it — only its contents get replaced. */}
+                    <RockerTicks />
+                    <div className="relative min-h-0 min-w-0 flex-1">
+                      <svg
+                        viewBox="0 0 600 80"
+                        preserveAspectRatio="none"
+                        className="absolute inset-0 block h-full w-full"
+                      >
+                        <path
+                          d="M 10 14 Q 150 60 300 64 Q 450 60 590 22"
+                          fill="none"
+                          stroke="var(--color-surf-muted)"
+                          strokeWidth={2}
+                          strokeDasharray="7 5"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      </svg>
+                      <span className="absolute bottom-0 left-1 font-display font-extrabold tracking-architectural text-surf-muted uppercase order-form-micro">
+                        Nose
+                      </span>
+                      <span className="absolute right-1 bottom-0 font-display font-extrabold tracking-architectural text-surf-muted uppercase order-form-micro">
+                        Tail
+                      </span>
+                    </div>
+                    <RockerTicks />
+                  </div>
+                </FormBox>
+
+                {/*
+                 * The muse's own big panel, and its own name for it — the template window.
                *
                * Its frame is fixed (`fixedFrame` on the viewer below), sized once from the board
                * ranges in `lib/geometry/board.ts` so one window holds any board the editor can
@@ -389,10 +396,10 @@ export function OrderForm() {
                * the tokens are for, and that component already carries five display gates.
                */}
               <FormBox
-                caption="Color Design &amp; Logos"
-                captionRight="dimensions on the rows above"
-                variant="flush"
-                className="min-h-0 min-w-0 flex-[2]"
+                  caption="Color Design &amp; Logos"
+                  captionRight="dimensions on the rows above"
+                  variant="flush"
+                  className="min-h-0 min-w-0 flex-1"
                 bodyClassName="p-1.5"
                 style={
                   {
@@ -430,13 +437,14 @@ export function OrderForm() {
                       finMarks={finPlacement.marks}
                     />
                   </OutlineHalf>
-                </div>
-              </FormBox>
+                  </div>
+                </FormBox>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* ─── BAND 3 — glassing ──────────────────────────────────────────────────────── */}
+        {/* ─── BAND 3 — glassing ──────────────────────────────────────────────────────── */}
           <div className="flex flex-none gap-1 order-form-band-glassing">
             <RailLabel>Glassing</RailLabel>
 
