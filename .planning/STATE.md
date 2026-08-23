@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 Phase: 2 — Accounts & Saved Designs
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-23 - Completed quick task 260823-gc4: Remove the widepoint knots and match the station line colour on the order form
+Last activity: 2026-08-23 - Completed quick task 260823-ggs: Move the rail band and fin placement data to a second page of the order form
 
 Progress: [██████████] 100%
 
@@ -138,6 +138,7 @@ None yet.
 | 260823-hbv | Preserve the horizontal board view as a post-MVP option: pending todo on main, live mockup as sketch 005 on branch design/horizontal-template-view | 2026-08-23 | 83ed049 | — |
 | 260823-ffv | Rebuild the Summary as a portrait shop order form on branch design/order-form-summary: LB_order_form.pdf layout muse, deck+bottom outlines (fin marks on bottom only), rail plots and marking data replacing the contours checkboxes, fin placement numbers beside the bottom drawing, fin system selector replacing fin setup, live board name plus write-in fields through one shared field component | 2026-08-23 | 59f9366 | [260823-ffv-rebuild-the-summary-screen-as-a-portrait](./quick/260823-ffv-rebuild-the-summary-screen-as-a-portrait/) |
 | 260823-gc4 | Remove the widepoint knots and match the station line colour on the order form: two CSS token overrides on the outline panel (--outline-widepoint-line to the station-line grey, --outline-widepoint-knot transparent), leaving the distinguishing dash and the outline editor untouched | 2026-08-23 | 10d8ed0 | [260823-gc4-remove-the-widepoint-knots-and-match-the](./quick/260823-gc4-remove-the-widepoint-knots-and-match-the/) |
+| 260823-ggs | Split the order form into two portrait pages: page 1 keeps the drawings (outline panel recaptioned COLOR DESIGN & LOGOS with blank sketching space) and the rail plots, page 2 carries the rail band marking data and fin placement numbers at a 1.55x type scale with an identification strip; print-fit hook now sizes each sheet independently, fixing a 100%-sizing override and a rounding-induced blank-page risk | 2026-08-23 | 67330b3 | [260823-ggs-move-the-rail-band-and-fin-placement-dat](./quick/260823-ggs-move-the-rail-band-and-fin-placement-dat/) |
 
 ## Deferred Items
 
