@@ -101,7 +101,8 @@ export function TailShapeIcon({
 }) {
   const diamondDepthMult = shape === "diamond" ? 2 : 1;
   const path = iconOutlinePath(shape, 15, diamondDepthMult, 12);
-  const stroke = active ? "var(--outline-ink)" : "#8a8272";
+  // Active icons sit on the dark accent fill, so they invert along with the label.
+  const stroke = active ? "var(--color-surf-base)" : "var(--color-surf-muted)";
   return (
     <svg width={30} height={30} viewBox="0 0 64 64" aria-hidden="true">
       <path

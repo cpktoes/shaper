@@ -241,7 +241,7 @@ export function BoardSummary() {
             type="button"
             size="sm"
             onClick={printSummary}
-            className="flex-none border-surf-accent-cyan bg-surf-accent-cyan text-surf-black hover:bg-surf-accent-cyan/85"
+            className="flex-none border-surf-accent-blue bg-surf-accent-blue text-surf-base hover:bg-surf-accent-blue/85"
           >
             Print Summary
           </Button>

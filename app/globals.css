@@ -84,15 +84,18 @@
 @theme static {
   --color-surf-base: #ffffff; /* crisp white background */
   --color-surf-black: #111111; /* matte black primary text & major elements */
-  /* Cyan is accent/selection, orange is warnings (founder's call). Both are FILL colours:
-     each carries black text (cyan 12.28:1, orange 5.97:1 — white fails on both at 1.54
-     and 3.16). Neither survives as text or a stroke on the white ground, so each has a
-     darkened ink sibling below for anything that is not a fill. */
-  --color-surf-accent-cyan: #00e5ff; /* selection fills — always with text-surf-black */
-  --color-surf-accent-orange: #ff5722; /* warning fills/markers — always with text-surf-black */
-  /* Same hues, darkened to clear WCAG AA as text and to read as strokes in the drawings. */
-  --color-surf-accent-cyan-ink: #00767f; /* 5.39:1 on white */
-  --color-surf-accent-orange-ink: #c93f10; /* 5.00:1 on white */
+  /* Blue is accent/selection, orange is warnings.
+     The source config's cyan #00E5FF was replaced at the founder's request: it needed a
+     separate darkened sibling for text and strokes, because at 1.54:1 on white it could
+     only ever be a fill. A sea blue dark enough to clear AA on its own does both jobs, so
+     one token replaces the two.
+     Being dark, it takes WHITE text on a fill (6.09:1) — the inverse of the bright cyan's
+     rule. Orange is the other way round (5.97:1 on black, 3.16:1 on white), but it is only
+     ever used as ink for warning text, never as a fill, so the two never disagree in
+     practice. */
+  --color-surf-accent-blue: #006994; /* selection — 6.09:1 on white, fills take text-surf-base */
+  --color-surf-accent-orange: #ff5722; /* reserved for warning fills; would take text-surf-black */
+  --color-surf-accent-orange-ink: #c93f10; /* warning text — 5.00:1 on white */
   /* Darkened from the source config's #9E9E9E, which sat at 2.68:1 on white and failed
      WCAG AA (4.5:1) for the body copy and labels this token carries. #6b6b6b clears AA
      at 5.33:1 with headroom while keeping a clear step down from surf-black's 18.9:1. */

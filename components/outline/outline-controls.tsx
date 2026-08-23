@@ -111,7 +111,7 @@ function SliderRow({
         step={step}
         disabled={disabled}
         onValueChange={(v) => onValueChange(sliderValue(v))}
-        className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+        className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
       />
       {(leftHint || rightHint) && (
         <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
@@ -200,7 +200,7 @@ export function OutlineControls({
           max={120}
           step={1}
           onValueChange={(v) => setLengthIn(sliderValue(v))}
-          className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+          className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
         />
       </div>
 
@@ -307,12 +307,12 @@ export function OutlineControls({
               className="flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-1.5"
               style={{
                 borderColor: active
-                  ? "var(--color-surf-accent-cyan)"
+                  ? "var(--color-surf-accent-blue)"
                   : "color-mix(in srgb, var(--color-surf-muted) 30%, transparent)",
-                background: active ? "var(--color-surf-accent-cyan)" : "var(--color-surf-base)",
-                // Black on cyan is 12.28:1; the same black off-state keeps the label legible
-                // on white, so the fill alone carries the selected state.
-                color: "var(--color-surf-black)",
+                background: active ? "var(--color-surf-accent-blue)" : "var(--color-surf-base)",
+                // The accent is dark, so a selected chip needs white on it (6.09:1); black
+                // would be 3.10:1. Unselected stays black on white.
+                color: active ? "var(--color-surf-base)" : "var(--color-surf-black)",
               }}
             >
               <TailShapeIcon shape={shape} active={active} />

@@ -116,7 +116,7 @@ function ControlSlider({
         step={step}
         disabled={disabled}
         onValueChange={(v) => onValueChange(sliderValue(v))}
-        className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+        className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
       />
       {(hintLeft || hintRight) && (
         <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
@@ -234,7 +234,7 @@ function RailSectionControls({
                 max={5}
                 step={1}
                 onValueChange={(v) => onChange({ family: clampFinite(sliderValue(v), 1, 5) as RailFamily })}
-                className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+                className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
               />
               <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
                 <span>Boxy</span>
@@ -262,7 +262,7 @@ function RailSectionControls({
                 max={70}
                 step={1}
                 onValueChange={(v) => onChange({ ratioTopPercent: clampFinite(sliderValue(v), 30, 70) })}
-                className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+                className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
               />
               <RatioTickCaptions />
               {isTail && (
@@ -307,7 +307,7 @@ function RailSectionControls({
                           ),
                         })
                       }
-                      className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+                      className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
                     />
                   </div>
                   <div className="mt-0.5 text-xs text-surf-muted font-normal">
@@ -341,7 +341,7 @@ function RailSectionControls({
                           ),
                         })
                       }
-                      className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+                      className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
                     />
                   </div>
                 )}
@@ -349,7 +349,7 @@ function RailSectionControls({
                 <button
                   type="button"
                   onClick={resetAdvanced}
-                  className="cursor-pointer text-left text-[11px] font-bold text-surf-accent-cyan-ink"
+                  className="cursor-pointer text-left text-[11px] font-bold text-surf-accent-blue"
                 >
                   ↺ Reset Advanced Settings
                 </button>

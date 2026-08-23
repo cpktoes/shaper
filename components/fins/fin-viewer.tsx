@@ -487,7 +487,7 @@ export function FinViewer({
                   y1={geom.teY}
                   x2={geom.leX}
                   y2={geom.leY}
-                  stroke="var(--color-surf-accent-cyan-ink)"
+                  stroke="var(--color-surf-accent-blue)"
                   strokeWidth={2.5}
                   // Not a "leader line" — this is the fin mark itself. Its dash keys the same
                   // Front/Rear/Center grouping as `result.legend`'s dash-per-role swatches below
@@ -584,7 +584,7 @@ export function FinViewer({
           {result.legend.map((entry) => (
             <span key={entry.label} className="flex items-center">
               <svg width={16} height={4} className="mr-1">
-                <line x1={0} y1={2} x2={16} y2={2} stroke="var(--color-surf-accent-cyan-ink)" strokeWidth={3} strokeDasharray={entry.dash} />
+                <line x1={0} y1={2} x2={16} y2={2} stroke="var(--color-surf-accent-blue)" strokeWidth={3} strokeDasharray={entry.dash} />
               </svg>
               Base Length ({entry.label}):&nbsp;{formatInchesFraction(entry.baseLength, 16)}
             </span>

@@ -44,7 +44,8 @@ function ticksFor(setup: FinSetupKind): string[] {
 
 export function FinSetupIcon({ setup, active }: { setup: FinSetupKind; active: boolean }) {
   const outlinePath = iconOutlinePath(ICON_BASE_SHAPE, 15, 1, 12);
-  const stroke = active ? "#1c1b19" : "#8a8272";
+  // Active icons sit on the dark accent fill, so they invert along with the label.
+  const stroke = active ? "var(--color-surf-base)" : "var(--color-surf-muted)";
   return (
     <svg width={34} height={34} viewBox="0 0 64 64" aria-hidden="true">
       <path d={outlinePath} fill="none" stroke={stroke} strokeWidth={2.5} strokeLinecap="round" />

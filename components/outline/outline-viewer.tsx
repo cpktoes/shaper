@@ -396,7 +396,7 @@ export function OutlineViewer({
               y1={fm.y1}
               x2={fm.x2}
               y2={fm.y2}
-              stroke="var(--color-surf-accent-cyan-ink)"
+              stroke="var(--color-surf-accent-blue)"
               strokeWidth={2}
             />
             <circle cx={fm.x1} cy={fm.y1} r={3.5} fill="var(--outline-ink)" />

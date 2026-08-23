@@ -111,7 +111,7 @@ function RangeRow({
         max={max}
         step={step}
         onValueChange={(v) => onValueChange(sliderValue(v))}
-        className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+        className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
       />
       {(leftHint || rightHint) && (
         <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
@@ -141,7 +141,7 @@ function PillButton({
       className={
         `cursor-pointer rounded-md border px-1 py-2.5 text-[11px] font-bold ${
           active
-            ? "border-surf-accent-cyan bg-surf-accent-cyan text-surf-black"
+            ? "border-surf-accent-blue bg-surf-accent-blue text-surf-base"
             : "border-surf-muted/30 bg-surf-base text-surf-black"
         } ${className}`
       }
@@ -325,7 +325,7 @@ export function FinControls({
           step={1}
           disabled={importTemplate}
           onValueChange={(v) => setLengthIn(sliderValue(v))}
-          className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+          className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
         />
       </div>
 
@@ -340,7 +340,7 @@ export function FinControls({
           step={0.125}
           disabled={importTemplate}
           onValueChange={(v) => onChange({ tailWidth12: inchesToMm(clampFinite(sliderValue(v), 10, 18)) })}
-          className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+          className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
         />
       </div>
 
@@ -360,7 +360,7 @@ export function FinControls({
               className={
                 "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                 (spec.tailShape === shape
-                  ? "border-surf-accent-cyan bg-surf-accent-cyan text-surf-black"
+                  ? "border-surf-accent-blue bg-surf-accent-blue text-surf-base"
                   : "border-surf-muted/30 bg-surf-base text-surf-black")
               }
             >
@@ -386,7 +386,7 @@ export function FinControls({
                 className={
                   "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                   (spec.finSetup === setup
-                    ? "border-surf-accent-cyan bg-surf-accent-cyan text-surf-black"
+                    ? "border-surf-accent-blue bg-surf-accent-blue text-surf-base"
                     : "border-surf-muted/30 bg-surf-base text-surf-black")
                 }
               >
@@ -551,7 +551,7 @@ export function FinControls({
                   <button
                     type="button"
                     onClick={onOpenToeTable}
-                    className="mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-cyan-ink underline"
+                    className="mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-blue underline"
                   >
                     View precise McKee toe-in aim tables ⤢
                   </button>
@@ -666,7 +666,7 @@ export function FinControls({
                   <button
                     type="button"
                     onClick={onOpenToeTable}
-                    className="mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-cyan-ink underline"
+                    className="mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-blue underline"
                   >
                     View precise McKee toe-in aim tables ⤢
                   </button>
@@ -677,7 +677,7 @@ export function FinControls({
             <button
               type="button"
               onClick={resetAdvancedSettings}
-              className="cursor-pointer border-t border-surf-muted/20 pt-4 text-left text-xs font-bold text-surf-accent-cyan-ink"
+              className="cursor-pointer border-t border-surf-muted/20 pt-4 text-left text-xs font-bold text-surf-accent-blue"
             >
               ↺ Reset Advanced Settings
             </button>

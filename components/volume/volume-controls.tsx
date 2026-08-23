@@ -140,7 +140,7 @@ export function VolumeControls({
           step={1}
           disabled={dimensionsDisabled}
           onValueChange={(v) => setLengthIn(sliderValue(v))}
-          className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+          className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
         />
       </div>
 
@@ -159,7 +159,7 @@ export function VolumeControls({
               width: inchesToMm(clampFinite(sliderValue(v), WIDTH_BOUNDS.min, WIDTH_BOUNDS.max)),
             })
           }
-          className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+          className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
         />
       </div>
 
@@ -180,7 +180,7 @@ export function VolumeControls({
               ),
             })
           }
-          className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+          className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
         />
       </div>
 
@@ -198,7 +198,7 @@ export function VolumeControls({
                 boardTypeIndex: clampFinite(sliderValue(v), 0, BOARD_TYPE_STEP_COUNT - 1),
               })
             }
-            className="[&_[data-slot=slider-range]]:bg-surf-accent-cyan [&_[data-slot=slider-thumb]]:border-surf-accent-cyan [&_[data-slot=slider-thumb]]:bg-surf-accent-cyan"
+            className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
           />
           <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
             <span>Performance</span>
