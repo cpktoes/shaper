@@ -47,9 +47,22 @@ const CHIP_STACK_GAP = 6;
 /** Which rail the construction overlay draws on: -1 is the left, the input side (see the overlay
  * build below). Negative because `pxX` puts positive half-widths on the right. */
 const CONSTRUCTION_SIDE = -1;
-/** Invisible grab radius around each control point — big enough to catch with a mouse or a thumb
- * without drawing anything heavier than the 4px dot already there. */
-const DRAG_HIT_RADIUS = 11;
+/**
+ * Drag-handle and knot sizing, in CSS pixels.
+ *
+ * A grab handle is a UI affordance, not board geometry, so it holds a constant on-screen size
+ * rather than scaling with the drawing — the same reasoning that pinned the callout text. At
+ * unit sizes a handle is a different physical size in every window, and a hit target that
+ * changes size with the window is a usability problem, not only a cosmetic one. Divided by the
+ * live fit scale at render.
+ */
+const DRAG_TARGET_OUTER_PX = 7;
+const DRAG_TARGET_RING_PX = 1.6;
+const DRAG_TARGET_CORE_PX = 2.6;
+/** Fixed reference knots — deliberately plain, so only grabbable points look grabbable. */
+const KNOT_DOT_PX = 3;
+/** Invisible grab radius: comfortably larger than the drawn target, for a thumb as well as a mouse. */
+const DRAG_HIT_PX = 15;
 /** How far the static stringer/centreline overhangs the board's own tip/tail — a drafting nicety
  * (sketch 004's reference render), not load-bearing geometry. */
 const STRINGER_OVERHANG = 8;
@@ -195,15 +208,21 @@ export function OutlineViewer({
   // showed nothing the left one did not, and two grabbable dots per control is two places to grab
   // for one effect. CONSTRUCTION_SIDE is negative because pxX puts positive half-widths on the
   // right.
-  const knotColors = ["var(--outline-ink)", "var(--outline-widepoint-knot)", "var(--outline-ink)"];
+  // Knots 0 and 2 (tail pod, nose tip) are fixed anchors; knot 1 (widepoint) and every
+  // handle end are draggable and get the target treatment below instead. Only the fixed
+  // pair is drawn as a plain dot, so a round target always means "you can grab this" and a
+  // plain dot never does — previously all seven looked identical and only five moved.
+  const FIXED_KNOT_INDICES = [0, 2];
   const constructionDots: { cx: number; cy: number; color: string }[] = [];
   const constructionLines: { x1: number; y1: number; x2: number; y2: number; color: string }[] = [];
 
-  geometry.knots.forEach((k, i) => {
+  FIXED_KNOT_INDICES.forEach((i) => {
+    const k = geometry.knots[i];
+    if (!k) return;
     constructionDots.push({
       cx: pxX(CONSTRUCTION_SIDE * mmToInches(k.point.y)),
       cy: lenToY(mmToInches(k.point.x)),
-      color: knotColors[i],
+      color: "var(--outline-ink)",
     });
   });
   geometry.handles.forEach((h) => {
@@ -212,11 +231,6 @@ export function OutlineViewer({
       y1: lenToY(mmToInches(h.from.x)),
       x2: pxX(CONSTRUCTION_SIDE * mmToInches(h.to.y)),
       y2: lenToY(mmToInches(h.to.x)),
-      color: "var(--outline-construction)",
-    });
-    constructionDots.push({
-      cx: pxX(CONSTRUCTION_SIDE * mmToInches(h.to.y)),
-      cy: lenToY(mmToInches(h.to.x)),
       color: "var(--outline-construction)",
     });
   });
@@ -286,6 +300,8 @@ export function OutlineViewer({
   const vbH = hideCallouts ? VIEW_H : frame.height;
   const fitScale = useSvgFitScale(svgRef, vbW, vbH);
   const calloutSizes = pinCalloutText ? pinnedCalloutSizes(fitScale) : UNPINNED_CALLOUT_SIZES;
+  /** User units per CSS pixel — what the px-denominated handle sizes above are drawn in. */
+  const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
 
   return (
     <CalloutSizeProvider value={calloutSizes}>
@@ -371,16 +387,39 @@ export function OutlineViewer({
             <line key={i} x1={cl.x1} y1={cl.y1} x2={cl.x2} y2={cl.y2} stroke={cl.color} strokeWidth={1.5} />
           ))}
           {constructionDots.map((dt, i) => (
-            <circle key={i} cx={dt.cx} cy={dt.cy} r={4} fill={dt.color} />
+            <circle key={i} cx={dt.cx} cy={dt.cy} r={KNOT_DOT_PX * handleUnit} fill={dt.color} />
           ))}
-          {/* Transparent grab targets, last so they sit above the dots they cover.
+          {/* The drag targets themselves: board-fill disc, accent ring, orange core. Three
+              concentric parts so a grabbable point reads as a target rather than as one more
+              dot on the drawing. pointer-events:none throughout — the transparent hit circles
+              below own every pointer interaction, and a visual that swallowed a pointerdown
+              would break the drag at the exact spot the shaper aimed for. */}
+          {dragTargets.map((d) => (
+            <g key={`t-${d.target}`} pointerEvents="none">
+              <circle
+                cx={d.cx}
+                cy={d.cy}
+                r={DRAG_TARGET_OUTER_PX * handleUnit}
+                fill="var(--outline-board-fill)"
+                stroke="var(--color-surf-accent-blue)"
+                strokeWidth={DRAG_TARGET_RING_PX * handleUnit}
+              />
+              <circle
+                cx={d.cx}
+                cy={d.cy}
+                r={DRAG_TARGET_CORE_PX * handleUnit}
+                fill="var(--color-surf-accent-orange)"
+              />
+            </g>
+          ))}
+          {/* Transparent grab areas, last so they sit above everything they cover.
               touch-action:none stops a touch drag scrolling the page instead of shaping the board. */}
           {dragTargets.map((d) => (
             <circle
               key={d.target}
               cx={d.cx}
               cy={d.cy}
-              r={DRAG_HIT_RADIUS}
+              r={DRAG_HIT_PX * handleUnit}
               fill="transparent"
               className="cursor-grab touch-none active:cursor-grabbing"
               onPointerDown={(event) => handleDragStart(d.target, event)}
