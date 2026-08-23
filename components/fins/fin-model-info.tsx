@@ -15,9 +15,9 @@ function InfoBlock({ heading, children }: { heading: string; children: React.Rea
 
 export function FinModelInfo() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-xl border border-[#e4ddc9] bg-white p-5 text-outline-ink">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-base pt-10 text-outline-ink">
       <div className="mb-3 text-xl font-extrabold">Model Info</div>
-      <div className="mb-5 border-b-2 border-[#e4ddc9] pb-4 text-sm text-[#8a8272]">
+      <div className="mb-5 border-b-2 border-surf-muted/20 pb-4 text-sm text-[#8a8272]">
         Reference note on where each model&apos;s placement guidance comes from.
       </div>
 

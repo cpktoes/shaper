@@ -177,7 +177,7 @@ export function RailBandEditor() {
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-nowrap">
-      <aside className="h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto bg-outline-sidebar-bg p-6 text-outline-sidebar-text">
+      <aside className="h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto border-r border-surf-muted/20 bg-surf-base p-10 text-surf-black">
         <RailControls
           spec={spec}
           bands={bands}
@@ -199,7 +199,7 @@ export function RailBandEditor() {
           </Button>
         )}
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-2 bg-outline-page-bg p-2">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-2 bg-surf-base px-16 py-12">
         <div className="flex flex-none gap-1.5">
           {(["viewer", "data"] as RailPage[]).map((page) => (
             <button
@@ -209,7 +209,7 @@ export function RailBandEditor() {
               className={
                 "cursor-pointer rounded-t-lg border px-[18px] py-2.5 text-sm font-bold " +
                 (activePage === page
-                  ? "border-[#e4ddc9] border-b-0 bg-white text-outline-ink"
+                  ? "border-surf-muted/20 border-b-0 bg-surf-base text-outline-ink"
                   : "border-transparent bg-transparent text-[#8a8272]")
               }
             >
@@ -219,8 +219,8 @@ export function RailBandEditor() {
         </div>
 
         {activePage === "viewer" && (
-          <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-[#e4ddc9] bg-white p-5">
-            <div className="mb-3 self-start text-xl font-extrabold text-outline-ink">Rail Viewer</div>
+          <div className="flex min-h-0 flex-1 flex-col bg-surf-base pt-10">
+            <div className="mb-10 self-start text-xl font-extrabold text-surf-black">Rail Viewer</div>
             <div ref={plotsContainerRef} className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
               {openSections.map((key) => (
                 <div key={key} className="flex flex-none flex-col items-center" style={{ width: plotWidth }}>

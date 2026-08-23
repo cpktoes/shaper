@@ -63,7 +63,7 @@ function SummaryCard({
   return (
     <div
       className={cn(
-        "flex min-h-0 min-w-0 flex-col rounded-xl border border-[#e4ddc9] bg-white",
+        "flex min-h-0 min-w-0 flex-col rounded-xl border border-surf-muted/20 bg-surf-base",
         variant === "padded" ? "p-1.5" : "p-0",
         className,
       )}
@@ -126,7 +126,7 @@ export function BoardSummary() {
       ref={rootRef}
       data-summary-root
       className={cn(
-        "@container flex min-h-0 flex-1 flex-col overflow-y-auto bg-outline-page-bg p-2",
+        "@container flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-base px-12 py-10",
       )}
     >
       <div
@@ -229,7 +229,7 @@ export function BoardSummary() {
       <div
         data-print-hide
         className={cn(
-          "flex min-h-[360px] min-w-0 flex-col rounded-xl border border-[#e4ddc9] bg-white p-1.5",
+          "flex min-h-[360px] min-w-0 flex-col rounded-xl border border-surf-muted/20 bg-surf-base p-1.5",
           BOARD_NAME_GRID_PLACEMENT,
         )}
       >
@@ -251,7 +251,7 @@ export function BoardSummary() {
           onChange={(e) => setBoardName(e.target.value)}
           placeholder="Board Name"
           rows={2}
-          className="min-h-0 w-full flex-1 resize-none rounded-lg border border-[#e4ddc9] bg-white px-2.5 py-1.5 text-sm font-bold text-outline-ink"
+          className="min-h-0 w-full flex-1 resize-none rounded-lg border border-surf-muted/20 bg-surf-base px-2.5 py-1.5 text-sm font-bold text-outline-ink"
         />
       </div>
 
@@ -261,7 +261,7 @@ export function BoardSummary() {
       <div
         data-print-only
         className={cn(
-          "hidden min-h-[360px] min-w-0 flex-col rounded-xl border border-[#e4ddc9] p-1.5",
+          "hidden min-h-[360px] min-w-0 flex-col rounded-xl border border-surf-muted/20 p-1.5",
           BOARD_NAME_GRID_PLACEMENT,
         )}
       >

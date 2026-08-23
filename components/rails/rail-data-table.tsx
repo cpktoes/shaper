@@ -37,7 +37,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
       // height so the full table prints instead of cutting off at the card's on-screen height.
       <div data-print-unfold className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto">
         <div
-          className="mb-1 flex gap-2 border-b-2 border-[#e4ddc9] pb-1"
+          className="mb-1 flex gap-2 border-b-2 border-surf-muted/20 pb-1"
           style={{ fontSize: "var(--summary-font-label, 12px)" }}
         >
           <div className="min-w-0 flex-[1.4]" />
@@ -58,7 +58,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
             {group.rows.map((row) => (
               <div
                 key={row.label}
-                className="flex gap-2 border-b border-[#f3efe3] py-0.5"
+                className="flex gap-2 border-b border-surf-muted/10 py-0.5"
                 style={{ fontSize: "var(--summary-font-row, 11px)" }}
               >
                 <div className="min-w-0 flex-[1.4] text-[#8a8272]">{row.label}</div>
@@ -76,11 +76,11 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
-      <div className="rounded-xl border border-[#e4ddc9] bg-white p-5">
+    <div className="flex min-h-0 flex-1 flex-col gap-12 overflow-y-auto pt-10">
+      <div className="bg-surf-base">
         <div className="overflow-x-auto">
           <div className="min-w-[480px]">
-            <div className="mb-3 flex gap-2 border-b-2 border-[#e4ddc9] pb-2">
+            <div className="mb-3 flex gap-2 border-b-2 border-surf-muted/20 pb-2">
               <div className="min-w-0 flex-[1.4]" />
               {sections.map((s) => (
                 <div key={s.key} className="min-w-0 flex-1 text-right text-sm font-extrabold text-outline-ink">
@@ -94,7 +94,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
                   {group.heading}
                 </div>
                 {group.rows.map((row) => (
-                  <div key={row.label} className="flex gap-2 border-b border-[#f3efe3] py-1.5 text-sm">
+                  <div key={row.label} className="flex gap-2 border-b border-surf-muted/10 py-1.5 text-sm">
                     <div className="min-w-0 flex-[1.4] text-[#8a8272]">{row.label}</div>
                     {row.cells.map((cell, i) => (
                       <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-outline-ink">
@@ -108,7 +108,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
           </div>
         </div>
       </div>
-      <div className="rounded-xl border border-[#e4ddc9] bg-white p-4 text-xs leading-relaxed text-[#8a8272] italic">
+      <div className="max-w-prose bg-surf-base text-xs leading-relaxed text-[#8a8272] italic">
         This rail band calculator is intended to provide a quantitative aspect to shaping
         consistent surfboard rails. It&apos;s recommended to understand how rail shapes affects
         surfboard performance, and how these marks can result in producing your desired outcome.

@@ -33,13 +33,13 @@ interface FinDataPanelProps {
 
 export function FinDataPanel({ result, boardLength, tailWidth12, finSetup, tailShape }: FinDataPanelProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-xl border border-[#e4ddc9] bg-white p-5 text-outline-ink">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-base pt-10 text-outline-ink">
       <div className="mb-2.5 text-xl font-extrabold tracking-tight">
         {formatFeetInches(boardLength)} · {formatInchesFraction(tailWidth12, 16)} tail @12&quot; ·{" "}
         {FIN_SETUP_LABEL[finSetup] ?? finSetup} · {TAIL_SHAPE_LABEL[tailShape]} tail
         {result.isModified && <span className="text-outline-accent"> · Modified</span>}
       </div>
-      <div className="mb-4 border-b-2 border-[#e4ddc9] pb-4 text-sm font-normal text-outline-accent-strong">
+      <div className="mb-4 border-b-2 border-surf-muted/20 pb-4 text-sm font-normal text-outline-accent-strong">
         {result.modelHeader}
       </div>
       {result.sections.map((sec) => (
@@ -47,7 +47,7 @@ export function FinDataPanel({ result, boardLength, tailWidth12, finSetup, tailS
           <div className="mb-2 text-xs font-bold tracking-wide text-outline-accent uppercase">{sec.label}</div>
           {sec.groups.map((grp) => (
             <div key={grp.heading} className="mb-2 ml-3">
-              <div className="mb-1 border-b border-[#e4ddc9] pb-0.5 text-[11px] font-bold tracking-wide text-[#a49b86] uppercase">
+              <div className="mb-1 border-b border-surf-muted/20 pb-0.5 text-[11px] font-bold tracking-wide text-[#a49b86] uppercase">
                 {grp.heading}
               </div>
               {grp.rows.map((row) => (

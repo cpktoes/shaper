@@ -74,7 +74,7 @@ export function OutlineEditor() {
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-nowrap">
-      <aside className="h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto bg-outline-sidebar-bg p-6 text-outline-sidebar-text">
+      <aside className="h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto border-r border-surf-muted/20 bg-surf-base p-10 text-surf-black">
         <OutlineControls
           outline={outline}
           geometry={outlineGeometry}
@@ -93,10 +93,10 @@ export function OutlineEditor() {
           </Button>
         )}
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-5 bg-outline-page-bg p-2">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-5 bg-surf-base px-20 py-14">
         <div className="flex min-h-0 flex-1 items-stretch justify-center gap-6">
-          <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center rounded-xl border border-[#e4ddc9] bg-white p-5">
-            <div className="mb-3 self-start text-xl font-extrabold text-outline-ink">
+          <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center bg-surf-base">
+            <div className="mb-10 self-start text-xl font-extrabold text-surf-black">
               Template Viewer
             </div>
             <div className="relative flex min-h-0 w-full flex-1 justify-center">

@@ -37,9 +37,9 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
   const tailWidthDisplay = formatInchesFraction(tailWidth12, 16);
 
   const cellClass = (i: number) =>
-    "border border-[#e4ddc9] px-2 py-1 " + (i === view.highlightIndex ? "bg-[#f3e6cf] font-bold" : "");
+    "border border-surf-muted/20 px-2 py-1 " + (i === view.highlightIndex ? "bg-surf-muted/15 font-bold" : "");
   const headerCellClass = (i: number) =>
-    "border border-[#e4ddc9] px-2 py-1 " +
+    "border border-surf-muted/20 px-2 py-1 " +
     (i === view.highlightIndex ? "bg-outline-accent font-bold text-outline-ink" : "bg-outline-ink text-white");
 
   return (
@@ -56,7 +56,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
         aria-label="McKee Toe-In Aim Tables"
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[85vh] max-w-[92vw] overflow-auto rounded-xl bg-white p-6 text-outline-ink outline-none"
+        className="max-h-[85vh] max-w-[92vw] overflow-auto rounded-xl border border-surf-muted/20 bg-surf-base p-6 text-outline-ink outline-none"
       >
         <div className="mb-1.5 flex items-center justify-between gap-5">
           <div className="text-sm font-extrabold">
@@ -80,7 +80,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
           <table className="border-collapse text-xs">
             <thead>
               <tr>
-                <th className="border border-[#e4ddc9] bg-outline-ink px-2 py-1 text-white">L\W</th>
+                <th className="border border-surf-muted/20 bg-outline-ink px-2 py-1 text-white">L\W</th>
                 {view.columns.map((c, i) => (
                   <th key={c} className={headerCellClass(i)}>
                     {c}
@@ -90,7 +90,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
             </thead>
             <tbody>
               <tr>
-                <td className="border border-[#e4ddc9] px-2 py-1 font-bold">{view.rowLabel}</td>
+                <td className="border border-surf-muted/20 px-2 py-1 font-bold">{view.rowLabel}</td>
                 {view.front.map((v, i) => (
                   <td key={i} className={cellClass(i)}>
                     {v}
@@ -106,7 +106,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
           <table className="border-collapse text-xs">
             <thead>
               <tr>
-                <th className="border border-[#e4ddc9] bg-outline-ink px-2 py-1 text-white">L\W</th>
+                <th className="border border-surf-muted/20 bg-outline-ink px-2 py-1 text-white">L\W</th>
                 {view.columns.map((c, i) => (
                   <th key={c} className={headerCellClass(i)}>
                     {c}
@@ -116,7 +116,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
             </thead>
             <tbody>
               <tr>
-                <td className="border border-[#e4ddc9] px-2 py-1 font-bold">{view.rowLabel}</td>
+                <td className="border border-surf-muted/20 px-2 py-1 font-bold">{view.rowLabel}</td>
                 {view.rear.map((v, i) => (
                   <td key={i} className={cellClass(i)}>
                     {v}

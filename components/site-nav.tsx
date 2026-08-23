@@ -26,11 +26,11 @@ export function SiteNav() {
   return (
     <nav
       data-print-hide
-      className="flex flex-none items-center gap-6 border-b border-outline-sidebar-divider bg-outline-sidebar-bg px-6 py-3"
+      className="flex flex-none items-center gap-10 border-b border-surf-muted/20 bg-surf-base px-12 py-6"
     >
       <Link
         href="/"
-        className="text-sm font-extrabold tracking-[0.15em] text-outline-sidebar-text transition-colors hover:text-outline-accent"
+        className="text-sm font-extrabold tracking-[0.15em] text-surf-black transition-colors hover:text-outline-accent"
       >
         SHAPER
       </Link>
@@ -45,7 +45,7 @@ export function SiteNav() {
                 "border-b-2 pb-0.5 text-xs font-bold tracking-[0.15em] uppercase transition-colors " +
                 (active
                   ? "border-outline-accent text-outline-accent"
-                  : "border-transparent text-outline-sidebar-text-muted hover:text-outline-accent")
+                  : "border-transparent text-surf-muted hover:text-outline-accent")
               }
             >
               {link.label}

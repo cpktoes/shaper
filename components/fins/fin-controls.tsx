@@ -190,7 +190,7 @@ function BaseLengthField({
           <button
             type="button"
             onClick={onOverride}
-            className="cursor-pointer rounded-md border border-[#6b6355] px-2.5 py-1 text-[11px] text-outline-sidebar-text"
+            className="cursor-pointer rounded-md border border-surf-muted/30 px-2.5 py-1 text-[11px] text-outline-sidebar-text"
           >
             Override
           </button>
@@ -361,7 +361,7 @@ export function FinControls({
                 "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                 (spec.tailShape === shape
                   ? "border-outline-accent bg-outline-accent"
-                  : "border-outline-sidebar-input-border bg-[#2b2924]")
+                  : "border-outline-sidebar-input-border bg-surf-base")
               }
             >
               <TailShapeIcon shape={shape} active={spec.tailShape === shape} />
@@ -387,7 +387,7 @@ export function FinControls({
                   "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                   (spec.finSetup === setup
                     ? "border-outline-accent bg-outline-accent"
-                    : "border-outline-sidebar-input-border bg-[#2b2924]")
+                    : "border-outline-sidebar-input-border bg-surf-base")
                 }
               >
                 <FinSetupIcon setup={setup} active={spec.finSetup === setup} />
@@ -614,7 +614,7 @@ export function FinControls({
                               quadRearOffTailOverride: spec.advanced.quadRearOffTailOverride ?? resolved.quadRearOffTailBase,
                             });
                           }}
-                          className="cursor-pointer rounded-md border border-[#6b6355] px-2.5 py-1 text-[11px] text-outline-sidebar-text"
+                          className="cursor-pointer rounded-md border border-surf-muted/30 px-2.5 py-1 text-[11px] text-outline-sidebar-text"
                         >
                           Override
                         </button>
