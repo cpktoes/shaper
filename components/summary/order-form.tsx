@@ -289,12 +289,28 @@ export function OrderForm() {
                  * views is chrome the sheet cannot spare, and the width it gives back goes to the
                  * marking data and the fin numbers either side.
                  *
-                 * The interior wash is off. `--outline-board-fill` is a screen affordance — the
-                 * globals.css token is already suppressed for print, on the grounds that ink
-                 * inside the outline is wasted on a template meant to be cut along and marked on.
-                 * This sheet is that template wherever it is looked at, so the override here just
-                 * brings the screen into line with what already prints, and both drawings are left
-                 * defined by their stroke alone.
+                 * Three theming overrides, all of them turning editor affordances back into plain
+                 * draughtsmanship, because this panel is a template to mark a blank from rather
+                 * than a screen to design on:
+                 *
+                 * - `--outline-board-fill` — the interior wash. globals.css already suppresses this
+                 *   token for print, on the grounds that ink inside the outline is wasted on a
+                 *   template meant to be cut along and marked on. This sheet is that template
+                 *   wherever it is looked at, so the override only brings the screen into line with
+                 *   what already prints, leaving both drawings defined by their stroke alone.
+                 * - `--outline-widepoint-line` — the widepoint station arrives rose, to set it
+                 *   apart from the drag handles it sits among on the editor. Here there are no
+                 *   handles, and one ink reads as a drawing rather than as an interface.
+                 * - `--outline-widepoint-knot` — the two rail knots, gone. They carry no stroke, so
+                 *   a transparent fill removes them outright.
+                 *
+                 * `--outline-widepoint-dash` is deliberately NOT overridden. The viewer's own note
+                 * on these lines is that a widepoint near centre lands within a few pixels of the
+                 * mid-length centreline, and that colour was what told the two apart. With the
+                 * colour now matched, the dash is the only thing still doing that job.
+                 *
+                 * Tokens rather than another `OutlineViewer` prop: this is retheming, which is what
+                 * the tokens are for, and that component already carries five display gates.
                  */}
                 <FormBox
                   caption="Outline"
@@ -302,7 +318,13 @@ export function OrderForm() {
                   variant="flush"
                   className="min-w-0 flex-[2.1]"
                   bodyClassName="flex-row gap-1 p-1"
-                  style={{ "--outline-board-fill": "transparent" } as CSSProperties}
+                  style={
+                    {
+                      "--outline-board-fill": "transparent",
+                      "--outline-widepoint-line": "var(--outline-station-line)",
+                      "--outline-widepoint-knot": "transparent",
+                    } as CSSProperties
+                  }
                 >
                   <OutlineHalf label="Deck">
                     <OutlineViewer
