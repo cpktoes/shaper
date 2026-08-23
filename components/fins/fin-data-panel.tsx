@@ -44,10 +44,10 @@ export function FinDataPanel({ result, boardLength, tailWidth12, finSetup, tailS
       </div>
       {result.sections.map((sec) => (
         <div key={sec.label} className="mb-4">
-          <div className="mb-2 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold">{sec.label}</div>
+          <div className="mb-2 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">{sec.label}</div>
           {sec.groups.map((grp) => (
             <div key={grp.heading} className="mb-2 ml-3">
-              <div className="mb-2 border-b border-surf-muted/20 pb-1 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold">
+              <div className="mb-2 border-b border-surf-muted/20 pb-1 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">
                 {grp.heading}
               </div>
               {grp.rows.map((row) => (

@@ -29,7 +29,7 @@ function sliderValue(v: number | readonly number[]): number {
 function PrimaryInputsHeading() {
   return (
     <div className="flex items-center justify-between gap-2.5 border-b border-outline-sidebar-divider pb-1.5">
-      <div className="text-xs font-display text-surf-black uppercase tracking-architectural font-bold">Primary Inputs</div>
+      <div className="text-xs font-display text-surf-black uppercase tracking-architectural font-extrabold">Primary Inputs</div>
     </div>
   );
 }
@@ -66,7 +66,7 @@ export function VolumeControls({
   return (
     <div className="flex h-full flex-col gap-5">
       <div>
-        <div className="text-lg leading-tight font-display text-surf-black uppercase tracking-architectural font-bold">Volume Estimator</div>
+        <div className="text-lg leading-tight font-display text-surf-black uppercase tracking-architectural font-extrabold">Volume Estimator</div>
         <div className="mt-0.5 text-sm text-surf-muted font-normal">
           Approximate volume of a designed board
         </div>

@@ -120,7 +120,7 @@ export function VolumeCalculationCard({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-base text-surf-black">
-      <div className="mb-8 text-xl font-display text-surf-black uppercase tracking-architectural font-bold">Volume Calculation</div>
+      <div className="mb-8 text-xl font-display text-surf-black uppercase tracking-architectural font-extrabold">Volume Calculation</div>
       <div className="flex w-full flex-col gap-0">
         {!result.importingTemplate && (
           <>

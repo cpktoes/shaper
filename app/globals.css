@@ -102,7 +102,10 @@
   --font-display: var(--font-inter), Inter, Roboto, sans-serif;
   --font-body: var(--font-inter), Inter, Roboto, sans-serif;
 
-  --tracking-architectural: 0.25em; /* wide tracking for ALL CAPS headers */
+  /* 0.25em in the source config; retuned to 0.15em after the founder picked the SHAPER
+     wordmark's setting as the heading standard. Still the one tracking value every ALL
+     CAPS heading uses — only the measure changed. */
+  --tracking-architectural: 0.15em; /* wide tracking for ALL CAPS headers */
 }
 
 :root {

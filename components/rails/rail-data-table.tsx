@@ -50,7 +50,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
         {merged.map((group) => (
           <div key={group.heading} className="mb-1.5">
             <div
-              className="mb-0.5 font-display text-surf-black uppercase tracking-architectural font-bold"
+              className="mb-0.5 font-display text-surf-black uppercase tracking-architectural font-extrabold"
               style={{ fontSize: "var(--summary-font-group, 9px)" }}
             >
               {group.heading}
@@ -90,7 +90,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
             </div>
             {merged.map((group) => (
               <div key={group.heading} className="mb-4">
-                <div className="mb-2 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold">
+                <div className="mb-2 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">
                   {group.heading}
                 </div>
                 {group.rows.map((row) => (

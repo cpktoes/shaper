@@ -56,7 +56,7 @@ function sliderValue(v: number | readonly number[]): number {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-1.5 border-b border-surf-muted/20 pb-2 text-xs font-display text-surf-black uppercase tracking-architectural font-bold">
+    <div className="mt-1.5 border-b border-surf-muted/20 pb-2 text-xs font-display text-surf-black uppercase tracking-architectural font-extrabold">
       {children}
     </div>
   );
@@ -75,7 +75,7 @@ function DisclosureHeading({
     <button
       type="button"
       onClick={onToggle}
-      className="flex w-full items-center justify-between border-b border-surf-muted/20 pb-2 pl-3 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold"
+      className="flex w-full items-center justify-between border-b border-surf-muted/20 pb-2 pl-3 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold"
     >
       <span>{children}</span>
       <span>{open ? "▾" : "▸"}</span>
@@ -266,14 +266,14 @@ export function FinControls({
   return (
     <div className="flex h-full flex-col gap-5">
       <div>
-        <div className="text-lg leading-tight font-display text-surf-black uppercase tracking-architectural font-bold">Fin Setup &amp; Placement</div>
+        <div className="text-lg leading-tight font-display text-surf-black uppercase tracking-architectural font-extrabold">Fin Setup &amp; Placement</div>
         <div className="mt-0.5 text-sm text-surf-muted font-normal">
           Quantitative reference · trailing-edge convention
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-2.5 border-b border-outline-sidebar-divider pb-1.5">
-        <div className="text-xs font-display text-surf-black uppercase tracking-architectural font-bold">Inputs</div>
+        <div className="text-xs font-display text-surf-black uppercase tracking-architectural font-extrabold">Inputs</div>
         <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-surf-muted font-normal">
           <Checkbox checked={importTemplate} onCheckedChange={() => onToggleImportTemplate()} />
           Import Template Values
@@ -475,7 +475,7 @@ export function FinControls({
           <div className="mt-3.5 flex flex-col gap-4.5 pl-3">
             {flags.hasCenterSection && (
               <div>
-                <div className="mb-2.5 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold">{flags.centerSectionLabel}</div>
+                <div className="mb-2.5 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">{flags.centerSectionLabel}</div>
                 <div className="mb-2.5">
                   <BaseLengthField
                     label={flags.centerBaseLenFieldLabel}
@@ -504,7 +504,7 @@ export function FinControls({
 
             {flags.hasForwardSection && (
               <div className="border-t border-outline-sidebar-divider pt-4">
-                <div className="mb-2.5 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold">
+                <div className="mb-2.5 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">
                   Forward Fins — {flags.forwardSectionLabel}
                 </div>
                 <div className="mb-2.5">
@@ -561,7 +561,7 @@ export function FinControls({
 
             {flags.hasRearSection && (
               <div className="border-t border-outline-sidebar-divider pt-4">
-                <div className="mb-2.5 text-[10px] font-display text-surf-black uppercase tracking-architectural font-bold">
+                <div className="mb-2.5 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">
                   Rear Fins — {flags.rearSectionLabel}
                 </div>
                 <div className="mb-2.5">
