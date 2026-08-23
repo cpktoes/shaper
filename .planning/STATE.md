@@ -6,7 +6,7 @@ current_phase: 2
 current_phase_name: Accounts & Saved Designs
 status: planning
 stopped_at: Design pivot complete and pushed; drag confirmed good by the founder
-last_updated: "2026-08-23T00:00:00.000Z"
+last_updated: "2026-08-23T16:01:09.306Z"
 last_activity: 2026-08-22
 last_activity_desc: Accent construction lines and round drag targets (260822-was)
 progress:
@@ -133,6 +133,7 @@ None yet.
 | 260822-lg3 | Draggable outline control points: new lib/geometry/outline-drag.ts inverse solve with round-trip tests, construction overlay reduced to the input side, OutlineViewer onOutlineDrag pointer handling wired to the shared store; widepoint drag constrained to offset only; viewer frame grows for wide boards instead of shrinking the drawing | 2026-08-22 | 59b3f75 | [20260822-draggable-control-points](./quick/20260822-draggable-control-points/) |
 | 260822-n02 | Fix the Summary's clipped fin placement diagram: fin-viewer viewBox widened to contain its own drawing (heading and outline top were rendering outside it), Volume Estimate card made content-height so Fin Placement takes the remaining column height | 2026-08-22 | adc5c24 | [20260822-fin-placement-not-clipped](./quick/20260822-fin-placement-not-clipped/) |
 | 260822-nbz | Summary Volume card brought to row parity with the Volume screen (center thickness plus the three cross-section rows); print sheet fixed to one landscape page — pinned @page margin, page box derived from Letter/A4 instead of a magic number, and the grid moved to container queries so the measured layout is the printed one | 2026-08-22 | a0c47d0 | [20260822-summary-volume-rows-and-one-page-print](./quick/20260822-summary-volume-rows-and-one-page-print/) |
+| 260823-hbv | Preserve the horizontal board view as a post-MVP option: pending todo on main, live mockup as sketch 005 on branch design/horizontal-template-view | 2026-08-23 | 83ed049 | — |
 
 ## Deferred Items
 
