@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 2
 current_phase_name: Accounts & Saved Designs
 status: planning
-stopped_at: Completed quick task 260822-vcs (viewer callout system)
-last_updated: "2026-08-22T09:03:00.000Z"
+stopped_at: Completed quick task 260822-o99 (surf design tokens + core layout); tasks 2-3 of the design pivot pending review
+last_updated: "2026-08-23T00:00:00.000Z"
 last_activity: 2026-08-22
-last_activity_desc: Completed quick task 260822-vcs (viewer callout system)
+last_activity_desc: Completed quick task 260822-o99 (surf design tokens + core layout)
 progress:
   total_phases: 1
   completed_phases: 1
@@ -141,9 +141,10 @@ Items acknowledged and carried forward from previous milestone close:
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
 | *(none)* | | | |
+| 260822-o99 | Port the new surf design tokens to Tailwind v4 (@theme static, v3 config was inert) and move every surface onto the white ground: bg-surf-base universally, massive negative space around the 2D previews, border-surf-muted/20 hairlines only where separation is structural | 2026-08-22 | f28cbe8 | [260822-o99-port-the-new-surf-design-tokens-to-tailw](./quick/260822-o99-port-the-new-surf-design-tokens-to-tailw/) |
 
 ## Session Continuity
 
 Last session: 2026-08-22T09:03:00.000Z
-Stopped at: Completed quick task 260822-vcs (viewer callout system)
+Stopped at: Completed quick task 260822-o99 (surf design tokens + core layout)
 Resume file: None
