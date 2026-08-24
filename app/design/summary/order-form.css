@@ -88,7 +88,7 @@
  * it, so to land on the same edge it has to span the spine, the gap and the left column together.
  */
 [data-order-form-root] {
-  --order-form-spine: 1.15rem;
+  --order-form-spine: 1.5rem; /* 24px — 12px vertical type with 6px of air either side */
   --order-form-gap: 0.25rem; /* must match the `gap-1` on the three band rows */
   --order-form-left: 0.32;
 }
