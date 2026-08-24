@@ -170,9 +170,10 @@ Items acknowledged and carried forward from previous milestone close:
 | 260822-bfw | Give the board outline a 6% accent-blue wash on screen, suppressed under @media print so a cut template stays clean; reverses the flat-white call made during the pivot | 2026-08-22 | (see log) | (fast task — no plan dir) |
 | 260822-was | Construction lines onto the accent; draggable control points redrawn as three-part round targets (board-fill disc, accent ring, orange core) on exactly the five points that move, counter-scaled to a constant on-screen size | 2026-08-22 | 2b39ef6 | [260822-was-construction-lines-onto-the-accent-colou](./quick/260822-was-construction-lines-onto-the-accent-colou/) |
 | 260824-llx | Three-layer CSS custom property theming system (ramps -> semantic contract -> Tailwind bridge) with light and dark themes; root class toggle overriding a no-JS prefers-color-scheme default; literal --color-surf-* names kept as aliases so 228 call sites were untouched; AA verified numerically in both themes | 2026-08-24 | 1597fcc | [260824-llx-css-custom-property-theming-system-with-](./quick/260824-llx-css-custom-property-theming-system-with-/) |
+| 260824-m6k | Settings gear in the nav opening a theme chooser (System/Light/Dark) wired to the root classes; preference persisted in localStorage and restored by a pre-hydration inline script whose behaviour is asserted against the pure module in tests; useSyncExternalStore rather than effect-plus-setState. Units toggle deliberately skipped | 2026-08-24 | 7c7f2b5 | [260824-m6k-settings-menu-in-the-nav-with-a-theme-ch](./quick/260824-m6k-settings-menu-in-the-nav-with-a-theme-ch/) |
 
 ## Session Continuity
 
 Last session: 2026-08-24T22:33:31.225Z
-Stopped at: Theming system landed (light + dark). Toggle control not built; shadcn border/input still under the 3:1 non-text bar
+Stopped at: Theme chooser shipped in a nav settings menu. Units toggle deferred by choice; shadcn border/input still under the 3:1 non-text bar
 Resume file: None
