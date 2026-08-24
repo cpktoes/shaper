@@ -169,9 +169,10 @@ Items acknowledged and carried forward from previous milestone close:
 | 260822-vws | Replace the cyan accent with a deeper surf blue #006994 (6.09:1); collapse the fill and ink tokens into one, flip accent fills to white text, invert the chip icons that sit on the fill | 2026-08-22 | b7fe483 | [260822-vws-replace-the-cyan-accent-with-a-deeper-su](./quick/260822-vws-replace-the-cyan-accent-with-a-deeper-su/) |
 | 260822-bfw | Give the board outline a 6% accent-blue wash on screen, suppressed under @media print so a cut template stays clean; reverses the flat-white call made during the pivot | 2026-08-22 | (see log) | (fast task — no plan dir) |
 | 260822-was | Construction lines onto the accent; draggable control points redrawn as three-part round targets (board-fill disc, accent ring, orange core) on exactly the five points that move, counter-scaled to a constant on-screen size | 2026-08-22 | 2b39ef6 | [260822-was-construction-lines-onto-the-accent-colou](./quick/260822-was-construction-lines-onto-the-accent-colou/) |
+| 260824-llx | Three-layer CSS custom property theming system (ramps -> semantic contract -> Tailwind bridge) with light and dark themes; root class toggle overriding a no-JS prefers-color-scheme default; literal --color-surf-* names kept as aliases so 228 call sites were untouched; AA verified numerically in both themes | 2026-08-24 | 1597fcc | [260824-llx-css-custom-property-theming-system-with-](./quick/260824-llx-css-custom-property-theming-system-with-/) |
 
 ## Session Continuity
 
-Last session: 2026-08-22T09:03:00.000Z
-Stopped at: Design pivot complete and pushed; drag confirmed good
+Last session: 2026-08-24T22:33:31.225Z
+Stopped at: Theming system landed (light + dark). Toggle control not built; shadcn border/input still under the 3:1 non-text bar
 Resume file: None
