@@ -24,13 +24,13 @@ export function ContinueBoardCard({ onContinue, className }: ContinueBoardCardPr
       type="button"
       onClick={onContinue}
       className={cn(
-        "flex w-full flex-col gap-2 rounded-xl border border-transparent bg-card p-4 text-left ring-1 ring-foreground/10 outline-none transition-colors hover:border-surf-accent-blue hover:ring-2 hover:ring-surf-accent-blue focus-visible:border-surf-accent-blue focus-visible:ring-2 focus-visible:ring-surf-accent-blue",
+        "flex w-full flex-col gap-2 rounded-xl border border-transparent bg-card p-4 text-left ring-1 ring-foreground/10 outline-none transition-colors hover:border-surf-accent-cyan-ink hover:ring-2 hover:ring-surf-accent-cyan-ink focus-visible:border-surf-accent-cyan-ink focus-visible:ring-2 focus-visible:ring-surf-accent-cyan-ink",
         className,
       )}
     >
       <span className="text-[20px] leading-[1.2] font-semibold text-foreground">Continue Current Board</span>
       <span className="block truncate text-sm leading-[1.5] text-surf-muted">{displayName}</span>
-      <span className="text-xs leading-[1.4] font-semibold tracking-architectural text-surf-accent-blue uppercase">
+      <span className="text-xs leading-[1.4] font-semibold tracking-architectural text-surf-accent-cyan-ink uppercase">
         Continue This Board
       </span>
     </button>

@@ -316,12 +316,11 @@ export function OutlineControls({
               className="flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-1.5"
               style={{
                 borderColor: active
-                  ? "var(--color-surf-accent-blue)"
+                  ? "var(--color-surf-accent-cyan)"
                   : "color-mix(in srgb, var(--color-surf-muted) 30%, transparent)",
-                background: active ? "var(--color-surf-accent-blue)" : "var(--color-surf-base)",
-                // The accent is dark, so a selected chip needs white on it (6.09:1); black
-                // would be 3.10:1. Unselected stays black on white.
-                color: active ? "var(--color-surf-base)" : "var(--color-surf-black)",
+                background: active ? "var(--color-surf-accent-cyan)" : "var(--color-surf-base)",
+                // Black on cyan is 12.28:1; the same black off-state keeps the label legible.
+                color: "var(--color-surf-black)",
               }}
             >
               <TailShapeIcon shape={shape} active={active} />

@@ -349,7 +349,7 @@ function RailSectionControls({
                 <button
                   type="button"
                   onClick={resetAdvanced}
-                  className="cursor-pointer text-left text-[11px] font-bold text-surf-accent-blue"
+                  className="cursor-pointer text-left text-[11px] font-bold text-surf-accent-cyan-ink"
                 >
                   ↺ Reset Advanced Settings
                 </button>

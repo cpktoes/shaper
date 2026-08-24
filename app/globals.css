@@ -85,15 +85,20 @@
   --color-surf-base: #ffffff; /* crisp white background */
   --color-surf-black: #111111; /* matte black primary text & major elements */
   /* Blue is accent/selection, orange is warnings.
-     The source config's cyan #00E5FF was replaced at the founder's request: it needed a
-     separate darkened sibling for text and strokes, because at 1.54:1 on white it could
-     only ever be a fill. A sea blue dark enough to clear AA on its own does both jobs, so
-     one token replaces the two.
-     Being dark, it takes WHITE text on a fill (6.09:1) — the inverse of the bright cyan's
-     rule. Orange is the other way round (5.97:1 on black, 3.16:1 on white), but it is only
-     ever used as ink for warning text, never as a fill, so the two never disagree in
-     practice. */
-  --color-surf-accent-blue: #006994; /* selection — 6.09:1 on white, fills take text-surf-base */
+     The accent is a PAIR, and has to be. #00E5FF is 1.54:1 on white — bright enough that it
+     can only ever be a fill, never text and never a stroke. So the hue ships twice: the
+     bright one for fills, which therefore always carry BLACK text (12.28:1), and a darkened
+     sibling that clears AA as ink on the white ground.
+
+     This was briefly a single sea blue (#006994) instead, dark enough to do both jobs at
+     once, which inverted the fill rule to white text. The founder preferred the cyan, so the
+     pair is back and fills are black-on-cyan again.
+
+     Orange runs the other way round (5.97:1 on black, 3.16:1 on white), but it is only ever
+     ink for warning text and never a fill, so the two rules never collide in practice. */
+  --color-surf-accent-cyan: #00e5ff; /* selection fills — always with text-surf-black */
+  /* Same hue, darkened to clear WCAG AA as text and to read as a stroke in the drawings. */
+  --color-surf-accent-cyan-ink: #00767f; /* 5.39:1 on white */
   --color-surf-accent-orange: #ff5722; /* reserved for warning fills; would take text-surf-black */
   --color-surf-accent-orange-ink: #c93f10; /* warning text — 5.00:1 on white */
   /* Darkened from the source config's #9E9E9E, which sat at 2.68:1 on white and failed
@@ -174,10 +179,10 @@
      from the UI's surfaces into the drawing's interior, which was a step too far: the
      planshape is the thing being designed and should read as a shape. Suppressed for
      print below. */
-  --outline-board-fill: color-mix(in srgb, var(--color-surf-accent-blue) 6%, white);
+  --outline-board-fill: color-mix(in srgb, var(--color-surf-accent-cyan) 6%, white);
   /* The construction overlay is interactive scaffolding — its lines lead to the drag
      handles — so it carries the accent like everything else interactive. */
-  --outline-construction: var(--color-surf-accent-blue);
+  --outline-construction: var(--color-surf-accent-cyan-ink);
   --outline-station-line: color-mix(in srgb, var(--color-surf-muted) 36%, transparent); /* faint: stringer, stations, leaders, extension lines — 36% of the darkened muted token renders the same #cacaca the old 55%-of-#9e9e9e did, so the construction lines stay behind the board outline */
   --outline-widepoint-knot: #a8425f;
   --outline-ink: var(--color-surf-black);
@@ -273,10 +278,10 @@
 }
 
 .slider-accent [data-slot="slider-range"] {
-  background: var(--color-surf-accent-blue);
+  background: var(--color-surf-accent-cyan);
 }
 
 .slider-accent [data-slot="slider-thumb"] {
   border-color: var(--color-surf-black);
-  background: var(--color-surf-accent-blue);
+  background: var(--color-surf-accent-cyan);
 }

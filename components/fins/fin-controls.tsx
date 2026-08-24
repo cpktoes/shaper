@@ -141,7 +141,7 @@ function PillButton({
       className={
         `cursor-pointer rounded-md border px-1 py-2.5 text-[11px] font-bold ${
           active
-            ? "border-surf-black bg-surf-accent-blue text-surf-base"
+            ? "border-surf-black bg-surf-accent-cyan text-surf-black"
             : "border-surf-muted/30 bg-surf-base text-surf-black"
         } ${className}`
       }
@@ -360,7 +360,7 @@ export function FinControls({
               className={
                 "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                 (spec.tailShape === shape
-                  ? "border-surf-black bg-surf-accent-blue text-surf-base"
+                  ? "border-surf-black bg-surf-accent-cyan text-surf-black"
                   : "border-surf-muted/30 bg-surf-base text-surf-black")
               }
             >
@@ -386,7 +386,7 @@ export function FinControls({
                 className={
                   "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                   (spec.finSetup === setup
-                    ? "border-surf-black bg-surf-accent-blue text-surf-base"
+                    ? "border-surf-black bg-surf-accent-cyan text-surf-black"
                     : "border-surf-muted/30 bg-surf-base text-surf-black")
                 }
               >
@@ -551,7 +551,7 @@ export function FinControls({
                   <button
                     type="button"
                     onClick={onOpenToeTable}
-                    className="mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-blue underline"
+                    className="mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-cyan-ink underline"
                   >
                     View precise McKee toe-in aim tables ⤢
                   </button>
@@ -666,7 +666,7 @@ export function FinControls({
                   <button
                     type="button"
                     onClick={onOpenToeTable}
-                    className="mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-blue underline"
+                    className="mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-cyan-ink underline"
                   >
                     View precise McKee toe-in aim tables ⤢
                   </button>
@@ -677,7 +677,7 @@ export function FinControls({
             <button
               type="button"
               onClick={resetAdvancedSettings}
-              className="cursor-pointer border-t border-surf-muted/20 pt-4 text-left text-xs font-bold text-surf-accent-blue"
+              className="cursor-pointer border-t border-surf-muted/20 pt-4 text-left text-xs font-bold text-surf-accent-cyan-ink"
             >
               ↺ Reset Advanced Settings
             </button>

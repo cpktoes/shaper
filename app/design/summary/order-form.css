@@ -59,7 +59,7 @@
  * raising it will not.
  */
 [data-order-form-root] {
-  --order-form-shade: color-mix(in srgb, var(--color-surf-accent-blue) 7%, white);
+  --order-form-shade: color-mix(in srgb, var(--color-surf-accent-cyan) 7%, white);
 }
 
 /*
