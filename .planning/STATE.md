@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 Phase: 2 — Accounts & Saved Designs
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-23 - Completed quick task 260823-tw9: No scrolling order form panels; quad fin table fixed
+Last activity: 2026-08-23 - Completed quick task 260823-ux2: Pin the preset button to the sidebar footer
 
 Progress: [██████████] 100%
 
@@ -150,6 +150,7 @@ None yet.
 | 260823-rt8 | Original two-token cyan accent restored (reverses b7fe483): --color-surf-accent-cyan #00e5ff for fills, which return to black text, and --color-surf-accent-cyan-ink #00767f for accent text and drawing strokes. All ~35 call sites re-mapped by role using the b7fe483 diff as the authority, plus the board-fill wash, construction lines, order-form shade tint and slider-accent class built since. Order form min contrast improved 4.83 to 5.10:1 | 2026-08-23 | 48c7ef1 | [260823-rt8-restore-the-cyan-accent-scheme](./quick/260823-rt8-restore-the-cyan-accent-scheme/) |
 | 260823-sv4 | Order form spine labels widened 18.4px to 24px via the single --order-form-spine token. The column geometry from 260823-nv2 tracked the change automatically — logo/Rail Sections/Laminating right edges stayed at 0px spread with no other value touched, its first real test | 2026-08-23 | e5e76a8 | [260823-sv4-wider-order-form-spines](./quick/260823-sv4-wider-order-form-spines/) |
 | 260823-tw9 | Order form panels no longer scroll: rail data table row type 2cqw to 1.75cqw plus leading-tight on both tables, containers switched from overflow-auto to hidden so regressions clip (which the audit catches) instead of silently scrolling. Testing the worst-case quad+centre fin setup found the fin section list was losing the 5th/Center Fin entirely — CSS columns overflow sideways in a fixed-height box, 697px off-sheet — fixed by a grid whose column count follows the section count | 2026-08-23 | c84496e | [260823-tw9-no-scrolling-order-form-windows](./quick/260823-tw9-no-scrolling-order-form-windows/) |
+| 260823-ux2 | Dev-only Copy preset values button pinned to a real sidebar footer across all three editors: each aside became a flex column with a scrolling controls region plus a flex-none footer. It was never pinned anywhere — outline and rails only looked right because their controls happened to fit, while the longer fins controls pushed it past the aside bottom | 2026-08-23 | f7c6af6 | [260823-ux2-pin-the-preset-button-to-the-sidebar](./quick/260823-ux2-pin-the-preset-button-to-the-sidebar/) |
 
 ## Deferred Items
 
