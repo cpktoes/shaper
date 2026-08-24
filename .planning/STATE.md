@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 Phase: 2 — Accounts & Saved Designs
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-23 - Completed quick task 260823-kq8: Stack fin placement under the rail data on page 2
+Last activity: 2026-08-23 - Completed quick task 260823-mt5: Move the Shaper Use Only box to page 2
 
 Progress: [██████████] 100%
 
@@ -143,6 +143,7 @@ None yet.
 | 260823-ipc | Order form shading switched from grey to the reduced accent hue (new --order-form-shade token at 7%, held there by contrast) and page 1 type raised so nothing prints under 7.9px (was 5.8px); fixed a latent leading-none clip on the dimension values and raised the dims/rocker bands to suit. Zero AA failures across both sheets, min ratio 4.83:1 | 2026-08-23 | f43dea9 | [260823-ipc-accent-tinted-shading-and-aa-compliant-t](./quick/260823-ipc-accent-tinted-shading-and-aa-compliant-t/) |
 | 260823-jrn | Rocker box narrowed to sit above the template window only (inside a new right-hand column) and made 58% taller; rail plots column now runs the full height of the drawings row. Class renamed order-form-band-rocker to order-form-rocker since its percentage now reads against the column | 2026-08-23 | a8e1cde | [260823-jrn-rocker-above-the-template-window](./quick/260823-jrn-rocker-above-the-template-window/) |
 | 260823-kq8 | Page 2 tables stacked instead of side by side: fin placement under the rail data, both full width. Fin sections laid out in CSS columns to repair the row stretch full width introduced (label and value were ending up most of a page apart), footnote moved outside the columned flow to span the panel | 2026-08-23 | c88bbba | [260823-kq8-fin-placement-under-the-rail-data](./quick/260823-kq8-fin-placement-under-the-rail-data/) |
+| 260823-mt5 | Shaper Use Only box moved from page 1 header to the foot of page 2 (the shaper own page; front is the customer copy). Page 1 header band 17% to 12% with the rider fields spread into the remaining height, handing 5% of the sheet to the drawings row — boards ~8% larger, confirmed by a controlled A/B on the header percentage alone | 2026-08-23 | 4e05c0f | [260823-mt5-shaper-use-only-to-page-two](./quick/260823-mt5-shaper-use-only-to-page-two/) |
 
 ## Deferred Items
 
