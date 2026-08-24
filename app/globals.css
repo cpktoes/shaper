@@ -388,8 +388,10 @@
   --color-surf-line-faint: var(--surf-line-faint);
   --color-surf-accent: var(--surf-accent);
   --color-surf-on-accent: var(--surf-on-accent);
+  --color-surf-accent-ink: var(--surf-accent-ink);
   --color-surf-warning: var(--surf-warning);
   --color-surf-on-warning: var(--surf-on-warning);
+  --color-surf-warning-ink: var(--surf-warning-ink);
 
   /* -- literal aliases, kept for the existing call sites --------------------
      These are the pre-theming names. They still work, and they now theme,
