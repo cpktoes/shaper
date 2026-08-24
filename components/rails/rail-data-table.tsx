@@ -33,9 +33,12 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
 
   if (compact) {
     return (
-      // data-print-unfold lets the Summary print stylesheet release this container's clipped
-      // height so the full table prints instead of cutting off at the card's on-screen height.
-      <div data-print-unfold className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto">
+      // `overflow-hidden`, not `auto`. The order form is a sheet of paper and none of its panels
+      // scroll — but the choice also decides whether a future regression is visible: a scrolling
+      // panel silently absorbs content that no longer fits, and this one did exactly that for
+      // several rounds of layout work. Clipped overflow is what the sheet's audit checks for.
+      // data-print-unfold still releases the height for print.
+      <div data-print-unfold className="min-h-0 min-w-0 flex-1 overflow-hidden">
         <div
           className="mb-1 flex gap-2 border-b-2 border-surf-muted/20 pb-1"
           style={{ fontSize: "var(--summary-font-label, 12px)" }}
@@ -58,7 +61,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
             {group.rows.map((row) => (
               <div
                 key={row.label}
-                className="flex gap-2 border-b border-surf-muted/10 py-0.5"
+                className="flex gap-2 border-b border-surf-muted/10 py-0.5 leading-tight"
                 style={{ fontSize: "var(--summary-font-row, 11px)" }}
               >
                 <div className="min-w-0 flex-[1.4] text-surf-muted">{row.label}</div>

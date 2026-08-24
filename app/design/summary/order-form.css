@@ -170,12 +170,12 @@
   --order-form-caption: clamp(12px, 1.9cqw, 24px); /* 16.7px screen / 13.9px print */
   --order-form-micro: clamp(12px, 1.75cqw, 22px); /* 15.4px / 12.8px */
   --order-form-value: clamp(12px, 2.15cqw, 26px); /* 18.9px / 15.8px */
-  --order-form-row: clamp(12px, 2cqw, 24px); /* 17.6px / 14.7px */
+  --order-form-row: clamp(12px, 1.75cqw, 21px); /* 15.4px / 12.8px — see the note below */
   --order-form-group: clamp(12px, 1.9cqw, 24px); /* 16.7px / 13.9px */
 
   --summary-font-callout: clamp(12px, 2.15cqw, 26px);
   --summary-font-group: clamp(12px, 1.9cqw, 24px);
-  --summary-font-row: clamp(12px, 2cqw, 24px);
+  --summary-font-row: clamp(12px, 1.75cqw, 21px);
   --summary-font-label: clamp(12px, 1.9cqw, 24px);
 }
 

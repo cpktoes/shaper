@@ -58,7 +58,9 @@ export function FormBox({
             {caption}
           </span>
           {captionRight && (
-            <span className="min-w-0 truncate whitespace-nowrap text-right font-bold text-surf-muted leading-none order-form-micro">
+            // `leading-tight`, not `leading-none`: with `truncate`'s hidden overflow, a line box
+            // shorter than its own glyphs clips them by a couple of pixels.
+            <span className="min-w-0 truncate whitespace-nowrap text-right font-bold text-surf-muted leading-tight order-form-micro">
               {captionRight}
             </span>
           )}

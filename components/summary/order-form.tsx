@@ -542,25 +542,39 @@ export function OrderForm() {
                 caption="Fin Placement"
                 captionRight={finSetupLabel}
                 className="min-h-0 min-w-0 flex-1"
-                bodyClassName="gap-1 p-2"
+                bodyClassName="gap-1 overflow-hidden p-2"
               >
                 {/*
-                 * The sections run in columns rather than straight down the page. Full width, a row
-                 * puts its label at the far left and its measurement at the far right with most of a
-                 * page between them, which is exactly the shape that makes a reader's eye slip a
-                 * line — and a shaper reading the wrong fin number off this sheet drills the wrong
-                 * hole. Columns keep each label within reading distance of its own number.
+                 * Two columns, so a row's label stays within reading distance of its measurement.
+                 * At full page width a single column puts them at opposite edges, which is the shape
+                 * that makes a reader's eye slip a line — and a shaper reading the wrong fin number
+                 * off this sheet drills the wrong hole.
                  *
-                 * `columns`, not a fixed grid, because the section count is not fixed: a single fin
-                 * produces one, a thruster two, a quad with its centre fin three. `break-inside:
-                 * avoid` keeps a section whole rather than splitting its rows across the fold.
+                 * A GRID, not CSS `columns`. Multi-column was the first attempt, on the reasoning
+                 * that it adapts to a section count that is not fixed — one section for a single fin,
+                 * two for a thruster, three for a quad with its centre fin. It does adapt, but in a
+                 * fixed-height box it adapts SIDEWAYS: the third section spilled into a third column
+                 * 697px off the edge of the sheet, where `overflow: hidden` erased it. A quad's
+                 * centre fin silently had no numbers at all.
+                 *
+                 * The column COUNT follows the section count, so every section sits in one row and
+                 * the panel's height is set by the tallest section rather than by stacked rows. Two
+                 * fixed columns wrapped a quad's third section onto a second row that needed 156px
+                 * more height than this panel has. Three columns across 688px still leaves each
+                 * label beside its own number, which was the whole reason for columns.
+                 *
+                 * Capped at three: a fourth would be narrower than the numbers deserve, and would
+                 * rather wrap.
                  */}
                 <div
                   data-print-unfold
-                  className="min-h-0 flex-1 overflow-y-auto [column-gap:1.5rem] [columns:2]"
+                  className="grid min-h-0 flex-1 items-start gap-x-6 overflow-hidden"
+                  style={{
+                    gridTemplateColumns: `repeat(${Math.min(finPlacement.sections.length, 3)}, minmax(0, 1fr))`,
+                  }}
                 >
                 {finPlacement.sections.map((sec) => (
-                  <div key={sec.label} className="mb-2 break-inside-avoid last:mb-0">
+                  <div key={sec.label} className="mb-2 last:mb-0">
                     <div className="mb-0.5 border-b border-surf-black font-display font-extrabold tracking-architectural text-surf-black uppercase order-form-group">
                       {sec.label}
                     </div>
@@ -572,7 +586,7 @@ export function OrderForm() {
                         {grp.rows.map((row) => (
                           <div
                             key={row.label}
-                            className="flex justify-between gap-1 border-b border-surf-muted/25 order-form-row"
+                            className="flex justify-between gap-1 border-b border-surf-muted/25 leading-tight order-form-row"
                           >
                             <span className="truncate text-surf-muted">{row.label}</span>
                             <span className="flex-none font-bold text-surf-black">
@@ -581,7 +595,7 @@ export function OrderForm() {
                           </div>
                         ))}
                         {grp.fullSpread !== null && (
-                          <div className="flex justify-between gap-1 border-b border-surf-muted/25 order-form-row">
+                          <div className="flex justify-between gap-1 border-b border-surf-muted/25 leading-tight order-form-row">
                             <span className="truncate text-surf-muted">Full Spread</span>
                             <span className="flex-none font-bold text-surf-black">
                               {formatInchesFraction(grp.fullSpread, 16)}
