@@ -111,7 +111,7 @@ function RangeRow({
         max={max}
         step={step}
         onValueChange={(v) => onValueChange(sliderValue(v))}
-        className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
+        className="slider-accent"
       />
       {(leftHint || rightHint) && (
         <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
@@ -141,7 +141,7 @@ function PillButton({
       className={
         `cursor-pointer rounded-md border px-1 py-2.5 text-[11px] font-bold ${
           active
-            ? "border-surf-accent-blue bg-surf-accent-blue text-surf-base"
+            ? "border-surf-black bg-surf-accent-blue text-surf-base"
             : "border-surf-muted/30 bg-surf-base text-surf-black"
         } ${className}`
       }
@@ -325,7 +325,7 @@ export function FinControls({
           step={1}
           disabled={importTemplate}
           onValueChange={(v) => setLengthIn(sliderValue(v))}
-          className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
+          className="slider-accent"
         />
       </div>
 
@@ -340,7 +340,7 @@ export function FinControls({
           step={0.125}
           disabled={importTemplate}
           onValueChange={(v) => onChange({ tailWidth12: inchesToMm(clampFinite(sliderValue(v), 10, 18)) })}
-          className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
+          className="slider-accent"
         />
       </div>
 
@@ -360,7 +360,7 @@ export function FinControls({
               className={
                 "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                 (spec.tailShape === shape
-                  ? "border-surf-accent-blue bg-surf-accent-blue text-surf-base"
+                  ? "border-surf-black bg-surf-accent-blue text-surf-base"
                   : "border-surf-muted/30 bg-surf-base text-surf-black")
               }
             >
@@ -386,7 +386,7 @@ export function FinControls({
                 className={
                   "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                   (spec.finSetup === setup
-                    ? "border-surf-accent-blue bg-surf-accent-blue text-surf-base"
+                    ? "border-surf-black bg-surf-accent-blue text-surf-base"
                     : "border-surf-muted/30 bg-surf-base text-surf-black")
                 }
               >

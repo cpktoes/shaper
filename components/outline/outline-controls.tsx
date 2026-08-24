@@ -118,7 +118,7 @@ function SliderRow({
         step={step}
         disabled={disabled}
         onValueChange={(v) => onValueChange(sliderValue(v))}
-        className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
+        className="slider-accent"
       />
       {(leftHint || rightHint) && (
         <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
@@ -211,7 +211,7 @@ export function OutlineControls({
           max={BOARD_LENGTH_RANGE_IN.max}
           step={1}
           onValueChange={(v) => setLengthIn(sliderValue(v))}
-          className="[&_[data-slot=slider-range]]:bg-surf-accent-blue [&_[data-slot=slider-thumb]]:border-surf-accent-blue [&_[data-slot=slider-thumb]]:bg-surf-accent-blue"
+          className="slider-accent"
         />
       </div>
 

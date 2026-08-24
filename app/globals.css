@@ -249,3 +249,34 @@
     --outline-board-fill: var(--color-surf-base);
   }
 }
+
+/*
+ * The design screens' sliders.
+ *
+ * One class instead of the three-utility arbitrary-variant string that was repeated at all fourteen
+ * slider call sites across the outline, rails, volume and fins controls. Fourteen copies of a
+ * treatment is how a treatment drifts, and it made a one-line visual change a fourteen-file edit.
+ *
+ * Declared here rather than in `components/ui/slider.tsx`, which is shadcn-generated and may be
+ * regenerated — the app's own styling has to survive that. Reaching the primitive through its
+ * `data-slot` hooks is exactly what the call sites were already doing; this just says it once.
+ *
+ * The hairline is the point. Everything else this app draws — the outline viewers, the rail plots,
+ * every box on the order form — is defined by a stroke, and an accent fill with no edge was the one
+ * place that language dropped. The fill is unchanged; it just gains an outline.
+ */
+.slider-accent [data-slot="slider-track"] {
+  border: 1px solid var(--color-surf-black);
+  /* 6px rather than the primitive's 4px: a 1px stroke either side of a 4px bar leaves two of
+     interior, which reads as a muddy line rather than a channel with something in it. */
+  height: 6px;
+}
+
+.slider-accent [data-slot="slider-range"] {
+  background: var(--color-surf-accent-blue);
+}
+
+.slider-accent [data-slot="slider-thumb"] {
+  border-color: var(--color-surf-black);
+  background: var(--color-surf-accent-blue);
+}
