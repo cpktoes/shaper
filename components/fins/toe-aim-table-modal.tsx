@@ -40,7 +40,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
     "border border-surf-muted/20 px-2 py-1 " + (i === view.highlightIndex ? "bg-surf-muted/15 font-bold" : "");
   const headerCellClass = (i: number) =>
     "border border-surf-muted/20 px-2 py-1 " +
-    (i === view.highlightIndex ? "bg-surf-accent-cyan font-bold text-surf-black" : "bg-outline-ink text-white");
+    (i === view.highlightIndex ? "bg-surf-accent-cyan font-bold text-surf-on-accent" : "bg-outline-ink text-surf-on-ink");
 
   return (
     <div
@@ -65,7 +65,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
           <button
             type="button"
             onClick={onClose}
-            className="cursor-pointer rounded-md bg-outline-ink px-3 py-1.5 text-xs font-bold text-white"
+            className="cursor-pointer rounded-md bg-outline-ink px-3 py-1.5 text-xs font-bold text-surf-on-ink"
           >
             Close
           </button>
@@ -80,7 +80,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
           <table className="border-collapse text-xs">
             <thead>
               <tr>
-                <th className="border border-surf-muted/20 bg-outline-ink px-2 py-1 text-white">L\W</th>
+                <th className="border border-surf-muted/20 bg-outline-ink px-2 py-1 text-surf-on-ink">L\W</th>
                 {view.columns.map((c, i) => (
                   <th key={c} className={headerCellClass(i)}>
                     {c}
@@ -106,7 +106,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
           <table className="border-collapse text-xs">
             <thead>
               <tr>
-                <th className="border border-surf-muted/20 bg-outline-ink px-2 py-1 text-white">L\W</th>
+                <th className="border border-surf-muted/20 bg-outline-ink px-2 py-1 text-surf-on-ink">L\W</th>
                 {view.columns.map((c, i) => (
                   <th key={c} className={headerCellClass(i)}>
                     {c}

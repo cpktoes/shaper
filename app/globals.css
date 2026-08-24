@@ -388,6 +388,7 @@
   --color-surf-line-faint: var(--surf-line-faint);
   --color-surf-accent: var(--surf-accent);
   --color-surf-on-accent: var(--surf-on-accent);
+  --color-surf-on-ink: var(--surf-on-ink);
   --color-surf-accent-ink: var(--surf-accent-ink);
   --color-surf-warning: var(--surf-warning);
   --color-surf-on-warning: var(--surf-on-warning);
@@ -444,6 +445,15 @@
    the widepoint knot) and those live in the theme blocks above.
    --------------------------------------------------------------------------- */
 :root {
+  /* Ink is used as a *fill* in a few places — the toe/aim reference table's header row is
+     the clearest — and the contract's pairing rule has no exceptions: a fill needs an `on-`
+     partner. That partner is definitionally the ground, so it is derived here rather than
+     carried in every ramp: one line, no new value to tune, and it follows any theme for free.
+     Named rather than using `--surf-ground` directly at the call sites, because
+     `text-surf-ground` on a dark header reads as "the page background" and confuses; this
+     says what the role is. */
+  --surf-on-ink: var(--surf-ground);
+
   /* Re-pointed at the surf palette as part of the design pivot (quick task 260822-o99). The
      surface tokens are aliases of the contract rather than the old warm modernist values, so
      the deep control internals (sliders, selects, section rules) inside the 200-700 line
