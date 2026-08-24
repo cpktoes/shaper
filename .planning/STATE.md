@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 Phase: 2 — Accounts & Saved Designs
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-23 - Completed quick task 260823-rt8: Restore the original two-token cyan accent
+Last activity: 2026-08-23 - Completed quick task 260823-sv4: Widen the order form spine labels
 
 Progress: [██████████] 100%
 
@@ -148,6 +148,7 @@ None yet.
 | 260823-pw7 | 9pt (12px) type floor across both order-form sheets via clamp minimums plus matching cqw coefficients; caption rows made non-wrapping with truncating notes and captions shortened to suit. Uncovered and fixed a print bug: the print-fit hook pinned the sheets but not the container-query root, so printed type size depended on the print viewport. Nav menu right-justified | 2026-08-23 | 5621dfa | [260823-pw7-twelve-px-type-floor-and-right-nav](./quick/260823-pw7-twelve-px-type-floor-and-right-nav/) |
 | 260823-qr3 | Accent-filled controls given a surf-black hairline so they read as drawn objects rather than flat fills: slider track (now 6px so the stroke does not crowd the range), slider thumb, the three fin toggles and the summary print button. The slider treatment was one class string duplicated 14 times across four control files; centralised as .slider-accent in globals.css, leaving shadcn ui/slider.tsx untouched | 2026-08-23 | 609554c | [260823-qr3-hairline-stroke-on-accent-controls](./quick/260823-qr3-hairline-stroke-on-accent-controls/) |
 | 260823-rt8 | Original two-token cyan accent restored (reverses b7fe483): --color-surf-accent-cyan #00e5ff for fills, which return to black text, and --color-surf-accent-cyan-ink #00767f for accent text and drawing strokes. All ~35 call sites re-mapped by role using the b7fe483 diff as the authority, plus the board-fill wash, construction lines, order-form shade tint and slider-accent class built since. Order form min contrast improved 4.83 to 5.10:1 | 2026-08-23 | 48c7ef1 | [260823-rt8-restore-the-cyan-accent-scheme](./quick/260823-rt8-restore-the-cyan-accent-scheme/) |
+| 260823-sv4 | Order form spine labels widened 18.4px to 24px via the single --order-form-spine token. The column geometry from 260823-nv2 tracked the change automatically — logo/Rail Sections/Laminating right edges stayed at 0px spread with no other value touched, its first real test | 2026-08-23 | e5e76a8 | [260823-sv4-wider-order-form-spines](./quick/260823-sv4-wider-order-form-spines/) |
 
 ## Deferred Items
 
