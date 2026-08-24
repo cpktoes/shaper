@@ -22,22 +22,28 @@
  *
  * The `cqw` figures are calibrated against an 880px sheet — this form's on-screen max width — but
  * the size that actually matters is the PRINTED one, and the sheet prints at about 733px. Printed
- * type is therefore 83% of what the screen shows, which is how the first cut of this scale ended up
- * putting every field label on the page at 6.7px and the smallest band at 5.8px: legible enough in
- * a browser, too small to be useful on paper. Each comment below gives both numbers, screen first,
- * and the floor is that nothing prints under about 8px.
+ * type is therefore 83% of what the screen shows.
+ *
+ * **The floor is 9pt — 12px — and nothing on either sheet prints below it.** That is the clamp
+ * minimum on every token here, so the floor holds at any container width rather than only at the
+ * printed one, and `1.636cqw` is exactly 12px at the printed width. Two earlier cuts of this scale
+ * bottomed out at 5.8px and then 7.9px: legible enough in a browser, not on paper in a shaping bay.
+ *
+ * A consequence worth naming: the floor compresses the bottom of the scale, so `micro`, `caption`
+ * and `group` all land on it and are no longer separated by size. They stay distinguishable by
+ * weight and colour, which is what was really carrying them apart at 8px anyway.
  *
  * The properties are declared on the container itself, which is fine: `cqw` resolves where a
  * property is USED, and every user is a descendant.
  */
 [data-order-form-root] {
-  --order-form-caption: clamp(8.2px, 1.132cqw, 14px); /* 10px screen / 8.3px print — field labels */
-  --order-form-micro: clamp(7.8px, 1.077cqw, 13px); /* 9.5px / 7.9px — secondary notes */
-  --order-form-value: clamp(9.4px, 1.309cqw, 16px); /* 11.5px / 9.6px — written-in and printed values */
-  --order-form-row: clamp(8.6px, 1.2cqw, 14.5px); /* 10.6px / 8.8px — table rows */
-  --order-form-group: clamp(8.2px, 1.132cqw, 14px); /* 10px / 8.3px — section headings */
-  --order-form-dim: clamp(11px, 1.705cqw, 21px); /* 15px / 12.5px — the dimensions row */
-  --order-form-wordmark: clamp(15px, 2.5cqw, 32px); /* 22px / 18.3px — the SHAPER logo block */
+  --order-form-caption: clamp(12px, 1.636cqw, 20px); /* 14.4px screen / 12px print — field labels */
+  --order-form-micro: clamp(12px, 1.636cqw, 20px); /* 14.4px / 12px — secondary notes */
+  --order-form-value: clamp(12px, 1.8cqw, 22px); /* 15.8px / 13.2px — written-in and printed values */
+  --order-form-row: clamp(12px, 1.7cqw, 21px); /* 15px / 12.5px — table rows */
+  --order-form-group: clamp(12px, 1.636cqw, 20px); /* 14.4px / 12px — section headings */
+  --order-form-dim: clamp(14px, 2.3cqw, 28px); /* 20.2px / 16.9px — the dimensions row */
+  --order-form-wordmark: clamp(16px, 2.8cqw, 34px); /* 24.6px / 20.5px — the SHAPER logo block */
 }
 
 /*
@@ -161,16 +167,16 @@
  * data table) still at the front page's size.
  */
 [data-order-form-root] .order-form-sheet-reference {
-  --order-form-caption: clamp(10px, 1.409cqw, 17px); /* 12.4px at 880 */
-  --order-form-micro: clamp(8.5px, 1.232cqw, 15px); /* 10.8px */
-  --order-form-value: clamp(12px, 1.761cqw, 21px); /* 15.5px */
-  --order-form-row: clamp(11px, 1.586cqw, 19px); /* 14px  */
-  --order-form-group: clamp(10px, 1.409cqw, 17px); /* 12.4px */
+  --order-form-caption: clamp(12px, 1.9cqw, 24px); /* 16.7px screen / 13.9px print */
+  --order-form-micro: clamp(12px, 1.75cqw, 22px); /* 15.4px / 12.8px */
+  --order-form-value: clamp(12px, 2.15cqw, 26px); /* 18.9px / 15.8px */
+  --order-form-row: clamp(12px, 2cqw, 24px); /* 17.6px / 14.7px */
+  --order-form-group: clamp(12px, 1.9cqw, 24px); /* 16.7px / 13.9px */
 
-  --summary-font-callout: clamp(12px, 1.761cqw, 21px);
-  --summary-font-group: clamp(10px, 1.409cqw, 17px);
-  --summary-font-row: clamp(11px, 1.586cqw, 19px);
-  --summary-font-label: clamp(10px, 1.409cqw, 17px);
+  --summary-font-callout: clamp(12px, 2.15cqw, 26px);
+  --summary-font-group: clamp(12px, 1.9cqw, 24px);
+  --summary-font-row: clamp(12px, 2cqw, 24px);
+  --summary-font-label: clamp(12px, 1.9cqw, 24px);
 }
 
 /*

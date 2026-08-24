@@ -256,7 +256,7 @@ export function OrderForm() {
                   value={formatInchesFraction(outline.widePointWidth)}
                 />
                 <DimensionCell
-                  label="WP Offset"
+                  label="Offset"
                   value={formatSignedInchesFraction(outline.widePointOffset)}
                 />
                 <DimensionCell
@@ -279,7 +279,7 @@ export function OrderForm() {
                     are on page 2. */}
                 <FormBox
                   caption="Rail Sections"
-                  captionRight="marking data overleaf"
+                  captionRight="overleaf"
                   className="order-form-left-col min-w-0"
                   bodyClassName="gap-1 p-1"
                 >
@@ -312,7 +312,7 @@ export function OrderForm() {
                      let the rail plots take the full height of the row beside it. */}
                 <FormBox
                   caption="Rocker"
-                  captionRight="added with the rocker screen"
+                  captionRight="placeholder"
                   className="flex-none order-form-rocker"
                   bodyClassName="p-0"
                 >
@@ -382,7 +382,7 @@ export function OrderForm() {
                */}
               <FormBox
                   caption="Color Design &amp; Logos"
-                  captionRight="dimensions on the rows above"
+                  captionRight="dimensions above"
                   variant="flush"
                   className="min-h-0 min-w-0 flex-1"
                 bodyClassName="p-1.5"
@@ -466,7 +466,7 @@ export function OrderForm() {
                   ))}
                 </select>
                 <div className="text-surf-muted order-form-micro">
-                  {finSetupLabel} · designed on the fins screen
+                  {finSetupLabel} · from the fins screen
                 </div>
               </FormBox>
 
@@ -531,7 +531,7 @@ export function OrderForm() {
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
               <FormBox
                 caption="Rail Bands"
-                captionRight="marking data — plots overleaf"
+                captionRight="plots overleaf"
                 className="min-h-0 min-w-0 flex-[1.6]"
                 bodyClassName="p-2"
               >

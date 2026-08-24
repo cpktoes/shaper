@@ -50,12 +50,15 @@ export function FormBox({
       )}
     >
       {caption && (
+        // The caption never wraps; a long `captionRight` truncates instead. At the 9pt floor a
+        // two-word note was enough to fold a panel's own name onto two lines, which reads as a
+        // broken box rather than a full one.
         <div className="flex flex-none items-baseline justify-between gap-2 border-b border-surf-black px-1.5 py-[3px]">
-          <span className="font-display font-extrabold tracking-architectural text-surf-black uppercase leading-none order-form-caption">
+          <span className="flex-none whitespace-nowrap font-display font-extrabold tracking-architectural text-surf-black uppercase leading-none order-form-caption">
             {caption}
           </span>
           {captionRight && (
-            <span className="font-bold text-surf-muted leading-none order-form-micro">
+            <span className="min-w-0 truncate whitespace-nowrap text-right font-bold text-surf-muted leading-none order-form-micro">
               {captionRight}
             </span>
           )}

@@ -88,6 +88,17 @@ export function useOrderFormPrintFit() {
       root.setAttribute("data-printing", "true");
 
       const page = printableBoxPx();
+
+      // Pin the ROOT to the printable width as well, not just the sheets.
+      //
+      // The root is the `@container` every `cqw` font size on the sheet resolves against (see
+      // order-form.css). Sizing only the sheets leaves it at whatever width the print viewport
+      // happens to hand it, so the type would print at a size neither the design nor the
+      // measurement below ever saw — and if that came out larger, the overflow guard would answer
+      // by zooming the sheet down, dragging the type back under the 9pt floor it is supposed to
+      // hold. Pinned, the container query resolves to the printed width, and the layout measured
+      // here is the layout that prints.
+      root.style.width = `${page.width}px`;
       // A hair under the page box, not exactly it. A sheet sized to the page's precise height is one
       // sub-pixel rounding error away from "does not fit", and with `break-inside: avoid` on it the
       // browser answers that by pushing the whole sheet onto the next page — turning two pages into
@@ -120,6 +131,7 @@ export function useOrderFormPrintFit() {
       const root = rootRef.current;
       if (!root) return;
       root.removeAttribute("data-printing");
+      root.style.width = "";
       for (const sheet of sheetsOf(root)) {
         sheet.style.zoom = "";
         sheet.style.width = "";
