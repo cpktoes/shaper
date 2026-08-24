@@ -134,8 +134,12 @@
   min-height: 0;
 }
 
+/* Carried the logo block, four rider fields and the shaper's sub-box at 17%. The sub-box moved to
+   page 2, and the rider fields need only about a third of what was left — so the band gives 5% of
+   the sheet back to the drawings row below, and the fields spread into what remains rather than
+   stacking at the top of a half-empty box. */
 [data-order-form-root] .order-form-band-header {
-  flex: 0 0 17%;
+  flex: 0 0 12%;
 }
 /* Grew with the type scale: a caption-over-content box, so raising the caption from 8px to 10px
    cost it a couple of lines' worth of room and the cells began clipping. The height comes out of

@@ -216,33 +216,16 @@ export function OrderForm() {
 
             <RailLabel>Rider Info</RailLabel>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
+            {/* `justify-between` rather than a stack at the top: with the shaper's box gone to page
+                2 the rider fields have more height than they need, and an order form would rather
+                spend it on the gaps between ruled lines — these get written on by hand. */}
+            <div className="flex min-w-0 flex-1 flex-col justify-between gap-1 py-0.5">
               <OrderFormField label="Name" />
               <OrderFormField label="Ph #" />
               <div className="flex gap-3">
                 <OrderFormField label="Height" className="flex-1" />
                 <OrderFormField label="Weight" className="flex-1" />
               </div>
-
-              <FormBox
-                caption="Shaper Use Only"
-                className="mt-auto bg-(--order-form-shade)"
-                bodyClassName="gap-1 p-1.5"
-              >
-                {/* Board Name is live (the store has carried it since the landscape summary); the
-                    rest of this box is written in by the shop. */}
-                <OrderFormField
-                  label="Board Name"
-                  value={boardName}
-                  onChange={setBoardName}
-                  placeholder="Name this board"
-                />
-                <div className="flex gap-3">
-                  <OrderFormField label="Blank &amp; Rocker" className="flex-[1.4]" />
-                  <OrderFormField label="Board #" className="flex-1" />
-                  <OrderFormField label="Price" prefix="$" className="flex-1" />
-                </div>
-              </FormBox>
             </div>
           </div>
 
@@ -595,6 +578,36 @@ export function OrderForm() {
                     ))}
                   </div>
                 )}
+              </FormBox>
+
+              {/*
+               * The muse keeps this box in the header, where the shop fills it in as the order is
+               * taken. It sits here instead because this whole page is the shaper's — the front is
+               * the customer's copy of what they asked for, and the blank number, the price and the
+               * rocker the blank came off are the shop's own record of the job.
+               *
+               * It lands at the foot of the page rather than the top on purpose: the tables above
+               * are what a shaper reads *while* working the blank, and this is what gets filled in
+               * before and after. It also puts the sheet's white space to use.
+               */}
+              <FormBox
+                caption="Shaper Use Only"
+                className="flex-none bg-(--order-form-shade)"
+                bodyClassName="gap-2 p-2"
+              >
+                {/* Board Name is live (the store has carried it since the landscape summary); the
+                    rest of this box is written in by the shop. */}
+                <OrderFormField
+                  label="Board Name"
+                  value={boardName}
+                  onChange={setBoardName}
+                  placeholder="Name this board"
+                />
+                <div className="flex gap-6">
+                  <OrderFormField label="Blank &amp; Rocker" className="flex-[1.4]" />
+                  <OrderFormField label="Board #" className="flex-1" />
+                  <OrderFormField label="Price" prefix="$" className="flex-1" />
+                </div>
               </FormBox>
             </div>
           </div>
