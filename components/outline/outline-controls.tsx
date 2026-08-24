@@ -319,8 +319,10 @@ export function OutlineControls({
                   ? "var(--color-surf-accent-cyan)"
                   : "color-mix(in srgb, var(--color-surf-muted) 30%, transparent)",
                 background: active ? "var(--color-surf-accent-cyan)" : "var(--color-surf-base)",
-                // Black on cyan is 12.28:1; the same black off-state keeps the label legible.
-                color: "var(--color-surf-black)",
+                // Two different surfaces, so two different foregrounds. This was one shared value
+                // back when ink and on-accent were both #111111; under theming the active chip is
+                // ink-on-cyan at 1.4:1 unless it takes the fill's own paired colour.
+                color: active ? "var(--color-surf-on-accent)" : "var(--color-surf-black)",
               }}
             >
               <TailShapeIcon shape={shape} active={active} />

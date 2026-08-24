@@ -660,7 +660,7 @@ export function OrderForm() {
         <Button
           type="button"
           onClick={printOrderForm}
-          className="border-surf-black bg-surf-accent-cyan text-surf-black hover:bg-surf-accent-cyan/85"
+          className="border-surf-black bg-surf-accent-cyan text-surf-on-accent hover:bg-surf-accent-cyan/85"
         >
           Print Order Form
         </Button>

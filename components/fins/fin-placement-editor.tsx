@@ -151,7 +151,7 @@ export function FinPlacementEditor() {
             <Button
               variant="ghost"
               size="sm"
-              className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent-cyan hover:bg-surf-accent-cyan hover:text-surf-black"
+              className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent-cyan hover:bg-surf-accent-cyan hover:text-surf-on-accent"
               onClick={handleCopyPreset}
             >
               {justCopiedPreset ? "Copied!" : "Copy preset values"}

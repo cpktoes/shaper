@@ -101,8 +101,10 @@ export function TailShapeIcon({
 }) {
   const diamondDepthMult = shape === "diamond" ? 2 : 1;
   const path = iconOutlinePath(shape, 15, diamondDepthMult, 12);
-  // Active icons sit on the bright cyan fill, so they stay dark along with the label.
-  const stroke = active ? "var(--color-surf-black)" : "var(--color-surf-muted)";
+  // Active icons sit ON the accent fill, so they take its paired `on-` colour rather than
+  // the ink token. Those were the same value before theming; in dark, ink is near-white
+  // and this drew a pale glyph on bright cyan at 1.4:1.
+  const stroke = active ? "var(--color-surf-on-accent)" : "var(--color-surf-muted)";
   return (
     <svg width={30} height={30} viewBox="0 0 64 64" aria-hidden="true">
       <path
