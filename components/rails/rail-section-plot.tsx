@@ -18,17 +18,30 @@ const SCALE = 56; // px per inch, matches buildPlot's default scale for all outp
 const LEFT_PAD = 22;
 const AXIS_LABEL_PAD = 20; // room for the x-axis tick labels below the plot
 
+/**
+ * Categorical colours for the rail-band plot. These are signal/data colours held
+ * deliberately outside the brand palette — a band's colour identifies *which band it is*,
+ * so it must not drift toward meaning "selected" or "warning". The six hues below stay
+ * hardcoded for that reason, and all six clear the 3:1 graphical bar on both the light and
+ * the dark ground (lowest is tuck1 at 3.44:1 in dark).
+ *
+ * The four structural keys are the exception, and are not categorical at all: hardEdge and
+ * the three `*Conn` connectors draw the board's own edge, which is an *ink* role, not a data
+ * hue. They were `#1c1b19`, which is 17.21:1 on white but **1.07:1** on the dark ground —
+ * the board outline simply vanished when the dark theme landed. Pointing them at the ink
+ * token fixes that and is imperceptible in light (17.21:1 → 18.88:1, both near-black).
+ */
 export const RAIL_SEGMENT_COLORS: Record<RailSegmentKey, string> = {
   domedBand: "#6b8e4e",
   band1: "var(--color-surf-accent-cyan-ink)",
   band2: "#b5563a",
   cornerCut: "#4d8a86",
-  hardEdge: "#1c1b19",
+  hardEdge: "var(--color-surf-ink)",
   tuck1: "#7d5ba6",
   tuck2: "#3a6ea5",
-  boardConn: "#1c1b19",
-  bottomConn: "#1c1b19",
-  railConn: "#1c1b19",
+  boardConn: "var(--color-surf-ink)",
+  bottomConn: "var(--color-surf-ink)",
+  railConn: "var(--color-surf-ink)",
 };
 
 const LEGEND_HIDDEN_KEYS = new Set<RailSegmentKey>(["bottomConn", "railConn"]);
