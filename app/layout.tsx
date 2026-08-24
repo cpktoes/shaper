@@ -3,6 +3,8 @@ import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { SiteNav } from "@/components/site-nav";
 import { DesignProvider as Provider } from "@/components/design/design-store";
+import { ThemeProvider } from "@/components/theme-provider";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -45,14 +47,39 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geistMono.variable} ${inter.variable} h-full antialiased`}
+      // The init script below adds `light`/`dark` to this element's class list before React
+      // hydrates, so the server's markup and the client's first render disagree by design.
+      suppressHydrationWarning
     >
+      <head>
+        {/*
+         * Restores a saved theme override before the first paint.
+         *
+         * This is the one place the theming system needs JavaScript, and only for an
+         * *explicit* override — with no stored preference the CSS alone is already correct,
+         * because bare `:root` is the light theme and a `prefers-color-scheme` block covers
+         * OS dark (see app/globals.css).
+         *
+         * It must be a raw inline <script>, not next/script: the browser runs this
+         * synchronously while parsing <head>, before anything is painted, which is what makes
+         * the restore flash-free. A deferred or bundled script runs after first paint, so a
+         * shaper who chose Dark would see a white flash on every reload. Per
+         * node_modules/next/dist/docs/01-app/02-guides/preventing-flash-before-hydration.md.
+         *
+         * The script's source lives in lib/theme.ts beside the function it duplicates, and
+         * lib/theme.test.ts runs it against a fake DOM to prove the two agree.
+         */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="flex h-full flex-col overflow-hidden bg-surf-base">
-        <Provider>
-          <div className="flex min-h-0 flex-1 flex-col">
-            <SiteNav />
-            {children}
-          </div>
-        </Provider>
+        <ThemeProvider>
+          <Provider>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <SiteNav />
+              {children}
+            </div>
+          </Provider>
+        </ThemeProvider>
       </body>
     </html>
   );

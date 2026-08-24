@@ -11,6 +11,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SettingsMenu } from "@/components/settings-menu";
 
 const NAV_LINKS = [
   { href: "/design/outline", label: "TEMPLATE" },
@@ -52,6 +53,11 @@ export function SiteNav() {
             </Link>
           );
         })}
+        {/* Sits inside the same right-hand cluster as the screen links, separated by a rule
+            rather than by distance: it is chrome, not a sixth screen, so it should read as a
+            different kind of thing without drifting away from the group. */}
+        <span aria-hidden className="ml-1 h-4 w-px bg-surf-line-faint" />
+        <SettingsMenu />
       </div>
     </nav>
   );
