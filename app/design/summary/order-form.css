@@ -56,6 +56,62 @@
   --order-form-shade: color-mix(in srgb, var(--color-surf-accent-blue) 7%, white);
 }
 
+/*
+ * The sheet's column geometry.
+ *
+ * Three panels down the page share a right edge — the logo block in the header, `RAIL SECTIONS` in
+ * the body, `LAMINATING` in the glassing band. They used to be "about a third" arrived at three
+ * different ways (`w-[34%]`, `flex-[1]` against a `flex-[2]`, and one of three equal boxes), which
+ * is why none of them lined up. These three properties are the one geometry all of them derive
+ * from, so the edge holds by construction rather than by three numbers being tuned until they look
+ * close.
+ *
+ * Two things make it work:
+ *
+ * 1. **Every band insets by the same spine.** `RailLabel` is given a fixed width rather than an
+ *    intrinsic one, so the header, the body and the glassing band all start their content at the
+ *    same x. (Page 2's spine matches too, which it may as well.)
+ *
+ * 2. **A percentage `flex-basis` resolves against the container's inner width with gaps NOT
+ *    deducted.** So the same percentage is the same number of pixels in two rows holding different
+ *    numbers of boxes — provided the rows are the same width. That is why the glassing boxes are
+ *    wrapped in a content column: it gives that row the drawings row's width, and `--order-form-left`
+ *    then means the same thing in both.
+ *
+ * The logo is the exception that proves the rule: it sits BEFORE its band's spine rather than after
+ * it, so to land on the same edge it has to span the spine, the gap and the left column together.
+ */
+[data-order-form-root] {
+  --order-form-spine: 1.15rem;
+  --order-form-gap: 0.25rem; /* must match the `gap-1` on the three band rows */
+  --order-form-left: 0.32;
+}
+
+/* `flex: none` plus an explicit `width`, rather than putting the size in the `flex` shorthand's
+   basis. A percentage `width` on a flex item resolves against the same container inner width a
+   percentage basis would, so the geometry is identical — but the shorthand form did not survive this
+   project's CSS pipeline: `flex: 0 0 calc(...)` reached the browser with grow and shrink applied and
+   the basis silently dropped to `auto`, on some elements and not others, even though the identical
+   declaration computed correctly when set inline. Not worth chasing; the longhand is clearer anyway
+   about which axis is being fixed. */
+[data-order-form-root] .order-form-spine {
+  flex: none;
+  width: var(--order-form-spine);
+}
+
+[data-order-form-root] .order-form-left-col {
+  flex: none;
+  width: calc(100% * var(--order-form-left));
+}
+
+[data-order-form-root] .order-form-logo-col {
+  flex: none;
+  width: calc(
+    var(--order-form-spine) + var(--order-form-gap) +
+      (100% - var(--order-form-spine) - var(--order-form-gap)) * var(--order-form-left)
+  );
+}
+
 [data-order-form-root] .order-form-caption {
   font-size: var(--order-form-caption);
 }
@@ -145,7 +201,7 @@
    cost it a couple of lines' worth of room and the cells began clipping. The height comes out of
    the drawings row below, which is `flex-1` and had the slack to give. */
 [data-order-form-root] .order-form-band-dims {
-  flex: 0 0 6.2%;
+  flex: 0 0 7.4%;
 }
 
 /* The rocker strip, over the template window and only as wide as it — a proportion of the RIGHT

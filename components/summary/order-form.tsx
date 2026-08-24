@@ -116,7 +116,7 @@ function PageMark({ page, title }: { page: number; title: string }) {
  */
 function DimensionCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col justify-center gap-[1px] border-r border-surf-black px-1.5 py-1 last:border-r-0">
+    <div className="flex min-w-0 flex-1 flex-col justify-center gap-[3px] border-r border-surf-black px-2 py-1.5 last:border-r-0">
       <span className="font-display font-extrabold tracking-architectural text-surf-muted uppercase leading-none order-form-caption">
         {label}
       </span>
@@ -210,7 +210,9 @@ export function OrderForm() {
         <Sheet>
           {/* ─── BAND 1 — header ────────────────────────────────────────────────────────── */}
           <div className="flex flex-none gap-1 order-form-band-header">
-            <div className="w-[34%] min-w-0">
+            {/* Spans the spine, the gap and the left column together, so its right edge lands on
+                Rail Sections' and Laminating's — see order-form.css's column-geometry block. */}
+            <div className="order-form-logo-col min-w-0">
               <LogoBlock />
             </div>
 
@@ -278,7 +280,7 @@ export function OrderForm() {
                 <FormBox
                   caption="Rail Sections"
                   captionRight="marking data overleaf"
-                  className="min-w-0 flex-[1]"
+                  className="order-form-left-col min-w-0"
                   bodyClassName="gap-1 p-1"
                 >
                   {SECTION_KEYS.map((key) => (
@@ -431,41 +433,64 @@ export function OrderForm() {
           <div className="flex flex-none gap-1 order-form-band-glassing">
             <RailLabel>Glassing</RailLabel>
 
-            <FormBox caption="Laminating" className="min-w-0 flex-1" bodyClassName="gap-1.5 p-1.5">
-              <OrderFormField label="Deck" placeholder="Choose weight" />
-              <OrderFormField label="Bottom" placeholder="Choose weight" />
-            </FormBox>
-
-            {/* The muse's FIN SETUP checkboxes are gone: which fins go on the board is designed on
-                the fins screen and drawn on the Bottom panel above. What is left is the box
-                hardware the glasser installs, which is genuinely an ordering choice. */}
-            <FormBox caption="Fin System" className="min-w-0 flex-1" bodyClassName="justify-center p-1.5">
-              <select
-                value={finSystem}
-                onChange={(e) => setFinSystem(e.target.value as FinSystem)}
-                className="w-full rounded-[2px] border border-surf-black bg-surf-base px-1.5 py-1 font-bold text-surf-black outline-none focus:border-surf-accent-blue order-form-value"
+            {/* The boxes sit in a content column rather than directly in the band, so this row has
+                the drawings row's inner width and `order-form-left-col` means the same number of
+                pixels in both — which is what puts Laminating's right edge under Rail Sections'. */}
+            <div className="flex min-w-0 flex-1 gap-1">
+              <FormBox
+                caption="Laminating"
+                className="order-form-left-col min-w-0"
+                bodyClassName="justify-center gap-2 p-2"
               >
-                {FIN_SYSTEMS.map((sys) => (
-                  <option key={sys.value} value={sys.value}>
-                    {sys.label}
-                  </option>
-                ))}
-              </select>
-              <div className="mt-1 text-surf-muted order-form-micro">
-                {finSetupLabel} · designed on the fins screen
-              </div>
-            </FormBox>
+                <OrderFormField label="Deck" placeholder="Choose weight" />
+                <OrderFormField label="Bottom" placeholder="Choose weight" />
+              </FormBox>
 
-            <FormBox caption="Finish" className="min-w-0 flex-1" bodyClassName="gap-1 p-1.5">
-              <div className="flex gap-3">
+              {/* The muse's FIN SETUP checkboxes are gone: which fins go on the board is designed on
+                  the fins screen and drawn on the Bottom panel above. What is left is the box
+                  hardware the glasser installs, which is genuinely an ordering choice. */}
+              <FormBox
+                caption="Fin System"
+                className="min-w-0 flex-1"
+                bodyClassName="justify-center gap-1 p-2"
+              >
+                <select
+                  value={finSystem}
+                  onChange={(e) => setFinSystem(e.target.value as FinSystem)}
+                  className="w-full rounded-[2px] border border-surf-black bg-surf-base px-1.5 py-1 font-bold text-surf-black outline-none focus:border-surf-accent-blue order-form-value"
+                >
+                  {FIN_SYSTEMS.map((sys) => (
+                    <option key={sys.value} value={sys.value}>
+                      {sys.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="text-surf-muted order-form-micro">
+                  {finSetupLabel} · designed on the fins screen
+                </div>
+              </FormBox>
+
+              {/* Leash and finish were one box of four ticks in two rows. They are separate jobs —
+                  one is hardware set into the blank, the other is how the glass gets taken down —
+                  and at a third of the row there is no width for two ticks across anyway. */}
+              <FormBox
+                caption="Leash"
+                className="min-w-0 flex-1"
+                bodyClassName="justify-center gap-2 p-2"
+              >
                 <OrderFormTick label="Leash Cup" />
                 <OrderFormTick label="Drill Hole" />
-              </div>
-              <div className="flex gap-3">
+              </FormBox>
+
+              <FormBox
+                caption="Finish"
+                className="min-w-0 flex-1"
+                bodyClassName="justify-center gap-2 p-2"
+              >
                 <OrderFormTick label="Sanded" />
                 <OrderFormTick label="Gloss &amp; Polish" />
-              </div>
-            </FormBox>
+              </FormBox>
+            </div>
           </div>
 
           <PageMark page={1} title="Custom Surfboard Order" />

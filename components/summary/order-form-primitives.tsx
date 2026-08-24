@@ -86,8 +86,11 @@ export function RailLabel({ children, className }: { children: ReactNode; classN
   return (
     <div
       className={cn(
-        "flex flex-none items-center justify-center rounded-[3px] border border-surf-black px-[3px]",
-        "bg-(--order-form-shade)",
+        // `order-form-spine` fixes the width rather than letting the label size to its own text, so
+        // every band on the sheet insets its content by the same amount — see order-form.css's
+        // column-geometry block, which the logo/rail-sections/laminating right edge depends on.
+        "flex items-center justify-center rounded-[3px] border border-surf-black",
+        "order-form-spine bg-(--order-form-shade)",
         className,
       )}
     >
