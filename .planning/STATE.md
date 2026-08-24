@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 Phase: 2 — Accounts & Saved Designs
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-23 - Completed quick task 260823-nv2: Align the left column across bands and split Finish into Leash and Finish
+Last activity: 2026-08-23 - Completed quick task 260823-pw7: 9pt (12px) minimum type across both sheets, right-justified nav
 
 Progress: [██████████] 100%
 
@@ -145,6 +145,7 @@ None yet.
 | 260823-kq8 | Page 2 tables stacked instead of side by side: fin placement under the rail data, both full width. Fin sections laid out in CSS columns to repair the row stretch full width introduced (label and value were ending up most of a page apart), footnote moved outside the columned flow to span the panel | 2026-08-23 | c88bbba | [260823-kq8-fin-placement-under-the-rail-data](./quick/260823-kq8-fin-placement-under-the-rail-data/) |
 | 260823-mt5 | Shaper Use Only box moved from page 1 header to the foot of page 2 (the shaper own page; front is the customer copy). Page 1 header band 17% to 12% with the rider fields spread into the remaining height, handing 5% of the sheet to the drawings row — boards ~8% larger, confirmed by a controlled A/B on the header percentage alone | 2026-08-23 | 4e05c0f | [260823-mt5-shaper-use-only-to-page-two](./quick/260823-mt5-shaper-use-only-to-page-two/) |
 | 260823-nv2 | Logo box, Rail Sections and Laminating given one shared right edge via a single column geometry (--order-form-spine/gap/left, fixed-width RailLabel, glassing boxes wrapped in a content column) — 0px spread at print width. Core dims row 6.2% to 7.4% with roomier cells; Finish split into Leash and Finish; Fin System/Leash/Finish now three equal portions. Note: flex 0 0 calc() silently drops its basis in this pipeline — use flex none plus width | 2026-08-23 | a3815b3 | [260823-nv2-align-columns-and-split-the-finish-box](./quick/260823-nv2-align-columns-and-split-the-finish-box/) |
+| 260823-pw7 | 9pt (12px) type floor across both order-form sheets via clamp minimums plus matching cqw coefficients; caption rows made non-wrapping with truncating notes and captions shortened to suit. Uncovered and fixed a print bug: the print-fit hook pinned the sheets but not the container-query root, so printed type size depended on the print viewport. Nav menu right-justified | 2026-08-23 | 5621dfa | [260823-pw7-twelve-px-type-floor-and-right-nav](./quick/260823-pw7-twelve-px-type-floor-and-right-nav/) |
 
 ## Deferred Items
 
