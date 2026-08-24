@@ -181,26 +181,35 @@ export function RailBandEditor() {
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-nowrap">
-      <aside className="h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto border-r border-surf-muted/20 bg-surf-base p-10 text-surf-black">
-        <RailControls
-          spec={spec}
-          bands={bands}
-          onChangeSection={updateSection}
-          onToggleHardEdge={toggleHardEdge}
-          sectionOpen={sectionOpen}
-          onToggleSectionOpen={toggleSectionOpen}
-          advancedOpen={advancedOpen}
-          onToggleAdvancedOpen={toggleAdvancedOpen}
-        />
+      {/* A flex column, not one scrolling box: the controls scroll in the region below and the dev
+          preset button sits in a footer that does not. As a plain last child of a scrolling aside it
+          was only ever pinned by luck — outline and rails happened to fit, so it looked right there,
+          while the longer fins controls pushed it past the bottom edge where it could only be met
+          mid-scroll. */}
+      <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-muted/20 bg-surf-base text-surf-black">
+        <div className="min-h-0 flex-1 overflow-y-auto p-10">
+          <RailControls
+            spec={spec}
+            bands={bands}
+            onChangeSection={updateSection}
+            onToggleHardEdge={toggleHardEdge}
+            sectionOpen={sectionOpen}
+            onToggleSectionOpen={toggleSectionOpen}
+            advancedOpen={advancedOpen}
+            onToggleAdvancedOpen={toggleAdvancedOpen}
+          />
+        </div>
         {process.env.NODE_ENV === "development" && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-4 w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent-cyan hover:bg-surf-accent-cyan hover:text-surf-black"
-            onClick={handleCopyPreset}
-          >
-            {justCopiedPreset ? "Copied!" : "Copy preset values"}
-          </Button>
+          <div className="flex-none border-t border-surf-muted/20 p-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent-cyan hover:bg-surf-accent-cyan hover:text-surf-black"
+              onClick={handleCopyPreset}
+            >
+              {justCopiedPreset ? "Copied!" : "Copy preset values"}
+            </Button>
+          </div>
         )}
       </aside>
       <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-2 bg-surf-base px-10 py-5">
