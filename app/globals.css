@@ -2,9 +2,333 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* ===========================================================================
+   THEMING SYSTEM
+   ===========================================================================
 
-@theme inline {
+   Three layers. Components only ever touch layer 3.
+
+     1. RAMPS      `--ramp-<theme>-<role>`
+                   Raw values. Defined once at :root, inert until a theme block
+                   points at them, never referenced by a component. Adding a
+                   theme means adding a ramp — no existing value moves.
+
+     2. CONTRACT   `--surf-<role>`
+                   Semantic role names. Every theme assigns the same contract
+                   from its own ramp, so the contract is the stable interface
+                   and the ramps are the swappable implementation.
+
+     3. BRIDGE     `@theme static { --color-surf-* }`
+                   Maps Tailwind utility names onto the contract. Because the
+                   bridge holds `var()` indirection rather than literal hex, the
+                   228 `surf-*` utility call sites and the 20 direct
+                   `var(--color-surf-*)` references in TSX resolve through to
+                   whichever theme is active, with no call-site changes.
+
+   NAMING RULE — a token is named for what it DOES, not what it IS.
+   `--color-surf-black` cannot survive theming: in dark it would have to hold a
+   near-white value. `--surf-ink` can. The literal names are kept as aliases
+   (bottom of the bridge) so nothing breaks, but new code should name roles.
+
+   Two pairing rules are encoded in the names, so a wrong pairing looks wrong:
+     - every fill `--surf-<x>` has a foreground `--surf-on-<x>` that is legible
+       on it. Put text on a fill, take its `on-` colour. No exceptions.
+     - `-ink` means "safe as text or as a stroke on the page ground". A colour
+       without `-ink` is a fill and must never be used as text or a bare stroke.
+
+   NO JAVASCRIPT ON FIRST PAINT — `:root` is a complete theme on its own, and
+   the `prefers-color-scheme` block below is plain CSS, so a visitor with JS
+   disabled (or before hydration) still gets a correct, flash-free paint in
+   whichever mode their OS is set to. Script is only ever needed to restore a
+   *persisted override*, which nothing here depends on.
+
+   TO TOGGLE — put `.dark` or `.light` on <html>. An explicit class beats the
+   OS preference in both directions.
+
+   TO ADD A THEME LATER — add a `--ramp-<name>-*` set, then append one
+   `:root.theme-<name> { }` block that assigns the contract. Append it at the
+   END of the theme blocks: every theme selector has equal specificity, so
+   source order is what makes the last one win. Nothing else changes.
+   =========================================================================== */
+
+/* The `dark:` variant must fire on exactly the same conditions as the tokens
+   above, or shadcn's `dark:bg-input/30` styling in components/ui/* will
+   disagree with the palette whenever dark is reached via OS preference rather
+   than via the class. The original variant was `(&:is(.dark *))` — descendants
+   of `.dark` only, and class-only. */
+@custom-variant dark {
+  &:where(.dark, .dark *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not(.light), :root:not(.light) *) {
+      @slot;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   LAYER 1 — RAMPS
+   Raw values only. Every contrast ratio quoted here was computed, not eyeballed
+   (WCAG 2.1 relative luminance; 4.5:1 for text, 3:1 for UI boundaries).
+   --------------------------------------------------------------------------- */
+:root {
+  /* -- light ramp -- the published palette, values unchanged ---------------- */
+  --ramp-light-ground: #ffffff; /* crisp white background */
+  --ramp-light-panel: #ffffff; /* raised surfaces sit flush with the ground; the design separates them with a line, not a tint */
+  --ramp-light-well: #f4f5f7; /* inset surfaces (inputs, wells) — the one tinted surface */
+  --ramp-light-ink: #111111; /* matte black primary text — 18.88:1 on ground */
+  --ramp-light-ink-muted: #6b6b6b; /* secondary text & labels — 5.33:1 on ground, 4.89:1 on well.
+     Darkened from the source config's #9e9e9e, which sat at 2.68:1 and failed AA outright. */
+  --ramp-light-line: #949494; /* control boundaries — 3.03:1, clears the 1.4.11 non-text bar */
+  --ramp-light-line-faint: #d5d5d5; /* decorative hairlines only — deliberately below any bar */
+
+  /* Blue is accent/selection, orange is warnings.
+     The accent is a PAIR, and has to be. #00e5ff is 1.54:1 on white — bright enough that it
+     can only ever be a fill, never text and never a stroke. So the hue ships twice: the
+     bright one for fills, which therefore always carry `--surf-on-accent` (12.28:1), and a
+     darkened sibling that clears AA as ink on the white ground.
+
+     This was briefly a single sea blue (#006994) instead, dark enough to do both jobs at
+     once, which inverted the fill rule to white text. The founder preferred the cyan, so the
+     pair is back and fills are black-on-cyan again. */
+  --ramp-light-accent: #00e5ff; /* selection FILL — never text, never a bare stroke */
+  --ramp-light-on-accent: #111111; /* 12.28:1 on the accent fill */
+  --ramp-light-accent-ink: #00767f; /* same hue darkened for text & strokes — 5.39:1 on ground */
+  /* Orange runs the other way round (5.97:1 on black, 3.16:1 on white), but it is only ever
+     ink for warning text and never a fill, so the two rules never collide in practice. */
+  --ramp-light-warning: #ff5722; /* warning FILL */
+  --ramp-light-on-warning: #111111; /* 5.97:1 on the warning fill */
+  --ramp-light-warning-ink: #c93f10; /* warning text — 5.00:1 on ground */
+
+  /* -- dark ramp ------------------------------------------------------------
+     Not an inversion. The light theme is matte black ink on crisp white; the
+     dark theme is chalk on a cool matte black, which keeps the drafting-table
+     feel rather than turning the app into a glowing negative. Pure #000 was
+     avoided so panels and wells have somewhere to go in both directions. */
+  --ramp-dark-ground: #12141a;
+  --ramp-dark-panel: #1a1d25; /* raised — lighter than the ground */
+  --ramp-dark-well: #0d0f14; /* inset — darker than the ground, mirroring light's tinted well */
+  --ramp-dark-ink: #f2f4f7; /* 16.71:1 on ground */
+  --ramp-dark-ink-muted: #a1a8b4; /* 7.69:1 on ground, 7.04:1 on panel, 8.01:1 on well */
+  --ramp-dark-line: #6a707c; /* 3.70:1 on ground, 3.39:1 on panel */
+  --ramp-dark-line-faint: #333842; /* decorative only */
+
+  /* The accent PAIR keeps its logic, mirrored. In light the ink is *darker*
+     than the fill; in dark it is *lighter*. Both move away from the fill and
+     toward that theme's ink pole, so line-work always reads as lighter-weight
+     than a solid fill, in either theme. The fill itself is a brand constant and
+     does not change — which is also why `on-accent` stays black in both themes. */
+  --ramp-dark-accent: #00e5ff; /* unchanged: the brand fill */
+  --ramp-dark-on-accent: #111111; /* still 12.28:1 — the pairing is theme-invariant */
+  --ramp-dark-accent-ink: #5ce1f2; /* 11.84:1 on ground */
+  --ramp-dark-warning: #ff5722; /* unchanged */
+  --ramp-dark-on-warning: #111111; /* still 5.97:1 */
+  --ramp-dark-warning-ink: #ff9670; /* 8.63:1 on ground — #c93f10 would be 1.9:1 here */
+}
+
+/* ---------------------------------------------------------------------------
+   LAYER 2 — THEME BLOCKS
+   Each block assigns the whole contract from one ramp. Nothing else belongs in
+   these blocks: if a value is not a contract assignment, it is in the wrong
+   place and will not survive the next theme.
+   --------------------------------------------------------------------------- */
+
+/* LIGHT — the default, and the reason first paint needs no script. */
+:root {
+  color-scheme: light;
+
+  --surf-ground: var(--ramp-light-ground);
+  --surf-panel: var(--ramp-light-panel);
+  --surf-well: var(--ramp-light-well);
+  --surf-ink: var(--ramp-light-ink);
+  --surf-ink-muted: var(--ramp-light-ink-muted);
+  --surf-line: var(--ramp-light-line);
+  --surf-line-faint: var(--ramp-light-line-faint);
+  --surf-accent: var(--ramp-light-accent);
+  --surf-on-accent: var(--ramp-light-on-accent);
+  --surf-accent-ink: var(--ramp-light-accent-ink);
+  --surf-warning: var(--ramp-light-warning);
+  --surf-on-warning: var(--ramp-light-on-warning);
+  --surf-warning-ink: var(--ramp-light-warning-ink);
+
+  /* Board interior wash — see the --outline-* block for what this is for.
+     Held per-theme because the wash has to be mixed into *this theme's* ground,
+     and because 6% of the accent that reads as a whisper on white disappears
+     entirely on black. */
+  --outline-board-fill-strength: 6%;
+  /* Widepoint marker. A signal/data colour, deliberately outside the brand
+     palette — it marks a measurement, so it must not read as "selected" or
+     "warning". 5.82:1 on ground. */
+  --outline-widepoint-knot: #a8425f;
+
+  /* shadcn neutral contract (components/ui/*). Kept as its own scale rather than
+     folded into the surf ramps: these style generated primitives that may be
+     re-generated, and the two palettes answer to different owners. */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  /* Was oklch(0.556), which is 4.35:1 on --muted — under the 4.5:1 bar for body
+     text, and `text-muted-foreground` on a `bg-muted` surface is a pairing
+     shadcn's own primitives produce. 0.54 clears it at 4.61:1 (5.02:1 on
+     --background) and is visually indistinguishable from where it was. */
+  --muted-foreground: oklch(0.54 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+/* DARK, reached by OS preference. `:not(.light)` is what lets an explicit
+   `.light` class override the OS. This block and `:root.dark` below assign the
+   same ramp and must stay in step — they are deliberately identical bodies. */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+
+    --surf-ground: var(--ramp-dark-ground);
+    --surf-panel: var(--ramp-dark-panel);
+    --surf-well: var(--ramp-dark-well);
+    --surf-ink: var(--ramp-dark-ink);
+    --surf-ink-muted: var(--ramp-dark-ink-muted);
+    --surf-line: var(--ramp-dark-line);
+    --surf-line-faint: var(--ramp-dark-line-faint);
+    --surf-accent: var(--ramp-dark-accent);
+    --surf-on-accent: var(--ramp-dark-on-accent);
+    --surf-accent-ink: var(--ramp-dark-accent-ink);
+    --surf-warning: var(--ramp-dark-warning);
+    --surf-on-warning: var(--ramp-dark-on-warning);
+    --surf-warning-ink: var(--ramp-dark-warning-ink);
+
+    --outline-board-fill-strength: 12%;
+    --outline-widepoint-knot: #e8798f; /* 6.63:1 on ground; #a8425f would be 2.3:1 */
+
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+  }
+}
+
+/* DARK, reached explicitly. Same body as the media block above; wins over an OS
+   preference of light purely on specificity (0,2,0 vs :root's 0,1,0). */
+:root.dark {
+  color-scheme: dark;
+
+  --surf-ground: var(--ramp-dark-ground);
+  --surf-panel: var(--ramp-dark-panel);
+  --surf-well: var(--ramp-dark-well);
+  --surf-ink: var(--ramp-dark-ink);
+  --surf-ink-muted: var(--ramp-dark-ink-muted);
+  --surf-line: var(--ramp-dark-line);
+  --surf-line-faint: var(--ramp-dark-line-faint);
+  --surf-accent: var(--ramp-dark-accent);
+  --surf-on-accent: var(--ramp-dark-on-accent);
+  --surf-accent-ink: var(--ramp-dark-accent-ink);
+  --surf-warning: var(--ramp-dark-warning);
+  --surf-on-warning: var(--ramp-dark-on-warning);
+  --surf-warning-ink: var(--ramp-dark-warning-ink);
+
+  --outline-board-fill-strength: 12%;
+  --outline-widepoint-knot: #e8798f;
+
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* LIGHT, reached explicitly. The light values already live at `:root`, so this
+   only has to raise `color-scheme` to the same specificity as the dark blocks —
+   otherwise a `.light` override would keep dark scrollbars and form controls
+   on an OS set to dark. */
+:root.light {
+  color-scheme: light;
+}
+
+/* ---------------------------------------------------------------------------
+   LAYER 3 — TAILWIND BRIDGE
+   `@theme static` (not `inline`, not bare) so every token is emitted as a real
+   custom property at :root whether or not a utility happens to reference it.
+   Bare `@theme` tree-shakes unused variables, which would silently drop the ones
+   the board viewers read with `var(--color-*)` straight out of TSX; `inline`
+   would substitute values into utilities and stop emitting the property at all,
+   breaking those same call sites.
+
+   Every value here is a `var()` into the contract, never a literal. That
+   indirection is the whole trick: utilities and direct `var()` references alike
+   resolve against whichever theme is active on <html>, so themes required no
+   changes at the 228 call sites.
+   --------------------------------------------------------------------------- */
+@theme static {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   /* `--font-sans` was self-referential (`var(--font-sans)`) and nothing defined it at
@@ -52,8 +376,50 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
+  /* -- surf design language, semantic names — PREFER THESE IN NEW CODE ------
+     bg-surf-ground, text-surf-ink, text-surf-ink-muted, border-surf-line,
+     bg-surf-accent + text-surf-on-accent, text-surf-accent-ink, and so on. */
+  --color-surf-ground: var(--surf-ground);
+  --color-surf-panel: var(--surf-panel);
+  --color-surf-well: var(--surf-well);
+  --color-surf-ink: var(--surf-ink);
+  --color-surf-ink-muted: var(--surf-ink-muted);
+  --color-surf-line: var(--surf-line);
+  --color-surf-line-faint: var(--surf-line-faint);
+  --color-surf-accent: var(--surf-accent);
+  --color-surf-on-accent: var(--surf-on-accent);
+  --color-surf-warning: var(--surf-warning);
+  --color-surf-on-warning: var(--surf-on-warning);
+
+  /* -- literal aliases, kept for the existing call sites --------------------
+     These are the pre-theming names. They still work, and they now theme,
+     because they point at the contract rather than at hex. Their names lie in
+     dark mode (`surf-black` holds #f2f4f7 there), which is exactly why they are
+     frozen: use the semantic names above for anything new. */
+  --color-surf-base: var(--surf-ground);
+  --color-surf-black: var(--surf-ink);
+  --color-surf-muted: var(--surf-ink-muted);
+  --color-surf-accent-cyan: var(--surf-accent);
+  --color-surf-accent-cyan-ink: var(--surf-accent-ink);
+  --color-surf-accent-orange: var(--surf-warning);
+  --color-surf-accent-orange-ink: var(--surf-warning-ink);
+
+  /* next/font loads Inter in app/layout.tsx and exposes it as --font-inter on <html>.
+     Display and body are the same face by choice: the source config specified Space
+     Grotesk for display, but the founder preferred the wordmark's Inter and asked for
+     headings to match it. The two tokens stay separate so the roles remain nameable and
+     display can diverge again later without touching every heading. Headings are now
+     distinguished by weight, tracking and case rather than by family. */
+  --font-display: var(--font-inter), Inter, Roboto, sans-serif;
+  --font-body: var(--font-inter), Inter, Roboto, sans-serif;
+
+  /* 0.25em in the source config; retuned to 0.15em after the founder picked the SHAPER
+     wordmark's setting as the heading standard. Still the one tracking value every ALL
+     CAPS heading uses — only the measure changed. */
+  --tracking-architectural: 0.15em; /* wide tracking for ALL CAPS headers */
+
   /* Outline editor palette — ported from the Claude Design prototype's Template Builder.
-     Prefixed `outline-*` so it never collides with (or restyles) the shadcn neutral tokens above. */
+     Prefixed `outline-*` so it never collides with (or restyles) the shadcn neutral tokens. */
   --color-outline-sidebar-bg: var(--outline-sidebar-bg);
   --color-outline-sidebar-text: var(--outline-sidebar-text);
   --color-outline-sidebar-text-muted: var(--outline-sidebar-text-muted);
@@ -69,123 +435,49 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Surf design tokens — the founder's design language, ported from a Tailwind v3
-   `tailwind.config.js` to v4's CSS-first `@theme`. v4 has no JS config; these
-   declarations are what generate the utilities. Utility names are deliberately
-   identical to what the v3 `theme.extend` block would have produced, so
-   `bg-surf-base`, `text-surf-muted`, `bg-surf-accent-cyan`, `font-display` and
-   `tracking-architectural` all work exactly as written in the source config.
-
-   `@theme static` (not `inline`, not bare) so every token is emitted as a CSS custom
-   property at :root whether or not a utility happens to reference it. Bare `@theme`
-   tree-shakes unused variables, which would silently drop the ones the `:root` block
-   below aliases and the ones the board viewers draw SVG with via `var(--color-*)`.
+   DERIVED — outline editor + callout system.
+   These are not a fourth palette: every one is a function of the contract, so
+   they follow the active theme for free and are NOT repeated per theme. Only
+   two outline values are genuinely theme-specific (the board-fill strength and
+   the widepoint knot) and those live in the theme blocks above.
    --------------------------------------------------------------------------- */
-@theme static {
-  --color-surf-base: #ffffff; /* crisp white background */
-  --color-surf-black: #111111; /* matte black primary text & major elements */
-  /* Blue is accent/selection, orange is warnings.
-     The accent is a PAIR, and has to be. #00E5FF is 1.54:1 on white — bright enough that it
-     can only ever be a fill, never text and never a stroke. So the hue ships twice: the
-     bright one for fills, which therefore always carry BLACK text (12.28:1), and a darkened
-     sibling that clears AA as ink on the white ground.
-
-     This was briefly a single sea blue (#006994) instead, dark enough to do both jobs at
-     once, which inverted the fill rule to white text. The founder preferred the cyan, so the
-     pair is back and fills are black-on-cyan again.
-
-     Orange runs the other way round (5.97:1 on black, 3.16:1 on white), but it is only ever
-     ink for warning text and never a fill, so the two rules never collide in practice. */
-  --color-surf-accent-cyan: #00e5ff; /* selection fills — always with text-surf-black */
-  /* Same hue, darkened to clear WCAG AA as text and to read as a stroke in the drawings. */
-  --color-surf-accent-cyan-ink: #00767f; /* 5.39:1 on white */
-  --color-surf-accent-orange: #ff5722; /* reserved for warning fills; would take text-surf-black */
-  --color-surf-accent-orange-ink: #c93f10; /* warning text — 5.00:1 on white */
-  /* Darkened from the source config's #9E9E9E, which sat at 2.68:1 on white and failed
-     WCAG AA (4.5:1) for the body copy and labels this token carries. #6b6b6b clears AA
-     at 5.33:1 with headroom while keeping a clear step down from surf-black's 18.9:1. */
-  --color-surf-muted: #6b6b6b; /* razor-thin 1px borders & secondary text */
-
-  /* next/font loads Inter in app/layout.tsx and exposes it as --font-inter on <html>.
-     Display and body are the same face by choice: the source config specified Space
-     Grotesk for display, but the founder preferred the wordmark's Inter and asked for
-     headings to match it. The two tokens stay separate so the roles remain nameable and
-     display can diverge again later without touching every heading. Headings are now
-     distinguished by weight, tracking and case rather than by family. */
-  --font-display: var(--font-inter), Inter, Roboto, sans-serif;
-  --font-body: var(--font-inter), Inter, Roboto, sans-serif;
-
-  /* 0.25em in the source config; retuned to 0.15em after the founder picked the SHAPER
-     wordmark's setting as the heading standard. Still the one tracking value every ALL
-     CAPS heading uses — only the measure changed. */
-  --tracking-architectural: 0.15em; /* wide tracking for ALL CAPS headers */
-}
-
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-
-  /* Outline editor palette (see @theme inline mapping above for the Tailwind utility names).
-     Re-pointed at the surf palette as part of the design pivot (quick task 260822-o99). The
-     surface tokens below are now aliases of `--color-surf-*` rather than the old warm modernist
-     values, so the deep control internals (sliders, selects, section rules) inside the 200-700
-     line control panels land on the new white ground without a class-by-class rewrite. Those
-     files get converted to explicit `surf-*` classes in the typography and controls tasks that
-     follow; until then this remap is what keeps them legible.
+  /* Re-pointed at the surf palette as part of the design pivot (quick task 260822-o99). The
+     surface tokens are aliases of the contract rather than the old warm modernist values, so
+     the deep control internals (sliders, selects, section rules) inside the 200-700 line
+     control panels land on the new ground without a class-by-class rewrite.
 
      The accent aliases are gone: every call site now names `surf-accent-cyan`,
      `surf-accent-cyan-ink` or `surf-accent-orange-ink` directly, so the role is legible at
      the point of use rather than hidden behind a token whose name meant amber. */
-  --outline-sidebar-bg: var(--color-surf-base);
-  --outline-sidebar-text: var(--color-surf-black);
-  --outline-sidebar-text-muted: var(--color-surf-muted);
-  --outline-sidebar-input-bg: var(--color-surf-base);
-  --outline-sidebar-input-border: color-mix(in srgb, var(--color-surf-muted) 20%, transparent);
-  --outline-sidebar-divider: color-mix(in srgb, var(--color-surf-muted) 20%, transparent);
-  --outline-page-bg: var(--color-surf-base);
+  --outline-sidebar-bg: var(--surf-ground);
+  --outline-sidebar-text: var(--surf-ink);
+  --outline-sidebar-text-muted: var(--surf-ink-muted);
+  --outline-sidebar-input-bg: var(--surf-ground);
+  /* Mixed toward `transparent`, not toward white — so the line stays a tint of the
+     ink over whatever ground the active theme provides, in both directions. */
+  --outline-sidebar-input-border: color-mix(in srgb, var(--surf-ink-muted) 20%, transparent);
+  --outline-sidebar-divider: color-mix(in srgb, var(--surf-ink-muted) 20%, transparent);
+  --outline-page-bg: var(--surf-ground);
   /* A faint accent wash so the planshape reads as an object rather than as a line. This
      briefly went to flat white during the design pivot, on the reasoning that the board
-     should be "defined by its stroke alone" — that extended `bg-surf-base` universally
-     from the UI's surfaces into the drawing's interior, which was a step too far: the
-     planshape is the thing being designed and should read as a shape. Suppressed for
-     print below. */
-  --outline-board-fill: color-mix(in srgb, var(--color-surf-accent-cyan) 6%, white);
+     should be "defined by its stroke alone" — that extended the ground universally from the
+     UI's surfaces into the drawing's interior, which was a step too far: the planshape is the
+     thing being designed and should read as a shape. Suppressed for print below.
+
+     Mixes into `--surf-ground`, where it used to mix into a hardcoded `white`. That literal
+     was the one place the wash could not follow a theme — on a dark ground it would have
+     lightened the board interior to near-white. */
+  --outline-board-fill: color-mix(
+    in srgb,
+    var(--surf-accent) var(--outline-board-fill-strength),
+    var(--surf-ground)
+  );
   /* The construction overlay is interactive scaffolding — its lines lead to the drag
      handles — so it carries the accent like everything else interactive. */
-  --outline-construction: var(--color-surf-accent-cyan-ink);
-  --outline-station-line: color-mix(in srgb, var(--color-surf-muted) 36%, transparent); /* faint: stringer, stations, leaders, extension lines — 36% of the darkened muted token renders the same #cacaca the old 55%-of-#9e9e9e did, so the construction lines stay behind the board outline */
-  --outline-widepoint-knot: #a8425f;
-  --outline-ink: var(--color-surf-black);
+  --outline-construction: var(--surf-accent-ink);
+  --outline-station-line: color-mix(in srgb, var(--surf-ink-muted) 36%, transparent); /* faint: stringer, stations, leaders, extension lines — 36% of the muted token keeps the construction lines behind the board outline */
+  --outline-ink: var(--surf-ink);
 
   /* Callout-system tokens (sketches 001-004, see .planning/sketches/MANIFEST.md).
      Dash patterns are shared across every plan-view board viewer so a reference line always
@@ -195,41 +487,7 @@
   --outline-widepoint-line: color-mix(in srgb, var(--outline-widepoint-knot) 45%, transparent);
   --outline-station-dash: 5 4; /* derived station lines (12" marks, etc) */
   --outline-dim-ink: var(--outline-ink); /* dimension lines, ticks and values */
-  --outline-callout-label: var(--color-surf-muted); /* muted: station names and chip names */ /* station/chip name text — replaces the old hardcoded #3a5f9e */
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --outline-callout-label: var(--surf-ink-muted); /* muted: station names and chip names */
 }
 
 @layer base {
@@ -247,11 +505,30 @@
 }
 
 @media print {
+  /* A template is printed to be cut along and marked on. Everything below forces the
+     LIGHT ramp regardless of the active theme — without this, printing from dark mode
+     would put the board on a near-black page and burn a whole cartridge doing it. */
   :root {
-    /* The wash is a screen affordance. A template is printed to be cut along and marked
-       on, so ink inside the outline is wasted and can muddy the station lines a shaper
-       measures against. */
-    --outline-board-fill: var(--color-surf-base);
+    color-scheme: light;
+
+    --surf-ground: var(--ramp-light-ground);
+    --surf-panel: var(--ramp-light-panel);
+    --surf-well: var(--ramp-light-well);
+    --surf-ink: var(--ramp-light-ink);
+    --surf-ink-muted: var(--ramp-light-ink-muted);
+    --surf-line: var(--ramp-light-line);
+    --surf-line-faint: var(--ramp-light-line-faint);
+    --surf-accent: var(--ramp-light-accent);
+    --surf-on-accent: var(--ramp-light-on-accent);
+    --surf-accent-ink: var(--ramp-light-accent-ink);
+    --surf-warning: var(--ramp-light-warning);
+    --surf-on-warning: var(--ramp-light-on-warning);
+    --surf-warning-ink: var(--ramp-light-warning-ink);
+    --outline-widepoint-knot: #a8425f;
+
+    /* The wash is a screen affordance: ink inside the outline is wasted and can muddy the
+       station lines a shaper measures against. 0% collapses the mix to the bare ground. */
+    --outline-board-fill-strength: 0%;
   }
 }
 
@@ -269,19 +546,23 @@
  * The hairline is the point. Everything else this app draws — the outline viewers, the rail plots,
  * every box on the order form — is defined by a stroke, and an accent fill with no edge was the one
  * place that language dropped. The fill is unchanged; it just gains an outline.
+ *
+ * This is also the worked example of the fill/`on-` pairing rule: `--surf-accent` is 1.54:1 on a
+ * white ground, so it can never carry its own boundary. The 1px `--surf-ink` border is what makes
+ * the filled range legible as a control edge, in either theme.
  */
 .slider-accent [data-slot="slider-track"] {
-  border: 1px solid var(--color-surf-black);
+  border: 1px solid var(--surf-ink);
   /* 6px rather than the primitive's 4px: a 1px stroke either side of a 4px bar leaves two of
      interior, which reads as a muddy line rather than a channel with something in it. */
   height: 6px;
 }
 
 .slider-accent [data-slot="slider-range"] {
-  background: var(--color-surf-accent-cyan);
+  background: var(--surf-accent);
 }
 
 .slider-accent [data-slot="slider-thumb"] {
-  border-color: var(--color-surf-black);
-  background: var(--color-surf-accent-cyan);
+  border-color: var(--surf-ink);
+  background: var(--surf-accent);
 }
