@@ -179,9 +179,10 @@ Items acknowledged and carried forward from previous milestone close:
 | 260824-tg3 | surf-black onto ink and on-accent: 79 sites to *-surf-ink, 4 border edges on the accent fill to border-surf-on-accent (they had gone invisible in the green ramp where ink == accent) | 2026-08-24 | 7d5746b | [260824-tg3](./quick/260824-tg3-*/) |
 | 260824-th9 | surf-muted onto surf-ink-muted: 95 occurrences, pure rename, no value changes | 2026-08-24 | 9fb52a5 | [260824-th9](./quick/260824-th9-*/) |
 | 260824-tih | shadcn's neutrals onto the surf contract: 18 live + 13 unused tokens mapped in globals.css so components/ui/* stays regeneration-safe; 83 per-theme declarations deleted, net -90 lines. Closes the border/input 1.26:1 gap. No oklch left outside a comment | 2026-08-24 | eca3446 | [260824-tih](./quick/260824-tih-*/) |
+| 260824-tq7 | Retire the literal token names: last 54 occurrences migrated (surf-base/accent-cyan/accent-orange -> ground/accent/warning) in one longest-first pass, then the frozen alias block deleted once the rename made it duplicate the semantic bridge. Bridge is now 17 tokens, each declared once; literal names 291 -> 0 | 2026-08-24 | 35f4c57 | [260824-tq7-clear-the-last-literal-token-names](./quick/260824-tq7-clear-the-last-literal-token-names/) |
 
 ## Session Continuity
 
 Last session: 2026-08-24T22:33:31.225Z
-Stopped at: Naming cleanup done — literal token names 291 -> 45, semantic 59 -> 318, all colour now flows from the two ramps. Remaining 45 are the accent/warning literals (cosmetic only, no correctness trap). Units toggle deferred
+Stopped at: Naming cleanup complete — literal token names 291 -> 0, alias block deleted, bridge is 17 tokens declared once. All colour flows from the two ramps. Units toggle still deferred
 Resume file: None
