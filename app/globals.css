@@ -98,51 +98,62 @@
   --ramp-light-warning-ink: #c93f10; /* warning text — 5.00:1 on ground */
 
   /* -- dark ramp ------------------------------------------------------------
-     Not an inversion. The light theme is deep blue-black ink on crisp white; the dark
-     theme is chalk on a cool matte black, which keeps the drafting-table feel rather
-     than turning the app into a glowing negative. */
+     Green phosphor. A deliberate break from the light theme rather than a translation
+     of it: light is deep blue-black ink on white paper, dark is a CRT terminal. Every
+     pairing clears its bar with headroom — the tightest is `warning-ink on well` at
+     5.52:1 — and it resolves the well problem the blue dark ramp had, because a colour
+     this bright is legible on any surface in this ramp. */
   --ramp-dark-ground: #12141a;
-  --ramp-dark-panel: #12141a; /* flush with the ground, mirroring light — panels are separated by a line, not a tint */
-  --ramp-dark-well: #333842; /* inset surfaces read *lighter* than the ground here. See the WELL CAVEAT below. */
-  --ramp-dark-ink: #f2f4f7; /* 16.71:1 on ground */
-  --ramp-dark-ink-muted: #a1a8b4; /* 7.69:1 on ground, 4.92:1 on well */
-  --ramp-dark-line: #6a707c; /* 3.70:1 on ground */
-  --ramp-dark-line-faint: #333842; /* decorative only */
+  --ramp-dark-panel: #12141a; /* flush with the ground; panels are separated by a line, not a tint */
+  --ramp-dark-well: #333842; /* inset surfaces read lighter than the ground */
+  --ramp-dark-ink: #00ff40; /* 13.48:1 on ground, 8.61:1 on well */
+  --ramp-dark-ink-muted: #a8ffbe; /* 15.53:1 on ground — see the HIERARCHY note below */
+  --ramp-dark-line: #00ff40; /* 13.48:1 — control boundaries at full phosphor */
+  --ramp-dark-line-faint: #00ff40; /* NOT faint in this ramp: same value as ink, so every
+     hairline glows. Deliberate for the terminal look, but it is what the tab strip relies
+     on to separate the active tab, and what the nav divider and menu borders draw with. */
 
-  /* The accent pair keeps its rule, mirrored: the ink moves away from the fill toward
-     this theme's ink pole, so line-work always reads lighter-weight than a solid fill.
+  /* The accent PAIR has collapsed. In every other ramp the accent ships twice — a bright
+     fill that can never be text, and a darkened sibling that can. Here one value does both
+     jobs, because #00ff40 is 13.48:1 on the ground and so is legible as text, as a stroke
+     and as a fill. That is legal under the contract, but it costs the drawings their
+     colour hierarchy: the board outline (ink) and the construction scaffolding
+     (accent-ink) are now the same green, where they used to be black and blue. The
+     drawings fall back to stroke weight and dash pattern to say which is which.
 
-     What changed with the blue palette: `on-accent` is no longer theme-invariant. The
-     old cyan fill was bright in both themes so it always took black text; this darker
-     blue needs *light* text in dark and *dark* text in light, which is what the
-     `--surf-on-<x>` contract exists to express.
-
-     Worth being precise: in this particular palette `on-accent` happens to hold the same
-     value as `ink` in both themes, so the pre-260824-nhh call sites would render it
-     identically. The fix is not what makes this palette work — it is what makes the two
-     separable, so `on-accent` can be tuned off the ink later without hunting call sites. */
-  --ramp-dark-accent: #2d7495; /* selection FILL — 3.54:1 on ground, clears the graphical bar */
-  --ramp-dark-on-accent: #f2f4f7; /* 4.71:1 on the accent fill — light, where light mode uses dark */
-  --ramp-dark-accent-ink: #3490bc; /* accent as text/stroke — 5.14:1 on ground */
+     This is also the ramp that proves why on-fill foregrounds had to stop naming the ink
+     token (quick task 260824-nhh). `on-accent` here is the GROUND — the inverse of the
+     fill — while `ink` is the fill's own value. A filled control that still said
+     `text-surf-black` would be drawing #00ff40 on #00ff40: exactly 1:1, invisible. The
+     blue ramp did not expose that because its on-accent and ink happened to coincide. */
+  --ramp-dark-accent: #00ff40; /* selection FILL */
+  --ramp-dark-on-accent: #12141a; /* the ground, inverted onto the fill — 13.48:1 */
+  --ramp-dark-accent-ink: #00ff40; /* same value as the fill; see above */
   --ramp-dark-warning: #ff5722; /* unchanged */
   --ramp-dark-on-warning: #111111; /* still 5.97:1 */
-  --ramp-dark-warning-ink: #ff9670; /* 8.63:1 on ground */
+  --ramp-dark-warning-ink: #ff9670; /* 8.63:1 on ground, 5.52:1 on well */
 
-  /* WELL CAVEAT — both wells sit closer to the mid-tones than the surfaces they
-     replaced, which squeezes every colour that lives between ink and ground. Four
-     pairings fall under bar ON A WELL, in a well-lit palette that is otherwise clean:
+  /* HIERARCHY note — `ink-muted` (15.53:1) is BRIGHTER than `ink` (13.48:1) in this ramp,
+     which inverts the usual relationship: secondary text now carries more visual weight
+     than primary. Not a contrast failure, and arguably right for a phosphor screen where
+     the pale green reads as "washed out" rather than "louder" — but it is the opposite of
+     what every other ramp does, so it is recorded rather than left to be rediscovered. */
+
+  /* WELL CAVEAT — applies to the LIGHT ramp only. Its well sits close to the mid-tones,
+     so two pairings fall under bar ON A WELL:
 
        light  accent-ink on well   3.36:1  (needs 4.5)
        light  warning-ink on well  3.46:1  (needs 4.5)
-       dark   accent-ink on well   3.28:1  (needs 4.5)
-       dark   line on well         2.36:1  (needs 3)
 
      Latent, not live: `--surf-well` has one consumer today (the settings menu's hover
-     row, which puts INK on it at 13.46:1 / 10.68:1 and is fine), and the app's inputs
-     still sit on `--surf-ground`. It becomes real the moment a well carries accent or
-     warning text. Note the light case cannot be fixed by lightening the well —
-     accent-ink is 4.86:1 on *pure white*, so any tint at all pushes it under; the ink
-     has to darken. Remedies are recorded in the task's SUMMARY.md. */
+     row, which puts INK on it at 13.46:1) and the app's inputs still sit on
+     `--surf-ground`. It becomes real the moment a well carries accent or warning text.
+     It cannot be fixed by lightening the well — accent-ink is 4.86:1 on *pure white*, so
+     any tint at all pushes it under; the ink has to darken. Remedies with exact values
+     are in .planning/quick/260824-p03/SUMMARY.md.
+
+     The dark ramp had the same problem under the blue scheme and no longer does: green
+     phosphor is bright enough to clear every surface in that ramp. */
 }
 
 /* ---------------------------------------------------------------------------
@@ -242,7 +253,7 @@
     --surf-on-warning: var(--ramp-dark-on-warning);
     --surf-warning-ink: var(--ramp-dark-warning-ink);
 
-    --outline-board-fill-strength: 20%;
+    --outline-board-fill-strength: 5%;
     --outline-widepoint-knot: #e8798f; /* 6.63:1 on ground; #a8425f would be 2.3:1 */
 
     --background: oklch(0.145 0 0);
@@ -293,7 +304,7 @@
   --surf-on-warning: var(--ramp-dark-on-warning);
   --surf-warning-ink: var(--ramp-dark-warning-ink);
 
-  --outline-board-fill-strength: 20%;
+  --outline-board-fill-strength: 5%;
   --outline-widepoint-knot: #e8798f;
 
   --background: oklch(0.145 0 0);
