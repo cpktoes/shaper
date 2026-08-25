@@ -1,0 +1,756 @@
+<title>Shaper Colour Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;800&display=swap">
+
+<style>
+/* ------------------------------------------------------------------ *
+   CHROME TOKENS — the bench's own palette. Deliberately separate from
+   the surf tokens being edited, so the instrument never shifts colour
+   while you work on the specimen.
+ * ------------------------------------------------------------------ */
+:root {
+  --ui-ground:#f7f8f9; --ui-surface:#ffffff; --ui-sunken:#eef1f3;
+  --ui-ink:#14171c; --ui-muted:#5c6470; --ui-line:#dde1e6; --ui-line-strong:#c3cad2;
+  --ui-accent:#00767f; --ui-accent-soft:#e2f4f5; --ui-on-accent:#ffffff;
+  --ui-pass:#1a7f4b; --ui-fail:#c2321b; --ui-warn:#9a6207;
+  --ui-shadow:0 1px 2px rgba(20,23,28,.06), 0 8px 24px -12px rgba(20,23,28,.18);
+  --step:clamp(.85rem,.4rem + .6vw,1rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ui-ground:#0f1216; --ui-surface:#161a20; --ui-sunken:#0b0e12;
+    --ui-ink:#e9edf2; --ui-muted:#98a1ae; --ui-line:#252b33; --ui-line-strong:#39424d;
+    --ui-accent:#5ce1f2; --ui-accent-soft:#123034; --ui-on-accent:#08222a;
+    --ui-pass:#5fce93; --ui-fail:#ff8a72; --ui-warn:#e3b341;
+    --ui-shadow:0 1px 2px rgba(0,0,0,.5), 0 8px 24px -12px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  --ui-ground:#0f1216; --ui-surface:#161a20; --ui-sunken:#0b0e12;
+  --ui-ink:#e9edf2; --ui-muted:#98a1ae; --ui-line:#252b33; --ui-line-strong:#39424d;
+  --ui-accent:#5ce1f2; --ui-accent-soft:#123034; --ui-on-accent:#08222a;
+  --ui-pass:#5fce93; --ui-fail:#ff8a72; --ui-warn:#e3b341;
+  --ui-shadow:0 1px 2px rgba(0,0,0,.5), 0 8px 24px -12px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ui-ground); color:var(--ui-ink);
+  font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  font-size:var(--step); line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{text-wrap:balance;margin:0}
+:focus-visible{outline:2px solid var(--ui-accent);outline-offset:2px;border-radius:3px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.62rem; font-weight:500;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--ui-muted);
+}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+/* ---------- masthead ---------- */
+.masthead{
+  border-bottom:1px solid var(--ui-line); background:var(--ui-surface);
+  position:sticky; top:0; z-index:20;
+}
+.masthead-in{
+  max-width:1400px; margin:0 auto; padding:14px 24px;
+  display:flex; flex-wrap:wrap; align-items:center; gap:16px 22px;
+}
+.brand{display:flex;flex-direction:column;gap:3px;margin-right:auto}
+.brand h1{font-size:1.02rem;font-weight:600;letter-spacing:-.01em}
+.brand p{margin:0;font-size:.72rem;color:var(--ui-muted)}
+
+.seg{display:flex;border:1px solid var(--ui-line-strong);border-radius:7px;overflow:hidden}
+.seg button{
+  font:inherit; font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  padding:7px 15px; border:0; background:var(--ui-surface); color:var(--ui-muted); cursor:pointer;
+  transition:background .12s,color .12s;
+}
+.seg button + button{border-left:1px solid var(--ui-line-strong)}
+.seg button[aria-pressed="true"]{background:var(--ui-accent-soft);color:var(--ui-ink)}
+.seg button b{display:block;font-weight:600;font-size:.72rem;letter-spacing:.04em}
+.seg button i{display:block;font-style:normal;font-size:.56rem;letter-spacing:.1em;opacity:.7}
+.seg button:hover:not([aria-pressed="true"]){color:var(--ui-ink)}
+
+.namefield{display:flex;align-items:center;gap:8px}
+.namefield label{font-size:.72rem;color:var(--ui-muted);white-space:nowrap}
+.namefield input{
+  font:inherit; font-family:"IBM Plex Mono",monospace; font-size:.78rem; width:9.5rem;
+  padding:7px 10px; border:1px solid var(--ui-line-strong); border-radius:7px;
+  background:var(--ui-surface); color:var(--ui-ink);
+}
+.btn{
+  font:inherit; font-size:.75rem; font-weight:600; padding:8px 15px; cursor:pointer;
+  border:1px solid var(--ui-line-strong); border-radius:7px;
+  background:var(--ui-surface); color:var(--ui-ink); transition:background .12s;
+}
+.btn:hover{background:var(--ui-sunken)}
+.btn-primary{background:var(--ui-accent);border-color:var(--ui-accent);color:var(--ui-on-accent)}
+.btn-primary:hover{filter:brightness(1.08);background:var(--ui-accent)}
+
+/* ---------- shell ---------- */
+.shell{max-width:1400px;margin:0 auto;padding:24px;display:grid;gap:24px;grid-template-columns:minmax(300px,340px) minmax(0,1fr);align-items:start}
+@media (max-width:960px){.shell{grid-template-columns:1fr}}
+
+.panel{background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:11px;box-shadow:var(--ui-shadow)}
+.panel-hd{padding:13px 16px;border-bottom:1px solid var(--ui-line);display:flex;align-items:center;gap:10px}
+.panel-hd h2{font-size:.76rem;font-weight:600;letter-spacing:.13em;text-transform:uppercase}
+.panel-hd .count{margin-left:auto;font-size:.68rem;color:var(--ui-muted)}
+
+/* ---------- control rail ---------- */
+.rail{position:sticky;top:74px;display:flex;flex-direction:column;gap:16px}
+@media (max-width:960px){.rail{position:static}}
+.group + .group{border-top:1px solid var(--ui-line)}
+.group-hd{padding:11px 16px 5px;display:flex;align-items:baseline;gap:8px}
+.group-hd .note{font-size:.66rem;color:var(--ui-muted);margin-left:auto}
+.rows{padding:0 10px 11px}
+.row{display:flex;align-items:center;gap:10px;padding:5px 6px;border-radius:7px}
+.row:hover{background:var(--ui-sunken)}
+.row label{flex:1;min-width:0;font-size:.76rem}
+.row label .role{display:block;font-weight:500}
+.row label .use{display:block;font-size:.64rem;color:var(--ui-muted);line-height:1.35}
+.sw{position:relative;width:30px;height:30px;flex:none;border-radius:6px;overflow:hidden;border:1px solid var(--ui-line-strong)}
+.sw input{position:absolute;inset:-6px;width:calc(100% + 12px);height:calc(100% + 12px);padding:0;border:0;cursor:pointer;background:none}
+.hex{
+  font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:.72rem;
+  width:5.6rem;flex:none;padding:5px 7px;border:1px solid var(--ui-line);border-radius:6px;
+  background:var(--ui-surface);color:var(--ui-ink);text-transform:lowercase;
+}
+.hex.bad{border-color:var(--ui-fail)}
+.pctrow{display:flex;align-items:center;gap:10px;padding:7px 6px}
+.pctrow input[type=range]{flex:1;accent-color:var(--ui-accent)}
+.pctrow output{font-family:"IBM Plex Mono",monospace;font-size:.72rem;width:2.8rem;text-align:right}
+
+/* ---------- specimen ---------- */
+.specimens{display:flex;flex-direction:column;gap:16px}
+.stage{padding:0;border-radius:0 0 10px 10px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:var(--surf-ground);overflow:hidden}
+.s-shell{display:grid;grid-template-columns:minmax(150px,208px) minmax(0,1fr);min-height:330px}
+@media (max-width:760px){.s-shell{grid-template-columns:1fr}}
+.s-side{background:var(--surf-sidebar);border-right:1px solid var(--surf-line-faint);padding:14px;display:flex;flex-direction:column;gap:13px}
+.s-canvas{background:var(--surf-canvas);padding:14px}
+.s-tab.is-on{border-color:var(--surf-line-faint);background:var(--surf-tab-active);color:var(--surf-ink)}
+.s-panel{border:1px solid var(--surf-line-faint);border-radius:0 8px 8px 8px;padding:14px;background:var(--surf-tab-active);margin-top:-1px}
+.stage-split{display:grid;gap:16px;grid-template-columns:1fr 1fr}
+@media (max-width:760px){.stage-split{grid-template-columns:1fr}}
+
+/* Shaper specimen internals — every colour comes from an edited token. */
+.s-nav{display:flex;align-items:center;gap:18px;padding:13px 16px;border-bottom:1px solid var(--surf-line-faint);background:var(--surf-ground);border-radius:7px 7px 0 0}
+.s-wordmark{font-weight:800;font-size:.74rem;letter-spacing:.15em;color:var(--surf-ink)}
+.s-links{margin-left:auto;display:flex;align-items:center;gap:13px}
+.s-link{font-size:.6rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--surf-ink-muted);padding-bottom:2px;border-bottom:2px solid transparent}
+.s-link.on{color:var(--surf-ink);border-bottom-color:var(--surf-accent)}
+.s-gear{width:15px;height:15px;color:var(--surf-ink-muted)}
+
+.s-card{border:1px solid var(--surf-line-faint);border-radius:9px;padding:14px;background:var(--surf-panel);display:flex;flex-direction:column;gap:9px}
+.s-card h4{margin:0;font-size:.88rem;font-weight:600;color:var(--surf-ink)}
+.s-card p{margin:0;font-size:.72rem;color:var(--surf-ink-muted);line-height:1.45}
+.s-cta{font-size:.6rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--surf-accent-ink)}
+
+.s-field{display:flex;flex-direction:column;gap:6px}
+.s-field .lbl{font-size:.75rem;color:var(--surf-ink)}
+.s-field .ends{display:flex;justify-content:space-between;font-size:.6rem;color:var(--surf-ink-muted)}
+.s-track{position:relative;height:6px;border:1px solid var(--surf-ink);border-radius:99px;background:var(--surf-ground)}
+.s-range{position:absolute;inset:-1px auto -1px -1px;width:62%;background:var(--surf-accent);border-radius:99px}
+.s-thumb{position:absolute;top:50%;left:62%;width:13px;height:13px;margin:-7px 0 0 -7px;border-radius:50%;border:1px solid var(--surf-ink);background:var(--surf-accent)}
+
+.s-spec{width:100%;border-collapse:collapse;font-size:.72rem}
+.s-spec th{text-align:left;font-size:.58rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--surf-ink-muted);padding:0 0 7px;border-bottom:1px solid var(--surf-line-faint)}
+.s-spec td{padding:6px 0;border-bottom:1px solid var(--surf-line-faint);color:var(--surf-ink);font-variant-numeric:tabular-nums}
+.s-spec td.k{color:var(--surf-ink-muted)}
+.s-spec tr:last-child td{border-bottom:0}
+.s-well{background:var(--surf-well);border:1px solid var(--surf-line-faint);border-radius:7px;padding:9px 11px;display:flex;align-items:center;gap:9px}
+.s-well .v{font-size:.8rem;color:var(--surf-ink);font-variant-numeric:tabular-nums}
+.s-well .u{font-size:.66rem;color:var(--surf-ink-muted)}
+.s-warn{font-size:.7rem;color:var(--surf-warning-ink);display:flex;align-items:center;gap:6px}
+.s-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid var(--surf-ink);border-radius:99px;background:var(--surf-accent);color:var(--surf-on-accent);font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.s-chip.warn{background:var(--surf-warning);color:var(--surf-on-warning)}
+
+/* Shaper tab strip — the real markup: active tab is a GROUND fill with a hairline
+   border and no bottom edge, so it merges into the panel. Inactive is transparent
+   with muted text. Whether the two read apart depends entirely on line-faint. */
+.s-tabs{display:flex;gap:6px;padding:0 2px}
+.s-tab{
+  font-family:Inter,ui-sans-serif,sans-serif;font-size:.62rem;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;padding:9px 16px;cursor:pointer;border:1px solid transparent;border-bottom:0;
+  border-radius:7px 7px 0 0;background:transparent;color:var(--surf-ink-muted);transition:color .12s;
+}
+.s-tab:hover{color:var(--surf-ink)}
+.s-screen[hidden]{display:none}
+
+.s-icons{display:flex;gap:7px;flex-wrap:wrap}
+.s-iconbtn{
+  display:flex;flex-direction:column;align-items:center;gap:4px;min-width:54px;padding:8px 6px;
+  border-radius:7px;border:1px solid color-mix(in srgb,var(--surf-ink-muted) 30%,transparent);
+  background:var(--surf-ground);color:var(--surf-ink);
+  font-family:Inter,sans-serif;font-size:.53rem;font-weight:500;
+}
+.s-iconbtn.is-on{background:var(--surf-accent);border-color:var(--surf-accent);color:var(--surf-on-accent)}
+.s-iconbtn svg{width:22px;height:16px}
+.s-legend{display:flex;flex-direction:column;gap:5px;font-family:Inter,sans-serif;font-size:.6rem;color:var(--surf-ink-muted)}
+.s-legend span{display:flex;align-items:center;gap:7px}
+.s-swatchline{width:20px;height:0;border-top:2px solid var(--surf-accent-ink)}
+.s-swatchline.dash{border-top-style:dashed}
+.s-swatchdot{width:6px;height:6px;border-radius:50%;background:var(--surf-ink)}
+.s-sectionlbl{font-family:Inter,sans-serif;font-size:.55rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--surf-ink-muted)}
+
+/* ---------- audit ---------- */
+.audit-wrap{overflow-x:auto}
+table.audit{width:100%;border-collapse:collapse;font-size:.74rem}
+table.audit th{
+  text-align:left;font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ui-muted);padding:9px 14px;border-bottom:1px solid var(--ui-line);white-space:nowrap;
+}
+table.audit td{padding:7px 14px;border-bottom:1px solid var(--ui-line);white-space:nowrap}
+table.audit tr:last-child td{border-bottom:0}
+.pair{display:flex;align-items:center;gap:8px}
+.dot{width:17px;height:17px;border-radius:4px;flex:none;border:1px solid var(--ui-line-strong);display:grid;place-items:center;font-size:.6rem;font-weight:700}
+.ratio{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;text-align:right}
+.verdict{font-family:"IBM Plex Mono",monospace;font-size:.66rem;font-weight:600;letter-spacing:.05em}
+.v-pass{color:var(--ui-pass)} .v-fail{color:var(--ui-fail)} .v-na{color:var(--ui-muted)}
+tr.is-fail{background:color-mix(in srgb,var(--ui-fail) 9%,transparent)}
+.bar{height:4px;border-radius:2px;background:var(--ui-line);overflow:hidden;width:74px}
+.bar i{display:block;height:100%;background:var(--ui-pass)}
+.bar.under i{background:var(--ui-fail)}
+
+.tally{display:flex;align-items:center;gap:9px;padding:11px 16px;border-top:1px solid var(--ui-line);font-size:.74rem}
+.badge{font-family:"IBM Plex Mono",monospace;font-size:.66rem;font-weight:600;padding:3px 9px;border-radius:99px;letter-spacing:.04em}
+.badge.ok{background:color-mix(in srgb,var(--ui-pass) 16%,transparent);color:var(--ui-pass)}
+.badge.no{background:color-mix(in srgb,var(--ui-fail) 16%,transparent);color:var(--ui-fail)}
+
+/* ---------- export ---------- */
+.export pre{
+  margin:0;padding:15px 16px;overflow-x:auto;font-family:"IBM Plex Mono",monospace;
+  font-size:.68rem;line-height:1.6;background:var(--ui-sunken);color:var(--ui-ink);
+  border-radius:0 0 10px 10px;max-height:340px;
+}
+.hint{padding:11px 16px;font-size:.7rem;color:var(--ui-muted);border-bottom:1px solid var(--ui-line);line-height:1.5}
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);opacity:0;pointer-events:none;
+  background:var(--ui-ink);color:var(--ui-ground);padding:9px 17px;border-radius:8px;
+  font-size:.75rem;font-weight:500;transition:opacity .18s,transform .18s;z-index:60;
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+
+<header class="masthead">
+  <div class="masthead-in">
+    <div class="brand">
+      <h1>Shaper Colour Bench</h1>
+      <p>Tune the token contract, watch contrast, export a theme.</p>
+    </div>
+
+    <div class="seg" id="themepicker" role="group" aria-label="Which theme to edit"></div>
+
+    <button class="btn" type="button" id="reset">Reset ramp</button>
+    <button class="btn btn-primary" type="button" id="copy">Copy CSS</button>
+  </div>
+</header>
+
+<main class="shell">
+  <!-- CONTROL RAIL -->
+  <div class="rail">
+    <section class="panel">
+      <div class="panel-hd">
+        <h2>Tokens</h2>
+        <span class="count mono" id="ramplabel">light</span>
+      </div>
+      <div id="controls"></div>
+    </section>
+  </div>
+
+  <!-- SPECIMENS + AUDIT -->
+  <div class="specimens">
+    <section class="panel">
+      <div class="panel-hd"><h2>Specimen</h2><span class="count">Live Shaper UI</span></div>
+      <div class="stage" id="stage">
+        <!-- nav -->
+        <div class="s-nav">
+          <span class="s-wordmark">SHAPER</span>
+          <span class="s-links">
+            <span class="s-link on">Template</span>
+            <span class="s-link">Rails</span>
+            <span class="s-link">Volume</span>
+            <span class="s-link">Fins</span>
+            <svg class="s-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </span>
+        </div>
+
+        <div class="s-shell">
+          <!-- SIDEBAR — its own region -->
+          <aside class="s-side">
+            <span class="s-sectionlbl">Board length</span>
+            <div class="s-field">
+              <span class="lbl">Length — 6'0"</span>
+              <div class="s-track"><span class="s-range"></span><span class="s-thumb"></span></div>
+              <span class="ends"><span>5'0"</span><span>9'0"</span></span>
+            </div>
+            <span class="s-sectionlbl">Tail shape</span>
+            <div class="s-icons">
+              <span class="s-iconbtn"><svg viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 2c0 8 3 14 8 14s8-6 8-14"/></svg>Pin</span>
+              <span class="s-iconbtn is-on"><svg viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 2c0 8 3 14 8 14s8-6 8-14"/></svg>Squash</span>
+            </div>
+            <div class="s-well"><span class="v">32.4 L</span><span class="u">volume</span></div>
+            <span class="s-warn">Rocker exceeds the blank</span>
+          </aside>
+
+          <!-- CANVAS — the working area, with the tab strip in it -->
+          <div class="s-canvas">
+
+        <!-- The app's own tab strip. Active tab is a GROUND fill with a hairline border and
+             no bottom edge so it merges into the panel; inactive is transparent + muted.
+             Whether the two read apart at all rides entirely on line-faint. -->
+        <div class="s-tabs" role="tablist" aria-label="Specimen screen">
+          <button class="s-tab is-on" role="tab" aria-selected="true"  data-screen="template">Template</button>
+          <button class="s-tab"       role="tab" aria-selected="false" data-screen="fins">Fins</button>
+          <button class="s-tab"       role="tab" aria-selected="false" data-screen="data">Data</button>
+        </div>
+
+        <div class="s-panel">
+          <!-- ============ TEMPLATE ============ -->
+          <div class="s-screen" data-panel="template">
+            <div class="stage-split">
+              <div class="s-card" style="align-items:center">
+                <svg viewBox="0 0 150 400" width="100%" style="max-height:260px" aria-label="Board plan view">
+                  <path d="M75 10 C55 62 33 122 31 177 C30 242 43 332 58 390 C63 396 87 396 92 390 C107 332 120 242 119 177 C117 122 95 62 75 10 Z"
+                        fill="var(--surf-board-fill)" stroke="var(--surf-ink)" stroke-width="1.6"/>
+                  <line x1="75" y1="10" x2="75" y2="394" stroke="var(--surf-accent-ink)" stroke-width="1" stroke-dasharray="16 4 4 4" opacity=".85"/>
+                  <line x1="18" y1="177" x2="132" y2="177" stroke="var(--surf-accent-ink)" stroke-width="1" stroke-dasharray="2 3"/>
+                  <line x1="24" y1="90"  x2="126" y2="90"  stroke="var(--surf-ink-muted)" stroke-width="1" stroke-dasharray="5 4" opacity=".55"/>
+                  <line x1="24" y1="300" x2="126" y2="300" stroke="var(--surf-ink-muted)" stroke-width="1" stroke-dasharray="5 4" opacity=".55"/>
+                  <circle cx="31" cy="177" r="3.4" fill="var(--surf-accent)" stroke="var(--surf-ink)" stroke-width="1"/>
+                  <circle cx="119" cy="177" r="3.4" fill="var(--surf-accent)" stroke="var(--surf-ink)" stroke-width="1"/>
+                  <text x="8" y="170" font-size="8" font-weight="700" letter-spacing="1.2" fill="var(--surf-accent-ink)" font-family="Inter,sans-serif">WIDEPOINT</text>
+                  <text x="8" y="83" font-size="8" fill="var(--surf-ink-muted)" font-family="Inter,sans-serif">12" nose</text>
+                  <text x="8" y="293" font-size="8" fill="var(--surf-ink-muted)" font-family="Inter,sans-serif">12" tail</text>
+                </svg>
+                <div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:center">
+                  <span class="s-chip">Selected</span><span class="s-chip warn">Check</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div class="s-card">
+                  <h4>Shortboard</h4>
+                  <p>Fast and responsive, for performance surfing.</p>
+                  <span class="s-cta">Start shaping</span>
+                </div>
+                <div class="s-field">
+                  <span class="lbl">Nose Angle — 55°</span>
+                  <div class="s-track"><span class="s-range"></span><span class="s-thumb"></span></div>
+                  <span class="ends"><span>Pointy</span><span>Round</span></span>
+                </div>
+                <div class="s-well"><span class="v">32.4 L</span><span class="u">calculated volume</span></div>
+                <span class="s-warn">Tail rocker exceeds the blank by 1/4"</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============ FINS ============ -->
+          <div class="s-screen" data-panel="fins" hidden>
+            <div class="stage-split">
+              <div style="display:flex;flex-direction:column;gap:12px;align-items:center">
+                <svg viewBox="0 0 300 230" width="100%" style="max-height:250px" aria-label="Fin placement, squash tail">
+                  <!-- tail outline, filled with the board wash -->
+                  <path d="M35 4 C40 74 62 154 88 196 Q92 204 105 204 L195 204 Q208 204 212 196 C238 154 260 74 265 4 Z"
+                        fill="var(--surf-board-fill)" stroke="var(--surf-ink)" stroke-width="1.8"/>
+                  <line x1="150" y1="4" x2="150" y2="200" stroke="var(--surf-accent-ink)" stroke-width="1" stroke-dasharray="16 4 4 4" opacity=".8"/>
+                  <!-- side fins: dashed base-length runs, ink edge dots -->
+                  <line x1="108" y1="70" x2="112" y2="120" stroke="var(--surf-accent-ink)" stroke-width="2.4" stroke-dasharray="5 4"/>
+                  <circle cx="108" cy="70" r="3.6" fill="var(--surf-ink)"/><circle cx="112" cy="120" r="3.6" fill="var(--surf-ink)"/>
+                  <line x1="192" y1="70" x2="188" y2="120" stroke="var(--surf-accent-ink)" stroke-width="2.4" stroke-dasharray="5 4"/>
+                  <circle cx="192" cy="70" r="3.6" fill="var(--surf-ink)"/><circle cx="188" cy="120" r="3.6" fill="var(--surf-ink)"/>
+                  <!-- centre fin: solid run -->
+                  <line x1="150" y1="118" x2="150" y2="168" stroke="var(--surf-accent-ink)" stroke-width="2.8"/>
+                  <circle cx="150" cy="118" r="3.6" fill="var(--surf-ink)"/><circle cx="150" cy="168" r="3.6" fill="var(--surf-ink)"/>
+                  <!-- dimension lines -->
+                  <line x1="112" y1="120" x2="286" y2="120" stroke="var(--surf-ink-muted)" stroke-width="1" stroke-dasharray="5 4" opacity=".6"/>
+                  <line x1="46" y1="60" x2="46" y2="204" stroke="var(--surf-ink)" stroke-width="1"/>
+                  <line x1="42" y1="60" x2="50" y2="60" stroke="var(--surf-ink)" stroke-width="1"/>
+                  <line x1="42" y1="204" x2="50" y2="204" stroke="var(--surf-ink)" stroke-width="1"/>
+                  <text x="18" y="136" font-size="9" fill="var(--surf-ink)" font-family="Inter,sans-serif">11"</text>
+                  <text x="248" y="116" font-size="9" fill="var(--surf-ink)" font-family="Inter,sans-serif">1 3/16"</text>
+                  <text x="118" y="62" font-size="9" fill="var(--surf-ink)" font-family="Inter,sans-serif">3/8"</text>
+                </svg>
+                <div class="s-legend">
+                  <span><i class="s-swatchdot"></i>Trailing &amp; leading edges</span>
+                  <span><i class="s-swatchline"></i>Base length (centre): 4 1/2"</span>
+                  <span><i class="s-swatchline dash"></i>Base length (front): 4 1/2"</span>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <span class="s-sectionlbl">Tail shape</span>
+                <div class="s-icons">
+                  <span class="s-iconbtn"><svg viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 2c0 8 3 14 8 14s8-6 8-14"/></svg>Pin</span>
+                  <span class="s-iconbtn"><svg viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 2c0 8 3 14 8 14s8-6 8-14"/></svg>Round</span>
+                  <span class="s-iconbtn is-on"><svg viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 2c0 8 3 14 8 14s8-6 8-14"/></svg>Squash</span>
+                </div>
+                <span class="s-sectionlbl">Fin setup</span>
+                <div class="s-icons">
+                  <span class="s-iconbtn"><svg viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 2c0 8 3 14 8 14s8-6 8-14"/></svg>Single</span>
+                  <span class="s-iconbtn"><svg viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 2c0 7 1 13 3 14"/><path d="M18 2c0 7-1 13-3 14"/></svg>Twin</span>
+                  <span class="s-iconbtn is-on"><svg viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 2c0 7 1 13 3 14"/><path d="M19 2c0 7-1 13-3 14"/><path d="M12 4v12"/></svg>Thruster</span>
+                </div>
+                <div class="s-well"><span class="v">4 1/2"</span><span class="u">base length</span></div>
+                <span class="s-warn">Front fin sits 1/8" inside the rail line</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============ DATA ============ -->
+          <div class="s-screen" data-panel="data" hidden>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <span class="s-sectionlbl">Thruster · trailing-edge convention</span>
+              <table class="s-spec">
+                <thead><tr><th>Fin</th><th style="text-align:right">Off tail</th><th style="text-align:right">Off rail</th><th style="text-align:right">Toe</th><th style="text-align:right">Cant</th></tr></thead>
+                <tbody>
+                  <tr><td class="k">Centre</td><td style="text-align:right">3 5/16"</td><td style="text-align:right">—</td><td style="text-align:right">0°</td><td style="text-align:right">0°</td></tr>
+                  <tr><td class="k">Front (L)</td><td style="text-align:right">11"</td><td style="text-align:right">1 3/16"</td><td style="text-align:right">3/8"</td><td style="text-align:right">6.5°</td></tr>
+                  <tr><td class="k">Front (R)</td><td style="text-align:right">11"</td><td style="text-align:right">1 3/16"</td><td style="text-align:right">3/8"</td><td style="text-align:right">6.5°</td></tr>
+                </tbody>
+              </table>
+              <div style="display:flex;gap:9px;flex-wrap:wrap">
+                <span class="s-chip">FCS II</span><span class="s-chip warn">Check toe</span>
+              </div>
+              <div class="s-well"><span class="v">32.4 L</span><span class="u">calculated volume</span></div>
+            </div>
+          </div>
+          </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-hd">
+        <h2>Contrast audit</h2>
+        <span class="count">WCAG 2.1 · 4.5:1 text · 3:1 UI</span>
+      </div>
+      <div class="audit-wrap"><table class="audit">
+        <thead><tr><th>Pairing</th><th>What it is</th><th style="text-align:right">Ratio</th><th>Against bar</th><th>Verdict</th></tr></thead>
+        <tbody id="auditbody"></tbody>
+      </table></div>
+      <div class="tally" id="tally"></div>
+    </section>
+
+    <section class="panel export">
+      <div class="panel-hd"><h2>Export</h2><span class="count mono" id="exportname">light</span></div>
+      <p class="hint">
+        Exports <strong>every theme</strong>, not just the one on screen — one ramp each into the
+        <span class="mono">:root</span> ramp block, then one
+        <span class="mono">:root.theme-&lt;id&gt;</span> block each. Paste both over the matching
+        sections of <span class="mono">app/globals.css</span>. Adding or renaming a theme also
+        needs its entry in <span class="mono">THEMES</span> in
+        <span class="mono">lib/theme.ts</span> — that list is what the settings menu reads.
+      </p>
+      <pre id="out"></pre>
+    </section>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ---------------- token contract ---------------- */
+const GROUPS = [
+  { name:"Regions", note:"the places on screen", tokens:[
+    ["ground","Window","App chrome — the nav and the body behind everything"],
+    ["sidebar","Sidebar","The control column on every design screen"],
+    ["canvas","Canvas","The drawing / working area beside it"],
+    ["tab-active","Active tab","The selected tab, which merges into the canvas"],
+  ]},
+  { name:"Surfaces", note:"things ON a region", tokens:[
+    ["panel","Panel","Raised — cards, the order-form sheet, dialogs"],
+    ["well","Well","Inset — inputs and readouts"],
+  ]},
+  { name:"Ink", note:"must clear 4.5:1", tokens:[
+    ["ink","Ink","Primary text and board strokes"],
+    ["ink-muted","Ink muted","Labels, secondary text, hairline mixes"],
+  ]},
+  { name:"Lines", note:"boundaries", tokens:[
+    ["line","Line","Control boundaries — aims at 3:1"],
+    ["line-faint","Line faint","Decorative hairlines — no bar"],
+  ]},
+  { name:"Accent", note:"fill + its ink", tokens:[
+    ["accent","Accent fill","Selection fills. Never text, never a bare stroke"],
+    ["on-accent","On accent","Text sitting on the accent fill"],
+    ["accent-ink","Accent ink","Accent as text or stroke on the ground"],
+  ]},
+  { name:"Warning", note:"fill + its ink", tokens:[
+    ["warning","Warning fill","Warning fills"],
+    ["on-warning","On warning","Text sitting on the warning fill"],
+    ["warning-ink","Warning ink","Warning text on the ground"],
+  ]},
+];
+
+const PUBLISHED = [
+  { id:"daylight", label:"Daylight", mode:"light", note:"default light",
+    v:{ ground:"#ffffff",sidebar:"#ffffff",canvas:"#ffffff","tab-active":"#ffffff",panel:"#ffffff",
+        well:"#d8d7cd",ink:"#010d1f","ink-muted":"#475569",line:"#010d1f","line-faint":"#d8d7cd",
+        accent:"#3490bc","on-accent":"#010d1f","accent-ink":"#2b799c",
+        warning:"#ff5722","on-warning":"#111111","warning-ink":"#c93f10",fill:10 } },
+  { id:"chalk", label:"Chalk", mode:"light", note:"",
+    v:{ ground:"#ffffff",sidebar:"#ffffff",canvas:"#ffffff","tab-active":"#ffffff",panel:"#ffffff",
+        well:"#f4f5f7",ink:"#111111","ink-muted":"#6b6b6b",line:"#8d8d8d","line-faint":"#d5d5d5",
+        accent:"#00e5ff","on-accent":"#111111","accent-ink":"#00767f",
+        warning:"#ff5722","on-warning":"#111111","warning-ink":"#c93f10",fill:6 } },
+  { id:"slate", label:"Slate", mode:"dark", note:"",
+    v:{ ground:"#12141a",sidebar:"#12141a",canvas:"#12141a","tab-active":"#12141a",panel:"#1a1d25",
+        well:"#1b1f26",ink:"#f2f4f7","ink-muted":"#a1a8b4",line:"#6a707c","line-faint":"#333842",
+        accent:"#2d7495","on-accent":"#f2f4f7","accent-ink":"#3490bc",
+        warning:"#ff5722","on-warning":"#111111","warning-ink":"#ff9670",fill:12 } },
+  { id:"phosphor", label:"Phosphor", mode:"dark", note:"default dark",
+    v:{ ground:"#12141a",sidebar:"#12141a",canvas:"#12141a","tab-active":"#12141a",panel:"#12141a",
+        well:"#333842",ink:"#00ff40","ink-muted":"#a8ffbe",line:"#00ff40","line-faint":"#00ff40",
+        accent:"#00ff40","on-accent":"#12141a","accent-ink":"#00ff40",
+        warning:"#ff5722","on-warning":"#111111","warning-ink":"#ff9670",fill:5 } },
+];
+
+const state = {
+  active: "daylight",
+  themes: PUBLISHED.map(t => ({ ...t, v: { ...t.v } })),
+};
+const theme = () => state.themes.find(t => t.id === state.active);
+const cur = () => theme().v;
+
+/* ---------------- WCAG 2.1 ---------------- */
+const lin = c => (c/=255) <= .04045 ? c/12.92 : Math.pow((c+.055)/1.055, 2.4);
+function lum(hex){
+  const h=hex.replace("#","");
+  const f=h.length===3?h.split("").map(x=>x+x).join(""):h;
+  return .2126*lin(parseInt(f.slice(0,2),16))+.7152*lin(parseInt(f.slice(2,4),16))+.0722*lin(parseInt(f.slice(4,6),16));
+}
+function ratio(a,b){ const x=lum(a), y=lum(b); const [hi,lo]=x>y?[x,y]:[y,x]; return (hi+.05)/(lo+.05); }
+const isHex = s => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s);
+
+/* Pairings that are genuinely foreground-on-background. */
+const PAIRS = [
+  ["ink","ground",4.5,"Nav text, wordmark"],
+  ["ink","sidebar",4.5,"Control labels in the sidebar"],
+  ["ink","canvas",4.5,"Values and callouts on the drawing"],
+  ["ink","panel",4.5,"Text on a card or the order-form sheet"],
+  ["ink","well",4.5,"Value in a readout"],
+  ["ink-muted","ground",4.5,"Nav links"],
+  ["ink-muted","sidebar",4.5,"Slider end labels, section headings"],
+  ["ink-muted","canvas",4.5,"Station names, legend text"],
+  ["ink-muted","panel",4.5,"Card description"],
+  ["ink-muted","well",4.5,"Unit beside a value"],
+  ["ink","tab-active",4.5,"The selected tab's own label"],
+  ["ink-muted","ground",3,"Unselected tab labels"],
+  ["accent-ink","canvas",4.5,"Construction strokes, widepoint marker"],
+  ["accent-ink","sidebar",4.5,"“View aim tables” link"],
+  ["accent-ink","ground",4.5,"“Start shaping”"],
+  ["accent-ink","panel",4.5,"Accent text on a card"],
+  ["accent-ink","well",4.5,"Accent text in a readout"],
+  ["warning-ink","canvas",4.5,"Warning on the drawing"],
+  ["warning-ink","sidebar",4.5,"Warning under a control"],
+  ["warning-ink","well",4.5,"Warning inside a readout"],
+  ["on-accent","accent",4.5,"Label on a selected pill"],
+  ["on-warning","warning",4.5,"Text on the warning chip"],
+  ["line","ground",3,"Control boundary"],
+  ["line","sidebar",3,"Boundary in the sidebar"],
+  ["line","canvas",3,"Boundary on the drawing"],
+  ["line","well",3,"Boundary of an input"],
+  ["line-faint","canvas",1.2,"Tab edge — must be visible or tabs merge"],
+];
+
+/* ---------------- render ---------------- */
+const $ = id => document.getElementById(id);
+
+function buildControls(){
+  const host = $("controls"); host.innerHTML = "";
+  for (const g of GROUPS){
+    const sec = document.createElement("div"); sec.className = "group";
+    sec.innerHTML = `<div class="group-hd"><span class="eyebrow">${g.name}</span><span class="note">${g.note}</span></div>`;
+    const rows = document.createElement("div"); rows.className = "rows";
+    for (const [key,role,use] of g.tokens){
+      const id = "t-"+key;
+      const row = document.createElement("div"); row.className = "row";
+      row.innerHTML =
+        `<span class="sw"><input type="color" id="${id}" data-key="${key}" aria-label="${role}"></span>` +
+        `<label for="${id}"><span class="role">${role}</span><span class="use">${use}</span></label>` +
+        `<input class="hex" data-hex="${key}" spellcheck="false" aria-label="${role} hex value">`;
+      rows.appendChild(row);
+    }
+    sec.appendChild(rows); host.appendChild(sec);
+  }
+  // board wash strength
+  const sec = document.createElement("div"); sec.className = "group";
+  sec.innerHTML = `<div class="group-hd"><span class="eyebrow">Board wash</span><span class="note">accent into ground</span></div>`;
+  const pr = document.createElement("div"); pr.className = "rows";
+  pr.innerHTML = `<div class="pctrow"><input type="range" id="fill" min="0" max="30" step="1" aria-label="Board fill strength"><output id="fillout"></output></div>`;
+  sec.appendChild(pr); host.appendChild(sec);
+
+  host.addEventListener("input", e => {
+    const t = e.target;
+    if (t.dataset.key){ cur()[t.dataset.key] = t.value; sync(false); }
+    else if (t.dataset.hex){
+      const val = t.value.trim();
+      t.classList.toggle("bad", !isHex(val));
+      if (isHex(val)){ cur()[t.dataset.hex] = val.length===4
+        ? "#"+val.slice(1).split("").map(c=>c+c).join("") : val.toLowerCase(); sync(false); }
+    } else if (t.id === "fill"){ cur().fill = +t.value; sync(false); }
+  });
+}
+
+function syncInputs(){
+  const v = cur();
+  document.querySelectorAll("[data-key]").forEach(i => i.value = v[i.dataset.key]);
+  document.querySelectorAll("[data-hex]").forEach(i => { i.value = v[i.dataset.hex]; i.classList.remove("bad"); });
+  $("fill").value = v.fill; $("fillout").textContent = v.fill + "%";
+}
+
+function applyStage(){
+  const v = cur(), s = $("stage").style;
+  for (const k of Object.keys(v)) if (k!=="fill") s.setProperty("--surf-"+k, v[k]);
+  s.setProperty("--surf-board-fill", `color-mix(in srgb, ${v.accent} ${v.fill}%, ${v.ground})`);
+}
+
+function renderAudit(){
+  const v = cur(), body = $("auditbody");
+  body.innerHTML = ""; let fails = 0;
+  for (const [fg,bg,bar,what] of PAIRS){
+    const r = ratio(v[fg], v[bg]);
+    const ok = r >= bar; if (!ok) fails++;
+    const pct = Math.min(100, (r/bar)*100);
+    const tr = document.createElement("tr");
+    if (!ok) tr.className = "is-fail";
+    tr.innerHTML =
+      `<td><span class="pair">
+         <span class="dot" style="background:${v[bg]};color:${v[fg]};border-color:${v.line}">Aa</span>
+         <span class="mono" style="font-size:.68rem">${fg} on ${bg}</span></span></td>` +
+      `<td style="color:var(--ui-muted)">${what}</td>` +
+      `<td class="ratio">${r.toFixed(2)}:1</td>` +
+      `<td><span class="bar${ok?"":" under"}"><i style="width:${pct}%"></i></span>
+           <span class="mono" style="font-size:.62rem;color:var(--ui-muted);margin-left:6px">${bar}:1</span></td>` +
+      `<td class="verdict ${ok?"v-pass":"v-fail"}">${ok?"PASS":"FAIL"}</td>`;
+    body.appendChild(tr);
+  }
+  // Advisory: what ink-on-accent WOULD give. The app takes --surf-on-accent there, so this
+  // is not a failure — but it is 1:1 in any theme where ink and accent hold the same value,
+  // which is exactly the mistake the on-accent token exists to prevent. Worth seeing, worth
+  // not counting: a red row for something the app does not do teaches you to ignore red.
+  const ia = ratio(v.ink, v.accent);
+  const iaRow = document.createElement("tr");
+  iaRow.innerHTML =
+    `<td><span class="pair">
+       <span class="dot" style="background:${v.accent};color:${v.ink};border-color:${v.line}">Aa</span>
+       <span class="mono" style="font-size:.68rem">ink on accent</span></span></td>` +
+    `<td style="color:var(--ui-muted)">If a fill took ink instead of on-accent</td>` +
+    `<td class="ratio">${ia.toFixed(2)}:1</td>` +
+    `<td style="color:var(--ui-muted);font-size:.66rem">${ia < 4.5 ? "why on-accent exists" : "would also work here"}</td>` +
+    `<td class="verdict v-na">ADVISORY</td>`;
+  body.appendChild(iaRow);
+
+  // the accent fill is intentionally exempt — record it so its low number never reads as a bug
+  const af = ratio(v.accent, v.ground);
+  const tr = document.createElement("tr");
+  tr.innerHTML =
+    `<td><span class="pair">
+       <span class="dot" style="background:${v.ground};color:${v.accent};border-color:${v.line}">◼</span>
+       <span class="mono" style="font-size:.68rem">accent on ground</span></span></td>` +
+    `<td style="color:var(--ui-muted)">Fill only — carries its own 1px ink boundary</td>` +
+    `<td class="ratio">${af.toFixed(2)}:1</td><td style="color:var(--ui-muted);font-size:.66rem">not applicable</td>` +
+    `<td class="verdict v-na">EXEMPT</td>`;
+  body.appendChild(tr);
+
+  $("tally").innerHTML = fails === 0
+    ? `<span class="badge ok">All ${PAIRS.length} pairings pass</span><span style="color:var(--ui-muted)">This ramp is safe to ship.</span>`
+    : `<span class="badge no">${fails} failing</span><span style="color:var(--ui-muted)">Highlighted rows fall under their bar — darken the ink or lighten the ground.</span>`;
+}
+
+const EXPORT_KEYS = ["ground","sidebar","canvas","tab-active","panel","well","ink","ink-muted",
+  "line","line-faint","accent","on-accent","accent-ink","warning","on-warning","warning-ink"];
+
+function rampFor(t){
+  return EXPORT_KEYS.map(k => `  --ramp-${t.id}-${k}: ${t.v[k]};`).join("\n") +
+         `\n  --ramp-${t.id}-fill: ${t.v.fill}%;`;
+}
+function blockFor(t){
+  return `:root.theme-${t.id} {\n  color-scheme: ${t.mode};\n` +
+    EXPORT_KEYS.map(k => `  --surf-${k}: var(--ramp-${t.id}-${k});`).join("\n") +
+    `\n  --outline-board-fill-strength: var(--ramp-${t.id}-fill);\n}`;
+}
+
+/** Whole-file export: every theme, not just the one on screen. Paste replaces both blocks. */
+function renderExport(){
+  const t = theme();
+  $("exportname").textContent = `${t.label} · all ${state.themes.length}`;
+  const css =
+`/* ---- LAYER 1 — one ramp per theme, into the :root ramp block ---- */
+:root {
+${state.themes.map(rampFor).join("\n\n")}
+}
+
+/* ---- LAYER 2 — one block per theme. Order matters only between these and the
+   defaults: :root and the prefers-color-scheme block are (0,1,0), these are (0,2,0),
+   so an explicit theme always wins. ---- */
+${state.themes.map(blockFor).join("\n\n")}
+
+/* Defaults, for lib/theme.ts and the two blocks that paint before any JS:
+   DEFAULT_LIGHT_THEME = ${JSON.stringify(state.themes.find(x=>x.mode==="light")?.id ?? null)}
+   DEFAULT_DARK_THEME  = ${JSON.stringify(state.themes.find(x=>x.mode==="dark")?.id ?? null)}
+   Whichever two you choose must also be assigned to bare :root and to
+   @media (prefers-color-scheme: dark) :root — that CSS is what paints first. */`;
+  $("out").textContent = css;
+  return css;
+}
+
+function sync(inputs = true){
+  if (inputs) syncInputs();
+  $("ramplabel").textContent = theme().label;
+  applyStage(); renderAudit(); renderExport();
+}
+
+/* ---------------- wiring ---------------- */
+buildControls();
+renderPicker();
+
+/* Specimen screens. The tab strip is itself a specimen: switching it is how you check
+   the active/inactive tabs still read apart at whatever line-faint you have picked. */
+document.querySelectorAll(".s-tab").forEach(tab => tab.addEventListener("click", () => {
+  document.querySelectorAll(".s-tab").forEach(t => {
+    const on = t === tab;
+    t.classList.toggle("is-on", on);
+    t.setAttribute("aria-selected", String(on));
+  });
+  document.querySelectorAll("[data-panel]").forEach(pane => {
+    pane.hidden = pane.dataset.panel !== tab.dataset.screen;
+  });
+}));
+
+function renderPicker(){
+  const host = $("themepicker");
+  host.innerHTML = state.themes.map(t =>
+    `<button type="button" data-theme="${t.id}" aria-pressed="${t.id === state.active}">` +
+    `<b>${t.label}</b><i>${t.mode}${t.note ? " · " + t.note : ""}</i></button>`).join("");
+  host.querySelectorAll("[data-theme]").forEach(b => b.addEventListener("click", () => {
+    state.active = b.dataset.theme;
+    renderPicker();
+    sync();
+  }));
+}
+
+$("reset").addEventListener("click", () => {
+  const pub = PUBLISHED.find(t => t.id === state.active);
+  theme().v = { ...pub.v };
+  sync(); toast(`${theme().label} reset to shipped values`);
+});
+
+$("copy").addEventListener("click", async () => {
+  const css = renderExport();
+  try { await navigator.clipboard.writeText(css); toast("CSS copied"); }
+  catch { const r = document.createRange(); r.selectNodeContents($("out"));
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Selected — press ⌘C"); }
+});
+
+let tid;
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(tid); tid = setTimeout(() => t.classList.remove("on"), 2100);
+}
+
+sync();
+</script>
