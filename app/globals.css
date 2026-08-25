@@ -489,10 +489,18 @@
   --outline-sidebar-text: var(--surf-ink);
   --outline-sidebar-text-muted: var(--surf-ink-muted);
   --outline-sidebar-input-bg: var(--surf-sidebar);
-  /* Mixed toward `transparent`, not toward white — so the line stays a tint of the
-     ink over whatever ground the active theme provides, in both directions. */
-  --outline-sidebar-input-border: color-mix(in srgb, var(--surf-ink-muted) 20%, transparent);
-  --outline-sidebar-divider: color-mix(in srgb, var(--surf-ink-muted) 20%, transparent);
+  /* These two are UI borders, so they take the line tokens like every other border in
+     the app. They were hand-mixed 20% tints of the muted token — the same ad-hoc weight
+     the .tsx borders carried, just hidden one layer down in CSS where a grep for
+     `border-surf-muted/` could not see them. An input's edge is a control boundary
+     (--surf-line); a section divider is decoration (--surf-line-faint).
+
+     The three color-mix values left below are NOT borders — they are drawing weights
+     (the board wash, the construction/station lines, the widepoint line). Those stay
+     mixes on purpose: they have to sit *behind* the board outline, which is a
+     relationship between strokes, not a UI boundary. */
+  --outline-sidebar-input-border: var(--surf-line);
+  --outline-sidebar-divider: var(--surf-line-faint);
   --outline-page-bg: var(--surf-canvas);
   /* A faint accent wash so the planshape reads as an object rather than as a line. This
      briefly went to flat white during the design pivot, on the reasoning that the board
