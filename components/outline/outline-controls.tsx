@@ -75,7 +75,7 @@ function withEndWidth(tail: TailShape, endWidthIn: number): TailShape {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-1.5 border-b border-surf-muted/20 pb-2 text-xs font-display text-surf-black uppercase tracking-architectural font-extrabold">
+    <div className="mt-1.5 border-b border-surf-line-faint pb-2 text-xs font-display text-surf-black uppercase tracking-architectural font-extrabold">
       {children}
     </div>
   );

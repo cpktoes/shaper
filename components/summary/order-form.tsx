@@ -586,7 +586,7 @@ export function OrderForm() {
                         {grp.rows.map((row) => (
                           <div
                             key={row.label}
-                            className="flex justify-between gap-1 border-b border-surf-muted/25 leading-tight order-form-row"
+                            className="flex justify-between gap-1 border-b border-surf-line-faint leading-tight order-form-row"
                           >
                             <span className="truncate text-surf-muted">{row.label}</span>
                             <span className="flex-none font-bold text-surf-black">
@@ -595,7 +595,7 @@ export function OrderForm() {
                           </div>
                         ))}
                         {grp.fullSpread !== null && (
-                          <div className="flex justify-between gap-1 border-b border-surf-muted/25 leading-tight order-form-row">
+                          <div className="flex justify-between gap-1 border-b border-surf-line-faint leading-tight order-form-row">
                             <span className="truncate text-surf-muted">Full Spread</span>
                             <span className="flex-none font-bold text-surf-black">
                               {formatInchesFraction(grp.fullSpread, 16)}
@@ -611,7 +611,7 @@ export function OrderForm() {
                     panel, so flowing them as one more column item — landing them under whichever
                     section happened to end last — would read as a footnote to that section alone. */}
                 {finPlacement.notes.length > 0 && (
-                  <div className="flex-none border-t border-surf-muted/25 pt-1 text-surf-muted order-form-micro">
+                  <div className="flex-none border-t border-surf-line-faint pt-1 text-surf-muted order-form-micro">
                     {finPlacement.notes.map((note) => (
                       <div key={note}>{note}</div>
                     ))}

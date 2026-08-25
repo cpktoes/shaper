@@ -56,7 +56,7 @@ function sliderValue(v: number | readonly number[]): number {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-1.5 border-b border-surf-muted/20 pb-2 text-xs font-display text-surf-black uppercase tracking-architectural font-extrabold">
+    <div className="mt-1.5 border-b border-surf-line-faint pb-2 text-xs font-display text-surf-black uppercase tracking-architectural font-extrabold">
       {children}
     </div>
   );
@@ -75,7 +75,7 @@ function DisclosureHeading({
     <button
       type="button"
       onClick={onToggle}
-      className="flex w-full items-center justify-between border-b border-surf-muted/20 pb-2 pl-3 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold"
+      className="flex w-full items-center justify-between border-b border-surf-line-faint pb-2 pl-3 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold"
     >
       <span>{children}</span>
       <span>{open ? "▾" : "▸"}</span>
@@ -142,7 +142,7 @@ function PillButton({
         `cursor-pointer rounded-md border px-1 py-2.5 text-[11px] font-bold ${
           active
             ? "border-surf-black bg-surf-accent-cyan text-surf-on-accent"
-            : "border-surf-muted/30 bg-surf-sidebar text-surf-black"
+            : "border-surf-line bg-surf-sidebar text-surf-black"
         } ${className}`
       }
     >
@@ -190,7 +190,7 @@ function BaseLengthField({
           <button
             type="button"
             onClick={onOverride}
-            className="cursor-pointer rounded-md border border-surf-muted/30 px-2.5 py-1 text-[11px] text-outline-sidebar-text"
+            className="cursor-pointer rounded-md border border-surf-line px-2.5 py-1 text-[11px] text-outline-sidebar-text"
           >
             Override
           </button>
@@ -361,7 +361,7 @@ export function FinControls({
                 "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                 (spec.tailShape === shape
                   ? "border-surf-black bg-surf-accent-cyan text-surf-on-accent"
-                  : "border-surf-muted/30 bg-surf-sidebar text-surf-black")
+                  : "border-surf-line bg-surf-sidebar text-surf-black")
               }
             >
               <TailShapeIcon shape={shape} active={spec.tailShape === shape} />
@@ -387,7 +387,7 @@ export function FinControls({
                   "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                   (spec.finSetup === setup
                     ? "border-surf-black bg-surf-accent-cyan text-surf-on-accent"
-                    : "border-surf-muted/30 bg-surf-sidebar text-surf-black")
+                    : "border-surf-line bg-surf-sidebar text-surf-black")
                 }
               >
                 <FinSetupIcon setup={setup} active={spec.finSetup === setup} />
@@ -614,7 +614,7 @@ export function FinControls({
                               quadRearOffTailOverride: spec.advanced.quadRearOffTailOverride ?? resolved.quadRearOffTailBase,
                             });
                           }}
-                          className="cursor-pointer rounded-md border border-surf-muted/30 px-2.5 py-1 text-[11px] text-outline-sidebar-text"
+                          className="cursor-pointer rounded-md border border-surf-line px-2.5 py-1 text-[11px] text-outline-sidebar-text"
                         >
                           Override
                         </button>
@@ -677,7 +677,7 @@ export function FinControls({
             <button
               type="button"
               onClick={resetAdvancedSettings}
-              className="cursor-pointer border-t border-surf-muted/20 pt-4 text-left text-xs font-bold text-surf-accent-cyan-ink"
+              className="cursor-pointer border-t border-surf-line-faint pt-4 text-left text-xs font-bold text-surf-accent-cyan-ink"
             >
               ↺ Reset Advanced Settings
             </button>

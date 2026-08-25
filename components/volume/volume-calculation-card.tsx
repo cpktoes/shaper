@@ -37,7 +37,7 @@ function Row({
   if (compact) {
     return (
       <div
-        className="flex justify-between border-b border-surf-muted/10 py-0.5"
+        className="flex justify-between border-b border-surf-line-faint py-0.5"
         style={{ fontSize: "var(--summary-font-row, 11px)" }}
       >
         <span className="text-surf-muted">{label}</span>
@@ -46,7 +46,7 @@ function Row({
     );
   }
   return (
-    <div className="flex justify-between border-b border-surf-muted/10 py-2 text-sm">
+    <div className="flex justify-between border-b border-surf-line-faint py-2 text-sm">
       <span className="text-surf-muted">{label}</span>
       <span className="font-bold text-surf-black">{value}</span>
     </div>
@@ -97,7 +97,7 @@ export function VolumeCalculationCard({
         )}
         <Row label={weightedThicknessLabel} value={formatInchesFraction(result.weightedThickness)} compact />
 
-        <div className="mt-1 flex items-baseline justify-between border-t-2 border-surf-muted/20 pt-1.5 pb-1">
+        <div className="mt-1 flex items-baseline justify-between border-t-2 border-surf-line-faint pt-1.5 pb-1">
           <span
             className="font-bold text-surf-muted"
             style={{ fontSize: "var(--summary-font-label, 12px)" }}
@@ -149,7 +149,7 @@ export function VolumeCalculationCard({
         )}
         <Row label={weightedThicknessLabel} value={formatInchesFraction(result.weightedThickness)} />
 
-        <div className="mt-1.5 flex items-baseline justify-between border-t-2 border-surf-muted/20 pt-3.5 pb-2">
+        <div className="mt-1.5 flex items-baseline justify-between border-t-2 border-surf-line-faint pt-3.5 pb-2">
           <span className="text-sm font-bold text-surf-muted">Estimated Volume</span>
           <span className="text-right">
             <span className="block text-[22px] font-extrabold text-surf-black">

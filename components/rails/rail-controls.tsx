@@ -73,8 +73,8 @@ function SectionHeading({
       onClick={onToggle}
       className={
         small
-          ? "flex w-full items-center justify-between border-b border-surf-muted/20 pb-2 pl-3 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold"
-          : "mt-1.5 flex w-full items-center justify-between border-b border-surf-muted/20 pb-2 text-xs font-display text-surf-black uppercase tracking-architectural font-extrabold"
+          ? "flex w-full items-center justify-between border-b border-surf-line-faint pb-2 pl-3 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold"
+          : "mt-1.5 flex w-full items-center justify-between border-b border-surf-line-faint pb-2 text-xs font-display text-surf-black uppercase tracking-architectural font-extrabold"
       }
     >
       <span>{children}</span>

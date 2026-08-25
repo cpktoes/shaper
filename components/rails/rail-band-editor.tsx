@@ -186,7 +186,7 @@ export function RailBandEditor() {
           was only ever pinned by luck — outline and rails happened to fit, so it looked right there,
           while the longer fins controls pushed it past the bottom edge where it could only be met
           mid-scroll. */}
-      <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-muted/20 bg-surf-sidebar text-surf-black">
+      <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-black">
         <div className="min-h-0 flex-1 overflow-y-auto p-10">
           <RailControls
             spec={spec}
@@ -200,7 +200,7 @@ export function RailBandEditor() {
           />
         </div>
         {process.env.NODE_ENV === "development" && (
-          <div className="flex-none border-t border-surf-muted/20 p-4">
+          <div className="flex-none border-t border-surf-line-faint p-4">
             <Button
               variant="ghost"
               size="sm"
@@ -222,7 +222,7 @@ export function RailBandEditor() {
               className={
                 "cursor-pointer rounded-t-lg border px-[18px] py-2.5 text-sm font-bold " +
                 (activePage === page
-                  ? "border-surf-muted/20 border-b-0 bg-surf-tab-active text-surf-black"
+                  ? "border-surf-line-faint border-b-0 bg-surf-tab-active text-surf-black"
                   : "border-transparent bg-transparent text-surf-muted")
               }
             >

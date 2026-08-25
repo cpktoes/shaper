@@ -27,7 +27,7 @@ export function SiteNav() {
   return (
     <nav
       data-print-hide
-      className="flex flex-none items-center justify-between gap-10 border-b border-surf-muted/20 bg-surf-base px-12 py-6"
+      className="flex flex-none items-center justify-between gap-10 border-b border-surf-line-faint bg-surf-base px-12 py-6"
     >
       <Link
         href="/"

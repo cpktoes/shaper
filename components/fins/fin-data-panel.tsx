@@ -39,7 +39,7 @@ export function FinDataPanel({ result, boardLength, tailWidth12, finSetup, tailS
         {FIN_SETUP_LABEL[finSetup] ?? finSetup} · {TAIL_SHAPE_LABEL[tailShape]} tail
         {result.isModified && <span className="text-surf-accent-orange-ink"> · Modified</span>}
       </div>
-      <div className="mb-4 border-b-2 border-surf-muted/20 pb-4 text-sm font-normal text-surf-muted">
+      <div className="mb-4 border-b-2 border-surf-line-faint pb-4 text-sm font-normal text-surf-muted">
         {result.modelHeader}
       </div>
       {result.sections.map((sec) => (
@@ -47,7 +47,7 @@ export function FinDataPanel({ result, boardLength, tailWidth12, finSetup, tailS
           <div className="mb-2 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">{sec.label}</div>
           {sec.groups.map((grp) => (
             <div key={grp.heading} className="mb-2 ml-3">
-              <div className="mb-2 border-b border-surf-muted/20 pb-1 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">
+              <div className="mb-2 border-b border-surf-line-faint pb-1 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">
                 {grp.heading}
               </div>
               {grp.rows.map((row) => (

@@ -40,7 +40,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
       // data-print-unfold still releases the height for print.
       <div data-print-unfold className="min-h-0 min-w-0 flex-1 overflow-hidden">
         <div
-          className="mb-1 flex gap-2 border-b-2 border-surf-muted/20 pb-1"
+          className="mb-1 flex gap-2 border-b-2 border-surf-line-faint pb-1"
           style={{ fontSize: "var(--summary-font-label, 12px)" }}
         >
           <div className="min-w-0 flex-[1.4]" />
@@ -61,7 +61,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
             {group.rows.map((row) => (
               <div
                 key={row.label}
-                className="flex gap-2 border-b border-surf-muted/10 py-0.5 leading-tight"
+                className="flex gap-2 border-b border-surf-line-faint py-0.5 leading-tight"
                 style={{ fontSize: "var(--summary-font-row, 11px)" }}
               >
                 <div className="min-w-0 flex-[1.4] text-surf-muted">{row.label}</div>
@@ -83,7 +83,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
       <div className="bg-surf-canvas">
         <div className="overflow-x-auto">
           <div className="min-w-[480px]">
-            <div className="mb-3 flex gap-2 border-b-2 border-surf-muted/20 pb-2">
+            <div className="mb-3 flex gap-2 border-b-2 border-surf-line-faint pb-2">
               <div className="min-w-0 flex-[1.4]" />
               {sections.map((s) => (
                 <div key={s.key} className="min-w-0 flex-1 text-right text-sm font-extrabold text-surf-black">
@@ -97,7 +97,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
                   {group.heading}
                 </div>
                 {group.rows.map((row) => (
-                  <div key={row.label} className="flex gap-2 border-b border-surf-muted/10 py-1.5 text-sm">
+                  <div key={row.label} className="flex gap-2 border-b border-surf-line-faint py-1.5 text-sm">
                     <div className="min-w-0 flex-[1.4] text-surf-muted">{row.label}</div>
                     {row.cells.map((cell, i) => (
                       <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-surf-black">
