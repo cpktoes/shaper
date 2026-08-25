@@ -172,9 +172,10 @@ Items acknowledged and carried forward from previous milestone close:
 | 260824-llx | Three-layer CSS custom property theming system (ramps -> semantic contract -> Tailwind bridge) with light and dark themes; root class toggle overriding a no-JS prefers-color-scheme default; literal --color-surf-* names kept as aliases so 228 call sites were untouched; AA verified numerically in both themes | 2026-08-24 | 1597fcc | [260824-llx-css-custom-property-theming-system-with-](./quick/260824-llx-css-custom-property-theming-system-with-/) |
 | 260824-m6k | Settings gear in the nav opening a theme chooser (System/Light/Dark) wired to the root classes; preference persisted in localStorage and restored by a pre-hydration inline script whose behaviour is asserted against the pure module in tests; useSyncExternalStore rather than effect-plus-setState. Units toggle deliberately skipped | 2026-08-24 | 7c7f2b5 | [260824-m6k-settings-menu-in-the-nav-with-a-theme-ch](./quick/260824-m6k-settings-menu-in-the-nav-with-a-theme-ch/) |
 | 260824-nhh | Fix foregrounds on filled surfaces that broke under theming: text on the accent fill was ink (1.40:1 dark) and text on the ink fill was white (1.10:1 dark). 11 sites to --surf-on-accent, 4 to a new derived --surf-on-ink; two sites needed conditional logic rather than a swap | 2026-08-24 | 057ed3e | [260824-nhh-fix-on-fill-foreground-tokens-that-break](./quick/260824-nhh-fix-on-fill-foreground-tokens-that-break/) |
+| 260824-p03 | Apply the founder's blue palette to both ramps (accent #3490bc/#2d7495 replacing cyan, ink #010d1f, warm light well, slate dark well, wash 10%/20%). Accent now clears 3:1 on its ground so it no longer needs a boundary stroke; on-accent is now theme-dependent. Four well pairings recorded as latent-under-bar | 2026-08-24 | 71e100c | [260824-p03-apply-the-founder-s-new-light-and-dark-r](./quick/260824-p03-apply-the-founder-s-new-light-and-dark-r/) |
 
 ## Session Continuity
 
 Last session: 2026-08-24T22:33:31.225Z
-Stopped at: On-fill foregrounds fixed. Colour bench artifact live for palette tuning; units toggle deferred; shadcn border/input still under the 3:1 non-text bar
+Stopped at: Blue palette shipped in both ramps. Four well pairings under bar but latent; units toggle deferred; shadcn border/input still under the 3:1 non-text bar
 Resume file: None
