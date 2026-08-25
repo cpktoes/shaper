@@ -45,7 +45,7 @@ export function FormBox({
     <div
       style={style}
       className={cn(
-        "flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[3px] border border-surf-black",
+        "flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[3px] border border-surf-ink",
         className,
       )}
     >
@@ -53,8 +53,8 @@ export function FormBox({
         // The caption never wraps; a long `captionRight` truncates instead. At the 9pt floor a
         // two-word note was enough to fold a panel's own name onto two lines, which reads as a
         // broken box rather than a full one.
-        <div className="flex flex-none items-baseline justify-between gap-2 border-b border-surf-black px-1.5 py-[3px]">
-          <span className="flex-none whitespace-nowrap font-display font-extrabold tracking-architectural text-surf-black uppercase leading-none order-form-caption">
+        <div className="flex flex-none items-baseline justify-between gap-2 border-b border-surf-ink px-1.5 py-[3px]">
+          <span className="flex-none whitespace-nowrap font-display font-extrabold tracking-architectural text-surf-ink uppercase leading-none order-form-caption">
             {caption}
           </span>
           {captionRight && (
@@ -94,13 +94,13 @@ export function RailLabel({ children, className }: { children: ReactNode; classN
         // `order-form-spine` fixes the width rather than letting the label size to its own text, so
         // every band on the sheet insets its content by the same amount — see order-form.css's
         // column-geometry block, which the logo/rail-sections/laminating right edge depends on.
-        "flex items-center justify-center rounded-[3px] border border-surf-black",
+        "flex items-center justify-center rounded-[3px] border border-surf-ink",
         "order-form-spine bg-(--order-form-shade)",
         className,
       )}
     >
       <span
-        className="font-display font-extrabold tracking-architectural text-surf-black uppercase order-form-caption"
+        className="font-display font-extrabold tracking-architectural text-surf-ink uppercase order-form-caption"
         style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
       >
         {children}
@@ -147,26 +147,26 @@ export function OrderFormField({
     <label className={cn("flex min-w-0 items-baseline gap-1", className)}>
       <span
         className={cn(
-          "flex-none font-display font-extrabold tracking-architectural text-surf-black uppercase order-form-caption",
+          "flex-none font-display font-extrabold tracking-architectural text-surf-ink uppercase order-form-caption",
           labelClassName,
         )}
       >
         {label}:
       </span>
-      {prefix && <span className="flex-none font-bold text-surf-black order-form-value">{prefix}</span>}
+      {prefix && <span className="flex-none font-bold text-surf-ink order-form-value">{prefix}</span>}
       {onChange ? (
         <input
           type="text"
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="min-w-0 flex-1 border-b border-surf-black bg-transparent font-bold text-surf-black outline-none placeholder:font-normal placeholder:text-surf-muted/60 focus:border-surf-accent-cyan-ink order-form-value"
+          className="min-w-0 flex-1 border-b border-surf-ink bg-transparent font-bold text-surf-ink outline-none placeholder:font-normal placeholder:text-surf-muted/60 focus:border-surf-accent-cyan-ink order-form-value"
         />
       ) : (
         // Both remaining states are one element: a bottom-ruled box holding the value, or holding
         // nothing at all. The `&nbsp;` keeps an empty rule at full line height so a blank field is
         // the same size as a filled one and the rows stay aligned down the sheet.
-        <span className="min-w-0 flex-1 truncate border-b border-surf-black font-bold text-surf-black order-form-value">
+        <span className="min-w-0 flex-1 truncate border-b border-surf-ink font-bold text-surf-ink order-form-value">
           {value || " "}
         </span>
       )}
@@ -182,8 +182,8 @@ export function OrderFormField({
 export function OrderFormTick({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="aspect-square h-[0.85em] flex-none border border-surf-black" />
-      <span className="font-bold text-surf-black uppercase order-form-value">{label}</span>
+      <span className="aspect-square h-[0.85em] flex-none border border-surf-ink" />
+      <span className="font-bold text-surf-ink uppercase order-form-value">{label}</span>
     </div>
   );
 }
@@ -198,12 +198,12 @@ export function OrderFormTick({ label }: { label: string }) {
  */
 export function LogoBlock() {
   return (
-    <div className="flex h-full min-h-0 flex-col items-center justify-center gap-1 rounded-[3px] border border-surf-black bg-(--order-form-shade) px-3 py-2 text-center">
-      <div className="font-display font-extrabold tracking-architectural text-surf-black uppercase leading-none order-form-wordmark">
+    <div className="flex h-full min-h-0 flex-col items-center justify-center gap-1 rounded-[3px] border border-surf-ink bg-(--order-form-shade) px-3 py-2 text-center">
+      <div className="font-display font-extrabold tracking-architectural text-surf-ink uppercase leading-none order-form-wordmark">
         Shaper
       </div>
-      <div className="h-px w-2/3 bg-surf-black" />
-      <div className="font-bold text-surf-black uppercase leading-tight order-form-value">
+      <div className="h-px w-2/3 bg-surf-ink" />
+      <div className="font-bold text-surf-ink uppercase leading-tight order-form-value">
         Custom Surfboard Order
       </div>
       <div className="font-normal text-surf-muted leading-tight order-form-micro">

@@ -73,8 +73,8 @@ function SectionHeading({
       onClick={onToggle}
       className={
         small
-          ? "flex w-full items-center justify-between border-b border-surf-line-faint pb-2 pl-3 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold"
-          : "mt-1.5 flex w-full items-center justify-between border-b border-surf-line-faint pb-2 text-xs font-display text-surf-black uppercase tracking-architectural font-extrabold"
+          ? "flex w-full items-center justify-between border-b border-surf-line-faint pb-2 pl-3 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold"
+          : "mt-1.5 flex w-full items-center justify-between border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold"
       }
     >
       <span>{children}</span>
@@ -375,7 +375,7 @@ export function RailControls({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <div className="text-lg leading-tight font-display text-surf-black uppercase tracking-architectural font-extrabold">Rail Band Calculator</div>
+        <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">Rail Band Calculator</div>
         <div className="mt-0.5 text-sm text-surf-muted font-normal">
           Rail band calculator for shaping consistent rails
         </div>

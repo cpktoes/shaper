@@ -33,7 +33,7 @@ interface FinDataPanelProps {
 
 export function FinDataPanel({ result, boardLength, tailWidth12, finSetup, tailShape }: FinDataPanelProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-canvas pt-10 text-surf-black">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-canvas pt-10 text-surf-ink">
       <div className="mb-2.5 text-xl font-extrabold tracking-tight">
         {formatFeetInches(boardLength)} · {formatInchesFraction(tailWidth12, 16)} tail @12&quot; ·{" "}
         {FIN_SETUP_LABEL[finSetup] ?? finSetup} · {TAIL_SHAPE_LABEL[tailShape]} tail
@@ -44,10 +44,10 @@ export function FinDataPanel({ result, boardLength, tailWidth12, finSetup, tailS
       </div>
       {result.sections.map((sec) => (
         <div key={sec.label} className="mb-4">
-          <div className="mb-2 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">{sec.label}</div>
+          <div className="mb-2 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">{sec.label}</div>
           {sec.groups.map((grp) => (
             <div key={grp.heading} className="mb-2 ml-3">
-              <div className="mb-2 border-b border-surf-line-faint pb-1 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">
+              <div className="mb-2 border-b border-surf-line-faint pb-1 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
                 {grp.heading}
               </div>
               {grp.rows.map((row) => (

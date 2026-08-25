@@ -91,7 +91,7 @@ function Sheet({
     <div
       data-order-form-sheet
       className={cn(
-        "flex flex-col gap-1 border-[1.5px] border-surf-black bg-surf-panel p-1.5",
+        "flex flex-col gap-1 border-[1.5px] border-surf-ink bg-surf-panel p-1.5",
         variant === "reference" && "order-form-sheet-reference",
       )}
     >
@@ -116,14 +116,14 @@ function PageMark({ page, title }: { page: number; title: string }) {
  */
 function DimensionCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col justify-center gap-[3px] border-r border-surf-black px-2 py-1.5 last:border-r-0">
+    <div className="flex min-w-0 flex-1 flex-col justify-center gap-[3px] border-r border-surf-ink px-2 py-1.5 last:border-r-0">
       <span className="font-display font-extrabold tracking-architectural text-surf-muted uppercase leading-none order-form-caption">
         {label}
       </span>
       {/* `leading-none` would make the line box shorter than the glyphs it holds, so the span's own
           `overflow: hidden` (from `truncate`) clipped the measurements by ~2px. Tight, but tall
           enough to contain its own ink. */}
-      <span className="truncate font-extrabold text-surf-black leading-[1.15] order-form-dim">{value}</span>
+      <span className="truncate font-extrabold text-surf-ink leading-[1.15] order-form-dim">{value}</span>
     </div>
   );
 }
@@ -155,7 +155,7 @@ function OutlineHalf({ label, children }: { label: string; children: ReactNode }
           `relative` and to have a size of its own — it must never take its height from the
           drawing, or the panel would demand the drawing's full aspect ratio and inflate the row. */}
       <div className="relative min-h-0 w-full flex-1">{children}</div>
-      <div className="flex-none pt-0.5 text-center font-display font-extrabold tracking-architectural text-surf-black uppercase order-form-caption">
+      <div className="flex-none pt-0.5 text-center font-display font-extrabold tracking-architectural text-surf-ink uppercase order-form-caption">
         {label}
       </div>
     </div>
@@ -239,7 +239,7 @@ export function OrderForm() {
               {/* Dimensions. Volume rides along at the end of the row: it is this app's headline
                   calculated number and a shaper reads it in exactly the same breath as the
                   thickness, even though the paper muse has no cell for it. */}
-              <div className="flex flex-none rounded-[3px] border border-surf-black order-form-band-dims">
+              <div className="flex flex-none rounded-[3px] border border-surf-ink order-form-band-dims">
                 <DimensionCell label="Length" value={formatFeetInches(outline.length)} />
                 <DimensionCell
                   label="Nose"
@@ -457,7 +457,7 @@ export function OrderForm() {
                 <select
                   value={finSystem}
                   onChange={(e) => setFinSystem(e.target.value as FinSystem)}
-                  className="w-full rounded-[2px] border border-surf-black bg-surf-panel px-1.5 py-1 font-bold text-surf-black outline-none focus:border-surf-accent-cyan-ink order-form-value"
+                  className="w-full rounded-[2px] border border-surf-ink bg-surf-panel px-1.5 py-1 font-bold text-surf-ink outline-none focus:border-surf-accent-cyan-ink order-form-value"
                 >
                   {FIN_SYSTEMS.map((sys) => (
                     <option key={sys.value} value={sys.value}>
@@ -504,12 +504,12 @@ export function OrderForm() {
            * and the four numbers that identify a board — nothing a shaper would have to cross-check
            * against page 1.
            */}
-          <div className="flex flex-none items-baseline justify-between gap-3 border-b-[1.5px] border-surf-black pb-1 order-form-band-refhead">
+          <div className="flex flex-none items-baseline justify-between gap-3 border-b-[1.5px] border-surf-ink pb-1 order-form-band-refhead">
             <div className="flex min-w-0 items-baseline gap-2">
-              <span className="font-display font-extrabold tracking-architectural text-surf-black uppercase leading-none order-form-wordmark">
+              <span className="font-display font-extrabold tracking-architectural text-surf-ink uppercase leading-none order-form-wordmark">
                 Shaper
               </span>
-              <span className="truncate font-bold text-surf-black order-form-value">
+              <span className="truncate font-bold text-surf-ink order-form-value">
                 {boardName || "Unnamed board"}
               </span>
             </div>
@@ -575,7 +575,7 @@ export function OrderForm() {
                 >
                 {finPlacement.sections.map((sec) => (
                   <div key={sec.label} className="mb-2 last:mb-0">
-                    <div className="mb-0.5 border-b border-surf-black font-display font-extrabold tracking-architectural text-surf-black uppercase order-form-group">
+                    <div className="mb-0.5 border-b border-surf-ink font-display font-extrabold tracking-architectural text-surf-ink uppercase order-form-group">
                       {sec.label}
                     </div>
                     {sec.groups.map((grp) => (
@@ -589,7 +589,7 @@ export function OrderForm() {
                             className="flex justify-between gap-1 border-b border-surf-line-faint leading-tight order-form-row"
                           >
                             <span className="truncate text-surf-muted">{row.label}</span>
-                            <span className="flex-none font-bold text-surf-black">
+                            <span className="flex-none font-bold text-surf-ink">
                               {formatInchesFraction(row.value, 16)}
                             </span>
                           </div>
@@ -597,7 +597,7 @@ export function OrderForm() {
                         {grp.fullSpread !== null && (
                           <div className="flex justify-between gap-1 border-b border-surf-line-faint leading-tight order-form-row">
                             <span className="truncate text-surf-muted">Full Spread</span>
-                            <span className="flex-none font-bold text-surf-black">
+                            <span className="flex-none font-bold text-surf-ink">
                               {formatInchesFraction(grp.fullSpread, 16)}
                             </span>
                           </div>
@@ -660,7 +660,7 @@ export function OrderForm() {
         <Button
           type="button"
           onClick={printOrderForm}
-          className="border-surf-black bg-surf-accent-cyan text-surf-on-accent hover:bg-surf-accent-cyan/85"
+          className="border-surf-on-accent bg-surf-accent-cyan text-surf-on-accent hover:bg-surf-accent-cyan/85"
         >
           Print Order Form
         </Button>

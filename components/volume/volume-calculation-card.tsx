@@ -41,14 +41,14 @@ function Row({
         style={{ fontSize: "var(--summary-font-row, 11px)" }}
       >
         <span className="text-surf-muted">{label}</span>
-        <span className="font-bold text-surf-black">{value}</span>
+        <span className="font-bold text-surf-ink">{value}</span>
       </div>
     );
   }
   return (
     <div className="flex justify-between border-b border-surf-line-faint py-2 text-sm">
       <span className="text-surf-muted">{label}</span>
-      <span className="font-bold text-surf-black">{value}</span>
+      <span className="font-bold text-surf-ink">{value}</span>
     </div>
   );
 }
@@ -106,7 +106,7 @@ export function VolumeCalculationCard({
           </span>
           <span className="text-right">
             <span
-              className="block font-extrabold text-surf-black"
+              className="block font-extrabold text-surf-ink"
               style={{ fontSize: "var(--summary-font-volume, 16px)" }}
             >
               {result.volumeLitres.toFixed(2)} L
@@ -121,7 +121,7 @@ export function VolumeCalculationCard({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-canvas text-surf-black">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-canvas text-surf-ink">
       <div className="flex w-full flex-col gap-0">
         {!result.importingTemplate && (
           <>
@@ -152,7 +152,7 @@ export function VolumeCalculationCard({
         <div className="mt-1.5 flex items-baseline justify-between border-t-2 border-surf-line-faint pt-3.5 pb-2">
           <span className="text-sm font-bold text-surf-muted">Estimated Volume</span>
           <span className="text-right">
-            <span className="block text-[22px] font-extrabold text-surf-black">
+            <span className="block text-[22px] font-extrabold text-surf-ink">
               {result.volumeLitres.toFixed(2)} L
             </span>
             <span className="block text-[13px] font-semibold text-surf-muted">

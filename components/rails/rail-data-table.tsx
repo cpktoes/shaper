@@ -45,7 +45,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
         >
           <div className="min-w-0 flex-[1.4]" />
           {sections.map((s) => (
-            <div key={s.key} className="min-w-0 flex-1 text-right font-extrabold text-surf-black">
+            <div key={s.key} className="min-w-0 flex-1 text-right font-extrabold text-surf-ink">
               {s.title}
             </div>
           ))}
@@ -53,7 +53,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
         {merged.map((group) => (
           <div key={group.heading} className="mb-1.5">
             <div
-              className="mb-0.5 font-display text-surf-black uppercase tracking-architectural font-extrabold"
+              className="mb-0.5 font-display text-surf-ink uppercase tracking-architectural font-extrabold"
               style={{ fontSize: "var(--summary-font-group, 9px)" }}
             >
               {group.heading}
@@ -66,7 +66,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
               >
                 <div className="min-w-0 flex-[1.4] text-surf-muted">{row.label}</div>
                 {row.cells.map((cell, i) => (
-                  <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-surf-black">
+                  <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-surf-ink">
                     {formatCell(cell)}
                   </div>
                 ))}
@@ -86,21 +86,21 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
             <div className="mb-3 flex gap-2 border-b-2 border-surf-line-faint pb-2">
               <div className="min-w-0 flex-[1.4]" />
               {sections.map((s) => (
-                <div key={s.key} className="min-w-0 flex-1 text-right text-sm font-extrabold text-surf-black">
+                <div key={s.key} className="min-w-0 flex-1 text-right text-sm font-extrabold text-surf-ink">
                   {s.title}
                 </div>
               ))}
             </div>
             {merged.map((group) => (
               <div key={group.heading} className="mb-4">
-                <div className="mb-2 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">
+                <div className="mb-2 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
                   {group.heading}
                 </div>
                 {group.rows.map((row) => (
                   <div key={row.label} className="flex gap-2 border-b border-surf-line-faint py-1.5 text-sm">
                     <div className="min-w-0 flex-[1.4] text-surf-muted">{row.label}</div>
                     {row.cells.map((cell, i) => (
-                      <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-surf-black">
+                      <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-surf-ink">
                         {formatCell(cell)}
                       </div>
                     ))}

@@ -129,7 +129,7 @@ export function FinPlacementEditor() {
           was only ever pinned by luck — outline and rails happened to fit, so it looked right there,
           while the longer fins controls pushed it past the bottom edge where it could only be met
           mid-scroll. */}
-      <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-black">
+      <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink">
         <div className="min-h-0 flex-1 overflow-y-auto p-10">
           <FinControls
             spec={spec}
@@ -169,7 +169,7 @@ export function FinPlacementEditor() {
               className={
                 "cursor-pointer rounded-t-lg border px-[18px] py-2.5 text-sm font-bold " +
                 (activeTab === tab
-                  ? "border-surf-line-faint border-b-0 bg-surf-tab-active text-surf-black"
+                  ? "border-surf-line-faint border-b-0 bg-surf-tab-active text-surf-ink"
                   : "border-transparent bg-transparent text-surf-muted")
               }
             >

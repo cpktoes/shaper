@@ -56,7 +56,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
         aria-label="McKee Toe-In Aim Tables"
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[85vh] max-w-[92vw] overflow-auto rounded-xl border border-surf-line-faint bg-surf-panel p-6 text-surf-black outline-none"
+        className="max-h-[85vh] max-w-[92vw] overflow-auto rounded-xl border border-surf-line-faint bg-surf-panel p-6 text-surf-ink outline-none"
       >
         <div className="mb-1.5 flex items-center justify-between gap-5">
           <div className="text-sm font-extrabold">

@@ -75,7 +75,7 @@ function withEndWidth(tail: TailShape, endWidthIn: number): TailShape {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-1.5 border-b border-surf-line-faint pb-2 text-xs font-display text-surf-black uppercase tracking-architectural font-extrabold">
+    <div className="mt-1.5 border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">
       {children}
     </div>
   );
@@ -162,7 +162,7 @@ export function OutlineControls({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <div className="text-lg leading-tight font-display text-surf-black uppercase tracking-architectural font-extrabold">Template Builder</div>
+        <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">Template Builder</div>
         <div className="mt-0.5 text-sm text-surf-muted font-normal">
           Design and print full sized surfboard templates
         </div>
@@ -322,7 +322,7 @@ export function OutlineControls({
                 // Two different surfaces, so two different foregrounds. This was one shared value
                 // back when ink and on-accent were both #111111; under theming the active chip is
                 // ink-on-cyan at 1.4:1 unless it takes the fill's own paired colour.
-                color: active ? "var(--color-surf-on-accent)" : "var(--color-surf-black)",
+                color: active ? "var(--color-surf-on-accent)" : "var(--color-surf-ink)",
               }}
             >
               <TailShapeIcon shape={shape} active={active} />
@@ -405,7 +405,7 @@ export function OutlineControls({
       </div>
 
       <div className="mt-auto border-t border-outline-sidebar-divider pt-3">
-        <div className="mb-2 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">
+        <div className="mb-2 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
           Settings
         </div>
         <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-muted font-normal">

@@ -56,7 +56,7 @@ function sliderValue(v: number | readonly number[]): number {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-1.5 border-b border-surf-line-faint pb-2 text-xs font-display text-surf-black uppercase tracking-architectural font-extrabold">
+    <div className="mt-1.5 border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">
       {children}
     </div>
   );
@@ -75,7 +75,7 @@ function DisclosureHeading({
     <button
       type="button"
       onClick={onToggle}
-      className="flex w-full items-center justify-between border-b border-surf-line-faint pb-2 pl-3 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold"
+      className="flex w-full items-center justify-between border-b border-surf-line-faint pb-2 pl-3 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold"
     >
       <span>{children}</span>
       <span>{open ? "▾" : "▸"}</span>
@@ -141,8 +141,8 @@ function PillButton({
       className={
         `cursor-pointer rounded-md border px-1 py-2.5 text-[11px] font-bold ${
           active
-            ? "border-surf-black bg-surf-accent-cyan text-surf-on-accent"
-            : "border-surf-line bg-surf-sidebar text-surf-black"
+            ? "border-surf-on-accent bg-surf-accent-cyan text-surf-on-accent"
+            : "border-surf-line bg-surf-sidebar text-surf-ink"
         } ${className}`
       }
     >
@@ -266,14 +266,14 @@ export function FinControls({
   return (
     <div className="flex h-full flex-col gap-5">
       <div>
-        <div className="text-lg leading-tight font-display text-surf-black uppercase tracking-architectural font-extrabold">Fin Setup &amp; Placement</div>
+        <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">Fin Setup &amp; Placement</div>
         <div className="mt-0.5 text-sm text-surf-muted font-normal">
           Quantitative reference · trailing-edge convention
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-2.5 border-b border-outline-sidebar-divider pb-1.5">
-        <div className="text-xs font-display text-surf-black uppercase tracking-architectural font-extrabold">Inputs</div>
+        <div className="text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">Inputs</div>
         <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-surf-muted font-normal">
           <Checkbox checked={importTemplate} onCheckedChange={() => onToggleImportTemplate()} />
           Import Template Values
@@ -360,8 +360,8 @@ export function FinControls({
               className={
                 "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                 (spec.tailShape === shape
-                  ? "border-surf-black bg-surf-accent-cyan text-surf-on-accent"
-                  : "border-surf-line bg-surf-sidebar text-surf-black")
+                  ? "border-surf-on-accent bg-surf-accent-cyan text-surf-on-accent"
+                  : "border-surf-line bg-surf-sidebar text-surf-ink")
               }
             >
               <TailShapeIcon shape={shape} active={spec.tailShape === shape} />
@@ -386,8 +386,8 @@ export function FinControls({
                 className={
                   "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                   (spec.finSetup === setup
-                    ? "border-surf-black bg-surf-accent-cyan text-surf-on-accent"
-                    : "border-surf-line bg-surf-sidebar text-surf-black")
+                    ? "border-surf-on-accent bg-surf-accent-cyan text-surf-on-accent"
+                    : "border-surf-line bg-surf-sidebar text-surf-ink")
                 }
               >
                 <FinSetupIcon setup={setup} active={spec.finSetup === setup} />
@@ -475,7 +475,7 @@ export function FinControls({
           <div className="mt-3.5 flex flex-col gap-4.5 pl-3">
             {flags.hasCenterSection && (
               <div>
-                <div className="mb-2.5 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">{flags.centerSectionLabel}</div>
+                <div className="mb-2.5 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">{flags.centerSectionLabel}</div>
                 <div className="mb-2.5">
                   <BaseLengthField
                     label={flags.centerBaseLenFieldLabel}
@@ -504,7 +504,7 @@ export function FinControls({
 
             {flags.hasForwardSection && (
               <div className="border-t border-outline-sidebar-divider pt-4">
-                <div className="mb-2.5 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">
+                <div className="mb-2.5 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
                   Forward Fins — {flags.forwardSectionLabel}
                 </div>
                 <div className="mb-2.5">
@@ -561,7 +561,7 @@ export function FinControls({
 
             {flags.hasRearSection && (
               <div className="border-t border-outline-sidebar-divider pt-4">
-                <div className="mb-2.5 text-[10px] font-display text-surf-black uppercase tracking-architectural font-extrabold">
+                <div className="mb-2.5 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
                   Rear Fins — {flags.rearSectionLabel}
                 </div>
                 <div className="mb-2.5">
