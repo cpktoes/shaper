@@ -39,7 +39,7 @@ export function FinDataPanel({ result, boardLength, tailWidth12, finSetup, tailS
         {FIN_SETUP_LABEL[finSetup] ?? finSetup} · {TAIL_SHAPE_LABEL[tailShape]} tail
         {result.isModified && <span className="text-surf-accent-orange-ink"> · Modified</span>}
       </div>
-      <div className="mb-4 border-b-2 border-surf-line-faint pb-4 text-sm font-normal text-surf-muted">
+      <div className="mb-4 border-b-2 border-surf-line-faint pb-4 text-sm font-normal text-surf-ink-muted">
         {result.modelHeader}
       </div>
       {result.sections.map((sec) => (
@@ -52,13 +52,13 @@ export function FinDataPanel({ result, boardLength, tailWidth12, finSetup, tailS
               </div>
               {grp.rows.map((row) => (
                 <div key={row.label} className="ml-2.5 flex justify-between py-1.5 text-sm">
-                  <span className="text-surf-muted">{row.label}</span>
+                  <span className="text-surf-ink-muted">{row.label}</span>
                   <span className="font-bold">{formatInchesFraction(row.value, 16)}</span>
                 </div>
               ))}
               {grp.fullSpread !== null && (
                 <div className="ml-[22px] flex justify-between py-1.5 text-sm">
-                  <span className="text-surf-muted">
+                  <span className="text-surf-ink-muted">
                     Full Spread <em>(*Full spread may be &gt;2x due to 1/16&quot; rounding)</em>
                   </span>
                   <span className="font-bold">{formatInchesFraction(grp.fullSpread, 16)}</span>

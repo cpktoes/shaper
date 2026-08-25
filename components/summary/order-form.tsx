@@ -103,7 +103,7 @@ function Sheet({
 /** The `PAGE 1 OF 2` / `PAGE 2 OF 2` marker, so the pair reads as a pair when it comes off the printer. */
 function PageMark({ page, title }: { page: number; title: string }) {
   return (
-    <div className="flex flex-none items-baseline justify-between gap-2 pt-0.5 text-surf-muted order-form-micro">
+    <div className="flex flex-none items-baseline justify-between gap-2 pt-0.5 text-surf-ink-muted order-form-micro">
       <span className="font-display font-extrabold tracking-architectural uppercase">{title}</span>
       <span>Page {page} of 2</span>
     </div>
@@ -117,7 +117,7 @@ function PageMark({ page, title }: { page: number; title: string }) {
 function DimensionCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col justify-center gap-[3px] border-r border-surf-ink px-2 py-1.5 last:border-r-0">
-      <span className="font-display font-extrabold tracking-architectural text-surf-muted uppercase leading-none order-form-caption">
+      <span className="font-display font-extrabold tracking-architectural text-surf-ink-muted uppercase leading-none order-form-caption">
         {label}
       </span>
       {/* `leading-none` would make the line box shorter than the glyphs it holds, so the span's own
@@ -195,7 +195,7 @@ export function OrderForm() {
   const thicknessDisplay = formatInchesFraction(railBands.center.boardThickness);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto bg-surf-muted/10 px-6 py-8">
+    <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto bg-surf-ink-muted/10 px-6 py-8">
       {/*
        * The outer element is the `@container` the sheets' type queries — a container query never
        * matches the container itself — and it is what `useOrderFormPrintFit` walks to find the
@@ -285,7 +285,7 @@ export function OrderForm() {
                 >
                   {SECTION_KEYS.map((key) => (
                     <div key={key} className="flex min-h-0 flex-1 flex-col justify-center">
-                      <div className="flex-none font-display font-extrabold tracking-architectural text-surf-muted uppercase order-form-micro">
+                      <div className="flex-none font-display font-extrabold tracking-architectural text-surf-ink-muted uppercase order-form-micro">
                         {SECTION_TITLE[key]}
                       </div>
                       <div className="flex min-h-0 flex-1 items-center justify-center">
@@ -330,16 +330,16 @@ export function OrderForm() {
                         <path
                           d="M 10 14 Q 150 60 300 64 Q 450 60 590 22"
                           fill="none"
-                          stroke="var(--color-surf-muted)"
+                          stroke="var(--color-surf-ink-muted)"
                           strokeWidth={2}
                           strokeDasharray="7 5"
                           vectorEffect="non-scaling-stroke"
                         />
                       </svg>
-                      <span className="absolute bottom-0 left-1 font-display font-extrabold tracking-architectural text-surf-muted uppercase order-form-micro">
+                      <span className="absolute bottom-0 left-1 font-display font-extrabold tracking-architectural text-surf-ink-muted uppercase order-form-micro">
                         Nose
                       </span>
-                      <span className="absolute right-1 bottom-0 font-display font-extrabold tracking-architectural text-surf-muted uppercase order-form-micro">
+                      <span className="absolute right-1 bottom-0 font-display font-extrabold tracking-architectural text-surf-ink-muted uppercase order-form-micro">
                         Tail
                       </span>
                     </div>
@@ -465,7 +465,7 @@ export function OrderForm() {
                     </option>
                   ))}
                 </select>
-                <div className="text-surf-muted order-form-micro">
+                <div className="text-surf-ink-muted order-form-micro">
                   {finSetupLabel} · from the fins screen
                 </div>
               </FormBox>
@@ -513,7 +513,7 @@ export function OrderForm() {
                 {boardName || "Unnamed board"}
               </span>
             </div>
-            <span className="flex-none font-bold text-surf-muted order-form-value">
+            <span className="flex-none font-bold text-surf-ink-muted order-form-value">
               {formatFeetInches(outline.length)} · {formatInchesFraction(outline.widePointWidth)} ·{" "}
               {thicknessDisplay} · {volumeResult.volumeLitres.toFixed(1)} L
             </span>
@@ -580,7 +580,7 @@ export function OrderForm() {
                     </div>
                     {sec.groups.map((grp) => (
                       <div key={grp.heading} className="mb-1 last:mb-0">
-                        <div className="font-bold text-surf-muted uppercase order-form-micro">
+                        <div className="font-bold text-surf-ink-muted uppercase order-form-micro">
                           {grp.heading}
                         </div>
                         {grp.rows.map((row) => (
@@ -588,7 +588,7 @@ export function OrderForm() {
                             key={row.label}
                             className="flex justify-between gap-1 border-b border-surf-line-faint leading-tight order-form-row"
                           >
-                            <span className="truncate text-surf-muted">{row.label}</span>
+                            <span className="truncate text-surf-ink-muted">{row.label}</span>
                             <span className="flex-none font-bold text-surf-ink">
                               {formatInchesFraction(row.value, 16)}
                             </span>
@@ -596,7 +596,7 @@ export function OrderForm() {
                         ))}
                         {grp.fullSpread !== null && (
                           <div className="flex justify-between gap-1 border-b border-surf-line-faint leading-tight order-form-row">
-                            <span className="truncate text-surf-muted">Full Spread</span>
+                            <span className="truncate text-surf-ink-muted">Full Spread</span>
                             <span className="flex-none font-bold text-surf-ink">
                               {formatInchesFraction(grp.fullSpread, 16)}
                             </span>
@@ -611,7 +611,7 @@ export function OrderForm() {
                     panel, so flowing them as one more column item — landing them under whichever
                     section happened to end last — would read as a footnote to that section alone. */}
                 {finPlacement.notes.length > 0 && (
-                  <div className="flex-none border-t border-surf-line-faint pt-1 text-surf-muted order-form-micro">
+                  <div className="flex-none border-t border-surf-line-faint pt-1 text-surf-ink-muted order-form-micro">
                     {finPlacement.notes.map((note) => (
                       <div key={note}>{note}</div>
                     ))}
@@ -664,7 +664,7 @@ export function OrderForm() {
         >
           Print Order Form
         </Button>
-        <span className="text-xs text-surf-muted">
+        <span className="text-xs text-surf-ink-muted">
           Two portrait pages — print double-sided for a front-and-back form.
         </span>
       </div>

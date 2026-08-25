@@ -47,7 +47,7 @@ export function FinSetupIcon({ setup, active }: { setup: FinSetupKind; active: b
   // Active icons sit ON the accent fill, so they take its paired `on-` colour rather than
   // the ink token. Those were the same value before theming; in dark, ink is near-white
   // and this drew a pale glyph on bright cyan at 1.4:1.
-  const stroke = active ? "var(--color-surf-on-accent)" : "var(--color-surf-muted)";
+  const stroke = active ? "var(--color-surf-on-accent)" : "var(--color-surf-ink-muted)";
   return (
     <svg width={34} height={34} viewBox="0 0 64 64" aria-hidden="true">
       <path d={outlinePath} fill="none" stroke={stroke} strokeWidth={2.5} strokeLinecap="round" />

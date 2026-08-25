@@ -104,7 +104,7 @@ export function TailShapeIcon({
   // Active icons sit ON the accent fill, so they take its paired `on-` colour rather than
   // the ink token. Those were the same value before theming; in dark, ink is near-white
   // and this drew a pale glyph on bright cyan at 1.4:1.
-  const stroke = active ? "var(--color-surf-on-accent)" : "var(--color-surf-muted)";
+  const stroke = active ? "var(--color-surf-on-accent)" : "var(--color-surf-ink-muted)";
   return (
     <svg width={30} height={30} viewBox="0 0 64 64" aria-hidden="true">
       <path

@@ -44,7 +44,7 @@ export function PresetCard({ preset, onSelect, className }: PresetCardProps) {
         />
       </div>
       <span className="text-[20px] leading-[1.2] font-semibold text-foreground">{preset.name}</span>
-      <span className="text-sm leading-[1.5] text-surf-muted">{preset.descriptor}</span>
+      <span className="text-sm leading-[1.5] text-surf-ink-muted">{preset.descriptor}</span>
       <span className="text-xs leading-[1.4] font-semibold tracking-architectural text-surf-accent-cyan-ink uppercase">
         Start Shaping
       </span>

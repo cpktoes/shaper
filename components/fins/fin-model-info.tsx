@@ -17,7 +17,7 @@ export function FinModelInfo() {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-canvas pt-10 text-surf-ink">
       <div className="mb-6 text-xl font-display text-surf-ink uppercase tracking-architectural font-extrabold">Model Info</div>
-      <div className="mb-5 border-b-2 border-surf-line-faint pb-4 text-sm text-surf-muted">
+      <div className="mb-5 border-b-2 border-surf-line-faint pb-4 text-sm text-surf-ink-muted">
         Reference note on where each model&apos;s placement guidance comes from.
       </div>
 

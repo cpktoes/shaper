@@ -223,7 +223,7 @@ export function RailBandEditor() {
                 "cursor-pointer rounded-t-lg border px-[18px] py-2.5 text-sm font-bold " +
                 (activePage === page
                   ? "border-surf-line-faint border-b-0 bg-surf-tab-active text-surf-ink"
-                  : "border-transparent bg-transparent text-surf-muted")
+                  : "border-transparent bg-transparent text-surf-ink-muted")
               }
             >
               {page === "viewer" ? "VIEWER" : "DATA"}
@@ -251,7 +251,7 @@ export function RailBandEditor() {
             {legend.length > 0 && (
               <div className="mt-4 flex flex-none flex-wrap items-center justify-center gap-x-6 gap-y-2">
                 {legend.map((entry) => (
-                  <span key={entry.label} className="flex items-center gap-1.5 text-[10px] text-surf-muted">
+                  <span key={entry.label} className="flex items-center gap-1.5 text-[10px] text-surf-ink-muted">
                     <span
                       className="inline-block h-[9px] w-[9px] flex-shrink-0 rounded-full"
                       style={{ background: entry.color }}

@@ -60,7 +60,7 @@ export function FormBox({
           {captionRight && (
             // `leading-tight`, not `leading-none`: with `truncate`'s hidden overflow, a line box
             // shorter than its own glyphs clips them by a couple of pixels.
-            <span className="min-w-0 truncate whitespace-nowrap text-right font-bold text-surf-muted leading-tight order-form-micro">
+            <span className="min-w-0 truncate whitespace-nowrap text-right font-bold text-surf-ink-muted leading-tight order-form-micro">
               {captionRight}
             </span>
           )}
@@ -160,7 +160,7 @@ export function OrderFormField({
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="min-w-0 flex-1 border-b border-surf-ink bg-transparent font-bold text-surf-ink outline-none placeholder:font-normal placeholder:text-surf-muted/60 focus:border-surf-accent-cyan-ink order-form-value"
+          className="min-w-0 flex-1 border-b border-surf-ink bg-transparent font-bold text-surf-ink outline-none placeholder:font-normal placeholder:text-surf-ink-muted/60 focus:border-surf-accent-cyan-ink order-form-value"
         />
       ) : (
         // Both remaining states are one element: a bottom-ruled box holding the value, or holding
@@ -206,7 +206,7 @@ export function LogoBlock() {
       <div className="font-bold text-surf-ink uppercase leading-tight order-form-value">
         Custom Surfboard Order
       </div>
-      <div className="font-normal text-surf-muted leading-tight order-form-micro">
+      <div className="font-normal text-surf-ink-muted leading-tight order-form-micro">
         Your shop name, town &amp; phone
         <br />
         go here — upload a logo later

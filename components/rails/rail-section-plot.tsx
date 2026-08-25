@@ -176,12 +176,12 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSection
       className="block"
     >
       {gridLines.map((gl, i) => (
-        <line key={`g${i}`} x1={gl.x1} y1={gl.y1} x2={gl.x2} y2={gl.y2} stroke="color-mix(in srgb, var(--color-surf-muted) 12%, transparent)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+        <line key={`g${i}`} x1={gl.x1} y1={gl.y1} x2={gl.x2} y2={gl.y2} stroke="color-mix(in srgb, var(--color-surf-ink-muted) 12%, transparent)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
       ))}
       {refLines.map((rl, i) => (
-        <line key={`r${i}`} x1={rl.x1} y1={rl.y1} x2={rl.x2} y2={rl.y2} stroke="color-mix(in srgb, var(--color-surf-muted) 30%, transparent)" strokeWidth={1} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+        <line key={`r${i}`} x1={rl.x1} y1={rl.y1} x2={rl.x2} y2={rl.y2} stroke="color-mix(in srgb, var(--color-surf-ink-muted) 30%, transparent)" strokeWidth={1} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
       ))}
-      <line x1={apexLine.x1} y1={apexLine.y1} x2={apexLine.x2} y2={apexLine.y2} stroke="color-mix(in srgb, var(--color-surf-muted) 30%, transparent)" strokeWidth={1} strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
+      <line x1={apexLine.x1} y1={apexLine.y1} x2={apexLine.x2} y2={apexLine.y2} stroke="color-mix(in srgb, var(--color-surf-ink-muted) 30%, transparent)" strokeWidth={1} strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
       {segmentLines.map((sg) => (
         <line key={sg.key} x1={sg.x1} y1={sg.y1} x2={sg.x2} y2={sg.y2} stroke={sg.color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
       ))}
@@ -190,16 +190,16 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSection
       ))}
       {xTicks.map((tk, i) => (
         <g key={`xt${i}`}>
-          <line x1={tk.x1} y1={tk.y1} x2={tk.x2} y2={tk.y2} stroke="var(--color-surf-muted)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          <text x={tk.lx} y={tk.ly} fontSize={axisFontSize} fill="var(--color-surf-muted)" textAnchor="middle">
+          <line x1={tk.x1} y1={tk.y1} x2={tk.x2} y2={tk.y2} stroke="var(--color-surf-ink-muted)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          <text x={tk.lx} y={tk.ly} fontSize={axisFontSize} fill="var(--color-surf-ink-muted)" textAnchor="middle">
             {tk.label}
           </text>
         </g>
       ))}
       {yTicks.map((tk, i) => (
         <g key={`yt${i}`}>
-          <line x1={tk.x1} y1={tk.y1} x2={tk.x2} y2={tk.y2} stroke="var(--color-surf-muted)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          <text x={tk.lx} y={tk.ly} fontSize={axisFontSize} fill="var(--color-surf-muted)" textAnchor="end">
+          <line x1={tk.x1} y1={tk.y1} x2={tk.x2} y2={tk.y2} stroke="var(--color-surf-ink-muted)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          <text x={tk.lx} y={tk.ly} fontSize={axisFontSize} fill="var(--color-surf-ink-muted)" textAnchor="end">
             {tk.label}
           </text>
         </g>

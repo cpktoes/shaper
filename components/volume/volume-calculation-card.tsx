@@ -40,14 +40,14 @@ function Row({
         className="flex justify-between border-b border-surf-line-faint py-0.5"
         style={{ fontSize: "var(--summary-font-row, 11px)" }}
       >
-        <span className="text-surf-muted">{label}</span>
+        <span className="text-surf-ink-muted">{label}</span>
         <span className="font-bold text-surf-ink">{value}</span>
       </div>
     );
   }
   return (
     <div className="flex justify-between border-b border-surf-line-faint py-2 text-sm">
-      <span className="text-surf-muted">{label}</span>
+      <span className="text-surf-ink-muted">{label}</span>
       <span className="font-bold text-surf-ink">{value}</span>
     </div>
   );
@@ -99,7 +99,7 @@ export function VolumeCalculationCard({
 
         <div className="mt-1 flex items-baseline justify-between border-t-2 border-surf-line-faint pt-1.5 pb-1">
           <span
-            className="font-bold text-surf-muted"
+            className="font-bold text-surf-ink-muted"
             style={{ fontSize: "var(--summary-font-label, 12px)" }}
           >
             Estimated Volume
@@ -111,7 +111,7 @@ export function VolumeCalculationCard({
             >
               {result.volumeLitres.toFixed(2)} L
             </span>
-            <span className="block font-semibold text-surf-muted" style={{ fontSize: "var(--summary-font-row, 11px)" }}>
+            <span className="block font-semibold text-surf-ink-muted" style={{ fontSize: "var(--summary-font-row, 11px)" }}>
               ({result.volumeCubicInches.toFixed(1)} cu in)
             </span>
           </span>
@@ -150,18 +150,18 @@ export function VolumeCalculationCard({
         <Row label={weightedThicknessLabel} value={formatInchesFraction(result.weightedThickness)} />
 
         <div className="mt-1.5 flex items-baseline justify-between border-t-2 border-surf-line-faint pt-3.5 pb-2">
-          <span className="text-sm font-bold text-surf-muted">Estimated Volume</span>
+          <span className="text-sm font-bold text-surf-ink-muted">Estimated Volume</span>
           <span className="text-right">
             <span className="block text-[22px] font-extrabold text-surf-ink">
               {result.volumeLitres.toFixed(2)} L
             </span>
-            <span className="block text-[13px] font-semibold text-surf-muted">
+            <span className="block text-[13px] font-semibold text-surf-ink-muted">
               ({result.volumeCubicInches.toFixed(1)} cu in)
             </span>
           </span>
         </div>
       </div>
-      <div className="mt-auto pt-4 text-[13px] leading-relaxed text-surf-muted italic">
+      <div className="mt-auto pt-4 text-[13px] leading-relaxed text-surf-ink-muted italic">
         This is a rough estimate, not a 3D CAD model accurate calculation of volume. If comparing
         to a board of known dimensions and volume, you can tune the Board Type slider to calibrate
         for your purposes.

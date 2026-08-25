@@ -170,7 +170,7 @@ export function FinPlacementEditor() {
                 "cursor-pointer rounded-t-lg border px-[18px] py-2.5 text-sm font-bold " +
                 (activeTab === tab
                   ? "border-surf-line-faint border-b-0 bg-surf-tab-active text-surf-ink"
-                  : "border-transparent bg-transparent text-surf-muted")
+                  : "border-transparent bg-transparent text-surf-ink-muted")
               }
             >
               {TAB_LABEL[tab]}

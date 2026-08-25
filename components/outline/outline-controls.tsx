@@ -108,7 +108,7 @@ function SliderRow({
 }) {
   return (
     <div className={disabled ? "flex-1 opacity-40" : "flex-1"}>
-      <div className="mb-2 text-sm text-surf-muted font-normal">
+      <div className="mb-2 text-sm text-surf-ink-muted font-normal">
         {label} — {displayValue}
       </div>
       <Slider
@@ -121,7 +121,7 @@ function SliderRow({
         className="slider-accent"
       />
       {(leftHint || rightHint) && (
-        <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
+        <div className="mt-0.5 flex justify-between text-xs text-surf-ink-muted font-normal">
           <span>{leftHint}</span>
           <span>{rightHint}</span>
         </div>
@@ -163,14 +163,14 @@ export function OutlineControls({
     <div className="flex flex-col gap-5">
       <div>
         <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">Template Builder</div>
-        <div className="mt-0.5 text-sm text-surf-muted font-normal">
+        <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
           Design and print full sized surfboard templates
         </div>
       </div>
 
       <SectionHeading>Board Length</SectionHeading>
       <div>
-        <div className="mb-2 text-sm text-surf-muted font-normal">
+        <div className="mb-2 text-sm text-surf-ink-muted font-normal">
           Board Length — {formatFeetInches(outline.length)}
         </div>
         <div className="mb-2 flex gap-2">
@@ -317,7 +317,7 @@ export function OutlineControls({
               style={{
                 borderColor: active
                   ? "var(--color-surf-accent-cyan)"
-                  : "color-mix(in srgb, var(--color-surf-muted) 30%, transparent)",
+                  : "color-mix(in srgb, var(--color-surf-ink-muted) 30%, transparent)",
                 background: active ? "var(--color-surf-accent-cyan)" : "var(--color-surf-base)",
                 // Two different surfaces, so two different foregrounds. This was one shared value
                 // back when ink and on-accent were both #111111; under theming the active chip is
@@ -408,7 +408,7 @@ export function OutlineControls({
         <div className="mb-2 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
           Settings
         </div>
-        <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-muted font-normal">
+        <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
           <Checkbox checked={showConstruction} onCheckedChange={() => onToggleConstruction()} />
           View Construction Lines
         </label>

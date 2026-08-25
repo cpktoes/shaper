@@ -64,7 +64,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
                 className="flex gap-2 border-b border-surf-line-faint py-0.5 leading-tight"
                 style={{ fontSize: "var(--summary-font-row, 11px)" }}
               >
-                <div className="min-w-0 flex-[1.4] text-surf-muted">{row.label}</div>
+                <div className="min-w-0 flex-[1.4] text-surf-ink-muted">{row.label}</div>
                 {row.cells.map((cell, i) => (
                   <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-surf-ink">
                     {formatCell(cell)}
@@ -98,7 +98,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
                 </div>
                 {group.rows.map((row) => (
                   <div key={row.label} className="flex gap-2 border-b border-surf-line-faint py-1.5 text-sm">
-                    <div className="min-w-0 flex-[1.4] text-surf-muted">{row.label}</div>
+                    <div className="min-w-0 flex-[1.4] text-surf-ink-muted">{row.label}</div>
                     {row.cells.map((cell, i) => (
                       <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-surf-ink">
                         {formatCell(cell)}
@@ -111,7 +111,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
           </div>
         </div>
       </div>
-      <div className="max-w-prose bg-surf-canvas text-xs leading-relaxed text-surf-muted italic">
+      <div className="max-w-prose bg-surf-canvas text-xs leading-relaxed text-surf-ink-muted italic">
         This rail band calculator is intended to provide a quantitative aspect to shaping
         consistent surfboard rails. It&apos;s recommended to understand how rail shapes affects
         surfboard performance, and how these marks can result in producing your desired outcome.

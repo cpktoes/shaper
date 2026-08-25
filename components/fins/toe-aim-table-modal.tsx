@@ -37,7 +37,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
   const tailWidthDisplay = formatInchesFraction(tailWidth12, 16);
 
   const cellClass = (i: number) =>
-    "border border-surf-line-faint px-2 py-1 " + (i === view.highlightIndex ? "bg-surf-muted/15 font-bold" : "");
+    "border border-surf-line-faint px-2 py-1 " + (i === view.highlightIndex ? "bg-surf-ink-muted/15 font-bold" : "");
   const headerCellClass = (i: number) =>
     "border border-surf-line-faint px-2 py-1 " +
     (i === view.highlightIndex ? "bg-surf-accent-cyan font-bold text-surf-on-accent" : "bg-outline-ink text-surf-on-ink");
@@ -70,7 +70,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
             Close
           </button>
         </div>
-        <div className="mb-3.5 text-xs text-surf-muted">
+        <div className="mb-3.5 text-xs text-surf-ink-muted">
           Distance off the stringer at the nose. Highlighted column is nearest your tail width; row{" "}
           {view.rowLabel} is nearest your board length (rows 72&quot; and up are identical).
         </div>

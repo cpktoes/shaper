@@ -104,7 +104,7 @@ function RangeRow({
 }) {
   return (
     <div>
-      <div className="mb-1.5 text-sm text-surf-muted font-normal">{label}</div>
+      <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">{label}</div>
       <Slider
         value={value}
         min={min}
@@ -114,7 +114,7 @@ function RangeRow({
         className="slider-accent"
       />
       {(leftHint || rightHint) && (
-        <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
+        <div className="mt-0.5 flex justify-between text-xs text-surf-ink-muted font-normal">
           <span>{leftHint}</span>
           <span>{rightHint}</span>
         </div>
@@ -170,7 +170,7 @@ function BaseLengthField({
 }) {
   return (
     <div>
-      <div className="mb-1.5 text-sm text-surf-muted font-normal">{label}</div>
+      <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">{label}</div>
       {editing ? (
         <input
           type="number"
@@ -267,21 +267,21 @@ export function FinControls({
     <div className="flex h-full flex-col gap-5">
       <div>
         <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">Fin Setup &amp; Placement</div>
-        <div className="mt-0.5 text-sm text-surf-muted font-normal">
+        <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
           Quantitative reference · trailing-edge convention
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-2.5 border-b border-outline-sidebar-divider pb-1.5">
         <div className="text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">Inputs</div>
-        <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-surf-muted font-normal">
+        <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-surf-ink-muted font-normal">
           <Checkbox checked={importTemplate} onCheckedChange={() => onToggleImportTemplate()} />
           Import Template Values
         </label>
       </div>
 
       <div style={{ opacity: importTemplate ? 0.45 : 1 }}>
-        <div className="mb-1.5 text-sm text-surf-muted font-normal">
+        <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
           Board Length — {formatFeetInches(spec.boardLength)}
         </div>
         <div className="mb-2 flex gap-2">
@@ -330,7 +330,7 @@ export function FinControls({
       </div>
 
       <div style={{ opacity: importTemplate ? 0.45 : 1 }}>
-        <div className="mb-1.5 text-sm text-surf-muted font-normal">
+        <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
           Tail Width @ 12&quot; — {formatInchesFraction(spec.tailWidth12, 16)}
         </div>
         <Slider
@@ -345,7 +345,7 @@ export function FinControls({
       </div>
 
       <div style={{ opacity: importTemplate ? 0.45 : 1 }}>
-        <div className="mb-1.5 text-sm text-surf-muted font-normal">
+        <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
           Tail Shape — {TAIL_SHAPE_LABEL[spec.tailShape as IconTailShape]}
         </div>
         <div
@@ -374,7 +374,7 @@ export function FinControls({
       <SectionHeading>Fin Selection</SectionHeading>
 
       <div>
-        <div className="mb-1.5 text-sm text-surf-muted font-normal">Fin Setup</div>
+        <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">Fin Setup</div>
         <div className="mt-2 mb-6 grid grid-cols-5 gap-2.5">
           {FIN_SETUP_ORDER.map((setup) => {
             const opt = FIN_SETUPS.find((o) => o.value === setup)!;
@@ -400,7 +400,7 @@ export function FinControls({
 
       {spec.finSetup === "thruster" && (
         <div>
-          <div className="mb-1.5 text-sm text-surf-muted font-normal">Thruster Model</div>
+          <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">Thruster Model</div>
           <div className="flex flex-wrap gap-1.5">
             {THRUSTER_FRONT_MODELS.map((opt) => (
               <PillButton
@@ -419,7 +419,7 @@ export function FinControls({
       {spec.finSetup === "quad" && (
         <>
           <div>
-            <div className="mb-1.5 text-sm text-surf-muted font-normal">Quad Model</div>
+            <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">Quad Model</div>
             <div className="mt-2 mb-6 grid grid-cols-2 gap-2.5">
               {QUAD_REAR_MODELS.map((opt) => (
                 <PillButton
@@ -438,20 +438,20 @@ export function FinControls({
             </div>
           </div>
           {flags.quadCenterFinAvailable && (
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-surf-muted font-normal">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-surf-ink-muted font-normal">
               <Checkbox checked={spec.quadCenterFinOn} onCheckedChange={() => onChange({ quadCenterFinOn: !spec.quadCenterFinOn })} />
               Add 5th/Center fin
             </label>
           )}
           {flags.isLongboardQuad && (
-            <div className="text-sm text-surf-muted font-normal">Longboard quad model has no center-fin option.</div>
+            <div className="text-sm text-surf-ink-muted font-normal">Longboard quad model has no center-fin option.</div>
           )}
         </>
       )}
 
       {spec.finSetup === "twin" && (
         <div>
-          <div className="mb-1.5 text-sm text-surf-muted font-normal">Twin Template</div>
+          <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">Twin Template</div>
           <div className="flex flex-wrap gap-1.5">
             {TWIN_TEMPLATES.map((opt) => (
               <PillButton
@@ -579,7 +579,7 @@ export function FinControls({
                 </div>
                 {flags.showRearOffTailOverride && (
                   <div className="mb-2.5">
-                    <div className="mb-1.5 text-sm text-surf-muted font-normal">
+                    <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
                       Rear Off-Tail Position (½ front off-tail + 1/4&quot;)
                     </div>
                     {editingRearOffTail ? (
@@ -691,7 +691,7 @@ export function FinControls({
         </DisclosureHeading>
         {settingsOpen && (
           <div className="mt-3 pl-3">
-            <label className="mb-4 flex cursor-pointer items-center gap-1.5 text-sm text-surf-muted font-normal">
+            <label className="mb-4 flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
               <Checkbox checked={showCallouts} onCheckedChange={onToggleCallouts} />
               Fin Placement Callouts
             </label>

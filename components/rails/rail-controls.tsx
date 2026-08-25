@@ -108,7 +108,7 @@ function ControlSlider({
 }) {
   return (
     <div className={disabled ? "opacity-40" : undefined}>
-      <div className="mb-2 text-sm text-surf-muted font-normal">{label}</div>
+      <div className="mb-2 text-sm text-surf-ink-muted font-normal">{label}</div>
       <Slider
         value={value}
         min={min}
@@ -119,7 +119,7 @@ function ControlSlider({
         className="slider-accent"
       />
       {(hintLeft || hintRight) && (
-        <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
+        <div className="mt-0.5 flex justify-between text-xs text-surf-ink-muted font-normal">
           <span>{hintLeft}</span>
           <span>{hintRight}</span>
         </div>
@@ -132,10 +132,10 @@ function ControlSlider({
 function RatioTickCaptions() {
   return (
     <div className="relative mt-0.5 h-3">
-      <span className="absolute left-0 text-[9px] text-surf-muted font-normal">30/70</span>
-      <span className="absolute left-1/2 -translate-x-1/2 text-[9px] text-surf-muted font-normal">50/50</span>
-      <span className="absolute left-3/4 -translate-x-1/2 text-[9px] text-surf-muted font-normal">60/40</span>
-      <span className="absolute right-0 text-[9px] text-surf-muted font-normal">70/30</span>
+      <span className="absolute left-0 text-[9px] text-surf-ink-muted font-normal">30/70</span>
+      <span className="absolute left-1/2 -translate-x-1/2 text-[9px] text-surf-ink-muted font-normal">50/50</span>
+      <span className="absolute left-3/4 -translate-x-1/2 text-[9px] text-surf-ink-muted font-normal">60/40</span>
+      <span className="absolute right-0 text-[9px] text-surf-ink-muted font-normal">70/30</span>
     </div>
   );
 }
@@ -225,7 +225,7 @@ function RailSectionControls({
 
           <div className="flex gap-3.5">
             <div className="min-w-0 flex-1">
-              <div className="mb-2 min-h-5 leading-5 text-sm text-surf-muted font-normal">
+              <div className="mb-2 min-h-5 leading-5 text-sm text-surf-ink-muted font-normal">
                 Family — {railFamilyLabel(spec.family)}
               </div>
               <Slider
@@ -236,7 +236,7 @@ function RailSectionControls({
                 onValueChange={(v) => onChange({ family: clampFinite(sliderValue(v), 1, 5) as RailFamily })}
                 className="slider-accent"
               />
-              <div className="mt-0.5 flex justify-between text-xs text-surf-muted font-normal">
+              <div className="mt-0.5 flex justify-between text-xs text-surf-ink-muted font-normal">
                 <span>Boxy</span>
                 <span>Medium</span>
                 <span>Knifey</span>
@@ -245,10 +245,10 @@ function RailSectionControls({
 
             <div className="min-w-0 flex-1">
               <div className="mb-2 flex h-4 items-center justify-between leading-4">
-                <div className="text-sm text-surf-muted font-normal">
+                <div className="text-sm text-surf-ink-muted font-normal">
                   Ratio — {spec.ratioTopPercent}/{100 - spec.ratioTopPercent}
                 </div>
-                <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-muted font-normal">
+                <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
                   <Checkbox
                     checked={spec.symmetrical}
                     onCheckedChange={() => onChange({ symmetrical: !spec.symmetrical })}
@@ -266,7 +266,7 @@ function RailSectionControls({
               />
               <RatioTickCaptions />
               {isTail && (
-                <label className="mt-2 flex cursor-pointer items-center gap-1.5 text-sm text-surf-muted font-normal">
+                <label className="mt-2 flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
                   <Checkbox checked={hardEdgeOn} onCheckedChange={() => onToggleHardEdge?.()} />
                   Hard Edge
                 </label>
@@ -282,10 +282,10 @@ function RailSectionControls({
               <div className="flex flex-col gap-3 pl-3 pt-3">
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
-                    <div className="text-sm text-surf-muted font-normal">
+                    <div className="text-sm text-surf-ink-muted font-normal">
                       Corner Cut Offset — {formatInchesFraction(mm(inchesToMm(cornerCutOffsetIn)))}
                     </div>
-                    <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-muted font-normal">
+                    <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
                       <Checkbox
                         checked={spec.removeCornerCut}
                         onCheckedChange={() => onChange({ removeCornerCut: !spec.removeCornerCut })}
@@ -310,7 +310,7 @@ function RailSectionControls({
                       className="slider-accent"
                     />
                   </div>
-                  <div className="mt-0.5 text-xs text-surf-muted font-normal">
+                  <div className="mt-0.5 text-xs text-surf-ink-muted font-normal">
                     0 = falls on Rail Mark 1
                   </div>
                 </div>
@@ -318,10 +318,10 @@ function RailSectionControls({
                 {(!isTail || !hardEdgeOn) && (
                   <div>
                     <div className="mb-1.5 flex items-center justify-between">
-                      <div className="text-sm text-surf-muted font-normal">
+                      <div className="text-sm text-surf-ink-muted font-normal">
                         Bottom Tuck 3 — {formatInchesFraction(output.result.bottomTuck3)}
                       </div>
-                      <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-muted font-normal">
+                      <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
                         <Checkbox
                           checked={spec.singleTuck}
                           onCheckedChange={() => onChange({ singleTuck: !spec.singleTuck })}
@@ -376,7 +376,7 @@ export function RailControls({
     <div className="flex flex-col gap-5">
       <div>
         <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">Rail Band Calculator</div>
-        <div className="mt-0.5 text-sm text-surf-muted font-normal">
+        <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
           Rail band calculator for shaping consistent rails
         </div>
       </div>

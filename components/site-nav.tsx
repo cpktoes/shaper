@@ -46,7 +46,7 @@ export function SiteNav() {
                 "border-b-2 pb-0.5 text-xs font-bold tracking-architectural uppercase transition-colors " +
                 (active
                   ? "border-surf-accent-cyan text-surf-ink"
-                  : "border-transparent text-surf-muted hover:text-surf-ink")
+                  : "border-transparent text-surf-ink-muted hover:text-surf-ink")
               }
             >
               {link.label}
