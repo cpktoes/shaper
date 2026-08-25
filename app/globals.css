@@ -200,45 +200,7 @@
      entirely on black. */
   --outline-board-fill-strength: 10%;
 
-  /* shadcn neutral contract (components/ui/*). Kept as its own scale rather than
-     folded into the surf ramps: these style generated primitives that may be
-     re-generated, and the two palettes answer to different owners. */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  /* Was oklch(0.556), which is 4.35:1 on --muted — under the 4.5:1 bar for body
-     text, and `text-muted-foreground` on a `bg-muted` surface is a pairing
-     shadcn's own primitives produce. 0.54 clears it at 4.61:1 (5.02:1 on
-     --background) and is visually indistinguishable from where it was. */
-  --muted-foreground: oklch(0.54 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
 }
 
 /* DARK, reached by OS preference. `:not(.light)` is what lets an explicit
@@ -267,32 +229,6 @@
 
     --outline-board-fill-strength: 5%;
 
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
   }
 }
 
@@ -320,32 +256,6 @@
 
   --outline-board-fill-strength: 5%;
 
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
 }
 
 /* LIGHT, reached explicitly. The light values already live at `:root`, so this
@@ -513,6 +423,66 @@
      less colour to keep in step across themes, and the `2 3` dash pattern is what keeps the
      widepoint line distinct from the stringer's `16 4 4 4` centreline it can sit inside
      half an inch of. */
+  /* -------------------------------------------------------------------------
+     shadcn's neutral contract, mapped onto the surf palette.
+
+     components/ui/* is generated and styles itself with these names, so they have
+     to exist — but they used to hold their own oklch grey scale, which meant a
+     shadcn Select in the sidebar was a different grey from everything around it,
+     and went on being grey while the rest of the app turned green.
+
+     Mapping them here rather than editing components/ui/* is what keeps shadcn
+     regeneration safe: the generated files never mention a surf token. And because
+     the surf tokens already theme, these need defining exactly once — this replaces
+     83 declarations that were being kept in step by hand across four theme blocks.
+
+     Two traps worth naming:
+       - shadcn's `--accent` is a HOVER SURFACE, not a brand accent. Pointing it at
+         --surf-accent would turn every menu hover into a bright block. It takes the
+         well, like `--muted` does.
+       - `--destructive` is used as ink (`text-destructive`) *and* as a tinted fill
+         (`bg-destructive/10`), so it takes --surf-warning-ink, which works as both.
+
+     This also closes the border/input contrast gap flagged when the theming system
+     landed: they were 1.26:1 and 1.31:1 against a 3:1 bar because they carried
+     shadcn's own faint greys. They now inherit the line tokens.
+     ------------------------------------------------------------------------- */
+  --background: var(--surf-ground);
+  --foreground: var(--surf-ink);
+  --card: var(--surf-panel);
+  --card-foreground: var(--surf-ink);
+  --popover: var(--surf-panel);
+  --popover-foreground: var(--surf-ink);
+  --primary: var(--surf-accent);
+  --primary-foreground: var(--surf-on-accent);
+  --secondary: var(--surf-well);
+  --secondary-foreground: var(--surf-ink);
+  --muted: var(--surf-well);
+  --muted-foreground: var(--surf-ink-muted);
+  --accent: var(--surf-well);
+  --accent-foreground: var(--surf-ink);
+  --destructive: var(--surf-warning-ink);
+  --border: var(--surf-line-faint);
+  --input: var(--surf-line);
+  --ring: var(--surf-accent-ink);
+
+  /* Unused by this app today (0 call sites), kept so a regenerated component cannot
+     reference an undefined token. Sidebar follows the real sidebar region. */
+  --sidebar: var(--surf-sidebar);
+  --sidebar-foreground: var(--surf-ink);
+  --sidebar-primary: var(--surf-accent);
+  --sidebar-primary-foreground: var(--surf-on-accent);
+  --sidebar-accent: var(--surf-well);
+  --sidebar-accent-foreground: var(--surf-ink);
+  --sidebar-border: var(--surf-line-faint);
+  --sidebar-ring: var(--surf-accent-ink);
+  /* Charts are categorical data, not brand colour — same rule as RAIL_SEGMENT_COLORS. */
+  --chart-1: var(--surf-accent-ink);
+  --chart-2: var(--surf-ink-muted);
+  --chart-3: var(--surf-warning-ink);
+  --chart-4: var(--surf-ink);
+  --chart-5: var(--surf-line);
+
   --outline-widepoint-knot: var(--surf-accent-ink);
 
   --outline-sidebar-bg: var(--surf-sidebar);
