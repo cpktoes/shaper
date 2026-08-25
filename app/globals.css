@@ -71,6 +71,11 @@
    LAYER 1 — RAMPS  (one per theme; raw values, never referenced by a component)
    Every ratio was computed, not eyeballed: 4.5:1 for text, 3:1 for UI boundaries.
    All four themes currently clear every pairing in the contract.
+
+   `--ramp-<id>-fill` is the board's interior wash, and it is a COLOUR, not a
+   percentage. It used to be a strength fed to color-mix(accent, ground) — which
+   meant the wash could only ever be a tint of the accent, and tuning it moved two
+   things at once. As a literal it is just another swatch to pick.
    --------------------------------------------------------------------------- */
 :root {
   /* -- Daylight (light) --------------------------------------------------
@@ -92,7 +97,7 @@
   --ramp-daylight-warning: #ff5722;
   --ramp-daylight-on-warning: #1f2a3b;
   --ramp-daylight-warning-ink: #ac3811;
-  --ramp-daylight-fill: 10%;
+  --ramp-daylight-fill: #f4f9f8;
 
   /* -- Chalk (light) --------------------------------------------------
      The original crisp-white scheme: matte black ink, bright cyan selection fills. Colder and
@@ -113,7 +118,7 @@
   --ramp-chalk-warning: #ff5722;
   --ramp-chalk-on-warning: #111111;
   --ramp-chalk-warning-ink: #c93f10;
-  --ramp-chalk-fill: 6%;
+  --ramp-chalk-fill: #f0fdff;
 
   /* -- Slate (dark) --------------------------------------------------
      Chalk on a cool matte black — the conventional dark, and the only one that keeps a
@@ -134,7 +139,7 @@
   --ramp-slate-warning: #ff5722;
   --ramp-slate-on-warning: #111111;
   --ramp-slate-warning-ink: #ff9670;
-  --ramp-slate-fill: 12%;
+  --ramp-slate-fill: #152029;
 
   /* -- Phosphor (dark) --------------------------------------------------
      CRT terminal, fully monochrome: every role including the warning is a green, so nothing
@@ -157,7 +162,7 @@
   --ramp-phosphor-warning: #5eff5e;
   --ramp-phosphor-on-warning: #050805;
   --ramp-phosphor-warning-ink: #a6ffa6;
-  --ramp-phosphor-fill: 11%;
+  --ramp-phosphor-fill: #142414;
 }
 
 /* ---------------------------------------------------------------------------
@@ -176,7 +181,8 @@
    BOTH dark themes without knowing their names.
 
    DEFAULT_LIGHT_THEME / DEFAULT_DARK_THEME in lib/theme.ts must name the two
-   themes assigned below — that pair is what paints before any JavaScript runs.
+   themes assigned below — that pair is what paints before any JavaScript runs,
+   and lib/theme.test.ts reads this file to assert they agree.
    --------------------------------------------------------------------------- */
 
 /* DEFAULT LIGHT — Daylight. Also why first paint needs no JS. */
@@ -198,7 +204,7 @@
   --surf-warning: var(--ramp-daylight-warning);
   --surf-on-warning: var(--ramp-daylight-on-warning);
   --surf-warning-ink: var(--ramp-daylight-warning-ink);
-  --outline-board-fill-strength: var(--ramp-daylight-fill);
+  --surf-board-fill: var(--ramp-daylight-fill);
 }
 
 /* DEFAULT DARK — Slate, for an OS set to dark with no explicit choice. */
@@ -221,7 +227,7 @@
     --surf-warning: var(--ramp-slate-warning);
     --surf-on-warning: var(--ramp-slate-on-warning);
     --surf-warning-ink: var(--ramp-slate-warning-ink);
-    --outline-board-fill-strength: var(--ramp-slate-fill);
+    --surf-board-fill: var(--ramp-slate-fill);
   }
 }
 
@@ -244,7 +250,7 @@
   --surf-warning: var(--ramp-daylight-warning);
   --surf-on-warning: var(--ramp-daylight-on-warning);
   --surf-warning-ink: var(--ramp-daylight-warning-ink);
-  --outline-board-fill-strength: var(--ramp-daylight-fill);
+  --surf-board-fill: var(--ramp-daylight-fill);
 }
 
 /* Chalk — explicit. */
@@ -266,7 +272,7 @@
   --surf-warning: var(--ramp-chalk-warning);
   --surf-on-warning: var(--ramp-chalk-on-warning);
   --surf-warning-ink: var(--ramp-chalk-warning-ink);
-  --outline-board-fill-strength: var(--ramp-chalk-fill);
+  --surf-board-fill: var(--ramp-chalk-fill);
 }
 
 /* Slate — explicit. */
@@ -288,7 +294,7 @@
   --surf-warning: var(--ramp-slate-warning);
   --surf-on-warning: var(--ramp-slate-on-warning);
   --surf-warning-ink: var(--ramp-slate-warning-ink);
-  --outline-board-fill-strength: var(--ramp-slate-fill);
+  --surf-board-fill: var(--ramp-slate-fill);
 }
 
 /* Phosphor — explicit. */
@@ -310,7 +316,7 @@
   --surf-warning: var(--ramp-phosphor-warning);
   --surf-on-warning: var(--ramp-phosphor-on-warning);
   --surf-warning-ink: var(--ramp-phosphor-warning-ink);
-  --outline-board-fill-strength: var(--ramp-phosphor-fill);
+  --surf-board-fill: var(--ramp-phosphor-fill);
 }
 
 /* ---------------------------------------------------------------------------
@@ -386,6 +392,7 @@
   --color-surf-ground: var(--surf-ground);
   --color-surf-panel: var(--surf-panel);
   --color-surf-well: var(--surf-well);
+  --color-surf-board-fill: var(--surf-board-fill);
   --color-surf-sidebar: var(--surf-sidebar);
   --color-surf-canvas: var(--surf-canvas);
   --color-surf-tab-active: var(--surf-tab-active);
@@ -550,11 +557,7 @@
      Mixes into `--surf-ground`, where it used to mix into a hardcoded `white`. That literal
      was the one place the wash could not follow a theme — on a dark ground it would have
      lightened the board interior to near-white. */
-  --outline-board-fill: color-mix(
-    in srgb,
-    var(--surf-accent) var(--outline-board-fill-strength),
-    var(--surf-ground)
-  );
+  --outline-board-fill: var(--surf-board-fill);
   /* The construction overlay is interactive scaffolding — its lines lead to the drag
      handles — so it carries the accent like everything else interactive. */
   --outline-construction: var(--surf-accent-ink);
@@ -611,8 +614,8 @@
     --surf-warning-ink: var(--ramp-daylight-warning-ink);
 
     /* The wash is a screen affordance: ink inside the outline is wasted and can muddy the
-       station lines a shaper measures against. 0% collapses the mix to the bare ground. */
-    --outline-board-fill-strength: 0%;
+       station lines a shaper measures against, so the board prints hollow. */
+    --surf-board-fill: var(--ramp-daylight-ground);
   }
 }
 
