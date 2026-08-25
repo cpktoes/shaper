@@ -70,31 +70,33 @@
 /* ---------------------------------------------------------------------------
    LAYER 1 — RAMPS  (one per theme; raw values, never referenced by a component)
    Every ratio was computed, not eyeballed: 4.5:1 for text, 3:1 for UI boundaries.
+   All four themes currently clear every pairing in the contract.
    --------------------------------------------------------------------------- */
 :root {
   /* -- Daylight (light) --------------------------------------------------
-     The founder's blue scheme. Deep blue-black ink on white, mid-blue accent. Default light. */
+     Warm paper with a sage accent. White chrome, but the canvas and wells carry a warm grey
+     so the drawing sits on paper rather than on the page. Default light. */
   --ramp-daylight-ground: #ffffff;
   --ramp-daylight-sidebar: #ffffff;
-  --ramp-daylight-canvas: #ffffff;
+  --ramp-daylight-canvas: #dfdcd3;
   --ramp-daylight-tab-active: #ffffff;
   --ramp-daylight-panel: #ffffff;
-  --ramp-daylight-well: #d8d7cd;
-  --ramp-daylight-ink: #010d1f;
-  --ramp-daylight-ink-muted: #475569;
-  --ramp-daylight-line: #010d1f;
-  --ramp-daylight-line-faint: #d8d7cd;
-  --ramp-daylight-accent: #3490bc;
-  --ramp-daylight-on-accent: #010d1f;
-  --ramp-daylight-accent-ink: #2b799c;
+  --ramp-daylight-well: #dfdcd3;
+  --ramp-daylight-ink: #1f2a3b;
+  --ramp-daylight-ink-muted: #566171;
+  --ramp-daylight-line: #897c58;
+  --ramp-daylight-line-faint: #cec8b6;
+  --ramp-daylight-accent: #8ec1b8;
+  --ramp-daylight-on-accent: #1f2a3b;
+  --ramp-daylight-accent-ink: #48605c;
   --ramp-daylight-warning: #ff5722;
-  --ramp-daylight-on-warning: #111111;
-  --ramp-daylight-warning-ink: #c93f10;
+  --ramp-daylight-on-warning: #1f2a3b;
+  --ramp-daylight-warning-ink: #ac3811;
   --ramp-daylight-fill: 10%;
 
   /* -- Chalk (light) --------------------------------------------------
-     The original crisp-white scheme: matte black ink, bright cyan selection fills. Lighter and
-     higher-contrast than Daylight, with a colder accent. */
+     The original crisp-white scheme: matte black ink, bright cyan selection fills. Colder and
+     higher-contrast than Daylight, and the only light theme with a flat white canvas. */
   --ramp-chalk-ground: #ffffff;
   --ramp-chalk-sidebar: #ffffff;
   --ramp-chalk-canvas: #ffffff;
@@ -114,8 +116,8 @@
   --ramp-chalk-fill: 6%;
 
   /* -- Slate (dark) --------------------------------------------------
-     Chalk on a cool matte black — the conventional dark. Keeps the drafting-table feel rather
-     than inverting the light theme. */
+     Chalk on a cool matte black — the conventional dark, and the only one that keeps a
+     separate warning hue. Default dark. */
   --ramp-slate-ground: #12141a;
   --ramp-slate-sidebar: #12141a;
   --ramp-slate-canvas: #12141a;
@@ -135,25 +137,27 @@
   --ramp-slate-fill: 12%;
 
   /* -- Phosphor (dark) --------------------------------------------------
-     CRT terminal. One green does ink, lines and accent alike, so the drawings fall back to
-     stroke weight and dash pattern for hierarchy. Default dark. */
-  --ramp-phosphor-ground: #12141a;
-  --ramp-phosphor-sidebar: #12141a;
-  --ramp-phosphor-canvas: #12141a;
-  --ramp-phosphor-tab-active: #12141a;
-  --ramp-phosphor-panel: #12141a;
-  --ramp-phosphor-well: #333842;
-  --ramp-phosphor-ink: #00ff40;
-  --ramp-phosphor-ink-muted: #a8ffbe;
-  --ramp-phosphor-line: #00ff40;
-  --ramp-phosphor-line-faint: #00ff40;
-  --ramp-phosphor-accent: #00ff40;
-  --ramp-phosphor-on-accent: #12141a;
-  --ramp-phosphor-accent-ink: #00ff40;
-  --ramp-phosphor-warning: #ff5722;
-  --ramp-phosphor-on-warning: #111111;
-  --ramp-phosphor-warning-ink: #ff9670;
-  --ramp-phosphor-fill: 5%;
+     CRT terminal, fully monochrome: every role including the warning is a green, so nothing
+     signals by hue. Warnings read by being the BRIGHTEST green (#a6ffa6 at 16.75:1) rather
+     than a different colour — a deliberate trade for the aesthetic. The canvas is the one
+     lifted surface; everything else sits on the same near-black. */
+  --ramp-phosphor-ground: #050805;
+  --ramp-phosphor-sidebar: #050805;
+  --ramp-phosphor-canvas: #142414;
+  --ramp-phosphor-tab-active: #050805;
+  --ramp-phosphor-panel: #050805;
+  --ramp-phosphor-well: #050805;
+  --ramp-phosphor-ink: #26d026;
+  --ramp-phosphor-ink-muted: #2ca62c;
+  --ramp-phosphor-line: #3e783e;
+  --ramp-phosphor-line-faint: #3e783e;
+  --ramp-phosphor-accent: #2ca62c;
+  --ramp-phosphor-on-accent: #050805;
+  --ramp-phosphor-accent-ink: #52ab52;
+  --ramp-phosphor-warning: #5eff5e;
+  --ramp-phosphor-on-warning: #050805;
+  --ramp-phosphor-warning-ink: #a6ffa6;
+  --ramp-phosphor-fill: 11%;
 }
 
 /* ---------------------------------------------------------------------------
@@ -170,6 +174,9 @@
    The provider also puts a bare `light`/`dark` class alongside `theme-<id>`.
    That class sets no tokens; it exists so Tailwind's `dark:` variant fires for
    BOTH dark themes without knowing their names.
+
+   DEFAULT_LIGHT_THEME / DEFAULT_DARK_THEME in lib/theme.ts must name the two
+   themes assigned below — that pair is what paints before any JavaScript runs.
    --------------------------------------------------------------------------- */
 
 /* DEFAULT LIGHT — Daylight. Also why first paint needs no JS. */
@@ -194,27 +201,27 @@
   --outline-board-fill-strength: var(--ramp-daylight-fill);
 }
 
-/* DEFAULT DARK — Phosphor, for an OS set to dark with no explicit choice. */
+/* DEFAULT DARK — Slate, for an OS set to dark with no explicit choice. */
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --surf-ground: var(--ramp-phosphor-ground);
-    --surf-sidebar: var(--ramp-phosphor-sidebar);
-    --surf-canvas: var(--ramp-phosphor-canvas);
-    --surf-tab-active: var(--ramp-phosphor-tab-active);
-    --surf-panel: var(--ramp-phosphor-panel);
-    --surf-well: var(--ramp-phosphor-well);
-    --surf-ink: var(--ramp-phosphor-ink);
-    --surf-ink-muted: var(--ramp-phosphor-ink-muted);
-    --surf-line: var(--ramp-phosphor-line);
-    --surf-line-faint: var(--ramp-phosphor-line-faint);
-    --surf-accent: var(--ramp-phosphor-accent);
-    --surf-on-accent: var(--ramp-phosphor-on-accent);
-    --surf-accent-ink: var(--ramp-phosphor-accent-ink);
-    --surf-warning: var(--ramp-phosphor-warning);
-    --surf-on-warning: var(--ramp-phosphor-on-warning);
-    --surf-warning-ink: var(--ramp-phosphor-warning-ink);
-    --outline-board-fill-strength: var(--ramp-phosphor-fill);
+    --surf-ground: var(--ramp-slate-ground);
+    --surf-sidebar: var(--ramp-slate-sidebar);
+    --surf-canvas: var(--ramp-slate-canvas);
+    --surf-tab-active: var(--ramp-slate-tab-active);
+    --surf-panel: var(--ramp-slate-panel);
+    --surf-well: var(--ramp-slate-well);
+    --surf-ink: var(--ramp-slate-ink);
+    --surf-ink-muted: var(--ramp-slate-ink-muted);
+    --surf-line: var(--ramp-slate-line);
+    --surf-line-faint: var(--ramp-slate-line-faint);
+    --surf-accent: var(--ramp-slate-accent);
+    --surf-on-accent: var(--ramp-slate-on-accent);
+    --surf-accent-ink: var(--ramp-slate-accent-ink);
+    --surf-warning: var(--ramp-slate-warning);
+    --surf-on-warning: var(--ramp-slate-on-warning);
+    --surf-warning-ink: var(--ramp-slate-warning-ink);
+    --outline-board-fill-strength: var(--ramp-slate-fill);
   }
 }
 
@@ -305,14 +312,6 @@
   --surf-warning-ink: var(--ramp-phosphor-warning-ink);
   --outline-board-fill-strength: var(--ramp-phosphor-fill);
 }
-
-/* WELL CAVEAT — Daylight only. Its well sits close to the mid-tones, so two pairings
-   fall under bar ON A WELL: accent-ink 3.36:1 and warning-ink 3.46:1 (both need 4.5).
-   Latent, not live: --surf-well has one consumer today (the settings menu hover row,
-   which puts ink on it) and inputs still sit on --surf-sidebar. It cannot be fixed by
-   lightening the well — accent-ink is 4.86:1 on pure white, so any tint pushes it under;
-   the ink has to darken. Remedies with exact values are in
-   .planning/quick/260824-p03-.../SUMMARY.md. Chalk, Slate and Phosphor are clean. */
 
 /* ---------------------------------------------------------------------------
    LAYER 3 — TAILWIND BRIDGE

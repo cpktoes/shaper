@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_DARK_THEME,
@@ -36,9 +37,52 @@ describe("theme registry", () => {
   });
 
   it("names system defaults that actually exist, one per mode", () => {
-    // If either of these drifted from globals.css, first paint and the menu would disagree.
     expect(getTheme(DEFAULT_LIGHT_THEME)?.mode).toBe("light");
     expect(getTheme(DEFAULT_DARK_THEME)?.mode).toBe("dark");
+  });
+
+  /**
+   * The constants above and the CSS are two statements of the same fact, and the CSS is the
+   * one that paints — before any of this module runs. If they disagree, the first frame shows
+   * one theme and the menu claims another, which is invisible until someone notices the flash.
+   * Changing the default is a two-file edit, so this asserts the two files agree.
+   */
+  describe("agreement with globals.css", () => {
+    const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+    /**
+     * Which ramp a theme block assigns, read from its first --surf-ground line.
+     *
+     * Anchored on the generated `DEFAULT LIGHT` / `DEFAULT DARK` comments rather than on the
+     * selectors themselves. `@media (prefers-color-scheme: dark)` appears twice in the file —
+     * the first is inside `@custom-variant dark` near the top — and anchoring there walks
+     * forward into the wrong block entirely.
+     */
+    function rampAssignedIn(marker: string): string | undefined {
+      const at = css.indexOf(marker);
+      if (at < 0) return undefined;
+      return css.slice(at).match(/--surf-ground:\s*var\(--ramp-([a-z0-9-]+)-ground\)/)?.[1];
+    }
+
+    it("bare :root assigns the default LIGHT theme", () => {
+      expect(rampAssignedIn("/* DEFAULT LIGHT")).toBe(DEFAULT_LIGHT_THEME);
+    });
+
+    it("the prefers-color-scheme block assigns the default DARK theme", () => {
+      expect(rampAssignedIn("/* DEFAULT DARK")).toBe(DEFAULT_DARK_THEME);
+    });
+
+    it("every registered theme has a ramp and a block", () => {
+      for (const t of THEMES) {
+        expect(css, `--ramp-${t.id}-ground missing`).toContain(`--ramp-${t.id}-ground:`);
+        expect(css, `:root.theme-${t.id} missing`).toContain(`:root.theme-${t.id} {`);
+      }
+    });
+
+    it("has no theme block for an id the registry does not know", () => {
+      const inCss = [...css.matchAll(/:root\.theme-([a-z0-9-]+)\s*\{/g)].map((m) => m[1]);
+      expect(inCss.sort()).toEqual(THEMES.map((t) => t.id).sort());
+    });
   });
 
   describe("parseThemePreference", () => {

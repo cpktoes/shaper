@@ -29,10 +29,10 @@ export interface ThemeDefinition {
 
 /** Menu order. Grouped by mode when rendered. */
 export const THEMES: readonly ThemeDefinition[] = [
-  { id: "daylight", label: "Daylight", description: "Blue on white", mode: "light" },
-  { id: "chalk", label: "Chalk", description: "Black on white, cyan accent", mode: "light" },
+  { id: "daylight", label: "Daylight", description: "Warm paper, sage accent", mode: "light" },
+  { id: "chalk", label: "Chalk", description: "Crisp white, cyan accent", mode: "light" },
   { id: "slate", label: "Slate", description: "Chalk on matte black", mode: "dark" },
-  { id: "phosphor", label: "Phosphor", description: "Green terminal", mode: "dark" },
+  { id: "phosphor", label: "Phosphor", description: "Monochrome green terminal", mode: "dark" },
 ];
 
 /**
@@ -41,7 +41,7 @@ export const THEMES: readonly ThemeDefinition[] = [
  * JavaScript runs, so if these disagree the first paint and the menu disagree too.
  */
 export const DEFAULT_LIGHT_THEME = "daylight";
-export const DEFAULT_DARK_THEME = "phosphor";
+export const DEFAULT_DARK_THEME = "slate";
 
 /** `system` follows the OS. Anything else is a theme id. */
 export type ThemePreference = "system" | (string & {});
