@@ -79,7 +79,7 @@ export function OutlineEditor() {
           was only ever pinned by luck — outline and rails happened to fit, so it looked right there,
           while the longer fins controls pushed it past the bottom edge where it could only be met
           mid-scroll. */}
-      <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-muted/20 bg-surf-base text-surf-black">
+      <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-muted/20 bg-surf-sidebar text-surf-black">
         <div className="min-h-0 flex-1 overflow-y-auto p-10">
           <OutlineControls
             outline={outline}
@@ -102,9 +102,9 @@ export function OutlineEditor() {
           </div>
         )}
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-3 bg-surf-base px-10 py-5">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-3 bg-surf-canvas px-10 py-5">
         <div className="flex min-h-0 flex-1 items-stretch justify-center gap-6">
-          <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center bg-surf-base">
+          <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center bg-surf-canvas">
             <div className="relative flex min-h-0 w-full flex-1 justify-center">
               {/* A plain filled box — the drawing sizes itself inside it via preserveAspectRatio.
                   No aspect-ratio wrapper: the viewBox widens for wide boards, so any ratio pinned

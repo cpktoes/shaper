@@ -33,7 +33,7 @@ interface FinDataPanelProps {
 
 export function FinDataPanel({ result, boardLength, tailWidth12, finSetup, tailShape }: FinDataPanelProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-base pt-10 text-surf-black">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surf-canvas pt-10 text-surf-black">
       <div className="mb-2.5 text-xl font-extrabold tracking-tight">
         {formatFeetInches(boardLength)} · {formatInchesFraction(tailWidth12, 16)} tail @12&quot; ·{" "}
         {FIN_SETUP_LABEL[finSetup] ?? finSetup} · {TAIL_SHAPE_LABEL[tailShape]} tail

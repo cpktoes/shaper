@@ -186,7 +186,7 @@ export function RailBandEditor() {
           was only ever pinned by luck — outline and rails happened to fit, so it looked right there,
           while the longer fins controls pushed it past the bottom edge where it could only be met
           mid-scroll. */}
-      <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-muted/20 bg-surf-base text-surf-black">
+      <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-muted/20 bg-surf-sidebar text-surf-black">
         <div className="min-h-0 flex-1 overflow-y-auto p-10">
           <RailControls
             spec={spec}
@@ -212,7 +212,7 @@ export function RailBandEditor() {
           </div>
         )}
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-2 bg-surf-base px-10 py-5">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-2 bg-surf-canvas px-10 py-5">
         <div className="flex flex-none gap-1.5">
           {(["viewer", "data"] as RailPage[]).map((page) => (
             <button
@@ -222,7 +222,7 @@ export function RailBandEditor() {
               className={
                 "cursor-pointer rounded-t-lg border px-[18px] py-2.5 text-sm font-bold " +
                 (activePage === page
-                  ? "border-surf-muted/20 border-b-0 bg-surf-base text-surf-black"
+                  ? "border-surf-muted/20 border-b-0 bg-surf-tab-active text-surf-black"
                   : "border-transparent bg-transparent text-surf-muted")
               }
             >
@@ -232,7 +232,7 @@ export function RailBandEditor() {
         </div>
 
         {activePage === "viewer" && (
-          <div className="flex min-h-0 flex-1 flex-col bg-surf-base pt-1">
+          <div className="flex min-h-0 flex-1 flex-col bg-surf-canvas pt-1">
             <div ref={plotsContainerRef} className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
               {openSections.map((key) => (
                 <div key={key} className="flex flex-none flex-col items-center" style={{ width: plotWidth }}>

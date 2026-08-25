@@ -91,7 +91,7 @@ function Sheet({
     <div
       data-order-form-sheet
       className={cn(
-        "flex flex-col gap-1 border-[1.5px] border-surf-black bg-surf-base p-1.5",
+        "flex flex-col gap-1 border-[1.5px] border-surf-black bg-surf-panel p-1.5",
         variant === "reference" && "order-form-sheet-reference",
       )}
     >
@@ -457,7 +457,7 @@ export function OrderForm() {
                 <select
                   value={finSystem}
                   onChange={(e) => setFinSystem(e.target.value as FinSystem)}
-                  className="w-full rounded-[2px] border border-surf-black bg-surf-base px-1.5 py-1 font-bold text-surf-black outline-none focus:border-surf-accent-cyan-ink order-form-value"
+                  className="w-full rounded-[2px] border border-surf-black bg-surf-panel px-1.5 py-1 font-bold text-surf-black outline-none focus:border-surf-accent-cyan-ink order-form-value"
                 >
                   {FIN_SYSTEMS.map((sys) => (
                     <option key={sys.value} value={sys.value}>

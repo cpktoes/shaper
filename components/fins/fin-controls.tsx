@@ -142,7 +142,7 @@ function PillButton({
         `cursor-pointer rounded-md border px-1 py-2.5 text-[11px] font-bold ${
           active
             ? "border-surf-black bg-surf-accent-cyan text-surf-on-accent"
-            : "border-surf-muted/30 bg-surf-base text-surf-black"
+            : "border-surf-muted/30 bg-surf-sidebar text-surf-black"
         } ${className}`
       }
     >
@@ -361,7 +361,7 @@ export function FinControls({
                 "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                 (spec.tailShape === shape
                   ? "border-surf-black bg-surf-accent-cyan text-surf-on-accent"
-                  : "border-surf-muted/30 bg-surf-base text-surf-black")
+                  : "border-surf-muted/30 bg-surf-sidebar text-surf-black")
               }
             >
               <TailShapeIcon shape={shape} active={spec.tailShape === shape} />
@@ -387,7 +387,7 @@ export function FinControls({
                   "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
                   (spec.finSetup === setup
                     ? "border-surf-black bg-surf-accent-cyan text-surf-on-accent"
-                    : "border-surf-muted/30 bg-surf-base text-surf-black")
+                    : "border-surf-muted/30 bg-surf-sidebar text-surf-black")
                 }
               >
                 <FinSetupIcon setup={setup} active={spec.finSetup === setup} />

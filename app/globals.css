@@ -79,6 +79,13 @@
   --ramp-light-ground: #ffffff; /* crisp white background */
   --ramp-light-panel: #ffffff; /* raised surfaces sit flush with the ground; the design separates them with a line, not a tint */
   --ramp-light-well: #d8d7cd; /* inset surfaces — a warm grey, much more tinted than the near-white it replaced. See the WELL CAVEAT below. */
+  /* The app's three big regions. They were one value (the ground) until now, which meant
+     the sidebar, the drawing area and the active tab could not be told apart at the token
+     level even though they are visibly separate places on screen. Seeded to the ground so
+     this change is invisible until one of them is deliberately moved. */
+  --ramp-light-sidebar: #ffffff; /* the control column */
+  --ramp-light-canvas: #ffffff; /* the drawing / working area */
+  --ramp-light-tab-active: #ffffff; /* the selected tab, which merges into the canvas below it */
   --ramp-light-ink: #010d1f; /* near-black with a blue cast, tying the ink to the accent — 19.47:1 on ground */
   --ramp-light-ink-muted: #475569; /* secondary text & labels — 7.58:1 on ground, 5.24:1 on well */
   --ramp-light-line: #010d1f; /* control boundaries at full ink strength — 19.47:1. A deliberate move away from the old grey hairline; nothing consumes `surf-line` yet, so this lands when borders are migrated to it. */
@@ -106,6 +113,9 @@
   --ramp-dark-ground: #12141a;
   --ramp-dark-panel: #12141a; /* flush with the ground; panels are separated by a line, not a tint */
   --ramp-dark-well: #333842; /* inset surfaces read lighter than the ground */
+  --ramp-dark-sidebar: #12141a; /* the control column */
+  --ramp-dark-canvas: #12141a; /* the drawing / working area */
+  --ramp-dark-tab-active: #12141a; /* the selected tab, which merges into the canvas below it */
   --ramp-dark-ink: #00ff40; /* 13.48:1 on ground, 8.61:1 on well */
   --ramp-dark-ink-muted: #a8ffbe; /* 15.53:1 on ground — see the HIERARCHY note below */
   --ramp-dark-line: #00ff40; /* 13.48:1 — control boundaries at full phosphor */
@@ -170,6 +180,9 @@
   --surf-ground: var(--ramp-light-ground);
   --surf-panel: var(--ramp-light-panel);
   --surf-well: var(--ramp-light-well);
+  --surf-sidebar: var(--ramp-light-sidebar);
+  --surf-canvas: var(--ramp-light-canvas);
+  --surf-tab-active: var(--ramp-light-tab-active);
   --surf-ink: var(--ramp-light-ink);
   --surf-ink-muted: var(--ramp-light-ink-muted);
   --surf-line: var(--ramp-light-line);
@@ -186,10 +199,6 @@
      and because 6% of the accent that reads as a whisper on white disappears
      entirely on black. */
   --outline-board-fill-strength: 10%;
-  /* Widepoint marker. A signal/data colour, deliberately outside the brand
-     palette — it marks a measurement, so it must not read as "selected" or
-     "warning". 5.82:1 on ground. */
-  --outline-widepoint-knot: #a8425f;
 
   /* shadcn neutral contract (components/ui/*). Kept as its own scale rather than
      folded into the surf ramps: these style generated primitives that may be
@@ -242,6 +251,9 @@
     --surf-ground: var(--ramp-dark-ground);
     --surf-panel: var(--ramp-dark-panel);
     --surf-well: var(--ramp-dark-well);
+    --surf-sidebar: var(--ramp-dark-sidebar);
+    --surf-canvas: var(--ramp-dark-canvas);
+    --surf-tab-active: var(--ramp-dark-tab-active);
     --surf-ink: var(--ramp-dark-ink);
     --surf-ink-muted: var(--ramp-dark-ink-muted);
     --surf-line: var(--ramp-dark-line);
@@ -254,7 +266,6 @@
     --surf-warning-ink: var(--ramp-dark-warning-ink);
 
     --outline-board-fill-strength: 5%;
-    --outline-widepoint-knot: #e8798f; /* 6.63:1 on ground; #a8425f would be 2.3:1 */
 
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
@@ -293,6 +304,9 @@
   --surf-ground: var(--ramp-dark-ground);
   --surf-panel: var(--ramp-dark-panel);
   --surf-well: var(--ramp-dark-well);
+  --surf-sidebar: var(--ramp-dark-sidebar);
+  --surf-canvas: var(--ramp-dark-canvas);
+  --surf-tab-active: var(--ramp-dark-tab-active);
   --surf-ink: var(--ramp-dark-ink);
   --surf-ink-muted: var(--ramp-dark-ink-muted);
   --surf-line: var(--ramp-dark-line);
@@ -305,7 +319,6 @@
   --surf-warning-ink: var(--ramp-dark-warning-ink);
 
   --outline-board-fill-strength: 5%;
-  --outline-widepoint-knot: #e8798f;
 
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
@@ -411,6 +424,9 @@
   --color-surf-ground: var(--surf-ground);
   --color-surf-panel: var(--surf-panel);
   --color-surf-well: var(--surf-well);
+  --color-surf-sidebar: var(--surf-sidebar);
+  --color-surf-canvas: var(--surf-canvas);
+  --color-surf-tab-active: var(--surf-tab-active);
   --color-surf-ink: var(--surf-ink);
   --color-surf-ink-muted: var(--surf-ink-muted);
   --color-surf-line: var(--surf-line);
@@ -491,15 +507,23 @@
      The accent aliases are gone: every call site now names `surf-accent-cyan`,
      `surf-accent-cyan-ink` or `surf-accent-orange-ink` directly, so the role is legible at
      the point of use rather than hidden behind a token whose name meant amber. */
-  --outline-sidebar-bg: var(--surf-ground);
+  /* The widepoint marker no longer carries its own hue. It marks a draggable INPUT — the
+     widepoint station the shaper sets — which is the same role the construction overlay
+     plays, and that already reads "interactive" via the accent. Dropping the rose means one
+     less colour to keep in step across themes, and the `2 3` dash pattern is what keeps the
+     widepoint line distinct from the stringer's `16 4 4 4` centreline it can sit inside
+     half an inch of. */
+  --outline-widepoint-knot: var(--surf-accent-ink);
+
+  --outline-sidebar-bg: var(--surf-sidebar);
   --outline-sidebar-text: var(--surf-ink);
   --outline-sidebar-text-muted: var(--surf-ink-muted);
-  --outline-sidebar-input-bg: var(--surf-ground);
+  --outline-sidebar-input-bg: var(--surf-sidebar);
   /* Mixed toward `transparent`, not toward white — so the line stays a tint of the
      ink over whatever ground the active theme provides, in both directions. */
   --outline-sidebar-input-border: color-mix(in srgb, var(--surf-ink-muted) 20%, transparent);
   --outline-sidebar-divider: color-mix(in srgb, var(--surf-ink-muted) 20%, transparent);
-  --outline-page-bg: var(--surf-ground);
+  --outline-page-bg: var(--surf-canvas);
   /* A faint accent wash so the planshape reads as an object rather than as a line. This
      briefly went to flat white during the design pivot, on the reasoning that the board
      should be "defined by its stroke alone" — that extended the ground universally from the
@@ -555,6 +579,9 @@
     --surf-ground: var(--ramp-light-ground);
     --surf-panel: var(--ramp-light-panel);
     --surf-well: var(--ramp-light-well);
+    --surf-sidebar: var(--ramp-light-sidebar);
+    --surf-canvas: var(--ramp-light-canvas);
+    --surf-tab-active: var(--ramp-light-tab-active);
     --surf-ink: var(--ramp-light-ink);
     --surf-ink-muted: var(--ramp-light-ink-muted);
     --surf-line: var(--ramp-light-line);
@@ -565,7 +592,6 @@
     --surf-warning: var(--ramp-light-warning);
     --surf-on-warning: var(--ramp-light-on-warning);
     --surf-warning-ink: var(--ramp-light-warning-ink);
-    --outline-widepoint-knot: #a8425f;
 
     /* The wash is a screen affordance: ink inside the outline is wasted and can muddy the
        station lines a shaper measures against. 0% collapses the mix to the bare ground. */

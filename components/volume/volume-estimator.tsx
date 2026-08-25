@@ -17,7 +17,7 @@ export function VolumeEstimator() {
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-nowrap">
-      <aside className="h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto border-r border-surf-muted/20 bg-surf-base p-10 text-surf-black">
+      <aside className="h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto border-r border-surf-muted/20 bg-surf-sidebar p-10 text-surf-black">
         <VolumeControls
           effectiveVolume={effectiveVolume}
           volumeResult={volumeResult}
@@ -26,7 +26,7 @@ export function VolumeEstimator() {
           onToggleImportRailThickness={toggleImportRailThickness}
         />
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-5 bg-surf-base px-12 py-8">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-5 bg-surf-canvas px-12 py-8">
         <VolumeCalculationCard
           result={volumeResult}
           lengthDisplay={formatFeetInches(effectiveVolume.length)}
