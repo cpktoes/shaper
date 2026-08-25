@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_DARK_THEME,
+  DEFAULT_LIGHT_THEME,
+  THEMES,
   THEME_INIT_SCRIPT,
-  THEME_PREFERENCES,
   THEME_STORAGE_KEY,
   applyThemePreference,
+  getTheme,
   isThemePreference,
   parseThemePreference,
   resolveTheme,
-  themeClassFor,
-  type ThemePreference,
+  themeClassesFor,
 } from "./theme";
 
 /** Minimal stand-in for `document.documentElement`, tracking the class set as a Set. */
@@ -19,91 +21,115 @@ function fakeRoot(initial: string[] = []) {
     classList: {
       add: (t: string) => void classes.add(t),
       remove: (t: string) => void classes.delete(t),
-      contains: (t: string) => classes.has(t),
     },
   };
 }
 
-describe("theme preference boundary", () => {
-  it("offers system, light and dark in menu order", () => {
-    expect(THEME_PREFERENCES).toEqual(["system", "light", "dark"]);
+describe("theme registry", () => {
+  it("offers two light themes and two dark ones", () => {
+    expect(THEMES.filter((t) => t.mode === "light").map((t) => t.id)).toEqual(["daylight", "chalk"]);
+    expect(THEMES.filter((t) => t.mode === "dark").map((t) => t.id)).toEqual(["slate", "phosphor"]);
   });
 
-  describe("isThemePreference", () => {
-    it("accepts the three preferences", () => {
-      expect(isThemePreference("system")).toBe(true);
-      expect(isThemePreference("light")).toBe(true);
-      expect(isThemePreference("dark")).toBe(true);
+  it("gives every theme a unique id", () => {
+    expect(new Set(THEMES.map((t) => t.id)).size).toBe(THEMES.length);
+  });
+
+  it("names system defaults that actually exist, one per mode", () => {
+    // If either of these drifted from globals.css, first paint and the menu would disagree.
+    expect(getTheme(DEFAULT_LIGHT_THEME)?.mode).toBe("light");
+    expect(getTheme(DEFAULT_DARK_THEME)?.mode).toBe("dark");
+  });
+
+  describe("parseThemePreference", () => {
+    it("passes through a known theme id", () => {
+      expect(parseThemePreference("slate")).toBe("slate");
     });
 
-    it("rejects anything else", () => {
-      for (const junk of [null, undefined, "", "Dark", "auto", 0, {}]) {
-        expect(isThemePreference(junk)).toBe(false);
+    it("migrates the two-theme era's stored values instead of dropping them", () => {
+      expect(parseThemePreference("light")).toBe(DEFAULT_LIGHT_THEME);
+      expect(parseThemePreference("dark")).toBe(DEFAULT_DARK_THEME);
+    });
+
+    it("falls back to system for a removed theme, junk, or nothing stored", () => {
+      for (const junk of [null, undefined, "", "midnight", "Slate", 0, {}]) {
+        expect(parseThemePreference(junk)).toBe("system");
       }
     });
   });
 
-  describe("parseThemePreference", () => {
-    it("passes through a valid stored value", () => {
-      expect(parseThemePreference("dark")).toBe("dark");
+  describe("isThemePreference", () => {
+    it("accepts system and every registered id", () => {
+      expect(isThemePreference("system")).toBe(true);
+      for (const t of THEMES) expect(isThemePreference(t.id)).toBe(true);
     });
 
-    it("falls back to system for a missing or stale value", () => {
-      // A key written by an older build, a hand-edited entry, or nothing stored at all.
-      expect(parseThemePreference(null)).toBe("system");
-      expect(parseThemePreference("midnight")).toBe("system");
+    it("rejects the legacy values, which are input but not a preference", () => {
+      // They parse (see above) but must not be treated as ids in their own right.
+      expect(isThemePreference("light")).toBe(false);
+      expect(isThemePreference("dark")).toBe(false);
     });
   });
 
-  describe("themeClassFor", () => {
-    it("maps system to no class at all", () => {
-      // Not a placeholder class: bare `:root` IS the light theme and the prefers-color-scheme
-      // block handles OS dark, so absence is the correct encoding of "follow the OS".
-      expect(themeClassFor("system")).toBeNull();
+  describe("themeClassesFor", () => {
+    it("maps system to no classes at all", () => {
+      // Not a placeholder: bare :root IS the default light theme and the media block covers
+      // OS dark, so absence is the correct encoding of "follow the OS".
+      expect(themeClassesFor("system")).toEqual([]);
     });
 
-    it("maps explicit preferences to their class", () => {
-      expect(themeClassFor("light")).toBe("light");
-      expect(themeClassFor("dark")).toBe("dark");
+    it("pairs the palette class with a bare mode class", () => {
+      // The mode class sets no tokens — it is what lets Tailwind's `dark:` variant fire for
+      // any dark theme without knowing its name.
+      expect(themeClassesFor("phosphor")).toEqual(["theme-phosphor", "dark"]);
+      expect(themeClassesFor("chalk")).toEqual(["theme-chalk", "light"]);
+    });
+
+    it("yields nothing for an unknown id rather than inventing a class", () => {
+      expect(themeClassesFor("midnight")).toEqual([]);
     });
   });
 
   describe("resolveTheme", () => {
     it("follows the OS when the preference is system", () => {
-      expect(resolveTheme("system", true)).toBe("dark");
-      expect(resolveTheme("system", false)).toBe("light");
+      expect(resolveTheme("system", true).id).toBe(DEFAULT_DARK_THEME);
+      expect(resolveTheme("system", false).id).toBe(DEFAULT_LIGHT_THEME);
     });
 
-    it("ignores the OS when the preference is explicit", () => {
-      expect(resolveTheme("light", true)).toBe("light");
-      expect(resolveTheme("dark", false)).toBe("dark");
+    it("ignores the OS when the preference is explicit, in both directions", () => {
+      expect(resolveTheme("chalk", true).id).toBe("chalk");
+      expect(resolveTheme("slate", false).id).toBe("slate");
+    });
+
+    it("falls back to the OS default if the stored theme no longer exists", () => {
+      expect(resolveTheme("midnight", true).id).toBe(DEFAULT_DARK_THEME);
     });
   });
 
   describe("applyThemePreference", () => {
-    it("adds the class for an explicit preference", () => {
+    it("adds both classes for an explicit theme", () => {
       const root = fakeRoot();
-      applyThemePreference(root, "dark");
-      expect([...root.classes]).toEqual(["dark"]);
+      applyThemePreference(root, "slate");
+      expect([...root.classes].sort()).toEqual(["dark", "theme-slate"]);
     });
 
-    it("clears both classes for system", () => {
-      const root = fakeRoot(["dark"]);
+    it("clears everything for system", () => {
+      const root = fakeRoot(["theme-phosphor", "dark"]);
       applyThemePreference(root, "system");
       expect([...root.classes]).toEqual([]);
     });
 
-    it("never leaves the opposite class behind when switching", () => {
-      const root = fakeRoot(["light"]);
-      applyThemePreference(root, "dark");
-      expect([...root.classes]).toEqual(["dark"]);
+    it("never leaves another theme's classes behind when switching", () => {
+      const root = fakeRoot(["theme-phosphor", "dark"]);
+      applyThemePreference(root, "chalk");
+      expect([...root.classes].sort()).toEqual(["light", "theme-chalk"]);
     });
 
     it("leaves unrelated classes alone", () => {
       // The root element also carries next/font variables and layout classes.
       const root = fakeRoot(["h-full", "antialiased"]);
-      applyThemePreference(root, "dark");
-      expect([...root.classes]).toEqual(["h-full", "antialiased", "dark"]);
+      applyThemePreference(root, "daylight");
+      expect([...root.classes]).toEqual(["h-full", "antialiased", "theme-daylight", "light"]);
     });
   });
 
@@ -112,13 +138,13 @@ describe("theme preference boundary", () => {
    * HTML and runs before any bundle. That makes it a second implementation of
    * `applyThemePreference`, and second implementations drift.
    *
-   * These tests run the actual exported string against a fake document and localStorage and
-   * assert it agrees with the module for every input, so drift fails the suite rather than
-   * silently shipping a flash of the wrong theme.
+   * These run the actual exported string against a fake document and assert it agrees with
+   * the module for every registered theme, so adding a theme without regenerating the script
+   * fails the suite rather than silently shipping a flash of the wrong one.
    */
   describe("THEME_INIT_SCRIPT", () => {
-    function runScript(stored: string | null | (() => never)) {
-      const root = fakeRoot(["h-full"]);
+    function runScript(stored: string | null | (() => never), initial: string[] = ["h-full"]) {
+      const root = fakeRoot(initial);
       const localStorage = {
         getItem: (key: string) => {
           if (typeof stored === "function") stored();
@@ -130,29 +156,30 @@ describe("theme preference boundary", () => {
       return root;
     }
 
-    it.each<[ThemePreference | null, ThemePreference]>([
-      ["dark", "dark"],
-      ["light", "light"],
-      ["system", "system"],
-      [null, "system"],
-    ])("stored %s produces the same classes as the module", (stored, equivalent) => {
-      const fromScript = runScript(stored);
-      const fromModule = fakeRoot(["h-full"]);
-      applyThemePreference(fromModule, equivalent);
-      expect([...fromScript.classes]).toEqual([...fromModule.classes]);
-    });
+    it.each(THEMES.map((t) => [t.id] as const))(
+      "stored %s produces the same classes as the module",
+      (id) => {
+        const fromScript = runScript(id);
+        const fromModule = fakeRoot(["h-full"]);
+        applyThemePreference(fromModule, id);
+        expect([...fromScript.classes].sort()).toEqual([...fromModule.classes].sort());
+      },
+    );
 
-    it("falls back to system on an unrecognised stored value", () => {
+    it("agrees with the module on system, and on junk", () => {
+      expect([...runScript(null).classes]).toEqual(["h-full"]);
       expect([...runScript("midnight").classes]).toEqual(["h-full"]);
     });
 
-    it("clears a stale class rather than leaving it on the server-rendered markup", () => {
+    it("migrates the legacy values exactly as the module does", () => {
+      expect([...runScript("dark").classes].sort()).toEqual(["dark", "h-full", `theme-${DEFAULT_DARK_THEME}`].sort());
+      expect([...runScript("light").classes].sort()).toEqual(["h-full", "light", `theme-${DEFAULT_LIGHT_THEME}`].sort());
+    });
+
+    it("clears a stale theme rather than stacking on the server-rendered markup", () => {
       // Guards the ordering inside the script: it must remove before it adds.
-      const root = fakeRoot(["light"]);
-      const localStorage = { getItem: () => "dark" };
-      const document = { documentElement: { classList: root.classList } };
-      new Function("localStorage", "document", THEME_INIT_SCRIPT)(localStorage, document);
-      expect([...root.classes]).toEqual(["dark"]);
+      const root = runScript("chalk", ["theme-phosphor", "dark"]);
+      expect([...root.classes].sort()).toEqual(["light", "theme-chalk"]);
     });
 
     it("survives localStorage throwing", () => {
@@ -165,7 +192,8 @@ describe("theme preference boundary", () => {
       ).not.toThrow();
     });
 
-    it("references the same storage key the provider writes", () => {
+    it("carries every registered theme, so a new one cannot be left out", () => {
+      for (const t of THEMES) expect(THEME_INIT_SCRIPT).toContain(t.id);
       expect(THEME_INIT_SCRIPT).toContain(JSON.stringify(THEME_STORAGE_KEY));
     });
   });

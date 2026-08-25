@@ -68,203 +68,251 @@
 }
 
 /* ---------------------------------------------------------------------------
-   LAYER 1 — RAMPS
-   Raw values only. Every contrast ratio quoted here was computed, not eyeballed
-   (WCAG 2.1 relative luminance; 4.5:1 for text, 3:1 for UI boundaries).
+   LAYER 1 — RAMPS  (one per theme; raw values, never referenced by a component)
+   Every ratio was computed, not eyeballed: 4.5:1 for text, 3:1 for UI boundaries.
    --------------------------------------------------------------------------- */
 :root {
-  /* -- light ramp ----------------------------------------------------------
-     The founder's blue palette, picked in the colour bench (quick task 260824-p03).
-     Replaces the cyan/white scheme. Every ratio below was computed, not eyeballed. */
-  --ramp-light-ground: #ffffff; /* crisp white background */
-  --ramp-light-panel: #ffffff; /* raised surfaces sit flush with the ground; the design separates them with a line, not a tint */
-  --ramp-light-well: #d8d7cd; /* inset surfaces — a warm grey, much more tinted than the near-white it replaced. See the WELL CAVEAT below. */
-  /* The app's three big regions. They were one value (the ground) until now, which meant
-     the sidebar, the drawing area and the active tab could not be told apart at the token
-     level even though they are visibly separate places on screen. Seeded to the ground so
-     this change is invisible until one of them is deliberately moved. */
-  --ramp-light-sidebar: #ffffff; /* the control column */
-  --ramp-light-canvas: #ffffff; /* the drawing / working area */
-  --ramp-light-tab-active: #ffffff; /* the selected tab, which merges into the canvas below it */
-  --ramp-light-ink: #010d1f; /* near-black with a blue cast, tying the ink to the accent — 19.47:1 on ground */
-  --ramp-light-ink-muted: #475569; /* secondary text & labels — 7.58:1 on ground, 5.24:1 on well */
-  --ramp-light-line: #010d1f; /* control boundaries at full ink strength — 19.47:1. A deliberate move away from the old grey hairline; nothing consumes `surf-line` yet, so this lands when borders are migrated to it. */
-  --ramp-light-line-faint: #d8d7cd; /* decorative hairlines only — deliberately below any bar */
+  /* -- Daylight (light) --------------------------------------------------
+     The founder's blue scheme. Deep blue-black ink on white, mid-blue accent. Default light. */
+  --ramp-daylight-ground: #ffffff;
+  --ramp-daylight-sidebar: #ffffff;
+  --ramp-daylight-canvas: #ffffff;
+  --ramp-daylight-tab-active: #ffffff;
+  --ramp-daylight-panel: #ffffff;
+  --ramp-daylight-well: #d8d7cd;
+  --ramp-daylight-ink: #010d1f;
+  --ramp-daylight-ink-muted: #475569;
+  --ramp-daylight-line: #010d1f;
+  --ramp-daylight-line-faint: #d8d7cd;
+  --ramp-daylight-accent: #3490bc;
+  --ramp-daylight-on-accent: #010d1f;
+  --ramp-daylight-accent-ink: #2b799c;
+  --ramp-daylight-warning: #ff5722;
+  --ramp-daylight-on-warning: #111111;
+  --ramp-daylight-warning-ink: #c93f10;
+  --ramp-daylight-fill: 10%;
 
-  /* The accent is still a PAIR, but the reason changed. The old #00e5ff was 1.54:1 on
-     white — so bright it could only ever be a fill, never a stroke. This blue is 3.58:1,
-     which clears the 3:1 graphical bar, so the fill can now carry its own edge and no
-     longer depends on a boundary stroke to read as a control. The darker sibling still
-     exists because 3.58 is not 4.5: the fill still cannot be body text. */
-  --ramp-light-accent: #3490bc; /* selection FILL — 3.58:1 on ground, so usable as a stroke too */
-  --ramp-light-on-accent: #010d1f; /* 5.43:1 on the accent fill */
-  --ramp-light-accent-ink: #2b799c; /* accent as text/stroke — 4.86:1 on ground */
-  /* Warning keeps the orange pair unchanged; it was never part of the blue pivot. */
-  --ramp-light-warning: #ff5722; /* warning FILL */
-  --ramp-light-on-warning: #111111; /* 5.97:1 on the warning fill */
-  --ramp-light-warning-ink: #c93f10; /* warning text — 5.00:1 on ground */
+  /* -- Chalk (light) --------------------------------------------------
+     The original crisp-white scheme: matte black ink, bright cyan selection fills. Lighter and
+     higher-contrast than Daylight, with a colder accent. */
+  --ramp-chalk-ground: #ffffff;
+  --ramp-chalk-sidebar: #ffffff;
+  --ramp-chalk-canvas: #ffffff;
+  --ramp-chalk-tab-active: #ffffff;
+  --ramp-chalk-panel: #ffffff;
+  --ramp-chalk-well: #f4f5f7;
+  --ramp-chalk-ink: #111111;
+  --ramp-chalk-ink-muted: #6b6b6b;
+  --ramp-chalk-line: #8d8d8d;
+  --ramp-chalk-line-faint: #d5d5d5;
+  --ramp-chalk-accent: #00e5ff;
+  --ramp-chalk-on-accent: #111111;
+  --ramp-chalk-accent-ink: #00767f;
+  --ramp-chalk-warning: #ff5722;
+  --ramp-chalk-on-warning: #111111;
+  --ramp-chalk-warning-ink: #c93f10;
+  --ramp-chalk-fill: 6%;
 
-  /* -- dark ramp ------------------------------------------------------------
-     Green phosphor. A deliberate break from the light theme rather than a translation
-     of it: light is deep blue-black ink on white paper, dark is a CRT terminal. Every
-     pairing clears its bar with headroom — the tightest is `warning-ink on well` at
-     5.52:1 — and it resolves the well problem the blue dark ramp had, because a colour
-     this bright is legible on any surface in this ramp. */
-  --ramp-dark-ground: #12141a;
-  --ramp-dark-panel: #12141a; /* flush with the ground; panels are separated by a line, not a tint */
-  --ramp-dark-well: #333842; /* inset surfaces read lighter than the ground */
-  --ramp-dark-sidebar: #12141a; /* the control column */
-  --ramp-dark-canvas: #12141a; /* the drawing / working area */
-  --ramp-dark-tab-active: #12141a; /* the selected tab, which merges into the canvas below it */
-  --ramp-dark-ink: #00ff40; /* 13.48:1 on ground, 8.61:1 on well */
-  --ramp-dark-ink-muted: #a8ffbe; /* 15.53:1 on ground — see the HIERARCHY note below */
-  --ramp-dark-line: #00ff40; /* 13.48:1 — control boundaries at full phosphor */
-  --ramp-dark-line-faint: #00ff40; /* NOT faint in this ramp: same value as ink, so every
-     hairline glows. Deliberate for the terminal look, but it is what the tab strip relies
-     on to separate the active tab, and what the nav divider and menu borders draw with. */
+  /* -- Slate (dark) --------------------------------------------------
+     Chalk on a cool matte black — the conventional dark. Keeps the drafting-table feel rather
+     than inverting the light theme. */
+  --ramp-slate-ground: #12141a;
+  --ramp-slate-sidebar: #12141a;
+  --ramp-slate-canvas: #12141a;
+  --ramp-slate-tab-active: #12141a;
+  --ramp-slate-panel: #1a1d25;
+  --ramp-slate-well: #1b1f26;
+  --ramp-slate-ink: #f2f4f7;
+  --ramp-slate-ink-muted: #a1a8b4;
+  --ramp-slate-line: #6a707c;
+  --ramp-slate-line-faint: #333842;
+  --ramp-slate-accent: #2d7495;
+  --ramp-slate-on-accent: #f2f4f7;
+  --ramp-slate-accent-ink: #3490bc;
+  --ramp-slate-warning: #ff5722;
+  --ramp-slate-on-warning: #111111;
+  --ramp-slate-warning-ink: #ff9670;
+  --ramp-slate-fill: 12%;
 
-  /* The accent PAIR has collapsed. In every other ramp the accent ships twice — a bright
-     fill that can never be text, and a darkened sibling that can. Here one value does both
-     jobs, because #00ff40 is 13.48:1 on the ground and so is legible as text, as a stroke
-     and as a fill. That is legal under the contract, but it costs the drawings their
-     colour hierarchy: the board outline (ink) and the construction scaffolding
-     (accent-ink) are now the same green, where they used to be black and blue. The
-     drawings fall back to stroke weight and dash pattern to say which is which.
-
-     This is also the ramp that proves why on-fill foregrounds had to stop naming the ink
-     token (quick task 260824-nhh). `on-accent` here is the GROUND — the inverse of the
-     fill — while `ink` is the fill's own value. A filled control that still said
-     `text-surf-black` would be drawing #00ff40 on #00ff40: exactly 1:1, invisible. The
-     blue ramp did not expose that because its on-accent and ink happened to coincide. */
-  --ramp-dark-accent: #00ff40; /* selection FILL */
-  --ramp-dark-on-accent: #12141a; /* the ground, inverted onto the fill — 13.48:1 */
-  --ramp-dark-accent-ink: #00ff40; /* same value as the fill; see above */
-  --ramp-dark-warning: #ff5722; /* unchanged */
-  --ramp-dark-on-warning: #111111; /* still 5.97:1 */
-  --ramp-dark-warning-ink: #ff9670; /* 8.63:1 on ground, 5.52:1 on well */
-
-  /* HIERARCHY note — `ink-muted` (15.53:1) is BRIGHTER than `ink` (13.48:1) in this ramp,
-     which inverts the usual relationship: secondary text now carries more visual weight
-     than primary. Not a contrast failure, and arguably right for a phosphor screen where
-     the pale green reads as "washed out" rather than "louder" — but it is the opposite of
-     what every other ramp does, so it is recorded rather than left to be rediscovered. */
-
-  /* WELL CAVEAT — applies to the LIGHT ramp only. Its well sits close to the mid-tones,
-     so two pairings fall under bar ON A WELL:
-
-       light  accent-ink on well   3.36:1  (needs 4.5)
-       light  warning-ink on well  3.46:1  (needs 4.5)
-
-     Latent, not live: `--surf-well` has one consumer today (the settings menu's hover
-     row, which puts INK on it at 13.46:1) and the app's inputs still sit on
-     `--surf-ground`. It becomes real the moment a well carries accent or warning text.
-     It cannot be fixed by lightening the well — accent-ink is 4.86:1 on *pure white*, so
-     any tint at all pushes it under; the ink has to darken. Remedies with exact values
-     are in .planning/quick/260824-p03/SUMMARY.md.
-
-     The dark ramp had the same problem under the blue scheme and no longer does: green
-     phosphor is bright enough to clear every surface in that ramp. */
+  /* -- Phosphor (dark) --------------------------------------------------
+     CRT terminal. One green does ink, lines and accent alike, so the drawings fall back to
+     stroke weight and dash pattern for hierarchy. Default dark. */
+  --ramp-phosphor-ground: #12141a;
+  --ramp-phosphor-sidebar: #12141a;
+  --ramp-phosphor-canvas: #12141a;
+  --ramp-phosphor-tab-active: #12141a;
+  --ramp-phosphor-panel: #12141a;
+  --ramp-phosphor-well: #333842;
+  --ramp-phosphor-ink: #00ff40;
+  --ramp-phosphor-ink-muted: #a8ffbe;
+  --ramp-phosphor-line: #00ff40;
+  --ramp-phosphor-line-faint: #00ff40;
+  --ramp-phosphor-accent: #00ff40;
+  --ramp-phosphor-on-accent: #12141a;
+  --ramp-phosphor-accent-ink: #00ff40;
+  --ramp-phosphor-warning: #ff5722;
+  --ramp-phosphor-on-warning: #111111;
+  --ramp-phosphor-warning-ink: #ff9670;
+  --ramp-phosphor-fill: 5%;
 }
 
 /* ---------------------------------------------------------------------------
    LAYER 2 — THEME BLOCKS
-   Each block assigns the whole contract from one ramp. Nothing else belongs in
-   these blocks: if a value is not a contract assignment, it is in the wrong
-   place and will not survive the next theme.
+
+   The selectors do the work that :not() guards used to, purely through
+   specificity and source order — there is no guard left to get wrong:
+
+     :root                          (0,1,0)  the default light theme
+     @media dark  :root             (0,1,0)  later in source, so it wins under a
+                                             dark OS — this is the default dark
+     :root.theme-<id>               (0,2,0)  an explicit choice, always wins
+
+   The provider also puts a bare `light`/`dark` class alongside `theme-<id>`.
+   That class sets no tokens; it exists so Tailwind's `dark:` variant fires for
+   BOTH dark themes without knowing their names.
    --------------------------------------------------------------------------- */
 
-/* LIGHT — the default, and the reason first paint needs no script. */
+/* DEFAULT LIGHT — Daylight. Also why first paint needs no JS. */
 :root {
   color-scheme: light;
-
-  --surf-ground: var(--ramp-light-ground);
-  --surf-panel: var(--ramp-light-panel);
-  --surf-well: var(--ramp-light-well);
-  --surf-sidebar: var(--ramp-light-sidebar);
-  --surf-canvas: var(--ramp-light-canvas);
-  --surf-tab-active: var(--ramp-light-tab-active);
-  --surf-ink: var(--ramp-light-ink);
-  --surf-ink-muted: var(--ramp-light-ink-muted);
-  --surf-line: var(--ramp-light-line);
-  --surf-line-faint: var(--ramp-light-line-faint);
-  --surf-accent: var(--ramp-light-accent);
-  --surf-on-accent: var(--ramp-light-on-accent);
-  --surf-accent-ink: var(--ramp-light-accent-ink);
-  --surf-warning: var(--ramp-light-warning);
-  --surf-on-warning: var(--ramp-light-on-warning);
-  --surf-warning-ink: var(--ramp-light-warning-ink);
-
-  /* Board interior wash — see the --outline-* block for what this is for.
-     Held per-theme because the wash has to be mixed into *this theme's* ground,
-     and because 6% of the accent that reads as a whisper on white disappears
-     entirely on black. */
-  --outline-board-fill-strength: 10%;
-
-  --radius: 0.625rem;
+  --surf-ground: var(--ramp-daylight-ground);
+  --surf-sidebar: var(--ramp-daylight-sidebar);
+  --surf-canvas: var(--ramp-daylight-canvas);
+  --surf-tab-active: var(--ramp-daylight-tab-active);
+  --surf-panel: var(--ramp-daylight-panel);
+  --surf-well: var(--ramp-daylight-well);
+  --surf-ink: var(--ramp-daylight-ink);
+  --surf-ink-muted: var(--ramp-daylight-ink-muted);
+  --surf-line: var(--ramp-daylight-line);
+  --surf-line-faint: var(--ramp-daylight-line-faint);
+  --surf-accent: var(--ramp-daylight-accent);
+  --surf-on-accent: var(--ramp-daylight-on-accent);
+  --surf-accent-ink: var(--ramp-daylight-accent-ink);
+  --surf-warning: var(--ramp-daylight-warning);
+  --surf-on-warning: var(--ramp-daylight-on-warning);
+  --surf-warning-ink: var(--ramp-daylight-warning-ink);
+  --outline-board-fill-strength: var(--ramp-daylight-fill);
 }
 
-/* DARK, reached by OS preference. `:not(.light)` is what lets an explicit
-   `.light` class override the OS. This block and `:root.dark` below assign the
-   same ramp and must stay in step — they are deliberately identical bodies. */
+/* DEFAULT DARK — Phosphor, for an OS set to dark with no explicit choice. */
 @media (prefers-color-scheme: dark) {
-  :root:not(.light) {
+  :root {
     color-scheme: dark;
-
-    --surf-ground: var(--ramp-dark-ground);
-    --surf-panel: var(--ramp-dark-panel);
-    --surf-well: var(--ramp-dark-well);
-    --surf-sidebar: var(--ramp-dark-sidebar);
-    --surf-canvas: var(--ramp-dark-canvas);
-    --surf-tab-active: var(--ramp-dark-tab-active);
-    --surf-ink: var(--ramp-dark-ink);
-    --surf-ink-muted: var(--ramp-dark-ink-muted);
-    --surf-line: var(--ramp-dark-line);
-    --surf-line-faint: var(--ramp-dark-line-faint);
-    --surf-accent: var(--ramp-dark-accent);
-    --surf-on-accent: var(--ramp-dark-on-accent);
-    --surf-accent-ink: var(--ramp-dark-accent-ink);
-    --surf-warning: var(--ramp-dark-warning);
-    --surf-on-warning: var(--ramp-dark-on-warning);
-    --surf-warning-ink: var(--ramp-dark-warning-ink);
-
-    --outline-board-fill-strength: 5%;
-
+    --surf-ground: var(--ramp-phosphor-ground);
+    --surf-sidebar: var(--ramp-phosphor-sidebar);
+    --surf-canvas: var(--ramp-phosphor-canvas);
+    --surf-tab-active: var(--ramp-phosphor-tab-active);
+    --surf-panel: var(--ramp-phosphor-panel);
+    --surf-well: var(--ramp-phosphor-well);
+    --surf-ink: var(--ramp-phosphor-ink);
+    --surf-ink-muted: var(--ramp-phosphor-ink-muted);
+    --surf-line: var(--ramp-phosphor-line);
+    --surf-line-faint: var(--ramp-phosphor-line-faint);
+    --surf-accent: var(--ramp-phosphor-accent);
+    --surf-on-accent: var(--ramp-phosphor-on-accent);
+    --surf-accent-ink: var(--ramp-phosphor-accent-ink);
+    --surf-warning: var(--ramp-phosphor-warning);
+    --surf-on-warning: var(--ramp-phosphor-on-warning);
+    --surf-warning-ink: var(--ramp-phosphor-warning-ink);
+    --outline-board-fill-strength: var(--ramp-phosphor-fill);
   }
 }
 
-/* DARK, reached explicitly. Same body as the media block above; wins over an OS
-   preference of light purely on specificity (0,2,0 vs :root's 0,1,0). */
-:root.dark {
-  color-scheme: dark;
-
-  --surf-ground: var(--ramp-dark-ground);
-  --surf-panel: var(--ramp-dark-panel);
-  --surf-well: var(--ramp-dark-well);
-  --surf-sidebar: var(--ramp-dark-sidebar);
-  --surf-canvas: var(--ramp-dark-canvas);
-  --surf-tab-active: var(--ramp-dark-tab-active);
-  --surf-ink: var(--ramp-dark-ink);
-  --surf-ink-muted: var(--ramp-dark-ink-muted);
-  --surf-line: var(--ramp-dark-line);
-  --surf-line-faint: var(--ramp-dark-line-faint);
-  --surf-accent: var(--ramp-dark-accent);
-  --surf-on-accent: var(--ramp-dark-on-accent);
-  --surf-accent-ink: var(--ramp-dark-accent-ink);
-  --surf-warning: var(--ramp-dark-warning);
-  --surf-on-warning: var(--ramp-dark-on-warning);
-  --surf-warning-ink: var(--ramp-dark-warning-ink);
-
-  --outline-board-fill-strength: 5%;
-
-}
-
-/* LIGHT, reached explicitly. The light values already live at `:root`, so this
-   only has to raise `color-scheme` to the same specificity as the dark blocks —
-   otherwise a `.light` override would keep dark scrollbars and form controls
-   on an OS set to dark. */
-:root.light {
+/* Daylight — explicit. */
+:root.theme-daylight {
   color-scheme: light;
+  --surf-ground: var(--ramp-daylight-ground);
+  --surf-sidebar: var(--ramp-daylight-sidebar);
+  --surf-canvas: var(--ramp-daylight-canvas);
+  --surf-tab-active: var(--ramp-daylight-tab-active);
+  --surf-panel: var(--ramp-daylight-panel);
+  --surf-well: var(--ramp-daylight-well);
+  --surf-ink: var(--ramp-daylight-ink);
+  --surf-ink-muted: var(--ramp-daylight-ink-muted);
+  --surf-line: var(--ramp-daylight-line);
+  --surf-line-faint: var(--ramp-daylight-line-faint);
+  --surf-accent: var(--ramp-daylight-accent);
+  --surf-on-accent: var(--ramp-daylight-on-accent);
+  --surf-accent-ink: var(--ramp-daylight-accent-ink);
+  --surf-warning: var(--ramp-daylight-warning);
+  --surf-on-warning: var(--ramp-daylight-on-warning);
+  --surf-warning-ink: var(--ramp-daylight-warning-ink);
+  --outline-board-fill-strength: var(--ramp-daylight-fill);
 }
+
+/* Chalk — explicit. */
+:root.theme-chalk {
+  color-scheme: light;
+  --surf-ground: var(--ramp-chalk-ground);
+  --surf-sidebar: var(--ramp-chalk-sidebar);
+  --surf-canvas: var(--ramp-chalk-canvas);
+  --surf-tab-active: var(--ramp-chalk-tab-active);
+  --surf-panel: var(--ramp-chalk-panel);
+  --surf-well: var(--ramp-chalk-well);
+  --surf-ink: var(--ramp-chalk-ink);
+  --surf-ink-muted: var(--ramp-chalk-ink-muted);
+  --surf-line: var(--ramp-chalk-line);
+  --surf-line-faint: var(--ramp-chalk-line-faint);
+  --surf-accent: var(--ramp-chalk-accent);
+  --surf-on-accent: var(--ramp-chalk-on-accent);
+  --surf-accent-ink: var(--ramp-chalk-accent-ink);
+  --surf-warning: var(--ramp-chalk-warning);
+  --surf-on-warning: var(--ramp-chalk-on-warning);
+  --surf-warning-ink: var(--ramp-chalk-warning-ink);
+  --outline-board-fill-strength: var(--ramp-chalk-fill);
+}
+
+/* Slate — explicit. */
+:root.theme-slate {
+  color-scheme: dark;
+  --surf-ground: var(--ramp-slate-ground);
+  --surf-sidebar: var(--ramp-slate-sidebar);
+  --surf-canvas: var(--ramp-slate-canvas);
+  --surf-tab-active: var(--ramp-slate-tab-active);
+  --surf-panel: var(--ramp-slate-panel);
+  --surf-well: var(--ramp-slate-well);
+  --surf-ink: var(--ramp-slate-ink);
+  --surf-ink-muted: var(--ramp-slate-ink-muted);
+  --surf-line: var(--ramp-slate-line);
+  --surf-line-faint: var(--ramp-slate-line-faint);
+  --surf-accent: var(--ramp-slate-accent);
+  --surf-on-accent: var(--ramp-slate-on-accent);
+  --surf-accent-ink: var(--ramp-slate-accent-ink);
+  --surf-warning: var(--ramp-slate-warning);
+  --surf-on-warning: var(--ramp-slate-on-warning);
+  --surf-warning-ink: var(--ramp-slate-warning-ink);
+  --outline-board-fill-strength: var(--ramp-slate-fill);
+}
+
+/* Phosphor — explicit. */
+:root.theme-phosphor {
+  color-scheme: dark;
+  --surf-ground: var(--ramp-phosphor-ground);
+  --surf-sidebar: var(--ramp-phosphor-sidebar);
+  --surf-canvas: var(--ramp-phosphor-canvas);
+  --surf-tab-active: var(--ramp-phosphor-tab-active);
+  --surf-panel: var(--ramp-phosphor-panel);
+  --surf-well: var(--ramp-phosphor-well);
+  --surf-ink: var(--ramp-phosphor-ink);
+  --surf-ink-muted: var(--ramp-phosphor-ink-muted);
+  --surf-line: var(--ramp-phosphor-line);
+  --surf-line-faint: var(--ramp-phosphor-line-faint);
+  --surf-accent: var(--ramp-phosphor-accent);
+  --surf-on-accent: var(--ramp-phosphor-on-accent);
+  --surf-accent-ink: var(--ramp-phosphor-accent-ink);
+  --surf-warning: var(--ramp-phosphor-warning);
+  --surf-on-warning: var(--ramp-phosphor-on-warning);
+  --surf-warning-ink: var(--ramp-phosphor-warning-ink);
+  --outline-board-fill-strength: var(--ramp-phosphor-fill);
+}
+
+/* WELL CAVEAT — Daylight only. Its well sits close to the mid-tones, so two pairings
+   fall under bar ON A WELL: accent-ink 3.36:1 and warning-ink 3.46:1 (both need 4.5).
+   Latent, not live: --surf-well has one consumer today (the settings menu hover row,
+   which puts ink on it) and inputs still sit on --surf-sidebar. It cannot be fixed by
+   lightening the well — accent-ink is 4.86:1 on pure white, so any tint pushes it under;
+   the ink has to darken. Remedies with exact values are in
+   .planning/quick/260824-p03-.../SUMMARY.md. Chalk, Slate and Phosphor are clean. */
 
 /* ---------------------------------------------------------------------------
    LAYER 3 — TAILWIND BRIDGE
@@ -540,28 +588,28 @@
 }
 
 @media print {
-  /* A template is printed to be cut along and marked on. Everything below forces the
-     LIGHT ramp regardless of the active theme — without this, printing from dark mode
-     would put the board on a near-black page and burn a whole cartridge doing it. */
+  /* A template is printed to be cut along and marked on. Whatever theme is on screen,
+     print gets the default light one — without this, printing from Phosphor puts the
+     board on a near-black page and burns a cartridge doing it. */
   :root {
     color-scheme: light;
 
-    --surf-ground: var(--ramp-light-ground);
-    --surf-panel: var(--ramp-light-panel);
-    --surf-well: var(--ramp-light-well);
-    --surf-sidebar: var(--ramp-light-sidebar);
-    --surf-canvas: var(--ramp-light-canvas);
-    --surf-tab-active: var(--ramp-light-tab-active);
-    --surf-ink: var(--ramp-light-ink);
-    --surf-ink-muted: var(--ramp-light-ink-muted);
-    --surf-line: var(--ramp-light-line);
-    --surf-line-faint: var(--ramp-light-line-faint);
-    --surf-accent: var(--ramp-light-accent);
-    --surf-on-accent: var(--ramp-light-on-accent);
-    --surf-accent-ink: var(--ramp-light-accent-ink);
-    --surf-warning: var(--ramp-light-warning);
-    --surf-on-warning: var(--ramp-light-on-warning);
-    --surf-warning-ink: var(--ramp-light-warning-ink);
+    --surf-ground: var(--ramp-daylight-ground);
+    --surf-sidebar: var(--ramp-daylight-sidebar);
+    --surf-canvas: var(--ramp-daylight-canvas);
+    --surf-tab-active: var(--ramp-daylight-tab-active);
+    --surf-panel: var(--ramp-daylight-panel);
+    --surf-well: var(--ramp-daylight-well);
+    --surf-ink: var(--ramp-daylight-ink);
+    --surf-ink-muted: var(--ramp-daylight-ink-muted);
+    --surf-line: var(--ramp-daylight-line);
+    --surf-line-faint: var(--ramp-daylight-line-faint);
+    --surf-accent: var(--ramp-daylight-accent);
+    --surf-on-accent: var(--ramp-daylight-on-accent);
+    --surf-accent-ink: var(--ramp-daylight-accent-ink);
+    --surf-warning: var(--ramp-daylight-warning);
+    --surf-on-warning: var(--ramp-daylight-on-warning);
+    --surf-warning-ink: var(--ramp-daylight-warning-ink);
 
     /* The wash is a screen affordance: ink inside the outline is wasted and can muddy the
        station lines a shaper measures against. 0% collapses the mix to the bare ground. */

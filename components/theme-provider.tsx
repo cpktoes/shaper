@@ -30,7 +30,7 @@ import {
   applyThemePreference,
   parseThemePreference,
   resolveTheme,
-  type ResolvedTheme,
+  type ThemeDefinition,
   type ThemePreference,
 } from "@/lib/theme";
 
@@ -89,11 +89,14 @@ function getServerSystemPrefersDark(): boolean {
 /* -------------------------------------------------------------------------------------- */
 
 interface ThemeContextValue {
-  /** What the shaper picked: `system`, `light` or `dark`. */
+  /** What the shaper picked: `system`, or a theme id from the registry. */
   preference: ThemePreference;
   setPreference: (next: ThemePreference) => void;
-  /** What is actually on screen — `system` resolved against the OS. */
-  resolved: ResolvedTheme;
+  /** The theme actually on screen — `system` resolved against the OS. */
+  resolved: ThemeDefinition;
+  /** What `system` would pick right now. Differs from `resolved` whenever an explicit
+   * theme is chosen, which is exactly when the menu must not claim the OS chose it. */
+  systemTheme: ThemeDefinition;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -131,10 +134,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [preference]);
 
   const resolved = resolveTheme(preference, systemPrefersDark);
+  const systemTheme = resolveTheme("system", systemPrefersDark);
 
   const value = useMemo(
-    () => ({ preference, setPreference, resolved }),
-    [preference, setPreference, resolved],
+    () => ({ preference, setPreference, resolved, systemTheme }),
+    [preference, setPreference, resolved, systemTheme],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
