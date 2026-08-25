@@ -457,7 +457,7 @@ export function OrderForm() {
                 <select
                   value={finSystem}
                   onChange={(e) => setFinSystem(e.target.value as FinSystem)}
-                  className="w-full rounded-[2px] border border-surf-ink bg-surf-panel px-1.5 py-1 font-bold text-surf-ink outline-none focus:border-surf-accent-cyan-ink order-form-value"
+                  className="w-full rounded-[2px] border border-surf-ink bg-surf-panel px-1.5 py-1 font-bold text-surf-ink outline-none focus:border-surf-accent-ink order-form-value"
                 >
                   {FIN_SYSTEMS.map((sys) => (
                     <option key={sys.value} value={sys.value}>
@@ -660,7 +660,7 @@ export function OrderForm() {
         <Button
           type="button"
           onClick={printOrderForm}
-          className="border-surf-on-accent bg-surf-accent-cyan text-surf-on-accent hover:bg-surf-accent-cyan/85"
+          className="border-surf-on-accent bg-surf-accent text-surf-on-accent hover:bg-surf-accent/85"
         >
           Print Order Form
         </Button>

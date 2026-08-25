@@ -461,14 +461,14 @@ export function OutlineViewer({
                 cy={d.cy}
                 r={DRAG_TARGET_OUTER_PX * handleUnit}
                 fill="var(--outline-board-fill)"
-                stroke="var(--color-surf-accent-cyan-ink)"
+                stroke="var(--color-surf-accent-ink)"
                 strokeWidth={DRAG_TARGET_RING_PX * handleUnit}
               />
               <circle
                 cx={d.cx}
                 cy={d.cy}
                 r={DRAG_TARGET_CORE_PX * handleUnit}
-                fill="var(--color-surf-accent-orange)"
+                fill="var(--color-surf-warning)"
               />
             </g>
           ))}
@@ -495,7 +495,7 @@ export function OutlineViewer({
               y1={fm.y1}
               x2={fm.x2}
               y2={fm.y2}
-              stroke="var(--color-surf-accent-cyan-ink)"
+              stroke="var(--color-surf-accent-ink)"
               strokeWidth={2}
             />
             <circle cx={fm.x1} cy={fm.y1} r={3.5} fill="var(--outline-ink)" />

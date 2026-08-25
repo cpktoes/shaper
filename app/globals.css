@@ -328,9 +328,14 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
-  /* -- surf design language, semantic names — PREFER THESE IN NEW CODE ------
+  /* -- surf design language ------------------------------------------------
      bg-surf-ground, text-surf-ink, text-surf-ink-muted, border-surf-line,
-     bg-surf-accent + text-surf-on-accent, text-surf-accent-ink, and so on. */
+     bg-surf-accent + text-surf-on-accent, text-surf-accent-ink, and so on.
+
+     There is no longer a second set of literal aliases beside these. The
+     pre-theming names (surf-base, surf-black, surf-muted, surf-accent-cyan,
+     surf-accent-orange) were migrated out of the app and deleted here, so a name
+     that lies about the value it holds can no longer be reached at all. */
   --color-surf-ground: var(--surf-ground);
   --color-surf-panel: var(--surf-panel);
   --color-surf-well: var(--surf-well);
@@ -348,19 +353,6 @@
   --color-surf-warning: var(--surf-warning);
   --color-surf-on-warning: var(--surf-on-warning);
   --color-surf-warning-ink: var(--surf-warning-ink);
-
-  /* -- literal aliases, kept for the existing call sites --------------------
-     These are the pre-theming names. They still work, and they now theme,
-     because they point at the contract rather than at hex. Their names lie in
-     dark mode (`surf-black` holds #f2f4f7 there), which is exactly why they are
-     frozen: use the semantic names above for anything new. */
-  --color-surf-base: var(--surf-ground);
-  --color-surf-black: var(--surf-ink);
-  --color-surf-muted: var(--surf-ink-muted);
-  --color-surf-accent-cyan: var(--surf-accent);
-  --color-surf-accent-cyan-ink: var(--surf-accent-ink);
-  --color-surf-accent-orange: var(--surf-warning);
-  --color-surf-accent-orange-ink: var(--surf-warning-ink);
 
   /* next/font loads Inter in app/layout.tsx and exposes it as --font-inter on <html>.
      Display and body are the same face by choice: the source config specified Space
@@ -414,8 +406,8 @@
      the deep control internals (sliders, selects, section rules) inside the 200-700 line
      control panels land on the new ground without a class-by-class rewrite.
 
-     The accent aliases are gone: every call site now names `surf-accent-cyan`,
-     `surf-accent-cyan-ink` or `surf-accent-orange-ink` directly, so the role is legible at
+     The accent aliases are gone: every call site now names `surf-accent`,
+     `surf-accent-ink` or `surf-warning-ink` directly, so the role is legible at
      the point of use rather than hidden behind a token whose name meant amber. */
   /* The widepoint marker no longer carries its own hue. It marks a draggable INPUT — the
      widepoint station the shaper sets — which is the same role the construction overlay

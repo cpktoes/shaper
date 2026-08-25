@@ -124,7 +124,7 @@ function ControlSlider({
           <span>{hintRight}</span>
         </div>
       )}
-      {note && <div className="mt-0.5 text-[10px] text-surf-accent-orange-ink">{note}</div>}
+      {note && <div className="mt-0.5 text-[10px] text-surf-warning-ink">{note}</div>}
     </div>
   );
 }
@@ -349,7 +349,7 @@ function RailSectionControls({
                 <button
                   type="button"
                   onClick={resetAdvanced}
-                  className="cursor-pointer text-left text-[11px] font-bold text-surf-accent-cyan-ink"
+                  className="cursor-pointer text-left text-[11px] font-bold text-surf-accent-ink"
                 >
                   ↺ Reset Advanced Settings
                 </button>

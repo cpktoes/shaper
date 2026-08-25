@@ -33,7 +33,7 @@ const AXIS_LABEL_PAD = 20; // room for the x-axis tick labels below the plot
  */
 export const RAIL_SEGMENT_COLORS: Record<RailSegmentKey, string> = {
   domedBand: "#6b8e4e",
-  band1: "var(--color-surf-accent-cyan-ink)",
+  band1: "var(--color-surf-accent-ink)",
   band2: "#b5563a",
   cornerCut: "#4d8a86",
   hardEdge: "var(--color-surf-ink)",

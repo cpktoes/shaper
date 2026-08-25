@@ -160,7 +160,7 @@ export function OrderFormField({
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="min-w-0 flex-1 border-b border-surf-ink bg-transparent font-bold text-surf-ink outline-none placeholder:font-normal placeholder:text-surf-ink-muted/60 focus:border-surf-accent-cyan-ink order-form-value"
+          className="min-w-0 flex-1 border-b border-surf-ink bg-transparent font-bold text-surf-ink outline-none placeholder:font-normal placeholder:text-surf-ink-muted/60 focus:border-surf-accent-ink order-form-value"
         />
       ) : (
         // Both remaining states are one element: a bottom-ruled box holding the value, or holding

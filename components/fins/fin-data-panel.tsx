@@ -37,7 +37,7 @@ export function FinDataPanel({ result, boardLength, tailWidth12, finSetup, tailS
       <div className="mb-2.5 text-xl font-extrabold tracking-tight">
         {formatFeetInches(boardLength)} · {formatInchesFraction(tailWidth12, 16)} tail @12&quot; ·{" "}
         {FIN_SETUP_LABEL[finSetup] ?? finSetup} · {TAIL_SHAPE_LABEL[tailShape]} tail
-        {result.isModified && <span className="text-surf-accent-orange-ink"> · Modified</span>}
+        {result.isModified && <span className="text-surf-warning-ink"> · Modified</span>}
       </div>
       <div className="mb-4 border-b-2 border-surf-line-faint pb-4 text-sm font-normal text-surf-ink-muted">
         {result.modelHeader}

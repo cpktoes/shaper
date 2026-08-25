@@ -40,7 +40,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
     "border border-surf-line-faint px-2 py-1 " + (i === view.highlightIndex ? "bg-surf-ink-muted/15 font-bold" : "");
   const headerCellClass = (i: number) =>
     "border border-surf-line-faint px-2 py-1 " +
-    (i === view.highlightIndex ? "bg-surf-accent-cyan font-bold text-surf-on-accent" : "bg-outline-ink text-surf-on-ink");
+    (i === view.highlightIndex ? "bg-surf-accent font-bold text-surf-on-accent" : "bg-outline-ink text-surf-on-ink");
 
   return (
     <div

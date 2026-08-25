@@ -55,11 +55,11 @@
  *
  * The percentage is bounded by contrast, not by taste. Any tint darkens the ground under the muted
  * text sitting on it, and that is precisely what put the logo block's placeholder line at 4.25:1 —
- * under AA — when it was a grey wash. 7% keeps `--color-surf-muted` clear of 4.5:1 on these panels;
+ * under AA — when it was a grey wash. 7% keeps `--color-surf-ink-muted` clear of 4.5:1 on these panels;
  * raising it will not.
  */
 [data-order-form-root] {
-  --order-form-shade: color-mix(in srgb, var(--color-surf-accent-cyan) 7%, white);
+  --order-form-shade: color-mix(in srgb, var(--color-surf-accent) 7%, white);
 }
 
 /*

@@ -71,7 +71,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
          */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className="flex h-full flex-col overflow-hidden bg-surf-base">
+      <body className="flex h-full flex-col overflow-hidden bg-surf-ground">
         <ThemeProvider>
           <Provider>
             <div className="flex min-h-0 flex-1 flex-col">

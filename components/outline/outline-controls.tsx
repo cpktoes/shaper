@@ -126,7 +126,7 @@ function SliderRow({
           <span>{rightHint}</span>
         </div>
       )}
-      {note && <div className="mt-0.5 text-[10px] text-surf-accent-orange-ink">{note}</div>}
+      {note && <div className="mt-0.5 text-[10px] text-surf-warning-ink">{note}</div>}
     </div>
   );
 }
@@ -316,9 +316,9 @@ export function OutlineControls({
               className="flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-1.5"
               style={{
                 borderColor: active
-                  ? "var(--color-surf-accent-cyan)"
+                  ? "var(--color-surf-accent)"
                   : "color-mix(in srgb, var(--color-surf-ink-muted) 30%, transparent)",
-                background: active ? "var(--color-surf-accent-cyan)" : "var(--color-surf-base)",
+                background: active ? "var(--color-surf-accent)" : "var(--color-surf-ground)",
                 // Two different surfaces, so two different foregrounds. This was one shared value
                 // back when ink and on-accent were both #111111; under theming the active chip is
                 // ink-on-cyan at 1.4:1 unless it takes the fill's own paired colour.
