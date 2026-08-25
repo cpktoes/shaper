@@ -487,25 +487,25 @@ const GROUPS = [
 
 const PUBLISHED = [
   { id:"daylight", label:"Daylight", mode:"light", note:"default light",
-    v:{ ground:"#ffffff",sidebar:"#ffffff",canvas:"#ffffff","tab-active":"#ffffff",panel:"#ffffff",
-        well:"#d8d7cd",ink:"#010d1f","ink-muted":"#475569",line:"#010d1f","line-faint":"#d8d7cd",
-        accent:"#3490bc","on-accent":"#010d1f","accent-ink":"#2b799c",
-        warning:"#ff5722","on-warning":"#111111","warning-ink":"#c93f10",fill:10 } },
+    v:{ ground:"#ffffff",sidebar:"#ffffff",canvas:"#dfdcd3","tab-active":"#ffffff",panel:"#ffffff",
+        well:"#dfdcd3",ink:"#1f2a3b","ink-muted":"#566171",line:"#897c58","line-faint":"#cec8b6",
+        accent:"#8ec1b8","on-accent":"#1f2a3b","accent-ink":"#48605c",
+        warning:"#ff5722","on-warning":"#1f2a3b","warning-ink":"#ac3811",fill:10 } },
   { id:"chalk", label:"Chalk", mode:"light", note:"",
     v:{ ground:"#ffffff",sidebar:"#ffffff",canvas:"#ffffff","tab-active":"#ffffff",panel:"#ffffff",
         well:"#f4f5f7",ink:"#111111","ink-muted":"#6b6b6b",line:"#8d8d8d","line-faint":"#d5d5d5",
         accent:"#00e5ff","on-accent":"#111111","accent-ink":"#00767f",
         warning:"#ff5722","on-warning":"#111111","warning-ink":"#c93f10",fill:6 } },
-  { id:"slate", label:"Slate", mode:"dark", note:"",
+  { id:"slate", label:"Slate", mode:"dark", note:"default dark",
     v:{ ground:"#12141a",sidebar:"#12141a",canvas:"#12141a","tab-active":"#12141a",panel:"#1a1d25",
         well:"#1b1f26",ink:"#f2f4f7","ink-muted":"#a1a8b4",line:"#6a707c","line-faint":"#333842",
         accent:"#2d7495","on-accent":"#f2f4f7","accent-ink":"#3490bc",
         warning:"#ff5722","on-warning":"#111111","warning-ink":"#ff9670",fill:12 } },
-  { id:"phosphor", label:"Phosphor", mode:"dark", note:"default dark",
-    v:{ ground:"#12141a",sidebar:"#12141a",canvas:"#12141a","tab-active":"#12141a",panel:"#12141a",
-        well:"#333842",ink:"#00ff40","ink-muted":"#a8ffbe",line:"#00ff40","line-faint":"#00ff40",
-        accent:"#00ff40","on-accent":"#12141a","accent-ink":"#00ff40",
-        warning:"#ff5722","on-warning":"#111111","warning-ink":"#ff9670",fill:5 } },
+  { id:"phosphor", label:"Phosphor", mode:"dark", note:"",
+    v:{ ground:"#050805",sidebar:"#050805",canvas:"#142414","tab-active":"#050805",panel:"#050805",
+        well:"#050805",ink:"#26d026","ink-muted":"#2ca62c",line:"#3e783e","line-faint":"#3e783e",
+        accent:"#2ca62c","on-accent":"#050805","accent-ink":"#52ab52",
+        warning:"#5eff5e","on-warning":"#050805","warning-ink":"#a6ffa6",fill:11 } },
 ];
 
 const state = {
@@ -690,8 +690,8 @@ ${state.themes.map(rampFor).join("\n\n")}
 ${state.themes.map(blockFor).join("\n\n")}
 
 /* Defaults, for lib/theme.ts and the two blocks that paint before any JS:
-   DEFAULT_LIGHT_THEME = ${JSON.stringify(state.themes.find(x=>x.mode==="light")?.id ?? null)}
-   DEFAULT_DARK_THEME  = ${JSON.stringify(state.themes.find(x=>x.mode==="dark")?.id ?? null)}
+   DEFAULT_LIGHT_THEME = ${JSON.stringify(state.themes.find(x=>x.note==="default light")?.id ?? state.themes.find(x=>x.mode==="light")?.id ?? null)}
+   DEFAULT_DARK_THEME  = ${JSON.stringify(state.themes.find(x=>x.note==="default dark")?.id ?? state.themes.find(x=>x.mode==="dark")?.id ?? null)}
    Whichever two you choose must also be assigned to bare :root and to
    @media (prefers-color-scheme: dark) :root — that CSS is what paints first. */`;
   $("out").textContent = css;

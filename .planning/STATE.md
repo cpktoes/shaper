@@ -182,9 +182,10 @@ Items acknowledged and carried forward from previous milestone close:
 | 260824-tq7 | Retire the literal token names: last 54 occurrences migrated (surf-base/accent-cyan/accent-orange -> ground/accent/warning) in one longest-first pass, then the frozen alias block deleted once the rename made it duplicate the semantic bridge. Bridge is now 17 tokens, each declared once; literal names 291 -> 0 | 2026-08-24 | 35f4c57 | [260824-tq7-clear-the-last-literal-token-names](./quick/260824-tq7-clear-the-last-literal-token-names/) |
 | 260824-um4 | Four themes via a registry in lib/theme.ts (Daylight/Chalk light, Slate/Phosphor dark); two revived from this project's own verified palettes. :not() guards dropped — specificity and source order suffice. All four CSS blocks generated from one definition. Bench gets a four-chip picker and exports every theme at once | 2026-08-24 | 8d69b05 | [260824-um4-four-named-themes-two-light-two-dark](./quick/260824-um4-four-named-themes-two-light-two-dark/) |
 | 260824-uyz | Save the colour bench source to .planning/sketches/themes/ with a README recording the published artifact URL, how to republish to it, and the hand-kept PUBLISHED/globals.css drift coupling that no test can cover. Flags default.css as stale | 2026-08-24 | (this commit) | [260824-uyz-save-the-colour-bench-into-the-repo](./quick/260824-uyz-save-the-colour-bench-into-the-repo/) |
+| 260825-gou | Apply the founder's updated palette: Daylight to warm paper + sage (resolving its two latent well pairings), Phosphor to a deeper fully-monochrome terminal, default dark Phosphor -> Slate. All four themes now clear every pairing, so the WELL CAVEAT is gone. New tests read globals.css and assert the defaults/blocks agree with the registry | 2026-08-25 | 8bc1a96 | [260825-gou-updated-four-theme-palette](./quick/260825-gou-updated-four-theme-palette/) |
 
 ## Session Continuity
 
 Last session: 2026-08-24T22:33:31.225Z
-Stopped at: Four themes live; colour bench source now in .planning/sketches/themes/ and published. 26+ commits unpushed. Daylight's two well pairings still latent. Units toggle still deferred
+Stopped at: Four themes all clear every contrast pairing — nothing latent left. Default dark is Slate. Bench re-synced and published. ~29 commits unpushed. Units toggle still deferred
 Resume file: None
