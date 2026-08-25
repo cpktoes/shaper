@@ -101,8 +101,17 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .panel-hd .count{margin-left:auto;font-size:.68rem;color:var(--ui-muted)}
 
 /* ---------- control rail ---------- */
-.rail{position:sticky;top:74px;display:flex;flex-direction:column;gap:16px}
-@media (max-width:960px){.rail{position:static}}
+/* The rail is taller than the viewport once every token has a row, and sticky alone
+   does not help with that — it pins, then the overflow is simply unreachable. Its own
+   scroll container lets the tokens move while the specimen stays put. */
+.rail{position:sticky;top:74px;display:flex;flex-direction:column;gap:16px;
+  max-height:calc(100vh - 90px);overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:thin;padding-right:2px}
+.rail::-webkit-scrollbar{width:9px}
+.rail::-webkit-scrollbar-thumb{background:var(--ui-line-strong);border-radius:9px;
+  border:2px solid var(--ui-ground);background-clip:padding-box}
+.rail::-webkit-scrollbar-track{background:transparent}
+@media (max-width:960px){.rail{position:static;max-height:none;overflow:visible}}
 .group + .group{border-top:1px solid var(--ui-line)}
 .group-hd{padding:11px 16px 5px;display:flex;align-items:baseline;gap:8px}
 .group-hd .note{font-size:.66rem;color:var(--ui-muted);margin-left:auto}
@@ -131,6 +140,10 @@ h1,h2,h3{text-wrap:balance;margin:0}
 @media (max-width:760px){.s-shell{grid-template-columns:1fr}}
 .s-side{background:var(--surf-sidebar);border-right:1px solid var(--surf-line-faint);padding:14px;display:flex;flex-direction:column;gap:13px}
 .s-canvas{background:var(--surf-canvas);padding:14px}
+/* The folder-tab treatment: the active tab drops its bottom border and the panel
+   below picks the line up, so the two read as one surface. The app now does the same
+   (rail-band-editor / fin-placement-editor) — the bench had this first and the app
+   was brought up to it, rather than the bench being dumbed down to match. */
 .s-tab.is-on{border-color:var(--surf-line-faint);background:var(--surf-tab-active);color:var(--surf-ink)}
 .s-panel{border:1px solid var(--surf-line-faint);border-radius:0 8px 8px 8px;padding:14px;background:var(--surf-tab-active);margin-top:-1px}
 .stage-split{display:grid;gap:16px;grid-template-columns:1fr 1fr}
@@ -464,6 +477,7 @@ const GROUPS = [
   { name:"Surfaces", note:"things ON a region", tokens:[
     ["panel","Panel","Raised — cards, the order-form sheet, dialogs"],
     ["well","Well","Inset — inputs and readouts"],
+    ["board-fill","Board fill","The planshape's interior wash on the drawings"],
   ]},
   { name:"Ink", note:"must clear 4.5:1", tokens:[
     ["ink","Ink","Primary text and board strokes"],
@@ -490,22 +504,22 @@ const PUBLISHED = [
     v:{ ground:"#ffffff",sidebar:"#ffffff",canvas:"#dfdcd3","tab-active":"#ffffff",panel:"#ffffff",
         well:"#dfdcd3",ink:"#1f2a3b","ink-muted":"#566171",line:"#897c58","line-faint":"#cec8b6",
         accent:"#8ec1b8","on-accent":"#1f2a3b","accent-ink":"#48605c",
-        warning:"#ff5722","on-warning":"#1f2a3b","warning-ink":"#ac3811",fill:10 } },
+        warning:"#ff5722","on-warning":"#1f2a3b","warning-ink":"#ac3811","board-fill":"#f4f9f8" } },
   { id:"chalk", label:"Chalk", mode:"light", note:"",
     v:{ ground:"#ffffff",sidebar:"#ffffff",canvas:"#ffffff","tab-active":"#ffffff",panel:"#ffffff",
         well:"#f4f5f7",ink:"#111111","ink-muted":"#6b6b6b",line:"#8d8d8d","line-faint":"#d5d5d5",
         accent:"#00e5ff","on-accent":"#111111","accent-ink":"#00767f",
-        warning:"#ff5722","on-warning":"#111111","warning-ink":"#c93f10",fill:6 } },
+        warning:"#ff5722","on-warning":"#111111","warning-ink":"#c93f10","board-fill":"#f0fdff" } },
   { id:"slate", label:"Slate", mode:"dark", note:"default dark",
     v:{ ground:"#12141a",sidebar:"#12141a",canvas:"#12141a","tab-active":"#12141a",panel:"#1a1d25",
         well:"#1b1f26",ink:"#f2f4f7","ink-muted":"#a1a8b4",line:"#6a707c","line-faint":"#333842",
         accent:"#2d7495","on-accent":"#f2f4f7","accent-ink":"#3490bc",
-        warning:"#ff5722","on-warning":"#111111","warning-ink":"#ff9670",fill:12 } },
+        warning:"#ff5722","on-warning":"#111111","warning-ink":"#ff9670","board-fill":"#152029" } },
   { id:"phosphor", label:"Phosphor", mode:"dark", note:"",
     v:{ ground:"#050805",sidebar:"#050805",canvas:"#142414","tab-active":"#050805",panel:"#050805",
         well:"#050805",ink:"#26d026","ink-muted":"#2ca62c",line:"#3e783e","line-faint":"#3e783e",
         accent:"#2ca62c","on-accent":"#050805","accent-ink":"#52ab52",
-        warning:"#5eff5e","on-warning":"#050805","warning-ink":"#a6ffa6",fill:11 } },
+        warning:"#5eff5e","on-warning":"#050805","warning-ink":"#a6ffa6","board-fill":"#142414" } },
 ];
 
 const state = {
@@ -576,12 +590,6 @@ function buildControls(){
     }
     sec.appendChild(rows); host.appendChild(sec);
   }
-  // board wash strength
-  const sec = document.createElement("div"); sec.className = "group";
-  sec.innerHTML = `<div class="group-hd"><span class="eyebrow">Board wash</span><span class="note">accent into ground</span></div>`;
-  const pr = document.createElement("div"); pr.className = "rows";
-  pr.innerHTML = `<div class="pctrow"><input type="range" id="fill" min="0" max="30" step="1" aria-label="Board fill strength"><output id="fillout"></output></div>`;
-  sec.appendChild(pr); host.appendChild(sec);
 
   host.addEventListener("input", e => {
     const t = e.target;
@@ -591,7 +599,7 @@ function buildControls(){
       t.classList.toggle("bad", !isHex(val));
       if (isHex(val)){ cur()[t.dataset.hex] = val.length===4
         ? "#"+val.slice(1).split("").map(c=>c+c).join("") : val.toLowerCase(); sync(false); }
-    } else if (t.id === "fill"){ cur().fill = +t.value; sync(false); }
+    }
   });
 }
 
@@ -599,13 +607,12 @@ function syncInputs(){
   const v = cur();
   document.querySelectorAll("[data-key]").forEach(i => i.value = v[i.dataset.key]);
   document.querySelectorAll("[data-hex]").forEach(i => { i.value = v[i.dataset.hex]; i.classList.remove("bad"); });
-  $("fill").value = v.fill; $("fillout").textContent = v.fill + "%";
 }
 
 function applyStage(){
   const v = cur(), s = $("stage").style;
-  for (const k of Object.keys(v)) if (k!=="fill") s.setProperty("--surf-"+k, v[k]);
-  s.setProperty("--surf-board-fill", `color-mix(in srgb, ${v.accent} ${v.fill}%, ${v.ground})`);
+  for (const k of Object.keys(v)) s.setProperty("--surf-"+k, v[k]);
+  // board-fill is a plain token now, set by the loop above like every other one.
 }
 
 function renderAudit(){
@@ -661,17 +668,19 @@ function renderAudit(){
     : `<span class="badge no">${fails} failing</span><span style="color:var(--ui-muted)">Highlighted rows fall under their bar — darken the ink or lighten the ground.</span>`;
 }
 
+/** The 16 contract tokens, in globals.css order. `board-fill` is emitted separately by
+    rampFor/blockFor because it is named `--ramp-<id>-fill`, not `--ramp-<id>-board-fill`. */
 const EXPORT_KEYS = ["ground","sidebar","canvas","tab-active","panel","well","ink","ink-muted",
   "line","line-faint","accent","on-accent","accent-ink","warning","on-warning","warning-ink"];
 
 function rampFor(t){
   return EXPORT_KEYS.map(k => `  --ramp-${t.id}-${k}: ${t.v[k]};`).join("\n") +
-         `\n  --ramp-${t.id}-fill: ${t.v.fill}%;`;
+         `\n  --ramp-${t.id}-fill: ${t.v["board-fill"]};`;
 }
 function blockFor(t){
   return `:root.theme-${t.id} {\n  color-scheme: ${t.mode};\n` +
     EXPORT_KEYS.map(k => `  --surf-${k}: var(--ramp-${t.id}-${k});`).join("\n") +
-    `\n  --outline-board-fill-strength: var(--ramp-${t.id}-fill);\n}`;
+    `\n  --surf-board-fill: var(--ramp-${t.id}-fill);\n}`;
 }
 
 /** Whole-file export: every theme, not just the one on screen. Paste replaces both blocks. */
