@@ -73,58 +73,76 @@
    (WCAG 2.1 relative luminance; 4.5:1 for text, 3:1 for UI boundaries).
    --------------------------------------------------------------------------- */
 :root {
-  /* -- light ramp -- the published palette, values unchanged ---------------- */
+  /* -- light ramp ----------------------------------------------------------
+     The founder's blue palette, picked in the colour bench (quick task 260824-p03).
+     Replaces the cyan/white scheme. Every ratio below was computed, not eyeballed. */
   --ramp-light-ground: #ffffff; /* crisp white background */
   --ramp-light-panel: #ffffff; /* raised surfaces sit flush with the ground; the design separates them with a line, not a tint */
-  --ramp-light-well: #f4f5f7; /* inset surfaces (inputs, wells) — the one tinted surface */
-  --ramp-light-ink: #111111; /* matte black primary text — 18.88:1 on ground */
-  --ramp-light-ink-muted: #6b6b6b; /* secondary text & labels — 5.33:1 on ground, 4.89:1 on well.
-     Darkened from the source config's #9e9e9e, which sat at 2.68:1 and failed AA outright. */
-  --ramp-light-line: #949494; /* control boundaries — 3.03:1, clears the 1.4.11 non-text bar */
-  --ramp-light-line-faint: #d5d5d5; /* decorative hairlines only — deliberately below any bar */
+  --ramp-light-well: #d8d7cd; /* inset surfaces — a warm grey, much more tinted than the near-white it replaced. See the WELL CAVEAT below. */
+  --ramp-light-ink: #010d1f; /* near-black with a blue cast, tying the ink to the accent — 19.47:1 on ground */
+  --ramp-light-ink-muted: #475569; /* secondary text & labels — 7.58:1 on ground, 5.24:1 on well */
+  --ramp-light-line: #010d1f; /* control boundaries at full ink strength — 19.47:1. A deliberate move away from the old grey hairline; nothing consumes `surf-line` yet, so this lands when borders are migrated to it. */
+  --ramp-light-line-faint: #d8d7cd; /* decorative hairlines only — deliberately below any bar */
 
-  /* Blue is accent/selection, orange is warnings.
-     The accent is a PAIR, and has to be. #00e5ff is 1.54:1 on white — bright enough that it
-     can only ever be a fill, never text and never a stroke. So the hue ships twice: the
-     bright one for fills, which therefore always carry `--surf-on-accent` (12.28:1), and a
-     darkened sibling that clears AA as ink on the white ground.
-
-     This was briefly a single sea blue (#006994) instead, dark enough to do both jobs at
-     once, which inverted the fill rule to white text. The founder preferred the cyan, so the
-     pair is back and fills are black-on-cyan again. */
-  --ramp-light-accent: #00e5ff; /* selection FILL — never text, never a bare stroke */
-  --ramp-light-on-accent: #111111; /* 12.28:1 on the accent fill */
-  --ramp-light-accent-ink: #00767f; /* same hue darkened for text & strokes — 5.39:1 on ground */
-  /* Orange runs the other way round (5.97:1 on black, 3.16:1 on white), but it is only ever
-     ink for warning text and never a fill, so the two rules never collide in practice. */
+  /* The accent is still a PAIR, but the reason changed. The old #00e5ff was 1.54:1 on
+     white — so bright it could only ever be a fill, never a stroke. This blue is 3.58:1,
+     which clears the 3:1 graphical bar, so the fill can now carry its own edge and no
+     longer depends on a boundary stroke to read as a control. The darker sibling still
+     exists because 3.58 is not 4.5: the fill still cannot be body text. */
+  --ramp-light-accent: #3490bc; /* selection FILL — 3.58:1 on ground, so usable as a stroke too */
+  --ramp-light-on-accent: #010d1f; /* 5.43:1 on the accent fill */
+  --ramp-light-accent-ink: #2b799c; /* accent as text/stroke — 4.86:1 on ground */
+  /* Warning keeps the orange pair unchanged; it was never part of the blue pivot. */
   --ramp-light-warning: #ff5722; /* warning FILL */
   --ramp-light-on-warning: #111111; /* 5.97:1 on the warning fill */
   --ramp-light-warning-ink: #c93f10; /* warning text — 5.00:1 on ground */
 
   /* -- dark ramp ------------------------------------------------------------
-     Not an inversion. The light theme is matte black ink on crisp white; the
-     dark theme is chalk on a cool matte black, which keeps the drafting-table
-     feel rather than turning the app into a glowing negative. Pure #000 was
-     avoided so panels and wells have somewhere to go in both directions. */
+     Not an inversion. The light theme is deep blue-black ink on crisp white; the dark
+     theme is chalk on a cool matte black, which keeps the drafting-table feel rather
+     than turning the app into a glowing negative. */
   --ramp-dark-ground: #12141a;
-  --ramp-dark-panel: #1a1d25; /* raised — lighter than the ground */
-  --ramp-dark-well: #0d0f14; /* inset — darker than the ground, mirroring light's tinted well */
+  --ramp-dark-panel: #12141a; /* flush with the ground, mirroring light — panels are separated by a line, not a tint */
+  --ramp-dark-well: #333842; /* inset surfaces read *lighter* than the ground here. See the WELL CAVEAT below. */
   --ramp-dark-ink: #f2f4f7; /* 16.71:1 on ground */
-  --ramp-dark-ink-muted: #a1a8b4; /* 7.69:1 on ground, 7.04:1 on panel, 8.01:1 on well */
-  --ramp-dark-line: #6a707c; /* 3.70:1 on ground, 3.39:1 on panel */
+  --ramp-dark-ink-muted: #a1a8b4; /* 7.69:1 on ground, 4.92:1 on well */
+  --ramp-dark-line: #6a707c; /* 3.70:1 on ground */
   --ramp-dark-line-faint: #333842; /* decorative only */
 
-  /* The accent PAIR keeps its logic, mirrored. In light the ink is *darker*
-     than the fill; in dark it is *lighter*. Both move away from the fill and
-     toward that theme's ink pole, so line-work always reads as lighter-weight
-     than a solid fill, in either theme. The fill itself is a brand constant and
-     does not change — which is also why `on-accent` stays black in both themes. */
-  --ramp-dark-accent: #00e5ff; /* unchanged: the brand fill */
-  --ramp-dark-on-accent: #111111; /* still 12.28:1 — the pairing is theme-invariant */
-  --ramp-dark-accent-ink: #5ce1f2; /* 11.84:1 on ground */
+  /* The accent pair keeps its rule, mirrored: the ink moves away from the fill toward
+     this theme's ink pole, so line-work always reads lighter-weight than a solid fill.
+
+     What changed with the blue palette: `on-accent` is no longer theme-invariant. The
+     old cyan fill was bright in both themes so it always took black text; this darker
+     blue needs *light* text in dark and *dark* text in light, which is what the
+     `--surf-on-<x>` contract exists to express.
+
+     Worth being precise: in this particular palette `on-accent` happens to hold the same
+     value as `ink` in both themes, so the pre-260824-nhh call sites would render it
+     identically. The fix is not what makes this palette work — it is what makes the two
+     separable, so `on-accent` can be tuned off the ink later without hunting call sites. */
+  --ramp-dark-accent: #2d7495; /* selection FILL — 3.54:1 on ground, clears the graphical bar */
+  --ramp-dark-on-accent: #f2f4f7; /* 4.71:1 on the accent fill — light, where light mode uses dark */
+  --ramp-dark-accent-ink: #3490bc; /* accent as text/stroke — 5.14:1 on ground */
   --ramp-dark-warning: #ff5722; /* unchanged */
   --ramp-dark-on-warning: #111111; /* still 5.97:1 */
-  --ramp-dark-warning-ink: #ff9670; /* 8.63:1 on ground — #c93f10 would be 1.9:1 here */
+  --ramp-dark-warning-ink: #ff9670; /* 8.63:1 on ground */
+
+  /* WELL CAVEAT — both wells sit closer to the mid-tones than the surfaces they
+     replaced, which squeezes every colour that lives between ink and ground. Four
+     pairings fall under bar ON A WELL, in a well-lit palette that is otherwise clean:
+
+       light  accent-ink on well   3.36:1  (needs 4.5)
+       light  warning-ink on well  3.46:1  (needs 4.5)
+       dark   accent-ink on well   3.28:1  (needs 4.5)
+       dark   line on well         2.36:1  (needs 3)
+
+     Latent, not live: `--surf-well` has one consumer today (the settings menu's hover
+     row, which puts INK on it at 13.46:1 / 10.68:1 and is fine), and the app's inputs
+     still sit on `--surf-ground`. It becomes real the moment a well carries accent or
+     warning text. Note the light case cannot be fixed by lightening the well —
+     accent-ink is 4.86:1 on *pure white*, so any tint at all pushes it under; the ink
+     has to darken. Remedies are recorded in the task's SUMMARY.md. */
 }
 
 /* ---------------------------------------------------------------------------
@@ -156,7 +174,7 @@
      Held per-theme because the wash has to be mixed into *this theme's* ground,
      and because 6% of the accent that reads as a whisper on white disappears
      entirely on black. */
-  --outline-board-fill-strength: 6%;
+  --outline-board-fill-strength: 10%;
   /* Widepoint marker. A signal/data colour, deliberately outside the brand
      palette — it marks a measurement, so it must not read as "selected" or
      "warning". 5.82:1 on ground. */
@@ -224,7 +242,7 @@
     --surf-on-warning: var(--ramp-dark-on-warning);
     --surf-warning-ink: var(--ramp-dark-warning-ink);
 
-    --outline-board-fill-strength: 12%;
+    --outline-board-fill-strength: 20%;
     --outline-widepoint-knot: #e8798f; /* 6.63:1 on ground; #a8425f would be 2.3:1 */
 
     --background: oklch(0.145 0 0);
@@ -275,7 +293,7 @@
   --surf-on-warning: var(--ramp-dark-on-warning);
   --surf-warning-ink: var(--ramp-dark-warning-ink);
 
-  --outline-board-fill-strength: 12%;
+  --outline-board-fill-strength: 20%;
   --outline-widepoint-knot: #e8798f;
 
   --background: oklch(0.145 0 0);
