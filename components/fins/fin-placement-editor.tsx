@@ -178,8 +178,13 @@ export function FinPlacementEditor() {
           ))}
         </div>
 
+        {/* The panel the tabs open onto. The active tab drops its bottom border and this
+            picks the line up, so the two read as one surface — the folder treatment the
+            `border-b-0` above always implied but had nothing to merge into. Square top-left
+            so it meets the first tab flush; `-mt-px` closes the seam. */}
+        <div className="flex min-h-0 flex-1 flex-col rounded-tr-lg rounded-b-lg border border-surf-line-faint bg-surf-tab-active -mt-px">
         {activeTab === "viewer" && (
-          <div className="flex min-h-0 flex-1 flex-col items-center bg-surf-canvas pt-1">
+          <div className="flex min-h-0 flex-1 flex-col items-center pt-1">
             <FinViewer
               result={result}
               tailShape={spec.tailShape}
@@ -201,6 +206,7 @@ export function FinPlacementEditor() {
         )}
 
         {activeTab === "info" && <FinModelInfo />}
+        </div>
       </main>
 
       <ToeAimTableModal

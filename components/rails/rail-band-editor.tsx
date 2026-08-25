@@ -212,7 +212,7 @@ export function RailBandEditor() {
           </div>
         )}
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-2 bg-surf-canvas px-10 py-5">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas px-10 py-5">
         <div className="flex flex-none gap-1.5">
           {(["viewer", "data"] as RailPage[]).map((page) => (
             <button
@@ -231,8 +231,12 @@ export function RailBandEditor() {
           ))}
         </div>
 
+        {/* See fin-placement-editor for why this panel exists: the active tab drops its
+            bottom border and this picks the line up, so tab and content read as one
+            surface. Square top-left to meet the first tab; `-mt-px` closes the seam. */}
+        <div className="flex min-h-0 flex-1 flex-col rounded-tr-lg rounded-b-lg border border-surf-line-faint bg-surf-tab-active -mt-px">
         {activePage === "viewer" && (
-          <div className="flex min-h-0 flex-1 flex-col bg-surf-canvas pt-1">
+          <div className="flex min-h-0 flex-1 flex-col pt-1">
             <div ref={plotsContainerRef} className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
               {openSections.map((key) => (
                 <div key={key} className="flex flex-none flex-col items-center" style={{ width: plotWidth }}>
@@ -273,6 +277,7 @@ export function RailBandEditor() {
             }))}
           />
         )}
+        </div>
       </main>
     </div>
   );

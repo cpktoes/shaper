@@ -80,7 +80,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-12 overflow-y-auto pt-10">
-      <div className="bg-surf-canvas">
+      <div>
         <div className="overflow-x-auto">
           <div className="min-w-[480px]">
             <div className="mb-3 flex gap-2 border-b-2 border-surf-line-faint pb-2">
@@ -111,7 +111,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
           </div>
         </div>
       </div>
-      <div className="max-w-prose bg-surf-canvas text-xs leading-relaxed text-surf-ink-muted italic">
+      <div className="max-w-prose text-xs leading-relaxed text-surf-ink-muted italic">
         This rail band calculator is intended to provide a quantitative aspect to shaping
         consistent surfboard rails. It&apos;s recommended to understand how rail shapes affects
         surfboard performance, and how these marks can result in producing your desired outcome.
