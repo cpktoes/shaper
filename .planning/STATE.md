@@ -174,9 +174,10 @@ Items acknowledged and carried forward from previous milestone close:
 | 260824-nhh | Fix foregrounds on filled surfaces that broke under theming: text on the accent fill was ink (1.40:1 dark) and text on the ink fill was white (1.10:1 dark). 11 sites to --surf-on-accent, 4 to a new derived --surf-on-ink; two sites needed conditional logic rather than a swap | 2026-08-24 | 057ed3e | [260824-nhh-fix-on-fill-foreground-tokens-that-break](./quick/260824-nhh-fix-on-fill-foreground-tokens-that-break/) |
 | 260824-p03 | Apply the founder's blue palette to both ramps (accent #3490bc/#2d7495 replacing cyan, ink #010d1f, warm light well, slate dark well, wash 10%/20%). Accent now clears 3:1 on its ground so it no longer needs a boundary stroke; on-accent is now theme-dependent. Four well pairings recorded as latent-under-bar | 2026-08-24 | 71e100c | [260824-p03-apply-the-founder-s-new-light-and-dark-r](./quick/260824-p03-apply-the-founder-s-new-light-and-dark-r/) |
 | 260824-p88 | Dark ramp to green phosphor (#00ff40 ink/line/accent, #a8ffbe muted, on-accent = ground, wash 5%). All pairings pass and it resolves the blue ramp's well failures; accent pair collapses to one value, line-faint no longer faint, muted brighter than ink. Proves the 260824-nhh on-fill fix — old code would draw #00ff40 on #00ff40 | 2026-08-24 | 75fe27f | [260824-p88-green-phosphor-dark-ramp](./quick/260824-p88-green-phosphor-dark-ramp/) |
+| 260824-pdg | Promote the app's regions into the contract: --surf-sidebar, --surf-canvas and --surf-tab-active added to both ramps and wired through 24 call sites including everything nested inside a region; widepoint dropped as its own colour and derived from accent-ink. Bench rebuilt with a Regions group and a 29-row audit | 2026-08-24 | 2a8bca8 | [260824-pdg-promote-app-regions-into-the-token-contr](./quick/260824-pdg-promote-app-regions-into-the-token-contr/) |
 
 ## Session Continuity
 
 Last session: 2026-08-24T22:33:31.225Z
-Stopped at: Light = blue, dark = green phosphor. Two light well pairings under bar but latent; units toggle deferred; shadcn border/input still under the 3:1 non-text bar
+Stopped at: Regions are now separately colourable (window/sidebar/canvas/tab), seeded to ground so nothing moved yet. Two light well pairings under bar but latent; units toggle deferred
 Resume file: None
