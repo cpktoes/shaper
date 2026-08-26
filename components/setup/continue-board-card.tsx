@@ -24,7 +24,7 @@ export function ContinueBoardCard({ onContinue, className }: ContinueBoardCardPr
       type="button"
       onClick={onContinue}
       className={cn(
-        "flex w-full flex-col gap-2 rounded-xl border border-transparent bg-card p-4 text-left ring-1 ring-foreground/10 outline-none transition-colors hover:border-surf-accent-ink hover:ring-2 hover:ring-surf-accent-ink focus-visible:border-surf-accent-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink",
+        "flex w-full flex-col gap-2 rounded-xl border border-transparent bg-surf-canvas p-4 text-left ring-1 ring-foreground/10 outline-none transition-colors hover:border-surf-accent-ink hover:ring-2 hover:ring-surf-accent-ink focus-visible:border-surf-accent-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink",
         className,
       )}
     >

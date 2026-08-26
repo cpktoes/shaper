@@ -559,6 +559,12 @@
      relationship between strokes, not a UI boundary. */
   --outline-sidebar-input-border: var(--surf-line);
   --outline-sidebar-divider: var(--surf-line-faint);
+  /* Its only remaining consumer is the SVG fill in components/viewer/callout-primitives.tsx,
+   * which draws the page behind the board on every /design-screen viewer. It has nothing to
+   * do with the home page's own background any more (quick 260826-icz moved the setup
+   * screen's page and card colours to point at --surf-ground/--surf-canvas/--surf-panel
+   * directly at their call sites instead). Repointing this value would repaint every
+   * design-screen viewer, not the home page. */
   --outline-page-bg: var(--surf-canvas);
   /* A faint accent wash so the planshape reads as an object rather than as a line. This
      briefly went to flat white during the design pivot, on the reasoning that the board
