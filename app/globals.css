@@ -610,8 +610,17 @@
 @media print {
   /* A template is printed to be cut along and marked on. Whatever theme is on screen,
      print gets the default light one — without this, printing from Phosphor puts the
-     board on a near-black page and burns a cartridge doing it. */
-  :root {
+     board on a near-black page and burns a cartridge doing it.
+
+     The tripled `:root` is load-bearing, not a typo. A media query adds no specificity, so a
+     plain `:root` in here scores (0,1,0) — and an explicitly chosen theme is `:root.theme-<id>`
+     at (0,2,0), which beats it. So this block only ever worked for a shaper who had never
+     touched the theme picker; anyone who had chosen Slate, Chalk or Phosphor printed that
+     theme instead — exactly the cartridge-burning it was written to prevent. Repeating the
+     selector lifts it to (0,3,0) so it outranks any theme class no matter where that class is
+     declared. Specificity rather than seventeen `!important`s, and it needs no `:not()` guard
+     and no list of theme names — a fifth theme is covered the day it is added. */
+  :root:root:root {
     color-scheme: light;
 
     --surf-ground: var(--ramp-daylight-ground);
