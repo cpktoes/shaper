@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 Phase: 2 — Accounts & Saved Designs
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-26 - Completed quick task 260826-icz: Home page repainted onto window / canvas / panel across all four themes
+Last activity: 2026-08-26 - Completed quick task 260826-ist: Landing page thumbnail gains the faint edge that matches the tabs
 
 Progress: [██████████] 100%
 
@@ -155,6 +155,7 @@ None yet.
 | 34 | TabbedPanel's inner content card gains a default 12px inset composed through cn; Volume and Template's redundant padding copies removed, Rails/Fins pt-1 nudges retired (both screens now get the inset for free), Template rotate button rebased top-3/right-3 -> top-0/right-0 [260826-07b-tab-panel-content-indent] | 2026-08-26 | 4c4b17a | — |
 | 35 | Write the root CLAUDE.md: purpose, stack, commands, geometry-in-lib and units rules | 2026-08-26 | 7b88a86 | — |
 | 260826-icz | Home page surfaces re-layered onto the theme contract: the page background moved off the sand canvas onto the app-chrome ground (the Colour Bench calls it "Window"), the preset and Continue cards off shadcn's bg-card onto canvas, and the board thumbnail well off --outline-page-bg onto panel. All four themes follow automatically since these are contract tokens; --outline-page-bg itself was left pointing at canvas because the /design SVG viewer still consumes it. Ground and panel are the same value in every ramp, so the result reads as two alternating tones (page, lifted card, page again inside the well), matching how the design screens already layer | 2026-08-26 | abad7b7 | [260826-icz-home-page-surfaces-page-background-to-wi](./quick/260826-icz-home-page-surfaces-page-background-to-wi/) |
+| 260826-ist | Landing page board thumbnail gains the faint hairline edge, matching the inner content card inside the tabbed panel on every design screen: `border border-surf-line-faint` on a well that was already `rounded-lg bg-surf-panel`, so the three computed values (1px solid line-faint, panel fill, 10px radius) now match TabbedPanel byte for byte. box-sizing: border-box means nothing moved — well width, 340/620 aspect and the grid all measured unchanged; the OutlineViewer SVG is absolute inset-0 so the board now draws 1px inside the line rather than under it. Verified in all four themes: 4.13:1 Daylight/Chalk, 3.80:1 Phosphor, 1.56:1 Slate. Noted for later: --surf-line and --surf-line-faint are the same value in every theme except Slate | 2026-08-26 | 4c614cb | [260826-ist-landing-page-thumbnail-well-gains-the-fa](./quick/260826-ist-landing-page-thumbnail-well-gains-the-fa/) |
 
 ## Deferred Items
 
