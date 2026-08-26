@@ -224,3 +224,43 @@ the founder wants those monochrome on paper too, that is a separate change — f
 unrelated) · `npm run build` succeeds. All run from the main checkout.
 
 **Commits: `52af8d6`, `a3b81cb`, `ffeb397`, `72a0d20`.**
+
+---
+
+## Follow-up — spines print in the accent wash (`3f19277`)
+
+Founder's correction after reviewing the sheet: *"the accent color should still print with the
+spine shading. The user can choose black and white if they like."*
+
+The spine labels now print `#d9f2ed` — `var(--ramp-daylight-fill)`, the pale sage they already
+show on screen in Daylight — instead of the neutral `#ececec` the first pass chose. The
+ink-frugality reasoning behind that grey was sound but was the wrong call to make on the
+shaper's behalf: black-and-white is a checkbox in the print dialog, so the sheet should carry
+the shop's colour by default and let them spend less if they want to.
+
+Still a tint, not a block: 1.16:1 against white, and on a colour printer it lays down cyan
+rather than black. Label lettering (`#1f2a3b` Daylight ink) reads **12.31:1** on it — the grey
+gave 12.24:1, so legibility is unchanged.
+
+The rule names `--ramp-daylight-fill` directly rather than the contract, because
+`--surf-board-fill` — which carries that value everywhere else — is deliberately pinned white
+in print so the board prints hollow. Reaching past the contract into a ramp is wrong anywhere
+else in the app; inside `@media print` it is the established idiom, and globals.css's own print
+block names Daylight ramps seventeen times.
+
+**Supersedes** the plan's Task 3 automated check `grep -c '#ececec' == 1`. That literal is gone
+from the repo entirely — the print block now adds exactly one colour literal (`#fff`), down from
+two.
+
+Re-measured with the print rules forced on screen, all four themes identical:
+
+| | value |
+|---|---|
+| page / sheet | `rgb(255,255,255)` |
+| `--surf-board-fill` | `#fff` — board hollow |
+| `.order-form-spine` | `rgb(217,242,237)` |
+| spine lettering | `rgb(31,42,59)` |
+
+`npm test` 670 passed · `npm run lint` 0 errors · `npm run build` succeeds.
+
+**Final commit list: `52af8d6`, `a3b81cb`, `ffeb397`, `72a0d20`, `3f19277`.**
