@@ -315,10 +315,15 @@ export function OutlineControls({
               }
               className="flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-1.5"
               style={{
+                // Inline styles were invisible to both earlier passes: the border migration
+                // grepped for `border-surf-muted/N` classes, and the color-mix sweep only
+                // looked in globals.css. So this kept an ad-hoc 30% mix long after every other
+                // border moved to the line token — and an accent-on-accent edge, which is no
+                // edge at all. It now matches the equivalent pills in fin-controls.tsx.
                 borderColor: active
-                  ? "var(--color-surf-accent)"
-                  : "color-mix(in srgb, var(--color-surf-ink-muted) 30%, transparent)",
-                background: active ? "var(--color-surf-accent)" : "var(--color-surf-ground)",
+                  ? "var(--color-surf-on-accent)"
+                  : "var(--color-surf-line)",
+                background: active ? "var(--color-surf-accent)" : "var(--color-surf-sidebar)",
                 // Two different surfaces, so two different foregrounds. This was one shared value
                 // back when ink and on-accent were both #111111; under theming the active chip is
                 // ink-on-cyan at 1.4:1 unless it takes the fill's own paired colour.
