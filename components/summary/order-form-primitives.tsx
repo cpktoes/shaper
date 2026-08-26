@@ -198,7 +198,7 @@ export function OrderFormTick({ label }: { label: string }) {
  */
 export function LogoBlock() {
   return (
-    <div className="flex h-full min-h-0 flex-col items-center justify-center gap-1 rounded-[3px] border border-surf-ink bg-(--order-form-shade) px-3 py-2 text-center">
+    <div className="flex h-full min-h-0 flex-col items-center justify-center gap-1 rounded-[3px] border border-surf-ink px-3 py-2 text-center">
       <div className="font-display font-extrabold tracking-architectural text-surf-ink uppercase leading-none order-form-wordmark">
         Shaper
       </div>

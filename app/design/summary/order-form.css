@@ -47,12 +47,16 @@
 }
 
 /*
- * The sheet's shaded panels — logo block, spine labels, the shaper's sub-box.
+ * The sheet's shaded panels — the spine labels and the shaper's sub-box.
  *
  * `--surf-board-fill` is this app's existing token for "the interior wash of a board", already
- * calibrated per theme, so the sheet's panels now theme the same way the board drawings do. It
- * replaced the accent at 7% over the sheet's own surface, which computed to roughly `#f7fbfa` in
- * Daylight — present in the stylesheet but not on the page.
+ * calibrated per theme, so these two panels theme the same way the board drawings do. It replaced
+ * the accent at 7% over the sheet's own surface, which computed to roughly `#f7fbfa` in Daylight —
+ * present in the stylesheet but not on the page.
+ *
+ * The logo block used to be a third consumer here. Its fill is gone — measured, it reads better in
+ * all four themes standing on the page and drawn by its own `border-surf-ink` outline alone than
+ * it did shaded (see `LogoBlock` in order-form-primitives.tsx).
  *
  * The strength here is bounded by contrast, not by taste: a grey wash once put the logo block's
  * placeholder line at 4.25:1, under AA. Anyone changing this value has to measure first, not
