@@ -69,8 +69,9 @@ function buildPresetSource(spec: OutlineSpec): string {
  * it reads as one board being turned rather than two boards of different sizes; `strokeWidth` is
  * 2.42 so the drawn weight lands at 1.5 after that shared scale. The gap between the two copies
  * is what keeps it readable small — the sketch's proof sheet found the glyph gets tight below
- * about 16px, which is why the button uses `size-5` (20px) rather than the settings gear's
- * `size-4`.
+ * about 16px, which is why the button uses `size-6` (24px): the founder asked for a larger icon,
+ * and sketch 006's README already carried this as its one open caveat, recommending a 20-22px
+ * icon in a slightly larger button if the sketch ever got built.
  */
 function RotateBoardIcon({ className }: { className?: string }) {
   // SVG ids are document-global — a literal id would collide with another element's <use href>
@@ -165,16 +166,23 @@ export function OutlineEditor() {
             }
             title="Rotate the board"
             // SettingsMenu's icon-button treatment (components/settings-menu.tsx) — the app's
-            // existing precedent for an icon-only control. Ghost/unfilled, so the icon draws in
-            // currentColor and carries the muted-ink token, darkening to surf-ink on hover: this
-            // sidesteps the rule the codebase has been bitten by three times (see
-            // .planning/quick/260825-rmb-*/SUMMARY.md) — anything drawn ON the accent fill must
-            // take that fill's paired on- colour. If a fill is ever added here it must take
-            // text-surf-on-accent. The button is icon-only, so aria-label is its accessible name,
-            // and per D-05 the label is the only thing that ever changes between states.
-            className="absolute top-3 right-3 z-10 flex cursor-pointer items-center rounded-md p-1 text-surf-ink-muted transition-colors outline-none hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+            // existing precedent for an icon-only control. Bordered and filled, per the
+            // founder's request for a visible boundary. The border is `surf-line`, not
+            // `surf-line-faint` — `line` is the token carrying the 3:1 non-text target a control
+            // boundary needs in every theme, per the rule written down at
+            // components/viewer/tabbed-panel.tsx. The fill is `surf-ground`, the same value as
+            // the `surf-panel` surface behind it in all four themes, so it adds no visible plate;
+            // it exists to be opaque, because this button is absolutely positioned over the
+            // drawing and board lines must not run under the glyph. That fill is deliberately
+            // not the accent: anything drawn ON the accent fill must take that fill's paired
+            // on- colour, a rule this codebase has been bitten by three times (see
+            // .planning/quick/260825-rmb-*/SUMMARY.md) — if the accent is ever used here instead,
+            // the icon must take text-surf-on-accent. The button is icon-only, so aria-label is
+            // its accessible name, and per D-05 the label is the only thing that ever changes
+            // between states.
+            className="absolute top-3 right-3 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
           >
-            <RotateBoardIcon className="size-5" />
+            <RotateBoardIcon className="size-6" />
           </button>
           <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center">
             <div className="relative flex min-h-0 w-full flex-1 justify-center">
