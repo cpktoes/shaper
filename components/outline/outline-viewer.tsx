@@ -30,7 +30,6 @@ import { sampleOutline } from "@/lib/geometry/outline";
 import { formatFeetInches, formatInchesFraction, inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
 import {
   CalloutChip,
-  CALLOUT_PX,
   MIN_PINNED_FIT_SCALE,
   OUTLINE_CHIP_HEIGHT,
   OutputRail,
@@ -91,18 +90,45 @@ const DRAG_HIT_PX = 15;
 const STRINGER_OVERHANG = 8;
 
 /**
- * Extra frame padding at each end of the horizontal (rotated) viewBox, in view units.
+ * Ceiling on a callout's rendered size, in SVG user units — the largest a chip or the output
+ * text can ever draw at, across both sizing modes.
  *
- * In vertical, the chips that sit at the extreme stations — LENGTH at the nose tip, TAIL BLOCK
- * at the tail pod — live in the side gutter, and the frame's own width already covers them.
- * Rotated, those same chips are centred on their station across the long axis, so they overhang
- * both ends of the frame and would be clipped without this. The size is the widest a pinned
- * chip can ever grow to (`CALLOUT_PX.chipW / MIN_PINNED_FIT_SCALE`, the floor fit scale below
- * which pinning gives up — see `MIN_PINNED_FIT_SCALE`'s own comment) halved, because a chip is
- * centred on its station in horizontal, not right-aligned to it — so this is derived from the
- * callout system's own bounds, not tuned by eye.
+ * `pinnedCalloutSizes` grows a pinned callout as the fit scale falls and floors that growth at
+ * `MIN_PINNED_FIT_SCALE`, so evaluating it AT the floor gives the ceiling for a pinned viewer.
+ * A viewer that does not pin draws `UNPINNED_CALLOUT_SIZES` instead, so the true bound is the
+ * larger of the two.
+ *
+ * This MUST stay a module constant, evaluated once from `CALLOUT_PX` / `UNPINNED_CALLOUT_SIZES`
+ * / `MIN_PINNED_FIT_SCALE`. The reach constants below size the horizontal frame, the frame feeds
+ * `useSvgFitScale`, and the fit scale is what produces the live, render-time `calloutSizes` — so
+ * sizing the frame from that live value would close the loop: frame -> fit scale -> callout size
+ * -> frame, a resize feedback loop (threat T-VOT-04, still on the record). Measuring the
+ * rendered content (`getBBox()`) and resizing the frame from the measurement has exactly the
+ * same defect plus an extra measure-render pass, so it is not an alternative either.
  */
-const HORIZONTAL_END_PAD = CALLOUT_PX.chipW / MIN_PINNED_FIT_SCALE / 2;
+const MAX_CALLOUT_SIZES = (() => {
+  const pinned = pinnedCalloutSizes(MIN_PINNED_FIT_SCALE);
+  return {
+    chipW: Math.max(pinned.chipW, UNPINNED_CALLOUT_SIZES.chipW),
+    chipH: Math.max(pinned.chipH, UNPINNED_CALLOUT_SIZES.chipH),
+    name: Math.max(pinned.name, UNPINNED_CALLOUT_SIZES.name),
+    value: Math.max(pinned.value, UNPINNED_CALLOUT_SIZES.value),
+  };
+})();
+
+/** Long-axis reach, in view units: rotated, `CalloutChip` centres its box on the anchor along
+ * the board (`rectX = x - chipW / 2`), so a chip at an extreme station overhangs that station by
+ * half a chip. */
+const HORIZONTAL_CHIP_REACH = MAX_CALLOUT_SIZES.chipW / 2;
+/** Short-axis reach past the output rail, in view units: `OutputRail` stacks its value line
+ * `name * 1.15` above the anchor baseline in horizontal, and the value's own ascender rises
+ * further from there. The ascender is bounded by the full font size — conservative by roughly a
+ * quarter of a line, and cheap. */
+const HORIZONTAL_OUTPUT_REACH = MAX_CALLOUT_SIZES.name * 1.15 + MAX_CALLOUT_SIZES.value;
+/** Short-axis reach past the chip rail, in view units: a chip hangs a full `chipH` away from its
+ * anchor, and the leaderless WP OFFSET chip sits a second row further out at
+ * `chipH + CHIP_STACK_GAP`. */
+const HORIZONTAL_CHIP_RAIL_REACH = 2 * MAX_CALLOUT_SIZES.chipH + CHIP_STACK_GAP;
 
 interface OutlineViewerProps {
   geometry: OutlineGeometry;
@@ -401,15 +427,52 @@ export function OutlineViewer({
   const baseW = hideCallouts ? (fixedFrame ? fixedWidth : VIEW_W) : frame.width;
   const baseH = hideCallouts ? VIEW_H : frame.height;
 
-  // The horizontal viewBox: the group below draws `rotate(-90)`, which maps (x, y) -> (y, -x),
-  // so the canonical y-extent becomes the rotated x-extent and the canonical x-extent becomes
-  // the rotated y-extent, negated. HORIZONTAL_END_PAD widens the x-extent on both ends so a
-  // pinned chip centred at either extreme station is not clipped (see its own comment above).
-  const horizW = baseH + 2 * HORIZONTAL_END_PAD;
-  const horizH = baseW;
+  // The horizontal viewBox: the group below draws `rotate(-90)`, which maps (x, y) -> (y, -x), so
+  // canonical y is the rotated LONG axis (along the board) and canonical x is the rotated SHORT
+  // axis, negated (across it). Both axes below are fitted to what is actually drawn, not
+  // transposed from the vertical frame.
+  //
+  // Why the ends are padded asymmetrically, and only partly. The frame already reaches past the
+  // board at both ends — `tipPy - baseMinY` at the nose, `baseMinY + baseH - tailPy` at the tail
+  // — so only the shortfall against `HORIZONTAL_CHIP_REACH` needs adding. Paying the full
+  // half-chip at both ends (the previous constant) bought margin the frame already had. Zero
+  // under `hideCallouts`, which draws no chips to clip.
+  const noseEndPad = hideCallouts
+    ? 0
+    : Math.max(0, HORIZONTAL_CHIP_REACH - (tipPy - baseMinY));
+  const tailEndPad = hideCallouts
+    ? 0
+    : Math.max(0, HORIZONTAL_CHIP_REACH - (baseMinY + baseH - tailPy));
+
+  // Why the short axis is built from the rails, not the vertical frame's width. The vertical
+  // frame's width holds a chip gutter and an output rail side by side; rotated, those two stack
+  // across the short axis far more compactly, so carrying the vertical width over leaves roughly
+  // 195 units of empty air. `frame.chipRightX` and `frame.outputValueX` already carry this
+  // board's overflow (a wide board pushes both rails outward), so building the short axis from
+  // them widens the rotated frame correctly with no second overflow term.
+  //
+  // What the Math.min / Math.max are for: a guard, not a live input. At these constants the two
+  // rails bound the board by 139 and 77 units, so they never bind today. They exist so a future
+  // rail change cannot silently start clipping the drawing.
+  const crossMinX = hideCallouts
+    ? baseMinX
+    : Math.min(frame.chipRightX - HORIZONTAL_CHIP_RAIL_REACH, pxX(-wpHalfWidthIn));
+  const crossMaxX = hideCallouts
+    ? baseMinX + baseW
+    : Math.max(frame.outputValueX + HORIZONTAL_OUTPUT_REACH, pxX(wpHalfWidthIn));
+
+  const horizW = baseH + noseEndPad + tailEndPad;
+  const horizH = crossMaxX - crossMinX;
   const horizontalViewBox =
-    `${(baseMinY - HORIZONTAL_END_PAD).toFixed(2)} ${(-(baseMinX + baseW)).toFixed(2)}` +
+    `${(baseMinY - noseEndPad).toFixed(2)} ${(-crossMaxX).toFixed(2)}` +
     ` ${horizW.toFixed(2)} ${horizH.toFixed(2)}`;
+
+  // What this is worth, and where. At a 1280x820 window the panel is 804 x 631 and the drawing
+  // is width-bound, so the gain — about +9% drawn board length — comes entirely from the long
+  // axis above. The short axis pays when the container is wider than the viewBox aspect (a
+  // large monitor or a short panel), and meanwhile it stops the content sitting off-centre. The
+  // panel does not size itself from the frame; deriving its ratio was tried and reverted, see
+  // `outline-editor.tsx`.
 
   const viewBox = horizontal ? horizontalViewBox : verticalViewBox;
   // In vertical, vbW/vbH are the same numbers they always were, so useSvgFitScale returns the
