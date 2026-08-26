@@ -7,8 +7,9 @@
  * disagree (this plan's prohibition). The whole card is a real `<button>` (not a div with a
  * click handler) so Tab/Enter/Space and focus work without hand-rolling them; the card's own
  * edge slot still lives on that button, so hover and focus states apply directly with no
- * parent/child style coupling — but at rest it now paints nothing. The sand band itself is
- * the card's boundary.
+ * parent/child style coupling — but at rest it still paints nothing on the outside. The sand
+ * band is still the card's OUTER boundary, but its inner edge — where the sand meets the white
+ * window box — now carries a faint hairline. See the comment above `return` for the full stack.
  */
 
 import { OutlineViewer } from "@/components/outline/outline-viewer";
@@ -27,17 +28,26 @@ export function PresetCard({ preset, onSelect, className }: PresetCardProps) {
   // see this plan's prohibition against a second drawing routine or a cached/pre-rendered image.
   const geometry = outlineGeometryLib.buildOutline(preset.outline);
 
-  // Four layers, top to bottom of the nesting, mirroring components/viewer/tabbed-panel.tsx
-  // (the outer panel div and its inner content card, both 12px insets): a sand frame (this
-  // button's fill), a white "tab-active" window (the div right below), a faint hairline
-  // (the thumbnail well's own edge), and the board's own surface underneath that. The window
-  // box carries no edge of its own on purpose — it is not a boundary, just a lit box behind
-  // the drawing — so do not add one. The card's old outer line was removed on purpose too:
-  // the founder's description names exactly one visible line on the whole card, and it is
-  // the well's. In every theme, ground, tab-active and panel hold the SAME value, so that
-  // one faint hairline is doing all the work of separating the window from the board's
-  // surface — the single most surprising property of this markup, and the one most likely to
-  // be "fixed" by someone who has not measured it. Do not restore the outer line.
+  // The stack, outermost first: page (--surf-ground) -> sand frame (--surf-canvas, 12px band)
+  // -> faint line (new, below) -> window (--surf-tab-active, 12px band) -> faint line
+  // (existing, on the well) -> panel (--surf-panel) -> board. Mirrors the two nested 12px-inset
+  // boxes in components/viewer/tabbed-panel.tsx.
+  //
+  // --surf-ground, --surf-tab-active and --surf-panel hold the SAME value in all four themes;
+  // --surf-canvas is the only distinct surface. So the two hairlines are doing ALL of the
+  // separating work between page, window and board — this is the fact most likely to be
+  // "fixed" by someone who has not measured it, and it is why neither line may be simplified
+  // away.
+  //
+  // This new edge uses `--surf-line-faint`, not the `--surf-line` its design-screen counterpart
+  // in tabbed-panel.tsx uses, because the founder asked for a faint line. The two tokens hold
+  // the same value in three of four themes (Daylight/Chalk/Phosphor), so the choice only costs
+  // anything in Slate: measured 1.43:1 against the sand frame and 1.56:1 against the window,
+  // versus 3.39:1 and 3.70:1 if this were `--surf-line`.
+  //
+  // The card's own resting outer edge (the button's border-transparent slot) must stay
+  // transparent: hover and focus-visible set colour only, not width, so restoring a resting
+  // colour there would silently kill both interactive states.
   return (
     <button
       type="button"
@@ -47,7 +57,7 @@ export function PresetCard({ preset, onSelect, className }: PresetCardProps) {
         className,
       )}
     >
-      <div className="rounded-lg bg-surf-tab-active p-3">
+      <div className="rounded-lg border border-surf-line-faint bg-surf-tab-active p-3">
         <div className="relative aspect-[340/620] w-full overflow-hidden rounded-lg border border-surf-line-faint bg-surf-panel">
           <OutlineViewer
             geometry={geometry}
