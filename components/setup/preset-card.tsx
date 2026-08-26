@@ -26,6 +26,9 @@ export function PresetCard({ preset, onSelect, className }: PresetCardProps) {
   // see this plan's prohibition against a second drawing routine or a cached/pre-rendered image.
   const geometry = outlineGeometryLib.buildOutline(preset.outline);
 
+  // The thumbnail well below deliberately matches the inner content card in
+  // components/viewer/tabbed-panel.tsx (not redundant decoration — do not delete it).
+  // --surf-line-faint, not --surf-line: a grouping hint that recedes against the panel.
   return (
     <button
       type="button"
@@ -35,7 +38,7 @@ export function PresetCard({ preset, onSelect, className }: PresetCardProps) {
         className,
       )}
     >
-      <div className="relative aspect-[340/620] w-full overflow-hidden rounded-lg bg-surf-panel">
+      <div className="relative aspect-[340/620] w-full overflow-hidden rounded-lg border border-surf-line-faint bg-surf-panel">
         <OutlineViewer
           geometry={geometry}
           outline={preset.outline}
