@@ -167,7 +167,7 @@ export function FinPlacementEditor() {
           onSelect={setActiveTab}
         >
         {activeTab === "viewer" && (
-          <div className="flex min-h-0 flex-1 flex-col items-center pt-1">
+          <div className="flex min-h-0 flex-1 flex-col items-center">
             <FinViewer
               result={result}
               tailShape={spec.tailShape}
