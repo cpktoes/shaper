@@ -144,8 +144,8 @@ h1,h2,h3{text-wrap:balance;margin:0}
    below picks the line up, so the two read as one surface. The app now does the same
    (rail-band-editor / fin-placement-editor) — the bench had this first and the app
    was brought up to it, rather than the bench being dumbed down to match. */
-.s-tab.is-on{border-color:var(--surf-line-faint);background:var(--surf-tab-active);color:var(--surf-ink)}
-.s-panel{border:1px solid var(--surf-line-faint);border-radius:0 8px 8px 8px;padding:14px;background:var(--surf-tab-active);margin-top:-1px}
+.s-tab.is-on{border-color:var(--surf-line);background:var(--surf-tab-active);color:var(--surf-ink)}
+.s-panel{border:1px solid var(--surf-line);border-radius:0 8px 8px 8px;padding:14px;background:var(--surf-tab-active);margin-top:-1px}
 .stage-split{display:grid;gap:16px;grid-template-columns:1fr 1fr}
 @media (max-width:760px){.stage-split{grid-template-columns:1fr}}
 
@@ -593,12 +593,31 @@ function buildControls(){
 
   host.addEventListener("input", e => {
     const t = e.target;
-    if (t.dataset.key){ cur()[t.dataset.key] = t.value; sync(false); }
+    // The two controls for one token are peers, so each writes the other. `sync(false)` skips
+    // syncInputs() on purpose — rewriting the field being typed in would fight the caret — but
+    // that also meant the *other* control never refreshed, so the swatch and the hex could sit
+    // showing different colours. Updating the peer directly is the narrow version of that.
+    if (t.dataset.key){
+      const v = t.value.toLowerCase();
+      cur()[t.dataset.key] = v;
+      const peer = host.querySelector(`[data-hex="${CSS.escape(t.dataset.key)}"]`);
+      if (peer){ peer.value = v; peer.classList.remove("bad"); }
+      sync(false);
+    }
     else if (t.dataset.hex){
-      const val = t.value.trim();
-      t.classList.toggle("bad", !isHex(val));
-      if (isHex(val)){ cur()[t.dataset.hex] = val.length===4
-        ? "#"+val.slice(1).split("").map(c=>c+c).join("") : val.toLowerCase(); sync(false); }
+      const raw = t.value.trim();
+      const ok = isHex(raw);
+      t.classList.toggle("bad", !ok);
+      if (ok){
+        // <input type="color"> only accepts 6-digit hex, so expand #abc before handing it over.
+        const v = (raw.length === 4
+          ? "#" + raw.slice(1).split("").map(c => c + c).join("")
+          : raw).toLowerCase();
+        cur()[t.dataset.hex] = v;
+        const peer = host.querySelector(`[data-key="${CSS.escape(t.dataset.hex)}"]`);
+        if (peer) peer.value = v;
+        sync(false);
+      }
     }
   });
 }
