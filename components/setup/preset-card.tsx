@@ -6,8 +6,8 @@
  * routine, no cached/pre-rendered image — so the picture and the applied board can never
  * disagree (this plan's prohibition). The whole card is a real `<button>` (not a div with a
  * click handler) so Tab/Enter/Space and focus work without hand-rolling them; the card's own
- * border/ring lives on that button, so hover and focus states apply directly with no
- * parent/child style coupling.
+ * edge lives on that button, so hover and focus states apply directly with no parent/child
+ * style coupling.
  */
 
 import { OutlineViewer } from "@/components/outline/outline-viewer";
@@ -26,15 +26,18 @@ export function PresetCard({ preset, onSelect, className }: PresetCardProps) {
   // see this plan's prohibition against a second drawing routine or a cached/pre-rendered image.
   const geometry = outlineGeometryLib.buildOutline(preset.outline);
 
-  // The thumbnail well below deliberately matches the inner content card in
-  // components/viewer/tabbed-panel.tsx (not redundant decoration — do not delete it).
-  // --surf-line-faint, not --surf-line: a grouping hint that recedes against the panel.
+  // This card carries two nested lines matching components/viewer/tabbed-panel.tsx: the
+  // card's own outer edge is structural (--surf-line, saying where the card is, matching the
+  // panel's outer edge) and the thumbnail well's inner edge below recedes (--surf-line-faint,
+  // a grouping hint, matching the panel's inner content card). The resting ring that used to
+  // sit here was removed on purpose — it painted at well under 1.5:1, invisible in every
+  // theme — so do not restore it.
   return (
     <button
       type="button"
       onClick={() => onSelect(preset)}
       className={cn(
-        "flex w-full flex-col gap-2 rounded-xl border border-transparent bg-surf-canvas p-4 text-left ring-1 ring-foreground/10 outline-none transition-colors hover:border-surf-accent-ink hover:ring-2 hover:ring-surf-accent-ink focus-visible:border-surf-accent-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink",
+        "flex w-full flex-col gap-2 rounded-xl border border-surf-line bg-surf-canvas p-4 text-left outline-none transition-colors hover:border-surf-accent-ink hover:ring-2 hover:ring-surf-accent-ink focus-visible:border-surf-accent-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink",
         className,
       )}
     >
