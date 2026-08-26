@@ -6,6 +6,7 @@ import { useDesign } from "@/components/design/design-store";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import { mmToInches } from "@/lib/geometry/units";
 import { OutlineControls } from "./outline-controls";
+import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { OutlineViewer } from "./outline-viewer";
 
 /**
@@ -102,9 +103,13 @@ export function OutlineEditor() {
           </div>
         )}
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-3 bg-surf-canvas px-10 py-5">
-        <div className="flex min-h-0 flex-1 items-stretch justify-center gap-6">
-          <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center bg-surf-canvas">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas px-6 py-4">
+        {/* One region, so the tab is a label rather than a control — but the screen still gets
+            the same panel and edge as Rails and Fins, which is what makes the four read as one
+            application instead of four layouts. */}
+        <TabbedPanel tabs={[{ id: "viewer" as const, label: "VIEWER" }]} active="viewer">
+        <div className="flex min-h-0 flex-1 items-stretch justify-center gap-6 p-3">
+          <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center">
             <div className="relative flex min-h-0 w-full flex-1 justify-center">
               {/* A plain filled box — the drawing sizes itself inside it via preserveAspectRatio.
                   No aspect-ratio wrapper: the viewBox widens for wide boards, so any ratio pinned
@@ -127,6 +132,7 @@ export function OutlineEditor() {
             </div>
           </div>
         </div>
+        </TabbedPanel>
       </main>
     </div>
   );

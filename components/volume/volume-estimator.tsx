@@ -8,6 +8,7 @@
 
 import { useDesign } from "@/components/design/design-store";
 import { formatFeetInches, formatInchesFraction } from "@/lib/geometry/units";
+import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { VolumeCalculationCard } from "./volume-calculation-card";
 import { VolumeControls } from "./volume-controls";
 
@@ -26,13 +27,17 @@ export function VolumeEstimator() {
           onToggleImportRailThickness={toggleImportRailThickness}
         />
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-5 bg-surf-canvas px-12 py-8">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas px-6 py-4">
+        {/* Single region, so the tab labels rather than switches — same reasoning as the
+            Template screen. */}
+        <TabbedPanel tabs={[{ id: "estimate" as const, label: "ESTIMATE" }]} active="estimate" panelClassName="p-3">
         <VolumeCalculationCard
           result={volumeResult}
           lengthDisplay={formatFeetInches(effectiveVolume.length)}
           widthDisplayLabel={formatInchesFraction(effectiveVolume.width)}
           centerThicknessDisplayLabel={formatInchesFraction(effectiveVolume.centerThickness)}
         />
+        </TabbedPanel>
       </main>
     </div>
   );

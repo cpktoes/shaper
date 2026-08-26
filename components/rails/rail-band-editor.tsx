@@ -6,6 +6,7 @@ import { useDesign } from "@/components/design/design-store";
 import { type RailBandSpec, type RailSectionKey, type RailSectionSpec } from "@/lib/geometry/rail-bands";
 import { mm, mmToInches, type Mm } from "@/lib/geometry/units";
 import { RailControls } from "./rail-controls";
+import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { RailDataTable } from "./rail-data-table";
 import { RailSectionPlot, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
 
@@ -212,29 +213,12 @@ export function RailBandEditor() {
           </div>
         )}
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas px-10 py-5">
-        <div className="flex flex-none gap-1.5">
-          {(["viewer", "data"] as RailPage[]).map((page) => (
-            <button
-              key={page}
-              type="button"
-              onClick={() => setActivePage(page)}
-              className={
-                "cursor-pointer rounded-t-lg border px-[18px] py-2.5 text-sm font-bold " +
-                (activePage === page
-                  ? "border-surf-line-faint border-b-0 bg-surf-tab-active text-surf-ink"
-                  : "border-transparent bg-transparent text-surf-ink-muted")
-              }
-            >
-              {page === "viewer" ? "VIEWER" : "DATA"}
-            </button>
-          ))}
-        </div>
-
-        {/* See fin-placement-editor for why this panel exists: the active tab drops its
-            bottom border and this picks the line up, so tab and content read as one
-            surface. Square top-left to meet the first tab; `-mt-px` closes the seam. */}
-        <div className="flex min-h-0 flex-1 flex-col rounded-tr-lg rounded-b-lg border border-surf-line-faint bg-surf-tab-active -mt-px">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas px-6 py-4">
+        <TabbedPanel
+          tabs={[{ id: "viewer" as const, label: "VIEWER" }, { id: "data" as const, label: "DATA" }]}
+          active={activePage}
+          onSelect={setActivePage}
+        >
         {activePage === "viewer" && (
           <div className="flex min-h-0 flex-1 flex-col pt-1">
             <div ref={plotsContainerRef} className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
@@ -277,7 +261,7 @@ export function RailBandEditor() {
             }))}
           />
         )}
-        </div>
+        </TabbedPanel>
       </main>
     </div>
   );

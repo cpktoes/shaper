@@ -9,6 +9,7 @@ import { FinControls } from "./fin-controls";
 import { FinDataPanel } from "./fin-data-panel";
 import { FinModelInfo } from "./fin-model-info";
 import { FinViewer } from "./fin-viewer";
+import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { ToeAimTableModal } from "./toe-aim-table-modal";
 
 type FinTab = "viewer" | "data" | "info";
@@ -159,30 +160,12 @@ export function FinPlacementEditor() {
           </div>
         )}
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas px-10 py-5">
-        <div className="flex flex-none gap-1.5">
-          {TAB_ORDER.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={
-                "cursor-pointer rounded-t-lg border px-[18px] py-2.5 text-sm font-bold " +
-                (activeTab === tab
-                  ? "border-surf-line-faint border-b-0 bg-surf-tab-active text-surf-ink"
-                  : "border-transparent bg-transparent text-surf-ink-muted")
-              }
-            >
-              {TAB_LABEL[tab]}
-            </button>
-          ))}
-        </div>
-
-        {/* The panel the tabs open onto. The active tab drops its bottom border and this
-            picks the line up, so the two read as one surface — the folder treatment the
-            `border-b-0` above always implied but had nothing to merge into. Square top-left
-            so it meets the first tab flush; `-mt-px` closes the seam. */}
-        <div className="flex min-h-0 flex-1 flex-col rounded-tr-lg rounded-b-lg border border-surf-line-faint bg-surf-tab-active -mt-px">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas px-6 py-4">
+        <TabbedPanel
+          tabs={TAB_ORDER.map((tab) => ({ id: tab, label: TAB_LABEL[tab] }))}
+          active={activeTab}
+          onSelect={setActiveTab}
+        >
         {activeTab === "viewer" && (
           <div className="flex min-h-0 flex-1 flex-col items-center pt-1">
             <FinViewer
@@ -206,7 +189,7 @@ export function FinPlacementEditor() {
         )}
 
         {activeTab === "info" && <FinModelInfo />}
-        </div>
+        </TabbedPanel>
       </main>
 
       <ToeAimTableModal
