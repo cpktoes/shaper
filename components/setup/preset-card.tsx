@@ -9,7 +9,10 @@
  * edge slot still lives on that button, so hover and focus states apply directly with no
  * parent/child style coupling — but at rest it still paints nothing on the outside. The sand
  * band is still the card's OUTER boundary, but its inner edge — where the sand meets the white
- * window box — now carries a faint hairline. See the comment above `return` for the full stack.
+ * window box — now carries the same structural line `components/viewer/tabbed-panel.tsx` draws
+ * around its panel, so the card as a whole mirrors that treatment: structural weight on the
+ * outer box, receding weight on the inner one. See the comment above `return` for the full
+ * stack.
  */
 
 import { OutlineViewer } from "@/components/outline/outline-viewer";
@@ -29,9 +32,8 @@ export function PresetCard({ preset, onSelect, className }: PresetCardProps) {
   const geometry = outlineGeometryLib.buildOutline(preset.outline);
 
   // The stack, outermost first: page (--surf-ground) -> sand frame (--surf-canvas, 12px band)
-  // -> faint line (new, below) -> window (--surf-tab-active, 12px band) -> faint line
-  // (existing, on the well) -> panel (--surf-panel) -> board. Mirrors the two nested 12px-inset
-  // boxes in components/viewer/tabbed-panel.tsx.
+  // -> structural line (--surf-line, on the window box) -> window (--surf-tab-active, 12px
+  // band) -> receding line (--surf-line-faint, on the well) -> panel (--surf-panel) -> board.
   //
   // --surf-ground, --surf-tab-active and --surf-panel hold the SAME value in all four themes;
   // --surf-canvas is the only distinct surface. So the two hairlines are doing ALL of the
@@ -39,11 +41,15 @@ export function PresetCard({ preset, onSelect, className }: PresetCardProps) {
   // "fixed" by someone who has not measured it, and it is why neither line may be simplified
   // away.
   //
-  // This new edge uses `--surf-line-faint`, not the `--surf-line` its design-screen counterpart
-  // in tabbed-panel.tsx uses, because the founder asked for a faint line. The two tokens hold
-  // the same value in three of four themes (Daylight/Chalk/Phosphor), so the choice only costs
-  // anything in Slate: measured 1.43:1 against the sand frame and 1.56:1 against the window,
-  // versus 3.39:1 and 3.70:1 if this were `--surf-line`.
+  // The two lines are different weights on purpose, not by oversight: it is the same pairing
+  // components/viewer/tabbed-panel.tsx uses, for the reason that file's own docstring gives — a
+  // panel boundary is structural, a content grouping should recede. The window box here plays
+  // the panel's role and the well plays its inner content card's role.
+  //
+  // --surf-line and --surf-line-faint hold the SAME value in three of four themes
+  // (Daylight/Chalk/Phosphor), so this pairing is only actually visible in Slate — where the
+  // window box's edge now measures 3.39:1 against the sand frame and 3.70:1 against the window,
+  // clearing the project's 3:1 non-text bar on both sides.
   //
   // The card's own resting outer edge (the button's border-transparent slot) must stay
   // transparent: hover and focus-visible set colour only, not width, so restoring a resting
@@ -57,7 +63,7 @@ export function PresetCard({ preset, onSelect, className }: PresetCardProps) {
         className,
       )}
     >
-      <div className="rounded-lg border border-surf-line-faint bg-surf-tab-active p-3">
+      <div className="rounded-lg border border-surf-line bg-surf-tab-active p-3">
         <div className="relative aspect-[340/620] w-full overflow-hidden rounded-lg border border-surf-line-faint bg-surf-panel">
           <OutlineViewer
             geometry={geometry}
