@@ -90,56 +90,56 @@
   --ramp-daylight-ink: #1f2a3b;
   --ramp-daylight-ink-muted: #566171;
   --ramp-daylight-line: #897c58;
-  --ramp-daylight-line-faint: #cec8b6;
+  --ramp-daylight-line-faint: #897c58;
   --ramp-daylight-accent: #8ec1b8;
   --ramp-daylight-on-accent: #1f2a3b;
   --ramp-daylight-accent-ink: #48605c;
   --ramp-daylight-warning: #ff5722;
   --ramp-daylight-on-warning: #1f2a3b;
   --ramp-daylight-warning-ink: #ac3811;
-  --ramp-daylight-fill: #f4f9f8;
+  --ramp-daylight-fill: #d9f2ed;
 
   /* -- Chalk (light) --------------------------------------------------
      The original crisp-white scheme: matte black ink, bright cyan selection fills. Colder and
      higher-contrast than Daylight, and the only light theme with a flat white canvas. */
   --ramp-chalk-ground: #ffffff;
   --ramp-chalk-sidebar: #ffffff;
-  --ramp-chalk-canvas: #ffffff;
+  --ramp-chalk-canvas: #dfdcd3;
   --ramp-chalk-tab-active: #ffffff;
   --ramp-chalk-panel: #ffffff;
-  --ramp-chalk-well: #f4f5f7;
-  --ramp-chalk-ink: #111111;
-  --ramp-chalk-ink-muted: #6b6b6b;
-  --ramp-chalk-line: #8d8d8d;
-  --ramp-chalk-line-faint: #d5d5d5;
-  --ramp-chalk-accent: #00e5ff;
-  --ramp-chalk-on-accent: #111111;
-  --ramp-chalk-accent-ink: #00767f;
+  --ramp-chalk-well: #dfdcd3;
+  --ramp-chalk-ink: #1f2a3b;
+  --ramp-chalk-ink-muted: #566171;
+  --ramp-chalk-line: #897c58;
+  --ramp-chalk-line-faint: #897c58;
+  --ramp-chalk-accent: #3490bc;
+  --ramp-chalk-on-accent: #090e16;
+  --ramp-chalk-accent-ink: #2b424c;
   --ramp-chalk-warning: #ff5722;
-  --ramp-chalk-on-warning: #111111;
-  --ramp-chalk-warning-ink: #c93f10;
-  --ramp-chalk-fill: #f0fdff;
+  --ramp-chalk-on-warning: #1f2a3b;
+  --ramp-chalk-warning-ink: #ac3811;
+  --ramp-chalk-fill: #d8ebf2;
 
   /* -- Slate (dark) --------------------------------------------------
      Chalk on a cool matte black — the conventional dark, and the only one that keeps a
      separate warning hue. Default dark. */
   --ramp-slate-ground: #12141a;
   --ramp-slate-sidebar: #12141a;
-  --ramp-slate-canvas: #12141a;
+  --ramp-slate-canvas: #1a1d25;
   --ramp-slate-tab-active: #12141a;
-  --ramp-slate-panel: #1a1d25;
+  --ramp-slate-panel: #12141a;
   --ramp-slate-well: #1b1f26;
   --ramp-slate-ink: #f2f4f7;
   --ramp-slate-ink-muted: #a1a8b4;
   --ramp-slate-line: #6a707c;
   --ramp-slate-line-faint: #333842;
-  --ramp-slate-accent: #2d7495;
+  --ramp-slate-accent: #18526d;
   --ramp-slate-on-accent: #f2f4f7;
   --ramp-slate-accent-ink: #3490bc;
   --ramp-slate-warning: #ff5722;
   --ramp-slate-on-warning: #111111;
   --ramp-slate-warning-ink: #ff9670;
-  --ramp-slate-fill: #152029;
+  --ramp-slate-fill: #1a2732;
 
   /* -- Phosphor (dark) --------------------------------------------------
      CRT terminal, fully monochrome: every role including the warning is a green, so nothing
