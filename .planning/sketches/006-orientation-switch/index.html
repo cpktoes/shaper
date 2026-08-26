@@ -1,0 +1,359 @@
+<meta charset="utf-8">
+<title>Rotate in Place — Shaper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+  /* ------------------------------------------------------------------
+     Tokens mirrored from app/globals.css. Hand-kept copy — re-sync in
+     the same task as any ramp change.
+     ------------------------------------------------------------------ */
+  :root {
+    color-scheme: light;
+    --surf-ground: #ffffff;  --surf-sidebar: #ffffff;   --surf-canvas: #dfdcd3;
+    --surf-tab-active: #ffffff; --surf-panel: #ffffff;  --surf-well: #dfdcd3;
+    --surf-ink: #1f2a3b;     --surf-ink-muted: #566171;
+    --surf-line: #897c58;    --surf-line-faint: #897c58;
+    --surf-accent: #8ec1b8;  --surf-on-accent: #1f2a3b; --surf-accent-ink: #48605c;
+    --surf-warning: #ff5722; --surf-on-warning: #1f2a3b; --surf-warning-ink: #ac3811;
+    --surf-board-fill: #d9f2ed;
+  }
+  :root.theme-chalk {
+    color-scheme: light;
+    --surf-ground: #ffffff;  --surf-sidebar: #ffffff;   --surf-canvas: #dfdcd3;
+    --surf-tab-active: #ffffff; --surf-panel: #ffffff;  --surf-well: #dfdcd3;
+    --surf-ink: #1f2a3b;     --surf-ink-muted: #566171;
+    --surf-line: #897c58;    --surf-line-faint: #897c58;
+    --surf-accent: #3490bc;  --surf-on-accent: #090e16; --surf-accent-ink: #2b424c;
+    --surf-warning: #ff5722; --surf-on-warning: #1f2a3b; --surf-warning-ink: #ac3811;
+    --surf-board-fill: #d8ebf2;
+  }
+  :root.theme-slate {
+    color-scheme: dark;
+    --surf-ground: #12141a;  --surf-sidebar: #12141a;   --surf-canvas: #1a1d25;
+    --surf-tab-active: #12141a; --surf-panel: #12141a;  --surf-well: #1b1f26;
+    --surf-ink: #f2f4f7;     --surf-ink-muted: #a1a8b4;
+    --surf-line: #6a707c;    --surf-line-faint: #333842;
+    --surf-accent: #18526d;  --surf-on-accent: #f2f4f7; --surf-accent-ink: #3490bc;
+    --surf-warning: #ff5722; --surf-on-warning: #111111; --surf-warning-ink: #ff9670;
+    --surf-board-fill: #1a2732;
+  }
+  :root.theme-phosphor {
+    color-scheme: dark;
+    --surf-ground: #050805;  --surf-sidebar: #050805;   --surf-canvas: #142414;
+    --surf-tab-active: #050805; --surf-panel: #050805;  --surf-well: #050805;
+    --surf-ink: #26d026;     --surf-ink-muted: #2ca62c;
+    --surf-line: #3e783e;    --surf-line-faint: #3e783e;
+    --surf-accent: #2ca62c;  --surf-on-accent: #050805; --surf-accent-ink: #52ab52;
+    --surf-warning: #5eff5e; --surf-on-warning: #050805; --surf-warning-ink: #a6ffa6;
+    --surf-board-fill: #142414;
+  }
+  :root {
+    --tracking: .15em;
+    --outline-ink: var(--surf-ink);
+    --outline-board-fill: var(--surf-board-fill);
+    --outline-construction: var(--surf-accent-ink);
+    --outline-station-line: color-mix(in srgb, var(--surf-ink-muted) 36%, transparent);
+    --outline-callout-label: var(--surf-ink-muted);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--surf-canvas); color: var(--surf-ink);
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif; font-size: 14px; line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  .heading { font-weight: 800; text-transform: uppercase; letter-spacing: var(--tracking); }
+
+  /* --- sketch chrome (not part of the design under test) ------------- */
+  .sketchbar {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: 10px 24px; background: var(--surf-well);
+    border-bottom: 1px solid var(--surf-line-faint); position: sticky; top: 0; z-index: 30;
+  }
+  .sketchbar .lbl { font-size: 10px; font-weight: 800; letter-spacing: var(--tracking);
+    text-transform: uppercase; color: var(--surf-ink-muted); margin-right: 4px; }
+  .sketchbar button {
+    font: inherit; font-size: 11px; font-weight: 600; padding: 4px 10px; cursor: pointer;
+    border: 1px solid var(--surf-line); border-radius: 6px;
+    background: var(--surf-ground); color: var(--surf-ink-muted);
+  }
+  .sketchbar button[aria-pressed="true"] {
+    background: var(--surf-accent); border-color: var(--surf-on-accent); color: var(--surf-on-accent);
+  }
+
+  .wrap { max-width: 1220px; margin: 0 auto; padding: 22px 24px 40px; }
+  .intro h1 { font-size: 15px; margin: 0 0 6px; }
+  .intro p { margin: 0 0 6px; max-width: 82ch; color: var(--surf-ink-muted); font-size: 13px; }
+  .intro strong { color: var(--surf-ink); font-weight: 600; }
+
+  /* --- the app frame: today's layout, unchanged ---------------------- */
+  .app {
+    margin-top: 18px;
+    border: 1px solid var(--surf-line); border-radius: 10px; overflow: hidden;
+    background: var(--surf-ground);
+  }
+  .app-nav {
+    display: flex; align-items: center; gap: 26px;
+    padding: 10px 16px; border-bottom: 1px solid var(--surf-line-faint);
+  }
+  .wordmark { font-size: 11px; font-weight: 800; letter-spacing: var(--tracking); }
+  .navlinks { display: flex; gap: 15px; margin-right: auto; }
+  .navlink { font-size: 10px; font-weight: 700; letter-spacing: var(--tracking);
+    text-transform: uppercase; color: var(--surf-ink-muted);
+    border-bottom: 2px solid transparent; padding-bottom: 2px; }
+  .navlink.on { color: var(--surf-ink); border-bottom-color: var(--surf-accent); }
+  .gear { width: 15px; height: 15px; color: var(--surf-ink-muted); }
+
+  .app-body { display: grid; grid-template-columns: 210px minmax(0,1fr); }
+  .app-side {
+    background: var(--surf-sidebar); border-right: 1px solid var(--surf-line-faint);
+    padding: 14px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .sectionlbl { font-size: 9px; font-weight: 800; letter-spacing: var(--tracking);
+    text-transform: uppercase; color: var(--surf-ink-muted); }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field .cap { font-size: 11.5px; color: var(--surf-ink); }
+  .track { height: 6px; border-radius: 99px; background: var(--surf-well);
+    border: 1px solid var(--surf-ink); position: relative; }
+  .track i { position: absolute; inset: 0 auto 0 0; width: 58%;
+    background: var(--surf-accent); border-radius: 99px 0 0 99px; }
+  .track b { position: absolute; top: 50%; left: 58%; width: 12px; height: 12px;
+    margin: -6px 0 0 -6px; border-radius: 50%; background: var(--surf-accent);
+    border: 1px solid var(--surf-ink); }
+  .app-canvas { background: var(--surf-canvas); padding: 14px; display: flex; }
+
+  /* --- the viewer panel. Frame is 1.34:1, the real app's aspect at
+         1440x900 (990 x 737 measured). Unchanged by the rotation. ----- */
+  .viewer {
+    flex: 1; display: flex; flex-direction: column;
+    border: 1px solid var(--surf-line-faint); border-radius: 8px;
+    background: var(--surf-tab-active); overflow: hidden;
+    aspect-ratio: 990 / 737;
+  }
+  .viewer-hd {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 11px; border-bottom: 1px solid var(--surf-line-faint);
+  }
+  .viewer-title { font-size: 10px; font-weight: 800; letter-spacing: var(--tracking);
+    text-transform: uppercase; }
+  .viewer-stage { flex: 1; min-height: 0; display: grid; place-items: center; padding: 12px; }
+  .viewer-stage svg.board { display: block; max-width: 100%; max-height: 100%; }
+
+  /* --- THE CONTROL: a rotate button in the panel's upper-right ------- */
+  .rotate {
+    margin-left: auto; display: inline-grid; place-items: center;
+    width: 30px; height: 30px; padding: 0; cursor: pointer;
+    border: 1px solid var(--surf-line); border-radius: 7px;
+    background: var(--surf-ground); color: var(--surf-ink-muted);
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .rotate:hover { color: var(--surf-ink); background: var(--surf-well); }
+  .rotate:focus-visible { outline: 2px solid var(--surf-accent-ink); outline-offset: 2px; }
+  .rotate svg { width: 19px; height: 19px; display: block; }
+  /* The board inside the icon turns with the view, so the button always
+     shows the orientation you would be going TO. */
+  .rotate .icon-board { transition: transform .22s ease; transform-origin: 12px 12px; }
+  .app[data-orient="h"] .rotate .icon-board { transform: rotate(-90deg); }
+
+  .readout {
+    display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: baseline;
+    margin-top: 12px; padding: 10px 13px; border-radius: 7px;
+    background: var(--surf-well); border: 1px solid var(--surf-line-faint); font-size: 12.5px;
+  }
+  .readout .k { font-size: 9.5px; font-weight: 800; letter-spacing: var(--tracking);
+    text-transform: uppercase; color: var(--surf-ink-muted); }
+  .readout .v { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .readout .gain { color: var(--surf-accent-ink); font-weight: 700; }
+
+  /* --- icon proof sheet --------------------------------------------- */
+  .icons { margin-top: 30px; }
+  .icons h2 { font-size: 12px; margin: 0 0 4px; }
+  .icons p { margin: 0 0 12px; font-size: 12.5px; color: var(--surf-ink-muted); max-width: 78ch; }
+  .iconrow { display: flex; align-items: flex-end; gap: 26px; flex-wrap: wrap;
+    padding: 16px 18px; border-radius: 8px; background: var(--surf-ground);
+    border: 1px solid var(--surf-line-faint); }
+  .iconcell { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .iconcell span { font-size: 9.5px; color: var(--surf-ink-muted); font-variant-numeric: tabular-nums; }
+  .iconcell svg { color: var(--surf-ink); display: block; }
+</style>
+
+<div class="sketchbar">
+  <span class="lbl">Theme</span>
+  <button type="button" data-theme="" aria-pressed="true">Daylight</button>
+  <button type="button" data-theme="theme-chalk" aria-pressed="false">Chalk</button>
+  <button type="button" data-theme="theme-slate" aria-pressed="false">Slate</button>
+  <button type="button" data-theme="theme-phosphor" aria-pressed="false">Phosphor</button>
+</div>
+
+<div class="wrap">
+  <div class="intro">
+    <h1 class="heading">006 — Rotate the board in place</h1>
+    <p>
+      The layout does not move. Same sidebar, same viewer panel, same everything — only the board
+      turns, inside the frame it already occupies. The control is the button in the viewer's
+      upper-right corner. <strong>Click it.</strong>
+    </p>
+    <p>
+      The viewer frame here is <strong>990 × 737</strong>, measured from the running app at 1440 × 900.
+      It is already landscape at 1.34:1, which is why this works: a vertical board fills its height and
+      wastes the width, so turning it costs nothing and buys length.
+    </p>
+  </div>
+
+  <div class="app" id="app" data-orient="v">
+    <div class="app-nav">
+      <span class="wordmark">SHAPER</span>
+      <span class="navlinks"><span class="navlink on">Template</span><span class="navlink">Rails</span><span class="navlink">Volume</span><span class="navlink">Fins</span><span class="navlink">Summary</span></span>
+      <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </div>
+
+    <div class="app-body">
+      <aside class="app-side">
+        <span class="sectionlbl">Board length</span>
+        <div class="field"><span class="cap">Length — 6'0"</span><div class="track"><i></i><b></b></div></div>
+        <span class="sectionlbl">Nose controls</span>
+        <div class="field"><span class="cap">Nose Angle — 55°</span><div class="track"><i></i><b></b></div></div>
+        <div class="field"><span class="cap">Fullness — 25%</span><div class="track"><i></i><b></b></div></div>
+        <span class="sectionlbl">Widepoint</span>
+        <div class="field"><span class="cap">Width — 19"</span><div class="track"><i></i><b></b></div></div>
+      </aside>
+
+      <div class="app-canvas">
+        <div class="viewer">
+          <div class="viewer-hd">
+            <span class="viewer-title">Viewer</span>
+            <button class="rotate" id="rotateBtn" type="button"
+                    aria-label="Rotate the board to horizontal" title="Rotate the board">
+              <!-- A real planshape — sharp nose, belly, narrower rounded tail — not a
+                   rounded rectangle, so it still reads as a board at 16px. The board
+                   turns with the view; the two arrows are one shape mirrored through
+                   the centre, so they stay symmetric at every size. -->
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <g class="icon-board">
+                  <path d="M12 3.3C11.0 6.2 9.88 9.5 9.85 12.6 9.82 15.6 10.4 18.2 11.1 20.3
+                           a0.95 0.95 0 0 0 1.8 0C13.6 18.2 14.18 15.6 14.15 12.6 14.12 9.5 13.0 6.2 12 3.3Z"
+                        fill="none" stroke="currentColor" stroke-width="1.6"
+                        stroke-linejoin="round"
+                        transform="translate(12,12) rotate(-32) scale(0.74) translate(-12,-12)"/>
+                </g>
+                <!-- Short quarter-arcs at opposite corners. Kept clear of the board so the
+                     two shapes never cross, which is what turns to mush below 20px. -->
+                <g stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                  <path d="M15.52 3.28A9.4 9.4 0 0 1 20.72 8.48"/>
+                  <path d="M15.52 3.28A9.4 9.4 0 0 1 20.72 8.48" transform="rotate(180 12 12)"/>
+                </g>
+                <g fill="currentColor">
+                  <path d="M21.47 10.33 19.38 9.02 22.06 7.94Z"/>
+                  <path d="M21.47 10.33 19.38 9.02 22.06 7.94Z" transform="rotate(180 12 12)"/>
+                </g>
+              </svg>
+            </button>
+          </div>
+          <div class="viewer-stage" id="stage"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="readout">
+    <span><span class="k">Orientation</span> <span class="v" id="roOrient">Vertical</span></span>
+    <span><span class="k">Board drawn</span> <span class="v" id="roSize">—</span></span>
+    <span><span class="k">Length on screen</span> <span class="v" id="roLen">—</span></span>
+    <span id="roGainWrap" hidden><span class="k">vs vertical</span> <span class="v gain" id="roGain">—</span></span>
+  </div>
+
+  <section class="icons">
+    <h2 class="heading">The icon, at the sizes it will actually be drawn</h2>
+    <p>
+      A surfboard in place of the phone, with the same two rotation arrows. The board is a real
+      planshape — pointed nose, pointed tail — not a rounded rectangle, so it reads as a board even
+      at 16px. Check the smallest one: below about 16px the arrowheads start to fill in.
+    </p>
+    <div class="iconrow" id="iconrow"></div>
+  </section>
+</div>
+
+<script>
+  /* ---------------------------------------------------------------
+     One board path, drawn in either orientation. Vertical space is
+     150 x 400 (nose at top). Horizontal is the same path rotated -90
+     into a 400 x 150 box: rotation maps (x,y) -> (y,-x), so the
+     translate(0,150) brings it back into frame, nose at the left.
+     --------------------------------------------------------------- */
+  var BOARD = "M75 10 C55 62 33 122 31 177 C30 242 43 332 58 390 C63 396 87 396 92 390 " +
+              "C107 332 120 242 119 177 C117 122 95 62 75 10 Z";
+
+  function boardSVG(horiz) {
+    var vb = horiz ? "0 0 400 150" : "0 0 150 400";
+    var g  = horiz ? ' transform="translate(0,150) rotate(-90)"' : "";
+    return '<svg class="board" viewBox="' + vb + '" preserveAspectRatio="xMidYMid meet"' +
+      ' role="img" aria-label="Board plan view, ' + (horiz ? "nose left" : "nose up") + '">' +
+      '<g' + g + '>' +
+        '<path d="' + BOARD + '" fill="var(--outline-board-fill)" ' +
+              'stroke="var(--outline-ink)" stroke-width="1.8"/>' +
+        '<line x1="75" y1="12" x2="75" y2="392" stroke="var(--outline-construction)" ' +
+              'stroke-width="1" stroke-dasharray="16 4 4 4" opacity=".85"/>' +
+        '<line x1="20" y1="177" x2="130" y2="177" stroke="var(--outline-station-line)" ' +
+              'stroke-width="1" stroke-dasharray="2 3"/>' +
+        '<circle cx="31" cy="177" r="3.4" fill="var(--surf-accent)" ' +
+              'stroke="var(--outline-ink)" stroke-width="1"/>' +
+        '<circle cx="119" cy="177" r="3.4" fill="var(--surf-accent)" ' +
+              'stroke="var(--outline-ink)" stroke-width="1"/>' +
+      '</g></svg>';
+  }
+
+  var app = document.getElementById("app");
+  var stage = document.getElementById("stage");
+  var btn = document.getElementById("rotateBtn");
+  var horiz = false;
+  var verticalLen = null;
+
+  function render() {
+    stage.innerHTML = boardSVG(horiz);
+    app.dataset.orient = horiz ? "h" : "v";
+    btn.setAttribute("aria-label", "Rotate the board to " + (horiz ? "vertical" : "horizontal"));
+
+    // Measure what actually got drawn, so the readout is observed, not asserted.
+    requestAnimationFrame(function () {
+      var p = stage.querySelector("path");
+      if (!p) return;
+      var b = p.getBoundingClientRect();
+      var w = Math.round(b.width), h = Math.round(b.height);
+      var len = horiz ? w : h;
+      if (!horiz) verticalLen = len;
+      document.getElementById("roOrient").textContent = horiz ? "Horizontal — nose left" : "Vertical — nose up";
+      document.getElementById("roSize").textContent = w + " x " + h + " px";
+      document.getElementById("roLen").textContent = len + " px";
+      var wrap = document.getElementById("roGainWrap");
+      if (horiz && verticalLen) {
+        wrap.hidden = false;
+        document.getElementById("roGain").textContent =
+          "+" + Math.round((len / verticalLen - 1) * 100) + "% longer";
+      } else {
+        wrap.hidden = true;
+      }
+    });
+  }
+
+  btn.addEventListener("click", function () { horiz = !horiz; render(); });
+  render();
+
+  /* --- icon proof sheet at real sizes ------------------------------- */
+  var ICON = document.querySelector("#rotateBtn svg").outerHTML;
+  document.getElementById("iconrow").innerHTML = [30, 24, 20, 19, 16, 14].map(function (px) {
+    return '<div class="iconcell">' +
+      ICON.replace('viewBox', 'width="' + px + '" height="' + px + '" viewBox') +
+      '<span>' + px + 'px</span></div>';
+  }).join("");
+
+  /* --- sketch chrome ------------------------------------------------- */
+  document.querySelectorAll(".sketchbar button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.documentElement.className = b.dataset.theme;
+      document.querySelectorAll(".sketchbar button").forEach(function (o) {
+        o.setAttribute("aria-pressed", String(o === b));
+      });
+    });
+  });
+</script>

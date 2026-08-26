@@ -1,0 +1,1474 @@
+<meta charset="utf-8">
+<title>Horizontal Template Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap">
+<style>
+  /* ------------------------------------------------------------------
+     Tokens mirrored from app/globals.css — this is a mockup of Shaper's
+     own Template screen, so it inherits Shaper's design system rather
+     than inventing one.
+
+     Refreshed 2026-08-25. The original was written against the literal
+     token names (surf-base / surf-black / surf-accent-blue) that commit
+     35f4c57 retired, so it rendered a palette the app no longer has. It
+     now carries all four themes and the current values, and it obeys the
+     fill/`on-` pairing rule the app settled: anything drawn ON the accent
+     fill takes the fill's paired colour, never the accent again.
+
+     Like the colour bench, these values are a hand-kept copy of the ramps
+     in globals.css. Re-sync them in the same task as any ramp change.
+     ------------------------------------------------------------------ */
+  :root {
+    color-scheme: light;
+    --surf-ground: #ffffff;  --surf-sidebar: #ffffff;   --surf-canvas: #dfdcd3;
+    --surf-tab-active: #ffffff; --surf-panel: #ffffff;  --surf-well: #dfdcd3;
+    --surf-ink: #1f2a3b;     --surf-ink-muted: #566171;
+    --surf-line: #897c58;    --surf-line-faint: #897c58;
+    --surf-accent: #8ec1b8;  --surf-on-accent: #1f2a3b; --surf-accent-ink: #48605c;
+    --surf-warning: #ff5722; --surf-on-warning: #1f2a3b; --surf-warning-ink: #ac3811;
+    --surf-board-fill: #d9f2ed;
+  }
+  :root.theme-chalk {
+    color-scheme: light;
+    --surf-ground: #ffffff;  --surf-sidebar: #ffffff;   --surf-canvas: #dfdcd3;
+    --surf-tab-active: #ffffff; --surf-panel: #ffffff;  --surf-well: #dfdcd3;
+    --surf-ink: #1f2a3b;     --surf-ink-muted: #566171;
+    --surf-line: #897c58;    --surf-line-faint: #897c58;
+    --surf-accent: #3490bc;  --surf-on-accent: #090e16; --surf-accent-ink: #2b424c;
+    --surf-warning: #ff5722; --surf-on-warning: #1f2a3b; --surf-warning-ink: #ac3811;
+    --surf-board-fill: #d8ebf2;
+  }
+  :root.theme-slate {
+    color-scheme: dark;
+    --surf-ground: #12141a;  --surf-sidebar: #12141a;   --surf-canvas: #1a1d25;
+    --surf-tab-active: #12141a; --surf-panel: #12141a;  --surf-well: #1b1f26;
+    --surf-ink: #f2f4f7;     --surf-ink-muted: #a1a8b4;
+    --surf-line: #6a707c;    --surf-line-faint: #333842;
+    --surf-accent: #18526d;  --surf-on-accent: #f2f4f7; --surf-accent-ink: #3490bc;
+    --surf-warning: #ff5722; --surf-on-warning: #111111; --surf-warning-ink: #ff9670;
+    --surf-board-fill: #1a2732;
+  }
+  :root.theme-phosphor {
+    color-scheme: dark;
+    --surf-ground: #050805;  --surf-sidebar: #050805;   --surf-canvas: #142414;
+    --surf-tab-active: #050805; --surf-panel: #050805;  --surf-well: #050805;
+    --surf-ink: #26d026;     --surf-ink-muted: #2ca62c;
+    --surf-line: #3e783e;    --surf-line-faint: #3e783e;
+    --surf-accent: #2ca62c;  --surf-on-accent: #050805; --surf-accent-ink: #52ab52;
+    --surf-warning: #5eff5e; --surf-on-warning: #050805; --surf-warning-ink: #a6ffa6;
+    --surf-board-fill: #142414;
+  }
+
+  /* Derived exactly as app/globals.css derives them from the surf contract. */
+  :root {
+    --rule: var(--surf-line-faint);
+    --tracking: 0.15em;
+    --chev: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+
+    --outline-ink: var(--surf-ink);
+    --outline-board-fill: var(--surf-board-fill);
+    --outline-construction: var(--surf-accent-ink);
+    --outline-station-line: color-mix(in srgb, var(--surf-ink-muted) 36%, transparent);
+    /* The widepoint marker no longer carries its own hue — it marks a draggable INPUT,
+       which is the same role the construction overlay plays, so it takes the same
+       token. The rose it used to carry is gone. */
+    --outline-widepoint-knot: var(--surf-accent-ink);
+    --outline-widepoint-line: color-mix(in srgb, var(--outline-widepoint-knot) 45%, transparent);
+    --outline-callout-label: var(--surf-ink-muted);
+    --stringer-dash: 16 4 4 4;
+    --widepoint-dash: 2 3;
+    --station-dash: 5 4;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--surf-ground);
+    color: var(--surf-ink);
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+  .heading {
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking);
+  }
+
+  /* --- top nav, unchanged from the live app ------------------------- */
+  .nav {
+    display: flex; align-items: center; gap: 40px;
+    padding: 12px 40px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .wordmark { font-size: 14px; font-weight: 800; letter-spacing: var(--tracking); }
+  .navlinks { display: flex; align-items: center; gap: 20px; }
+  .navlink {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: var(--tracking); color: var(--surf-ink-muted);
+    border-bottom: 2px solid transparent; padding-bottom: 2px;
+    text-decoration: none;
+  }
+  .navlink.is-active { color: var(--surf-ink); border-bottom-color: var(--surf-accent); }
+
+  .page { max-width: 1360px; margin: 0 auto; padding: 0 40px; }
+  .page--top { padding-top: 12px; }
+  .page--bottom { padding-bottom: 16px; }
+
+  /* --- title band: length left, title centre, settings right --------- */
+  .titleband {
+    display: grid;
+    grid-template-columns: minmax(260px, 320px) 1fr minmax(210px, 260px);
+    align-items: start;
+    gap: 28px;
+    padding-bottom: 10px;
+  }
+  .pagetitle { text-align: center; padding-top: 6px; }
+  .pagetitle h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: var(--tracking); text-transform: uppercase; }
+  .pagetitle p { margin: 4px 0 0; font-size: 13px; color: var(--surf-ink-muted); }
+
+  .card { border: 1px solid var(--rule); border-radius: 10px; padding: 11px 14px 12px; }
+  .card > .card-title {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    font-size: 10px; margin-bottom: 9px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--rule); color: var(--surf-ink);
+  }
+  #lengthReadout { font-size: 15px; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+  .lengthrow { display: flex; gap: 8px; margin-bottom: 9px; }
+
+  select {
+    flex: 1; appearance: none; font: inherit; font-size: 13px;
+    color: var(--surf-ink); background: var(--surf-ground);
+    border: 1px solid var(--rule); border-radius: 8px;
+    padding: 6px 26px 6px 11px;
+    background-image: none;
+  }
+  .selectwrap { position: relative; display: inline-flex; }
+  .selectwrap::after {
+    content: ""; position: absolute; right: 9px; top: 50%; width: 12px; height: 12px;
+    margin-top: -6px; pointer-events: none; background: var(--surf-ink-muted);
+    -webkit-mask: var(--chev) center / 12px 12px no-repeat;
+            mask: var(--chev) center / 12px 12px no-repeat;
+  }
+  select:focus-visible, input:focus-visible, button:focus-visible {
+    outline: 2px solid var(--surf-accent-ink); outline-offset: 2px;
+  }
+
+  /* --- sliders: shadcn proportions, surf accent ---------------------- */
+  .slider { flex: 1; min-width: 0; }
+  .slider.is-disabled { opacity: 0.4; pointer-events: none; }
+  .slider-label { font-size: 13px; color: var(--surf-ink-muted); margin-bottom: 5px; white-space: nowrap; }
+  .slider-hints { display: flex; justify-content: space-between; font-size: 11px; color: var(--surf-ink-muted); margin-top: 2px; }
+  .slider-note { font-size: 10px; color: var(--surf-warning-ink); margin-top: 1px; }
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 16px;
+    background: transparent; margin: 0; display: block;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 6px; border-radius: 999px;
+    border: 1px solid var(--surf-ink); box-sizing: border-box;
+    background: linear-gradient(to right,
+      var(--surf-accent) 0 calc(var(--pct, 50%)),
+      var(--surf-well) calc(var(--pct, 50%)) 100%);
+  }
+  input[type="range"]::-moz-range-track {
+    height: 6px; border-radius: 999px;
+    border: 1px solid var(--surf-ink); box-sizing: border-box;
+    background: linear-gradient(to right,
+      var(--surf-accent) 0 calc(var(--pct, 50%)),
+      var(--surf-well) calc(var(--pct, 50%)) 100%);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 12px; height: 12px; margin-top: -3px; border-radius: 50%;
+    background: var(--surf-accent); border: 1px solid var(--surf-ink);
+    cursor: grab;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--surf-accent); border: 1px solid var(--surf-ink);
+    cursor: grab;
+  }
+
+  .checkline { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--surf-ink-muted); cursor: pointer; }
+  input[type="checkbox"] {
+    -webkit-appearance: none; appearance: none; margin: 0;
+    width: 16px; height: 16px; border: 1px solid var(--rule); border-radius: 4px;
+    background: var(--surf-ground); display: grid; place-content: center; cursor: pointer;
+  }
+  input[type="checkbox"]:checked { background: var(--surf-accent); border-color: var(--surf-ink); }
+  input[type="checkbox"]:checked::after {
+    content: ""; width: 9px; height: 5px; margin-top: -2px;
+    border-left: 2px solid var(--surf-on-accent); border-bottom: 2px solid var(--surf-on-accent); transform: rotate(-45deg);
+  }
+
+  /* --- theme switcher (sketch-only chrome, not part of the design) --- */
+  .themebar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 40px; border-bottom: 1px solid var(--rule);
+    background: var(--surf-well);
+  }
+  .themebar-label { font-size: 10px; color: var(--surf-ink-muted); margin-right: 4px; }
+  .themebar button {
+    font: inherit; font-size: 11px; font-weight: 600; padding: 4px 10px; cursor: pointer;
+    border: 1px solid var(--surf-line); border-radius: 6px;
+    background: var(--surf-ground); color: var(--surf-ink-muted);
+  }
+  .themebar button[aria-pressed="true"] {
+    background: var(--surf-accent); border-color: var(--surf-on-accent); color: var(--surf-on-accent);
+  }
+
+  /* --- the board stage ---------------------------------------------- */
+  /* Full window width: the drawing is the point of this screen, so it takes the whole
+     viewport rather than sitting inside the page's reading measure. */
+  .stage { width: 100%; height: 430px; overflow-x: auto; overflow-y: hidden; }
+  .stage svg { display: block; height: 100%; touch-action: none; }
+  .grab { cursor: grab; }
+  .grab:active { cursor: grabbing; }
+
+  /* --- three control panels, under the board ------------------------ */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr 1.4fr;
+    gap: 28px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+  }
+  .panel-title {
+    font-size: 11px; padding-bottom: 6px; margin-bottom: 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .row { display: flex; gap: 18px; }
+  .row + .row { margin-top: 10px; }
+
+  .tailshapes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 10px; }
+  .tailshape {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 4px 2px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--rule); background: var(--surf-ground); color: var(--surf-ink);
+    font: inherit;
+  }
+  .tailshape[aria-pressed="true"] {
+    border-color: var(--surf-on-accent);
+    background: var(--surf-accent);
+    color: var(--surf-on-accent);
+  }
+  .tailshape span { font-size: 9px; font-weight: 700; text-transform: capitalize; }
+
+  .note {
+    max-width: 96ch; margin: 12px auto 0; padding-top: 10px;
+    border-top: 1px solid var(--rule);
+    font-size: 11px; line-height: 1.45; color: var(--surf-ink-muted); text-align: center;
+  }
+  .note strong { color: var(--surf-ink); font-weight: 600; }
+
+  @media (max-width: 900px) {
+    .titleband { grid-template-columns: 1fr; }
+    .controls { grid-template-columns: 1fr; }
+    .page { padding: 20px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<nav class="nav">
+  <span class="wordmark">SHAPER</span>
+  <div class="navlinks">
+    <a class="navlink is-active" href="#board">Template</a>
+    <a class="navlink" href="#board">Rails</a>
+    <a class="navlink" href="#board">Volume</a>
+    <a class="navlink" href="#board">Fins</a>
+    <a class="navlink" href="#board">Summary</a>
+  </div>
+</nav>
+
+<div class="themebar">
+  <span class="themebar-label heading">Theme</span>
+  <button type="button" data-theme="" aria-pressed="true">Daylight</button>
+  <button type="button" data-theme="theme-chalk" aria-pressed="false">Chalk</button>
+  <button type="button" data-theme="theme-slate" aria-pressed="false">Slate</button>
+  <button type="button" data-theme="theme-phosphor" aria-pressed="false">Phosphor</button>
+</div>
+
+<div class="page page--top">
+
+  <div class="titleband">
+    <!-- upper left: board length -->
+    <section class="card">
+      <div class="card-title heading">
+        <span>Board Length</span><span id="lengthReadout">6'0"</span>
+      </div>
+      <div class="lengthrow">
+        <span class="selectwrap"><select id="lengthFeet" aria-label="Board length, feet"></select></span>
+        <span class="selectwrap"><select id="lengthInches" aria-label="Board length, inches"></select></span>
+      </div>
+      <input type="range" id="lengthRange" min="60" max="120" step="1" aria-label="Board length">
+    </section>
+
+    <!-- centred page title, above the board -->
+    <div class="pagetitle">
+      <h1>Template Builder</h1>
+      <p>Design and print full sized surfboard templates</p>
+    </div>
+
+    <!-- upper right: settings -->
+    <section class="card">
+      <div class="card-title heading">Settings</div>
+      <label class="checkline">
+        <input type="checkbox" id="construction">
+        View Construction Lines
+      </label>
+    </section>
+  </div>
+
+</div>
+
+<!-- the board, horizontal, nose to the left — full window width, no page gutters -->
+<div class="stage"><svg id="board" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Surfboard outline, nose at left"></svg></div>
+
+<div class="page page--bottom">
+
+  <!-- nose / widepoint / tail, under the board -->
+  <div class="controls">
+    <section>
+      <div class="panel-title heading">Nose</div>
+      <div class="row">
+        <div class="slider" id="s-noseAngle"></div>
+        <div class="slider" id="s-noseFullness"></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="panel-title heading">Widepoint</div>
+      <div class="row">
+        <div class="slider" id="s-width"></div>
+        <div class="slider" id="s-offset"></div>
+      </div>
+      <div class="row">
+        <div class="slider" id="s-tailRail"></div>
+        <div class="slider" id="s-noseRail"></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="panel-title heading">Tail</div>
+      <div class="tailshapes" id="tailshapes"></div>
+      <div class="row">
+        <div class="slider" id="s-tailBlock"></div>
+        <div class="slider" id="s-depth"></div>
+      </div>
+      <div class="row">
+        <div class="slider" id="s-tailAngle"></div>
+        <div class="slider" id="s-tailFullness"></div>
+      </div>
+    </section>
+  </div>
+
+  <p class="note">
+    Working mockup, running Shaper's real <strong>lib/geometry</strong> engine — tick <strong>View Construction
+    Lines</strong> to drag a control point. Widepoint and rail handles slide <em>along</em> the board: left and right.
+  </p>
+
+</div>
+
+<script type="module">
+/**
+ * Units boundary.
+ *
+ * Millimetres are the only unit the geometry math (lib/geometry/board.ts,
+ * lib/geometry/outline.ts, and everything built on top of them) ever sees.
+ * Inches, feet-and-inches, and litres exist solely at this boundary: control
+ * values coming from the UI are converted to millimetres here before they
+ * enter design state, and millimetre values are converted back to inches
+ * only when rendering a label. No other module should perform an inch/mm
+ * conversion — route it through this file instead.
+ */
+const mm = (value) => value;
+const degrees = (value) => value;
+const litres = (value) => value;
+const MM_PER_INCH = 25.4;
+function mmToInches(value) {
+    return value / MM_PER_INCH;
+}
+function inchesToMm(value) {
+    return mm(value * MM_PER_INCH);
+}
+function cubicMmToLitres(volumeMm3) {
+    return litres(volumeMm3 / 1_000_000);
+}
+/**
+ * Formats a millimetre value as an imperial fraction string, e.g. `18 1/2"`.
+ * Ported from the prototype's `toFrac` (reference/project/Template.dc.html
+ * lines 309-320): round to the nearest 1/denominator, split whole and
+ * fractional parts, carry when the fraction rounds up to a full inch, and
+ * reduce the fraction by repeatedly halving numerator and denominator.
+ */
+function formatInchesFraction(value, denominator = 16) {
+    const inches = mmToInches(value);
+    const sign = inches < 0 ? "-" : "";
+    // Nudge away from zero by a tiny epsilon before rounding: a value that started life as an
+    // exact N.5 sixteenth (e.g. an inch measurement round-tripped once through Mm) can land a few
+    // floating-point ULPs on the wrong side of that boundary purely from the unit conversion, which
+    // would otherwise flip Math.round's tie-break to the wrong sixteenth. 1e-9 is far larger than
+    // that round-trip noise and far smaller than half of the coarsest supported denominator's unit
+    // (1/16 at denominator=8), so it never changes a genuinely different value's rounding.
+    const nudge = inches < 0 ? -1e-9 : 1e-9;
+    const rounded = Math.abs(Math.round(inches * denominator + nudge) / denominator);
+    let whole = Math.floor(rounded + 1e-9);
+    let fracUnits = Math.round((rounded - whole) * denominator);
+    if (fracUnits === denominator) {
+        whole += 1;
+        fracUnits = 0;
+    }
+    if (fracUnits === 0) {
+        return `${sign}${whole}"`;
+    }
+    let num = fracUnits;
+    let den = denominator;
+    while (num % 2 === 0) {
+        num /= 2;
+        den /= 2;
+    }
+    return `${sign}${whole > 0 ? whole + " " : ""}${num}/${den}"`;
+}
+/**
+ * Snaps a millimetre value to the nearest 1/16 inch. Ported from the prototype's `round16`
+ * (reference/project/Rails.dc.html line 652: `Math.round(x * 16) / 16`), applied here in the
+ * inch domain then converted back to Mm. This is not a display nicety — it's the taper clamp
+ * the rail-band calculator applies to Deck Profile's tapered rail thickness before that value
+ * ever reaches a shaper's slider label, so it belongs on the model, not the formatter.
+ */
+function roundToSixteenthInch(value) {
+    const inches = mmToInches(value);
+    return inchesToMm(Math.round(inches * 16) / 16);
+}
+/**
+ * Formats a millimetre value as feet-and-inches, e.g. `6'0"`. Rounds the
+ * inch value to the nearest 1/16 FIRST, then splits feet/inches — this is
+ * what prevents float drift from the millimetre round-trip (1828.8mm)
+ * printing as `5'11 15/16"` instead of `6'0"`.
+ */
+function formatFeetInches(value) {
+    const inches = mmToInches(value);
+    const roundedInches = Math.round(inches * 16) / 16;
+    const feet = Math.floor((roundedInches + 1e-9) / 12);
+    const remainderInches = roundedInches - feet * 12;
+    return `${feet}'${formatInchesFraction(inchesToMm(remainderInches))}`;
+}
+/**
+ * Parses a free-form imperial length string into millimetres. Accepts an
+ * optional feet part (`6'`), an optional whole-inch or decimal part
+ * (`19`, `18.5`), an optional space-separated fraction (`1/2`), and an
+ * optional trailing double-quote. Returns null for empty/whitespace-only
+ * or unparseable input.
+ */
+function parseImperial(input) {
+    if (input == null)
+        return null;
+    const trimmed = input.trim();
+    if (trimmed.length === 0)
+        return null;
+    let rest = trimmed;
+    let feet = 0;
+    let hasFeet = false;
+    const feetMatch = rest.match(/^(-?\d+(?:\.\d+)?)\s*'/);
+    if (feetMatch) {
+        feet = parseFloat(feetMatch[1]);
+        hasFeet = true;
+        rest = rest.slice(feetMatch[0].length).trim();
+    }
+    if (rest.endsWith('"')) {
+        rest = rest.slice(0, -1).trim();
+    }
+    let inchesValue = 0;
+    let hasInches = false;
+    if (rest.length > 0) {
+        const match = rest.match(/^(-?\d+(?:\.\d+)?)?\s*(?:(\d+)\s*\/\s*(\d+))?$/);
+        if (!match)
+            return null;
+        const [, wholeStr, numStr, denStr] = match;
+        if (wholeStr === undefined && numStr === undefined) {
+            return null;
+        }
+        const whole = wholeStr !== undefined ? parseFloat(wholeStr) : 0;
+        const isNegative = whole < 0 || wholeStr?.startsWith("-") === true;
+        let frac = 0;
+        if (numStr !== undefined && denStr !== undefined) {
+            const den = parseInt(denStr, 10);
+            if (den === 0)
+                return null;
+            frac = parseInt(numStr, 10) / den;
+        }
+        inchesValue = isNegative ? whole - frac : whole + frac;
+        hasInches = true;
+    }
+    if (!hasFeet && !hasInches)
+        return null;
+    const total = feet * 12 + inchesValue;
+    return inchesToMm(total);
+}
+/**
+ * Board-design types.
+ *
+ * Pure TypeScript, no UI/browser/database imports. Everything here is
+ * metric (`Mm`/`Degrees` branded types) — inches only ever appear at the
+ * units boundary (lib/geometry/units.ts) when converting a control value
+ * in or a label out.
+ */
+
+const DEFAULT_BOARD_SPEC = {
+    outline: {
+        length: inchesToMm(72),
+        widePointWidth: inchesToMm(19),
+        widePointOffset: inchesToMm(-0.5),
+        tailRailLength: 50,
+        noseRailLength: 50,
+        noseAngle: degrees(55),
+        noseFullness: 25,
+        tailAngle: degrees(60),
+        tailFullness: 50.5,
+        tail: { kind: "squash", endWidth: inchesToMm(4) },
+    },
+};
+/**
+ * One entry per tail kind, ported from the prototype's tail-shape button
+ * presets (reference/project/Template.dc.html lines 809-819). The UI reads
+ * these when a tail button is clicked.
+ */
+const TAIL_PRESETS = {
+    pin: {
+        tail: { kind: "pin" },
+        tailAngle: degrees(65),
+        tailFullness: 50,
+    },
+    round: {
+        tail: { kind: "round" },
+        tailAngle: degrees(90),
+        tailFullness: 90,
+    },
+    diamond: {
+        tail: { kind: "diamond", endWidth: inchesToMm(10), depth: inchesToMm(3) },
+        tailAngle: degrees(30),
+        tailFullness: 30,
+    },
+    squash: {
+        tail: { kind: "squash", endWidth: inchesToMm(5) },
+        tailAngle: degrees(45),
+        tailFullness: 50,
+    },
+    swallow: {
+        tail: {
+            kind: "swallow",
+            endWidth: inchesToMm(8),
+            crotchDepth: inchesToMm(3),
+        },
+        tailAngle: degrees(30),
+        tailFullness: 0,
+    },
+};
+/**
+ * Outline geometry engine.
+ *
+ * Ported statement-for-statement from the prototype's `buildGeometry`
+ * (reference/project/Template.dc.html lines 505-623), with these
+ * deliberate changes and no others:
+ *
+ * 1. AXIS SWAP — the prototype stores points as [y, x] where y is the
+ *    station and x is the half-width. This port uses named fields:
+ *    prototype `y` -> `station`, prototype `x` -> `halfWidth`. Direction
+ *    vectors are swapped to match (see dir0/dir4/dir2 below).
+ * 2. METRIC CONSTANTS — the four constants that carry a unit (the 16" end
+ *    margin, the 5" diamond depth cap, the 2" tail-block margin, the 12"
+ *    measuring stations) are converted through inchesToMm. Everything else
+ *    is dimensionless and ports unchanged.
+ * 3. DEAD CODE — the prototype's unused `HANDLE_FRAC = 0.33` is not ported.
+ * 4. TAIL RULES are driven by the TailShape union instead of a string plus
+ *    loose fields.
+ */
+
+const MARGIN_MM = inchesToMm(16);
+const DIAMOND_DEPTH_CAP_MM = inchesToMm(5);
+const DIAMOND_BLOCK_MARGIN_MM = inchesToMm(2);
+const MEASURE_STATION_MM = inchesToMm(12);
+/** Handle length cap as a fraction of the chord between adjacent knots. */
+const HANDLE_CAP = 0.48;
+/** Overshoot factor used when capping a handle so it doesn't carry its control point past the widepoint. */
+const OVERSHOOT = 0.92;
+const SAMPLES_PER_SEGMENT = 80;
+/** Guard against dividing by a direction component that is (numerically) zero. */
+const EPSILON = 1e-6;
+/**
+ * Widepoint Vector Strength (0-100) as a multiplier against a side's max handle length.
+ *
+ * Exported with its inverse because `lib/geometry/outline-drag.ts` has to run this backwards: a
+ * dragged handle arrives as a length and must become the percentage the slider shows. Keeping both
+ * directions next to each other is what stops them drifting apart.
+ */
+const railMult = (pct) => 0.8 + (pct / 100) * 0.8;
+const railPctFromMult = (multiplier) => ((multiplier - 0.8) / 0.8) * 100;
+/**
+ * Hard geometric cap on the tail-pod handle: it must never carry its control point past the
+ * widepoint's own half-width. Depends on the tail angle through `dirY`, so a drag that changes the
+ * angle must recompute this at the NEW angle before deriving a fullness from a length.
+ */
+function tailHandleMaxLength(dirY, chord, halfWidePointWidth, tailPodHalfWidth) {
+    if (Math.abs(dirY) <= EPSILON)
+        return HANDLE_CAP * chord;
+    return Math.min(HANDLE_CAP * chord, (OVERSHOOT * (halfWidePointWidth - tailPodHalfWidth)) / dirY);
+}
+/** The same cap for the nose-tip handle, whose knot sits at half-width zero. */
+function noseHandleMaxLength(dirY, chord, halfWidePointWidth) {
+    if (Math.abs(dirY) <= EPSILON)
+        return HANDLE_CAP * chord;
+    return Math.min(HANDLE_CAP * chord, (OVERSHOOT * halfWidePointWidth) / Math.abs(dirY));
+}
+function interpolateHalfWidth(points, station) {
+    for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[i];
+        const p1 = points[i + 1];
+        const y0 = p0.station;
+        const y1 = p1.station;
+        if (station >= y0 && station <= y1) {
+            const x0 = p0.halfWidth;
+            const x1 = p1.halfWidth;
+            const t = y1 > y0 ? (station - y0) / (y1 - y0) : 0;
+            return x0 + (x1 - x0) * t;
+        }
+    }
+    return points[points.length - 1].halfWidth;
+}
+/**
+ * Samples the half-width at a given station by linearly interpolating
+ * between the two bracketing sampled points. When the station is past the
+ * end, returns the last point's half-width (matches the prototype's
+ * `xAtY` fallback exactly, rather than throwing).
+ */
+function sampleOutline(geometry, station) {
+    return mm(interpolateHalfWidth(geometry.points, station));
+}
+function buildOutline(spec) {
+    const length = spec.length;
+    const halfWidePointWidth = spec.widePointWidth / 2;
+    const tail = spec.tail;
+    const tailBlockPinned = tail.kind === "pin" || tail.kind === "round";
+    let halfTailBlockWidth = 0;
+    let tailPodStation = 0;
+    let centreCloseStation = 0;
+    let effectiveDiamondDepth = 0;
+    switch (tail.kind) {
+        case "pin":
+        case "round":
+            halfTailBlockWidth = 0;
+            break;
+        case "squash":
+            halfTailBlockWidth = tail.endWidth / 2;
+            break;
+        case "diamond":
+            halfTailBlockWidth = tail.endWidth / 2;
+            effectiveDiamondDepth = Math.max(0, Math.min(tail.depth, DIAMOND_DEPTH_CAP_MM, tail.endWidth - DIAMOND_BLOCK_MARGIN_MM));
+            tailPodStation = effectiveDiamondDepth;
+            break;
+        case "swallow":
+            halfTailBlockWidth = tail.endWidth / 2;
+            centreCloseStation = tail.crotchDepth;
+            break;
+    }
+    const widePointStation = Math.max(MARGIN_MM, Math.min(length - MARGIN_MM, length / 2 + spec.widePointOffset));
+    // Tail/nose ends use the ANGLE directly as a tangent DIRECTION (not a dX/dY slope) — a parametric
+    // Bezier handle can point exactly horizontal (angle=90) without the infinite-slope problem a
+    // halfWidth-as-function-of-station spline would hit.
+    const tailRad = (spec.tailAngle * Math.PI) / 180;
+    const noseRad = (spec.noseAngle * Math.PI) / 180;
+    const dir0 = { x: Math.cos(tailRad), y: Math.sin(tailRad) };
+    const dir4 = { x: Math.cos(noseRad), y: -Math.sin(noseRad) };
+    const dir2 = { x: 1, y: 0 };
+    const P0 = { x: tailPodStation, y: Math.max(0, halfTailBlockWidth) };
+    const P2 = { x: widePointStation, y: halfWidePointWidth };
+    const P4 = { x: length, y: 0 };
+    const knotPoints = [P0, P2, P4];
+    const knotDirs = [dir0, dir2, dir4];
+    const chord = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+    const chords = [chord(P0, P2), chord(P2, P4)];
+    // Widepoint Vector Strength scales each of the widepoint's own handles against that side's true max
+    // (HANDLE_CAP*chord). Its tangent is purely along the station axis (dir2.y=0), so a longer handle
+    // never carries the half-width past halfWidePointWidth — no overshoot cap needed, on either side.
+    //
+    // The two sides are independent: inLen0 is the handle pointing back toward the tail
+    // (controls[0].c2 = P2 - inLen0*dir2), outLen1 the one pointing toward the nose
+    // (controls[1].c1 = P2 + outLen1*dir2). The prototype drove both from a single Widepoint Vector
+    // slider; equal values here reproduce it exactly.
+    const inLen0 = railMult(spec.tailRailLength) * HANDLE_CAP * chords[0];
+    const outLen1 = railMult(spec.noseRailLength) * HANDLE_CAP * chords[1];
+    const outLen0Max = tailHandleMaxLength(dir0.y, chords[0], halfWidePointWidth, P0.y);
+    const outLen0 = (spec.tailFullness / 100) * outLen0Max;
+    const inLen1Max = noseHandleMaxLength(dir4.y, chords[1], halfWidePointWidth);
+    const inLen1 = (spec.noseFullness / 100) * inLen1Max;
+    const outLen = [outLen0, outLen1];
+    const inLen = [inLen0, inLen1];
+    const controls = [];
+    for (let i = 0; i < 2; i++) {
+        const A = knotPoints[i];
+        const Ad = knotDirs[i];
+        const B = knotPoints[i + 1];
+        const Bd = knotDirs[i + 1];
+        controls.push({
+            c1: { x: A.x + outLen[i] * Ad.x, y: A.y + outLen[i] * Ad.y },
+            c2: { x: B.x - inLen[i] * Bd.x, y: B.y - inLen[i] * Bd.y },
+        });
+    }
+    const bez = (p0, p1, p2, p3, t) => {
+        const mt = 1 - t;
+        return mt * mt * mt * p0 + 3 * mt * mt * t * p1 + 3 * mt * t * t * p2 + t * t * t * p3;
+    };
+    const rawPoints = [];
+    for (let seg = 0; seg < 2; seg++) {
+        const A = knotPoints[seg];
+        const B = knotPoints[seg + 1];
+        const c = controls[seg];
+        const start = seg === 0 ? 0 : 1;
+        for (let i = start; i <= SAMPLES_PER_SEGMENT; i++) {
+            const t = i / SAMPLES_PER_SEGMENT;
+            const station = bez(A.x, c.c1.x, c.c2.x, B.x, t);
+            const halfWidth = bez(A.y, c.c1.y, c.c2.y, B.y, t);
+            // Absolute bound: no sampled point may exceed the widepoint's half-width, whatever the handle
+            // lengths/angles produce — the widepoint is the true maximum, by definition.
+            rawPoints.push({ station, halfWidth: Math.max(0, Math.min(halfWidth, halfWidePointWidth)) });
+        }
+    }
+    rawPoints.sort((a, b) => a.station - b.station);
+    const points = rawPoints.map((p) => ({
+        station: mm(p.station),
+        halfWidth: mm(p.halfWidth),
+    }));
+    const tailWidthAt12in = mm(2 * interpolateHalfWidth(points, Math.min(MEASURE_STATION_MM, length)));
+    const noseWidthAt12in = mm(2 * interpolateHalfWidth(points, Math.max(0, length - MEASURE_STATION_MM)));
+    let area = 0;
+    for (let i = 0; i < rawPoints.length - 1; i++) {
+        const p0 = rawPoints[i];
+        const p1 = rawPoints[i + 1];
+        area += ((p0.halfWidth + p1.halfWidth) / 2) * (p1.station - p0.station);
+    }
+    area *= 2;
+    const knots = knotPoints.map((p, i) => ({
+        point: { x: mm(p.x), y: mm(p.y) },
+        tangent: knotDirs[i],
+    }));
+    const handles = [];
+    for (let i = 0; i < 2; i++) {
+        handles.push({
+            from: { x: mm(knotPoints[i].x), y: mm(knotPoints[i].y) },
+            to: { x: mm(controls[i].c1.x), y: mm(controls[i].c1.y) },
+        });
+        handles.push({
+            from: { x: mm(knotPoints[i + 1].x), y: mm(knotPoints[i + 1].y) },
+            to: { x: mm(controls[i].c2.x), y: mm(controls[i].c2.y) },
+        });
+    }
+    const segments = [0, 1].map((i) => ({
+        p0: { x: mm(knotPoints[i].x), y: mm(knotPoints[i].y) },
+        c0: { x: mm(controls[i].c1.x), y: mm(controls[i].c1.y) },
+        c1: { x: mm(controls[i].c2.x), y: mm(controls[i].c2.y) },
+        p1: { x: mm(knotPoints[i + 1].x), y: mm(knotPoints[i + 1].y) },
+    }));
+    return {
+        length: mm(length),
+        halfWidePointWidth: mm(halfWidePointWidth),
+        halfTailBlockWidth: mm(halfTailBlockWidth),
+        tailBlockPinned,
+        widePointStation: mm(widePointStation),
+        tailPodStation: mm(tailPodStation),
+        centreCloseStation: mm(centreCloseStation),
+        effectiveDiamondDepth: mm(effectiveDiamondDepth),
+        knots,
+        handles,
+        segments,
+        points,
+        area,
+        tailWidthAt12in,
+        noseWidthAt12in,
+    };
+}
+/**
+ * Inverse of the outline geometry: turns a dragged construction point back into the spec fields
+ * that would produce it.
+ *
+ * `buildOutline` runs one way only — spec in, knots and handles out. Direct manipulation needs the
+ * other direction, and it lives here rather than in the viewer because the outline math is the
+ * product (AGENTS/CLAUDE constraint: geometry math is pure, under `lib/`, and unit-tested in
+ * isolation from any component).
+ *
+ * Two rules hold every solve together:
+ *
+ * 1. **One definition per formula.** The caps and the rail multiplier are imported from
+ *    `outline.ts`, never restated here. A drag that clamped differently from the forward pass would
+ *    let the drawing and the sliders disagree, which is the exact failure this feature exists to
+ *    prevent.
+ * 2. **Every result is slider-representable.** Each field snaps to its slider's step and clamps to
+ *    its bounds, so a drag can never reach a value the sidebar cannot show or the user cannot then
+ *    adjust by hand.
+ */
+
+
+/**
+ * Slider bounds and steps, mirrored from `components/outline/outline-controls.tsx`.
+ *
+ * Inch-denominated entries are in INCHES (converted at the edge of each solve) because that is the
+ * unit the sliders are calibrated in — snapping in millimetres would land between eighths and show
+ * a value the slider could not reproduce.
+ */
+const LIMITS = {
+    widePointOffsetIn: { min: -12, max: 12, step: 0.25 },
+    railLength: { min: 0, max: 100, step: 0.25 },
+    fullness: { min: 0, max: 100, step: 0.25 },
+    tailAngle: { min: 30, max: 90, step: 1 },
+    noseAngle: { min: 35, max: 90, step: 1 },
+};
+/** Snap to the slider's step, then clamp to its bounds. Non-finite input falls back to the minimum. */
+function quantise(value, limit) {
+    if (!Number.isFinite(value))
+        return limit.min;
+    const snapped = Math.round(value / limit.step) * limit.step;
+    const clamped = Math.min(limit.max, Math.max(limit.min, snapped));
+    // Re-round to kill the float dust that 0.125/0.25 steps accumulate (e.g. 18.750000000000004).
+    return Math.round(clamped / limit.step) * limit.step;
+}
+const RAD_TO_DEG = 180 / Math.PI;
+/** Below this a drag vector has no usable direction, so the angle it implies is meaningless. */
+const MIN_DRAG_LENGTH_MM = 1e-6;
+function chordLength(a, b) {
+    return Math.hypot(b.station - a.station, b.halfWidth - a.halfWidth);
+}
+function point(station, halfWidth) {
+    return { station: mm(station), halfWidth: mm(halfWidth) };
+}
+/**
+ * Where the grabbable points currently are, in board coordinates.
+ *
+ * Handle order matches `buildOutline`: [0] tail pod, [1] widepoint→tail, [2] widepoint→nose,
+ * [3] nose tip.
+ */
+function outlineDragPoints(geometry) {
+    const [tailPod, widepoint, noseTip] = geometry.knots;
+    const at = (index) => {
+        const h = geometry.handles[index];
+        return {
+            point: point(h.to.x, h.to.y),
+            anchor: point(h.from.x, h.from.y),
+        };
+    };
+    const widepointPoint = point(widepoint.point.x, widepoint.point.y);
+    return [
+        { target: "widepoint", point: widepointPoint, anchor: widepointPoint },
+        { target: "tailHandle", ...at(0), anchor: point(tailPod.point.x, tailPod.point.y) },
+        { target: "tailRailHandle", ...at(1), anchor: widepointPoint },
+        { target: "noseRailHandle", ...at(2), anchor: widepointPoint },
+        { target: "noseHandle", ...at(3), anchor: point(noseTip.point.x, noseTip.point.y) },
+    ];
+}
+/**
+ * Solve a dragged position back to the spec fields that produce it.
+ *
+ * Returns only the fields this target owns, so the caller can merge it straight into the spec.
+ * `geometry` must be the live geometry for the spec being edited — the solve reads the current knot
+ * positions and chord lengths out of it, and takes nothing from the spec itself.
+ */
+function solveOutlineDrag(geometry, target, dragged) {
+    const [tailPod, widepoint, noseTip] = geometry.knots;
+    const halfWidePointWidth = geometry.halfWidePointWidth;
+    // Chords are measured against the CURRENT knots. A handle drag never moves a knot, so they hold
+    // for the whole gesture.
+    const tailChord = chordLength(point(tailPod.point.x, tailPod.point.y), point(widepoint.point.x, widepoint.point.y));
+    const noseChord = chordLength(point(widepoint.point.x, widepoint.point.y), point(noseTip.point.x, noseTip.point.y));
+    switch (target) {
+        case "widepoint": {
+            // Station only — the knot slides along the board, it does not widen it. Widepoint width stays
+            // a slider-only input by design: it is a headline number a shaper types or dials to a spec
+            // ("a 19in board"), not something to eyeball by dragging, and the drawn rail already reads its
+            // value off the Width chip. So the cross-board component of the drag is discarded, exactly as
+            // it is for the rail handles.
+            //
+            // The clamp to the 16in end margins already lives in buildOutline; here the offset only has to
+            // land on its slider.
+            const offsetIn = quantise(mmToInches(mm(dragged.station - geometry.length / 2)), LIMITS.widePointOffsetIn);
+            return { widePointOffset: inchesToMm(offsetIn) };
+        }
+        case "tailRailHandle":
+        case "noseRailHandle": {
+            // The widepoint's tangent is (1,0) by construction — it is what makes the widepoint the true
+            // maximum half-width — so these handles have no cross-board freedom. Only the station
+            // component of the drag carries information; the half-width component is discarded, not
+            // approximated.
+            const isTail = target === "tailRailHandle";
+            const along = isTail
+                ? widepoint.point.x - dragged.station
+                : dragged.station - widepoint.point.x;
+            const chord = isTail ? tailChord : noseChord;
+            const maxLength = HANDLE_CAP * chord;
+            const pct = quantise(maxLength > 0 ? railPctFromMult(along / maxLength) : LIMITS.railLength.min, LIMITS.railLength);
+            return isTail ? { tailRailLength: pct } : { noseRailLength: pct };
+        }
+        case "tailHandle": {
+            // Free 2-DOF: the direction sets the tail angle, the length sets fullness. dir0 is
+            // (cos a, sin a), so the vector from the knot reads the angle off directly.
+            const vx = dragged.station - tailPod.point.x;
+            const vy = dragged.halfWidth - tailPod.point.y;
+            const length = Math.hypot(vx, vy);
+            if (length < MIN_DRAG_LENGTH_MM)
+                return { tailFullness: LIMITS.fullness.min };
+            const angle = quantise(Math.atan2(vy, vx) * RAD_TO_DEG, LIMITS.tailAngle);
+            // The cap depends on the angle this same drag is changing, so it must be evaluated at the
+            // NEW angle — using the old one would mis-scale fullness for the whole gesture.
+            const dirY = Math.sin(angle / RAD_TO_DEG);
+            const maxLength = tailHandleMaxLength(dirY, tailChord, halfWidePointWidth, tailPod.point.y);
+            const fullness = quantise(maxLength > 0 ? (length / maxLength) * 100 : LIMITS.fullness.min, LIMITS.fullness);
+            return { tailAngle: degrees(angle), tailFullness: fullness };
+        }
+        case "noseHandle": {
+            // The nose handle runs BACK from the tip: to = P4 - inLen1*dir4, with dir4 = (cos a, -sin a).
+            // So the drag vector is -inLen1*dir4, and the angle comes off its negated station component.
+            const vx = dragged.station - noseTip.point.x;
+            const vy = dragged.halfWidth - noseTip.point.y;
+            const length = Math.hypot(vx, vy);
+            if (length < MIN_DRAG_LENGTH_MM)
+                return { noseFullness: LIMITS.fullness.min };
+            const angle = quantise(Math.atan2(vy, -vx) * RAD_TO_DEG, LIMITS.noseAngle);
+            const dirY = -Math.sin(angle / RAD_TO_DEG);
+            const maxLength = noseHandleMaxLength(dirY, noseChord, halfWidePointWidth);
+            const fullness = quantise(maxLength > 0 ? (length / maxLength) * 100 : LIMITS.fullness.min, LIMITS.fullness);
+            return { noseAngle: degrees(angle), noseFullness: fullness };
+        }
+    }
+}
+/** Exported for tests and for any UI that wants to show a field's legal range. */
+const OUTLINE_DRAG_LIMITS = LIMITS;
+
+/* ====================================================================
+   Mockup wiring. Everything above this line is Shaper's own geometry
+   engine, transpiled from lib/geometry/*.ts and inlined unchanged, so
+   the drawing below is the app's real curve, not a hand-drawn stand-in.
+   ==================================================================== */
+
+const NS = "http://www.w3.org/2000/svg";
+
+/* The viewBox is set to the stage's own CSS pixel size on every draw, so one user unit is one
+   CSS pixel. That is what the live app achieves with pinnedCalloutSizes()/useSvgFitScale — a
+   dimension label and a grab handle are UI and should read the same size whatever the board
+   measures; only the board itself scales. Doing it through the viewBox keeps the arithmetic
+   below in the units the constants are written in. */
+const PAD_X = 24;          // the board runs almost to the window edges
+const TOP_GUTTER = 50;     // output rail above the board
+const BOT_GUTTER = 90;     // two rows of input chips below it
+const CHIP_W = 126, CHIP_H = 32, CHIP_ROW_GAP = 5;
+const F_VALUE = 14, F_NAME = 11;
+const TICK = 4.5;
+const STRINGER_OVERHANG = 8;
+const STAGE_MIN_H = 300, STAGE_MAX_H = 640, MIN_STAGE_W = 680;
+const DRAG_OUTER = 7, DRAG_RING = 1.6, DRAG_CORE = 2.6, DRAG_HIT = 15, KNOT_DOT = 3;
+
+const clamp = (v, lo, hi) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : lo);
+
+const state = {
+  spec: structuredClone(DEFAULT_BOARD_SPEC.outline),
+  construction: false,
+};
+let geometry = buildOutline(state.spec);
+
+function setSpec(patch) {
+  state.spec = { ...state.spec, ...patch };
+  geometry = buildOutline(state.spec);
+  syncControls();
+  drawBoard();
+}
+
+/* ---------- svg helpers ---------- */
+function el(name, attrs, text) {
+  const node = document.createElementNS(NS, name);
+  for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, String(v));
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function tick(x, y) {
+  return el("line", { x1: x - TICK, y1: y + TICK, x2: x + TICK, y2: y - TICK,
+    stroke: "var(--outline-ink)", "stroke-width": 1.1 });
+}
+
+/* ---------- the drawing ---------- */
+let frame = null; // mapping kept for the drag handlers
+
+/**
+ * Height the stage may take without pushing the controls off the screen.
+ *
+ * The whole argument for turning the board horizontal is that the screen holds everything at once,
+ * so the drawing gets the leftover height rather than a fixed one — the same bargain the live
+ * editor strikes with its flex-1 panel. The stage's own top never moves with its height (it sits
+ * under the title band), so this is safe to measure mid-render.
+ */
+function availableStageHeight(stage) {
+  const below = [".controls", ".note"].reduce((total, sel) => {
+    const node = document.querySelector(sel);
+    return total + (node ? node.getBoundingClientRect().height : 0);
+  }, 0);
+  const top = stage.getBoundingClientRect().top + window.scrollY;
+  const leftover = window.innerHeight - top - below - 16;
+  // Making the board big is the whole point of this layout, so the drawing keeps a floor share of
+  // the window even when that pushes the last row of controls just under the fold. Without it a
+  // laptop-height window hands the plot ~160px of board and the full width goes unused.
+  const floor = window.innerHeight * 0.56;
+  return clamp(Math.max(leftover, floor), STAGE_MIN_H, STAGE_MAX_H);
+}
+
+function drawBoard() {
+  const svg = document.getElementById("board");
+  const stage = svg.parentElement;
+  // Below MIN_STAGE_W the drawing keeps its size and the stage scrolls sideways instead —
+  // a template squeezed onto a phone-width canvas is unreadable, not responsive.
+  const W = Math.max(MIN_STAGE_W, stage.clientWidth);
+  const g = geometry;
+  const L = mmToInches(g.length);
+  const HW = mmToInches(g.halfWidePointWidth);
+
+  // Fit on LENGTH and let the stage take the height that implies — going horizontal is only worth
+  // it if the board actually uses the width. Height is capped so a wide short board (a fish) can
+  // not push the controls off the screen; past the cap the scale falls back to a height fit.
+  let s = (W - 2 * PAD_X) / L;
+  let H = TOP_GUTTER + 2 * HW * s + BOT_GUTTER;
+  const roomLeft = availableStageHeight(stage);
+  if (H > roomLeft) {
+    H = roomLeft;
+    s = (H - TOP_GUTTER - BOT_GUTTER) / (2 * HW);
+  }
+  stage.style.height = `${Math.round(H)}px`;
+  const boardW = L * s;
+  const noseX = (W - boardW) / 2;
+  const tailX = noseX + boardW;
+  const bandTop = TOP_GUTTER, bandBottom = H - BOT_GUTTER;
+  const centreY = (bandTop + bandBottom) / 2;
+
+  // Nose sits at station = length, so it lands on the LEFT.
+  const X = (st) => noseX + (L - st) * s;
+  const Yt = (hw) => centreY - hw * s;
+  const Yb = (hw) => centreY + hw * s;
+  const halfAt = (st) => mmToInches(sampleOutline(g, inchesToMm(st)));
+  frame = { L, s, noseX, centreY };
+
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.style.width = `${W}px`; // one user unit == one CSS pixel
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  const hitLayer = []; // appended last: nothing decorative may sit over a grab target
+
+  /* board path: top edge tail→nose, bottom edge nose→tail, closed across the tail block */
+  const top = g.points.map((p) => [X(mmToInches(p.station)), Yt(mmToInches(p.halfWidth))]);
+  const bottom = g.points.slice().reverse()
+    .map((p) => [X(mmToInches(p.station)), Yb(mmToInches(p.halfWidth))]);
+  const fmt = (pts) => pts.map((p) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(" L ");
+  const closeX = X(mmToInches(g.centreCloseStation));
+  svg.appendChild(el("path", {
+    d: `M ${fmt(top)} L ${fmt(bottom)} L ${closeX.toFixed(2)} ${centreY.toFixed(2)} Z`,
+    fill: "var(--outline-board-fill)", stroke: "var(--outline-ink)", "stroke-width": 2,
+  }));
+
+  /* interior reference lines — faint, never text */
+  const midHW = halfAt(L / 2);
+  const noseSt = L - 12, tailSt = 12;
+  const noseHW = halfAt(noseSt), tailHW = halfAt(tailSt);
+  const wpSt = mmToInches(g.widePointStation);
+  const wpHW = halfAt(wpSt);
+
+  svg.appendChild(el("line", { x1: noseX - STRINGER_OVERHANG, y1: centreY,
+    x2: tailX + STRINGER_OVERHANG, y2: centreY, stroke: "var(--outline-station-line)",
+    "stroke-width": 1, "stroke-dasharray": "var(--stringer-dash)" }));
+  const station = (st, hw, colour, dash) => el("line", {
+    x1: X(st), y1: Yt(hw), x2: X(st), y2: Yb(hw),
+    stroke: colour, "stroke-width": 1, "stroke-dasharray": dash });
+  svg.appendChild(station(L / 2, midHW, "var(--outline-station-line)", "var(--stringer-dash)"));
+  svg.appendChild(station(noseSt, noseHW, "var(--outline-station-line)", "var(--station-dash)"));
+  svg.appendChild(station(tailSt, tailHW, "var(--outline-station-line)", "var(--station-dash)"));
+  svg.appendChild(station(wpSt, wpHW, "var(--outline-widepoint-line)", "var(--widepoint-dash)"));
+  for (const y of [Yt(wpHW), Yb(wpHW)]) {
+    svg.appendChild(el("circle", { cx: X(wpSt), cy: y, r: 2.6, fill: "var(--outline-widepoint-knot)" }));
+  }
+
+  /* outputs read UP to one shared rail above the board */
+  const outLineY = bandTop - 10, outNameY = bandTop - 20, outValueY = bandTop - 35;
+  const output = (st, hw, value, name) => {
+    const x = X(st), edgeY = Yt(hw);
+    svg.appendChild(el("line", { x1: x, y1: edgeY, x2: x, y2: outLineY,
+      stroke: "var(--outline-station-line)", "stroke-width": 1 }));
+    svg.appendChild(tick(x, edgeY));
+    svg.appendChild(el("text", { x, y: outValueY, "text-anchor": "middle",
+      "font-size": F_VALUE, "font-weight": 700, fill: "var(--outline-ink)" }, value));
+    svg.appendChild(el("text", { x, y: outNameY, "text-anchor": "middle",
+      "font-size": F_NAME, "font-weight": 700, "letter-spacing": "0.1em",
+      fill: "var(--outline-callout-label)" }, name));
+  };
+  output(noseSt, noseHW, formatInchesFraction(g.noseWidthAt12in), 'NOSE @ 12"');
+  output(L / 2, midHW, formatInchesFraction(inchesToMm(2 * midHW)), "CENTRE");
+  output(tailSt, tailHW, formatInchesFraction(g.tailWidthAt12in), 'TAIL @ 12"');
+
+  /* construction overlay + drag targets, on the lower rail (the input side) */
+  if (state.construction) {
+    for (const h of g.handles) {
+      svg.appendChild(el("line", {
+        x1: X(mmToInches(h.from.x)), y1: Yb(mmToInches(h.from.y)),
+        x2: X(mmToInches(h.to.x)), y2: Yb(mmToInches(h.to.y)),
+        stroke: "var(--outline-construction)", "stroke-width": 1.5 }));
+    }
+    for (const i of [0, 2]) {
+      const k = g.knots[i];
+      if (!k) continue;
+      svg.appendChild(el("circle", { cx: X(mmToInches(k.point.x)), cy: Yb(mmToInches(k.point.y)),
+        r: KNOT_DOT, fill: "var(--outline-ink)" }));
+    }
+    for (const d of outlineDragPoints(g)) {
+      const cx = X(mmToInches(d.point.station));
+      const cy = Yb(mmToInches(d.point.halfWidth));
+      const grp = el("g", { "pointer-events": "none" });
+      grp.appendChild(el("circle", { cx, cy, r: DRAG_OUTER, fill: "var(--outline-board-fill)",
+        stroke: "var(--surf-accent-ink)", "stroke-width": DRAG_RING }));
+      grp.appendChild(el("circle", { cx, cy, r: DRAG_CORE, fill: "var(--surf-warning)" }));
+      svg.appendChild(grp);
+      const hit = el("circle", { cx, cy, r: DRAG_HIT, fill: "transparent", class: "grab" });
+      hit.addEventListener("pointerdown", (e) => startDrag(d.target, e));
+      hitLayer.push(hit);
+    }
+  }
+
+  /* inputs: named chips below the board. Row 0 carries the three chips that name a place on the
+     board — LENGTH at the nose, WIDEPOINT at its station, TAIL BLOCK at the tail — each leadered
+     to the point it measures. Row 1 carries WP Offset, directly under the Widepoint chip it
+     belongs to (the app stacks the same pair in its left gutter). */
+  const rowTop = (row) => bandBottom + 14 + row * (CHIP_H + CHIP_ROW_GAP);
+  const chip = (cx, row, name, value, nameColour, leaderTo) => {
+    const top = rowTop(row);
+    const cy = top + CHIP_H / 2;
+    if (leaderTo) {
+      svg.appendChild(el("line", { x1: cx, y1: top, x2: X(leaderTo.st), y2: Yb(leaderTo.hw),
+        stroke: "var(--outline-station-line)", "stroke-width": 1 }));
+    }
+    svg.appendChild(el("rect", { x: cx - CHIP_W / 2, y: top, width: CHIP_W, height: CHIP_H,
+      rx: 4, fill: "var(--surf-ground)", stroke: "var(--rule)" }));
+    svg.appendChild(el("text", { x: cx, y: cy - 4, "text-anchor": "middle",
+      "font-size": F_NAME, "font-weight": 700, "letter-spacing": "0.12em",
+      fill: nameColour || "var(--outline-callout-label)" }, name));
+    svg.appendChild(el("text", { x: cx, y: cy + 11, "text-anchor": "middle",
+      "font-size": F_VALUE, "font-weight": 700, fill: "var(--outline-ink)" }, value));
+  };
+
+  const wpFromCentre = wpSt - L / 2;
+  const offsetText = Math.abs(wpFromCentre) < 1e-9
+    ? "At center"
+    : `${formatInchesFraction(inchesToMm(Math.abs(wpFromCentre)))} ${wpFromCentre > 0 ? "forward" : "back"}`;
+  const chipX = (x) => clamp(x, CHIP_W / 2 + 4, W - CHIP_W / 2 - 4);
+  const pitch = CHIP_W + 10;
+  const lengthChipX = chipX(X(L));
+  const podSt = mmToInches(g.tailPodStation);
+  const tailChipX = g.tailBlockPinned ? null : chipX(X(podSt));
+  // The Widepoint chip may slide along the rail to clear its neighbours — its leader still lands
+  // on the true station, so moving the box costs nothing and a collision would cost everything.
+  const wpChipX = clamp(chipX(X(wpSt)), lengthChipX + pitch,
+    Math.max(lengthChipX + pitch, (tailChipX ?? W) - pitch));
+
+  chip(lengthChipX, 0, "LENGTH", `${formatFeetInches(g.length)} (${formatInchesFraction(g.length)})`,
+    undefined, { st: L, hw: 0 });
+  chip(wpChipX, 0, "WIDEPOINT", formatInchesFraction(state.spec.widePointWidth),
+    "var(--outline-widepoint-knot)", { st: wpSt, hw: wpHW });
+  chip(wpChipX, 1, "WP OFFSET", offsetText);
+  if (tailChipX !== null) {
+    chip(tailChipX, 0, "TAIL BLOCK", `${formatInchesFraction(mm(g.halfTailBlockWidth * 2))} wide`,
+      undefined, { st: podSt, hw: mmToInches(g.halfTailBlockWidth) });
+  }
+
+  /* orientation cues, above each tip — in the top gutter rather than outside the tips, so the
+     board itself keeps that width */
+  const tipLabel = (x, text) => svg.appendChild(el("text", {
+    x, y: outNameY, "text-anchor": "middle", "font-size": F_NAME, "font-weight": 700,
+    "letter-spacing": "0.12em", fill: "var(--outline-callout-label)" }, text));
+  tipLabel(clamp(noseX, 24, W - 24), "NOSE");
+  tipLabel(clamp(tailX, 24, W - 24), "TAIL");
+
+  for (const hit of hitLayer) svg.appendChild(hit);
+}
+
+/* ---------- dragging a control point ---------- */
+let dragging = null;
+function startDrag(target, event) {
+  event.preventDefault();
+  dragging = target;
+  const svg = document.getElementById("board");
+  try { svg.setPointerCapture(event.pointerId); } catch { /* synthetic pointer: capture optional */ }
+}
+function onDragMove(event) {
+  if (!dragging || !frame) return;
+  // No button held means the gesture ended somewhere we never saw the pointerup — a re-render
+  // can remove the element holding capture mid-drag. Without this the handle keeps following
+  // the cursor after release.
+  if (event.buttons === 0) { endDrag(); return; }
+  const svg = document.getElementById("board");
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return;
+  const p = new DOMPoint(event.clientX, event.clientY).matrixTransform(ctm.inverse());
+  const stationIn = frame.L - (p.x - frame.noseX) / frame.s;
+  const halfWidthIn = (p.y - frame.centreY) / frame.s;
+  setSpec(solveOutlineDrag(geometry, dragging, {
+    station: inchesToMm(stationIn),
+    halfWidth: inchesToMm(halfWidthIn),
+  }));
+}
+function endDrag() { dragging = null; }
+
+/* ---------- controls ---------- */
+const sliders = [];
+
+function makeSlider(id, cfg) {
+  const host = document.getElementById(id);
+  const label = document.createElement("div");
+  label.className = "slider-label";
+  const input = document.createElement("input");
+  input.type = "range";
+  input.min = cfg.min; input.max = cfg.max; input.step = cfg.step;
+  input.setAttribute("aria-label", cfg.label);
+  host.appendChild(label);
+  host.appendChild(input);
+
+  let hints = null;
+  if (cfg.leftHint || cfg.rightHint) {
+    hints = document.createElement("div");
+    hints.className = "slider-hints";
+    hints.innerHTML = `<span>${cfg.leftHint || ""}</span><span>${cfg.rightHint || ""}</span>`;
+    host.appendChild(hints);
+  }
+  const note = document.createElement("div");
+  note.className = "slider-note";
+  host.appendChild(note);
+
+  input.addEventListener("input", () => cfg.set(Number(input.value)));
+
+  const entry = { host, label, input, note, cfg };
+  entry.sync = () => {
+    const value = cfg.get();
+    input.value = String(value);
+    const pct = ((value - cfg.min) / (cfg.max - cfg.min)) * 100;
+    input.style.setProperty("--pct", `${clamp(pct, 0, 100)}%`);
+    label.textContent = `${cfg.label} — ${cfg.display()}`;
+    const off = cfg.disabled ? cfg.disabled() : false;
+    host.classList.toggle("is-disabled", off);
+    input.disabled = off;
+    note.textContent = cfg.note ? cfg.note() || "" : "";
+  };
+  sliders.push(entry);
+  return entry;
+}
+
+const endWidthIn = (tail) =>
+  tail.kind === "pin" || tail.kind === "round" ? 0 : mmToInches(tail.endWidth);
+const withEndWidth = (tail, inches) =>
+  tail.kind === "pin" || tail.kind === "round" ? tail : { ...tail, endWidth: inchesToMm(inches) };
+const isDiamond = () => state.spec.tail.kind === "diamond";
+const isSwallow = () => state.spec.tail.kind === "swallow";
+
+makeSlider("s-noseAngle", {
+  label: "Nose Angle", min: 35, max: 90, step: 1, leftHint: "Pointy", rightHint: "Round",
+  get: () => state.spec.noseAngle,
+  display: () => `${state.spec.noseAngle}°`,
+  set: (v) => setSpec({ noseAngle: degrees(clamp(v, 35, 90)) }),
+});
+makeSlider("s-noseFullness", {
+  label: "Fullness", min: 0, max: 100, step: 0.25, leftHint: "Thin", rightHint: "Full",
+  get: () => state.spec.noseFullness,
+  display: () => `${state.spec.noseFullness}%`,
+  set: (v) => setSpec({ noseFullness: clamp(v, 0, 100) }),
+});
+makeSlider("s-width", {
+  label: "Width", min: 16, max: 25, step: 0.125,
+  get: () => mmToInches(state.spec.widePointWidth),
+  display: () => formatInchesFraction(state.spec.widePointWidth),
+  set: (v) => setSpec({ widePointWidth: inchesToMm(clamp(v, 16, 25)) }),
+});
+makeSlider("s-offset", {
+  label: "Offset", min: -12, max: 12, step: 0.25, leftHint: "Tail", rightHint: "Nose",
+  get: () => mmToInches(state.spec.widePointOffset),
+  display: () => {
+    const o = state.spec.widePointOffset;
+    if (o === 0) return formatInchesFraction(mm(0));
+    return mmToInches(o) > 0
+      ? `+${formatInchesFraction(o)}`
+      : `-${formatInchesFraction(mm(-o))}`;
+  },
+  set: (v) => setSpec({ widePointOffset: inchesToMm(clamp(v, -12, 12)) }),
+});
+makeSlider("s-tailRail", {
+  label: "Tail Rail", min: 0, max: 100, step: 0.25, leftHint: "Short", rightHint: "Long",
+  get: () => state.spec.tailRailLength,
+  display: () => `${state.spec.tailRailLength}%`,
+  set: (v) => setSpec({ tailRailLength: clamp(v, 0, 100) }),
+});
+makeSlider("s-noseRail", {
+  label: "Nose Rail", min: 0, max: 100, step: 0.25, leftHint: "Short", rightHint: "Long",
+  get: () => state.spec.noseRailLength,
+  display: () => `${state.spec.noseRailLength}%`,
+  set: (v) => setSpec({ noseRailLength: clamp(v, 0, 100) }),
+});
+makeSlider("s-tailBlock", {
+  label: "Tail Block", min: 0, max: 16, step: 0.125,
+  get: () => (geometry.tailBlockPinned ? 0 : endWidthIn(state.spec.tail)),
+  display: () => formatInchesFraction(
+    geometry.tailBlockPinned ? mm(0) : inchesToMm(endWidthIn(state.spec.tail))),
+  disabled: () => geometry.tailBlockPinned,
+  set: (v) => setSpec({ tail: withEndWidth(state.spec.tail, clamp(v, 0, 16)) }),
+});
+makeSlider("s-depth", {
+  label: "Depth", min: 1, max: 8, step: 0.0625,
+  get: () => isDiamond() ? mmToInches(state.spec.tail.depth)
+    : isSwallow() ? mmToInches(state.spec.tail.crotchDepth) : 1,
+  display: () => isDiamond() ? formatInchesFraction(geometry.effectiveDiamondDepth)
+    : isSwallow() ? formatInchesFraction(state.spec.tail.crotchDepth) : "—",
+  disabled: () => !isDiamond() && !isSwallow(),
+  note: () => (isDiamond() &&
+    mmToInches(geometry.effectiveDiamondDepth) < mmToInches(state.spec.tail.depth) - 1e-6)
+    ? 'Clamped to 2" less than Tail Block' : "",
+  set: (v) => {
+    if (isDiamond()) setSpec({ tail: { ...state.spec.tail, depth: inchesToMm(clamp(v, 1, 5)) } });
+    else if (isSwallow()) setSpec({ tail: { ...state.spec.tail, crotchDepth: inchesToMm(clamp(v, 1, 8)) } });
+  },
+});
+makeSlider("s-tailAngle", {
+  label: "Tail Angle", min: 30, max: 90, step: 1, leftHint: "Pointy", rightHint: "Round",
+  get: () => state.spec.tailAngle,
+  display: () => `${state.spec.tailAngle}°`,
+  disabled: () => isDiamond(),
+  set: (v) => setSpec({ tailAngle: degrees(clamp(v, 30, 90)) }),
+});
+makeSlider("s-tailFullness", {
+  label: "Fullness", min: 0, max: 100, step: 0.25, leftHint: "Thin", rightHint: "Full",
+  get: () => state.spec.tailFullness,
+  display: () => `${state.spec.tailFullness}%`,
+  set: (v) => setSpec({ tailFullness: clamp(v, 0, 100) }),
+});
+
+/* tail-shape chips — icon generator ported from components/outline/tail-shape-icon.tsx */
+function catmull(pts) {
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] ?? p2;
+    d += ` C ${p1[0] + (p2[0] - p0[0]) / 6} ${p1[1] + (p2[1] - p0[1]) / 6},` +
+         ` ${p2[0] - (p3[0] - p1[0]) / 6} ${p2[1] - (p3[1] - p1[1]) / 6},` +
+         ` ${p2[0]} ${p2[1]}`;
+  }
+  return d;
+}
+function xBaseAt(shape, y) {
+  const t = Math.max(0, y);
+  switch (shape) {
+    case "squash": return 2.25 + 0.6708 * t - 0.0285 * t * t + 0.000539 * t ** 3;
+    case "round": return 2.5119 * Math.sqrt(t) - 0.134 * t;
+    case "swallow": return 4.1078 + 0.3237 * t - 0.00573 * t * t;
+    default: return 1.125 * t - 0.0586 * t * t + 0.001214 * t ** 3;
+  }
+}
+function iconPath(shape) {
+  const scale = 4.1667, originX = 32, tailY = 58;
+  const map = ([x, y]) => [originX + x * scale, tailY - y * scale];
+  const base = shape === "diamond" ? "round" : shape;
+  const S = 15 / 2 / xBaseAt(base, 12);
+  const yLow = shape === "diamond" ? 4 : 0;
+  const pos = [];
+  for (let i = 0; i <= 48; i++) {
+    const y = yLow + (12 - yLow) * (i / 48);
+    pos.push([S * xBaseAt(base, y), y]);
+  }
+  const negMapped = pos.slice().reverse().map(([x, y]) => map([-x, y]));
+  const posMapped = pos.map(map);
+  let d = catmull(negMapped);
+  const connector = shape === "diamond" ? [0, 0] : shape === "swallow" ? [0, 2.5] : null;
+  if (connector) { const c = map(connector); d += ` L ${c[0].toFixed(2)} ${c[1].toFixed(2)}`; }
+  d += ` L ${posMapped[0][0].toFixed(2)} ${posMapped[0][1].toFixed(2)}`;
+  const p = catmull(posMapped);
+  return d + p.substring(p.indexOf(" C"));
+}
+
+const SHAPES = ["pin", "round", "diamond", "squash", "swallow"];
+const shapeButtons = SHAPES.map((shape) => {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "tailshape";
+  btn.innerHTML =
+    `<svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true">` +
+    `<path d="${iconPath(shape)}" fill="none" stroke="currentColor" stroke-width="3" ` +
+    `stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<line x1="32" y1="6" x2="32" y2="52" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>` +
+    `</svg><span>${shape}</span>`;
+  btn.addEventListener("click", () => {
+    const preset = TAIL_PRESETS[shape];
+    setSpec({ tail: preset.tail, tailAngle: preset.tailAngle, tailFullness: preset.tailFullness });
+  });
+  document.getElementById("tailshapes").appendChild(btn);
+  return { shape, btn };
+});
+
+/* length selects + range */
+const feetSel = document.getElementById("lengthFeet");
+const inchSel = document.getElementById("lengthInches");
+const lengthRange = document.getElementById("lengthRange");
+for (const f of [5, 6, 7, 8, 9, 10]) feetSel.add(new Option(`${f}'`, String(f)));
+for (let i = 0; i < 12; i++) inchSel.add(new Option(`${i}"`, String(i)));
+
+const setLengthIn = (totalIn) => setSpec({ length: inchesToMm(clamp(totalIn, 60, 120)) });
+const lengthParts = () => {
+  const total = mmToInches(state.spec.length);
+  const feet = Math.floor(total / 12);
+  return { feet, inches: Math.round(total - feet * 12) };
+};
+feetSel.addEventListener("change", () => setLengthIn(Number(feetSel.value) * 12 + lengthParts().inches));
+inchSel.addEventListener("change", () => setLengthIn(lengthParts().feet * 12 + Number(inchSel.value)));
+lengthRange.addEventListener("input", () => setLengthIn(Number(lengthRange.value)));
+
+const constructionBox = document.getElementById("construction");
+constructionBox.addEventListener("change", () => {
+  state.construction = constructionBox.checked;
+  drawBoard();
+});
+
+const boardSvg = document.getElementById("board");
+boardSvg.addEventListener("pointermove", onDragMove);
+boardSvg.addEventListener("pointerup", endDrag);
+boardSvg.addEventListener("pointercancel", endDrag);
+
+function syncControls() {
+  for (const s of sliders) s.sync();
+  for (const s of shapeButtons) {
+    s.btn.setAttribute("aria-pressed", String(state.spec.tail.kind === s.shape));
+  }
+  const { feet, inches } = lengthParts();
+  feetSel.value = String(feet);
+  inchSel.value = String(inches);
+  const totalIn = mmToInches(state.spec.length);
+  lengthRange.value = String(totalIn);
+  lengthRange.style.setProperty("--pct", `${clamp(((totalIn - 60) / 60) * 100, 0, 100)}%`);
+  document.getElementById("lengthReadout").textContent = formatFeetInches(state.spec.length);
+}
+
+syncControls();
+drawBoard();
+
+let resizePending = false;
+window.addEventListener("resize", () => {
+  if (resizePending) return;
+  resizePending = true;
+  requestAnimationFrame(() => { resizePending = false; drawBoard(); });
+});
+
+</script>
+
+<script>
+  /* Sketch-only chrome: swap the theme class so the approved layout can be
+     judged in every theme the app ships. Not part of the design being tested. */
+  document.querySelectorAll(".themebar button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.documentElement.className = b.dataset.theme;
+      document.querySelectorAll(".themebar button").forEach(function (o) {
+        o.setAttribute("aria-pressed", String(o === b));
+      });
+    });
+  });
+</script>
