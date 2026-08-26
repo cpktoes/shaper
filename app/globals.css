@@ -210,6 +210,7 @@
   --surf-on-warning: var(--ramp-daylight-on-warning);
   --surf-warning-ink: var(--ramp-daylight-warning-ink);
   --surf-board-fill: var(--ramp-daylight-fill);
+  --surf-print-shade: color-mix(in srgb, var(--ramp-daylight-accent) 20%, #fff);
 }
 
 /* DEFAULT DARK — Slate, for an OS set to dark with no explicit choice. */
@@ -233,6 +234,7 @@
     --surf-on-warning: var(--ramp-slate-on-warning);
     --surf-warning-ink: var(--ramp-slate-warning-ink);
     --surf-board-fill: var(--ramp-slate-fill);
+    --surf-print-shade: color-mix(in srgb, var(--ramp-slate-accent) 20%, #fff);
   }
 }
 
@@ -256,6 +258,7 @@
   --surf-on-warning: var(--ramp-daylight-on-warning);
   --surf-warning-ink: var(--ramp-daylight-warning-ink);
   --surf-board-fill: var(--ramp-daylight-fill);
+  --surf-print-shade: color-mix(in srgb, var(--ramp-daylight-accent) 20%, #fff);
 }
 
 /* Chalk — explicit. */
@@ -278,6 +281,7 @@
   --surf-on-warning: var(--ramp-chalk-on-warning);
   --surf-warning-ink: var(--ramp-chalk-warning-ink);
   --surf-board-fill: var(--ramp-chalk-fill);
+  --surf-print-shade: color-mix(in srgb, var(--ramp-chalk-accent) 20%, #fff);
 }
 
 /* Slate — explicit. */
@@ -300,6 +304,7 @@
   --surf-on-warning: var(--ramp-slate-on-warning);
   --surf-warning-ink: var(--ramp-slate-warning-ink);
   --surf-board-fill: var(--ramp-slate-fill);
+  --surf-print-shade: color-mix(in srgb, var(--ramp-slate-accent) 20%, #fff);
 }
 
 /* Phosphor — explicit. */
@@ -322,6 +327,7 @@
   --surf-on-warning: var(--ramp-phosphor-on-warning);
   --surf-warning-ink: var(--ramp-phosphor-warning-ink);
   --surf-board-fill: var(--ramp-phosphor-fill);
+  --surf-print-shade: color-mix(in srgb, var(--ramp-phosphor-accent) 20%, #fff);
 }
 
 /* ---------------------------------------------------------------------------
@@ -643,6 +649,18 @@
     /* The wash is a screen affordance: ink inside the outline is wasted and can muddy the
        station lines a shaper measures against, so the board prints hollow. */
     --surf-board-fill: var(--ramp-daylight-ground);
+
+    /* `--surf-print-shade` is deliberately ABSENT from this list, and that absence is the
+       feature. Every token above is pinned so paper is white and legible no matter which theme
+       is on screen; that one is the single thing allowed through, so the printed sheet still
+       carries the colour of the theme the shaper chose. Each theme block derives it as its own
+       accent at 20% on white — light enough to stay a tint (1.13:1 to 1.40:1 against paper,
+       cyan or green rather than black on a colour printer), dark enough to divide the sheet
+       into sections. Deriving rather than pinning four literals means a re-picked accent
+       carries onto paper with it; freezing values here is how a palette and its print path
+       drift apart. Its one consumer is the order form's spine labels — see
+       `app/design/summary/order-form.css`. Anyone who would rather spend no colour at all ticks
+       black-and-white in the print dialog. */
   }
 }
 

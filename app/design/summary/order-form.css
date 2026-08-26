@@ -305,28 +305,33 @@
   }
 
   /* The spine labels — RIDER INFO, SURFBOARD SHAPE AND DESIGN, GLASSING — print shaded, because
-     they are what tells the sections of the sheet apart on paper, and they print in the accent
-     wash rather than a neutral grey so the paper carries the shop's colour the way the screen
-     does. Anyone who would rather spend no colour prints black-and-white from the print dialog;
-     that is the shaper's call to make, not this stylesheet's.
+     they are what tells the sections of the sheet apart on paper, and they print in the shade of
+     whichever theme the shaper chose — Daylight's sage, Chalk's blue, Slate's deeper blue,
+     Phosphor's green. They are the one coloured thing on the sheet, so they are what makes a
+     printed order form look like it came from this shop rather than any shop. Anyone who would
+     rather spend no colour prints black-and-white from the print dialog; that is the shaper's
+     call to make, not this stylesheet's.
 
      Without a rule here they would print hollow: their on-screen shade follows
      `--order-form-shade` -> `--surf-board-fill`, and globals.css pins that to the Daylight
-     ground (white) in print so the board itself prints hollow. So this names the Daylight wash
-     ramp directly — the one value `--surf-board-fill` would have carried had it not been pinned,
-     and exactly what these labels show on screen in Daylight. Reaching past the contract into a
-     ramp is wrong anywhere else in the app; inside `@media print` it is the established idiom,
-     which is how globals.css's print block names all seventeen of its tokens.
+     ground (white) in print so the board itself prints hollow. `--surf-print-shade` is the one
+     token that block deliberately does NOT pin, precisely so this rule can reach the chosen
+     theme through it; it is each theme's own accent at 20% on white.
 
-     `#d9f2ed` is a pale tint, not a block of ink — 1.16:1 against white, and on a colour printer
-     it lays down cyan rather than black. The label lettering (`text-surf-ink`, which prints as
-     the Daylight ink `#1f2a3b`) reads at 12.31:1 on it, nearly triple the 4.5:1 floor. It prints
-     whether or not the shaper ticks "Background graphics", because every element under a sheet
-     already carries `print-color-adjust: exact`, below. Scoped to the spine class directly, not
-     to `--order-form-shade`, so the SHAPER USE ONLY box — the shade's other consumer — is
-     untouched and stays white on paper. */
+     It cannot be the theme's `fill` ramp — the value these labels wear on screen — because two
+     of the four are dark (Slate `#1a2732`, Phosphor `#142414`) and would print as near-black
+     blocks carrying near-black lettering: unreadable, and the cartridge-burning this whole print
+     path exists to prevent. Mixed onto white instead, all four land between 1.13:1 and 1.40:1
+     against paper — a tint, not a block, and cyan or green rather than black on a colour
+     printer. The label lettering (`text-surf-ink`, which prints as the Daylight ink `#1f2a3b`)
+     reads between 10.36:1 and 12.75:1 on them, at worst more than double the 4.5:1 floor.
+
+     They print whether or not the shaper ticks "Background graphics", because every element
+     under a sheet already carries `print-color-adjust: exact`, below. Scoped to the spine class
+     directly, not to `--order-form-shade`, so the SHAPER USE ONLY box — the shade's other
+     consumer — is untouched and stays white on paper. */
   [data-order-form-root] .order-form-spine {
-    background: var(--ramp-daylight-fill) !important;
+    background: var(--surf-print-shade) !important;
   }
 
   /* One break between the two sheets, and none after the last — a trailing `break-after` on the
