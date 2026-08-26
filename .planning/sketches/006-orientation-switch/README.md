@@ -59,27 +59,33 @@ title. Two reasons it goes there rather than in the sidebar or the settings menu
 2. The viewer header already exists and already holds panel-level chrome, so this adds a
    button, not a new region.
 
-**The icon turns with the view.** In vertical state it shows an upright board; in horizontal
-state the board inside the icon is rotated. The button therefore always depicts the current
-orientation, and its `aria-label` names the destination ("Rotate the board to horizontal").
+**The icon never changes.** It shows both orientations at once, so it reads as "rotate" in
+either state — no flip, no rotation, one glyph. Only the `aria-label` swaps, so the button still
+announces where it is going ("Rotate the board to horizontal").
 
 ### Drawing the icon
 
-Modelled on the familiar phone-rotate glyph — a tilted device with two arcs sweeping around it
-— with a real planshape in place of the rounded rectangle: **sharp nose, belly, narrower rounded
-tail**. A symmetric pointed ellipse was tried first and read as a leaf, not a board.
+Modelled on the phone "rotate screen" glyph that shows **both states side by side** — an upright
+device, the same device on its side, and a single arrow from one to the other. With a real
+planshape in place of the rounded rectangle: **sharp nose, belly, narrower rounded tail**.
 
-Both arcs and both arrowheads are **one shape plus its 180° rotation about the centre**, so they
-cannot drift out of symmetry at any size.
+One path, drawn twice through `<use>`, at the **same scale** in both copies — it is one board
+being turned, not two boards of different sizes. Because the shared scale is 0.62, the
+`stroke-width` is set to 2.42 so the drawn weight lands at 1.5.
 
-Two rounds of tuning, both driven by looking at it at production size rather than at 200px:
+Three rounds, each driven by looking at the thing at production size rather than at 200px:
 
-- **First attempt:** full-length board, long 55° arcs. At 19px the board and the arcs crossed
-  and the whole glyph turned to mush.
-- **Over-correction:** board scaled to 0.74 and arcs cut to 28°. Clear, but the arrows read as
-  two detached ticks rather than a rotation.
-- **Landed:** board at 0.74 (keeping the clearance), arcs back out to ~46°. The sweep reads,
-  and the two shapes never cross.
+- **A tilted board with two arcs** (the first reference). At 19px the board and the arcs
+  crossed and the glyph turned to mush; shrinking the board fixed the collision but left the
+  arrows reading as two detached ticks.
+- **Two boards, mismatched sizes.** Clearer, but the smaller laid-down board read as a
+  different, fatter object rather than the same board turned.
+- **Landed:** two copies at one scale, side by side with a real gap between them, and a single
+  arrow tucked into the upper left pointing down at the laid-down board. The gap is what keeps
+  it readable small — the two shapes never touch.
+
+A symmetric pointed ellipse was tried for the board and read as a leaf. The asymmetry —
+pointed nose, rounder tail — is what makes it a surfboard at a glance.
 
 ## Known caveat
 
@@ -89,15 +95,26 @@ gets built, consider a 20–22px icon in a slightly larger button. The proof she
 of the sketch renders the icon at 30/24/20/19/16/14px so this is judged by looking rather than
 by guessing.
 
-## What this does not answer
+## Settled scope
 
-- **Whether the choice persists.** The sketch treats orientation as view state that resets. If
-  it should stick, `lib/theme.ts` is the precedent to copy — a `shaper-view` key beside
-  `shaper-theme`, plus a pre-hydration read so the first paint does not flip.
-- **Whether the other screens get the same button.** Rails, Fins and Summary all render board
-  drawings too.
-- **Print.** The Summary sheet and the full-size template export both render `OutlineViewer`;
-  a screen-only rotation must stay screen-only, or be thought through separately for paper.
+Decided by the founder while reviewing this sketch:
+
+- **Vertical is the default view.** Nothing changes about how the app opens.
+- **It does not persist across sessions.** Orientation is view state, not a preference — no
+  `localStorage` key, no pre-hydration read, no settings-menu entry. A reload comes back
+  vertical. This is deliberately *less* machinery than the theme preference, not an oversight.
+- **Template viewer only.** Rails, Fins and Summary do not get the button, even though they
+  render board drawings too.
+- **The icon does not change with state.** One glyph, both states.
+
+That scope keeps the change genuinely small: a view-state boolean in the Template screen, a
+button in the viewer header, and the metrics mapping below.
+
+## Still to think through
+
+**Print.** The Summary sheet and the full-size template export both render `OutlineViewer`.
+Since rotation is Template-screen view state that never persists, this should fall out
+naturally — but it is worth confirming that neither print path can observe the rotated state.
 
 ## Implementation note (unchanged from 005, still the crux)
 
