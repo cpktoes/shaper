@@ -27,10 +27,10 @@ export function VolumeEstimator() {
           onToggleImportRailThickness={toggleImportRailThickness}
         />
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas px-6 py-4">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3">
         {/* Single region, so the tab labels rather than switches — same reasoning as the
             Template screen. */}
-        <TabbedPanel tabs={[{ id: "estimate" as const, label: "ESTIMATE" }]} active="estimate" panelClassName="p-3">
+        <TabbedPanel tabs={[{ id: "estimate" as const, label: "ESTIMATE" }]} active="estimate" panelClassName="p-3 overflow-y-auto">
         <VolumeCalculationCard
           result={volumeResult}
           lengthDisplay={formatFeetInches(effectiveVolume.length)}

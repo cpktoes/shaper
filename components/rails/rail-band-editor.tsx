@@ -213,7 +213,7 @@ export function RailBandEditor() {
           </div>
         )}
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas px-6 py-4">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3">
         <TabbedPanel
           tabs={[{ id: "viewer" as const, label: "VIEWER" }, { id: "data" as const, label: "DATA" }]}
           active={activePage}

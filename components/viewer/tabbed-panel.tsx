@@ -44,7 +44,7 @@ export function TabbedPanel<T extends string>({
    */
   onSelect?: (id: T) => void;
   children: ReactNode;
-  /** Extra classes for the panel body — layout only; the surface and edge are fixed here. */
+  /** Extra classes for the inner content card — layout only; surface and edges are fixed here. */
   panelClassName?: string;
 }) {
   const interactive = typeof onSelect === "function" && tabs.length > 1;
@@ -84,10 +84,17 @@ export function TabbedPanel<T extends string>({
 
       {/* Square top-left so it meets the first tab flush; `-mt-px` closes the seam the tab's
           missing bottom border leaves. */}
-      <div
-        className={`flex min-h-0 flex-1 flex-col rounded-tr-lg rounded-b-lg border border-surf-line bg-surf-tab-active -mt-px ${panelClassName}`}
-      >
-        {children}
+      <div className="flex min-h-0 flex-1 flex-col rounded-tr-lg rounded-b-lg border border-surf-line bg-surf-tab-active p-3 -mt-px">
+        {/* The content's own card. Two nested boundaries doing different jobs: the panel's
+            `--surf-line` edge says where the working surface starts, and this fainter,
+            fully-rounded one says where the content sits inside it. `line-faint` is right here
+            precisely because it should recede — it is a grouping hint, not a structural edge,
+            and it reads against `panel` rather than against the canvas. */}
+        <div
+          className={`flex min-h-0 flex-1 flex-col rounded-lg border border-surf-line-faint bg-surf-panel ${panelClassName}`}
+        >
+          {children}
+        </div>
       </div>
     </>
   );

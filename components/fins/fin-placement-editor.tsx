@@ -160,7 +160,7 @@ export function FinPlacementEditor() {
           </div>
         )}
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas px-6 py-4">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3">
         <TabbedPanel
           tabs={TAB_ORDER.map((tab) => ({ id: tab, label: TAB_LABEL[tab] }))}
           active={activeTab}

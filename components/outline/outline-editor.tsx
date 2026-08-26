@@ -103,7 +103,7 @@ export function OutlineEditor() {
           </div>
         )}
       </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas px-6 py-4">
+      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3">
         {/* One region, so the tab is a label rather than a control — but the screen still gets
             the same panel and edge as Rails and Fins, which is what makes the four read as one
             application instead of four layouts. */}
