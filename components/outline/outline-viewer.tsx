@@ -379,7 +379,6 @@ export function OutlineViewer({
   // only exists for tail shapes that actually have one (pin/round have none).
   const lengthChipY = tipPy;
   const widepointChipY = lenToY(wpYIn);
-  const wpOffsetChipY = widepointChipY + OUTLINE_CHIP_HEIGHT + CHIP_STACK_GAP;
   const tailPodStationIn = mmToInches(geometry.tailPodStation);
   const tailBlockChipY = lenToY(tailPodStationIn);
   const halfTailBlockWidthIn = mmToInches(geometry.halfTailBlockWidth);
@@ -423,6 +422,23 @@ export function OutlineViewer({
   const calloutSizes = pinCalloutText ? pinnedCalloutSizes(fitScale) : UNPINNED_CALLOUT_SIZES;
   /** User units per CSS pixel — what the px-denominated handle sizes above are drawn in. */
   const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
+
+  // WP Offset is grouped with Widepoint (sketch 004) and carries no leader. In vertical it sits
+  // directly beneath Widepoint in the same gutter column — stepping down by a chip height. Read
+  // `calloutSizes`, so these two declarations live here rather than beside `widepointChipY`
+  // above (they are used only in the returned JSX, so the move is safe).
+  //
+  // Rotated, that gutter column becomes the bottom rail running ALONG the station axis, so
+  // stepping "along" it by a chip height would land WP Offset on top of Widepoint — chips are
+  // `chipW` wide across that axis, and the vertical step is a chip HEIGHT. Move it one row
+  // further OUT from the board instead, at the same station: the honest reading of "directly
+  // beneath" once the rail itself has turned 90 degrees.
+  const wpOffsetChipX = horizontal
+    ? frame.chipRightX - calloutSizes.chipH - CHIP_STACK_GAP
+    : frame.chipRightX;
+  const wpOffsetChipY = horizontal
+    ? widepointChipY
+    : widepointChipY + OUTLINE_CHIP_HEIGHT + CHIP_STACK_GAP;
 
   return (
     <CalloutSizeProvider value={calloutSizes}>
@@ -617,7 +633,7 @@ export function OutlineViewer({
                 nameColor="var(--outline-widepoint-knot)"
                 leaderToX={pxX(-wpHalfWidthIn)}
               />
-              <CalloutChip x={frame.chipRightX} y={wpOffsetChipY} name="WP OFFSET" value={wpOffsetText} />
+              <CalloutChip x={wpOffsetChipX} y={wpOffsetChipY} name="WP OFFSET" value={wpOffsetText} />
               {!geometry.tailBlockPinned && (
                 <CalloutChip
                   x={frame.chipRightX}

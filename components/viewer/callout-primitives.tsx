@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useLayoutEffect, useState, type RefObject } from "react";
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 
 /**
  * Shared callout-system primitives for the plan-view board viewers (outline-viewer.tsx,
@@ -322,6 +329,28 @@ export function DimensionLine({
   );
 }
 
+/**
+ * Wraps callout text/box content so it reads screen-upright even when the viewer's board is
+ * rotated, without needing its own rotation math at every call site.
+ *
+ * A child with `transform="rotate(90 ax ay)"` inside a parent rotated `rotate(-90)` composes to
+ * `R(-90)·T(a)·R(90)·T(-a)`, whose linear part is the identity — so the child's content draws
+ * screen-upright and unscaled, while the anchor point `(x, y)` still lands wherever the rotated
+ * drawing puts it. Displacement from the anchor in the child's own coordinates then equals
+ * displacement on screen: `+x` is screen-right (along the board, nose->tail) and `+y` is
+ * screen-down (away from the board, toward the chip rail). `CalloutChip` and `OutputRail` are
+ * the only two components in this file that draw callout text, which is why this counter-
+ * rotation is two edits and not forty.
+ *
+ * In vertical this renders a fragment — no element, no transform — so every existing viewer's
+ * output is unchanged.
+ */
+function UprightAt({ x, y, children }: { x: number; y: number; children: ReactNode }) {
+  const horizontal = useViewerOrientation() === "horizontal";
+  if (!horizontal) return <>{children}</>;
+  return <g transform={`rotate(90 ${x} ${y})`}>{children}</g>;
+}
+
 export interface CalloutChipProps {
   /** The chip's right edge — every chip in a gutter shares this one x, per `OUTLINE_CHIP_RIGHT_X`. */
   x: number;
@@ -338,44 +367,60 @@ export interface CalloutChipProps {
 }
 
 /** A named input chip: a bordered box holding a name + value pair, optionally leadered to its
- * target station. Chips carry their own name so no value is ever unlabelled (sketch 004). */
+ * target station. Chips carry their own name so no value is ever unlabelled (sketch 004).
+ *
+ * The leader stays OUTSIDE `UprightAt`: it is drawn in canonical coordinates and must turn with
+ * the board, which is what keeps it attached to the feature it points at — rotated, the
+ * horizontal leader reads as a vertical one running up from the chip to the board edge, which is
+ * correct. Only the box and its two text lines counter-rotate, about the chip's own anchor
+ * `(x, y)`.
+ *
+ * In vertical the chip's RIGHT edge sits on the anchor, centred on the station (unchanged).
+ * Rotated, the left gutter has become the BOTTOM rail (see the frame-mapping note in
+ * `outline-viewer.tsx`), so the chip hangs straight DOWN from the anchor instead, centred on the
+ * station across — down is correct because `+y` in `UprightAt`'s upright frame is screen-down,
+ * which is away from the board. */
 export function CalloutChip({ x, y, name, value, nameColor = "var(--outline-callout-label)", leaderToX }: CalloutChipProps) {
   const sizes = useCalloutSizes();
-  const rectX = x - sizes.chipW;
-  const rectY = y - sizes.chipH / 2;
-  const centerX = x - sizes.chipW / 2;
+  const horizontal = useViewerOrientation() === "horizontal";
+  const rectX = horizontal ? x - sizes.chipW / 2 : x - sizes.chipW;
+  const rectY = horizontal ? y : y - sizes.chipH / 2;
+  const centerX = horizontal ? x : x - sizes.chipW / 2;
+  const centerY = horizontal ? y + sizes.chipH / 2 : y;
   return (
     <g>
       {leaderToX !== undefined && (
         <line x1={x} y1={y} x2={leaderToX} y2={y} stroke="var(--outline-station-line)" strokeWidth={1} />
       )}
-      <rect
-        x={rectX}
-        y={rectY}
-        width={sizes.chipW}
-        height={sizes.chipH}
-        rx={4}
-        fill="var(--outline-page-bg)"
-        stroke="var(--border)"
-      />
-      <text
-        x={centerX}
-        y={y + sizes.stackNameDy}
-        textAnchor="middle"
-        style={{ fontSize: sizes.name, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.12em" }}
-        fill={nameColor}
-      >
-        {name}
-      </text>
-      <text
-        x={centerX}
-        y={y + sizes.stackValueDy}
-        textAnchor="middle"
-        style={{ fontSize: sizes.value, fontWeight: 700, fontFamily: "var(--font-body)" }}
-        fill="var(--outline-ink)"
-      >
-        {value}
-      </text>
+      <UprightAt x={x} y={y}>
+        <rect
+          x={rectX}
+          y={rectY}
+          width={sizes.chipW}
+          height={sizes.chipH}
+          rx={4}
+          fill="var(--outline-page-bg)"
+          stroke="var(--border)"
+        />
+        <text
+          x={centerX}
+          y={centerY + sizes.stackNameDy}
+          textAnchor="middle"
+          style={{ fontSize: sizes.name, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.12em" }}
+          fill={nameColor}
+        >
+          {name}
+        </text>
+        <text
+          x={centerX}
+          y={centerY + sizes.stackValueDy}
+          textAnchor="middle"
+          style={{ fontSize: sizes.value, fontWeight: 700, fontFamily: "var(--font-body)" }}
+          fill="var(--outline-ink)"
+        >
+          {value}
+        </text>
+      </UprightAt>
     </g>
   );
 }
@@ -396,30 +441,45 @@ export interface OutputRailProps {
 
 /** A derived value read out to the shared output rail: extension line from the board edge, a tick
  * at the measured point, the value, and the station name beneath it — every output in the system
- * lands its value at the same `OUTLINE_OUTPUT_VALUE_X`, never a per-call x. */
+ * lands its value at the same `OUTLINE_OUTPUT_VALUE_X`, never a per-call x.
+ *
+ * The extension line and `DimensionTick` stay OUTSIDE `UprightAt` — a 45-degree drafting tick is
+ * still a 45-degree drafting tick when the drawing turns, and the line must turn with the board
+ * to stay attached to the edge it measures. Only the two text lines counter-rotate, about the
+ * anchor `(valueX, y)`.
+ *
+ * In vertical the two lines straddle the extension line — value above, station name below.
+ * Rotated, the extension line runs vertically and cannot be straddled, so both lines sit above
+ * its far end instead (the line already stops `CALLOUT_VALUE_GAP` short of the anchor, which
+ * supplies the gap), in the same reading order — value over name — centred on the station. */
 export function OutputRail({ edgeX, y, value, station, valueX = OUTLINE_OUTPUT_VALUE_X }: OutputRailProps) {
   const sizes = useCalloutSizes();
+  const horizontal = useViewerOrientation() === "horizontal";
   const reachX = valueX - CALLOUT_VALUE_GAP;
   return (
     <g>
       <line x1={edgeX} y1={y} x2={reachX} y2={y} stroke="var(--outline-station-line)" strokeWidth={1} />
       <DimensionTick x={edgeX} y={y} color="var(--outline-dim-ink)" />
-      <text
-        x={valueX}
-        y={y - 2}
-        style={{ fontSize: sizes.value, fontWeight: 700, fontFamily: "var(--font-body)" }}
-        fill="var(--outline-ink)"
-      >
-        {value}
-      </text>
-      <text
-        x={valueX}
-        y={y + sizes.name}
-        style={{ fontSize: sizes.name, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.1em" }}
-        fill="var(--outline-callout-label)"
-      >
-        {station}
-      </text>
+      <UprightAt x={valueX} y={y}>
+        <text
+          x={valueX}
+          y={horizontal ? y - sizes.name * 1.15 : y - 2}
+          textAnchor={horizontal ? "middle" : undefined}
+          style={{ fontSize: sizes.value, fontWeight: 700, fontFamily: "var(--font-body)" }}
+          fill="var(--outline-ink)"
+        >
+          {value}
+        </text>
+        <text
+          x={valueX}
+          y={horizontal ? y : y + sizes.name}
+          textAnchor={horizontal ? "middle" : undefined}
+          style={{ fontSize: sizes.name, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.1em" }}
+          fill="var(--outline-callout-label)"
+        >
+          {station}
+        </text>
+      </UprightAt>
     </g>
   );
 }
