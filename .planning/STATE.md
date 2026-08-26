@@ -6,7 +6,7 @@ current_phase: 2
 current_phase_name: Accounts & Saved Designs
 status: planning
 stopped_at: "Completed quick task 260826-07b: TabbedPanel's 12px inset defaulted; human-check (visual measurement) still pending"
-last_updated: "2026-08-26T07:19:21.114Z"
+last_updated: "2026-08-26T19:14:17.714Z"
 last_activity: 2026-08-24
 last_activity_desc: "Completed quick task 260824-i05: Reverted the colour palette to the currently published version"
 progress:
@@ -153,6 +153,7 @@ None yet.
 | 260823-ux2 | Dev-only Copy preset values button pinned to a real sidebar footer across all three editors: each aside became a flex column with a scrolling controls region plus a flex-none footer. It was never pinned anywhere — outline and rails only looked right because their controls happened to fit, while the longer fins controls pushed it past the aside bottom | 2026-08-23 | f7c6af6 | [260823-ux2-pin-the-preset-button-to-the-sidebar](./quick/260823-ux2-pin-the-preset-button-to-the-sidebar/) |
 | 260824-i05 | Revert the colour palette to the currently published version: hard-reset main from 7665f23 to origin/main (12b6023), discarding the five unpushed five-colour-palette commits entirely. Production deploys from every push to main and the work was never pushed, so the live site had never left the old palette. lib/design/contrast.ts and palette.test.ts went with it by explicit decision, so the WCAG AA bar is no longer machine-checkable | 2026-08-24 | 12b6023 (reset target) | [260824-i05-revert-the-colour-palette-to-the-current](./quick/260824-i05-revert-the-colour-palette-to-the-current/) |
 | 34 | TabbedPanel's inner content card gains a default 12px inset composed through cn; Volume and Template's redundant padding copies removed, Rails/Fins pt-1 nudges retired (both screens now get the inset for free), Template rotate button rebased top-3/right-3 -> top-0/right-0 [260826-07b-tab-panel-content-indent] | 2026-08-26 | 4c4b17a | — |
+| 35 | Write the root CLAUDE.md: purpose, stack, commands, geometry-in-lib and units rules | 2026-08-26 | 7b88a86 | — |
 
 ## Deferred Items
 
