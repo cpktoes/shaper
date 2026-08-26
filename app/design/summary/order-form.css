@@ -293,6 +293,33 @@
     gap: 0 !important;
   }
 
+  /* GUARANTEE: whatever theme is on screen, the page prints white. Today that already happens
+     because globals.css forces the Daylight tokens in print, which makes `--surf-ground` white,
+     which makes `data-order-form-page`'s `bg-surf-ground` white — three files deep, and the
+     wrapper is neither `html` nor `body`, the only two elements pinned white above. A literal is
+     correct and necessary here, the same as it is for `html`/`body`: this rule only ever runs
+     against paper, which really is white, and it is the one place a future change to the theme
+     contract cannot quietly put a background back on the printed sheet. */
+  [data-order-form-page] {
+    background: #fff !important;
+  }
+
+  /* The spine labels — RIDER INFO, SURFBOARD SHAPE AND DESIGN, GLASSING — print shaded, because
+     they are what tells the sections of the sheet apart on paper; without this rule they would
+     print hollow, since their on-screen shade follows `--order-form-shade` -> `--surf-board-fill`,
+     which globals.css pins to the Daylight ground (white) in print so the board itself prints
+     hollow. The grey below is a deliberate literal, not that token: about 7.5% coverage, 1.18:1
+     against white, a whisper of ink rather than a block of it — "never black, never a ton of
+     ink". The
+     label lettering (`text-surf-ink`, which prints as the Daylight ink) reads at 12.24:1 on it,
+     nearly triple the 4.5:1 floor. It prints whether or not the shaper ticks "Background
+     graphics", because every element under a sheet already carries `print-color-adjust: exact`,
+     below. Scoped to the spine class directly, not to `--order-form-shade`, so the SHAPER USE
+     ONLY box — the shade's other consumer — is untouched and stays white on paper. */
+  [data-order-form-root] .order-form-spine {
+    background: #ececec !important;
+  }
+
   /* One break between the two sheets, and none after the last — a trailing `break-after` on the
      final sheet is what produces a blank third page. */
   [data-order-form-sheet] {
