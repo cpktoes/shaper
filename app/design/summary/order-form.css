@@ -305,19 +305,28 @@
   }
 
   /* The spine labels — RIDER INFO, SURFBOARD SHAPE AND DESIGN, GLASSING — print shaded, because
-     they are what tells the sections of the sheet apart on paper; without this rule they would
-     print hollow, since their on-screen shade follows `--order-form-shade` -> `--surf-board-fill`,
-     which globals.css pins to the Daylight ground (white) in print so the board itself prints
-     hollow. The grey below is a deliberate literal, not that token: about 7.5% coverage, 1.18:1
-     against white, a whisper of ink rather than a block of it — "never black, never a ton of
-     ink". The
-     label lettering (`text-surf-ink`, which prints as the Daylight ink) reads at 12.24:1 on it,
-     nearly triple the 4.5:1 floor. It prints whether or not the shaper ticks "Background
-     graphics", because every element under a sheet already carries `print-color-adjust: exact`,
-     below. Scoped to the spine class directly, not to `--order-form-shade`, so the SHAPER USE
-     ONLY box — the shade's other consumer — is untouched and stays white on paper. */
+     they are what tells the sections of the sheet apart on paper, and they print in the accent
+     wash rather than a neutral grey so the paper carries the shop's colour the way the screen
+     does. Anyone who would rather spend no colour prints black-and-white from the print dialog;
+     that is the shaper's call to make, not this stylesheet's.
+
+     Without a rule here they would print hollow: their on-screen shade follows
+     `--order-form-shade` -> `--surf-board-fill`, and globals.css pins that to the Daylight
+     ground (white) in print so the board itself prints hollow. So this names the Daylight wash
+     ramp directly — the one value `--surf-board-fill` would have carried had it not been pinned,
+     and exactly what these labels show on screen in Daylight. Reaching past the contract into a
+     ramp is wrong anywhere else in the app; inside `@media print` it is the established idiom,
+     which is how globals.css's print block names all seventeen of its tokens.
+
+     `#d9f2ed` is a pale tint, not a block of ink — 1.16:1 against white, and on a colour printer
+     it lays down cyan rather than black. The label lettering (`text-surf-ink`, which prints as
+     the Daylight ink `#1f2a3b`) reads at 12.31:1 on it, nearly triple the 4.5:1 floor. It prints
+     whether or not the shaper ticks "Background graphics", because every element under a sheet
+     already carries `print-color-adjust: exact`, below. Scoped to the spine class directly, not
+     to `--order-form-shade`, so the SHAPER USE ONLY box — the shade's other consumer — is
+     untouched and stays white on paper. */
   [data-order-form-root] .order-form-spine {
-    background: #ececec !important;
+    background: var(--ramp-daylight-fill) !important;
   }
 
   /* One break between the two sheets, and none after the last — a trailing `break-after` on the
