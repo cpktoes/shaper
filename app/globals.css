@@ -493,6 +493,13 @@
      landed: they were 1.26:1 and 1.31:1 against a 3:1 bar because they carried
      shadcn's own faint greys. They now inherit the line tokens.
      ------------------------------------------------------------------------- */
+  /* The corner radius the whole `rounded-*` scale is built from — every --radius-* in the
+     bridge is `calc(var(--radius) * n)`. It is NOT a colour, so it belongs here rather than in
+     a ramp, and it must not be swept up when the theme blocks are regenerated: it was, in
+     8d69b05, and every rounded corner in the app rendered square until it was restored.
+     `rounded-full` kept working (a literal 9999px), which is what hid it. */
+  --radius: 0.625rem;
+
   --background: var(--surf-ground);
   --foreground: var(--surf-ink);
   --card: var(--surf-panel);

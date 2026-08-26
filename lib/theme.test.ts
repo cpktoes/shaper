@@ -79,6 +79,15 @@ describe("theme registry", () => {
       }
     });
 
+    /**
+     * Not a theme value, but it lives in the same file and was swept away once by a
+     * regeneration of the theme blocks — taking every rounded corner in the app with it,
+     * silently, because `rounded-full` is a literal and kept working.
+     */
+    it("still defines --radius, which the whole rounded-* scale is built from", () => {
+      expect(css).toMatch(/--radius:\s*[\d.]+rem/);
+    });
+
     it("has no theme block for an id the registry does not know", () => {
       const inCss = [...css.matchAll(/:root\.theme-([a-z0-9-]+)\s*\{/g)].map((m) => m[1]);
       expect(inCss.sort()).toEqual(THEMES.map((t) => t.id).sort());
