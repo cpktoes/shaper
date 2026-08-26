@@ -27,8 +27,10 @@ rendered copy. Both need updating together — see below.
 1. Edit this file.
 2. Republish to the **same URL** — from a conversation that did not originally publish it,
    the URL must be passed explicitly, or a second artifact is created instead of updating
-   this one.
-3. Commit the edited file here so the two stay in step.
+   this one. Publishing also requires reading the live artifact first (WebFetch the URL) if
+   the session has not already seen its current version.
+3. Keep the favicon **🎨** across redeploys — a changed tab icon reads as a different page.
+4. Commit the edited file here so the two stay in step.
 
 To preview locally without publishing: the file is a body fragment, not a full document
 (the artifact runtime supplies `<!doctype>`, `<head>` and `<body>`). Wrap it before opening
