@@ -19,6 +19,10 @@
  * present in the DOM and invisible on screen. `line` is the token that carries the 3:1
  * non-text target, which is what a boundary like this needs to survive every theme rather
  * than only the high-contrast ones.
+ *
+ * The tab label deliberately carries the app's heading treatment — small, all-caps,
+ * architecturally tracked — the same as the menu bar links and the sidebar section headings,
+ * so a later editor should not "correct" it back toward body type.
  */
 
 import type { ReactNode } from "react";
@@ -55,7 +59,7 @@ export function TabbedPanel<T extends string>({
         {tabs.map((tab) => {
           const on = tab.id === active;
           const className =
-            "rounded-t-lg border px-[18px] py-2.5 text-sm font-bold " +
+            "rounded-t-lg border px-[18px] py-1.5 text-xs font-display font-bold tracking-architectural uppercase " +
             (on
               ? "border-surf-line border-b-0 bg-surf-tab-active text-surf-ink"
               : "border-transparent bg-transparent text-surf-ink-muted");
