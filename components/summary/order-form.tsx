@@ -195,7 +195,7 @@ export function OrderForm() {
   const thicknessDisplay = formatInchesFraction(railBands.center.boardThickness);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto bg-surf-ink-muted/10 px-6 py-8">
+    <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto bg-surf-ground px-6 py-8">
       {/*
        * The outer element is the `@container` the sheets' type queries — a container query never
        * matches the container itself — and it is what `useOrderFormPrintFit` walks to find the
