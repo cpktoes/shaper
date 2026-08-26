@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 Phase: 2 — Accounts & Saved Designs
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-24 - Completed quick task 260824-i05: Reverted the colour palette to the currently published version
+Last activity: 2026-08-26 - Completed quick task 260826-icz: Home page repainted onto window / canvas / panel across all four themes
 
 Progress: [██████████] 100%
 
@@ -154,6 +154,7 @@ None yet.
 | 260824-i05 | Revert the colour palette to the currently published version: hard-reset main from 7665f23 to origin/main (12b6023), discarding the five unpushed five-colour-palette commits entirely. Production deploys from every push to main and the work was never pushed, so the live site had never left the old palette. lib/design/contrast.ts and palette.test.ts went with it by explicit decision, so the WCAG AA bar is no longer machine-checkable | 2026-08-24 | 12b6023 (reset target) | [260824-i05-revert-the-colour-palette-to-the-current](./quick/260824-i05-revert-the-colour-palette-to-the-current/) |
 | 34 | TabbedPanel's inner content card gains a default 12px inset composed through cn; Volume and Template's redundant padding copies removed, Rails/Fins pt-1 nudges retired (both screens now get the inset for free), Template rotate button rebased top-3/right-3 -> top-0/right-0 [260826-07b-tab-panel-content-indent] | 2026-08-26 | 4c4b17a | — |
 | 35 | Write the root CLAUDE.md: purpose, stack, commands, geometry-in-lib and units rules | 2026-08-26 | 7b88a86 | — |
+| 260826-icz | Home page surfaces re-layered onto the theme contract: the page background moved off the sand canvas onto the app-chrome ground (the Colour Bench calls it "Window"), the preset and Continue cards off shadcn's bg-card onto canvas, and the board thumbnail well off --outline-page-bg onto panel. All four themes follow automatically since these are contract tokens; --outline-page-bg itself was left pointing at canvas because the /design SVG viewer still consumes it. Ground and panel are the same value in every ramp, so the result reads as two alternating tones (page, lifted card, page again inside the well), matching how the design screens already layer | 2026-08-26 | abad7b7 | [260826-icz-home-page-surfaces-page-background-to-wi](./quick/260826-icz-home-page-surfaces-page-background-to-wi/) |
 
 ## Deferred Items
 
