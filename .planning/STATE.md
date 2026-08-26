@@ -194,5 +194,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-08-26T03:20:00.000Z
-Stopped at: Four theme ramps updated to the bench's exported palette and republished; all four themes pass every contrast bar. Open: Chalk and Daylight now differ by only 4 of 17 tokens (accent, on-accent, accent-ink, board-fill) — worth deciding whether that warrants two menu entries. Slate's canvas/panel inversion is intended, not a bug. ~52 commits unpushed. Units toggle still deferred
+Stopped at: Four theme ramps updated to the bench's exported palette and republished; all four themes pass every contrast bar. Open: Chalk and Daylight now differ by only 4 of 17 tokens (accent, on-accent, accent-ink, board-fill) — worth deciding whether that warrants two menu entries. Slate's canvas/panel inversion is intended, not a bug. Pushed to origin/main at 240b6e8 (Vercel auto-deploys from main, so the published site now carries both). Units toggle still deferred
 Resume file: None
