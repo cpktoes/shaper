@@ -30,6 +30,8 @@ import { sampleOutline } from "@/lib/geometry/outline";
 import { formatFeetInches, formatInchesFraction, inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
 import {
   CalloutChip,
+  CALLOUT_PX,
+  MIN_PINNED_FIT_SCALE,
   OUTLINE_CHIP_HEIGHT,
   OutputRail,
   outlineViewFrame,
@@ -37,6 +39,8 @@ import {
   UNPINNED_CALLOUT_SIZES,
   pinnedCalloutSizes,
   useSvgFitScale,
+  ViewerOrientationProvider,
+  type ViewerOrientation,
 } from "@/components/viewer/callout-primitives";
 
 const VIEW_W = 340;
@@ -85,6 +89,20 @@ const DRAG_HIT_PX = 15;
 /** How far the static stringer/centreline overhangs the board's own tip/tail — a drafting nicety
  * (sketch 004's reference render), not load-bearing geometry. */
 const STRINGER_OVERHANG = 8;
+
+/**
+ * Extra frame padding at each end of the horizontal (rotated) viewBox, in view units.
+ *
+ * In vertical, the chips that sit at the extreme stations — LENGTH at the nose tip, TAIL BLOCK
+ * at the tail pod — live in the side gutter, and the frame's own width already covers them.
+ * Rotated, those same chips are centred on their station across the long axis, so they overhang
+ * both ends of the frame and would be clipped without this. The size is the widest a pinned
+ * chip can ever grow to (`CALLOUT_PX.chipW / MIN_PINNED_FIT_SCALE`, the floor fit scale below
+ * which pinning gives up — see `MIN_PINNED_FIT_SCALE`'s own comment) halved, because a chip is
+ * centred on its station in horizontal, not right-aligned to it — so this is derived from the
+ * callout system's own bounds, not tuned by eye.
+ */
+const HORIZONTAL_END_PAD = CALLOUT_PX.chipW / MIN_PINNED_FIT_SCALE / 2;
 
 interface OutlineViewerProps {
   geometry: OutlineGeometry;
@@ -157,6 +175,15 @@ interface OutlineViewerProps {
    * screen coordinates into board coordinates and passes the result up.
    */
   onOutlineDrag?: (patch: Partial<OutlineSpec>) => void;
+  /**
+   * Template-screen view state (see `components/outline/outline-editor.tsx`'s rotate button):
+   * `"horizontal"` turns the whole drawing 90° so the board lies nose-left in the panel it
+   * already occupies, driven by a click, never persisted. Defaults to `"vertical"`, which is
+   * what makes the Summary sheet, the order form's template windows, the print path and the
+   * preset-card thumbnails vertical BY CONSTRUCTION — none of them ever pass this prop — rather
+   * than by a guard anyone could forget to add.
+   */
+  orientation?: ViewerOrientation;
 }
 
 /**
@@ -200,8 +227,13 @@ export function OutlineViewer({
   showStationLines = false,
   onOutlineDrag,
   pinCalloutText = false,
+  orientation = "vertical",
 }: OutlineViewerProps) {
+  const horizontal = orientation === "horizontal";
   const svgRef = useRef<SVGSVGElement>(null);
+  /** The content group carrying the rotation, in horizontal — see `toBoardPoint` below for why
+   * the drag matrix must be read off this instead of the SVG root. */
+  const contentRef = useRef<SVGGElement>(null);
   /** Which control point the active gesture owns, if any. A ref, not state: it changes on
    * pointerdown and is read on pointermove, and re-rendering for it would be a wasted pass. */
   const draggingRef = useRef<OutlineDragTarget | null>(null);
@@ -299,11 +331,18 @@ export function OutlineViewer({
       }))
     : [];
 
-  /** Screen point -> board coordinates: undo the SVG transform, then invert pxX/lenToY. */
+  /** Screen point -> board coordinates: undo the SVG transform, then invert pxX/lenToY.
+   *
+   * The matrix comes off the content group, not the SVG root, falling back to the root only if
+   * the group ref is not yet attached. A root `getScreenCTM()` stops at the viewport and does
+   * not include a child group's own transform — so in horizontal it would miss the `rotate(-90)`
+   * entirely and a drag would solve against the wrong axis. Read off the group, the point comes
+   * back in the canonical (vertical, unrotated) drawing space the pxX/lenToY inversion below was
+   * written for, so that inversion is correct — and unchanged — in both orientations. */
   function toBoardPoint(event: ReactPointerEvent<SVGElement>): OutlineDragPoint | null {
-    const svg = svgRef.current;
-    const ctm = svg?.getScreenCTM();
-    if (!svg || !ctm) return null;
+    const el = contentRef.current ?? svgRef.current;
+    const ctm = el?.getScreenCTM();
+    if (!el || !ctm) return null;
     const local = new DOMPoint(event.clientX, event.clientY).matrixTransform(ctm.inverse());
     return {
       station: inchesToMm((tailPy - local.y) / scale),
@@ -350,14 +389,36 @@ export function OutlineViewer({
   const fixedMinX = centerlineX - FIXED_FRAME_HALF_W;
   const fixedWidth = 2 * FIXED_FRAME_HALF_W;
 
-  const viewBox = hideCallouts
+  // The canonical (vertical) viewBox, kept character-for-character the expression it always
+  // was — renamed, not rewritten, so the default path's viewBox string cannot drift.
+  const verticalViewBox = hideCallouts
     ? fixedFrame
       ? `${fixedMinX.toFixed(2)} 0 ${fixedWidth.toFixed(2)} ${VIEW_H}`
       : `0 0 ${VIEW_W} ${VIEW_H}`
     : `${frame.minX} ${frame.minY} ${frame.width} ${frame.height}`;
 
-  const vbW = hideCallouts ? (fixedFrame ? fixedWidth : VIEW_W) : frame.width;
-  const vbH = hideCallouts ? VIEW_H : frame.height;
+  const baseMinX = hideCallouts ? (fixedFrame ? fixedMinX : 0) : frame.minX;
+  const baseMinY = hideCallouts ? 0 : frame.minY;
+  const baseW = hideCallouts ? (fixedFrame ? fixedWidth : VIEW_W) : frame.width;
+  const baseH = hideCallouts ? VIEW_H : frame.height;
+
+  // The horizontal viewBox: the group below draws `rotate(-90)`, which maps (x, y) -> (y, -x),
+  // so the canonical y-extent becomes the rotated x-extent and the canonical x-extent becomes
+  // the rotated y-extent, negated. HORIZONTAL_END_PAD widens the x-extent on both ends so a
+  // pinned chip centred at either extreme station is not clipped (see its own comment above).
+  const horizW = baseH + 2 * HORIZONTAL_END_PAD;
+  const horizH = baseW;
+  const horizontalViewBox =
+    `${(baseMinY - HORIZONTAL_END_PAD).toFixed(2)} ${(-(baseMinX + baseW)).toFixed(2)}` +
+    ` ${horizW.toFixed(2)} ${horizH.toFixed(2)}`;
+
+  const viewBox = horizontal ? horizontalViewBox : verticalViewBox;
+  // In vertical, vbW/vbH are the same numbers they always were, so useSvgFitScale returns the
+  // same scale and every pinned callout is sized identically to before. useSvgFitScale MUST
+  // receive these swapped dimensions in horizontal — passing the canonical (unswapped) pair
+  // would size every pinned callout against the wrong axis.
+  const vbW = horizontal ? horizW : baseW;
+  const vbH = horizontal ? horizH : baseH;
   const fitScale = useSvgFitScale(svgRef, vbW, vbH);
   const calloutSizes = pinCalloutText ? pinnedCalloutSizes(fitScale) : UNPINNED_CALLOUT_SIZES;
   /** User units per CSS pixel — what the px-denominated handle sizes above are drawn in. */
@@ -365,6 +426,7 @@ export function OutlineViewer({
 
   return (
     <CalloutSizeProvider value={calloutSizes}>
+    <ViewerOrientationProvider value={orientation}>
     <svg
       ref={svgRef}
       viewBox={viewBox}
@@ -381,6 +443,13 @@ export function OutlineViewer({
       onPointerUp={onOutlineDrag ? handleDragEnd : undefined}
       onPointerCancel={onOutlineDrag ? handleDragEnd : undefined}
     >
+      {/* Every child below is drawn in the canonical (vertical) coordinate space, untouched —
+          the rotation lives on this ONE group, so every projector (pxX, lenToY) and its ~40
+          call sites keep drawing the layout they always drew. React omits an `undefined`
+          attribute, so in vertical this is a plain pass-through container with no transform;
+          `app/globals.css` has no `svg` descendant selectors, so an extra group cannot change
+          what any existing consumer draws either way. */}
+      <g ref={contentRef} transform={horizontal ? "rotate(-90)" : undefined}>
       <path d={outlinePath} fill="var(--outline-board-fill)" stroke="var(--outline-ink)" strokeWidth={2} />
 
       {(!hideCallouts || showStationLines) && (
@@ -561,7 +630,9 @@ export function OutlineViewer({
           </>
         </>
       )}
+      </g>
     </svg>
+    </ViewerOrientationProvider>
     </CalloutSizeProvider>
   );
 }

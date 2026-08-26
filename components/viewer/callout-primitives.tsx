@@ -151,6 +151,25 @@ export function useCalloutSizes(): CalloutSizes {
   return useContext(CalloutSizeContext);
 }
 
+/**
+ * Which way a viewer's board is currently drawn — vertical (nose up, the canonical layout) or
+ * horizontal (nose left, `outline-viewer.tsx`'s Template-only rotation).
+ *
+ * A context, not a prop, for the same reason `CalloutSizeContext` is: `CalloutChip` and
+ * `OutputRail` need to know the rotation to counter-rotate their own text, but nothing about
+ * their own call signature should carry it — a per-call orientation argument is one more thing
+ * every one of the ~dozen call sites in `outline-viewer.tsx` could get wrong or forget. The
+ * default is `"vertical"`, the canonical orientation, so a consumer that never renders inside a
+ * `ViewerOrientationProvider` (the fin viewer, today) gets exactly what it got before.
+ */
+export type ViewerOrientation = "vertical" | "horizontal";
+
+const ViewerOrientationContext = createContext<ViewerOrientation>("vertical");
+export const ViewerOrientationProvider = ViewerOrientationContext.Provider;
+export function useViewerOrientation(): ViewerOrientation {
+  return useContext(ViewerOrientationContext);
+}
+
 /** Widened viewBox (sketch 004) that gives the two gutters room outside the board's own
  * unchanged 340x620 coordinate space — the board's own scale/centreline math never changes. */
 /* Gutters are wider than the chip strictly needs because a pinned chip grows in user units as

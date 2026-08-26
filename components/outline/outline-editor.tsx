@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
+import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import { mmToInches } from "@/lib/geometry/units";
 import { OutlineControls } from "./outline-controls";
@@ -57,10 +58,50 @@ function buildPresetSource(spec: OutlineSpec): string {
   ].join("\n");
 }
 
+/**
+ * The Template screen's rotate-board glyph, lifted verbatim from
+ * `.planning/sketches/006-orientation-switch/index.html`'s `#rotateBtn`.
+ *
+ * Both orientations shown at once, the way a phone's "rotate screen" icon does it: an upright
+ * board, the same board on its side nose-left, and one arrow between them — clearer than a
+ * single tilted shape, and per D-05 it is the ONE glyph for both button states (only the
+ * `aria-label` changes). One planshape reused twice through `<use>`, at the SAME 0.62 scale, so
+ * it reads as one board being turned rather than two boards of different sizes; `strokeWidth` is
+ * 2.42 so the drawn weight lands at 1.5 after that shared scale. The gap between the two copies
+ * is what keeps it readable small — the sketch's proof sheet found the glyph gets tight below
+ * about 16px, which is why the button uses `size-5` (20px) rather than the settings gear's
+ * `size-4`.
+ */
+function RotateBoardIcon({ className }: { className?: string }) {
+  // SVG ids are document-global — a literal id would collide with another element's <use href>
+  // if this ever rendered twice on one page. useId gives a per-instance id; React's own id
+  // punctuation (colons) is stripped so it stays a valid URL fragment for the href below.
+  const glyphId = `shaper-board-glyph-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <defs>
+        <path
+          id={glyphId}
+          d="M12 3.3C11.0 6.2 9.88 9.5 9.85 12.6 9.82 15.6 10.4 18.2 11.1 20.3a0.95 0.95 0 0 0 1.8 0C13.6 18.2 14.18 15.6 14.15 12.6 14.12 9.5 13.0 6.2 12 3.3Z"
+        />
+      </defs>
+      <g stroke="currentColor" strokeLinejoin="round" fill="none" strokeWidth={2.42}>
+        <use href={`#${glyphId}`} transform="translate(17.2,12.5) scale(0.62) translate(-12,-12.3)" />
+        <use href={`#${glyphId}`} transform="translate(8.5,17) rotate(-90) scale(0.62) translate(-12,-12.3)" />
+      </g>
+      <path d="M14.5 6.5A8 8 0 0 0 4.5 11.8" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+      <path d="M4.29 13.89 3.06 11.66 5.94 11.94Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function OutlineEditor() {
   const { outline, updateOutline, outlineGeometry, finPlacement } = useDesign();
   const [showConstruction, setShowConstruction] = useState(false);
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
+  /** View state, like `showConstruction` — not design data, and deliberately not a stored
+   * preference (D-03), so a reload always comes back vertical. */
+  const [orientation, setOrientation] = useState<ViewerOrientation>("vertical");
 
   function handleCopyPreset() {
     const text = buildPresetSource(outline);
@@ -108,7 +149,33 @@ export function OutlineEditor() {
             the same panel and edge as Rails and Fins, which is what makes the four read as one
             application instead of four layouts. */}
         <TabbedPanel tabs={[{ id: "viewer" as const, label: "VIEWER" }]} active="viewer">
-        <div className="flex min-h-0 flex-1 items-stretch justify-center gap-6 p-3">
+        {/* `relative` makes this div — the viewer panel's own content area — the positioning
+            context for the rotate button below, per D-06: the button sits INSIDE the panel's
+            content, absolutely positioned over the drawing, not in a header row beside the
+            panel title (the mockup had it there and the founder explicitly corrected this) and
+            not inline with the VIEWER tab. `TabbedPanel` itself is untouched. */}
+        <div className="relative flex min-h-0 flex-1 items-stretch justify-center gap-6 p-3">
+          <button
+            type="button"
+            onClick={() => setOrientation((o) => (o === "vertical" ? "horizontal" : "vertical"))}
+            aria-label={
+              orientation === "vertical"
+                ? "Rotate the board to horizontal"
+                : "Rotate the board to vertical"
+            }
+            title="Rotate the board"
+            // SettingsMenu's icon-button treatment (components/settings-menu.tsx) — the app's
+            // existing precedent for an icon-only control. Ghost/unfilled, so the icon draws in
+            // currentColor and carries the muted-ink token, darkening to surf-ink on hover: this
+            // sidesteps the rule the codebase has been bitten by three times (see
+            // .planning/quick/260825-rmb-*/SUMMARY.md) — anything drawn ON the accent fill must
+            // take that fill's paired on- colour. If a fill is ever added here it must take
+            // text-surf-on-accent. The button is icon-only, so aria-label is its accessible name,
+            // and per D-05 the label is the only thing that ever changes between states.
+            className="absolute top-3 right-3 z-10 flex cursor-pointer items-center rounded-md p-1 text-surf-ink-muted transition-colors outline-none hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+          >
+            <RotateBoardIcon className="size-5" />
+          </button>
           <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center">
             <div className="relative flex min-h-0 w-full flex-1 justify-center">
               {/* A plain filled box — the drawing sizes itself inside it via preserveAspectRatio.
@@ -127,6 +194,7 @@ export function OutlineEditor() {
                   finMarks={finPlacement.marks}
                   hideFinMarks
                   pinCalloutText
+                  orientation={orientation}
                 />
               </div>
             </div>
