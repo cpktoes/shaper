@@ -155,7 +155,7 @@ export function OutlineEditor() {
             content, absolutely positioned over the drawing, not in a header row beside the
             panel title (the mockup had it there and the founder explicitly corrected this) and
             not inline with the VIEWER tab. `TabbedPanel` itself is untouched. */}
-        <div className="relative flex min-h-0 flex-1 items-stretch justify-center gap-6 p-3">
+        <div className="relative flex min-h-0 flex-1 items-stretch justify-center gap-6">
           <button
             type="button"
             onClick={() => setOrientation((o) => (o === "vertical" ? "horizontal" : "vertical"))}
@@ -180,7 +180,12 @@ export function OutlineEditor() {
             // the icon must take text-surf-on-accent. The button is icon-only, so aria-label is
             // its accessible name, and per D-05 the label is the only thing that ever changes
             // between states.
-            className="absolute top-3 right-3 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+            // top-0/right-0, not top-3/right-3: the card now supplies the 12px inset via
+            // TabbedPanel's default padding, so this div's corner already sits where the old
+            // offsets used to land. An absolute child offsets from its containing block's
+            // padding box, so re-adding an offset here would double the inset and shift the
+            // button — leave these at zero.
+            className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
           >
             <RotateBoardIcon className="size-6" />
           </button>

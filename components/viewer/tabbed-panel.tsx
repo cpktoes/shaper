@@ -26,6 +26,7 @@
  */
 
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 export interface PanelTab<T extends string> {
   id: T;
@@ -48,7 +49,12 @@ export function TabbedPanel<T extends string>({
    */
   onSelect?: (id: T) => void;
   children: ReactNode;
-  /** Extra classes for the inner content card — layout only; surface and edges are fixed here. */
+  /**
+   * Extra classes for the inner content card — layout only; surface and edges are fixed
+   * here. The card carries a default 12px inset (`p-3`); classes here merge through `cn`
+   * (tailwind-merge), so a caller's own padding deterministically overrides the default
+   * rather than depending on Tailwind's stylesheet order.
+   */
   panelClassName?: string;
 }) {
   const interactive = typeof onSelect === "function" && tabs.length > 1;
@@ -93,9 +99,11 @@ export function TabbedPanel<T extends string>({
             `--surf-line` edge says where the working surface starts, and this fainter,
             fully-rounded one says where the content sits inside it. `line-faint` is right here
             precisely because it should recede — it is a grouping hint, not a structural edge,
-            and it reads against `panel` rather than against the canvas. */}
+            and it reads against `panel` rather than against the canvas. The 12px inset (`p-3`)
+            lives here on purpose, so every screen and every tab gets one treatment from one
+            place instead of each call site arriving at it (or not) on its own. */}
         <div
-          className={`flex min-h-0 flex-1 flex-col rounded-lg border border-surf-line-faint bg-surf-panel ${panelClassName}`}
+          className={cn("flex min-h-0 flex-1 flex-col rounded-lg border border-surf-line-faint bg-surf-panel p-3", panelClassName)}
         >
           {children}
         </div>
