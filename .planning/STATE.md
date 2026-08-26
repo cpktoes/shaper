@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 2
 current_phase_name: Accounts & Saved Designs
 status: planning
-stopped_at: Design pivot complete and pushed; drag confirmed good by the founder
-last_updated: "2026-08-23T16:01:09.306Z"
-last_activity: 2026-08-22
-last_activity_desc: Accent construction lines and round drag targets (260822-was)
+stopped_at: "Completed quick task 260826-07b: TabbedPanel's 12px inset defaulted; human-check (visual measurement) still pending"
+last_updated: "2026-08-26T07:19:21.114Z"
+last_activity: 2026-08-24
+last_activity_desc: "Completed quick task 260824-i05: Reverted the colour palette to the currently published version"
 progress:
   total_phases: 1
   completed_phases: 1
@@ -93,6 +93,7 @@ Recent decisions affecting current work:
 - [Quick 260821-bt3b]: New bottomTuck3Derived result field (geometry layer) exposes the un-overridden bottomTuck3 value including the hardEdge rule, so rail-controls.tsx's slider max can track it instead of recomputing symmetrical/hardEdge branching in the component
 - [Quick 260821-rss]: Rail Viewer plots solve for one shared measured WIDTH (not height) since every open section's viewBox width is identical by construction -- rendering all plots at that one width forces one shared scale and aligned x-axes, superseding 260821-rpf's proportional-height flex-grow approach which let scale/left-edge drift between plots
 - [Quick 260822-vcs]: Outline/fin viewers rebuilt on the callout-system grammar (sketches 001-004): shared components/viewer/callout-primitives.tsx module with rail/gutter constants (not per-call arguments), SVG <text> throughout (no more absolutely-positioned HTML overlay), hideCallouts keeps the legacy tight viewBox so preset-card thumbnails stay pixel-identical; fin mark's own lateralKind dash preserved (keys result.legend's Front/Rear/Center grouping) rather than collapsed with the callout leader-line dashes
+- [Phase ?]: 260826-07b: TabbedPanel's inner content card now defaults to p-3, composed through cn so panelClassName overrides deterministically; Volume/Template's redundant copies removed, Rails/Fins pt-1 nudges retired, Template rotate button rebased to top-0/right-0
 
 ### Pending Todos
 
@@ -109,7 +110,6 @@ Recent decisions affecting current work:
 - [minor/ui] Verify and refit the Summary print sheet after the callout-system rebuild — `.planning/todos/pending/2026-08-22-summary-print-after-callout-system.md`
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
 - [minor/ui] Horizontal board view (nose left) as an option on the Template screen — `.planning/todos/pending/2026-08-23-horizontal-board-view-option.md`
-
 
 ### Blockers/Concerns
 
@@ -152,6 +152,7 @@ None yet.
 | 260823-tw9 | Order form panels no longer scroll: rail data table row type 2cqw to 1.75cqw plus leading-tight on both tables, containers switched from overflow-auto to hidden so regressions clip (which the audit catches) instead of silently scrolling. Testing the worst-case quad+centre fin setup found the fin section list was losing the 5th/Center Fin entirely — CSS columns overflow sideways in a fixed-height box, 697px off-sheet — fixed by a grid whose column count follows the section count | 2026-08-23 | c84496e | [260823-tw9-no-scrolling-order-form-windows](./quick/260823-tw9-no-scrolling-order-form-windows/) |
 | 260823-ux2 | Dev-only Copy preset values button pinned to a real sidebar footer across all three editors: each aside became a flex column with a scrolling controls region plus a flex-none footer. It was never pinned anywhere — outline and rails only looked right because their controls happened to fit, while the longer fins controls pushed it past the aside bottom | 2026-08-23 | f7c6af6 | [260823-ux2-pin-the-preset-button-to-the-sidebar](./quick/260823-ux2-pin-the-preset-button-to-the-sidebar/) |
 | 260824-i05 | Revert the colour palette to the currently published version: hard-reset main from 7665f23 to origin/main (12b6023), discarding the five unpushed five-colour-palette commits entirely. Production deploys from every push to main and the work was never pushed, so the live site had never left the old palette. lib/design/contrast.ts and palette.test.ts went with it by explicit decision, so the WCAG AA bar is no longer machine-checkable | 2026-08-24 | 12b6023 (reset target) | [260824-i05-revert-the-colour-palette-to-the-current](./quick/260824-i05-revert-the-colour-palette-to-the-current/) |
+| 34 | TabbedPanel's inner content card gains a default 12px inset composed through cn; Volume and Template's redundant padding copies removed, Rails/Fins pt-1 nudges retired (both screens now get the inset for free), Template rotate button rebased top-3/right-3 -> top-0/right-0 [260826-07b-tab-panel-content-indent] | 2026-08-26 | 4c4b17a | — |
 
 ## Deferred Items
 
@@ -198,6 +199,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-26T03:20:00.000Z
-Stopped at: Order form's --order-form-shade repointed from the accent-at-7% mix to var(--color-surf-board-fill); comment rewritten with the measured four-theme contrast table, the 4.5:1 floor, the @media print consequence, and the no-literals lesson from 260825-rqm. tsc/lint/test/build all pass. Four-theme visual check plus print-preview still pending. Not pushed.
+Last session: 2026-08-26T07:19:15.691Z
+Stopped at: Completed quick task 260826-07b: TabbedPanel's 12px inset defaulted; human-check (visual measurement) still pending
 Resume file: None
