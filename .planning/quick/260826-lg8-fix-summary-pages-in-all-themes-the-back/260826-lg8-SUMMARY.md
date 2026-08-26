@@ -264,3 +264,71 @@ Re-measured with the print rules forced on screen, all four themes identical:
 `npm test` 670 passed · `npm run lint` 0 errors · `npm run build` succeeds.
 
 **Final commit list: `52af8d6`, `a3b81cb`, `ffeb397`, `72a0d20`, `3f19277`.**
+
+---
+
+## Follow-up 2 — the printed spines follow the chosen theme (`e3da1be`)
+
+Founder: *"spine print color should come from their theme. Right now it's all the light green
+only."* Correct — the previous commit named `--ramp-daylight-fill`, so every theme printed
+Daylight's sage.
+
+### Why the literal reading could not be taken
+
+Printing each theme's *own* `fill` ramp — the value the spines wear on screen — was the obvious
+implementation and is wrong. Two of the four are dark:
+
+| theme | on-screen spine (`--ramp-<id>-fill`) |
+|---|---|
+| Daylight | `#d9f2ed` |
+| Chalk | `#d8ebf2` |
+| Slate | **`#1a2732`** |
+| Phosphor | **`#142414`** |
+
+Print forces the lettering to Daylight ink `#1f2a3b`. Slate and Phosphor would therefore have
+printed near-black blocks carrying near-black lettering — unreadable, and precisely the
+cartridge-burning the print path exists to prevent. It also contradicts the founder's own
+standing instruction from the original task: *"should never be black or use up a ton of ink."*
+
+Both instructions reconcile in one way: keep the theme's **identity**, drop its **darkness**.
+
+### What was built
+
+A new contract token, `--surf-print-shade`, assigned in all six blocks that assign the contract
+(bare `:root`, the `prefers-color-scheme: dark` block, and the four `:root.theme-<id>` blocks) as
+that theme's own accent at 20% on white:
+
+```css
+--surf-print-shade: color-mix(in srgb, var(--ramp-<id>-accent) 20%, #fff);
+```
+
+**It is deliberately absent from the `@media print` block's pin list, and that absence is the
+mechanism.** Every other `--surf-*` token is pinned to Daylight there so paper stays white; this
+one is the single thing allowed through, so the chosen theme reaches paper. The print block now
+carries a comment saying so, since an absence is otherwise indistinguishable from an oversight.
+
+Derived rather than four frozen literals so a re-picked accent carries onto paper with it —
+freezing values is how a palette and its print path drift apart, which this repo has form for.
+
+Inserted by matching each block's own `--surf-board-fill: var(--ramp-<id>-fill)` line and reading
+the ramp id back out of it, rather than by mapping block to ramp by hand — the near-identical
+blocks are exactly where the 260824-pdg substring bug came from. Verified per block afterwards:
+each names its own ramp.
+
+### Measured, print rules forced on screen
+
+| theme | spine on paper | vs paper | lettering on it |
+|---|---|---|---|
+| Daylight | `#e8f3f1` | 1.13:1 | 12.75:1 |
+| Chalk | `#d6e9f2` | 1.25:1 | 11.56:1 |
+| Slate | `#d1dce2` | 1.40:1 | 10.36:1 |
+| Phosphor | `#d5edd5` | 1.32:1 | 11.64:1 |
+
+All four remain tints rather than blocks, and lay down cyan or green rather than black on a
+colour printer. Worst lettering case is more than double the 4.5:1 floor. Sheet, board interior
+and the SHAPER USE ONLY box measure `rgb(255,255,255)` in all four. **Nothing on screen changed** —
+the spines still wear `--order-form-shade` there.
+
+`npm test` 670 passed · `npm run lint` 0 errors · `npm run build` succeeds.
+
+**Final commit list: `52af8d6`, `a3b81cb`, `ffeb397`, `72a0d20`, `3f19277`, `e3da1be`.**
