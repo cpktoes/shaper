@@ -49,9 +49,10 @@
 /*
  * The sheet's shaded panels — logo block, spine labels, the shaper's sub-box.
  *
- * The reduced accent hue rather than a grey wash, mixed the same way globals.css builds
- * `--outline-board-fill`, so the form borrows this app's existing vocabulary for "accent at low
- * strength" instead of inventing a second one.
+ * The reduced accent hue rather than a grey wash, so the form borrows this app's existing
+ * vocabulary for "accent at low strength" instead of inventing a second one. (It used to say it
+ * was mixed "the same way globals.css builds --outline-board-fill"; that is no longer true —
+ * the board fill became a literal per-theme token, --surf-board-fill.)
  *
  * The percentage is bounded by contrast, not by taste. Any tint darkens the ground under the muted
  * text sitting on it, and that is precisely what put the logo block's placeholder line at 4.25:1 —
@@ -59,7 +60,12 @@
  * raising it will not.
  */
 [data-order-form-root] {
-  --order-form-shade: color-mix(in srgb, var(--color-surf-accent) 7%, white);
+  /* Mixed into the sheet's own surface, NOT into a hardcoded `white`. That literal was the one
+     value here that could not follow a theme: at 7% over white it produced #f0f9f0 on Phosphor
+     and #f0f5f8 on Slate — near-white blocks on a near-black form. Same mistake, and the same
+     fix, as --outline-board-fill; this one survived the sweep because it lives in a
+     route-scoped stylesheet rather than in globals.css. */
+  --order-form-shade: color-mix(in srgb, var(--color-surf-accent) 7%, var(--color-surf-panel));
 }
 
 /*
