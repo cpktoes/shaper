@@ -80,7 +80,8 @@
 :root {
   /* -- Daylight (light) --------------------------------------------------
      Warm paper with a sage accent. White chrome, but the canvas and wells carry a warm grey
-     so the drawing sits on paper rather than on the page. Default light. */
+     so the drawing sits on paper rather than on the page. `line-faint` now equals `line`, so
+     hairline dividers draw at the weight of a control edge instead of receding. Default light. */
   --ramp-daylight-ground: #ffffff;
   --ramp-daylight-sidebar: #ffffff;
   --ramp-daylight-canvas: #dfdcd3;
@@ -100,8 +101,10 @@
   --ramp-daylight-fill: #d9f2ed;
 
   /* -- Chalk (light) --------------------------------------------------
-     The original crisp-white scheme: matte black ink, bright cyan selection fills. Colder and
-     higher-contrast than Daylight, and the only light theme with a flat white canvas. */
+     Daylight's paper with an ocean-blue accent standing in for the sage. The two light themes
+     now share all thirteen of their neutrals — ground, canvas, ink, lines and warning — so
+     only the accent, the text on it, its ink, and the board wash differ. The choice between
+     them is which accent sits in front of you all day, not how light the page reads. */
   --ramp-chalk-ground: #ffffff;
   --ramp-chalk-sidebar: #ffffff;
   --ramp-chalk-canvas: #dfdcd3;
@@ -121,8 +124,10 @@
   --ramp-chalk-fill: #d8ebf2;
 
   /* -- Slate (dark) --------------------------------------------------
-     Chalk on a cool matte black — the conventional dark, and the only one that keeps a
-     separate warning hue. Default dark. */
+     The conventional dark: near-white text on a cool near-black, and still the only theme
+     that keeps a separate warning hue. Panels now sit flat on the ground while the drawing
+     canvas is the lifted surface — the reverse of the earlier arrangement, so the board
+     floats and the cards around it recede. Default dark. */
   --ramp-slate-ground: #12141a;
   --ramp-slate-sidebar: #12141a;
   --ramp-slate-canvas: #1a1d25;

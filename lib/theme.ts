@@ -30,8 +30,8 @@ export interface ThemeDefinition {
 /** Menu order. Grouped by mode when rendered. */
 export const THEMES: readonly ThemeDefinition[] = [
   { id: "daylight", label: "Daylight", description: "Warm paper, sage accent", mode: "light" },
-  { id: "chalk", label: "Chalk", description: "Crisp white, cyan accent", mode: "light" },
-  { id: "slate", label: "Slate", description: "Chalk on matte black", mode: "dark" },
+  { id: "chalk", label: "Chalk", description: "Warm paper, blue accent", mode: "light" },
+  { id: "slate", label: "Slate", description: "Cool near-black, blue accent", mode: "dark" },
   { id: "phosphor", label: "Phosphor", description: "Monochrome green terminal", mode: "dark" },
 ];
 
