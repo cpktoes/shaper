@@ -49,23 +49,37 @@
 /*
  * The sheet's shaded panels — logo block, spine labels, the shaper's sub-box.
  *
- * The reduced accent hue rather than a grey wash, so the form borrows this app's existing
- * vocabulary for "accent at low strength" instead of inventing a second one. (It used to say it
- * was mixed "the same way globals.css builds --outline-board-fill"; that is no longer true —
- * the board fill became a literal per-theme token, --surf-board-fill.)
+ * `--surf-board-fill` is this app's existing token for "the interior wash of a board", already
+ * calibrated per theme, so the sheet's panels now theme the same way the board drawings do. It
+ * replaced the accent at 7% over the sheet's own surface, which computed to roughly `#f7fbfa` in
+ * Daylight — present in the stylesheet but not on the page.
  *
- * The percentage is bounded by contrast, not by taste. Any tint darkens the ground under the muted
- * text sitting on it, and that is precisely what put the logo block's placeholder line at 4.25:1 —
- * under AA — when it was a grey wash. 7% keeps `--color-surf-ink-muted` clear of 4.5:1 on these panels;
- * raising it will not.
+ * The strength here is bounded by contrast, not by taste: a grey wash once put the logo block's
+ * placeholder line at 4.25:1, under AA. Anyone changing this value has to measure first, not
+ * guess. Measured against the board fill in all four themes, ink and `--color-surf-ink-muted`:
+ *
+ *   theme      fill      ink on fill   muted on fill (was, at the old 7% shade)
+ *   Daylight   #d9f2ed   12.30         5.35 (6.02)
+ *   Chalk      #d8ebf2   11.76         5.11 (5.81)
+ *   Slate      #1a2732   13.81         6.36 (7.45)
+ *   Phosphor   #142414   7.84          5.11 (5.96)
+ *
+ * Every muted figure clears the 4.5:1 AA floor; the tightest is 5.11:1, in Chalk and Phosphor.
+ * That spends roughly 0.7 of the old shade's headroom — it does not spend all of it.
+ *
+ * `globals.css` pins `--surf-board-fill` to the daylight ground inside `@media print`, so the
+ * board prints hollow — meaning this token resolves to plain white on paper too, and these
+ * panels print unfilled. Near-no-op: they were already printing at roughly `#f7fbfa`,
+ * indistinguishable from white on a consumer printer, and each panel keeps its own
+ * `border-surf-ink` outline. The printed sheet is materially unchanged.
+ *
+ * This value must be built from a theme token, never a literal — a literal here cannot follow a
+ * theme. That was the 260825-rqm bug (`--outline-board-fill` at 7% over a hardcoded white gave
+ * near-white blocks on Phosphor and Slate), and it hid in this exact declaration once before,
+ * because a route-scoped stylesheet like this one escapes a sweep of `globals.css`.
  */
 [data-order-form-root] {
-  /* Mixed into the sheet's own surface, NOT into a hardcoded `white`. That literal was the one
-     value here that could not follow a theme: at 7% over white it produced #f0f9f0 on Phosphor
-     and #f0f5f8 on Slate — near-white blocks on a near-black form. Same mistake, and the same
-     fix, as --outline-board-fill; this one survived the sweep because it lives in a
-     route-scoped stylesheet rather than in globals.css. */
-  --order-form-shade: color-mix(in srgb, var(--color-surf-accent) 7%, var(--color-surf-panel));
+  --order-form-shade: var(--color-surf-board-fill);
 }
 
 /*
