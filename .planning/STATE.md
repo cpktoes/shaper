@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 Phase: 2 — Accounts & Saved Designs
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-26 - Completed quick task 260826-ist: Landing page thumbnail gains the faint edge that matches the tabs
+Last activity: 2026-08-26 - Completed quick task 260826-j97: Landing cards gain the outer line, giving the two nested edges the founder asked for
 
 Progress: [██████████] 100%
 
@@ -156,6 +156,7 @@ None yet.
 | 35 | Write the root CLAUDE.md: purpose, stack, commands, geometry-in-lib and units rules | 2026-08-26 | 7b88a86 | — |
 | 260826-icz | Home page surfaces re-layered onto the theme contract: the page background moved off the sand canvas onto the app-chrome ground (the Colour Bench calls it "Window"), the preset and Continue cards off shadcn's bg-card onto canvas, and the board thumbnail well off --outline-page-bg onto panel. All four themes follow automatically since these are contract tokens; --outline-page-bg itself was left pointing at canvas because the /design SVG viewer still consumes it. Ground and panel are the same value in every ramp, so the result reads as two alternating tones (page, lifted card, page again inside the well), matching how the design screens already layer | 2026-08-26 | abad7b7 | [260826-icz-home-page-surfaces-page-background-to-wi](./quick/260826-icz-home-page-surfaces-page-background-to-wi/) |
 | 260826-ist | Landing page board thumbnail gains the faint hairline edge, matching the inner content card inside the tabbed panel on every design screen: `border border-surf-line-faint` on a well that was already `rounded-lg bg-surf-panel`, so the three computed values (1px solid line-faint, panel fill, 10px radius) now match TabbedPanel byte for byte. box-sizing: border-box means nothing moved — well width, 340/620 aspect and the grid all measured unchanged; the OutlineViewer SVG is absolute inset-0 so the board now draws 1px inside the line rather than under it. Verified in all four themes: 4.13:1 Daylight/Chalk, 3.80:1 Phosphor, 1.56:1 Slate. Noted for later: --surf-line and --surf-line-faint are the same value in every theme except Slate | 2026-08-26 | 4c614cb | [260826-ist-landing-page-thumbnail-well-gains-the-fa](./quick/260826-ist-landing-page-thumbnail-well-gains-the-fa/) |
+| 260826-j97 | Landing page preset and Continue cards gain a resting `border-surf-line` edge, matching the tabbed panel outer edge, after the founder sent a crop of a design-screen panel corner and chose "just add the outer line" over copying the panel fills. The near-invisible `ring-1 ring-foreground/10` (~1.1-1.3:1) was dropped rather than kept alongside it — two edges a pixel apart read smudged, and the panel this matches carries no ring. Measured `boxShadow: none` at rest in all four themes; hover and focus-visible still paint the accent border plus a 2px accent ring. Resting edge clears 3:1 everywhere: 3.01 Daylight/Chalk, 3.39 Slate, 3.07 Phosphor. Radius left at `rounded-xl` (14px) — not asked for | 2026-08-26 | 8e8cd44 | [260826-j97-landing-page-cards-gain-the-structural-o](./quick/260826-j97-landing-page-cards-gain-the-structural-o/) |
 
 ## Deferred Items
 
