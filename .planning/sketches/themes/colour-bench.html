@@ -165,7 +165,10 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .s-field{display:flex;flex-direction:column;gap:6px}
 .s-field .lbl{font-size:.75rem;color:var(--surf-ink)}
 .s-field .ends{display:flex;justify-content:space-between;font-size:.6rem;color:var(--surf-ink-muted)}
-.s-track{position:relative;height:6px;border:1px solid var(--surf-ink);border-radius:99px;background:var(--surf-ground)}
+/* The track is `bg-muted` in components/ui/slider.tsx, which the shadcn bridge maps to
+   --surf-well. It is NOT the window ground — that mismatch made the bench show a channel
+   the app does not draw, and hid that `well` is what defines a slider's extent. */
+.s-track{position:relative;height:6px;border:1px solid var(--surf-ink);border-radius:99px;background:var(--surf-well)}
 .s-range{position:absolute;inset:-1px auto -1px -1px;width:62%;background:var(--surf-accent);border-radius:99px}
 .s-thumb{position:absolute;top:50%;left:62%;width:13px;height:13px;margin:-7px 0 0 -7px;border-radius:50%;border:1px solid var(--surf-ink);background:var(--surf-accent)}
 
@@ -178,7 +181,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .s-well .v{font-size:.8rem;color:var(--surf-ink);font-variant-numeric:tabular-nums}
 .s-well .u{font-size:.66rem;color:var(--surf-ink-muted)}
 .s-warn{font-size:.7rem;color:var(--surf-warning-ink);display:flex;align-items:center;gap:6px}
-.s-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid var(--surf-ink);border-radius:99px;background:var(--surf-accent);color:var(--surf-on-accent);font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.s-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid var(--surf-on-accent);border-radius:99px;background:var(--surf-accent);color:var(--surf-on-accent);font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
 .s-chip.warn{background:var(--surf-warning);color:var(--surf-on-warning)}
 
 /* Shaper tab strip — the real markup: active tab is a GROUND fill with a hairline
@@ -196,11 +199,11 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .s-icons{display:flex;gap:7px;flex-wrap:wrap}
 .s-iconbtn{
   display:flex;flex-direction:column;align-items:center;gap:4px;min-width:54px;padding:8px 6px;
-  border-radius:7px;border:1px solid color-mix(in srgb,var(--surf-ink-muted) 30%,transparent);
-  background:var(--surf-ground);color:var(--surf-ink);
+  border-radius:7px;border:1px solid var(--surf-line);
+  background:var(--surf-sidebar);color:var(--surf-ink);
   font-family:Inter,sans-serif;font-size:.53rem;font-weight:500;
 }
-.s-iconbtn.is-on{background:var(--surf-accent);border-color:var(--surf-accent);color:var(--surf-on-accent)}
+.s-iconbtn.is-on{background:var(--surf-accent);border-color:var(--surf-on-accent);color:var(--surf-on-accent)}
 .s-iconbtn svg{width:22px;height:16px}
 .s-legend{display:flex;flex-direction:column;gap:5px;font-family:Inter,sans-serif;font-size:.6rem;color:var(--surf-ink-muted)}
 .s-legend span{display:flex;align-items:center;gap:7px}
