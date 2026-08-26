@@ -184,9 +184,10 @@ Items acknowledged and carried forward from previous milestone close:
 | 260824-uyz | Save the colour bench source to .planning/sketches/themes/ with a README recording the published artifact URL, how to republish to it, and the hand-kept PUBLISHED/globals.css drift coupling that no test can cover. Flags default.css as stale | 2026-08-24 | (this commit) | [260824-uyz-save-the-colour-bench-into-the-repo](./quick/260824-uyz-save-the-colour-bench-into-the-repo/) |
 | 260825-gou | Apply the founder's updated palette: Daylight to warm paper + sage (resolving its two latent well pairings), Phosphor to a deeper fully-monochrome terminal, default dark Phosphor -> Slate. All four themes now clear every pairing, so the WELL CAVEAT is gone. New tests read globals.css and assert the defaults/blocks agree with the registry | 2026-08-25 | 8bc1a96 | [260825-gou-updated-four-theme-palette](./quick/260825-gou-updated-four-theme-palette/) |
 | 260825-h06 | Board fill becomes a literal colour token (--surf-board-fill) instead of a color-mix strength; tab strips gain the bordered panel their border-b-0 always implied but never had, fixing canvas/tabs/cards reading as one area in Phosphor; bench rail gets its own scroll container | 2026-08-25 | 0b1a779 | [260825-h06-board-fill-colour-bench-fidelity-scroll](./quick/260825-h06-board-fill-colour-bench-fidelity-scroll/) |
+| 260825-pkq | Extract components/viewer/tabbed-panel.tsx and use it on all four design screens, so Template and Volume gain the tab+panel treatment; panel edge moves from line-faint (1.22:1 on Daylight's canvas, invisible) to line (3.01:1); canvas frame thinned; bench hex field and colour picker now drive each other | 2026-08-25 | 6971cdb | [260825-pkq-shared-tabbedpanel-across-design-screens](./quick/260825-pkq-shared-tabbedpanel-across-design-screens/) |
 
 ## Session Continuity
 
 Last session: 2026-08-24T22:33:31.225Z
-Stopped at: Board fill is a colour token; tabs open onto a real bordered panel; bench rail scrolls independently. Phosphor's panel==ground means cards don't separate — a palette choice, not a bug. ~32 commits unpushed. Units toggle still deferred
+Stopped at: All four design screens share one TabbedPanel with a visible edge. Phosphor's panel==ground still means cards don't separate — a palette choice. ~35 commits unpushed. Units toggle still deferred
 Resume file: None
