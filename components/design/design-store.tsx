@@ -16,6 +16,7 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from "re
 import { DEFAULT_BOARD_SPEC, type OutlineSpec, type Point2D } from "@/lib/geometry/board";
 import { buildOutline, type OutlineGeometry } from "@/lib/geometry/outline";
 import type { BoardPreset } from "@/lib/geometry/presets";
+import { deriveEffectiveVolume, deriveRailValues, deriveTemplateValues } from "@/lib/geometry/design";
 import {
   DEFAULT_RAIL_BAND_SPEC,
   computeRailBands,
@@ -40,6 +41,7 @@ import {
   type VolumeTemplateValues,
 } from "@/lib/geometry/volume";
 import { inchesToMm, mm } from "@/lib/geometry/units";
+import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 
 interface DesignState {
   outline: OutlineSpec;
@@ -47,14 +49,20 @@ interface DesignState {
   fins: FinPlacementSpec;
   volume: VolumeSpec;
   finsImportTemplate: boolean;
-  /** The first free-text field in the design — the Summary screen's Board Name box. In-memory
-   * only, like every other value here: it's gone on reload, exactly as the rest of the design is.
-   * Phase 2's named-model saving is where any of this becomes durable. */
+  /** The first free-text field in the design — the Summary screen's Board Name box. Still
+   * in-memory only until a Save writes it out: an unsaved board is gone on reload exactly as
+   * before, but once `modelId` is set this value round-trips through `designSnapshotFields` on
+   * every save and comes back from `applyModel` on every reopen. */
   boardName: string;
   /** Which fin box system the board is glassed for (FCS II, Futures, …). An ordering/glassing
    * choice, not a placement input — no calculated number depends on it — so it sits here as a
    * plain stored value rather than inside `fins`. Read only by the summary's order form. */
   finSystem: FinSystem;
+  /** The row in Postgres a Save writes over (D-09) — null means this board has never been
+   * saved. Set by `setModelId` after a successful `saveModel`, and by `applyModel` when a rack
+   * card is opened. This is session bookkeeping, not board design, so it is deliberately absent
+   * from `designSnapshotFields` — a save never stores a reference to its own row. */
+  modelId: string | null;
   /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,
    * `updateRailSection`, `toggleTailHardEdge`, `updateFins`, `updateVolume`,
    * `setFinsImportTemplate`, `setBoardName` or `setFinSystem` — never derived by comparing state against its
@@ -71,6 +79,7 @@ const DEFAULT_DESIGN_STATE: DesignState = {
   finsImportTemplate: true,
   boardName: "",
   finSystem: "fcs2",
+  modelId: null,
   boardStarted: false,
 };
 
@@ -88,10 +97,15 @@ interface DesignContextValue {
   finsImportTemplate: boolean;
   boardName: string;
   finSystem: FinSystem;
+  modelId: string | null;
   /** True once a board has been applied or edited this session — gates the setup screen's
    * replace-board confirm dialog (D-07). See `DesignState.boardStarted`'s doc comment for why
    * this is a flag set on write, not a derived default-comparison. */
   hasBoardInProgress: boolean;
+  /** The subset of state a snapshot holds (D-11) — outline, rails, fins, volume,
+   * finsImportTemplate, boardName, finSystem — assembled once here so a caller building a save
+   * never has to remember the field list by hand or risk silently dropping one. */
+  designSnapshotFields: DesignSnapshotFields;
 
   updateOutline: (patch: Partial<OutlineSpec>) => void;
   /** Applies a board-type preset (components/setup/setup-screen.tsx) by replacing outline, rails
@@ -107,6 +121,7 @@ interface DesignContextValue {
   setFinsImportTemplate: (next: boolean) => void;
   setBoardName: (next: string) => void;
   setFinSystem: (next: FinSystem) => void;
+  setModelId: (next: string | null) => void;
   /** Toggling off also forces `importRailThickness` off and copies the currently effective
    * length/width into the stored manual fields; toggling on needs no copy (the derived override
    * takes over). Ported from Volume.dc.html's `onToggleImportTemplateDimensions`. */
@@ -183,31 +198,25 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const setFinSystem = (next: FinSystem) =>
     setState((prev) => ({ ...prev, finSystem: next, boardStarted: true }));
 
+  // Not a design-mutating action — pointing the store at a different (or no) saved row doesn't
+  // change the board itself, so this deliberately does NOT set boardStarted.
+  const setModelId = (next: string | null) => setState((prev) => ({ ...prev, modelId: next }));
+
   const outlineGeometry = useMemo(() => buildOutline(state.outline), [state.outline]);
   const railBands = useMemo(() => computeRailBands(state.rails), [state.rails]);
 
   const templateValues: VolumeTemplateValues = useMemo(
-    () => ({
-      area: outlineGeometry.area,
-      length: state.outline.length,
-      widePointWidth: state.outline.widePointWidth,
-      noseWidthAt12: outlineGeometry.noseWidthAt12in,
-      tailWidthAt12: outlineGeometry.tailWidthAt12in,
-    }),
+    () => deriveTemplateValues(state.outline, outlineGeometry),
+    // Deliberately narrower than "state.outline" (eslint-disable below): deriveTemplateValues
+    // only reads outline.length and outline.widePointWidth, and this dependency array is
+    // unchanged from before the lib/geometry/design.ts extraction — widening it to the whole
+    // outline object would recompute this memo on every unrelated outline edit (nose angle,
+    // tail shape, ...), which the extraction must not change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [outlineGeometry, state.outline.length, state.outline.widePointWidth],
   );
 
-  const railValues: VolumeRailValues = useMemo(
-    () => ({
-      noseThickness: railBands.nose.boardThickness,
-      centerThickness: railBands.center.boardThickness,
-      tailThickness: railBands.tail.boardThickness,
-      noseProfile: railBands.nose.profile,
-      centerProfile: railBands.center.profile,
-      tailProfile: railBands.tail.profile,
-    }),
-    [railBands],
-  );
+  const railValues: VolumeRailValues = useMemo(() => deriveRailValues(railBands), [railBands]);
 
   // OutlineSpec's TailShape and FinPlacementSpec's FinTailShape are kept structurally aligned on
   // purpose (the same five kind names), so this mapping is a direct assignment rather than a
@@ -250,18 +259,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   // Derived-value equivalent of the prototype's syncFromTemplate (Volume.dc.html lines 235-242):
   // produces the same observable values without an effect that writes back into state.
-  const effectiveVolume: VolumeSpec = useMemo(() => {
-    if (!state.volume.importTemplateDimensions) return state.volume;
-    const centerThickness = state.volume.importRailThickness
-      ? railValues.centerThickness
-      : state.volume.centerThickness;
-    return {
-      ...state.volume,
-      length: templateValues.length,
-      width: templateValues.widePointWidth,
-      centerThickness,
-    };
-  }, [state.volume, templateValues, railValues]);
+  const effectiveVolume: VolumeSpec = useMemo(
+    () => deriveEffectiveVolume(state.volume, templateValues, railValues),
+    [state.volume, templateValues, railValues],
+  );
 
   const volumeResult = useMemo(
     () => computeVolume(effectiveVolume, templateValues, railValues),
@@ -317,6 +318,19 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const designSnapshotFields: DesignSnapshotFields = useMemo(
+    () => ({
+      outline: state.outline,
+      rails: state.rails,
+      fins: state.fins,
+      volume: state.volume,
+      finsImportTemplate: state.finsImportTemplate,
+      boardName: state.boardName,
+      finSystem: state.finSystem,
+    }),
+    [state.outline, state.rails, state.fins, state.volume, state.finsImportTemplate, state.boardName, state.finSystem],
+  );
+
   const value: DesignContextValue = {
     outline: state.outline,
     rails: state.rails,
@@ -325,7 +339,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     finsImportTemplate: state.finsImportTemplate,
     boardName: state.boardName,
     finSystem: state.finSystem,
+    modelId: state.modelId,
     hasBoardInProgress: state.boardStarted,
+    designSnapshotFields,
     updateOutline,
     applyPreset,
     updateRailSection,
@@ -335,6 +351,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setFinsImportTemplate,
     setBoardName,
     setFinSystem,
+    setModelId,
     toggleImportTemplateDimensions,
     toggleImportRailThickness,
     outlineGeometry,
