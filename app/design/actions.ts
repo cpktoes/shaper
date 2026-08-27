@@ -68,3 +68,72 @@ export async function saveModel(
   revalidatePath("/");
   return { id: modelId };
 }
+
+/**
+ * Renames one board (D-13). Constrained on BOTH the row id AND the owning-user column, exactly
+ * like `saveModel`'s update — a shaper passing another shaper's row id changes nothing (T-02-03).
+ * The name column is unbounded text and stored verbatim: no normalization, no case folding, no
+ * length cap. A name is a label, not an identity — two of a shaper's boards may share one, and
+ * the row id remains the identity.
+ */
+export async function renameModel(modelId: string, name: string): Promise<void> {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Sign in to rename a board.");
+
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Board needs a name.");
+
+  await db.update(models)
+    .set({ name: trimmed, updatedAt: new Date() })
+    .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)));
+  revalidatePath("/");
+}
+
+export interface DuplicateModelResult {
+  id: string;
+}
+
+/**
+ * Branches a copy of one of the shaper's own boards (D-09/D-13) — the deliberate way to riff on a
+ * shape now that Save writes over the board that was opened. Reads the source row through an
+ * ownership-scoped select, so a row id that is not this shaper's reads nothing and the action
+ * refuses rather than copying someone else's board (T-02-12): the snapshot written into the new
+ * row always comes from that read, never from anything the client passed in. The copy gets fresh
+ * created/updated stamps, which is what floats it to the top of the last-touched-first rack; the
+ * source row is left untouched.
+ */
+export async function duplicateModel(modelId: string): Promise<DuplicateModelResult> {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Sign in to duplicate a board.");
+
+  const [source] = await db.select({ name: models.name, snapshot: models.snapshot })
+    .from(models)
+    .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)));
+  if (!source) throw new Error("Couldn't find that board.");
+
+  // Validated on the way back in, same as a save (T-02-05) — a corrupt or stale source snapshot
+  // is never written forward into a new row unchecked.
+  const design = parseSnapshot(source.snapshot);
+  const copyName = `Copy of ${source.name}`;
+  const envelope = buildSnapshot({ ...design, boardName: copyName });
+
+  const [row] = await db.insert(models)
+    .values({ clerkUserId: userId, name: copyName, snapshot: envelope })
+    .returning({ id: models.id });
+  revalidatePath("/");
+  return { id: row.id };
+}
+
+/**
+ * Deletes one of the shaper's own boards (D-13). Constrained on both the row id and the owning-
+ * user column, same as every other mutation here. There is no soft-delete column and no trash
+ * table: D-13 decided the confirm dialog is the safety, so this really does remove the row
+ * (T-02-13, accepted).
+ */
+export async function deleteModel(modelId: string): Promise<void> {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Sign in to delete a board.");
+
+  await db.delete(models).where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)));
+  revalidatePath("/");
+}
