@@ -66,7 +66,7 @@ Plans:
   4. User can reopen a previously saved model and continue editing it
   5. User can view a list of all their saved models
 
-**Plans:** 1/6 plans executed
+**Plans:** 2/6 plans executed
 
 Plans:
 **Wave 1**
@@ -75,7 +75,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-02-PLAN.md — Autosave after the first save, the nav's four save states, and Save while signed out (D-08)
+- [x] 02-02-PLAN.md — Autosave after the first save, the nav's four save states, and Save while signed out (D-08)
 - [ ] 02-03-PLAN.md — The board rack complete: in-progress card first, stable last-touched ordering, and the failure behaviours (D-06, D-07, D-12)
 
 **Wave 3** *(blocked on Wave 2 completion)*
@@ -127,6 +127,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — Port & Deploy the Design Tool | 4/4 | Complete    | 2026-08-21 |
-| 2. Accounts & Saved Designs | 1/6 | In Progress|  |
+| 2. Accounts & Saved Designs | 2/6 | In Progress|  |
 | 3. Volume, Templates & Verified Math | 0/TBD | Not started | - |
 | 4. Rocker & Foil Editors | 0/TBD | Not started | - |

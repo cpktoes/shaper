@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: accounts-saved-designs
 status: executing
-stopped_at: Completed 02-01-PLAN.md — Clerk accounts + Neon models table + save/list/reopen tracer, verified end to end in the browser
-last_updated: "2026-08-27T21:51:05.192Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-08-27T22:17:24.987Z"
 last_activity: 2026-08-27
 last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 10
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 ## Current Position
 
 Phase: 02 (accounts-saved-designs) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-08-27 — Phase 02 execution started
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [█████░░░░░] 50%
 | Phase 01 P03 | 26min | 3 tasks | 2 files |
 | Phase 01 P04 | 20min | 3 tasks | 5 files |
 | Phase 02 P01 | 55min | 5 tasks | 25 files |
+| Phase 02 P02 | 35min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 2] 02-01: a save is written and read as a versioned envelope ({ version, design }), never bare design fields — buildSnapshot/parseSnapshot are the one crossing point (fixed post-checkpoint in 6a7981a after every save initially failed)
 - [Phase ?]: [Phase 2] 02-01: saveModel pins the snapshot's embedded boardName to the row's trimmed name column at the write boundary, so a reopened board's label can never drift from its rack card's name (fixed post-checkpoint in abe0c34)
 - [Phase ?]: [Phase 2] 02-01: routing="hash" on Clerk's <SignIn>/<SignUp> — the installed @clerk/nextjs 7.8.2 SDK types only expose 'path'|'hash', not the 'virtual' mode RESEARCH.md assumed
+- [Phase ?]: AUTOSAVE_DEBOUNCE_MS = 1200ms, inside CONTEXT.md's 800-3000ms discretion window
+- [Phase ?]: Added markSaved(id, name) to the design store (Rule 2) so the first manual save lands on saveStatus 'saved' immediately
 
 ### Pending Todos
 
@@ -216,6 +219,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-27T21:51:05.149Z
-Stopped at: Completed 02-01-PLAN.md — Clerk accounts + Neon models table + save/list/reopen tracer, verified end to end in the browser
+Last session: 2026-08-27T22:17:24.967Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
