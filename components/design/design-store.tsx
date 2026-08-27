@@ -114,6 +114,12 @@ interface DesignContextValue {
    * resets to `DEFAULT_DESIGN_STATE`, so this always produces a genuinely fresh board rather than
    * carrying over the board the user just discarded. */
   applyPreset: (preset: BoardPreset) => void;
+  /** Opens a saved board (D-06/D-07's rack card click). Mirrors `applyPreset`'s wholesale-replace
+   * shape exactly: spreads `DEFAULT_DESIGN_STATE`, then sets every field the snapshot carries
+   * plus `modelId` and `boardStarted: true`. Wholesale replace, never a patch merge — D-11 says
+   * reopening restores the design exactly, and a merge would let the board being replaced leak
+   * into the board being opened. */
+  applyModel: (id: string, snapshot: DesignSnapshotFields) => void;
   updateRailSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   toggleTailHardEdge: () => void;
   updateFins: (patch: Partial<FinPlacementSpec>) => void;
@@ -167,6 +173,20 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       outline: preset.outline,
       rails: preset.rails,
       fins: preset.fins,
+      boardStarted: true,
+    }));
+
+  const applyModel = (id: string, snapshot: DesignSnapshotFields) =>
+    setState(() => ({
+      ...DEFAULT_DESIGN_STATE,
+      outline: snapshot.outline,
+      rails: snapshot.rails,
+      fins: snapshot.fins,
+      volume: snapshot.volume,
+      finsImportTemplate: snapshot.finsImportTemplate,
+      boardName: snapshot.boardName,
+      finSystem: snapshot.finSystem,
+      modelId: id,
       boardStarted: true,
     }));
 
@@ -344,6 +364,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     designSnapshotFields,
     updateOutline,
     applyPreset,
+    applyModel,
     updateRailSection,
     toggleTailHardEdge,
     updateFins,

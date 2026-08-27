@@ -13,6 +13,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SettingsMenu } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
+import { SaveButton } from "@/components/design/save-button";
 
 const NAV_LINKS = [
   { href: "/design/outline", label: "TEMPLATE" },
@@ -59,9 +60,10 @@ export function SiteNav() {
             different kind of thing without drifting away from the group. */}
         <span aria-hidden className="ml-1 h-4 w-px bg-surf-line-faint" />
         <SettingsMenu />
-        {/* Save (D-05) lands in Task 5 of this same plan; the auth control mounts here first
-            so the two share this cluster in reading order (D-02). */}
+        {/* Save (D-05) and the auth control (D-02) share this cluster, both chrome rather than
+            a design screen, in the order a shaper acts: save the work, then who's signed in. */}
         <span aria-hidden className="h-4 w-px bg-surf-line-faint" />
+        <SaveButton />
         <NavAuthControl />
       </div>
     </nav>

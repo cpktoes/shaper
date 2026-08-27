@@ -2,71 +2,100 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { BoardRack } from "@/components/setup/board-rack";
+import type { SavedModel } from "@/components/setup/board-rack-card";
 import { ContinueBoardCard } from "@/components/setup/continue-board-card";
 import { PresetCard } from "@/components/setup/preset-card";
 import { ReplaceBoardDialog } from "@/components/setup/replace-board-dialog";
 import { useDesign } from "@/components/design/design-store";
 import { BOARD_PRESETS, type BoardPreset } from "@/lib/geometry/presets";
 
+interface SetupScreenProps {
+  /** Saved boards for the signed-in shaper (MODL-03), already validated by `app/page.tsx` — a
+   * signed-out visitor or one with no saved boards gets an empty array, which `BoardRack`
+   * renders as nothing at all (D-06). */
+  models: SavedModel[];
+}
+
+/** Either kind of thing D-07/D-10's shared confirm can be about to replace the board with. */
+type PendingReplacement = { kind: "preset"; preset: BoardPreset } | { kind: "model"; model: SavedModel };
+
 /**
- * The setup screen — `/`'s entire content (D-05). Reads `applyPreset` and `hasBoardInProgress`
- * from the shared `DesignProvider` (mounted in app/layout.tsx) exactly like a `/design/*` screen
- * reads its own slice, following the `outline-editor.tsx` client-screen pattern. Layout follows
- * the approved UI-SPEC: shadcn neutral-theme canvas + cards, with the surf accent cyan as the one
- * borrowed accent color, so the setup screen reads as part of the same product as the dark-nav
- * design screens rather than a second visual language.
+ * The setup screen — `/`'s entire content (D-05/D-06). Reads `applyPreset`/`applyModel` and
+ * `hasBoardInProgress` from the shared `DesignProvider` (mounted in app/layout.tsx) exactly like
+ * a `/design/*` screen reads its own slice, following the `outline-editor.tsx` client-screen
+ * pattern. Layout follows the approved UI-SPEC: shadcn neutral-theme canvas + cards, with the
+ * surf accent cyan as the one borrowed accent color, so the setup screen reads as part of the
+ * same product as the dark-nav design screens rather than a second visual language.
  *
- * Dialog-open state and the pending preset are plain `useState`, following the
+ * Dialog-open state and the pending replacement are plain `useState`, following the
  * `outline-editor.tsx` convention of view-only state staying local and never lifted into the
- * shared store (D-07's confirm gate is a view concern, not design data).
+ * shared store (D-07/D-10's confirm gate is a view concern, not design data).
  */
-export function SetupScreen() {
-  const { applyPreset, hasBoardInProgress } = useDesign();
+export function SetupScreen({ models }: SetupScreenProps) {
+  const { applyPreset, applyModel, hasBoardInProgress } = useDesign();
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingPreset, setPendingPreset] = useState<BoardPreset | null>(null);
+  const [pending, setPending] = useState<PendingReplacement | null>(null);
 
   const goToEditor = () => router.push("/design/outline");
 
-  const handleSelect = (preset: BoardPreset) => {
+  const handleSelectPreset = (preset: BoardPreset) => {
     if (!hasBoardInProgress) {
       applyPreset(preset);
       goToEditor();
       return;
     }
-    setPendingPreset(preset);
+    setPending({ kind: "preset", preset });
+    setConfirmOpen(true);
+  };
+
+  const handleSelectModel = (model: SavedModel) => {
+    if (!hasBoardInProgress) {
+      applyModel(model.id, model.snapshot);
+      goToEditor();
+      return;
+    }
+    setPending({ kind: "model", model });
     setConfirmOpen(true);
   };
 
   const handleConfirm = () => {
-    if (pendingPreset) {
-      applyPreset(pendingPreset);
+    if (pending?.kind === "preset") {
+      applyPreset(pending.preset);
+    } else if (pending?.kind === "model") {
+      applyModel(pending.model.id, pending.model.snapshot);
     }
     setConfirmOpen(false);
-    setPendingPreset(null);
+    setPending(null);
     goToEditor();
   };
 
   const handleCancel = (open: boolean) => {
     setConfirmOpen(open);
     if (!open) {
-      setPendingPreset(null);
+      setPending(null);
     }
   };
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-surf-ground">
       <div className="mx-auto max-w-5xl px-6 pt-16 pb-16 md:px-8">
+        <BoardRack models={models} onSelect={handleSelectModel} />
         <h1 className="text-3xl leading-[1.2] font-display text-surf-ink uppercase tracking-architectural font-extrabold">Shape a New Board</h1>
         <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {BOARD_PRESETS.map((preset) => (
-            <PresetCard key={preset.id} preset={preset} onSelect={handleSelect} />
+            <PresetCard key={preset.id} preset={preset} onSelect={handleSelectPreset} />
           ))}
           {hasBoardInProgress && <ContinueBoardCard onContinue={goToEditor} />}
         </div>
-        {/* Phase 2 saved-boards section slots in here, below the preset grid, without a redesign. */}
       </div>
-      <ReplaceBoardDialog open={confirmOpen} onOpenChange={handleCancel} onConfirm={handleConfirm} />
+      <ReplaceBoardDialog
+        open={confirmOpen}
+        onOpenChange={handleCancel}
+        onConfirm={handleConfirm}
+        mode={pending?.kind === "model" ? "open-saved" : "preset"}
+      />
     </div>
   );
 }
