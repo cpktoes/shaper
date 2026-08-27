@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BoardRack } from "@/components/setup/board-rack";
+import { BoardRack, type BoardRackEntry } from "@/components/setup/board-rack";
 import type { SavedModel } from "@/components/setup/board-rack-card";
-import { ContinueBoardCard } from "@/components/setup/continue-board-card";
 import { PresetCard } from "@/components/setup/preset-card";
 import { ReplaceBoardDialog } from "@/components/setup/replace-board-dialog";
 import { useDesign } from "@/components/design/design-store";
 import { BOARD_PRESETS, type BoardPreset } from "@/lib/geometry/presets";
+import { sortRackEntries, type InProgressRackEntry, type SavedRackEntry } from "@/lib/models/rack-order";
 
 interface SetupScreenProps {
   /** Saved boards for the signed-in shaper (MODL-03), already validated by `app/page.tsx` — a
@@ -39,6 +39,30 @@ export function SetupScreen({ models }: SetupScreenProps) {
   const [pending, setPending] = useState<PendingReplacement | null>(null);
 
   const goToEditor = () => router.push("/design/outline");
+
+  // Compose one list — the in-progress entry (from the design store) plus one entry per saved
+  // row (from props) — and run it through the single ordering rule (D-06/D-07) before handing
+  // ordered `BoardRackEntry`s to `BoardRack`, which only renders (see that file's doc comment).
+  const rackEntries: BoardRackEntry[] = useMemo(() => {
+    type SortableEntry = InProgressRackEntry | (SavedRackEntry & { model: SavedModel });
+
+    const entries: SortableEntry[] = models.map((model) => ({
+      kind: "saved" as const,
+      id: model.id,
+      name: model.name,
+      updatedAt: model.updatedAt,
+      model,
+    }));
+    if (hasBoardInProgress) {
+      entries.push({ kind: "in-progress" as const });
+    }
+
+    return sortRackEntries(entries).map((entry) =>
+      entry.kind === "in-progress"
+        ? { kind: "in-progress" as const }
+        : { kind: "saved" as const, model: entry.model },
+    );
+  }, [models, hasBoardInProgress]);
 
   const handleSelectPreset = (preset: BoardPreset) => {
     if (!hasBoardInProgress) {
@@ -81,13 +105,12 @@ export function SetupScreen({ models }: SetupScreenProps) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-surf-ground">
       <div className="mx-auto max-w-5xl px-6 pt-16 pb-16 md:px-8">
-        <BoardRack models={models} onSelect={handleSelectModel} />
+        <BoardRack entries={rackEntries} onSelectModel={handleSelectModel} onContinue={goToEditor} />
         <h1 className="text-3xl leading-[1.2] font-display text-surf-ink uppercase tracking-architectural font-extrabold">Shape a New Board</h1>
         <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {BOARD_PRESETS.map((preset) => (
             <PresetCard key={preset.id} preset={preset} onSelect={handleSelectPreset} />
           ))}
-          {hasBoardInProgress && <ContinueBoardCard onContinue={goToEditor} />}
         </div>
       </div>
       <ReplaceBoardDialog
