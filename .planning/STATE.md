@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 2
-current_phase_name: Accounts & Saved Designs
+current_phase: 02
+current_phase_name: accounts-saved-designs
 status: executing
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-08-27T16:49:31.361Z"
-last_activity: 2026-08-26
-last_activity_desc: "Completed quick task 260826-njn: McKee Longboard quad model disabled under eight foot, with the fin numbers falling back to McKee SB/Gun and the shaper's own pick preserved"
+stopped_at: Completed 02-01-PLAN.md — Clerk accounts + Neon models table + save/list/reopen tracer, verified end to end in the browser
+last_updated: "2026-08-27T21:51:05.192Z"
+last_activity: 2026-08-27
+last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 10
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-18)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 01 — foundation-port-deploy-the-design-tool
+**Current focus:** Phase 02 — accounts-saved-designs
 
 ## Current Position
 
-Phase: 2 — Accounts & Saved Designs
-Plan: Not started
+Phase: 02 (accounts-saved-designs) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-08-26 - Completed quick task 260826-njn: McKee Longboard quad model disabled under eight foot, with the fin numbers falling back to McKee SB/Gun and the shaper's own pick preserved
+Last activity: 2026-08-27 — Phase 02 execution started
 
-Progress: [██████████] 100%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [██████████] 100%
 | Phase 01 P02 | 34min | 3 tasks | 8 files |
 | Phase 01 P03 | 26min | 3 tasks | 2 files |
 | Phase 01 P04 | 20min | 3 tasks | 5 files |
+| Phase 02 P01 | 55min | 5 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,10 @@ Recent decisions affecting current work:
 - [Quick 260821-rss]: Rail Viewer plots solve for one shared measured WIDTH (not height) since every open section's viewBox width is identical by construction -- rendering all plots at that one width forces one shared scale and aligned x-axes, superseding 260821-rpf's proportional-height flex-grow approach which let scale/left-edge drift between plots
 - [Quick 260822-vcs]: Outline/fin viewers rebuilt on the callout-system grammar (sketches 001-004): shared components/viewer/callout-primitives.tsx module with rail/gutter constants (not per-call arguments), SVG <text> throughout (no more absolutely-positioned HTML overlay), hideCallouts keeps the legacy tight viewBox so preset-card thumbnails stay pixel-identical; fin mark's own lateralKind dash preserved (keys result.legend's Front/Rear/Center grouping) rather than collapsed with the callout leader-line dashes
 - [Phase ?]: 260826-07b: TabbedPanel's inner content card now defaults to p-3, composed through cn so panelClassName overrides deterministically; Volume/Template's redundant copies removed, Rails/Fins pt-1 nudges retired, Template rotate button rebased to top-0/right-0
+- [Phase ?]: [Phase 2] 02-01: proxy.ts runs clerkMiddleware() with no .protect() call anywhere — sign-in stays a nudge, never a gate, mechanically enforced by lib/auth/open-access.test.ts
+- [Phase ?]: [Phase 2] 02-01: a save is written and read as a versioned envelope ({ version, design }), never bare design fields — buildSnapshot/parseSnapshot are the one crossing point (fixed post-checkpoint in 6a7981a after every save initially failed)
+- [Phase ?]: [Phase 2] 02-01: saveModel pins the snapshot's embedded boardName to the row's trimmed name column at the write boundary, so a reopened board's label can never drift from its rack card's name (fixed post-checkpoint in abe0c34)
+- [Phase ?]: [Phase 2] 02-01: routing="hash" on Clerk's <SignIn>/<SignUp> — the installed @clerk/nextjs 7.8.2 SDK types only expose 'path'|'hash', not the 'virtual' mode RESEARCH.md assumed
 
 ### Pending Todos
 
@@ -114,7 +119,9 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-None yet.
+yet.
+
+- [Phase 2] .env.example still needs to be created by hand (repo root, three lines: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=, CLERK_SECRET_KEY=, DATABASE_URL=) — the execution sandbox hard-blocks any tool write matching a .env* path, including this values-empty example file
 
 ### Quick Tasks Completed
 
@@ -209,6 +216,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-27T16:15:57.030Z
-Stopped at: Phase 2 UI-SPEC approved
-Resume file: /Users/kontoes/Code/shaper/.planning/phases/02-accounts-saved-designs/02-UI-SPEC.md
+Last session: 2026-08-27T21:51:05.149Z
+Stopped at: Completed 02-01-PLAN.md — Clerk accounts + Neon models table + save/list/reopen tracer, verified end to end in the browser
+Resume file: None

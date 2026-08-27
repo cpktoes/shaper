@@ -9,9 +9,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Accounts
 
-- [ ] **ACCT-01**: User can sign up with email and password
-- [ ] **ACCT-02**: User can log in and stay logged in across sessions
-- [ ] **ACCT-03**: User can reset password via email link
+- [x] **ACCT-01**: User can sign up with email and password
+- [x] **ACCT-02**: User can log in and stay logged in across sessions
+- [x] **ACCT-03**: User can reset password via email link
 
 ### Board Setup
 
@@ -45,9 +45,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Models
 
-- [ ] **MODL-01**: User can save a design as a named model tied to their account
-- [ ] **MODL-02**: User can reopen and edit a previously saved model
-- [ ] **MODL-03**: User can view a list of their saved models
+- [x] **MODL-01**: User can save a design as a named model tied to their account
+- [x] **MODL-02**: User can reopen and edit a previously saved model
+- [x] **MODL-03**: User can view a list of their saved models
 
 ### Visualization
 
@@ -96,9 +96,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ACCT-01 | Phase 2 | Pending |
-| ACCT-02 | Phase 2 | Pending |
-| ACCT-03 | Phase 2 | Pending |
+| ACCT-01 | Phase 2 | Complete |
+| ACCT-02 | Phase 2 | Complete |
+| ACCT-03 | Phase 2 | Complete |
 | SETUP-01 | Phase 1 | Complete |
 | OUTL-01 | Phase 1 | Complete |
 | ROCK-01 | Phase 4 | Pending |
@@ -108,9 +108,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FIN-02 | Phase 1 | Complete |
 | FIN-03 | Phase 1 | Complete |
 | VOL-01 | Phase 3 | Pending |
-| MODL-01 | Phase 2 | Pending |
-| MODL-02 | Phase 2 | Pending |
-| MODL-03 | Phase 2 | Pending |
+| MODL-01 | Phase 2 | Complete |
+| MODL-02 | Phase 2 | Complete |
+| MODL-03 | Phase 2 | Complete |
 | VIZ-01 | Phase 1 | Complete |
 | TMPL-01 | Phase 3 | Pending |
 | UNIT-01 | Phase 1 | Complete |

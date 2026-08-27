@@ -66,12 +66,12 @@ Plans:
   4. User can reopen a previously saved model and continue editing it
   5. User can view a list of all their saved models
 
-**Plans:** 6 plans
+**Plans:** 1/6 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Tracer: sign in, save this board, and find it again — Clerk mounted, the models table live in Neon, and one board saved and reopened end to end
+- [x] 02-01-PLAN.md — Tracer: sign in, save this board, and find it again — Clerk mounted, the models table live in Neon, and one board saved and reopened end to end
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -127,6 +127,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — Port & Deploy the Design Tool | 4/4 | Complete    | 2026-08-21 |
-| 2. Accounts & Saved Designs | 0/6 | Planned | - |
+| 2. Accounts & Saved Designs | 1/6 | In Progress|  |
 | 3. Volume, Templates & Verified Math | 0/TBD | Not started | - |
 | 4. Rocker & Foil Editors | 0/TBD | Not started | - |
