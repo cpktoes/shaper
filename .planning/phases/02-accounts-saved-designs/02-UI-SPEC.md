@@ -184,24 +184,112 @@ dropping them back on the design screen having to click Save again.
 
 ## UI Considerations
 
-Applicable state considerations resolved: 12 covered, 2 backstop, 0 unresolved.
+Probe run 2026-08-27 over 9 surfaces: 56 applicable considerations — 25 resolved
+(explicit), 4 resolved (backstop), 27 dismissed with reason, 0 unresolved.
+Statuses: ✅ resolved, verification: explicit · 🧪 resolved, verification: backstop
+(needs execution-time evidence; verifier must not silently pass it) · ➖ dismissed
+(reason required, nothing to lift).
 
-| Category | Element(s) | Status | Resolution / Reason |
-|----------|------------|--------|---------------------|
-| empty | board-rack (list-collection) | ✅ covered | D-06 resolves this structurally: the rack section never renders when there are zero saved models AND no in-progress board — that view is exactly today's plain preset grid. There is no "empty rack" state to design. |
-| loading | board-rack (list-collection) | 🧪 backstop | Home is a Server Component awaiting `listModels()` (RESEARCH.md architecture) — no client skeleton for the normal-speed case. If the query is ever slow enough to be visible, the Suspense fallback is the plain page shell with no rack section (same visual as "empty"), not a spinner. |
-| error | board-rack (list-collection) | ✅ covered | If `listModels()` throws, the page renders the plain preset grid (same as signed-out) rather than a broken page — a board-list failure must never block starting a new board. |
-| populated | board-rack (list-collection) | ✅ covered | Rack cards reuse `PresetCard`'s exact visual weight (window-frame thumbnail, name, one metadata line, uppercase CTA label) so a saved board reads with the same eye as a preset. |
-| overflow | board-rack (list-collection) | ✅ covered | Same `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` wrap as the preset grid — many boards wrap to more rows, never scroll or clip. |
-| zero-one-many | board-rack (list-collection) | ✅ covered | Zero+none → rack omitted (see "empty" row). In-progress card (if any) is always first per D-07; saved boards follow, sorted last-touched-first. |
-| long-text | board-rack card name (static-content) | ✅ covered | Name truncates to one line (`truncate`), matching `ContinueBoardCard`'s existing `displayName` treatment — never wraps into the metadata line below it. |
-| loading | save-button / autosave tick (interactive-control) | ✅ covered | In-flight state reads "Saving…" (ink-muted, no spinner icon) before settling to "Saved" with the accent check glyph. |
-| error | save-button / autosave tick (interactive-control) | ✅ covered | Failure shows a quiet inline "Not saved" in warning-ink beside the button, clickable to retry immediately — no interrupting dialog (Claude's Discretion item, per CONTEXT.md). |
-| loading / error | sign-in dialog (form) | ✅ covered | Clerk's own `<SignIn>`/`<SignUp>` manage their own in-flight and inline field-error states; the app supplies only the surrounding Dialog chrome, no duplicate copy. |
-| long-text | sign-in dialog (form) | 🧪 backstop | Long email addresses in Clerk's own UI are Clerk's rendering responsibility; the wrapping Dialog's width (`max-w-sm`, matching the existing `AlertDialogContent` default) must not clip them — verify at execution with a deliberately long test email. |
-| error | name-prompt / rename dialog (form) | ✅ covered | Empty/whitespace-only name is rejected inline ("Board needs a name.") before any Server Action runs, mirroring RESEARCH.md Pattern 2's trim-check. |
-| error | delete-confirm dialog (form) | ✅ covered | A failed delete keeps the dialog open with inline "Couldn't delete — try again." rather than silently closing. |
-| long-text | rename / name-prompt input (form) | ✅ covered | No character cap in the UI (the DB `text` column is unbounded); long names are handled by rack-card truncation (see the board-rack long-text row above), not by truncating the input itself. |
+### board-rack (list-collection)
+
+| Category | Status | Resolution / Reason |
+|----------|--------|---------------------|
+| empty | ✅ | D-06 resolves this structurally: the rack section never renders when there are zero saved models AND no in-progress board — that view is exactly today's plain preset grid. There is no "empty rack" state to design. |
+| loading | 🧪 | Home is a Server Component awaiting `listModels()` (RESEARCH.md architecture) — no client skeleton for the normal-speed case. If the query is ever slow enough to be visible, the Suspense fallback is the plain page shell with no rack section (same visual as "empty"), not a spinner. Verify at execution with a throttled query. |
+| error | ✅ | If `listModels()` throws, the page renders the plain preset grid (same as signed-out) rather than a broken page — a board-list failure must never block starting a new board. |
+| populated | ✅ | Rack cards reuse `PresetCard`'s exact visual weight (window-frame thumbnail, name, one metadata line, uppercase CTA label) so a saved board reads with the same eye as a preset. |
+| partial | ➖ | No partial state exists — the rack renders from one complete `listModels()` result; no pagination or progressive fill. |
+| overflow | ✅ | Same `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` wrap as the preset grid — many boards wrap to more rows, never scroll or clip. |
+| zero-one-many | ✅ | Zero+none → rack omitted (see "empty" row). In-progress card (if any) is always first per D-07; saved boards follow, sorted last-touched-first. |
+
+### rack-card (card / list item)
+
+| Category | Status | Resolution / Reason |
+|----------|--------|---------------------|
+| empty | ➖ | A card renders only for an existing board (saved row or in-progress state); there is no empty-card state. |
+| loading | ✅ | The outline thumbnail renders synchronously from the stored spec snapshot — the same SVG outline rendering as preset cards, no async image, so no per-card loading state. |
+| error | ✅ | A board whose stored snapshot fails to parse/validate is omitted from the rack (and logged) rather than rendering a broken card. |
+| populated | ✅ | Card shows outline thumbnail, name, length × width × thickness in shaper units + volume in litres (formatted via `lib/geometry/units.ts`), and last-touched date per D-12. |
+| partial | ➖ | A saved row always carries name, snapshot, and updatedAt (required columns) — no partially-populated card exists. |
+| overflow | ➖ | Card content is fixed-format apart from the name, which the long-text row handles. |
+| zero-one-many | ➖ | Collection-level concern — handled by the board-rack rows above. |
+| long-text | ✅ | Name truncates to one line (`truncate`), matching `ContinueBoardCard`'s existing `displayName` treatment — never wraps into the metadata line below it. |
+
+### rack-card-menu (menu)
+
+| Category | Status | Resolution / Reason |
+|----------|--------|---------------------|
+| empty | ➖ | Fixed three-item menu (Rename / Duplicate / Delete) — never empty. |
+| loading | ➖ | Menu items are static strings; the menu opens instantly with no async content. |
+| error | 🧪 | Rename and Delete failures are covered by their dialogs' inline errors (below). Duplicate is instant with no dialog: a failed Duplicate must leave the rack unchanged and surface a visible, retryable error — never a silent no-op. Exact affordance decided at execution; verify by forcing the server action to fail. |
+| populated | ➖ | Static fixed items. |
+| partial | ➖ | Static fixed items. |
+| overflow | ➖ | Three items always fit; positioning/collision handled by Base UI `Menu`, same as `SettingsMenu`. |
+| zero-one-many | ➖ | Fixed item count. |
+| long-text | ➖ | Menu labels are fixed strings. |
+
+### sign-in-dialog (form)
+
+| Category | Status | Resolution / Reason |
+|----------|--------|---------------------|
+| empty | ➖ | Initial form state is Clerk's own `<SignIn>`/`<SignUp>` rendering — not an app-designed state. |
+| loading | ✅ | Clerk's components manage their own in-flight states; the app supplies only the surrounding Dialog chrome, no duplicate copy. |
+| error | ✅ | Clerk's components render their own inline field errors; the app adds none. |
+| partial | ➖ | Form state is Clerk-owned end to end. |
+| overflow | ✅ | Dialog content uses the same `max-w-sm` sizing as `replace-board-dialog.tsx`; on short viewports the dialog scrolls within the overlay rather than clipping the Clerk stack. |
+| long-text | 🧪 | Long email addresses in Clerk's own UI are Clerk's rendering responsibility; the wrapping Dialog's width must not clip them — verify at execution with a deliberately long test email. |
+
+### sign-in-banner (static content)
+
+| Category | Status | Resolution / Reason |
+|----------|--------|---------------------|
+| empty | ➖ | Fixed copy; the banner either renders whole or not at all (dismissed / signed in). |
+| loading | ➖ | Static content, rendered synchronously. |
+| error | ➖ | No async content to fail. |
+| populated | ✅ | Fixed copy per the Copywriting Contract ("Sign in and your boards are saved." + "Sign In" link + `X` dismiss). |
+| long-text | ✅ | The sentence is fixed; on narrow screens it wraps to a second line rather than truncating. |
+
+### save-control (interactive control)
+
+| Category | Status | Resolution / Reason |
+|----------|--------|---------------------|
+| loading | ✅ | In-flight state reads "Saving…" (ink-muted, no spinner icon) before settling to "Saved" with the accent check glyph. |
+| error | ✅ | Failure shows a quiet inline "Not saved" in warning-ink beside the button, clickable to retry immediately — no interrupting dialog (Claude's Discretion item, per CONTEXT.md). |
+| overflow | ➖ | Nav states are short fixed strings ("Save" / "Saving…" / "Saved" / "Not saved"). |
+| long-text | ➖ | Fixed strings. |
+
+### name-rename-dialog (form)
+
+| Category | Status | Resolution / Reason |
+|----------|--------|---------------------|
+| empty | ✅ | Empty input shows the placeholder ("e.g. 6'2 Fish"); submitting empty/whitespace is rejected inline ("Board needs a name.") before any Server Action runs, mirroring RESEARCH.md Pattern 2's trim-check. |
+| loading | ✅ | The primary button disables while the save/rename Server Action is in flight — no double-submit. |
+| error | ✅ | A failed save keeps the dialog open with the generic error copy ("Couldn't save — check your connection and try again."); validation errors render inline under the field. |
+| partial | ➖ | Single-field form — no partial state. |
+| overflow | ➖ | One short input in a small dialog. |
+| long-text | ✅ | No character cap in the UI (the DB `text` column is unbounded); long names are handled by rack-card truncation, not by truncating the input itself. |
+
+### delete-confirm-dialog (form)
+
+| Category | Status | Resolution / Reason |
+|----------|--------|---------------------|
+| empty | ➖ | Static confirm copy with the board name interpolated. |
+| loading | ✅ | The "Delete Board" button disables while the delete Server Action runs. |
+| error | ✅ | A failed delete keeps the dialog open with inline "Couldn't delete — try again." rather than silently closing. |
+| partial | ➖ | No form fields. |
+| overflow | ➖ | The only variable content is the board name — see the long-text row. |
+| long-text | ✅ | A long board name in the title wraps within the dialog's fixed width rather than widening or overflowing it. |
+
+### nav-auth-control (interactive control)
+
+| Category | Status | Resolution / Reason |
+|----------|--------|---------------------|
+| empty | ➖ | The control always renders one of two states (signed-out button / signed-in avatar). |
+| loading | ✅ | While Clerk resolves auth state on load, the nav auth slot holds a same-size empty placeholder — a signed-in user never sees a "Sign in" flash. |
+| error | 🧪 | If Clerk fails to load entirely, the nav falls back to the signed-out "Sign in" button (harmless default; the design tool itself needs no auth). Verify at execution by blocking the Clerk script. |
+| populated | ✅ | Signed-in state renders Clerk's `<UserButton>` avatar — no app copy. |
+| overflow | ➖ | Fixed-size control. |
+| long-text | ➖ | Fixed label / avatar image. |
 
 ---
 
