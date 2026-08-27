@@ -174,3 +174,7 @@ None — no external service configuration required. (Clerk and Neon were alread
 ---
 *Phase: 02-accounts-saved-designs*
 *Completed: 2026-08-27*
+
+## Self-Check: PASSED
+
+All 7 code files plus this SUMMARY.md found on disk; all 5 commits (`776a014`, `362641d`, `b6f8ae6`, `ae29693`, `aed4a5f`) found in git history.
