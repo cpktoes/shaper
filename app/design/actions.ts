@@ -83,8 +83,23 @@ export async function renameModel(modelId: string, name: string): Promise<void> 
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Board needs a name.");
 
+  // The rename must reach the snapshot's embedded boardName too, not just the name column —
+  // reopening restores the name from the snapshot, and the next autosave writes that restored
+  // name back to the column, so a column-only rename silently reverts on the first edit after
+  // reopening. Same write-boundary invariant saveModel and duplicateModel hold: the column and
+  // the embedded name never drift. The ownership-scoped read means a foreign row id reads
+  // nothing and the action refuses (T-02-03), with duplicateModel's exact wording so the
+  // message leaks nothing about whether the row exists.
+  const [source] = await db.select({ snapshot: models.snapshot })
+    .from(models)
+    .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)));
+  if (!source) throw new Error("Couldn't find that board.");
+
+  const design = parseSnapshot(source.snapshot);
+  const envelope = buildSnapshot({ ...design, boardName: trimmed });
+
   await db.update(models)
-    .set({ name: trimmed, updatedAt: new Date() })
+    .set({ name: trimmed, snapshot: envelope, updatedAt: new Date() })
     .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)));
   revalidatePath("/");
 }
