@@ -170,3 +170,12 @@ None — no external service configuration required. (Clerk and Neon were alread
 ## Self-Check: PASSED
 
 All 7 key files plus this SUMMARY.md found on disk; all 4 commits (`8d0d0a2`, `46c33c5`, `2084e25`, `a27f25b`) found in git history.
+
+## Post-completion fix (orchestrator)
+
+- `6958df6` — fix(02-04): renameModel updated only the row's name column, leaving the old name
+  embedded in the stored snapshot; reopening restored the old name and the next autosave wrote it
+  back over the column, silently reverting the rename. renameModel now rebuilds the snapshot
+  envelope with the new name (ownership-scoped read, refusing a foreign id) and writes column and
+  envelope together — the same write-boundary invariant saveModel and duplicateModel hold.
+  Found in orchestrator review of the plan's diff; 730/730 tests and tsc clean after the fix.
