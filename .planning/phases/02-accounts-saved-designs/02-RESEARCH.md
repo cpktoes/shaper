@@ -363,14 +363,14 @@ useEffect(() => {
 | A3 | Autosave debounce window (~1.5s) and failure UI (quiet, no interrupting dialog) | Code Examples | CONTEXT.md explicitly delegates this to Claude's discretion — any reasonable debounce value is acceptable; only a UX regression (autosave that feels laggy or nags on failure) would be "wrong" |
 | A4 | `zod` (unpinned exact version) is the validation library of choice | Standard Stack | If the planner prefers a different schema library (e.g. `valibot`), that's a substitution with equivalent safety properties, not a correctness risk |
 
-## Open Questions
+## Open Questions (RESOLVED at planning)
 
-1. **Exact `zod` version to pin**
+1. **Exact `zod` version to pin** — RESOLVED: 4.4.3 verified on the registry and pinned in Plan 02-01 Task 4.
    - What we know: it exists on the registry and passed the legitimacy check with an `OK` verdict.
    - What's unclear: the specific current version number (not captured during this research pass).
    - Recommendation: run `npm view zod version` at plan/install time and pin that.
 
-2. **Whether Clerk's Google OAuth "Use custom credentials" step blocks Phase 2 completion or can land after initial ship**
+2. **Whether Clerk's Google OAuth "Use custom credentials" step blocks Phase 2 completion or can land after initial ship** — RESOLVED: it does not block development (Clerk's shared dev credentials cover Waves 1–3); the production Google Cloud OAuth client is a blocking task in Plan 02-06 Task 1.
    - What we know: dev/preview works out of the box with Clerk's shared credentials; production requires the shaper's own Google Cloud OAuth client.
    - What's unclear: whether the founder wants Google sign-in live on day one of production, or is fine shipping email/password first and adding Google shortly after.
    - Recommendation: flag as a checkpoint during planning — either block the phase on the Google Cloud credential being created, or explicitly sequence "email/password ships first, Google follows."
