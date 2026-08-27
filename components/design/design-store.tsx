@@ -67,9 +67,11 @@ interface DesignState {
    * plain stored value rather than inside `fins`. Read only by the summary's order form. */
   finSystem: FinSystem;
   /** The row in Postgres a Save writes over (D-09) — null means this board has never been
-   * saved. Set by `setModelId` after a successful `saveModel`, and by `applyModel` when a rack
-   * card is opened. This is session bookkeeping, not board design, so it is deliberately absent
-   * from `designSnapshotFields` — a save never stores a reference to its own row. */
+   * saved. Set by `markSaved` after the shaper's own first, manual `saveModel` succeeds, by
+   * `setModelId` directly (kept for callers that already have a row id, e.g. a future
+   * duplicate/rename flow), and by `applyModel` when a rack card is opened. This is session
+   * bookkeeping, not board design, so it is deliberately absent from `designSnapshotFields` — a
+   * save never stores a reference to its own row. */
   modelId: string | null;
   /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,
    * `updateRailSection`, `toggleTailHardEdge`, `updateFins`, `updateVolume`,
@@ -163,6 +165,13 @@ interface DesignContextValue {
   setBoardName: (next: string) => void;
   setFinSystem: (next: FinSystem) => void;
   setModelId: (next: string | null) => void;
+  /** Marks the store as freshly saved — called once, right after the shaper's own first manual
+   * save succeeds (`save-button.tsx`'s name-prompt path, before `modelId` exists to autosave
+   * against). Sets `modelId`, `boardName`, `dirty: false` and `saveStatus: "saved"` in one
+   * update, so the nav shows "Saved" immediately rather than passing back through the plain
+   * "Save" button or an untouched "idle" status. Every later save goes through `requestSave` or
+   * the autosave effect instead, which manage `saveStatus` themselves. */
+  markSaved: (id: string, name: string) => void;
   /** Toggling off also forces `importRailThickness` off and copies the currently effective
    * length/width into the stored manual fields; toggling on needs no copy (the derived override
    * takes over). Ported from Volume.dc.html's `onToggleImportTemplateDimensions`. */
@@ -275,6 +284,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // Not a design-mutating action — pointing the store at a different (or no) saved row doesn't
   // change the board itself, so this deliberately does NOT set boardStarted.
   const setModelId = (next: string | null) => setState((prev) => ({ ...prev, modelId: next }));
+
+  // The shaper's own first, deliberate save (D-08's "only does real work the first time") —
+  // there was no modelId for the autosave effect to target until this moment, so it cannot have
+  // run performSave/requestSave itself. Setting saveStatus "saved" here, not just modelId, is
+  // what lets the nav show "Saved" on the very next render instead of falling back through the
+  // plain "Save" button (modelId was null) or an unset "idle" status.
+  const markSaved = (id: string, name: string) =>
+    setState((prev) => ({ ...prev, modelId: id, boardName: name, dirty: false, saveStatus: "saved" }));
 
   const outlineGeometry = useMemo(() => buildOutline(state.outline), [state.outline]);
   const railBands = useMemo(() => computeRailBands(state.rails), [state.rails]);
@@ -492,6 +509,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setBoardName,
     setFinSystem,
     setModelId,
+    markSaved,
     toggleImportTemplateDimensions,
     toggleImportRailThickness,
     outlineGeometry,

@@ -1,17 +1,28 @@
 "use client";
 
 /**
- * D-05's Save control — one button in the top nav, visible on every design screen. This tracer
- * gives it exactly two visual states (resting filled, disabled in-flight); the full
- * Saving/Saved/Not-saved state machine and autosave are plan 02-02's job.
+ * D-05/D-08's Save control — one control in the top nav, visible on every design screen. It
+ * carries four visual states driven entirely by the store's `saveStatus`/`isDirty` rather than
+ * by local state, so it can never disagree with what the autosave effect (design-store.tsx) is
+ * actually doing:
  *
- * Signed out, it opens the sign-in dialog and, once the shaper signs in, continues straight into
- * the save they were reaching for — it does not drop them back on the screen to press Save
- * again (UI-SPEC "Flow note").
+ * - Before the first save (`modelId` still null): the filled primary "Save" button. This is the
+ *   shaper's one deliberate action (D-08) — nothing autosaves until it lands a row to write over.
+ * - In flight: "Saving…", muted, no spinner.
+ * - Settled: "Saved" with a small accent check glyph — the one accent moment in this control.
+ * - Failed: "Not saved" in warning-ink, itself clickable to retry immediately via `requestSave`.
+ *
+ * All four are short, fixed strings in a fixed-width slot so the nav layout never shifts as they
+ * swap (UI-SPEC save-control).
+ *
+ * Signed out, pressing Save opens `SignInDialog` and, once the shaper signs in, continues
+ * straight into the name prompt and the save they were reaching for — it never drops them back
+ * on the screen to press Save again (UI-SPEC "Flow note").
  */
 
 import { useEffect, useRef, useState } from "react";
 import { useUser } from "@clerk/nextjs";
+import { CheckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { BoardNamePrompt } from "@/components/setup/board-name-prompt";
@@ -20,28 +31,29 @@ import { saveModel } from "@/app/design/actions";
 
 export function SaveButton() {
   const { isSignedIn } = useUser();
-  const { boardName, modelId, designSnapshotFields, setModelId, setBoardName } = useDesign();
+  const { boardName, modelId, saveStatus, designSnapshotFields, markSaved, requestSave } = useDesign();
   const [signInOpen, setSignInOpen] = useState(false);
   const [namePromptOpen, setNamePromptOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
+  // Only the button's own first-save request is "saving" here — once modelId exists, the
+  // store's saveStatus is the single source of truth and this stays false.
+  const [firstSaveInFlight, setFirstSaveInFlight] = useState(false);
   // Set when a signed-out shaper presses Save — consumed the moment isSignedIn flips to true so
   // the interrupted save resumes automatically instead of requiring a second click.
   const resumeSaveAfterSignIn = useRef(false);
 
-  const runSave = async (name: string) => {
-    setSaving(true);
+  // The shaper's own first, deliberate save (D-08) — there is no modelId yet for the store's
+  // autosave effect to target, so this calls saveModel directly and then hands the result to
+  // markSaved, which sets modelId/boardName/dirty/saveStatus together so the nav shows "Saved"
+  // on the very next render.
+  const runFirstSave = async (name: string) => {
+    setFirstSaveInFlight(true);
     try {
       // The snapshot must carry the name being saved, not the store's current (possibly still
-      // empty) boardName — designSnapshotFields was assembled before the prompt closed, and the
-      // setBoardName below lands too late for this payload.
+      // empty) boardName — designSnapshotFields was assembled before the prompt closed.
       const { id } = await saveModel(modelId, name, { ...designSnapshotFields, boardName: name });
-      setModelId(id);
-      // Without this, the store never learns the name typed into the prompt, so the very next
-      // Save re-opens the name dialog as if the board were new (and a reopened board would come
-      // back nameless, since the snapshot's boardName is what applyModel restores).
-      setBoardName(name);
+      markSaved(id, name);
     } finally {
-      setSaving(false);
+      setFirstSaveInFlight(false);
     }
   };
 
@@ -51,12 +63,17 @@ export function SaveButton() {
       setSignInOpen(true);
       return;
     }
+    if (modelId !== null) {
+      // Already has a home — this is a retry of a failed autosave/save, not the first save.
+      requestSave();
+      return;
+    }
     const trimmed = boardName.trim();
     if (!trimmed) {
       setNamePromptOpen(true);
       return;
     }
-    void runSave(trimmed);
+    void runFirstSave(trimmed);
   };
 
   useEffect(() => {
@@ -70,13 +87,47 @@ export function SaveButton() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn]);
 
+  // Before the first save, nothing in the store's saveStatus/isDirty machinery has ever run for
+  // this board — the plain filled button is the only state a never-saved board can be in.
+  if (modelId === null) {
+    return (
+      <>
+        <Button onClick={startSave} disabled={firstSaveInFlight} aria-label="Save Board">
+          {firstSaveInFlight ? "Saving…" : "Save"}
+        </Button>
+        <SignInDialog open={signInOpen} onOpenChange={setSignInOpen} mode="sign-in" />
+        <BoardNamePrompt open={namePromptOpen} onOpenChange={setNamePromptOpen} onSave={runFirstSave} />
+      </>
+    );
+  }
+
+  if (saveStatus === "saving") {
+    return (
+      <span className="min-w-20 text-sm text-surf-ink-muted" aria-live="polite">
+        Saving…
+      </span>
+    );
+  }
+
+  if (saveStatus === "error") {
+    return (
+      <button
+        type="button"
+        onClick={requestSave}
+        className="min-w-20 text-left text-sm text-surf-warning-ink underline-offset-4 hover:underline"
+        aria-live="polite"
+      >
+        Not saved
+      </button>
+    );
+  }
+
+  // saveStatus is "saved" (or, briefly before the very next edit, "idle") — either way the board
+  // has a home and nothing failed, so this reads as the settled, reassuring state.
   return (
-    <>
-      <Button onClick={startSave} disabled={saving}>
-        {saving ? "Saving…" : "Save"}
-      </Button>
-      <SignInDialog open={signInOpen} onOpenChange={setSignInOpen} mode="sign-in" />
-      <BoardNamePrompt open={namePromptOpen} onOpenChange={setNamePromptOpen} onSave={runSave} />
-    </>
+    <span className="flex min-w-20 items-center gap-1 text-sm text-surf-ink" aria-live="polite">
+      <CheckIcon aria-hidden className="size-3.5 text-surf-accent-ink" />
+      Saved
+    </span>
   );
 }
