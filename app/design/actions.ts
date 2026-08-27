@@ -12,7 +12,11 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { models } from "@/lib/db/schema";
-import { parseSnapshot } from "@/lib/models/design-snapshot";
+import {
+  buildSnapshot,
+  parseSnapshot,
+  type DesignSnapshotFields,
+} from "@/lib/models/design-snapshot";
 
 export interface SaveModelResult {
   id: string;
@@ -36,20 +40,27 @@ export async function saveModel(
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Board needs a name.");
 
-  // Validated before it ever reaches the database — a malformed snapshot never gets written
-  // (T-02-05).
-  const design = parseSnapshot(snapshot);
+  // The client sends the raw seven design fields (design-store's `designSnapshotFields`), not
+  // a versioned envelope — wrapping first, then parsing, validates the payload without asking
+  // the client to know about versions. Validated before it ever reaches the database — a
+  // malformed snapshot never gets written (T-02-05).
+  const design = parseSnapshot(buildSnapshot(snapshot as DesignSnapshotFields));
+
+  // What the row stores is the envelope, not the bare fields: the read path
+  // (`parseSnapshot(row.snapshot)` in app/page.tsx) requires `version` to be present, and the
+  // version number is what lets Phase 4 grow the format without migrating existing rows.
+  const envelope = buildSnapshot(design);
 
   if (modelId === null) {
     const [row] = await db.insert(models)
-      .values({ clerkUserId: userId, name: trimmed, snapshot: design })
+      .values({ clerkUserId: userId, name: trimmed, snapshot: envelope })
       .returning({ id: models.id });
     revalidatePath("/");
     return { id: row.id };
   }
 
   await db.update(models)
-    .set({ name: trimmed, snapshot: design, updatedAt: new Date() })
+    .set({ name: trimmed, snapshot: envelope, updatedAt: new Date() })
     .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)));
   revalidatePath("/");
   return { id: modelId };
