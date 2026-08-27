@@ -22,5 +22,11 @@ export const config = {
   matcher: [
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico)).*)",
     "/(api|trpc)(.*)",
+    // On a *.vercel.app domain no one can create the clerk.<domain> DNS record a production
+    // instance normally uses, so the SDK auto-proxies ALL Clerk traffic — including
+    // clerk.browser.js itself — through this app at /__clerk/*, handled inside
+    // clerkMiddleware(). The first matcher entry excludes .js paths, so without this entry
+    // those requests bypass the middleware and 404, and production sign-in never loads.
+    "/__clerk(.*)",
   ],
 };
