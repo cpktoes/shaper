@@ -57,6 +57,10 @@ interface SavedBoardRackCardProps {
   onRename?: () => void;
   onDuplicate?: () => void;
   onDelete?: () => void;
+  /** Set by `board-rack.tsx` after a forced Duplicate failure — Duplicate has no dialog of its
+   * own to keep open, so this is the retryable, visible affordance instead of a silent no-op
+   * (UI-SPEC rack-card-menu "error"). Choosing Duplicate again from the menu is the retry. */
+  duplicateError?: string | null;
 }
 
 interface InProgressBoardRackCardProps {
@@ -132,13 +136,14 @@ export function BoardRackCard(props: BoardRackCardProps) {
     onRename = () => {},
     onDuplicate = () => {},
     onDelete = () => {},
+    duplicateError = null,
   } = props;
   const geometry = buildOutline(model.snapshot.outline);
   const summary = summarizeDesign(model.snapshot);
   const lastTouched = formatLastTouched(model.updatedAt);
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative flex flex-col gap-1", className)}>
       <button type="button" onClick={() => onSelect(model)} className={CARD_SHELL_CLASS}>
         <CardThumbnail geometry={geometry} outline={model.snapshot.outline} />
         <span className="block truncate text-[20px] leading-[1.2] font-semibold text-foreground">
@@ -150,6 +155,11 @@ export function BoardRackCard(props: BoardRackCardProps) {
           Open This Board
         </span>
       </button>
+      {/* Outside the whole-card button on purpose, same reasoning as the menu trigger: a click
+          here must never fire the card's own navigation. */}
+      {duplicateError && (
+        <p className="text-xs leading-[1.4] text-surf-warning-ink">{duplicateError}</p>
+      )}
       <RackCardMenu
         boardName={model.name}
         onRename={onRename}
