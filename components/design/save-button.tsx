@@ -20,7 +20,7 @@ import { saveModel } from "@/app/design/actions";
 
 export function SaveButton() {
   const { isSignedIn } = useUser();
-  const { boardName, modelId, designSnapshotFields, setModelId } = useDesign();
+  const { boardName, modelId, designSnapshotFields, setModelId, setBoardName } = useDesign();
   const [signInOpen, setSignInOpen] = useState(false);
   const [namePromptOpen, setNamePromptOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -31,8 +31,15 @@ export function SaveButton() {
   const runSave = async (name: string) => {
     setSaving(true);
     try {
-      const { id } = await saveModel(modelId, name, designSnapshotFields);
+      // The snapshot must carry the name being saved, not the store's current (possibly still
+      // empty) boardName — designSnapshotFields was assembled before the prompt closed, and the
+      // setBoardName below lands too late for this payload.
+      const { id } = await saveModel(modelId, name, { ...designSnapshotFields, boardName: name });
       setModelId(id);
+      // Without this, the store never learns the name typed into the prompt, so the very next
+      // Save re-opens the name dialog as if the board were new (and a reopened board would come
+      // back nameless, since the snapshot's boardName is what applyModel restores).
+      setBoardName(name);
     } finally {
       setSaving(false);
     }

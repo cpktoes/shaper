@@ -49,7 +49,10 @@ export async function saveModel(
   // What the row stores is the envelope, not the bare fields: the read path
   // (`parseSnapshot(row.snapshot)` in app/page.tsx) requires `version` to be present, and the
   // version number is what lets Phase 4 grow the format without migrating existing rows.
-  const envelope = buildSnapshot(design);
+  // The snapshot's embedded boardName is pinned to the row's name column here at the write
+  // boundary — `name` is the authoritative label, and a reopened board restores its name from
+  // the snapshot, so letting the two drift would hand the shaper back a nameless board.
+  const envelope = buildSnapshot({ ...design, boardName: trimmed });
 
   if (modelId === null) {
     const [row] = await db.insert(models)
