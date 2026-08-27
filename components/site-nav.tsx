@@ -12,6 +12,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SettingsMenu } from "@/components/settings-menu";
+import { NavAuthControl } from "@/components/auth/nav-auth-control";
 
 const NAV_LINKS = [
   { href: "/design/outline", label: "TEMPLATE" },
@@ -58,6 +59,10 @@ export function SiteNav() {
             different kind of thing without drifting away from the group. */}
         <span aria-hidden className="ml-1 h-4 w-px bg-surf-line-faint" />
         <SettingsMenu />
+        {/* Save (D-05) lands in Task 5 of this same plan; the auth control mounts here first
+            so the two share this cluster in reading order (D-02). */}
+        <span aria-hidden className="h-4 w-px bg-surf-line-faint" />
+        <NavAuthControl />
       </div>
     </nav>
   );

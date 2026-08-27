@@ -44,3 +44,4 @@ next-env.d.ts
 
 # GSD runtime scratch (dispatch-isolation sentinel, etc.)
 .gsd/
+.env*
