@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_FIN_PLACEMENT_SPEC,
+  MIN_MCKEE_LONGBOARD_QUAD_LENGTH,
   computeFinPlacement,
   defaultCenterBaseLength,
+  effectiveQuadRearModel,
+  isQuadRearModelAvailable,
   resetAdvanced,
   toeAimTableFor,
   type FinAdvancedSpec,
@@ -324,5 +327,113 @@ describe("toe-aim-tables row-length consistency", () => {
     for (const row of Object.values(TOE_AIM_TABLE.rear)) {
       expect(row.length).toBe(TOE_AIM_TABLE_COLUMNS.length);
     }
+  });
+});
+
+describe("McKee Longboard quad model needs an eight-foot board", () => {
+  const OTHER_QUAD_REAR_MODELS: QuadRearModel[] = ["basic", "basicOffRail", "mckeeSB"];
+  const LENGTHS_TRIED_IN = [60, 90, 96, 120];
+
+  function quadSpec(overrides: Partial<FinPlacementSpec>): FinPlacementSpec {
+    return { ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "quad", ...overrides };
+  }
+
+  describe("the rule on its own", () => {
+    it("the eight-foot cutoff constant equals inchesToMm(96)", () => {
+      expect(MIN_MCKEE_LONGBOARD_QUAD_LENGTH).toBe(inchesToMm(96));
+    });
+
+    it('the longboard model is unavailable at 7\'6" and at one sixteenth under the cutoff', () => {
+      expect(isQuadRearModelAvailable("mckeeLB", inchesToMm(90))).toBe(false);
+      expect(isQuadRearModelAvailable("mckeeLB", inchesToMm(95.9375))).toBe(false);
+    });
+
+    it("the longboard model IS available at exactly 96in, and at 108in", () => {
+      expect(isQuadRearModelAvailable("mckeeLB", inchesToMm(96))).toBe(true);
+      expect(isQuadRearModelAvailable("mckeeLB", inchesToMm(108))).toBe(true);
+    });
+
+    it.each(OTHER_QUAD_REAR_MODELS)("%s is available at every length tried", (model) => {
+      for (const lengthIn of LENGTHS_TRIED_IN) {
+        expect(isQuadRearModelAvailable(model, inchesToMm(lengthIn))).toBe(true);
+      }
+    });
+
+    it("resolves the longboard model to McKee SB/Gun at 90in, and returns it unchanged at 96in", () => {
+      expect(effectiveQuadRearModel("mckeeLB", inchesToMm(90))).toBe("mckeeSB");
+      expect(effectiveQuadRearModel("mckeeLB", inchesToMm(96))).toBe("mckeeLB");
+    });
+
+    it.each(OTHER_QUAD_REAR_MODELS)("%s resolves to itself at every length tried", (model) => {
+      for (const lengthIn of LENGTHS_TRIED_IN) {
+        expect(effectiveQuadRearModel(model, inchesToMm(lengthIn))).toBe(model);
+      }
+    });
+  });
+
+  describe("the fallback, through the public engine", () => {
+    it('a 7\'6" board storing the longboard model produces the SAME resolved numbers as the same board storing McKee SB/Gun', () => {
+      const fallenBack = computeFinPlacement(quadSpec({ boardLength: inchesToMm(90), quadRearModel: "mckeeLB" }));
+      const trueSbGun = computeFinPlacement(quadSpec({ boardLength: inchesToMm(90), quadRearModel: "mckeeSB" }));
+
+      expectCloseIn(mmToInches(fallenBack.resolved.frontOffTail), mmToInches(trueSbGun.resolved.frontOffTail));
+      expectCloseIn(mmToInches(fallenBack.resolved.rearOffTail), mmToInches(trueSbGun.resolved.rearOffTail));
+      expectCloseIn(mmToInches(fallenBack.resolved.rearHalfSpread), mmToInches(trueSbGun.resolved.rearHalfSpread));
+      expectCloseIn(mmToInches(fallenBack.resolved.rearToe), mmToInches(trueSbGun.resolved.rearToe));
+      expectCloseIn(mmToInches(fallenBack.resolved.quadRearOffRail), mmToInches(trueSbGun.resolved.quadRearOffRail));
+      expect(fallenBack.modelHeader).toBe(trueSbGun.modelHeader);
+      expect(fallenBack.marks.length).toBe(trueSbGun.marks.length);
+    });
+
+    it('the same 7\'6" spec does NOT match the numbers the longboard formulas would have given', () => {
+      const fallenBack = computeFinPlacement(quadSpec({ boardLength: inchesToMm(90), quadRearModel: "mckeeLB" }));
+      const trueLongboard = computeFinPlacement(quadSpec({ boardLength: inchesToMm(96), quadRearModel: "mckeeLB" }));
+
+      expect(
+        Math.abs(mmToInches(fallenBack.resolved.rearOffTail) - mmToInches(trueLongboard.resolved.rearOffTail)),
+      ).toBeGreaterThan(0.1);
+    });
+
+    it('an 8\'0" board storing the longboard model keeps the longboard numbers', () => {
+      const onLongboard = computeFinPlacement(quadSpec({ boardLength: inchesToMm(96), quadRearModel: "mckeeLB" }));
+      const onSbGun = computeFinPlacement(quadSpec({ boardLength: inchesToMm(96), quadRearModel: "mckeeSB" }));
+
+      expect(
+        Math.abs(mmToInches(onLongboard.resolved.rearOffTail) - mmToInches(onSbGun.resolved.rearOffTail)),
+      ).toBeGreaterThan(0.01);
+      expect(onLongboard.modelHeader).toContain("Longboard");
+    });
+
+    it("flags.isLongboardQuad is false at 7'6\" with the longboard model stored, and true at 8'0\"", () => {
+      const short = computeFinPlacement(quadSpec({ boardLength: inchesToMm(90), quadRearModel: "mckeeLB" }));
+      const long = computeFinPlacement(quadSpec({ boardLength: inchesToMm(96), quadRearModel: "mckeeLB" }));
+      expect(short.flags.isLongboardQuad).toBe(false);
+      expect(long.flags.isLongboardQuad).toBe(true);
+    });
+
+    it("flags.quadCenterFinAvailable is true at 7'6\" with the longboard model stored, and false at 8'0\"", () => {
+      const short = computeFinPlacement(quadSpec({ boardLength: inchesToMm(90), quadRearModel: "mckeeLB" }));
+      const long = computeFinPlacement(quadSpec({ boardLength: inchesToMm(96), quadRearModel: "mckeeLB" }));
+      expect(short.flags.quadCenterFinAvailable).toBe(true);
+      expect(long.flags.quadCenterFinAvailable).toBe(false);
+    });
+
+    it("with quadCenterFinOn true and the longboard model stored at 7'6\", the fifth fin really is produced", () => {
+      const shortLongboard = computeFinPlacement(
+        quadSpec({ boardLength: inchesToMm(90), quadRearModel: "mckeeLB", quadCenterFinOn: true }),
+      );
+      const shortSbGun = computeFinPlacement(
+        quadSpec({ boardLength: inchesToMm(90), quadRearModel: "mckeeSB", quadCenterFinOn: true }),
+      );
+      expect(shortLongboard.marks.filter((m) => m.role === "center").length).toBe(1);
+      expect(shortLongboard.marks.filter((m) => m.role === "center").length).toBe(
+        shortSbGun.marks.filter((m) => m.role === "center").length,
+      );
+
+      const longAtEightFeet = computeFinPlacement(
+        quadSpec({ boardLength: inchesToMm(96), quadRearModel: "mckeeLB", quadCenterFinOn: true }),
+      );
+      expect(longAtEightFeet.marks.filter((m) => m.role === "center").length).toBe(0);
+    });
   });
 });
