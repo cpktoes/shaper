@@ -85,6 +85,14 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
     expect(offenders, JSON.stringify(offenders)).toEqual([]);
   });
 
+  it("app/design/actions.ts exports exactly the four expected actions and no others", () => {
+    // Written before renameModel/duplicateModel/deleteModel exist (02-04's RED step) — a fifth
+    // action added later without being named here fails this test loudly rather than silently
+    // skipping the ownership checks above.
+    const fns = exportedAsyncFunctions(actionsSource).map((fn) => fn.name).sort();
+    expect(fns).toEqual(["deleteModel", "duplicateModel", "renameModel", "saveModel"]);
+  });
+
   it("every Drizzle statement touching the models table constrains on the owning-user column", () => {
     for (const [label, source] of [
       ["app/design/actions.ts", actionsSource],
