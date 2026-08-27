@@ -97,8 +97,9 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-11 pending:
+12 pending:
 
+- [minor/ui] Template screen: construction-lines toggle button + sidebar-minimize wide view (after Phase 2) — `.planning/todos/pending/2026-08-27-template-construction-toggle-and-wide-view.md`
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Mobile/phone-width layout polish for the design screens — `.planning/todos/pending/2026-08-19-mobile-phone-width-layout-polish.md`
 - [minor/ui] Copy-spec-to-clipboard across the design screens — `.planning/todos/pending/2026-08-21-copy-spec-to-clipboard.md`
