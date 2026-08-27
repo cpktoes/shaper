@@ -73,23 +73,44 @@ exception (see `components/setup/preset-card.tsx`), not a new one created by thi
 
 ## Typography
 
+**New typography roles this phase** (the only 2 weights this phase declares):
+
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px | Regular (400) | 1.5 |
 | Label | 12px | Semibold (600) | 1.4 |
-| Heading | 20px | Semibold (600) | 1.2 |
-| Display | 30px | Extrabold (800) | 1.2 |
 
-Two weights (Regular 400, Semibold 600) cover every new element this phase adds: dialog
-body copy, banner text, rack-card metadata, menu items, form labels/errors. The **Display**
-row's Extrabold (800) is a pre-existing, app-wide exception (page-level `h1`s like "Shape a
-New Board", `font-extrabold`) that this phase's one new heading — the rack section's own
-label, if given one — should match rather than redefine. Nav links and card CTA labels
-(e.g. "Start Shaping") use `font-bold` (700) with `tracking-architectural uppercase` at
-12px; this is the pre-existing "Label" treatment for uppercase eyebrow text specifically —
-reuse it verbatim for the rack card's own CTA label and the "In progress — not saved" tag,
-rather than the 600-weight Label row above (which is for sentence-case labels, e.g. form
-field labels in the new dialogs).
+Regular (400) and Semibold (600) cover every new element this phase adds: dialog body
+copy, banner text, rack-card metadata, menu items, form labels/errors. Body is for
+sentence-case copy (banner text, dialog descriptions, error/validation text); Label is
+for sentence-case dialog field labels (e.g. "Board name") — neither is the uppercase
+eyebrow treatment below, which this phase reuses but does not redeclare.
+
+**Reused from Phase 1 (not new declarations — do not redefine, match exactly):**
+
+| Existing role | Size | Weight | Line Height | Where this phase reuses it |
+|----------------|------|--------|--------------|------------------------------|
+| Heading | 20px | Semibold (600) | 1.2 | Rack card title (matches `PresetCard`'s card-title treatment) |
+| Display | 30px | Extrabold (800) | 1.2 | The rack section's own heading, if one is added (matches the page `h1`, e.g. "Shape a New Board") |
+| Nav/CTA eyebrow | 12px | Bold (700), `tracking-architectural uppercase` | 1.4 | Rack card CTA label ("Open This Board"), the "In progress — not saved" tag — same treatment as the existing preset card's "Start Shaping" label and the nav links |
+
+---
+
+## Visual Focal Points
+
+Each new surface has exactly one focal point — the thing a shaper's eye should land on
+first. Everything else on that surface is secondary weight (muted text, thin borders, no
+competing color).
+
+| Surface | Focal point |
+|---------|-------------|
+| Rack card | The outline thumbnail — same window-frame treatment as `PresetCard`, so a shaper recognizes their board by its shape first, name/dims second |
+| Sign-in dialog | The heading + primary CTA (Sign In / Create Account button) — Clerk's own field stack is secondary until the shaper is mid-fill |
+| Sign-in banner | The "Sign In" link (accent text) — the reassurance sentence around it is muted body copy |
+| Nav Save control | The "Saved" tick's accent checkmark once saved; the filled "Save" button itself before the first save |
+| Board-name / rename dialog | The text input — auto-focused on open, primary action is secondary until a name is typed |
+| Rack-card menu | The Delete item (destructive color) — the only item that should draw the eye differently from Rename/Duplicate |
+| Delete-confirm dialog | The destructive "Delete Board" button — never the "Cancel" button, which stays the default/neutral treatment |
 
 ---
 
