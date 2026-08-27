@@ -45,3 +45,8 @@ next-env.d.ts
 # GSD runtime scratch (dispatch-isolation sentinel, etc.)
 .gsd/
 .env*
+
+# Google Cloud OAuth client secret downloads (Google's default download filename) — never
+# belongs in a repo; see Phase 2 threat T-02-08. If you find one of these in the repo root,
+# move it out of the working tree entirely rather than relying on this ignore rule.
+client_secret_*.json
