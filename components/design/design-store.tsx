@@ -6,10 +6,19 @@
  * state, so a value changed on one screen (an outline edit, a rail thickness) is immediately
  * visible on every other screen that derives from it.
  *
- * Built on React context + `useState`/`useMemo` only — no reducer library, no effects that write
- * state, no persistence. The design resets on reload; the prototype's `seed`/`seedVersion`/
- * `applySeed`/`onSync` message-passing machinery existed only because its screens were separate
- * documents, and has no analogue here.
+ * The store is also now the thing that knows which saved row the board belongs to (`modelId`)
+ * and whether that row is behind what's on screen (`dirty`/`saveStatus`): once a board has a
+ * `modelId`, it is durable in Postgres for its signed-in shaper and autosaves after every edit
+ * (D-08). An anonymous or never-saved board still lives here only, and is gone on reload exactly
+ * as it always was.
+ *
+ * Built on React context + `useState`/`useMemo` only — no reducer library, and every design-field
+ * mutator sets state directly rather than through a synchronization effect that mirrors one piece
+ * of state into another. `DesignProvider`'s autosave timer (below) is the one effect that does
+ * write state, but it isn't that antipattern: it decides *when* to persist an already-computed
+ * design, it never computes one. The prototype's `seed`/`seedVersion`/`applySeed`/`onSync`
+ * message-passing machinery existed only because its screens were separate documents, and has no
+ * analogue here.
  */
 
 import { createContext, useContext, useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
@@ -68,9 +77,10 @@ interface DesignState {
   finSystem: FinSystem;
   /** The row in Postgres a Save writes over (D-09) — null means this board has never been
    * saved. Set by `markSaved` after the shaper's own first, manual `saveModel` succeeds, by
-   * `setModelId` directly (kept for callers that already have a row id, e.g. a future
-   * duplicate/rename flow), and by `applyModel` when a rack card is opened. This is session
-   * bookkeeping, not board design, so it is deliberately absent from `designSnapshotFields` — a
+   * `applyModel` when a rack card is opened, and cleared back to null by `setModelId(null)` when
+   * the board currently open in the editor is deleted from the rack (`board-rack.tsx`) — so the
+   * next Save creates a fresh row instead of writing over one that no longer exists. This is
+   * session bookkeeping, not board design, so it is deliberately absent from `designSnapshotFields` — a
    * save never stores a reference to its own row. */
   modelId: string | null;
   /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,

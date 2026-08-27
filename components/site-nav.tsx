@@ -3,10 +3,14 @@
 /**
  * Top nav shared by the whole app (mounted once in app/layout.tsx), so a shaper can move between
  * the setup screen, the outline editor, the rail band calculator, the volume estimator, the fin
- * placement screen and the summary dashboard entirely via client-side navigation — never by
- * editing the URL, which would drop the in-memory board (no persistence until Phase 2). The SHAPER
- * wordmark links back to `/` for the same reason. Client component because it reads the active
- * path (usePathname) to highlight the current link.
+ * placement screen and the summary dashboard entirely via client-side navigation, never by
+ * editing the URL. An anonymous or never-saved board still lives only in the design store's
+ * memory, so a hard navigation would drop it — but a saved board on a signed-in shaper's account
+ * now survives one, since it autosaves to Postgres regardless of how the shaper moves between
+ * screens. The SHAPER wordmark links back to `/` for the same client-side-navigation reason.
+ * Client component because it reads the active path (usePathname) to highlight the current link,
+ * and mounts the nav's right-hand chrome cluster: the settings menu, the Save control (D-05), and
+ * the sign-in/account control (D-02).
  */
 
 import Link from "next/link";
