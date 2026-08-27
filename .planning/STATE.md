@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: accounts-saved-designs
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-08-27T22:30:57.719Z"
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-08-27T22:46:03.639Z"
 last_activity: 2026-08-27
 last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 ## Current Position
 
 Phase: 02 (accounts-saved-designs) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-08-27 — Phase 02 execution started
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Progress: [███████░░░] 70%
 | Phase 02 P01 | 55min | 5 tasks | 25 files |
 | Phase 02 P02 | 35min | 3 tasks | 4 files |
 | Phase 02 P03 | 30min | 3 tasks | 7 files |
+| Phase 02 P04 | 20min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Added markSaved(id, name) to the design store (Rule 2) so the first manual save lands on saveStatus 'saved' immediately
 - [Phase ?]: [Phase 2] 02-03: sortRackEntries is generic over T extends RackEntry so setup-screen.tsx can sort SavedModel-carrying entries in one pass, without a second lookup after ordering
 - [Phase ?]: [Phase 2] 02-03: the slow-query Suspense boundary lives in app/page.tsx (a nested BoardRackData async component) rather than in setup-screen.tsx/board-rack.tsx, so its fallback reuses SetupScreen's existing empty state instead of adding a new loading UI
+- [Phase ?]: [Phase 2] 02-04: BoardRackCard's onRename/onDuplicate/onDelete are optional no-op-default props so the menu shell (Task 2) and its wiring (Task 3) each stayed independently type-safe
+- [Phase ?]: [Phase 2] 02-04: one RenameDialog/DeleteConfirmDialog pair lives at the rack level (not per card), mirroring setup-screen.tsx's lifted replace-confirm state
+- [Phase ?]: [Phase 2] 02-04: deleting the board open in the editor clears modelId via the store so the next Save creates a fresh row; renaming never touches the store
 
 ### Pending Todos
 
@@ -222,6 +226,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-27T22:30:57.699Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-08-27T22:46:03.618Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None

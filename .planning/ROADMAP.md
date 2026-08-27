@@ -66,7 +66,7 @@ Plans:
   4. User can reopen a previously saved model and continue editing it
   5. User can view a list of all their saved models
 
-**Plans:** 3/6 plans executed
+**Plans:** 4/6 plans executed
 
 Plans:
 **Wave 1**
@@ -80,7 +80,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 02-04-PLAN.md — Rename, Duplicate and Delete on each rack card, each scoped to its owner (D-13)
+- [x] 02-04-PLAN.md — Rename, Duplicate and Delete on each rack card, each scoped to its owner (D-13)
 - [ ] 02-05-PLAN.md — The sign-in banner (D-02) and the sweep that retires every stale promise about saving
 
 **Wave 4** *(blocked on Wave 3 completion)*
@@ -127,6 +127,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — Port & Deploy the Design Tool | 4/4 | Complete    | 2026-08-21 |
-| 2. Accounts & Saved Designs | 3/6 | In Progress|  |
+| 2. Accounts & Saved Designs | 4/6 | In Progress|  |
 | 3. Volume, Templates & Verified Math | 0/TBD | Not started | - |
 | 4. Rocker & Foil Editors | 0/TBD | Not started | - |
