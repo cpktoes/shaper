@@ -22,8 +22,13 @@ export interface ListedModel {
 
 /**
  * Every saved board for one shaper, newest-touched first (id descending as the tiebreak so the
- * order is stable across renders of the same second). Read-only: rendering the rack twice yields
- * the same result and mutates nothing.
+ * order is stable across renders of the same second).
+ *
+ * Read-only contract: this function performs a `select` and nothing else — no counters, no
+ * last-viewed stamp, no write of any kind — so calling it twice returns the same rows and
+ * changes nothing in the database. That also means the rack reflects rows committed as of the
+ * page render that called this: a change made to a board from another tab or another device
+ * shows up only on the next navigation here. This phase promises no live cross-tab sync.
  */
 export async function listModels(clerkId: string): Promise<ListedModel[]> {
   return db.select({

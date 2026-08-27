@@ -10,9 +10,10 @@
  *
  * Renders nothing at all when it has no entries to show (UI-SPEC board-rack "empty": there is no
  * empty-rack state to design, because the rack simply doesn't render). That same `null` return is
- * also what a slow-loading query degrades into: `app/page.tsx` streams this whole section behind
- * a Suspense boundary whose fallback is an empty entry list, so a slow board-list read shows the
- * plain preset screen for a moment rather than a spinner (UI-SPEC board-rack "loading").
+ * also what a slow-loading query degrades into: `app/page.tsx` wraps its board-listing Server
+ * Component (`BoardRackData`) in `<Suspense fallback={<SetupScreen models={[]} />}>`, and an empty
+ * `models` array produces an empty entries list here — so a slow board-list read shows the plain
+ * preset screen for a moment rather than a spinner (UI-SPEC board-rack "loading").
  */
 
 import { BoardRackCard, type SavedModel } from "@/components/setup/board-rack-card";
