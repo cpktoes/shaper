@@ -17,6 +17,8 @@ import {
   THRUSTER_FRONT_MODELS,
   TWIN_TEMPLATES,
   defaultCenterBaseLength,
+  effectiveQuadRearModel,
+  isQuadRearModelAvailable,
   resetAdvanced,
   type FinAdvancedSpec,
   type FinPlacementResult,
@@ -128,18 +130,21 @@ function PillButton({
   onClick,
   children,
   className = "",
+  disabled = false,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
   className?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={
-        `cursor-pointer rounded-md border px-1 py-2.5 text-[11px] font-bold ${
+        `rounded-md border px-1 py-2.5 text-[11px] font-bold ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"} ${
           active
             ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
             : "border-surf-line bg-surf-sidebar text-surf-ink"
@@ -418,13 +423,14 @@ export function FinControls({
 
       {spec.finSetup === "quad" && (
         <>
-          <div>
+          <div className="mb-6">
             <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">Quad Model</div>
-            <div className="mt-2 mb-6 grid grid-cols-2 gap-2.5">
+            <div className="mt-2 grid grid-cols-2 gap-2.5">
               {QUAD_REAR_MODELS.map((opt) => (
                 <PillButton
                   key={opt.value}
-                  active={spec.quadRearModel === opt.value}
+                  active={effectiveQuadRearModel(spec.quadRearModel, spec.boardLength) === opt.value}
+                  disabled={!isQuadRearModelAvailable(opt.value, spec.boardLength)}
                   onClick={() =>
                     onChange({
                       quadRearModel: opt.value as QuadRearModel,
@@ -436,6 +442,11 @@ export function FinControls({
                 </PillButton>
               ))}
             </div>
+            {!isQuadRearModelAvailable("mckeeLB", spec.boardLength) && (
+              <div className="mt-1.5 text-sm text-surf-ink-muted font-normal">
+                McKee Longboard needs a board 8&apos;0&quot; or longer.
+              </div>
+            )}
           </div>
           {flags.quadCenterFinAvailable && (
             <label className="flex cursor-pointer items-center gap-2 text-sm text-surf-ink-muted font-normal">

@@ -102,7 +102,8 @@ export function FinModelInfo() {
           </div>
           <div>
             <strong>McKee Longboard</strong> — McKee&apos;s dedicated longboard front-and-rear
-            guidance, best suited to boards 8&apos; and up.
+            guidance, for boards 8&apos;0&quot; and longer. On a shorter board the app uses
+            McKee SB/Gun instead.
           </div>
         </div>
       </div>
