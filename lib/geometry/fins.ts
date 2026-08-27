@@ -32,6 +32,14 @@
  *    imported branch will be added later.
  * 6. CM BRANCH OMITTED. Every `unitBounds` call and `toU`/`fromU` pair collapses to its inch
  *    branch; this module has no unit mode.
+ * 7. LONGBOARD-QUAD LENGTH FLOOR. A new product rule with no counterpart in the prototype: McKee's
+ *    Longboard quad rear formulas are fitted for boards eight foot and up, so `computeFinPlacement`
+ *    resolves the quad rear model against `spec.boardLength` (via `effectiveQuadRearModel`) before
+ *    building the inch spec, at the millimetre boundary — the inch core below never sees an
+ *    out-of-range model, and stays a statement-for-statement port. The comparison is in
+ *    millimetres, not inches: the inch round-trip loses eight foot by one part in ten thousand
+ *    million (`mmToInches(inchesToMm(96))` is `95.99999999999999`), which would wrongly refuse a
+ *    board a shaper set to exactly 8'0".
  */
 
 import type { Point2D } from "./board";
@@ -215,6 +223,35 @@ export const QUAD_REAR_MODELS: { value: QuadRearModel; label: string }[] = [
   { value: "mckeeSB", label: "McKee SB/Gun" },
   { value: "mckeeLB", label: "McKee Longboard" },
 ];
+
+/** The shortest board McKee's Longboard front-and-rear formulas are fitted for. Below this the
+ * formulas are being asked for numbers outside the range they were built from. */
+export const MIN_MCKEE_LONGBOARD_QUAD_LENGTH: Mm = inchesToMm(96);
+
+/**
+ * Whether a quad rear model may be used on a board of the given length. Only the longboard model
+ * is ever refused, and only below the eight-foot cutoff; every other model is always allowed.
+ *
+ * COMPARE IN MILLIMETRES. `mmToInches(inchesToMm(96))` is `95.99999999999999` — dividing an inch
+ * value back out of millimetres does not round-trip exactly. Every board length in this app is
+ * built by `inchesToMm(<inches>)`, so comparing `boardLength` against `MIN_MCKEE_LONGBOARD_QUAD_LENGTH`
+ * (both millimetre values built the same way) is exact at exactly eight feet; comparing on the
+ * inch side would refuse the very board this rule is meant to allow.
+ */
+export function isQuadRearModelAvailable(model: QuadRearModel, boardLength: Mm): boolean {
+  if (model !== "mckeeLB") return true;
+  return boardLength >= MIN_MCKEE_LONGBOARD_QUAD_LENGTH;
+}
+
+/**
+ * The quad rear model actually in force for a board of the given length: the model handed in
+ * when it's allowed, and McKee SB/Gun otherwise. McKee SB/Gun is the fallback because it is the
+ * neighbouring McKee rear-pair model and is fitted across the shortboard/gun range a board that
+ * falls back now sits in.
+ */
+export function effectiveQuadRearModel(model: QuadRearModel, boardLength: Mm): QuadRearModel {
+  return isQuadRearModelAvailable(model, boardLength) ? model : "mckeeSB";
+}
 
 export const TWIN_TEMPLATES: { value: TwinTemplate; label: string }[] = [
   { value: "upright", label: "Modern/Upright" },
@@ -968,7 +1005,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
       );
     if (isLongboardQuad)
       notesItems.push(
-        `Quad — McKee Longboard: dedicated front AND rear formulas (best ≥8'), no center-fin option. Spread gains 1⁄16" per 3" of length over 9'; rear toe aims 10cm aft of the nose (denominator x−18 vs. x−12 for SB/Gun).`,
+        `Quad — McKee Longboard: dedicated front AND rear formulas, needs a board 8'0" or longer (on a shorter board this placement falls back to McKee SB/Gun) — no center-fin option. Spread gains 1⁄16" per 3" of length over 9'; rear toe aims 10cm aft of the nose (denominator x−18 vs. x−12 for SB/Gun).`,
       );
   }
   if (w12 <= 12.5 && (isThruster || (isQuad && spec.quadRearModel !== "mckeeLB" && spec.quadRearModel !== "basic"))) {
@@ -1100,7 +1137,7 @@ export function computeFinPlacement(spec: FinPlacementSpec): FinPlacementResult 
     tailShape: spec.tailShape,
     finSetup: spec.finSetup,
     frontModel: spec.frontModel,
-    quadRearModel: spec.quadRearModel,
+    quadRearModel: effectiveQuadRearModel(spec.quadRearModel, spec.boardLength),
     twinTemplate: spec.twinTemplate,
     quadCenterFinOn: spec.quadCenterFinOn,
     advanced: {
