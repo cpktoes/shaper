@@ -12,7 +12,15 @@
  * documents, and has no analogue here.
  */
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
+import { useAuth } from "@clerk/nextjs";
+import { saveModel } from "@/app/design/actions";
+import {
+  AUTOSAVE_DEBOUNCE_MS,
+  decideAutosave,
+  nextStatusAfter,
+  type SaveStatus,
+} from "@/lib/models/autosave";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec, type Point2D } from "@/lib/geometry/board";
 import { buildOutline, type OutlineGeometry } from "@/lib/geometry/outline";
 import type { BoardPreset } from "@/lib/geometry/presets";
@@ -69,6 +77,20 @@ interface DesignState {
    * default — a user who drags a slider back to its default value has still started a board.
    * Backs `hasBoardInProgress` on the setup screen's replace-board confirmation (D-07). */
   boardStarted: boolean;
+  /** True when the store's snapshot fields disagree with the row `modelId` points at — set by
+   * exactly the same mutators that set `boardStarted` true, because a fresh edit is exactly the
+   * moment both become true. The two flags answer different questions (has a board been
+   * started, versus does the saved row now lag the screen), but pairing them on every mutator is
+   * what stops a new one from silently opting out of autosave. `applyModel` is the one
+   * exception: opening a saved board sets this false, because the store now matches the row
+   * exactly (D-09). Cleared only once the server confirms a write, never when the request is
+   * merely sent — see the autosave effect in `DesignProvider` (D-08). */
+  dirty: boolean;
+  /** The nav Save control's current state (D-08, `lib/models/autosave.ts`'s `SaveStatus`) — read
+   * by `save-button.tsx` and written only by the autosave effect and `requestSave`. Lives here
+   * rather than as local state in the button because the nav is mounted once in the root layout
+   * and this has to survive navigation between design screens. */
+  saveStatus: SaveStatus;
 }
 
 const DEFAULT_DESIGN_STATE: DesignState = {
@@ -81,6 +103,8 @@ const DEFAULT_DESIGN_STATE: DesignState = {
   finSystem: "fcs2",
   modelId: null,
   boardStarted: false,
+  dirty: false,
+  saveStatus: "idle",
 };
 
 interface FinTailOutline {
@@ -106,6 +130,17 @@ interface DesignContextValue {
    * finsImportTemplate, boardName, finSystem — assembled once here so a caller building a save
    * never has to remember the field list by hand or risk silently dropping one. */
   designSnapshotFields: DesignSnapshotFields;
+  /** True when the store's snapshot fields disagree with what `modelId` points at in Postgres —
+   * `save-button.tsx` reads this alongside `saveStatus` to decide what the nav shows. See
+   * `DesignState.dirty`'s doc comment for exactly which mutators set it. */
+  isDirty: boolean;
+  /** The nav Save control's current state (D-08). See `DesignState.saveStatus`'s doc comment. */
+  saveStatus: SaveStatus;
+  /** Fires the same save the autosave effect would, immediately and with no debounce — what
+   * `save-button.tsx` calls both for a signed-in shaper's manual Save on an already-saved board
+   * and for the one-click retry after a failed save. A no-op while `modelId` is null (nothing to
+   * save to yet) or while a save is already in flight (never two concurrent writes to one row). */
+  requestSave: () => void;
 
   updateOutline: (patch: Partial<OutlineSpec>) => void;
   /** Applies a board-type preset (components/setup/setup-screen.tsx) by replacing outline, rails
@@ -159,9 +194,20 @@ const DesignContext = createContext<DesignContextValue | null>(null);
 
 export function DesignProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<DesignState>(DEFAULT_DESIGN_STATE);
+  // Clerk's own loading state reads as `isSignedIn === undefined`; treated as "not signed in"
+  // here, same as `decideAutosave` treats any non-true value — there is nothing to autosave to
+  // until Clerk has actually confirmed a session.
+  const { isSignedIn } = useAuth();
+  // Whether a saveModel call for this board is currently in flight — local to the provider
+  // rather than a DesignState field, because no screen ever reads it directly; only the autosave
+  // effect and performSave below need it, to satisfy decideAutosave's "never two concurrent
+  // writes to one row" rule (D-08) and to re-check after a save settles whether another edit
+  // arrived while it was in flight.
+  const [saveInFlight, setSaveInFlight] = useState(false);
+  const [, startSaveTransition] = useTransition();
 
   const updateOutline = (patch: Partial<OutlineSpec>) =>
-    setState((prev) => ({ ...prev, outline: { ...prev.outline, ...patch }, boardStarted: true }));
+    setState((prev) => ({ ...prev, outline: { ...prev.outline, ...patch }, boardStarted: true, dirty: true }));
 
   // A preset is a complete spec, not a patch (see BoardPreset's own doc comment) — every field
   // not supplied by the preset resets to DEFAULT_DESIGN_STATE's value rather than carrying over
@@ -174,8 +220,13 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       rails: preset.rails,
       fins: preset.fins,
       boardStarted: true,
+      dirty: true,
     }));
 
+  // The one place `dirty` deliberately does NOT follow `boardStarted`: opening a saved board
+  // sets boardStarted true (a board is in progress) but leaves dirty at DEFAULT_DESIGN_STATE's
+  // false, because the store now matches the row exactly (D-09) — there is nothing to autosave
+  // until the shaper changes something.
   const applyModel = (id: string, snapshot: DesignSnapshotFields) =>
     setState(() => ({
       ...DEFAULT_DESIGN_STATE,
@@ -195,6 +246,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       ...prev,
       rails: { ...prev.rails, [key]: { ...prev.rails[key], ...patch } },
       boardStarted: true,
+      dirty: true,
     }));
 
   const toggleTailHardEdge = () =>
@@ -202,21 +254,23 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       ...prev,
       rails: { ...prev.rails, tailHardEdge: !prev.rails.tailHardEdge },
       boardStarted: true,
+      dirty: true,
     }));
 
   const updateFins = (patch: Partial<FinPlacementSpec>) =>
-    setState((prev) => ({ ...prev, fins: { ...prev.fins, ...patch }, boardStarted: true }));
+    setState((prev) => ({ ...prev, fins: { ...prev.fins, ...patch }, boardStarted: true, dirty: true }));
 
   const updateVolume = (patch: Partial<VolumeSpec>) =>
-    setState((prev) => ({ ...prev, volume: { ...prev.volume, ...patch }, boardStarted: true }));
+    setState((prev) => ({ ...prev, volume: { ...prev.volume, ...patch }, boardStarted: true, dirty: true }));
 
   const setFinsImportTemplate = (next: boolean) =>
-    setState((prev) => ({ ...prev, finsImportTemplate: next, boardStarted: true }));
+    setState((prev) => ({ ...prev, finsImportTemplate: next, boardStarted: true, dirty: true }));
 
-  const setBoardName = (next: string) => setState((prev) => ({ ...prev, boardName: next, boardStarted: true }));
+  const setBoardName = (next: string) =>
+    setState((prev) => ({ ...prev, boardName: next, boardStarted: true, dirty: true }));
 
   const setFinSystem = (next: FinSystem) =>
-    setState((prev) => ({ ...prev, finSystem: next, boardStarted: true }));
+    setState((prev) => ({ ...prev, finSystem: next, boardStarted: true, dirty: true }));
 
   // Not a design-mutating action — pointing the store at a different (or no) saved row doesn't
   // change the board itself, so this deliberately does NOT set boardStarted.
@@ -299,6 +353,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           ...prev,
           volume: { ...prev.volume, importTemplateDimensions: true },
           boardStarted: true,
+          dirty: true,
         };
       }
       return {
@@ -311,6 +366,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           width: effectiveVolume.width,
         },
         boardStarted: true,
+        dirty: true,
       };
     });
   };
@@ -324,6 +380,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           ...prev,
           volume: { ...prev.volume, importRailThickness: true },
           boardStarted: true,
+          dirty: true,
         };
       }
       return {
@@ -334,6 +391,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           centerThickness: effectiveVolume.centerThickness,
         },
         boardStarted: true,
+        dirty: true,
       };
     });
   };
@@ -351,6 +409,64 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     [state.outline, state.rails, state.fins, state.volume, state.finsImportTemplate, state.boardName, state.finSystem],
   );
 
+  // The one path that actually calls `saveModel` for a board that already has a home — shared by
+  // the autosave timer below and by `requestSave` (the nav's manual Save and its failure retry),
+  // so the two paths can never drift into reporting status differently. A no-op while there is
+  // no row to write to or a write is already in flight, mirroring `decideAutosave`'s own gates.
+  const performSave = () => {
+    if (state.modelId === null || saveInFlight) return;
+    const modelIdAtSaveTime = state.modelId;
+    const nameAtSaveTime = state.boardName;
+    const snapshotAtSaveTime = designSnapshotFields;
+    setSaveInFlight(true);
+    setState((prev) => ({ ...prev, saveStatus: "saving" }));
+    startSaveTransition(() => {
+      saveModel(modelIdAtSaveTime, nameAtSaveTime, snapshotAtSaveTime)
+        .then((result) => {
+          const settled: PromiseSettledResult<Awaited<ReturnType<typeof saveModel>>> = {
+            status: "fulfilled",
+            value: result,
+          };
+          // Cleared only now, on the server's confirmation — not when the request was sent —
+          // so a save that fails (network drop, a Server Action id rotated by a redeploy) leaves
+          // the board dirty and the very next edit's autosave retries it (D-08).
+          setState((prev) => ({ ...prev, dirty: false, saveStatus: nextStatusAfter(settled) }));
+        })
+        .catch((error: unknown) => {
+          // Includes the "failed to find Server Action" case a redeployment can cause on a page
+          // loaded before it: treated like any other failure, never swallowed to a silent no-op.
+          console.error("Shaper: save failed", error);
+          const settled: PromiseSettledResult<never> = { status: "rejected", reason: error };
+          setState((prev) => ({ ...prev, saveStatus: nextStatusAfter(settled) }));
+        })
+        .finally(() => setSaveInFlight(false));
+    });
+  };
+
+  // The autosave effect (D-08): re-evaluates `decideAutosave` on every change to the snapshot
+  // fields (via `designSnapshotFields`'s identity, which only changes when its contents do), on
+  // sign-in state changing, and once a save settles (`saveInFlight` flipping back to false, in
+  // case another edit arrived while it was writing). When the decision is "save", it starts a
+  // fresh `AUTOSAVE_DEBOUNCE_MS` timer; a cleanup on every re-run clears the previous one, so a
+  // shaper who keeps adjusting keeps pushing the write out rather than queueing several.
+  useEffect(() => {
+    const decision = decideAutosave({
+      signedIn: isSignedIn === true,
+      modelId: state.modelId,
+      dirty: state.dirty,
+      inFlight: saveInFlight,
+    });
+    if (decision !== "save") return;
+
+    const timer = setTimeout(performSave, AUTOSAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // performSave closes over state.modelId/state.boardName/designSnapshotFields/saveInFlight
+    // freshly on every render, so it does not need to be listed itself — including it would
+    // re-create the effect (and reset the debounce timer) on every render for no behavioural
+    // difference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn, state.modelId, state.dirty, saveInFlight, designSnapshotFields]);
+
   const value: DesignContextValue = {
     outline: state.outline,
     rails: state.rails,
@@ -362,6 +478,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     modelId: state.modelId,
     hasBoardInProgress: state.boardStarted,
     designSnapshotFields,
+    isDirty: state.dirty,
+    saveStatus: state.saveStatus,
+    requestSave: performSave,
     updateOutline,
     applyPreset,
     applyModel,
