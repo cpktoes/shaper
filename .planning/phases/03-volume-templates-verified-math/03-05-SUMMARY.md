@@ -60,23 +60,26 @@ coverage:
     human_judgment: false
   - id: D3
     description: "Walking the four toolbar buttons (rotate, Export Template, construction lines, wide view) end to end in a real browser across all four themes: even spacing, the construction-lines button and sidebar checkbox agreeing in both directions, wide view collapsing the sidebar and turning construction lines on, wide view restoring the sidebar and the prior construction-lines setting, a reload returning to the default (sidebar showing, construction lines off), and legible icons on the accent fill in Daylight, Chalk, Slate and Phosphor"
-    verification: []
+    verification:
+      - kind: other
+        ref: "Orchestrator walked the four toolbar buttons behaviorally in a running dev server against main post-merge; the shaper then reviewed the post-checkpoint fixes (LocateFixed icon, enlarged wide view) in a live instance and answered Approved to the icon, the wide-view sizing, the two-way toggle sync, restore-on-exit, reload-forgets, and all four themes."
+        status: pass
     human_judgment: true
-    rationale: "Requires a running dev server and a real browser — visual spacing/legibility, the two-way agreement between the toolbar button and the sidebar checkbox, and four-theme readability are not assertable from a unit test. The dev server cannot run inside this Turbopack-limited worktree, so this checkpoint is deferred to the orchestrator to verify against a running instance after merge, per this plan's Task 3 (gate: blocking)."
+    rationale: "Requires a running dev server and a real browser — visual spacing/legibility, the two-way agreement between the toolbar button and the sidebar checkbox, and four-theme readability are not assertable from a unit test. Verified human-approved after merge to main, per this plan's Task 3 (gate: blocking)."
 duration: ~15min
 completed: 2026-08-28
-status: halted
+status: complete
 ---
 
 # Phase 3 Plan 5: Template Screen Toolbar — Construction Lines & Wide View Summary
 
-**Two new toolbar buttons on the Template screen (`components/outline/outline-editor.tsx`): a construction-lines toggle sharing the sidebar checkbox's existing state, and a wide-view button that hides the sidebar and remembers/restores the construction-lines setting around it — both automated tasks complete and verified; the human-verify browser checkpoint (Task 3) is pending.**
+**Two new toolbar buttons on the Template screen (`components/outline/outline-editor.tsx`): a construction-lines toggle sharing the sidebar checkbox's existing state, and a wide-view button that hides the sidebar and remembers/restores the construction-lines setting around it — all three tasks complete, including the human-verify browser checkpoint (Task 3), approved after the post-checkpoint icon and wide-view sizing fixes below.**
 
 ## Performance
 
-- **Duration:** ~15 min (Tasks 1–2; Task 3 checkpoint pending)
+- **Duration:** ~15 min (Tasks 1–2) plus checkpoint review
 - **Completed:** 2026-08-28
-- **Tasks:** 2 of 3 (Task 3 is a blocking human-verify checkpoint, not yet run)
+- **Tasks:** 3 of 3
 - **Files modified:** 1
 
 ## Accomplishments
@@ -93,7 +96,7 @@ Each task was committed atomically:
 
 1. **Task 1: A construction-lines button on the drawing screen** - `f6be807` (feat)
 2. **Task 2: Wide view — hide the sidebar, give the board the window** - `12fc288` (feat)
-3. **Task 3: Exercise the four toolbar buttons in all four themes** - `checkpoint:human-verify`, gate `blocking` — **pending**, see below.
+3. **Task 3: Exercise the four toolbar buttons in all four themes** - `checkpoint:human-verify`, gate `blocking` — the orchestrator walked all four buttons behaviorally against a running dev server on main, then the shaper reviewed the post-checkpoint fixes (LocateFixed icon, enlarged wide view) live and answered **Approved** to the icon, the wide-view sizing, two-way toggle sync, restore-on-exit, reload-forgets, and all four themes.
 
 ## Files Created/Modified
 
@@ -120,9 +123,7 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 
-**Tasks 1 and 2 are complete and committed.** Task 3 is a blocking human-verify checkpoint that walks all four toolbar buttons across all four themes in a running browser — this worktree cannot run `npm run dev` (Turbopack cannot resolve `next` outside the main checkout), so per this plan's checkpoint note the automated work stops here and the checkpoint is deferred to the orchestrator against a running instance after merge, the same pattern plan 03-04's Task 3 followed.
-
-**Blocked by:** Task 3's checkpoint (gate: `blocking`) — needs a human to walk the eight verification steps in `03-05-PLAN.md` against a live dev server, across Daylight, Chalk, Slate and Phosphor themes.
+**All three tasks are complete.** Task 3's blocking human-verify checkpoint — walking all four toolbar buttons across all four themes in a running browser — was run by the orchestrator against main after merge (this worktree could not run `npm run dev`, Turbopack cannot resolve `next` outside the main checkout), and the shaper approved the result along with the post-checkpoint icon and wide-view sizing fixes below.
 
 ## Post-checkpoint fixes
 
