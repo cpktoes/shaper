@@ -1,10 +1,13 @@
 "use client";
 
 import { useId, useState } from "react";
+import { DownloadIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
+import { downloadTemplatePdf } from "@/components/template/build-template-pdf";
 import type { OutlineSpec } from "@/lib/geometry/board";
+import { computeTemplateLayout, computeTemplateMarks } from "@/lib/geometry/template";
 import { mmToInches } from "@/lib/geometry/units";
 import { OutlineControls } from "./outline-controls";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
@@ -97,12 +100,33 @@ function RotateBoardIcon({ className }: { className?: string }) {
 }
 
 export function OutlineEditor() {
-  const { outline, updateOutline, outlineGeometry, finPlacement } = useDesign();
+  const { outline, updateOutline, outlineGeometry, finPlacement, boardName, templateValues, railValues } =
+    useDesign();
   const [showConstruction, setShowConstruction] = useState(false);
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
   /** View state, like `showConstruction` — not design data, and deliberately not a stored
    * preference (D-03), so a reload always comes back vertical. */
   const [orientation, setOrientation] = useState<ViewerOrientation>("vertical");
+
+  // The Letter/A4 picker and preview dialog arrive in plan 04 and will call this same
+  // downloadTemplatePdf with the same options object — "letter" is a hardcoded default only
+  // until that picker exists.
+  function handleExportTemplate() {
+    const layout = computeTemplateLayout(outlineGeometry, "letter");
+    const marks = computeTemplateMarks(outlineGeometry);
+    downloadTemplatePdf({
+      layout,
+      marks,
+      geometry: outlineGeometry,
+      paper: "letter",
+      boardName,
+      dims: {
+        length: templateValues.length,
+        widePointWidth: templateValues.widePointWidth,
+        centerThickness: railValues.centerThickness,
+      },
+    });
+  }
 
   function handleCopyPreset() {
     const text = buildPresetSource(outline);
@@ -156,6 +180,19 @@ export function OutlineEditor() {
             panel title (the mockup had it there and the founder explicitly corrected this) and
             not inline with the VIEWER tab. `TabbedPanel` itself is untouched. */}
         <div className="relative flex min-h-0 flex-1 items-stretch justify-center gap-6">
+          <button
+            type="button"
+            onClick={handleExportTemplate}
+            aria-label="Export Template"
+            title="Export Template"
+            // Same treatment as the rotate button beside it (copied verbatim, see its own long
+            // comment below for why): bordered `surf-ground` fill, never the accent — this button
+            // is also absolutely positioned over the drawing. right-10 sits it immediately left of
+            // the rotate button's right-0, so the two read as one icon-button pair.
+            className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+          >
+            <DownloadIcon className="size-6" />
+          </button>
           <button
             type="button"
             onClick={() => setOrientation((o) => (o === "vertical" ? "horizontal" : "vertical"))}

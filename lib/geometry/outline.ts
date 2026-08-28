@@ -29,7 +29,10 @@ import { type Mm, inchesToMm, mm } from "./units";
 const MARGIN_MM = inchesToMm(16);
 const DIAMOND_DEPTH_CAP_MM = inchesToMm(5);
 const DIAMOND_BLOCK_MARGIN_MM = inchesToMm(2);
-const MEASURE_STATION_MM = inchesToMm(12);
+/** The shaper's standard 12" measuring station, from either end. The one definition of this
+ * physical quantity in the codebase — `lib/geometry/template.ts` imports it rather than
+ * re-deriving its own `inchesToMm(12)`, so the two never drift apart (CLAUDE.md Rule 1). */
+export const MEASURE_STATION_MM = inchesToMm(12);
 
 /** Handle length cap as a fraction of the chord between adjacent knots. */
 export const HANDLE_CAP = 0.48;
