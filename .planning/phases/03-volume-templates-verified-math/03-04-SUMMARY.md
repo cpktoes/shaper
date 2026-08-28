@@ -60,12 +60,15 @@ coverage:
     human_judgment: false
   - id: D3
     description: "Walking the export dialog from both screens end to end, including the 25in-widepoint held-out visual check (Task 3 checkpoint) — dialog opens with the right copy/default, paper switch changes the diagram and page count, Download produces a file, the wide-board tile grid stays inside the dialog without crowding, the Summary button is absent from print preview, and the dialog reads correctly in all four themes"
-    verification: []
+    verification:
+      - kind: manual
+        ref: "Browser walk-through against the live dev server on main after merge: dialog opens from the Template screen toolbar with the exact title/description copy; Letter selected by default (aria-pressed confirmed) with '16 pages — tape nose to tail.' at 6'0\"x19\"; switching to A4 updates the count to 14 and redraws the tile diagram (2x8 to 2x7); Download PDF executes and closes the dialog with zero console errors; the 25in widepoint board's tile diagram renders comfortably inside the dialog (two columns, not overflowing or squashed); the Summary screen's Export Template button sits beside Print Order Form inside the existing data-print-hide row, opens the identical dialog, and `[data-print-hide] { display: none !important }` was confirmed in the print stylesheet; theme readability approved by the user."
+        status: pass
     human_judgment: true
-    rationale: "Requires a running dev server and a real browser (visual crowding/legibility of the tile diagram at the 25in-widepoint extreme, print-preview absence, four-theme readability) — none of this is assertable from a unit test. The dev server cannot run inside this worktree (Turbopack worktree limitation), so this checkpoint is left open for the orchestrator to verify after merging to main."
+    rationale: "Required a running dev server and a real browser (visual crowding/legibility of the tile diagram at the 25in-widepoint extreme, print-preview absence, four-theme readability) — none of this is assertable from a unit test. The dev server could not run inside the original worktree (Turbopack worktree limitation), so this checkpoint was verified by the orchestrator against main after merge and approved by the user."
 duration: ~30min
 completed: 2026-08-28
-status: halted
+status: complete
 ---
 
 # Phase 3 Plan 04: Export Preview Dialog (Preview-First Template Export) Summary
@@ -76,7 +79,7 @@ status: halted
 
 - **Duration:** ~30 min
 - **Completed:** 2026-08-28
-- **Tasks:** 2 of 3 (Task 3 is a checkpoint, halted open — see below)
+- **Tasks:** 3 of 3 (Task 3's checkpoint verified and approved after merge to main)
 - **Files modified:** 3
 
 ## Accomplishments
@@ -94,7 +97,7 @@ Each task was committed atomically:
 
 1. **Task 1: The export preview dialog** - `f479abf` (feat)
 2. **Task 2: Both entry points — Template screen and Summary screen** - `482be4a` (feat)
-3. **Task 3: Walk the export dialog from both screens, including a 25-inch board** - `checkpoint:human-verify`, gate `blocking` — **not yet resolved**, see below.
+3. **Task 3: Walk the export dialog from both screens, including a 25-inch board** - `checkpoint:human-verify`, gate `blocking` — **approved** after the browser walk-through against main post-merge, see below.
 
 ## Files Created/Modified
 
@@ -123,9 +126,9 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 
-**Tasks 1 and 2 are complete and committed; Task 3 is a blocking `checkpoint:human-verify` left open.** The dev server cannot run inside this worktree (Turbopack cannot resolve `next` outside the main checkout), so the checkpoint's `npm run dev` + browser walkthrough — including the 25in-widepoint held-out visual check for the tile diagram, the four-theme readability pass, and the print-preview absence check on the Summary screen — must be run from the main checkout after this worktree is merged. All automated verification (`tsc`, `lint`, `test`, and every acceptance-criteria grep check from the plan) passes; nothing here is expected to change as a result of the human walkthrough, but the plan is not `complete` until it is run and approved.
+**All three tasks are complete.** Tasks 1 and 2 were committed by the original executor; Task 3's checkpoint was verified by the orchestrator against the live dev server on main after the worktree merged, walking through both entry points, the Letter/A4 switch, a real PDF download, the 25in-widepoint held-out visual check (tile diagram stayed inside the dialog, two columns, no overflow), the print-preview absence check on the Summary screen, and theme readability — all approved by the user. This plan is complete and unblocks 03-05, 03-06 and 03-07, which depend on `ExportPreviewDialog`.
 
-**Blocked by:** Task 3's `checkpoint:human-verify` (gate: `blocking`) — the orchestrator should resume this checkpoint from the main checkout once this worktree's commits are merged.
+**Blocked by:** Nothing. Task 3's checkpoint (gate: `blocking`) is resolved.
 
 ## Self-Check: PASSED
 
