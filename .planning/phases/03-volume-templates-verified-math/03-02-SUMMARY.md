@@ -141,6 +141,15 @@ None - no external service configuration required. The CI workflow needs no repo
 - `lib/geometry/design.test.ts` now directly covers every function on VOL-01's derivation path; later phases building on `lib/geometry/design.ts` (e.g. a future foil-based Simpson volume method, per `volume.ts`'s recorded deviation 3) inherit direct test coverage rather than only transitive coverage.
 - No blockers for the remaining Phase 03 plans (template export, order-form print refit, etc.) — this plan touched no template/PDF surface.
 
+## Self-Check: PASSED
+
+- FOUND: `.github/workflows/ci.yml`
+- FOUND: `lib/geometry/design.test.ts`
+- FOUND: `.planning/phases/03-volume-templates-verified-math/03-02-SUMMARY.md`
+- FOUND commit: `43a83c0` (Task 1)
+- FOUND commit: `43eb77d` (Task 2)
+- FOUND commit: `033a10e` (SUMMARY)
+
 ---
 *Phase: 03-volume-templates-verified-math*
 *Completed: 2026-08-28*
