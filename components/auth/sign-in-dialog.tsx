@@ -2,34 +2,36 @@
 
 /**
  * D-03's sign-up/sign-in surface: a dialog over the design screen, not a dedicated route.
- * Wraps Clerk's own `<SignIn>` / `<SignUp>` in the app's shadcn `Dialog` rather than Clerk's
+ * Wraps Clerk's own `<SignIn>` in the app's shadcn `Dialog` rather than Clerk's
  * `mode="modal"` chrome — CONTEXT.md leaves dialog styling to our discretion, and the app
  * already has one dialog language (see replace-board-dialog.tsx).
  *
  * `routing="hash"` tells Clerk's component it is not mounted on a dedicated catch-all route
  * (e.g. `/sign-in/[[...sign-in]]`) — every sub-step (password reset, email verification)
  * renders in place inside this same popup via a URL hash fragment instead of pushing a real
- * path that doesn't exist. `"virtual"` looked like the fitting name from Clerk's general
- * `RoutingStrategy` type, but the installed `@clerk/nextjs` 7.8.2's own `SignInProps`/
- * `SignUpProps` types narrow the public prop to `'path' | 'hash'` only — `"virtual"` isn't
- * accepted here, confirmed against the SDK's own `.d.ts` rather than assumed from training
- * data (AGENTS.md: this Next/Clerk pairing has real breaking changes vs. what training data
- * expects). The other candidate, Clerk's `mode="modal"` on `<SignInButton>`, was deliberately
- * not used either: it brings its own overlay chrome, which would fight this dialog's.
+ * path that doesn't exist.
  *
- * A shaper who opens this from "Sign in" but has never had an account still needs a way to
- * sign up without leaving the dialog (the phase objective's whole point). Hash routing has no
- * real page for Clerk's own "Don't have an account?" footer link to land on cleanly here, so
- * the toggle below is app-owned dialog chrome — not form copy, not a field, not an error
- * state, all of which stay entirely Clerk's.
+ * `withSignUp` makes this one component the whole account surface: its own footer link swaps
+ * the card to sign-up IN PLACE. This replaced an earlier design that rendered separate
+ * `<SignIn>`/`<SignUp>` components behind an app-owned toggle — that version left Clerk's
+ * internal footer link pointing at the hosted Account Portal (`accounts.<domain>`), which can
+ * never exist for a *.vercel.app domain (no DNS control), so on production the link died with
+ * "site can't be reached" and the dialog carried two competing sign-up affordances. Do not
+ * reintroduce a separate `<SignUp>` here without giving its footer somewhere real to go.
  *
- * Clerk owns the form fields, their in-flight states and their inline errors end to end — this
- * file supplies only the surrounding chrome, the fixed titles from the UI-SPEC Copywriting
- * Contract, and the sign-in/sign-up toggle.
+ * `sm:max-w-md` is load-bearing, not styling taste: Clerk's card renders 400px wide, and
+ * max-w-md (448px) is exactly that card plus this dialog's 24px padding per side. The app's
+ * other dialogs use max-w-sm (384px), which was measured cropping Clerk's card by ~48px on
+ * the right. max-h + overflow-y-auto lets the dialog scroll inside the overlay on short
+ * viewports rather than clipping Clerk's stack (UI-SPEC sign-in-dialog/overflow).
+ *
+ * Clerk owns the form fields, their in-flight states, their inline errors, and the
+ * sign-in/sign-up switching end to end — this file supplies only the surrounding chrome and
+ * the fixed title from the UI-SPEC Copywriting Contract.
  */
 
-import { SignIn, SignUp, useUser } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { SignIn, useUser } from "@clerk/nextjs";
+import { useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -37,30 +39,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-export type SignInDialogMode = "sign-in" | "sign-up";
-
-const DIALOG_TITLE: Record<SignInDialogMode, string> = {
-  "sign-in": "Sign in to save your boards",
-  "sign-up": "Create your account",
-};
-
 interface SignInDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  mode: SignInDialogMode;
 }
 
-export function SignInDialog({ open, onOpenChange, mode }: SignInDialogProps) {
+export function SignInDialog({ open, onOpenChange }: SignInDialogProps) {
   const { isSignedIn } = useUser();
-  const [currentMode, setCurrentMode] = useState<SignInDialogMode>(mode);
-  // Tracks the `open` value this render is adjusting state for — React's documented pattern
-  // for "reset state when a prop changes" (adjust during render, not in an effect), so
-  // re-arming to the caller's requested mode on every fresh open doesn't cost an extra render.
-  const [wasOpen, setWasOpen] = useState(open);
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open) setCurrentMode(mode);
-  }
 
   // Closes itself the moment Clerk reports a session — the shaper just watched the account get
   // created/authenticated inside this same popup, so there is nothing left for it to show.
@@ -70,29 +55,11 @@ export function SignInDialog({ open, onOpenChange, mode }: SignInDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        // max-w-sm matches replace-board-dialog.tsx's sizing; max-h + overflow-y-auto lets the
-        // dialog scroll inside the overlay on short viewports rather than clipping Clerk's
-        // stack (UI-SPEC sign-in-dialog/overflow).
-        className="max-h-[calc(100vh-4rem)] overflow-y-auto border-surf-line-faint bg-surf-panel text-surf-ink sm:max-w-sm"
-      >
+      <DialogContent className="max-h-[calc(100vh-4rem)] overflow-y-auto border-surf-line-faint bg-surf-panel text-surf-ink sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-surf-ink">{DIALOG_TITLE[currentMode]}</DialogTitle>
+          <DialogTitle className="text-surf-ink">Sign in to save your boards</DialogTitle>
         </DialogHeader>
-        {currentMode === "sign-in" ? (
-          <SignIn routing="hash" />
-        ) : (
-          <SignUp routing="hash" />
-        )}
-        <button
-          type="button"
-          onClick={() => setCurrentMode(currentMode === "sign-in" ? "sign-up" : "sign-in")}
-          className="text-center text-sm text-surf-ink-muted underline-offset-4 hover:text-surf-ink hover:underline"
-        >
-          {currentMode === "sign-in"
-            ? "Don't have an account? Sign up"
-            : "Already have an account? Sign in"}
-        </button>
+        <SignIn routing="hash" withSignUp />
       </DialogContent>
     </Dialog>
   );

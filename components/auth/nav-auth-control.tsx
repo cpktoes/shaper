@@ -37,7 +37,7 @@ export function NavAuthControl() {
       >
         Sign in
       </button>
-      <SignInDialog open={dialogOpen} onOpenChange={setDialogOpen} mode="sign-in" />
+      <SignInDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </>
   );
 }

@@ -87,7 +87,7 @@ export function SignInBanner() {
           <XIcon className="size-4" />
         </button>
       </div>
-      <SignInDialog open={dialogOpen} onOpenChange={setDialogOpen} mode="sign-in" />
+      <SignInDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </>
   );
 }

@@ -95,7 +95,7 @@ export function SaveButton() {
         <Button onClick={startSave} disabled={firstSaveInFlight} aria-label="Save Board">
           {firstSaveInFlight ? "Saving…" : "Save"}
         </Button>
-        <SignInDialog open={signInOpen} onOpenChange={setSignInOpen} mode="sign-in" />
+        <SignInDialog open={signInOpen} onOpenChange={setSignInOpen} />
         <BoardNamePrompt open={namePromptOpen} onOpenChange={setNamePromptOpen} onSave={runFirstSave} />
       </>
     );
