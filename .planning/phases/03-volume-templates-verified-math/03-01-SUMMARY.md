@@ -63,24 +63,27 @@ coverage:
   - id: D3
     description: "Pressing Export Template on /design/outline downloads a real multi-page PDF at true 1:1 physical size — confirmed with a ruler against the nose page's 2in scale-check square"
     requirement: TMPL-01
-    verification: []
+    verification:
+      - kind: manual
+        ref: "03-01-PLAN.md Task 2"
+        status: pass
     human_judgment: true
-    rationale: "True 1:1 physical print scale can only be confirmed by printing the PDF at 100% and measuring the printed 2in square with a physical ruler — no automated test can verify a printer's or PDF viewer's real-world output scale. This is Task 2 of 03-01-PLAN.md, a blocking checkpoint:human-verify gate that requires a human with a printer and a ruler, which this worktree-isolated agent cannot perform."
+    rationale: "True 1:1 physical print scale can only be confirmed by printing the PDF at 100% and measuring the printed 2in square with a physical ruler — no automated test can verify a printer's or PDF viewer's real-world output scale. User printed page 1 at 100% scale and measured the scale-check square with a physical ruler: it read exactly 2 inches on both sides. Approved."
 
 duration: ~50min
 completed: 2026-08-28
-status: halted
+status: complete
 ---
 
 # Phase 03 Plan 01: 1:1 Printable Template Export (Tracer) Summary
 
-**Export Template button on the outline editor downloads a real multi-page, true-1:1-scale PDF of the board's half-outline via a new pure tile-layout module (`lib/geometry/template.ts`) and the codebase's one jsPDF-importing renderer (`components/template/build-template-pdf.ts`); Task 2's physical ruler verification is a blocking checkpoint this agent cannot perform.**
+**Export Template button on the outline editor downloads a real multi-page, true-1:1-scale PDF of the board's half-outline via a new pure tile-layout module (`lib/geometry/template.ts`) and the codebase's one jsPDF-importing renderer (`components/template/build-template-pdf.ts`); the physical ruler check confirmed the printed scale-check square measures exactly 2 inches on both sides.**
 
 ## Performance
 
 - **Duration:** ~50 min
 - **Completed:** 2026-08-28
-- **Tasks:** 1 of 2 (Task 2 is a blocking human-verify checkpoint — see Next Phase Readiness)
+- **Tasks:** 2 of 2
 - **Files modified:** 9
 
 ## Accomplishments
@@ -96,8 +99,9 @@ status: halted
 Each task was committed atomically:
 
 1. **Task 1: End-to-end "export a 1:1 template PDF" — one path only** - `799c572` (feat)
+2. **Task 2: Measure the printed scale square with a ruler** - `checkpoint:human-verify`, no code commit (verification-only task); resolved and recorded in `docs(03-01): complete plan after ruler-verified 1:1 checkpoint`
 
-Task 2 (checkpoint:human-verify, gate="blocking") was not executed — see Next Phase Readiness.
+Task 2 outcome: the user ran `npm run dev`, opened `/design/outline`, pressed Export Template, printed page 1 at 100% scale with "Fit to page" off, and measured the printed 2"×2" scale-check square with a physical ruler — it read exactly 2 inches on both sides. The remaining pages showed a continuous outline curve nose to tail, the dashed stringer line, per-page labels, and the board name/dims block sitting in the board's interior. Approved.
 
 ## Files Created/Modified
 
@@ -126,12 +130,18 @@ None for Task 1. `npx tsc --noEmit` reports two pre-existing `Cannot find name '
 
 ## Next Phase Readiness
 
-**Plan is NOT complete.** Task 2 of `03-01-PLAN.md` is a `checkpoint:human-verify` with `gate="blocking"`: a human must run `npm run dev`, open `/design/outline`, press Export Template, print page 1 at 100% scale, and physically measure the printed 2"×2" scale-check square with a ruler. This is the one check in the whole phase that no automated test can make, and the rest of Phase 03 depends on it holding. This worktree-isolated agent has no printer or ruler and cannot perform it.
+**Plan is complete.** Both tasks are done: Task 1's automated work is committed and green, and Task 2's physical ruler check is approved — the printed scale-check square measured exactly 2 inches on both sides, confirming the PDF's 1:1 physical scale is honest.
 
-**What's ready:** All of Task 1's automated work is committed and green (782/782 vitest tests pass, `npx tsc --noEmit` clean apart from the pre-existing worktree artifact above, `npm run lint` reports 0 errors). The Export Template button is live on `/design/outline` in this worktree and produces a real downloadable PDF.
+**What's ready:** All of Task 1's automated work is committed (782/782 vitest tests pass at the time of Task 1's commit, `npx tsc --noEmit` clean apart from the pre-existing worktree artifact noted above, `npm run lint` reports 0 errors). The Export Template button is live on `/design/outline` and produces a real downloadable PDF verified at true 1:1 scale. Later plans in Phase 03 (the preview dialog, working match marks, the name-block truncation refinement) can build on this layout/renderer pair with confidence that the 1:1 scale claim is real.
 
-**Blocker:** Task 2's ruler check must be run by a human before this plan can be marked complete, and before later plans in Phase 03 (which build on this layout/renderer pair — the preview dialog, working match marks, the name-block truncation refinement) should proceed with confidence that the 1:1 scale claim is real. See `03-01-PLAN.md`'s Task 2 for exact verification steps.
+## Self-Check: PASSED
+
+- FOUND: lib/geometry/template.ts
+- FOUND: lib/geometry/template.test.ts
+- FOUND: components/template/build-template-pdf.ts
+- FOUND: components/template/build-template-pdf.test.ts
+- FOUND commit: 799c572
 
 ---
 *Phase: 03-volume-templates-verified-math*
-*Completed: 2026-08-28 (Task 1 only — Task 2 pending human verification)*
+*Completed: 2026-08-28*
