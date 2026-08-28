@@ -37,6 +37,10 @@ export function SaveButton() {
   // Only the button's own first-save request is "saving" here — once modelId exists, the
   // store's saveStatus is the single source of truth and this stays false.
   const [firstSaveInFlight, setFirstSaveInFlight] = useState(false);
+  // Set when the skip-the-dialog first save (below) rejects — the dialog-driven path has its own
+  // error state inside BoardNamePrompt and never touches this; this is only for the direct call
+  // site, which has nothing else to show a failure through.
+  const [firstSaveError, setFirstSaveError] = useState<string | null>(null);
   // Set when a signed-out shaper presses Save — consumed the moment isSignedIn flips to true so
   // the interrupted save resumes automatically instead of requiring a second click.
   const resumeSaveAfterSignIn = useRef(false);
@@ -73,7 +77,14 @@ export function SaveButton() {
       setNamePromptOpen(true);
       return;
     }
-    void runFirstSave(trimmed);
+    // No dialog on this path to catch a rejection for us (BoardNamePrompt.handleSubmit does that
+    // for the other path) — runFirstSave still throws so the dialog keeps working, so the catch
+    // has to live here instead of inside runFirstSave itself.
+    setFirstSaveError(null);
+    runFirstSave(trimmed).catch((error: unknown) => {
+      console.error("Shaper: first save failed", error);
+      setFirstSaveError("Couldn't save — check your connection and try again.");
+    });
   };
 
   useEffect(() => {
@@ -88,13 +99,26 @@ export function SaveButton() {
   }, [isSignedIn]);
 
   // Before the first save, nothing in the store's saveStatus/isDirty machinery has ever run for
-  // this board — the plain filled button is the only state a never-saved board can be in.
+  // this board — the plain filled button (or, if the skip-the-dialog save just failed, the same
+  // clickable "Not saved" the store's own error state uses) are the only states a never-saved
+  // board can be in.
   if (modelId === null) {
     return (
       <>
-        <Button onClick={startSave} disabled={firstSaveInFlight} aria-label="Save Board">
-          {firstSaveInFlight ? "Saving…" : "Save"}
-        </Button>
+        {firstSaveError ? (
+          <button
+            type="button"
+            onClick={startSave}
+            className="min-w-20 text-left text-sm text-surf-warning-ink underline-offset-4 hover:underline"
+            aria-live="polite"
+          >
+            Not saved
+          </button>
+        ) : (
+          <Button onClick={startSave} disabled={firstSaveInFlight} aria-label="Save Board">
+            {firstSaveInFlight ? "Saving…" : "Save"}
+          </Button>
+        )}
         <SignInDialog open={signInOpen} onOpenChange={setSignInOpen} />
         <BoardNamePrompt open={namePromptOpen} onOpenChange={setNamePromptOpen} onSave={runFirstSave} />
       </>
