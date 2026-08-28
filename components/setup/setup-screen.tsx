@@ -33,7 +33,7 @@ type PendingReplacement = { kind: "preset"; preset: BoardPreset } | { kind: "mod
  * shared store (D-07/D-10's confirm gate is a view concern, not design data).
  */
 export function SetupScreen({ models }: SetupScreenProps) {
-  const { applyPreset, applyModel, hasBoardInProgress } = useDesign();
+  const { applyPreset, applyModel, hasBoardInProgress, modelId } = useDesign();
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, setPending] = useState<PendingReplacement | null>(null);
@@ -53,7 +53,11 @@ export function SetupScreen({ models }: SetupScreenProps) {
       updatedAt: model.updatedAt,
       model,
     }));
-    if (hasBoardInProgress) {
+    // Only a board with no saved home yet gets the "in progress — not saved" card. Once the
+    // shaper saves it, modelId points at a row and the board is autosaving — its rack presence
+    // is its own saved card (revalidated on every save), and a second card claiming "not saved"
+    // would be both a duplicate and a lie.
+    if (hasBoardInProgress && modelId === null) {
       entries.push({ kind: "in-progress" as const });
     }
 
@@ -62,7 +66,7 @@ export function SetupScreen({ models }: SetupScreenProps) {
         ? { kind: "in-progress" as const }
         : { kind: "saved" as const, model: entry.model },
     );
-  }, [models, hasBoardInProgress]);
+  }, [models, hasBoardInProgress, modelId]);
 
   const handleSelectPreset = (preset: BoardPreset) => {
     if (!hasBoardInProgress) {
@@ -75,6 +79,14 @@ export function SetupScreen({ models }: SetupScreenProps) {
   };
 
   const handleSelectModel = (model: SavedModel) => {
+    // The board that is already open in the design store: just continue it. Re-applying the
+    // stored row here would silently roll the shaper back to the last-saved snapshot, losing
+    // any edit newer than the last autosave flush — and confirming "replace your in-progress
+    // board?" against itself is a nonsense question.
+    if (model.id === modelId) {
+      goToEditor();
+      return;
+    }
     if (!hasBoardInProgress) {
       applyModel(model.id, model.snapshot);
       goToEditor();
