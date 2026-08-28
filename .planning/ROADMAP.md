@@ -101,7 +101,28 @@ Plans:
   2. Core geometry calculations (outline, rocker, rail band, volume) in `lib/` are covered by Vitest unit tests that pass in CI, validating RAIL-01 and VOL-01 output against known-good values
   3. User can export a full-size (1:1 scale) printable template of the outline, tiled across standard pages for taping together
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Tracer: outline to a downloaded, true-1:1 tiled PDF from the Template screen, confirmed with a ruler
+- [ ] 03-02-PLAN.md — The geometry suites run on GitHub for every push, and the three derivations feeding the litres figure get tested directly
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-03-PLAN.md — The finished printed template: the four working marks, the name block, match marks and the how-to box (D-06 to D-10)
+- [ ] 03-04-PLAN.md — Preview-first export dialog with the Letter/A4 pick, on both the Template and Summary screens (D-02, D-03, D-04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-05-PLAN.md — Template screen toolbar: construction-lines toggle and wide view (folded todo)
+- [ ] 03-06-PLAN.md — Verify and refit the Summary order form's print path after the callout-system rebuild (folded todo)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 03-07-PLAN.md — CI green on GitHub, the phase acceptance walkthrough, and the three resolved todos archived
+
 **UI hint**: yes
 
 ### Phase 4: Rocker & Foil Editors
@@ -128,5 +149,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation — Port & Deploy the Design Tool | 4/4 | Complete    | 2026-08-21 |
 | 2. Accounts & Saved Designs | 6/6 | Complete    | 2026-08-28 |
-| 3. Volume, Templates & Verified Math | 0/TBD | Not started | - |
+| 3. Volume, Templates & Verified Math | 0/7 | Planned     | - |
 | 4. Rocker & Foil Editors | 0/TBD | Not started | - |
