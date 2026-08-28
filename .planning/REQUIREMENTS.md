@@ -41,7 +41,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Volume
 
-- [ ] **VOL-01**: App calculates board volume (litres) live from the shaped geometry (outline + rocker + foil)
+- [x] **VOL-01**: App calculates board volume (litres) live from the shaped geometry (outline + rocker + foil)
 
 ### Models
 
@@ -107,7 +107,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FIN-01 | Phase 1 | Complete |
 | FIN-02 | Phase 1 | Complete |
 | FIN-03 | Phase 1 | Complete |
-| VOL-01 | Phase 3 | Pending |
+| VOL-01 | Phase 3 | Complete |
 | MODL-01 | Phase 2 | Complete |
 | MODL-02 | Phase 2 | Complete |
 | MODL-03 | Phase 2 | Complete |
