@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { DownloadIcon, RulerIcon } from "lucide-react";
+import { DownloadIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, RulerIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
@@ -105,6 +105,26 @@ export function OutlineEditor() {
   /** View state, like `showConstruction` — not design data, and deliberately not a stored
    * preference (D-03), so a reload always comes back vertical. */
   const [orientation, setOrientation] = useState<ViewerOrientation>("vertical");
+  /** Wide view hides the `aside` below so `main` gets the full window width. Also local view
+   * state, not design data, deliberately not persisted — a reload always comes back with the
+   * sidebar showing. `preWideViewConstruction` remembers whatever `showConstruction` was set to
+   * before wide view forced it on, so leaving wide view restores it rather than leaving the
+   * shaper on a setting they never chose. Both are set together inside the click handler below,
+   * not from a render-time effect — this codebase's lint config rejects setting state during
+   * render, and doing so caused a real bug in plan 02-05. */
+  const [wideView, setWideView] = useState(false);
+  const [preWideViewConstruction, setPreWideViewConstruction] = useState(false);
+
+  function handleToggleWideView() {
+    if (wideView) {
+      setShowConstruction(preWideViewConstruction);
+      setWideView(false);
+    } else {
+      setPreWideViewConstruction(showConstruction);
+      setShowConstruction(true);
+      setWideView(true);
+    }
+  }
 
   function handleCopyPreset() {
     const text = buildPresetSource(outline);
@@ -124,29 +144,34 @@ export function OutlineEditor() {
           was only ever pinned by luck — outline and rails happened to fit, so it looked right there,
           while the longer fins controls pushed it past the bottom edge where it could only be met
           mid-scroll. */}
-      <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink">
-        <div className="min-h-0 flex-1 overflow-y-auto p-10">
-          <OutlineControls
-            outline={outline}
-            geometry={outlineGeometry}
-            onChange={updateOutline}
-            showConstruction={showConstruction}
-            onToggleConstruction={() => setShowConstruction((v) => !v)}
-          />
-        </div>
-        {process.env.NODE_ENV === "development" && (
-          <div className="flex-none border-t border-surf-line-faint p-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent"
-              onClick={handleCopyPreset}
-            >
-              {justCopiedPreset ? "Copied!" : "Copy preset values"}
-            </Button>
+      {/* Hidden entirely, not resized, while wide view is on — the internal structure (scrolling
+          controls region + flex-none dev preset footer) stays untouched; a quick task already had
+          to fix that footer once because it was only pinned by luck. */}
+      {!wideView && (
+        <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink">
+          <div className="min-h-0 flex-1 overflow-y-auto p-10">
+            <OutlineControls
+              outline={outline}
+              geometry={outlineGeometry}
+              onChange={updateOutline}
+              showConstruction={showConstruction}
+              onToggleConstruction={() => setShowConstruction((v) => !v)}
+            />
           </div>
-        )}
-      </aside>
+          {process.env.NODE_ENV === "development" && (
+            <div className="flex-none border-t border-surf-line-faint p-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent"
+                onClick={handleCopyPreset}
+              >
+                {justCopiedPreset ? "Copied!" : "Copy preset values"}
+              </Button>
+            </div>
+          )}
+        </aside>
+      )}
       <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3">
         {/* One region, so the tab is a label rather than a control — but the screen still gets
             the same panel and edge as Rails and Fins, which is what makes the four read as one
@@ -230,6 +255,20 @@ export function OutlineEditor() {
             className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent aria-pressed:hover:bg-surf-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
           >
             <RulerIcon className="size-6" />
+          </button>
+          <button
+            type="button"
+            onClick={handleToggleWideView}
+            aria-pressed={wideView}
+            aria-label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
+            title={wideView ? "Show the sidebar" : "Wide view"}
+            // Same box as the three buttons beside it. This is both the way in and the way out of
+            // wide view — it lives inside the viewer panel, which stays on screen in both states,
+            // so there is always a visible route back. Never accent-filled: the UI spec reserves
+            // that fill for the Construction Lines button alone.
+            className="absolute top-0 right-30 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+          >
+            {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
           </button>
           <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center">
             <div className="relative flex min-h-0 w-full flex-1 justify-center">
