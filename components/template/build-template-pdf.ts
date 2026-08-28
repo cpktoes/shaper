@@ -83,6 +83,9 @@ const HOWTO_BOX_PADDING_MM = 3;
 const HOWTO_BOX_LINE_HEIGHT_MM = 5;
 /** Gap below the scale-check square's own label before the how-to box begins. */
 const HOWTO_BOX_TOP_GAP_MM = 8;
+/** The how-to box's own text width budget, inside its border and padding — post-checkpoint fix,
+ * defect 1: a line too wide for this wraps rather than running past the box's right edge. */
+export const HOWTO_BOX_TEXT_WIDTH_LIMIT_MM = HOWTO_BOX_WIDTH_MM - 2 * HOWTO_BOX_PADDING_MM;
 
 /** Converts a page-local station to a page-local y (mm from the page's top edge): the page's own
  * nose-most edge (`stationRange[1]`) sits at the top, and y grows toward the tail — matching how
@@ -230,29 +233,73 @@ export function templateHowToLines(layout: TemplateLayout): string[] {
   return lines;
 }
 
+/** Word-wraps `text` to `maxWidthMm`, measured with jsPDF's own `getTextWidth` at `doc`'s
+ * currently-set font/size — never a guessed character count. Exported for testability. */
+export function wrapTextToWidth(text: string, maxWidthMm: number, doc: jsPDF): string[] {
+  const words = text.split(" ");
+  const wrapped: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const candidate = current.length > 0 ? `${current} ${word}` : word;
+    if (current.length > 0 && doc.getTextWidth(candidate) > maxWidthMm) {
+      wrapped.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current.length > 0) wrapped.push(current);
+  return wrapped;
+}
+
+/** The how-to box's lines, numbered and wrapped to fit inside the box's own inner width (its
+ * width less its own padding on both sides) — post-checkpoint fix, defect 1: "the instructions on
+ * page 1 overrun the text box." A line too wide for one row wraps onto the next rather than
+ * running past the box's printed border; continuation lines carry no number. Exported for
+ * testability: every returned line's `getTextWidth` is asserted no wider than `innerWidthMm`. */
+export function templateHowToWrappedLines(layout: TemplateLayout, doc: jsPDF, innerWidthMm: number): string[] {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  const lines = templateHowToLines(layout);
+  const wrapped: string[] = [];
+  lines.forEach((line, i) => {
+    wrapped.push(...wrapTextToWidth(`${i + 1}. ${line}`, innerWidthMm, doc));
+  });
+  return wrapped;
+}
+
+/** The nose-page how-to box's own rectangle — computed once so the drawing function agrees with
+ * itself on exactly the same box, including its height, which now varies with how many lines
+ * defect 1's wrapping produced. */
+function howToBoxRect(
+  doc: jsPDF,
+  layout: TemplateLayout,
+  margin: number,
+  paperWidthMm: number,
+): { x: number; y: number; width: number; height: number; lines: string[] } {
+  const lines = templateHowToWrappedLines(layout, doc, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM);
+  const height = HOWTO_BOX_PADDING_MM * 2 + lines.length * HOWTO_BOX_LINE_HEIGHT_MM;
+  const x = paperWidthMm - margin - HOWTO_BOX_WIDTH_MM;
+  const y = margin + SCALE_SQUARE_MM + HOWTO_BOX_TOP_GAP_MM;
+  return { x, y, width: HOWTO_BOX_WIDTH_MM, height, lines };
+}
+
 /** Nose page only, beside the scale square — the one thing on the template that prevents the
  * failure a wrong print scale causes silently and expensively. */
 function drawHowToBox(doc: jsPDF, layout: TemplateLayout, page: TemplatePage, margin: number, paperWidthMm: number): void {
   if (page.index !== 0) return;
 
-  const lines = templateHowToLines(layout);
-  const boxHeight = HOWTO_BOX_PADDING_MM * 2 + lines.length * HOWTO_BOX_LINE_HEIGHT_MM;
-  const x = paperWidthMm - margin - HOWTO_BOX_WIDTH_MM;
-  const y = margin + SCALE_SQUARE_MM + HOWTO_BOX_TOP_GAP_MM;
+  const { x, y, width, height, lines } = howToBoxRect(doc, layout, margin, paperWidthMm);
 
   doc.setDrawColor(0);
   doc.setLineWidth(HOWTO_BOX_LINE_WEIGHT_MM);
-  doc.rect(x, y, HOWTO_BOX_WIDTH_MM, boxHeight, "S");
+  doc.rect(x, y, width, height, "S");
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(0);
   lines.forEach((line, i) => {
-    doc.text(
-      `${i + 1}. ${line}`,
-      x + HOWTO_BOX_PADDING_MM,
-      y + HOWTO_BOX_PADDING_MM + (i + 1) * HOWTO_BOX_LINE_HEIGHT_MM - 1.5,
-    );
+    doc.text(line, x + HOWTO_BOX_PADDING_MM, y + HOWTO_BOX_PADDING_MM + (i + 1) * HOWTO_BOX_LINE_HEIGHT_MM - 1.5);
   });
 }
 

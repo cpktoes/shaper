@@ -5,7 +5,14 @@ import { buildOutline } from "@/lib/geometry/outline";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import { computeTemplateLayout, computeTemplateMarks } from "@/lib/geometry/template";
 import { inchesToMm } from "@/lib/geometry/units";
-import { buildTemplatePdf, templateHowToLines, templateNameBlockText } from "./build-template-pdf";
+import {
+  HOWTO_BOX_TEXT_WIDTH_LIMIT_MM,
+  buildTemplatePdf,
+  templateHowToLines,
+  templateHowToWrappedLines,
+  templateNameBlockText,
+  wrapTextToWidth,
+} from "./build-template-pdf";
 
 function buildOptions(paper: "letter" | "a4" = "letter") {
   const preset = BOARD_PRESETS[0];
@@ -98,5 +105,66 @@ describe("templateHowToLines", () => {
     const lines = templateHowToLines(layout);
     expect(lines).toHaveLength(4);
     expect(lines[3].toLowerCase()).toContain("left to right");
+  });
+});
+
+describe("wrapTextToWidth (post-checkpoint fix, defect 1)", () => {
+  it("returns the text unchanged on one line when it already fits", () => {
+    const doc = new jsPDF({ unit: "mm" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    expect(wrapTextToWidth("Short line.", 100, doc)).toEqual(["Short line."]);
+  });
+
+  it("wraps a long line onto multiple lines, none wider than the limit", () => {
+    const doc = new jsPDF({ unit: "mm" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const text = "Cut out each page and tape them together, nose to tail, matching the marks.";
+    const limit = 40;
+
+    const lines = wrapTextToWidth(text, limit, doc);
+
+    expect(lines.length).toBeGreaterThan(1);
+    for (const line of lines) {
+      expect(doc.getTextWidth(line)).toBeLessThanOrEqual(limit);
+    }
+    // No words lost in the wrap.
+    expect(lines.join(" ")).toBe(text);
+  });
+});
+
+describe("templateHowToWrappedLines (post-checkpoint fix, defect 1: \"the instructions on page 1 overrun the text box\")", () => {
+  it("every wrapped, numbered line fits inside the how-to box's own inner width, for every preset and paper size", () => {
+    for (const preset of BOARD_PRESETS) {
+      const geometry = buildOutline(preset.outline);
+      for (const paper of ["letter", "a4"] as const) {
+        const layout = computeTemplateLayout(geometry, paper);
+        const doc = new jsPDF({ unit: "mm" });
+        const lines = templateHowToWrappedLines(layout, doc, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM);
+
+        expect(lines.length).toBeGreaterThanOrEqual(templateHowToLines(layout).length);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        for (const line of lines) {
+          expect(doc.getTextWidth(line)).toBeLessThanOrEqual(HOWTO_BOX_TEXT_WIDTH_LIMIT_MM);
+        }
+      }
+    }
+  });
+
+  it("the first line is still numbered '1.' and the sideways-taping line still appears last on a multi-column layout", () => {
+    const preset = BOARD_PRESETS[0];
+    const geometry = buildOutline({
+      ...preset.outline,
+      widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max),
+    });
+    const layout = computeTemplateLayout(geometry, "letter");
+    const doc = new jsPDF({ unit: "mm" });
+    const lines = templateHowToWrappedLines(layout, doc, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM);
+
+    expect(lines[0].startsWith("1.")).toBe(true);
+    expect(lines.join(" ").toLowerCase()).toContain("left to right");
   });
 });
