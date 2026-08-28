@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: accounts-saved-designs
 status: verifying
-stopped_at: Completed 02-06-PLAN.md (Phase 2 complete, ready for verification)
-last_updated: "2026-08-28T01:24:18.851Z"
+stopped_at: "Completed quick task 260827-wzw: move board card menu button to bottom-right corner"
+last_updated: "2026-08-28T06:52:23.103Z"
 last_activity: 2026-08-27
 last_activity_desc: Phase 02 execution started
 progress:
@@ -117,6 +117,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 2] 02-06: dev and prod share one Neon branch (verified via vercel env ls, not assumed) — no separate production migration was needed
 - [Phase ?]: [Phase 2] 02-06: Clerk sign-in dialog rebuilt on one combined <SignIn withSignUp> flow — the two-component design's own footer link pointed at an unreachable Account Portal subdomain on *.vercel.app
 - [Phase ?]: [Phase 2] 02-06: in-progress rack card gated on modelId === null, not dirty/saveStatus, so a saved-and-autosaving board stops wearing a false not-saved badge
+- [Phase ?]: [Quick 260827-wzw]: Board-actions menu trigger given its own card-sized relative wrapper (not the outer flex column, which also holds the duplicate-error message) so its bottom-right offset always measures from the card's own corner
 
 ### Pending Todos
 
@@ -236,6 +237,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-28T01:24:18.828Z
-Stopped at: Completed 02-06-PLAN.md (Phase 2 complete, ready for verification)
+Last session: 2026-08-28T06:52:22.813Z
+Stopped at: Completed quick task 260827-wzw: move board card menu button to bottom-right corner
 Resume file: None
