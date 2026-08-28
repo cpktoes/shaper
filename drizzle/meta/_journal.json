@@ -8,6 +8,13 @@
       "when": 1787852458061,
       "tag": "0000_moaning_zodiak",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787882039358,
+      "tag": "0001_timezone_aware_timestamps",
+      "breakpoints": true
     }
   ]
 }

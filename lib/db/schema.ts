@@ -19,8 +19,8 @@ export const models = pgTable(
     clerkUserId: text("clerk_user_id").notNull(),
     name: text("name").notNull(),
     snapshot: jsonb("snapshot").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [index("models_clerk_user_id_idx").on(table.clerkUserId)],
 );
