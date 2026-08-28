@@ -15,10 +15,12 @@ import type { OutlineGeometry } from "@/lib/geometry/outline";
 import {
   PAPER_MM,
   markPlacements,
+  matchMarkPositions,
   type PaperSize,
   type TemplateLayout,
   type TemplateMarkPlacement,
   type TemplateMarks,
+  type TemplateMatchMark,
   type TemplatePage,
 } from "@/lib/geometry/template";
 import { formatFeetInches, formatInchesFraction, inchesToMm, type Mm } from "@/lib/geometry/units";
@@ -69,6 +71,18 @@ const MARK_TICK_LINE_WEIGHT_MM = 0.25;
 const MARK_STATION_DASH_PATTERN = [5, 4];
 const MARK_WIDEPOINT_DASH_PATTERN = [2, 3];
 const MARK_LABEL_OFFSET_MM = 2;
+
+/** Overlap match-mark crosshairs (D-09) — small, solid, identical on both overlapping pages. */
+const MATCH_MARK_LINE_WEIGHT_MM = 0.25;
+const MATCH_MARK_SIZE_MM = 4;
+
+/** The nose-page how-to box (D-10) — plain-bordered, 9pt regular, beside the scale square. */
+const HOWTO_BOX_LINE_WEIGHT_MM = 0.25;
+const HOWTO_BOX_WIDTH_MM = 70;
+const HOWTO_BOX_PADDING_MM = 3;
+const HOWTO_BOX_LINE_HEIGHT_MM = 5;
+/** Gap below the scale-check square's own label before the how-to box begins. */
+const HOWTO_BOX_TOP_GAP_MM = 8;
 
 /** Converts a page-local station to a page-local y (mm from the page's top edge): the page's own
  * nose-most edge (`stationRange[1]`) sits at the top, and y grows toward the tail — matching how
@@ -180,6 +194,68 @@ function drawMarks(doc: jsPDF, page: TemplatePage, margin: number, placements: T
   }
 }
 
+/** Draws the small alignment crosshairs (D-09) that sit inside every overlap band this page
+ * shares with a neighbour — the identical pair on both overlapping pages is what turns "lining
+ * the marks up" into a positive confirmation rather than an eyeball judgement on a cut edge. */
+function drawMatchMarks(doc: jsPDF, page: TemplatePage, margin: number, matchMarks: TemplateMatchMark[]): void {
+  const pageMarks = matchMarks.filter((mark) => mark.pageIndex === page.index);
+  if (pageMarks.length === 0) return;
+
+  doc.setDrawColor(0);
+  doc.setLineWidth(MATCH_MARK_LINE_WEIGHT_MM);
+  doc.setLineDashPattern([], 0);
+
+  const half = MATCH_MARK_SIZE_MM / 2;
+  for (const mark of pageMarks) {
+    const x = halfWidthToX(mark.halfWidth, page, margin);
+    const y = stationToY(mark.station, page, margin);
+    doc.line(x - half, y, x + half, y);
+    doc.line(x, y - half, x, y + half);
+  }
+}
+
+/** The how-to box's plain-English lines (D-10 / Print Artifact Contract #4), pure data — a small
+ * exported helper so its line count (3 vs. 4) is testable without reading the rendered page. The
+ * sideways-taping line only applies when the grid actually has more than one column; omitted
+ * entirely for the common single-column case rather than printing a caveat that never applies. */
+export function templateHowToLines(layout: TemplateLayout): string[] {
+  const lines = [
+    'Print at 100% — turn off "Fit to page."',
+    'Measure the square above. It should be exactly 2" x 2".',
+    "Cut out each page and tape them together, nose to tail, matching the marks.",
+  ];
+  if (layout.columns > 1) {
+    lines.push("Tape left to right, then row to row, nose to tail.");
+  }
+  return lines;
+}
+
+/** Nose page only, beside the scale square — the one thing on the template that prevents the
+ * failure a wrong print scale causes silently and expensively. */
+function drawHowToBox(doc: jsPDF, layout: TemplateLayout, page: TemplatePage, margin: number, paperWidthMm: number): void {
+  if (page.index !== 0) return;
+
+  const lines = templateHowToLines(layout);
+  const boxHeight = HOWTO_BOX_PADDING_MM * 2 + lines.length * HOWTO_BOX_LINE_HEIGHT_MM;
+  const x = paperWidthMm - margin - HOWTO_BOX_WIDTH_MM;
+  const y = margin + SCALE_SQUARE_MM + HOWTO_BOX_TOP_GAP_MM;
+
+  doc.setDrawColor(0);
+  doc.setLineWidth(HOWTO_BOX_LINE_WEIGHT_MM);
+  doc.rect(x, y, HOWTO_BOX_WIDTH_MM, boxHeight, "S");
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(0);
+  lines.forEach((line, i) => {
+    doc.text(
+      `${i + 1}. ${line}`,
+      x + HOWTO_BOX_PADDING_MM,
+      y + HOWTO_BOX_PADDING_MM + (i + 1) * HOWTO_BOX_LINE_HEIGHT_MM - 1.5,
+    );
+  });
+}
+
 function drawPageLabel(
   doc: jsPDF,
   page: TemplatePage,
@@ -277,6 +353,7 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
 
   const centrePage = findCentrePage(layout, geometry);
   const placements = markPlacements(layout, marks, geometry);
+  const matchMarks = matchMarkPositions(layout);
 
   layout.pages.forEach((page, i) => {
     if (i > 0) doc.addPage(paper, "portrait");
@@ -284,7 +361,9 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
     drawOutlineCurve(doc, geometry, page, margin);
     drawStringerEdge(doc, page, margin);
     drawMarks(doc, page, margin, placements);
+    drawMatchMarks(doc, page, margin, matchMarks);
     drawScaleSquare(doc, page, margin, paperDims.width);
+    drawHowToBox(doc, layout, page, margin, paperDims.width);
     drawPageLabel(doc, page, margin, paperDims.width, paperDims.height);
     if (page.index === centrePage.index) {
       drawNameBlock(doc, page, margin, geometry, boardName, dims);

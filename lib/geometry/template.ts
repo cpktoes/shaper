@@ -214,3 +214,75 @@ export function markPlacements(
 
   return placements;
 }
+
+/** How far along a shared overlap edge the two match marks sit — spaced apart so a rotated page
+ * cannot be lined up on one mark and read as aligned by accident. */
+const MATCH_MARK_EDGE_FRACTIONS = [0.25, 0.75] as const;
+
+/** One alignment crosshair, in the board's own absolute station/half-width frame — identical to
+ * the equivalent mark on `pairedPageIndex`'s own page once the two pages are physically
+ * overlapped, which is the whole point: lining the marks up confirms correct alignment. */
+export interface TemplateMatchMark {
+  pageIndex: number;
+  /** The adjacent page whose own entry set carries this same physical point — keeps a page's row
+   * overlap marks and column overlap marks (a page can have both) from being confused with each
+   * other when matching pairs. */
+  pairedPageIndex: number;
+  station: Mm;
+  halfWidth: Mm;
+}
+
+/**
+ * Places two alignment crosshairs inside every overlap band shared by two adjacent pages — one row
+ * pair (nose-to-tail neighbours) or one column pair (side-by-side neighbours on a wide board). For
+ * each shared band, the exact same pair of board-frame positions is recorded against both pages, so
+ * the contract that makes them useful — lining the marks up is a positive confirmation, not an
+ * eyeball judgement on a cut edge — holds by construction.
+ */
+export function matchMarkPositions(layout: TemplateLayout): TemplateMatchMark[] {
+  const marks: TemplateMatchMark[] = [];
+
+  // Row-adjacent pairs (nose-to-tail neighbours): the shared band is a station range; two marks
+  // spaced along the shared column's own half-width extent.
+  for (let row = 0; row < layout.rows - 1; row++) {
+    for (let col = 0; col < layout.columns; col++) {
+      const pageA = layout.pages.find((p) => p.row === row && p.col === col);
+      const pageB = layout.pages.find((p) => p.row === row + 1 && p.col === col);
+      if (!pageA || !pageB) continue;
+
+      const stationStart = Math.max(pageA.stationRange[0], pageB.stationRange[0]);
+      const stationEnd = Math.min(pageA.stationRange[1], pageB.stationRange[1]);
+      const station = mm((stationStart + stationEnd) / 2);
+      const [hwStart, hwEnd] = pageA.halfWidthRange;
+
+      for (const fraction of MATCH_MARK_EDGE_FRACTIONS) {
+        const halfWidth = mm(hwStart + (hwEnd - hwStart) * fraction);
+        marks.push({ pageIndex: pageA.index, pairedPageIndex: pageB.index, station, halfWidth });
+        marks.push({ pageIndex: pageB.index, pairedPageIndex: pageA.index, station, halfWidth });
+      }
+    }
+  }
+
+  // Column-adjacent pairs (side-by-side neighbours on a wide board): the shared band is a
+  // half-width range; two marks spaced along the shared row's own station extent.
+  for (let col = 0; col < layout.columns - 1; col++) {
+    for (let row = 0; row < layout.rows; row++) {
+      const pageA = layout.pages.find((p) => p.col === col && p.row === row);
+      const pageB = layout.pages.find((p) => p.col === col + 1 && p.row === row);
+      if (!pageA || !pageB) continue;
+
+      const hwStart = Math.max(pageA.halfWidthRange[0], pageB.halfWidthRange[0]);
+      const hwEnd = Math.min(pageA.halfWidthRange[1], pageB.halfWidthRange[1]);
+      const halfWidth = mm((hwStart + hwEnd) / 2);
+      const [stStart, stEnd] = pageA.stationRange;
+
+      for (const fraction of MATCH_MARK_EDGE_FRACTIONS) {
+        const station = mm(stStart + (stEnd - stStart) * fraction);
+        marks.push({ pageIndex: pageA.index, pairedPageIndex: pageB.index, station, halfWidth });
+        marks.push({ pageIndex: pageB.index, pairedPageIndex: pageA.index, station, halfWidth });
+      }
+    }
+  }
+
+  return marks;
+}

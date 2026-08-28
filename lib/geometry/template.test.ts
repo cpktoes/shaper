@@ -7,6 +7,7 @@ import {
   computeTemplateLayout,
   computeTemplateMarks,
   markPlacements,
+  matchMarkPositions,
   type PaperSize,
   type TemplateLayout,
 } from "./template";
@@ -129,6 +130,67 @@ describe("markPlacements", () => {
           expect(placement.halfWidthExtent).toBe(sampleOutline(geometry, placement.station));
         }
       });
+    });
+  }
+});
+
+describe("matchMarkPositions", () => {
+  /** Asserts that every match mark on `pageA` sharing this specific edge with `pageB` has an
+   * identical (station, halfWidth) counterpart on `pageB`'s own entry set for the same edge —
+   * filtered by `pairedPageIndex` so a page carrying both a row overlap and a column overlap
+   * doesn't get its two edges' marks conflated. */
+  function expectSharedEdgeMarksMatch(marks: ReturnType<typeof matchMarkPositions>, pageAIndex: number, pageBIndex: number) {
+    const marksA = marks
+      .filter((m) => m.pageIndex === pageAIndex && m.pairedPageIndex === pageBIndex)
+      .sort((a, b) => a.halfWidth - b.halfWidth || a.station - b.station);
+    const marksB = marks
+      .filter((m) => m.pageIndex === pageBIndex && m.pairedPageIndex === pageAIndex)
+      .sort((a, b) => a.halfWidth - b.halfWidth || a.station - b.station);
+
+    expect(marksA.length).toBe(2);
+    expect(marksB.length).toBe(2);
+    marksA.forEach((markA, i) => {
+      expect(markA.station).toBeCloseTo(marksB[i].station, 6);
+      expect(markA.halfWidth).toBeCloseTo(marksB[i].halfWidth, 6);
+    });
+  }
+
+  for (const paper of PAPERS) {
+    it(`${paper}: single-column board — row-adjacent pages carry identical match-mark positions in their shared band`, () => {
+      // A real board's own WIDEPOINT_WIDTH_RANGE_IN.min (16in) is already wide enough to need two
+      // columns on a portrait short edge — deliberately narrower than the app's own range purely
+      // to force layout.columns === 1 and exercise the row-adjacent (nose-to-tail) match-mark
+      // invariant on its own, distinct from the column-adjacent case exercised below.
+      const geometry = buildOutline({
+        ...BOARD_PRESETS[0].outline,
+        widePointWidth: inchesToMm(10),
+      });
+      const layout = computeTemplateLayout(geometry, paper);
+      expect(layout.columns).toBe(1);
+      expect(layout.rows).toBeGreaterThan(1);
+
+      const marks = matchMarkPositions(layout);
+      for (let row = 0; row < layout.rows - 1; row++) {
+        const pageA = layout.pages.find((p) => p.row === row && p.col === 0)!;
+        const pageB = layout.pages.find((p) => p.row === row + 1 && p.col === 0)!;
+        expectSharedEdgeMarksMatch(marks, pageA.index, pageB.index);
+      }
+    });
+
+    it(`${paper}: board at the maximum widepoint width — column-adjacent pages carry identical match-mark positions in their shared band`, () => {
+      const geometry = buildOutline({
+        ...BOARD_PRESETS[0].outline,
+        widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max),
+      });
+      const layout = computeTemplateLayout(geometry, paper);
+      expect(layout.columns).toBeGreaterThan(1);
+
+      const marks = matchMarkPositions(layout);
+      for (let col = 0; col < layout.columns - 1; col++) {
+        const pageA = layout.pages.find((p) => p.col === col && p.row === 0)!;
+        const pageB = layout.pages.find((p) => p.col === col + 1 && p.row === 0)!;
+        expectSharedEdgeMarksMatch(marks, pageA.index, pageB.index);
+      }
     });
   }
 });

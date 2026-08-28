@@ -1,9 +1,11 @@
 import jsPDF from "jspdf";
 import { describe, expect, it } from "vitest";
+import { WIDEPOINT_WIDTH_RANGE_IN } from "@/lib/geometry/board";
 import { buildOutline } from "@/lib/geometry/outline";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import { computeTemplateLayout, computeTemplateMarks } from "@/lib/geometry/template";
-import { buildTemplatePdf, templateNameBlockText } from "./build-template-pdf";
+import { inchesToMm } from "@/lib/geometry/units";
+import { buildTemplatePdf, templateHowToLines, templateNameBlockText } from "./build-template-pdf";
 
 function buildOptions(paper: "letter" | "a4" = "letter") {
   const preset = BOARD_PRESETS[0];
@@ -69,5 +71,32 @@ describe("templateNameBlockText", () => {
   it("returns a short name unchanged", () => {
     const doc = new jsPDF({ unit: "mm" });
     expect(templateNameBlockText("Shortboard", WIDTH_LIMIT_MM, doc)).toBe("Shortboard");
+  });
+});
+
+describe("templateHowToLines", () => {
+  it("returns three lines for a single-column layout", () => {
+    const preset = BOARD_PRESETS[0];
+    const geometry = buildOutline({ ...preset.outline, widePointWidth: inchesToMm(10) });
+    const layout = computeTemplateLayout(geometry, "letter");
+    expect(layout.columns).toBe(1);
+
+    const lines = templateHowToLines(layout);
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toContain("Print at 100%");
+  });
+
+  it("returns four lines, with the sideways-taping instruction, for a multi-column layout", () => {
+    const preset = BOARD_PRESETS[0];
+    const geometry = buildOutline({
+      ...preset.outline,
+      widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max),
+    });
+    const layout = computeTemplateLayout(geometry, "letter");
+    expect(layout.columns).toBeGreaterThan(1);
+
+    const lines = templateHowToLines(layout);
+    expect(lines).toHaveLength(4);
+    expect(lines[3].toLowerCase()).toContain("left to right");
   });
 });
