@@ -1,7 +1,7 @@
 ---
 phase: 3
 slug: volume-templates-verified-math
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova (neutral base color, cssVariables)
 created: 2026-08-28
@@ -211,22 +211,34 @@ paper enough to cut foam to it."
 
 ## UI Considerations
 
-Applicable state considerations resolved: 9 covered, 2 backstop, 0 unresolved.
+Probe run 2026-08-28 (ui-consideration-probe over 6 surfaces, kinds confirmed by founder): 28 applicable
+element/state pairs — **12 resolved (explicit), 1 resolved (backstop), 15 dismissed with reason, 0 unresolved.**
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
-| empty | export-preview-dialog (form) | ✅ covered | A design always exists on load (`DEFAULT_DESIGN_STATE`); Export Template is never reachable with nothing to export — dismissed as inapplicable by construction, not left silent. |
+| empty | export-preview-dialog (form) | ⚠ dismissed | Unreachable by construction: a design always exists on load (`DEFAULT_DESIGN_STATE`), so Export Template is never shown with nothing to export. |
 | empty | board-name-block (static-content, printed) | ✅ covered | Empty `boardName` prints the fallback "Untitled Board" rather than a blank line (Print Artifact Contract #5). |
+| empty | tile-grid-preview (list-collection: pages) | ⚠ dismissed | Zero pages is unreachable: any board with positive length yields ≥ 1 tile page. |
+| empty | template-toolbar-controls (interactive-control) | ⚠ dismissed | Icon controls carry no data content — no empty state exists. |
 | loading | export-preview-dialog, download-button (interactive-control) | ✅ covered | Download button shows "Preparing PDF…" and disables itself during PDF generation (Copywriting Contract). |
 | loading | template-export-button, summary-export-button (interactive-control) | ⚠ dismissed | Opening the dialog is a synchronous state flip (no async work happens before the dialog paints) — no loading state possible or needed. |
+| loading | tile-grid-preview (list-collection: pages) | ⚠ dismissed | Tile layout is a synchronous pure-geometry computation from design state — no async gap to show a loading state in. |
 | error | export-preview-dialog, download-button (interactive-control) | ✅ covered | "Couldn't build the PDF — try again." inline in the dialog, button re-enables (Copywriting Contract). |
-| overflow | tile-grid-preview (list-collection: pages) | 🧪 backstop | The preview diagram must render a multi-row/multi-column grid (Pitfall 1: max-widepoint boards need `columns > 1`) without visually overflowing the dialog — needs a held-out visual check at planning/execution time (e.g. render the diagram against `WIDEPOINT_WIDTH_RANGE_IN.max`), since no unit test can assert "doesn't look cramped." |
-| overflow | board-name-block (static-content, printed) | ✅ covered | Truncates with ellipsis at a fixed max width rather than overlapping the outline or an overlap strip (Print Artifact Contract #6). |
-| zero-one-many | tile-grid-preview (list-collection: pages) | ✅ covered | Singular/plural copy rows defined explicitly: "1 page — no taping needed." vs. "{n} pages — tape nose to tail." (Copywriting Contract). |
+| error | template-export-button, summary-export-button (interactive-control) | ⚠ dismissed | Same synchronous state flip as loading above — no failable operation occurs before the dialog paints. |
+| error | tile-grid-preview (list-collection: pages) | ⚠ dismissed | Pure function of design state, no IO — no error state is reachable. |
+| populated | export-preview-dialog (form) | ✅ covered | Happy-path structure specified: title → description → Letter/A4 picker (Letter default) → tile-grid preview → Download PDF / Cancel (Scope note + Copywriting Contract). |
 | populated | tile-grid-preview (list-collection: pages) | ✅ covered | Typical board (CONTEXT.md's own example): ~8 pages, single column, straightforward nose-to-tail numbering — the common case, not the edge case, drives the default visual weight of the diagram. |
+| populated | template-toolbar-controls (interactive-control) | ✅ covered | Resting fill (`bg-surf-ground` on `border-surf-line`) and active states (accent fill for Construction Lines ON, `aria-expanded` background for dialog-openers) specified under Color. |
+| partial | export-preview-dialog (form: paper-size picker) | ⚠ dismissed | Closed two-value TypeScript union (`"letter" \| "a4"`) with a hard default (Letter) — no state exists in which the picker has "some but not all" of its value, so partial doesn't apply. |
+| partial | tile-grid-preview (list-collection: pages) | ⚠ dismissed | Grid is fully derived from board dimensions in one pass — no partial data source exists. |
+| overflow | tile-grid-preview (list-collection: pages) | 🧪 backstop | The preview diagram must render a multi-row/multi-column grid (Pitfall 1: max-widepoint boards need `columns > 1`) without visually overflowing the dialog — needs a held-out visual check at planning/execution time (e.g. render the diagram against `WIDEPOINT_WIDTH_RANGE_IN.max`), since no unit test can assert "doesn't look cramped." |
+| overflow | export-preview-dialog (form) | ⚠ dismissed | Dialog content is fixed small controls; the only variable-size content is the tile grid, handled by its own backstop row above. |
+| overflow | board-name-block (static-content, printed) | ✅ covered | Truncates with ellipsis at a fixed max width rather than overlapping the outline or an overlap strip (Print Artifact Contract #6). |
+| overflow | printed page furniture (how-to box, page label, scale square, match marks) | ✅ covered | Fixed author-controlled geometry and copy; page-label page count is bounded by the tile grid — placement rules in Print Artifact Contract #1–#4, #7 keep all furniture inside kept areas. |
+| zero-one-many | export-preview-dialog + tile-grid-preview (list-collection: pages) | ✅ covered | Singular/plural copy rows defined explicitly: "1 page — no taping needed." vs. "{n} pages — tape nose to tail." (Copywriting Contract). |
 | long-text | board-name-block (static-content, printed) | ✅ covered | Same resolution as overflow above — truncation, never font-shrink below the 9pt floor (Print Artifact Contract #6). |
 | long-text | how-to-box, page-label (static-content, printed) | ✅ covered | Fixed, author-controlled copy (Copywriting Contract) — not user input, so no runtime long-text risk exists for these two elements. |
-| partial | export-preview-dialog (form: paper-size picker) | ⚠ dismissed | Closed two-value TypeScript union (`"letter" \| "a4"`) with a hard default (Letter) — no state exists in which the picker has "some but not all" of its value, so partial doesn't apply. |
+| long-text | export-preview-dialog, toolbar + export buttons (interactive-control) | ⚠ dismissed | All on-screen copy is fixed author-controlled strings from the Copywriting Contract (no user input renders in the dialog or on any button) — no runtime long-text risk. |
 | loading/error | template-toolbar-toggles (construction-lines, wide-view — interactive-control) | ⚠ dismissed | Instant client-side UI-state toggles with no network or async work behind them — no loading or error state is reachable. |
 
 ---
@@ -242,11 +254,11 @@ Applicable state considerations resolved: 9 covered, 2 backstop, 0 unresolved.
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-08-28 (gsd-ui-checker, 6/6 PASS)
