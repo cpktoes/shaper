@@ -75,7 +75,7 @@ function computeDiagramSizing(layout: TemplateLayout): DiagramSizing {
 }
 
 export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
-  const { outlineGeometry, boardName, templateValues, railValues } = useDesign();
+  const { outline, outlineGeometry, boardName, templateValues, railValues, volumeResult } = useDesign();
   const [open, setOpen] = useState(false);
   const [paperSize, setPaperSize] = useState<PaperSize>("letter");
   const [generating, setGenerating] = useState(false);
@@ -120,6 +120,13 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
             length: templateValues.length,
             widePointWidth: templateValues.widePointWidth,
             centerThickness: railValues.centerThickness,
+            // Post-checkpoint fix (defect 3 refinement): the same values the Summary order
+            // form's own dimensions row reads, from the same design state — see
+            // components/summary/order-form.tsx's DimensionCell strip.
+            noseWidth12in: outlineGeometry.noseWidthAt12in,
+            tailWidth12in: outlineGeometry.tailWidthAt12in,
+            widePointOffset: outline.widePointOffset,
+            volumeLitres: volumeResult.volumeLitres,
           },
         });
         generatingRef.current = false;

@@ -14,6 +14,21 @@
 import { MEASURE_STATION_MM, type OutlineGeometry, sampleOutline } from "./outline";
 import { type Mm, inchesToMm, mm } from "./units";
 
+/** The board name + dims block's fixed width (D-08) — kept here, next to
+ * `nameBlockPlacement`, rather than in the drawing module, so the geometry that decides WHERE the
+ * box goes and the size that decides WHETHER it fits stay a single source of truth (post-checkpoint
+ * fix, defect 3: the box must be verifiably contained inside the outline, not just placed). Widened
+ * from the box's original 45mm to hold the full order-form dimensions row (length, nose,
+ * widepoint, offset, tail, thickness, volume) alongside the board name, per the coordinator's
+ * refinement to defect 3. */
+export const NAME_BOX_WIDTH_MM = 74;
+/** The box's height when it holds only the board name and no dims row — a lower bound used as
+ * `nameBlockPlacement`'s default; the real drawn box is taller (the drawing module computes its
+ * actual height from however many lines the dims row wraps to, and passes that in explicitly). */
+export const NAME_BOX_HEIGHT_MM = 20;
+/** How far the box's left edge sits out from the stringer (half-width 0). */
+export const NAME_BOX_CLEARANCE_MM = 4;
+
 /** Paper sizes this phase supports — a closed compile-time union, never a validated free string
  * (RESEARCH.md V5). */
 export type PaperSize = "letter" | "a4";
@@ -215,13 +230,61 @@ export function markPlacements(
   return placements;
 }
 
-/** How far along a shared overlap edge the two match marks sit — spaced apart so a rotated page
- * cannot be lined up on one mark and read as aligned by accident. */
-const MATCH_MARK_EDGE_FRACTIONS = [0.25, 0.75] as const;
+/** How far along a shared overlap edge the two match marks sit, tried in order until a pair
+ * clears every `FurnitureZone` passed to `matchMarkPositions` — spaced apart so a rotated page
+ * cannot be lined up on one mark and read as aligned by accident, but shiftable when the default
+ * spacing would otherwise land a mark on top of the nose page's own scale square or how-to box
+ * (post-checkpoint fix, defect 4: furniture and marks must never overlap). */
+const MATCH_MARK_EDGE_FRACTION_SETS: readonly [number, number][] = [
+  [0.25, 0.75],
+  [0.3, 0.5],
+  [0.35, 0.45],
+];
 
-/** One alignment crosshair, in the board's own absolute station/half-width frame — identical to
- * the equivalent mark on `pairedPageIndex`'s own page once the two pages are physically
- * overlapped, which is the whole point: lining the marks up confirms correct alignment. */
+/** A rectangle of page furniture, in one page's own absolute station/half-width frame, that a
+ * match mark must not be placed inside — the pure-data half of "furniture placement accounts for
+ * mark positions and vice versa" (defect 4). The drawing module computes the rectangle (it alone
+ * knows the scale square's and how-to box's pixel sizes); this module only avoids it. */
+export interface FurnitureZone {
+  pageIndex: number;
+  station: [Mm, Mm];
+  halfWidth: [Mm, Mm];
+}
+
+function pointInZone(zone: FurnitureZone, pageIndex: number, station: number, halfWidth: number): boolean {
+  return (
+    zone.pageIndex === pageIndex &&
+    station >= zone.station[0] &&
+    station <= zone.station[1] &&
+    halfWidth >= zone.halfWidth[0] &&
+    halfWidth <= zone.halfWidth[1]
+  );
+}
+
+/** Picks the first fraction pair from `MATCH_MARK_EDGE_FRACTION_SETS` whose resulting mark
+ * positions (on both the page and its pair) avoid every zone in `avoidZones`; falls back to the
+ * last (tightest, most-central) pair if none clear every zone. */
+function chooseEdgeFractions(
+  avoidZones: readonly FurnitureZone[],
+  pointsForFraction: (fraction: number) => readonly { pageIndex: number; station: number; halfWidth: number }[],
+): [number, number] {
+  if (avoidZones.length === 0) return MATCH_MARK_EDGE_FRACTION_SETS[0];
+  for (const [a, b] of MATCH_MARK_EDGE_FRACTION_SETS) {
+    const candidates = [...pointsForFraction(a), ...pointsForFraction(b)];
+    const conflict = candidates.some((point) =>
+      avoidZones.some((zone) => pointInZone(zone, point.pageIndex, point.station, point.halfWidth)),
+    );
+    if (!conflict) return [a, b];
+  }
+  return MATCH_MARK_EDGE_FRACTION_SETS[MATCH_MARK_EDGE_FRACTION_SETS.length - 1];
+}
+
+/** One alignment mark, in the board's own absolute station/half-width frame — identical to the
+ * equivalent mark on `pairedPageIndex`'s own page once the two pages are physically overlapped,
+ * which is the whole point: lining the marks up confirms correct alignment. `edge` tells the
+ * drawing module which way to orient the solid tick: a `"row"` mark sits on a horizontal
+ * (station) boundary, so its tick is drawn vertical, crossing that boundary; a `"column"` mark
+ * sits on a vertical (half-width) boundary, so its tick is drawn horizontal. */
 export interface TemplateMatchMark {
   pageIndex: number;
   /** The adjacent page whose own entry set carries this same physical point — keeps a page's row
@@ -230,16 +293,24 @@ export interface TemplateMatchMark {
   pairedPageIndex: number;
   station: Mm;
   halfWidth: Mm;
+  edge: "row" | "column";
 }
 
 /**
- * Places two alignment crosshairs inside every overlap band shared by two adjacent pages — one row
+ * Places two alignment marks inside every overlap band shared by two adjacent pages — one row
  * pair (nose-to-tail neighbours) or one column pair (side-by-side neighbours on a wide board). For
  * each shared band, the exact same pair of board-frame positions is recorded against both pages, so
  * the contract that makes them useful — lining the marks up is a positive confirmation, not an
  * eyeball judgement on a cut edge — holds by construction.
+ *
+ * `avoidZones` (optional, defaults to none) lets a caller keep marks off a reserved rectangle of
+ * page furniture — see `FurnitureZone`. When the default edge-fraction spacing would land a mark
+ * inside a zone, the next candidate spacing is tried instead, on both pages sharing that band.
  */
-export function matchMarkPositions(layout: TemplateLayout): TemplateMatchMark[] {
+export function matchMarkPositions(
+  layout: TemplateLayout,
+  avoidZones: readonly FurnitureZone[] = [],
+): TemplateMatchMark[] {
   const marks: TemplateMatchMark[] = [];
 
   // Row-adjacent pairs (nose-to-tail neighbours): the shared band is a station range; two marks
@@ -255,10 +326,18 @@ export function matchMarkPositions(layout: TemplateLayout): TemplateMatchMark[] 
       const station = mm((stationStart + stationEnd) / 2);
       const [hwStart, hwEnd] = pageA.halfWidthRange;
 
-      for (const fraction of MATCH_MARK_EDGE_FRACTIONS) {
+      const [fractionA, fractionB] = chooseEdgeFractions(avoidZones, (fraction) => {
+        const halfWidth = hwStart + (hwEnd - hwStart) * fraction;
+        return [
+          { pageIndex: pageA.index, station, halfWidth },
+          { pageIndex: pageB.index, station, halfWidth },
+        ];
+      });
+
+      for (const fraction of [fractionA, fractionB]) {
         const halfWidth = mm(hwStart + (hwEnd - hwStart) * fraction);
-        marks.push({ pageIndex: pageA.index, pairedPageIndex: pageB.index, station, halfWidth });
-        marks.push({ pageIndex: pageB.index, pairedPageIndex: pageA.index, station, halfWidth });
+        marks.push({ pageIndex: pageA.index, pairedPageIndex: pageB.index, station, halfWidth, edge: "row" });
+        marks.push({ pageIndex: pageB.index, pairedPageIndex: pageA.index, station, halfWidth, edge: "row" });
       }
     }
   }
@@ -276,13 +355,85 @@ export function matchMarkPositions(layout: TemplateLayout): TemplateMatchMark[] 
       const halfWidth = mm((hwStart + hwEnd) / 2);
       const [stStart, stEnd] = pageA.stationRange;
 
-      for (const fraction of MATCH_MARK_EDGE_FRACTIONS) {
+      const [fractionA, fractionB] = chooseEdgeFractions(avoidZones, (fraction) => {
+        const station = stStart + (stEnd - stStart) * fraction;
+        return [
+          { pageIndex: pageA.index, station, halfWidth },
+          { pageIndex: pageB.index, station, halfWidth },
+        ];
+      });
+
+      for (const fraction of [fractionA, fractionB]) {
         const station = mm(stStart + (stEnd - stStart) * fraction);
-        marks.push({ pageIndex: pageA.index, pairedPageIndex: pageB.index, station, halfWidth });
-        marks.push({ pageIndex: pageB.index, pairedPageIndex: pageA.index, station, halfWidth });
+        marks.push({ pageIndex: pageA.index, pairedPageIndex: pageB.index, station, halfWidth, edge: "column" });
+        marks.push({ pageIndex: pageB.index, pairedPageIndex: pageA.index, station, halfWidth, edge: "column" });
       }
     }
   }
 
   return marks;
+}
+
+const NAME_BLOCK_SEARCH_STEP_MM = 1;
+/** Interior samples checked across the box's own height, so a non-monotonic taper can't sneak a
+ * narrow point between two endpoint samples. */
+const NAME_BLOCK_HEIGHT_SAMPLES = 5;
+
+function minHalfWidthOverStationSpan(geometry: OutlineGeometry, top: number, bottom: number): number {
+  let min = Infinity;
+  for (let i = 0; i <= NAME_BLOCK_HEIGHT_SAMPLES; i++) {
+    const station = bottom + ((top - bottom) * i) / NAME_BLOCK_HEIGHT_SAMPLES;
+    min = Math.min(min, sampleOutline(geometry, mm(station)));
+  }
+  return min;
+}
+
+/** Where the board name + dims block's top-left corner goes on page 0 (the nose page) — the
+ * station of its nose-most edge, and its left edge's clearance from the stringer. Chosen so every
+ * corner of the fixed-size box lands inside the outline (post-checkpoint fix, defect 3: "the Board
+ * Name and dimension box needs to be contained INSIDE the board outline on page 1"), scanning down
+ * from the nose tip until the outline is wide enough, over the box's whole height, to hold it.
+ *
+ * Also keeps the box's bottom edge clear of the row-overlap band page 0 shares with the next page
+ * down — that band carries `matchMarkPositions`' own alignment marks, so the two kinds of
+ * furniture never share the same paper (the "vice versa" half of defect 4).
+ */
+export interface NameBlockPlacement {
+  pageIndex: number;
+  /** The box's nose-most (top) edge, in the board's own absolute station frame. */
+  topStation: Mm;
+  /** The box's left edge, measured out from the stringer (half-width 0). */
+  halfWidthStart: Mm;
+}
+
+export function nameBlockPlacement(
+  layout: TemplateLayout,
+  geometry: OutlineGeometry,
+  boxWidthMm: number = NAME_BOX_WIDTH_MM,
+  boxHeightMm: number = NAME_BOX_HEIGHT_MM,
+  clearanceMm: number = NAME_BOX_CLEARANCE_MM,
+): NameBlockPlacement {
+  const page = layout.pages.find((p) => p.index === 0) ?? layout.pages[0];
+  const halfWidthStart = mm(clearanceMm);
+  const requiredHalfWidth = clearanceMm + boxWidthMm;
+
+  const overlapReserve = layout.rows > 1 ? layout.overlap : 0;
+  const searchFloor = page.stationRange[0] + overlapReserve;
+  const searchCeiling = Math.min(page.stationRange[1], geometry.length);
+
+  for (
+    let candidate = searchCeiling;
+    candidate - boxHeightMm >= searchFloor;
+    candidate -= NAME_BLOCK_SEARCH_STEP_MM
+  ) {
+    const bottom = candidate - boxHeightMm;
+    if (minHalfWidthOverStationSpan(geometry, candidate, bottom) >= requiredHalfWidth) {
+      return { pageIndex: page.index, topStation: mm(candidate), halfWidthStart };
+    }
+  }
+
+  // No station band on page 0 clears the box at full width (an unusually narrow-nosed board) —
+  // fall back to the widest band searched, deepest into page 0, rather than the narrowest.
+  const fallbackTop = Math.max(searchFloor + boxHeightMm, searchCeiling);
+  return { pageIndex: page.index, topStation: mm(fallbackTop), halfWidthStart };
 }

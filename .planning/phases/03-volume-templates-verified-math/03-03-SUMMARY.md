@@ -143,12 +143,85 @@ None. `npx tsc --noEmit` reports the same two pre-existing `Cannot find name 'La
 
 **What's ready:** Later plans in Phase 03 (the preview dialog per D-03/D-04, the folded Summary print-sheet refit) can build on this finished template renderer. Visual confirmation of the finished printed page — that the marks, name block, match marks and how-to box actually read correctly on paper — is deferred to the phase acceptance walkthrough (plan 07), per this plan's own `<verification>` section.
 
+## Post-checkpoint fixes
+
+The user printed page 1 of a real export and reported four defects on paper. Each was fixed and
+committed atomically as its own `fix(03-03): ...` commit.
+
+**1. How-to box text overran its own border.** Line 2 ("Measure the square above...") and line 3
+("Cut out each page and tape them...") ran past the box's right edge and were clipped in the
+printout. `templateHowToWrappedLines` now word-wraps each numbered line to the box's own inner
+width, measured with jsPDF's own `getTextWidth` at the box's real font/size rather than a guessed
+character count; `drawHowToBox` sizes the box to however many wrapped lines that produces.
+Commit: `5135a54`.
+
+**2. Station lines carried no printed dimension.** The four working marks (nose 12in, tail 12in,
+centre, widepoint) drew a tick and a name but no measurement. `templateMarkDimensionText` /
+`templateMarkLabelText` print the board's own full width at each mark's station (the existing
+`formatInchesFraction` formatter, matching how a shaper reads a tape measure), and `drawMarks`
+falls back to two stacked lines (name, then dimension) rather than let either run off the tick's
+own paper into the outline curve when there isn't room for one line.
+Commit: `df1b2e3`.
+
+**3. The name + dims box wasn't contained inside the outline on page 1, and only carried three of
+seven dimension values.** The box previously landed on whichever page held the board's centre
+station — not page 1 — and showed only length, widepoint width and thickness. Per the
+coordinator's refinement mid-fix, it now carries every value the Summary order form's own
+dimensions row shows (length, nose, widepoint, offset, tail, thickness, volume), read from the
+same design state and formatted with the same `lib/geometry/units.ts` functions. A new pure
+function, `nameBlockPlacement` (`lib/geometry/template.ts`), scans down page 1's own outline width
+from the nose tip for the first station band — over the box's whole height — wide enough to hold
+the box at its full width, so every corner is verifiably inside the board outline rather than just
+placed near it. Because the fuller box needs more room, its real height (name line plus however
+many lines the wrapped dims row needs) is computed first and fed into the placement search —
+containment wins over a fixed position. `BuildTemplatePdfOptions.dims` gained four required
+fields; `export-preview-dialog.tsx` (the only caller) was updated to supply them from the same
+design-store values `order-form.tsx` already reads. `components/summary/` itself was not touched.
+Commit: `be94ae8`.
+
+**4. Crosshair match marks, and one sat on top of the how-to box's own text.** Overlap alignment
+marks were small crosshairs; the photo showed one landing directly on the how-to box's text on
+page 1. Match marks are now a single solid tick, oriented perpendicular to the trim edge it
+crosses (vertical for a nose-tail seam, horizontal for a side-by-side seam) — taping two pages
+means aligning two solid lines into one continuous line across the seam. The underlying placement
+bug is fixed too: `matchMarkPositions`'s default edge fractions could put a column-adjacent mark
+inside the top ~35% of page 1, exactly where the scale square and how-to box live. It now accepts
+an optional `FurnitureZone` list and retries a sequence of tighter, more-central fraction pairs
+until one clears every zone; `buildTemplatePdf` builds that zone from the scale square's and
+how-to box's own real rectangles before computing match marks. `nameBlockPlacement` also keeps the
+name+dims box's own bottom edge clear of the row-overlap band page 1 shares with the next page,
+since that band carries its own match marks — furniture and marks never share the same paper, in
+either direction. `templatePageZeroFurnitureRects` + `rectsOverlap` give a direct pairwise
+non-overlap test across every board preset and paper size, including a forced multi-column board
+that reproduces the original photo's collision.
+Commit: `931d046`.
+
+**Verification:** `npm test` (874/874), `npx tsc --noEmit` (0 errors beyond the pre-existing,
+worktree-only `LayoutProps` phantom errors documented in plan 01/03's own summaries), and
+`npm run lint` (0 errors) all pass after all four fixes. New/updated test coverage: how-to box
+wrapping (`wrapTextToWidth`, `templateHowToWrappedLines`), station-line dimension text
+(`templateMarkDimensionText`/`templateMarkLabelText`), name-block containment
+(`nameBlockPlacement`, exercised across every `BOARD_PRESETS` entry and both paper sizes, plus a
+row-overlap-band clearance case), match-mark orientation (`edge` field) and furniture-avoidance
+(`avoidZones`), and pairwise furniture non-overlap (`templatePageZeroFurnitureRects` +
+`rectsOverlap`).
+
+**Deviation note:** `components/template/export-preview-dialog.tsx` was modified outside this
+plan's original file list — required because it is the sole caller of `BuildTemplatePdfOptions`,
+which gained required fields in fix 3. This is a mechanical caller update (Rule 3: blocking-issue
+fix), not a scope expansion; `components/summary/` and `components/outline/outline-editor.tsx`
+were not touched.
+
 ## Self-Check: PASSED
 
 - FOUND: lib/geometry/template.ts (markPlacements, matchMarkPositions)
 - FOUND: components/template/build-template-pdf.ts (templateNameBlockText, templateHowToLines)
 - FOUND commit: 3ec4363
 - FOUND commit: 1b498c3
+- FOUND commit: 5135a54 (post-checkpoint fix 1)
+- FOUND commit: df1b2e3 (post-checkpoint fix 2)
+- FOUND commit: be94ae8 (post-checkpoint fix 3)
+- FOUND commit: 931d046 (post-checkpoint fix 4)
 
 ---
 *Phase: 03-volume-templates-verified-math*

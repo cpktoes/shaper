@@ -13,9 +13,13 @@
 import jsPDF from "jspdf";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import {
+  NAME_BOX_CLEARANCE_MM,
+  NAME_BOX_WIDTH_MM,
   PAPER_MM,
+  type FurnitureZone,
   markPlacements,
   matchMarkPositions,
+  nameBlockPlacement,
   type PaperSize,
   type TemplateLayout,
   type TemplateMarkPlacement,
@@ -23,7 +27,15 @@ import {
   type TemplateMatchMark,
   type TemplatePage,
 } from "@/lib/geometry/template";
-import { formatFeetInches, formatInchesFraction, inchesToMm, type Mm } from "@/lib/geometry/units";
+import {
+  formatFeetInches,
+  formatInchesFraction,
+  formatSignedInchesFraction,
+  inchesToMm,
+  mm,
+  type Litres,
+  type Mm,
+} from "@/lib/geometry/units";
 
 /** Every input `buildTemplatePdf` needs, fixed complete now, so later plans (the preview dialog,
  * working match marks) extend the drawing without touching a call site. */
@@ -36,10 +48,22 @@ export interface BuildTemplatePdfOptions {
   geometry: OutlineGeometry;
   paper: PaperSize;
   boardName: string;
+  /** The page 1 name block's own dims row — every value the Summary order form's core dimensions
+   * row carries (`components/summary/order-form.tsx`'s `DimensionCell` strip), read from the same
+   * design state and formatted with the same `lib/geometry/units.ts` functions, so the printed
+   * template never disagrees with the order form over what a board measures (post-checkpoint fix,
+   * defect 3 refinement). */
   dims: {
     length: Mm;
     widePointWidth: Mm;
     centerThickness: Mm;
+    /** Full (not half) width 12in in from the nose — `OutlineGeometry.noseWidthAt12in`. */
+    noseWidth12in: Mm;
+    /** Full (not half) width 12in in from the tail — `OutlineGeometry.tailWidthAt12in`. */
+    tailWidth12in: Mm;
+    /** Signed offset of the widepoint from mid-length — positive toward the nose. */
+    widePointOffset: Mm;
+    volumeLitres: Litres;
   };
 }
 
@@ -51,10 +75,7 @@ const STRINGER_LINE_WEIGHT_MM = 0.35;
 const STRINGER_DASH_PATTERN = [16, 4, 4, 4];
 const SCALE_SQUARE_LINE_WEIGHT_MM = 0.35;
 const NAME_BOX_LINE_WEIGHT_MM = 0.25;
-const NAME_BOX_WIDTH_MM = 45;
-const NAME_BOX_HEIGHT_MM = 20;
 const NAME_BOX_PADDING_MM = 3;
-const NAME_BOX_CLEARANCE_MM = 4;
 /** The name block's own text width budget — Print Artifact Contract #6: a name too long for the
  * box truncates with an ellipsis rather than wrapping into or overlapping the outline curve. */
 const NAME_TEXT_WIDTH_LIMIT_MM = NAME_BOX_WIDTH_MM - 2 * NAME_BOX_PADDING_MM;
@@ -65,14 +86,33 @@ const NAME_FONT_SIZE_PT = 14;
 const UNTITLED_BOARD_NAME = "Untitled Board";
 const ELLIPSIS = "…";
 
+/** The dims row beneath the board name — every value the order form's own dimensions row carries
+ * (post-checkpoint fix, defect 3 refinement). Reserved vertical space for the bold name line
+ * (matches the `y + 8` baseline the name is already drawn at), then the wrapped dims text below
+ * it at a smaller size, since seven values plus their labels don't fit at the name's own 14pt. */
+const NAME_BOX_NAME_LINE_HEIGHT_MM = 8;
+const NAME_BOX_DIMS_TOP_GAP_MM = 2;
+const NAME_BOX_DIMS_FONT_SIZE_PT = 8;
+const NAME_BOX_DIMS_LINE_HEIGHT_MM = 4.2;
+/** The dims row's own text width budget, inside the box's border and padding. */
+const NAME_BOX_DIMS_WIDTH_LIMIT_MM = NAME_BOX_WIDTH_MM - 2 * NAME_BOX_PADDING_MM;
+
 /** The four working marks (D-06) — solid black, told apart by dash pattern alone so they survive a
  * monochrome printer. */
 const MARK_TICK_LINE_WEIGHT_MM = 0.25;
 const MARK_STATION_DASH_PATTERN = [5, 4];
 const MARK_WIDEPOINT_DASH_PATTERN = [2, 3];
 const MARK_LABEL_OFFSET_MM = 2;
+/** Extra clearance kept between a mark's label and the outline curve it runs to — post-checkpoint
+ * fix, defect 2: the label must never run off the tick's own paper into the curve. */
+const MARK_LABEL_SAFETY_MM = 2;
+/** Vertical gap between the two stacked lines when a label doesn't fit on one (name, then
+ * dimension) before the tick's own curve-side end. */
+const MARK_LABEL_LINE_GAP_MM = 4;
 
-/** Overlap match-mark crosshairs (D-09) — small, solid, identical on both overlapping pages. */
+/** Overlap match marks (D-09) — small, solid alignment ticks, identical on both overlapping
+ * pages, oriented perpendicular to the trim edge they cross (post-checkpoint fix, defect 4: a
+ * solid crossing tick rather than a crosshair). */
 const MATCH_MARK_LINE_WEIGHT_MM = 0.25;
 const MATCH_MARK_SIZE_MM = 4;
 
@@ -83,6 +123,9 @@ const HOWTO_BOX_PADDING_MM = 3;
 const HOWTO_BOX_LINE_HEIGHT_MM = 5;
 /** Gap below the scale-check square's own label before the how-to box begins. */
 const HOWTO_BOX_TOP_GAP_MM = 8;
+/** The how-to box's own text width budget, inside its border and padding — post-checkpoint fix,
+ * defect 1: a line too wide for this wraps rather than running past the box's right edge. */
+export const HOWTO_BOX_TEXT_WIDTH_LIMIT_MM = HOWTO_BOX_WIDTH_MM - 2 * HOWTO_BOX_PADDING_MM;
 
 /** Converts a page-local station to a page-local y (mm from the page's top edge): the page's own
  * nose-most edge (`stationRange[1]`) sits at the top, and y grows toward the tail — matching how
@@ -164,10 +207,28 @@ function drawScaleSquare(doc: jsPDF, page: TemplatePage, margin: number, paperWi
   doc.text('2" x 2" — measure before taping', x + SCALE_SQUARE_MM / 2, y + SCALE_SQUARE_MM + 5, { align: "center" });
 }
 
+/** The dimension text drawn beside each working mark — the board's own full width (both rails,
+ * not just the tick's own half-width extent) at that mark's station, formatted the way a shaper
+ * reads a tape measure. Exported for testability without reading the rendered page
+ * (post-checkpoint fix, defect 2: "the station lines don't have a printed dimension"). */
+export function templateMarkDimensionText(placement: TemplateMarkPlacement): string {
+  return formatInchesFraction(mm(placement.halfWidthExtent * 2));
+}
+
+/** The mark's name plus its dimension, e.g. `Nose 12" — 15 3/4"` — the combined text drawn on one
+ * line when there's room. */
+export function templateMarkLabelText(placement: TemplateMarkPlacement): string {
+  return `${placement.label} — ${templateMarkDimensionText(placement)}`;
+}
+
 /** Draws the four working marks (D-06 — nose 12in, tail 12in, centre, widepoint; no every-12in
  * station ladder) that fall on this page. Each tick runs from the stringer (half-width 0) out to
  * `placement.halfWidthExtent`, at 0.25mm; the widepoint tick alone gets the dotted `2 3` pattern so
- * it is told apart from the other three by dash pattern alone, never by colour. */
+ * it is told apart from the other three by dash pattern alone, never by colour. Each tick is
+ * labeled with its name and the board's own width there, measured with jsPDF's own `getTextWidth`
+ * against the room actually available before the curve — split onto two stacked lines rather than
+ * let either run past the tick's own outer end when a narrower station doesn't have room for one
+ * (post-checkpoint fix, defects 2 and 4). */
 function drawMarks(doc: jsPDF, page: TemplatePage, margin: number, placements: TemplateMarkPlacement[]): void {
   const pagePlacements = placements.filter((placement) => placement.pageIndex === page.index);
   if (pagePlacements.length === 0) return;
@@ -190,13 +251,28 @@ function drawMarks(doc: jsPDF, page: TemplatePage, margin: number, placements: T
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(0);
-    doc.text(placement.label, xStringer + MARK_LABEL_OFFSET_MM, y - MARK_LABEL_OFFSET_MM);
+
+    const combined = templateMarkLabelText(placement);
+    const availableWidth = Math.max(0, xOuter - xStringer - MARK_LABEL_OFFSET_MM - MARK_LABEL_SAFETY_MM);
+    if (doc.getTextWidth(combined) <= availableWidth) {
+      doc.text(combined, xStringer + MARK_LABEL_OFFSET_MM, y - MARK_LABEL_OFFSET_MM);
+    } else {
+      doc.text(placement.label, xStringer + MARK_LABEL_OFFSET_MM, y - MARK_LABEL_OFFSET_MM - MARK_LABEL_LINE_GAP_MM);
+      doc.text(
+        templateMarkDimensionText(placement),
+        xStringer + MARK_LABEL_OFFSET_MM,
+        y - MARK_LABEL_OFFSET_MM,
+      );
+    }
   }
 }
 
-/** Draws the small alignment crosshairs (D-09) that sit inside every overlap band this page
- * shares with a neighbour — the identical pair on both overlapping pages is what turns "lining
- * the marks up" into a positive confirmation rather than an eyeball judgement on a cut edge. */
+/** Draws the small alignment ticks (D-09) that sit inside every overlap band this page shares
+ * with a neighbour — the identical pair on both overlapping pages is what turns "lining the marks
+ * up" into a positive confirmation rather than an eyeball judgement on a cut edge. Solid, not a
+ * crosshair (post-checkpoint fix, defect 4): each tick is drawn as a single short segment,
+ * perpendicular to the trim edge it crosses, so taping two pages together means aligning two
+ * solid lines into one continuous line across the seam. */
 function drawMatchMarks(doc: jsPDF, page: TemplatePage, margin: number, matchMarks: TemplateMatchMark[]): void {
   const pageMarks = matchMarks.filter((mark) => mark.pageIndex === page.index);
   if (pageMarks.length === 0) return;
@@ -209,8 +285,13 @@ function drawMatchMarks(doc: jsPDF, page: TemplatePage, margin: number, matchMar
   for (const mark of pageMarks) {
     const x = halfWidthToX(mark.halfWidth, page, margin);
     const y = stationToY(mark.station, page, margin);
-    doc.line(x - half, y, x + half, y);
-    doc.line(x, y - half, x, y + half);
+    if (mark.edge === "row") {
+      // The shared boundary is a horizontal station line — the crossing tick is vertical.
+      doc.line(x, y - half, x, y + half);
+    } else {
+      // The shared boundary is a vertical half-width line — the crossing tick is horizontal.
+      doc.line(x - half, y, x + half, y);
+    }
   }
 }
 
@@ -230,30 +311,118 @@ export function templateHowToLines(layout: TemplateLayout): string[] {
   return lines;
 }
 
+/** Word-wraps `text` to `maxWidthMm`, measured with jsPDF's own `getTextWidth` at `doc`'s
+ * currently-set font/size — never a guessed character count. Exported for testability. */
+export function wrapTextToWidth(text: string, maxWidthMm: number, doc: jsPDF): string[] {
+  const words = text.split(" ");
+  const wrapped: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const candidate = current.length > 0 ? `${current} ${word}` : word;
+    if (current.length > 0 && doc.getTextWidth(candidate) > maxWidthMm) {
+      wrapped.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current.length > 0) wrapped.push(current);
+  return wrapped;
+}
+
+/** The how-to box's lines, numbered and wrapped to fit inside the box's own inner width (its
+ * width less its own padding on both sides) — post-checkpoint fix, defect 1: "the instructions on
+ * page 1 overrun the text box." A line too wide for one row wraps onto the next rather than
+ * running past the box's printed border; continuation lines carry no number. Exported for
+ * testability: every returned line's `getTextWidth` is asserted no wider than `innerWidthMm`. */
+export function templateHowToWrappedLines(layout: TemplateLayout, doc: jsPDF, innerWidthMm: number): string[] {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  const lines = templateHowToLines(layout);
+  const wrapped: string[] = [];
+  lines.forEach((line, i) => {
+    wrapped.push(...wrapTextToWidth(`${i + 1}. ${line}`, innerWidthMm, doc));
+  });
+  return wrapped;
+}
+
+/** The nose-page how-to box's own rectangle — computed once so the drawing function and the
+ * furniture-collision math (`pageZeroFurnitureZone` below) agree on exactly the same box,
+ * including its height, which now varies with how many lines defect 1's wrapping produced. */
+function howToBoxRect(
+  doc: jsPDF,
+  layout: TemplateLayout,
+  margin: number,
+  paperWidthMm: number,
+): { x: number; y: number; width: number; height: number; lines: string[] } {
+  const lines = templateHowToWrappedLines(layout, doc, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM);
+  const height = HOWTO_BOX_PADDING_MM * 2 + lines.length * HOWTO_BOX_LINE_HEIGHT_MM;
+  const x = paperWidthMm - margin - HOWTO_BOX_WIDTH_MM;
+  const y = margin + SCALE_SQUARE_MM + HOWTO_BOX_TOP_GAP_MM;
+  return { x, y, width: HOWTO_BOX_WIDTH_MM, height, lines };
+}
+
 /** Nose page only, beside the scale square — the one thing on the template that prevents the
  * failure a wrong print scale causes silently and expensively. */
 function drawHowToBox(doc: jsPDF, layout: TemplateLayout, page: TemplatePage, margin: number, paperWidthMm: number): void {
   if (page.index !== 0) return;
 
-  const lines = templateHowToLines(layout);
-  const boxHeight = HOWTO_BOX_PADDING_MM * 2 + lines.length * HOWTO_BOX_LINE_HEIGHT_MM;
-  const x = paperWidthMm - margin - HOWTO_BOX_WIDTH_MM;
-  const y = margin + SCALE_SQUARE_MM + HOWTO_BOX_TOP_GAP_MM;
+  const { x, y, width, height, lines } = howToBoxRect(doc, layout, margin, paperWidthMm);
 
   doc.setDrawColor(0);
   doc.setLineWidth(HOWTO_BOX_LINE_WEIGHT_MM);
-  doc.rect(x, y, HOWTO_BOX_WIDTH_MM, boxHeight, "S");
+  doc.rect(x, y, width, height, "S");
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(0);
   lines.forEach((line, i) => {
-    doc.text(
-      `${i + 1}. ${line}`,
-      x + HOWTO_BOX_PADDING_MM,
-      y + HOWTO_BOX_PADDING_MM + (i + 1) * HOWTO_BOX_LINE_HEIGHT_MM - 1.5,
-    );
+    doc.text(line, x + HOWTO_BOX_PADDING_MM, y + HOWTO_BOX_PADDING_MM + (i + 1) * HOWTO_BOX_LINE_HEIGHT_MM - 1.5);
   });
+}
+
+/** The scale square's own rectangle — matches `drawScaleSquare`'s placement exactly, so the
+ * furniture-avoidance zone below is built from the real drawn area, not a guess. */
+function scaleSquareRect(margin: number, paperWidthMm: number): { x: number; y: number; width: number; height: number } {
+  return {
+    x: paperWidthMm - margin - SCALE_SQUARE_MM,
+    y: margin,
+    width: SCALE_SQUARE_MM,
+    height: SCALE_SQUARE_MM,
+  };
+}
+
+/** Converts the nose page's own scale-square + how-to box footprint (in page-local millimetres)
+ * into a `FurnitureZone` in the board's absolute station/half-width frame, for
+ * `matchMarkPositions` to steer its column-overlap marks away from — the pure-math half of
+ * "furniture placement accounts for mark positions and vice versa" (post-checkpoint fix, defect
+ * 4: a match mark must never land on top of the how-to box's own text, as it did in the reported
+ * photo). */
+function pageZeroFurnitureZone(
+  doc: jsPDF,
+  layout: TemplateLayout,
+  page: TemplatePage,
+  margin: number,
+  paperWidthMm: number,
+): FurnitureZone {
+  const square = scaleSquareRect(margin, paperWidthMm);
+  const howTo = howToBoxRect(doc, layout, margin, paperWidthMm);
+
+  const xMin = Math.min(square.x, howTo.x);
+  const xMax = paperWidthMm - margin;
+  const yMin = margin;
+  const yMax = howTo.y + howTo.height;
+
+  const halfWidthAtXMin = xMin - margin + page.halfWidthRange[0];
+  const halfWidthAtXMax = xMax - margin + page.halfWidthRange[0];
+  const stationAtYMin = page.stationRange[1] - (yMin - margin);
+  const stationAtYMax = page.stationRange[1] - (yMax - margin);
+
+  return {
+    pageIndex: page.index,
+    station: [mm(Math.min(stationAtYMin, stationAtYMax)), mm(Math.max(stationAtYMin, stationAtYMax))],
+    halfWidth: [mm(halfWidthAtXMin), mm(halfWidthAtXMax)],
+  };
 }
 
 function drawPageLabel(
@@ -267,16 +436,6 @@ function drawPageLabel(
   doc.setFontSize(9);
   doc.setTextColor(0);
   doc.text(page.label, paperWidthMm / 2, paperHeightMm - margin / 2, { align: "center" });
-}
-
-/** The page whose `stationRange` contains the board's centre station — the D-08 name/dims block
- * lands there, restricted to column 0 so it always has stringer-side room clear of the curve. */
-function findCentrePage(layout: TemplateLayout, geometry: OutlineGeometry): TemplatePage {
-  const centre = geometry.length / 2;
-  const match = layout.pages.find(
-    (page) => page.col === 0 && centre >= page.stationRange[0] && centre <= page.stationRange[1],
-  );
-  return match ?? layout.pages[0];
 }
 
 /** Resolves what the name block actually prints for a given `boardName`: the empty-name fallback
@@ -309,23 +468,67 @@ export function templateNameBlockText(
   return `${truncated}${ELLIPSIS}`;
 }
 
-/** D-08's board name + dims block: a bordered box in the board's own interior (between the
- * stringer edge and the outline curve), never in a page margin. */
+/** The full dims row text, before wrapping — every value the order form's own dimensions row
+ * carries (`components/summary/order-form.tsx`'s `DimensionCell` strip: Length, Nose, Widepoint,
+ * Offset, Tail, Thickness, Volume), formatted with the same `lib/geometry/units.ts` functions the
+ * order form uses. Exported for testability without reading the rendered page (post-checkpoint
+ * fix, defect 3 refinement: "add all the station mark dims with the board name"). */
+export function templateNameBlockDimsText(dims: BuildTemplatePdfOptions["dims"]): string {
+  return [
+    `Length ${formatFeetInches(dims.length)}`,
+    `Nose ${formatInchesFraction(dims.noseWidth12in)}`,
+    `Widepoint ${formatInchesFraction(dims.widePointWidth)}`,
+    `Offset ${formatSignedInchesFraction(dims.widePointOffset)}`,
+    `Tail ${formatInchesFraction(dims.tailWidth12in)}`,
+    `Thickness ${formatInchesFraction(dims.centerThickness)}`,
+    `Volume ${dims.volumeLitres.toFixed(1)} L`,
+  ].join("  ·  ");
+}
+
+/** The name block's dims row, wrapped to the box's own inner width, plus the box's total height
+ * given how many lines that wrapping produced — one source of truth shared by `drawNameBlock`
+ * (which draws it) and `templatePageZeroFurnitureRects`/`pageZeroFurnitureZone`-adjacent code that
+ * needs the box's real footprint for containment and overlap checks. Exported for testability. */
+export function nameBlockContent(
+  doc: jsPDF,
+  dims: BuildTemplatePdfOptions["dims"],
+): { dimsLines: string[]; height: number } {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(NAME_BOX_DIMS_FONT_SIZE_PT);
+  const dimsLines = wrapTextToWidth(templateNameBlockDimsText(dims), NAME_BOX_DIMS_WIDTH_LIMIT_MM, doc);
+  const height =
+    NAME_BOX_NAME_LINE_HEIGHT_MM +
+    NAME_BOX_DIMS_TOP_GAP_MM +
+    dimsLines.length * NAME_BOX_DIMS_LINE_HEIGHT_MM +
+    NAME_BOX_PADDING_MM;
+  return { dimsLines, height };
+}
+
+/** D-08's board name + dims block: a bordered box on page 1 (the nose page), positioned by
+ * `nameBlockPlacement` so it's fully contained inside the outline's own interior there —
+ * post-checkpoint fix, defect 3: "the Board Name and dimension box needs to be contained INSIDE
+ * the board outline on page 1," not floated wherever the board's centre station happens to fall.
+ * The box now carries every value the order form's own dimensions row does, not just three of
+ * seven, so its real height (name line plus however many lines the fuller dims row wraps to) is
+ * computed first and fed into `nameBlockPlacement` — containment wins over a fixed position, so a
+ * board whose nose narrows fastest gets the box moved further down page 1 rather than clipped. */
 function drawNameBlock(
   doc: jsPDF,
   page: TemplatePage,
   margin: number,
+  layout: TemplateLayout,
   geometry: OutlineGeometry,
   boardName: string,
   dims: BuildTemplatePdfOptions["dims"],
 ): void {
-  const centreStation = Math.min(Math.max(geometry.length / 2, page.stationRange[0]), page.stationRange[1]);
-  const x = halfWidthToX(0, page, margin) + NAME_BOX_CLEARANCE_MM;
-  const y = stationToY(centreStation, page, margin) - NAME_BOX_HEIGHT_MM / 2;
+  const { dimsLines, height } = nameBlockContent(doc, dims);
+  const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, height, NAME_BOX_CLEARANCE_MM);
+  const x = halfWidthToX(placement.halfWidthStart, page, margin);
+  const y = stationToY(placement.topStation, page, margin);
 
   doc.setDrawColor(0);
   doc.setLineWidth(NAME_BOX_LINE_WEIGHT_MM);
-  doc.rect(x, y, NAME_BOX_WIDTH_MM, NAME_BOX_HEIGHT_MM, "S");
+  doc.rect(x, y, NAME_BOX_WIDTH_MM, height, "S");
 
   const displayName = templateNameBlockText(boardName, NAME_TEXT_WIDTH_LIMIT_MM, doc);
   doc.setFont("helvetica", "bold");
@@ -334,9 +537,14 @@ function drawNameBlock(
   doc.text(displayName, x + NAME_BOX_PADDING_MM, y + 8);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  const dimsLine = `${formatFeetInches(dims.length)} · ${formatInchesFraction(dims.widePointWidth)} · ${formatInchesFraction(dims.centerThickness)}`;
-  doc.text(dimsLine, x + NAME_BOX_PADDING_MM, y + 16);
+  doc.setFontSize(NAME_BOX_DIMS_FONT_SIZE_PT);
+  dimsLines.forEach((line, i) => {
+    doc.text(
+      line,
+      x + NAME_BOX_PADDING_MM,
+      y + NAME_BOX_NAME_LINE_HEIGHT_MM + NAME_BOX_DIMS_TOP_GAP_MM + (i + 1) * NAME_BOX_DIMS_LINE_HEIGHT_MM,
+    );
+  });
 }
 
 /** Builds the multi-page jsPDF document for one `TemplateLayout`. Iterates data handed to it —
@@ -351,9 +559,13 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
   doc.setDrawColor(0);
   doc.setTextColor(0);
 
-  const centrePage = findCentrePage(layout, geometry);
+  const pageZero = layout.pages[0];
+  // Computed once, ahead of the page loop, so `matchMarkPositions` can steer its own marks clear
+  // of exactly the rectangle the nose page's scale square and how-to box actually occupy —
+  // "furniture placement accounts for mark positions and vice versa" (defect 4).
+  const furnitureZone = pageZeroFurnitureZone(doc, layout, pageZero, margin, paperDims.width);
   const placements = markPlacements(layout, marks, geometry);
-  const matchMarks = matchMarkPositions(layout);
+  const matchMarks = matchMarkPositions(layout, [furnitureZone]);
 
   layout.pages.forEach((page, i) => {
     if (i > 0) doc.addPage(paper, "portrait");
@@ -365,12 +577,71 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
     drawScaleSquare(doc, page, margin, paperDims.width);
     drawHowToBox(doc, layout, page, margin, paperDims.width);
     drawPageLabel(doc, page, margin, paperDims.width, paperDims.height);
-    if (page.index === centrePage.index) {
-      drawNameBlock(doc, page, margin, geometry, boardName, dims);
+    if (page.index === 0) {
+      drawNameBlock(doc, page, margin, layout, geometry, boardName, dims);
     }
   });
 
   return doc;
+}
+
+/** A rectangle of drawn page furniture, in one page's own local millimetre frame (the same x/y
+ * space `doc.rect`/`doc.text` draw into) — the pure-test half of "furniture never overlaps
+ * furniture" (post-checkpoint fix, defect 4). */
+export interface TemplateFurnitureRect {
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Every piece of fixed furniture the nose page (page 0) draws — scale square, how-to box, name
+ * block, and every match-mark tick that lands on page 0 (each treated as a small square around
+ * its own centre point) — computed exactly the way `buildTemplatePdf` computes them, so a test can
+ * assert none of them overlap without re-deriving the drawing math itself. */
+export function templatePageZeroFurnitureRects(options: BuildTemplatePdfOptions): TemplateFurnitureRect[] {
+  const { layout, geometry, dims, paper } = options;
+  const paperDims = PAPER_MM[paper];
+  const margin = layout.margin;
+  const page = layout.pages[0];
+  const doc = new jsPDF({ unit: "mm", format: paper, orientation: "portrait" });
+
+  const rects: TemplateFurnitureRect[] = [];
+
+  const square = scaleSquareRect(margin, paperDims.width);
+  rects.push({ name: "scale-square", ...square });
+
+  const howTo = howToBoxRect(doc, layout, margin, paperDims.width);
+  rects.push({ name: "how-to-box", x: howTo.x, y: howTo.y, width: howTo.width, height: howTo.height });
+
+  const { height: nameBoxHeight } = nameBlockContent(doc, dims);
+  const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, nameBoxHeight, NAME_BOX_CLEARANCE_MM);
+  rects.push({
+    name: "name-block",
+    x: halfWidthToX(placement.halfWidthStart, page, margin),
+    y: stationToY(placement.topStation, page, margin),
+    width: NAME_BOX_WIDTH_MM,
+    height: nameBoxHeight,
+  });
+
+  const furnitureZone = pageZeroFurnitureZone(doc, layout, page, margin, paperDims.width);
+  const half = MATCH_MARK_SIZE_MM / 2;
+  matchMarkPositions(layout, [furnitureZone])
+    .filter((mark) => mark.pageIndex === 0)
+    .forEach((mark, i) => {
+      const x = halfWidthToX(mark.halfWidth, page, margin);
+      const y = stationToY(mark.station, page, margin);
+      rects.push({ name: `match-mark-${i}`, x: x - half, y: y - half, width: MATCH_MARK_SIZE_MM, height: MATCH_MARK_SIZE_MM });
+    });
+
+  return rects;
+}
+
+/** Axis-aligned rectangle overlap test — exported so the test file can assert on
+ * `templatePageZeroFurnitureRects`' output without reimplementing this check itself. */
+export function rectsOverlap(a: TemplateFurnitureRect, b: TemplateFurnitureRect): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 /** Slugifies a board name into a safe file-name fragment (alphanumerics and hyphens only) — a
