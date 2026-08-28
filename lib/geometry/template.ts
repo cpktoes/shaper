@@ -11,7 +11,7 @@
  * actual PDF is `components/template/build-template-pdf.ts`; this file only produces the numbers.
  */
 
-import { MEASURE_STATION_MM, type OutlineGeometry } from "./outline";
+import { MEASURE_STATION_MM, type OutlineGeometry, sampleOutline } from "./outline";
 import { type Mm, inchesToMm, mm } from "./units";
 
 /** Paper sizes this phase supports — a closed compile-time union, never a validated free string
@@ -154,4 +154,63 @@ export function computeTemplateMarks(geometry: OutlineGeometry): TemplateMarks {
     center: mm(geometry.length / 2),
     widepoint: geometry.widePointStation,
   };
+}
+
+/** The label text printed beside each working mark's tick (D-06 — exactly these four marks, no
+ * every-12in station ladder). */
+const MARK_LABELS: Record<keyof TemplateMarks, string> = {
+  noseTwelve: 'Nose 12"',
+  tailTwelve: 'Tail 12"',
+  center: "Centre",
+  widepoint: "Wide point",
+};
+
+/** Where one working mark's tick is drawn, in the drawing module's own coordinate inputs — a page
+ * index plus the same absolute-station/half-width values `stationToY`/`halfWidthToX` already
+ * consume for the outline curve, so the drawing module still computes no page arithmetic of its
+ * own (only jsPDF calls). */
+export interface TemplateMarkPlacement {
+  mark: keyof TemplateMarks;
+  /** Index into `TemplateLayout.pages` whose `stationRange` contains this mark's station. */
+  pageIndex: number;
+  /** The mark's station, in the board's own absolute station frame (0 = tail). */
+  station: Mm;
+  /** How far the tick spans out from the stringer (half-width 0) to the outline curve at this
+   * station — `sampleOutline(geometry, station)`. */
+  halfWidthExtent: Mm;
+  label: string;
+}
+
+/**
+ * Places the four working marks (D-06) onto the pages that carry them. Only column-0 pages carry
+ * marks — a tick always starts at the stringer (half-width 0), which only column 0 touches. When a
+ * mark's station falls inside a row overlap band it belongs to two pages, so it is returned twice
+ * (once per page) rather than being lost when the shaper trims one of the overlapping edges.
+ */
+export function markPlacements(
+  layout: TemplateLayout,
+  marks: TemplateMarks,
+  geometry: OutlineGeometry,
+): TemplateMarkPlacement[] {
+  const placements: TemplateMarkPlacement[] = [];
+  const markNames = Object.keys(marks) as (keyof TemplateMarks)[];
+
+  for (const markName of markNames) {
+    const station = marks[markName];
+    const halfWidthExtent = sampleOutline(geometry, station);
+    const pages = layout.pages.filter(
+      (page) => page.col === 0 && station >= page.stationRange[0] && station <= page.stationRange[1],
+    );
+    for (const page of pages) {
+      placements.push({
+        mark: markName,
+        pageIndex: page.index,
+        station,
+        halfWidthExtent,
+        label: MARK_LABELS[markName],
+      });
+    }
+  }
+
+  return placements;
 }

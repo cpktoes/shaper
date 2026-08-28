@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { WIDEPOINT_WIDTH_RANGE_IN } from "./board";
-import { buildOutline } from "./outline";
+import { MEASURE_STATION_MM, buildOutline, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
-import { TEMPLATE_OVERLAP_MM, computeTemplateLayout, type PaperSize, type TemplateLayout } from "./template";
+import {
+  TEMPLATE_OVERLAP_MM,
+  computeTemplateLayout,
+  computeTemplateMarks,
+  markPlacements,
+  type PaperSize,
+  type TemplateLayout,
+} from "./template";
 import { inchesToMm } from "./units";
 
 const PAPERS: PaperSize[] = ["letter", "a4"];
@@ -84,6 +91,44 @@ describe("computeTemplateLayout", () => {
       });
       const layout = computeTemplateLayout(geometry, paper);
       expect(layout.columns).toBeGreaterThan(1);
+    });
+  }
+});
+
+describe("markPlacements", () => {
+  for (const paper of PAPERS) {
+    describe(paper, () => {
+      it.each(BOARD_PRESETS)("$id: exactly four mark names, each on a valid page inside its stationRange", (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeTemplateLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const placements = markPlacements(layout, marks, geometry);
+
+        const uniqueNames = new Set(placements.map((p) => p.mark));
+        expect(uniqueNames).toEqual(new Set(["noseTwelve", "tailTwelve", "center", "widepoint"]));
+
+        for (const placement of placements) {
+          expect(placement.pageIndex).toBeGreaterThanOrEqual(0);
+          expect(placement.pageIndex).toBeLessThan(layout.pages.length);
+          const page = layout.pages[placement.pageIndex];
+          expect(placement.station).toBeGreaterThanOrEqual(page.stationRange[0]);
+          expect(placement.station).toBeLessThanOrEqual(page.stationRange[1]);
+        }
+      });
+
+      it.each(BOARD_PRESETS)("$id: tailTwelve/noseTwelve/widepoint stations match the geometry's own values", (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeTemplateLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        expect(marks.tailTwelve).toBe(MEASURE_STATION_MM);
+        expect(marks.noseTwelve).toBeCloseTo(geometry.length - MEASURE_STATION_MM, 6);
+        expect(marks.widepoint).toBe(geometry.widePointStation);
+
+        const placements = markPlacements(layout, marks, geometry);
+        for (const placement of placements) {
+          expect(placement.halfWidthExtent).toBe(sampleOutline(geometry, placement.station));
+        }
+      });
     });
   }
 });
