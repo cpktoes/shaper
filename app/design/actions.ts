@@ -62,11 +62,19 @@ export async function saveModel(
     return { id: row.id };
   }
 
-  await db.update(models)
+  // A row that no longer belongs to this shaper (deleted from another tab/device, or a stale id
+  // left over from some other desync) matches nothing here — the WHERE clause already stops the
+  // write from touching someone else's board, but without checking the returned row this would
+  // still report success for a save that wrote nothing at all. `.returning` makes the zero-rows
+  // case visible so the caller finds out its "Saved" would have been a lie, the same way
+  // renameModel/duplicateModel already refuse on a source row that doesn't resolve.
+  const [row] = await db.update(models)
     .set({ name: trimmed, snapshot: envelope, updatedAt: new Date() })
-    .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)));
+    .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)))
+    .returning({ id: models.id });
+  if (!row) throw new Error("Couldn't find that board.");
   revalidatePath("/");
-  return { id: modelId };
+  return { id: row.id };
 }
 
 /**
