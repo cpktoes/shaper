@@ -14,6 +14,21 @@
 import { MEASURE_STATION_MM, type OutlineGeometry, sampleOutline } from "./outline";
 import { type Mm, inchesToMm, mm } from "./units";
 
+/** The board name + dims block's fixed width (D-08) — kept here, next to
+ * `nameBlockPlacement`, rather than in the drawing module, so the geometry that decides WHERE the
+ * box goes and the size that decides WHETHER it fits stay a single source of truth (post-checkpoint
+ * fix, defect 3: the box must be verifiably contained inside the outline, not just placed). Widened
+ * from the box's original 45mm to hold the full order-form dimensions row (length, nose,
+ * widepoint, offset, tail, thickness, volume) alongside the board name, per the coordinator's
+ * refinement to defect 3. */
+export const NAME_BOX_WIDTH_MM = 74;
+/** The box's height when it holds only the board name and no dims row — a lower bound used as
+ * `nameBlockPlacement`'s default; the real drawn box is taller (the drawing module computes its
+ * actual height from however many lines the dims row wraps to, and passes that in explicitly). */
+export const NAME_BOX_HEIGHT_MM = 20;
+/** How far the box's left edge sits out from the stringer (half-width 0). */
+export const NAME_BOX_CLEARANCE_MM = 4;
+
 /** Paper sizes this phase supports — a closed compile-time union, never a validated free string
  * (RESEARCH.md V5). */
 export type PaperSize = "letter" | "a4";
@@ -285,4 +300,63 @@ export function matchMarkPositions(layout: TemplateLayout): TemplateMatchMark[] 
   }
 
   return marks;
+}
+
+const NAME_BLOCK_SEARCH_STEP_MM = 1;
+/** Interior samples checked across the box's own height, so a non-monotonic taper can't sneak a
+ * narrow point between two endpoint samples. */
+const NAME_BLOCK_HEIGHT_SAMPLES = 5;
+
+function minHalfWidthOverStationSpan(geometry: OutlineGeometry, top: number, bottom: number): number {
+  let min = Infinity;
+  for (let i = 0; i <= NAME_BLOCK_HEIGHT_SAMPLES; i++) {
+    const station = bottom + ((top - bottom) * i) / NAME_BLOCK_HEIGHT_SAMPLES;
+    min = Math.min(min, sampleOutline(geometry, mm(station)));
+  }
+  return min;
+}
+
+/** Where the board name + dims block's top-left corner goes on page 0 (the nose page) — the
+ * station of its nose-most edge, and its left edge's clearance from the stringer. Chosen so every
+ * corner of the fixed-size box lands inside the outline (post-checkpoint fix, defect 3: "the Board
+ * Name and dimension box needs to be contained INSIDE the board outline on page 1"), scanning down
+ * from the nose tip until the outline is wide enough, over the box's whole height, to hold it.
+ */
+export interface NameBlockPlacement {
+  pageIndex: number;
+  /** The box's nose-most (top) edge, in the board's own absolute station frame. */
+  topStation: Mm;
+  /** The box's left edge, measured out from the stringer (half-width 0). */
+  halfWidthStart: Mm;
+}
+
+export function nameBlockPlacement(
+  layout: TemplateLayout,
+  geometry: OutlineGeometry,
+  boxWidthMm: number = NAME_BOX_WIDTH_MM,
+  boxHeightMm: number = NAME_BOX_HEIGHT_MM,
+  clearanceMm: number = NAME_BOX_CLEARANCE_MM,
+): NameBlockPlacement {
+  const page = layout.pages.find((p) => p.index === 0) ?? layout.pages[0];
+  const halfWidthStart = mm(clearanceMm);
+  const requiredHalfWidth = clearanceMm + boxWidthMm;
+
+  const searchFloor = page.stationRange[0];
+  const searchCeiling = Math.min(page.stationRange[1], geometry.length);
+
+  for (
+    let candidate = searchCeiling;
+    candidate - boxHeightMm >= searchFloor;
+    candidate -= NAME_BLOCK_SEARCH_STEP_MM
+  ) {
+    const bottom = candidate - boxHeightMm;
+    if (minHalfWidthOverStationSpan(geometry, candidate, bottom) >= requiredHalfWidth) {
+      return { pageIndex: page.index, topStation: mm(candidate), halfWidthStart };
+    }
+  }
+
+  // No station band on page 0 clears the box at full width (an unusually narrow-nosed board) —
+  // fall back to the widest band searched, deepest into page 0, rather than the narrowest.
+  const fallbackTop = Math.max(searchFloor + boxHeightMm, searchCeiling);
+  return { pageIndex: page.index, topStation: mm(fallbackTop), halfWidthStart };
 }

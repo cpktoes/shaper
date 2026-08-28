@@ -1,17 +1,26 @@
 import jsPDF from "jspdf";
 import { describe, expect, it } from "vitest";
 import { WIDEPOINT_WIDTH_RANGE_IN } from "@/lib/geometry/board";
-import { buildOutline } from "@/lib/geometry/outline";
+import { buildOutline, sampleOutline } from "@/lib/geometry/outline";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
-import { computeTemplateLayout, computeTemplateMarks, markPlacements } from "@/lib/geometry/template";
-import { inchesToMm } from "@/lib/geometry/units";
+import {
+  NAME_BOX_CLEARANCE_MM,
+  NAME_BOX_WIDTH_MM,
+  computeTemplateLayout,
+  computeTemplateMarks,
+  markPlacements,
+  nameBlockPlacement,
+} from "@/lib/geometry/template";
+import { inchesToMm, litres, mm } from "@/lib/geometry/units";
 import {
   HOWTO_BOX_TEXT_WIDTH_LIMIT_MM,
   buildTemplatePdf,
+  nameBlockContent,
   templateHowToLines,
   templateHowToWrappedLines,
   templateMarkDimensionText,
   templateMarkLabelText,
+  templateNameBlockDimsText,
   templateNameBlockText,
   wrapTextToWidth,
 } from "./build-template-pdf";
@@ -31,6 +40,10 @@ function buildOptions(paper: "letter" | "a4" = "letter") {
       length: geometry.length,
       widePointWidth: geometry.halfWidePointWidth,
       centerThickness: preset.rails.center.boardThickness,
+      noseWidth12in: geometry.noseWidthAt12in,
+      tailWidth12in: geometry.tailWidthAt12in,
+      widePointOffset: preset.outline.widePointOffset,
+      volumeLitres: litres(27.4),
     },
   };
 }
@@ -50,10 +63,37 @@ describe("buildTemplatePdf", () => {
     const magic = String.fromCharCode(...header);
     expect(magic).toBe("%PDF");
   });
+
+  it("builds without throwing for every preset at both paper sizes, including an empty board name", () => {
+    for (const preset of BOARD_PRESETS) {
+      const geometry = buildOutline(preset.outline);
+      for (const paper of ["letter", "a4"] as const) {
+        const layout = computeTemplateLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const doc = buildTemplatePdf({
+          layout,
+          marks,
+          geometry,
+          paper,
+          boardName: "",
+          dims: {
+            length: geometry.length,
+            widePointWidth: geometry.halfWidePointWidth,
+            centerThickness: preset.rails.center.boardThickness,
+            noseWidth12in: geometry.noseWidthAt12in,
+            tailWidth12in: geometry.tailWidthAt12in,
+            widePointOffset: preset.outline.widePointOffset,
+            volumeLitres: litres(27.4),
+          },
+        });
+        expect(doc.getNumberOfPages()).toBe(layout.pages.length);
+      }
+    }
+  });
 });
 
 describe("templateNameBlockText", () => {
-  const WIDTH_LIMIT_MM = 39; // NAME_BOX_WIDTH_MM(45) - 2 * NAME_BOX_PADDING_MM(3)
+  const WIDTH_LIMIT_MM = 68; // NAME_BOX_WIDTH_MM(74) - 2 * NAME_BOX_PADDING_MM(3)
 
   it("falls back to Untitled Board for an empty name", () => {
     const doc = new jsPDF({ unit: "mm" });
@@ -67,7 +107,8 @@ describe("templateNameBlockText", () => {
 
   it("truncates a name too long for the block with a trailing ellipsis no wider than the limit", () => {
     const doc = new jsPDF({ unit: "mm" });
-    const longName = "The Founder's Extremely Long And Descriptive Board Name For Testing";
+    const longName =
+      "The Founder's Extremely Long And Descriptive Board Name That Goes On And On For Testing";
 
     const result = templateNameBlockText(longName, WIDTH_LIMIT_MM, doc);
 
@@ -191,4 +232,75 @@ describe("templateMarkLabelText / templateMarkDimensionText (post-checkpoint fix
       }
     }
   });
+});
+
+describe("templateNameBlockDimsText / nameBlockContent (post-checkpoint fix, defect 3 refinement: \"add all the station mark dims with the board name\")", () => {
+  const dims = {
+    length: inchesToMm(74),
+    widePointWidth: inchesToMm(18.75),
+    centerThickness: inchesToMm(2.375),
+    noseWidth12in: inchesToMm(11.25),
+    tailWidth12in: inchesToMm(14.1875),
+    widePointOffset: inchesToMm(-1),
+    volumeLitres: litres(27.4),
+  };
+
+  it("carries every value the order form's own dimensions row carries", () => {
+    const text = templateNameBlockDimsText(dims);
+    expect(text).toContain("Length");
+    expect(text).toContain("Nose");
+    expect(text).toContain("Widepoint");
+    expect(text).toContain("Offset");
+    expect(text).toContain("Tail");
+    expect(text).toContain("Thickness");
+    expect(text).toContain("Volume");
+    expect(text).toContain("27.4 L");
+  });
+
+  it("wraps the dims row to the box's own inner width and grows the box height to fit every line", () => {
+    const doc = new jsPDF({ unit: "mm" });
+    const { dimsLines, height } = nameBlockContent(doc, dims);
+
+    expect(dimsLines.length).toBeGreaterThan(0);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    for (const line of dimsLines) {
+      expect(doc.getTextWidth(line)).toBeLessThanOrEqual(NAME_BOX_WIDTH_MM - 6);
+    }
+    // The box is tall enough to hold the name line plus every dims line.
+    expect(height).toBeGreaterThan(8);
+  });
+});
+
+describe("name block containment (post-checkpoint fix, defect 3: box fully inside the outline on page 1, now at its real, larger size)", () => {
+  for (const paper of ["letter", "a4"] as const) {
+    describe(paper, () => {
+      it.each(BOARD_PRESETS)("$id: every corner of the real (name + full dims row) box lands inside the outline on page 0", (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeTemplateLayout(geometry, paper);
+        const doc = new jsPDF({ unit: "mm" });
+        const dims = {
+          length: geometry.length,
+          widePointWidth: geometry.halfWidePointWidth,
+          centerThickness: preset.rails.center.boardThickness,
+          noseWidth12in: geometry.noseWidthAt12in,
+          tailWidth12in: geometry.tailWidthAt12in,
+          widePointOffset: preset.outline.widePointOffset,
+          volumeLitres: litres(27.4),
+        };
+        const { height } = nameBlockContent(doc, dims);
+        const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, height, NAME_BOX_CLEARANCE_MM);
+
+        const requiredHalfWidth = NAME_BOX_CLEARANCE_MM + NAME_BOX_WIDTH_MM;
+        const bottomStation = mm(placement.topStation - height);
+
+        expect(sampleOutline(geometry, placement.topStation)).toBeGreaterThanOrEqual(requiredHalfWidth);
+        expect(sampleOutline(geometry, bottomStation)).toBeGreaterThanOrEqual(requiredHalfWidth);
+
+        const page0 = layout.pages[0];
+        expect(placement.topStation).toBeLessThanOrEqual(page0.stationRange[1]);
+        expect(bottomStation).toBeGreaterThanOrEqual(page0.stationRange[0]);
+      });
+    });
+  }
 });

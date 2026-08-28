@@ -13,9 +13,12 @@
 import jsPDF from "jspdf";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import {
+  NAME_BOX_CLEARANCE_MM,
+  NAME_BOX_WIDTH_MM,
   PAPER_MM,
   markPlacements,
   matchMarkPositions,
+  nameBlockPlacement,
   type PaperSize,
   type TemplateLayout,
   type TemplateMarkPlacement,
@@ -23,7 +26,15 @@ import {
   type TemplateMatchMark,
   type TemplatePage,
 } from "@/lib/geometry/template";
-import { formatFeetInches, formatInchesFraction, inchesToMm, mm, type Mm } from "@/lib/geometry/units";
+import {
+  formatFeetInches,
+  formatInchesFraction,
+  formatSignedInchesFraction,
+  inchesToMm,
+  mm,
+  type Litres,
+  type Mm,
+} from "@/lib/geometry/units";
 
 /** Every input `buildTemplatePdf` needs, fixed complete now, so later plans (the preview dialog,
  * working match marks) extend the drawing without touching a call site. */
@@ -36,10 +47,22 @@ export interface BuildTemplatePdfOptions {
   geometry: OutlineGeometry;
   paper: PaperSize;
   boardName: string;
+  /** The page 1 name block's own dims row — every value the Summary order form's core dimensions
+   * row carries (`components/summary/order-form.tsx`'s `DimensionCell` strip), read from the same
+   * design state and formatted with the same `lib/geometry/units.ts` functions, so the printed
+   * template never disagrees with the order form over what a board measures (post-checkpoint fix,
+   * defect 3 refinement). */
   dims: {
     length: Mm;
     widePointWidth: Mm;
     centerThickness: Mm;
+    /** Full (not half) width 12in in from the nose — `OutlineGeometry.noseWidthAt12in`. */
+    noseWidth12in: Mm;
+    /** Full (not half) width 12in in from the tail — `OutlineGeometry.tailWidthAt12in`. */
+    tailWidth12in: Mm;
+    /** Signed offset of the widepoint from mid-length — positive toward the nose. */
+    widePointOffset: Mm;
+    volumeLitres: Litres;
   };
 }
 
@@ -51,10 +74,7 @@ const STRINGER_LINE_WEIGHT_MM = 0.35;
 const STRINGER_DASH_PATTERN = [16, 4, 4, 4];
 const SCALE_SQUARE_LINE_WEIGHT_MM = 0.35;
 const NAME_BOX_LINE_WEIGHT_MM = 0.25;
-const NAME_BOX_WIDTH_MM = 45;
-const NAME_BOX_HEIGHT_MM = 20;
 const NAME_BOX_PADDING_MM = 3;
-const NAME_BOX_CLEARANCE_MM = 4;
 /** The name block's own text width budget — Print Artifact Contract #6: a name too long for the
  * box truncates with an ellipsis rather than wrapping into or overlapping the outline curve. */
 const NAME_TEXT_WIDTH_LIMIT_MM = NAME_BOX_WIDTH_MM - 2 * NAME_BOX_PADDING_MM;
@@ -64,6 +84,17 @@ const NAME_FONT_SIZE_PT = 14;
  * "Unnamed board" variant for the same idea (a pre-existing, separately-scoped inconsistency). */
 const UNTITLED_BOARD_NAME = "Untitled Board";
 const ELLIPSIS = "…";
+
+/** The dims row beneath the board name — every value the order form's own dimensions row carries
+ * (post-checkpoint fix, defect 3 refinement). Reserved vertical space for the bold name line
+ * (matches the `y + 8` baseline the name is already drawn at), then the wrapped dims text below
+ * it at a smaller size, since seven values plus their labels don't fit at the name's own 14pt. */
+const NAME_BOX_NAME_LINE_HEIGHT_MM = 8;
+const NAME_BOX_DIMS_TOP_GAP_MM = 2;
+const NAME_BOX_DIMS_FONT_SIZE_PT = 8;
+const NAME_BOX_DIMS_LINE_HEIGHT_MM = 4.2;
+/** The dims row's own text width budget, inside the box's border and padding. */
+const NAME_BOX_DIMS_WIDTH_LIMIT_MM = NAME_BOX_WIDTH_MM - 2 * NAME_BOX_PADDING_MM;
 
 /** The four working marks (D-06) — solid black, told apart by dash pattern alone so they survive a
  * monochrome printer. */
@@ -356,16 +387,6 @@ function drawPageLabel(
   doc.text(page.label, paperWidthMm / 2, paperHeightMm - margin / 2, { align: "center" });
 }
 
-/** The page whose `stationRange` contains the board's centre station — the D-08 name/dims block
- * lands there, restricted to column 0 so it always has stringer-side room clear of the curve. */
-function findCentrePage(layout: TemplateLayout, geometry: OutlineGeometry): TemplatePage {
-  const centre = geometry.length / 2;
-  const match = layout.pages.find(
-    (page) => page.col === 0 && centre >= page.stationRange[0] && centre <= page.stationRange[1],
-  );
-  return match ?? layout.pages[0];
-}
-
 /** Resolves what the name block actually prints for a given `boardName`: the empty-name fallback
  * (Print Artifact Contract #5) and the long-name truncation rule (#6). Truncates with an ellipsis
  * rather than shrinking the type — shrinking risks dropping the name below the project's 9pt
@@ -396,23 +417,67 @@ export function templateNameBlockText(
   return `${truncated}${ELLIPSIS}`;
 }
 
-/** D-08's board name + dims block: a bordered box in the board's own interior (between the
- * stringer edge and the outline curve), never in a page margin. */
+/** The full dims row text, before wrapping — every value the order form's own dimensions row
+ * carries (`components/summary/order-form.tsx`'s `DimensionCell` strip: Length, Nose, Widepoint,
+ * Offset, Tail, Thickness, Volume), formatted with the same `lib/geometry/units.ts` functions the
+ * order form uses. Exported for testability without reading the rendered page (post-checkpoint
+ * fix, defect 3 refinement: "add all the station mark dims with the board name"). */
+export function templateNameBlockDimsText(dims: BuildTemplatePdfOptions["dims"]): string {
+  return [
+    `Length ${formatFeetInches(dims.length)}`,
+    `Nose ${formatInchesFraction(dims.noseWidth12in)}`,
+    `Widepoint ${formatInchesFraction(dims.widePointWidth)}`,
+    `Offset ${formatSignedInchesFraction(dims.widePointOffset)}`,
+    `Tail ${formatInchesFraction(dims.tailWidth12in)}`,
+    `Thickness ${formatInchesFraction(dims.centerThickness)}`,
+    `Volume ${dims.volumeLitres.toFixed(1)} L`,
+  ].join("  ·  ");
+}
+
+/** The name block's dims row, wrapped to the box's own inner width, plus the box's total height
+ * given how many lines that wrapping produced — one source of truth shared by `drawNameBlock`
+ * (which draws it) and anything else that needs the box's real footprint. Exported for
+ * testability. */
+export function nameBlockContent(
+  doc: jsPDF,
+  dims: BuildTemplatePdfOptions["dims"],
+): { dimsLines: string[]; height: number } {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(NAME_BOX_DIMS_FONT_SIZE_PT);
+  const dimsLines = wrapTextToWidth(templateNameBlockDimsText(dims), NAME_BOX_DIMS_WIDTH_LIMIT_MM, doc);
+  const height =
+    NAME_BOX_NAME_LINE_HEIGHT_MM +
+    NAME_BOX_DIMS_TOP_GAP_MM +
+    dimsLines.length * NAME_BOX_DIMS_LINE_HEIGHT_MM +
+    NAME_BOX_PADDING_MM;
+  return { dimsLines, height };
+}
+
+/** D-08's board name + dims block: a bordered box on page 1 (the nose page), positioned by
+ * `nameBlockPlacement` so it's fully contained inside the outline's own interior there —
+ * post-checkpoint fix, defect 3: "the Board Name and dimension box needs to be contained INSIDE
+ * the board outline on page 1," not floated wherever the board's centre station happens to fall.
+ * The box now carries every value the order form's own dimensions row does, not just three of
+ * seven, so its real height (name line plus however many lines the fuller dims row wraps to) is
+ * computed first and fed into `nameBlockPlacement` — containment wins over a fixed position, so a
+ * board whose nose narrows fastest gets the box moved further down page 1 rather than clipped. */
 function drawNameBlock(
   doc: jsPDF,
   page: TemplatePage,
   margin: number,
+  layout: TemplateLayout,
   geometry: OutlineGeometry,
   boardName: string,
   dims: BuildTemplatePdfOptions["dims"],
 ): void {
-  const centreStation = Math.min(Math.max(geometry.length / 2, page.stationRange[0]), page.stationRange[1]);
-  const x = halfWidthToX(0, page, margin) + NAME_BOX_CLEARANCE_MM;
-  const y = stationToY(centreStation, page, margin) - NAME_BOX_HEIGHT_MM / 2;
+  const { dimsLines, height } = nameBlockContent(doc, dims);
+  const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, height, NAME_BOX_CLEARANCE_MM);
+  const x = halfWidthToX(placement.halfWidthStart, page, margin);
+  const y = stationToY(placement.topStation, page, margin);
 
   doc.setDrawColor(0);
   doc.setLineWidth(NAME_BOX_LINE_WEIGHT_MM);
-  doc.rect(x, y, NAME_BOX_WIDTH_MM, NAME_BOX_HEIGHT_MM, "S");
+  doc.rect(x, y, NAME_BOX_WIDTH_MM, height, "S");
 
   const displayName = templateNameBlockText(boardName, NAME_TEXT_WIDTH_LIMIT_MM, doc);
   doc.setFont("helvetica", "bold");
@@ -421,9 +486,14 @@ function drawNameBlock(
   doc.text(displayName, x + NAME_BOX_PADDING_MM, y + 8);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  const dimsLine = `${formatFeetInches(dims.length)} · ${formatInchesFraction(dims.widePointWidth)} · ${formatInchesFraction(dims.centerThickness)}`;
-  doc.text(dimsLine, x + NAME_BOX_PADDING_MM, y + 16);
+  doc.setFontSize(NAME_BOX_DIMS_FONT_SIZE_PT);
+  dimsLines.forEach((line, i) => {
+    doc.text(
+      line,
+      x + NAME_BOX_PADDING_MM,
+      y + NAME_BOX_NAME_LINE_HEIGHT_MM + NAME_BOX_DIMS_TOP_GAP_MM + (i + 1) * NAME_BOX_DIMS_LINE_HEIGHT_MM,
+    );
+  });
 }
 
 /** Builds the multi-page jsPDF document for one `TemplateLayout`. Iterates data handed to it —
@@ -438,7 +508,6 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
   doc.setDrawColor(0);
   doc.setTextColor(0);
 
-  const centrePage = findCentrePage(layout, geometry);
   const placements = markPlacements(layout, marks, geometry);
   const matchMarks = matchMarkPositions(layout);
 
@@ -452,8 +521,8 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
     drawScaleSquare(doc, page, margin, paperDims.width);
     drawHowToBox(doc, layout, page, margin, paperDims.width);
     drawPageLabel(doc, page, margin, paperDims.width, paperDims.height);
-    if (page.index === centrePage.index) {
-      drawNameBlock(doc, page, margin, geometry, boardName, dims);
+    if (page.index === 0) {
+      drawNameBlock(doc, page, margin, layout, geometry, boardName, dims);
     }
   });
 

@@ -3,15 +3,19 @@ import { WIDEPOINT_WIDTH_RANGE_IN } from "./board";
 import { MEASURE_STATION_MM, buildOutline, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import {
+  NAME_BOX_CLEARANCE_MM,
+  NAME_BOX_HEIGHT_MM,
+  NAME_BOX_WIDTH_MM,
   TEMPLATE_OVERLAP_MM,
   computeTemplateLayout,
   computeTemplateMarks,
   markPlacements,
   matchMarkPositions,
+  nameBlockPlacement,
   type PaperSize,
   type TemplateLayout,
 } from "./template";
-import { inchesToMm } from "./units";
+import { inchesToMm, mm } from "./units";
 
 const PAPERS: PaperSize[] = ["letter", "a4"];
 const TOLERANCE_MM = 1e-6;
@@ -191,6 +195,38 @@ describe("matchMarkPositions", () => {
         const pageB = layout.pages.find((p) => p.col === col + 1 && p.row === 0)!;
         expectSharedEdgeMarksMatch(marks, pageA.index, pageB.index);
       }
+    });
+  }
+});
+
+describe("nameBlockPlacement", () => {
+  for (const paper of PAPERS) {
+    describe(paper, () => {
+      it.each(BOARD_PRESETS)(
+        "$id: the name block's every corner lands inside the outline on page 0 (post-checkpoint fix, defect 3)",
+        (preset) => {
+          const geometry = buildOutline(preset.outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const placement = nameBlockPlacement(layout, geometry);
+
+          expect(placement.pageIndex).toBe(0);
+          expect(placement.halfWidthStart).toBe(NAME_BOX_CLEARANCE_MM);
+
+          const requiredHalfWidth = NAME_BOX_CLEARANCE_MM + NAME_BOX_WIDTH_MM;
+          const bottomStation = mm(placement.topStation - NAME_BOX_HEIGHT_MM);
+
+          // Every corner of the box is inside the outline: the left corners (at halfWidthStart)
+          // trivially are, since the right corners (at halfWidthStart + width) are — checked at
+          // both the box's nose-most and tail-most station.
+          expect(sampleOutline(geometry, placement.topStation)).toBeGreaterThanOrEqual(requiredHalfWidth);
+          expect(sampleOutline(geometry, bottomStation)).toBeGreaterThanOrEqual(requiredHalfWidth);
+
+          // The box stays within page 0's own bounds — never floating onto a neighbouring page.
+          const page0 = layout.pages[0];
+          expect(placement.topStation).toBeLessThanOrEqual(page0.stationRange[1]);
+          expect(bottomStation).toBeGreaterThanOrEqual(page0.stationRange[0]);
+        },
+      );
     });
   }
 });
