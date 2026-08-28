@@ -47,6 +47,7 @@ import { OutlineViewer } from "@/components/outline/outline-viewer";
 import { RailDataTable } from "@/components/rails/rail-data-table";
 import { RailSectionPlot } from "@/components/rails/rail-section-plot";
 import { Button } from "@/components/ui/button";
+import { ExportPreviewDialog } from "@/components/template/export-preview-dialog";
 import {
   FormBox,
   LogoBlock,
@@ -667,6 +668,17 @@ export function OrderForm() {
         >
           Print Order Form
         </Button>
+        {/* One capability, one name, regardless of entry point (D-03) — same label as the
+            Template screen's own toolbar button. Neutral variant, not the accent-filled
+            treatment Print Order Form carries: the UI spec reserves accent for the dialog's own
+            Download PDF button. */}
+        <ExportPreviewDialog
+          trigger={
+            <Button type="button" variant="outline">
+              Export Template
+            </Button>
+          }
+        />
         <span className="text-xs text-surf-ink-muted">
           Two portrait pages — print double-sided for a front-and-back form.
         </span>
