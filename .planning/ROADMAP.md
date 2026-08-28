@@ -101,7 +101,7 @@ Plans:
   2. Core geometry calculations (outline, rocker, rail band, volume) in `lib/` are covered by Vitest unit tests that pass in CI, validating RAIL-01 and VOL-01 output against known-good values
   3. User can export a full-size (1:1 scale) printable template of the outline, tiled across standard pages for taping together
 
-**Plans**: 4/7 plans executed
+**Plans**: 6/7 plans executed
 
 Plans:
 **Wave 1**
@@ -116,8 +116,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-05-PLAN.md — Template screen toolbar: construction-lines toggle and wide view (folded todo)
-- [ ] 03-06-PLAN.md — Verify and refit the Summary order form's print path after the callout-system rebuild (folded todo)
+- [x] 03-05-PLAN.md — Template screen toolbar: construction-lines toggle and wide view (folded todo)
+- [x] 03-06-PLAN.md — Verify and refit the Summary order form's print path after the callout-system rebuild (folded todo)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -149,5 +149,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation — Port & Deploy the Design Tool | 4/4 | Complete    | 2026-08-21 |
 | 2. Accounts & Saved Designs | 6/6 | Complete    | 2026-08-28 |
-| 3. Volume, Templates & Verified Math | 4/7 | In Progress|  |
+| 3. Volume, Templates & Verified Math | 6/7 | In Progress|  |
 | 4. Rocker & Foil Editors | 0/TBD | Not started | - |
