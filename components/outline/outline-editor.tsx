@@ -137,6 +137,134 @@ export function OutlineEditor() {
     window.setTimeout(() => setJustCopiedPreset(false), 1500);
   }
 
+  // The viewer panel's content: the four toolbar buttons plus the drawing itself. Pulled out of
+  // the JSX tree into a variable, rather than written twice, because wide view (below) swaps out
+  // the chrome AROUND this content — not the content itself — and two copies of ~40 lines of
+  // absolutely-positioned buttons is exactly the kind of duplication that drifts.
+  const viewerContent = (
+    // `relative` makes this div — the viewer panel's own content area — the positioning
+    // context for the rotate button below, per D-06: the button sits INSIDE the panel's
+    // content, absolutely positioned over the drawing, not in a header row beside the
+    // panel title (the mockup had it there and the founder explicitly corrected this) and
+    // not inline with the VIEWER tab. `TabbedPanel` itself is untouched.
+    <div className="relative flex min-h-0 flex-1 items-stretch justify-center gap-6">
+      <ExportPreviewDialog
+        trigger={
+          <button
+            type="button"
+            aria-label="Export Template"
+            title="Export Template"
+            // Same treatment as the rotate button beside it (copied verbatim, see its own long
+            // comment below for why): bordered `surf-ground` fill, never the accent — this
+            // button is also absolutely positioned over the drawing. right-10 sits it
+            // immediately left of the rotate button's right-0, so the two read as one
+            // icon-button pair. `DialogTrigger` (inside ExportPreviewDialog) sets
+            // `aria-expanded`/`aria-haspopup` on this element automatically — the
+            // `aria-expanded:` classes below give the open state its own background, the
+            // same "dialog-open" treatment an `aria-expanded`-driven toggle already gets
+            // elsewhere in this app, never the accent fill (UI spec's accent reservation).
+            className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-expanded:bg-surf-well aria-expanded:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+          >
+            <DownloadIcon className="size-6" />
+          </button>
+        }
+      />
+      <button
+        type="button"
+        onClick={() => setOrientation((o) => (o === "vertical" ? "horizontal" : "vertical"))}
+        aria-label={
+          orientation === "vertical"
+            ? "Rotate the board to horizontal"
+            : "Rotate the board to vertical"
+        }
+        title="Rotate the board"
+        // SettingsMenu's icon-button treatment (components/settings-menu.tsx) — the app's
+        // existing precedent for an icon-only control. Bordered and filled, per the
+        // founder's request for a visible boundary. The border is `surf-line`, not
+        // `surf-line-faint` — `line` is the token carrying the 3:1 non-text target a control
+        // boundary needs in every theme, per the rule written down at
+        // components/viewer/tabbed-panel.tsx. The fill is `surf-ground`, the same value as
+        // the `surf-panel` surface behind it in all four themes, so it adds no visible plate;
+        // it exists to be opaque, because this button is absolutely positioned over the
+        // drawing and board lines must not run under the glyph. That fill is deliberately
+        // not the accent: anything drawn ON the accent fill must take that fill's paired
+        // on- colour, a rule this codebase has been bitten by three times (see
+        // .planning/quick/260825-rmb-*/SUMMARY.md) — if the accent is ever used here instead,
+        // the icon must take text-surf-on-accent. The button is icon-only, so aria-label is
+        // its accessible name, and per D-05 the label is the only thing that ever changes
+        // between states.
+        // top-0/right-0, not top-3/right-3: the card now supplies the 12px inset via
+        // TabbedPanel's default padding, so this div's corner already sits where the old
+        // offsets used to land. An absolute child offsets from its containing block's
+        // padding box, so re-adding an offset here would double the inset and shift the
+        // button — leave these at zero.
+        className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+      >
+        <RotateBoardIcon className="size-6" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setShowConstruction((v) => !v)}
+        aria-pressed={showConstruction}
+        aria-label={showConstruction ? "Hide construction lines" : "Show construction lines"}
+        title={showConstruction ? "Hide construction lines" : "Show construction lines"}
+        // Same box as the rotate/Export Template buttons beside it — border, radius, padding,
+        // focus ring all copied verbatim, per D-05's one-menu/one-button visual language. This
+        // is the ONE control in this toolbar the UI spec allows to take the accent fill: when
+        // showConstruction is true the button switches to bg-surf-accent border-surf-accent,
+        // and per the warning above (the accent-on-accent bug this codebase has been bitten by
+        // three times, see .planning/quick/260825-rmb-*/SUMMARY.md) the icon must switch to
+        // text-surf-on-accent in that state rather than staying on the muted ink token — hence
+        // the icon colour is folded into the same aria-pressed className expression as the fill,
+        // not left on a separate always-on class. Icon is LocateFixedIcon, not a ruler: it
+        // echoes the draggable control point drawn on the construction overlay itself
+        // (components/outline/outline-viewer.tsx's drag targets — a ring with a filled centre
+        // dot, plus tick marks reads closest to LocateFixed of the candidates lucide-react
+        // offers), so the button previews the very glyph the shaper is about to see on the board.
+        className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent aria-pressed:hover:bg-surf-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+      >
+        <LocateFixedIcon className="size-6" />
+      </button>
+      <button
+        type="button"
+        onClick={handleToggleWideView}
+        aria-pressed={wideView}
+        aria-label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
+        title={wideView ? "Show the sidebar" : "Wide view"}
+        // Same box as the three buttons beside it. This is both the way in and the way out of
+        // wide view — it lives inside the viewer panel, which stays on screen in both states,
+        // so there is always a visible route back. Never accent-filled: the UI spec reserves
+        // that fill for the Construction Lines button alone.
+        className="absolute top-0 right-30 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+      >
+        {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
+      </button>
+      <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center">
+        <div className="relative flex min-h-0 w-full flex-1 justify-center">
+          {/* A plain filled box — the drawing sizes itself inside it via preserveAspectRatio.
+              No aspect-ratio wrapper: the viewBox widens for wide boards, so any ratio pinned
+              here would fight it, and a card that demands a height from its own contents is
+              what broke the print sheet (see OutlineViewer's svg). Tried deriving the ratio
+              from `outlineViewMetrics` to kill the side letterboxing; as a flex item it
+              resolved its width from the wrong basis and collapsed the drawing to 0.41 scale.
+              The centred letterbox is the better trade. */}
+          <div className="relative h-full min-h-0 w-full min-w-0">
+            <OutlineViewer
+              geometry={outlineGeometry}
+              outline={outline}
+              showConstruction={showConstruction}
+              onOutlineDrag={updateOutline}
+              finMarks={finPlacement.marks}
+              hideFinMarks
+              pinCalloutText
+              orientation={orientation}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex min-h-0 w-full flex-1 flex-nowrap">
       {/* A flex column, not one scrolling box: the controls scroll in the region below and the dev
@@ -172,133 +300,33 @@ export function OutlineEditor() {
           )}
         </aside>
       )}
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3">
-        {/* One region, so the tab is a label rather than a control — but the screen still gets
-            the same panel and edge as Rails and Fins, which is what makes the four read as one
-            application instead of four layouts. */}
-        <TabbedPanel tabs={[{ id: "viewer" as const, label: "VIEWER" }]} active="viewer">
-        {/* `relative` makes this div — the viewer panel's own content area — the positioning
-            context for the rotate button below, per D-06: the button sits INSIDE the panel's
-            content, absolutely positioned over the drawing, not in a header row beside the
-            panel title (the mockup had it there and the founder explicitly corrected this) and
-            not inline with the VIEWER tab. `TabbedPanel` itself is untouched. */}
-        <div className="relative flex min-h-0 flex-1 items-stretch justify-center gap-6">
-          <ExportPreviewDialog
-            trigger={
-              <button
-                type="button"
-                aria-label="Export Template"
-                title="Export Template"
-                // Same treatment as the rotate button beside it (copied verbatim, see its own long
-                // comment below for why): bordered `surf-ground` fill, never the accent — this
-                // button is also absolutely positioned over the drawing. right-10 sits it
-                // immediately left of the rotate button's right-0, so the two read as one
-                // icon-button pair. `DialogTrigger` (inside ExportPreviewDialog) sets
-                // `aria-expanded`/`aria-haspopup` on this element automatically — the
-                // `aria-expanded:` classes below give the open state its own background, the
-                // same "dialog-open" treatment an `aria-expanded`-driven toggle already gets
-                // elsewhere in this app, never the accent fill (UI spec's accent reservation).
-                className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-expanded:bg-surf-well aria-expanded:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
-              >
-                <DownloadIcon className="size-6" />
-              </button>
-            }
-          />
-          <button
-            type="button"
-            onClick={() => setOrientation((o) => (o === "vertical" ? "horizontal" : "vertical"))}
-            aria-label={
-              orientation === "vertical"
-                ? "Rotate the board to horizontal"
-                : "Rotate the board to vertical"
-            }
-            title="Rotate the board"
-            // SettingsMenu's icon-button treatment (components/settings-menu.tsx) — the app's
-            // existing precedent for an icon-only control. Bordered and filled, per the
-            // founder's request for a visible boundary. The border is `surf-line`, not
-            // `surf-line-faint` — `line` is the token carrying the 3:1 non-text target a control
-            // boundary needs in every theme, per the rule written down at
-            // components/viewer/tabbed-panel.tsx. The fill is `surf-ground`, the same value as
-            // the `surf-panel` surface behind it in all four themes, so it adds no visible plate;
-            // it exists to be opaque, because this button is absolutely positioned over the
-            // drawing and board lines must not run under the glyph. That fill is deliberately
-            // not the accent: anything drawn ON the accent fill must take that fill's paired
-            // on- colour, a rule this codebase has been bitten by three times (see
-            // .planning/quick/260825-rmb-*/SUMMARY.md) — if the accent is ever used here instead,
-            // the icon must take text-surf-on-accent. The button is icon-only, so aria-label is
-            // its accessible name, and per D-05 the label is the only thing that ever changes
-            // between states.
-            // top-0/right-0, not top-3/right-3: the card now supplies the 12px inset via
-            // TabbedPanel's default padding, so this div's corner already sits where the old
-            // offsets used to land. An absolute child offsets from its containing block's
-            // padding box, so re-adding an offset here would double the inset and shift the
-            // button — leave these at zero.
-            className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
-          >
-            <RotateBoardIcon className="size-6" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowConstruction((v) => !v)}
-            aria-pressed={showConstruction}
-            aria-label={showConstruction ? "Hide construction lines" : "Show construction lines"}
-            title={showConstruction ? "Hide construction lines" : "Show construction lines"}
-            // Same box as the rotate/Export Template buttons beside it — border, radius, padding,
-            // focus ring all copied verbatim, per D-05's one-menu/one-button visual language. This
-            // is the ONE control in this toolbar the UI spec allows to take the accent fill: when
-            // showConstruction is true the button switches to bg-surf-accent border-surf-accent,
-            // and per the warning above (the accent-on-accent bug this codebase has been bitten by
-            // three times, see .planning/quick/260825-rmb-*/SUMMARY.md) the icon must switch to
-            // text-surf-on-accent in that state rather than staying on the muted ink token — hence
-            // the icon colour is folded into the same aria-pressed className expression as the fill,
-            // not left on a separate always-on class. Icon is LocateFixedIcon, not a ruler: it
-            // echoes the draggable control point drawn on the construction overlay itself
-            // (components/outline/outline-viewer.tsx's drag targets — a ring with a filled centre
-            // dot, plus tick marks reads closest to LocateFixed of the candidates lucide-react
-            // offers), so the button previews the very glyph the shaper is about to see on the board.
-            className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent aria-pressed:hover:bg-surf-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
-          >
-            <LocateFixedIcon className="size-6" />
-          </button>
-          <button
-            type="button"
-            onClick={handleToggleWideView}
-            aria-pressed={wideView}
-            aria-label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
-            title={wideView ? "Show the sidebar" : "Wide view"}
-            // Same box as the three buttons beside it. This is both the way in and the way out of
-            // wide view — it lives inside the viewer panel, which stays on screen in both states,
-            // so there is always a visible route back. Never accent-filled: the UI spec reserves
-            // that fill for the Construction Lines button alone.
-            className="absolute top-0 right-30 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
-          >
-            {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
-          </button>
-          <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center">
-            <div className="relative flex min-h-0 w-full flex-1 justify-center">
-              {/* A plain filled box — the drawing sizes itself inside it via preserveAspectRatio.
-                  No aspect-ratio wrapper: the viewBox widens for wide boards, so any ratio pinned
-                  here would fight it, and a card that demands a height from its own contents is
-                  what broke the print sheet (see OutlineViewer's svg). Tried deriving the ratio
-                  from `outlineViewMetrics` to kill the side letterboxing; as a flex item it
-                  resolved its width from the wrong basis and collapsed the drawing to 0.41 scale.
-                  The centred letterbox is the better trade. */}
-              <div className="relative h-full min-h-0 w-full min-w-0">
-                <OutlineViewer
-                  geometry={outlineGeometry}
-                  outline={outline}
-                  showConstruction={showConstruction}
-                  onOutlineDrag={updateOutline}
-                  finMarks={finPlacement.marks}
-                  hideFinMarks
-                  pinCalloutText
-                  orientation={orientation}
-                />
-              </div>
-            </div>
+      <main
+        className={
+          wideView
+            ? "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-1"
+            : "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3"
+        }
+      >
+        {/* Normal view keeps TabbedPanel's folder-tab strip and its own padded card (the same
+            panel and edge Rails and Fins use, which is what makes the four screens read as one
+            application rather than four layouts) — untouched from before wide view existed.
+            Wide view (the `wideView` branch) drops that chrome instead of reusing it: with the
+            sidebar already gone and only the one VIEWER tab to label, the tab row and the extra
+            nested card are pure overhead, not signal. The board's drawing is height-bound, not
+            width-bound — components/viewer/callout-primitives.tsx's own comment: "these drawings
+            are height-bound, so horizontal slack never shrinks the board" — so hiding the sidebar
+            alone never made the board bigger; what does is vertical room, and this trims three
+            padded layers (this main, TabbedPanel's outer wrapper, its inner card) down to one,
+            and removes the tab row entirely, both only while wide view is on. */}
+        {wideView ? (
+          <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-surf-line bg-surf-panel p-1">
+            {viewerContent}
           </div>
-        </div>
-        </TabbedPanel>
+        ) : (
+          <TabbedPanel tabs={[{ id: "viewer" as const, label: "VIEWER" }]} active="viewer">
+            {viewerContent}
+          </TabbedPanel>
+        )}
       </main>
     </div>
   );
