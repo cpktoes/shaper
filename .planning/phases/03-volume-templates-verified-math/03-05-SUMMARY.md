@@ -8,14 +8,14 @@ requires:
   - phase: 03-volume-templates-verified-math
     provides: "components/outline/outline-editor.tsx's rotate (right-0) and Export Template (right-10) toolbar buttons from plan 03-04, whose box treatment this plan matches exactly"
 provides:
-  - "components/outline/outline-editor.tsx: a construction-lines toolbar button (right-20, RulerIcon) that toggles the existing showConstruction state, in agreement by construction with the sidebar checkbox in outline-controls.tsx"
-  - "components/outline/outline-editor.tsx: a wide-view toolbar button (right-30, PanelLeftClose/OpenIcon) that hides the aside sidebar, turns construction lines on entering, and restores the prior construction-lines value on leaving — neither persisted nor on the design store"
+  - "components/outline/outline-editor.tsx: a construction-lines toolbar button (right-20, LocateFixedIcon as of the post-checkpoint icon fix below) that toggles the existing showConstruction state, in agreement by construction with the sidebar checkbox in outline-controls.tsx"
+  - "components/outline/outline-editor.tsx: a wide-view toolbar button (right-30, PanelLeftClose/OpenIcon) that hides the aside sidebar, turns construction lines on entering, and restores the prior construction-lines value on leaving — neither persisted nor on the design store — and (as of the post-checkpoint sizing fix below) also drops TabbedPanel's tab strip and one padded card layer so the board actually gets bigger while wide"
 affects: [03-07]
 
 actuals:
   tokens: 2104
   tasks: 2
-  commits: 2
+  commits: 4
 
 tech-stack:
   added: []
@@ -97,7 +97,7 @@ Each task was committed atomically:
 
 ## Files Created/Modified
 
-- `components/outline/outline-editor.tsx` - construction-lines toolbar button (`RulerIcon`, `right-20`) and wide-view toolbar button (`PanelLeftCloseIcon`/`PanelLeftOpenIcon`, `right-30`), plus the `wideView`/`preWideViewConstruction` local state and the conditional `aside` render
+- `components/outline/outline-editor.tsx` - construction-lines toolbar button (`right-20`, `LocateFixedIcon` as of the post-checkpoint fix below — originally `RulerIcon`) and wide-view toolbar button (`PanelLeftCloseIcon`/`PanelLeftOpenIcon`, `right-30`), plus the `wideView`/`preWideViewConstruction` local state and the conditional `aside` render
 
 ## Decisions Made
 
@@ -124,11 +124,43 @@ None - no external service configuration required.
 
 **Blocked by:** Task 3's checkpoint (gate: `blocking`) — needs a human to walk the eight verification steps in `03-05-PLAN.md` against a live dev server, across Daylight, Chalk, Slate and Phosphor themes.
 
+## Post-checkpoint fixes
+
+While Task 3's browser checkpoint was still pending, the shaper reviewed the new toolbar controls
+in a running instance and asked for two changes. Both were applied here, in `components/outline/outline-editor.tsx`
+only, each its own atomic `fix(03-05):` commit. Task 3's checkpoint itself is still pending — these
+fixes do not resolve it, they change what the checkpoint will see when it runs.
+
+1. **Bigger board in wide view** — `8ef92d8`. Hiding the sidebar freed horizontal room, but the
+   board drawing is height-bound, not width-bound (`components/viewer/callout-primitives.tsx`'s own
+   comment: "these drawings are height-bound, so horizontal slack never shrinks the board"), so wide
+   view wasn't actually rendering the board any bigger — only the empty margin either side grew.
+   Wide view now also skips `TabbedPanel`'s folder-tab strip and its own extra padded card layer
+   (pure chrome once the sidebar is gone and there is only the one VIEWER tab to label), trimming
+   three padded layers down to one and giving the board real extra vertical room to grow into.
+   Normal (sidebar-visible) view renders through `TabbedPanel` exactly as it did before — untouched.
+   The toolbar buttons and the drawing markup were pulled into a shared `viewerContent` variable so
+   the two wrapper branches render identical content rather than risk two copies drifting apart.
+2. **Construction-lines icon** — `c30ab18`. The toggle used `RulerIcon`, which didn't read as what
+   the control does. Swapped for `LocateFixedIcon`, which echoes the ring-with-a-filled-centre-dot
+   (plus tick marks) that `outline-viewer.tsx` already draws for each draggable control point on the
+   construction overlay — so the button now previews the exact glyph the shaper is about to see on
+   the board. `aria-label`s, `aria-pressed`, and the accent-fill ON-state treatment are unchanged.
+
+Both fixes verified: `npx tsc --noEmit` (0 errors beyond the pre-existing worktree-only `LayoutProps`
+errors), `npm run lint` (0 errors, same 9 pre-existing warnings), `npm test` (832/832 pass — same
+suite as the original Tasks 1–2 run). `git diff --name-only` for both commits is limited to
+`components/outline/outline-editor.tsx`. Task 3's checkpoint — walking the toolbar in a live browser
+across all four themes — remains pending for the same reason recorded above (this worktree cannot
+run `npm run dev`); it now also needs to confirm the bigger wide-view sizing and the new icon.
+
 ## Self-Check: PASSED
 
 - FOUND: components/outline/outline-editor.tsx (modified)
 - FOUND commit: f6be807
 - FOUND commit: 12fc288
+- FOUND commit: c30ab18
+- FOUND commit: 8ef92d8
 
 ---
 *Phase: 03-volume-templates-verified-math*
