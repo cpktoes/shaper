@@ -211,6 +211,20 @@ interface DesignContextValue {
 
 const DesignContext = createContext<DesignContextValue | null>(null);
 
+/** How long the autosave effect waits before its next attempt is scheduled, given how many times
+ * in a row the save just before it failed. Zero failures is exactly `AUTOSAVE_DEBOUNCE_MS`
+ * (D-08's normal debounce, unchanged); each further consecutive failure doubles the wait, capped
+ * at `AUTOSAVE_MAX_RETRY_DELAY_MS` — a persistently failing save (backend outage, an
+ * expired/invalid session) settles into a slow, bounded background retry instead of hammering the
+ * server every debounce tick forever. A local helper rather than an addition to
+ * `lib/models/autosave.ts`: it only changes the timer's delay, not `decideAutosave`'s save/wait/
+ * idle decision, so the pure module and its tests are untouched by this. */
+const AUTOSAVE_MAX_RETRY_DELAY_MS = 30_000;
+function autosaveDelayFor(consecutiveFailures: number): number {
+  if (consecutiveFailures <= 0) return AUTOSAVE_DEBOUNCE_MS;
+  return Math.min(AUTOSAVE_DEBOUNCE_MS * 2 ** consecutiveFailures, AUTOSAVE_MAX_RETRY_DELAY_MS);
+}
+
 export function DesignProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<DesignState>(DEFAULT_DESIGN_STATE);
   // Clerk's own loading state reads as `isSignedIn === undefined`; treated as "not signed in"
@@ -224,6 +238,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // arrived while it was in flight.
   const [saveInFlight, setSaveInFlight] = useState(false);
   const [, startSaveTransition] = useTransition();
+  // Consecutive save failures for the board currently open — reset the moment a save actually
+  // lands, and fed into the autosave timer's delay (see autosaveDelayFor below) so a persistent
+  // failure (a backend outage, an expired session that keeps rejecting) backs off instead of
+  // retrying every AUTOSAVE_DEBOUNCE_MS forever. The nav's "Not saved" state is still a one-click
+  // instant retry (`requestSave`, which never goes through this timer) the whole time.
+  const consecutiveFailuresRef = useRef(0);
 
   const updateOutline = (patch: Partial<OutlineSpec>) =>
     setState((prev) => ({ ...prev, outline: { ...prev.outline, ...patch }, boardStarted: true, dirty: true }));
@@ -246,7 +266,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // sets boardStarted true (a board is in progress) but leaves dirty at DEFAULT_DESIGN_STATE's
   // false, because the store now matches the row exactly (D-09) — there is nothing to autosave
   // until the shaper changes something.
-  const applyModel = (id: string, snapshot: DesignSnapshotFields) =>
+  const applyModel = (id: string, snapshot: DesignSnapshotFields) => {
+    // A fresh row has no save-failure history of its own — carrying over a backoff earned by
+    // whatever board was open before would slow its first autosave for no reason.
+    consecutiveFailuresRef.current = 0;
     setState(() => ({
       ...DEFAULT_DESIGN_STATE,
       outline: snapshot.outline,
@@ -259,6 +282,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       modelId: id,
       boardStarted: true,
     }));
+  };
 
   const updateRailSection = (key: RailSectionKey, patch: Partial<RailSectionSpec>) =>
     setState((prev) => ({
@@ -436,13 +460,17 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     [state.outline, state.rails, state.fins, state.volume, state.finsImportTemplate, state.boardName, state.finSystem],
   );
 
-  // Always holds the latest designSnapshotFields, kept current on every render (a plain
-  // assignment, not an effect — there is nothing to schedule). performSave's `.then` handler
-  // needs to compare "what did we actually send" against "what does the board look like right
-  // now", and a value captured in a closure at the moment the save started can't answer that;
-  // only a ref that keeps updating while the request is in flight can.
+  // Always holds the latest designSnapshotFields, kept current after every commit (a ref written
+  // from an effect, never during render itself — React's rules of hooks forbid mutating a ref
+  // while rendering). performSave's `.then` handler needs to compare "what did we actually send"
+  // against "what does the board look like right now", and a value captured in a closure at the
+  // moment the save started can't answer that; only a ref that keeps updating while the request
+  // is in flight can. No deps array: this must re-sync after every render, and the ref write
+  // itself never triggers one, so there is no re-render loop to worry about.
   const designSnapshotFieldsRef = useRef(designSnapshotFields);
-  designSnapshotFieldsRef.current = designSnapshotFields;
+  useEffect(() => {
+    designSnapshotFieldsRef.current = designSnapshotFields;
+  });
 
   // The one path that actually calls `saveModel` for a board that already has a home — shared by
   // the autosave timer below and by `requestSave` (the nav's manual Save and its failure retry),
@@ -467,6 +495,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           // moved on and no longer matches snapshotAtSaveTime, so dirty stays true and the
           // autosave effect (re-evaluated below when saveInFlight flips back to false) schedules
           // a follow-up save for the edit that would otherwise have been silently dropped.
+          consecutiveFailuresRef.current = 0;
           setState((prev) => ({
             ...prev,
             dirty: designSnapshotFieldsRef.current !== snapshotAtSaveTime,
@@ -477,6 +506,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           // Includes the "failed to find Server Action" case a redeployment can cause on a page
           // loaded before it: treated like any other failure, never swallowed to a silent no-op.
           console.error("Shaper: save failed", error);
+          consecutiveFailuresRef.current += 1;
           const settled: PromiseSettledResult<never> = { status: "rejected", reason: error };
           setState((prev) => ({ ...prev, saveStatus: nextStatusAfter(settled) }));
         })
@@ -488,8 +518,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // fields (via `designSnapshotFields`'s identity, which only changes when its contents do), on
   // sign-in state changing, and once a save settles (`saveInFlight` flipping back to false, in
   // case another edit arrived while it was writing). When the decision is "save", it starts a
-  // fresh `AUTOSAVE_DEBOUNCE_MS` timer; a cleanup on every re-run clears the previous one, so a
-  // shaper who keeps adjusting keeps pushing the write out rather than queueing several.
+  // timer whose delay backs off with `consecutiveFailuresRef` (see `autosaveDelayFor` below) —
+  // a shaper hitting a persistent failure (outage, expired session) doesn't get hammered with a
+  // retry every `AUTOSAVE_DEBOUNCE_MS` forever, and the nav's "Not saved" click is still an
+  // instant manual retry the whole time (`requestSave` never goes through this timer). A cleanup
+  // on every re-run clears the previous timer, so a shaper who keeps adjusting keeps pushing the
+  // write out rather than queueing several.
   useEffect(() => {
     const decision = decideAutosave({
       signedIn: isSignedIn === true,
@@ -499,7 +533,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     });
     if (decision !== "save") return;
 
-    const timer = setTimeout(performSave, AUTOSAVE_DEBOUNCE_MS);
+    const timer = setTimeout(performSave, autosaveDelayFor(consecutiveFailuresRef.current));
     return () => clearTimeout(timer);
     // performSave closes over state.modelId/state.boardName/designSnapshotFields/saveInFlight
     // freshly on every render, so it does not need to be listed itself — including it would
