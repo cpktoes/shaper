@@ -39,9 +39,10 @@ interface BoardRackProps {
 }
 
 export function BoardRack({ entries, onSelectModel, onContinue }: BoardRackProps) {
-  // Only read for the one case that needs care on delete (see handleDeleteConfirm below) — a
-  // rename never touches the store at all (D-13: only the row's label changes).
-  const { modelId, setModelId } = useDesign();
+  // Read for delete (see handleDeleteConfirm below) and for rename (see handleRenameConfirm) —
+  // renaming the board currently open in the editor changes the store's label too, or the next
+  // autosave would silently write the old name back over the rename.
+  const { modelId, setModelId, setBoardName } = useDesign();
   const [renamingModel, setRenamingModel] = useState<SavedModel | null>(null);
   const [deletingModel, setDeletingModel] = useState<SavedModel | null>(null);
   const [duplicateErrors, setDuplicateErrors] = useState<Record<string, string>>({});
@@ -60,6 +61,10 @@ export function BoardRack({ entries, onSelectModel, onContinue }: BoardRackProps
   const handleRenameConfirm = async (name: string) => {
     if (!renamingModel) return;
     await renameModel(renamingModel.id, name);
+    // The board being renamed may be the one open in the editor right now — the shared store
+    // still holds its old name, and the next autosave would write that stale name straight back
+    // over the rename we just confirmed. Keeping the store in sync is what stops that.
+    if (renamingModel.id === modelId) setBoardName(name);
   };
 
   const handleDeleteConfirm = async () => {
