@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { DownloadIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, RulerIcon } from "lucide-react";
+import { DownloadIcon, LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
@@ -251,10 +251,14 @@ export function OutlineEditor() {
             // three times, see .planning/quick/260825-rmb-*/SUMMARY.md) the icon must switch to
             // text-surf-on-accent in that state rather than staying on the muted ink token — hence
             // the icon colour is folded into the same aria-pressed className expression as the fill,
-            // not left on a separate always-on class.
+            // not left on a separate always-on class. Icon is LocateFixedIcon, not a ruler: it
+            // echoes the draggable control point drawn on the construction overlay itself
+            // (components/outline/outline-viewer.tsx's drag targets — a ring with a filled centre
+            // dot, plus tick marks reads closest to LocateFixed of the candidates lucide-react
+            // offers), so the button previews the very glyph the shaper is about to see on the board.
             className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent aria-pressed:hover:bg-surf-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
           >
-            <RulerIcon className="size-6" />
+            <LocateFixedIcon className="size-6" />
           </button>
           <button
             type="button"
