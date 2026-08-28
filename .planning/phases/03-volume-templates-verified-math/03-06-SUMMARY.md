@@ -48,24 +48,27 @@ coverage:
   - id: D2
     description: "The Summary order form prints on two portrait pages with nothing clipped, the board undistorted, chips/output rail legible, and both faint reference lines (station and widepoint) visible on paper — for a default board and a 25in-widepoint board, from a narrow and a wide window, and in one dark theme"
     requirement: TMPL-01
-    verification: []
+    verification:
+      - kind: other
+        ref: "Human print-preview against main post-merge, dev server started by the orchestrator; shaper answered Approved to both pages fitting, reference lines legible at print scale, and dark theme printing white."
+        status: pass
     human_judgment: true
-    rationale: "Print fidelity — whether a low-alpha dashed/dotted line survives a real printer's rendering, and whether a wide-board card's different aspect still fits the page — can only be judged from an actual print preview or a printed page, not an automated test. This is Task 2 of 03-06-PLAN.md, a blocking checkpoint:human-verify gate. It also requires npm run dev, which this worktree-isolated agent cannot run (Turbopack cannot resolve next outside the main checkout)."
+    rationale: "Print fidelity — whether a low-alpha dashed/dotted line survives a real printer's rendering, and whether a wide-board card's different aspect still fits the page — can only be judged from an actual print preview or a printed page, not an automated test. This was Task 2 of 03-06-PLAN.md, a blocking checkpoint:human-verify gate, run against main after merge since this worktree-isolated agent could not run npm run dev (Turbopack cannot resolve next outside the main checkout)."
 
 duration: ~20min
 completed: 2026-08-28
-status: halted
+status: complete
 ---
 
 # Phase 03 Plan 06: Summary Order-Form Print Legibility Summary
 
-**The order form's two faint outline reference tokens — the station lines and the widepoint dash — are raised for paper only, inside `order-form.css`'s own `@media print` block, using the same `color-mix` form and base tokens the screen values use; Task 2's print-preview verification is a blocking checkpoint this agent cannot perform (no dev server in this worktree).**
+**The order form's two faint outline reference tokens — the station lines and the widepoint dash — are raised for paper only, inside `order-form.css`'s own `@media print` block, using the same `color-mix` form and base tokens the screen values use; Task 2's print-preview checkpoint was run against main after merge and approved.**
 
 ## Performance
 
-- **Duration:** ~20 min
+- **Duration:** ~20 min plus checkpoint review
 - **Completed:** 2026-08-28
-- **Tasks:** 1 of 2 (Task 2 is a blocking human-verify checkpoint — see Next Phase Readiness)
+- **Tasks:** 2 of 2
 - **Files modified:** 1
 
 ## Accomplishments
@@ -79,8 +82,7 @@ status: halted
 Each task was committed atomically:
 
 1. **Task 1: Make the faint reference lines survive a printer** - `99ba4b8` (feat)
-
-Task 2 (checkpoint:human-verify, gate="blocking") was not executed — see Next Phase Readiness.
+2. **Task 2: Print-preview verification** - `checkpoint:human-verify`, gate `blocking` — run by the orchestrator against main after merge; the shaper answered **Approved** to both pages fitting, lines legible, and dark theme printing white.
 
 ## Files Created/Modified
 
@@ -102,11 +104,9 @@ None. `npm run lint` reports 0 errors (9 pre-existing warnings in unrelated file
 
 ## Next Phase Readiness
 
-**Plan is NOT complete.** Task 2 of `03-06-PLAN.md` is a `checkpoint:human-verify` with `gate="blocking"`: a human must run `npm run dev`, open `/design/summary`, and print-preview the order form for a default board and a 25in-widepoint board, from a narrow and a wide browser window, checking that both pages fit with nothing clipped, the board is undistorted, the chips and output rail are legible, and both the station lines and the widepoint dotted line are visible — ideally confirmed with a real printed page, and once more in a dark theme (Slate or Phosphor) to confirm the sheet still comes out white with dark ink. This worktree-isolated agent cannot run `npm run dev` (Turbopack cannot resolve `next` outside the main checkout) and has no printer.
+**Plan is complete.** Task 2 of `03-06-PLAN.md`, a `checkpoint:human-verify` with `gate="blocking"`, was run by the orchestrator against main after merge (this worktree-isolated agent could not run `npm run dev`, Turbopack cannot resolve `next` outside the main checkout, and had no printer). The shaper print-previewed the order form and answered **Approved** to both pages fitting, reference lines legible, and dark theme printing white.
 
-**What's ready:** Task 1's automated work is committed and green (832/832 vitest tests pass, `npm run lint` reports 0 errors, and every acceptance-criteria diff check in `03-06-PLAN.md` Task 1 passes). The print-scoped override is live in this worktree's `order-form.css` and ready for the orchestrator to merge to main and run the print-preview verification from there.
-
-**Blocker:** Task 2's print-preview check must be run by a human (via the orchestrator, after merging this worktree to main and starting `npm run dev` from the main checkout) before this plan can be marked complete. `03-06-PLAN.md`'s Task 2 has the exact verification steps, including the "the widepoint line still disappears" resume-signal phrasing to use if the override still isn't strong enough.
+**What's ready:** Task 1's automated work is committed and green (832/832 vitest tests pass, `npm run lint` reports 0 errors, and every acceptance-criteria diff check in `03-06-PLAN.md` Task 1 passes). The print-scoped override is live on main.
 
 ## Self-Check: PASSED
 
@@ -115,4 +115,4 @@ None. `npm run lint` reports 0 errors (9 pre-existing warnings in unrelated file
 
 ---
 *Phase: 03-volume-templates-verified-math*
-*Completed: 2026-08-28 (Task 1 only — Task 2 pending human verification)*
+*Completed: 2026-08-28*
