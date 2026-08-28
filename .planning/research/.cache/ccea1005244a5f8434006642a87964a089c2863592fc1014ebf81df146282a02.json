@@ -1,0 +1,1 @@
+{"content":"Next.js 16 deprecates middleware.ts in favor of proxy.ts; Clerk's clerkMiddleware() fully supports the rename and is the standard entry point, just called from proxy.ts instead — same code, different filename/export.","source":"web","provider":"websearch","confidence":"MEDIUM","fetched_at":"2026-08-27T15:58:43.347Z","ttl":86400000,"kind":"web"}
