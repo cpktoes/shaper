@@ -3,13 +3,15 @@ import { describe, expect, it } from "vitest";
 import { WIDEPOINT_WIDTH_RANGE_IN } from "@/lib/geometry/board";
 import { buildOutline } from "@/lib/geometry/outline";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
-import { computeTemplateLayout, computeTemplateMarks } from "@/lib/geometry/template";
+import { computeTemplateLayout, computeTemplateMarks, markPlacements } from "@/lib/geometry/template";
 import { inchesToMm } from "@/lib/geometry/units";
 import {
   HOWTO_BOX_TEXT_WIDTH_LIMIT_MM,
   buildTemplatePdf,
   templateHowToLines,
   templateHowToWrappedLines,
+  templateMarkDimensionText,
+  templateMarkLabelText,
   templateNameBlockText,
   wrapTextToWidth,
 } from "./build-template-pdf";
@@ -166,5 +168,27 @@ describe("templateHowToWrappedLines (post-checkpoint fix, defect 1: \"the instru
 
     expect(lines[0].startsWith("1.")).toBe(true);
     expect(lines.join(" ").toLowerCase()).toContain("left to right");
+  });
+});
+
+describe("templateMarkLabelText / templateMarkDimensionText (post-checkpoint fix, defect 2: \"the station lines don't have a printed dimension\")", () => {
+  it("prints the board's own full width at every mark's station, for every preset and paper size", () => {
+    for (const preset of BOARD_PRESETS) {
+      const geometry = buildOutline(preset.outline);
+      for (const paper of ["letter", "a4"] as const) {
+        const layout = computeTemplateLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const placements = markPlacements(layout, marks, geometry);
+
+        for (const placement of placements) {
+          const dim = templateMarkDimensionText(placement);
+          const label = templateMarkLabelText(placement);
+
+          expect(dim.endsWith('"')).toBe(true);
+          expect(label).toContain(placement.label);
+          expect(label).toContain(dim);
+        }
+      }
+    }
   });
 });

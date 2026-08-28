@@ -23,7 +23,7 @@ import {
   type TemplateMatchMark,
   type TemplatePage,
 } from "@/lib/geometry/template";
-import { formatFeetInches, formatInchesFraction, inchesToMm, type Mm } from "@/lib/geometry/units";
+import { formatFeetInches, formatInchesFraction, inchesToMm, mm, type Mm } from "@/lib/geometry/units";
 
 /** Every input `buildTemplatePdf` needs, fixed complete now, so later plans (the preview dialog,
  * working match marks) extend the drawing without touching a call site. */
@@ -71,6 +71,12 @@ const MARK_TICK_LINE_WEIGHT_MM = 0.25;
 const MARK_STATION_DASH_PATTERN = [5, 4];
 const MARK_WIDEPOINT_DASH_PATTERN = [2, 3];
 const MARK_LABEL_OFFSET_MM = 2;
+/** Extra clearance kept between a mark's label and the outline curve it runs to — post-checkpoint
+ * fix, defect 2: the label must never run off the tick's own paper into the curve. */
+const MARK_LABEL_SAFETY_MM = 2;
+/** Vertical gap between the two stacked lines when a label doesn't fit on one (name, then
+ * dimension) before the tick's own curve-side end. */
+const MARK_LABEL_LINE_GAP_MM = 4;
 
 /** Overlap match-mark crosshairs (D-09) — small, solid, identical on both overlapping pages. */
 const MATCH_MARK_LINE_WEIGHT_MM = 0.25;
@@ -171,6 +177,28 @@ function drawScaleSquare(doc: jsPDF, page: TemplatePage, margin: number, paperWi
  * station ladder) that fall on this page. Each tick runs from the stringer (half-width 0) out to
  * `placement.halfWidthExtent`, at 0.25mm; the widepoint tick alone gets the dotted `2 3` pattern so
  * it is told apart from the other three by dash pattern alone, never by colour. */
+/** The dimension text drawn beside each working mark — the board's own full width (both rails,
+ * not just the tick's own half-width extent) at that mark's station, formatted the way a shaper
+ * reads a tape measure. Exported for testability without reading the rendered page
+ * (post-checkpoint fix, defect 2: "the station lines don't have a printed dimension"). */
+export function templateMarkDimensionText(placement: TemplateMarkPlacement): string {
+  return formatInchesFraction(mm(placement.halfWidthExtent * 2));
+}
+
+/** The mark's name plus its dimension, e.g. `Nose 12" — 15 3/4"` — the combined text drawn on one
+ * line when there's room. */
+export function templateMarkLabelText(placement: TemplateMarkPlacement): string {
+  return `${placement.label} — ${templateMarkDimensionText(placement)}`;
+}
+
+/** Draws the four working marks (D-06 — nose 12in, tail 12in, centre, widepoint; no every-12in
+ * station ladder) that fall on this page. Each tick runs from the stringer (half-width 0) out to
+ * `placement.halfWidthExtent`, at 0.25mm; the widepoint tick alone gets the dotted `2 3` pattern so
+ * it is told apart from the other three by dash pattern alone, never by colour. Each tick is
+ * labeled with its name and the board's own width there, measured with jsPDF's own `getTextWidth`
+ * against the room actually available before the curve — split onto two stacked lines rather than
+ * let either run past the tick's own outer end when a narrower station doesn't have room for one
+ * (post-checkpoint fix, defects 2 and 4). */
 function drawMarks(doc: jsPDF, page: TemplatePage, margin: number, placements: TemplateMarkPlacement[]): void {
   const pagePlacements = placements.filter((placement) => placement.pageIndex === page.index);
   if (pagePlacements.length === 0) return;
@@ -193,7 +221,19 @@ function drawMarks(doc: jsPDF, page: TemplatePage, margin: number, placements: T
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(0);
-    doc.text(placement.label, xStringer + MARK_LABEL_OFFSET_MM, y - MARK_LABEL_OFFSET_MM);
+
+    const combined = templateMarkLabelText(placement);
+    const availableWidth = Math.max(0, xOuter - xStringer - MARK_LABEL_OFFSET_MM - MARK_LABEL_SAFETY_MM);
+    if (doc.getTextWidth(combined) <= availableWidth) {
+      doc.text(combined, xStringer + MARK_LABEL_OFFSET_MM, y - MARK_LABEL_OFFSET_MM);
+    } else {
+      doc.text(placement.label, xStringer + MARK_LABEL_OFFSET_MM, y - MARK_LABEL_OFFSET_MM - MARK_LABEL_LINE_GAP_MM);
+      doc.text(
+        templateMarkDimensionText(placement),
+        xStringer + MARK_LABEL_OFFSET_MM,
+        y - MARK_LABEL_OFFSET_MM,
+      );
+    }
   }
 }
 
