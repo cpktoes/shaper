@@ -22,9 +22,11 @@
  * The saved variant also carries the D-13 Rename/Duplicate/Delete menu (`RackCardMenu`). Because
  * the card itself is a whole-card `<button>`, the menu's trigger cannot be nested inside it —
  * nested interactive elements are invalid, and a click on the trigger would bubble up and fire
- * the card's own navigation. Instead the button and the menu are DOM siblings inside a relatively
- * positioned wrapper, with the trigger absolutely positioned over the card's corner — visually on
- * top, but never a descendant the button's click handler could catch.
+ * the card's own navigation. Instead the button and the menu are DOM siblings inside a dedicated,
+ * card-sized relatively positioned box, with the trigger absolutely positioned over the card's
+ * bottom-right corner — visually on top, but never a descendant the button's click handler could
+ * catch. That box holds only the button and the menu, so the trigger's offset is always measured
+ * from the card's own corner, not from the duplicate-error message that sits below it.
  */
 
 import { useDesign } from "@/components/design/design-store";
@@ -143,30 +145,32 @@ export function BoardRackCard(props: BoardRackCardProps) {
   const lastTouched = formatLastTouched(model.updatedAt);
 
   return (
-    <div className={cn("relative flex flex-col gap-1", className)}>
-      <button type="button" onClick={() => onSelect(model)} className={CARD_SHELL_CLASS}>
-        <CardThumbnail geometry={geometry} outline={model.snapshot.outline} />
-        <span className="block truncate text-[20px] leading-[1.2] font-semibold text-foreground">
-          {model.name}
-        </span>
-        <CardMetadataLine summary={summary} />
-        <span className="text-xs leading-[1.4] text-surf-ink-muted">Last touched {lastTouched}</span>
-        <span className="text-xs leading-[1.4] font-semibold tracking-architectural text-surf-accent-ink uppercase">
-          Open This Board
-        </span>
-      </button>
+    <div className={cn("flex flex-col gap-1", className)}>
+      <div className="relative">
+        <button type="button" onClick={() => onSelect(model)} className={CARD_SHELL_CLASS}>
+          <CardThumbnail geometry={geometry} outline={model.snapshot.outline} />
+          <span className="block truncate text-[20px] leading-[1.2] font-semibold text-foreground">
+            {model.name}
+          </span>
+          <CardMetadataLine summary={summary} />
+          <span className="text-xs leading-[1.4] text-surf-ink-muted">Last touched {lastTouched}</span>
+          <span className="text-xs leading-[1.4] font-semibold tracking-architectural text-surf-accent-ink uppercase">
+            Open This Board
+          </span>
+        </button>
+        <RackCardMenu
+          boardName={model.name}
+          onRename={onRename}
+          onDuplicate={onDuplicate}
+          onDelete={onDelete}
+          className="absolute right-2 bottom-2 z-10"
+        />
+      </div>
       {/* Outside the whole-card button on purpose, same reasoning as the menu trigger: a click
           here must never fire the card's own navigation. */}
       {duplicateError && (
         <p className="text-xs leading-[1.4] text-surf-warning-ink">{duplicateError}</p>
       )}
-      <RackCardMenu
-        boardName={model.name}
-        onRename={onRename}
-        onDuplicate={onDuplicate}
-        onDelete={onDelete}
-        className="absolute top-2 right-2 z-10"
-      />
     </div>
   );
 }
