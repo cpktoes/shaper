@@ -21,7 +21,7 @@
  * analogue here.
  */
 
-import { createContext, useContext, useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { saveModel } from "@/app/design/actions";
 import {
@@ -436,6 +436,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     [state.outline, state.rails, state.fins, state.volume, state.finsImportTemplate, state.boardName, state.finSystem],
   );
 
+  // Always holds the latest designSnapshotFields, kept current on every render (a plain
+  // assignment, not an effect — there is nothing to schedule). performSave's `.then` handler
+  // needs to compare "what did we actually send" against "what does the board look like right
+  // now", and a value captured in a closure at the moment the save started can't answer that;
+  // only a ref that keeps updating while the request is in flight can.
+  const designSnapshotFieldsRef = useRef(designSnapshotFields);
+  designSnapshotFieldsRef.current = designSnapshotFields;
+
   // The one path that actually calls `saveModel` for a board that already has a home — shared by
   // the autosave timer below and by `requestSave` (the nav's manual Save and its failure retry),
   // so the two paths can never drift into reporting status differently. A no-op while there is
@@ -454,10 +462,16 @@ export function DesignProvider({ children }: { children: ReactNode }) {
             status: "fulfilled",
             value: result,
           };
-          // Cleared only now, on the server's confirmation — not when the request was sent —
-          // so a save that fails (network drop, a Server Action id rotated by a redeploy) leaves
-          // the board dirty and the very next edit's autosave retries it (D-08).
-          setState((prev) => ({ ...prev, dirty: false, saveStatus: nextStatusAfter(settled) }));
+          // Cleared only if nothing has changed since the snapshot that was actually sent — if
+          // an edit landed while this request was in flight, designSnapshotFieldsRef.current has
+          // moved on and no longer matches snapshotAtSaveTime, so dirty stays true and the
+          // autosave effect (re-evaluated below when saveInFlight flips back to false) schedules
+          // a follow-up save for the edit that would otherwise have been silently dropped.
+          setState((prev) => ({
+            ...prev,
+            dirty: designSnapshotFieldsRef.current !== snapshotAtSaveTime,
+            saveStatus: nextStatusAfter(settled),
+          }));
         })
         .catch((error: unknown) => {
           // Includes the "failed to find Server Action" case a redeployment can cause on a page
