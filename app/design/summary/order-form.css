@@ -304,6 +304,35 @@
     background: #fff !important;
   }
 
+  /* The station and widepoint reference lines are deliberately faint on screen — 36% / 45%
+     `color-mix` against `--surf-ink-muted` / `--outline-widepoint-knot`, see globals.css around
+     `--outline-station-line` / `--outline-widepoint-line` — so they read as construction lines
+     rather than as part of the board outline. Low-alpha dashed and dotted strokes are the first
+     thing a consumer printer drops, and this sheet already prints at roughly 0.69 zoom (see
+     `useOrderFormPrintFit`'s header comment), so those percentages are exactly the risk the
+     pending todo (2026-08-22-summary-print-after-callout-system.md, items 4-5) flags. Raised here,
+     for paper only — the screen values in globals.css are untouched.
+
+     Scoped to `[data-order-form-page]`, this file's own outer hook (see order-form.tsx), tripled
+     to match the specificity discipline globals.css's own print block already established: a media
+     query adds no specificity, so a bare attribute selector here would score (0,1,0) — the same as
+     the plain `:root` declaration that sets these tokens, and *below* an explicitly chosen
+     `:root.theme-<id>` at (0,2,0). Left untripled, a shaper on Slate or Phosphor would keep
+     printing the faint screen value instead of this one. Repeating the selector lifts it to
+     (0,3,0), which outranks any theme class regardless of source order — the same reasoning
+     globals.css documents for its own tripled `:root`.
+
+     Both still resolve through `color-mix` against the same base tokens the screen values use, so
+     no literal colour enters this stylesheet (the 260825-rqm lesson) and the print `:root` block
+     above still forces those base tokens to the Daylight palette — a printed sheet comes out in
+     the same ink regardless of the theme chosen on screen. Only the mix percentage changes; the
+     dash patterns are untouched, since the widepoint dash is what distinguishes that line from the
+     station lines. */
+  [data-order-form-page][data-order-form-page][data-order-form-page] {
+    --outline-station-line: color-mix(in srgb, var(--surf-ink-muted) 65%, transparent);
+    --outline-widepoint-line: color-mix(in srgb, var(--outline-widepoint-knot) 75%, transparent);
+  }
+
   /* The spine labels — RIDER INFO, SURFBOARD SHAPE AND DESIGN, GLASSING — print shaded, because
      they are what tells the sections of the sheet apart on paper, and they print in the shade of
      whichever theme the shaper chose — Daylight's sage, Chalk's blue, Slate's deeper blue,
