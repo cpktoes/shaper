@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # Format-valid placeholder values only. Nothing this workflow runs authenticates against
+      # them — do NOT mistake these for leaked credentials, and do NOT replace them with a real
+      # repository secret. Verified sufficient for `npm test`, `npm run lint` and `npm run build`
+      # by an actual credential-free build in a scratch clone (see 03-02-SUMMARY.md).
+      DATABASE_URL: postgres://user:pass@localhost:5432/shaper_ci
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2ktcGxhY2Vob2xkZXIuZXhhbXBsZS5jb20k
+      CLERK_SECRET_KEY: sk_test_ci_placeholder_0000000000000000000000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
