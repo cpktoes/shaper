@@ -14,9 +14,13 @@ import jsPDF from "jspdf";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import {
   PAPER_MM,
+  markPlacements,
+  matchMarkPositions,
   type PaperSize,
   type TemplateLayout,
+  type TemplateMarkPlacement,
   type TemplateMarks,
+  type TemplateMatchMark,
   type TemplatePage,
 } from "@/lib/geometry/template";
 import { formatFeetInches, formatInchesFraction, inchesToMm, type Mm } from "@/lib/geometry/units";
@@ -51,6 +55,34 @@ const NAME_BOX_WIDTH_MM = 45;
 const NAME_BOX_HEIGHT_MM = 20;
 const NAME_BOX_PADDING_MM = 3;
 const NAME_BOX_CLEARANCE_MM = 4;
+/** The name block's own text width budget — Print Artifact Contract #6: a name too long for the
+ * box truncates with an ellipsis rather than wrapping into or overlapping the outline curve. */
+const NAME_TEXT_WIDTH_LIMIT_MM = NAME_BOX_WIDTH_MM - 2 * NAME_BOX_PADDING_MM;
+const NAME_FONT_SIZE_PT = 14;
+/** Fallback text for an empty or whitespace-only board name — matches `board-rack-card.tsx` /
+ * `continue-board-card.tsx`'s fallback wording, deliberately not `order-form.tsx`'s lower-case
+ * "Unnamed board" variant for the same idea (a pre-existing, separately-scoped inconsistency). */
+const UNTITLED_BOARD_NAME = "Untitled Board";
+const ELLIPSIS = "…";
+
+/** The four working marks (D-06) — solid black, told apart by dash pattern alone so they survive a
+ * monochrome printer. */
+const MARK_TICK_LINE_WEIGHT_MM = 0.25;
+const MARK_STATION_DASH_PATTERN = [5, 4];
+const MARK_WIDEPOINT_DASH_PATTERN = [2, 3];
+const MARK_LABEL_OFFSET_MM = 2;
+
+/** Overlap match-mark crosshairs (D-09) — small, solid, identical on both overlapping pages. */
+const MATCH_MARK_LINE_WEIGHT_MM = 0.25;
+const MATCH_MARK_SIZE_MM = 4;
+
+/** The nose-page how-to box (D-10) — plain-bordered, 9pt regular, beside the scale square. */
+const HOWTO_BOX_LINE_WEIGHT_MM = 0.25;
+const HOWTO_BOX_WIDTH_MM = 70;
+const HOWTO_BOX_PADDING_MM = 3;
+const HOWTO_BOX_LINE_HEIGHT_MM = 5;
+/** Gap below the scale-check square's own label before the how-to box begins. */
+const HOWTO_BOX_TOP_GAP_MM = 8;
 
 /** Converts a page-local station to a page-local y (mm from the page's top edge): the page's own
  * nose-most edge (`stationRange[1]`) sits at the top, and y grows toward the tail — matching how
@@ -132,6 +164,98 @@ function drawScaleSquare(doc: jsPDF, page: TemplatePage, margin: number, paperWi
   doc.text('2" x 2" — measure before taping', x + SCALE_SQUARE_MM / 2, y + SCALE_SQUARE_MM + 5, { align: "center" });
 }
 
+/** Draws the four working marks (D-06 — nose 12in, tail 12in, centre, widepoint; no every-12in
+ * station ladder) that fall on this page. Each tick runs from the stringer (half-width 0) out to
+ * `placement.halfWidthExtent`, at 0.25mm; the widepoint tick alone gets the dotted `2 3` pattern so
+ * it is told apart from the other three by dash pattern alone, never by colour. */
+function drawMarks(doc: jsPDF, page: TemplatePage, margin: number, placements: TemplateMarkPlacement[]): void {
+  const pagePlacements = placements.filter((placement) => placement.pageIndex === page.index);
+  if (pagePlacements.length === 0) return;
+
+  doc.setDrawColor(0);
+  doc.setLineWidth(MARK_TICK_LINE_WEIGHT_MM);
+
+  for (const placement of pagePlacements) {
+    const dash = placement.mark === "widepoint" ? MARK_WIDEPOINT_DASH_PATTERN : MARK_STATION_DASH_PATTERN;
+    const y = stationToY(placement.station, page, margin);
+    const xStringer = halfWidthToX(0, page, margin);
+    const xOuter = halfWidthToX(placement.halfWidthExtent, page, margin);
+
+    doc.setLineDashPattern(dash, 0);
+    doc.line(xStringer, y, xOuter, y);
+    doc.setLineDashPattern([], 0);
+
+    // Labeled on the stringer side, where there is always paper — the tick's outer end sits on
+    // the outline curve itself, but the stringer end never leaves the kept area.
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(0);
+    doc.text(placement.label, xStringer + MARK_LABEL_OFFSET_MM, y - MARK_LABEL_OFFSET_MM);
+  }
+}
+
+/** Draws the small alignment crosshairs (D-09) that sit inside every overlap band this page
+ * shares with a neighbour — the identical pair on both overlapping pages is what turns "lining
+ * the marks up" into a positive confirmation rather than an eyeball judgement on a cut edge. */
+function drawMatchMarks(doc: jsPDF, page: TemplatePage, margin: number, matchMarks: TemplateMatchMark[]): void {
+  const pageMarks = matchMarks.filter((mark) => mark.pageIndex === page.index);
+  if (pageMarks.length === 0) return;
+
+  doc.setDrawColor(0);
+  doc.setLineWidth(MATCH_MARK_LINE_WEIGHT_MM);
+  doc.setLineDashPattern([], 0);
+
+  const half = MATCH_MARK_SIZE_MM / 2;
+  for (const mark of pageMarks) {
+    const x = halfWidthToX(mark.halfWidth, page, margin);
+    const y = stationToY(mark.station, page, margin);
+    doc.line(x - half, y, x + half, y);
+    doc.line(x, y - half, x, y + half);
+  }
+}
+
+/** The how-to box's plain-English lines (D-10 / Print Artifact Contract #4), pure data — a small
+ * exported helper so its line count (3 vs. 4) is testable without reading the rendered page. The
+ * sideways-taping line only applies when the grid actually has more than one column; omitted
+ * entirely for the common single-column case rather than printing a caveat that never applies. */
+export function templateHowToLines(layout: TemplateLayout): string[] {
+  const lines = [
+    'Print at 100% — turn off "Fit to page."',
+    'Measure the square above. It should be exactly 2" x 2".',
+    "Cut out each page and tape them together, nose to tail, matching the marks.",
+  ];
+  if (layout.columns > 1) {
+    lines.push("Tape left to right, then row to row, nose to tail.");
+  }
+  return lines;
+}
+
+/** Nose page only, beside the scale square — the one thing on the template that prevents the
+ * failure a wrong print scale causes silently and expensively. */
+function drawHowToBox(doc: jsPDF, layout: TemplateLayout, page: TemplatePage, margin: number, paperWidthMm: number): void {
+  if (page.index !== 0) return;
+
+  const lines = templateHowToLines(layout);
+  const boxHeight = HOWTO_BOX_PADDING_MM * 2 + lines.length * HOWTO_BOX_LINE_HEIGHT_MM;
+  const x = paperWidthMm - margin - HOWTO_BOX_WIDTH_MM;
+  const y = margin + SCALE_SQUARE_MM + HOWTO_BOX_TOP_GAP_MM;
+
+  doc.setDrawColor(0);
+  doc.setLineWidth(HOWTO_BOX_LINE_WEIGHT_MM);
+  doc.rect(x, y, HOWTO_BOX_WIDTH_MM, boxHeight, "S");
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(0);
+  lines.forEach((line, i) => {
+    doc.text(
+      `${i + 1}. ${line}`,
+      x + HOWTO_BOX_PADDING_MM,
+      y + HOWTO_BOX_PADDING_MM + (i + 1) * HOWTO_BOX_LINE_HEIGHT_MM - 1.5,
+    );
+  });
+}
+
 function drawPageLabel(
   doc: jsPDF,
   page: TemplatePage,
@@ -155,6 +279,36 @@ function findCentrePage(layout: TemplateLayout, geometry: OutlineGeometry): Temp
   return match ?? layout.pages[0];
 }
 
+/** Resolves what the name block actually prints for a given `boardName`: the empty-name fallback
+ * (Print Artifact Contract #5) and the long-name truncation rule (#6). Truncates with an ellipsis
+ * rather than shrinking the type — shrinking risks dropping the name below the project's 9pt
+ * print-legibility floor, and a template's name only has to identify which stack of pages belongs
+ * to which board, not remain fully legible at any length. Measured with jsPDF's own `getTextWidth`
+ * at the name block's own font (bold, `NAME_FONT_SIZE_PT`), so the truncation always reflects the
+ * font actually drawn onto the page — sets that font on `doc` as a side effect of measuring, which
+ * `drawNameBlock` already re-asserts before drawing. */
+export function templateNameBlockText(
+  boardName: string,
+  widthLimitMm: number,
+  doc: jsPDF,
+): string {
+  const trimmed = boardName.trim();
+  const displayName = trimmed.length > 0 ? trimmed : UNTITLED_BOARD_NAME;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(NAME_FONT_SIZE_PT);
+
+  if (doc.getTextWidth(displayName) <= widthLimitMm) {
+    return displayName;
+  }
+
+  let truncated = displayName;
+  while (truncated.length > 0 && doc.getTextWidth(`${truncated}${ELLIPSIS}`) > widthLimitMm) {
+    truncated = truncated.slice(0, -1);
+  }
+  return `${truncated}${ELLIPSIS}`;
+}
+
 /** D-08's board name + dims block: a bordered box in the board's own interior (between the
  * stringer edge and the outline curve), never in a page margin. */
 function drawNameBlock(
@@ -165,7 +319,6 @@ function drawNameBlock(
   boardName: string,
   dims: BuildTemplatePdfOptions["dims"],
 ): void {
-  const displayName = boardName.trim().length > 0 ? boardName : "Untitled Board";
   const centreStation = Math.min(Math.max(geometry.length / 2, page.stationRange[0]), page.stationRange[1]);
   const x = halfWidthToX(0, page, margin) + NAME_BOX_CLEARANCE_MM;
   const y = stationToY(centreStation, page, margin) - NAME_BOX_HEIGHT_MM / 2;
@@ -174,8 +327,9 @@ function drawNameBlock(
   doc.setLineWidth(NAME_BOX_LINE_WEIGHT_MM);
   doc.rect(x, y, NAME_BOX_WIDTH_MM, NAME_BOX_HEIGHT_MM, "S");
 
+  const displayName = templateNameBlockText(boardName, NAME_TEXT_WIDTH_LIMIT_MM, doc);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
+  doc.setFontSize(NAME_FONT_SIZE_PT);
   doc.setTextColor(0);
   doc.text(displayName, x + NAME_BOX_PADDING_MM, y + 8);
 
@@ -189,7 +343,7 @@ function drawNameBlock(
  * every number drawn here comes from `layout`, `geometry` or a fixed drawing constant above;
  * nothing in this function computes tile geometry. */
 export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
-  const { layout, geometry, paper, boardName, dims } = options;
+  const { layout, marks, geometry, paper, boardName, dims } = options;
   const paperDims = PAPER_MM[paper];
   const margin = layout.margin;
 
@@ -198,13 +352,18 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
   doc.setTextColor(0);
 
   const centrePage = findCentrePage(layout, geometry);
+  const placements = markPlacements(layout, marks, geometry);
+  const matchMarks = matchMarkPositions(layout);
 
   layout.pages.forEach((page, i) => {
     if (i > 0) doc.addPage(paper, "portrait");
 
     drawOutlineCurve(doc, geometry, page, margin);
     drawStringerEdge(doc, page, margin);
+    drawMarks(doc, page, margin, placements);
+    drawMatchMarks(doc, page, margin, matchMarks);
     drawScaleSquare(doc, page, margin, paperDims.width);
+    drawHowToBox(doc, layout, page, margin, paperDims.width);
     drawPageLabel(doc, page, margin, paperDims.width, paperDims.height);
     if (page.index === centrePage.index) {
       drawNameBlock(doc, page, margin, geometry, boardName, dims);
