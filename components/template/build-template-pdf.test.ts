@@ -16,12 +16,14 @@ import {
   HOWTO_BOX_TEXT_WIDTH_LIMIT_MM,
   buildTemplatePdf,
   nameBlockContent,
+  rectsOverlap,
   templateHowToLines,
   templateHowToWrappedLines,
   templateMarkDimensionText,
   templateMarkLabelText,
   templateNameBlockDimsText,
   templateNameBlockText,
+  templatePageZeroFurnitureRects,
   wrapTextToWidth,
 } from "./build-template-pdf";
 
@@ -303,4 +305,59 @@ describe("name block containment (post-checkpoint fix, defect 3: box fully insid
       });
     });
   }
+});
+
+describe("page-0 furniture never overlaps (post-checkpoint fix, defect 4: scale square, how-to box, name block, and every page-0 match mark)", () => {
+  it.each(BOARD_PRESETS)("$id (letter): no two furniture rectangles overlap", (preset) => {
+    const options = { ...buildOptions("letter"), boardName: preset.name };
+    const rects = templatePageZeroFurnitureRects(options);
+    for (let i = 0; i < rects.length; i++) {
+      for (let j = i + 1; j < rects.length; j++) {
+        expect(rectsOverlap(rects[i], rects[j])).toBe(false);
+      }
+    }
+  });
+
+  it.each(BOARD_PRESETS)("$id (a4): no two furniture rectangles overlap", (preset) => {
+    const options = { ...buildOptions("a4"), boardName: preset.name };
+    const rects = templatePageZeroFurnitureRects(options);
+    for (let i = 0; i < rects.length; i++) {
+      for (let j = i + 1; j < rects.length; j++) {
+        expect(rectsOverlap(rects[i], rects[j])).toBe(false);
+      }
+    }
+  });
+
+  it("a wide, multi-column board (whose column-adjacent match marks would otherwise land near the top of page 0) still has no overlaps", () => {
+    const preset = BOARD_PRESETS[0];
+    const geometry = buildOutline({
+      ...preset.outline,
+      widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max),
+    });
+    const layout = computeTemplateLayout(geometry, "letter");
+    expect(layout.columns).toBeGreaterThan(1);
+
+    const options = {
+      layout,
+      marks: computeTemplateMarks(geometry),
+      geometry,
+      paper: "letter" as const,
+      boardName: preset.name,
+      dims: {
+        length: geometry.length,
+        widePointWidth: geometry.halfWidePointWidth,
+        centerThickness: preset.rails.center.boardThickness,
+        noseWidth12in: geometry.noseWidthAt12in,
+        tailWidth12in: geometry.tailWidthAt12in,
+        widePointOffset: preset.outline.widePointOffset,
+        volumeLitres: litres(27.4),
+      },
+    };
+    const rects = templatePageZeroFurnitureRects(options);
+    for (let i = 0; i < rects.length; i++) {
+      for (let j = i + 1; j < rects.length; j++) {
+        expect(rectsOverlap(rects[i], rects[j])).toBe(false);
+      }
+    }
+  });
 });

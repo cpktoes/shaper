@@ -16,6 +16,7 @@ import {
   NAME_BOX_CLEARANCE_MM,
   NAME_BOX_WIDTH_MM,
   PAPER_MM,
+  type FurnitureZone,
   markPlacements,
   matchMarkPositions,
   nameBlockPlacement,
@@ -109,7 +110,9 @@ const MARK_LABEL_SAFETY_MM = 2;
  * dimension) before the tick's own curve-side end. */
 const MARK_LABEL_LINE_GAP_MM = 4;
 
-/** Overlap match-mark crosshairs (D-09) — small, solid, identical on both overlapping pages. */
+/** Overlap match marks (D-09) — small, solid alignment ticks, identical on both overlapping
+ * pages, oriented perpendicular to the trim edge they cross (post-checkpoint fix, defect 4: a
+ * solid crossing tick rather than a crosshair). */
 const MATCH_MARK_LINE_WEIGHT_MM = 0.25;
 const MATCH_MARK_SIZE_MM = 4;
 
@@ -204,10 +207,6 @@ function drawScaleSquare(doc: jsPDF, page: TemplatePage, margin: number, paperWi
   doc.text('2" x 2" — measure before taping', x + SCALE_SQUARE_MM / 2, y + SCALE_SQUARE_MM + 5, { align: "center" });
 }
 
-/** Draws the four working marks (D-06 — nose 12in, tail 12in, centre, widepoint; no every-12in
- * station ladder) that fall on this page. Each tick runs from the stringer (half-width 0) out to
- * `placement.halfWidthExtent`, at 0.25mm; the widepoint tick alone gets the dotted `2 3` pattern so
- * it is told apart from the other three by dash pattern alone, never by colour. */
 /** The dimension text drawn beside each working mark — the board's own full width (both rails,
  * not just the tick's own half-width extent) at that mark's station, formatted the way a shaper
  * reads a tape measure. Exported for testability without reading the rendered page
@@ -268,9 +267,12 @@ function drawMarks(doc: jsPDF, page: TemplatePage, margin: number, placements: T
   }
 }
 
-/** Draws the small alignment crosshairs (D-09) that sit inside every overlap band this page
- * shares with a neighbour — the identical pair on both overlapping pages is what turns "lining
- * the marks up" into a positive confirmation rather than an eyeball judgement on a cut edge. */
+/** Draws the small alignment ticks (D-09) that sit inside every overlap band this page shares
+ * with a neighbour — the identical pair on both overlapping pages is what turns "lining the marks
+ * up" into a positive confirmation rather than an eyeball judgement on a cut edge. Solid, not a
+ * crosshair (post-checkpoint fix, defect 4): each tick is drawn as a single short segment,
+ * perpendicular to the trim edge it crosses, so taping two pages together means aligning two
+ * solid lines into one continuous line across the seam. */
 function drawMatchMarks(doc: jsPDF, page: TemplatePage, margin: number, matchMarks: TemplateMatchMark[]): void {
   const pageMarks = matchMarks.filter((mark) => mark.pageIndex === page.index);
   if (pageMarks.length === 0) return;
@@ -283,8 +285,13 @@ function drawMatchMarks(doc: jsPDF, page: TemplatePage, margin: number, matchMar
   for (const mark of pageMarks) {
     const x = halfWidthToX(mark.halfWidth, page, margin);
     const y = stationToY(mark.station, page, margin);
-    doc.line(x - half, y, x + half, y);
-    doc.line(x, y - half, x, y + half);
+    if (mark.edge === "row") {
+      // The shared boundary is a horizontal station line — the crossing tick is vertical.
+      doc.line(x, y - half, x, y + half);
+    } else {
+      // The shared boundary is a vertical half-width line — the crossing tick is horizontal.
+      doc.line(x - half, y, x + half, y);
+    }
   }
 }
 
@@ -339,9 +346,9 @@ export function templateHowToWrappedLines(layout: TemplateLayout, doc: jsPDF, in
   return wrapped;
 }
 
-/** The nose-page how-to box's own rectangle — computed once so the drawing function agrees with
- * itself on exactly the same box, including its height, which now varies with how many lines
- * defect 1's wrapping produced. */
+/** The nose-page how-to box's own rectangle — computed once so the drawing function and the
+ * furniture-collision math (`pageZeroFurnitureZone` below) agree on exactly the same box,
+ * including its height, which now varies with how many lines defect 1's wrapping produced. */
 function howToBoxRect(
   doc: jsPDF,
   layout: TemplateLayout,
@@ -372,6 +379,50 @@ function drawHowToBox(doc: jsPDF, layout: TemplateLayout, page: TemplatePage, ma
   lines.forEach((line, i) => {
     doc.text(line, x + HOWTO_BOX_PADDING_MM, y + HOWTO_BOX_PADDING_MM + (i + 1) * HOWTO_BOX_LINE_HEIGHT_MM - 1.5);
   });
+}
+
+/** The scale square's own rectangle — matches `drawScaleSquare`'s placement exactly, so the
+ * furniture-avoidance zone below is built from the real drawn area, not a guess. */
+function scaleSquareRect(margin: number, paperWidthMm: number): { x: number; y: number; width: number; height: number } {
+  return {
+    x: paperWidthMm - margin - SCALE_SQUARE_MM,
+    y: margin,
+    width: SCALE_SQUARE_MM,
+    height: SCALE_SQUARE_MM,
+  };
+}
+
+/** Converts the nose page's own scale-square + how-to box footprint (in page-local millimetres)
+ * into a `FurnitureZone` in the board's absolute station/half-width frame, for
+ * `matchMarkPositions` to steer its column-overlap marks away from — the pure-math half of
+ * "furniture placement accounts for mark positions and vice versa" (post-checkpoint fix, defect
+ * 4: a match mark must never land on top of the how-to box's own text, as it did in the reported
+ * photo). */
+function pageZeroFurnitureZone(
+  doc: jsPDF,
+  layout: TemplateLayout,
+  page: TemplatePage,
+  margin: number,
+  paperWidthMm: number,
+): FurnitureZone {
+  const square = scaleSquareRect(margin, paperWidthMm);
+  const howTo = howToBoxRect(doc, layout, margin, paperWidthMm);
+
+  const xMin = Math.min(square.x, howTo.x);
+  const xMax = paperWidthMm - margin;
+  const yMin = margin;
+  const yMax = howTo.y + howTo.height;
+
+  const halfWidthAtXMin = xMin - margin + page.halfWidthRange[0];
+  const halfWidthAtXMax = xMax - margin + page.halfWidthRange[0];
+  const stationAtYMin = page.stationRange[1] - (yMin - margin);
+  const stationAtYMax = page.stationRange[1] - (yMax - margin);
+
+  return {
+    pageIndex: page.index,
+    station: [mm(Math.min(stationAtYMin, stationAtYMax)), mm(Math.max(stationAtYMin, stationAtYMax))],
+    halfWidth: [mm(halfWidthAtXMin), mm(halfWidthAtXMax)],
+  };
 }
 
 function drawPageLabel(
@@ -436,8 +487,8 @@ export function templateNameBlockDimsText(dims: BuildTemplatePdfOptions["dims"])
 
 /** The name block's dims row, wrapped to the box's own inner width, plus the box's total height
  * given how many lines that wrapping produced — one source of truth shared by `drawNameBlock`
- * (which draws it) and anything else that needs the box's real footprint. Exported for
- * testability. */
+ * (which draws it) and `templatePageZeroFurnitureRects`/`pageZeroFurnitureZone`-adjacent code that
+ * needs the box's real footprint for containment and overlap checks. Exported for testability. */
 export function nameBlockContent(
   doc: jsPDF,
   dims: BuildTemplatePdfOptions["dims"],
@@ -508,8 +559,13 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
   doc.setDrawColor(0);
   doc.setTextColor(0);
 
+  const pageZero = layout.pages[0];
+  // Computed once, ahead of the page loop, so `matchMarkPositions` can steer its own marks clear
+  // of exactly the rectangle the nose page's scale square and how-to box actually occupy —
+  // "furniture placement accounts for mark positions and vice versa" (defect 4).
+  const furnitureZone = pageZeroFurnitureZone(doc, layout, pageZero, margin, paperDims.width);
   const placements = markPlacements(layout, marks, geometry);
-  const matchMarks = matchMarkPositions(layout);
+  const matchMarks = matchMarkPositions(layout, [furnitureZone]);
 
   layout.pages.forEach((page, i) => {
     if (i > 0) doc.addPage(paper, "portrait");
@@ -527,6 +583,65 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
   });
 
   return doc;
+}
+
+/** A rectangle of drawn page furniture, in one page's own local millimetre frame (the same x/y
+ * space `doc.rect`/`doc.text` draw into) — the pure-test half of "furniture never overlaps
+ * furniture" (post-checkpoint fix, defect 4). */
+export interface TemplateFurnitureRect {
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Every piece of fixed furniture the nose page (page 0) draws — scale square, how-to box, name
+ * block, and every match-mark tick that lands on page 0 (each treated as a small square around
+ * its own centre point) — computed exactly the way `buildTemplatePdf` computes them, so a test can
+ * assert none of them overlap without re-deriving the drawing math itself. */
+export function templatePageZeroFurnitureRects(options: BuildTemplatePdfOptions): TemplateFurnitureRect[] {
+  const { layout, geometry, dims, paper } = options;
+  const paperDims = PAPER_MM[paper];
+  const margin = layout.margin;
+  const page = layout.pages[0];
+  const doc = new jsPDF({ unit: "mm", format: paper, orientation: "portrait" });
+
+  const rects: TemplateFurnitureRect[] = [];
+
+  const square = scaleSquareRect(margin, paperDims.width);
+  rects.push({ name: "scale-square", ...square });
+
+  const howTo = howToBoxRect(doc, layout, margin, paperDims.width);
+  rects.push({ name: "how-to-box", x: howTo.x, y: howTo.y, width: howTo.width, height: howTo.height });
+
+  const { height: nameBoxHeight } = nameBlockContent(doc, dims);
+  const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, nameBoxHeight, NAME_BOX_CLEARANCE_MM);
+  rects.push({
+    name: "name-block",
+    x: halfWidthToX(placement.halfWidthStart, page, margin),
+    y: stationToY(placement.topStation, page, margin),
+    width: NAME_BOX_WIDTH_MM,
+    height: nameBoxHeight,
+  });
+
+  const furnitureZone = pageZeroFurnitureZone(doc, layout, page, margin, paperDims.width);
+  const half = MATCH_MARK_SIZE_MM / 2;
+  matchMarkPositions(layout, [furnitureZone])
+    .filter((mark) => mark.pageIndex === 0)
+    .forEach((mark, i) => {
+      const x = halfWidthToX(mark.halfWidth, page, margin);
+      const y = stationToY(mark.station, page, margin);
+      rects.push({ name: `match-mark-${i}`, x: x - half, y: y - half, width: MATCH_MARK_SIZE_MM, height: MATCH_MARK_SIZE_MM });
+    });
+
+  return rects;
+}
+
+/** Axis-aligned rectangle overlap test — exported so the test file can assert on
+ * `templatePageZeroFurnitureRects`' output without reimplementing this check itself. */
+export function rectsOverlap(a: TemplateFurnitureRect, b: TemplateFurnitureRect): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 /** Slugifies a board name into a safe file-name fragment (alphanumerics and hyphens only) — a
