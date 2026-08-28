@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 02
-current_phase_name: accounts-saved-designs
-status: verifying
-stopped_at: "Completed quick task 260827-wzw: move board card menu button to bottom-right corner"
-last_updated: "2026-08-28T06:52:23.103Z"
-last_activity: 2026-08-27
-last_activity_desc: Phase 02 execution started
+current_phase: 3
+current_phase_name: Volume, Templates & Verified Math
+status: planning
+stopped_at: Phase 02 complete, ready to plan Phase 3
+last_updated: "2026-08-28T07:11:46.398Z"
+last_activity: 2026-08-28
+last_activity_desc: Phase 02 complete, transitioned to Phase 3
 progress:
   total_phases: 2
   completed_phases: 2
@@ -20,17 +20,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-18)
+See: .planning/PROJECT.md (updated 2026-08-28)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 02 — accounts-saved-designs
+**Current focus:** Phase 3 — Volume, Templates & Verified Math
 
 ## Current Position
 
-Phase: 02 (accounts-saved-designs) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-08-27 — Completed quick task 260827-wzw: move the rename/duplicate button on the saved board cards to the bottom right corner
+Phase: 3 — Volume, Templates & Verified Math
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-28 — Phase 02 complete, transitioned to Phase 3
 
 Progress: [██████████] 100%
 
@@ -38,7 +38,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 4
+- Total plans completed: 10
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -47,6 +47,7 @@ Progress: [██████████] 100%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 4 | - | - |
+| 02 | 6 | - | - |
 
 **Recent Trend:**
 
@@ -137,8 +138,6 @@ Recent decisions affecting current work:
 - [minor/ui] Horizontal board view (nose left) as an option on the Template screen — `.planning/todos/pending/2026-08-23-horizontal-board-view-option.md`
 
 ### Blockers/Concerns
-
-yet.
 
 - [Phase 2] .env.example still needs to be created by hand (repo root, three lines: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=, CLERK_SECRET_KEY=, DATABASE_URL=) — the execution sandbox hard-blocks any tool write matching a .env* path, including this values-empty example file
 - [Phase 2] client_secret_*.json (Google OAuth download) still sits in the repo root — gitignored so it can't be committed, but should be moved out of the working tree entirely
@@ -238,6 +237,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-28T06:52:22.813Z
-Stopped at: Completed quick task 260827-wzw: move board card menu button to bottom-right corner
+Last session: 2026-08-28T07:15:00Z
+Stopped at: Phase 02 complete (UAT 3/3 passed, security 20/20 threats closed, migration 0001 applied to prod+dev), ready to plan Phase 3
 Resume file: None

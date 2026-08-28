@@ -26,13 +26,13 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 - [x] App calculates board volume (litres) live from the shaped geometry — Validated in Phase 1: Foundation — Port & Deploy the Design Tool
 - [x] User can view a 2D visualization of outline, rocker, rail, and fin placement — Validated in Phase 1: Foundation — Port & Deploy the Design Tool
 - [x] UI displays measurements in inches and litres while data is stored in metric internally — Validated in Phase 1: Foundation — Port & Deploy the Design Tool
+- [x] User can sign up, log in, and reset their password (email/password and Google via Clerk) — Validated in Phase 2: Accounts & Saved Designs
+- [x] User can save a design as a named model, reopen it, and see their list of saved models (plus rename, duplicate, delete from the rack) — Validated in Phase 2: Accounts & Saved Designs
 
 ### Active
 
-- [ ] User can sign up, log in, and reset their password (email/password via Clerk)
 - [ ] User can define a rocker curve (nose/tail rocker profile)
 - [ ] User can define a foil (thickness distribution along the board)
-- [ ] User can save a design as a named model, reopen it, and see their list of saved models
 - [ ] User can export/print a full-size template of the board design, tiled across pages
 
 ### Out of Scope
@@ -45,12 +45,16 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 
 ## Context
 
-**Current state (Phase 1 complete, 2026-08-21):** The prototype is ported and live at
-https://shaper-coral.vercel.app, auto-deploying from `main`. A shaper can pick one of four
-board-type presets, shape an outline, and read calculated rail-band, fin-placement, and volume
-numbers. Rail-band and fin-placement math is pure TypeScript under `lib/` and pinned against
-golden fixtures extracted from the original prototype. No accounts or saved designs yet — that is
-Phase 2.
+**Current state (Phase 2 complete, 2026-08-28):** The app is live at
+https://shaper-coral.vercel.app, auto-deploying from `main`, with accounts and saved designs
+working end to end. A shaper can sign in (email/password or Google via Clerk), design a board,
+and have it autosave to their own rack — named models they can reopen, rename, duplicate, and
+delete. Sign-in is a nudge, never a gate: every design tool works signed out. Data lives in
+Neon Postgres (two branches — production for the live site, a copy-on-write development branch
+for local work), every read and write ownership-scoped, with a 20-threat STRIDE register fully
+closed (02-SECURITY.md). Rail-band and fin-placement math remains pure TypeScript under `lib/`
+pinned against golden fixtures. Next: Phase 3 — tested geometry, live volume, printable
+templates ("the math is right").
 
 - Originated from the founder shaping a board with his son and hitting a wall: no good resource for where to start on templates, or how to place fins and shape rail contours for what they were picturing.
 - The founder has already compiled a library of fin-placement formulas — some rule-of-thumb, some complex equations derived from tables — sourced from semi-published shaping resources, organized per fin system/configuration.
@@ -78,6 +82,10 @@ Phase 2.
 | UI in inches/litres, internal storage in metric | Match shaper mental model in the UI while keeping consistent internal precision | — Pending |
 | Adopt prescribed stack (Next.js/TypeScript/Tailwind/shadcn, Neon+Drizzle, Clerk, Vercel, Vitest+Playwright) | Founder's build guide specifies this exact stack with rationale (Vercel+Next.js integration, Claude Code's familiarity with these tools) | — Pending |
 | Existing Claude Design prototype ported into repo during Phase 1, not rebuilt from scratch | Prototype already implements the rail-band and fin-placement "secret sauce" calculators | — Pending |
+| Sign-in is a nudge, never a gate — all design tools work signed out | Shapers should feel the tool's value before being asked for an account; enforced mechanically by `lib/auth/open-access.test.ts`, which fails if any route guard appears | Working (Phase 2) |
+| Autosave (debounced, with failure backoff) instead of manual-save-first | A shaper mid-design shouldn't lose work to a forgotten button; save state shown in the nav, dirty only clears when the server confirms the latest snapshot | Working (Phase 2) |
+| Delete has no trash/undo — a typed-name confirm is the safety (D-13) | Keeps v1 simple; recorded as an accepted risk (AR-02-02) so a later phase revisits it deliberately | Accepted (Phase 2) |
+| Two Neon branches: production + copy-on-write development; code deploys before production migrates | Local work can never touch a real shaper's boards, and the live site always understands the schema it reads | Working (Phase 2) |
 
 ## Evolution
 
@@ -97,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-21 after Phase 1 completion*
+*Last updated: 2026-08-28 after Phase 2 completion*
