@@ -5,7 +5,7 @@
 A web app for designing surfboards. Users set overall dimensions, then shape an outline
 curve, rail contour, foil and fin placement — with rail-band dimensions, fin placement and
 volume **calculated** from real shaping formulas rather than hand-drawn. Designs are saved
-as named models (saving lands in Phase 2 — see `.planning/ROADMAP.md`).
+as named models under a shaper's account.
 
 **Users are shapers and surfers, not developers.** Explain every change in plain English:
 what it does to the board or the screen, not which component re-renders. That applies to
@@ -18,19 +18,39 @@ answers, commit messages and summaries alike.
 - Vitest for unit tests — `lib/**/*.test.ts`, node environment
 - Deployed on Vercel from `main` → https://shaper-coral.vercel.app
 
-Prescribed but **not installed yet**: Clerk auth and Neon Postgres via Drizzle (Phase 2),
-Playwright (Phase 3). Board state currently lives in React context only and resets on
-reload.
+Clerk auth and Neon Postgres via Drizzle are installed and in use (accounts and saved
+designs, Phase 2). Playwright remains prescribed but not yet installed (Phase 3).
 
 ## Commands
 
 ```bash
-npm run dev     # dev server on localhost:3000
-npm test        # vitest run — all geometry suites must stay green
-npm run build   # run from the main checkout; Turbopack won't resolve next in a worktree
+npm run dev            # dev server on localhost:3000
+npm test                # vitest run — all geometry suites must stay green
+npm run build           # run from the main checkout; Turbopack won't resolve next in a worktree
 npm run lint
-npm run golden  # regenerate geometry fixtures from the prototype in reference/
+npm run golden          # regenerate geometry fixtures from the prototype in reference/
+npm run db:generate     # write a new migration file from the schema
+npm run db:migrate      # apply migrations to the development branch
+npm run db:migrate:prod # apply migrations to production
 ```
+
+## Database
+
+The Neon project has two branches. **production** is what the live site and Vercel
+previews read and write — a real shaper's saved boards live there. **development** is a
+full copy-on-write copy of production that local work uses instead, so nothing you do on
+your machine can touch a real board.
+
+`.env.local` is pulled with `npx vercel env pull .env.local` and points at the development
+branch — pull it, never hand-edit it to hold a production URL. If the development branch
+ever gets messy from local experiments, Neon's "Reset from parent" brings it back to a
+clean copy of production at any time.
+
+**Always push code before migrating production.** When a change touches both the code and
+the shape of the database, push to `main`, let Vercel finish deploying it, and only then
+run `npm run db:migrate:prod` — the deployed site has to already understand a new column
+before that column exists, or the live site ends up reading a database it wasn't built
+for. Never migrate production ahead of the code.
 
 ## Rule 1 — geometry math lives in `lib/geometry/`, pure and tested
 
