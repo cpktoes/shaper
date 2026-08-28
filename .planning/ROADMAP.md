@@ -66,7 +66,7 @@ Plans:
   4. User can reopen a previously saved model and continue editing it
   5. User can view a list of all their saved models
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans executed
 
 Plans:
 **Wave 1**
@@ -85,7 +85,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 02-06-PLAN.md — Production Clerk instance, Google credentials, the migrated production database, and the live acceptance walkthrough
+- [x] 02-06-PLAN.md — Production Clerk instance, Google credentials, the migrated production database, and the live acceptance walkthrough
 
 **UI hint**: yes
 
@@ -127,6 +127,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — Port & Deploy the Design Tool | 4/4 | Complete    | 2026-08-21 |
-| 2. Accounts & Saved Designs | 5/6 | In Progress|  |
+| 2. Accounts & Saved Designs | 6/6 | In Progress|  |
 | 3. Volume, Templates & Verified Math | 0/TBD | Not started | - |
 | 4. Rocker & Foil Editors | 0/TBD | Not started | - |

@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 02
 current_phase_name: accounts-saved-designs
-status: executing
-stopped_at: Completed 02-05-PLAN.md
-last_updated: "2026-08-27T22:59:15.244Z"
+status: verifying
+stopped_at: Completed 02-06-PLAN.md (Phase 2 complete, ready for verification)
+last_updated: "2026-08-28T01:24:18.851Z"
 last_activity: 2026-08-27
 last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-08-18)
 
 Phase: 02 (accounts-saved-designs) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-27 — Phase 02 execution started
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [█████████░] 90%
 | Phase 02 P03 | 30min | 3 tasks | 7 files |
 | Phase 02 P04 | 20min | 3 tasks | 7 files |
 | Phase 02 P05 | 15min | 2 tasks | 6 files |
+| Phase 02 P06 | 50min | 4 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 2] 02-05: SignInBanner reads dismissal via useSyncExternalStore (mirroring theme-provider.tsx), not a mounted-flag effect — avoids both a hydration mismatch and the react-hooks/set-state-in-effect lint error
 - [Phase ?]: [Phase 2] 02-05: dismissal persists in sessionStorage, not localStorage, so the banner returns on the shaper's next visit rather than being gone forever
 - [Phase ?]: [Phase 2] 02-05: stale-copy sweep (Phase 2/saving arrives/no persistence) found and rewrote design-store.tsx and site-nav.tsx doc-comments; setup-screen.tsx's placeholder marker was already resolved by 02-03
+- [Phase ?]: [Phase 2] 02-06: dev and prod share one Neon branch (verified via vercel env ls, not assumed) — no separate production migration was needed
+- [Phase ?]: [Phase 2] 02-06: Clerk sign-in dialog rebuilt on one combined <SignIn withSignUp> flow — the two-component design's own footer link pointed at an unreachable Account Portal subdomain on *.vercel.app
+- [Phase ?]: [Phase 2] 02-06: in-progress rack card gated on modelId === null, not dirty/saveStatus, so a saved-and-autosaving board stops wearing a false not-saved badge
 
 ### Pending Todos
 
@@ -136,6 +140,7 @@ Recent decisions affecting current work:
 yet.
 
 - [Phase 2] .env.example still needs to be created by hand (repo root, three lines: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=, CLERK_SECRET_KEY=, DATABASE_URL=) — the execution sandbox hard-blocks any tool write matching a .env* path, including this values-empty example file
+- [Phase 2] client_secret_*.json (Google OAuth download) still sits in the repo root — gitignored so it can't be committed, but should be moved out of the working tree entirely
 
 ### Quick Tasks Completed
 
@@ -230,6 +235,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-27T22:59:15.224Z
-Stopped at: Completed 02-05-PLAN.md
+Last session: 2026-08-28T01:24:18.828Z
+Stopped at: Completed 02-06-PLAN.md (Phase 2 complete, ready for verification)
 Resume file: None
