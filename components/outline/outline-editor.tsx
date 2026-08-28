@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { DownloadIcon } from "lucide-react";
+import { DownloadIcon, RulerIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
@@ -211,6 +211,25 @@ export function OutlineEditor() {
             className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
           >
             <RotateBoardIcon className="size-6" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowConstruction((v) => !v)}
+            aria-pressed={showConstruction}
+            aria-label={showConstruction ? "Hide construction lines" : "Show construction lines"}
+            title={showConstruction ? "Hide construction lines" : "Show construction lines"}
+            // Same box as the rotate/Export Template buttons beside it — border, radius, padding,
+            // focus ring all copied verbatim, per D-05's one-menu/one-button visual language. This
+            // is the ONE control in this toolbar the UI spec allows to take the accent fill: when
+            // showConstruction is true the button switches to bg-surf-accent border-surf-accent,
+            // and per the warning above (the accent-on-accent bug this codebase has been bitten by
+            // three times, see .planning/quick/260825-rmb-*/SUMMARY.md) the icon must switch to
+            // text-surf-on-accent in that state rather than staying on the muted ink token — hence
+            // the icon colour is folded into the same aria-pressed className expression as the fill,
+            // not left on a separate always-on class.
+            className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent aria-pressed:hover:bg-surf-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+          >
+            <RulerIcon className="size-6" />
           </button>
           <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center">
             <div className="relative flex min-h-0 w-full flex-1 justify-center">
