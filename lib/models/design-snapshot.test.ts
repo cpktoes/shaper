@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
-import { DEFAULT_FOIL_SPEC } from "@/lib/geometry/foil";
+import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import { DEFAULT_RAIL_BAND_SPEC } from "@/lib/geometry/rail-bands";
-import { DEFAULT_ROCKER_SPEC } from "@/lib/geometry/rocker";
+import { DEFAULT_ROCKER_SPEC, type RockerSpec } from "@/lib/geometry/rocker";
+import { mm } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
 import {
   DESIGN_SNAPSHOT_VERSION,
@@ -32,8 +33,19 @@ const FIXTURES: DesignSnapshotFields[] = BOARD_PRESETS.map((preset) => ({
 /** A distinct (non-default) rocker/foil pair, so the round-trip and reopen tests below actually
  * exercise real shaper-entered values rather than values that would also pass by coincidence if
  * the backfill path ran instead of the real one. */
-const DISTINCT_ROCKER = { noseTip: 130, nose12: 40, tail12: 12, tailTip: 60 };
-const DISTINCT_FOIL = { noseTip: 10, nose12: 35, center: 65, tail12: 42, tailTip: 8 };
+const DISTINCT_ROCKER: RockerSpec = {
+  noseTip: mm(130),
+  nose12: mm(40),
+  tail12: mm(12),
+  tailTip: mm(60),
+};
+const DISTINCT_FOIL: FoilSpec = {
+  noseTip: mm(10),
+  nose12: mm(35),
+  center: mm(65),
+  tail12: mm(42),
+  tailTip: mm(8),
+};
 
 /** Round-trips a fixture exactly the way a save and a reopen would: build, serialize over the
  * wire/DB boundary as JSON, then parse it back. */
