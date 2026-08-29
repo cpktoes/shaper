@@ -55,7 +55,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Templates & Export
 
-- [ ] **TMPL-01**: User can export a full-size (1:1 scale) printable template of the outline, tiled across multiple standard pages for taping together
+- [x] **TMPL-01**: User can export a full-size (1:1 scale) printable template of the outline, tiled across multiple standard pages for taping together
 
 ### Units
 
@@ -112,7 +112,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MODL-02 | Phase 2 | Complete |
 | MODL-03 | Phase 2 | Complete |
 | VIZ-01 | Phase 1 | Complete |
-| TMPL-01 | Phase 3 | Pending |
+| TMPL-01 | Phase 3 | Complete |
 | UNIT-01 | Phase 1 | Complete |
 
 **Coverage:**
