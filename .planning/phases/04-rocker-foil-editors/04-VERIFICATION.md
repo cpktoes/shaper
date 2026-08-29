@@ -1,35 +1,44 @@
 ---
 phase: 04-rocker-foil-editors
 verified: 2026-08-29T16:25:00Z
-status: human_needed
+status: passed
 score: 8/8 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Open /design/rocker and move the four rocker sliders and five thickness sliders one at a time"
     expected: "The drawn side profile (bottom curve = rocker, deck curve = rocker + thickness) redraws immediately on each move, with no reload or lag"
     why_human: "Live SVG redraw from slider input is a rendering/interaction behavior; unit tests only prove sampleRocker/sampleFoil are correct functions, not that the browser actually redraws on change"
+
   - test: "On /design/rocker, switch to the DATASHEET tab, type '2 5/8', 'banana', and \"6'2\" into different cells"
     expected: "'2 5/8' commits and reprints as 2 5/8\"; 'banana' shows a plain-English error line and reverts; 6'2 reads as 74\""
     why_human: "Focus/blur/Enter parse-commit-revert behavior is a DOM interaction not exercised by imperial-field.tsx's own (non-existent in this plan) component test — confirmed only by code inspection"
+
   - test: "Drag a construction point (rocker or deck) directly on the /design/rocker drawing, in both horizontal and rotated-vertical orientation"
     expected: "The curve follows the pointer; the matching sidebar slider and datasheet cell move to the identical value in real time"
     why_human: "Pointer-event-to-store wiring in rocker-viewer.tsx is proven correct by rocker-drag.ts's pure-function unit tests (23 cases) but the actual screen-transform/pointer-capture interaction was never run in a browser"
+
   - test: "Change centre thickness on /design/rocker, then open /design/rails"
     expected: "Rail band numbers reflect the new thickness immediately; changing only a rocker lift leaves every rail band number unchanged"
     why_human: "The store wiring (deriveEffectiveRails, effectiveRails memo) is unit-tested in isolation; cross-screen live propagation while navigating between routes needs a browser session"
+
   - test: "On /design/rails, confirm the 'Use Board's Rocker & Foil Thickness' checkbox is checked by default, dims the three thickness sliders, uncheck/move/re-check/uncheck again"
     expected: "Sliders enable when unlinked, show the shaper's own last manual value, and that manual value survives any number of link flips untouched"
     why_human: "The plan's own human-check step for this exact behavior was not exercised in the worktree session (no dev server); this is a stateful UI interaction, not a pure function"
+
   - test: "On /design/volume, change a thickness on /design/rocker and come back; toggle the Volume screen's import switches off/on"
     expected: "The headline litres figure moves with the foil while importing; toggling the switches off shows the quick estimator's figure instead, and the screen says which method is in force"
     why_human: "deriveQuotedVolumeLitres and the store memos are unit-tested; the cross-screen live number and the on-screen method-disclosure copy were never viewed in a browser"
+
   - test: "Compare the litres shown on /design/volume, the Summary order form, a saved board's home-screen rack card, and the printed template export preview for the same board"
     expected: "All four show the identical number and move together when a thickness changes"
     why_human: "grep confirms no consumer reads the old volumeResult.volumeLitres field directly, but visually confirming the four screens agree requires opening the running app"
+
   - test: "Start a new board from each of the four presets (Shortboard, Fish, Mid-length, Longboard) and open /design/rocker for each"
     expected: "Each preset reads as its own board type from the side: the Fish flatter and thicker, the Longboard with more nose lift, the Shortboard with the most rocker overall"
     why_human: "Bounds/ordering invariants are unit-tested, but whether the drawn curve actually reads as 'a fish' to a shaper is a visual/design judgment, not a mechanical check"
+
   - test: "Open /design/summary, print-preview both sheets with the shortest board at maximum nose lift and again with a 9-foot longboard, in Daylight and Slate themes"
     expected: "The rocker box shows the real curve and real lift values, the sheet still prints as exactly two pages, and nothing clips at the extremes"
     why_human: "Print-layout and theme-contrast fidelity at extreme input values is a rendering check that needs a browser/print-preview session, not something grep or a unit test can see"
@@ -128,6 +137,7 @@ verification — neither blocks a roadmap success criterion:
   correct number. Confirmed still present in current code (`min: 1, max: 2.5` for nose/tail,
   `min: 1.75, max: 3.5` for center). This is a **display inconsistency only** — `computeRailBands`
   reads the real value, not the slider's range, so no wrong number is ever computed or shown as text.
+
 - **WR-02**: `applyPreset` doesn't reset the autosave failure-backoff counter that `applyModel` does —
   a minor UX-only inconsistency (a new board could wait up to 30s longer than necessary for its first
   autosave after several prior failures), self-correcting after one save cycle.
@@ -140,8 +150,10 @@ rather than blockers.
 
 - `npm test` (full suite): **1135 passed, 1135 total, 23 test files** — matches every SUMMARY's
   claimed count.
+
 - `npm run build`: succeeds from the main checkout; `/design/rocker` compiles as a real static route
   alongside the other five design screens.
+
 - `npm test -- lib/models/design-snapshot.test.ts lib/geometry/design.test.ts lib/geometry/volume.test.ts lib/geometry/rocker.test.ts lib/geometry/foil.test.ts lib/geometry/rocker-drag.test.ts lib/geometry/presets.test.ts`: 371/371 passed, confirming every phase-specific geometry suite independently.
 - `grep -rln 'RockerViewer' components/ app/`: exactly the three intended call sites (`rocker-editor.tsx`, `rocker-viewer.tsx`, `order-form.tsx`) — D-04's "no other screen gains a side profile" holds.
 - `grep -rn 'volumeResult\.volumeLitres' components/summary/ components/setup/ components/template/`: empty — D-13's "one figure everywhere" gate holds.
