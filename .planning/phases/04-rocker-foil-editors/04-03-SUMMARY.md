@@ -141,6 +141,14 @@ None - no external service configuration required.
 - Thickness is now single-sourced from the foil through to the rail bands, with the standalone override intact — nothing else in the phase depends on this plan finishing first except the Summary order form's reserved rocker box (plan 04-05), which reads the same `foil`/`rails` fields already threaded through the store.
 - **Pending human verification** (not run in this worktree): open `/design/rails`, confirm the link checkbox is checked by default and dims the three sliders showing the foil's values, uncheck/move/re-check/uncheck again to confirm the manual value round-trips untouched, in both Daylight and Slate themes. `npm run build` was also not run in-worktree per this repo's environment notes (Turbopack can't resolve `next` outside the main checkout) — the orchestrator runs it after merge.
 
+## Self-Check: PASSED
+
+All 8 modified files (`lib/geometry/design.ts`, `lib/geometry/design.test.ts`,
+`components/design/design-store.tsx`, `lib/models/design-snapshot.ts`,
+`lib/models/design-snapshot.test.ts`, `components/rails/rail-controls.tsx`,
+`components/rails/rail-band-editor.tsx`, `components/setup/board-rack-card.tsx`) are tracked in
+git. All three commit hashes (`fda4346`, `7e7ecd6`, `1bc0f65`) are present in `git log`.
+
 ---
 *Phase: 04-rocker-foil-editors*
 *Completed: 2026-08-29*
