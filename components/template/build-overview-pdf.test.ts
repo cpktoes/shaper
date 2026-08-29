@@ -1,0 +1,172 @@
+import { describe, expect, it } from "vitest";
+import { buildOutline } from "@/lib/geometry/outline";
+import { BOARD_PRESETS } from "@/lib/geometry/presets";
+import { inchesToMm } from "@/lib/geometry/units";
+import {
+  buildOverviewPdf,
+  overviewFileName,
+  overviewLengthLabelText,
+  overviewSpecLines,
+  overviewStationLines,
+} from "./build-overview-pdf";
+
+function buildOptions(paper: "letter" | "a4" = "letter", presetIndex = 0) {
+  const preset = BOARD_PRESETS[presetIndex];
+  const geometry = buildOutline(preset.outline);
+  return { geometry, outline: preset.outline, paper, boardName: preset.name };
+}
+
+describe("buildOverviewPdf", () => {
+  it("produces exactly one page of valid PDF bytes", () => {
+    const options = buildOptions();
+
+    const doc = buildOverviewPdf(options);
+
+    expect(doc.getNumberOfPages()).toBe(1);
+
+    const bytes = doc.output("arraybuffer");
+    expect(bytes.byteLength).toBeGreaterThan(0);
+    const header = new Uint8Array(bytes.slice(0, 4));
+    expect(String.fromCharCode(...header)).toBe("%PDF");
+  });
+
+  it("builds without throwing for every preset, both paper sizes, and an empty board name", () => {
+    for (const preset of BOARD_PRESETS) {
+      const geometry = buildOutline(preset.outline);
+      for (const paper of ["letter", "a4"] as const) {
+        const doc = buildOverviewPdf({ geometry, outline: preset.outline, paper, boardName: "" });
+        expect(doc.getNumberOfPages()).toBe(1);
+      }
+    }
+  });
+
+  it("builds without throwing at the widepoint-width extreme (25in, multi-column territory for the tiled template)", () => {
+    const preset = BOARD_PRESETS[0];
+    const outline = { ...preset.outline, widePointWidth: inchesToMm(25) };
+    const geometry = buildOutline(outline);
+    const doc = buildOverviewPdf({ geometry, outline, paper: "letter", boardName: preset.name });
+    expect(doc.getNumberOfPages()).toBe(1);
+  });
+
+  it("builds without throwing for a diamond-tail board (depth line present) and a swallow-tail board", () => {
+    const diamondOutline = {
+      ...BOARD_PRESETS[0].outline,
+      tail: { kind: "diamond" as const, endWidth: inchesToMm(10), depth: inchesToMm(3) },
+    };
+    const swallowOutline = {
+      ...BOARD_PRESETS[0].outline,
+      tail: { kind: "swallow" as const, endWidth: inchesToMm(8), crotchDepth: inchesToMm(3) },
+    };
+
+    const diamondGeometry = buildOutline(diamondOutline);
+    const diamondDoc = buildOverviewPdf({
+      geometry: diamondGeometry,
+      outline: diamondOutline,
+      paper: "letter",
+      boardName: "Diamond Test",
+    });
+    expect(diamondDoc.getNumberOfPages()).toBe(1);
+
+    const swallowGeometry = buildOutline(swallowOutline);
+    const swallowDoc = buildOverviewPdf({
+      geometry: swallowGeometry,
+      outline: swallowOutline,
+      paper: "a4",
+      boardName: "",
+    });
+    expect(swallowDoc.getNumberOfPages()).toBe(1);
+  });
+});
+
+describe("overviewSpecLines", () => {
+  it("carries every prototype spec line the design state supports", () => {
+    const options = buildOptions();
+    const lines = overviewSpecLines(options.outline, options.geometry);
+    const joined = lines.join(" ");
+
+    expect(joined).toContain("Length:");
+    expect(joined).toContain("Nose Angle:");
+    expect(joined).toContain("Fullness:");
+    expect(joined).toContain("Nose Width @12\"");
+    expect(joined).toContain("Widepoint Width:");
+    expect(joined).toContain("WP Offset:");
+    expect(joined).toContain("Rail Length:");
+    expect(joined).toContain("Tail Shape:");
+    expect(joined).toContain("Tail Block:");
+    expect(joined).toContain("Tail Angle:");
+    expect(joined).toContain("Tail Width @12\"");
+    expect(joined).toContain("Template Area:");
+    expect(joined).toContain("sq in");
+    expect(joined).toContain("sq ft");
+  });
+
+  it("includes a Swallow Depth line only for a swallow tail", () => {
+    const swallowOutline = {
+      ...BOARD_PRESETS[0].outline,
+      tail: { kind: "swallow" as const, endWidth: inchesToMm(8), crotchDepth: inchesToMm(3) },
+    };
+    const geometry = buildOutline(swallowOutline);
+    const lines = overviewSpecLines(swallowOutline, geometry);
+    expect(lines.some((l) => l.startsWith("Swallow Depth:"))).toBe(true);
+    expect(lines.some((l) => l.startsWith("Diamond Depth:"))).toBe(false);
+  });
+
+  it("includes a Diamond Depth line (the geometry's effective, capped depth) only for a diamond tail", () => {
+    const diamondOutline = {
+      ...BOARD_PRESETS[0].outline,
+      tail: { kind: "diamond" as const, endWidth: inchesToMm(10), depth: inchesToMm(3) },
+    };
+    const geometry = buildOutline(diamondOutline);
+    const lines = overviewSpecLines(diamondOutline, geometry);
+    expect(lines.some((l) => l.startsWith("Diamond Depth:"))).toBe(true);
+    expect(lines.some((l) => l.startsWith("Swallow Depth:"))).toBe(false);
+  });
+
+  it("omits both depth lines for pin/round/squash tails", () => {
+    const squashOutline = {
+      ...BOARD_PRESETS[0].outline,
+      tail: { kind: "squash" as const, endWidth: inchesToMm(5) },
+    };
+    const geometry = buildOutline(squashOutline);
+    const lines = overviewSpecLines(squashOutline, geometry);
+    expect(lines.some((l) => l.startsWith("Swallow Depth:"))).toBe(false);
+    expect(lines.some((l) => l.startsWith("Diamond Depth:"))).toBe(false);
+  });
+
+  it("prints both independent rail-length values, not the prototype's single control", () => {
+    const options = buildOptions();
+    const lines = overviewSpecLines(options.outline, options.geometry);
+    const railLine = lines.find((l) => l.startsWith("Rail Length:"));
+    expect(railLine).toContain(`Tail ${options.outline.tailRailLength}%`);
+    expect(railLine).toContain(`Nose ${options.outline.noseRailLength}%`);
+  });
+});
+
+describe("overviewLengthLabelText", () => {
+  it("formats feet-and-inches plus the plain inch total, e.g. 6'0\" - 72\"", () => {
+    expect(overviewLengthLabelText(inchesToMm(72))).toBe(`6'0" - 72"`);
+  });
+});
+
+describe("overviewStationLines", () => {
+  it("returns exactly three stations: nose @12, widepoint/center, tail @12", () => {
+    const options = buildOptions();
+    const lines = overviewStationLines(options.geometry);
+    expect(lines.map((l) => l.label)).toEqual(['NOSE @ 12"', "WIDEPOINT/CENTER", 'TAIL @ 12"']);
+    expect(lines[1].station).toBe(options.geometry.widePointStation);
+  });
+});
+
+describe("overviewFileName", () => {
+  it("slugifies a board name", () => {
+    expect(overviewFileName("My Fish 5'8\"")).toBe("my-fish-5-8-overview.pdf");
+  });
+
+  it("falls back to a fixed name for an empty board name", () => {
+    expect(overviewFileName("")).toBe("board-overview.pdf");
+  });
+
+  it("falls back for a name that slugifies to nothing", () => {
+    expect(overviewFileName("***")).toBe("board-overview.pdf");
+  });
+});
