@@ -319,6 +319,77 @@ maximum-widepoint-width board's widepoint line is asserted to cross more than on
 `templatePageZeroBoxRect`, across every preset, both paper sizes, and the forced multi-column
 case).
 
+### Round 4 — a fourth real print, two more defects: overlapping dimension labels and squash-shaped block tails
+
+The user printed again and reported two more defects, in their own words: "Center and widepoint
+dims overlap when close to eachother or equal. Swallow and diamond tail appears like a squash (it
+doesn't reflect the depth)." Each was fixed and committed atomically as its own `fix(03-03): ...`
+commit.
+
+**1. The CENTER and WIDEPOINT dimension labels overprinted each other whenever the widepoint sat
+close to, or exactly on, the board's own mid-length.** Both marks draw their printed label at
+their own station's height; when a shaper's widepoint offset is small (or the fish preset's own
+default of zero), the two labels land on top of or nearly on top of each other and become
+illegible. `markPlacements` (`lib/geometry/template.ts`) now runs CENTER and WIDEPOINT through a
+new `resolveCenterWidepointLabelCollision` step before returning: when the two stations coincide
+(within a `1e-6`mm float-equality epsilon), they merge into a single `"Widepoint / Center"`
+placement — the same pairing the Overview Sheet's own coincident case already prints
+(`build-overview-pdf.ts`'s `"WIDEPOINT / CENTER"` line), in this file's own Title Case label style
+— dropping the separate widepoint entry entirely. When the two stations are merely close (within a
+new `MARK_LABEL_COLLISION_THRESHOLD_MM`, 10mm — comfortably above one printed label's own height
+plus its tick offset) but not coincident, both labels stay and each carries a new `labelOffsetMm`
+field nudging it half the threshold away from the shared station, in opposite directions, so the
+two rows of text always end up separated by exactly the threshold regardless of how small the true
+station difference is. `drawMarks` (`components/template/build-template-pdf.ts`) adds
+`labelOffsetMm` to each label's drawn y-position; a new exported `markLabelRect` mirrors that same
+single-line placement math so a test can assert two labels' printed rectangles never overlap,
+without reading the rendered PDF page.
+
+**2. Swallow and diamond tails printed with the same straight square cut a squash tail gets,
+losing all their depth.** The tail page's closing cut was drawn from a single `tailBlock` mark at
+one station (`geometry.tailPodStation`) regardless of tail shape — correct only for squash, whose
+rail corner and stringer tip genuinely share one station. A diamond's point extends AFT of its own
+rail corners (the tip sits at station 0, the corner sits forward of it at the capped diamond
+depth); a swallow's notch point sits FORWARD of its corner (cut back toward the nose, at the
+crotch depth) — using the corner's own station for both ends erased that depth on both shapes and
+made every block tail look like a squash. A new pure function, `computeTailClosure`
+(`lib/geometry/template.ts`), reads the corner and tip stations `buildOutline`
+(`lib/geometry/outline.ts`) already derives per tail kind — `geometry.tailPodStation` for the
+corner, `geometry.centreCloseStation` for the tip — with no need to import `TailShape` at all,
+since `OutlineGeometry` already carries the right number in the right field for every tail kind by
+construction. `tailClosureSegments` clips that diagonal line across every page it crosses (Liang-
+Barsky rectangle clipping, since — unlike every other line this module draws — the tail closure
+line is not axis-aligned), the same way `markLineSegments` already clips the other working marks'
+lines per page. `markLineSegments` no longer emits a `tailBlock` line segment (the mark's LABEL is
+unaffected, still coming from `markPlacements`); a new `drawTailClosure`
+(`components/template/build-template-pdf.ts`) draws the real cut, solid, at the outline curve's
+own line weight, wired into `buildTemplatePdf` alongside the existing mark-drawing call. A squash
+tail's corner and tip both resolve to station 0, so this collapses back to the exact same straight
+cut the old code drew — no behaviour change there.
+
+Both defects share the same two-layer split as every earlier round — the pure geometry in
+`lib/geometry/template.ts` first, the jsPDF drawing that consumes it second — so this round is two
+atomic commits rather than one per defect: `cef3ee0` (both fixes' geometry math and their
+`lib/geometry/template.test.ts` coverage) and `2bb1c4e` (both fixes' drawing wiring and their
+`components/template/build-template-pdf.test.ts` coverage).
+
+**Verification:** `npm test` (991/991, up from 965/965 baseline), `npx tsc --noEmit` (0 errors
+beyond the pre-existing, worktree-only `LayoutProps` phantom errors documented above), and
+`npm run lint` (0 errors, the same 9 pre-existing unrelated warnings) all pass after both fixes.
+New/updated test coverage: a "CENTER/WIDEPOINT label collision" describe block in
+`lib/geometry/template.test.ts` covering all three regimes (far apart — shortboard preset, no
+offset nudge; close — a custom 5mm offset, both labels nudged half the threshold apart in opposite
+directions; coincident — the fish preset's own zero offset, merging into one placement), a mirror
+`markLabelRect` describe block in `components/template/build-template-pdf.test.ts` asserting the
+rendered label rectangles never overlap in the far/close cases and that only one rect exists in
+the coincident case; a `computeTailClosure`/`tailClosureSegments` describe block asserting the
+undefined case for pin/round, the collapsed single-station case for squash, the aft-of-corner tip
+for a constructed diamond spec, the forward-of-corner notch for the fish preset's own swallow tail,
+every clipped segment landing inside its own page rectangle across every preset and paper size,
+and a forced wide-diamond case whose closure spans more than one column with no gap; plus a
+`buildTemplatePdf` "tail closure" describe block building without throwing for diamond and swallow
+tails at both paper sizes.
+
 ## Self-Check: PASSED
 
 - FOUND: lib/geometry/template.ts (markPlacements, templatePageBoxes, markLineSegments)
