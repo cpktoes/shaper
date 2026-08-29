@@ -246,6 +246,90 @@ export function markPlacements(
   return placements;
 }
 
+/** One page's own clipped portion of a working mark's stringer-to-curve line (round 3
+ * post-checkpoint fix, defect 1: "the station lines should terminate at the outline curve" — the
+ * earlier attempt at extending the dashed lines all the way to the page's own printable edge was
+ * the wrong fix; the real bug was that a wide board's line, which needs to keep going from the
+ * stringer out to the curve across MORE than one column's page, only ever got drawn on the
+ * column-0 page, so it visually stopped at that page's own edge well short of the curve, which
+ * lives on the neighbouring column's sheet). */
+export interface TemplateMarkLineSegment {
+  mark: keyof TemplateMarks;
+  /** Which page this segment is drawn on. */
+  pageIndex: number;
+  /** The mark's station, in the board's own absolute station frame. */
+  station: Mm;
+  /** [start, end] half-width bounds of THIS page's own portion of the full stringer (0) to curve
+   * (`halfWidthExtent`) span, clipped to this page's own printable half-width range — including
+   * into the overlap strip it shares with a column neighbour, exactly like the outline curve
+   * itself is clipped per page. Never runs past `halfWidthExtent` into blank paper on the last
+   * page a mark's line touches. */
+  halfWidthRange: [Mm, Mm];
+  /** True only for the column-0 page — the one page in a mark's span whose printed dimension
+   * label stays inside the box region, never following the line out into a further column's
+   * overlap strip. */
+  hasLabel: boolean;
+  /** The board's own full half-width at this mark's station (`sampleOutline`) — the line's true,
+   * unclipped end point; the same value on every segment this mark produces. */
+  halfWidthExtent: Mm;
+  label: string;
+}
+
+/**
+ * Splits every working mark's full stringer-to-curve line into the one or more page-local
+ * segments needed to draw it in full across a multi-column board — a tick always starts at the
+ * stringer (half-width 0, which only column 0 touches) and always ends exactly at the curve
+ * (`sampleOutline` at that station), but on a board wide enough to tile more than one column (the
+ * widepoint, by definition the board's widest point, routinely is), that span crosses into a
+ * second or third column's own page. Each page this span touches gets its own clipped segment
+ * here; `hasLabel` marks the single column-0 segment that also carries the printed dimension
+ * text. A mark whose station falls inside a row-overlap band produces this same set of segments
+ * once per overlapping row, exactly as `markPlacements` already does for the label placement
+ * itself.
+ */
+export function markLineSegments(
+  layout: TemplateLayout,
+  marks: TemplateMarks,
+  geometry: OutlineGeometry,
+): TemplateMarkLineSegment[] {
+  const segments: TemplateMarkLineSegment[] = [];
+  const markNames = Object.keys(marks) as (keyof TemplateMarks)[];
+
+  for (const markName of markNames) {
+    const station = marks[markName];
+    if (station === undefined) continue; // tailBlock is absent for a pin/round tail
+    const halfWidthExtent = sampleOutline(geometry, station);
+
+    const rows = layout.pages
+      .filter((page) => page.col === 0 && station >= page.stationRange[0] && station <= page.stationRange[1])
+      .map((page) => page.row);
+
+    for (const row of rows) {
+      const rowPages = layout.pages.filter((page) => page.row === row).sort((a, b) => a.col - b.col);
+
+      for (const page of rowPages) {
+        const start = Math.max(page.halfWidthRange[0], 0);
+        const end = Math.min(page.halfWidthRange[1], halfWidthExtent);
+        if (end <= start) {
+          if (page.halfWidthRange[0] >= halfWidthExtent) break; // no further column reaches the curve
+          continue;
+        }
+        segments.push({
+          mark: markName,
+          pageIndex: page.index,
+          station,
+          halfWidthRange: [mm(start), mm(end)],
+          hasLabel: page.col === 0,
+          halfWidthExtent,
+          label: MARK_LABELS[markName],
+        });
+      }
+    }
+  }
+
+  return segments;
+}
+
 /**
  * One page's own alignment box, in the board's own absolute station/half-width frame — the trim
  * line a shaper lines sheets up against, drawn on every page (round 2 post-checkpoint fix,

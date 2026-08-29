@@ -16,10 +16,12 @@ import {
   NAME_BOX_CLEARANCE_MM,
   NAME_BOX_WIDTH_MM,
   PAPER_MM,
+  markLineSegments,
   markPlacements,
   nameBlockPlacement,
   type PaperSize,
   type TemplateLayout,
+  type TemplateMarkLineSegment,
   type TemplateMarkPlacement,
   type TemplateMarks,
   type TemplatePage,
@@ -73,6 +75,14 @@ const OUTLINE_LINE_WEIGHT_MM = 0.5;
 const STRINGER_LINE_WEIGHT_MM = 0.35;
 const STRINGER_DASH_PATTERN = [16, 4, 4, 4];
 const SCALE_SQUARE_LINE_WEIGHT_MM = 0.35;
+/** Room reserved below the scale square for its own caption text (round 3 post-checkpoint fix,
+ * defect 2: "the 2in box and instructions are not inside the margin/line up lines") — split into a
+ * gap and a text-height allowance so the scale-square furniture rectangle's own bottom edge lands
+ * exactly where the how-to box begins (`SCALE_SQUARE_CAPTION_GAP_MM + SCALE_SQUARE_CAPTION_HEIGHT_MM`
+ * equals `HOWTO_BOX_TOP_GAP_MM` below), never overlapping it even after this round's containment
+ * fix. */
+const SCALE_SQUARE_CAPTION_GAP_MM = 5;
+const SCALE_SQUARE_CAPTION_HEIGHT_MM = 3;
 const NAME_BOX_LINE_WEIGHT_MM = 0.25;
 const NAME_BOX_PADDING_MM = 3;
 /** The name block's own text width budget — Print Artifact Contract #6: a name too long for the
@@ -216,20 +226,51 @@ function drawPageBox(doc: jsPDF, page: TemplatePage, box: TemplatePageBox, margi
   }
 }
 
-/** D-07's 2in x 2in scale-check square — nose page only, in the top-outward corner the curve
- * never reaches (near the nose tip the outline hugs the stringer, so that corner is always
- * clear). */
-function drawScaleSquare(doc: jsPDF, page: TemplatePage, margin: number, paperWidthMm: number): void {
+/** Converts one page's own alignment box (`TemplatePageBox`, the board's absolute
+ * station/half-width space) into this page's own local millimetre rectangle — the same x/y space
+ * `TemplateFurnitureRect` and every `doc.rect`/`doc.text` call already draw into. Round 3
+ * post-checkpoint fix, defect 2: every piece of page-0 furniture is now anchored to this
+ * rectangle's own edges, not the page's raw printable edge, so a multi-column board's overlap
+ * inset never pushes the scale square or how-to box out into the strip a neighbouring sheet gets
+ * taped over. */
+function pageBoxRect(box: TemplatePageBox, page: TemplatePage, margin: number): TemplateFurnitureRect {
+  const left = halfWidthToX(box.halfWidthRange[0], page, margin);
+  const right = halfWidthToX(box.halfWidthRange[1], page, margin);
+  const top = stationToY(box.stationRange[1], page, margin);
+  const bottom = stationToY(box.stationRange[0], page, margin);
+  return { name: "alignment-box", x: left, y: top, width: right - left, height: bottom - top };
+}
+
+/** The scale square's own rectangle, including its caption's reserved height — anchored to the
+ * page's own alignment box (round 3 post-checkpoint fix, defect 2: "the 2in box... [is] not
+ * inside the margin/line up lines"), matches `drawScaleSquare`'s placement exactly, so the
+ * furniture-avoidance and containment checks below are built from the real drawn area. */
+function scaleSquareRect(box: TemplatePageBox, page: TemplatePage, margin: number): TemplateFurnitureRect {
+  const boxRect = pageBoxRect(box, page, margin);
+  return {
+    name: "scale-square",
+    x: boxRect.x + boxRect.width - SCALE_SQUARE_MM,
+    y: boxRect.y,
+    width: SCALE_SQUARE_MM,
+    height: SCALE_SQUARE_MM + SCALE_SQUARE_CAPTION_GAP_MM + SCALE_SQUARE_CAPTION_HEIGHT_MM,
+  };
+}
+
+/** D-07's 2in x 2in scale-check square — nose page only, in the alignment box's own top-outward
+ * corner (round 3 post-checkpoint fix, defect 2), a corner the curve never reaches (near the nose
+ * tip the outline hugs the stringer, so that corner is always clear). */
+function drawScaleSquare(doc: jsPDF, page: TemplatePage, margin: number, box: TemplatePageBox): void {
   if (page.index !== 0) return;
-  const x = paperWidthMm - margin - SCALE_SQUARE_MM;
-  const y = margin;
+  const { x, y } = scaleSquareRect(box, page, margin);
   doc.setDrawColor(0);
   doc.setLineWidth(SCALE_SQUARE_LINE_WEIGHT_MM);
   doc.rect(x, y, SCALE_SQUARE_MM, SCALE_SQUARE_MM, "S");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(0);
-  doc.text('2" x 2" — measure before taping', x + SCALE_SQUARE_MM / 2, y + SCALE_SQUARE_MM + 5, { align: "center" });
+  doc.text('2" x 2" — measure before taping', x + SCALE_SQUARE_MM / 2, y + SCALE_SQUARE_MM + SCALE_SQUARE_CAPTION_GAP_MM, {
+    align: "center",
+  });
 }
 
 /** The dimension text drawn beside each working mark — the board's own full width (both rails,
@@ -247,35 +288,55 @@ export function templateMarkLabelText(placement: TemplateMarkPlacement): string 
 }
 
 /** Draws the working marks that fall on this page (D-06 — nose 12in, tail 12in, centre,
- * widepoint; no every-12in station ladder — plus Tail Block when this tail has one). Each tick
- * runs from the stringer (half-width 0) out to `placement.halfWidthExtent`; the widepoint tick
- * gets the dotted `2 3` pattern and the tailblock tick is drawn SOLID at the outline curve's own
- * weight (it is a real cut edge, not a measurement reference — round 2 post-checkpoint fix,
- * defect 1), so all five are told apart by dash pattern/weight alone, never by colour. Each tick
- * is labeled with its name and the board's own width there, measured with jsPDF's own
- * `getTextWidth` against the room actually available before the curve — split onto two stacked
- * lines rather than let either run past the tick's own outer end when a narrower station doesn't
- * have room for one (post-checkpoint fix, defects 2 and 4). */
-function drawMarks(doc: jsPDF, page: TemplatePage, margin: number, placements: TemplateMarkPlacement[]): void {
+ * widepoint; no every-12in station ladder — plus Tail Block when this tail has one). Each mark's
+ * line is drawn from `segments` (`markLineSegments`), one clipped call per page it touches — a
+ * board wide enough to tile more than one column has its widepoint (and, at the row-overlap band,
+ * possibly its other marks too) span more than one page, and every one of those pages draws its
+ * own portion of the stringer-to-curve line, never stopping short of the curve just because the
+ * curve itself lives on a further column's sheet (round 3 post-checkpoint fix, defect 1: "the
+ * center and widepoint lines don't extend to the edge" — the actual bug was the line vanishing
+ * partway across a multi-column board, not the line failing to reach the printable edge). The
+ * widepoint gets the dotted `2 3` pattern and the tailblock is drawn SOLID at the outline curve's
+ * own weight (it is a real cut edge, not a measurement reference — round 2 post-checkpoint fix,
+ * defect 1), so all five are told apart by dash pattern/weight alone, never by colour. The printed
+ * dimension label is drawn once per mark, from `placements` (`markPlacements`, unchanged — always
+ * the column-0 segment), measured with jsPDF's own `getTextWidth` against the room actually
+ * available before the curve — split onto two stacked lines rather than let either run past the
+ * tick's own outer end when a narrower station doesn't have room for one (post-checkpoint fix,
+ * defects 2 and 4). */
+function drawMarks(
+  doc: jsPDF,
+  page: TemplatePage,
+  margin: number,
+  placements: TemplateMarkPlacement[],
+  segments: TemplateMarkLineSegment[],
+): void {
+  const pageSegments = segments.filter((segment) => segment.pageIndex === page.index);
   const pagePlacements = placements.filter((placement) => placement.pageIndex === page.index);
-  if (pagePlacements.length === 0) return;
+  if (pageSegments.length === 0 && pagePlacements.length === 0) return;
 
   doc.setDrawColor(0);
 
+  for (const segment of pageSegments) {
+    const isTailBlock = segment.mark === "tailBlock";
+    const dash = isTailBlock ? [] : segment.mark === "widepoint" ? MARK_WIDEPOINT_DASH_PATTERN : MARK_STATION_DASH_PATTERN;
+    const y = stationToY(segment.station, page, margin);
+    const xStart = halfWidthToX(segment.halfWidthRange[0], page, margin);
+    const xEnd = halfWidthToX(segment.halfWidthRange[1], page, margin);
+
+    doc.setLineWidth(isTailBlock ? MARK_TAILBLOCK_LINE_WEIGHT_MM : MARK_TICK_LINE_WEIGHT_MM);
+    doc.setLineDashPattern(dash, 0);
+    doc.line(xStart, y, xEnd, y);
+    doc.setLineDashPattern([], 0);
+  }
+
+  // Labeled on the stringer side, where there is always paper — always the column-0 page, inside
+  // the box region, regardless of how many further pages this mark's own line continues across.
   for (const placement of pagePlacements) {
-    const isTailBlock = placement.mark === "tailBlock";
-    const dash = isTailBlock ? [] : placement.mark === "widepoint" ? MARK_WIDEPOINT_DASH_PATTERN : MARK_STATION_DASH_PATTERN;
     const y = stationToY(placement.station, page, margin);
     const xStringer = halfWidthToX(0, page, margin);
     const xOuter = halfWidthToX(placement.halfWidthExtent, page, margin);
 
-    doc.setLineWidth(isTailBlock ? MARK_TAILBLOCK_LINE_WEIGHT_MM : MARK_TICK_LINE_WEIGHT_MM);
-    doc.setLineDashPattern(dash, 0);
-    doc.line(xStringer, y, xOuter, y);
-    doc.setLineDashPattern([], 0);
-
-    // Labeled on the stringer side, where there is always paper — the tick's outer end sits on
-    // the outline curve itself, but the stringer end never leaves the kept area.
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(0);
@@ -348,26 +409,30 @@ export function templateHowToWrappedLines(layout: TemplateLayout, doc: jsPDF, in
 
 /** The nose-page how-to box's own rectangle — computed once so the drawing function and the
  * furniture-collision math in `templatePageZeroFurnitureRects` agree on exactly the same box,
- * including its height, which now varies with how many lines defect 1's wrapping produced. */
+ * including its height, which now varies with how many lines defect 1's wrapping produced.
+ * Anchored to the page's own alignment box (round 3 post-checkpoint fix, defect 2), not the raw
+ * printable edge. */
 function howToBoxRect(
   doc: jsPDF,
   layout: TemplateLayout,
+  box: TemplatePageBox,
+  page: TemplatePage,
   margin: number,
-  paperWidthMm: number,
 ): { x: number; y: number; width: number; height: number; lines: string[] } {
   const lines = templateHowToWrappedLines(layout, doc, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM);
   const height = HOWTO_BOX_PADDING_MM * 2 + lines.length * HOWTO_BOX_LINE_HEIGHT_MM;
-  const x = paperWidthMm - margin - HOWTO_BOX_WIDTH_MM;
-  const y = margin + SCALE_SQUARE_MM + HOWTO_BOX_TOP_GAP_MM;
+  const boxRect = pageBoxRect(box, page, margin);
+  const x = boxRect.x + boxRect.width - HOWTO_BOX_WIDTH_MM;
+  const y = boxRect.y + SCALE_SQUARE_MM + HOWTO_BOX_TOP_GAP_MM;
   return { x, y, width: HOWTO_BOX_WIDTH_MM, height, lines };
 }
 
 /** Nose page only, beside the scale square — the one thing on the template that prevents the
  * failure a wrong print scale causes silently and expensively. */
-function drawHowToBox(doc: jsPDF, layout: TemplateLayout, page: TemplatePage, margin: number, paperWidthMm: number): void {
+function drawHowToBox(doc: jsPDF, layout: TemplateLayout, page: TemplatePage, margin: number, box: TemplatePageBox): void {
   if (page.index !== 0) return;
 
-  const { x, y, width, height, lines } = howToBoxRect(doc, layout, margin, paperWidthMm);
+  const { x, y, width, height, lines } = howToBoxRect(doc, layout, box, page, margin);
 
   doc.setDrawColor(0);
   doc.setLineWidth(HOWTO_BOX_LINE_WEIGHT_MM);
@@ -379,17 +444,6 @@ function drawHowToBox(doc: jsPDF, layout: TemplateLayout, page: TemplatePage, ma
   lines.forEach((line, i) => {
     doc.text(line, x + HOWTO_BOX_PADDING_MM, y + HOWTO_BOX_PADDING_MM + (i + 1) * HOWTO_BOX_LINE_HEIGHT_MM - 1.5);
   });
-}
-
-/** The scale square's own rectangle — matches `drawScaleSquare`'s placement exactly, so the
- * furniture-avoidance zone below is built from the real drawn area, not a guess. */
-function scaleSquareRect(margin: number, paperWidthMm: number): { x: number; y: number; width: number; height: number } {
-  return {
-    x: paperWidthMm - margin - SCALE_SQUARE_MM,
-    y: margin,
-    width: SCALE_SQUARE_MM,
-    height: SCALE_SQUARE_MM,
-  };
 }
 
 function drawPageLabel(
@@ -527,6 +581,7 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
   doc.setTextColor(0);
 
   const placements = markPlacements(layout, marks, geometry);
+  const segments = markLineSegments(layout, marks, geometry);
   const boxes = templatePageBoxes(layout);
 
   layout.pages.forEach((page, i) => {
@@ -534,9 +589,9 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
 
     drawOutlineCurve(doc, geometry, page, margin);
     drawPageBox(doc, page, boxes[i], margin);
-    drawMarks(doc, page, margin, placements);
-    drawScaleSquare(doc, page, margin, paperDims.width);
-    drawHowToBox(doc, layout, page, margin, paperDims.width);
+    drawMarks(doc, page, margin, placements, segments);
+    drawScaleSquare(doc, page, margin, boxes[i]);
+    drawHowToBox(doc, layout, page, margin, boxes[i]);
     drawPageLabel(doc, page, margin, paperDims.width, paperDims.height);
     if (page.index === 0) {
       drawNameBlock(doc, page, margin, layout, geometry, boardName, dims);
@@ -564,17 +619,16 @@ export interface TemplateFurnitureRect {
  * shorter than it once was. */
 export function templatePageZeroFurnitureRects(options: BuildTemplatePdfOptions): TemplateFurnitureRect[] {
   const { layout, geometry, dims, paper } = options;
-  const paperDims = PAPER_MM[paper];
   const margin = layout.margin;
   const page = layout.pages[0];
+  const box = templatePageBoxes(layout)[0];
   const doc = new jsPDF({ unit: "mm", format: paper, orientation: "portrait" });
 
   const rects: TemplateFurnitureRect[] = [];
 
-  const square = scaleSquareRect(margin, paperDims.width);
-  rects.push({ name: "scale-square", ...square });
+  rects.push(scaleSquareRect(box, page, margin));
 
-  const howTo = howToBoxRect(doc, layout, margin, paperDims.width);
+  const howTo = howToBoxRect(doc, layout, box, page, margin);
   rects.push({ name: "how-to-box", x: howTo.x, y: howTo.y, width: howTo.width, height: howTo.height });
 
   const { height: nameBoxHeight } = nameBlockContent(doc, dims);
@@ -588,6 +642,36 @@ export function templatePageZeroFurnitureRects(options: BuildTemplatePdfOptions)
   });
 
   return rects;
+}
+
+/** Page 0's own alignment box, converted into the same local millimetre rectangle space
+ * `TemplateFurnitureRect` uses — exported so a test can assert every piece of furniture from
+ * `templatePageZeroFurnitureRects` is fully contained inside it (round 3 post-checkpoint fix,
+ * defect 2: "the 2in box and instructions are not inside the margin/line up lines"), without
+ * re-deriving the box's own station/half-width-to-mm conversion. */
+export function templatePageZeroBoxRect(layout: TemplateLayout): TemplateFurnitureRect {
+  const page = layout.pages[0];
+  const box = templatePageBoxes(layout)[0];
+  return pageBoxRect(box, page, layout.margin);
+}
+
+/** Floating-point slack for `rectContains`' edge-flush comparisons — furniture anchored flush
+ * with the alignment box's own edge (e.g. the scale square's right edge exactly matching the
+ * box's right edge) can land a few ULPs on either side purely from accumulated millimetre
+ * arithmetic, not a real containment failure. Far smaller than anything a printed page could
+ * register. */
+const RECT_CONTAINS_EPSILON_MM = 1e-6;
+
+/** True when `inner` is fully contained inside `outer` (within `RECT_CONTAINS_EPSILON_MM`) — the
+ * containment counterpart to `rectsOverlap`'s "these two never touch" check (round 3
+ * post-checkpoint fix, defect 2). */
+export function rectContains(outer: TemplateFurnitureRect, inner: TemplateFurnitureRect): boolean {
+  return (
+    inner.x >= outer.x - RECT_CONTAINS_EPSILON_MM &&
+    inner.y >= outer.y - RECT_CONTAINS_EPSILON_MM &&
+    inner.x + inner.width <= outer.x + outer.width + RECT_CONTAINS_EPSILON_MM &&
+    inner.y + inner.height <= outer.y + outer.height + RECT_CONTAINS_EPSILON_MM
+  );
 }
 
 /** Axis-aligned rectangle overlap test — exported so the test file can assert on

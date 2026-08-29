@@ -16,6 +16,7 @@ import {
   HOWTO_BOX_TEXT_WIDTH_LIMIT_MM,
   buildTemplatePdf,
   nameBlockContent,
+  rectContains,
   rectsOverlap,
   templateHowToLines,
   templateHowToWrappedLines,
@@ -23,6 +24,7 @@ import {
   templateMarkLabelText,
   templateNameBlockDimsText,
   templateNameBlockText,
+  templatePageZeroBoxRect,
   templatePageZeroFurnitureRects,
   wrapTextToWidth,
 } from "./build-template-pdf";
@@ -413,3 +415,58 @@ describe("page-0 furniture never overlaps (post-checkpoint fix, defect 4: scale 
     }
   });
 });
+
+describe(
+  'page-0 furniture is fully inside the alignment box (round 3 post-checkpoint fix, defect 2: "the 2in box and instructions are not inside the margin/line up lines")',
+  () => {
+    it.each(BOARD_PRESETS)("$id (letter): every furniture rectangle is contained inside the alignment box", (preset) => {
+      const options = { ...buildOptions("letter"), boardName: preset.name };
+      const boxRect = templatePageZeroBoxRect(options.layout);
+      const rects = templatePageZeroFurnitureRects(options);
+      for (const rect of rects) {
+        expect(rectContains(boxRect, rect)).toBe(true);
+      }
+    });
+
+    it.each(BOARD_PRESETS)("$id (a4): every furniture rectangle is contained inside the alignment box", (preset) => {
+      const options = { ...buildOptions("a4"), boardName: preset.name };
+      const boxRect = templatePageZeroBoxRect(options.layout);
+      const rects = templatePageZeroFurnitureRects(options);
+      for (const rect of rects) {
+        expect(rectContains(boxRect, rect)).toBe(true);
+      }
+    });
+
+    it("a wide, multi-column board (the exact case where the box is inset from the printable edge) still keeps every furniture rectangle inside the box", () => {
+      const preset = BOARD_PRESETS[0];
+      const geometry = buildOutline({
+        ...preset.outline,
+        widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max),
+      });
+      const layout = computeTemplateLayout(geometry, "letter");
+      expect(layout.columns).toBeGreaterThan(1);
+
+      const options = {
+        layout,
+        marks: computeTemplateMarks(geometry),
+        geometry,
+        paper: "letter" as const,
+        boardName: preset.name,
+        dims: {
+          length: geometry.length,
+          widePointWidth: geometry.halfWidePointWidth,
+          centerThickness: preset.rails.center.boardThickness,
+          noseWidth12in: geometry.noseWidthAt12in,
+          tailWidth12in: geometry.tailWidthAt12in,
+          widePointOffset: preset.outline.widePointOffset,
+          volumeLitres: litres(27.4),
+        },
+      };
+      const boxRect = templatePageZeroBoxRect(layout);
+      const rects = templatePageZeroFurnitureRects(options);
+      for (const rect of rects) {
+        expect(rectContains(boxRect, rect)).toBe(true);
+      }
+    });
+  },
+);
