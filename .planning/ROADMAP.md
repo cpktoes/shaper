@@ -140,10 +140,21 @@ Plans:
 **Plans**: 5 plans in 4 waves
 
 Plans:
+**Wave 1**
+
 - [ ] 04-01-PLAN.md — Tracer: the ROCKER tab draws the board from the side, and rocker/foil save and reopen
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 04-02-PLAN.md — The full blank datasheet: nine station sliders, typed imperial entry, drag, and the toolbar
 - [ ] 04-03-PLAN.md — Thickness flows forward: rail bands read the foil, with a standalone override
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 04-04-PLAN.md — Accurate litres from real cross-sections, checked against a published blank
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 04-05-PLAN.md — Per-board-type side profiles for all four presets, and the Summary's real rocker curve
 
 **UI hint**: yes
