@@ -9,19 +9,23 @@
  *    3/8" tip thicknesses. The prototype's arithmetic is ported statement-for-statement in
  *    inches in a private core, and the exported function converts `Mm` in and `Mm`/`Litres` out
  *    at the boundary. Same posture as rail-bands.ts and fins.ts; the inch core is never exported.
- * 2. LITRE CONSTANT — a real, recorded divergence from units.ts. The prototype divides cubic
- *    inches by 61.0237, which is a truncation of the exact 61.023744... conversion; units.ts's
- *    `cubicMmToLitres` is exact by definition (1 L = 1,000,000 mm3). They disagree by about
- *    7.2e-7 relative — roughly 0.000025 L on a 35 L board. This module keeps the prototype's
- *    constant so the port is bit-faithful to the numbers a shaper has already been reading,
- *    exports it as `CUBIC_INCHES_PER_LITRE`, and does NOT call `cubicMmToLitres`. This is the one
- *    place a geometry module deliberately bypasses the units boundary's own conversion; the
- *    divergence should be revisited when the foil-based Simpson `computeVolume` (see deviation 3)
- *    replaces this method.
- * 3. MODEL DEVIATION FROM THE APPROVED DESIGN. `.planning/design/GEOMETRY-MODULE.md` prescribes
- *    a ~50-station Simpson integration over the foil. That needs the Phase 4 foil editor. This is
- *    the prototype's three-station rail-profile method, ported faithfully instead — prototype
- *    fidelity first, the Simpson upgrade arrives with the foil.
+ * 2. LITRE CONSTANT — a real, recorded divergence from units.ts, now RESOLVED. The prototype
+ *    divides cubic inches by 61.0237, a truncation of the exact 61.023744... conversion;
+ *    units.ts's `cubicMmToLitres` is exact by definition (1 L = 1,000,000 mm3). They disagree by
+ *    about 7.2e-7 relative — roughly 0.000025 L on a 35 L board. `computeVolume` (this estimator)
+ *    keeps the prototype's own truncated litre constant below (exported for the golden tests), so
+ *    the port stays bit-faithful to the numbers a shaper has already been reading; it still does
+ *    NOT call `cubicMmToLitres`. `computeCrossSectionVolume` (added below) is the accurate path
+ *    this deviation was waiting for, and it uses the exact conversion exclusively instead — the
+ *    two never mix: the estimator's own constant is read only inside this file's inch-domain
+ *    estimator core, `cubicMmToLitres` only inside `computeCrossSectionVolume`.
+ * 3. MODEL DEVIATION FROM THE APPROVED DESIGN — now RESOLVED. `.planning/design/GEOMETRY-MODULE.md`
+ *    prescribes a ~50-station Simpson integration over the foil. That needed the Phase 4 foil
+ *    editor, which now exists: `computeCrossSectionVolume` below is that Simpson path, validated
+ *    against a published blank datasheet (CONTEXT.md D-14). `computeVolume`, the prototype's
+ *    three-station rail-profile method below, survives deliberately as the Volume screen's
+ *    standalone quick-estimator mode (CONTEXT.md D-13) — it is not replaced, and every one of its
+ *    private inch-domain helpers is untouched by this addition.
  * 4. PRESENTATION SPLIT. Returns numbers, never display strings; the caller formats through
  *    `formatInchesFraction`. Nothing here formats.
  * 5. STATE AND EVENT WIRING EXCLUDED. `syncFromTemplate`, the two checkbox handlers, `applySeed`/
@@ -33,7 +37,26 @@
  */
 
 import type { Point2D } from "./board";
-import { type Litres, MM_PER_INCH, type Mm, inchesToMm, litres, mm, mmToInches } from "./units";
+import { type FoilSpec, foilStationPoints, sampleFoil } from "./foil";
+import {
+  RAIL_SECTION_CONSTANTS,
+  type ComputeRailSectionInput,
+  type RailBandSpec,
+  type RailSectionKey,
+  buildRailProfile,
+  computeRailSection,
+} from "./rail-bands";
+import {
+  type Litres,
+  MM_PER_INCH,
+  type Mm,
+  cubicMmToLitres,
+  inchesToMm,
+  litres,
+  mm,
+  mmToInches,
+  roundToSixteenthInch,
+} from "./units";
 
 /** Square millimetres per square inch — `MM_PER_INCH` squared, used only to convert the
  * template's `area` field (a plain square-millimetre number, not a branded `Mm`) at this
@@ -368,5 +391,244 @@ export function computeVolume(
     weightedThickness: mm(inchesToMm(core.weightedThicknessIn)),
     volumeCubicInches: core.volumeCuIn,
     volumeLitres: litres(core.volumeLiters),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Cross-section volume — the accurate path (deviation 3, resolved above). Millimetre-domain
+// throughout; no inch core, because buildRailProfile already returns millimetre points and this
+// path converts to litres exactly once, through cubicMmToLitres.
+// ---------------------------------------------------------------------------------------------
+
+/** The composite Simpson one-third rule alternates a four-two weight pattern across the interior
+ * samples and is only exact — indeed only VALID — over an even number of panels. 50 is a named
+ * constant with its own unit assertion (`SIMPSON_PANEL_COUNT is even`) rather than a round number
+ * inlined at the integration call site, so a future edit that breaks the parity fails loudly
+ * instead of quietly biasing every volume figure the app quotes. */
+export const SIMPSON_PANEL_COUNT = 50;
+
+/**
+ * Composite Simpson's one-third rule over `samples.length - 1` evenly spaced panels of width `h`:
+ * the two end samples weight 1, odd-indexed interior samples weight 4, even-indexed interior
+ * samples weight 2, and the weighted sum is multiplied by `h / 3`. Simpson's rule is exact for any
+ * polynomial up to cubic degree, which is what the golden tests check it against. Throws rather
+ * than integrating with a broken weight pattern when the panel count is odd or fewer than two, or
+ * when the sample count does not match `panels + 1`.
+ */
+export function simpsonIntegrate(samples: number[], h: number): number {
+  const panels = samples.length - 1;
+  if (panels < 2 || panels % 2 !== 0) {
+    throw new Error(
+      `simpsonIntegrate: composite Simpson's one-third rule requires an even panel count of at least 2; got ${panels} panels from ${samples.length} samples`,
+    );
+  }
+  let sum = samples[0] + samples[panels];
+  for (let i = 1; i < panels; i++) {
+    sum += (i % 2 === 0 ? 2 : 4) * samples[i];
+  }
+  return (h / 3) * sum;
+}
+
+/** Input to `computeCrossSectionVolume`. `halfWidthAt` is a half-width SAMPLER rather than an
+ * `OutlineGeometry` directly: the app passes `(s) => sampleOutline(outlineGeometry, s)`, and the
+ * blank-datasheet validation test below passes a monotone spline through a real blank's five
+ * quoted widths instead. Taking a function rather than a concrete outline type is what makes that
+ * validation possible at all, and it keeps this module from importing the outline builder. */
+export interface CrossSectionVolumeInput {
+  halfWidthAt: (station: Mm) => Mm;
+  foil: FoilSpec;
+  rails: RailBandSpec;
+  length: Mm;
+}
+
+/** `stationAreas` are full (both-rails) cross-section areas in square millimetres, nose-to-tail —
+ * exposed for the blank-datasheet validation test's family sweep and for anyone auditing a
+ * specific station's contribution to the total. */
+export interface CrossSectionVolumeResult {
+  volumeLitres: Litres;
+  volumeMm3: number;
+  panelCount: number;
+  stationAreas: number[];
+}
+
+/** Linear interpolation between the three anchor sections (tail 12", centre, nose 12"), holding
+ * the outer value constant beyond the outer two anchors — the shared shape every continuous
+ * per-station field (`deckPercent`, `ratioTopPercent`, `scale`, `domedBandBase`) blends through. */
+function blendContinuous(
+  station: number,
+  tailStation: number,
+  tailVal: number,
+  centerStation: number,
+  centerVal: number,
+  noseStation: number,
+  noseVal: number,
+): number {
+  if (station <= tailStation) return tailVal;
+  if (station <= centerStation) {
+    const t = (station - tailStation) / (centerStation - tailStation);
+    return tailVal + (centerVal - tailVal) * t;
+  }
+  if (station <= noseStation) {
+    const t = (station - centerStation) / (noseStation - centerStation);
+    return centerVal + (noseVal - centerVal) * t;
+  }
+  return noseVal;
+}
+
+/** Which of the three anchor sections (tail 12", centre, nose 12") this station is closest to —
+ * the source for every DISCRETE per-station field, which cannot be interpolated. */
+function nearestAnchorSection(
+  station: number,
+  tailStation: number,
+  centerStation: number,
+  noseStation: number,
+): RailSectionKey {
+  const dTail = Math.abs(station - tailStation);
+  const dCenter = Math.abs(station - centerStation);
+  const dNose = Math.abs(station - noseStation);
+  if (dTail <= dCenter && dTail <= dNose) return "tail";
+  if (dCenter <= dNose) return "center";
+  return "nose";
+}
+
+/** Closes a half cross-section profile into a polygon exactly as `stationEffThickness` does above
+ * — prepend the full-thickness point at minus-half-width, append the zero-height point at
+ * minus-half-width, closing the flat run of solid, un-tapered foam from the profile's innermost
+ * point in to the stringer — then shoelaces it and doubles the result for the FULL (both-rails)
+ * cross-section area, in square millimetres. A zero half-width returns zero rather than building
+ * a degenerate polygon. */
+function stationArea(profile: [number, number][], boardThickness: number, halfWidth: number): number {
+  if (!halfWidth) return 0;
+  const poly: [number, number][] = [[-halfWidth, boardThickness], ...profile, [-halfWidth, 0]];
+  return shoelaceArea(poly) * 2;
+}
+
+/**
+ * Cross-section volume — the accurate path CONTEXT.md D-13 promises everywhere the app quotes
+ * volume. Integrates `SIMPSON_PANEL_COUNT + 1` real cross-sections along the board's own length
+ * with Simpson's rule and converts once through the exact `cubicMmToLitres`. Takes no rocker
+ * argument: lifting a cross-section off the flat does not change its area, so rocker structurally
+ * cannot reach this calculation.
+ *
+ * BLENDING RULE (CONTEXT.md's Claude's Discretion — "whether cross-sections use the rail-band
+ * module's real computed sections or the design doc's named rail profiles"): this function re-runs
+ * the real rail-band formula (`computeRailSection` + `buildRailProfile`) at every one of the 51
+ * stations, rather than substituting one of the approved design's named boxy/medium/tapered
+ * profiles. A station between the three rail-band anchors (tail 12", centre, nose 12") gets a
+ * `RailSectionSpec`-shaped input built by blending those three known sections: the CONTINUOUS
+ * fields (`deckPercent`, `ratioTopPercent`, and the per-section `scale`/`domedBandBase` from
+ * `RAIL_SECTION_CONSTANTS`) are linearly interpolated across station and held constant outboard of
+ * the outer two anchors; the DISCRETE fields (`family`, `symmetrical`, `removeCornerCut`,
+ * `singleTuck`, `cornerCutOffsetOverride`, `bottomTuck3Override`) come from the nearest anchor
+ * section wholesale, because a family index or a boolean cannot be interpolated. `tailHardEdge`
+ * applies only at stations whose nearest anchor is the tail. This makes the integrated volume
+ * truthful to the board actually drawn, station by station, rather than to a canned profile shape.
+ */
+export function computeCrossSectionVolume(input: CrossSectionVolumeInput): CrossSectionVolumeResult {
+  const { halfWidthAt, foil, rails, length } = input;
+
+  const anchors = foilStationPoints(foil, length);
+  const tailAnchor = anchors[1]; // tail12
+  const centerAnchor = anchors[2]; // center
+  const noseAnchor = anchors[3]; // nose12
+  const tailStation = tailAnchor.station;
+  const centerStation = centerAnchor.station;
+  const noseStation = noseAnchor.station;
+
+  const tailConst = RAIL_SECTION_CONSTANTS.tail;
+  const centerConst = RAIL_SECTION_CONSTANTS.center;
+  const noseConst = RAIL_SECTION_CONSTANTS.nose;
+
+  const h = length / SIMPSON_PANEL_COUNT;
+  const stationAreas: number[] = [];
+
+  for (let i = 0; i <= SIMPSON_PANEL_COUNT; i++) {
+    const station = mm(i * h);
+    const halfWidth = halfWidthAt(station);
+
+    if (halfWidth === 0) {
+      stationAreas.push(0);
+      continue;
+    }
+
+    const thickness = sampleFoil(foil, length, station);
+
+    const deckPercent = blendContinuous(
+      station,
+      tailStation,
+      rails.tail.deckPercent,
+      centerStation,
+      rails.center.deckPercent,
+      noseStation,
+      rails.nose.deckPercent,
+    );
+    const ratioTopPercent = blendContinuous(
+      station,
+      tailStation,
+      rails.tail.ratioTopPercent,
+      centerStation,
+      rails.center.ratioTopPercent,
+      noseStation,
+      rails.nose.ratioTopPercent,
+    );
+    const scale = blendContinuous(
+      station,
+      tailStation,
+      tailConst.scale,
+      centerStation,
+      centerConst.scale,
+      noseStation,
+      noseConst.scale,
+    );
+    const domedBandBase = mm(
+      blendContinuous(
+        station,
+        tailStation,
+        tailConst.domedBandBase,
+        centerStation,
+        centerConst.domedBandBase,
+        noseStation,
+        noseConst.domedBandBase,
+      ),
+    );
+
+    const nearestKey = nearestAnchorSection(station, tailStation, centerStation, noseStation);
+    const nearestSpec = rails[nearestKey];
+
+    const domed = deckPercent < 100;
+    const railThicknessClamped = roundToSixteenthInch(mm((thickness * deckPercent) / 100));
+    const thicknessEff = domed ? railThicknessClamped : thickness;
+
+    const sectionInput: ComputeRailSectionInput = {
+      thickness: thicknessEff,
+      ratioTopPercent,
+      family: nearestSpec.family,
+      domedBandBase,
+      scale,
+      cornerCutOffsetOverride: nearestSpec.cornerCutOffsetOverride,
+      removeCornerCut: nearestSpec.removeCornerCut,
+      singleTuck: nearestSpec.singleTuck,
+      bottomTuck3Override: nearestSpec.bottomTuck3Override,
+      symmetrical: nearestSpec.symmetrical,
+      hardEdge: nearestKey === "tail" && rails.tailHardEdge,
+    };
+    const result = computeRailSection(sectionInput);
+    const profile = buildRailProfile(result, thicknessEff, domed, {
+      boardThickness: thickness,
+      railThicknessVal: railThicknessClamped,
+      domedBandBase,
+    });
+    const profilePairs: [number, number][] = profile.map((p) => [p.x, p.y]);
+
+    stationAreas.push(stationArea(profilePairs, thickness, halfWidth));
+  }
+
+  const volumeMm3 = simpsonIntegrate(stationAreas, h);
+
+  return {
+    volumeLitres: cubicMmToLitres(volumeMm3),
+    volumeMm3,
+    panelCount: SIMPSON_PANEL_COUNT,
+    stationAreas,
   };
 }
