@@ -3,9 +3,10 @@
  *
  * The single place a design is validated on its way into and out of the database — the model
  * boundary equivalent of `lib/geometry/units.ts`'s unit boundary. `DesignSnapshotFields` is the
- * same nine-field object `design-store.tsx` calls `designSnapshotFields`: outline, rocker, foil,
- * rails, fins, volume, finsImportTemplate, boardName, finSystem (D-11 — the whole `DesignState`,
- * minus `modelId` and `boardStarted`, which are session bookkeeping, not board design).
+ * same ten-field object `design-store.tsx` calls `designSnapshotFields`: outline, rocker, foil,
+ * rails, fins, volume, finsImportTemplate, railsImportFoilThickness, boardName, finSystem (D-11 —
+ * the whole `DesignState`, minus `modelId` and `boardStarted`, which are session bookkeeping, not
+ * board design).
  *
  * Two rules govern this file:
  *
@@ -155,6 +156,7 @@ const designFieldsSchema = z
     fins: finPlacementSpecSchema,
     volume: volumeSpecSchema,
     finsImportTemplate: z.boolean(),
+    railsImportFoilThickness: z.boolean(),
     boardName: z.string(),
     finSystem: finSystemSchema,
   })
@@ -177,6 +179,11 @@ export interface DesignSnapshotFields {
   fins: FinPlacementSpec;
   volume: VolumeSpec;
   finsImportTemplate: boolean;
+  /** Whether RAILS reads its three thickness stations from the foil (D-09/D-10) — defaults to
+   * true on backfill (`design.railsImportFoilThickness ?? true` below) so a board saved before
+   * this phase reopens linked and immediately reads its own backfilled foil (D-15), rather than a
+   * stale rails thickness it never had a chance to disagree with. */
+  railsImportFoilThickness: boolean;
   boardName: string;
   finSystem: FinSystem;
 }
@@ -212,6 +219,7 @@ export function parseSnapshot(value: unknown): DesignSnapshotFields {
     fins: (design.fins ?? DEFAULT_FIN_PLACEMENT_SPEC) as FinPlacementSpec,
     volume: (design.volume ?? DEFAULT_VOLUME_SPEC) as VolumeSpec,
     finsImportTemplate: design.finsImportTemplate ?? true,
+    railsImportFoilThickness: design.railsImportFoilThickness ?? true,
     boardName: design.boardName ?? "",
     finSystem: (design.finSystem ?? "fcs2") as FinSystem,
   };

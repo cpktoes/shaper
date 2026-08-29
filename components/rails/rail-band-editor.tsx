@@ -77,11 +77,22 @@ function buildPresetSource(spec: RailBandSpec): string {
  * components/outline/outline-editor.tsx (CONTEXT.md D-03).
  */
 export function RailBandEditor() {
-  const { rails: spec, updateRailSection, toggleTailHardEdge, railBands: bands } = useDesign();
+  const {
+    rails,
+    effectiveRails,
+    railsImportFoilThickness,
+    toggleRailsImportFoilThickness,
+    updateRailSection,
+    toggleTailHardEdge,
+    railBands: bands,
+  } = useDesign();
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
 
   function handleCopyPreset() {
-    const text = buildPresetSource(spec);
+    // Captures the shaper's own stored rails, not the foil-derived effectiveRails — a captured
+    // preset must record what was actually authored on this section, never a number borrowed from
+    // whatever the link happened to be showing at capture time.
+    const text = buildPresetSource(rails);
     console.log(text);
     setJustCopiedPreset(true);
     navigator.clipboard.writeText(text).catch(() => {
@@ -190,7 +201,7 @@ export function RailBandEditor() {
       <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink">
         <div className="min-h-0 flex-1 overflow-y-auto p-10">
           <RailControls
-            spec={spec}
+            spec={effectiveRails}
             bands={bands}
             onChangeSection={updateSection}
             onToggleHardEdge={toggleHardEdge}
@@ -198,6 +209,8 @@ export function RailBandEditor() {
             onToggleSectionOpen={toggleSectionOpen}
             advancedOpen={advancedOpen}
             onToggleAdvancedOpen={toggleAdvancedOpen}
+            railsImportFoilThickness={railsImportFoilThickness}
+            onToggleRailsImportFoilThickness={toggleRailsImportFoilThickness}
           />
         </div>
         {process.env.NODE_ENV === "development" && (

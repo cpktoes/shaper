@@ -15,6 +15,7 @@
  */
 
 import type { OutlineSpec } from "./board";
+import type { FoilSpec } from "./foil";
 import type { OutlineGeometry } from "./outline";
 import { buildOutline } from "./outline";
 import { computeRailBands, type RailBandSpec, type RailBandsOutput } from "./rail-bands";
@@ -69,10 +70,41 @@ export function deriveEffectiveVolume(
   };
 }
 
+/**
+ * The one place thickness flows from the foil (ROCKER screen) into the rail bands (RAILS screen)
+ * — D-09. With the link on, each of the three rail sections' `boardThickness` is replaced by the
+ * matching foil station: `foil.nose12` -> `rails.nose`, `foil.center` -> `rails.center`,
+ * `foil.tail12` -> `rails.tail` (the planner note limiting RAILS to three of the foil's five
+ * stations). The two tip stations never appear here — they exist only for the side profile and
+ * the volume integration.
+ *
+ * Deliberately takes no rocker argument (D-11): adjusting the rocker line alone can never move a
+ * rail band number, because this function has nothing rocker-shaped to read. There is no
+ * rocker-to-rail formula to invent.
+ *
+ * With the link off, `rails` is returned untouched — same shape as `deriveEffectiveVolume` above:
+ * a derived read, never a write back into state.
+ */
+export function deriveEffectiveRails(
+  rails: RailBandSpec,
+  foil: FoilSpec,
+  importFoilThickness: boolean,
+): RailBandSpec {
+  if (!importFoilThickness) return rails;
+  return {
+    ...rails,
+    nose: { ...rails.nose, boardThickness: foil.nose12 },
+    center: { ...rails.center, boardThickness: foil.center },
+    tail: { ...rails.tail, boardThickness: foil.tail12 },
+  };
+}
+
 /** The subset of a stored design `summarizeDesign` needs to produce a rack card's four numbers. */
 export interface DesignSummaryFields {
   outline: OutlineSpec;
   rails: RailBandSpec;
+  foil: FoilSpec;
+  railsImportFoilThickness: boolean;
   volume: VolumeSpec;
 }
 
@@ -85,13 +117,15 @@ export interface DesignSummary {
 }
 
 /**
- * Composes `buildOutline` -> `computeRailBands` -> the three derivations above ->
- * `computeVolume`, so a rack card's summary numbers are produced by the exact same pipeline the
- * Volume screen runs, not a second parallel calculation that could drift from it.
+ * Composes `buildOutline` -> `deriveEffectiveRails` -> `computeRailBands` -> the three
+ * derivations above -> `computeVolume`, so a rack card's summary numbers are produced by the
+ * exact same pipeline the RAILS and Volume screens show, not a second parallel calculation that
+ * could drift from either.
  */
 export function summarizeDesign(fields: DesignSummaryFields): DesignSummary {
   const outlineGeometry = buildOutline(fields.outline);
-  const railBands = computeRailBands(fields.rails);
+  const effectiveRails = deriveEffectiveRails(fields.rails, fields.foil, fields.railsImportFoilThickness);
+  const railBands = computeRailBands(effectiveRails);
   const templateValues = deriveTemplateValues(fields.outline, outlineGeometry);
   const railValues = deriveRailValues(railBands);
   const effectiveVolume = deriveEffectiveVolume(fields.volume, templateValues, railValues);
