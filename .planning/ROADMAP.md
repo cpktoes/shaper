@@ -137,7 +137,15 @@ Plans:
   2. User can define a foil (thickness distribution along the length of the board) and view the live volume figure update as they adjust it
   3. Rocker and foil inputs are saved and restored correctly when a model is saved and reopened
 
-**Plans**: TBD
+**Plans**: 5 plans in 4 waves
+
+Plans:
+- [ ] 04-01-PLAN.md — Tracer: the ROCKER tab draws the board from the side, and rocker/foil save and reopen
+- [ ] 04-02-PLAN.md — The full blank datasheet: nine station sliders, typed imperial entry, drag, and the toolbar
+- [ ] 04-03-PLAN.md — Thickness flows forward: rail bands read the foil, with a standalone override
+- [ ] 04-04-PLAN.md — Accurate litres from real cross-sections, checked against a published blank
+- [ ] 04-05-PLAN.md — Per-board-type side profiles for all four presets, and the Summary's real rocker curve
+
 **UI hint**: yes
 
 ## Progress
