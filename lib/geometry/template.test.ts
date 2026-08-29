@@ -569,6 +569,27 @@ describe("nameBlockPlacement", () => {
           expect(bottomStation).toBeGreaterThanOrEqual(page0.stationRange[0] + layout.overlap);
         },
       );
+
+      it("clamps the fallback to page 0's own printable range when the box is taller than the entire available band (WR-01/WR-03 regression: the fallback used to overrun the page)", () => {
+        // No BOARD_PRESETS case has a nose narrow enough to reach the "no station band clears the
+        // box" fallback branch at all (every preset's own nose is wide enough somewhere on page 0),
+        // so this drives into that unexercised branch directly by handing nameBlockPlacement a
+        // caller-supplied box height taller than page 0's entire station range — the same
+        // "unusually narrow-nosed board" fallback path, forced without needing an extreme outline.
+        const preset = BOARD_PRESETS[0];
+        const geometry = buildOutline(preset.outline);
+        const layout = computeTemplateLayout(geometry, paper);
+        const page0 = layout.pages[0];
+        const oversizedBoxHeightMm = page0.stationRange[1] - page0.stationRange[0] + 1000;
+
+        const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, oversizedBoxHeightMm);
+
+        // The box's nose-most edge must stay inside page 0's own printable station range — before
+        // the fix this could exceed searchCeiling and sit partly or fully off the sheet.
+        const searchCeiling = Math.min(page0.stationRange[1], geometry.length);
+        expect(placement.topStation).toBeLessThanOrEqual(searchCeiling);
+        expect(placement.topStation).toBe(searchCeiling);
+      });
     });
   }
 });

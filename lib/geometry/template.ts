@@ -671,7 +671,17 @@ export function nameBlockPlacement(
   }
 
   // No station band on page 0 clears the box at full width (an unusually narrow-nosed board) —
-  // fall back to the widest band searched, deepest into page 0, rather than the narrowest.
-  const fallbackTop = Math.max(searchFloor + boxHeightMm, searchCeiling);
+  // fall back to the widest band searched, deepest into page 0, rather than the narrowest: that's
+  // the candidate whose bottom edge sits exactly at searchFloor, i.e. topStation = searchFloor +
+  // boxHeightMm (WR-03 fix — this used to be Math.max, which picked searchCeiling instead, the
+  // SAME nose-tip-most/narrowest band the loop above had already tried and rejected first).
+  //
+  // Clamp to searchCeiling (page 0's own nose-most printable edge) for the rarer case where the
+  // box is taller than the ENTIRE available band (searchFloor + boxHeightMm > searchCeiling) —
+  // unclamped, that candidate would sit partly or fully past the page's own printable range, i.e.
+  // off the sheet. Clamping accepts the box may then run a little past searchFloor at the bottom
+  // instead, which is the lesser problem: that edge only borders the shared overlap strip with the
+  // next page down, not the edge of the printed sheet itself.
+  const fallbackTop = Math.min(searchFloor + boxHeightMm, searchCeiling);
   return { pageIndex: page.index, topStation: mm(fallbackTop), halfWidthStart };
 }
