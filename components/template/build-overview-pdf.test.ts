@@ -8,6 +8,7 @@ import {
   overviewLengthLabelText,
   overviewSpecLines,
   overviewStationLines,
+  overviewWpOffsetLabelText,
 } from "./build-overview-pdf";
 
 function buildOptions(paper: "letter" | "a4" = "letter", presetIndex = 0) {
@@ -148,14 +149,62 @@ describe("overviewLengthLabelText", () => {
   });
 });
 
-describe("overviewStationLines", () => {
-  it("returns exactly three stations: nose @12, widepoint/center, tail @12", () => {
-    const options = buildOptions();
-    const lines = overviewStationLines(options.geometry);
-    expect(lines.map((l) => l.label)).toEqual(['NOSE @ 12"', "WIDEPOINT/CENTER", 'TAIL @ 12"']);
-    expect(lines[1].station).toBe(options.geometry.widePointStation);
-  });
-});
+describe(
+  'overviewStationLines (round 3 post-checkpoint fix, defect 3: "the center, widepoint, and offset all should be explicitly labeled")',
+  () => {
+    it("returns four stations — nose @12, CENTER, WIDEPOINT, tail @12 — when the widepoint is offset from centre", () => {
+      const options = buildOptions(); // shortboard preset: widePointOffset -1in, non-zero
+      const lines = overviewStationLines(options.geometry);
+      expect(lines.map((l) => l.label)).toEqual(['NOSE @ 12"', "CENTER", "WIDEPOINT", 'TAIL @ 12"']);
+      expect(lines[1].station).toBeCloseTo(options.geometry.length / 2, 6);
+      expect(lines[2].station).toBe(options.geometry.widePointStation);
+    });
+
+    it("the WIDEPOINT line carries a secondaryLabel; CENTER, NOSE, TAIL do not", () => {
+      const options = buildOptions();
+      const lines = overviewStationLines(options.geometry);
+      const byLabel = Object.fromEntries(lines.map((l) => [l.label, l]));
+      expect(byLabel["WIDEPOINT"].secondaryLabel).toBeDefined();
+      expect(byLabel["CENTER"].secondaryLabel).toBeUndefined();
+      expect(byLabel['NOSE @ 12"'].secondaryLabel).toBeUndefined();
+      expect(byLabel['TAIL @ 12"'].secondaryLabel).toBeUndefined();
+    });
+
+    it("merges into one WIDEPOINT / CENTER line when the offset is zero (fish preset)", () => {
+      const options = buildOptions("letter", 1); // fish preset: widePointOffset 0
+      expect(options.outline.widePointOffset).toBe(0);
+      const lines = overviewStationLines(options.geometry);
+      expect(lines.map((l) => l.label)).toEqual(['NOSE @ 12"', "WIDEPOINT / CENTER", 'TAIL @ 12"']);
+      expect(lines[1].station).toBe(options.geometry.widePointStation);
+      expect(lines[1].secondaryLabel).toBeUndefined();
+    });
+
+    it.each(BOARD_PRESETS)("$id: CENTER + TAIL@12 + NOSE@12 always present, WIDEPOINT present standalone or merged", (preset) => {
+      const geometry = buildOutline(preset.outline);
+      const lines = overviewStationLines(geometry);
+      const labels = lines.map((l) => l.label);
+      expect(labels).toContain('NOSE @ 12"');
+      expect(labels).toContain('TAIL @ 12"');
+      const hasSplit = labels.includes("CENTER") && labels.includes("WIDEPOINT");
+      const hasMerged = labels.includes("WIDEPOINT / CENTER");
+      expect(hasSplit || hasMerged).toBe(true);
+      expect(hasSplit && hasMerged).toBe(false);
+    });
+  },
+);
+
+describe(
+  'overviewWpOffsetLabelText (round 3 post-checkpoint fix, defect 3: "WP OFFSET explicitly labeled... matching how the app\'s viewer words it")',
+  () => {
+    it('prints "WP OFFSET — 1/2" back" for a negative (tail-ward) offset', () => {
+      expect(overviewWpOffsetLabelText(inchesToMm(-0.5))).toBe('WP OFFSET — 1/2" back');
+    });
+
+    it('prints "WP OFFSET — 1/2" forward" for a positive (nose-ward) offset', () => {
+      expect(overviewWpOffsetLabelText(inchesToMm(0.5))).toBe('WP OFFSET — 1/2" forward');
+    });
+  },
+);
 
 describe("overviewFileName", () => {
   it("slugifies a board name", () => {

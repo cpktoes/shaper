@@ -234,6 +234,64 @@ own Task 3 pattern (dev server unavailable inside this worktree; Turbopack workt
 - FOUND commit: d3bf6e3
 - FOUND commit: 73a89f9
 
+## Post-checkpoint fixes, round 2
+
+The user printed the new Overview Sheet artifact and reported two defects, in their own words:
+"The center, widepoint, and offset all should be explicitly labeled. Also, the board can be larger
+on the page." Both were fixed and committed as one atomic `fix(03-04): ...` commit.
+
+**1. CENTER, WIDEPOINT and the offset between them were not explicitly labeled.** The sheet
+previously merged the widepoint and the board's own centre station into a single
+"WIDEPOINT/CENTER" line always, regardless of whether they actually coincided — so a board with any
+real widepoint offset (every preset except "fish") never showed where centre was, what the
+widepoint's own distance from it was, or that the two were different stations at all.
+`overviewStationLines` (`components/template/build-overview-pdf.ts`) now draws CENTER (the board's
+own half-length station) and WIDEPOINT as two distinct dashed lines, each with its own small-caps
+label and printed dimension, when the widepoint's own computed offset from centre is non-zero — plus
+an explicit `WP OFFSET — 1/2" back` (or `forward`) label, wording matched to the on-screen outline
+viewer's own `wpOffsetText` convention, stacked beneath the widepoint's own name. The offset used
+for both the split-vs-merge decision and the printed text is computed from the two drawn stations
+themselves (`geometry.widePointStation - geometry.length / 2`), not the raw `widePointOffset`
+input, so the label can never disagree with where the two lines are actually drawn even when the
+input gets clamped near a board's own length/margin extremes. When the offset is (near) zero, the
+two stations still coincide onto one `WIDEPOINT / CENTER` line, unchanged from before, rather than
+overprinting two labels on top of each other.
+
+**2. The drawn outline was tiny — as little as a ~41mm-wide box regardless of paper size.** The
+spec column was reserving 85mm plus 24/36mm of label margin either side of the drawing, which for
+every real board (whose half-width budget is what usually decides the scale) left the outline
+scaled down far more than the page's own generous height budget would have allowed. A new pure
+function, `computeOverviewDrawingBox` (`lib/geometry/overview-layout.ts`, alongside
+`computeOverviewOutlineScale`), derives the outline's own available width/height from the page
+size, margins, spec-column width/gap and label reserves — kept pure and tested in `lib/geometry/`
+rather than inline in the drawing module (CLAUDE.md Rule 1). The spec column was narrowed from
+85mm to 60mm (the 11-line spec list never needed 85mm at 9pt courier — `wrapTextToWidth` still
+wraps anything that doesn't fit, so narrowing it never clips a line) and the label reserves
+tightened from 24/36mm to 16/40mm (the right reserve widened slightly to keep room for the new,
+longer WP OFFSET secondary label). Together these let most boards' scale become height-bound —
+using the full page height minus margins, per the user's own instruction — rather than
+width-starved by an oversized spec column.
+Commit: `515fa35`.
+
+**Verification:** `npm test` (965/965, up from 924/924 baseline), `npx tsc --noEmit` (0 errors
+beyond the pre-existing, worktree-only `LayoutProps` phantom errors documented above), and
+`npm run lint` (0 errors, the same 9 pre-existing unrelated warnings) all pass. New/updated test
+coverage: an `overviewStationLines` describe block covering the split-vs-merged cases (a
+non-zero-offset preset produces four lines with the WIDEPOINT line alone carrying a
+`secondaryLabel`; the zero-offset "fish" preset merges back into one `WIDEPOINT / CENTER` line;
+every `BOARD_PRESETS` entry is checked for exactly one of the two shapes, never both), an
+`overviewWpOffsetLabelText` describe block asserting the exact `back`/`forward` wording, and a
+`computeOverviewDrawingBox` describe block in `lib/geometry/overview-layout.test.ts` (correct
+width/height subtraction, never negative when reserves exceed the page, and — across every board
+preset — the reclaimed box scales the outline strictly larger than the previous, cramped layout's
+own box computed the same way).
+
+## Self-Check (round 2): PASSED
+
+- FOUND: components/template/build-overview-pdf.ts (overviewWpOffsetLabelText, secondaryLabel)
+- FOUND: lib/geometry/overview-layout.ts (computeOverviewDrawingBox)
+- FOUND commit: 515fa35
+
 ---
 *Phase: 03-volume-templates-verified-math*
 *Completed: 2026-08-28*

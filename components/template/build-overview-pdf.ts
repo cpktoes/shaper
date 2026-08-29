@@ -19,7 +19,7 @@
 import jsPDF from "jspdf";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import { MEASURE_STATION_MM, type OutlineGeometry, sampleOutline } from "@/lib/geometry/outline";
-import { computeOverviewOutlineScale } from "@/lib/geometry/overview-layout";
+import { computeOverviewDrawingBox, computeOverviewOutlineScale } from "@/lib/geometry/overview-layout";
 import { PAPER_MM, TEMPLATE_MARGIN_MM, type PaperSize } from "@/lib/geometry/template";
 import {
   formatFeetInches,
@@ -46,8 +46,12 @@ const CONTENT_TOP_GAP_MM = 8;
 
 const SPEC_FONT_SIZE_PT = 9;
 const SPEC_LINE_HEIGHT_MM = 5;
-const SPEC_COLUMN_WIDTH_MM = 85;
-const COLUMN_GAP_MM = 10;
+/** Narrowed from an original 85mm (round 3 post-checkpoint fix, defect 4: "the board can be
+ * larger on the page") — the spec list is only 11 lines of plain text, none of them close to
+ * needing 85mm at 9pt courier; `wrapTextToWidth` still wraps anything that doesn't fit, so
+ * shrinking this never clips a line, it just reclaims real estate the drawing badly needed. */
+const SPEC_COLUMN_WIDTH_MM = 60;
+const COLUMN_GAP_MM = 8;
 
 const OUTLINE_LINE_WEIGHT_MM = 0.5;
 const STRINGER_LINE_WEIGHT_MM = 0.35;
@@ -57,6 +61,12 @@ const STATION_DASH_PATTERN = [4, 3];
 const STATION_VALUE_FONT_SIZE_PT = 9;
 const STATION_LABEL_FONT_SIZE_PT = 7;
 const STATION_TEXT_GAP_MM = 2;
+/** Vertical gap between a station line's own name label and its second, smaller line (round 3
+ * post-checkpoint fix, defect 3: the WIDEPOINT line's own "WP OFFSET — ..." distance label,
+ * stacked beneath its name the same way `drawMarks` already stacks a name above a dimension when
+ * one line doesn't have room for both). */
+const STATION_SECONDARY_LABEL_GAP_MM = 4;
+const STATION_SECONDARY_LABEL_FONT_SIZE_PT = 6.5;
 
 const LENGTH_LABEL_FONT_SIZE_PT = 11;
 /** Vertical room reserved above the drawn outline for the length label — post-checkpoint addition
@@ -64,9 +74,11 @@ const LENGTH_LABEL_FONT_SIZE_PT = 11;
 const LENGTH_LABEL_TOP_RESERVE_MM = 9;
 /** Horizontal room reserved either side of the drawn outline itself for the station lines' own
  * dimension value (left) and small-caps name (right) — the outline is scaled to fit inside the
- * space left over, not the full column width, so neither label ever runs off the page. */
-const LABEL_RESERVE_LEFT_MM = 24;
-const LABEL_RESERVE_RIGHT_MM = 36;
+ * space left over, not the full column width, so neither label ever runs off the page. Right
+ * reserve widened slightly (36mm to 40mm) to keep room for the new, longer "WP OFFSET — 1/2"
+ * back" secondary label (round 3 post-checkpoint fix, defect 3) without running off the page. */
+const LABEL_RESERVE_LEFT_MM = 16;
+const LABEL_RESERVE_RIGHT_MM = 40;
 
 /**
  * Capitalizes a tail-shape union tag for display — every `TailShape["kind"]` value
@@ -129,22 +141,67 @@ interface OverviewStationLine {
   /** Small-caps name printed to the right of the dashed line. */
   label: string;
   station: Mm;
+  /** A second, smaller line stacked beneath `label` — currently only the widepoint's own "WP
+   * OFFSET — ..." distance from centre (round 3 post-checkpoint fix, defect 3: "the center,
+   * widepoint, and offset all should be explicitly labeled"). Omitted for every other line. */
+  secondaryLabel?: string;
+}
+
+/** The board's own half-length station — where "CENTER" is measured from, independent of where
+ * the widepoint actually sits (round 3 post-checkpoint fix, defect 3). */
+function centerStation(geometry: OutlineGeometry): Mm {
+  return mm(geometry.length / 2);
+}
+
+/** The widepoint's own signed distance from centre, in millimetres — positive toward the nose,
+ * matching `outline-viewer.tsx`'s own `wpFromCenterIn` sign convention (`wpYIn - lengthIn / 2`),
+ * computed from the drawn stations themselves (not the raw `widePointOffset` input) so this label
+ * never disagrees with where the two lines are actually drawn even when the input offset gets
+ * clamped near a board's own length/margin extremes (`lib/geometry/outline.ts`'s
+ * `widePointStation` computation). */
+function widePointOffsetFromCenter(geometry: OutlineGeometry): Mm {
+  return mm(geometry.widePointStation - centerStation(geometry));
+}
+
+/** The explicit "WP OFFSET — 1/2" back" (or "forward") label text for the widepoint's own
+ * distance from centre — wording matches `outline-viewer.tsx`'s own `wpOffsetText` convention
+ * (round 3 post-checkpoint fix, defect 3: "matching how the app's viewer words it"). Only called
+ * when the offset is non-zero; a widepoint dead on centre merges into one "WIDEPOINT / CENTER"
+ * line instead (`overviewStationLines`), the same way the on-screen viewer's own chip prints "At
+ * center" rather than a directional distance. Exported for testability. */
+export function overviewWpOffsetLabelText(offset: Mm): string {
+  const direction = offset > 0 ? "forward" : "back";
+  return `WP OFFSET — ${formatInchesFraction(mm(Math.abs(offset)))} ${direction}`;
 }
 
 /**
- * The three dashed reference stations drawn across the outline — nose @ 12", the widepoint
- * (merged with centre into one line and label, since a shaper looking at a recreate-me reference
- * sheet needs one station there, not two that usually sit a few millimetres apart), and tail @
- * 12". Exported for testability. `sampleOutline` (not a fixed half-width) is used for every
- * station's drawn width, exactly as `lib/geometry/template.ts`'s own `markPlacements` samples the
- * widepoint the same way rather than trusting `halfWidePointWidth` to always be exactly at that
- * station.
+ * The dashed reference stations drawn across the outline — nose @ 12", tail @ 12", and the
+ * board's centre and widepoint. Round 3 post-checkpoint fix, defect 3: "the center, widepoint,
+ * and offset all should be explicitly labeled" — centre and widepoint are now two DISTINCT lines,
+ * each with its own small-caps label and printed dimension, plus an explicit "WP OFFSET — ..."
+ * label stacked beneath the widepoint's own name, EXCEPT when the offset is zero: the two
+ * stations coincide, so drawing two dashed lines and two labels on top of each other would be
+ * illegible rather than informative — that case merges back into one "WIDEPOINT / CENTER" line,
+ * same as before this fix. Exported for testability. `sampleOutline` (not a fixed half-width) is
+ * used for every station's drawn width, exactly as `lib/geometry/template.ts`'s own
+ * `markPlacements` samples the widepoint the same way rather than trusting `halfWidePointWidth`
+ * to always be exactly at that station.
  */
 export function overviewStationLines(geometry: OutlineGeometry): OverviewStationLine[] {
+  const noseTwelve: OverviewStationLine = { label: 'NOSE @ 12"', station: mm(geometry.length - MEASURE_STATION_MM) };
+  const tailTwelve: OverviewStationLine = { label: 'TAIL @ 12"', station: MEASURE_STATION_MM };
+  const center = centerStation(geometry);
+  const offset = widePointOffsetFromCenter(geometry);
+
+  if (Math.abs(offset) < 1e-6) {
+    return [noseTwelve, { label: "WIDEPOINT / CENTER", station: geometry.widePointStation }, tailTwelve];
+  }
+
   return [
-    { label: 'NOSE @ 12"', station: mm(geometry.length - MEASURE_STATION_MM) },
-    { label: "WIDEPOINT/CENTER", station: geometry.widePointStation },
-    { label: 'TAIL @ 12"', station: MEASURE_STATION_MM },
+    noseTwelve,
+    { label: "CENTER", station: center },
+    { label: "WIDEPOINT", station: geometry.widePointStation, secondaryLabel: overviewWpOffsetLabelText(offset) },
+    tailTwelve,
   ];
 }
 
@@ -230,22 +287,31 @@ export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
     doc.text(line, margin, contentTop + (i + 1) * SPEC_LINE_HEIGHT_MM);
   });
 
-  // Outline drawing region — right of the spec column, filling the rest of the page.
-  const drawingX0 = margin + SPEC_COLUMN_WIDTH_MM + COLUMN_GAP_MM;
-  const drawingWidth = paperDims.width - margin - drawingX0;
-  const outlineBoxWidth = drawingWidth - LABEL_RESERVE_LEFT_MM - LABEL_RESERVE_RIGHT_MM;
+  // Outline drawing region — right of the spec column, filling the rest of the page (round 3
+  // post-checkpoint fix, defect 4: "the board can be larger on the page" — the box math itself now
+  // lives in `computeOverviewDrawingBox`, kept pure and tested in lib/geometry alongside
+  // `computeOverviewOutlineScale`, matching CLAUDE.md Rule 1).
   const drawingTop = contentTop + LENGTH_LABEL_TOP_RESERVE_MM;
-  const outlineBoxHeight = paperDims.height - margin - drawingTop;
+  const drawingBox = computeOverviewDrawingBox(
+    paperDims.width,
+    paperDims.height,
+    margin,
+    SPEC_COLUMN_WIDTH_MM,
+    COLUMN_GAP_MM,
+    drawingTop,
+    LABEL_RESERVE_LEFT_MM,
+    LABEL_RESERVE_RIGHT_MM,
+  );
 
-  const scale = computeOverviewOutlineScale(geometry, outlineBoxWidth, outlineBoxHeight);
+  const scale = computeOverviewOutlineScale(geometry, drawingBox.width, drawingBox.height);
   const boardWidthPage = geometry.halfWidePointWidth * 2 * scale;
   const boardHeightPage = geometry.length * scale;
 
   // Centered within its own reserved box on whichever axis has slack — one of the two is already
   // flush with its own budget by construction of `computeOverviewOutlineScale`.
-  const outlineLeft = drawingX0 + LABEL_RESERVE_LEFT_MM + (outlineBoxWidth - boardWidthPage) / 2;
+  const outlineLeft = drawingBox.x0 + (drawingBox.width - boardWidthPage) / 2;
   const centerX = outlineLeft + boardWidthPage / 2;
-  const outlineTop = drawingTop + (outlineBoxHeight - boardHeightPage) / 2;
+  const outlineTop = drawingTop + (drawingBox.height - boardHeightPage) / 2;
 
   const stationToY = (station: number) => outlineTop + (geometry.length - station) * scale;
   const halfWidthToX = (halfWidth: number, side: 1 | -1) => centerX + side * halfWidth * scale;
@@ -263,8 +329,10 @@ export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
   doc.line(centerX, outlineTop, centerX, outlineTop + boardHeightPage);
   doc.setLineDashPattern([], 0);
 
-  // The three labeled reference stations — dashed line, dimension value on the left, small-caps
-  // name on the right (post-checkpoint addition, per the user's own iShaper reference).
+  // The dashed reference stations — dimension value on the left, small-caps name on the right
+  // (post-checkpoint addition, per the user's own iShaper reference), plus a second, smaller
+  // "WP OFFSET — ..." line stacked beneath the widepoint's own name when centre and widepoint are
+  // two distinct lines (round 3 post-checkpoint fix, defect 3).
   for (const line of overviewStationLines(geometry)) {
     const halfWidth = sampleOutline(geometry, line.station);
     const y = stationToY(line.station);
@@ -287,6 +355,14 @@ export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(STATION_LABEL_FONT_SIZE_PT);
     doc.text(line.label, xRight + STATION_TEXT_GAP_MM, y, { baseline: "middle" });
+
+    if (line.secondaryLabel) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(STATION_SECONDARY_LABEL_FONT_SIZE_PT);
+      doc.text(line.secondaryLabel, xRight + STATION_TEXT_GAP_MM, y + STATION_SECONDARY_LABEL_GAP_MM, {
+        baseline: "middle",
+      });
+    }
   }
 
   return doc;

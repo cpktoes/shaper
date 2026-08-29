@@ -32,3 +32,44 @@ export function computeOverviewOutlineScale(
   const heightScale = drawHeightMm / geometry.length;
   return Math.min(widthScale, heightScale);
 }
+
+/** The outline's own drawing region on the Overview Sheet — the page's own real estate left over
+ * once the spec column, the gap after it, and the station-line label reserves either side of the
+ * drawing are subtracted (round 3 post-checkpoint fix, defect 4: "the board can be larger on the
+ * page" — the spec list is short, 11 lines, so it does not need anywhere near the width it was
+ * previously given, and the drawing was left with barely a fifth of the page as a result). Pure
+ * millimetre arithmetic, kept here rather than inline in the drawing module (CLAUDE.md Rule 1) so
+ * the box the outline scales into is independently testable, the same separation
+ * `computeOverviewOutlineScale` itself already keeps from `build-overview-pdf.ts`'s jsPDF calls.
+ */
+export interface OverviewDrawingBox {
+  /** Left edge of the region actually reserved for the outline curve, in page mm (after the spec
+   * column, its gap, and the left-side dimension-label reserve). */
+  x0: number;
+  /** Width of the region actually reserved for the outline curve itself (both label reserves
+   * already subtracted) — the value `computeOverviewOutlineScale`'s own `drawWidthMm` takes. */
+  width: number;
+  /** Height of the region actually reserved for the outline curve itself, from the drawing's own
+   * top (below the title/board-name/length-label block) down to the bottom margin — the value
+   * `computeOverviewOutlineScale`'s own `drawHeightMm` takes. */
+  height: number;
+}
+
+export function computeOverviewDrawingBox(
+  paperWidthMm: number,
+  paperHeightMm: number,
+  marginMm: number,
+  specColumnWidthMm: number,
+  columnGapMm: number,
+  drawingTopMm: number,
+  labelReserveLeftMm: number,
+  labelReserveRightMm: number,
+): OverviewDrawingBox {
+  const columnX0 = marginMm + specColumnWidthMm + columnGapMm;
+  const columnWidth = paperWidthMm - marginMm - columnX0;
+  return {
+    x0: columnX0 + labelReserveLeftMm,
+    width: Math.max(0, columnWidth - labelReserveLeftMm - labelReserveRightMm),
+    height: Math.max(0, paperHeightMm - marginMm - drawingTopMm),
+  };
+}

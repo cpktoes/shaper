@@ -9,10 +9,12 @@ import {
   TEMPLATE_OVERLAP_MM,
   computeTemplateLayout,
   computeTemplateMarks,
+  markLineSegments,
   markPlacements,
   nameBlockPlacement,
   type PaperSize,
   type TemplateLayout,
+  type TemplateMarks,
   templatePageBoxes,
 } from "./template";
 import { inchesToMm, mm } from "./units";
@@ -180,6 +182,82 @@ describe("markPlacements", () => {
     });
   });
 });
+
+describe(
+  'markLineSegments (round 3 post-checkpoint fix, defect 1: "the station lines should terminate at the outline curve" — every mark\'s line spans stringer-to-curve, clipped per page, never past the curve into blank paper)',
+  () => {
+    for (const paper of PAPERS) {
+      describe(paper, () => {
+        it.each(BOARD_PRESETS)(
+          "$id: every mark's segments start at the stringer (half-width 0) and the last one stops exactly at the curve's own half-width extent, with no gap left uncovered",
+          (preset) => {
+            const geometry = buildOutline(preset.outline);
+            const layout = computeTemplateLayout(geometry, paper);
+            const marks = computeTemplateMarks(geometry);
+            const segments = markLineSegments(layout, marks, geometry);
+
+            const markNames = (Object.keys(marks) as (keyof TemplateMarks)[]).filter(
+              (name) => marks[name] !== undefined,
+            );
+            expect(markNames.length).toBeGreaterThan(0);
+
+            for (const markName of markNames) {
+              const markSegments = segments
+                .filter((s) => s.mark === markName)
+                .sort((a, b) => a.halfWidthRange[0] - b.halfWidthRange[0]);
+              expect(markSegments.length).toBeGreaterThan(0);
+
+              expect(markSegments[0].halfWidthRange[0]).toBeCloseTo(0, 6);
+              const last = markSegments[markSegments.length - 1];
+              expect(last.halfWidthRange[1]).toBeCloseTo(last.halfWidthExtent, 6);
+              // Never runs past the curve.
+              for (const segment of markSegments) {
+                expect(segment.halfWidthRange[1]).toBeLessThanOrEqual(segment.halfWidthExtent + 1e-6);
+              }
+              // No gap between consecutive segments (adjacent pages overlap, never skip a strip).
+              for (let i = 0; i < markSegments.length - 1; i++) {
+                expect(markSegments[i + 1].halfWidthRange[0]).toBeLessThanOrEqual(markSegments[i].halfWidthRange[1] + 1e-6);
+              }
+            }
+          },
+        );
+
+        it.each(BOARD_PRESETS)("$id: exactly the column-0 segment carries hasLabel=true for every mark", (preset) => {
+          const geometry = buildOutline(preset.outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const marks = computeTemplateMarks(geometry);
+          const segments = markLineSegments(layout, marks, geometry);
+
+          const labeled = segments.filter((s) => s.hasLabel);
+          expect(labeled.length).toBeGreaterThan(0);
+          for (const segment of labeled) {
+            expect(layout.pages[segment.pageIndex].col).toBe(0);
+          }
+        });
+      });
+    }
+
+    it("a maximum-widepoint-width board's widepoint line crosses more than one page — the exact bug the user reported (\"don't extend to the edge\")", () => {
+      const geometry = buildOutline({
+        ...BOARD_PRESETS[0].outline,
+        widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max),
+      });
+      const layout = computeTemplateLayout(geometry, "letter");
+      expect(layout.columns).toBeGreaterThan(1);
+      const marks = computeTemplateMarks(geometry);
+      const segments = markLineSegments(layout, marks, geometry).filter((s) => s.mark === "widepoint");
+
+      expect(segments.length).toBeGreaterThan(1);
+      const pageIndexes = new Set(segments.map((s) => s.pageIndex));
+      expect(pageIndexes.size).toBeGreaterThan(1);
+
+      // The union of segments, in ascending order, covers [0, halfWidthExtent] with no gap.
+      const sorted = segments.slice().sort((a, b) => a.halfWidthRange[0] - b.halfWidthRange[0]);
+      expect(sorted[0].halfWidthRange[0]).toBeCloseTo(0, 6);
+      expect(sorted[sorted.length - 1].halfWidthRange[1]).toBeCloseTo(sorted[0].halfWidthExtent, 6);
+    });
+  },
+);
 
 describe(
   "templatePageBoxes (round 2 post-checkpoint fix, defect 2: match-mark crosshairs replaced by a page-border box, per the iShaper reference)",
