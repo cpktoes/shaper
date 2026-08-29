@@ -1,15 +1,27 @@
 "use client";
 
 /**
- * The preview-first export dialog (D-04): shows how the board splits across pages — paper picker,
- * tile-grid diagram, page count — before any PDF bytes exist, then builds the file only when
- * "Download PDF" is pressed. Shared by both entry points (Template screen toolbar, Summary screen
- * action row, D-03) via the `trigger` prop, so there is exactly one dialog implementation.
+ * The preview-first export dialog (D-04): an artifact picker (Overview Sheet vs. Full Template)
+ * over shared paper-size/preview chrome, before any PDF bytes exist, then builds the file only
+ * when "Download PDF" is pressed. Shared by both entry points (Template screen toolbar, Summary
+ * screen action row, D-03) via the `trigger` prop, so there is exactly one dialog implementation.
+ *
+ * Post-checkpoint addition (03-04): originally this dialog only ever built the full, true-size
+ * tiled template. Modeled on the user's own iShaper reference screenshot, it now opens on an
+ * artifact picker — two cards, "Overview Sheet" (one page, every input value plus a scaled
+ * reference drawing, `build-overview-pdf.ts`) and "Full Template" (the original tape-together
+ * tiled template, `build-template-pdf.ts`, unchanged) — so a shaper who just wants the numbers
+ * doesn't have to tape sixteen pages together to get them. Full Template stays the default
+ * selection: the dialog's pre-existing behavior regresses for nobody who doesn't touch the new
+ * picker. "One capability, one name" (D-03) still holds for the Download button itself — one
+ * accent-filled action regardless of which artifact is selected, per the UI spec's accent
+ * reservation.
  *
  * Reads `useDesign()` itself rather than taking design props — the Summary screen and the
  * Template screen share the same live design store, so no prop threading is needed to reach
- * either screen. The paper pick is local `useState`, never a design-store field: a view
- * preference, exactly like `showConstruction`/`orientation` in `outline-editor.tsx`.
+ * either screen. The paper pick and the artifact pick are both local `useState`, never
+ * design-store fields: view preferences, exactly like `showConstruction`/`orientation` in
+ * `outline-editor.tsx`.
  *
  * The dialog's own trigger is rendered through Base UI's `DialogTrigger` `render` prop, which
  * auto-manages `aria-expanded`/`aria-haspopup` on whatever element each screen supplies — that is
@@ -30,6 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
+import { downloadOverviewPdf } from "@/components/template/build-overview-pdf";
 import { downloadTemplatePdf } from "@/components/template/build-template-pdf";
 import {
   PAPER_MM,
@@ -39,6 +52,33 @@ import {
   type TemplateLayout,
 } from "@/lib/geometry/template";
 import { cn } from "@/lib/utils";
+
+/** Which printable artifact the dialog is currently building — "full" is the default so the
+ * dialog's pre-existing single-artifact behavior stays the path of least surprise. */
+type ExportArtifact = "overview" | "full";
+
+/** The picker's own two cards — copy kept short on purpose: the dialog is `sm:max-w-sm` wide, so
+ * each card gets roughly half of ~350px once padding and the inter-card gap are subtracted. */
+const ARTIFACT_CARDS: { value: ExportArtifact; title: string; description: string }[] = [
+  {
+    value: "overview",
+    title: "Overview Sheet",
+    description: "Every input value and the outline, one page.",
+  },
+  {
+    value: "full",
+    title: "Full Template",
+    description: "True-size outline tiled across pages you tape together.",
+  },
+];
+
+/** Selected state is an accent BORDER, not the accent FILL the Download PDF button carries — the
+ * UI spec reserves solid accent fill for that one button and the tile diagram's nose-page badge,
+ * so the picker's own selected state uses the same border+ring treatment
+ * `preset-card.tsx`/`board-rack-card.tsx` already use for their own hover/focus states, just
+ * driven by `aria-pressed` instead. */
+const ARTIFACT_CARD_CLASS =
+  "flex flex-col gap-1 rounded-lg border border-surf-line bg-surf-canvas p-3 text-left outline-none transition-colors hover:border-surf-accent-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink aria-pressed:border-surf-accent-ink aria-pressed:ring-2 aria-pressed:ring-surf-accent-ink";
 
 /** Pixel budget the tile diagram must stay inside, regardless of board shape — the dialog's own
  * `sm:max-w-sm` content width (384px) minus its `p-4` padding on both sides. Sized well under
@@ -77,6 +117,7 @@ function computeDiagramSizing(layout: TemplateLayout): DiagramSizing {
 export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
   const { outline, outlineGeometry, boardName, templateValues, railValues, volumeResult } = useDesign();
   const [open, setOpen] = useState(false);
+  const [artifact, setArtifact] = useState<ExportArtifact>("full");
   const [paperSize, setPaperSize] = useState<PaperSize>("letter");
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(false);
@@ -110,25 +151,34 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
     // whole point of the label swap is a visible state between the press and the download.
     window.setTimeout(() => {
       try {
-        downloadTemplatePdf({
-          layout,
-          marks: computeTemplateMarks(outlineGeometry),
-          geometry: outlineGeometry,
-          paper: paperSize,
-          boardName,
-          dims: {
-            length: templateValues.length,
-            widePointWidth: templateValues.widePointWidth,
-            centerThickness: railValues.centerThickness,
-            // Post-checkpoint fix (defect 3 refinement): the same values the Summary order
-            // form's own dimensions row reads, from the same design state — see
-            // components/summary/order-form.tsx's DimensionCell strip.
-            noseWidth12in: outlineGeometry.noseWidthAt12in,
-            tailWidth12in: outlineGeometry.tailWidthAt12in,
-            widePointOffset: outline.widePointOffset,
-            volumeLitres: volumeResult.volumeLitres,
-          },
-        });
+        if (artifact === "overview") {
+          downloadOverviewPdf({
+            geometry: outlineGeometry,
+            outline,
+            paper: paperSize,
+            boardName,
+          });
+        } else {
+          downloadTemplatePdf({
+            layout,
+            marks: computeTemplateMarks(outlineGeometry),
+            geometry: outlineGeometry,
+            paper: paperSize,
+            boardName,
+            dims: {
+              length: templateValues.length,
+              widePointWidth: templateValues.widePointWidth,
+              centerThickness: railValues.centerThickness,
+              // Post-checkpoint fix (defect 3 refinement): the same values the Summary order
+              // form's own dimensions row reads, from the same design state — see
+              // components/summary/order-form.tsx's DimensionCell strip.
+              noseWidth12in: outlineGeometry.noseWidthAt12in,
+              tailWidth12in: outlineGeometry.tailWidthAt12in,
+              widePointOffset: outline.widePointOffset,
+              volumeLitres: volumeResult.volumeLitres,
+            },
+          });
+        }
         generatingRef.current = false;
         setGenerating(false);
         setOpen(false);
@@ -145,11 +195,26 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
       <DialogTrigger render={trigger} />
       <DialogContent className="border-surf-line-faint bg-surf-panel text-surf-ink sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-surf-ink">Export Full-Size Template</DialogTitle>
-          <DialogDescription>Prints at true size, tiled across pages you tape together.</DialogDescription>
+          <DialogTitle className="text-surf-ink">Export Template</DialogTitle>
+          <DialogDescription>Choose what to print, then download.</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="What to print">
+            {ARTIFACT_CARDS.map((card) => (
+              <button
+                key={card.value}
+                type="button"
+                aria-pressed={artifact === card.value}
+                onClick={() => setArtifact(card.value)}
+                className={ARTIFACT_CARD_CLASS}
+              >
+                <span className="text-sm font-semibold text-surf-ink">{card.title}</span>
+                <span className="text-xs text-surf-ink-muted">{card.description}</span>
+              </button>
+            ))}
+          </div>
+
           <div className="flex gap-2" role="group" aria-label="Paper size">
             <Button
               type="button"
@@ -171,38 +236,46 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
             </Button>
           </div>
 
-          <div className="flex justify-center">
-            <div
-              role="img"
-              aria-label={`${layout.rows} row${layout.rows === 1 ? "" : "s"} by ${layout.columns} column${
-                layout.columns === 1 ? "" : "s"
-              } of pages, nose at page 1`}
-              style={{
-                display: "grid",
-                gridTemplateColumns: `repeat(${layout.columns}, ${diagram.cellWidth}px)`,
-                gridTemplateRows: `repeat(${layout.rows}, ${diagram.cellHeight}px)`,
-                gap: DIAGRAM_GAP_PX,
-              }}
-            >
-              {layout.pages.map((page) => (
+          {artifact === "full" ? (
+            <>
+              <div className="flex justify-center">
                 <div
-                  key={page.index}
-                  className={cn(
-                    "flex items-center justify-center rounded-sm border text-[10px] font-medium leading-none",
-                    page.index === 0
-                      ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
-                      : "border-surf-line bg-surf-panel text-surf-ink-muted",
-                  )}
+                  role="img"
+                  aria-label={`${layout.rows} row${layout.rows === 1 ? "" : "s"} by ${layout.columns} column${
+                    layout.columns === 1 ? "" : "s"
+                  } of pages, nose at page 1`}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: `repeat(${layout.columns}, ${diagram.cellWidth}px)`,
+                    gridTemplateRows: `repeat(${layout.rows}, ${diagram.cellHeight}px)`,
+                    gap: DIAGRAM_GAP_PX,
+                  }}
                 >
-                  {page.index + 1}
+                  {layout.pages.map((page) => (
+                    <div
+                      key={page.index}
+                      className={cn(
+                        "flex items-center justify-center rounded-sm border text-[10px] font-medium leading-none",
+                        page.index === 0
+                          ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
+                          : "border-surf-line bg-surf-panel text-surf-ink-muted",
+                      )}
+                    >
+                      {page.index + 1}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          <p className="text-sm text-surf-ink-muted">
-            {pageCount === 1 ? "1 page — no taping needed." : `${pageCount} pages — tape nose to tail.`}
-          </p>
+              <p className="text-sm text-surf-ink-muted">
+                {pageCount === 1 ? "1 page — no taping needed." : `${pageCount} pages — tape nose to tail.`}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-surf-ink-muted">
+              1 page — all the numbers needed to recreate this board.
+            </p>
+          )}
 
           {error && (
             <p className="text-sm text-destructive">{"Couldn't build the PDF — try again."}</p>
