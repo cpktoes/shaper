@@ -29,11 +29,12 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 - [x] User can sign up, log in, and reset their password (email/password and Google via Clerk) — Validated in Phase 2: Accounts & Saved Designs
 - [x] User can save a design as a named model, reopen it, and see their list of saved models (plus rename, duplicate, delete from the rack) — Validated in Phase 2: Accounts & Saved Designs
 - [x] User can export/print a full-size template of the board design, tiled across pages — Validated in Phase 3: Volume, Templates & Verified Math (ruler-verified 1:1 scale, alignment-box tiling, shaper marks, plus a one-page Overview Sheet; geometry suites gate every push via GitHub Actions)
+- [x] User can define a rocker curve (nose/tail rocker profile) — Validated in Phase 4: Rocker & Foil Editors (five-station rocker on a fold-back-proof monotone spline; adjustable by slider, typed imperial fractions, or dragging the curve; per-preset rocker character; survives save/reopen)
+- [x] User can define a foil (thickness distribution along the board) — Validated in Phase 4: Rocker & Foil Editors (five-station foil drives the rail-band thickness through a default-on link and feeds a Simpson-integrated cross-section volume validated within 1.01% of a published blank; one litres figure quoted on every screen)
 
 ### Active
 
-- [ ] User can define a rocker curve (nose/tail rocker profile)
-- [ ] User can define a foil (thickness distribution along the board)
+*(none — all v1.0 requirements validated)*
 
 ### Out of Scope
 
@@ -105,4 +106,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-28 after Phase 3 completion*
+*Last updated: 2026-08-29 after Phase 4 completion — all v1.0 milestone requirements validated*

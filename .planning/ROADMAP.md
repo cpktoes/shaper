@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation — Port & Deploy the Design Tool** - Port the Claude Design prototype into a real Next.js app, live on Vercel, with outline shaping, rail-band calc, and fin-placement calc working (completed 2026-08-21)
 - [x] **Phase 2: Accounts & Saved Designs** - Users sign up/log in via Clerk and their designs persist in Neon Postgres across sessions (completed 2026-08-28)
 - [x] **Phase 3: Volume, Templates & Verified Math** - Live volume calculation, printable full-size templates, and automated tests proving the geometry math correct (completed 2026-08-28)
-- [ ] **Phase 4: Rocker & Foil Editors** - Interactive rocker and foil editors complete the design surface, feeding rail band and volume live
+- [x] **Phase 4: Rocker & Foil Editors** - Interactive rocker and foil editors complete the design surface, feeding rail band and volume live (completed 2026-08-29)
 
 ## Phase Details
 
@@ -169,4 +169,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation — Port & Deploy the Design Tool | 4/4 | Complete    | 2026-08-21 |
 | 2. Accounts & Saved Designs | 6/6 | Complete    | 2026-08-28 |
 | 3. Volume, Templates & Verified Math | 7/7 | Complete    | 2026-08-28 |
-| 4. Rocker & Foil Editors | 5/5 | In Progress|  |
+| 4. Rocker & Foil Editors | 5/5 | Complete    | 2026-08-29 |
