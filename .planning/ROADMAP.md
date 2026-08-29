@@ -137,7 +137,7 @@ Plans:
   2. User can define a foil (thickness distribution along the length of the board) and view the live volume figure update as they adjust it
   3. Rocker and foil inputs are saved and restored correctly when a model is saved and reopened
 
-**Plans**: 1/5 plans executed in 4 waves
+**Plans**: 3/5 plans executed in 4 waves
 
 Plans:
 **Wave 1**
@@ -146,8 +146,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 04-02-PLAN.md — The full blank datasheet: nine station sliders, typed imperial entry, drag, and the toolbar
-- [ ] 04-03-PLAN.md — Thickness flows forward: rail bands read the foil, with a standalone override
+- [x] 04-02-PLAN.md — The full blank datasheet: nine station sliders, typed imperial entry, drag, and the toolbar
+- [x] 04-03-PLAN.md — Thickness flows forward: rail bands read the foil, with a standalone override
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -169,4 +169,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation — Port & Deploy the Design Tool | 4/4 | Complete    | 2026-08-21 |
 | 2. Accounts & Saved Designs | 6/6 | Complete    | 2026-08-28 |
 | 3. Volume, Templates & Verified Math | 7/7 | Complete    | 2026-08-28 |
-| 4. Rocker & Foil Editors | 1/5 | In Progress|  |
+| 4. Rocker & Foil Editors | 3/5 | In Progress|  |
