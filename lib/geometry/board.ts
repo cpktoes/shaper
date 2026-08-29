@@ -6,14 +6,16 @@
  * units boundary (lib/geometry/units.ts) when converting a control value
  * in or a label out.
  *
- * `rocker` (04-01): `RockerSpec` lives in `./rocker`, not here — this file stays types-only,
- * importing the type rather than redefining it, following the same numbered-deviation convention
- * `lib/geometry/volume.ts` uses. Recorded there: CONTEXT.md D-05 replaces the approved design's
- * two-value `RockerSpec` with a five-station blank-datasheet model.
+ * `rocker`/`foil` (04-01): `RockerSpec`/`FoilSpec` live in `./rocker`/`./foil`, not here — this
+ * file stays types-only, importing the types rather than redefining them, following the same
+ * numbered-deviation convention `lib/geometry/volume.ts` uses. Recorded in each of those files:
+ * CONTEXT.md D-05 replaces the approved design's two-value `RockerSpec`/`FoilSpec` with a
+ * five-station blank-datasheet model.
  */
 
 import { type Degrees, type Mm, degrees, inchesToMm } from "./units";
 import { DEFAULT_ROCKER_SPEC, type RockerSpec } from "./rocker";
+import { DEFAULT_FOIL_SPEC, type FoilSpec } from "./foil";
 
 /** Generic 2D point in millimetres. */
 export interface Point2D {
@@ -96,12 +98,13 @@ export const BOARD_LENGTH_RANGE_IN = { min: 60, max: 120 } as const;
 export const WIDEPOINT_WIDTH_RANGE_IN = { min: 16, max: 25 } as const;
 
 /**
- * The single board-design object. Foil, rails and fins become sibling keys in later phases, so
- * screens added later extend this object rather than reshaping it.
+ * The single board-design object. Rails and fins become sibling keys in later phases, so screens
+ * added later extend this object rather than reshaping it.
  */
 export interface BoardSpec {
   outline: OutlineSpec;
   rocker: RockerSpec;
+  foil: FoilSpec;
 }
 
 export const DEFAULT_BOARD_SPEC: BoardSpec = {
@@ -118,6 +121,7 @@ export const DEFAULT_BOARD_SPEC: BoardSpec = {
     tail: { kind: "squash", endWidth: inchesToMm(4) },
   },
   rocker: DEFAULT_ROCKER_SPEC,
+  foil: DEFAULT_FOIL_SPEC,
 };
 
 /** A preset applied when a tail-shape button is clicked — overwrites shape, angle and fullness at once. */

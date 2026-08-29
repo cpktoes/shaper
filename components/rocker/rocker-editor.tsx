@@ -12,6 +12,7 @@
 
 import { useDesign } from "@/components/design/design-store";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
+import { FOIL_THICKNESS_RANGE_IN } from "@/lib/geometry/foil";
 import { ROCKER_LIFT_RANGE_IN } from "@/lib/geometry/rocker";
 import { formatInchesFraction, inchesToMm, mmToInches } from "@/lib/geometry/units";
 import { Slider } from "@/components/ui/slider";
@@ -62,9 +63,10 @@ function ControlSlider({
 }
 
 export function RockerEditor() {
-  const { rocker, updateRocker, outline } = useDesign();
+  const { rocker, updateRocker, foil, updateFoil, outline } = useDesign();
 
   const noseTipIn = mmToInches(rocker.noseTip);
+  const centerThicknessIn = mmToInches(foil.center);
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-nowrap">
@@ -92,13 +94,26 @@ export function RockerEditor() {
                 })
               }
             />
+
+            <ControlSlider
+              label={`Center Thickness — ${formatInchesFraction(foil.center)}`}
+              value={centerThicknessIn}
+              min={FOIL_THICKNESS_RANGE_IN.min}
+              max={FOIL_THICKNESS_RANGE_IN.max}
+              step={FOIL_THICKNESS_RANGE_IN.step}
+              onValueChange={(v) =>
+                updateFoil({
+                  center: inchesToMm(clampFinite(v, FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max)),
+                })
+              }
+            />
           </div>
         </div>
       </aside>
       <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3">
         <TabbedPanel tabs={[{ id: "viewer" as const, label: "VIEWER" }]} active="viewer">
           <div className="flex min-h-0 flex-1 items-center justify-center">
-            <RockerViewer rocker={rocker} length={outline.length} />
+            <RockerViewer rocker={rocker} foil={foil} length={outline.length} />
           </div>
         </TabbedPanel>
       </main>
