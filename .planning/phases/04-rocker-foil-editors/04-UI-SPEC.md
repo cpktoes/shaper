@@ -122,26 +122,51 @@ separate always-on class.
 
 ## UI Considerations
 
-Applicable state considerations resolved: 15 covered, 3 backstop, 0 unresolved.
+Probe run 2026-08-29 (engine: `ui-consideration-probe.cjs`, 6 surfaces, 34 applicable
+considerations; researcher added 4 extra rows beyond the engine's classification — kept, no
+silent drops). **Resolved: 35 explicit, 3 backstop, 0 unresolved.** Surfaces and batch
+resolution confirmed by the founder 2026-08-29.
 
-| Category | Element(s) | Status | Resolution / Reason |
-|----------|------------|--------|---------------------|
+| Category | Element | Status | Resolution / Reason |
+|----------|---------|--------|---------------------|
 | empty | rocker-foil-typed-entry (form) | ✅ covered | Every field is always pre-filled with the current spec value (formatted via `formatInchesFraction`); there is no blank/unfilled state on load, mirroring every other numeric control in this app. |
-| empty | rocker-foil-viewer (media) | ✅ covered | A new board seeds `DEFAULT_ROCKER_SPEC`/`DEFAULT_FOIL_SPEC` before the screen ever renders (same seeding as `DEFAULT_OUTLINE_SPEC`); the drawing is never "no curve yet." |
-| empty | rocker-foil-datasheet-table (list-collection) | ✅ covered | Fixed cardinality — always exactly 5 stations, never 0; see zero-one-many row below. |
-| loading | rocker-foil-typed-entry, rocker-foil-toolbar, rails-thickness-link-toggle (interactive-control/form) | ✅ covered | All computation is synchronous, pure client-side (`lib/geometry/rocker.ts`/`foil.ts`), no network round trip — there is no loading/in-flight state to design, matching every other design-screen control. |
-| error | rocker-foil-typed-entry (form) | ✅ covered | See Copywriting Contract "Error state" row — inline warning-ink copy + revert-to-last-valid, resolved above. |
-| error | rocker-foil-viewer (media) | ✅ covered | Fold-back (an invalid, physically-impossible curve) is prevented **by construction** — the monotone Fritsch-Carlson/PCHIP-style spline (RESEARCH.md Pitfall 5) cannot produce a folded curve from any station values a slider or the typed-entry validator can commit, so no "invalid drawing" error state is needed on the viewer itself. |
-| error | rails-thickness-link-toggle (interactive-control) | ✅ covered | A toggle cannot itself error; no error state applicable. |
-| populated | rocker-foil-viewer (media) | ✅ covered | The only real state: the side profile at whatever station values are current — same treatment as every other board viewer (Outline/Rails/Fins), scaled to fit its panel via the existing `preserveAspectRatio`/fit-scale mechanism. |
-| populated | rocker-foil-datasheet-table (list-collection) | ✅ covered | Always renders all 5 stations × 3 columns (width/thickness/rocker) — the "populated" state is the only state (see empty/zero-one-many rows). |
+| loading | rocker-foil-typed-entry (form) | ✅ covered | Parse/commit is synchronous, pure client-side — no in-flight state exists. |
+| error | rocker-foil-typed-entry (form) | ✅ covered | See Copywriting Contract "Error state" row — inline warning-ink copy + revert-to-last-valid. |
+| populated | rocker-foil-typed-entry (form) | ✅ covered | The normal state: committed value rendered via `formatInchesFraction`; focus swaps to the raw editable string. |
 | partial | rocker-foil-typed-entry (form) | ✅ covered | Each station field commits independently on its own blur/enter — there is no multi-field "submit," so no partially-filled-form state exists; a shaper can leave any subset of fields untouched indefinitely with no validation gate blocking the others. |
+| overflow | rocker-foil-typed-entry (form) | ✅ covered | Displayed strings are bounded fixed-format fractions (~7 chars max); the ~64px fixed field width is sized for the longest formattable value — nothing dynamic can outgrow it. |
+| zero-one-many | rocker-foil-typed-entry (form) | ✅ covered | Single scalar field per cell — no collection cardinality to design for. |
+| long-text | rocker-foil-typed-entry (form) | ✅ covered | Only bounded formatted values plus the fixed authored error line flow through the field — no user-shaped free text is ever rendered back. |
+| empty | rocker-foil-datasheet-table (list-collection) | ✅ covered | Fixed cardinality — always exactly 5 stations, never 0; see zero-one-many row below. |
+| loading | rocker-foil-datasheet-table (list-collection) | ✅ covered | All cell values derive synchronously from in-memory state (`lib/geometry/rocker.ts`/`foil.ts`) — no fetch, no skeleton/spinner state. |
+| error | rocker-foil-datasheet-table (list-collection) | ✅ covered | Cells only ever hold committed valid values; entry failures are handled at the field level (typed-entry error row) and never leave an invalid value in a cell. |
+| populated | rocker-foil-datasheet-table (list-collection) | ✅ covered | Always renders all 5 stations × 3 columns (width/thickness/rocker) — the "populated" state is the only state (see empty/zero-one-many rows). |
 | partial | rocker-foil-datasheet-table (list-collection) | 🧪 backstop | A pre-Phase-4 saved board reopened under the new snapshot version backfills any missing `rocker`/`foil` fields from `DEFAULT_ROCKER_SPEC`/`DEFAULT_FOIL_SPEC` (D-15) before the table ever renders — needs an explicit `design-snapshot.test.ts` case proving no column ever shows `undefined`/`NaN` for an old row, not just visual inspection. |
-| overflow | rocker-foil-datasheet-table (static-content/list-collection) | ✅ covered | Column values are fixed-format imperial fractions (`formatInchesFraction`, e.g. `23 1/2"`), bounded length (~7 chars max); no dynamic truncation/wrap logic is needed — same guarantee every other rail/dimension table in this app already relies on. |
-| overflow | summary-rocker-box (static-content, D-04) | 🧪 backstop | The Summary order form's rocker box is a fixed-size reserved area (`RockerTicks` placeholder today); the real curve must fit that box at any extreme station combination (e.g. very high nose lift + very low tail lift) via the same `preserveAspectRatio` fit-to-viewBox technique the side-profile viewer uses, not a fixed-scale drawing that could clip. Needs a visual check at the board-length/rocker extremes the existing `BOARD_LENGTH_RANGE_IN` constants define, not just a mid-range board. |
-| overflow | rocker-foil-viewer (static-content, wide/extreme boards) | 🧪 backstop | Mirrors the Outline viewer's own solved problem (fixed vs. growing frame for extreme boards, quick task `260823-h6l`) — the side-profile frame must be sized from the same board-length/width range constants so one frame fits every producible board without per-board resizing; needs the same fixed-frame treatment, not a new one-off. |
+| overflow | rocker-foil-datasheet-table (list-collection) | ✅ covered | Column values are fixed-format imperial fractions (`formatInchesFraction`, e.g. `23 1/2"`), bounded length (~7 chars max); no dynamic truncation/wrap logic is needed — same guarantee every other rail/dimension table in this app already relies on. |
 | zero-one-many | rocker-foil-datasheet-table (list-collection) | ✅ covered | Station count is fixed at exactly 5 by D-05 (a locked, costly-to-reverse decision) — there is no zero/one/many variability to design for; singular/plural copy is not applicable. |
-| long-text | rocker-foil-datasheet-table, rocker-foil-toolbar (static-content/interactive-control) | ✅ covered | Station names ("Nose Tip", "Nose @ 12″", "Center", "Tail @ 12″", "Tail Tip") and toggle labels are fixed, short, English strings authored in this spec — no user-generated or unbounded-length text flows through this screen. |
+| long-text | rocker-foil-datasheet-table (list-collection) | ✅ covered | Station names ("Nose Tip", "Nose @ 12″", "Center", "Tail @ 12″", "Tail Tip") are fixed, short, authored strings — no user-generated or unbounded-length text flows through the table. |
+| empty | rocker-foil-viewer (media) | ✅ covered | A new board seeds `DEFAULT_ROCKER_SPEC`/`DEFAULT_FOIL_SPEC` before the screen ever renders (same seeding as `DEFAULT_OUTLINE_SPEC`); the drawing is never "no curve yet." |
+| loading | rocker-foil-viewer (media) | ✅ covered | The SVG renders synchronously from state — no async source, no loading placeholder. |
+| error | rocker-foil-viewer (media) | ✅ covered | Fold-back (an invalid, physically-impossible curve) is prevented **by construction** — the monotone Fritsch-Carlson/PCHIP-style spline (RESEARCH.md Pitfall 5) cannot produce a folded curve from any station values a slider or the typed-entry validator can commit, so no "invalid drawing" error state is needed on the viewer itself. |
+| populated | rocker-foil-viewer (media) | ✅ covered | The only real state: the side profile at whatever station values are current — same treatment as every other board viewer (Outline/Rails/Fins), scaled to fit its panel via the existing `preserveAspectRatio`/fit-scale mechanism. |
+| overflow | rocker-foil-viewer (media, wide/extreme boards) | 🧪 backstop | Mirrors the Outline viewer's own solved problem (fixed vs. growing frame for extreme boards, quick task `260823-h6l`) — the side-profile frame must be sized from the same board-length/width range constants so one frame fits every producible board without per-board resizing; needs the same fixed-frame treatment, not a new one-off. |
+| long-text | rocker-foil-viewer (media) | ✅ covered | Callout labels and dimension values are fixed authored strings / bounded fraction formats on the snapped-rail callout grammar — nothing unbounded is drawn. |
+| empty | rocker-foil-toolbar (interactive-control) | ✅ covered | The toolbar always renders both buttons; it is not data-dependent and has no zero-data state. |
+| loading | rocker-foil-toolbar (interactive-control) | ✅ covered | Both buttons flip client-side state instantly — no async work, no pending state. |
+| error | rocker-foil-toolbar (interactive-control) | ✅ covered | Rotate and hide-outline mutate local view state only; there is no failable operation behind either button. |
+| populated | rocker-foil-toolbar (interactive-control) | ✅ covered | The only state variation is the toggle's `aria-pressed` accent swap, fully specified in the Color table (row 2) and the Component Notes below. |
+| long-text | rocker-foil-toolbar (interactive-control) | ✅ covered | Labels/tooltips are the fixed strings authored in this spec (see aria-label contract in Component Notes) — never dynamic text. |
+| empty | rails-thickness-link-toggle (interactive-control) | ✅ covered | The checkbox always renders, default checked — there is no absent/zero-data state. |
+| loading | rails-thickness-link-toggle (interactive-control) | ✅ covered | Toggling re-derives slider values synchronously (`effectiveX` derived-value pattern) — no in-flight state. |
+| error | rails-thickness-link-toggle (interactive-control) | ✅ covered | A toggle cannot itself error; no error state applicable. |
+| partial | rails-thickness-link-toggle (interactive-control) | ✅ covered | Strictly binary — the indeterminate checkbox state is never used; linked/unlinked are the only two states and both are fully specified (D-09/D-10). |
+| long-text | rails-thickness-link-toggle (interactive-control) | ✅ covered | The label is the fixed authored string "Use Board's Rocker & Foil Thickness" — never truncated, never dynamic. |
+| empty | summary-rocker-box (static-content, D-04) | ✅ covered | D-15's backfill guarantees a complete rocker spec exists before the Summary ever renders — the box always has a real curve to draw, replacing the `RockerTicks` placeholder. |
+| loading | summary-rocker-box (static-content) | ✅ covered | Renders synchronously from the loaded design snapshot — no async state. |
+| error | summary-rocker-box (static-content) | ✅ covered | The drawn curve is monotone-by-construction (same spline as the viewer) — no invalid-curve state can reach the order form. |
+| partial | summary-rocker-box (static-content) | ✅ covered | Always draws from a complete, backfilled 5-station spec (D-15) — a partially-defined rocker cannot exist at render time. |
+| overflow | summary-rocker-box (static-content, D-04) | 🧪 backstop | The Summary order form's rocker box is a fixed-size reserved area (`RockerTicks` placeholder today); the real curve must fit that box at any extreme station combination (e.g. very high nose lift + very low tail lift) via the same `preserveAspectRatio` fit-to-viewBox technique the side-profile viewer uses, not a fixed-scale drawing that could clip. Needs a visual check at the board-length/rocker extremes the existing `BOARD_LENGTH_RANGE_IN` constants define, not just a mid-range board. |
+| long-text | summary-rocker-box (static-content) | ✅ covered | The box adds no new text — only the drawn curve; surrounding form labels are pre-existing fixed strings out of this phase's scope. |
 
 ---
 
@@ -178,6 +203,14 @@ Construction-Lines button's `aria-pressed` accent-swap treatment, icon TBD by ex
 from lucide-react, something distinct from `LocateFixedIcon` which Outline already claims for
 "show construction").
 
+**Accessibility labels (contract, not optional):** every icon-only button carries BOTH
+`aria-label` and `title`, exactly as `outline-editor.tsx` does (lines ~155–233). For this phase:
+rotate button → `aria-label`/`title` `"Rotate the board"`; hide-outline toggle →
+`aria-pressed={hidden}` with state-dependent `aria-label`/`title` — `"Hide board outline"` when
+the outline is showing, `"Show board outline"` when hidden (mirrors the Construction-Lines
+button's flip at `outline-editor.tsx:209`). The executor copies this pattern, not just the box
+styling.
+
 **Typed datasheet entry** (D-06): shadcn `Input`, narrow/fixed width (~64px), right-aligned
 numeric text, `text-sm` — shown *inline in the DATASHEET table's rocker/thickness cells*, not in
 a separate form. Displays `formatInchesFraction(value)` when not focused; on focus, shows the
@@ -207,11 +240,11 @@ render `disabled` (existing `opacity-40` treatment already used for disabled sli
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS (FLAG resolved — aria-label contract added to Component Notes)
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-08-29 (gsd-ui-checker: UI-SPEC VERIFIED, 6/6 dimensions; 1 FLAG resolved in-spec)
