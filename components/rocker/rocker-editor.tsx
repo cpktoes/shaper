@@ -7,18 +7,22 @@
  *
  * 04-02 Task 1 widened the sidebar to the full `RockerControls` (all four rocker lifts, all five
  * thicknesses) and added the VIEWER tab's toolbar — a rotate-in-place button and a hide-board-
- * outline toggle, the same box treatment the Template screen's own toolbar uses. Task 2 adds the
+ * outline toggle, the same box treatment the Template screen's own toolbar uses. Task 2 added the
  * second tab: DATASHEET, the D-07 full five-station table with typed imperial entry. Two tabs
  * rather than one split view, because the drawing wants full panel height and the table wants
- * full panel width — the toolbar stays inside the VIEWER tab only. Construction-line dragging
- * arrives in Task 3.
+ * full panel width — the toolbar stays inside the VIEWER tab only. Task 3 adds a third toolbar
+ * button — the construction-lines toggle, the hide-board-outline button's sibling — that reveals
+ * `RockerViewer`'s nine drag targets; the drag handler here splits the solved patch between
+ * `updateRocker` and `updateFoil`.
  */
 
 import { useId, useState } from "react";
-import { LayoutTemplateIcon } from "lucide-react";
+import { LayoutTemplateIcon, LocateFixedIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
+import type { FoilSpec } from "@/lib/geometry/foil";
+import type { RockerSpec } from "@/lib/geometry/rocker";
 import { RockerControls, type RockerControlsSectionKey } from "./rocker-controls";
 import { RockerDatasheet } from "./rocker-datasheet";
 import { RockerViewer } from "./rocker-viewer";
@@ -72,10 +76,21 @@ export function RockerEditor() {
    * state, not design data, deliberately not persisted — mirrors `showConstruction`'s posture on
    * the Template screen. */
   const [showOutlineReference, setShowOutlineReference] = useState(true);
+  /** Reveals the nine construction-line drag targets on the side profile. Local view state, not
+   * design data, deliberately not persisted — mirrors `showConstruction`'s posture on the
+   * Template screen; defaults to `false` there too. */
+  const [showConstruction, setShowConstruction] = useState(false);
   const [activeTab, setActiveTab] = useState<RockerTab>("viewer");
 
   function toggleSection(key: RockerControlsSectionKey) {
     setSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  /** Splits a drag-solved patch between the two mutators it can touch — a rocker-line drag
+   * returns `{ rocker }`, a deck-curve drag returns `{ foil }`, never both. */
+  function handleViewerDrag(patch: { rocker?: Partial<RockerSpec>; foil?: Partial<FoilSpec> }) {
+    if (patch.rocker) updateRocker(patch.rocker);
+    if (patch.foil) updateFoil(patch.foil);
   }
 
   return (
@@ -136,6 +151,20 @@ export function RockerEditor() {
               >
                 <LayoutTemplateIcon className="size-6" />
               </button>
+              <button
+                type="button"
+                onClick={() => setShowConstruction((v) => !v)}
+                aria-pressed={showConstruction}
+                aria-label={showConstruction ? "Hide construction lines" : "Show construction lines"}
+                title={showConstruction ? "Hide construction lines" : "Show construction lines"}
+                // Not accent-filled: the UI spec's Color table reserves the accent fill for the
+                // Hide Board Outline toggle and the drag targets themselves, not a third toolbar
+                // button — so this one takes a neutral pressed state instead (the same
+                // `bg-surf-well` tone the other two buttons already use on hover).
+                className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-pressed:bg-surf-well aria-pressed:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+              >
+                <LocateFixedIcon className="size-6" />
+              </button>
               <RockerViewer
                 rocker={rocker}
                 foil={foil}
@@ -143,6 +172,8 @@ export function RockerEditor() {
                 outlineGeometry={outlineGeometry}
                 orientation={orientation}
                 showOutlineReference={showOutlineReference}
+                showConstruction={showConstruction}
+                onDrag={handleViewerDrag}
               />
             </div>
           ) : (
