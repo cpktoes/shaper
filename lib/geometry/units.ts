@@ -36,6 +36,16 @@ export function cubicMmToLitres(volumeMm3: number): Litres {
 }
 
 /**
+ * Converts a design area from square millimetres to square inches — the only other place besides
+ * `mmToInches` that turns `MM_PER_INCH` into a real device number, so the Overview Sheet's printed
+ * "Template Area" can never drift from the same `area` field `lib/geometry/outline.ts` computes
+ * for everything else (CLAUDE.md Rule 2: never reach for 25.4 anywhere else).
+ */
+export function squareMmToSquareInches(areaMm2: number): number {
+  return areaMm2 / (MM_PER_INCH * MM_PER_INCH);
+}
+
+/**
  * Formats a millimetre value as an imperial fraction string, e.g. `18 1/2"`.
  * Ported from the prototype's `toFrac` (reference/project/Template.dc.html
  * lines 309-320): round to the nearest 1/denominator, split whole and

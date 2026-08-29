@@ -8,6 +8,7 @@ import {
   inchesToMm,
   mmToInches,
   parseImperial,
+  squareMmToSquareInches,
 } from "./units";
 
 describe("units boundary", () => {
@@ -21,6 +22,13 @@ describe("units boundary", () => {
 
   it("computes litres from cubic millimetres", () => {
     expect(cubicMmToLitres(1_000_000)).toBe(1);
+  });
+
+  it("converts square millimetres to square inches", () => {
+    // A 1in x 1in square is 25.4mm x 25.4mm = 645.16 sq mm, and should read back as 1 sq in.
+    expect(squareMmToSquareInches(MM_PER_INCH * MM_PER_INCH)).toBeCloseTo(1, 9);
+    // A board-scale area (roughly a 74in x 19in outline's rough bounding box) round-trips too.
+    expect(squareMmToSquareInches(0)).toBe(0);
   });
 
   describe("formatInchesFraction", () => {
