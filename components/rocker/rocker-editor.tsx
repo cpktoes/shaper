@@ -13,19 +13,52 @@
  * full panel width — the toolbar stays inside the VIEWER tab only. Task 3 adds a third toolbar
  * button — the construction-lines toggle, the hide-board-outline button's sibling — that reveals
  * `RockerViewer`'s nine drag targets; the drag handler here splits the solved patch between
- * `updateRocker` and `updateFoil`.
+ * `updateRocker` and `updateFoil`. 04-05 Task 1 adds a fourth: below `RockerControls`, a
+ * development-only "Copy preset values" button mirroring the Template screen's own capture
+ * affordance (`outline-editor.tsx`) — it reads the live `rocker`/`foil` back out as pasteable
+ * `lib/geometry/presets.ts` source, gated on `process.env.NODE_ENV === "development"` so the
+ * bundler dead-code-eliminates it from production, the same D-03 tuning loop the outline presets
+ * were captured through.
  */
 
 import { useId, useState } from "react";
 import { LayoutTemplateIcon, LocateFixedIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
+import { Button } from "@/components/ui/button";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
-import type { FoilSpec } from "@/lib/geometry/foil";
-import type { RockerSpec } from "@/lib/geometry/rocker";
+import { type FoilSpec } from "@/lib/geometry/foil";
+import { type RockerSpec } from "@/lib/geometry/rocker";
+import { type Mm, mmToInches } from "@/lib/geometry/units";
 import { RockerControls, type RockerControlsSectionKey } from "./rocker-controls";
 import { RockerDatasheet } from "./rocker-datasheet";
 import { RockerViewer } from "./rocker-viewer";
+
+/** Rounds a millimetre value to inches, 3 decimal places, matching `outline-editor.tsx`'s
+ * `roundedInches` precision for the same capture affordance. */
+function roundedInches(value: Mm): number {
+  return Number(mmToInches(value).toFixed(3));
+}
+
+/** Builds a pasteable `BoardPreset["rocker"]`/`["foil"]` source block from the live rocker and
+ * foil specs — the ROCKER-screen counterpart to `outline-editor.tsx`'s `buildPresetSource`. */
+function buildRockerPresetSource(rocker: RockerSpec, foil: FoilSpec): string {
+  return [
+    "rocker: {",
+    `  noseTip: inchesToMm(${roundedInches(rocker.noseTip)}),`,
+    `  nose12: inchesToMm(${roundedInches(rocker.nose12)}),`,
+    `  tail12: inchesToMm(${roundedInches(rocker.tail12)}),`,
+    `  tailTip: inchesToMm(${roundedInches(rocker.tailTip)}),`,
+    "},",
+    "foil: {",
+    `  noseTip: inchesToMm(${roundedInches(foil.noseTip)}),`,
+    `  nose12: inchesToMm(${roundedInches(foil.nose12)}),`,
+    `  center: inchesToMm(${roundedInches(foil.center)}),`,
+    `  tail12: inchesToMm(${roundedInches(foil.tail12)}),`,
+    `  tailTip: inchesToMm(${roundedInches(foil.tailTip)}),`,
+    "},",
+  ].join("\n");
+}
 
 type RockerTab = "viewer" | "datasheet";
 const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
@@ -81,6 +114,7 @@ export function RockerEditor() {
    * Template screen; defaults to `false` there too. */
   const [showConstruction, setShowConstruction] = useState(false);
   const [activeTab, setActiveTab] = useState<RockerTab>("viewer");
+  const [justCopiedPreset, setJustCopiedPreset] = useState(false);
 
   function toggleSection(key: RockerControlsSectionKey) {
     setSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -93,8 +127,24 @@ export function RockerEditor() {
     if (patch.foil) updateFoil(patch.foil);
   }
 
+  /** `outline-editor.tsx`'s `handleCopyPreset`, copied verbatim for the rocker/foil pair. */
+  function handleCopyPreset() {
+    const text = buildRockerPresetSource(rocker, foil);
+    console.log(text);
+    setJustCopiedPreset(true);
+    navigator.clipboard.writeText(text).catch(() => {
+      // Clipboard write rejected (unavailable or permission denied) — the console.log above already
+      // carries the same text, so this is a silent no-op rather than a thrown error.
+    });
+    window.setTimeout(() => setJustCopiedPreset(false), 1500);
+  }
+
   return (
     <div className="flex min-h-0 w-full flex-1 flex-nowrap">
+      {/* A flex column, not one scrolling box — mirrors `outline-editor.tsx`'s aside exactly (quick
+          task 260823-ux2): the controls scroll in the region below and the dev preset button sits
+          in a footer that does not, so it is always reachable regardless of how much the controls
+          region grows. */}
       <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink">
         <div className="min-h-0 flex-1 overflow-y-auto p-10">
           <div className="flex flex-col gap-5">
@@ -117,6 +167,18 @@ export function RockerEditor() {
             />
           </div>
         </div>
+        {process.env.NODE_ENV === "development" && (
+          <div className="flex-none border-t border-surf-line-faint p-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent"
+              onClick={handleCopyPreset}
+            >
+              {justCopiedPreset ? "Copied!" : "Copy preset values"}
+            </Button>
+          </div>
+        )}
       </aside>
       <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3">
         <TabbedPanel tabs={ROCKER_TABS} active={activeTab} onSelect={setActiveTab}>
