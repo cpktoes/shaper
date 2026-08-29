@@ -1,20 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 04-rocker-foil-editors
 source: [04-VERIFICATION.md]
 started: 2026-08-29T23:30:00Z
-updated: 2026-08-30T00:40:00Z
+updated: 2026-08-30T01:05:00Z
 ---
 
 ## Current Test
 
-number: 8
-name: Each preset reads as its own board type from the side
-expected: |
-  Start a new board from each of the four presets (Shortboard, Fish, Mid-length, Longboard)
-  and open /design/rocker for each. Each reads as its own board type: the Fish flatter and
-  thicker, the Longboard with more nose lift, the Shortboard with the most rocker overall.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -62,18 +56,18 @@ evidence: "Volume screen 29.79 L, Summary order form 29.8 L, home in-progress ca
 
 ### 8. Each preset reads as its own board type from the side
 expected: Start a new board from each of the four presets (Shortboard, Fish, Mid-length, Longboard) and open /design/rocker for each. Each reads as its own board type: the Fish flatter and thicker, the Longboard with more nose lift, the Shortboard with the most rocker overall.
-result: [pending]
+result: pass
 
 ### 9. Summary print-preview holds up at the extremes in both themes
 expected: Open /design/summary and print-preview both sheets with the shortest board at maximum nose lift, and again with a 9-foot longboard, in Daylight and Slate themes. The rocker box shows the real curve and real lift values, the sheet still prints as exactly two pages, and nothing clips.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 9
-passed: 7
+passed: 9
 issues: 0
-pending: 2
+pending: 0
 skipped: 0
 blocked: 0
 
