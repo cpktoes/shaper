@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { BOARD_PRESETS } from "./presets";
-import { buildOutline } from "./outline";
+import { buildOutline, sampleOutline } from "./outline";
 import { computeRailBands, DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "./rail-bands";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "./foil";
-import { computeVolume, DEFAULT_VOLUME_SPEC } from "./volume";
+import { computeCrossSectionVolume, computeVolume, DEFAULT_VOLUME_SPEC } from "./volume";
 import { inchesToMm, mm } from "./units";
 import {
   deriveEffectiveRails,
   deriveEffectiveVolume,
+  deriveQuotedVolumeLitres,
   deriveRailValues,
   deriveTemplateValues,
   summarizeDesign,
@@ -255,6 +256,143 @@ describe("live-recompute invariant (VOL-01)", () => {
 
       expect(wider.volumeLitres).not.toBe(narrower.volumeLitres);
       expect(wider.volumeLitres).toBeGreaterThan(narrower.volumeLitres);
+    },
+  );
+});
+
+// New cases per PLAN.md's <behavior> (04-04 Task 2): deriveQuotedVolumeLitres is the one rule
+// deciding which of the two litres figures the app quotes (D-13, threat T-04-11), and
+// summarizeDesign must run the identical rule so a rack card's litres can never disagree with the
+// Volume screen's.
+describe("deriveQuotedVolumeLitres", () => {
+  it.each(BOARD_PRESETS)(
+    "$id: returns the cross-section figure when the board is importing its template dimensions",
+    (preset) => {
+      const outlineGeometry = buildOutline(preset.outline);
+      const templateValues = deriveTemplateValues(preset.outline, outlineGeometry);
+      const railValues = deriveRailValues(computeRailBands(preset.rails));
+      const effectiveVolume = deriveEffectiveVolume(DEFAULT_VOLUME_SPEC, templateValues, railValues);
+      const estimator = computeVolume(effectiveVolume, templateValues, railValues);
+      const crossSection = computeCrossSectionVolume({
+        halfWidthAt: (s) => sampleOutline(outlineGeometry, s),
+        foil: DEFAULT_FOIL_SPEC,
+        rails: preset.rails,
+        length: preset.outline.length,
+      });
+
+      const quoted = deriveQuotedVolumeLitres(estimator, crossSection, true);
+      expect(quoted).toBe(crossSection.volumeLitres);
+      expect(quoted).not.toBe(estimator.volumeLitres);
+    },
+  );
+
+  it.each(BOARD_PRESETS)(
+    "$id: returns the estimator's figure when the board is not importing its template dimensions",
+    (preset) => {
+      const outlineGeometry = buildOutline(preset.outline);
+      const templateValues = deriveTemplateValues(preset.outline, outlineGeometry);
+      const railValues = deriveRailValues(computeRailBands(preset.rails));
+      const crossSection = computeCrossSectionVolume({
+        halfWidthAt: (s) => sampleOutline(outlineGeometry, s),
+        foil: DEFAULT_FOIL_SPEC,
+        rails: preset.rails,
+        length: preset.outline.length,
+      });
+      const estimatorSpec = { ...DEFAULT_VOLUME_SPEC, importTemplateDimensions: false };
+      const effectiveVolume = deriveEffectiveVolume(estimatorSpec, templateValues, railValues);
+      const estimator = computeVolume(effectiveVolume, templateValues, railValues);
+
+      const quoted = deriveQuotedVolumeLitres(estimator, crossSection, false);
+      expect(quoted).toBe(estimator.volumeLitres);
+      expect(quoted).not.toBe(crossSection.volumeLitres);
+    },
+  );
+});
+
+describe("summarizeDesign volume disclosure (D-13) — a rack card and the Volume screen cannot disagree", () => {
+  it.each(BOARD_PRESETS)("$id: matches deriveQuotedVolumeLitres for the identical full snapshot", (preset) => {
+    const fields = {
+      outline: preset.outline,
+      rails: preset.rails,
+      foil: DEFAULT_FOIL_SPEC,
+      railsImportFoilThickness: false,
+      volume: DEFAULT_VOLUME_SPEC,
+    };
+    const summary = summarizeDesign(fields);
+
+    const outlineGeometry = buildOutline(fields.outline);
+    const templateValues = deriveTemplateValues(fields.outline, outlineGeometry);
+    const railValues = deriveRailValues(computeRailBands(fields.rails));
+    const effectiveVolume = deriveEffectiveVolume(fields.volume, templateValues, railValues);
+    const estimator = computeVolume(effectiveVolume, templateValues, railValues);
+    const crossSection = computeCrossSectionVolume({
+      halfWidthAt: (s) => sampleOutline(outlineGeometry, s),
+      foil: fields.foil,
+      rails: fields.rails,
+      length: fields.outline.length,
+    });
+    const expected = deriveQuotedVolumeLitres(estimator, crossSection, estimator.importingTemplate);
+
+    expect(summary.volumeLitres).toBe(expected);
+  });
+
+  it.each(BOARD_PRESETS)(
+    "$id: returns the estimator's figure when the volume import toggle is off, matching that board's Volume screen",
+    (preset) => {
+      const fields = {
+        outline: preset.outline,
+        rails: preset.rails,
+        foil: DEFAULT_FOIL_SPEC,
+        railsImportFoilThickness: false,
+        volume: { ...DEFAULT_VOLUME_SPEC, importTemplateDimensions: false },
+      };
+      const summary = summarizeDesign(fields);
+
+      const outlineGeometry = buildOutline(fields.outline);
+      const templateValues = deriveTemplateValues(fields.outline, outlineGeometry);
+      const railValues = deriveRailValues(computeRailBands(fields.rails));
+      const effectiveVolume = deriveEffectiveVolume(fields.volume, templateValues, railValues);
+      const estimator = computeVolume(effectiveVolume, templateValues, railValues);
+
+      expect(summary.volumeLitres).toBe(estimator.volumeLitres);
+    },
+  );
+});
+
+describe("summarizeDesign's litres respond to foil, not rocker (VOL-01/D-11)", () => {
+  it.each(BOARD_PRESETS)("$id: changing only a foil thickness changes summarizeDesign's litres", (preset) => {
+    const base = summarizeDesign({
+      outline: preset.outline,
+      rails: preset.rails,
+      foil: DEFAULT_FOIL_SPEC,
+      railsImportFoilThickness: false,
+      volume: DEFAULT_VOLUME_SPEC,
+    });
+    const thickerFoil: FoilSpec = { ...DEFAULT_FOIL_SPEC, center: mm(DEFAULT_FOIL_SPEC.center + inchesToMm(1)) };
+    const changed = summarizeDesign({
+      outline: preset.outline,
+      rails: preset.rails,
+      foil: thickerFoil,
+      railsImportFoilThickness: false,
+      volume: DEFAULT_VOLUME_SPEC,
+    });
+
+    expect(changed.volumeLitres).not.toBe(base.volumeLitres);
+  });
+
+  it.each(BOARD_PRESETS)(
+    "$id: has no rocker field to change — DesignSummaryFields structurally excludes rocker (mirrors deriveEffectiveRails' D-11 proof), so identical calls reproduce identical litres",
+    (preset) => {
+      const fields = {
+        outline: preset.outline,
+        rails: preset.rails,
+        foil: DEFAULT_FOIL_SPEC,
+        railsImportFoilThickness: false,
+        volume: DEFAULT_VOLUME_SPEC,
+      };
+      const first = summarizeDesign(fields);
+      const second = summarizeDesign(fields);
+      expect(second.volumeLitres).toBe(first.volumeLitres);
     },
   );
 });

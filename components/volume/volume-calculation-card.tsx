@@ -1,9 +1,17 @@
 /**
  * The Volume Calculation card, ported from reference/project/Volume.dc.html lines 107-149.
  * Card-and-rows treatment follows components/rails/rail-data-table.tsx. Every number here comes
- * from `VolumeResult`; this component performs no arithmetic beyond unit formatting.
+ * from `VolumeResult` or the caller-supplied `quotedVolumeLitres`; this component performs no
+ * arithmetic beyond unit formatting.
+ *
+ * D-13's transparency half: the headline figure is `quotedVolumeLitres` (the one rule from
+ * `deriveQuotedVolumeLitres`, not `result.volumeLitres` directly), and a plain-English line names
+ * which of the two methods actually produced it — real cross-sections along the board's own
+ * length, or the quick board-type factor tables — so a shaper never wonders which number they are
+ * looking at.
  */
 
+import type { Litres } from "@/lib/geometry/units";
 import type { VolumeResult } from "@/lib/geometry/volume";
 import { formatInchesFraction, MM_PER_INCH } from "@/lib/geometry/units";
 
@@ -11,6 +19,12 @@ const SQMM_PER_SQIN = MM_PER_INCH * MM_PER_INCH;
 
 interface VolumeCalculationCardProps {
   result: VolumeResult;
+  /** The single figure every screen quotes (D-13) — `crossSectionVolume`'s figure while importing
+   * the drawn template, `result.volumeLitres` (the estimator) while standalone. */
+  quotedVolumeLitres: Litres;
+  /** The cross-section path's own supporting number — the count of stations it integrated the
+   * board's real cross-sections over. Shown only while that path is the active method. */
+  crossSectionStationCount: number;
   lengthDisplay: string;
   widthDisplayLabel: string;
   centerThicknessDisplayLabel: string;
@@ -55,6 +69,8 @@ function Row({
 
 export function VolumeCalculationCard({
   result,
+  quotedVolumeLitres,
+  crossSectionStationCount,
   lengthDisplay,
   widthDisplayLabel,
   centerThicknessDisplayLabel,
@@ -64,6 +80,13 @@ export function VolumeCalculationCard({
   const areaRowLabel = result.importingTemplate ? "Template Area" : "Board Area (estimated)";
   const areaSqInDisplay = `${areaSqIn.toFixed(1)} sq in${result.importingTemplate ? " (imported)" : ""}`;
   const weightedThicknessLabel = result.geomReady ? "Length-Weighted Effective Thickness" : "Weighted Thickness";
+  // D-13's method disclosure: which of the two figures quotedVolumeLitres actually is.
+  const methodLine = result.importingTemplate
+    ? "From the board's own cross-sections along its length."
+    : "From the board-type factor tables (quick estimate).";
+  const supportingLine = result.importingTemplate
+    ? `${crossSectionStationCount} cross-sections integrated`
+    : `(${result.volumeCubicInches.toFixed(1)} cu in)`;
 
   if (compact) {
     return (
@@ -109,13 +132,14 @@ export function VolumeCalculationCard({
               className="block font-extrabold text-surf-ink"
               style={{ fontSize: "var(--summary-font-volume, 16px)" }}
             >
-              {result.volumeLitres.toFixed(2)} L
+              {quotedVolumeLitres.toFixed(2)} L
             </span>
             <span className="block font-semibold text-surf-ink-muted" style={{ fontSize: "var(--summary-font-row, 11px)" }}>
-              ({result.volumeCubicInches.toFixed(1)} cu in)
+              {supportingLine}
             </span>
           </span>
         </div>
+        <div className="pt-0.5 text-right text-[10px] text-surf-ink-muted italic">{methodLine}</div>
       </div>
     );
   }
@@ -153,18 +177,17 @@ export function VolumeCalculationCard({
           <span className="text-sm font-bold text-surf-ink-muted">Estimated Volume</span>
           <span className="text-right">
             <span className="block text-[22px] font-extrabold text-surf-ink">
-              {result.volumeLitres.toFixed(2)} L
+              {quotedVolumeLitres.toFixed(2)} L
             </span>
-            <span className="block text-[13px] font-semibold text-surf-ink-muted">
-              ({result.volumeCubicInches.toFixed(1)} cu in)
-            </span>
+            <span className="block text-[13px] font-semibold text-surf-ink-muted">{supportingLine}</span>
           </span>
         </div>
+        <div className="pt-1 text-right text-xs text-surf-ink-muted italic">{methodLine}</div>
       </div>
       <div className="mt-auto pt-4 text-[13px] leading-relaxed text-surf-ink-muted italic">
-        This is a rough estimate, not a 3D CAD model accurate calculation of volume. If comparing
-        to a board of known dimensions and volume, you can tune the Board Type slider to calibrate
-        for your purposes.
+        {result.importingTemplate
+          ? "This figure is real cross-sections taken along the board's own length, added up with Simpson's rule — checkable against a published blank's own stated volume."
+          : "This is a rough estimate, not a 3D CAD model accurate calculation of volume. If comparing to a board of known dimensions and volume, you can tune the Board Type slider to calibrate for your purposes."}
       </div>
     </div>
   );

@@ -8,13 +8,20 @@
 
 import { useDesign } from "@/components/design/design-store";
 import { formatFeetInches, formatInchesFraction } from "@/lib/geometry/units";
+import { SIMPSON_PANEL_COUNT } from "@/lib/geometry/volume";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { VolumeCalculationCard } from "./volume-calculation-card";
 import { VolumeControls } from "./volume-controls";
 
 export function VolumeEstimator() {
-  const { effectiveVolume, volumeResult, updateVolume, toggleImportTemplateDimensions, toggleImportRailThickness } =
-    useDesign();
+  const {
+    effectiveVolume,
+    volumeResult,
+    quotedVolumeLitres,
+    updateVolume,
+    toggleImportTemplateDimensions,
+    toggleImportRailThickness,
+  } = useDesign();
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-nowrap">
@@ -33,6 +40,8 @@ export function VolumeEstimator() {
         <TabbedPanel tabs={[{ id: "estimate" as const, label: "ESTIMATE" }]} active="estimate" panelClassName="overflow-y-auto">
         <VolumeCalculationCard
           result={volumeResult}
+          quotedVolumeLitres={quotedVolumeLitres}
+          crossSectionStationCount={SIMPSON_PANEL_COUNT + 1}
           lengthDisplay={formatFeetInches(effectiveVolume.length)}
           widthDisplayLabel={formatInchesFraction(effectiveVolume.width)}
           centerThicknessDisplayLabel={formatInchesFraction(effectiveVolume.centerThickness)}
