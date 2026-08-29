@@ -28,12 +28,12 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 - [x] UI displays measurements in inches and litres while data is stored in metric internally — Validated in Phase 1: Foundation — Port & Deploy the Design Tool
 - [x] User can sign up, log in, and reset their password (email/password and Google via Clerk) — Validated in Phase 2: Accounts & Saved Designs
 - [x] User can save a design as a named model, reopen it, and see their list of saved models (plus rename, duplicate, delete from the rack) — Validated in Phase 2: Accounts & Saved Designs
+- [x] User can export/print a full-size template of the board design, tiled across pages — Validated in Phase 3: Volume, Templates & Verified Math (ruler-verified 1:1 scale, alignment-box tiling, shaper marks, plus a one-page Overview Sheet; geometry suites gate every push via GitHub Actions)
 
 ### Active
 
 - [ ] User can define a rocker curve (nose/tail rocker profile)
 - [ ] User can define a foil (thickness distribution along the board)
-- [ ] User can export/print a full-size template of the board design, tiled across pages
 
 ### Out of Scope
 
@@ -105,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-28 after Phase 2 completion*
+*Last updated: 2026-08-28 after Phase 3 completion*
