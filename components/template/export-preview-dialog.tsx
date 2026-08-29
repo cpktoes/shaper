@@ -115,7 +115,7 @@ function computeDiagramSizing(layout: TemplateLayout): DiagramSizing {
 }
 
 export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
-  const { outline, outlineGeometry, boardName, templateValues, railValues, volumeResult } = useDesign();
+  const { outline, outlineGeometry, boardName, templateValues, railValues, quotedVolumeLitres } = useDesign();
   const [open, setOpen] = useState(false);
   const [artifact, setArtifact] = useState<ExportArtifact>("full");
   const [paperSize, setPaperSize] = useState<PaperSize>("letter");
@@ -175,7 +175,7 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
               noseWidth12in: outlineGeometry.noseWidthAt12in,
               tailWidth12in: outlineGeometry.tailWidthAt12in,
               widePointOffset: outline.widePointOffset,
-              volumeLitres: volumeResult.volumeLitres,
+              volumeLitres: quotedVolumeLitres,
             },
           });
         }

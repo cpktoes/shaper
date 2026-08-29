@@ -170,7 +170,7 @@ export function OrderForm() {
     railBands,
     finPlacement,
     effectiveFins,
-    volumeResult,
+    quotedVolumeLitres,
     boardName,
     setBoardName,
     finSystem,
@@ -270,7 +270,7 @@ export function OrderForm() {
                 <DimensionCell label="Thickness" value={thicknessDisplay} />
                 <DimensionCell
                   label="Volume"
-                  value={`${volumeResult.volumeLitres.toFixed(1)} L`}
+                  value={`${quotedVolumeLitres.toFixed(1)} L`}
                 />
               </div>
 
@@ -519,7 +519,7 @@ export function OrderForm() {
             </div>
             <span className="flex-none font-bold text-surf-ink-muted order-form-value">
               {formatFeetInches(outline.length)} · {formatInchesFraction(outline.widePointWidth)} ·{" "}
-              {thicknessDisplay} · {volumeResult.volumeLitres.toFixed(1)} L
+              {thicknessDisplay} · {quotedVolumeLitres.toFixed(1)} L
             </span>
           </div>
 
