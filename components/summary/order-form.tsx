@@ -304,134 +304,134 @@ export function OrderForm() {
                   ))}
                 </FormBox>
 
-              {/* The right-hand column: the rocker strip over the template window. */}
-              <div className="flex min-h-0 min-w-0 flex-[2] flex-col gap-1">
-{/* Rocker — a placeholder box, exactly as the muse draws it, until the rocker
-                     screen exists to fill it. Kept rather than dropped so the sheet's proportions
-                     do not have to be redrawn when that feature lands.
+                {/* The right-hand column: the rocker strip over the template window. */}
+                <div className="flex min-h-0 min-w-0 flex-[2] flex-col gap-1">
+                  {/* Rocker — a placeholder box, exactly as the muse draws it, until the rocker
+                      screen exists to fill it. Kept rather than dropped so the sheet's proportions
+                      do not have to be redrawn when that feature lands.
 
-                     It sits above the template window and only as wide as it, rather than spanning
-                     the whole body: a rocker profile is the board seen from the side, so the one
-                     panel it belongs over is the one showing the board from above. Narrowing it also
-                     let the rail plots take the full height of the row beside it. */}
-                <FormBox
-                  caption="Rocker"
-                  captionRight="placeholder"
-                  className="flex-none order-form-rocker"
-                  bodyClassName="p-0"
-                >
-                  <div className="flex min-h-0 flex-1 items-stretch gap-1 px-1.5 py-1">
-                    {/* The muse's own placeholder: a nose/tail rocker height ticked either side of a
-                        drawn profile. Kept whole so the box does not have to be redrawn when the
-                        rocker screen fills it — only its contents get replaced. */}
-                    <RockerTicks />
-                    <div className="relative min-h-0 min-w-0 flex-1">
-                      <svg
-                        viewBox="0 0 600 80"
-                        preserveAspectRatio="none"
-                        className="absolute inset-0 block h-full w-full"
-                      >
-                        <path
-                          d="M 10 14 Q 150 60 300 64 Q 450 60 590 22"
-                          fill="none"
-                          stroke="var(--color-surf-ink-muted)"
-                          strokeWidth={2}
-                          strokeDasharray="7 5"
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      </svg>
-                      <span className="absolute bottom-0 left-1 font-display font-extrabold tracking-architectural text-surf-ink-muted uppercase order-form-micro">
-                        Nose
-                      </span>
-                      <span className="absolute right-1 bottom-0 font-display font-extrabold tracking-architectural text-surf-ink-muted uppercase order-form-micro">
-                        Tail
-                      </span>
+                      It sits above the template window and only as wide as it, rather than spanning
+                      the whole body: a rocker profile is the board seen from the side, so the one
+                      panel it belongs over is the one showing the board from above. Narrowing it also
+                      let the rail plots take the full height of the row beside it. */}
+                  <FormBox
+                    caption="Rocker"
+                    captionRight="placeholder"
+                    className="flex-none order-form-rocker"
+                    bodyClassName="p-0"
+                  >
+                    <div className="flex min-h-0 flex-1 items-stretch gap-1 px-1.5 py-1">
+                      {/* The muse's own placeholder: a nose/tail rocker height ticked either side of a
+                          drawn profile. Kept whole so the box does not have to be redrawn when the
+                          rocker screen fills it — only its contents get replaced. */}
+                      <RockerTicks />
+                      <div className="relative min-h-0 min-w-0 flex-1">
+                        <svg
+                          viewBox="0 0 600 80"
+                          preserveAspectRatio="none"
+                          className="absolute inset-0 block h-full w-full"
+                        >
+                          <path
+                            d="M 10 14 Q 150 60 300 64 Q 450 60 590 22"
+                            fill="none"
+                            stroke="var(--color-surf-ink-muted)"
+                            strokeWidth={2}
+                            strokeDasharray="7 5"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        </svg>
+                        <span className="absolute bottom-0 left-1 font-display font-extrabold tracking-architectural text-surf-ink-muted uppercase order-form-micro">
+                          Nose
+                        </span>
+                        <span className="absolute right-1 bottom-0 font-display font-extrabold tracking-architectural text-surf-ink-muted uppercase order-form-micro">
+                          Tail
+                        </span>
+                      </div>
+                      <RockerTicks />
                     </div>
-                    <RockerTicks />
-                  </div>
-                </FormBox>
+                  </FormBox>
 
-                {/*
-                 * The muse's own big panel, and its own name for it — the template window.
-               *
-               * Its frame is fixed (`fixedFrame` on the viewer below), sized once from the board
-               * ranges in `lib/geometry/board.ts` so one window holds any board the editor can
-               * produce. The board inside still fits the window's height, so every board prints as
-               * large as the window allows; what a narrower or shorter board leaves behind is blank
-               * paper inside the frame — which on this panel is exactly where the colour design
-               * gets drawn.
-               *
-               * Three theming overrides, all of them turning editor affordances back into plain
-               * draughtsmanship, because this panel is a template to mark a blank from rather
-               * than a screen to design on:
-               *
-               * - `--outline-board-fill` — the interior wash. globals.css already suppresses this
-               *   token for print, on the grounds that ink inside the outline is wasted on a
-               *   template meant to be cut along and marked on. This sheet is that template
-               *   wherever it is looked at, so the override only brings the screen into line with
-               *   what already prints, leaving both drawings defined by their stroke alone.
-               * - `--outline-widepoint-line` — the widepoint station arrives rose, to set it
-               *   apart from the drag handles it sits among on the editor. Here there are no
-               *   handles, and one ink reads as a drawing rather than as an interface.
-               * - `--outline-widepoint-knot` — the two rail knots, gone. They carry no stroke, so
-               *   a transparent fill removes them outright.
-               *
-               * `--outline-widepoint-dash` is deliberately NOT overridden. The viewer's own note
-               * on these lines is that a widepoint near centre lands within a few pixels of the
-               * mid-length centreline, and that colour was what told the two apart. With the
-               * colour now matched, the dash is the only thing still doing that job.
-               *
-               * Tokens rather than another `OutlineViewer` prop: this is retheming, which is what
-               * the tokens are for, and that component already carries five display gates.
-               */}
-              <FormBox
-                  caption="Color Design &amp; Logos"
-                  captionRight="dimensions above"
-                  variant="flush"
-                  className="min-h-0 min-w-0 flex-1"
-                bodyClassName="p-1.5"
-                style={
-                  {
-                    "--outline-board-fill": "transparent",
-                    "--outline-widepoint-line": "var(--outline-station-line)",
-                    "--outline-widepoint-knot": "transparent",
-                  } as CSSProperties
-                }
-              >
-                <div className="flex min-h-0 min-w-0 flex-1 flex-row gap-3">
-                  <OutlineHalf label="Deck">
-                    <OutlineViewer
-                      geometry={outlineGeometry}
-                      outline={outline}
-                      showConstruction={false}
-                      // Dimensions have their own row on this sheet, so the drawings carry none —
-                      // and the deck side carries no fin marks either: fins are cut from the bottom.
-                      // The faint interior lines stay, though: a shaper marking a blank works off
-                      // the stringer and the stations, and those are drawing, not annotation.
-                      hideCallouts
-                      showStationLines
-                      fixedFrame
-                      hideFinMarks
-                    />
-                  </OutlineHalf>
+                  {/*
+                   * The muse's own big panel, and its own name for it — the template window.
+                   *
+                   * Its frame is fixed (`fixedFrame` on the viewer below), sized once from the board
+                   * ranges in `lib/geometry/board.ts` so one window holds any board the editor can
+                   * produce. The board inside still fits the window's height, so every board prints as
+                   * large as the window allows; what a narrower or shorter board leaves behind is blank
+                   * paper inside the frame — which on this panel is exactly where the colour design
+                   * gets drawn.
+                   *
+                   * Three theming overrides, all of them turning editor affordances back into plain
+                   * draughtsmanship, because this panel is a template to mark a blank from rather
+                   * than a screen to design on:
+                   *
+                   * - `--outline-board-fill` — the interior wash. globals.css already suppresses this
+                   *   token for print, on the grounds that ink inside the outline is wasted on a
+                   *   template meant to be cut along and marked on. This sheet is that template
+                   *   wherever it is looked at, so the override only brings the screen into line with
+                   *   what already prints, leaving both drawings defined by their stroke alone.
+                   * - `--outline-widepoint-line` — the widepoint station arrives rose, to set it
+                   *   apart from the drag handles it sits among on the editor. Here there are no
+                   *   handles, and one ink reads as a drawing rather than as an interface.
+                   * - `--outline-widepoint-knot` — the two rail knots, gone. They carry no stroke, so
+                   *   a transparent fill removes them outright.
+                   *
+                   * `--outline-widepoint-dash` is deliberately NOT overridden. The viewer's own note
+                   * on these lines is that a widepoint near centre lands within a few pixels of the
+                   * mid-length centreline, and that colour was what told the two apart. With the
+                   * colour now matched, the dash is the only thing still doing that job.
+                   *
+                   * Tokens rather than another `OutlineViewer` prop: this is retheming, which is what
+                   * the tokens are for, and that component already carries five display gates.
+                   */}
+                  <FormBox
+                    caption="Color Design &amp; Logos"
+                    captionRight="dimensions above"
+                    variant="flush"
+                    className="min-h-0 min-w-0 flex-1"
+                    bodyClassName="p-1.5"
+                    style={
+                      {
+                        "--outline-board-fill": "transparent",
+                        "--outline-widepoint-line": "var(--outline-station-line)",
+                        "--outline-widepoint-knot": "transparent",
+                      } as CSSProperties
+                    }
+                  >
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-row gap-3">
+                      <OutlineHalf label="Deck">
+                        <OutlineViewer
+                          geometry={outlineGeometry}
+                          outline={outline}
+                          showConstruction={false}
+                          // Dimensions have their own row on this sheet, so the drawings carry none —
+                          // and the deck side carries no fin marks either: fins are cut from the bottom.
+                          // The faint interior lines stay, though: a shaper marking a blank works off
+                          // the stringer and the stations, and those are drawing, not annotation.
+                          hideCallouts
+                          showStationLines
+                          fixedFrame
+                          hideFinMarks
+                        />
+                      </OutlineHalf>
 
-                  <OutlineHalf label="Bottom">
-                    <OutlineViewer
-                      geometry={outlineGeometry}
-                      outline={outline}
-                      showConstruction={false}
-                      hideCallouts
-                      showStationLines
-                      fixedFrame
-                      finMarks={finPlacement.marks}
-                    />
-                  </OutlineHalf>
-                  </div>
-                </FormBox>
+                      <OutlineHalf label="Bottom">
+                        <OutlineViewer
+                          geometry={outlineGeometry}
+                          outline={outline}
+                          showConstruction={false}
+                          hideCallouts
+                          showStationLines
+                          fixedFrame
+                          finMarks={finPlacement.marks}
+                        />
+                      </OutlineHalf>
+                    </div>
+                  </FormBox>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
         {/* ─── BAND 3 — glassing ──────────────────────────────────────────────────────── */}
           <div className="flex flex-none gap-1 order-form-band-glassing">
