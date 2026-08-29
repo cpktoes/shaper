@@ -138,6 +138,21 @@ describe("templateHowToLines", () => {
     expect(lines[0]).toContain("Print at 100%");
   });
 
+  it(
+    'describes lining up border lines and the overlap, not cutting or match marks (round 2 post-checkpoint fix, defect 2, RESEARCH correction: overlap tiling kept, marks replaced by the box)',
+    () => {
+      const preset = BOARD_PRESETS[0];
+      const geometry = buildOutline({ ...preset.outline, widePointWidth: inchesToMm(10) });
+      const layout = computeTemplateLayout(geometry, "letter");
+      const lines = templateHowToLines(layout);
+
+      expect(lines[2].toLowerCase()).toContain("border line");
+      expect(lines[2].toLowerCase()).toContain("overlap");
+      expect(lines.join(" ").toLowerCase()).not.toContain("match mark");
+      expect(lines.join(" ").toLowerCase()).not.toContain("cut out");
+    },
+  );
+
   it("returns four lines, with the sideways-taping instruction, for a multi-column layout", () => {
     const preset = BOARD_PRESETS[0];
     const geometry = buildOutline({
@@ -236,6 +251,34 @@ describe("templateMarkLabelText / templateMarkDimensionText (post-checkpoint fix
   });
 });
 
+describe(
+  'templateMarkLabelText — Tail Block (round 2 post-checkpoint fix, defect 1: "the tip of the tail... is not printing (add tailblock dim)")',
+  () => {
+    it('prints "Tail Block — 4\\"" for the shortboard preset (squash tail, 4in endWidth)', () => {
+      const preset = BOARD_PRESETS[0]; // shortboard — squash, endWidth 4in
+      const geometry = buildOutline(preset.outline);
+      const layout = computeTemplateLayout(geometry, "letter");
+      const marks = computeTemplateMarks(geometry);
+      const placements = markPlacements(layout, marks, geometry);
+
+      const tailBlock = placements.find((p) => p.mark === "tailBlock");
+      expect(tailBlock).toBeDefined();
+      expect(templateMarkDimensionText(tailBlock!)).toBe('4"');
+      expect(templateMarkLabelText(tailBlock!)).toBe('Tail Block — 4"');
+    });
+
+    it("is never emitted for a round-tail preset — no separate block edge to label", () => {
+      const preset = BOARD_PRESETS[2]; // midlength — round
+      const geometry = buildOutline(preset.outline);
+      const layout = computeTemplateLayout(geometry, "letter");
+      const marks = computeTemplateMarks(geometry);
+      const placements = markPlacements(layout, marks, geometry);
+
+      expect(placements.some((p) => p.mark === "tailBlock")).toBe(false);
+    });
+  },
+);
+
 describe("templateNameBlockDimsText / nameBlockContent (post-checkpoint fix, defect 3 refinement: \"add all the station mark dims with the board name\")", () => {
   const dims = {
     length: inchesToMm(74),
@@ -307,7 +350,7 @@ describe("name block containment (post-checkpoint fix, defect 3: box fully insid
   }
 });
 
-describe("page-0 furniture never overlaps (post-checkpoint fix, defect 4: scale square, how-to box, name block, and every page-0 match mark)", () => {
+describe("page-0 furniture never overlaps (post-checkpoint fix, defect 4: scale square, how-to box, name block)", () => {
   it.each(BOARD_PRESETS)("$id (letter): no two furniture rectangles overlap", (preset) => {
     const options = { ...buildOptions("letter"), boardName: preset.name };
     const rects = templatePageZeroFurnitureRects(options);
@@ -317,6 +360,15 @@ describe("page-0 furniture never overlaps (post-checkpoint fix, defect 4: scale 
       }
     }
   });
+
+  it(
+    "no match-mark rectangles are emitted (round 2 post-checkpoint fix, defect 2: match marks replaced by the per-page alignment box) — exactly the three named furniture pieces",
+    () => {
+      const options = { ...buildOptions("letter"), boardName: BOARD_PRESETS[0].name };
+      const rects = templatePageZeroFurnitureRects(options);
+      expect(rects.map((r) => r.name).sort()).toEqual(["how-to-box", "name-block", "scale-square"]);
+    },
+  );
 
   it.each(BOARD_PRESETS)("$id (a4): no two furniture rectangles overlap", (preset) => {
     const options = { ...buildOptions("a4"), boardName: preset.name };
@@ -328,7 +380,7 @@ describe("page-0 furniture never overlaps (post-checkpoint fix, defect 4: scale 
     }
   });
 
-  it("a wide, multi-column board (whose column-adjacent match marks would otherwise land near the top of page 0) still has no overlaps", () => {
+  it("a wide, multi-column board still has no page-0 furniture overlaps", () => {
     const preset = BOARD_PRESETS[0];
     const geometry = buildOutline({
       ...preset.outline,

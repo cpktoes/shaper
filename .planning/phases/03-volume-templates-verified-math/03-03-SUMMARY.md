@@ -212,9 +212,67 @@ which gained required fields in fix 3. This is a mechanical caller update (Rule 
 fix), not a scope expansion; `components/summary/` and `components/outline/outline-editor.tsx`
 were not touched.
 
+### Round 2 — after a real re-print compared against the iShaper reference template
+
+The user re-printed the tiled template and compared it against an iShaper reference template they
+own, and reported two more defects. Each was fixed and committed atomically as its own
+`fix(03-03): ...` commit. `components/template/export-preview-dialog.tsx` was NOT touched this
+round — neither fix changed `BuildTemplatePdfOptions`'s required fields.
+
+**1. The tail did not print all the way to the board's own end.** The tail page's outline curve
+already sampled all the way down to the tailblock station (`geometry.tailPodStation`, usually 0);
+what was actually missing was the horizontal cut line closing that curve off square to the
+stringer, plus a printed dimension for it — the user's "the tip of the tail is not printing" was
+this missing closing line, not a coverage gap in the curve. `computeTemplateMarks`
+(`lib/geometry/template.ts`) now adds an optional `tailBlock` mark whenever the tail actually has
+a squared block (`geometry.halfTailBlockWidth > 0` — squash, diamond and swallow tails; a pin or
+round tail's curve already narrows to meet the stringer on its own, so nothing is added for those).
+`markPlacements` places it through the same machinery as the other four working marks; `drawMarks`
+draws it SOLID at the outline curve's own line weight (it is a real cut edge, not a measurement
+reference) with the board's own tailblock width printed alongside it — `Tail Block — 4"` for the
+default shortboard preset, matching the example in the report verbatim.
+Commit: `49034bc`.
+
+**2. The match-mark crosshairs from round 1's fix 4 were the wrong mechanism entirely.** The
+coordinator's first read of the user's iShaper reference (as a description, not the file itself)
+suggested zero-overlap tiling with a hard-clipped border; the user corrected this after seeing that
+guess applied — the iShaper reference tiles WITH overlap (unchanged from this project's own
+`TEMPLATE_OVERLAP_MM`), and the "margin bars" the reference actually uses are page borders inset
+from each page's own printable edge by the overlap amount on any side that borders another page.
+The overlap strip between a page's border and its own paper edge deliberately shows duplicate
+curve content, which is what a shaper checks against the neighbouring sheet's own overlap strip
+before taping. `matchMarkPositions`, `TemplateMatchMark` and `FurnitureZone` (and their drawing
+counterparts, `drawMatchMarks` and `pageZeroFurnitureZone`) are removed entirely. A new pure
+function, `templatePageBoxes` (`lib/geometry/template.ts`), derives every page's own alignment box
+directly from the existing tile grid — inset by `layout.overlap` on any bordering edge, flush with
+the printable edge on any outer edge with no neighbour. `drawPageBox`
+(`components/template/build-template-pdf.ts`) draws the box as four independent line segments
+rather than one `doc.rect`, because the stringer-side edge on a column-0 page keeps its own dashed
+stringer styling (per the user's own instruction to keep the stringer dashed) while the other three
+sides are plain solid lines. The outline curve and the stringer line are NOT clipped to the box —
+they still draw all the way to each page's own printable edge exactly as before, since the overlap
+strip only works as an alignment check if the curve actually appears in it. The how-to box copy was
+rewritten to match: it now describes lining a page's edge up against the next page's own border
+line and checking the curve matches in the overlap, then taping, instead of the old
+cut-and-match-marks wording.
+Commit: `f4c1326`.
+
+**Verification:** `npm test` (902/902, up from 874/874 baseline), `npx tsc --noEmit` (0 errors
+beyond the pre-existing, worktree-only `LayoutProps` phantom errors documented in plan 01/03's own
+summaries), and `npm run lint` (0 errors) all pass after both fixes. New/updated test coverage: a
+`tailBlock` describe block in `markPlacements` (present only for a squared-tail preset, absent for
+round/pin, station/label/dimension text all asserted, plus a check that every preset's sampled
+points reach the board's own full length), a `templateMarkLabelText — Tail Block` describe block in
+`components/template/build-template-pdf.test.ts` asserting the exact `Tail Block — 4"` string for
+the shortboard preset, and a `templatePageBoxes` describe block replacing the old
+`matchMarkPositions` one — every page's box nested inside its own printable range, `stringerEdge`
+true only for column-0 pages, and the exact inset-vs-flush rule verified per edge for every board
+preset and paper size. The pre-existing overlap tests (`consecutive rows/columns overlap by exactly
+TEMPLATE_OVERLAP_MM`) were left untouched, since the tile layout itself did not change.
+
 ## Self-Check: PASSED
 
-- FOUND: lib/geometry/template.ts (markPlacements, matchMarkPositions)
+- FOUND: lib/geometry/template.ts (markPlacements, templatePageBoxes)
 - FOUND: components/template/build-template-pdf.ts (templateNameBlockText, templateHowToLines)
 - FOUND commit: 3ec4363
 - FOUND commit: 1b498c3
@@ -222,6 +280,8 @@ were not touched.
 - FOUND commit: df1b2e3 (post-checkpoint fix 2)
 - FOUND commit: be94ae8 (post-checkpoint fix 3)
 - FOUND commit: 931d046 (post-checkpoint fix 4)
+- FOUND commit: 49034bc (round 2 post-checkpoint fix 1)
+- FOUND commit: f4c1326 (round 2 post-checkpoint fix 2)
 
 ---
 *Phase: 03-volume-templates-verified-math*
