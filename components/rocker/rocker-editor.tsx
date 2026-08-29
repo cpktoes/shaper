@@ -5,19 +5,29 @@
  * shell exactly (D-01/D-02): an `aside` sidebar (`bg-surf-sidebar`, `p-10` scrolling region)
  * beside a `main` canvas (`bg-surf-canvas`, `p-3`) holding a `TabbedPanel`.
  *
- * 04-02 Task 1 widens the sidebar to the full `RockerControls` (all four rocker lifts, all five
- * thicknesses) and adds the VIEWER tab's toolbar — a rotate-in-place button and a hide-board-
- * outline toggle, the same box treatment the Template screen's own toolbar uses. The DATASHEET
- * tab and typed entry arrive in Task 2; construction-line dragging in Task 3.
+ * 04-02 Task 1 widened the sidebar to the full `RockerControls` (all four rocker lifts, all five
+ * thicknesses) and added the VIEWER tab's toolbar — a rotate-in-place button and a hide-board-
+ * outline toggle, the same box treatment the Template screen's own toolbar uses. Task 2 adds the
+ * second tab: DATASHEET, the D-07 full five-station table with typed imperial entry. Two tabs
+ * rather than one split view, because the drawing wants full panel height and the table wants
+ * full panel width — the toolbar stays inside the VIEWER tab only. Construction-line dragging
+ * arrives in Task 3.
  */
 
 import { useId, useState } from "react";
 import { LayoutTemplateIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
-import { TabbedPanel } from "@/components/viewer/tabbed-panel";
+import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { RockerControls, type RockerControlsSectionKey } from "./rocker-controls";
+import { RockerDatasheet } from "./rocker-datasheet";
 import { RockerViewer } from "./rocker-viewer";
+
+type RockerTab = "viewer" | "datasheet";
+const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
+  { id: "viewer", label: "VIEWER" },
+  { id: "datasheet", label: "DATASHEET" },
+];
 
 /**
  * The Template screen's rotate-board glyph, copied verbatim from `outline-editor.tsx` per D-03
@@ -62,6 +72,7 @@ export function RockerEditor() {
    * state, not design data, deliberately not persisted — mirrors `showConstruction`'s posture on
    * the Template screen. */
   const [showOutlineReference, setShowOutlineReference] = useState(true);
+  const [activeTab, setActiveTab] = useState<RockerTab>("viewer");
 
   function toggleSection(key: RockerControlsSectionKey) {
     setSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -93,44 +104,57 @@ export function RockerEditor() {
         </div>
       </aside>
       <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3">
-        <TabbedPanel tabs={[{ id: "viewer" as const, label: "VIEWER" }]} active="viewer">
-          {/* `relative` makes this div the positioning context for the two toolbar buttons below,
-              absolutely positioned over the drawing — the same box treatment as the Template
-              screen's own toolbar (`outline-editor.tsx`'s `viewerContent`). */}
-          <div className="relative flex min-h-0 flex-1 items-center justify-center">
-            <button
-              type="button"
-              onClick={() => setOrientation((o) => (o === "horizontal" ? "vertical" : "horizontal"))}
-              aria-label="Rotate the board"
-              title="Rotate the board"
-              className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
-            >
-              <RotateBoardIcon className="size-6" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowOutlineReference((v) => !v)}
-              aria-pressed={!showOutlineReference}
-              aria-label={showOutlineReference ? "Hide board outline" : "Show board outline"}
-              title={showOutlineReference ? "Hide board outline" : "Show board outline"}
-              // The one control in this toolbar allowed the accent fill (D-08), same posture as
-              // Template's Construction-Lines button — icon colour folded into the SAME
-              // aria-pressed className expression as the fill, never a separate always-on class
-              // (this codebase has been bitten by that exact bug three times, see
-              // .planning/quick/260825-rmb-*/SUMMARY.md).
-              className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent aria-pressed:hover:bg-surf-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
-            >
-              <LayoutTemplateIcon className="size-6" />
-            </button>
-            <RockerViewer
+        <TabbedPanel tabs={ROCKER_TABS} active={activeTab} onSelect={setActiveTab}>
+          {activeTab === "viewer" ? (
+            // `relative` makes this div the positioning context for the two toolbar buttons
+            // below, absolutely positioned over the drawing — the same box treatment as the
+            // Template screen's own toolbar (`outline-editor.tsx`'s `viewerContent`). The
+            // toolbar stays inside this tab only (Task 2's plan text) — DATASHEET has no drawing
+            // to rotate or hide a reference under.
+            <div className="relative flex min-h-0 flex-1 items-center justify-center">
+              <button
+                type="button"
+                onClick={() => setOrientation((o) => (o === "horizontal" ? "vertical" : "horizontal"))}
+                aria-label="Rotate the board"
+                title="Rotate the board"
+                className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+              >
+                <RotateBoardIcon className="size-6" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowOutlineReference((v) => !v)}
+                aria-pressed={!showOutlineReference}
+                aria-label={showOutlineReference ? "Hide board outline" : "Show board outline"}
+                title={showOutlineReference ? "Hide board outline" : "Show board outline"}
+                // The one control in this toolbar allowed the accent fill (D-08), same posture as
+                // Template's Construction-Lines button — icon colour folded into the SAME
+                // aria-pressed className expression as the fill, never a separate always-on class
+                // (this codebase has been bitten by that exact bug three times, see
+                // .planning/quick/260825-rmb-*/SUMMARY.md).
+                className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent aria-pressed:hover:bg-surf-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+              >
+                <LayoutTemplateIcon className="size-6" />
+              </button>
+              <RockerViewer
+                rocker={rocker}
+                foil={foil}
+                length={outline.length}
+                outlineGeometry={outlineGeometry}
+                orientation={orientation}
+                showOutlineReference={showOutlineReference}
+              />
+            </div>
+          ) : (
+            <RockerDatasheet
               rocker={rocker}
               foil={foil}
-              length={outline.length}
               outlineGeometry={outlineGeometry}
-              orientation={orientation}
-              showOutlineReference={showOutlineReference}
+              length={outline.length}
+              onChangeRocker={updateRocker}
+              onChangeFoil={updateFoil}
             />
-          </div>
+          )}
         </TabbedPanel>
       </main>
     </div>
