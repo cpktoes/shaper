@@ -15,7 +15,7 @@ const FOIL: FoilSpec = DEFAULT_BOARD_SPEC.foil;
 const LENGTH: Mm = DEFAULT_BOARD_SPEC.outline.length;
 
 /** The four rocker-line targets — every station except the fixed-zero centre. */
-const ROCKER_STATIONS: FoilStationKey[] = ["tailTip", "tail12", "nose12", "noseTip"];
+const ROCKER_STATIONS: Exclude<FoilStationKey, "center">[] = ["tailTip", "tail12", "nose12", "noseTip"];
 /** All five deck-curve targets. */
 const ALL_STATIONS: FoilStationKey[] = ["tailTip", "tail12", "center", "nose12", "noseTip"];
 
