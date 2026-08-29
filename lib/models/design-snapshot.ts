@@ -3,9 +3,9 @@
  *
  * The single place a design is validated on its way into and out of the database — the model
  * boundary equivalent of `lib/geometry/units.ts`'s unit boundary. `DesignSnapshotFields` is the
- * same seven-field object `design-store.tsx` calls `designSnapshotFields`: outline, rails, fins,
- * volume, finsImportTemplate, boardName, finSystem (D-11 — the whole `DesignState`, minus
- * `modelId` and `boardStarted`, which are session bookkeeping, not board design).
+ * same nine-field object `design-store.tsx` calls `designSnapshotFields`: outline, rocker, foil,
+ * rails, fins, volume, finsImportTemplate, boardName, finSystem (D-11 — the whole `DesignState`,
+ * minus `modelId` and `boardStarted`, which are session bookkeeping, not board design).
  *
  * Two rules govern this file:
  *
@@ -14,12 +14,12 @@
  *    Zod layer, because branding is compile-time only. The final cast back to the real
  *    `DesignSnapshotFields` type at the end of `parseSnapshot` is the one place that gap is
  *    bridged, deliberately, in one spot rather than scattered through the schema.
- * 2. `DESIGN_SNAPSHOT_VERSION` is what keeps this format reversible: Phase 4 adds rocker and
- *    foil to the design, so `parseSnapshot` tolerates a snapshot written by an older version —
- *    one missing a whole top-level field a newer version added — by filling that field from the
- *    matching geometry module's own DEFAULT_* constant rather than rejecting the row. That is
- *    what lets a future phase's schema grow without a data migration for every board saved
- *    before it shipped.
+ * 2. `DESIGN_SNAPSHOT_VERSION` is what keeps this format reversible. 04-01 is what actually
+ *    exercises it: rocker and foil are new top-level fields, so version 2's `parseSnapshot`
+ *    tolerates a snapshot written under version 1 — missing both fields entirely — by filling
+ *    each one from its matching geometry module's own DEFAULT_* constant (`DEFAULT_ROCKER_SPEC`,
+ *    `DEFAULT_FOIL_SPEC`) rather than rejecting the row. A board saved before this phase just
+ *    reopens with a sensible default side profile (D-15) — no migration, no error.
  *
  * Imports only from lib/geometry/* and the validation library — never the ORM layer or the auth
  * SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -34,10 +34,12 @@ import {
   type FinPlacementSpec,
   type FinSystem,
 } from "@/lib/geometry/fins";
+import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "@/lib/geometry/rail-bands";
+import { DEFAULT_ROCKER_SPEC, type RockerSpec } from "@/lib/geometry/rocker";
 import { DEFAULT_VOLUME_SPEC, type VolumeSpec } from "@/lib/geometry/volume";
 
-export const DESIGN_SNAPSHOT_VERSION = 1;
+export const DESIGN_SNAPSHOT_VERSION = 2;
 
 const tailShapeSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("pin") }),
@@ -58,6 +60,26 @@ const outlineSpecSchema = z.object({
   tailAngle: z.number(),
   tailFullness: z.number(),
   tail: tailShapeSchema,
+});
+
+/** Plain `z.number()` per branded field, never re-branded at the Zod layer — same posture as
+ * `outlineSpecSchema` above. Four lift values; the centre station is always zero by definition
+ * (D-05) and so carries no field here either. */
+const rockerSpecSchema = z.object({
+  noseTip: z.number(),
+  nose12: z.number(),
+  tail12: z.number(),
+  tailTip: z.number(),
+});
+
+/** Five thickness values, including both tips (D-05) — `foilSpecSchema`'s only structural
+ * difference from `rockerSpecSchema` is the extra `center` field. */
+const foilSpecSchema = z.object({
+  noseTip: z.number(),
+  nose12: z.number(),
+  center: z.number(),
+  tail12: z.number(),
+  tailTip: z.number(),
 });
 
 const railSectionSpecSchema = z.object({
@@ -127,6 +149,8 @@ const finSystemSchema = z.enum(["fcs2", "fcsOriginal", "futures", "lokbox", "pro
 const designFieldsSchema = z
   .object({
     outline: outlineSpecSchema,
+    rocker: rockerSpecSchema,
+    foil: foilSpecSchema,
     rails: railBandSpecSchema,
     fins: finPlacementSpecSchema,
     volume: volumeSpecSchema,
@@ -136,17 +160,19 @@ const designFieldsSchema = z
   })
   .partial();
 
-/** A Zod object with a numeric `version` and a `design` object mirroring the seven snapshot
+/** A Zod object with a numeric `version` and a `design` object mirroring the nine snapshot
  * fields (see the module doc-comment for the tolerance rule this schema enforces). */
 export const designSnapshotSchema = z.object({
   version: z.number(),
   design: designFieldsSchema,
 });
 
-/** The seven fields a save captures (D-11) — everything `DesignState` holds except `modelId` and
+/** The nine fields a save captures (D-11) — everything `DesignState` holds except `modelId` and
  * `boardStarted`, which are session bookkeeping, not board design. */
 export interface DesignSnapshotFields {
   outline: OutlineSpec;
+  rocker: RockerSpec;
+  foil: FoilSpec;
   rails: RailBandSpec;
   fins: FinPlacementSpec;
   volume: VolumeSpec;
@@ -180,6 +206,8 @@ export function parseSnapshot(value: unknown): DesignSnapshotFields {
   // erased at runtime and restored here.
   return {
     outline: (design.outline ?? DEFAULT_BOARD_SPEC.outline) as OutlineSpec,
+    rocker: (design.rocker ?? DEFAULT_ROCKER_SPEC) as RockerSpec,
+    foil: (design.foil ?? DEFAULT_FOIL_SPEC) as FoilSpec,
     rails: (design.rails ?? DEFAULT_RAIL_BAND_SPEC) as RailBandSpec,
     fins: (design.fins ?? DEFAULT_FIN_PLACEMENT_SPEC) as FinPlacementSpec,
     volume: (design.volume ?? DEFAULT_VOLUME_SPEC) as VolumeSpec,

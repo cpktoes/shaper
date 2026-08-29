@@ -32,6 +32,8 @@ import {
 } from "@/lib/models/autosave";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec, type Point2D } from "@/lib/geometry/board";
 import { buildOutline, type OutlineGeometry } from "@/lib/geometry/outline";
+import type { RockerSpec } from "@/lib/geometry/rocker";
+import type { FoilSpec } from "@/lib/geometry/foil";
 import type { BoardPreset } from "@/lib/geometry/presets";
 import { deriveEffectiveVolume, deriveRailValues, deriveTemplateValues } from "@/lib/geometry/design";
 import {
@@ -62,6 +64,8 @@ import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 
 interface DesignState {
   outline: OutlineSpec;
+  rocker: RockerSpec;
+  foil: FoilSpec;
   rails: RailBandSpec;
   fins: FinPlacementSpec;
   volume: VolumeSpec;
@@ -84,10 +88,11 @@ interface DesignState {
    * save never stores a reference to its own row. */
   modelId: string | null;
   /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,
-   * `updateRailSection`, `toggleTailHardEdge`, `updateFins`, `updateVolume`,
-   * `setFinsImportTemplate`, `setBoardName` or `setFinSystem` — never derived by comparing state against its
-   * default — a user who drags a slider back to its default value has still started a board.
-   * Backs `hasBoardInProgress` on the setup screen's replace-board confirmation (D-07). */
+   * `updateRocker`, `updateFoil`, `updateRailSection`, `toggleTailHardEdge`, `updateFins`,
+   * `updateVolume`, `setFinsImportTemplate`, `setBoardName` or `setFinSystem` — never derived by
+   * comparing state against its default — a user who drags a slider back to its default value
+   * has still started a board. Backs `hasBoardInProgress` on the setup screen's replace-board
+   * confirmation (D-07). */
   boardStarted: boolean;
   /** True when the store's snapshot fields disagree with the row `modelId` points at — set by
    * exactly the same mutators that set `boardStarted` true, because a fresh edit is exactly the
@@ -107,6 +112,8 @@ interface DesignState {
 
 const DEFAULT_DESIGN_STATE: DesignState = {
   outline: DEFAULT_BOARD_SPEC.outline,
+  rocker: DEFAULT_BOARD_SPEC.rocker,
+  foil: DEFAULT_BOARD_SPEC.foil,
   rails: DEFAULT_RAIL_BAND_SPEC,
   fins: DEFAULT_FIN_PLACEMENT_SPEC,
   volume: DEFAULT_VOLUME_SPEC,
@@ -127,6 +134,8 @@ interface FinTailOutline {
 interface DesignContextValue {
   // Raw stored specs — the single place each screen's sidebar writes to.
   outline: OutlineSpec;
+  rocker: RockerSpec;
+  foil: FoilSpec;
   rails: RailBandSpec;
   fins: FinPlacementSpec;
   volume: VolumeSpec;
@@ -138,7 +147,7 @@ interface DesignContextValue {
    * replace-board confirm dialog (D-07). See `DesignState.boardStarted`'s doc comment for why
    * this is a flag set on write, not a derived default-comparison. */
   hasBoardInProgress: boolean;
-  /** The subset of state a snapshot holds (D-11) — outline, rails, fins, volume,
+  /** The subset of state a snapshot holds (D-11) — outline, rocker, foil, rails, fins, volume,
    * finsImportTemplate, boardName, finSystem — assembled once here so a caller building a save
    * never has to remember the field list by hand or risk silently dropping one. */
   designSnapshotFields: DesignSnapshotFields;
@@ -155,6 +164,8 @@ interface DesignContextValue {
   requestSave: () => void;
 
   updateOutline: (patch: Partial<OutlineSpec>) => void;
+  updateRocker: (patch: Partial<RockerSpec>) => void;
+  updateFoil: (patch: Partial<FoilSpec>) => void;
   /** Applies a board-type preset (components/setup/setup-screen.tsx) by replacing outline, rails
    * and fins wholesale — a preset is a complete spec, not a patch, so none of the three merges
    * against whatever was there before. Every other field (volume, finsImportTemplate, boardName)
@@ -248,6 +259,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const updateOutline = (patch: Partial<OutlineSpec>) =>
     setState((prev) => ({ ...prev, outline: { ...prev.outline, ...patch }, boardStarted: true, dirty: true }));
 
+  const updateRocker = (patch: Partial<RockerSpec>) =>
+    setState((prev) => ({ ...prev, rocker: { ...prev.rocker, ...patch }, boardStarted: true, dirty: true }));
+
+  const updateFoil = (patch: Partial<FoilSpec>) =>
+    setState((prev) => ({ ...prev, foil: { ...prev.foil, ...patch }, boardStarted: true, dirty: true }));
+
   // A preset is a complete spec, not a patch (see BoardPreset's own doc comment) — every field
   // not supplied by the preset resets to DEFAULT_DESIGN_STATE's value rather than carrying over
   // from whatever board was there before, so "Discard & Start New" produces a genuinely fresh
@@ -273,6 +290,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setState(() => ({
       ...DEFAULT_DESIGN_STATE,
       outline: snapshot.outline,
+      rocker: snapshot.rocker,
+      foil: snapshot.foil,
       rails: snapshot.rails,
       fins: snapshot.fins,
       volume: snapshot.volume,
@@ -450,6 +469,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const designSnapshotFields: DesignSnapshotFields = useMemo(
     () => ({
       outline: state.outline,
+      rocker: state.rocker,
+      foil: state.foil,
       rails: state.rails,
       fins: state.fins,
       volume: state.volume,
@@ -457,7 +478,17 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       boardName: state.boardName,
       finSystem: state.finSystem,
     }),
-    [state.outline, state.rails, state.fins, state.volume, state.finsImportTemplate, state.boardName, state.finSystem],
+    [
+      state.outline,
+      state.rocker,
+      state.foil,
+      state.rails,
+      state.fins,
+      state.volume,
+      state.finsImportTemplate,
+      state.boardName,
+      state.finSystem,
+    ],
   );
 
   // Always holds the latest designSnapshotFields, kept current after every commit (a ref written
@@ -544,6 +575,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   const value: DesignContextValue = {
     outline: state.outline,
+    rocker: state.rocker,
+    foil: state.foil,
     rails: state.rails,
     fins: state.fins,
     volume: state.volume,
@@ -557,6 +590,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     saveStatus: state.saveStatus,
     requestSave: performSave,
     updateOutline,
+    updateRocker,
+    updateFoil,
     applyPreset,
     applyModel,
     updateRailSection,

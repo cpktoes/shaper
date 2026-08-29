@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
+import { DEFAULT_FOIL_SPEC } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import { DEFAULT_RAIL_BAND_SPEC } from "@/lib/geometry/rail-bands";
+import { DEFAULT_ROCKER_SPEC } from "@/lib/geometry/rocker";
 import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
 import {
   DESIGN_SNAPSHOT_VERSION,
@@ -11,10 +13,14 @@ import {
   type DesignSnapshotFields,
 } from "./design-snapshot";
 
-/** One fixture per preset, using each preset's outline/rails/fins and the shared volume/name/
- * fin-system defaults — the same field set a real save captures (D-11). */
+/** One fixture per preset, using each preset's outline/rails/fins and the shared rocker/foil/
+ * volume/name/fin-system defaults — the same field set a real save captures (D-11). No preset
+ * carries its own rocker/foil yet (that tuning is a later plan's job — CONTEXT.md D-12), so every
+ * fixture uses the shared defaults for those two fields. */
 const FIXTURES: DesignSnapshotFields[] = BOARD_PRESETS.map((preset) => ({
   outline: preset.outline,
+  rocker: DEFAULT_ROCKER_SPEC,
+  foil: DEFAULT_FOIL_SPEC,
   rails: preset.rails,
   fins: preset.fins,
   volume: DEFAULT_VOLUME_SPEC,
@@ -22,6 +28,12 @@ const FIXTURES: DesignSnapshotFields[] = BOARD_PRESETS.map((preset) => ({
   boardName: `${preset.name} test board`,
   finSystem: "fcs2",
 }));
+
+/** A distinct (non-default) rocker/foil pair, so the round-trip and reopen tests below actually
+ * exercise real shaper-entered values rather than values that would also pass by coincidence if
+ * the backfill path ran instead of the real one. */
+const DISTINCT_ROCKER = { noseTip: 130, nose12: 40, tail12: 12, tailTip: 60 };
+const DISTINCT_FOIL = { noseTip: 10, nose12: 35, center: 65, tail12: 42, tailTip: 8 };
 
 /** Round-trips a fixture exactly the way a save and a reopen would: build, serialize over the
  * wire/DB boundary as JSON, then parse it back. */
@@ -42,6 +54,74 @@ describe("design-snapshot", () => {
   it("buildSnapshot stamps the current version", () => {
     const snapshot = buildSnapshot(FIXTURES[0]);
     expect(snapshot.version).toBe(DESIGN_SNAPSHOT_VERSION);
+  });
+
+  it("DESIGN_SNAPSHOT_VERSION is 2", () => {
+    expect(DESIGN_SNAPSHOT_VERSION).toBe(2);
+  });
+
+  it("a round trip returns the same rocker and foil values, field for field", () => {
+    const fields: DesignSnapshotFields = { ...FIXTURES[0], rocker: DISTINCT_ROCKER, foil: DISTINCT_FOIL };
+    const result = roundTrip(fields);
+    expect(result.rocker).toEqual(DISTINCT_ROCKER);
+    expect(result.foil).toEqual(DISTINCT_FOIL);
+  });
+
+  it("a snapshot with no rocker key parses successfully and returns DEFAULT_ROCKER_SPEC", () => {
+    const snapshot = buildSnapshot(FIXTURES[0]);
+    const wire = JSON.parse(JSON.stringify(snapshot));
+    delete wire.design.rocker;
+
+    const parsed = parseSnapshot(wire);
+    expect(parsed.rocker).toEqual(DEFAULT_ROCKER_SPEC);
+    // Every other field survives untouched — only the missing one was backfilled.
+    expect(parsed.foil).toEqual(FIXTURES[0].foil);
+    expect(parsed.outline).toEqual(FIXTURES[0].outline);
+  });
+
+  it("a snapshot with no foil key parses successfully and returns a complete, finite DEFAULT_FOIL_SPEC", () => {
+    const snapshot = buildSnapshot(FIXTURES[0]);
+    const wire = JSON.parse(JSON.stringify(snapshot));
+    delete wire.design.foil;
+
+    const parsed = parseSnapshot(wire);
+    expect(parsed.foil).toEqual(DEFAULT_FOIL_SPEC);
+    for (const value of Object.values(parsed.foil)) {
+      expect(typeof value).toBe("number");
+      expect(Number.isFinite(value)).toBe(true);
+    }
+  });
+
+  it("a whole version-1-shaped snapshot (no rocker, no foil) parses successfully with complete defaults for both, alongside its own seven restored fields", () => {
+    const versionOneDesign = {
+      outline: FIXTURES[0].outline,
+      rails: FIXTURES[0].rails,
+      fins: FIXTURES[0].fins,
+      volume: FIXTURES[0].volume,
+      finsImportTemplate: FIXTURES[0].finsImportTemplate,
+      boardName: FIXTURES[0].boardName,
+      finSystem: FIXTURES[0].finSystem,
+    };
+    const wire = JSON.parse(JSON.stringify({ version: 1, design: versionOneDesign }));
+
+    const parsed = parseSnapshot(wire);
+    expect(parsed.rocker).toEqual(DEFAULT_ROCKER_SPEC);
+    expect(parsed.foil).toEqual(DEFAULT_FOIL_SPEC);
+    expect(parsed.outline).toEqual(FIXTURES[0].outline);
+    expect(parsed.rails).toEqual(FIXTURES[0].rails);
+    expect(parsed.fins).toEqual(FIXTURES[0].fins);
+    expect(parsed.volume).toEqual(FIXTURES[0].volume);
+    expect(parsed.finsImportTemplate).toBe(FIXTURES[0].finsImportTemplate);
+    expect(parsed.boardName).toBe(FIXTURES[0].boardName);
+    expect(parsed.finSystem).toBe(FIXTURES[0].finSystem);
+  });
+
+  it("a present-but-malformed rocker still throws — tolerance is for absence, never a malformed present value", () => {
+    const snapshot = buildSnapshot(FIXTURES[0]);
+    const wire = JSON.parse(JSON.stringify(snapshot));
+    wire.design.rocker.noseTip = "not a number";
+
+    expect(() => parseSnapshot(wire)).toThrow();
   });
 
   it("a snapshot missing a whole top-level field (an older version) still parses, with the default filled", () => {
