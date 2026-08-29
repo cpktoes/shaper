@@ -77,3 +77,11 @@ This is the on-screen sheet, not TMPL-01. TMPL-01 is the full-size 1:1 outline t
 across pages — a different artifact with different scaling rules (see
 `.planning/quick/260818-u1n-*/PLAN.md`, which is explicit that the two must not be conflated).
 Both live in Phase 3, so do them together, but do not merge them.
+
+## Completed
+
+Closed by Phase 3 plan `03-06` (2026-08-28). The order form's faint reference lines — the station
+lines and the widepoint dash — are now strengthened for paper only, inside the print stylesheet, so
+they survive a real printer instead of vanishing at low alpha. Print-previewed on both a default
+board and a 25in-wide board, from narrow and wide windows, and in a dark theme printing white as it
+should — approved by the shaper.

@@ -35,3 +35,11 @@ TBD. Likely: viewer-toolbar buttons on the outline screen; a collapsed-sidebar s
 the outline editor layout (collapse the `<aside>`, let the viewer flex to full width);
 the wide-view button sets `showConstruction = true` when it collapses the sidebar.
 Follow the existing surf-* token styling and the one-menu/one-button visual language.
+
+## Completed
+
+Closed by Phase 3 plan `03-05` (2026-08-28). Both buttons landed exactly as sketched here: a
+construction-lines toggle sharing the sidebar checkbox's own state (no drift possible between
+them), and a wide-view button that hides the sidebar, turns construction lines on while it's
+hidden, and puts everything back the way it was when you turn it off again. Approved live in the
+browser across all four themes.
