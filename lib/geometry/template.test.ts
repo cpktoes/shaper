@@ -3,15 +3,18 @@ import { WIDEPOINT_WIDTH_RANGE_IN } from "./board";
 import { MEASURE_STATION_MM, buildOutline, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import {
+  MARK_LABEL_COLLISION_THRESHOLD_MM,
   NAME_BOX_CLEARANCE_MM,
   NAME_BOX_HEIGHT_MM,
   NAME_BOX_WIDTH_MM,
   TEMPLATE_OVERLAP_MM,
+  computeTailClosure,
   computeTemplateLayout,
   computeTemplateMarks,
   markLineSegments,
   markPlacements,
   nameBlockPlacement,
+  tailClosureSegments,
   type PaperSize,
   type TemplateLayout,
   type TemplateMarks,
@@ -106,7 +109,7 @@ describe("markPlacements", () => {
   for (const paper of PAPERS) {
     describe(paper, () => {
       it.each(BOARD_PRESETS)(
-        "$id: the four base mark names, plus tailBlock only when this tail has a squared block, each on a valid page inside its stationRange",
+        "$id: the four base mark names, plus tailBlock only when this tail has a squared block, each on a valid page inside its stationRange — except when centre and widepoint coincide, which merges into a single 'center' placement (round 4 post-checkpoint fix, defect 1)",
         (preset) => {
           const geometry = buildOutline(preset.outline);
           const layout = computeTemplateLayout(geometry, paper);
@@ -114,7 +117,9 @@ describe("markPlacements", () => {
           const placements = markPlacements(layout, marks, geometry);
 
           const uniqueNames = new Set(placements.map((p) => p.mark));
-          const expectedNames = new Set(["noseTwelve", "tailTwelve", "center", "widepoint"]);
+          const centerWidepointCoincide = Math.abs(geometry.widePointStation - geometry.length / 2) < 1e-6;
+          const expectedNames = new Set(["noseTwelve", "tailTwelve", "center"]);
+          if (!centerWidepointCoincide) expectedNames.add("widepoint");
           if (geometry.halfTailBlockWidth > 0) expectedNames.add("tailBlock");
           expect(uniqueNames).toEqual(expectedNames);
 
@@ -181,10 +186,180 @@ describe("markPlacements", () => {
       }
     });
   });
+
+  describe(
+    'CENTER/WIDEPOINT label collision (round 4 post-checkpoint fix, defect 1: "Center and widepoint dims overlap when close to eachother or equal")',
+    () => {
+      it("far apart (shortboard preset, -1in offset): both placements pass through with no labelOffsetMm nudge", () => {
+        const preset = BOARD_PRESETS[0]; // shortboard — widePointOffset -1in
+        const geometry = buildOutline(preset.outline);
+        expect(Math.abs(geometry.widePointStation - geometry.length / 2)).toBeGreaterThan(
+          MARK_LABEL_COLLISION_THRESHOLD_MM,
+        );
+        const layout = computeTemplateLayout(geometry, "letter");
+        const marks = computeTemplateMarks(geometry);
+        const placements = markPlacements(layout, marks, geometry);
+
+        const center = placements.find((p) => p.mark === "center");
+        const widepoint = placements.find((p) => p.mark === "widepoint");
+        expect(center).toBeDefined();
+        expect(widepoint).toBeDefined();
+        expect(center!.labelOffsetMm).toBe(0);
+        expect(widepoint!.labelOffsetMm).toBe(0);
+        expect(center!.label).toBe("Centre");
+        expect(widepoint!.label).toBe("Wide point");
+      });
+
+      it("close (a custom 5mm widepoint offset, inside the threshold but not zero): both placements stay, each nudged half the threshold apart in opposite directions", () => {
+        const preset = BOARD_PRESETS[0];
+        const geometry = buildOutline({ ...preset.outline, widePointOffset: mm(5) });
+        const diff = Math.abs(geometry.widePointStation - geometry.length / 2);
+        expect(diff).toBeGreaterThan(0);
+        expect(diff).toBeLessThan(MARK_LABEL_COLLISION_THRESHOLD_MM);
+
+        const layout = computeTemplateLayout(geometry, "letter");
+        const marks = computeTemplateMarks(geometry);
+        const placements = markPlacements(layout, marks, geometry);
+
+        const center = placements.find((p) => p.mark === "center");
+        const widepoint = placements.find((p) => p.mark === "widepoint");
+        expect(center).toBeDefined();
+        expect(widepoint).toBeDefined();
+        expect(center!.labelOffsetMm).not.toBe(0);
+        expect(widepoint!.labelOffsetMm).not.toBe(0);
+        // Opposite directions, each half the threshold — a total separation of exactly the
+        // threshold regardless of how small the true station difference is.
+        expect(center!.labelOffsetMm).toBeCloseTo(-widepoint!.labelOffsetMm, 6);
+        expect(Math.abs(center!.labelOffsetMm - widepoint!.labelOffsetMm)).toBeCloseTo(
+          MARK_LABEL_COLLISION_THRESHOLD_MM,
+          6,
+        );
+      });
+
+      it("coincident (fish preset, 0in offset): merges into a single 'Widepoint / Center' placement, dropping the separate widepoint entry", () => {
+        const preset = BOARD_PRESETS[1]; // fish — widePointOffset 0in
+        const geometry = buildOutline(preset.outline);
+        expect(geometry.widePointStation).toBe(mm(geometry.length / 2));
+
+        const layout = computeTemplateLayout(geometry, "letter");
+        const marks = computeTemplateMarks(geometry);
+        const placements = markPlacements(layout, marks, geometry);
+
+        expect(placements.some((p) => p.mark === "widepoint")).toBe(false);
+        const merged = placements.find((p) => p.mark === "center");
+        expect(merged).toBeDefined();
+        expect(merged!.label).toBe("Widepoint / Center");
+        expect(merged!.labelOffsetMm).toBe(0);
+      });
+    },
+  );
 });
 
 describe(
-  'markLineSegments (round 3 post-checkpoint fix, defect 1: "the station lines should terminate at the outline curve" — every mark\'s line spans stringer-to-curve, clipped per page, never past the curve into blank paper)',
+  'computeTailClosure / tailClosureSegments (round 4 post-checkpoint fix, defect 2: "Swallow and diamond tail appears like a squash — it doesn\'t reflect the depth")',
+  () => {
+    it("is undefined for a pin or round tail — the curve already meets the stringer on its own", () => {
+      const midlength = buildOutline(BOARD_PRESETS[2].outline); // midlength — round
+      expect(midlength.halfTailBlockWidth).toBe(0);
+      expect(computeTailClosure(midlength)).toBeUndefined();
+
+      const pinTail = buildOutline({ ...BOARD_PRESETS[0].outline, tail: { kind: "pin" } });
+      expect(computeTailClosure(pinTail)).toBeUndefined();
+    });
+
+    it("squash (shortboard preset): corner and tip share the same station — a straight cut across the tail, unchanged from before", () => {
+      const geometry = buildOutline(BOARD_PRESETS[0].outline); // shortboard — squash
+      const closure = computeTailClosure(geometry)!;
+      expect(closure).toBeDefined();
+      expect(closure.corner.station).toBe(closure.tip.station);
+      expect(closure.corner.station).toBe(0);
+      expect(closure.corner.halfWidth).toBeCloseTo(geometry.halfTailBlockWidth, 6);
+      expect(closure.tip.halfWidth).toBe(0);
+    });
+
+    it('diamond: the tip (station 0) sits AFT of the corner (station = depth) — "the point extends aft of the tailblock corners"', () => {
+      const geometry = buildOutline({
+        ...BOARD_PRESETS[0].outline,
+        tail: { kind: "diamond", endWidth: inchesToMm(10), depth: inchesToMm(3) },
+      });
+      expect(geometry.tailPodStation).toBeGreaterThan(0);
+      const closure = computeTailClosure(geometry)!;
+      expect(closure).toBeDefined();
+      expect(closure.corner.station).toBe(geometry.tailPodStation);
+      expect(closure.tip.station).toBe(0);
+      // The tip sits behind (a lower station than) the corner — the point extends aft.
+      expect(closure.tip.station).toBeLessThan(closure.corner.station);
+      expect(closure.corner.halfWidth).toBeCloseTo(geometry.halfTailBlockWidth, 6);
+      expect(closure.tip.halfWidth).toBe(0);
+    });
+
+    it('swallow (fish preset): the notch point sits FORWARD of the corner (station 0) — "cut back toward the nose at the stringer"', () => {
+      const geometry = buildOutline(BOARD_PRESETS[1].outline); // fish — swallow, crotchDepth 2.5in
+      expect(geometry.centreCloseStation).toBeGreaterThan(0);
+      const closure = computeTailClosure(geometry)!;
+      expect(closure).toBeDefined();
+      expect(closure.corner.station).toBe(0);
+      expect(closure.tip.station).toBe(geometry.centreCloseStation);
+      // The notch point sits ahead of (a higher station than) the corner — cut back toward the nose.
+      expect(closure.tip.station).toBeGreaterThan(closure.corner.station);
+      expect(closure.corner.halfWidth).toBeCloseTo(geometry.halfTailBlockWidth, 6);
+      expect(closure.tip.halfWidth).toBe(0);
+    });
+
+    it.each(BOARD_PRESETS)(
+      "$id: every clipped segment's endpoints land inside that segment's own page rectangle",
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const closure = computeTailClosure(geometry);
+        if (!closure) return; // pin/round — nothing to clip
+        for (const paper of PAPERS) {
+          const layout = computeTemplateLayout(geometry, paper);
+          const segments = tailClosureSegments(layout, closure);
+          expect(segments.length).toBeGreaterThan(0);
+          for (const segment of segments) {
+            const page = layout.pages[segment.pageIndex];
+            for (const point of [segment.from, segment.to]) {
+              expect(point.station).toBeGreaterThanOrEqual(page.stationRange[0] - 1e-6);
+              expect(point.station).toBeLessThanOrEqual(page.stationRange[1] + 1e-6);
+              expect(point.halfWidth).toBeGreaterThanOrEqual(page.halfWidthRange[0] - 1e-6);
+              expect(point.halfWidth).toBeLessThanOrEqual(page.halfWidthRange[1] + 1e-6);
+            }
+          }
+        }
+      },
+    );
+
+    it("a wide diamond tail's closure crosses more than one column, and the union of segments spans the full corner-to-tip line with no gap", () => {
+      const geometry = buildOutline({
+        ...BOARD_PRESETS[0].outline,
+        widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max),
+        tail: { kind: "diamond", endWidth: inchesToMm(22), depth: inchesToMm(3) },
+      });
+      const layout = computeTemplateLayout(geometry, "letter");
+      const closure = computeTailClosure(geometry)!;
+      const segments = tailClosureSegments(layout, closure);
+
+      const pageIndexes = new Set(segments.map((s) => s.pageIndex));
+      expect(pageIndexes.size).toBeGreaterThan(1);
+
+      // Every segment lies on the same corner-to-tip line — its own half-width is a linear
+      // function of its own station, matching the true closure line's own slope.
+      const dStation = closure.tip.station - closure.corner.station;
+      const dHalfWidth = closure.tip.halfWidth - closure.corner.halfWidth;
+      for (const segment of segments) {
+        for (const point of [segment.from, segment.to]) {
+          if (Math.abs(dStation) < 1e-6) continue; // vertical line, nothing to check
+          const t = (point.station - closure.corner.station) / dStation;
+          const expectedHalfWidth = closure.corner.halfWidth + t * dHalfWidth;
+          expect(point.halfWidth).toBeCloseTo(expectedHalfWidth, 4);
+        }
+      }
+    });
+  },
+);
+
+describe(
+  'markLineSegments (round 3 post-checkpoint fix, defect 1: "the station lines should terminate at the outline curve" — every mark\'s line spans stringer-to-curve, clipped per page, never past the curve into blank paper; round 4 post-checkpoint fix, defect 2: tailBlock no longer produces a segment here — its own true closing edge is `computeTailClosure`/`tailClosureSegments`, tested separately below)',
   () => {
     for (const paper of PAPERS) {
       describe(paper, () => {
@@ -197,7 +372,7 @@ describe(
             const segments = markLineSegments(layout, marks, geometry);
 
             const markNames = (Object.keys(marks) as (keyof TemplateMarks)[]).filter(
-              (name) => marks[name] !== undefined,
+              (name) => marks[name] !== undefined && name !== "tailBlock",
             );
             expect(markNames.length).toBeGreaterThan(0);
 
@@ -233,6 +408,15 @@ describe(
           for (const segment of labeled) {
             expect(layout.pages[segment.pageIndex].col).toBe(0);
           }
+        });
+
+        it.each(BOARD_PRESETS)("$id: never emits a tailBlock segment, even for a squash-tail preset that has the mark", (preset) => {
+          const geometry = buildOutline(preset.outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const marks = computeTemplateMarks(geometry);
+          const segments = markLineSegments(layout, marks, geometry);
+
+          expect(segments.some((s) => s.mark === "tailBlock")).toBe(false);
         });
       });
     }
