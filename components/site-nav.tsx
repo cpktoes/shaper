@@ -21,6 +21,7 @@ import { SaveButton } from "@/components/design/save-button";
 
 const NAV_LINKS = [
   { href: "/design/outline", label: "TEMPLATE" },
+  { href: "/design/rocker", label: "ROCKER" },
   { href: "/design/rails", label: "RAILS" },
   { href: "/design/volume", label: "VOLUME" },
   { href: "/design/fins", label: "FINS" },

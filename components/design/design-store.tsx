@@ -32,6 +32,7 @@ import {
 } from "@/lib/models/autosave";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec, type Point2D } from "@/lib/geometry/board";
 import { buildOutline, type OutlineGeometry } from "@/lib/geometry/outline";
+import type { RockerSpec } from "@/lib/geometry/rocker";
 import type { BoardPreset } from "@/lib/geometry/presets";
 import { deriveEffectiveVolume, deriveRailValues, deriveTemplateValues } from "@/lib/geometry/design";
 import {
@@ -62,6 +63,7 @@ import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 
 interface DesignState {
   outline: OutlineSpec;
+  rocker: RockerSpec;
   rails: RailBandSpec;
   fins: FinPlacementSpec;
   volume: VolumeSpec;
@@ -107,6 +109,7 @@ interface DesignState {
 
 const DEFAULT_DESIGN_STATE: DesignState = {
   outline: DEFAULT_BOARD_SPEC.outline,
+  rocker: DEFAULT_BOARD_SPEC.rocker,
   rails: DEFAULT_RAIL_BAND_SPEC,
   fins: DEFAULT_FIN_PLACEMENT_SPEC,
   volume: DEFAULT_VOLUME_SPEC,
@@ -127,6 +130,7 @@ interface FinTailOutline {
 interface DesignContextValue {
   // Raw stored specs — the single place each screen's sidebar writes to.
   outline: OutlineSpec;
+  rocker: RockerSpec;
   rails: RailBandSpec;
   fins: FinPlacementSpec;
   volume: VolumeSpec;
@@ -155,6 +159,7 @@ interface DesignContextValue {
   requestSave: () => void;
 
   updateOutline: (patch: Partial<OutlineSpec>) => void;
+  updateRocker: (patch: Partial<RockerSpec>) => void;
   /** Applies a board-type preset (components/setup/setup-screen.tsx) by replacing outline, rails
    * and fins wholesale — a preset is a complete spec, not a patch, so none of the three merges
    * against whatever was there before. Every other field (volume, finsImportTemplate, boardName)
@@ -247,6 +252,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   const updateOutline = (patch: Partial<OutlineSpec>) =>
     setState((prev) => ({ ...prev, outline: { ...prev.outline, ...patch }, boardStarted: true, dirty: true }));
+
+  const updateRocker = (patch: Partial<RockerSpec>) =>
+    setState((prev) => ({ ...prev, rocker: { ...prev.rocker, ...patch }, boardStarted: true, dirty: true }));
 
   // A preset is a complete spec, not a patch (see BoardPreset's own doc comment) — every field
   // not supplied by the preset resets to DEFAULT_DESIGN_STATE's value rather than carrying over
@@ -544,6 +552,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   const value: DesignContextValue = {
     outline: state.outline,
+    rocker: state.rocker,
     rails: state.rails,
     fins: state.fins,
     volume: state.volume,
@@ -557,6 +566,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     saveStatus: state.saveStatus,
     requestSave: performSave,
     updateOutline,
+    updateRocker,
     applyPreset,
     applyModel,
     updateRailSection,

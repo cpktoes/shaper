@@ -5,9 +5,15 @@
  * metric (`Mm`/`Degrees` branded types) — inches only ever appear at the
  * units boundary (lib/geometry/units.ts) when converting a control value
  * in or a label out.
+ *
+ * `rocker` (04-01): `RockerSpec` lives in `./rocker`, not here — this file stays types-only,
+ * importing the type rather than redefining it, following the same numbered-deviation convention
+ * `lib/geometry/volume.ts` uses. Recorded there: CONTEXT.md D-05 replaces the approved design's
+ * two-value `RockerSpec` with a five-station blank-datasheet model.
  */
 
 import { type Degrees, type Mm, degrees, inchesToMm } from "./units";
+import { DEFAULT_ROCKER_SPEC, type RockerSpec } from "./rocker";
 
 /** Generic 2D point in millimetres. */
 export interface Point2D {
@@ -90,12 +96,12 @@ export const BOARD_LENGTH_RANGE_IN = { min: 60, max: 120 } as const;
 export const WIDEPOINT_WIDTH_RANGE_IN = { min: 16, max: 25 } as const;
 
 /**
- * The single board-design object. Rocker, foil, rails and fins become
- * sibling keys in later phases, so screens added later extend this object
- * rather than reshaping it.
+ * The single board-design object. Foil, rails and fins become sibling keys in later phases, so
+ * screens added later extend this object rather than reshaping it.
  */
 export interface BoardSpec {
   outline: OutlineSpec;
+  rocker: RockerSpec;
 }
 
 export const DEFAULT_BOARD_SPEC: BoardSpec = {
@@ -111,6 +117,7 @@ export const DEFAULT_BOARD_SPEC: BoardSpec = {
     tailFullness: 50.5,
     tail: { kind: "squash", endWidth: inchesToMm(4) },
   },
+  rocker: DEFAULT_ROCKER_SPEC,
 };
 
 /** A preset applied when a tail-shape button is clicked — overwrites shape, angle and fullness at once. */
