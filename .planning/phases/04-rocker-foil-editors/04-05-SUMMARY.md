@@ -150,6 +150,13 @@ None - no external service configuration required.
 - Two `<human-check>` items from the plan's own `<verify>` blocks remain for a human to confirm visually (not auto-approvable): (1) each of the four presets reads as its own board type from the side in `/design/rocker`; (2) the order form prints correctly (two pages, nothing clipped) at board-length/rocker-lift extremes, across all four themes and a dark-theme print preview. Both are pure visual/print-fidelity judgments outside what unit tests can cover.
 - The founder's own review-and-tune pass on the newly drafted rocker/foil values (via the new capture button) is expected as a follow-up, mirroring how the outline presets were tuned in Phase 1 (D-03/D-12) — the header comment in `lib/geometry/presets.ts` documents this status explicitly.
 
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/04-rocker-foil-editors/04-05-SUMMARY.md`
+- FOUND: commit `786e38b` (Task 1)
+- FOUND: commit `e6fe4f0` (Task 2)
+- FOUND: commit `567efcf` (SUMMARY.md)
+
 ---
 *Phase: 04-rocker-foil-editors*
 *Completed: 2026-08-29*
