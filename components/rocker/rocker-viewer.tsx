@@ -92,9 +92,15 @@ export interface RockerViewerProps {
   rocker: RockerSpec;
   foil: FoilSpec;
   length: Mm;
-  /** Suppresses the output rail and board-length label, leaving only the closed board shape and
-   * baseline — mirrors `outline-viewer.tsx`'s `hideCallouts`, for a future thumbnail-scale
-   * consumer (e.g. a preset card). Defaults to `false`. */
+  /** The compact mode (04-05 Task 2): suppresses the output rail, station tick lines and
+   * board-length label, leaving only the closed board shape and baseline — mirrors
+   * `outline-viewer.tsx`'s `hideCallouts`. This is what the Summary order form's rocker box
+   * renders: no `onDrag` is ever passed there, so the construction overlay's drag targets are
+   * already absent regardless of this flag (`dragTargets` is built only `onDrag ? ... : []`).
+   * The frame this component draws in is already fixed regardless of `hideCallouts` — `viewH` is
+   * derived from `ROCKER_LIFT_RANGE_IN.max` + `FOIL_THICKNESS_RANGE_IN.max`, the worst case any
+   * board can dial in, not from this board's own values — so a box sized to hold it never clips
+   * at the extremes. Defaults to `false`. */
   hideCallouts?: boolean;
   /** D-03: `"horizontal"` (nose left, the default) or `"vertical"` (nose up, stations read
    * top-to-bottom). Driven by the toolbar's rotate button, never persisted. */
@@ -336,7 +342,12 @@ export function RockerViewer({
       ref={svgRef}
       viewBox={viewBox}
       preserveAspectRatio="xMidYMid meet"
-      className="h-full w-full"
+      // Absolutely positioned to fill its container — `outline-viewer.tsx`'s own svg takes the
+      // same treatment, and for the same reason: a box must never take its height from the
+      // drawing inside it, or a fixed-size panel (the Summary order form's rocker box) inflates
+      // to the drawing's own aspect ratio instead of holding still. The immediate parent supplies
+      // both `relative` and a definite size in every consumer of this component.
+      className="absolute inset-0 block h-full w-full"
       role="img"
       aria-label="Side profile of the board, showing the rocker line and deck thickness"
       onPointerMove={onDrag ? handleDragMove : undefined}
