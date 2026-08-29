@@ -138,6 +138,102 @@ None - no external service configuration required.
 - FOUND commit: f479abf
 - FOUND commit: 482be4a
 
+## Post-checkpoint additions
+
+**User-requested extension, after this plan's own checkpoint was approved:** restructure the
+export dialog into an artifact picker, and add a second printable artifact — a one-page
+"Overview Sheet" ("Surfboard Template Specs") — alongside the existing full tiled template.
+
+**What changed:**
+
+- **`ExportPreviewDialog` now opens on two selectable cards** — "Overview Sheet" (every input
+  value and the outline, one page) and "Full Template" (the original true-size tiled template,
+  unchanged) — modeled on the user's own iShaper reference screenshot. Full Template stays the
+  default selection, so the dialog's pre-existing paper-picker/tile-diagram/page-count/download
+  flow regresses for nobody who doesn't touch the new picker. Card selection uses the same accent
+  border+ring treatment `preset-card.tsx`/`board-rack-card.tsx` already use for hover/focus,
+  driven by `aria-pressed` like the existing Letter/A4 buttons — the Download PDF button keeps the
+  dialog's one accent-*filled* action regardless of which artifact is selected, per the UI spec's
+  accent reservation. Picking Overview Sheet swaps the tile diagram for a one-line description
+  ("1 page — all the numbers needed to recreate this board.") and routes Download through the new
+  builder instead.
+- **New `components/template/build-overview-pdf.ts`**: builds the Overview Sheet — a single
+  portrait jsPDF page titled "Surfboard Template Specs", with every input parameter (length, nose
+  angle/fullness, calculated nose width @12", widepoint width, WP offset, both rail-length values,
+  tail shape/block/depth, tail angle/fullness, calculated tail width @12", template area in sq in
+  and sq ft) in a monospace spec list down the left, board name printed above when set, and the
+  full outline scaled to fit the page on the right — dashed stringer centerline, three labeled
+  dashed reference stations (nose @12", widepoint/center merged into one station and label, tail
+  @12") with a dimension value to the left of each line and a small-caps name to the right, and
+  the board's length label above the outline. Ported from the prototype's own "Print Specs" popup
+  (`reference/project/Template.dc.html`'s `onPrintSpecs`/`specLines`, lines 751-765 and 868-936),
+  not invented — every spec line traces to a specific line in that prototype block. Two divergences
+  from the prototype, both because this app's design model differs from the prototype's: (1) the
+  prototype has one `Rail Length` control; this app split it into independent `tailRailLength` /
+  `noseRailLength` sliders, so the sheet prints both rather than guessing which one the prototype's
+  single control corresponded to; (2) `Diamond Depth` prints `geometry.effectiveDiamondDepth` (the
+  depth after the 5in cap the outline engine enforces), matching the prototype's own
+  `g.diamondDepthEff`, not the raw input.
+- **New `lib/geometry/overview-layout.ts`** (`computeOverviewOutlineScale`): a pure helper —
+  the largest uniform scale (page mm per board mm) that fits the full outline, both rails and full
+  length, inside a given box without distortion — kept in `lib/geometry/` rather than inline in the
+  drawing module, mirroring how `template.ts`'s own tile-layout math is kept separate from and
+  testable independent of `build-template-pdf.ts`'s jsPDF calls (CLAUDE.md Rule 1).
+- **`lib/geometry/units.ts`** gained `squareMmToSquareInches` — the one other place besides
+  `mmToInches` that turns `MM_PER_INCH` into a real device number, so the Overview Sheet's
+  "Template Area" can never drift from the same `area` field `outline.ts` already computes
+  (CLAUDE.md Rule 2: never reach for 25.4 anywhere else).
+
+**Files created:**
+
+- `components/template/build-overview-pdf.ts` — `buildOverviewPdf`, `downloadOverviewPdf`,
+  `overviewFileName`, `overviewSpecLines`, `overviewLengthLabelText`, `overviewStationLines`
+- `components/template/build-overview-pdf.test.ts`
+- `lib/geometry/overview-layout.ts` — `computeOverviewOutlineScale`
+- `lib/geometry/overview-layout.test.ts`
+
+**Files modified:**
+
+- `components/template/export-preview-dialog.tsx` — artifact-picker restructure
+- `lib/geometry/units.ts` — `squareMmToSquareInches`
+- `lib/geometry/units.test.ts` — its tests
+
+**Files explicitly NOT modified (per scope):** `components/template/build-template-pdf.ts` and
+`lib/geometry/template.ts` — read for patterns and imported from (`wrapTextToWidth`, `PAPER_MM`,
+`TEMPLATE_MARGIN_MM`), never edited.
+
+**Verification:** `npm test` — 924/924 passing (up from 806, +118 new tests across the two new
+test files and the `units.test.ts` addition). `npm run lint` — 0 errors (9 pre-existing warnings
+in unrelated files, unchanged). `npx tsc --noEmit` — 0 errors beyond the same two pre-existing
+worktree-only `Cannot find name 'LayoutProps'` phantom errors already documented above. Manually
+built the Overview PDF for all four board presets plus both scale-bound extremes (shortest
+length + widest widepoint, and longest length + narrowest widepoint) at both paper sizes — all
+produced valid one-page PDF bytes with no overflow in the spec column at the actual courier 9pt
+column width.
+
+**Not yet human-verified:** the Overview Sheet's own visual layout (station-line label placement,
+outline legibility at its scaled-down size, dialog card appearance across the four themes) — this
+plan's original Task 3 checkpoint covered the Full Template path only; a fresh visual check of the
+new artifact picker and the Overview Sheet's printed page is still outstanding, same as this plan's
+own Task 3 pattern (dev server unavailable inside this worktree; Turbopack worktree limitation).
+
+**Task commits:**
+
+1. `228dc8f` (feat) — pure geometry helpers: `squareMmToSquareInches`, `computeOverviewOutlineScale`
+2. `d3bf6e3` (feat) — the Overview Sheet PDF builder (`build-overview-pdf.ts`)
+3. `73a89f9` (feat) — the dialog's artifact-picker restructure
+
+## Self-Check (post-checkpoint additions): PASSED
+
+- FOUND: components/template/build-overview-pdf.ts
+- FOUND: components/template/build-overview-pdf.test.ts
+- FOUND: lib/geometry/overview-layout.ts
+- FOUND: lib/geometry/overview-layout.test.ts
+- FOUND: components/template/export-preview-dialog.tsx (modified)
+- FOUND commit: 228dc8f
+- FOUND commit: d3bf6e3
+- FOUND commit: 73a89f9
+
 ---
 *Phase: 03-volume-templates-verified-math*
 *Completed: 2026-08-28*
