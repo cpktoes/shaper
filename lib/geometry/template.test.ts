@@ -9,12 +9,11 @@ import {
   TEMPLATE_OVERLAP_MM,
   computeTemplateLayout,
   computeTemplateMarks,
-  type FurnitureZone,
   markPlacements,
-  matchMarkPositions,
   nameBlockPlacement,
   type PaperSize,
   type TemplateLayout,
+  templatePageBoxes,
 } from "./template";
 import { inchesToMm, mm } from "./units";
 
@@ -182,119 +181,89 @@ describe("markPlacements", () => {
   });
 });
 
-describe("matchMarkPositions", () => {
-  /** Asserts that every match mark on `pageA` sharing this specific edge with `pageB` has an
-   * identical (station, halfWidth) counterpart on `pageB`'s own entry set for the same edge —
-   * filtered by `pairedPageIndex` so a page carrying both a row overlap and a column overlap
-   * doesn't get its two edges' marks conflated. */
-  function expectSharedEdgeMarksMatch(marks: ReturnType<typeof matchMarkPositions>, pageAIndex: number, pageBIndex: number) {
-    const marksA = marks
-      .filter((m) => m.pageIndex === pageAIndex && m.pairedPageIndex === pageBIndex)
-      .sort((a, b) => a.halfWidth - b.halfWidth || a.station - b.station);
-    const marksB = marks
-      .filter((m) => m.pageIndex === pageBIndex && m.pairedPageIndex === pageAIndex)
-      .sort((a, b) => a.halfWidth - b.halfWidth || a.station - b.station);
+describe(
+  "templatePageBoxes (round 2 post-checkpoint fix, defect 2: match-mark crosshairs replaced by a page-border box, per the iShaper reference)",
+  () => {
+    for (const paper of PAPERS) {
+      describe(paper, () => {
+        it.each(BOARD_PRESETS)("$id: no match marks — every page emits exactly one box, nested inside its own printable range", (preset) => {
+          const geometry = buildOutline(preset.outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const boxes = templatePageBoxes(layout);
 
-    expect(marksA.length).toBe(2);
-    expect(marksB.length).toBe(2);
-    marksA.forEach((markA, i) => {
-      expect(markA.station).toBeCloseTo(marksB[i].station, 6);
-      expect(markA.halfWidth).toBeCloseTo(marksB[i].halfWidth, 6);
-    });
-  }
+          expect(boxes.length).toBe(layout.pages.length);
+          boxes.forEach((box, i) => {
+            const page = layout.pages[i];
+            expect(box.pageIndex).toBe(page.index);
+            expect(box.stationRange[0]).toBeGreaterThanOrEqual(page.stationRange[0]);
+            expect(box.stationRange[1]).toBeLessThanOrEqual(page.stationRange[1]);
+            expect(box.halfWidthRange[0]).toBeGreaterThanOrEqual(page.halfWidthRange[0]);
+            expect(box.halfWidthRange[1]).toBeLessThanOrEqual(page.halfWidthRange[1]);
+          });
+        });
 
-  for (const paper of PAPERS) {
-    it(`${paper}: single-column board — row-adjacent pages carry identical match-mark positions in their shared band`, () => {
-      // A real board's own WIDEPOINT_WIDTH_RANGE_IN.min (16in) is already wide enough to need two
-      // columns on a portrait short edge — deliberately narrower than the app's own range purely
-      // to force layout.columns === 1 and exercise the row-adjacent (nose-to-tail) match-mark
-      // invariant on its own, distinct from the column-adjacent case exercised below.
-      const geometry = buildOutline({
-        ...BOARD_PRESETS[0].outline,
-        widePointWidth: inchesToMm(10),
-      });
-      const layout = computeTemplateLayout(geometry, paper);
-      expect(layout.columns).toBe(1);
-      expect(layout.rows).toBeGreaterThan(1);
+        it.each(BOARD_PRESETS)("$id: stringerEdge is true only for column-0 pages", (preset) => {
+          const geometry = buildOutline(preset.outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const boxes = templatePageBoxes(layout);
 
-      const marks = matchMarkPositions(layout);
-      expect(marks.every((m) => m.edge === "row")).toBe(true);
-      for (let row = 0; row < layout.rows - 1; row++) {
-        const pageA = layout.pages.find((p) => p.row === row && p.col === 0)!;
-        const pageB = layout.pages.find((p) => p.row === row + 1 && p.col === 0)!;
-        expectSharedEdgeMarksMatch(marks, pageA.index, pageB.index);
-      }
-    });
+          boxes.forEach((box) => {
+            const page = layout.pages[box.pageIndex];
+            expect(box.stringerEdge).toBe(page.col === 0);
+          });
+        });
 
-    it(`${paper}: board at the maximum widepoint width — column-adjacent pages carry identical match-mark positions in their shared band`, () => {
-      const geometry = buildOutline({
-        ...BOARD_PRESETS[0].outline,
-        widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max),
-      });
-      const layout = computeTemplateLayout(geometry, paper);
-      expect(layout.columns).toBeGreaterThan(1);
+        it.each(BOARD_PRESETS)(
+          "$id: on any side with a neighbour, the box line is inset from the page's own printable edge by exactly layout.overlap; flush with the edge otherwise",
+          (preset) => {
+            const geometry = buildOutline(preset.outline);
+            const layout = computeTemplateLayout(geometry, paper);
+            const boxes = templatePageBoxes(layout);
 
-      const marks = matchMarkPositions(layout);
-      for (let col = 0; col < layout.columns - 1; col++) {
-        const pageA = layout.pages.find((p) => p.col === col && p.row === 0)!;
-        const pageB = layout.pages.find((p) => p.col === col + 1 && p.row === 0)!;
-        expectSharedEdgeMarksMatch(marks, pageA.index, pageB.index);
-        const marksBetween = marks.filter(
-          (m) =>
-            (m.pageIndex === pageA.index && m.pairedPageIndex === pageB.index) ||
-            (m.pageIndex === pageB.index && m.pairedPageIndex === pageA.index),
+            boxes.forEach((box) => {
+              const page = layout.pages[box.pageIndex];
+
+              const expectedTop = page.row > 0 ? page.stationRange[1] - layout.overlap : page.stationRange[1];
+              const expectedBottom = page.row < layout.rows - 1 ? page.stationRange[0] + layout.overlap : page.stationRange[0];
+              const expectedLeft = page.col > 0 ? page.halfWidthRange[0] + layout.overlap : page.halfWidthRange[0];
+              const expectedRight = page.col < layout.columns - 1 ? page.halfWidthRange[1] - layout.overlap : page.halfWidthRange[1];
+
+              expect(box.stationRange[1]).toBeCloseTo(expectedTop, 6);
+              expect(box.stationRange[0]).toBeCloseTo(expectedBottom, 6);
+              expect(box.halfWidthRange[0]).toBeCloseTo(expectedLeft, 6);
+              expect(box.halfWidthRange[1]).toBeCloseTo(expectedRight, 6);
+            });
+          },
         );
-        expect(marksBetween.every((m) => m.edge === "column")).toBe(true);
-      }
-    });
-  }
-
-  describe("avoidZones (post-checkpoint fix, defect 4: a match mark must never land on furniture)", () => {
-    it("shifts a column-adjacent pair's fractions away from a furniture zone that would otherwise catch the default spacing", () => {
-      const geometry = buildOutline({
-        ...BOARD_PRESETS[0].outline,
-        widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max),
       });
-      const layout = computeTemplateLayout(geometry, "letter");
-      expect(layout.columns).toBeGreaterThan(1);
 
-      const pageA = layout.pages.find((p) => p.col === 0 && p.row === 0)!;
-      const pageB = layout.pages.find((p) => p.col === 1 && p.row === 0)!;
+      it(`${paper}: adjacent pages' own printable ranges still overlap by exactly TEMPLATE_OVERLAP_MM — the box lines mark that shared strip, the underlying tile overlap is unchanged`, () => {
+        const geometry = buildOutline({
+          ...BOARD_PRESETS[0].outline,
+          widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max),
+        });
+        const layout = computeTemplateLayout(geometry, paper);
+        expect(layout.overlap).toBe(TEMPLATE_OVERLAP_MM);
+        expect(layout.columns).toBeGreaterThan(1);
 
-      // With no avoid zone, the default fraction set is used.
-      const unconstrained = matchMarkPositions(layout).filter(
-        (m) => m.pageIndex === pageA.index && m.pairedPageIndex === pageB.index,
-      );
-      expect(unconstrained.length).toBe(2);
+        // Row-adjacent (column 0): a page with a tail neighbour has a box bottom line strictly
+        // inside its own printable bottom edge — the strip below it is the duplicate zone the
+        // curve still draws into (never clipped to the box).
+        if (layout.rows > 1) {
+          const page = layout.pages.find((p) => p.row === 0 && p.col === 0)!;
+          const box = templatePageBoxes(layout).find((b) => b.pageIndex === page.index)!;
+          expect(box.stationRange[0]).toBeGreaterThan(page.stationRange[0]);
+        }
 
-      // A zone that swallows the whole nose-most half of page A's own station range — exactly
-      // where the default fraction set (0.25, 0.75) would otherwise place one of the two marks —
-      // forces the retry logic onto a different fraction pair.
-      const [stStart, stEnd] = pageA.stationRange;
-      const zone: FurnitureZone = {
-        pageIndex: pageA.index,
-        station: [mm(stStart + (stEnd - stStart) * 0.5), stEnd],
-        halfWidth: pageA.halfWidthRange,
-      };
-
-      const constrained = matchMarkPositions(layout, [zone]).filter(
-        (m) => m.pageIndex === pageA.index && m.pairedPageIndex === pageB.index,
-      );
-      expect(constrained.length).toBe(2);
-
-      // No constrained mark falls inside the reserved zone.
-      const inZone = (station: number, halfWidth: number) =>
-        station >= zone.station[0] && station <= zone.station[1] && halfWidth >= zone.halfWidth[0] && halfWidth <= zone.halfWidth[1];
-      for (const mark of constrained) {
-        expect(inZone(mark.station, mark.halfWidth)).toBe(false);
-      }
-
-      // The zone did catch one of the two default (unconstrained) positions, proving the retry
-      // logic actually had something to avoid rather than trivially matching.
-      expect(unconstrained.some((mark) => inZone(mark.station, mark.halfWidth))).toBe(true);
-    });
-  });
-});
+        // Column-adjacent: a page with an outward neighbour has a box right line strictly inside
+        // its own printable right edge.
+        const pageA = layout.pages.find((p) => p.col === 0 && p.row === 0)!;
+        const boxA = templatePageBoxes(layout).find((b) => b.pageIndex === pageA.index)!;
+        expect(boxA.halfWidthRange[1]).toBeLessThan(pageA.halfWidthRange[1]);
+      });
+    }
+  },
+);
 
 describe("nameBlockPlacement", () => {
   for (const paper of PAPERS) {

@@ -16,16 +16,15 @@ import {
   NAME_BOX_CLEARANCE_MM,
   NAME_BOX_WIDTH_MM,
   PAPER_MM,
-  type FurnitureZone,
   markPlacements,
-  matchMarkPositions,
   nameBlockPlacement,
   type PaperSize,
   type TemplateLayout,
   type TemplateMarkPlacement,
   type TemplateMarks,
-  type TemplateMatchMark,
   type TemplatePage,
+  type TemplatePageBox,
+  templatePageBoxes,
 } from "@/lib/geometry/template";
 import {
   formatFeetInches,
@@ -37,8 +36,8 @@ import {
   type Mm,
 } from "@/lib/geometry/units";
 
-/** Every input `buildTemplatePdf` needs, fixed complete now, so later plans (the preview dialog,
- * working match marks) extend the drawing without touching a call site. */
+/** Every input `buildTemplatePdf` needs, fixed complete now, so later plans (the preview dialog)
+ * extend the drawing without touching a call site. */
 export interface BuildTemplatePdfOptions {
   layout: TemplateLayout;
   /** Computed alongside `layout` for every caller (`computeTemplateMarks`) — the working marks
@@ -114,11 +113,10 @@ const MARK_LABEL_SAFETY_MM = 2;
  * dimension) before the tick's own curve-side end. */
 const MARK_LABEL_LINE_GAP_MM = 4;
 
-/** Overlap match marks (D-09) — small, solid alignment ticks, identical on both overlapping
- * pages, oriented perpendicular to the trim edge they cross (post-checkpoint fix, defect 4: a
- * solid crossing tick rather than a crosshair). */
-const MATCH_MARK_LINE_WEIGHT_MM = 0.25;
-const MATCH_MARK_SIZE_MM = 4;
+/** Every page's own alignment box (D-09, round 2 post-checkpoint fix, defect 2) — a plain thin
+ * trim line, matching the how-to box's own weight; the stringer-side edge on a column-0 page is
+ * drawn at the stringer's own dashed weight/pattern instead, since that edge IS the stringer. */
+const BOX_LINE_WEIGHT_MM = 0.25;
 
 /** The nose-page how-to box (D-10) — plain-bordered, 9pt regular, beside the scale square. */
 const HOWTO_BOX_LINE_WEIGHT_MM = 0.25;
@@ -181,18 +179,41 @@ function drawOutlineCurve(doc: jsPDF, geometry: OutlineGeometry, page: TemplateP
   }
 }
 
-/** The straight stringer edge — D-05's half/spin-template spine. Only column 0 touches the
- * stringer (half-width 0), so only those pages draw it. */
-function drawStringerEdge(doc: jsPDF, page: TemplatePage, margin: number): void {
-  if (page.col !== 0) return;
-  const x = halfWidthToX(0, page, margin);
-  const yTop = stationToY(page.stationRange[1], page, margin);
-  const yBottom = stationToY(page.stationRange[0], page, margin);
+/** Every page's own alignment box (D-05's stringer spine folded into it on column-0 pages;
+ * D-09's tiling-registration device everywhere else) — drawn as four independent segments, not a
+ * single `doc.rect`, because the stringer-side edge needs its own dashed style while the other
+ * three stay solid. The box is NOT a clip boundary: the outline curve and the stringer line both
+ * keep drawing past it, all the way to the page's own printable edge, so the strip between the box
+ * line and that edge shows the same content the neighbouring page also prints in its own strip —
+ * that duplicated content is what confirms correct registration when two sheets are taped
+ * together (round 2 post-checkpoint fix, defect 2: match-mark crosshairs replaced by this border,
+ * per the iShaper reference template; RESEARCH correction — the tile layout keeps its existing
+ * overlap, it is not zero-overlap). */
+function drawPageBox(doc: jsPDF, page: TemplatePage, box: TemplatePageBox, margin: number): void {
+  const top = stationToY(box.stationRange[1], page, margin);
+  const bottom = stationToY(box.stationRange[0], page, margin);
+  const left = halfWidthToX(box.halfWidthRange[0], page, margin);
+  const right = halfWidthToX(box.halfWidthRange[1], page, margin);
+
   doc.setDrawColor(0);
-  doc.setLineWidth(STRINGER_LINE_WEIGHT_MM);
-  doc.setLineDashPattern(STRINGER_DASH_PATTERN, 0);
-  doc.line(x, yTop, x, yBottom);
+
+  doc.setLineWidth(BOX_LINE_WEIGHT_MM);
   doc.setLineDashPattern([], 0);
+  doc.line(left, top, right, top); // top
+  doc.line(right, top, right, bottom); // right
+  doc.line(left, bottom, right, bottom); // bottom
+
+  if (box.stringerEdge) {
+    // The board's own centreline, not a taping seam — dashed, per the user's own instruction to
+    // keep the stringer dashed.
+    doc.setLineWidth(STRINGER_LINE_WEIGHT_MM);
+    doc.setLineDashPattern(STRINGER_DASH_PATTERN, 0);
+    doc.line(left, top, left, bottom);
+    doc.setLineDashPattern([], 0);
+  } else {
+    doc.setLineWidth(BOX_LINE_WEIGHT_MM);
+    doc.line(left, top, left, bottom);
+  }
 }
 
 /** D-07's 2in x 2in scale-check square — nose page only, in the top-outward corner the curve
@@ -274,34 +295,6 @@ function drawMarks(doc: jsPDF, page: TemplatePage, margin: number, placements: T
   }
 }
 
-/** Draws the small alignment ticks (D-09) that sit inside every overlap band this page shares
- * with a neighbour — the identical pair on both overlapping pages is what turns "lining the marks
- * up" into a positive confirmation rather than an eyeball judgement on a cut edge. Solid, not a
- * crosshair (post-checkpoint fix, defect 4): each tick is drawn as a single short segment,
- * perpendicular to the trim edge it crosses, so taping two pages together means aligning two
- * solid lines into one continuous line across the seam. */
-function drawMatchMarks(doc: jsPDF, page: TemplatePage, margin: number, matchMarks: TemplateMatchMark[]): void {
-  const pageMarks = matchMarks.filter((mark) => mark.pageIndex === page.index);
-  if (pageMarks.length === 0) return;
-
-  doc.setDrawColor(0);
-  doc.setLineWidth(MATCH_MARK_LINE_WEIGHT_MM);
-  doc.setLineDashPattern([], 0);
-
-  const half = MATCH_MARK_SIZE_MM / 2;
-  for (const mark of pageMarks) {
-    const x = halfWidthToX(mark.halfWidth, page, margin);
-    const y = stationToY(mark.station, page, margin);
-    if (mark.edge === "row") {
-      // The shared boundary is a horizontal station line — the crossing tick is vertical.
-      doc.line(x, y - half, x, y + half);
-    } else {
-      // The shared boundary is a vertical half-width line — the crossing tick is horizontal.
-      doc.line(x - half, y, x + half, y);
-    }
-  }
-}
-
 /** The how-to box's plain-English lines (D-10 / Print Artifact Contract #4), pure data — a small
  * exported helper so its line count (3 vs. 4) is testable without reading the rendered page. The
  * sideways-taping line only applies when the grid actually has more than one column; omitted
@@ -310,10 +303,10 @@ export function templateHowToLines(layout: TemplateLayout): string[] {
   const lines = [
     'Print at 100% — turn off "Fit to page."',
     'Measure the square above. It should be exactly 2" x 2".',
-    "Cut out each page and tape them together, nose to tail, matching the marks.",
+    "Lay each page so its edge lines up on the next page's border line — the curve should match where they overlap — then tape.",
   ];
   if (layout.columns > 1) {
-    lines.push("Tape left to right, then row to row, nose to tail.");
+    lines.push("Line up left to right first, then row by row, nose to tail.");
   }
   return lines;
 }
@@ -354,7 +347,7 @@ export function templateHowToWrappedLines(layout: TemplateLayout, doc: jsPDF, in
 }
 
 /** The nose-page how-to box's own rectangle — computed once so the drawing function and the
- * furniture-collision math (`pageZeroFurnitureZone` below) agree on exactly the same box,
+ * furniture-collision math in `templatePageZeroFurnitureRects` agree on exactly the same box,
  * including its height, which now varies with how many lines defect 1's wrapping produced. */
 function howToBoxRect(
   doc: jsPDF,
@@ -396,39 +389,6 @@ function scaleSquareRect(margin: number, paperWidthMm: number): { x: number; y: 
     y: margin,
     width: SCALE_SQUARE_MM,
     height: SCALE_SQUARE_MM,
-  };
-}
-
-/** Converts the nose page's own scale-square + how-to box footprint (in page-local millimetres)
- * into a `FurnitureZone` in the board's absolute station/half-width frame, for
- * `matchMarkPositions` to steer its column-overlap marks away from — the pure-math half of
- * "furniture placement accounts for mark positions and vice versa" (post-checkpoint fix, defect
- * 4: a match mark must never land on top of the how-to box's own text, as it did in the reported
- * photo). */
-function pageZeroFurnitureZone(
-  doc: jsPDF,
-  layout: TemplateLayout,
-  page: TemplatePage,
-  margin: number,
-  paperWidthMm: number,
-): FurnitureZone {
-  const square = scaleSquareRect(margin, paperWidthMm);
-  const howTo = howToBoxRect(doc, layout, margin, paperWidthMm);
-
-  const xMin = Math.min(square.x, howTo.x);
-  const xMax = paperWidthMm - margin;
-  const yMin = margin;
-  const yMax = howTo.y + howTo.height;
-
-  const halfWidthAtXMin = xMin - margin + page.halfWidthRange[0];
-  const halfWidthAtXMax = xMax - margin + page.halfWidthRange[0];
-  const stationAtYMin = page.stationRange[1] - (yMin - margin);
-  const stationAtYMax = page.stationRange[1] - (yMax - margin);
-
-  return {
-    pageIndex: page.index,
-    station: [mm(Math.min(stationAtYMin, stationAtYMax)), mm(Math.max(stationAtYMin, stationAtYMax))],
-    halfWidth: [mm(halfWidthAtXMin), mm(halfWidthAtXMax)],
   };
 }
 
@@ -494,8 +454,8 @@ export function templateNameBlockDimsText(dims: BuildTemplatePdfOptions["dims"])
 
 /** The name block's dims row, wrapped to the box's own inner width, plus the box's total height
  * given how many lines that wrapping produced — one source of truth shared by `drawNameBlock`
- * (which draws it) and `templatePageZeroFurnitureRects`/`pageZeroFurnitureZone`-adjacent code that
- * needs the box's real footprint for containment and overlap checks. Exported for testability. */
+ * (which draws it) and `templatePageZeroFurnitureRects` (which needs the box's real footprint for
+ * containment and overlap checks). Exported for testability. */
 export function nameBlockContent(
   doc: jsPDF,
   dims: BuildTemplatePdfOptions["dims"],
@@ -566,21 +526,15 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
   doc.setDrawColor(0);
   doc.setTextColor(0);
 
-  const pageZero = layout.pages[0];
-  // Computed once, ahead of the page loop, so `matchMarkPositions` can steer its own marks clear
-  // of exactly the rectangle the nose page's scale square and how-to box actually occupy —
-  // "furniture placement accounts for mark positions and vice versa" (defect 4).
-  const furnitureZone = pageZeroFurnitureZone(doc, layout, pageZero, margin, paperDims.width);
   const placements = markPlacements(layout, marks, geometry);
-  const matchMarks = matchMarkPositions(layout, [furnitureZone]);
+  const boxes = templatePageBoxes(layout);
 
   layout.pages.forEach((page, i) => {
     if (i > 0) doc.addPage(paper, "portrait");
 
     drawOutlineCurve(doc, geometry, page, margin);
-    drawStringerEdge(doc, page, margin);
+    drawPageBox(doc, page, boxes[i], margin);
     drawMarks(doc, page, margin, placements);
-    drawMatchMarks(doc, page, margin, matchMarks);
     drawScaleSquare(doc, page, margin, paperDims.width);
     drawHowToBox(doc, layout, page, margin, paperDims.width);
     drawPageLabel(doc, page, margin, paperDims.width, paperDims.height);
@@ -603,10 +557,11 @@ export interface TemplateFurnitureRect {
   height: number;
 }
 
-/** Every piece of fixed furniture the nose page (page 0) draws — scale square, how-to box, name
- * block, and every match-mark tick that lands on page 0 (each treated as a small square around
- * its own centre point) — computed exactly the way `buildTemplatePdf` computes them, so a test can
- * assert none of them overlap without re-deriving the drawing math itself. */
+/** Every piece of fixed furniture the nose page (page 0) draws — scale square, how-to box, and
+ * name block — computed exactly the way `buildTemplatePdf` computes them, so a test can assert
+ * none of them overlap without re-deriving the drawing math itself. Match marks no longer exist
+ * (round 2 post-checkpoint fix, defect 2: replaced by the per-page alignment box), so this list is
+ * shorter than it once was. */
 export function templatePageZeroFurnitureRects(options: BuildTemplatePdfOptions): TemplateFurnitureRect[] {
   const { layout, geometry, dims, paper } = options;
   const paperDims = PAPER_MM[paper];
@@ -631,16 +586,6 @@ export function templatePageZeroFurnitureRects(options: BuildTemplatePdfOptions)
     width: NAME_BOX_WIDTH_MM,
     height: nameBoxHeight,
   });
-
-  const furnitureZone = pageZeroFurnitureZone(doc, layout, page, margin, paperDims.width);
-  const half = MATCH_MARK_SIZE_MM / 2;
-  matchMarkPositions(layout, [furnitureZone])
-    .filter((mark) => mark.pageIndex === 0)
-    .forEach((mark, i) => {
-      const x = halfWidthToX(mark.halfWidth, page, margin);
-      const y = stationToY(mark.station, page, margin);
-      rects.push({ name: `match-mark-${i}`, x: x - half, y: y - half, width: MATCH_MARK_SIZE_MM, height: MATCH_MARK_SIZE_MM });
-    });
 
   return rects;
 }
