@@ -270,10 +270,59 @@ true only for column-0 pages, and the exact inset-vs-flush rule verified per edg
 preset and paper size. The pre-existing overlap tests (`consecutive rows/columns overlap by exactly
 TEMPLATE_OVERLAP_MM`) were left untouched, since the tile layout itself did not change.
 
+### Round 3 — a third real print, two more defects on the tiled template
+
+The user printed the tiled template again and reported two more defects, in their own words:
+"the center and widepoint lines don't extend to the edge and the 2\" box and instructions are not
+inside the margin/line up lines." Both were fixed and committed as one atomic `fix(03-03): ...`
+commit (the two defects shared enough surface — both live in `drawMarks`/furniture-placement code
+in the same file — that the coordinator scoped them as a single commit rather than two).
+
+**1. Station reference lines (nose 12in, tail 12in, centre, widepoint) stopped short of the
+outline curve on a multi-column board.** Each of these lines is a width measurement: it spans from
+the stringer to the outline curve at that station, nothing more. The coordinator's first read of
+the report ("don't extend to the edge") suggested extending the lines all the way to the page's
+own printable edge — that read was corrected mid-fix: the real bug was that a wide board's line
+(the widepoint, by definition the board's widest point, routinely tiles to more than one column)
+only ever got drawn on the column-0 page, so it visually vanished partway across the board instead
+of continuing onto the neighbouring column's sheet where the curve actually lives. A new pure
+function, `markLineSegments` (`lib/geometry/template.ts`), splits every mark's full
+stringer-to-curve span into the one or more page-clipped segments needed to draw it in full —
+including into the overlap strip a page shares with its column neighbour, exactly like the outline
+curve itself is already clipped per page — and never past the curve into blank paper. Printed
+dimension labels stay on the column-0 segment, inside the box region, unchanged from before.
+
+**2. The 2"×2" scale-check square, its caption, and the how-to instructions box sat outside the
+alignment box, in the overlap strip a neighbouring sheet gets taped over.** These three pieces of
+page-0 furniture were anchored to the page's own raw printable edge (`paperWidthMm - margin`,
+`margin`), which only coincides with the alignment box's own edge when a board is narrow enough to
+tile as a single column — on any multi-column board (most real boards, per plan 03-03's own
+round-1 note that even the default shortboard preset already tiles two columns) the box is inset
+from the printable edge by the tile overlap, and the furniture landed in that inset strip instead.
+`scaleSquareRect` and `howToBoxRect` are now anchored to the page's own alignment box
+(`templatePageBoxes`) via a shared `pageBoxRect` helper, not the raw page edge. A new exported pair,
+`templatePageZeroBoxRect` and `rectContains`, gives a direct containment test — every furniture
+rectangle from `templatePageZeroFurnitureRects` is asserted to sit fully inside the box (with a
+1e-6mm floating-point tolerance for edge-flush placements), across every board preset and paper
+size, including the forced multi-column case that reproduces the original defect.
+Commit: `6ed095e`.
+
+**Verification:** `npm test` (965/965, up from 902/902 baseline), `npx tsc --noEmit` (0 errors
+beyond the pre-existing, worktree-only `LayoutProps` phantom errors documented above), and
+`npm run lint` (0 errors, the same 9 pre-existing unrelated warnings) all pass. New/updated test
+coverage: a `markLineSegments` describe block in `lib/geometry/template.test.ts` (every mark's
+segments start at the stringer and the last one stops exactly at the curve, no gap between
+consecutive segments, only the column-0 segment carries `hasLabel`, and a forced
+maximum-widepoint-width board's widepoint line is asserted to cross more than one page), and a
+"page-0 furniture is fully inside the alignment box" describe block in
+`components/template/build-template-pdf.test.ts` (every furniture rectangle contained inside
+`templatePageZeroBoxRect`, across every preset, both paper sizes, and the forced multi-column
+case).
+
 ## Self-Check: PASSED
 
-- FOUND: lib/geometry/template.ts (markPlacements, templatePageBoxes)
-- FOUND: components/template/build-template-pdf.ts (templateNameBlockText, templateHowToLines)
+- FOUND: lib/geometry/template.ts (markPlacements, templatePageBoxes, markLineSegments)
+- FOUND: components/template/build-template-pdf.ts (templateNameBlockText, templateHowToLines, rectContains)
 - FOUND commit: 3ec4363
 - FOUND commit: 1b498c3
 - FOUND commit: 5135a54 (post-checkpoint fix 1)
@@ -282,6 +331,7 @@ TEMPLATE_OVERLAP_MM`) were left untouched, since the tile layout itself did not 
 - FOUND commit: 931d046 (post-checkpoint fix 4)
 - FOUND commit: 49034bc (round 2 post-checkpoint fix 1)
 - FOUND commit: f4c1326 (round 2 post-checkpoint fix 2)
+- FOUND commit: 6ed095e (round 3 post-checkpoint fix)
 
 ---
 *Phase: 03-volume-templates-verified-math*
