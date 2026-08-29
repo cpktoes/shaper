@@ -84,6 +84,14 @@ export interface TemplateMarks {
   tailTwelve: Mm;
   center: Mm;
   widepoint: Mm;
+  /** The squared tail-block cut line's station — the outline curve's own tail knot
+   * (`geometry.tailPodStation`), where the rail curve meets the tailblock's own half-width before
+   * a real board would close that edge off square to the stringer. Present only when the tail
+   * actually has a squared block (`geometry.halfTailBlockWidth > 0`) — a pin or round tail's curve
+   * already narrows to meet the stringer at station 0 on its own, so there is no separate block
+   * edge to mark (round 2 post-checkpoint fix, defect 1: "the tip of the tail... is not
+   * printing"). */
+  tailBlock?: Mm;
 }
 
 /** How many fixed-size, constant-step tiles of `usable` millimetres (each overlapping the next by
@@ -161,23 +169,30 @@ export function computeTemplateLayout(
   return { pages, columns, rows, paper, margin, overlap };
 }
 
-/** The four measuring-station marks, expressed on this board's own station axis. */
+/** The four measuring-station marks, expressed on this board's own station axis — plus the
+ * tailblock mark (round 2 post-checkpoint fix, defect 1) when this tail actually has a squared
+ * block to close off. */
 export function computeTemplateMarks(geometry: OutlineGeometry): TemplateMarks {
-  return {
+  const marks: TemplateMarks = {
     tailTwelve: MEASURE_STATION_MM,
     noseTwelve: mm(geometry.length - MEASURE_STATION_MM),
     center: mm(geometry.length / 2),
     widepoint: geometry.widePointStation,
   };
+  if (geometry.halfTailBlockWidth > 0) {
+    marks.tailBlock = geometry.tailPodStation;
+  }
+  return marks;
 }
 
-/** The label text printed beside each working mark's tick (D-06 — exactly these four marks, no
- * every-12in station ladder). */
+/** The label text printed beside each working mark's tick (D-06 — the four station marks, no
+ * every-12in ladder — plus "Tail Block" for tails that have a squared end to close off). */
 const MARK_LABELS: Record<keyof TemplateMarks, string> = {
   noseTwelve: 'Nose 12"',
   tailTwelve: 'Tail 12"',
   center: "Centre",
   widepoint: "Wide point",
+  tailBlock: "Tail Block",
 };
 
 /** Where one working mark's tick is drawn, in the drawing module's own coordinate inputs — a page
@@ -212,6 +227,7 @@ export function markPlacements(
 
   for (const markName of markNames) {
     const station = marks[markName];
+    if (station === undefined) continue; // tailBlock is absent for a pin/round tail
     const halfWidthExtent = sampleOutline(geometry, station);
     const pages = layout.pages.filter(
       (page) => page.col === 0 && station >= page.stationRange[0] && station <= page.stationRange[1],

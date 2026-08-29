@@ -236,6 +236,34 @@ describe("templateMarkLabelText / templateMarkDimensionText (post-checkpoint fix
   });
 });
 
+describe(
+  'templateMarkLabelText — Tail Block (round 2 post-checkpoint fix, defect 1: "the tip of the tail... is not printing (add tailblock dim)")',
+  () => {
+    it('prints "Tail Block — 4\\"" for the shortboard preset (squash tail, 4in endWidth)', () => {
+      const preset = BOARD_PRESETS[0]; // shortboard — squash, endWidth 4in
+      const geometry = buildOutline(preset.outline);
+      const layout = computeTemplateLayout(geometry, "letter");
+      const marks = computeTemplateMarks(geometry);
+      const placements = markPlacements(layout, marks, geometry);
+
+      const tailBlock = placements.find((p) => p.mark === "tailBlock");
+      expect(tailBlock).toBeDefined();
+      expect(templateMarkDimensionText(tailBlock!)).toBe('4"');
+      expect(templateMarkLabelText(tailBlock!)).toBe('Tail Block — 4"');
+    });
+
+    it("is never emitted for a round-tail preset — no separate block edge to label", () => {
+      const preset = BOARD_PRESETS[2]; // midlength — round
+      const geometry = buildOutline(preset.outline);
+      const layout = computeTemplateLayout(geometry, "letter");
+      const marks = computeTemplateMarks(geometry);
+      const placements = markPlacements(layout, marks, geometry);
+
+      expect(placements.some((p) => p.mark === "tailBlock")).toBe(false);
+    });
+  },
+);
+
 describe("templateNameBlockDimsText / nameBlockContent (post-checkpoint fix, defect 3 refinement: \"add all the station mark dims with the board name\")", () => {
   const dims = {
     length: inchesToMm(74),

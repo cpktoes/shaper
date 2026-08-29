@@ -41,9 +41,9 @@ import {
  * working match marks) extend the drawing without touching a call site. */
 export interface BuildTemplatePdfOptions {
   layout: TemplateLayout;
-  /** Computed alongside `layout` for every caller (`computeTemplateMarks`) — not yet drawn onto
-   * the page by this plan; wired through so the drawing gains match marks later without a
-   * call-site change. */
+  /** Computed alongside `layout` for every caller (`computeTemplateMarks`) — the working marks
+   * `drawMarks` draws (nose 12in, tail 12in, centre, widepoint, and Tail Block when the tail has
+   * a squared block). */
   marks: TemplateMarks;
   geometry: OutlineGeometry;
   paper: PaperSize;
@@ -97,11 +97,15 @@ const NAME_BOX_DIMS_LINE_HEIGHT_MM = 4.2;
 /** The dims row's own text width budget, inside the box's border and padding. */
 const NAME_BOX_DIMS_WIDTH_LIMIT_MM = NAME_BOX_WIDTH_MM - 2 * NAME_BOX_PADDING_MM;
 
-/** The four working marks (D-06) — solid black, told apart by dash pattern alone so they survive a
- * monochrome printer. */
+/** The five working marks (D-06 base four, plus Tail Block) — solid black, told apart by dash
+ * pattern alone so they survive a monochrome printer. */
 const MARK_TICK_LINE_WEIGHT_MM = 0.25;
 const MARK_STATION_DASH_PATTERN = [5, 4];
 const MARK_WIDEPOINT_DASH_PATTERN = [2, 3];
+/** The tailblock's own tick is a real cut edge, not a measurement reference — drawn solid, at the
+ * outline curve's own line weight, rather than dashed like the other four (round 2 post-checkpoint
+ * fix, defect 1: "the tailblock cut line... must print"). */
+const MARK_TAILBLOCK_LINE_WEIGHT_MM = OUTLINE_LINE_WEIGHT_MM;
 const MARK_LABEL_OFFSET_MM = 2;
 /** Extra clearance kept between a mark's label and the outline curve it runs to — post-checkpoint
  * fix, defect 2: the label must never run off the tick's own paper into the curve. */
@@ -221,27 +225,30 @@ export function templateMarkLabelText(placement: TemplateMarkPlacement): string 
   return `${placement.label} — ${templateMarkDimensionText(placement)}`;
 }
 
-/** Draws the four working marks (D-06 — nose 12in, tail 12in, centre, widepoint; no every-12in
- * station ladder) that fall on this page. Each tick runs from the stringer (half-width 0) out to
- * `placement.halfWidthExtent`, at 0.25mm; the widepoint tick alone gets the dotted `2 3` pattern so
- * it is told apart from the other three by dash pattern alone, never by colour. Each tick is
- * labeled with its name and the board's own width there, measured with jsPDF's own `getTextWidth`
- * against the room actually available before the curve — split onto two stacked lines rather than
- * let either run past the tick's own outer end when a narrower station doesn't have room for one
- * (post-checkpoint fix, defects 2 and 4). */
+/** Draws the working marks that fall on this page (D-06 — nose 12in, tail 12in, centre,
+ * widepoint; no every-12in station ladder — plus Tail Block when this tail has one). Each tick
+ * runs from the stringer (half-width 0) out to `placement.halfWidthExtent`; the widepoint tick
+ * gets the dotted `2 3` pattern and the tailblock tick is drawn SOLID at the outline curve's own
+ * weight (it is a real cut edge, not a measurement reference — round 2 post-checkpoint fix,
+ * defect 1), so all five are told apart by dash pattern/weight alone, never by colour. Each tick
+ * is labeled with its name and the board's own width there, measured with jsPDF's own
+ * `getTextWidth` against the room actually available before the curve — split onto two stacked
+ * lines rather than let either run past the tick's own outer end when a narrower station doesn't
+ * have room for one (post-checkpoint fix, defects 2 and 4). */
 function drawMarks(doc: jsPDF, page: TemplatePage, margin: number, placements: TemplateMarkPlacement[]): void {
   const pagePlacements = placements.filter((placement) => placement.pageIndex === page.index);
   if (pagePlacements.length === 0) return;
 
   doc.setDrawColor(0);
-  doc.setLineWidth(MARK_TICK_LINE_WEIGHT_MM);
 
   for (const placement of pagePlacements) {
-    const dash = placement.mark === "widepoint" ? MARK_WIDEPOINT_DASH_PATTERN : MARK_STATION_DASH_PATTERN;
+    const isTailBlock = placement.mark === "tailBlock";
+    const dash = isTailBlock ? [] : placement.mark === "widepoint" ? MARK_WIDEPOINT_DASH_PATTERN : MARK_STATION_DASH_PATTERN;
     const y = stationToY(placement.station, page, margin);
     const xStringer = halfWidthToX(0, page, margin);
     const xOuter = halfWidthToX(placement.halfWidthExtent, page, margin);
 
+    doc.setLineWidth(isTailBlock ? MARK_TAILBLOCK_LINE_WEIGHT_MM : MARK_TICK_LINE_WEIGHT_MM);
     doc.setLineDashPattern(dash, 0);
     doc.line(xStringer, y, xOuter, y);
     doc.setLineDashPattern([], 0);

@@ -104,23 +104,28 @@ describe("computeTemplateLayout", () => {
 describe("markPlacements", () => {
   for (const paper of PAPERS) {
     describe(paper, () => {
-      it.each(BOARD_PRESETS)("$id: exactly four mark names, each on a valid page inside its stationRange", (preset) => {
-        const geometry = buildOutline(preset.outline);
-        const layout = computeTemplateLayout(geometry, paper);
-        const marks = computeTemplateMarks(geometry);
-        const placements = markPlacements(layout, marks, geometry);
+      it.each(BOARD_PRESETS)(
+        "$id: the four base mark names, plus tailBlock only when this tail has a squared block, each on a valid page inside its stationRange",
+        (preset) => {
+          const geometry = buildOutline(preset.outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const marks = computeTemplateMarks(geometry);
+          const placements = markPlacements(layout, marks, geometry);
 
-        const uniqueNames = new Set(placements.map((p) => p.mark));
-        expect(uniqueNames).toEqual(new Set(["noseTwelve", "tailTwelve", "center", "widepoint"]));
+          const uniqueNames = new Set(placements.map((p) => p.mark));
+          const expectedNames = new Set(["noseTwelve", "tailTwelve", "center", "widepoint"]);
+          if (geometry.halfTailBlockWidth > 0) expectedNames.add("tailBlock");
+          expect(uniqueNames).toEqual(expectedNames);
 
-        for (const placement of placements) {
-          expect(placement.pageIndex).toBeGreaterThanOrEqual(0);
-          expect(placement.pageIndex).toBeLessThan(layout.pages.length);
-          const page = layout.pages[placement.pageIndex];
-          expect(placement.station).toBeGreaterThanOrEqual(page.stationRange[0]);
-          expect(placement.station).toBeLessThanOrEqual(page.stationRange[1]);
-        }
-      });
+          for (const placement of placements) {
+            expect(placement.pageIndex).toBeGreaterThanOrEqual(0);
+            expect(placement.pageIndex).toBeLessThan(layout.pages.length);
+            const page = layout.pages[placement.pageIndex];
+            expect(placement.station).toBeGreaterThanOrEqual(page.stationRange[0]);
+            expect(placement.station).toBeLessThanOrEqual(page.stationRange[1]);
+          }
+        },
+      );
 
       it.each(BOARD_PRESETS)("$id: tailTwelve/noseTwelve/widepoint stations match the geometry's own values", (preset) => {
         const geometry = buildOutline(preset.outline);
@@ -137,6 +142,44 @@ describe("markPlacements", () => {
       });
     });
   }
+
+  describe("tailBlock (round 2 post-checkpoint fix, defect 1: \"the tip of the tail... is not printing\")", () => {
+    it("is present, at geometry.tailPodStation with the tailblock's own half-width extent, for a squash-tail preset", () => {
+      const preset = BOARD_PRESETS[0]; // shortboard — squash, endWidth 4in
+      const geometry = buildOutline(preset.outline);
+      expect(geometry.halfTailBlockWidth).toBeGreaterThan(0);
+      const layout = computeTemplateLayout(geometry, "letter");
+      const marks = computeTemplateMarks(geometry);
+      expect(marks.tailBlock).toBe(geometry.tailPodStation);
+
+      const placements = markPlacements(layout, marks, geometry);
+      const tailBlock = placements.find((p) => p.mark === "tailBlock");
+      expect(tailBlock).toBeDefined();
+      expect(tailBlock!.station).toBe(geometry.tailPodStation);
+      expect(tailBlock!.halfWidthExtent).toBeCloseTo(geometry.halfTailBlockWidth, 6);
+      expect(tailBlock!.label).toBe("Tail Block");
+    });
+
+    it("is absent for a round-tail preset (curve already meets the stringer at the tail with no separate block edge)", () => {
+      const preset = BOARD_PRESETS[2]; // midlength — round
+      const geometry = buildOutline(preset.outline);
+      expect(geometry.halfTailBlockWidth).toBe(0);
+      const layout = computeTemplateLayout(geometry, "letter");
+      const marks = computeTemplateMarks(geometry);
+      expect(marks.tailBlock).toBeUndefined();
+
+      const placements = markPlacements(layout, marks, geometry);
+      expect(placements.some((p) => p.mark === "tailBlock")).toBe(false);
+    });
+
+    it("the tail page's own sampled points reach the board's full length (station 0), for every preset", () => {
+      for (const preset of BOARD_PRESETS) {
+        const geometry = buildOutline(preset.outline);
+        expect(Math.min(...geometry.points.map((p) => p.station))).toBeCloseTo(geometry.tailPodStation, 6);
+        expect(Math.max(...geometry.points.map((p) => p.station))).toBeCloseTo(geometry.length, 6);
+      }
+    });
+  });
 });
 
 describe("matchMarkPositions", () => {
