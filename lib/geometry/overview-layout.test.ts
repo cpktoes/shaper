@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildOutline } from "./outline";
-import { computeOverviewOutlineScale } from "./overview-layout";
+import { computeOverviewDrawingBox, computeOverviewOutlineScale } from "./overview-layout";
 import { BOARD_PRESETS } from "./presets";
 import { inchesToMm } from "./units";
 
@@ -62,3 +62,40 @@ describe("computeOverviewOutlineScale", () => {
     expect(flushWidth || flushHeight).toBe(true);
   });
 });
+
+describe(
+  'computeOverviewDrawingBox (round 3 post-checkpoint fix, defect 4: "the board can be larger on the page" — the spec column is short, so the drawing can claim more width and the full page height minus margins)',
+  () => {
+    it("subtracts the spec column, its gap, and both label reserves from the page width", () => {
+      const box = computeOverviewDrawingBox(215.9, 279.4, 10, 60, 8, 41, 16, 40);
+      // columnX0 = 10 + 60 + 8 = 78; columnWidth = 215.9 - 10 - 78 = 127.9
+      expect(box.x0).toBeCloseTo(78 + 16, 6);
+      expect(box.width).toBeCloseTo(127.9 - 16 - 40, 6);
+    });
+
+    it("reserves the full page height below drawingTopMm, down to the bottom margin", () => {
+      const box = computeOverviewDrawingBox(215.9, 279.4, 10, 60, 8, 41, 16, 40);
+      expect(box.height).toBeCloseTo(279.4 - 10 - 41, 6);
+    });
+
+    it("never returns a negative width or height when the reserves exceed the available space", () => {
+      const box = computeOverviewDrawingBox(100, 100, 10, 60, 8, 90, 16, 40);
+      expect(box.width).toBeGreaterThanOrEqual(0);
+      expect(box.height).toBeGreaterThanOrEqual(0);
+    });
+
+    it.each(BOARD_PRESETS)(
+      "$id: the reclaimed box (60mm spec column, 16/40mm label reserves) scales the outline up over the previous, cramped layout (85mm spec column, 24/36mm label reserves)",
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const newBox = computeOverviewDrawingBox(215.9, 279.4, 10, 60, 8, 41, 16, 40);
+        const oldBox = computeOverviewDrawingBox(215.9, 279.4, 10, 85, 10, 41, 24, 36);
+
+        const newScale = computeOverviewOutlineScale(geometry, newBox.width, newBox.height);
+        const oldScale = computeOverviewOutlineScale(geometry, oldBox.width, oldBox.height);
+
+        expect(newScale).toBeGreaterThan(oldScale);
+      },
+    );
+  },
+);
