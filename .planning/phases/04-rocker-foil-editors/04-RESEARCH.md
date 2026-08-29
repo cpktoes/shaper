@@ -628,7 +628,12 @@ change, only the number of stations and the integration weights.
 
 **If this table is empty:** N/A — see rows above.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All three questions were closed during planning (2026-08-29) under CONTEXT.md's Claude's Discretion
+notes, and each resolution is recorded in the plan that implements it. Where a resolution diverges
+from this document's own recommendation, or rests on a planner assumption rather than a cited
+source, that is stated in the marker.
 
 1. **Exact interpolation method for rail cross-section shape across ~50 Simpson stations**
    - What we know: CONTEXT.md leaves this to Claude's Discretion, explicitly framing it as
@@ -642,6 +647,24 @@ change, only the number of stations and the integration weights.
      the three known sections (clamped/held constant past the outer two sections toward the
      tips), then call the existing `computeRailSection` at each Simpson station — reuses the real
      formula rather than approximating with a named profile, and needs no new UI.
+   - **RESOLVED (04-04 Task 1) — real computed sections, with a split blend rule.** The
+     recommendation was adopted in substance but *narrowed on one point*: "each numeric field"
+     over-reaches, because `family` is a 1-to-5 discriminated choice and several fields are
+     booleans or nullable overrides — none of which have a meaningful midpoint. The plan therefore
+     blends the three anchor sections (tail at 12", centre at half the length, nose at the length
+     minus 12", taken from `foilStationPoints` so anchor positions have one definition) as follows:
+     **continuous** values — `deckPercent`, `ratioTopPercent`, and `RAIL_SECTION_CONSTANTS`' per-
+     section `scale` and `domedBandBase` — are linearly interpolated across station and held
+     constant outboard of the outer two anchors; **discrete** values — `family`, `symmetrical`,
+     `removeCornerCut`, `singleTuck`, `cornerCutOffsetOverride`, `bottomTuck3Override` — are taken
+     from the nearest anchor, and `tailHardEdge` applies only where the nearest anchor is the tail.
+     `boardThickness` at each station comes from `sampleFoil`, not from blending the anchors, since
+     the foil *is* the real thickness distribution. Each station then re-runs the full
+     `computeRailBands` sequence (taper-clamp via `roundToSixteenthInch`, derive `domed`,
+     `computeRailSection`, `buildRailProfile`). This answers CONTEXT.md's "prefer whichever is
+     truthful to the drawn board; record the choice" in favour of the real computed sections over
+     the approved design's named boxy/medium/tapered profiles. The rule is recorded in
+     `computeCrossSectionVolume`'s own doc comment.
 
 2. **Internal representation of the monotone spline (control points vs. tangent-derivative pairs)**
    - What we know: CONTEXT.md's discretion note names "fitting method, handle behaviour, and
@@ -654,6 +677,20 @@ change, only the number of stations and the integration weights.
      parametric inputs, not derived Bezier data) and recompute tangents inside
      `sampleRocker`/`sampleFoil`, mirroring how `buildOutline` derives `BezierSegment`s fresh from
      `OutlineSpec` every call.
+   - **RESOLVED (04-01 Task 1) — recommendation adopted as written.** `RockerSpec` stores four
+     `Mm` lift values and `FoilSpec` five `Mm` thickness values; nothing derived is stored or
+     cached. Fitting is Fritsch-Carlson monotone cubic Hermite interpolation, extracted into its
+     own module `lib/geometry/monotone-spline.ts` (`SplinePoint`, `monotoneSlopes`,
+     `sampleMonotoneSpline`) so the rocker and foil samplers share one implementation. Tangents are
+     recomputed fresh on every `sampleRocker`/`sampleFoil` call. Choosing a spline family that is
+     monotone *by definition* is also how the plan satisfies GEOMETRY-MODULE.md's no-fold-backs
+     rule without building the `validateBoard` module that does not exist in this codebase — the
+     constraint lives in the math rather than in a separate after-the-fact check, matching
+     CONTEXT.md's own discretion note. Handle behaviour is the third part of this question and is
+     answered in 04-02 Task 3: `lib/geometry/rocker-drag.ts` mirrors `outline-drag.ts`, importing
+     `ROCKER_LIFT_RANGE_IN` and `FOIL_THICKNESS_RANGE_IN` rather than restating any clamp, so every
+     dragged result is slider-representable; a drag has one degree of freedom because the five
+     stations are fixed by D-05, and the station component of the gesture is deliberately discarded.
 
 3. **Tip-thickness defaults for a finished (non-preset) new board**
    - What we know: D-05's note explicitly defers this ("Tip-thickness defaults for a finished
@@ -665,6 +702,22 @@ change, only the number of stations and the integration weights.
      Arctic Foam blank's own tip values, since a *finished, glassed* board's foil tip is typically
      thinner than a rough blank's) and flag it for the founder to sanity-check in review, since it
      is not derivable from any cited source in this session.
+   - **RESOLVED (04-01 Task 2) — values chosen, and FLAGGED as a planner assumption awaiting the
+     founder's review.** `DEFAULT_FOIL_SPEC.noseTip` is 5/16" (0.3125) and `.tailTip` is 1/4"
+     (0.25), both inside the recommended band and both well under the Arctic Foam 7'3" SBF blank's
+     own 1 1/2" / 1 5/8" tips, as the recommendation reasoned. This is the one resolution here that
+     rests on no cited source: it is recorded in `foil.ts`'s own comment as a planner choice and
+     surfaced in 04-01's `<planner_assumptions>` block for the end-of-phase review, rather than
+     being presented as derived. The related `DEFAULT_ROCKER_SPEC` values are *not* in this
+     category — they carry real provenance, mapped from the prototype's own `buildSideProfile`
+     `bottomStations` array into this codebase's tail-tip-is-station-zero frame (tail tip 2",
+     tail 12" 0.375", nose 12" 1.25", nose tip 4.5"), which turns the prototype's hard-coded
+     assumptions into merely the starting values of an editable curve. The bounds themselves
+     (`ROCKER_LIFT_RANGE_IN` 0–9", `FOIL_THICKNESS_RANGE_IN` 1/8"–5") are a further planner choice
+     no source artifact states, and are flagged alongside the tip defaults.
+   - Note: per D-12, all four `BOARD_PRESETS` set their own tip thicknesses in 04-05 Task 1, so
+     these defaults govern only a board started from scratch — exactly the scope this question asks
+     about.
 
 ## Environment Availability
 
