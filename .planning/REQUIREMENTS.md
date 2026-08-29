@@ -23,7 +23,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Rocker
 
-- [ ] **ROCK-01**: User can define a rocker curve (nose and tail rocker profile) for the board
+- [x] **ROCK-01**: User can define a rocker curve (nose and tail rocker profile) for the board
 
 ### Rail Contour
 
@@ -31,7 +31,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Foil
 
-- [ ] **FOIL-01**: User can define a foil (thickness distribution along the length of the board)
+- [x] **FOIL-01**: User can define a foil (thickness distribution along the length of the board)
 
 ### Fins
 
@@ -101,9 +101,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ACCT-03 | Phase 2 | Complete |
 | SETUP-01 | Phase 1 | Complete |
 | OUTL-01 | Phase 1 | Complete |
-| ROCK-01 | Phase 4 | Pending |
+| ROCK-01 | Phase 4 | Complete |
 | RAIL-01 | Phase 1 | Complete |
-| FOIL-01 | Phase 4 | Pending |
+| FOIL-01 | Phase 4 | Complete |
 | FIN-01 | Phase 1 | Complete |
 | FIN-02 | Phase 1 | Complete |
 | FIN-03 | Phase 1 | Complete |
