@@ -1,0 +1,9 @@
+{
+  "provenance": "Arctic Foam 7'3\" SBF blank datasheet, supplied by the founder, 2026-08-29",
+  "note": "Hand-entered, NOT produced by npm run golden — this math has no prototype ancestor to extract a fixture from (CONTEXT.md D-14, CLAUDE.md Rule 1's one sanctioned exception). Values quoted nose-tip-to-tail-tip, the order a blank datasheet reads in.",
+  "lengthIn": 87,
+  "widthIn": [5.0625, 16.8125, 23.5, 17.5, 9.75],
+  "thicknessIn": [1.5, 2.625, 3.75, 2.5, 1.625],
+  "rockerIn": [5.5625, 2.25, 0, 1.25, 2.5625],
+  "statedVolumeLitres": 77.17
+}

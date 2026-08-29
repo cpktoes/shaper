@@ -74,13 +74,16 @@ export function VolumeControls({
 
       <PrimaryInputsHeading />
 
+      {/* D-13's method switch, in plain English: on measures the board's real drawn shape (the
+          accurate cross-section litres, everywhere the app quotes volume); off is this screen's
+          own standalone quick estimate from a board type and its factor tables. */}
       {templateAvailable && (
         <label className="flex cursor-pointer items-center gap-1.5 text-xs text-surf-ink-muted font-normal">
           <Checkbox
             checked={effectiveVolume.importTemplateDimensions}
             onCheckedChange={() => onToggleImportTemplateDimensions()}
           />
-          Import Template Area
+          Measure This Board&apos;s Real Shape (off = quick estimate from board type)
         </label>
       )}
 
@@ -91,7 +94,7 @@ export function VolumeControls({
             onCheckedChange={() => onToggleImportRailThickness()}
             disabled={!effectiveVolume.importTemplateDimensions}
           />
-          Calculate Volume Based on Template and Rail Data
+          Use This Board&apos;s Real Rail &amp; Thickness Data
         </label>
       )}
 

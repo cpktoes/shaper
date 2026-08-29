@@ -31,11 +31,17 @@ import {
   type SaveStatus,
 } from "@/lib/models/autosave";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec, type Point2D } from "@/lib/geometry/board";
-import { buildOutline, type OutlineGeometry } from "@/lib/geometry/outline";
+import { buildOutline, sampleOutline, type OutlineGeometry } from "@/lib/geometry/outline";
 import type { RockerSpec } from "@/lib/geometry/rocker";
 import type { FoilSpec } from "@/lib/geometry/foil";
 import type { BoardPreset } from "@/lib/geometry/presets";
-import { deriveEffectiveRails, deriveEffectiveVolume, deriveRailValues, deriveTemplateValues } from "@/lib/geometry/design";
+import {
+  deriveEffectiveRails,
+  deriveEffectiveVolume,
+  deriveQuotedVolumeLitres,
+  deriveRailValues,
+  deriveTemplateValues,
+} from "@/lib/geometry/design";
 import {
   DEFAULT_RAIL_BAND_SPEC,
   computeRailBands,
@@ -53,13 +59,15 @@ import {
 } from "@/lib/geometry/fins";
 import {
   DEFAULT_VOLUME_SPEC,
+  computeCrossSectionVolume,
   computeVolume,
+  type CrossSectionVolumeResult,
   type VolumeRailValues,
   type VolumeResult,
   type VolumeSpec,
   type VolumeTemplateValues,
 } from "@/lib/geometry/volume";
-import { inchesToMm, mm } from "@/lib/geometry/units";
+import { type Litres, inchesToMm, mm } from "@/lib/geometry/units";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 
 interface DesignState {
@@ -244,6 +252,15 @@ interface DesignContextValue {
    * value equivalent of the prototype's `syncFromTemplate`. */
   effectiveVolume: VolumeSpec;
   volumeResult: VolumeResult;
+  /** The accurate cross-section litres figure (CONTEXT.md D-13) — real cross-sections taken along
+   * the designed board's own length using `state.foil` and `effectiveRails`, integrated with
+   * Simpson's rule. Computed unconditionally (not just when importing), so `quotedVolumeLitres`
+   * can switch to it instantly the moment the import toggles come back on. */
+  crossSectionVolume: CrossSectionVolumeResult;
+  /** The one litres figure every screen quotes (D-13/`deriveQuotedVolumeLitres` in
+   * `lib/geometry/design.ts`): `crossSectionVolume`'s figure while importing the drawn template,
+   * `volumeResult`'s estimator figure while the Volume screen is a standalone quick estimator. */
+  quotedVolumeLitres: Litres;
 }
 
 const DesignContext = createContext<DesignContextValue | null>(null);
@@ -455,6 +472,25 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     [effectiveVolume, templateValues, railValues],
   );
 
+  // The accurate path (D-13): real cross-sections along the board's own length, using the same
+  // half-width sampler pattern `lib/geometry/design.ts`'s `summarizeDesign` builds, so a rack
+  // card's number and this screen's number can never drift apart.
+  const crossSectionVolume = useMemo(
+    () =>
+      computeCrossSectionVolume({
+        halfWidthAt: (station) => sampleOutline(outlineGeometry, station),
+        foil: state.foil,
+        rails: effectiveRails,
+        length: state.outline.length,
+      }),
+    [outlineGeometry, state.foil, effectiveRails, state.outline.length],
+  );
+
+  const quotedVolumeLitres = useMemo(
+    () => deriveQuotedVolumeLitres(volumeResult, crossSectionVolume, volumeResult.importingTemplate),
+    [volumeResult, crossSectionVolume],
+  );
+
   // The prototype's own handoff semantics (Volume.dc.html lines 412-437) — the one place derived
   // values must be written back into stored state.
   const toggleImportTemplateDimensions = () => {
@@ -661,6 +697,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     finTailOutline,
     effectiveVolume,
     volumeResult,
+    crossSectionVolume,
+    quotedVolumeLitres,
   };
 
   return <DesignContext.Provider value={value}>{children}</DesignContext.Provider>;

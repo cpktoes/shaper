@@ -17,11 +17,14 @@
 import type { OutlineSpec } from "./board";
 import type { FoilSpec } from "./foil";
 import type { OutlineGeometry } from "./outline";
-import { buildOutline } from "./outline";
+import { buildOutline, sampleOutline } from "./outline";
 import { computeRailBands, type RailBandSpec, type RailBandsOutput } from "./rail-bands";
 import {
+  computeCrossSectionVolume,
   computeVolume,
+  type CrossSectionVolumeResult,
   type VolumeRailValues,
+  type VolumeResult,
   type VolumeSpec,
   type VolumeTemplateValues,
 } from "./volume";
@@ -108,6 +111,23 @@ export interface DesignSummaryFields {
   volume: VolumeSpec;
 }
 
+/**
+ * The one rule deciding which of the two litres figures the app quotes (CONTEXT.md D-13's
+ * transparency half): a board importing its drawn template dimensions is a board designed in the
+ * app, so it gets the accurate cross-section figure; a board with the import toggle off is the
+ * Volume screen being used as a standalone quick estimator, so it gets the estimator's own figure.
+ * One rule, one place, read by every consumer (the Volume screen, rack cards, the Summary order
+ * form, the printed template) — the thing that must never happen is two different litres for one
+ * board shown on two different screens (threat T-04-11).
+ */
+export function deriveQuotedVolumeLitres(
+  estimator: VolumeResult,
+  crossSection: CrossSectionVolumeResult,
+  importingTemplate: boolean,
+): Litres {
+  return importingTemplate ? crossSection.volumeLitres : estimator.volumeLitres;
+}
+
 /** The four numbers a rack card shows (D-12): length x width x thickness, plus volume in litres. */
 export interface DesignSummary {
   length: Mm;
@@ -118,9 +138,9 @@ export interface DesignSummary {
 
 /**
  * Composes `buildOutline` -> `deriveEffectiveRails` -> `computeRailBands` -> the three
- * derivations above -> `computeVolume`, so a rack card's summary numbers are produced by the
- * exact same pipeline the RAILS and Volume screens show, not a second parallel calculation that
- * could drift from either.
+ * derivations above -> `computeVolume` and `computeCrossSectionVolume` -> `deriveQuotedVolumeLitres`,
+ * so a rack card's summary numbers are produced by the exact same pipeline the RAILS and Volume
+ * screens show, not a second parallel calculation that could drift from either.
  */
 export function summarizeDesign(fields: DesignSummaryFields): DesignSummary {
   const outlineGeometry = buildOutline(fields.outline);
@@ -130,11 +150,18 @@ export function summarizeDesign(fields: DesignSummaryFields): DesignSummary {
   const railValues = deriveRailValues(railBands);
   const effectiveVolume = deriveEffectiveVolume(fields.volume, templateValues, railValues);
   const volumeResult = computeVolume(effectiveVolume, templateValues, railValues);
+  const crossSectionVolume = computeCrossSectionVolume({
+    halfWidthAt: (station) => sampleOutline(outlineGeometry, station),
+    foil: fields.foil,
+    rails: effectiveRails,
+    length: fields.outline.length,
+  });
+  const quotedVolumeLitres = deriveQuotedVolumeLitres(volumeResult, crossSectionVolume, volumeResult.importingTemplate);
 
   return {
     length: templateValues.length,
     widePointWidth: templateValues.widePointWidth,
     centerThickness: railValues.centerThickness,
-    volumeLitres: volumeResult.volumeLitres,
+    volumeLitres: quotedVolumeLitres,
   };
 }
