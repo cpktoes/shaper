@@ -88,10 +88,11 @@ interface DesignState {
    * save never stores a reference to its own row. */
   modelId: string | null;
   /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,
-   * `updateRailSection`, `toggleTailHardEdge`, `updateFins`, `updateVolume`,
-   * `setFinsImportTemplate`, `setBoardName` or `setFinSystem` — never derived by comparing state against its
-   * default — a user who drags a slider back to its default value has still started a board.
-   * Backs `hasBoardInProgress` on the setup screen's replace-board confirmation (D-07). */
+   * `updateRocker`, `updateFoil`, `updateRailSection`, `toggleTailHardEdge`, `updateFins`,
+   * `updateVolume`, `setFinsImportTemplate`, `setBoardName` or `setFinSystem` — never derived by
+   * comparing state against its default — a user who drags a slider back to its default value
+   * has still started a board. Backs `hasBoardInProgress` on the setup screen's replace-board
+   * confirmation (D-07). */
   boardStarted: boolean;
   /** True when the store's snapshot fields disagree with the row `modelId` points at — set by
    * exactly the same mutators that set `boardStarted` true, because a fresh edit is exactly the
@@ -146,7 +147,7 @@ interface DesignContextValue {
    * replace-board confirm dialog (D-07). See `DesignState.boardStarted`'s doc comment for why
    * this is a flag set on write, not a derived default-comparison. */
   hasBoardInProgress: boolean;
-  /** The subset of state a snapshot holds (D-11) — outline, rails, fins, volume,
+  /** The subset of state a snapshot holds (D-11) — outline, rocker, foil, rails, fins, volume,
    * finsImportTemplate, boardName, finSystem — assembled once here so a caller building a save
    * never has to remember the field list by hand or risk silently dropping one. */
   designSnapshotFields: DesignSnapshotFields;
@@ -289,6 +290,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setState(() => ({
       ...DEFAULT_DESIGN_STATE,
       outline: snapshot.outline,
+      rocker: snapshot.rocker,
+      foil: snapshot.foil,
       rails: snapshot.rails,
       fins: snapshot.fins,
       volume: snapshot.volume,
@@ -466,6 +469,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const designSnapshotFields: DesignSnapshotFields = useMemo(
     () => ({
       outline: state.outline,
+      rocker: state.rocker,
+      foil: state.foil,
       rails: state.rails,
       fins: state.fins,
       volume: state.volume,
@@ -473,7 +478,17 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       boardName: state.boardName,
       finSystem: state.finSystem,
     }),
-    [state.outline, state.rails, state.fins, state.volume, state.finsImportTemplate, state.boardName, state.finSystem],
+    [
+      state.outline,
+      state.rocker,
+      state.foil,
+      state.rails,
+      state.fins,
+      state.volume,
+      state.finsImportTemplate,
+      state.boardName,
+      state.finSystem,
+    ],
   );
 
   // Always holds the latest designSnapshotFields, kept current after every commit (a ref written
