@@ -14,6 +14,9 @@ import {
 import { formatInchesFraction, inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
 
 interface RailControlsProps {
+  /** The effective spec (D-09) — `boardThickness` on each section already reflects the foil's
+   * value while `railsImportFoilThickness` is on, so a slider label and the bands it feeds always
+   * agree with the same number. */
   spec: RailBandSpec;
   bands: Record<RailSectionKey, RailSectionOutput>;
   onChangeSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
@@ -22,6 +25,9 @@ interface RailControlsProps {
   onToggleSectionOpen: (key: RailSectionKey) => void;
   advancedOpen: Record<RailSectionKey, boolean>;
   onToggleAdvancedOpen: (key: RailSectionKey) => void;
+  /** Whether the three thickness sliders read from the foil (D-09/D-10) — checked by default. */
+  railsImportFoilThickness: boolean;
+  onToggleRailsImportFoilThickness: () => void;
 }
 
 const NT_THICKNESS_BOUNDS = { min: 1, max: 2.5, step: 1 / 16 };
@@ -151,6 +157,9 @@ interface RailSectionControlsProps {
   onToggleAdvancedOpen: () => void;
   tailHardEdge?: boolean;
   onToggleHardEdge?: () => void;
+  /** While linked (D-09/D-10), the thickness slider disables and shows the foil-derived value
+   * already sitting in `spec.boardThickness` — every other control on the section is untouched. */
+  thicknessDisabled: boolean;
 }
 
 function RailSectionControls({
@@ -164,6 +173,7 @@ function RailSectionControls({
   onToggleAdvancedOpen,
   tailHardEdge,
   onToggleHardEdge,
+  thicknessDisabled,
 }: RailSectionControlsProps) {
   const isTail = sectionKey === "tail";
   const thicknessBounds = sectionKey === "center" ? CENTER_THICKNESS_BOUNDS : NT_THICKNESS_BOUNDS;
@@ -207,6 +217,7 @@ function RailSectionControls({
             min={thicknessBounds.min}
             max={thicknessBounds.max}
             step={thicknessBounds.step}
+            disabled={thicknessDisabled}
             onValueChange={(v) =>
               onChange({ boardThickness: inchesToMm(clampFinite(v, thicknessBounds.min, thicknessBounds.max)) })
             }
@@ -371,6 +382,8 @@ export function RailControls({
   onToggleSectionOpen,
   advancedOpen,
   onToggleAdvancedOpen,
+  railsImportFoilThickness,
+  onToggleRailsImportFoilThickness,
 }: RailControlsProps) {
   return (
     <div className="flex flex-col gap-5">
@@ -378,6 +391,21 @@ export function RailControls({
         <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">Rail Band Calculator</div>
         <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
           Rail band calculator for shaping consistent rails
+        </div>
+      </div>
+
+      <div>
+        <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
+          <Checkbox
+            checked={railsImportFoilThickness}
+            onCheckedChange={() => onToggleRailsImportFoilThickness()}
+          />
+          Use Board&#39;s Rocker &amp; Foil Thickness
+        </label>
+        <div className="mt-1 text-xs text-surf-ink-muted font-normal">
+          {railsImportFoilThickness
+            ? "Thickness comes from the ROCKER screen — turn this off to type your own numbers."
+            : "You're typing your own thickness here — turn this on to use the board's foil instead."}
         </div>
       </div>
 
@@ -390,6 +418,7 @@ export function RailControls({
         onToggleOpen={() => onToggleSectionOpen("nose")}
         advancedOpen={advancedOpen.nose}
         onToggleAdvancedOpen={() => onToggleAdvancedOpen("nose")}
+        thicknessDisabled={railsImportFoilThickness}
       />
 
       <RailSectionControls
@@ -401,6 +430,7 @@ export function RailControls({
         onToggleOpen={() => onToggleSectionOpen("center")}
         advancedOpen={advancedOpen.center}
         onToggleAdvancedOpen={() => onToggleAdvancedOpen("center")}
+        thicknessDisabled={railsImportFoilThickness}
       />
 
       <RailSectionControls
@@ -414,6 +444,7 @@ export function RailControls({
         onToggleAdvancedOpen={() => onToggleAdvancedOpen("tail")}
         tailHardEdge={spec.tailHardEdge}
         onToggleHardEdge={onToggleHardEdge}
+        thicknessDisabled={railsImportFoilThickness}
       />
     </div>
   );
