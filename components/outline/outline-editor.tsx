@@ -310,23 +310,24 @@ export function OutlineEditor() {
         {/* Normal view keeps TabbedPanel's folder-tab strip and its own padded card (the same
             panel and edge Rails and Fins use, which is what makes the four screens read as one
             application rather than four layouts) — untouched from before wide view existed.
-            Wide view (the `wideView` branch) drops that chrome instead of reusing it: with the
-            sidebar already gone and only the one VIEWER tab to label, the tab row and the extra
-            nested card are pure overhead, not signal. The board's drawing is height-bound, not
-            width-bound — components/viewer/callout-primitives.tsx's own comment: "these drawings
-            are height-bound, so horizontal slack never shrinks the board" — so hiding the sidebar
-            alone never made the board bigger; what does is vertical room, and this trims three
-            padded layers (this main, TabbedPanel's outer wrapper, its inner card) down to one,
-            and removes the tab row entirely, both only while wide view is on. */}
-        {wideView ? (
-          <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-surf-line bg-surf-panel p-1">
-            {viewerContent}
-          </div>
-        ) : (
-          <TabbedPanel tabs={[{ id: "viewer" as const, label: "VIEWER" }]} active="viewer">
-            {viewerContent}
-          </TabbedPanel>
-        )}
+            Wide view drops that chrome instead of reusing it: with the sidebar already gone and
+            only the one VIEWER tab to label, the tab row and the extra nested card are pure
+            overhead, not signal. The board's drawing is height-bound, not width-bound —
+            components/viewer/callout-primitives.tsx's own comment: "these drawings are
+            height-bound, so horizontal slack never shrinks the board" — so hiding the sidebar
+            alone never made the board bigger; what does is vertical room, and `bare` trims three
+            padded layers down to one and removes the tab row entirely, both only while wide view
+            is on.
+
+            `bare={wideView}` rather than branching between `<TabbedPanel>` and a plain `<div>`
+            here (WR-02): those are different element types at the same tree position, so
+            React's reconciler used to tear down and rebuild `viewerContent` — the drawing, its
+            drag state, the toolbar buttons, `ExportPreviewDialog` — on every Wide View toggle,
+            discarding any in-flight interaction. `<TabbedPanel>` is now the one component that
+            always sits here; only its internal chrome varies. */}
+        <TabbedPanel bare={wideView} tabs={[{ id: "viewer" as const, label: "VIEWER" }]} active="viewer">
+          {viewerContent}
+        </TabbedPanel>
       </main>
     </div>
   );
