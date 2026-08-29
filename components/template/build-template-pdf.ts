@@ -16,10 +16,13 @@ import {
   NAME_BOX_CLEARANCE_MM,
   NAME_BOX_WIDTH_MM,
   PAPER_MM,
+  computeTailClosure,
   markLineSegments,
   markPlacements,
   nameBlockPlacement,
+  tailClosureSegments,
   type PaperSize,
+  type TailClosureSegment,
   type TemplateLayout,
   type TemplateMarkLineSegment,
   type TemplateMarkPlacement,
@@ -122,6 +125,11 @@ const MARK_LABEL_SAFETY_MM = 2;
 /** Vertical gap between the two stacked lines when a label doesn't fit on one (name, then
  * dimension) before the tick's own curve-side end. */
 const MARK_LABEL_LINE_GAP_MM = 4;
+/** Approximate printed height (millimetres) of one 9pt label line — used only by `markLabelRect`
+ * to build a testable collision rectangle for the CENTER/WIDEPOINT stacking fix (round 4
+ * post-checkpoint fix, defect 1), not by the actual `doc.text()` draw call, which needs no height
+ * (jsPDF text is drawn from a baseline, not a box). */
+const MARK_LABEL_TEXT_HEIGHT_MM = 3.5;
 
 /** Every page's own alignment box (D-09, round 2 post-checkpoint fix, defect 2) — a plain thin
  * trim line, matching the how-to box's own weight; the stringer-side edge on a column-0 page is
@@ -289,21 +297,21 @@ export function templateMarkLabelText(placement: TemplateMarkPlacement): string 
 
 /** Draws the working marks that fall on this page (D-06 — nose 12in, tail 12in, centre,
  * widepoint; no every-12in station ladder — plus Tail Block when this tail has one). Each mark's
- * line is drawn from `segments` (`markLineSegments`), one clipped call per page it touches — a
- * board wide enough to tile more than one column has its widepoint (and, at the row-overlap band,
- * possibly its other marks too) span more than one page, and every one of those pages draws its
- * own portion of the stringer-to-curve line, never stopping short of the curve just because the
- * curve itself lives on a further column's sheet (round 3 post-checkpoint fix, defect 1: "the
- * center and widepoint lines don't extend to the edge" — the actual bug was the line vanishing
- * partway across a multi-column board, not the line failing to reach the printable edge). The
- * widepoint gets the dotted `2 3` pattern and the tailblock is drawn SOLID at the outline curve's
- * own weight (it is a real cut edge, not a measurement reference — round 2 post-checkpoint fix,
- * defect 1), so all five are told apart by dash pattern/weight alone, never by colour. The printed
- * dimension label is drawn once per mark, from `placements` (`markPlacements`, unchanged — always
- * the column-0 segment), measured with jsPDF's own `getTextWidth` against the room actually
- * available before the curve — split onto two stacked lines rather than let either run past the
- * tick's own outer end when a narrower station doesn't have room for one (post-checkpoint fix,
- * defects 2 and 4). */
+ * line is drawn from `segments` (`markLineSegments`, which no longer carries `tailBlock` — its own
+ * true closing edge is drawn separately by `drawTailClosure`, round 4 post-checkpoint fix, defect
+ * 2), one clipped call per page it touches — a board wide enough to tile more than one column has
+ * its widepoint (and, at the row-overlap band, possibly its other marks too) span more than one
+ * page, and every one of those pages draws its own portion of the stringer-to-curve line, never
+ * stopping short of the curve just because the curve itself lives on a further column's sheet
+ * (round 3 post-checkpoint fix, defect 1: "the center and widepoint lines don't extend to the
+ * edge" — the actual bug was the line vanishing partway across a multi-column board, not the line
+ * failing to reach the printable edge). The widepoint gets the dotted `2 3` pattern, everything
+ * else the dashed `5 4` pattern. The printed dimension label is drawn once per mark, from
+ * `placements` (`markPlacements` — CENTER and WIDEPOINT may carry a `labelOffsetMm` nudge when
+ * they sit close together, round 4 post-checkpoint fix, defect 1), measured with jsPDF's own
+ * `getTextWidth` against the room actually available before the curve — split onto two stacked
+ * lines rather than let either run past the tick's own outer end when a narrower station doesn't
+ * have room for one (post-checkpoint fix, defects 2 and 4). */
 function drawMarks(
   doc: jsPDF,
   page: TemplatePage,
@@ -318,13 +326,12 @@ function drawMarks(
   doc.setDrawColor(0);
 
   for (const segment of pageSegments) {
-    const isTailBlock = segment.mark === "tailBlock";
-    const dash = isTailBlock ? [] : segment.mark === "widepoint" ? MARK_WIDEPOINT_DASH_PATTERN : MARK_STATION_DASH_PATTERN;
+    const dash = segment.mark === "widepoint" ? MARK_WIDEPOINT_DASH_PATTERN : MARK_STATION_DASH_PATTERN;
     const y = stationToY(segment.station, page, margin);
     const xStart = halfWidthToX(segment.halfWidthRange[0], page, margin);
     const xEnd = halfWidthToX(segment.halfWidthRange[1], page, margin);
 
-    doc.setLineWidth(isTailBlock ? MARK_TAILBLOCK_LINE_WEIGHT_MM : MARK_TICK_LINE_WEIGHT_MM);
+    doc.setLineWidth(MARK_TICK_LINE_WEIGHT_MM);
     doc.setLineDashPattern(dash, 0);
     doc.line(xStart, y, xEnd, y);
     doc.setLineDashPattern([], 0);
@@ -333,7 +340,7 @@ function drawMarks(
   // Labeled on the stringer side, where there is always paper — always the column-0 page, inside
   // the box region, regardless of how many further pages this mark's own line continues across.
   for (const placement of pagePlacements) {
-    const y = stationToY(placement.station, page, margin);
+    const y = stationToY(placement.station, page, margin) + placement.labelOffsetMm;
     const xStringer = halfWidthToX(0, page, margin);
     const xOuter = halfWidthToX(placement.halfWidthExtent, page, margin);
 
@@ -353,6 +360,58 @@ function drawMarks(
         y - MARK_LABEL_OFFSET_MM,
       );
     }
+  }
+}
+
+/** The rectangle one working mark's printed label occupies, in this page's own local millimetre
+ * frame — mirrors `drawMarks`' own single-line label placement (name+dimension combined onto one
+ * row) exactly, so a test can assert two labels never overlap without re-deriving the drawing
+ * math. Covers the common single-line case only — the rarer two-line stacked fallback (when even
+ * the combined text doesn't fit before the curve) is a distinct, pre-existing overlap concern this
+ * rect does not need to reproduce for the CENTER/WIDEPOINT collision fix (round 4 post-checkpoint
+ * fix, defect 1) this function exists to test. Exported for testability. */
+export function markLabelRect(
+  doc: jsPDF,
+  page: TemplatePage,
+  margin: number,
+  placement: TemplateMarkPlacement,
+): TemplateFurnitureRect {
+  const y = stationToY(placement.station, page, margin) + placement.labelOffsetMm;
+  const xStringer = halfWidthToX(0, page, margin);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  const width = doc.getTextWidth(templateMarkLabelText(placement));
+
+  return {
+    name: `${placement.mark}-label`,
+    x: xStringer + MARK_LABEL_OFFSET_MM,
+    y: y - MARK_LABEL_OFFSET_MM - MARK_LABEL_TEXT_HEIGHT_MM,
+    width,
+    height: MARK_LABEL_TEXT_HEIGHT_MM,
+  };
+}
+
+/** Draws the tail's true closing edge (round 4 post-checkpoint fix, defect 2: "Swallow and
+ * diamond tail appears like a squash") — the diagonal cut `computeTailClosure` /
+ * `tailClosureSegments` compute from the rail corner to the stringer, following the actual tail
+ * shape rather than the old single-station straight tick. Solid, at the outline curve's own line
+ * weight, matching the old tick's own weight — it is a real cut edge, not a measurement
+ * reference. */
+function drawTailClosure(doc: jsPDF, page: TemplatePage, margin: number, segments: TailClosureSegment[]): void {
+  const pageSegments = segments.filter((segment) => segment.pageIndex === page.index);
+  if (pageSegments.length === 0) return;
+
+  doc.setDrawColor(0);
+  doc.setLineWidth(MARK_TAILBLOCK_LINE_WEIGHT_MM);
+  doc.setLineDashPattern([], 0);
+  for (const segment of pageSegments) {
+    doc.line(
+      halfWidthToX(segment.from.halfWidth, page, margin),
+      stationToY(segment.from.station, page, margin),
+      halfWidthToX(segment.to.halfWidth, page, margin),
+      stationToY(segment.to.station, page, margin),
+    );
   }
 }
 
@@ -582,6 +641,8 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
 
   const placements = markPlacements(layout, marks, geometry);
   const segments = markLineSegments(layout, marks, geometry);
+  const tailClosure = computeTailClosure(geometry);
+  const tailClosureSeg = tailClosure ? tailClosureSegments(layout, tailClosure) : [];
   const boxes = templatePageBoxes(layout);
 
   layout.pages.forEach((page, i) => {
@@ -590,6 +651,7 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
     drawOutlineCurve(doc, geometry, page, margin);
     drawPageBox(doc, page, boxes[i], margin);
     drawMarks(doc, page, margin, placements, segments);
+    drawTailClosure(doc, page, margin, tailClosureSeg);
     drawScaleSquare(doc, page, margin, boxes[i]);
     drawHowToBox(doc, layout, page, margin, boxes[i]);
     drawPageLabel(doc, page, margin, paperDims.width, paperDims.height);
