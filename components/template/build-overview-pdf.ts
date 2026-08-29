@@ -170,8 +170,14 @@ function widePointOffsetFromCenter(geometry: OutlineGeometry): Mm {
  * line instead (`overviewStationLines`), the same way the on-screen viewer's own chip prints "At
  * center" rather than a directional distance. Exported for testability. */
 export function overviewWpOffsetLabelText(offset: Mm): string {
+  // Decide the direction word from what will actually be PRINTED, not the raw float — the same
+  // fix `formatSignedInchesFraction` (`lib/geometry/units.ts`) already needed once in this
+  // codebase. An offset small enough to round to `0"` at print precision has no printable
+  // direction to report, so it prints unsigned rather than as "0\" forward".
+  const magnitude = formatInchesFraction(mm(Math.abs(offset)));
+  if (magnitude === '0"') return 'WP OFFSET — 0"';
   const direction = offset > 0 ? "forward" : "back";
-  return `WP OFFSET — ${formatInchesFraction(mm(Math.abs(offset)))} ${direction}`;
+  return `WP OFFSET — ${magnitude} ${direction}`;
 }
 
 /**
@@ -193,7 +199,13 @@ export function overviewStationLines(geometry: OutlineGeometry): OverviewStation
   const center = centerStation(geometry);
   const offset = widePointOffsetFromCenter(geometry);
 
-  if (Math.abs(offset) < 1e-6) {
+  // Merge onto one "WIDEPOINT / CENTER" line whenever the offset rounds to `0"` at the sheet's
+  // own print precision — matching the printed magnitude `overviewWpOffsetLabelText` uses, not a
+  // raw-float epsilon. `1e-6` mm was a tolerance for numerical noise, not for "this offset prints
+  // as zero": an offset below ~0.4mm (1/32in) is real but rounds away in `formatInchesFraction`,
+  // so deciding the merge from the raw float printed a separate WIDEPOINT line with a directional
+  // "WP OFFSET — 0\" forward/back" label.
+  if (formatInchesFraction(mm(Math.abs(offset))) === '0"') {
     return [noseTwelve, { label: "WIDEPOINT / CENTER", station: geometry.widePointStation }, tailTwelve];
   }
 

@@ -179,6 +179,18 @@ describe(
       expect(lines[1].secondaryLabel).toBeUndefined();
     });
 
+    it("also merges into one WIDEPOINT / CENTER line when the offset is real but rounds to 0\" at print precision (WR-01)", () => {
+      // A non-zero offset below ~1/32in is easily reachable by dragging the widepoint marker a
+      // tiny amount; deciding the merge from the raw float (rather than the printed magnitude)
+      // used to leave WIDEPOINT and CENTER as two separate lines with a nonsensical
+      // "WP OFFSET — 0\" forward" secondary label.
+      const preset = BOARD_PRESETS[1]; // fish preset: widePointOffset 0
+      const geometry = buildOutline({ ...preset.outline, widePointOffset: inchesToMm(0.015625) });
+      const lines = overviewStationLines(geometry);
+      expect(lines.map((l) => l.label)).toEqual(['NOSE @ 12"', "WIDEPOINT / CENTER", 'TAIL @ 12"']);
+      expect(lines[1].secondaryLabel).toBeUndefined();
+    });
+
     it.each(BOARD_PRESETS)("$id: CENTER + TAIL@12 + NOSE@12 always present, WIDEPOINT present standalone or merged", (preset) => {
       const geometry = buildOutline(preset.outline);
       const lines = overviewStationLines(geometry);
@@ -202,6 +214,13 @@ describe(
 
     it('prints "WP OFFSET — 1/2" forward" for a positive (nose-ward) offset', () => {
       expect(overviewWpOffsetLabelText(inchesToMm(0.5))).toBe('WP OFFSET — 1/2" forward');
+    });
+
+    it('prints a bare "WP OFFSET — 0"" — no direction word — for an offset that rounds to zero at print precision (WR-01)', () => {
+      // 1/64" rounds to 0" at the default sixteenths; a direction word here would read as
+      // "WP OFFSET — 0\" forward", which is nonsensical on a sheet a shaper is meant to trust.
+      expect(overviewWpOffsetLabelText(inchesToMm(0.015625))).toBe('WP OFFSET — 0"');
+      expect(overviewWpOffsetLabelText(inchesToMm(-0.015625))).toBe('WP OFFSET — 0"');
     });
   },
 );
