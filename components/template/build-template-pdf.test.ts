@@ -6,6 +6,7 @@ import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import {
   NAME_BOX_CLEARANCE_MM,
   NAME_BOX_WIDTH_MM,
+  computeTailClosure,
   computeTemplateLayout,
   computeTemplateMarks,
   markPlacements,
@@ -15,6 +16,7 @@ import { inchesToMm, litres, mm } from "@/lib/geometry/units";
 import {
   HOWTO_BOX_TEXT_WIDTH_LIMIT_MM,
   buildTemplatePdf,
+  markLabelRect,
   nameBlockContent,
   rectContains,
   rectsOverlap,
@@ -30,7 +32,10 @@ import {
 } from "./build-template-pdf";
 
 function buildOptions(paper: "letter" | "a4" = "letter") {
-  const preset = BOARD_PRESETS[0];
+  return buildOptionsFor(BOARD_PRESETS[0], paper);
+}
+
+function buildOptionsFor(preset: (typeof BOARD_PRESETS)[number], paper: "letter" | "a4" = "letter") {
   const geometry = buildOutline(preset.outline);
   const layout = computeTemplateLayout(geometry, paper);
   const marks = computeTemplateMarks(geometry);
@@ -277,6 +282,107 @@ describe(
       const placements = markPlacements(layout, marks, geometry);
 
       expect(placements.some((p) => p.mark === "tailBlock")).toBe(false);
+    });
+  },
+);
+
+describe(
+  'markLabelRect — CENTER/WIDEPOINT label collision (round 4 post-checkpoint fix, defect 1: "Center and widepoint dims overlap when close to eachother or equal")',
+  () => {
+    it("far apart (shortboard preset): each label sits at its own natural station, and the two rects never overlap", () => {
+      const preset = BOARD_PRESETS[0]; // shortboard — widePointOffset -1in
+      const geometry = buildOutline(preset.outline);
+      const layout = computeTemplateLayout(geometry, "letter");
+      const marks = computeTemplateMarks(geometry);
+      const placements = markPlacements(layout, marks, geometry);
+      const doc = new jsPDF({ unit: "mm" });
+
+      const center = placements.find((p) => p.mark === "center")!;
+      const widepoint = placements.find((p) => p.mark === "widepoint")!;
+      const centerRect = markLabelRect(doc, layout.pages[center.pageIndex], layout.margin, center);
+      const widepointRect = markLabelRect(doc, layout.pages[widepoint.pageIndex], layout.margin, widepoint);
+
+      expect(rectsOverlap(centerRect, widepointRect)).toBe(false);
+    });
+
+    it("close (a custom 5mm widepoint offset): the two nudged label rects never overlap", () => {
+      const preset = BOARD_PRESETS[0];
+      const geometry = buildOutline({ ...preset.outline, widePointOffset: mm(5) });
+      const layout = computeTemplateLayout(geometry, "letter");
+      const marks = computeTemplateMarks(geometry);
+      const placements = markPlacements(layout, marks, geometry);
+      const doc = new jsPDF({ unit: "mm" });
+
+      const center = placements.find((p) => p.mark === "center")!;
+      const widepoint = placements.find((p) => p.mark === "widepoint")!;
+      expect(center.labelOffsetMm).not.toBe(0);
+      expect(widepoint.labelOffsetMm).not.toBe(0);
+
+      const centerRect = markLabelRect(doc, layout.pages[center.pageIndex], layout.margin, center);
+      const widepointRect = markLabelRect(doc, layout.pages[widepoint.pageIndex], layout.margin, widepoint);
+
+      expect(rectsOverlap(centerRect, widepointRect)).toBe(false);
+    });
+
+    it("coincident (fish preset): only one merged rect is ever drawn — there is no second label to overlap it", () => {
+      const preset = BOARD_PRESETS[1]; // fish — widePointOffset 0in
+      const geometry = buildOutline(preset.outline);
+      const layout = computeTemplateLayout(geometry, "letter");
+      const marks = computeTemplateMarks(geometry);
+      const placements = markPlacements(layout, marks, geometry);
+
+      expect(placements.filter((p) => p.mark === "center" || p.mark === "widepoint")).toHaveLength(1);
+      const merged = placements.find((p) => p.mark === "center")!;
+      expect(templateMarkLabelText(merged)).toMatch(/^Widepoint \/ Center — /);
+    });
+  },
+);
+
+describe(
+  'buildTemplatePdf — tail closure (round 4 post-checkpoint fix, defect 2: "Swallow and diamond tail appears like a squash — it doesn\'t reflect the depth")',
+  () => {
+    it("builds without throwing for a diamond-tail board, at both paper sizes", () => {
+      const geometry = buildOutline({
+        ...BOARD_PRESETS[0].outline,
+        tail: { kind: "diamond", endWidth: inchesToMm(10), depth: inchesToMm(3) },
+      });
+      for (const paper of ["letter", "a4"] as const) {
+        const layout = computeTemplateLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const doc = buildTemplatePdf({
+          layout,
+          marks,
+          geometry,
+          paper,
+          boardName: "Diamond Test",
+          dims: {
+            length: geometry.length,
+            widePointWidth: geometry.halfWidePointWidth,
+            centerThickness: inchesToMm(2.375),
+            noseWidth12in: geometry.noseWidthAt12in,
+            tailWidth12in: geometry.tailWidthAt12in,
+            widePointOffset: BOARD_PRESETS[0].outline.widePointOffset,
+            volumeLitres: litres(27.4),
+          },
+        });
+        expect(doc.getNumberOfPages()).toBe(layout.pages.length);
+      }
+    });
+
+    it("builds without throwing for the swallow-tail fish preset, at both paper sizes", () => {
+      const options = buildOptionsFor(BOARD_PRESETS[1], "letter");
+      const doc = buildTemplatePdf(options);
+      expect(doc.getNumberOfPages()).toBe(options.layout.pages.length);
+
+      const optionsA4 = buildOptionsFor(BOARD_PRESETS[1], "a4");
+      const docA4 = buildTemplatePdf(optionsA4);
+      expect(docA4.getNumberOfPages()).toBe(optionsA4.layout.pages.length);
+    });
+
+    it("a squash tail's closure collapses to a single-station vertical cut, exactly like the pre-fix tailBlock tick did", () => {
+      const geometry = buildOutline(BOARD_PRESETS[0].outline); // shortboard — squash
+      const closure = computeTailClosure(geometry)!;
+      expect(closure.corner.station).toBe(closure.tip.station);
     });
   },
 );
