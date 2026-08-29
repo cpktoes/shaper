@@ -137,7 +137,7 @@ Plans:
   2. User can define a foil (thickness distribution along the length of the board) and view the live volume figure update as they adjust it
   3. Rocker and foil inputs are saved and restored correctly when a model is saved and reopened
 
-**Plans**: 4/5 plans executed in 4 waves
+**Plans**: 5/5 plans executed in 4 waves
 
 Plans:
 **Wave 1**
@@ -155,7 +155,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 04-05-PLAN.md — Per-board-type side profiles for all four presets, and the Summary's real rocker curve
+- [x] 04-05-PLAN.md — Per-board-type side profiles for all four presets, and the Summary's real rocker curve
 
 **UI hint**: yes
 
@@ -169,4 +169,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation — Port & Deploy the Design Tool | 4/4 | Complete    | 2026-08-21 |
 | 2. Accounts & Saved Designs | 6/6 | Complete    | 2026-08-28 |
 | 3. Volume, Templates & Verified Math | 7/7 | Complete    | 2026-08-28 |
-| 4. Rocker & Foil Editors | 4/5 | In Progress|  |
+| 4. Rocker & Foil Editors | 5/5 | In Progress|  |
