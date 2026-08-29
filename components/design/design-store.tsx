@@ -35,7 +35,7 @@ import { buildOutline, type OutlineGeometry } from "@/lib/geometry/outline";
 import type { RockerSpec } from "@/lib/geometry/rocker";
 import type { FoilSpec } from "@/lib/geometry/foil";
 import type { BoardPreset } from "@/lib/geometry/presets";
-import { deriveEffectiveVolume, deriveRailValues, deriveTemplateValues } from "@/lib/geometry/design";
+import { deriveEffectiveRails, deriveEffectiveVolume, deriveRailValues, deriveTemplateValues } from "@/lib/geometry/design";
 import {
   DEFAULT_RAIL_BAND_SPEC,
   computeRailBands,
@@ -70,6 +70,13 @@ interface DesignState {
   fins: FinPlacementSpec;
   volume: VolumeSpec;
   finsImportTemplate: boolean;
+  /** Whether the RAILS screen's three thickness sliders read from the foil (ROCKER screen) or
+   * from their own stored `rails.*.boardThickness` (D-09/D-10). Default true — a board designed
+   * in the app is the common case. Toggling this off/on never touches `rails.*.boardThickness`
+   * itself: the sliders write there only while unlinked, so a shaper's hand-typed value survives
+   * untouched across any number of link flips and returns intact when the link goes off again —
+   * see `toggleRailsImportFoilThickness` below for the reasoning behind that choice. */
+  railsImportFoilThickness: boolean;
   /** The first free-text field in the design — the Summary screen's Board Name box. Still
    * in-memory only until a Save writes it out: an unsaved board is gone on reload exactly as
    * before, but once `modelId` is set this value round-trips through `designSnapshotFields` on
@@ -89,7 +96,8 @@ interface DesignState {
   modelId: string | null;
   /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,
    * `updateRocker`, `updateFoil`, `updateRailSection`, `toggleTailHardEdge`, `updateFins`,
-   * `updateVolume`, `setFinsImportTemplate`, `setBoardName` or `setFinSystem` — never derived by
+   * `updateVolume`, `setFinsImportTemplate`, `toggleRailsImportFoilThickness`, `setBoardName` or
+   * `setFinSystem` — never derived by
    * comparing state against its default — a user who drags a slider back to its default value
    * has still started a board. Backs `hasBoardInProgress` on the setup screen's replace-board
    * confirmation (D-07). */
@@ -118,6 +126,7 @@ const DEFAULT_DESIGN_STATE: DesignState = {
   fins: DEFAULT_FIN_PLACEMENT_SPEC,
   volume: DEFAULT_VOLUME_SPEC,
   finsImportTemplate: true,
+  railsImportFoilThickness: true,
   boardName: "",
   finSystem: "fcs2",
   modelId: null,
@@ -140,6 +149,8 @@ interface DesignContextValue {
   fins: FinPlacementSpec;
   volume: VolumeSpec;
   finsImportTemplate: boolean;
+  /** See `DesignState.railsImportFoilThickness`'s doc comment. */
+  railsImportFoilThickness: boolean;
   boardName: string;
   finSystem: FinSystem;
   modelId: string | null;
@@ -148,8 +159,9 @@ interface DesignContextValue {
    * this is a flag set on write, not a derived default-comparison. */
   hasBoardInProgress: boolean;
   /** The subset of state a snapshot holds (D-11) — outline, rocker, foil, rails, fins, volume,
-   * finsImportTemplate, boardName, finSystem — assembled once here so a caller building a save
-   * never has to remember the field list by hand or risk silently dropping one. */
+   * finsImportTemplate, railsImportFoilThickness, boardName, finSystem — assembled once here so a
+   * caller building a save never has to remember the field list by hand or risk silently dropping
+   * one. */
   designSnapshotFields: DesignSnapshotFields;
   /** True when the store's snapshot fields disagree with what `modelId` points at in Postgres —
    * `save-button.tsx` reads this alongside `saveStatus` to decide what the nav shows. See
@@ -183,6 +195,15 @@ interface DesignContextValue {
   updateFins: (patch: Partial<FinPlacementSpec>) => void;
   updateVolume: (patch: Partial<VolumeSpec>) => void;
   setFinsImportTemplate: (next: boolean) => void;
+  /** Flips `railsImportFoilThickness` (D-09/D-10) — a plain flip, mirroring
+   * `setFinsImportTemplate` exactly. Copies nothing: `rails.*.boardThickness` is written only by
+   * the RAILS sliders themselves (`updateRailSection`), never by this toggle, so a shaper's
+   * hand-typed thickness survives untouched across any number of link flips — switching the link
+   * back on hands authority to the foil, switching it off again returns exactly the manual value
+   * that was there before, never overwritten. This is the resolution CONTEXT.md's Destructive-
+   * confirmation row left to discretion: no confirmation dialog needed because nothing is ever
+   * discarded either way. */
+  toggleRailsImportFoilThickness: () => void;
   setBoardName: (next: string) => void;
   setFinSystem: (next: FinSystem) => void;
   setModelId: (next: string | null) => void;
@@ -204,6 +225,11 @@ interface DesignContextValue {
 
   // Derived values.
   outlineGeometry: OutlineGeometry;
+  /** `rails` with the three thickness stations replaced by the foil's matching stations when
+   * `railsImportFoilThickness` is on (D-09) — see `deriveEffectiveRails`'s doc comment in
+   * `lib/geometry/design.ts`. `railBands` below is computed from this, never from raw `rails`
+   * directly, so the RAILS screen's numbers and its own thickness sliders always agree. */
+  effectiveRails: RailBandSpec;
   railBands: RailBandsOutput;
   templateValues: VolumeTemplateValues;
   railValues: VolumeRailValues;
@@ -296,6 +322,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       fins: snapshot.fins,
       volume: snapshot.volume,
       finsImportTemplate: snapshot.finsImportTemplate,
+      railsImportFoilThickness: snapshot.railsImportFoilThickness,
       boardName: snapshot.boardName,
       finSystem: snapshot.finSystem,
       modelId: id,
@@ -328,6 +355,13 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const setFinsImportTemplate = (next: boolean) =>
     setState((prev) => ({ ...prev, finsImportTemplate: next, boardStarted: true, dirty: true }));
 
+  // A plain flip, mirroring setFinsImportTemplate exactly. Copies nothing into or out of
+  // `rails.*.boardThickness` — those three values are written only by updateRailSection (the
+  // RAILS sliders), so a shaper's hand-typed thickness survives untouched across any number of
+  // link flips (D-09/D-10). See DesignContextValue.toggleRailsImportFoilThickness's doc comment.
+  const toggleRailsImportFoilThickness = () =>
+    setState((prev) => ({ ...prev, railsImportFoilThickness: !prev.railsImportFoilThickness, boardStarted: true, dirty: true }));
+
   const setBoardName = (next: string) =>
     setState((prev) => ({ ...prev, boardName: next, boardStarted: true, dirty: true }));
 
@@ -347,7 +381,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, modelId: id, boardName: name, dirty: false, saveStatus: "saved" }));
 
   const outlineGeometry = useMemo(() => buildOutline(state.outline), [state.outline]);
-  const railBands = useMemo(() => computeRailBands(state.rails), [state.rails]);
+
+  // Derived-value equivalent of D-09's link: never an effect that mirrors the foil into
+  // state.rails (that would let the two thicknesses drift apart), just a memo the RAILS screen's
+  // own render reads. See deriveEffectiveRails's doc comment in lib/geometry/design.ts.
+  const effectiveRails = useMemo(
+    () => deriveEffectiveRails(state.rails, state.foil, state.railsImportFoilThickness),
+    [state.rails, state.foil, state.railsImportFoilThickness],
+  );
+  const railBands = useMemo(() => computeRailBands(effectiveRails), [effectiveRails]);
 
   const templateValues: VolumeTemplateValues = useMemo(
     () => deriveTemplateValues(state.outline, outlineGeometry),
@@ -475,6 +517,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       fins: state.fins,
       volume: state.volume,
       finsImportTemplate: state.finsImportTemplate,
+      railsImportFoilThickness: state.railsImportFoilThickness,
       boardName: state.boardName,
       finSystem: state.finSystem,
     }),
@@ -486,6 +529,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       state.fins,
       state.volume,
       state.finsImportTemplate,
+      state.railsImportFoilThickness,
       state.boardName,
       state.finSystem,
     ],
@@ -581,6 +625,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     fins: state.fins,
     volume: state.volume,
     finsImportTemplate: state.finsImportTemplate,
+    railsImportFoilThickness: state.railsImportFoilThickness,
     boardName: state.boardName,
     finSystem: state.finSystem,
     modelId: state.modelId,
@@ -599,6 +644,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     updateFins,
     updateVolume,
     setFinsImportTemplate,
+    toggleRailsImportFoilThickness,
     setBoardName,
     setFinSystem,
     setModelId,
@@ -606,6 +652,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     toggleImportTemplateDimensions,
     toggleImportRailThickness,
     outlineGeometry,
+    effectiveRails,
     railBands,
     templateValues,
     railValues,

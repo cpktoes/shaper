@@ -109,9 +109,9 @@ export function BoardRackCard(props: BoardRackCardProps) {
 
   if (props.variant === "in-progress") {
     const { onSelect, className } = props;
-    const { outline, rails, volume, boardName } = design;
+    const { outline, rails, foil, railsImportFoilThickness, volume, boardName } = design;
     const geometry = buildOutline(outline);
-    const summary = summarizeDesign({ outline, rails, volume });
+    const summary = summarizeDesign({ outline, rails, foil, railsImportFoilThickness, volume });
     const displayName = boardName.trim().length > 0 ? boardName : "Untitled Board";
 
     return (

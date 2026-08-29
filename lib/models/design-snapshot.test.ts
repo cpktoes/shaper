@@ -26,6 +26,7 @@ const FIXTURES: DesignSnapshotFields[] = BOARD_PRESETS.map((preset) => ({
   fins: preset.fins,
   volume: DEFAULT_VOLUME_SPEC,
   finsImportTemplate: true,
+  railsImportFoilThickness: true,
   boardName: `${preset.name} test board`,
   finSystem: "fcs2",
 }));
@@ -79,6 +80,25 @@ describe("design-snapshot", () => {
     expect(result.foil).toEqual(DISTINCT_FOIL);
   });
 
+  it("a round trip preserves railsImportFoilThickness in both the true and false states", () => {
+    for (const railsImportFoilThickness of [true, false]) {
+      const fields: DesignSnapshotFields = { ...FIXTURES[0], railsImportFoilThickness };
+      expect(roundTrip(fields).railsImportFoilThickness).toBe(railsImportFoilThickness);
+    }
+  });
+
+  it("a snapshot with no railsImportFoilThickness key parses and returns true, so a pre-phase board reopens linked", () => {
+    const snapshot = buildSnapshot(FIXTURES[0]);
+    const wire = JSON.parse(JSON.stringify(snapshot));
+    delete wire.design.railsImportFoilThickness;
+
+    const parsed = parseSnapshot(wire);
+    expect(parsed.railsImportFoilThickness).toBe(true);
+    // Every other field survives untouched — only the missing one was backfilled.
+    expect(parsed.rails).toEqual(FIXTURES[0].rails);
+    expect(parsed.foil).toEqual(FIXTURES[0].foil);
+  });
+
   it("a snapshot with no rocker key parses successfully and returns DEFAULT_ROCKER_SPEC", () => {
     const snapshot = buildSnapshot(FIXTURES[0]);
     const wire = JSON.parse(JSON.stringify(snapshot));
@@ -119,6 +139,9 @@ describe("design-snapshot", () => {
     const parsed = parseSnapshot(wire);
     expect(parsed.rocker).toEqual(DEFAULT_ROCKER_SPEC);
     expect(parsed.foil).toEqual(DEFAULT_FOIL_SPEC);
+    // A version-1 snapshot predates the link entirely, so it reopens linked (D-15) — the same
+    // backfill a version-2 snapshot missing only this one field gets.
+    expect(parsed.railsImportFoilThickness).toBe(true);
     expect(parsed.outline).toEqual(FIXTURES[0].outline);
     expect(parsed.rails).toEqual(FIXTURES[0].rails);
     expect(parsed.fins).toEqual(FIXTURES[0].fins);
