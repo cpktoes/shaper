@@ -311,11 +311,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // A preset is a complete spec, not a patch (see BoardPreset's own doc comment) — every field
   // not supplied by the preset resets to DEFAULT_DESIGN_STATE's value rather than carrying over
   // from whatever board was there before, so "Discard & Start New" produces a genuinely fresh
-  // board (WR-01).
+  // board (WR-01). rocker/foil joined outline/rails/fins here in 04-05 (D-12) — a preset without
+  // them would leave every board type drawing the same generic side profile regardless of which
+  // one was picked, which is exactly what D-12 exists to fix.
   const applyPreset = (preset: BoardPreset) =>
     setState(() => ({
       ...DEFAULT_DESIGN_STATE,
       outline: preset.outline,
+      rocker: preset.rocker,
+      foil: preset.foil,
       rails: preset.rails,
       fins: preset.fins,
       boardStarted: true,

@@ -20,7 +20,10 @@
  * - `CONTOURS`/`RAILS` checkboxes become the real rail section plots.
  * - `FIN SETUP` checkboxes become a fin *system* selector, since which fins go on the board is
  *   now designed on the fins screen; only the box hardware is still an ordering choice.
- * - `ROCKER` stays a placeholder box until the rocker screen exists.
+ * - `ROCKER` draws the board's own side profile — `RockerViewer`'s compact mode (04-05 Task 2),
+ *   no output rail or drag targets, just the closed board shape — with its real nose and tail
+ *   lift values printed in the two flanking columns the muse's own `HIGH`/`MEDIUM`/`LOW` ticks
+ *   used to hold.
  *
  * *Page 2 is the shaper's reference* — the rail band marking data and the fin placement numbers.
  * These were on the front, in two narrow columns either side of the drawings, and the type they
@@ -46,6 +49,7 @@ import { useDesign } from "@/components/design/design-store";
 import { OutlineViewer } from "@/components/outline/outline-viewer";
 import { RailDataTable } from "@/components/rails/rail-data-table";
 import { RailSectionPlot } from "@/components/rails/rail-section-plot";
+import { RockerViewer } from "@/components/rocker/rocker-viewer";
 import { Button } from "@/components/ui/button";
 import { ExportPreviewDialog } from "@/components/template/export-preview-dialog";
 import {
@@ -65,6 +69,7 @@ import {
   formatSignedInchesFraction,
   inchesToMm,
   mm,
+  type Mm,
 } from "@/lib/geometry/units";
 
 const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
@@ -130,16 +135,19 @@ function DimensionCell({ label, value }: { label: string; value: string }) {
 }
 
 /**
- * The rocker box's nose/tail height ticks — `HIGH` / `MEDIUM` / `LOW`, one column either side of
- * the profile, exactly as the paper muse draws them. Placeholder chrome until the rocker screen
- * exists to supply a real curve and real numbers.
+ * The rocker box's nose/tail height ticks — one column either side of the profile, exactly where
+ * the paper muse draws its own `HIGH`/`MEDIUM`/`LOW` words. What sits inside the same
+ * `OrderFormTick` box changed from a placeholder level to the board's own tip lift, printed
+ * through `formatInchesFraction` — the headline number a shaper quotes for "how much nose/tail
+ * rocker" a board carries. No "Nose"/"Tail" caption is added beside it: the value's own position
+ * (this column sits at whichever end `RockerViewer`'s nose-left default draws that tip) already
+ * says which one it is, and the drawn curve says the rest — the box's must-have is exactly the
+ * curve plus its two lift values, nothing more.
  */
-function RockerTicks() {
+function RockerLiftTick({ liftMm }: { liftMm: Mm }) {
   return (
     <div className="flex flex-none flex-col justify-center gap-[2px]">
-      {["High", "Medium", "Low"].map((level) => (
-        <OrderFormTick key={level} label={level} />
-      ))}
+      <OrderFormTick label={formatInchesFraction(liftMm)} />
     </div>
   );
 }
@@ -167,6 +175,8 @@ export function OrderForm() {
   const {
     outline,
     outlineGeometry,
+    rocker,
+    foil,
     railBands,
     finPlacement,
     effectiveFins,
@@ -306,9 +316,10 @@ export function OrderForm() {
 
                 {/* The right-hand column: the rocker strip over the template window. */}
                 <div className="flex min-h-0 min-w-0 flex-[2] flex-col gap-1">
-                  {/* Rocker — a placeholder box, exactly as the muse draws it, until the rocker
-                      screen exists to fill it. Kept rather than dropped so the sheet's proportions
-                      do not have to be redrawn when that feature lands.
+                  {/* Rocker — draws the board's own side profile now that the rocker screen exists
+                      (04-05), through `RockerViewer`'s compact `hideCallouts` mode: the closed board
+                      shape and nothing else, sized by that component's own fixed frame so it never
+                      clips at the lift/length extremes.
 
                       It sits above the template window and only as wide as it, rather than spanning
                       the whole body: a rocker profile is the board seen from the side, so the one
@@ -316,38 +327,20 @@ export function OrderForm() {
                       let the rail plots take the full height of the row beside it. */}
                   <FormBox
                     caption="Rocker"
-                    captionRight="placeholder"
                     className="flex-none order-form-rocker"
                     bodyClassName="p-0"
                   >
                     <div className="flex min-h-0 flex-1 items-stretch gap-1 px-1.5 py-1">
-                      {/* The muse's own placeholder: a nose/tail rocker height ticked either side of a
-                          drawn profile. Kept whole so the box does not have to be redrawn when the
-                          rocker screen fills it — only its contents get replaced. */}
-                      <RockerTicks />
+                      {/* Nose lift, the drawn profile, tail lift — the same two flanking columns
+                          either side of a drawn shape the muse's own placeholder ticks held.
+                          `RockerViewer`'s default orientation is horizontal nose-left, so the
+                          nose-tip lift belongs on this left column and the tail-tip lift on the
+                          right one below. */}
+                      <RockerLiftTick liftMm={rocker.noseTip} />
                       <div className="relative min-h-0 min-w-0 flex-1">
-                        <svg
-                          viewBox="0 0 600 80"
-                          preserveAspectRatio="none"
-                          className="absolute inset-0 block h-full w-full"
-                        >
-                          <path
-                            d="M 10 14 Q 150 60 300 64 Q 450 60 590 22"
-                            fill="none"
-                            stroke="var(--color-surf-ink-muted)"
-                            strokeWidth={2}
-                            strokeDasharray="7 5"
-                            vectorEffect="non-scaling-stroke"
-                          />
-                        </svg>
-                        <span className="absolute bottom-0 left-1 font-display font-extrabold tracking-architectural text-surf-ink-muted uppercase order-form-micro">
-                          Nose
-                        </span>
-                        <span className="absolute right-1 bottom-0 font-display font-extrabold tracking-architectural text-surf-ink-muted uppercase order-form-micro">
-                          Tail
-                        </span>
+                        <RockerViewer rocker={rocker} foil={foil} length={outline.length} hideCallouts />
                       </div>
-                      <RockerTicks />
+                      <RockerLiftTick liftMm={rocker.tailTip} />
                     </div>
                   </FormBox>
 
