@@ -30,23 +30,26 @@
  * it is naturally read as a reference rather than as an editable curve — it belongs to the
  * Template screen (D-07), and the toolbar's hide-outline toggle removes it entirely.
  *
- * Construction-line overlay and tip dragging (quick task 260829-snm, on top of Task 3's original
- * 260829-rda work): when `showConstruction` is on, the drawing gains the same construction-line
- * grammar the TEMPLATE viewer already draws — one line, from `geometry.handles`, out of each
- * curve point to the handle that steers the curve there, ending in a small plain dot, with a
- * plain dot on the fixed centre knot too. There are always four lines: the rocker curve is two
- * Bezier segments joined at the centre, and each segment has a steering handle at both of its
- * ends. A plain dot means "this shows you the shape, you cannot grab it" — only the two tips
- * carry a round three-part grab target; the five deck (thickness) points that used to sit on the
- * curve above are gone from the drawing entirely, since the five Thickness sliders in the sidebar
- * are now the only way to set thickness. When `onDrag` is also given, the two tip points
- * `sideProfileDragPoints` enumerates draw as grab targets — the same three-part accent treatment
- * `outline-viewer.tsx`'s drag targets use, counter-scaled to a constant on-screen size — plus
- * faint full-height station lines marking the five measured stations the output rail reads out.
- * Pointer handling converts a screen event to board coordinates through the rotated content
- * group's own `getScreenCTM`, the technique that already makes dragging work in both orientations
- * on the Template screen, then calls `solveSideProfileDrag` and hands the patch straight up — the
- * caller (`rocker-editor.tsx`) passes it straight to `updateRocker`.
+ * Construction-line overlay and control-point dragging (quick task 260829-t47, on top of
+ * 260829-snm's own move from seven grab points to two): when `showConstruction` is on, the
+ * drawing gains the same construction-line grammar the TEMPLATE viewer already draws — one line,
+ * from `geometry.handles`, out of each curve point to the handle that steers the curve there.
+ * There are always four lines: the rocker curve is two Bezier segments joined at the centre, and
+ * each segment has a steering handle at both of its ends. The three KNOTS — tail tip, centre,
+ * nose tip — draw as small plain dots: "this shows you the shape, you cannot grab it." Both tips
+ * are fixed because a tip's own rocker is a headline number set from its slider and its typed
+ * DATASHEET cell, not something to eyeball by dragging; the centre is the curve's own zero by
+ * definition. The four HANDLE TERMINI — the far end of each steering line — are the drawing's
+ * only grab targets, when `onDrag` is also given: `sideProfileDragPoints` enumerates them in
+ * `geometry.handles`' own order, the same three-part accent treatment `outline-viewer.tsx`'s drag
+ * targets use, counter-scaled to a constant on-screen size. Dragging the tail or nose tip's own
+ * handle sets that tip's Angle and Smoothness together; dragging either of the two centre handles
+ * sets that side's Flatness alone, and moving it off its own station-only tangent carries no
+ * information (the constrained-axis behaviour `rocker-drag.ts`'s own tests pin down). Pointer
+ * handling converts a screen event to board coordinates through the rotated content group's own
+ * `getScreenCTM`, the technique that already makes dragging work in both orientations on the
+ * Template screen, then calls `solveSideProfileDrag` (passed the live geometry) and hands the
+ * patch straight up — the caller (`rocker-editor.tsx`) passes it straight to `updateRocker`.
  */
 
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef } from "react";
@@ -312,8 +315,7 @@ export function RockerViewer({
     : [];
 
   // The construction overlay: one line per handle (four, always — two Bezier segments each with a
-  // handle at both ends), from `geometry.handles`, plus a plain dot at every line's terminus and
-  // at the centre knot (the curve's own fixed zero). Every coordinate comes straight off
+  // handle at both ends), from `geometry.handles`. Every coordinate comes straight off
   // `buildRocker`'s own knots/handles, in the same canonical space pxX/pxY draw everything else
   // in — no formula added here, only projection.
   const constructionLines = geometry.handles.map((h) => ({
@@ -322,10 +324,12 @@ export function RockerViewer({
     x2: pxX(mmToInches(h.to.x)),
     y2: pxY(mmToInches(h.to.y)),
   }));
-  const constructionDots = [
-    { cx: pxX(mmToInches(geometry.knots[1].point.x)), cy: pxY(mmToInches(geometry.knots[1].point.y)) },
-    ...geometry.handles.map((h) => ({ cx: pxX(mmToInches(h.to.x)), cy: pxY(mmToInches(h.to.y)) })),
-  ];
+  // Plain dots: all three knots — tail tip, centre, nose tip. Fixed, ungrabbable, showing the
+  // shape only; the four handle termini below are the drawing's only grab targets now.
+  const constructionDots = geometry.knots.map((k) => ({
+    cx: pxX(mmToInches(k.point.x)),
+    cy: pxY(mmToInches(k.point.y)),
+  }));
 
   /** Screen point -> board coordinates: undo the SVG transform, then invert pxX/pxY.
    *
@@ -352,7 +356,7 @@ export function RockerViewer({
     // Every move writes the spec and the redraw arrives back through props — nothing here is
     // cached across renders, which is what keeps the sliders and the datasheet cells in step
     // with the drawing mid-drag.
-    onDrag(solveSideProfileDrag(draggingRef.current, boardPoint));
+    onDrag(solveSideProfileDrag(geometry, draggingRef.current, boardPoint));
   }
 
   function handleDragStart(target: SideProfileDragTarget, event: ReactPointerEvent<SVGElement>) {
@@ -505,9 +509,9 @@ export function RockerViewer({
                 strokeWidth={1.5}
               />
             ))}
-            {/* Plain marker dots: one at every construction line's terminus, plus one on the
-                centre knot — the curve's own fixed zero. Deliberately plain, not a grab target:
-                these show the shape, they are not draggable. */}
+            {/* Plain marker dots: the three knots — tail tip, centre, nose tip. Deliberately
+                plain, not a grab target: these show the shape, they are not draggable. A tip's
+                own rocker is set from its slider and its typed DATASHEET cell instead. */}
             {constructionDots.map((dt, i) => (
               <circle
                 key={`construction-dot-${i}`}
@@ -518,9 +522,10 @@ export function RockerViewer({
               />
             ))}
             {/* The drag targets themselves: board-fill disc, accent ring, warning core — the same
-                three-part treatment `outline-viewer.tsx` draws its own drag targets with. Only
-                the two tips ever appear here now. pointer-events:none throughout — the
-                transparent hit circles below own every pointer interaction. */}
+                three-part treatment `outline-viewer.tsx` draws its own drag targets with. The
+                four control-point handle termini appear here — the two tip knots and the centre
+                knot are never among them. pointer-events:none throughout — the transparent hit
+                circles below own every pointer interaction. */}
             {dragTargets.map((d) => (
               <g key={`target-${d.target}`} pointerEvents="none">
                 <circle
