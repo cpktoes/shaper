@@ -417,9 +417,7 @@ export function RockerViewer({
   // `<design_decision>` section 3) — the order form's box is short and wide, so an empty reserved
   // unit comes straight out of the printed type. Falls back to the worst-case constant on a
   // corrupt/non-finite envelope (threat T-VUS-01), mirroring `rocker-view-frame.ts`'s own
-  // `resolveEffectiveLengthIn` fallback. The construction overlay's `pxY(maxDeckIn)` station
-  // lines below are unaffected by this branch — construction only ever runs in `"full"` mode,
-  // where `maxDeckIn` keeps its worst-case value.
+  // `resolveEffectiveLengthIn` fallback.
   let maxDeckIn = worstCaseDeckIn;
   if (callouts === "compact") {
     const deckEnvelopeIn = Math.max(...samples.map((s) => s.rockerLiftIn + s.thicknessIn));
@@ -793,21 +791,6 @@ export function RockerViewer({
 
         {showConstruction && (
           <>
-            {/* Faint full-height station lines. They no longer mark grab points — the deck
-                curve carries none any more — but they still mark the five measured stations the
-                output rail reads out, so the shaper can see which station is which even with the
-                rail's own shorter ticks hidden by a `"compact"`/`"none"` consumer. */}
-            {stations.map((s) => (
-              <line
-                key={`construction-${s.key}`}
-                x1={pxX(s.stationIn)}
-                y1={baselineY}
-                x2={pxX(s.stationIn)}
-                y2={pxY(maxDeckIn)}
-                stroke="var(--outline-construction)"
-                strokeWidth={1}
-              />
-            ))}
             {/* The construction lines: one per handle, out of each curve point toward the handle
                 that steers the curve there — always four, since the rocker curve is two Bezier
                 segments joined at the centre and each segment has a handle at both of its ends. */}
