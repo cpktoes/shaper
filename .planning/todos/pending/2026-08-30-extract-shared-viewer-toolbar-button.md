@@ -37,3 +37,9 @@ sidebars applies here.
 Lines / Wide view, optionally Export), extract the button — className, box and icon together —
 into one shared component and migrate all three screens onto it in the same pass, rather than
 letting a third hand-mirrored copy happen.
+
+**Evidence, 2026-08-30:** this same duplicated class string was hand-edited in all seven places
+for the second time in one day — quick task 260830-1g3 added the accent fill this morning, and
+quick task 260830-1vn removed a border-colour regression from it this afternoon. The duplication
+is now costing real edits, not just standing as a documented posture. The trigger above is still
+a third screen, which has not happened — this is a cost note, not a decision to extract early.
