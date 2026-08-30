@@ -61,7 +61,7 @@
  */
 
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef } from "react";
-import { CalloutChipFrame, DimensionTick, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
+import { CALLOUT_PX, CalloutChipFrame, DimensionTick, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { FOIL_THICKNESS_RANGE_IN, sampleFoil, type FoilSpec } from "@/lib/geometry/foil";
 import {
   sideProfileDragPoints,
@@ -72,8 +72,7 @@ import {
 import { buildRocker, ROCKER_LIFT_RANGE_IN, sampleRocker, type RockerSpec } from "@/lib/geometry/rocker";
 import { formatFeetInches, formatInchesFraction, inchesToMm, type Mm, mmToInches } from "@/lib/geometry/units";
 import {
-  CARD_NAME_DY,
-  CARD_VALUE_DY,
+  cardPinScale,
   COMPACT_BASELINE_DASH,
   COMPACT_BASELINE_WIDTH,
   COMPACT_LEADER_WIDTH,
@@ -82,12 +81,9 @@ import {
   compactRailReadingXs,
   compactValueWidth,
   PAD_X,
-  READOUT_NAME_DY,
-  READOUT_VALUE_DY,
+  type RockerCardType,
   type RockerCompactRow,
   rockerViewLayout,
-  STATION_NAME_SIZE,
-  STATION_VALUE_SIZE,
 } from "./rocker-view-frame";
 
 /**
@@ -204,6 +200,7 @@ function StationCard({
   vertical,
   name,
   value,
+  type,
   valueColor = "var(--outline-ink)",
 }: {
   x: number;
@@ -216,6 +213,9 @@ function StationCard({
   vertical: boolean;
   name: string;
   value: string;
+  /** The card's own type stack, scaled by `cardScale` together with the card box — the layout
+   * module's own field, so this component derives no arithmetic of its own (Rule 1). */
+  type: RockerCardType;
   valueColor?: string;
 }) {
   const cardX = x - cardWidth / 2;
@@ -230,18 +230,18 @@ function StationCard({
           <CalloutChipFrame x={cardX} y={rail} width={cardWidth} height={cardHeight} />
           <text
             x={x}
-            y={rail + CARD_NAME_DY}
+            y={rail + type.cardNameDy}
             textAnchor="middle"
-            style={{ fontSize: STATION_NAME_SIZE, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
+            style={{ fontSize: type.nameSize, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
             fill="var(--outline-callout-label)"
           >
             {name}
           </text>
           <text
             x={x}
-            y={rail + CARD_VALUE_DY}
+            y={rail + type.cardValueDy}
             textAnchor="middle"
-            style={{ fontSize: STATION_VALUE_SIZE, fontWeight: 700, fontFamily: "var(--font-body)" }}
+            style={{ fontSize: type.valueSize, fontWeight: 700, fontFamily: "var(--font-body)" }}
             fill={valueColor}
           >
             {value}
@@ -268,6 +268,7 @@ function StationReadout({
   vertical,
   name,
   value,
+  type,
   valueColor = "var(--outline-ink)",
 }: {
   x: number;
@@ -278,6 +279,9 @@ function StationReadout({
   vertical: boolean;
   name: string;
   value: string;
+  /** The card's own type stack, scaled by `cardScale` together with the card box — the layout
+   * module's own field, so this component derives no arithmetic of its own (Rule 1). */
+  type: RockerCardType;
   valueColor?: string;
 }) {
   return (
@@ -288,18 +292,18 @@ function StationReadout({
         <g transform={`translate(0, ${cardDy.toFixed(2)})`}>
           <text
             x={x}
-            y={rail + READOUT_VALUE_DY}
+            y={rail + type.readoutValueDy}
             textAnchor="middle"
-            style={{ fontSize: STATION_VALUE_SIZE, fontWeight: 700, fontFamily: "var(--font-body)" }}
+            style={{ fontSize: type.valueSize, fontWeight: 700, fontFamily: "var(--font-body)" }}
             fill={valueColor}
           >
             {value}
           </text>
           <text
             x={x}
-            y={rail + READOUT_NAME_DY}
+            y={rail + type.readoutNameDy}
             textAnchor="middle"
-            style={{ fontSize: STATION_NAME_SIZE, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
+            style={{ fontSize: type.nameSize, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
             fill="var(--outline-callout-label)"
           >
             {name}
@@ -424,10 +428,26 @@ export function RockerViewer({
     maxDeckIn = Number.isFinite(deckEnvelopeIn) && deckEnvelopeIn > 0 ? deckEnvelopeIn : worstCaseDeckIn;
   }
 
-  // The one place the drawing's scale and frame are decided (`rocker-view-frame.ts`) — `scale`,
-  // `viewH`, `baselineY` and the frame below all come from here, so `pxX`/`pxY` and the drag
-  // inverse can never solve against a different scale than the drawing was made with.
-  const layout = rockerViewLayout({ lengthIn, maxDeckIn, orientation, fitToBoard, stationRails: callouts });
+  // Frame pass: the same pure layout function, evaluated first only to read the frame dimensions
+  // `useSvgFitScale` measures against. Safe to read before the card scale is even known because
+  // every frame extent (`width`/`height`, and therefore `viewBox`) is reserved at the pin's own
+  // CEILING (`maxCardPinScale`), never at the live card scale (`rocker-view-frame.ts`'s own
+  // T-03J-02 note) — so this pass hands `useSvgFitScale` the exact same numbers the drawing pass
+  // below will, whatever card scale that second pass resolves to (Task 2's own frame-invariance
+  // suite pins this equality by test).
+  const framePass = rockerViewLayout({ lengthIn, maxDeckIn, orientation, fitToBoard, stationRails: callouts });
+  const fitScale = useSvgFitScale(svgRef, framePass.width, framePass.height);
+  // The card-pin scale (quick task 260830-03j): 1 (unpinned) whenever this call's own
+  // `stationRails` never draws a card at all (`cardPinScale`/`maxCardPinScale`'s own ceiling
+  // forces that), so the Summary order form's `"compact"`/`"none"` paths are unaffected no matter
+  // what this resolves to.
+  const cardScale = cardPinScale(fitScale, CALLOUT_PX.value, orientation);
+
+  // The drawing pass: the one place the drawing's scale and frame are decided
+  // (`rocker-view-frame.ts`) — `scale`, `viewH`, `baselineY` and the frame below all come from
+  // here, so `pxX`/`pxY` and the drag inverse can never solve against a different scale than the
+  // drawing was made with.
+  const layout = rockerViewLayout({ lengthIn, maxDeckIn, orientation, fitToBoard, stationRails: callouts, cardScale });
   const {
     scale,
     baselineY,
@@ -438,6 +458,7 @@ export function RockerViewer({
     cardDy,
     cardWidth,
     cardHeight,
+    cardType,
     compactRows,
     labelX,
     labelY,
@@ -561,13 +582,13 @@ export function RockerViewer({
   }));
   const compactBottomXs = compactRailReadingXs(layout, compactBottomList);
 
-  // Both the viewBox string and its frame width/height come straight off the layout — the one
-  // place this drawing's frame is decided. The vertical frame is built from its own rotated
-  // content (the nose card's near edge to the tail card's far edge on the long axis, the card
-  // rail's own outer edge to the baseline on the cross axis), NOT a transposition of the
-  // horizontal frame — the defect quick task 260825-w8d fixed on the outline viewer.
-  const { viewBox, width: frameWidth, height: frameHeight } = layout;
-  const fitScale = useSvgFitScale(svgRef, frameWidth, frameHeight);
+  // The viewBox string comes straight off the layout — the one place this drawing's frame is
+  // decided. The vertical frame is built from its own rotated content (the nose card's near edge
+  // to the tail card's far edge on the long axis, the card rail's own outer edge to the baseline
+  // on the cross axis), NOT a transposition of the horizontal frame — the defect quick task
+  // 260825-w8d fixed on the outline viewer. `fitScale` itself was already measured against the
+  // frame pass above, before this (drawing-pass) layout even existed.
+  const { viewBox } = layout;
   /** User units per CSS pixel — what the px-denominated drag-target sizes above are drawn in. */
   const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
 
@@ -706,6 +727,7 @@ export function RockerViewer({
                     vertical={vertical}
                     name={s.name}
                     value={s.thicknessValue}
+                    type={cardType}
                   />
                   {/* Bottom side: a card at the two tips (their own sliders), a plain reading
                       everywhere else — measured off the drawn curve rather than set directly.
@@ -724,6 +746,7 @@ export function RockerViewer({
                       vertical={vertical}
                       name={s.name}
                       value={s.rockerValue ?? ""}
+                      type={cardType}
                     />
                   ) : (
                     <StationReadout
@@ -735,6 +758,7 @@ export function RockerViewer({
                       vertical={vertical}
                       name={s.name}
                       value={s.rockerValue ?? "—"}
+                      type={cardType}
                       valueColor={s.rockerValue !== null ? "var(--outline-ink)" : "var(--outline-callout-label)"}
                     />
                   )}
