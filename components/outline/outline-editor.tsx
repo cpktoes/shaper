@@ -185,7 +185,14 @@ export function OutlineEditor() {
         // founder's request for a visible boundary. The border is `surf-line`, not
         // `surf-line-faint` — `line` is the token carrying the 3:1 non-text target a control
         // boundary needs in every theme, per the rule written down at
-        // components/viewer/tabbed-panel.tsx. The resting fill is `surf-ground`, the same
+        // components/viewer/tabbed-panel.tsx. That grey edge holds in every state — resting,
+        // hovered and (on the two toggle buttons beside this one) pressed — only the fill and
+        // the icon colour ever change. An earlier version of this toolbar tinted the edge to
+        // match the fill instead, and quick task 260830-1vn removed it: measured against the
+        // page, the grey edge clears 3.70-4.13:1 in all four themes while the tinted edge only
+        // cleared it in one (2.01 / 3.58 / 2.16 / 6.32 for daylight / chalk / slate / phosphor),
+        // so a switched-ON button read as softer, less-defined than its switched-off neighbours
+        // — worst in the dark themes, where the founder actually noticed it. The resting fill is `surf-ground`, the same
         // value as the `surf-panel` surface behind it in all four themes, so it adds no
         // visible plate at rest; it exists to be opaque, because this button is absolutely
         // positioned over the drawing and board lines must not run under the glyph. Under the

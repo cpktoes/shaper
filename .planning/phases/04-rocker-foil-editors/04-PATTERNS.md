@@ -207,10 +207,20 @@ hover, and a button additionally KEEPS that fill while it is on — the toggle a
 it represents a genuine ON/OFF state carrying a truthful `aria-pressed`. Today that is
 Construction Lines and Wide view on both screens.
 
-A new viewer-toolbar button should therefore take the shared base hover rule as its default
-(accent fill, accent border, on-accent icon colour) and add the pressed treatment only if it is
-really a toggle — rather than inventing a fresh one-off look. D-08's "hide the outline/width
-reference" toggle is a genuine toggle, so it takes both (e.g. `showOutlineReference`).
+A new viewer-toolbar button should therefore take the shared base hover rule as its
+default — accent fill plus the matching on-accent icon colour — and add the pressed
+treatment only if it is really a toggle, rather than inventing a fresh one-off look.
+D-08's "hide the outline/width reference" toggle is a genuine toggle, so it takes both
+(e.g. `showOutlineReference`).
+
+The button's border is NOT part of that treatment and never changes: it stays
+`border-surf-line` at rest, on hover and while pressed. Quick task 260830-1vn removed
+an earlier attempt to tint it, because `--surf-line` is the token that carries the 3:1
+control-boundary target in all four themes (3.70-4.13) while the accent carries it in
+only one (2.01 / 3.58 / 2.16 / 6.32) — so tinting the edge made a switched-ON button
+read as *less* defined than its switched-off neighbours, most visibly in the dark themes.
+Fill announces the state; the edge is what makes it a control. Same reasoning as
+`.slider-accent` in `app/globals.css` (quick task 260823-qr3).
 
 ---
 
