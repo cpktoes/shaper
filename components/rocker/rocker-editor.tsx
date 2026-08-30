@@ -20,10 +20,19 @@
  * `lib/geometry/presets.ts` source, gated on `process.env.NODE_ENV === "development"` so the
  * bundler dead-code-eliminates it from production, the same D-03 tuning loop the outline presets
  * were captured through.
+ *
+ * Quick task 260829-ugd adds the same hide-sidebar wide view `outline-editor.tsx` carries: a third
+ * toolbar button that removes the `aside` from the tree entirely (rather than shrinking it) and
+ * hands that width to the drawing. This is a faithful local mirror, not a shared extraction — the
+ * same posture this file already takes with `RotateBoardIcon` and `buildRockerPresetSource`.
+ * `bare` removes the tab strip, and this screen has two tabs (DATASHEET is unreachable while wide
+ * view is on) — safe because the button that turns wide view on lives inside the VIEWER tab's own
+ * toolbar and stays on screen in both states, so the active tab is invariantly VIEWER whenever
+ * wide view is on, and one press always brings the strip back.
  */
 
 import { useId, useState } from "react";
-import { LocateFixedIcon } from "lucide-react";
+import { LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
 import { Button } from "@/components/ui/button";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
@@ -122,9 +131,30 @@ export function RockerEditor() {
   const [showConstruction, setShowConstruction] = useState(false);
   const [activeTab, setActiveTab] = useState<RockerTab>("viewer");
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
+  /** Wide view hides the `aside` below so `main` gets the full window width. Local view state, not
+   * design data, deliberately not persisted — a reload always comes back with the sidebar showing.
+   * `preWideViewConstruction` remembers whatever `showConstruction` was set to before wide view
+   * forced it on, so leaving wide view restores it rather than leaving the shaper on a setting they
+   * never chose. Both are set together inside the click handler below, not from a render-time
+   * effect — this codebase's lint config rejects setting state during render, and doing so caused a
+   * real bug in plan 02-05. Mirrors `outline-editor.tsx`'s own `wideView`/`preWideViewConstruction`
+   * pair. */
+  const [wideView, setWideView] = useState(false);
+  const [preWideViewConstruction, setPreWideViewConstruction] = useState(false);
 
   function toggleSection(key: RockerControlsSectionKey) {
     setSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function handleToggleWideView() {
+    if (wideView) {
+      setShowConstruction(preWideViewConstruction);
+      setWideView(false);
+    } else {
+      setPreWideViewConstruction(showConstruction);
+      setShowConstruction(true);
+      setWideView(true);
+    }
   }
 
   /** `outline-editor.tsx`'s `handleCopyPreset`, copied verbatim for the rocker/foil pair. */
@@ -144,45 +174,55 @@ export function RockerEditor() {
       {/* A flex column, not one scrolling box — mirrors `outline-editor.tsx`'s aside exactly (quick
           task 260823-ux2): the controls scroll in the region below and the dev preset button sits
           in a footer that does not, so it is always reachable regardless of how much the controls
-          region grows. */}
-      <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink">
-        <div className="min-h-0 flex-1 overflow-y-auto p-10">
-          <div className="flex flex-col gap-5">
-            <div>
-              <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">
-                Rocker &amp; Foil
+          region grows. Hidden entirely, not resized, while wide view is on — the internal
+          structure (scrolling controls region + flex-none dev preset footer) stays untouched; a
+          quick task already had to fix that footer once because it was only pinned by luck. */}
+      {!wideView && (
+        <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink">
+          <div className="min-h-0 flex-1 overflow-y-auto p-10">
+            <div className="flex flex-col gap-5">
+              <div>
+                <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">
+                  Rocker &amp; Foil
+                </div>
+                <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
+                  Shape the board&apos;s side profile — the bottom curve and the deck it carries
+                </div>
               </div>
-              <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
-                Shape the board&apos;s side profile — the bottom curve and the deck it carries
-              </div>
-            </div>
 
-            <RockerControls
-              rocker={rocker}
-              foil={foil}
-              geometry={geometry}
-              onChangeRocker={updateRocker}
-              onChangeFoil={updateFoil}
-              sectionOpen={sectionOpen}
-              onToggleSectionOpen={toggleSection}
-            />
+              <RockerControls
+                rocker={rocker}
+                foil={foil}
+                geometry={geometry}
+                onChangeRocker={updateRocker}
+                onChangeFoil={updateFoil}
+                sectionOpen={sectionOpen}
+                onToggleSectionOpen={toggleSection}
+              />
+            </div>
           </div>
-        </div>
-        {process.env.NODE_ENV === "development" && (
-          <div className="flex-none border-t border-surf-line-faint p-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent"
-              onClick={handleCopyPreset}
-            >
-              {justCopiedPreset ? "Copied!" : "Copy preset values"}
-            </Button>
-          </div>
-        )}
-      </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3">
-        <TabbedPanel tabs={ROCKER_TABS} active={activeTab} onSelect={setActiveTab}>
+          {process.env.NODE_ENV === "development" && (
+            <div className="flex-none border-t border-surf-line-faint p-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent"
+                onClick={handleCopyPreset}
+              >
+                {justCopiedPreset ? "Copied!" : "Copy preset values"}
+              </Button>
+            </div>
+          )}
+        </aside>
+      )}
+      <main
+        className={
+          wideView
+            ? "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-1"
+            : "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3"
+        }
+      >
+        <TabbedPanel bare={wideView} tabs={ROCKER_TABS} active={activeTab} onSelect={setActiveTab}>
           {activeTab === "viewer" ? (
             // `relative` makes this div the positioning context for the two toolbar buttons
             // below, absolutely positioned over the drawing — the same box treatment as the
@@ -213,6 +253,20 @@ export function RockerEditor() {
                 className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-pressed:bg-surf-well aria-pressed:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
               >
                 <LocateFixedIcon className="size-6" />
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleWideView}
+                aria-pressed={wideView}
+                aria-label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
+                title={wideView ? "Show the sidebar" : "Wide view"}
+                // Same box as the two buttons beside it. This is both the way in and the way out
+                // of wide view — it lives inside the VIEWER tab's own toolbar, which stays on
+                // screen in both states, so there is always a visible route back. Never
+                // accent-filled: that fill is unclaimed on this toolbar, not this button's.
+                className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+              >
+                {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
               </button>
               <RockerViewer
                 rocker={rocker}
