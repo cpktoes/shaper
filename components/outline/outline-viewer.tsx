@@ -667,7 +667,7 @@ export function OutlineViewer({
             edgeX={pxX(midHalfWidthIn)}
             y={lenToY(lengthIn / 2)}
             value={formatInchesFraction(mm(inchesToMm(centerWidthAtStationIn)))}
-            station="Centre"
+            station="Center"
           />
           <OutputRail
             valueX={frame.outputValueX}
