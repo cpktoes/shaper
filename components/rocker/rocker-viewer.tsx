@@ -31,12 +31,14 @@
  * Template screen (D-07), and the toolbar's hide-outline toggle removes it entirely.
  *
  * Construction-line dragging (Task 3): when `showConstruction` is on and `onDrag` is given, the
- * nine points `sideProfileDragPoints` enumerates draw as grab targets — the same three-part
- * accent treatment `outline-viewer.tsx`'s drag targets use, counter-scaled to a constant
- * on-screen size — plus faint full-height station lines. Pointer handling converts a screen
- * event to board coordinates through the rotated content group's own `getScreenCTM`, the
- * technique that already makes dragging work in both orientations on the Template screen, then
- * calls `solveSideProfileDrag` and hands the patch up unmerged — the caller (`rocker-editor.tsx`)
+ * seven points `sideProfileDragPoints` enumerates draw as grab targets (quick task 260829-rda
+ * shrank this from nine to seven: the rocker line's own three-knot construction stores a lift at
+ * only its two tips now, not at four of its five old stations) — the same three-part accent
+ * treatment `outline-viewer.tsx`'s drag targets use, counter-scaled to a constant on-screen size
+ * — plus faint full-height station lines. Pointer handling converts a screen event to board
+ * coordinates through the rotated content group's own `getScreenCTM`, the technique that already
+ * makes dragging work in both orientations on the Template screen, then calls
+ * `solveSideProfileDrag` and hands the patch up unmerged — the caller (`rocker-editor.tsx`)
  * splits it between `updateRocker`/`updateFoil`.
  */
 
@@ -52,7 +54,7 @@ import {
   type SideProfileDragPoint,
   type SideProfileDragTarget,
 } from "@/lib/geometry/rocker-drag";
-import { ROCKER_LIFT_RANGE_IN, sampleRocker, type RockerSpec } from "@/lib/geometry/rocker";
+import { buildRocker, ROCKER_LIFT_RANGE_IN, sampleRocker, type RockerSpec } from "@/lib/geometry/rocker";
 import { formatFeetInches, formatInchesFraction, inchesToMm, type Mm, mmToInches } from "@/lib/geometry/units";
 
 /**
@@ -169,6 +171,10 @@ export function RockerViewer({
    * pointerdown and is read on pointermove, and re-rendering for it would be a wasted pass. */
   const draggingRef = useRef<SideProfileDragTarget | null>(null);
   const lengthIn = mmToInches(length);
+  // Built once per render and shared by the sampling loop, the drag-target enumerator and the
+  // solver below, the same posture `rocker-editor.tsx` takes building it once for the controls,
+  // the datasheet and this viewer to all share.
+  const geometry = buildRocker(rocker, length);
   // The tallest a drawn board can ever get: the highest rocker lift plus the thickest foil, so
   // the deck curve can never be clipped by the frame regardless of what a shaper dials in.
   const maxDeckIn = ROCKER_LIFT_RANGE_IN.max + FOIL_THICKNESS_RANGE_IN.max;
@@ -189,7 +195,7 @@ export function RockerViewer({
   for (let i = 0; i <= SAMPLES; i++) {
     const stationIn = (lengthIn * i) / SAMPLES;
     const stationMm = inchesToMm(stationIn);
-    const rockerLiftIn = mmToInches(sampleRocker(rocker, length, stationMm));
+    const rockerLiftIn = mmToInches(sampleRocker(geometry, stationMm));
     const thicknessIn = mmToInches(sampleFoil(foil, length, stationMm));
     bottomPoints.push({ x: pxX(stationIn), y: pxY(rockerLiftIn) });
     deckPoints.push({ x: pxX(stationIn), y: pxY(rockerLiftIn + thicknessIn) });
@@ -235,14 +241,14 @@ export function RockerViewer({
       key: "tailTip",
       name: "Tail Tip",
       stationIn: 0,
-      rockerValue: formatInchesFraction(rocker.tailTip),
+      rockerValue: formatInchesFraction(rocker.tailLift),
       thicknessValue: formatInchesFraction(foil.tailTip),
     },
     {
       key: "tail12",
       name: 'Tail @ 12"',
       stationIn: 12,
-      rockerValue: formatInchesFraction(rocker.tail12),
+      rockerValue: formatInchesFraction(geometry.tailLiftAt12in),
       thicknessValue: formatInchesFraction(foil.tail12),
     },
     {
@@ -256,14 +262,14 @@ export function RockerViewer({
       key: "nose12",
       name: 'Nose @ 12"',
       stationIn: lengthIn - 12,
-      rockerValue: formatInchesFraction(rocker.nose12),
+      rockerValue: formatInchesFraction(geometry.noseLiftAt12in),
       thicknessValue: formatInchesFraction(foil.nose12),
     },
     {
       key: "noseTip",
       name: "Nose Tip",
       stationIn: lengthIn,
-      rockerValue: formatInchesFraction(rocker.noseTip),
+      rockerValue: formatInchesFraction(rocker.noseLift),
       thicknessValue: formatInchesFraction(foil.noseTip),
     },
   ];
@@ -288,7 +294,7 @@ export function RockerViewer({
   // when a drag handler is present, so a consumer with no `onDrag` renders exactly what it did
   // before this prop existed.
   const dragTargets = onDrag
-    ? sideProfileDragPoints(rocker, foil, length).map((d) => ({
+    ? sideProfileDragPoints(geometry, foil, length).map((d) => ({
         target: d.target,
         cx: pxX(mmToInches(d.point.station)),
         cy: pxY(mmToInches(d.point.height)),
@@ -317,10 +323,10 @@ export function RockerViewer({
     if (!draggingRef.current || !onDrag) return;
     const boardPoint = toBoardPoint(event);
     if (!boardPoint) return;
-    // Every move writes the spec and the redraw arrives back through props — the viewer keeps no
-    // copy of the geometry, which is what keeps the sliders and the datasheet cells in step with
-    // the drawing mid-drag.
-    onDrag(solveSideProfileDrag(draggingRef.current, boardPoint, rocker, foil, length));
+    // Every move writes the spec and the redraw arrives back through props — nothing here is
+    // cached across renders, which is what keeps the sliders and the datasheet cells in step
+    // with the drawing mid-drag.
+    onDrag(solveSideProfileDrag(draggingRef.current, boardPoint, geometry, foil, length));
   }
 
   function handleDragStart(target: SideProfileDragTarget, event: ReactPointerEvent<SVGElement>) {
