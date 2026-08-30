@@ -6,9 +6,13 @@
  * `rocker-view-frame.test.ts` in isolation from `rocker-viewer.tsx`.
  *
  * Two rails, symmetric about the board: a deck rail above the board (thickness read-outs) and a
- * bottom rail below it (rocker read-outs) — see `deckRailY`/`railY` below. `rocker-viewer.tsx`
- * draws from the `RockerViewLayout` this module produces; it derives no scale, band or type-stack
- * arithmetic of its own (quick task 260829-tmj, extended by 260829-uue and 260829-vus).
+ * bottom rail below it (rocker read-outs) — see `deckRailY`/`railY` below. Each rail also carries
+ * its own title (`"Thickness"` over the deck rail, `"Rocker"` over the bottom one, `"full"` mode
+ * only) — this module decides that title's band, baseline, size and station, per this plan's
+ * (260830-2dy) `<design_decision>` sections 2 and 3; `rocker-viewer.tsx` supplies only the words
+ * and the paint. `rocker-viewer.tsx` draws from the `RockerViewLayout` this module produces; it
+ * derives no scale, band or type-stack arithmetic of its own (quick task 260829-tmj, extended by
+ * 260829-uue, 260829-vus and 260830-2dy).
  *
  * The compact grammar (`stationRails: "compact"`) is the Summary order form's own rails: five bare
  * thickness readings above the board, four bare rocker readings below — no card surface, no
@@ -164,12 +168,26 @@ export interface RockerViewLayout {
    * so the field is never `NaN`; outside compact it is unused and the existing card fields above
    * carry the drawing. */
   compactRows: RockerCompactRows;
-  /** The board-length label's own anchor, in canonical coordinates — horizontal keeps the
-   * original `(PAD_X, PAD_TOP - 8)`; vertical moves it clear of the deck rail's nose-station
-   * cards (see `LENGTH_LABEL_GAP`). Always the horizontal values when `stationRails` is not
-   * `"full"`, since the label is never drawn otherwise and the field must never be `NaN`. */
-  labelX: number;
-  labelY: number;
+  /** The rail titles' own type size, in SVG user units — `RAIL_LABEL_SIZE * appliedScale`, the
+   * SAME scalar that scales the card box and `cardType`, so a title and the numbers under it
+   * move as one unit and hold a constant on-screen size in both orientations (quick task
+   * 260830-2dy, extending 260830-03j's pin to the titles). Populated in every mode so the field
+   * is never `NaN`; outside `"full"` it is unused. */
+  railLabelSize: number;
+  /** The deck (thickness) title's own anchor, in canonical coordinates — the deck rail's own
+   * ceiling-sized far edge, less `RAIL_LABEL_GAP`, so the title is frame-invariant: it never
+   * walks when the card-pin scale changes. Populated in every mode so the field is never `NaN`;
+   * outside `"full"` it is unused. */
+  deckLabelY: number;
+  /** The bottom (rocker) title's own anchor, in canonical coordinates — the bottom rail's own
+   * ceiling-sized far edge, plus `RAIL_LABEL_GAP` and the title's own cap height, so the GLYPH
+   * edge (not the baseline) sits `RAIL_LABEL_GAP` clear of the cards, matching the deck title's
+   * own visual distance. Populated in every mode so the field is never `NaN`; outside `"full"`
+   * it is unused. */
+  bottomLabelY: number;
+  /** Both titles' shared station x — the board's own middle station, in canonical coordinates.
+   * Populated in every mode so the field is never `NaN`; outside `"full"` it is unused. */
+  labelStationX: number;
   minX: number;
   minY: number;
   width: number;
@@ -183,7 +201,6 @@ export interface RockerViewLayout {
 export const VIEW_W = 900;
 /** Left/right pad inside `VIEW_W` the board's own drawn span sits within. */
 export const PAD_X = 40;
-export const PAD_TOP = 26;
 /** Gap between the worst-case deck line and the DECK rail's tick marks. */
 export const RAIL_GAP = 20;
 /**
@@ -229,10 +246,27 @@ export const CARD_VALUE_DY = 28;
  * occupies at the same rail anchor, so a card containment proof carries a plain reading with it. */
 export const READOUT_VALUE_DY = STATION_CARD_HEIGHT / 2 - 2;
 export const READOUT_NAME_DY = READOUT_VALUE_DY + STATION_VALUE_SIZE;
-/** The board-length label's own font size, used only to reserve its type band on the frame. */
-export const LENGTH_LABEL_SIZE = 12;
-/** Gap left between the board-length label's own band and the nose station's cards, nose-up. */
-export const LENGTH_LABEL_GAP = 6;
+
+/**
+ * The two rail titles' own type scale and band constants (quick task 260830-2dy) — see this
+ * plan's `<design_decision>` sections 2-4 for the full derivation.
+ */
+/** The rail titles' own font size, in SVG user units — one unit above the station-name row
+ * (`STATION_NAME_SIZE`, 10) and one below the value row (`STATION_VALUE_SIZE`, 13): a heading
+ * over the rail, not louder than the numbers it heads. */
+export const RAIL_LABEL_SIZE = 12;
+/** Clear space between a rail's own outer (ceiling-sized) card edge and the title's nearest
+ * glyph edge — the same distance on every side, which is what keeps a title the same visual
+ * distance from its own cards regardless of orientation or which rail it sits on. */
+export const RAIL_LABEL_GAP = 8;
+/** Clear space between a title and the frame's own outer edge, on the far side of the title from
+ * its rail. */
+export const RAIL_LABEL_EDGE_GUTTER = 4;
+/** Cap height as a share of font size for a rail title — `Thickness` and `Rocker` are two
+ * capitalised words with no descenders, so a band only has to clear the cap. Deliberately its
+ * own constant rather than a reach into `COMPACT_CAP_RATIO`, which belongs to the order form's
+ * digit-only readings and must stay free to move without dragging the editor's titles with it. */
+export const RAIL_LABEL_CAP_RATIO = 0.72;
 
 /**
  * The compact rails' own type scale and band constants (quick task 260829-vus) — see this plan's
@@ -312,6 +346,19 @@ export function cardBandDepth(orientation: RockerViewOrientation): number {
  */
 export function bottomCardBandDepth(orientation: RockerViewOrientation): number {
   return cardBandDepth(orientation) + (BOTTOM_RAIL_GAP - RAIL_GAP);
+}
+
+/**
+ * How deep a rail title's own band is (quick task 260830-2dy) — the gap off the rail's own
+ * ceiling-sized edge, the title's own cap-height at the pin CEILING, and the edge gutter to the
+ * frame. Reserved at `maxCardPinScale`, never at the live `appliedScale` — the identical rule
+ * `cardBandDepth` already follows, and the reason the frame -> fit scale -> card size -> frame
+ * loop stays closed (threat T-2DY-03, mirroring the module's own T-03J-02 note). Added OUTSIDE
+ * the existing card band on every edge, in both orientations, so a title sits the same distance
+ * from its cards whichever way the board is turned.
+ */
+export function railLabelBandDepth(orientation: RockerViewOrientation): number {
+  return RAIL_LABEL_GAP + maxCardPinScale(orientation) * RAIL_LABEL_SIZE + RAIL_LABEL_EDGE_GUTTER;
 }
 
 /**
@@ -411,9 +458,14 @@ export function rockerViewLayout({
 
   // The applied card-pin scale, resolved once — 1 (unpinned) whenever this call does not draw
   // cards at all, so the pin is provably unreachable from the compact/none paths regardless of
-  // what the caller passes (quick task 260830-03j). `pinCeiling` is a pure function of
-  // `orientation` alone, so every frame reserve below can use it without re-deriving it.
-  const pinCeiling = maxCardPinScale(orientation);
+  // what the caller passes (quick task 260830-03j). `pinCeiling` is keyed off `effectiveHorizontal`,
+  // not the raw `orientation` argument: `"compact"` mode's own contract (`RockerStationRails`'s
+  // header comment) is that it is identical whichever orientation the caller passes, and
+  // `maxCardWidth`/`maxCardHeight` below (also read by the rail-title anchors, quick task
+  // 260830-2dy) would otherwise leak the raw argument into a mode that must ignore it entirely.
+  // For `"full"`/`"none"`, `effectiveHorizontal` already equals `horizontal`, so this resolves to
+  // exactly `maxCardPinScale(orientation)` there — no behaviour change on either of those paths.
+  const pinCeiling = maxCardPinScale(effectiveHorizontal ? "horizontal" : orientation);
   const appliedScale = showStationCards ? clamp(cardScale, 1, pinCeiling) : 1;
   const cardWidth = STATION_CARD_WIDTH * appliedScale;
   const cardHeight = STATION_CARD_HEIGHT * appliedScale;
@@ -436,11 +488,13 @@ export function rockerViewLayout({
     baselineY = deckTopY + maxDeckIn * scale;
     viewH = baselineY + COMPACT_BOTTOM_BAND;
   } else {
-    const topPad = showStationCards ? PAD_TOP : BARE_PAD;
+    const topPad = showStationCards ? railLabelBandDepth(orientation) : BARE_PAD;
     const band = showStationCards ? cardBandDepth(orientation) : 0;
     deckTopY = topPad + band;
     baselineY = deckTopY + maxDeckIn * scale;
-    viewH = baselineY + (showStationCards ? bottomCardBandDepth(orientation) : BARE_PAD);
+    viewH =
+      baselineY +
+      (showStationCards ? bottomCardBandDepth(orientation) + railLabelBandDepth(orientation) : BARE_PAD);
   }
 
   // Bottom (rocker) rail — its own, larger gap (see `BOTTOM_RAIL_GAP`): this rail measures from
@@ -469,22 +523,23 @@ export function rockerViewLayout({
     },
   };
 
-  // Length label anchor. Horizontal keeps today's value byte-identical. Vertical moves it clear
-  // of the deck rail's nose-station cards (finding 6) — but only when cards are actually drawn;
-  // otherwise the label is never rendered, and the horizontal values keep the field finite.
-  // Compact never draws the label either (`showStationCards` is false there too), so it lands
-  // here as well, identically regardless of the orientation argument.
-  let labelX: number;
-  let labelY: number;
-  if (horizontal || !showStationCards) {
-    labelX = PAD_X;
-    labelY = PAD_TOP - 8;
-  } else {
-    labelX = PAD_X + cardDy - LENGTH_LABEL_GAP;
-    labelY = deckRailY - cardWidth / 2;
-  }
-
   const boardSpan = resolveEffectiveLengthIn(lengthIn) * scale;
+
+  // Rail titles' own anchors (quick task 260830-2dy) — see this plan's `<design_decision>`
+  // sections 2 and 3. Anchored off the CEILING-sized rail edge (`maxCardHeight`/`maxCardWidth`),
+  // not the live one, so a title's position is frame-invariant: it never walks when the card-pin
+  // scale changes. Computed in every mode so none can ever be `NaN`; a title is only actually
+  // drawn when `stationRails === "full"`.
+  const railLabelSize = RAIL_LABEL_SIZE * appliedScale;
+  const deckRailFarY = deckTickEndY - (effectiveHorizontal ? maxCardHeight : maxCardWidth);
+  const deckLabelY = deckRailFarY - RAIL_LABEL_GAP;
+  const bottomRailFarY = tickEndY + (effectiveHorizontal ? maxCardHeight : maxCardWidth);
+  const bottomLabelY = bottomRailFarY + RAIL_LABEL_GAP + railLabelSize * RAIL_LABEL_CAP_RATIO;
+  // The board's own middle station. The vertical half-cap term exists because nose-up the glyph
+  // box grows along the station axis; without it both titles would sit a hair nose-ward of the
+  // middle. Zero in horizontal, so horizontal stays byte-exact on the middle station.
+  const labelStationX =
+    PAD_X + boardSpan / 2 + (effectiveHorizontal ? 0 : (railLabelSize * RAIL_LABEL_CAP_RATIO) / 2);
 
   let minX: number;
   let minY: number;
@@ -504,17 +559,25 @@ export function rockerViewLayout({
     // is 1). Without cards there is no rail to clear, so the cross axis falls back to the board's
     // own worst-case box plus a hairline of pad on each side. (Compact never reaches this branch —
     // `effectiveHorizontal` is always true there.)
-    const crossFar = showStationCards ? tickEndY + maxCardWidth + CARD_GUTTER : baselineY + BARE_PAD;
-    const crossNear = showStationCards ? deckTickEndY - maxCardWidth - CARD_GUTTER : deckTopY - BARE_PAD;
+    // Each rail title's own band sits OUTSIDE the card-rail band, on the far side from the board
+    // (quick task 260830-2dy) — the same `railLabelBandDepth` the horizontal frame's `topPad`/
+    // `viewH` use, added after the existing `+ maxCardWidth + CARD_GUTTER` term.
+    const crossFar = showStationCards
+      ? tickEndY + maxCardWidth + CARD_GUTTER + railLabelBandDepth(orientation)
+      : baselineY + BARE_PAD;
+    const crossNear = showStationCards
+      ? deckTickEndY - maxCardWidth - CARD_GUTTER - railLabelBandDepth(orientation)
+      : deckTopY - BARE_PAD;
     minX = -crossFar;
     width = crossFar - crossNear;
 
-    // Long axis (rotated "height"): from the label's own type band (with cards) or a hairline pad
-    // (without) to the tail card's own far edge, mirrored off the same `PAD_X`/`maxCardHeight`
-    // terms — ceiling-sized, not `cardHeight`, for the same frame-invariance reason as the cross
-    // axis above.
+    // Long axis (rotated "height"): from the nose card's own far edge to the tail card's own far
+    // edge, mirrored off the same `PAD_X`/`maxCardHeight` terms — ceiling-sized, not `cardHeight`,
+    // for the same frame-invariance reason as the cross axis above. The old (now-removed)
+    // board-length label's own long-axis reserve is gone with it (this plan's `<design_decision>`
+    // section 1) — the rail titles reserve on the CROSS axis instead, above.
     if (showStationCards) {
-      minY = PAD_X - maxCardHeight / 2 - LENGTH_LABEL_GAP - LENGTH_LABEL_SIZE - 4;
+      minY = PAD_X - maxCardHeight / 2 - 4;
       const maxY = PAD_X + boardSpan + maxCardHeight / 2 + 4;
       height = maxY - minY;
     } else {
@@ -551,8 +614,10 @@ export function rockerViewLayout({
     cardScale: appliedScale,
     cardType,
     compactRows,
-    labelX,
-    labelY,
+    railLabelSize,
+    deckLabelY,
+    bottomLabelY,
+    labelStationX,
     minX,
     minY,
     width,
