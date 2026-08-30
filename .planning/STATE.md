@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-08-30 — Completed quick task 260830-122: rocker sidebar sliders paired two-up like the Template's
+Last activity: 2026-08-30 — Completed quick task 260830-1g3: Template/Rocker toolbar buttons fill with the accent on hover and stay filled when on
 
 Progress: [██████████] 100%
 
@@ -207,6 +207,7 @@ Recent decisions affecting current work:
 | 260830-fast2 | Rocker viewer's board-length label removed from the drawing (sidebar, datasheet and order form dims strip still print Length); layout module keeps its labelX/labelY reserve, so the nose-up frame carries ~22 units of now-unused top margin — reclaim in a follow-up if it reads loose | 2026-08-30 | 1df2cc9 | (fast task — no plan dir) |
 | 260830-fast3 | Rocker viewer's bottom (rocker) rail gets its own BOTTOM_RAIL_GAP (40, double the shared RAIL_GAP) plus a matching bottomCardBandDepth: the two rails measure from different references — deck clears the worst-case deck line no board reaches (124.6 units on a 6'0"), bottom clears the baseline the board's curve actually touches (was exactly 20) — so one shared gap read as two very different distances. Order form's compact path untouched | 2026-08-30 | a58463c | (fast task — no plan dir) |
 | 260830-122 | Rocker sidebar's sliders paired two-up like the Template's: [Nose Angle | Nose Smoothness], [Nose Flatness | Tail Flatness], [Tail Smoothness | Tail Angle] — every pair already adjacent, so it is a pure fold with no slider moving in reading order; the two tip-lift Rocker sliders stay full width (pairing them would reorder). Eight rows become five and the section now fits without scrolling. Shared SliderRow extraction deliberately NOT done — the file's own header records a decision against it (each rocker slider commits through a different conversion: inches to mm, branded degrees, plain percent) — logged as a todo instead | 2026-08-30 | 3e728e8 | [260830-122-on-rocker-put-the-angle-and-correspondin](./quick/260830-122-on-rocker-put-the-angle-and-correspondin/) |
+| 260830-1g3 | Template and Rocker viewer toolbar buttons take the accent fill: every button fills on hover (accent bg, accent border, on-accent icon), and the four genuine toggles — Construction Lines and Wide view on both screens — keep that fill while ON; off means no fill. Rotate is hover-only (no aria-pressed to hang a state on) and Export Template's open-state fill was dropped (its dialog covers the button). Icon-on-fill contrast measured 5.40-7.73:1 across all four themes; six stale comments and 04-PATTERNS.md's "one button may take the accent" rule rewritten | 2026-08-30 | 41910ba | [260830-1g3-template-and-rocker-buttons-should-fill-](./quick/260830-1g3-template-and-rocker-buttons-should-fill-/) |
 
 ## Deferred Items
 
