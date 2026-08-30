@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-08-30 — Fast task: more clearance between the board and the rocker cards below it
+Last activity: 2026-08-30 — Completed quick task 260830-122: rocker sidebar sliders paired two-up like the Template's
 
 Progress: [██████████] 100%
 
@@ -206,6 +206,7 @@ Recent decisions affecting current work:
 | 260830-03j | Rocker station cards hold a constant on-screen size nose-up, matching the template's own pinned callouts: one `cardScale` scalar (new `cardPinScale`/`maxCardPinScale` in rocker-view-frame) scales card box, both rail anchors, station-axis centring and the whole type stack together, clamped to `[1, ceiling]` where the ceiling is the station pitch — exactly 1.0 horizontal by construction (nose-left is unchangeable), ~2.11 nose-up. Frame reserves at the ceiling, never the live scale, so there is no resize feedback loop. Verified in-browser: nose-up value type renders at 14px (the template's CALLOUT_PX.value); order form's compact print path byte-identical | 2026-08-30 | 4005f3e | [260830-03j-when-rocker-is-displayed-vertical-the-da](./quick/260830-03j-when-rocker-is-displayed-vertical-the-da/) |
 | 260830-fast2 | Rocker viewer's board-length label removed from the drawing (sidebar, datasheet and order form dims strip still print Length); layout module keeps its labelX/labelY reserve, so the nose-up frame carries ~22 units of now-unused top margin — reclaim in a follow-up if it reads loose | 2026-08-30 | 1df2cc9 | (fast task — no plan dir) |
 | 260830-fast3 | Rocker viewer's bottom (rocker) rail gets its own BOTTOM_RAIL_GAP (40, double the shared RAIL_GAP) plus a matching bottomCardBandDepth: the two rails measure from different references — deck clears the worst-case deck line no board reaches (124.6 units on a 6'0"), bottom clears the baseline the board's curve actually touches (was exactly 20) — so one shared gap read as two very different distances. Order form's compact path untouched | 2026-08-30 | a58463c | (fast task — no plan dir) |
+| 260830-122 | Rocker sidebar's sliders paired two-up like the Template's: [Nose Angle | Nose Smoothness], [Nose Flatness | Tail Flatness], [Tail Smoothness | Tail Angle] — every pair already adjacent, so it is a pure fold with no slider moving in reading order; the two tip-lift Rocker sliders stay full width (pairing them would reorder). Eight rows become five and the section now fits without scrolling. Shared SliderRow extraction deliberately NOT done — the file's own header records a decision against it (each rocker slider commits through a different conversion: inches to mm, branded degrees, plain percent) — logged as a todo instead | 2026-08-30 | 3e728e8 | [260830-122-on-rocker-put-the-angle-and-correspondin](./quick/260830-122-on-rocker-put-the-angle-and-correspondin/) |
 
 ## Deferred Items
 
