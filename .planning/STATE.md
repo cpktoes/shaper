@@ -5,7 +5,7 @@ milestone_name: milestone
 current_phase: 04
 status: completed
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-08-30T07:44:40.531Z"
+last_updated: "2026-08-30T08:41:14.784Z"
 last_activity: 2026-08-30
 last_activity_desc: "Completed quick task 260830-03j: nose-up rocker callouts hold the template's own on-screen size (pinned cards, print path untouched)"
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-08-30 — Completed quick task 260830-1vn: toolbar buttons keep their grey outline when switched on, fixing the dark themes
+Last activity: 2026-08-30 — Fast task: Template's Center callout spelling fixed
 
 Progress: [██████████] 100%
 
@@ -206,9 +206,10 @@ Recent decisions affecting current work:
 | 260830-03j | Rocker station cards hold a constant on-screen size nose-up, matching the template's own pinned callouts: one `cardScale` scalar (new `cardPinScale`/`maxCardPinScale` in rocker-view-frame) scales card box, both rail anchors, station-axis centring and the whole type stack together, clamped to `[1, ceiling]` where the ceiling is the station pitch — exactly 1.0 horizontal by construction (nose-left is unchangeable), ~2.11 nose-up. Frame reserves at the ceiling, never the live scale, so there is no resize feedback loop. Verified in-browser: nose-up value type renders at 14px (the template's CALLOUT_PX.value); order form's compact print path byte-identical | 2026-08-30 | 4005f3e | [260830-03j-when-rocker-is-displayed-vertical-the-da](./quick/260830-03j-when-rocker-is-displayed-vertical-the-da/) |
 | 260830-fast2 | Rocker viewer's board-length label removed from the drawing (sidebar, datasheet and order form dims strip still print Length); layout module keeps its labelX/labelY reserve, so the nose-up frame carries ~22 units of now-unused top margin — reclaim in a follow-up if it reads loose | 2026-08-30 | 1df2cc9 | (fast task — no plan dir) |
 | 260830-fast3 | Rocker viewer's bottom (rocker) rail gets its own BOTTOM_RAIL_GAP (40, double the shared RAIL_GAP) plus a matching bottomCardBandDepth: the two rails measure from different references — deck clears the worst-case deck line no board reaches (124.6 units on a 6'0"), bottom clears the baseline the board's curve actually touches (was exactly 20) — so one shared gap read as two very different distances. Order form's compact path untouched | 2026-08-30 | a58463c | (fast task — no plan dir) |
-| 260830-122 | Rocker sidebar's sliders paired two-up like the Template's: [Nose Angle | Nose Smoothness], [Nose Flatness | Tail Flatness], [Tail Smoothness | Tail Angle] — every pair already adjacent, so it is a pure fold with no slider moving in reading order; the two tip-lift Rocker sliders stay full width (pairing them would reorder). Eight rows become five and the section now fits without scrolling. Shared SliderRow extraction deliberately NOT done — the file's own header records a decision against it (each rocker slider commits through a different conversion: inches to mm, branded degrees, plain percent) — logged as a todo instead | 2026-08-30 | 3e728e8 | [260830-122-on-rocker-put-the-angle-and-correspondin](./quick/260830-122-on-rocker-put-the-angle-and-correspondin/) |
+| 260830-122 | Rocker sidebar's sliders paired two-up like the Template's: [Nose Angle \| Nose Smoothness], [Nose Flatness \| Tail Flatness], [Tail Smoothness \| Tail Angle] — every pair already adjacent, so it is a pure fold with no slider moving in reading order; the two tip-lift Rocker sliders stay full width (pairing them would reorder). Eight rows become five and the section now fits without scrolling. Shared SliderRow extraction deliberately NOT done — the file's own header records a decision against it (each rocker slider commits through a different conversion: inches to mm, branded degrees, plain percent) — logged as a todo instead | 2026-08-30 | 3e728e8 | [260830-122-on-rocker-put-the-angle-and-correspondin](./quick/260830-122-on-rocker-put-the-angle-and-correspondin/) |
 | 260830-1g3 | Template and Rocker viewer toolbar buttons take the accent fill: every button fills on hover (accent bg, accent border, on-accent icon), and the four genuine toggles — Construction Lines and Wide view on both screens — keep that fill while ON; off means no fill. Rotate is hover-only (no aria-pressed to hang a state on) and Export Template's open-state fill was dropped (its dialog covers the button). Icon-on-fill contrast measured 5.40-7.73:1 across all four themes; six stale comments and 04-PATTERNS.md's "one button may take the accent" rule rewritten | 2026-08-30 | 41910ba | [260830-1g3-template-and-rocker-buttons-should-fill-](./quick/260830-1g3-template-and-rocker-buttons-should-fill-/) |
 | 260830-1vn | Fixes a 260830-1g3 regression the founder caught in the dark themes: switching a toolbar button ON also swapped its neutral border for an accent one, which is a FILL token used as a STROKE (forbidden by globals.css's own naming rule) and dropped the control boundary below the 3:1 target in three of four themes — worst in dark, where the ON button lost its outline and read as LESS defined than its OFF neighbours. Fix is pure subtraction: 11 border classes removed across 7 buttons, accent fill untouched. Border-vs-ground now 3.70-4.13 in all four themes | 2026-08-30 | 0d5ae43 | [260830-1vn-the-dark-theme-buttons-aren-t-working-th](./quick/260830-1vn-the-dark-theme-buttons-aren-t-working-th/) |
+| 260830-fast4 | Template's middle-width callout spelled "Center" (was the British "Centre") — the only stray user-facing label; Rocker, Rails and Summary already said Center. Comment prose keeps its British spelling (centreline, centred) | 2026-08-30 | a6d61fd | (fast task — no plan dir) |
 
 ## Deferred Items
 
