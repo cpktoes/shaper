@@ -57,7 +57,6 @@
 
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef } from "react";
 import { CalloutChipFrame, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
-import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import { FOIL_THICKNESS_RANGE_IN, sampleFoil, type FoilSpec } from "@/lib/geometry/foil";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import { sampleOutline } from "@/lib/geometry/outline";
@@ -69,6 +68,7 @@ import {
 } from "@/lib/geometry/rocker-drag";
 import { buildRocker, ROCKER_LIFT_RANGE_IN, sampleRocker, type RockerSpec } from "@/lib/geometry/rocker";
 import { formatFeetInches, formatInchesFraction, inchesToMm, type Mm, mmToInches } from "@/lib/geometry/units";
+import { PAD_TOP, PAD_X, rockerViewLayout } from "./rocker-view-frame";
 
 /**
  * Drag-target and construction-marker sizing, in CSS pixels — copied from `outline-viewer.tsx`'s
@@ -84,39 +84,6 @@ const DRAG_TARGET_CORE_PX = 2.6;
 const KNOT_DOT_PX = 3;
 const DRAG_HIT_PX = 15;
 
-const VIEW_W = 900;
-const PAD_X = 40;
-/**
- * Pixels per inch, shared by BOTH axes — a shaper checks a rocker line with a straightedge on a
- * flat floor, so the drawing keeps the board's real proportions rather than exaggerating the
- * vertical axis for legibility. Derived once from the longest board this app can produce
- * (`BOARD_LENGTH_RANGE_IN.max`), so every shorter board draws at the same scale and simply
- * leaves blank frame to its right — the same fixed-frame treatment `outline-viewer.tsx`'s
- * `fixedFrame` gives the outline viewer (quick task 260823-h6l), so this window never resizes
- * around whichever board happens to be loaded.
- */
-const PX_PER_INCH = (VIEW_W - PAD_X * 2) / BOARD_LENGTH_RANGE_IN.max;
-const PAD_TOP = 26;
-/** Gap between the baseline and the output rail's tick marks. */
-const RAIL_GAP = 20;
-/** Each station card's height, in SVG user units — room for its three stacked rows (station name,
- * then the two values) at this drawing's existing type scale. */
-const STATION_CARD_HEIGHT = 50;
-/**
- * Each station card's width, in SVG user units — derived from the rail's own narrowest column
- * pitch (the 12in tip-to-station span, `12 * PX_PER_INCH`) rather than written as a literal, so
- * the relationship that keeps neighbouring cards apart survives any future change to the frame's
- * scale. The rail is sized in user units, not CSS pixels, because a pinned TEMPLATE-sized chip
- * (`CALLOUT_PX.chipW = 104`) is wider than the narrowest 82-unit pitch at this viewer's realistic
- * fit scales, which would guarantee an overlap on every board (planner_findings item 8,
- * 260829-t47). An 8-unit gutter is left between neighbouring cards.
- */
-const STATION_CARD_WIDTH = 12 * PX_PER_INCH - 8;
-/** Room below the baseline for one station card — re-expressed off `STATION_CARD_HEIGHT` so it
- * still evaluates to 58 and `viewH` (and every consumer's box aspect, including the Summary order
- * form's rocker box) is numerically unchanged. */
-const RAIL_LABEL_HEIGHT = STATION_CARD_HEIGHT + 8;
-const BOTTOM_PAD = RAIL_GAP + RAIL_LABEL_HEIGHT;
 /** Curve sampling density — enough to read as smooth at this frame's scale, well past the five
  * knots the monotone splines are built from. */
 const SAMPLES = 60;
@@ -156,6 +123,16 @@ export interface RockerViewerProps {
    * converts screen coordinates into board coordinates and passes the result up.
    */
   onDrag?: (patch: Partial<RockerSpec>) => void;
+  /**
+   * The editor-only frame gate (`rocker-view-frame.ts`'s `RockerViewLayoutInput.fitToBoard`):
+   * `true` scales every board's own length to fill the drawing's long axis, so a short board no
+   * longer draws small with blank space beside it. Defaults to `false`, which keeps the fixed
+   * range-derived frame this viewer has always drawn — `components/summary/order-form.tsx` never
+   * passes this prop, so the order form's rocker box keeps today's frame BY CONSTRUCTION (the
+   * same posture 260823-h6l gave the outline viewer's own `fixedFrame`), rather than by a guard
+   * anyone could forget to add. Only `components/rocker/rocker-editor.tsx` passes `true`.
+   */
+  fitToBoard?: boolean;
 }
 
 /**
@@ -191,6 +168,7 @@ export function RockerViewer({
   outlineGeometry,
   showConstruction = false,
   onDrag,
+  fitToBoard = false,
 }: RockerViewerProps) {
   const vertical = orientation === "vertical";
   const svgRef = useRef<SVGSVGElement>(null);
@@ -208,14 +186,17 @@ export function RockerViewer({
   // The tallest a drawn board can ever get: the highest rocker lift plus the thickest foil, so
   // the deck curve can never be clipped by the frame regardless of what a shaper dials in.
   const maxDeckIn = ROCKER_LIFT_RANGE_IN.max + FOIL_THICKNESS_RANGE_IN.max;
-  const viewH = PAD_TOP + maxDeckIn * PX_PER_INCH + BOTTOM_PAD;
-  const baselineY = viewH - BOTTOM_PAD;
+  // The one place the drawing's scale and frame are decided (`rocker-view-frame.ts`) — `scale`,
+  // `viewH`, `baselineY` and the frame below all come from here, so `pxX`/`pxY` and the drag
+  // inverse can never solve against a different scale than the drawing was made with.
+  const layout = rockerViewLayout({ lengthIn, maxDeckIn, orientation, fitToBoard });
+  const { scale, baselineY, railY, tickEndY, cardDy, cardWidth, cardHeight } = layout;
 
   // Nose on the left: station = length (nose tip) draws at the frame's left pad; station = 0
   // (tail tip) draws further right. A shorter board's tail simply lands further left, leaving
   // blank frame on the right rather than changing scale.
-  const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * PX_PER_INCH;
-  const pxY = (heightIn: number) => baselineY - heightIn * PX_PER_INCH;
+  const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * scale;
+  const pxY = (heightIn: number) => baselineY - heightIn * scale;
 
   const bottomPoints: { x: number; y: number }[] = [];
   const deckPoints: { x: number; y: number }[] = [];
@@ -304,19 +285,13 @@ export function RockerViewer({
     },
   ];
 
-  const railY = baselineY + RAIL_GAP;
-
-  // Canonical (horizontal) viewBox is the drawing exactly as computed above. Rotating the content
-  // group `rotate(90)` maps canonical (x, y) -> (-y, x): the station axis (canonical x, spanning
-  // [0, VIEW_W]) becomes the new vertical axis running top (nose) to bottom (tail), and the
-  // height axis (canonical y, spanning roughly [0, viewH]) becomes the new horizontal axis,
-  // negated. So the rotated frame is `-viewH 0 viewH VIEW_W` — width and height swap, and the new
-  // minX sits at -viewH to keep every rotated point's x non-negative-bounded (a small blank
-  // margin near 0 is the trade, cheaper than measuring the drawn content's exact bounds).
-  const viewBox = vertical ? `${(-viewH).toFixed(2)} 0 ${viewH.toFixed(2)} ${VIEW_W}` : `0 0 ${VIEW_W} ${viewH.toFixed(2)}`;
-  const vbW = vertical ? viewH : VIEW_W;
-  const vbH = vertical ? VIEW_W : viewH;
-  const fitScale = useSvgFitScale(svgRef, vbW, vbH);
+  // Both the viewBox string and its frame width/height come straight off the layout — the one
+  // place this drawing's frame is decided. The vertical frame is built from its own rotated
+  // content (the nose card's near edge to the tail card's far edge on the long axis, the card
+  // rail's own outer edge to the baseline on the cross axis), NOT a transposition of the
+  // horizontal frame — the defect quick task 260825-w8d fixed on the outline viewer.
+  const { viewBox, width: frameWidth, height: frameHeight } = layout;
+  const fitScale = useSvgFitScale(svgRef, frameWidth, frameHeight);
   /** User units per CSS pixel — what the px-denominated drag-target sizes above are drawn in. */
   const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
 
@@ -361,8 +336,8 @@ export function RockerViewer({
     const ctm = el?.getScreenCTM();
     if (!el || !ctm) return null;
     const local = new DOMPoint(event.clientX, event.clientY).matrixTransform(ctm.inverse());
-    const stationIn = lengthIn - (local.x - PAD_X) / PX_PER_INCH;
-    const heightIn = (baselineY - local.y) / PX_PER_INCH;
+    const stationIn = lengthIn - (local.x - PAD_X) / scale;
+    const heightIn = (baselineY - local.y) / scale;
     return { station: inchesToMm(stationIn), height: inchesToMm(heightIn) };
   }
 
@@ -438,52 +413,58 @@ export function RockerViewer({
           <>
             {stations.map((s) => {
               const x = pxX(s.stationIn);
-              const cardX = x - STATION_CARD_WIDTH / 2;
+              const cardX = x - cardWidth / 2;
               return (
                 <g key={s.key}>
                   <line
                     x1={x}
                     y1={baselineY}
                     x2={x}
-                    y2={railY}
+                    y2={tickEndY}
                     stroke="var(--outline-station-line)"
                     strokeWidth={1}
                   />
                   <Upright x={x} y={railY} vertical={vertical}>
-                    <CalloutChipFrame x={cardX} y={railY} width={STATION_CARD_WIDTH} height={STATION_CARD_HEIGHT} />
-                    <text
-                      x={x}
-                      y={railY + 13}
-                      textAnchor="middle"
-                      style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
-                      fill="var(--outline-callout-label)"
-                    >
-                      {s.name}
-                    </text>
-                    {/* The rocker row moving from the muted label colour to the ink colour is
-                        deliberate: in this grammar a value is a value, and it is the label above
-                        that is muted. The centre station has no rocker number (its lift is zero
-                        by definition) — an em-dash keeps its row on the same line as the other
-                        four cards, drawn in the muted label colour since it stands in for an
-                        absent value rather than a real one. */}
-                    <text
-                      x={x}
-                      y={railY + 28}
-                      textAnchor="middle"
-                      style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
-                      fill={s.rockerValue !== null ? "var(--outline-ink)" : "var(--outline-callout-label)"}
-                    >
-                      {s.rockerValue !== null ? `R ${s.rockerValue}` : "R —"}
-                    </text>
-                    <text
-                      x={x}
-                      y={railY + 43}
-                      textAnchor="middle"
-                      style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
-                      fill="var(--outline-ink)"
-                    >
-                      T {s.thicknessValue}
-                    </text>
+                    {/* `cardDy` (0 in horizontal, a no-op) shifts the card along the rotated
+                        station axis in vertical, centring it on the station it names — the outer
+                        composition is a pure translation (finding 4), so this inner
+                        `translate(0, dy)` lands exactly there. */}
+                    <g transform={`translate(0, ${cardDy.toFixed(2)})`}>
+                      <CalloutChipFrame x={cardX} y={railY} width={cardWidth} height={cardHeight} />
+                      <text
+                        x={x}
+                        y={railY + 13}
+                        textAnchor="middle"
+                        style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
+                        fill="var(--outline-callout-label)"
+                      >
+                        {s.name}
+                      </text>
+                      {/* The rocker row moving from the muted label colour to the ink colour is
+                          deliberate: in this grammar a value is a value, and it is the label above
+                          that is muted. The centre station has no rocker number (its lift is zero
+                          by definition) — an em-dash keeps its row on the same line as the other
+                          four cards, drawn in the muted label colour since it stands in for an
+                          absent value rather than a real one. */}
+                      <text
+                        x={x}
+                        y={railY + 28}
+                        textAnchor="middle"
+                        style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                        fill={s.rockerValue !== null ? "var(--outline-ink)" : "var(--outline-callout-label)"}
+                      >
+                        {s.rockerValue !== null ? `R ${s.rockerValue}` : "R —"}
+                      </text>
+                      <text
+                        x={x}
+                        y={railY + 43}
+                        textAnchor="middle"
+                        style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                        fill="var(--outline-ink)"
+                      >
+                        T {s.thicknessValue}
+                      </text>
+                    </g>
                   </Upright>
                 </g>
               );
@@ -492,6 +473,11 @@ export function RockerViewer({
               <text
                 x={PAD_X}
                 y={PAD_TOP - 8}
+                // Vertical only: the label's anchor sits near the frame's rail-side edge (final x
+                // near 0), so a start-anchored run overshoots straight past the frame's max x
+                // (today's defect — finding 5). End-anchoring makes it run back INTO the frame
+                // from its own anchor instead. Horizontal is untouched.
+                textAnchor={vertical ? "end" : undefined}
                 style={{ fontSize: 12, fontWeight: 800, fontFamily: "var(--font-display)", letterSpacing: "0.1em" }}
                 fill="var(--outline-ink)"
               >
