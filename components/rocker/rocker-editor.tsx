@@ -235,7 +235,7 @@ export function RockerEditor() {
                 onClick={() => setOrientation((o) => (o === "horizontal" ? "vertical" : "horizontal"))}
                 aria-label="Rotate the board"
                 title="Rotate the board"
-                className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+                className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
               >
                 <RotateBoardIcon className="size-6" />
               </button>
@@ -253,7 +253,7 @@ export function RockerEditor() {
                 // toggle with a truthful aria-pressed hook to hang the persistent fill on.
                 // Hovering it while already on changes nothing, since hover and pressed paint
                 // the identical accent variant.
-                className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+                className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
               >
                 <LocateFixedIcon className="size-6" />
               </button>
@@ -269,7 +269,7 @@ export function RockerEditor() {
                 // a genuine on/off toggle too, so it carries the same toggle add-on as
                 // Construction Lines: it stays accent-filled the whole time it's on, including
                 // while hovered, and drops the fill completely when off.
-                className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+                className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
               >
                 {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
               </button>

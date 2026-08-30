@@ -165,7 +165,7 @@ export function OutlineEditor() {
             // same reason (D-02): it can't be seen while the dialog is open, and keeping it
             // would have sat at equal CSS specificity with the new hover fill — an
             // order-dependent conflict over a state nobody can see.
-            className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+            className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
           >
             <DownloadIcon className="size-6" />
           </button>
@@ -202,7 +202,7 @@ export function OutlineEditor() {
         // offsets used to land. An absolute child offsets from its containing block's
         // padding box, so re-adding an offset here would double the inset and shift the
         // button — leave these at zero.
-        className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+        className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
       >
         <RotateBoardIcon className="size-6" />
       </button>
@@ -229,7 +229,7 @@ export function OutlineEditor() {
         // (components/outline/outline-viewer.tsx's drag targets — a ring with a filled centre
         // dot, plus tick marks reads closest to LocateFixed of the candidates lucide-react
         // offers), so the button previews the very glyph the shaper is about to see on the board.
-        className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+        className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
       >
         <LocateFixedIcon className="size-6" />
       </button>
@@ -245,7 +245,7 @@ export function OutlineEditor() {
         // so it carries the same toggle add-on as Construction Lines: it stays accent-filled
         // the whole time it's on, including while hovered, and drops the fill completely when
         // off.
-        className="absolute top-0 right-30 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+        className="absolute top-0 right-30 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
       >
         {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
       </button>
