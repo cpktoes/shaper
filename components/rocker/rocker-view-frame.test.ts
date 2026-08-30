@@ -23,12 +23,15 @@ import {
   STATION_VALUE_SIZE,
   VIEW_W,
   cardBandDepth,
+  cardPinScale,
   compactRailReadingXs,
   compactValuePrintPx,
   compactValueWidth,
+  maxCardPinScale,
   rockerViewLayout,
   stationCardRect,
   type RockerCardSide,
+  type RockerStationRails,
   type RockerViewOrientation,
 } from "./rocker-view-frame";
 
@@ -822,6 +825,357 @@ describe("compactRailReadingXs", () => {
     for (let i = 1; i < xs.length; i++) {
       const overlap = xs[i - 1] + readings[i - 1].width / 2 - (xs[i] - readings[i].width / 2);
       expect(overlap).toBeLessThanOrEqual(1e-6);
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Card-pin scale (quick task 260830-03j) — holding a constant on-screen card size nose-up, the
+// way `callout-primitives.tsx`'s `pinnedCalloutSizes` already does for the TEMPLATE screen.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+describe("maxCardPinScale", () => {
+  it("horizontal resolves to exactly 1 — STATION_CARD_WIDTH already saturates the tightest pitch", () => {
+    expect(maxCardPinScale("horizontal")).toBe(1);
+  });
+
+  it("vertical resolves to the station-pitch ceiling, greater than 2 and finite", () => {
+    const expected =
+      (12 * (VIEW_W - 2 * PAD_X)) / BOARD_LENGTH_RANGE_IN.max / STATION_CARD_HEIGHT -
+      CARD_GUTTER / STATION_CARD_HEIGHT;
+    const actual = maxCardPinScale("vertical");
+    expect(Number.isFinite(actual)).toBe(true);
+    expect(actual).toBeCloseTo(expected, 8);
+    expect(actual).toBeGreaterThan(2);
+  });
+});
+
+describe("cardPinScale", () => {
+  it("lands the value row on the target px at a representative vertical fit scale (~1.597 at fitScale 0.674, target 14)", () => {
+    const result = cardPinScale(0.674, 14, "vertical");
+    expect(result).toBeCloseTo(1.597, 2);
+    expect(STATION_VALUE_SIZE * result * 0.674).toBeCloseTo(14, 2);
+  });
+
+  it("returns exactly 1 for horizontal at every fit scale and target — the ceiling clamps it", () => {
+    for (const fitScale of [0.2, 0.5, 1.0, 2.0]) {
+      for (const targetValuePx of [11, 14, 20]) {
+        expect(cardPinScale(fitScale, targetValuePx, "horizontal")).toBe(1);
+      }
+    }
+  });
+
+  it("never returns below 1, and never above the orientation's own ceiling", () => {
+    for (const orientation of ORIENTATIONS) {
+      const ceiling = maxCardPinScale(orientation);
+      for (const fitScale of [0.1, 0.3, 0.674, 1, 3]) {
+        for (const targetValuePx of [8, 11, 14, 20, 40]) {
+          const result = cardPinScale(fitScale, targetValuePx, orientation);
+          expect(result).toBeGreaterThanOrEqual(1);
+          expect(result).toBeLessThanOrEqual(ceiling);
+        }
+      }
+    }
+  });
+
+  it("returns 1 for a zero, negative, NaN or Infinity fit scale — never a NaN card", () => {
+    for (const fitScale of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(cardPinScale(fitScale, 14, "vertical")).toBe(1);
+      expect(cardPinScale(fitScale, 14, "horizontal")).toBe(1);
+    }
+  });
+});
+
+describe("rockerViewLayout — cardScale default (unpinned)", () => {
+  it("with cardScale omitted, cardWidth/cardHeight/cardDy/railY/deckRailY match today's unpinned values at every length, both orientations", () => {
+    for (const orientation of ORIENTATIONS) {
+      for (const lengthIn of [60, 78, 120]) {
+        const omitted = rockerViewLayout({
+          lengthIn,
+          maxDeckIn: MAX_DECK_IN,
+          orientation,
+          fitToBoard: true,
+          stationRails: "full",
+        });
+        const explicit = rockerViewLayout({
+          lengthIn,
+          maxDeckIn: MAX_DECK_IN,
+          orientation,
+          fitToBoard: true,
+          stationRails: "full",
+          cardScale: 1,
+        });
+        expect(omitted).toEqual(explicit);
+        expect(omitted.cardWidth).toBe(STATION_CARD_WIDTH);
+        expect(omitted.cardHeight).toBe(STATION_CARD_HEIGHT);
+      }
+    }
+  });
+});
+
+describe("rockerViewLayout — cardScale applies and echoes", () => {
+  it("at cardScale: 2 vertical, cardWidth and cardHeight are exactly doubled and cardScale echoes what was applied", () => {
+    const layout = rockerViewLayout({
+      lengthIn: 78,
+      maxDeckIn: MAX_DECK_IN,
+      orientation: "vertical",
+      fitToBoard: true,
+      stationRails: "full",
+      cardScale: 2,
+    });
+    expect(layout.cardWidth).toBe(STATION_CARD_WIDTH * 2);
+    expect(layout.cardHeight).toBe(STATION_CARD_HEIGHT * 2);
+    expect(layout.cardScale).toBe(2);
+  });
+
+  it("passing cardScale: 3 vertical clamps the applied scale to maxCardPinScale('vertical')", () => {
+    const ceiling = maxCardPinScale("vertical");
+    const layout = rockerViewLayout({
+      lengthIn: 78,
+      maxDeckIn: MAX_DECK_IN,
+      orientation: "vertical",
+      fitToBoard: true,
+      stationRails: "full",
+      cardScale: 3,
+    });
+    expect(layout.cardScale).toBeCloseTo(ceiling, 10);
+    expect(layout.cardWidth).toBeCloseTo(STATION_CARD_WIDTH * ceiling, 6);
+  });
+});
+
+describe("rockerViewLayout — cardScale cannot reach compact/none", () => {
+  it("stationRails 'compact' and 'none' return an identical layout for cardScale 1, 1.6 and 2.2", () => {
+    for (const stationRails of ["compact", "none"] as const) {
+      for (const lengthIn of [60, 78, 120]) {
+        for (const orientation of ORIENTATIONS) {
+          const base = rockerViewLayout({ lengthIn, maxDeckIn: MAX_DECK_IN, orientation, fitToBoard: true, stationRails });
+          for (const cardScale of [1, 1.6, 2.2]) {
+            const scaled = rockerViewLayout({
+              lengthIn,
+              maxDeckIn: MAX_DECK_IN,
+              orientation,
+              fitToBoard: true,
+              stationRails,
+              cardScale,
+            });
+            expect(scaled).toEqual(base);
+          }
+        }
+      }
+    }
+  });
+});
+
+describe("rockerViewLayout — vertical: clearance holds at every card scale", () => {
+  it("keeps every card's near edge exactly RAIL_GAP from the board box at cardScale 1, 1.6 and the ceiling", () => {
+    const ceiling = maxCardPinScale("vertical");
+    for (const lengthIn of [60, 78, 120]) {
+      for (const cardScale of [1, 1.6, ceiling]) {
+        const layout = rockerViewLayout({
+          lengthIn,
+          maxDeckIn: MAX_DECK_IN,
+          orientation: "vertical",
+          fitToBoard: true,
+          stationRails: "full",
+          cardScale,
+        });
+        const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * layout.scale;
+        const baselineFinalX = -layout.baselineY;
+        const deckTopFinalX = -(layout.baselineY - MAX_DECK_IN * layout.scale);
+        for (const stationIn of stationsIn(lengthIn)) {
+          const bottomCard = stationCardRect(layout, pxX(stationIn), "vertical", "bottom");
+          const bottomNearEdge = bottomCard.x + bottomCard.width;
+          expect(baselineFinalX - bottomNearEdge).toBeCloseTo(RAIL_GAP, 6);
+
+          const deckCard = stationCardRect(layout, pxX(stationIn), "vertical", "deck");
+          const deckNearEdge = deckCard.x;
+          expect(deckNearEdge - deckTopFinalX).toBeCloseTo(RAIL_GAP, 6);
+        }
+      }
+    }
+  });
+});
+
+describe("rockerViewLayout — cardType stays inside cardHeight at every scale", () => {
+  it("keeps both the card stack and readout stack inside layout.cardHeight, in their intended order, at cardScale 1, 1.6 and the ceiling", () => {
+    const ceiling = maxCardPinScale("vertical");
+    for (const cardScale of [1, 1.6, ceiling]) {
+      const layout = rockerViewLayout({
+        lengthIn: 78,
+        maxDeckIn: MAX_DECK_IN,
+        orientation: "vertical",
+        fitToBoard: true,
+        stationRails: "full",
+        cardScale,
+      });
+      const { cardType, cardHeight } = layout;
+
+      expect(cardType.cardNameDy).toBeLessThan(cardType.cardValueDy);
+      const cardTop = cardType.cardNameDy - cardType.nameSize;
+      const cardBottom = cardType.cardValueDy + cardType.valueSize / 4;
+      expect(cardTop).toBeGreaterThan(0);
+      expect(cardBottom).toBeLessThanOrEqual(cardHeight);
+
+      expect(cardType.readoutValueDy).toBeLessThan(cardType.readoutNameDy);
+      const readoutTop = cardType.readoutValueDy - cardType.valueSize;
+      const readoutBottom = cardType.readoutNameDy + cardType.nameSize / 4;
+      expect(readoutTop).toBeGreaterThan(0);
+      expect(readoutBottom).toBeLessThanOrEqual(cardHeight);
+    }
+  });
+
+  it("keeps cardType.valueSize / cardType.nameSize equal to STATION_VALUE_SIZE / STATION_NAME_SIZE at every scale", () => {
+    const ceiling = maxCardPinScale("vertical");
+    for (const cardScale of [1, 1.6, ceiling]) {
+      const layout = rockerViewLayout({
+        lengthIn: 78,
+        maxDeckIn: MAX_DECK_IN,
+        orientation: "vertical",
+        fitToBoard: true,
+        stationRails: "full",
+        cardScale,
+      });
+      expect(layout.cardType.valueSize / layout.cardType.nameSize).toBeCloseTo(
+        STATION_VALUE_SIZE / STATION_NAME_SIZE,
+        10,
+      );
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// The three paths this fix must not disturb (quick task 260830-03j, Task 2) — protecting each by
+// its own name rather than this task's, so a later change that breaks one of these fails loudly.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+const ALL_STATION_RAILS: RockerStationRails[] = ["full", "compact", "none"];
+const PIN_SCALES = [1, 1.3, 1.6, 2.2];
+
+describe("rockerViewLayout — frame invariance across the card scale (protects threat T-03J-02)", () => {
+  it("keeps minX, minY, width, height and viewBox IDENTICAL for cardScale 1, 1.3, 1.6 and 2.2, in both orientations and all three rail grammars — the frame -> fit -> card size -> frame loop stays closed off because the frame is reserved at the ceiling, never at the live scale", () => {
+    for (const orientation of ORIENTATIONS) {
+      for (const stationRails of ALL_STATION_RAILS) {
+        for (const lengthIn of [60, 78, 120]) {
+          const base = rockerViewLayout({ lengthIn, maxDeckIn: MAX_DECK_IN, orientation, fitToBoard: true, stationRails });
+          for (const cardScale of PIN_SCALES) {
+            const scaled = rockerViewLayout({
+              lengthIn,
+              maxDeckIn: MAX_DECK_IN,
+              orientation,
+              fitToBoard: true,
+              stationRails,
+              cardScale,
+            });
+            expect(scaled.minX).toBe(base.minX);
+            expect(scaled.minY).toBe(base.minY);
+            expect(scaled.width).toBe(base.width);
+            expect(scaled.height).toBe(base.height);
+            expect(scaled.viewBox).toBe(base.viewBox);
+          }
+        }
+      }
+    }
+  });
+});
+
+describe("rockerViewLayout — horizontal is byte-identical at every card scale", () => {
+  it("deep-equals the default-scale horizontal 'full' layout for cardScale 1, 1.6 and 2.2, across the length sweep — every field, not just the frame", () => {
+    for (const lengthIn of LENGTHS_IN) {
+      const base = rockerViewLayout({
+        lengthIn,
+        maxDeckIn: MAX_DECK_IN,
+        orientation: "horizontal",
+        fitToBoard: true,
+        stationRails: "full",
+      });
+      for (const cardScale of [1, 1.6, 2.2]) {
+        const scaled = rockerViewLayout({
+          lengthIn,
+          maxDeckIn: MAX_DECK_IN,
+          orientation: "horizontal",
+          fitToBoard: true,
+          stationRails: "full",
+          cardScale,
+        });
+        expect(scaled).toEqual(base);
+      }
+    }
+  });
+});
+
+describe("rockerViewLayout — the print path cannot be reached by the card-pin scale", () => {
+  it("'compact' and 'none' deep-equal the default-scale layout at every card scale, both orientations, across the length sweep", () => {
+    for (const stationRails of ["compact", "none"] as const) {
+      for (const orientation of ORIENTATIONS) {
+        for (const lengthIn of LENGTHS_IN) {
+          const base = rockerViewLayout({ lengthIn, maxDeckIn: MAX_DECK_IN, orientation, fitToBoard: true, stationRails });
+          for (const cardScale of PIN_SCALES) {
+            const scaled = rockerViewLayout({
+              lengthIn,
+              maxDeckIn: MAX_DECK_IN,
+              orientation,
+              fitToBoard: true,
+              stationRails,
+              cardScale,
+            });
+            expect(scaled).toEqual(base);
+          }
+        }
+      }
+    }
+  });
+
+  it("compactValuePrintPx still clears the 9pt (11.9px) bar at every card scale — the Summary order form prints from this path", () => {
+    for (const { lengthIn, maxDeckIn } of [
+      { lengthIn: 60, maxDeckIn: 5.0 },
+      { lengthIn: 78, maxDeckIn: 5.5 },
+      { lengthIn: 120, maxDeckIn: 6.5 },
+    ]) {
+      for (const cardScale of PIN_SCALES) {
+        const layout = rockerViewLayout({
+          lengthIn,
+          maxDeckIn,
+          orientation: "horizontal",
+          fitToBoard: true,
+          stationRails: "compact",
+          cardScale,
+        });
+        expect(compactValuePrintPx(layout)).toBeGreaterThanOrEqual(11.9);
+      }
+    }
+  });
+});
+
+describe("rockerViewLayout — cards never collide at the ceiling scale (mirrors the non-overlap and vertical-containment suites above)", () => {
+  it("keeps a positive gutter between adjacent cards along the station axis, and every card fully inside the frame on both axes, at cardScale = maxCardPinScale('vertical')", () => {
+    const ceiling = maxCardPinScale("vertical");
+    for (const lengthIn of LENGTHS_IN) {
+      const layout = rockerViewLayout({
+        lengthIn,
+        maxDeckIn: MAX_DECK_IN,
+        orientation: "vertical",
+        fitToBoard: true,
+        stationRails: "full",
+        cardScale: ceiling,
+      });
+      const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * layout.scale;
+      for (const side of SIDES) {
+        const cards = stationsIn(lengthIn)
+          .map((s) => stationCardRect(layout, pxX(s), "vertical", side))
+          .sort((a, b) => a.y - b.y);
+
+        for (let i = 1; i < cards.length; i++) {
+          const gutter = cards[i].y - (cards[i - 1].y + cards[i - 1].height);
+          expect(gutter).toBeGreaterThan(0);
+        }
+
+        for (const card of cards) {
+          expect(card.x).toBeGreaterThanOrEqual(layout.minX);
+          expect(card.x + card.width).toBeLessThanOrEqual(layout.minX + layout.width);
+          expect(card.y).toBeGreaterThanOrEqual(layout.minY);
+          expect(card.y + card.height).toBeLessThanOrEqual(layout.minY + layout.height);
+        }
+      }
     }
   });
 });

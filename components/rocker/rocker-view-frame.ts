@@ -75,6 +75,17 @@ export interface RockerViewLayoutInput {
    * reserves nothing but a hairline of pad. No default: every call site has to say which it is.
    */
   stationRails: RockerStationRails;
+  /**
+   * A per-consumer pin choice (quick task 260830-03j), mirroring `callout-primitives.tsx`'s own
+   * `pinCalloutText` contract: 1 (the default) means "unpinned", i.e. exactly the card size this
+   * module has always drawn — the order form's own path (`stationRails` is never `"full"` there)
+   * forces the applied scale to 1 regardless of what this field carries, so the pin can never
+   * reach the print path. Only the rocker EDITOR passes a scale above 1, computed by `cardPinScale`
+   * from its own live fit measurement. Clamped into `[1, maxCardPinScale(orientation)]` inside
+   * `rockerViewLayout`; a non-finite value resolves to 1, the same fallback posture
+   * `resolveEffectiveLengthIn` gives a corrupt `lengthIn` (threat T-03J-01).
+   */
+  cardScale?: number;
 }
 
 /** One compact-mode reading row's three anchors, in canonical (horizontal) coordinates — see
@@ -98,6 +109,18 @@ export interface RockerCompactRow {
 export interface RockerCompactRows {
   deck: RockerCompactRow;
   bottom: RockerCompactRow;
+}
+
+/** A card's whole type stack, scaled by the applied `cardScale` — see `RockerViewLayout.cardType`.
+ * `nameSize`/`valueSize` replace `STATION_NAME_SIZE`/`STATION_VALUE_SIZE` at the call site; the
+ * four `*Dy` fields replace `CARD_NAME_DY`/`CARD_VALUE_DY`/`READOUT_VALUE_DY`/`READOUT_NAME_DY`. */
+export interface RockerCardType {
+  nameSize: number;
+  valueSize: number;
+  cardNameDy: number;
+  cardValueDy: number;
+  readoutValueDy: number;
+  readoutNameDy: number;
 }
 
 export interface RockerViewLayout {
@@ -128,6 +151,14 @@ export interface RockerViewLayout {
   cardDy: number;
   cardWidth: number;
   cardHeight: number;
+  /** The applied card-pin scale, after clamping — 1 in every mode but `"full"`, where it echoes
+   * whatever `cardScale` resolved to (quick task 260830-03j). `rocker-viewer.tsx` reads this only
+   * to know what was actually applied; it derives no arithmetic from it (Rule 1). */
+  cardScale: number;
+  /** The card's own type stack, scaled by `cardScale` together with the card box — a name/value
+   * pair can never escape its own card frame because one scalar moves both (quick task
+   * 260830-03j). Each field is the matching module constant times `cardScale`. */
+  cardType: RockerCardType;
   /** The compact rails' own three row anchors (`"compact"` mode only) — populated in every mode
    * so the field is never `NaN`; outside compact it is unused and the existing card fields above
    * carry the drawing. */
@@ -250,7 +281,53 @@ export const STATION_CARD_WIDTH = 12 * FIXED_SCALE - CARD_GUTTER;
  * one shared anchor is what keeps a card and a plain reading line up along the same rail.
  */
 export function cardBandDepth(orientation: RockerViewOrientation): number {
-  return RAIL_GAP + (orientation === "horizontal" ? STATION_CARD_HEIGHT : STATION_CARD_WIDTH) + CARD_GUTTER;
+  const pinCeiling = maxCardPinScale(orientation);
+  return RAIL_GAP + pinCeiling * (orientation === "horizontal" ? STATION_CARD_HEIGHT : STATION_CARD_WIDTH) + CARD_GUTTER;
+}
+
+/**
+ * The station-pitch ceiling on `cardScale` (quick task 260830-03j) — how far a card may grow along
+ * the station axis before it touches its neighbour at the narrowest pitch any board produces (the
+ * 12in tip-to-@12" span at `FIXED_SCALE`, already `fitToBoard`'s own worst case per
+ * `STATION_CARD_WIDTH`'s derivation note).
+ *
+ * Nose-left a card presents its WIDTH along the station axis, and `STATION_CARD_WIDTH` IS
+ * `12 * FIXED_SCALE - CARD_GUTTER` — the same numerator and denominator, so this resolves to
+ * EXACTLY 1: horizontal is already saturated and provably cannot change, not merely unchanged by
+ * convention. Nose-up a rotated card presents its HEIGHT along the station axis instead
+ * (`STATION_CARD_HEIGHT`), so the ceiling is `82 / 35` ≈ 2.11 — the vertical rail has been
+ * carrying more than twice the headroom it uses. `Math.max(1, ...)` so a ceiling can never fall
+ * below the unpinned size.
+ */
+export function maxCardPinScale(orientation: RockerViewOrientation): number {
+  const pitch = 12 * FIXED_SCALE - CARD_GUTTER;
+  const extent = orientation === "horizontal" ? STATION_CARD_WIDTH : STATION_CARD_HEIGHT;
+  return Math.max(1, pitch / extent);
+}
+
+/** Clamps `value` into `[min, max]`, treating a non-finite `value` as `min` — the same fallback
+ * posture `resolveEffectiveLengthIn` gives a corrupt `lengthIn` (threat T-03J-01), generalised so
+ * `cardPinScale` and `rockerViewLayout`'s own `appliedScale` share one guard. */
+function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * The card-pin scale that lands the card's own value row on `targetValuePx` CSS pixels under the
+ * viewer's live `fitScale` (quick task 260830-03j) — the rocker editor's own counterpart to
+ * `callout-primitives.tsx`'s `pinnedCalloutSizes`. Returns 1 (unpinned) for a non-finite or
+ * non-positive `fitScale`/`targetValuePx` — a corrupt or not-yet-measured fit must never produce a
+ * `NaN` card (threat T-03J-01) — and otherwise clamps the wanted scale into
+ * `[1, maxCardPinScale(orientation)]`: never below the unpinned size, and never past the point
+ * where a card would touch its neighbour.
+ */
+export function cardPinScale(fitScale: number, targetValuePx: number, orientation: RockerViewOrientation): number {
+  if (!Number.isFinite(fitScale) || fitScale <= 0 || !Number.isFinite(targetValuePx) || targetValuePx <= 0) {
+    return 1;
+  }
+  const wanted = targetValuePx / (STATION_VALUE_SIZE * fitScale);
+  return clamp(wanted, 1, maxCardPinScale(orientation));
 }
 
 /**
@@ -296,13 +373,27 @@ export function rockerViewLayout({
   orientation,
   fitToBoard,
   stationRails,
+  cardScale = 1,
 }: RockerViewLayoutInput): RockerViewLayout {
   const scale = resolveScale(lengthIn, fitToBoard);
-  const cardWidth = STATION_CARD_WIDTH;
-  const cardHeight = STATION_CARD_HEIGHT;
   const horizontal = orientation === "horizontal";
   const showStationCards = stationRails === "full";
   const effectiveHorizontal = horizontal || stationRails === "compact";
+
+  // The applied card-pin scale, resolved once — 1 (unpinned) whenever this call does not draw
+  // cards at all, so the pin is provably unreachable from the compact/none paths regardless of
+  // what the caller passes (quick task 260830-03j). `pinCeiling` is a pure function of
+  // `orientation` alone, so every frame reserve below can use it without re-deriving it.
+  const pinCeiling = maxCardPinScale(orientation);
+  const appliedScale = showStationCards ? clamp(cardScale, 1, pinCeiling) : 1;
+  const cardWidth = STATION_CARD_WIDTH * appliedScale;
+  const cardHeight = STATION_CARD_HEIGHT * appliedScale;
+  // The frame's own reserve, at the CEILING, never at `appliedScale` — see the header note above
+  // `cardBandDepth` (a mirror of `outline-viewer.tsx`'s `MAX_CALLOUT_SIZES`, threat T-03J-02):
+  // sizing the frame from the live card scale would close the frame -> fit scale -> card size ->
+  // frame loop, so every frame extent below is derived from these instead of `cardWidth`/`cardHeight`.
+  const maxCardWidth = STATION_CARD_WIDTH * pinCeiling;
+  const maxCardHeight = STATION_CARD_HEIGHT * pinCeiling;
 
   // Bands and baseline, symmetric about the board. A band is reserved on EITHER side only when a
   // mode actually draws into it: "full" reserves the card-rail band, "compact" reserves its own
@@ -376,20 +467,24 @@ export function rockerViewLayout({
     height = viewH;
   } else {
     // Cross axis (rotated "width"): from the bottom rail's own outer edge to the deck rail's own
-    // outer edge — both rails now, rather than only the bottom one. Without cards there is no
-    // rail to clear, so the cross axis falls back to the board's own worst-case box plus a
-    // hairline of pad on each side. (Compact never reaches this branch — `effectiveHorizontal` is
-    // always true there.)
-    const crossFar = showStationCards ? railY + cardWidth / 2 + CARD_GUTTER : baselineY + BARE_PAD;
-    const crossNear = showStationCards ? deckRailY - cardWidth / 2 - CARD_GUTTER : deckTopY - BARE_PAD;
+    // outer edge — both rails now, rather than only the bottom one. Measured from the tick ends at
+    // the CEILING-sized `maxCardWidth`, not the live rail anchors, so this reserve never depends
+    // on `appliedScale` (quick task 260830-03j; algebraically today's expressions when the ceiling
+    // is 1). Without cards there is no rail to clear, so the cross axis falls back to the board's
+    // own worst-case box plus a hairline of pad on each side. (Compact never reaches this branch —
+    // `effectiveHorizontal` is always true there.)
+    const crossFar = showStationCards ? tickEndY + maxCardWidth + CARD_GUTTER : baselineY + BARE_PAD;
+    const crossNear = showStationCards ? deckTickEndY - maxCardWidth - CARD_GUTTER : deckTopY - BARE_PAD;
     minX = -crossFar;
     width = crossFar - crossNear;
 
     // Long axis (rotated "height"): from the label's own type band (with cards) or a hairline pad
-    // (without) to the tail card's own far edge, mirrored off the same `PAD_X`/`cardHeight` terms.
+    // (without) to the tail card's own far edge, mirrored off the same `PAD_X`/`maxCardHeight`
+    // terms — ceiling-sized, not `cardHeight`, for the same frame-invariance reason as the cross
+    // axis above.
     if (showStationCards) {
-      minY = labelX - LENGTH_LABEL_SIZE - 4;
-      const maxY = PAD_X + boardSpan + cardHeight / 2 + 4;
+      minY = PAD_X - maxCardHeight / 2 - LENGTH_LABEL_GAP - LENGTH_LABEL_SIZE - 4;
+      const maxY = PAD_X + boardSpan + maxCardHeight / 2 + 4;
       height = maxY - minY;
     } else {
       minY = PAD_X - BARE_PAD;
@@ -397,6 +492,17 @@ export function rockerViewLayout({
       height = maxY - minY;
     }
   }
+
+  // The card's own type stack, scaled by the same `appliedScale` that scaled the card box — one
+  // scalar moves both, so the text can never escape its own card frame (quick task 260830-03j).
+  const cardType: RockerCardType = {
+    nameSize: STATION_NAME_SIZE * appliedScale,
+    valueSize: STATION_VALUE_SIZE * appliedScale,
+    cardNameDy: CARD_NAME_DY * appliedScale,
+    cardValueDy: CARD_VALUE_DY * appliedScale,
+    readoutValueDy: READOUT_VALUE_DY * appliedScale,
+    readoutNameDy: READOUT_NAME_DY * appliedScale,
+  };
 
   const viewBox = `${minX.toFixed(2)} ${minY.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)}`;
 
@@ -411,6 +517,8 @@ export function rockerViewLayout({
     cardDy,
     cardWidth,
     cardHeight,
+    cardScale: appliedScale,
+    cardType,
     compactRows,
     labelX,
     labelY,
