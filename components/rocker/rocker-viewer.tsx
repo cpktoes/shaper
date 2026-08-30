@@ -20,6 +20,14 @@
  * are. Every read-out, either kind, is leadered from its own rail to the exact point on the curve
  * it measures. That is the `"full"` grammar (`callouts="full"`, the default).
  *
+ * Each rail also carries its own title (quick task 260830-2dy): `Thickness` centred outside the
+ * deck rail, `Rocker` centred outside the bottom one — the same two words the sidebar's
+ * collapsible sections (`rocker-controls.tsx`) and the DATASHEET's row groups
+ * (`rocker-datasheet.tsx`) already use, so the drawing never needs a third vocabulary. Every
+ * position, size and band a title needs is decided in `rocker-view-frame.ts`
+ * (`railLabelSize`/`deckLabelY`/`bottomLabelY`/`labelStationX`); `RailTitle` below supplies only
+ * the words and the paint, `"full"` grammar only.
+ *
  * A third grammar, `"compact"` (quick task 260829-vus), is the Summary order form's own: the box
  * it prints into is 0.92in tall, far too short for a card's own two-row stack at a printed 9pt, so
  * every reading there is a bare value instead — no card surface, no station name. Which figure is
@@ -315,6 +323,50 @@ function StationReadout({
 }
 
 /**
+ * A rail's own title — `Thickness` outside the deck rail, `Rocker` outside the bottom one (quick
+ * task 260830-2dy), so the drawing itself says which rail is which rather than a shaper having to
+ * infer it from which side of the board a number sits on. The two words are exactly the ones the
+ * sidebar's collapsible sections (`rocker-controls.tsx`) and the DATASHEET's row groups
+ * (`rocker-datasheet.tsx`) already use — one vocabulary across the whole screen.
+ *
+ * Every position, size and band this needs comes off `layout` (Rule 1) — this component performs
+ * no arithmetic of its own, which is why wrapping the text in `Upright` alone is enough to make
+ * it read correctly nose-up too, the same treatment a station name row already carries. `callouts
+ * === "full"` only; nothing is added to the `"compact"` or `"none"` branches.
+ *
+ * A note for the next editor: SVG applies trailing letter-spacing after the final glyph, so a
+ * centred tracked string sits a fraction of a space left of true centre — accepted, and identical
+ * to what the station name rows above already do.
+ */
+function RailTitle({
+  x,
+  y,
+  size,
+  vertical,
+  text,
+}: {
+  x: number;
+  y: number;
+  size: number;
+  vertical: boolean;
+  text: string;
+}) {
+  return (
+    <Upright x={x} y={y} vertical={vertical}>
+      <text
+        x={x}
+        y={y}
+        textAnchor="middle"
+        style={{ fontSize: size, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
+        fill="var(--outline-callout-label)"
+      >
+        {text}
+      </text>
+    </Upright>
+  );
+}
+
+/**
  * A bare compact reading (quick task 260829-vus, `callouts="compact"` only): no card surface, no
  * station name — position (which of the five stations) and side (deck = thickness, bottom =
  * rocker) carry what a card's own name text used to (this plan's `<design_decision>` section 2).
@@ -460,6 +512,10 @@ export function RockerViewer({
     cardHeight,
     cardType,
     compactRows,
+    railLabelSize,
+    deckLabelY,
+    bottomLabelY,
+    labelStationX,
   } = layout;
 
   // Nose on the left: station = length (nose tip) draws at the frame's left pad; station = 0
@@ -763,6 +819,10 @@ export function RockerViewer({
                 </g>
               );
             })}
+            {/* Rail titles (quick task 260830-2dy): the drawing's own definitive name for each
+                rail, centred on the board's middle station, outside both rails' own cards. */}
+            <RailTitle x={labelStationX} y={deckLabelY} size={railLabelSize} vertical={vertical} text="Thickness" />
+            <RailTitle x={labelStationX} y={bottomLabelY} size={railLabelSize} vertical={vertical} text="Rocker" />
           </>
         )}
 

@@ -11,11 +11,13 @@ import {
   COMPACT_DECK_BAND,
   COMPACT_EDGE_GUTTER,
   COMPACT_READING_GUTTER,
-  LENGTH_LABEL_SIZE,
   ORDER_FORM_ROCKER_BOX_PX,
   PAD_X,
-  PAD_TOP,
   RAIL_GAP,
+  RAIL_LABEL_CAP_RATIO,
+  RAIL_LABEL_EDGE_GUTTER,
+  RAIL_LABEL_GAP,
+  RAIL_LABEL_SIZE,
   READOUT_NAME_DY,
   READOUT_VALUE_DY,
   STATION_CARD_HEIGHT,
@@ -30,6 +32,7 @@ import {
   compactValuePrintPx,
   compactValueWidth,
   maxCardPinScale,
+  railLabelBandDepth,
   rockerViewLayout,
   stationCardRect,
   type RockerCardSide,
@@ -49,6 +52,61 @@ const LENGTHS_IN = Array.from(
 
 const ORIENTATIONS: RockerViewOrientation[] = ["horizontal", "vertical"];
 const SIDES: RockerCardSide[] = ["deck", "bottom"];
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Characterisation pin (quick task 260830-2dy, Task 1) — the exact `viewBox` strings the
+// UNMODIFIED module produced for the Summary order form's own two paths (`"compact"`, the
+// order form's own rocker box; `"none"`, drawn nowhere in production but pinned anyway since it
+// shares the "no rail titles" contract), captured before any of this task's edits. This plan's
+// rail titles are drawn only under `stationRails === "full"` — if that work ever leaks into
+// either of these paths, one of these literals goes red.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+const PRINT_PATH_VIEWBOX_PIN: Record<RockerStationRails, Record<RockerViewOrientation, Record<number, string>>> = {
+  full: { horizontal: {}, vertical: {} }, // unused — "full" is not a print path and carries no pin
+  compact: {
+    horizontal: {
+      60: "0.00 0.00 900.00 249.89",
+      78: "0.00 0.00 900.00 205.74",
+      120: "0.00 0.00 900.00 154.23",
+    },
+    vertical: {
+      60: "0.00 0.00 900.00 249.89",
+      78: "0.00 0.00 900.00 205.74",
+      120: "0.00 0.00 900.00 154.23",
+    },
+  },
+  none: {
+    horizontal: {
+      60: "0.00 0.00 900.00 207.33",
+      78: "0.00 0.00 900.00 163.18",
+      120: "0.00 0.00 900.00 111.67",
+    },
+    vertical: {
+      60: "-207.33 32.00 207.33 836.00",
+      78: "-163.18 32.00 163.18 836.00",
+      120: "-111.67 32.00 111.67 836.00",
+    },
+  },
+};
+
+describe("rockerViewLayout — print-path characterisation pin (compact/none viewBox, captured pre-change)", () => {
+  it("holds the 'compact' and 'none' viewBox strings to literals captured from the unmodified module, both orientations", () => {
+    for (const stationRails of ["compact", "none"] as const) {
+      for (const orientation of ORIENTATIONS) {
+        for (const lengthIn of [60, 78, 120]) {
+          const layout = rockerViewLayout({
+            lengthIn,
+            maxDeckIn: MAX_DECK_IN,
+            orientation,
+            fitToBoard: true,
+            stationRails,
+          });
+          expect(layout.viewBox).toBe(PRINT_PATH_VIEWBOX_PIN[stationRails][orientation][lengthIn]);
+        }
+      }
+    }
+  });
+});
 
 describe("rockerViewLayout — order-form path pin (fitToBoard: true, stationRails: \"none\")", () => {
   it("scales every board's own length to span the full 820-unit drawing area, on the card-less path", () => {
@@ -163,7 +221,7 @@ describe("rockerViewLayout — proportion", () => {
     expect(typeof layout.scale).toBe("number");
   });
 
-  it("gives the frame's cross extent as PAD_TOP + cardBandDepth(orientation) + maxDeckIn * scale + bottomCardBandDepth(orientation), with cards on", () => {
+  it("gives the frame's cross extent as railLabelBandDepth(orientation) + cardBandDepth(orientation) + maxDeckIn * scale + bottomCardBandDepth(orientation) + railLabelBandDepth(orientation), with cards on", () => {
     for (const orientation of ORIENTATIONS) {
       for (const fitToBoard of [true, false]) {
         const layout = rockerViewLayout({
@@ -173,10 +231,16 @@ describe("rockerViewLayout — proportion", () => {
           fitToBoard,
           stationRails: "full",
         });
-        // The two bands are NOT the same depth: the bottom rail clears the baseline the board's
-        // own curve touches, so it carries BOTTOM_RAIL_GAP where the deck rail carries RAIL_GAP.
+        // The two card bands are NOT the same depth: the bottom rail clears the baseline the
+        // board's own curve touches, so it carries BOTTOM_RAIL_GAP where the deck rail carries
+        // RAIL_GAP. The two rail-title bands (one per side, quick task 260830-2dy) ARE the same
+        // depth — `railLabelBandDepth` takes no side argument, only an orientation.
         const expectedCrossExtent =
-          PAD_TOP + cardBandDepth(orientation) + MAX_DECK_IN * layout.scale + bottomCardBandDepth(orientation);
+          railLabelBandDepth(orientation) +
+          cardBandDepth(orientation) +
+          MAX_DECK_IN * layout.scale +
+          bottomCardBandDepth(orientation) +
+          railLabelBandDepth(orientation);
         expect(layout.viewH).toBeCloseTo(expectedCrossExtent, 8);
       }
     }
@@ -279,8 +343,10 @@ describe("rockerViewLayout — degenerate input", () => {
           expect(Number.isFinite(layout.viewH)).toBe(true);
           expect(Number.isFinite(layout.width)).toBe(true);
           expect(Number.isFinite(layout.height)).toBe(true);
-          expect(Number.isFinite(layout.labelX)).toBe(true);
-          expect(Number.isFinite(layout.labelY)).toBe(true);
+          expect(Number.isFinite(layout.railLabelSize)).toBe(true);
+          expect(Number.isFinite(layout.deckLabelY)).toBe(true);
+          expect(Number.isFinite(layout.bottomLabelY)).toBe(true);
+          expect(Number.isFinite(layout.labelStationX)).toBe(true);
           expect(layout.viewBox).not.toContain("NaN");
         }
       }
@@ -500,7 +566,7 @@ describe("rockerViewLayout — stacks fit inside a card's own box", () => {
   });
 });
 
-describe("rockerViewLayout — vertical: the board box and the label's run-room", () => {
+describe("rockerViewLayout — vertical: the board box's own containment", () => {
   it("keeps the board's own box (nose to tail, baseline to worst-case deck) inside the frame", () => {
     for (const lengthIn of [60, 78, 120]) {
       const layout = rockerViewLayout({
@@ -528,31 +594,6 @@ describe("rockerViewLayout — vertical: the board box and the label's run-room"
         expect(finalY).toBeGreaterThanOrEqual(layout.minY);
         expect(finalY).toBeLessThanOrEqual(layout.minY + layout.height);
       }
-    }
-  });
-
-  it("keeps the label anchor inside the frame with at least 150 units of run-room toward minX, and clear of the nose station's card band", () => {
-    for (const lengthIn of [60, 78, 120]) {
-      const layout = rockerViewLayout({
-        lengthIn,
-        maxDeckIn: MAX_DECK_IN,
-        orientation: "vertical",
-        fitToBoard: true,
-        stationRails: "full",
-      });
-      // Under the composition identity (finding 4), canonical (labelX, labelY) lands at final
-      // (-labelY, labelX) in the rotated frame.
-      const labelFinalX = -layout.labelY;
-      const runRoom = labelFinalX - layout.minX;
-      expect(runRoom).toBeGreaterThanOrEqual(150);
-      expect(labelFinalX).toBeGreaterThanOrEqual(layout.minX);
-      expect(labelFinalX).toBeLessThanOrEqual(layout.minX + layout.width);
-
-      // The label's own long-axis type band (labelX - LENGTH_LABEL_SIZE to labelX) must not
-      // intersect the nose station's card band (PAD_X + cardDy to PAD_X + cardDy + cardHeight).
-      const labelBandEnd = layout.labelX;
-      const noseCardBandStart = PAD_X + layout.cardDy;
-      expect(labelBandEnd).toBeLessThanOrEqual(noseCardBandStart);
     }
   });
 });
@@ -612,9 +653,26 @@ describe("rockerViewLayout — horizontal frame unchanged by the vertical work a
   });
 });
 
-describe("rockerViewLayout — LENGTH_LABEL_SIZE and constants stay finite and positive", () => {
-  it("exposes the type-scale constants used to reserve the label's own band", () => {
-    expect(LENGTH_LABEL_SIZE).toBeGreaterThan(0);
+describe("rockerViewLayout — RAIL_LABEL_* constants stay finite and positive", () => {
+  it("exposes the type-scale and band constants used to reserve each rail title's own band", () => {
+    for (const value of [RAIL_LABEL_SIZE, RAIL_LABEL_GAP, RAIL_LABEL_EDGE_GUTTER, RAIL_LABEL_CAP_RATIO]) {
+      expect(Number.isFinite(value)).toBe(true);
+      expect(value).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("railLabelBandDepth", () => {
+  it("is finite and positive in both orientations, and equals RAIL_LABEL_GAP + maxCardPinScale(orientation) * RAIL_LABEL_SIZE + RAIL_LABEL_EDGE_GUTTER", () => {
+    for (const orientation of ORIENTATIONS) {
+      const depth = railLabelBandDepth(orientation);
+      expect(Number.isFinite(depth)).toBe(true);
+      expect(depth).toBeGreaterThan(0);
+      expect(depth).toBeCloseTo(
+        RAIL_LABEL_GAP + maxCardPinScale(orientation) * RAIL_LABEL_SIZE + RAIL_LABEL_EDGE_GUTTER,
+        10,
+      );
+    }
   });
 });
 
@@ -1053,6 +1111,126 @@ describe("rockerViewLayout — cardType stays inside cardHeight at every scale",
         STATION_VALUE_SIZE / STATION_NAME_SIZE,
         10,
       );
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Rail titles (quick task 260830-2dy) — "Thickness" over the deck rail, "Rocker" over the bottom
+// one, both decided entirely by this module (Rule 1); `rocker-viewer.tsx` only paints them.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+describe("rockerViewLayout — rail titles: horizontal containment", () => {
+  it("keeps the deck title's glyph top at least RAIL_LABEL_EDGE_GUTTER inside minY, and bottomLabelY at least RAIL_LABEL_EDGE_GUTTER inside minY + height, across the length sweep and card scales 1, 1.6 and the horizontal ceiling", () => {
+    for (const lengthIn of LENGTHS_IN) {
+      for (const cardScale of [1, 1.6, maxCardPinScale("horizontal")]) {
+        const layout = rockerViewLayout({
+          lengthIn,
+          maxDeckIn: MAX_DECK_IN,
+          orientation: "horizontal",
+          fitToBoard: true,
+          stationRails: "full",
+          cardScale,
+        });
+        const deckGlyphTop = layout.deckLabelY - layout.railLabelSize * RAIL_LABEL_CAP_RATIO;
+        expect(deckGlyphTop - layout.minY).toBeGreaterThanOrEqual(RAIL_LABEL_EDGE_GUTTER - 1e-9);
+        expect(layout.minY + layout.height - layout.bottomLabelY).toBeGreaterThanOrEqual(
+          RAIL_LABEL_EDGE_GUTTER - 1e-9,
+        );
+      }
+    }
+  });
+});
+
+describe("rockerViewLayout — rail titles: vertical containment", () => {
+  it("keeps both titles' final anchors and glyph extents (baseline and cap top) inside the frame, at 60in/78in/120in and card scales 1, 1.6 and the vertical ceiling", () => {
+    const ceiling = maxCardPinScale("vertical");
+    for (const lengthIn of [60, 78, 120]) {
+      for (const cardScale of [1, 1.6, ceiling]) {
+        const layout = rockerViewLayout({
+          lengthIn,
+          maxDeckIn: MAX_DECK_IN,
+          orientation: "vertical",
+          fitToBoard: true,
+          stationRails: "full",
+          cardScale,
+        });
+        const cap = layout.railLabelSize * RAIL_LABEL_CAP_RATIO;
+        // Composition identity (finding 4): canonical (x, y) lands at final (-y, x).
+        const points = [
+          { x: layout.labelStationX, y: layout.deckLabelY }, // deck title baseline
+          { x: layout.labelStationX, y: layout.deckLabelY - cap }, // deck title cap top
+          { x: layout.labelStationX, y: layout.bottomLabelY }, // bottom title baseline
+          { x: layout.labelStationX, y: layout.bottomLabelY - cap }, // bottom title cap top
+        ];
+        for (const p of points) {
+          const finalX = -p.y;
+          const finalY = p.x;
+          expect(finalX).toBeGreaterThanOrEqual(layout.minX);
+          expect(finalX).toBeLessThanOrEqual(layout.minX + layout.width);
+          expect(finalY).toBeGreaterThanOrEqual(layout.minY);
+          expect(finalY).toBeLessThanOrEqual(layout.minY + layout.height);
+        }
+      }
+    }
+  });
+});
+
+describe("rockerViewLayout — rail titles: clearance from their own rail, both orientations", () => {
+  it("keeps the deck title's glyph edge exactly RAIL_LABEL_GAP clear of the deck rail's ceiling-sized far edge, and the bottom title's glyph edge exactly RAIL_LABEL_GAP clear of the bottom rail's, at every card scale", () => {
+    for (const orientation of ORIENTATIONS) {
+      const ceiling = maxCardPinScale(orientation);
+      const maxCardWidth = STATION_CARD_WIDTH * ceiling;
+      const maxCardHeight = STATION_CARD_HEIGHT * ceiling;
+      for (const lengthIn of [60, 78, 120]) {
+        for (const cardScale of [1, 1.6, ceiling]) {
+          const layout = rockerViewLayout({
+            lengthIn,
+            maxDeckIn: MAX_DECK_IN,
+            orientation,
+            fitToBoard: true,
+            stationRails: "full",
+            cardScale,
+          });
+          const deckRailFarY =
+            layout.deckTickEndY - (orientation === "horizontal" ? maxCardHeight : maxCardWidth);
+          const bottomRailFarY =
+            layout.tickEndY + (orientation === "horizontal" ? maxCardHeight : maxCardWidth);
+          const cap = layout.railLabelSize * RAIL_LABEL_CAP_RATIO;
+
+          expect(deckRailFarY - layout.deckLabelY).toBeCloseTo(RAIL_LABEL_GAP, 8);
+          expect(layout.bottomLabelY - cap - bottomRailFarY).toBeCloseTo(RAIL_LABEL_GAP, 8);
+        }
+      }
+    }
+  });
+});
+
+describe("rockerViewLayout — rail titles: centring on the board's middle station", () => {
+  it("gives labelStationX exactly PAD_X + (lengthIn * scale) / 2 in horizontal", () => {
+    for (const lengthIn of LENGTHS_IN) {
+      const layout = rockerViewLayout({
+        lengthIn,
+        maxDeckIn: MAX_DECK_IN,
+        orientation: "horizontal",
+        fitToBoard: true,
+        stationRails: "full",
+      });
+      expect(layout.labelStationX).toBeCloseTo(PAD_X + (lengthIn * layout.scale) / 2, 10);
+    }
+  });
+
+  it("keeps labelStationX within half a railLabelSize of PAD_X + (lengthIn * scale) / 2 in vertical", () => {
+    for (const lengthIn of [60, 78, 120]) {
+      const layout = rockerViewLayout({
+        lengthIn,
+        maxDeckIn: MAX_DECK_IN,
+        orientation: "vertical",
+        fitToBoard: true,
+        stationRails: "full",
+      });
+      const nominal = PAD_X + (lengthIn * layout.scale) / 2;
+      expect(Math.abs(layout.labelStationX - nominal)).toBeLessThanOrEqual(layout.railLabelSize / 2);
     }
   });
 });
