@@ -5,7 +5,7 @@
  * in isolation from `rocker-viewer.tsx`.
  *
  * `rocker-viewer.tsx` draws from the `RockerViewLayout` this module produces; it derives no
- * scale or frame arithmetic of its own (quick task 260829-tmj Task 1).
+ * scale or frame arithmetic of its own (quick task 260829-tmj).
  */
 
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
@@ -44,16 +44,16 @@ export interface RockerViewLayout {
   scale: number;
   viewH: number;
   baselineY: number;
-  /** Where a station tick line stops — the card rail's near edge, in both orientations (Task 2
-   * pins this so a tick still stops at the card, not past it, once the vertical rail moves off
-   * `baselineY + RAIL_GAP`). */
+  /** Where a station tick line stops — always `baselineY + RAIL_GAP`, in both orientations, so a
+   * tick still stops at the card's own near edge rather than running into its middle once the
+   * vertical rail moves off this same value (see `railY`). */
   tickEndY: number;
-  /** The card rail's own anchor — `baselineY + RAIL_GAP` in horizontal; Task 2 gives vertical its
-   * own formula, since a rotated card presents its WIDTH across the rail, not its height. */
+  /** The card rail's own anchor. `baselineY + RAIL_GAP` in horizontal; in vertical a rotated card
+   * presents its WIDTH across the rail rather than its height, so the anchor clears the baseline
+   * by `RAIL_GAP + cardWidth / 2` instead. */
   railY: number;
   /** Extra offset applied to a card's own position along the rotated station axis — 0 in
-   * horizontal; Task 2 sets this to `-cardHeight / 2` in vertical, centring each card on the
-   * station it names. */
+   * horizontal; `-cardHeight / 2` in vertical, centring each card on the station it names. */
   cardDy: number;
   cardWidth: number;
   cardHeight: number;
@@ -100,21 +100,27 @@ export const RAIL_LABEL_HEIGHT = STATION_CARD_HEIGHT + 8;
 const BOTTOM_PAD = RAIL_GAP + RAIL_LABEL_HEIGHT;
 
 /**
+ * A corrupt saved board must not blank the screen (threat T-TMJ-02): a zero, negative or
+ * non-finite length falls back to `BOARD_LENGTH_RANGE_IN.max` (the same board `FIXED_SCALE`
+ * itself is derived from) rather than propagating a `NaN`; any finite positive length is clamped
+ * into `BOARD_LENGTH_RANGE_IN` first, so a value outside the app's own slider range still
+ * produces a sane frame. Shared by `scale` and the vertical frame's own long-axis span below, so
+ * the two never disagree about how long the drawn board actually is.
+ */
+function resolveEffectiveLengthIn(lengthIn: number): number {
+  if (!Number.isFinite(lengthIn) || lengthIn <= 0) return BOARD_LENGTH_RANGE_IN.max;
+  return Math.min(Math.max(lengthIn, BOARD_LENGTH_RANGE_IN.min), BOARD_LENGTH_RANGE_IN.max);
+}
+
+/**
  * The fit-to-board scale rule, mirroring `outlineViewMetrics`'s `lengthFitScale`
  * (`components/outline/outline-viewer.tsx`): every board's nose-to-tail spans the full
  * `VIEW_W - 2 * PAD_X` (820-unit) drawing area, instead of every board sharing one scale derived
  * from the longest board this app can produce.
- *
- * A corrupt saved board must not blank the screen (threat T-TMJ-02): a zero, negative or
- * non-finite length falls back to `FIXED_SCALE` rather than producing a `NaN` scale, and any
- * finite positive length is clamped into `BOARD_LENGTH_RANGE_IN` before dividing, so a value
- * outside the app's own slider range still produces a sane frame.
  */
 function resolveScale(lengthIn: number, fitToBoard: boolean): number {
   if (!fitToBoard) return FIXED_SCALE;
-  if (!Number.isFinite(lengthIn) || lengthIn <= 0) return FIXED_SCALE;
-  const clampedLengthIn = Math.min(Math.max(lengthIn, BOARD_LENGTH_RANGE_IN.min), BOARD_LENGTH_RANGE_IN.max);
-  return (VIEW_W - PAD_X * 2) / clampedLengthIn;
+  return (VIEW_W - PAD_X * 2) / resolveEffectiveLengthIn(lengthIn);
 }
 
 /**
@@ -122,11 +128,10 @@ function resolveScale(lengthIn: number, fitToBoard: boolean): number {
  * `rocker-viewer.tsx` reads `pxX`, `pxY` and `toBoardPoint`'s inverse from, so a drag can never
  * solve against a different scale than the drawing was made with (planner finding 9).
  *
- * The horizontal frame is built here from its own formulas. The vertical frame, in THIS task, is
- * still today's transposition of the horizontal one verbatim — `-viewH 0 viewH VIEW_W`, with
- * `railY = baselineY + RAIL_GAP`, `tickEndY = railY` and `cardDy = 0` — so the rotate button
- * keeps working exactly as it does today. Task 2 replaces the vertical branch with a frame built
- * from its own rotated content, the defect quick task 260825-w8d fixed on the outline viewer.
+ * The horizontal frame is built from its own formulas. The vertical frame is built from its own
+ * rotated content — the nose card's near edge to the tail card's far edge on the long axis, the
+ * card rail's own outer edge to the baseline on the cross axis — rather than a transposition of
+ * the horizontal frame, the defect quick task 260825-w8d fixed on the outline viewer.
  */
 export function rockerViewLayout({
   lengthIn,
@@ -139,15 +144,55 @@ export function rockerViewLayout({
   const baselineY = viewH - BOTTOM_PAD;
   const cardWidth = STATION_CARD_WIDTH;
   const cardHeight = STATION_CARD_HEIGHT;
-  const railY = baselineY + RAIL_GAP;
-  const tickEndY = railY;
-  const cardDy = 0;
-
   const horizontal = orientation === "horizontal";
-  const minX = horizontal ? 0 : -viewH;
-  const minY = 0;
-  const width = horizontal ? VIEW_W : viewH;
-  const height = horizontal ? viewH : VIEW_W;
+
+  let minX: number;
+  let minY: number;
+  let width: number;
+  let height: number;
+  let railY: number;
+  let tickEndY: number;
+  let cardDy: number;
+
+  if (horizontal) {
+    minX = 0;
+    minY = 0;
+    width = VIEW_W;
+    height = viewH;
+    railY = baselineY + RAIL_GAP;
+    tickEndY = railY;
+    cardDy = 0;
+  } else {
+    // A rotated card presents its WIDTH across the rail (finding 4), so the rail anchor has to
+    // clear the baseline by the card's own half-width, not its half-height — that is the fix for
+    // the 17-unit overlap the un-rotated `baselineY + RAIL_GAP` formula left. `tickEndY` stays at
+    // that un-rotated value in BOTH orientations, so a station tick still stops at the card's own
+    // near edge rather than running into its middle.
+    railY = baselineY + RAIL_GAP + cardWidth / 2;
+    tickEndY = baselineY + RAIL_GAP;
+    // Centres each card on the station it names (planner_assumptions #4) — a side effect this
+    // also halves the tail card's own overhang past its station, which is most of what closes the
+    // frame's long axis onto the tail card below.
+    cardDy = -cardHeight / 2;
+
+    // Cross axis (rotated "width"): from the card rail's own outer edge — `railY + cardWidth / 2`
+    // — out to the baseline/rail side (canonical x = 0 there, unchanged since Task 1), with the
+    // same 8-unit gutter `STATION_CARD_WIDTH`'s own comment already reserves between neighbours.
+    const crossMinX = -(railY + cardWidth / 2) - 8;
+    minX = crossMinX;
+    width = -crossMinX;
+
+    // Long axis (rotated "height"): from the nose card's own near edge to the tail card's own far
+    // edge, mirrored off the SAME `PAD_X`/`cardHeight`/small-pad terms at both ends — nose sits at
+    // canonical station x = PAD_X (finding: "nose on the left... draws at the frame's left pad"),
+    // tail at PAD_X + boardSpan. `boardSpan` reads the SAME `scale` `pxX` draws the board with,
+    // clamped through `resolveEffectiveLengthIn` so a corrupt length still yields a finite span.
+    const boardSpan = resolveEffectiveLengthIn(lengthIn) * scale;
+    minY = PAD_X - cardHeight / 2 - 4;
+    const maxY = PAD_X + boardSpan + cardHeight / 2 + 4;
+    height = maxY - minY;
+  }
+
   const viewBox = `${minX.toFixed(2)} ${minY.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)}`;
 
   return {
@@ -185,8 +230,8 @@ export interface StationCardRect {
  * carries `rotate(90)`, so a rect drawn at canonical `(x_s - W/2, railY)` with size `W x H` lands,
  * in the rotated frame, at `x` in `[-railY - W/2, -railY + W/2]`, `y` in `[x_s, x_s + H]` — the
  * card's WIDTH now lies across the rail, and the card hangs from its station toward the tail.
- * `cardDy` (0 in horizontal, `-cardHeight / 2` in vertical from Task 2) shifts the card along the
- * rotated station axis, which is how it gets centred on the station it names.
+ * `cardDy` (0 in horizontal, `-cardHeight / 2` in vertical) shifts the card along the rotated
+ * station axis, which is how it gets centred on the station it names.
  */
 export function stationCardRect(
   layout: RockerViewLayout,

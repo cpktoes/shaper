@@ -190,7 +190,7 @@ export function RockerViewer({
   // `viewH`, `baselineY` and the frame below all come from here, so `pxX`/`pxY` and the drag
   // inverse can never solve against a different scale than the drawing was made with.
   const layout = rockerViewLayout({ lengthIn, maxDeckIn, orientation, fitToBoard });
-  const { scale, baselineY, railY, tickEndY, cardWidth, cardHeight } = layout;
+  const { scale, baselineY, railY, tickEndY, cardDy, cardWidth, cardHeight } = layout;
 
   // Nose on the left: station = length (nose tip) draws at the frame's left pad; station = 0
   // (tail tip) draws further right. A shorter board's tail simply lands further left, leaving
@@ -286,9 +286,10 @@ export function RockerViewer({
   ];
 
   // Both the viewBox string and its frame width/height come straight off the layout — the one
-  // place this drawing's frame is decided. In THIS task the vertical branch is still today's
-  // transposition of the horizontal frame verbatim (Task 2 replaces it with a frame built from
-  // its own rotated content).
+  // place this drawing's frame is decided. The vertical frame is built from its own rotated
+  // content (the nose card's near edge to the tail card's far edge on the long axis, the card
+  // rail's own outer edge to the baseline on the cross axis), NOT a transposition of the
+  // horizontal frame — the defect quick task 260825-w8d fixed on the outline viewer.
   const { viewBox, width: frameWidth, height: frameHeight } = layout;
   const fitScale = useSvgFitScale(svgRef, frameWidth, frameHeight);
   /** User units per CSS pixel — what the px-denominated drag-target sizes above are drawn in. */
@@ -424,40 +425,46 @@ export function RockerViewer({
                     strokeWidth={1}
                   />
                   <Upright x={x} y={railY} vertical={vertical}>
-                    <CalloutChipFrame x={cardX} y={railY} width={cardWidth} height={cardHeight} />
-                    <text
-                      x={x}
-                      y={railY + 13}
-                      textAnchor="middle"
-                      style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
-                      fill="var(--outline-callout-label)"
-                    >
-                      {s.name}
-                    </text>
-                    {/* The rocker row moving from the muted label colour to the ink colour is
-                        deliberate: in this grammar a value is a value, and it is the label above
-                        that is muted. The centre station has no rocker number (its lift is zero
-                        by definition) — an em-dash keeps its row on the same line as the other
-                        four cards, drawn in the muted label colour since it stands in for an
-                        absent value rather than a real one. */}
-                    <text
-                      x={x}
-                      y={railY + 28}
-                      textAnchor="middle"
-                      style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
-                      fill={s.rockerValue !== null ? "var(--outline-ink)" : "var(--outline-callout-label)"}
-                    >
-                      {s.rockerValue !== null ? `R ${s.rockerValue}` : "R —"}
-                    </text>
-                    <text
-                      x={x}
-                      y={railY + 43}
-                      textAnchor="middle"
-                      style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
-                      fill="var(--outline-ink)"
-                    >
-                      T {s.thicknessValue}
-                    </text>
+                    {/* `cardDy` (0 in horizontal, a no-op) shifts the card along the rotated
+                        station axis in vertical, centring it on the station it names — the outer
+                        composition is a pure translation (finding 4), so this inner
+                        `translate(0, dy)` lands exactly there. */}
+                    <g transform={`translate(0, ${cardDy.toFixed(2)})`}>
+                      <CalloutChipFrame x={cardX} y={railY} width={cardWidth} height={cardHeight} />
+                      <text
+                        x={x}
+                        y={railY + 13}
+                        textAnchor="middle"
+                        style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
+                        fill="var(--outline-callout-label)"
+                      >
+                        {s.name}
+                      </text>
+                      {/* The rocker row moving from the muted label colour to the ink colour is
+                          deliberate: in this grammar a value is a value, and it is the label above
+                          that is muted. The centre station has no rocker number (its lift is zero
+                          by definition) — an em-dash keeps its row on the same line as the other
+                          four cards, drawn in the muted label colour since it stands in for an
+                          absent value rather than a real one. */}
+                      <text
+                        x={x}
+                        y={railY + 28}
+                        textAnchor="middle"
+                        style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                        fill={s.rockerValue !== null ? "var(--outline-ink)" : "var(--outline-callout-label)"}
+                      >
+                        {s.rockerValue !== null ? `R ${s.rockerValue}` : "R —"}
+                      </text>
+                      <text
+                        x={x}
+                        y={railY + 43}
+                        textAnchor="middle"
+                        style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                        fill="var(--outline-ink)"
+                      >
+                        T {s.thicknessValue}
+                      </text>
+                    </g>
                   </Upright>
                 </g>
               );
@@ -466,6 +473,11 @@ export function RockerViewer({
               <text
                 x={PAD_X}
                 y={PAD_TOP - 8}
+                // Vertical only: the label's anchor sits near the frame's rail-side edge (final x
+                // near 0), so a start-anchored run overshoots straight past the frame's max x
+                // (today's defect — finding 5). End-anchoring makes it run back INTO the frame
+                // from its own anchor instead. Horizontal is untouched.
+                textAnchor={vertical ? "end" : undefined}
                 style={{ fontSize: 12, fontWeight: 800, fontFamily: "var(--font-display)", letterSpacing: "0.1em" }}
                 fill="var(--outline-ink)"
               >
