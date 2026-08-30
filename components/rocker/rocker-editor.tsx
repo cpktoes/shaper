@@ -242,6 +242,7 @@ export function RockerEditor() {
                 showOutlineReference={showOutlineReference}
                 showConstruction={showConstruction}
                 onDrag={updateRocker}
+                fitToBoard
               />
             </div>
           ) : (
