@@ -27,6 +27,15 @@
  * affordance on components/rocker/rocker-editor.tsx) rather than being
  * hand-edited.
  *
+ * Re-expressed on the new curve (quick task 260829-rda, 2026-08-29): `rocker.ts`'s five-station
+ * model was replaced with a three-knot, two-Bezier curve, so every preset's `rocker` block below
+ * was rebuilt on the new eight-field `RockerSpec`. Each preset's own nose-tip and tail-tip lift
+ * are held EXACTLY as they were (the numbers that distinguish the four boards and a shaper reads
+ * directly); the six shape controls were solved — not hand-guessed — so each preset's derived 12"
+ * figures land within a hundredth of an inch of its old stored 12" numbers (recorded in a comment
+ * beside each block). Still awaiting the founder's review in the live ROCKER editor, same as
+ * before this task.
+ *
  * `rails` and `fins` are seeded-but-untuned for all four presets as of this
  * task: every preset's `rails` is `DEFAULT_RAIL_BAND_SPEC` and every preset's
  * `fins` is `DEFAULT_FIN_PLACEMENT_SPEC`, verbatim and un-differentiated by
@@ -51,6 +60,11 @@ import type { FoilSpec } from "./foil";
 import { DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "./rail-bands";
 import type { RockerSpec } from "./rocker";
 import { degrees, inchesToMm } from "./units";
+
+// Each preset's rocker block keeps its own noseLift/tailLift exactly as before this task, and
+// carries six shape controls solved (not hand-guessed) so the derived 12" figures land within a
+// hundredth of an inch of the preset's own prior stored 12" numbers — see each block's own
+// comment for the figures it was solved against.
 
 export interface BoardPreset {
   id: "shortboard" | "fish" | "midlength" | "longboard";
@@ -80,11 +94,17 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
       tailFullness: 45,
       tail: { kind: "squash", endWidth: inchesToMm(4) },
     },
+    // Solved against the old stored nose12 1.4"/tail12 0.45": derived nose12 ≈ 1.4006",
+    // tail12 ≈ 0.4509" — both within a hundredth of an inch.
     rocker: {
-      noseTip: inchesToMm(4.75),
-      nose12: inchesToMm(1.4),
-      tail12: inchesToMm(0.45),
-      tailTip: inchesToMm(2.1),
+      noseLift: inchesToMm(4.75),
+      tailLift: inchesToMm(2.1),
+      noseAngle: degrees(30),
+      tailAngle: degrees(30),
+      noseSmoothness: 39,
+      tailSmoothness: 21,
+      noseFlatness: 50,
+      tailFlatness: 50,
     },
     foil: {
       noseTip: inchesToMm(0.3125),
@@ -112,11 +132,17 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
       tailFullness: 15,
       tail: { kind: "swallow", endWidth: inchesToMm(9), crotchDepth: inchesToMm(2.5) },
     },
+    // Solved against the old stored nose12 1.0"/tail12 0.3": derived nose12 ≈ 0.9998",
+    // tail12 ≈ 0.3003" — both within a hundredth of an inch.
     rocker: {
-      noseTip: inchesToMm(3.5),
-      nose12: inchesToMm(1.0),
-      tail12: inchesToMm(0.3),
-      tailTip: inchesToMm(1.4),
+      noseLift: inchesToMm(3.5),
+      tailLift: inchesToMm(1.4),
+      noseAngle: degrees(30),
+      tailAngle: degrees(30),
+      noseSmoothness: 54.5,
+      tailSmoothness: 34,
+      noseFlatness: 50,
+      tailFlatness: 50,
     },
     foil: {
       noseTip: inchesToMm(0.375),
@@ -144,11 +170,17 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
       tailFullness: 64.5,
       tail: { kind: "round" },
     },
+    // Solved against the old stored nose12 1.25"/tail12 0.4": derived nose12 ≈ 1.2499",
+    // tail12 ≈ 0.399" — both within a hundredth of an inch.
     rocker: {
-      noseTip: inchesToMm(4.5),
-      nose12: inchesToMm(1.25),
-      tail12: inchesToMm(0.4),
-      tailTip: inchesToMm(1.75),
+      noseLift: inchesToMm(4.5),
+      tailLift: inchesToMm(1.75),
+      noseAngle: degrees(30),
+      tailAngle: degrees(30),
+      noseSmoothness: 20.5,
+      tailSmoothness: 16,
+      noseFlatness: 50,
+      tailFlatness: 50,
     },
     foil: {
       noseTip: inchesToMm(0.375),
@@ -176,11 +208,17 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
       tailFullness: 53.5,
       tail: { kind: "squash", endWidth: inchesToMm(8) },
     },
+    // Solved against the old stored nose12 1.5"/tail12 0.35": derived nose12 ≈ 1.4972",
+    // tail12 ≈ 0.3489" — both within a hundredth of an inch.
     rocker: {
-      noseTip: inchesToMm(5.5),
-      nose12: inchesToMm(1.5),
-      tail12: inchesToMm(0.35),
-      tailTip: inchesToMm(1.6),
+      noseLift: inchesToMm(5.5),
+      tailLift: inchesToMm(1.6),
+      noseAngle: degrees(25),
+      tailAngle: degrees(12),
+      noseSmoothness: 5,
+      tailSmoothness: 4,
+      noseFlatness: 90,
+      tailFlatness: 95,
     },
     foil: {
       noseTip: inchesToMm(0.5),

@@ -8,7 +8,7 @@
  * the whole `DesignState`, minus `modelId` and `boardStarted`, which are session bookkeeping, not
  * board design).
  *
- * Two rules govern this file:
+ * Three rules govern this file:
  *
  * 1. The branded `Mm`/`Degrees`/`Litres` types (lib/geometry/units.ts) are plain numbers at
  *    runtime, so every one of them is validated here as `z.number()` — never re-branded at the
@@ -21,6 +21,16 @@
  *    each one from its matching geometry module's own DEFAULT_* constant (`DEFAULT_ROCKER_SPEC`,
  *    `DEFAULT_FOIL_SPEC`) rather than rejecting the row. A board saved before this phase just
  *    reopens with a sensible default side profile (D-15) — no migration, no error.
+ * 3. Version 3 (quick task 260829-rda) extends rule 2 from backfill to MIGRATION: `rocker.ts`'s
+ *    `RockerSpec` changed SHAPE, not just gained an optional field — a version-2 snapshot's
+ *    rocker is the old four-lift object (`noseTip`/`nose12`/`tail12`/`tailTip`), which the
+ *    current eight-field shape cannot simply be missing-and-defaulted onto (the fields that ARE
+ *    present don't match the new shape's fields at all). `rockerSpecSchema` below is a
+ *    `z.union` of the current shape and the legacy one; `parseSnapshot` detects which one parsed
+ *    (by the presence of `nose12`, a field only the legacy shape has) and runs a legacy match
+ *    through `migrateLegacyRocker` (`lib/geometry/rocker.ts`) — carrying the tip lifts through
+ *    exactly and filling the six new shape controls from `DEFAULT_ROCKER_SPEC`, since a legacy
+ *    snapshot never recorded any curve shape beyond its four lift points.
  *
  * Imports only from lib/geometry/* and the validation library — never the ORM layer or the auth
  * SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -37,10 +47,10 @@ import {
 } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "@/lib/geometry/rail-bands";
-import { DEFAULT_ROCKER_SPEC, type RockerSpec } from "@/lib/geometry/rocker";
+import { DEFAULT_ROCKER_SPEC, migrateLegacyRocker, type RockerSpec } from "@/lib/geometry/rocker";
 import { DEFAULT_VOLUME_SPEC, type VolumeSpec } from "@/lib/geometry/volume";
 
-export const DESIGN_SNAPSHOT_VERSION = 2;
+export const DESIGN_SNAPSHOT_VERSION = 3;
 
 const tailShapeSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("pin") }),
@@ -63,15 +73,32 @@ const outlineSpecSchema = z.object({
   tail: tailShapeSchema,
 });
 
-/** Plain `z.number()` per branded field, never re-branded at the Zod layer — same posture as
- * `outlineSpecSchema` above. Four lift values; the centre station is always zero by definition
- * (D-05) and so carries no field here either. */
-const rockerSpecSchema = z.object({
+/** The legacy four-lift rocker shape (pre-260829-rda) — kept so an already-saved board's rocker
+ * still parses. `nose12`/`tail12` are what `parseSnapshot` uses to detect this shape (the current
+ * shape has neither field). */
+const legacyRockerSpecSchema = z.object({
   noseTip: z.number(),
   nose12: z.number(),
   tail12: z.number(),
   tailTip: z.number(),
 });
+
+/** The current eight-field rocker shape. Plain `z.number()`/`z.degrees` per branded field, never
+ * re-branded at the Zod layer — same posture as `outlineSpecSchema` above. */
+const currentRockerSpecSchema = z.object({
+  noseLift: z.number(),
+  tailLift: z.number(),
+  noseAngle: z.number(),
+  tailAngle: z.number(),
+  noseSmoothness: z.number(),
+  tailSmoothness: z.number(),
+  noseFlatness: z.number(),
+  tailFlatness: z.number(),
+});
+
+/** The current shape has no field the legacy shape also requires (and vice versa), so this union
+ * is unambiguous in either order — current listed first so today's saves take the fast path. */
+const rockerSpecSchema = z.union([currentRockerSpecSchema, legacyRockerSpecSchema]);
 
 /** Five thickness values, including both tips (D-05) — `foilSpecSchema`'s only structural
  * difference from `rockerSpecSchema` is the extra `center` field. */
@@ -198,14 +225,28 @@ export function buildSnapshot(fields: DesignSnapshotFields): DesignSnapshot {
   return { version: DESIGN_SNAPSHOT_VERSION, design: fields };
 }
 
+/** True when a parsed rocker object is the legacy four-lift shape — detected by the presence of
+ * `nose12`, a field only that shape has (the current shape has no field in common with it). */
+function isLegacyRocker(rocker: unknown): rocker is { noseTip: number; nose12: number; tail12: number; tailTip: number } {
+  return typeof rocker === "object" && rocker !== null && "nose12" in rocker;
+}
+
 /**
  * Validates and unwraps a stored (or incoming) snapshot back into usable design fields, filling
  * any field an older version omitted from the matching geometry module's own DEFAULT_* constant.
- * Throws (via Zod) on a structurally wrong value rather than half-accepting it.
+ * A rocker object in the legacy four-lift shape is migrated through `migrateLegacyRocker` rather
+ * than backfilled — see rule 3 in the module doc-comment. Throws (via Zod) on a structurally
+ * wrong value rather than half-accepting it.
  */
 export function parseSnapshot(value: unknown): DesignSnapshotFields {
   const parsed = designSnapshotSchema.parse(value);
   const design = parsed.design;
+
+  const rocker = design.rocker
+    ? isLegacyRocker(design.rocker)
+      ? migrateLegacyRocker(design.rocker)
+      : (design.rocker as RockerSpec)
+    : DEFAULT_ROCKER_SPEC;
 
   // The cast below is the one deliberate bridge from "validated plain numbers" back to the
   // branded Mm/Degrees/Litres types real design state is built from — see rule 1 in the module
@@ -213,7 +254,7 @@ export function parseSnapshot(value: unknown): DesignSnapshotFields {
   // erased at runtime and restored here.
   return {
     outline: (design.outline ?? DEFAULT_BOARD_SPEC.outline) as OutlineSpec,
-    rocker: (design.rocker ?? DEFAULT_ROCKER_SPEC) as RockerSpec,
+    rocker,
     foil: (design.foil ?? DEFAULT_FOIL_SPEC) as FoilSpec,
     rails: (design.rails ?? DEFAULT_RAIL_BAND_SPEC) as RailBandSpec,
     fins: (design.fins ?? DEFAULT_FIN_PLACEMENT_SPEC) as FinPlacementSpec,

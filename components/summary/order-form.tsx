@@ -336,11 +336,11 @@ export function OrderForm() {
                           `RockerViewer`'s default orientation is horizontal nose-left, so the
                           nose-tip lift belongs on this left column and the tail-tip lift on the
                           right one below. */}
-                      <RockerLiftTick liftMm={rocker.noseTip} />
+                      <RockerLiftTick liftMm={rocker.noseLift} />
                       <div className="relative min-h-0 min-w-0 flex-1">
                         <RockerViewer rocker={rocker} foil={foil} length={outline.length} hideCallouts />
                       </div>
-                      <RockerLiftTick liftMm={rocker.tailTip} />
+                      <RockerLiftTick liftMm={rocker.tailLift} />
                     </div>
                   </FormBox>
 

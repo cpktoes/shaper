@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { type FoilSpec } from "@/lib/geometry/foil";
-import { type RockerSpec } from "@/lib/geometry/rocker";
+import { buildRocker, type RockerSpec } from "@/lib/geometry/rocker";
 import { type Mm, mmToInches } from "@/lib/geometry/units";
 import { RockerControls, type RockerControlsSectionKey } from "./rocker-controls";
 import { RockerDatasheet } from "./rocker-datasheet";
@@ -41,14 +41,21 @@ function roundedInches(value: Mm): number {
 }
 
 /** Builds a pasteable `BoardPreset["rocker"]`/`["foil"]` source block from the live rocker and
- * foil specs — the ROCKER-screen counterpart to `outline-editor.tsx`'s `buildPresetSource`. */
+ * foil specs — the ROCKER-screen counterpart to `outline-editor.tsx`'s `buildPresetSource`.
+ * Emits the current eight-field `RockerSpec` shape (quick task 260829-rda), the two lifts and
+ * two angles authored through `inchesToMm()`/`degrees()` the way `presets.ts` itself authors
+ * them, so the dev-only capture affordance still round-trips straight into that file. */
 function buildRockerPresetSource(rocker: RockerSpec, foil: FoilSpec): string {
   return [
     "rocker: {",
-    `  noseTip: inchesToMm(${roundedInches(rocker.noseTip)}),`,
-    `  nose12: inchesToMm(${roundedInches(rocker.nose12)}),`,
-    `  tail12: inchesToMm(${roundedInches(rocker.tail12)}),`,
-    `  tailTip: inchesToMm(${roundedInches(rocker.tailTip)}),`,
+    `  noseLift: inchesToMm(${roundedInches(rocker.noseLift)}),`,
+    `  tailLift: inchesToMm(${roundedInches(rocker.tailLift)}),`,
+    `  noseAngle: degrees(${rocker.noseAngle}),`,
+    `  tailAngle: degrees(${rocker.tailAngle}),`,
+    `  noseSmoothness: ${rocker.noseSmoothness},`,
+    `  tailSmoothness: ${rocker.tailSmoothness},`,
+    `  noseFlatness: ${rocker.noseFlatness},`,
+    `  tailFlatness: ${rocker.tailFlatness},`,
     "},",
     "foil: {",
     `  noseTip: inchesToMm(${roundedInches(foil.noseTip)}),`,
@@ -97,6 +104,9 @@ function RotateBoardIcon({ className }: { className?: string }) {
 
 export function RockerEditor() {
   const { rocker, updateRocker, foil, updateFoil, outline, outlineGeometry } = useDesign();
+  // Built once per render and passed to the controls, the datasheet and the viewer, so the curve
+  // is derived in exactly one place per render (quick task 260829-rda).
+  const geometry = buildRocker(rocker, outline.length);
   const [sectionOpen, setSectionOpen] = useState<Record<RockerControlsSectionKey, boolean>>({
     rocker: true,
     thickness: true,
@@ -160,6 +170,7 @@ export function RockerEditor() {
             <RockerControls
               rocker={rocker}
               foil={foil}
+              geometry={geometry}
               onChangeRocker={updateRocker}
               onChangeFoil={updateFoil}
               sectionOpen={sectionOpen}
@@ -242,6 +253,7 @@ export function RockerEditor() {
             <RockerDatasheet
               rocker={rocker}
               foil={foil}
+              geometry={geometry}
               outlineGeometry={outlineGeometry}
               length={outline.length}
               onChangeRocker={updateRocker}

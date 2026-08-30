@@ -17,7 +17,7 @@
  *    real tip thicknesses finally replace `volume.ts`'s hard-coded 1/2"/3/8" tip assumptions.
  */
 
-import { rockerStationPoints } from "./rocker";
+import { rockerStationPositions } from "./rocker";
 import { type SplinePoint, sampleMonotoneSpline } from "./monotone-spline";
 import { type Mm, inchesToMm, mm } from "./units";
 
@@ -62,20 +62,15 @@ export const DEFAULT_FOIL_SPEC: FoilSpec = {
 
 /**
  * The five foil stations in ascending station order, for a board of the given length. Reuses
- * `rockerStationPoints`' station positions (tail tip, tail 12", centre, nose 12", nose tip) so the
- * two curves are always sampled at the identical five stations — one definition of where they sit.
+ * `rockerStationPositions`' station positions (tail tip, tail 12", centre, nose 12", nose tip) so
+ * the two curves are always sampled at the identical five stations — one definition of where they
+ * sit.
  */
 export function foilStationPoints(
   spec: FoilSpec,
   length: Mm,
 ): { key: FoilStationKey; station: Mm; thickness: Mm }[] {
-  // rockerStationPoints only needs `length` to place the stations — the RockerSpec passed here is
-  // never read for its lift values, so any complete spec works; the four zero-lift stations are
-  // simplest.
-  const stations = rockerStationPoints(
-    { noseTip: mm(0), nose12: mm(0), tail12: mm(0), tailTip: mm(0) },
-    length,
-  );
+  const stations = rockerStationPositions(length);
   const thicknessByKey: Record<FoilStationKey, Mm> = {
     tailTip: spec.tailTip,
     tail12: spec.tail12,
