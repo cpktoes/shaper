@@ -18,7 +18,16 @@
  * reading — no card, a 45-degree `DimensionTick` on the curve instead — for a figure measured off
  * the drawn curve. On the rocker rail only the two tips are inputs; all five thickness figures
  * are. Every read-out, either kind, is leadered from its own rail to the exact point on the curve
- * it measures.
+ * it measures. That is the `"full"` grammar (`callouts="full"`, the default).
+ *
+ * A third grammar, `"compact"` (quick task 260829-vus), is the Summary order form's own: the box
+ * it prints into is 0.92in tall, far too short for a card's own two-row stack at a printed 9pt, so
+ * every reading there is a bare value instead — no card surface, no station name. Which figure is
+ * which is carried by position (five stations along the board) and by side (deck = thickness,
+ * bottom = rocker) instead of a name row, reinforced by the order form's own caption on the box.
+ * `rocker-view-frame.ts`'s `compactRows`/`compactRailReadingXs`/`compactValuePrintPx` decide every
+ * band depth, row baseline, type size and reading x position this grammar needs; this component
+ * derives none of them (Rule 1).
  *
  * Orientation (D-03): the toolbar's rotate-in-place button flips this viewer between "horizontal"
  * (the default, nose left) and "vertical" (nose up, so the five stations read top-to-bottom the
@@ -65,9 +74,15 @@ import { formatFeetInches, formatInchesFraction, inchesToMm, type Mm, mmToInches
 import {
   CARD_NAME_DY,
   CARD_VALUE_DY,
+  COMPACT_LEADER_WIDTH,
+  COMPACT_TICK_SIZE,
+  COMPACT_VALUE_SIZE,
+  compactRailReadingXs,
+  compactValueWidth,
   PAD_X,
   READOUT_NAME_DY,
   READOUT_VALUE_DY,
+  type RockerCompactRow,
   rockerViewLayout,
   STATION_NAME_SIZE,
   STATION_VALUE_SIZE,
@@ -95,16 +110,23 @@ export interface RockerViewerProps {
   rocker: RockerSpec;
   foil: FoilSpec;
   length: Mm;
-  /** The compact mode (04-05 Task 2): suppresses both card rails, their tick lines and the
+  /**
+   * Which rail grammar this viewer draws (04-05 Task 2, widened to a third mode by quick task
+   * 260829-vus) — mirrors `RockerStationRails` in `rocker-view-frame.ts`, passed straight through
+   * as that module's own `stationRails`. `"full"` (the default) draws the two card rails
+   * `rocker-editor.tsx` uses. `"none"` suppresses both rails, their tick lines and the
    * board-length label, leaving only the closed board shape and baseline — mirrors
-   * `outline-viewer.tsx`'s `hideCallouts`. This is what the Summary order form's rocker box
-   * renders: no `onDrag` is ever passed there, so the construction overlay's drag targets are
-   * already absent regardless of this flag (`dragTargets` is built only `onDrag ? ... : []`).
-   * This flag now ALSO decides whether the layout module reserves a card band on either side of
-   * the board at all (`showStationCards`, quick task 260829-uue) — a consumer that never draws a
-   * rail is not paying for the band that rail would need, so its frame is the board plus a
-   * hairline of pad instead. Defaults to `false`. */
-  hideCallouts?: boolean;
+   * `outline-viewer.tsx`'s `hideCallouts`. `"compact"` draws the Summary order form's own
+   * bare-value rails instead: five thickness readings above the board, four rocker readings
+   * below, no card surface and no station name (this plan's `<design_decision>` section 2).
+   *
+   * Whichever non-`"full"` mode is chosen, no `onDrag` is ever passed to that consumer, so the
+   * construction overlay's drag targets are already absent regardless of this prop (`dragTargets`
+   * is built only `onDrag ? ... : []`). This prop also decides whether the layout module reserves
+   * a band on either side of the board at all (`stationRails`, quick task 260829-uue) — a
+   * consumer that never draws a rail is not paying for the band that rail would need.
+   */
+  callouts?: "full" | "compact" | "none";
   /** D-03: `"horizontal"` (nose left, the default) or `"vertical"` (nose up, stations read
    * top-to-bottom). Driven by the toolbar's rotate button, never persisted. */
   orientation?: ViewerOrientation;
@@ -127,8 +149,8 @@ export interface RockerViewerProps {
    * one (quick task 260829-uue) — `components/rocker/rocker-editor.tsx` passes `true` so a
    * shaper's own board fills the editor panel, and `components/summary/order-form.tsx` now opts
    * in too, for the same reason on the printed sheet: its own frame carries no card rail to size
-   * around (`hideCallouts` is already set there), so nothing about the print path's stability
-   * depends on this staying fixed the way `outline-viewer.tsx`'s `fixedFrame` still does.
+   * around (`callouts="compact"` is already set there), so nothing about the print path's
+   * stability depends on this staying fixed the way `outline-viewer.tsx`'s `fixedFrame` still does.
    */
   fitToBoard?: boolean;
 }
@@ -279,11 +301,70 @@ function StationReadout({
   );
 }
 
+/**
+ * A bare compact reading (quick task 260829-vus, `callouts="compact"` only): no card surface, no
+ * station name — position (which of the five stations) and side (deck = thickness, bottom =
+ * rocker) carry what a card's own name text used to (this plan's `<design_decision>` section 2).
+ *
+ * `textX` is wherever `compactRailReadingXs`' separation sweep placed this reading, which may not
+ * be `stationX` (the point it actually measures) — so the leader doglegs, `(textX, leaderStartY)`
+ * to `(stationX, kneeY)` to `(stationX, curveY)`, keeping the reading pointed at the exact place
+ * on the curve it measures even when the sweep nudged its type off that station.
+ *
+ * The tick is drawn inline at `COMPACT_TICK_SIZE` rather than through `DimensionTick` — that
+ * component's own tick is a fixed module constant (`CALLOUT_TICK_SIZE`) with no size parameter,
+ * and `CALLOUT_TICK_SIZE`'s 4 units would print as a 4px dot at this drawing's printed scale, too
+ * small to read as a tick.
+ */
+function CompactReading({
+  textX,
+  stationX,
+  row,
+  curveY,
+  value,
+}: {
+  /** Where the separation sweep placed this reading's own type. */
+  textX: number;
+  /** The station this reading actually measures, in the frame's own canonical x. */
+  stationX: number;
+  row: RockerCompactRow;
+  curveY: number;
+  value: string;
+}) {
+  return (
+    <g>
+      <polyline
+        points={`${textX.toFixed(2)},${row.leaderStartY.toFixed(2)} ${stationX.toFixed(2)},${row.kneeY.toFixed(2)} ${stationX.toFixed(2)},${curveY.toFixed(2)}`}
+        stroke="var(--outline-station-line)"
+        strokeWidth={COMPACT_LEADER_WIDTH}
+        fill="none"
+      />
+      <line
+        x1={stationX - COMPACT_TICK_SIZE}
+        y1={curveY + COMPACT_TICK_SIZE}
+        x2={stationX + COMPACT_TICK_SIZE}
+        y2={curveY - COMPACT_TICK_SIZE}
+        stroke="var(--outline-dim-ink)"
+        strokeWidth={1.1}
+      />
+      <text
+        x={textX}
+        y={row.textY}
+        textAnchor="middle"
+        style={{ fontSize: COMPACT_VALUE_SIZE, fontWeight: 700, fontFamily: "var(--font-body)" }}
+        fill="var(--outline-ink)"
+      >
+        {value}
+      </text>
+    </g>
+  );
+}
+
 export function RockerViewer({
   rocker,
   foil,
   length,
-  hideCallouts = false,
+  callouts = "full",
   orientation = "horizontal",
   showConstruction = false,
   onDrag,
@@ -302,14 +383,57 @@ export function RockerViewer({
   // solver below, the same posture `rocker-editor.tsx` takes building it once for the controls,
   // the datasheet and this viewer to all share.
   const geometry = buildRocker(rocker, length);
+
+  // Pure-inches sampling, no projection — split out from the drawing loop below so the deck
+  // envelope (`"compact"` mode's own `maxDeckIn`) can be derived BEFORE the layout, and therefore
+  // the scale, is built.
+  const samples: { stationIn: number; rockerLiftIn: number; thicknessIn: number }[] = [];
+  for (let i = 0; i <= SAMPLES; i++) {
+    const stationIn = (lengthIn * i) / SAMPLES;
+    const stationMm = inchesToMm(stationIn);
+    samples.push({
+      stationIn,
+      rockerLiftIn: mmToInches(sampleRocker(geometry, stationMm)),
+      thicknessIn: mmToInches(sampleFoil(foil, length, stationMm)),
+    });
+  }
+
   // The tallest a drawn board can ever get: the highest rocker lift plus the thickest foil, so
-  // the deck curve can never be clipped by the frame regardless of what a shaper dials in.
-  const maxDeckIn = ROCKER_LIFT_RANGE_IN.max + FOIL_THICKNESS_RANGE_IN.max;
+  // the deck curve can never be clipped by the frame regardless of what a shaper dials in. Every
+  // mode but `"compact"` reserves this constant on the frame's cross axis regardless of the
+  // board actually loaded (`rocker-view-frame.ts`'s own `maxDeckIn` contract).
+  const worstCaseDeckIn = ROCKER_LIFT_RANGE_IN.max + FOIL_THICKNESS_RANGE_IN.max;
+  // `"compact"` reserves only the LOADED board's own deck envelope instead (this plan's
+  // `<design_decision>` section 3) — the order form's box is short and wide, so an empty reserved
+  // unit comes straight out of the printed type. Falls back to the worst-case constant on a
+  // corrupt/non-finite envelope (threat T-VUS-01), mirroring `rocker-view-frame.ts`'s own
+  // `resolveEffectiveLengthIn` fallback. The construction overlay's `pxY(maxDeckIn)` station
+  // lines below are unaffected by this branch — construction only ever runs in `"full"` mode,
+  // where `maxDeckIn` keeps its worst-case value.
+  let maxDeckIn = worstCaseDeckIn;
+  if (callouts === "compact") {
+    const deckEnvelopeIn = Math.max(...samples.map((s) => s.rockerLiftIn + s.thicknessIn));
+    maxDeckIn = Number.isFinite(deckEnvelopeIn) && deckEnvelopeIn > 0 ? deckEnvelopeIn : worstCaseDeckIn;
+  }
+
   // The one place the drawing's scale and frame are decided (`rocker-view-frame.ts`) — `scale`,
   // `viewH`, `baselineY` and the frame below all come from here, so `pxX`/`pxY` and the drag
   // inverse can never solve against a different scale than the drawing was made with.
-  const layout = rockerViewLayout({ lengthIn, maxDeckIn, orientation, fitToBoard, showStationCards: !hideCallouts });
-  const { scale, baselineY, railY, tickEndY, deckRailY, deckTickEndY, cardDy, cardWidth, cardHeight, labelX, labelY } = layout;
+  const layout = rockerViewLayout({ lengthIn, maxDeckIn, orientation, fitToBoard, stationRails: callouts });
+  const {
+    scale,
+    baselineY,
+    railY,
+    tickEndY,
+    deckRailY,
+    deckTickEndY,
+    cardDy,
+    cardWidth,
+    cardHeight,
+    compactRows,
+    labelX,
+    labelY,
+  } = layout;
 
   // Nose on the left: station = length (nose tip) draws at the frame's left pad; station = 0
   // (tail tip) draws further right. A shorter board's tail simply lands further left, leaving
@@ -317,16 +441,15 @@ export function RockerViewer({
   const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * scale;
   const pxY = (heightIn: number) => baselineY - heightIn * scale;
 
-  const bottomPoints: { x: number; y: number }[] = [];
-  const deckPoints: { x: number; y: number }[] = [];
-  for (let i = 0; i <= SAMPLES; i++) {
-    const stationIn = (lengthIn * i) / SAMPLES;
-    const stationMm = inchesToMm(stationIn);
-    const rockerLiftIn = mmToInches(sampleRocker(geometry, stationMm));
-    const thicknessIn = mmToInches(sampleFoil(foil, length, stationMm));
-    bottomPoints.push({ x: pxX(stationIn), y: pxY(rockerLiftIn) });
-    deckPoints.push({ x: pxX(stationIn), y: pxY(rockerLiftIn + thicknessIn) });
-  }
+  // The same pure-inches samples above, now projected exactly as before this task.
+  const bottomPoints: { x: number; y: number }[] = samples.map((s) => ({
+    x: pxX(s.stationIn),
+    y: pxY(s.rockerLiftIn),
+  }));
+  const deckPoints: { x: number; y: number }[] = samples.map((s) => ({
+    x: pxX(s.stationIn),
+    y: pxY(s.rockerLiftIn + s.thicknessIn),
+  }));
 
   // One closed shape: the bottom curve tail-to-nose, a vertical edge closing the nose tip, the
   // deck curve nose-to-tail, and an implicit closing edge back to the start at the tail tip —
@@ -406,6 +529,34 @@ export function RockerViewer({
     const deckHeightIn = rockerHeightIn + mmToInches(sampleFoil(foil, length, stationMm));
     return { ...s, rockerHeightIn, deckHeightIn };
   });
+
+  // `"compact"` mode's three reading rows (quick task 260829-vus). `pxX` puts the nose at the
+  // frame's left, so ascending x runs nose to tail — the reverse of `stations`' own tail-to-nose
+  // build order above. Every band depth, row baseline, type size and x position these three lists
+  // hand to `CompactReading` comes off `layout`/`compactRailReadingXs`; nothing here is computed
+  // that this component doesn't already need to project the curve itself (Rule 1).
+  const ascendingStations = [...stations].reverse();
+  // Deck row: all five stations (D-01 — every thickness figure is a slider-set input).
+  const compactDeckList = ascendingStations.map((s) => ({
+    stationX: pxX(s.stationIn),
+    width: compactValueWidth(s.thicknessValue),
+  }));
+  const compactDeckXs = compactRailReadingXs(layout, compactDeckList);
+  // Bottom inner row: the two @ 12" rocker figures (D-02).
+  const compactBottomInnerStations = ascendingStations.filter((s) => s.key === "nose12" || s.key === "tail12");
+  const compactBottomInnerList = compactBottomInnerStations.map((s) => ({
+    stationX: pxX(s.stationIn),
+    width: compactValueWidth(s.rockerValue ?? ""),
+  }));
+  const compactBottomInnerXs = compactRailReadingXs(layout, compactBottomInnerList);
+  // Bottom outer row: the two tip rocker figures (D-02). The centre station's own rocker figure —
+  // the curve's own zero — is deliberately not among either bottom row.
+  const compactBottomOuterStations = ascendingStations.filter((s) => s.key === "noseTip" || s.key === "tailTip");
+  const compactBottomOuterList = compactBottomOuterStations.map((s) => ({
+    stationX: pxX(s.stationIn),
+    width: compactValueWidth(s.rockerValue ?? ""),
+  }));
+  const compactBottomOuterXs = compactRailReadingXs(layout, compactBottomOuterList);
 
   // Both the viewBox string and its frame width/height come straight off the layout — the one
   // place this drawing's frame is decided. The vertical frame is built from its own rotated
@@ -528,7 +679,7 @@ export function RockerViewer({
           strokeLinejoin="round"
         />
 
-        {!hideCallouts && (
+        {callouts === "full" && (
           <>
             {stations.map((s) => {
               const x = pxX(s.stationIn);
@@ -602,12 +753,52 @@ export function RockerViewer({
           </>
         )}
 
+        {/* Compact rails (quick task 260829-vus): three rows of bare readings, no card surface,
+            no station name and no board-length label — the sheet's own dims strip already prints
+            Length. Every position, band and type size these draw at comes off `layout` and the
+            three lists built above; this branch only zips a reading's own value onto the x the
+            separation sweep chose for it. */}
+        {callouts === "compact" && (
+          <>
+            {ascendingStations.map((s, i) => (
+              <CompactReading
+                key={`compact-deck-${s.key}`}
+                textX={compactDeckXs[i]}
+                stationX={pxX(s.stationIn)}
+                row={compactRows.deck}
+                curveY={pxY(s.deckHeightIn)}
+                value={s.thicknessValue}
+              />
+            ))}
+            {compactBottomInnerStations.map((s, i) => (
+              <CompactReading
+                key={`compact-bottom-inner-${s.key}`}
+                textX={compactBottomInnerXs[i]}
+                stationX={pxX(s.stationIn)}
+                row={compactRows.bottomInner}
+                curveY={pxY(s.rockerHeightIn)}
+                value={s.rockerValue ?? ""}
+              />
+            ))}
+            {compactBottomOuterStations.map((s, i) => (
+              <CompactReading
+                key={`compact-bottom-outer-${s.key}`}
+                textX={compactBottomOuterXs[i]}
+                stationX={pxX(s.stationIn)}
+                row={compactRows.bottomOuter}
+                curveY={pxY(s.rockerHeightIn)}
+                value={s.rockerValue ?? ""}
+              />
+            ))}
+          </>
+        )}
+
         {showConstruction && (
           <>
             {/* Faint full-height station lines. They no longer mark grab points — the deck
                 curve carries none any more — but they still mark the five measured stations the
                 output rail reads out, so the shaper can see which station is which even with the
-                rail's own shorter ticks hidden by a hideCallouts consumer. */}
+                rail's own shorter ticks hidden by a `"compact"`/`"none"` consumer. */}
             {stations.map((s) => (
               <line
                 key={`construction-${s.key}`}
