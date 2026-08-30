@@ -8,9 +8,14 @@
  *
  * `rocker`/`foil` (04-01): `RockerSpec`/`FoilSpec` live in `./rocker`/`./foil`, not here — this
  * file stays types-only, importing the types rather than redefining them, following the same
- * numbered-deviation convention `lib/geometry/volume.ts` uses. Recorded in each of those files:
- * CONTEXT.md D-05 replaces the approved design's two-value `RockerSpec`/`FoilSpec` with a
- * five-station blank-datasheet model.
+ * numbered-deviation convention `lib/geometry/volume.ts` uses. `FoilSpec` (`./foil`) still
+ * carries CONTEXT.md D-05's five-station blank-datasheet model (nose tip, nose 12", centre,
+ * tail 12", tail tip, all typed). `RockerSpec` (`./rocker`) no longer does: quick task 260829-rda
+ * replaced D-05's five fixed rocker stations with a three-knot, two-Bezier curve — the same
+ * tail-pod/widepoint/nose-tip construction `outline.ts` uses — because forcing the curve through
+ * the two 12" stations produced an abrupt, kinked rocker line. `RockerSpec` now carries a lift,
+ * an angle and a smoothness at each tip plus a flatness at the centre per side; the two 12"
+ * figures are derived from the built curve rather than stored.
  */
 
 import { type Degrees, type Mm, degrees, inchesToMm } from "./units";
