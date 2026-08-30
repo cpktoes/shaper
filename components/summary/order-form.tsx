@@ -20,10 +20,10 @@
  * - `CONTOURS`/`RAILS` checkboxes become the real rail section plots.
  * - `FIN SETUP` checkboxes become a fin *system* selector, since which fins go on the board is
  *   now designed on the fins screen; only the box hardware is still an ordering choice.
- * - `ROCKER` draws the board's own side profile — `RockerViewer`'s compact mode (04-05 Task 2),
- *   no output rail or drag targets, just the closed board shape — with its real nose and tail
- *   lift values printed in the two flanking columns the muse's own `HIGH`/`MEDIUM`/`LOW` ticks
- *   used to hold.
+ * - `ROCKER` draws the board's own side profile across the whole box — `RockerViewer`'s compact
+ *   mode (04-05 Task 2, widened by quick task 260829-uue), no card rail or drag targets, just the
+ *   closed board shape scaled to its own length. The muse's own `HIGH`/`MEDIUM`/`LOW` ticks are
+ *   gone with the flanking columns they used to hold; the drawn curve is the whole panel now.
  *
  * *Page 2 is the shaper's reference* — the rail band marking data and the fin placement numbers.
  * These were on the front, in two narrow columns either side of the drawings, and the type they
@@ -69,7 +69,6 @@ import {
   formatSignedInchesFraction,
   inchesToMm,
   mm,
-  type Mm,
 } from "@/lib/geometry/units";
 
 const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
@@ -130,24 +129,6 @@ function DimensionCell({ label, value }: { label: string; value: string }) {
           `overflow: hidden` (from `truncate`) clipped the measurements by ~2px. Tight, but tall
           enough to contain its own ink. */}
       <span className="truncate font-extrabold text-surf-ink leading-[1.15] order-form-dim">{value}</span>
-    </div>
-  );
-}
-
-/**
- * The rocker box's nose/tail height ticks — one column either side of the profile, exactly where
- * the paper muse draws its own `HIGH`/`MEDIUM`/`LOW` words. What sits inside the same
- * `OrderFormTick` box changed from a placeholder level to the board's own tip lift, printed
- * through `formatInchesFraction` — the headline number a shaper quotes for "how much nose/tail
- * rocker" a board carries. No "Nose"/"Tail" caption is added beside it: the value's own position
- * (this column sits at whichever end `RockerViewer`'s nose-left default draws that tip) already
- * says which one it is, and the drawn curve says the rest — the box's must-have is exactly the
- * curve plus its two lift values, nothing more.
- */
-function RockerLiftTick({ liftMm }: { liftMm: Mm }) {
-  return (
-    <div className="flex flex-none flex-col justify-center gap-[2px]">
-      <OrderFormTick label={formatInchesFraction(liftMm)} />
     </div>
   );
 }
@@ -318,8 +299,11 @@ export function OrderForm() {
                 <div className="flex min-h-0 min-w-0 flex-[2] flex-col gap-1">
                   {/* Rocker — draws the board's own side profile now that the rocker screen exists
                       (04-05), through `RockerViewer`'s compact `hideCallouts` mode: the closed board
-                      shape and nothing else, sized by that component's own fixed frame so it never
-                      clips at the lift/length extremes.
+                      shape and nothing else, no card rail reserved (quick task 260829-uue — a rail
+                      this box never draws is a band it no longer pays for), and `fitToBoard` so the
+                      board is scaled to its own length rather than to a ten-foot one. The drawing
+                      gets the box's whole body — no flanking tick columns holding the tip lifts,
+                      which the drawn curve already shows.
 
                       It sits above the template window and only as wide as it, rather than spanning
                       the whole body: a rocker profile is the board seen from the side, so the one
@@ -330,17 +314,10 @@ export function OrderForm() {
                     className="flex-none order-form-rocker"
                     bodyClassName="p-0"
                   >
-                    <div className="flex min-h-0 flex-1 items-stretch gap-1 px-1.5 py-1">
-                      {/* Nose lift, the drawn profile, tail lift — the same two flanking columns
-                          either side of a drawn shape the muse's own placeholder ticks held.
-                          `RockerViewer`'s default orientation is horizontal nose-left, so the
-                          nose-tip lift belongs on this left column and the tail-tip lift on the
-                          right one below. */}
-                      <RockerLiftTick liftMm={rocker.noseLift} />
+                    <div className="flex min-h-0 flex-1 items-stretch px-1.5 py-1">
                       <div className="relative min-h-0 min-w-0 flex-1">
-                        <RockerViewer rocker={rocker} foil={foil} length={outline.length} hideCallouts />
+                        <RockerViewer rocker={rocker} foil={foil} length={outline.length} hideCallouts fitToBoard />
                       </div>
-                      <RockerLiftTick liftMm={rocker.tailLift} />
                     </div>
                   </FormBox>
 

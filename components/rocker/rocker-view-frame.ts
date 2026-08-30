@@ -33,12 +33,14 @@ export interface RockerViewLayoutInput {
   maxDeckIn: number;
   orientation: RockerViewOrientation;
   /**
-   * The editor-only frame gate (planner finding 7). `true` scales every board's own length to
-   * fill the frame's long axis, so a 5'0" board and a 10'0" board both draw at the same share of
-   * the panel. `false` (the Summary order form's path, `components/summary/order-form.tsx` line
-   * 341) keeps the fixed range-derived scale this viewer has always used — the order form's
-   * frame must never resize around whichever board happens to be loaded (quick task 260823-h6l
-   * set that precedent for the outline viewer's own `fixedFrame`).
+   * A per-consumer scale choice, not an editor-only one (planner finding 7, revised by quick
+   * task 260829-uue). `true` scales every board's own length to fill the frame's long axis, so a
+   * 5'0" board and a 10'0" board both draw at the same share of the panel — both
+   * `components/rocker/rocker-editor.tsx` and, now, the Summary order form's card-less rocker box
+   * (`components/summary/order-form.tsx`) pass this. `false` keeps the fixed range-derived scale
+   * this viewer has always used, the same precedent 260823-h6l set for the outline viewer's own
+   * `fixedFrame` — still the right default for a consumer whose frame must never resize around
+   * whichever board happens to be loaded.
    */
   fitToBoard: boolean;
   /**

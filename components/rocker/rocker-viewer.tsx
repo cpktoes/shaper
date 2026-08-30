@@ -120,13 +120,15 @@ export interface RockerViewerProps {
    */
   onDrag?: (patch: Partial<RockerSpec>) => void;
   /**
-   * The editor-only frame gate (`rocker-view-frame.ts`'s `RockerViewLayoutInput.fitToBoard`):
-   * `true` scales every board's own length to fill the drawing's long axis, so a short board no
-   * longer draws small with blank space beside it. Defaults to `false`, which keeps the fixed
-   * range-derived frame this viewer has always drawn — `components/summary/order-form.tsx` never
-   * passes this prop, so the order form's rocker box keeps today's frame BY CONSTRUCTION (the
-   * same posture 260823-h6l gave the outline viewer's own `fixedFrame`), rather than by a guard
-   * anyone could forget to add. Only `components/rocker/rocker-editor.tsx` passes `true`.
+   * The frame's scale rule (`rocker-view-frame.ts`'s `RockerViewLayoutInput.fitToBoard`): `true`
+   * scales every board's own length to fill the drawing's long axis, so a short board no longer
+   * draws small with blank space beside it. Defaults to `false`, which keeps the fixed
+   * range-derived frame every board has always shared. A per-consumer choice, not an editor-only
+   * one (quick task 260829-uue) — `components/rocker/rocker-editor.tsx` passes `true` so a
+   * shaper's own board fills the editor panel, and `components/summary/order-form.tsx` now opts
+   * in too, for the same reason on the printed sheet: its own frame carries no card rail to size
+   * around (`hideCallouts` is already set there), so nothing about the print path's stability
+   * depends on this staying fixed the way `outline-viewer.tsx`'s `fixedFrame` still does.
    */
   fitToBoard?: boolean;
 }
