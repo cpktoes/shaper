@@ -20,18 +20,11 @@
  * Orientation (D-03): the toolbar's rotate-in-place button flips this viewer between "horizontal"
  * (the default, nose left) and "vertical" (nose up, so the five stations read top-to-bottom the
  * way a blank datasheet's columns do) — the OPPOSITE of the Template viewer's own default. Every
- * physical element (the baseline, the board silhouette, the station tick lines, the outline
- * reference) is drawn once in the canonical horizontal coordinate space and lives inside one
- * rotated `<g>`, per the technique quick task 260825-vot proved on the outline viewer — no
- * projector call site is ever duplicated for the second orientation. Only the label TEXT
- * counter-rotates (`Upright` below), so it always reads upright on screen regardless of which way
- * the board is turned.
- *
- * Outline reference (D-07/D-08): when `showOutlineReference` is on and an `outlineGeometry` is
- * given, a faint dashed curve traces the drawn outline's own half-width at each station, on the
- * same vertical (height) axis and scale as the deck curve, drawn BEHIND the solid board path so
- * it is naturally read as a reference rather than as an editable curve — it belongs to the
- * Template screen (D-07), and the toolbar's hide-outline toggle removes it entirely.
+ * physical element (the baseline, the board silhouette, the station tick lines) is drawn once in
+ * the canonical horizontal coordinate space and lives inside one rotated `<g>`, per the technique
+ * quick task 260825-vot proved on the outline viewer — no projector call site is ever duplicated
+ * for the second orientation. Only the label TEXT counter-rotates (`Upright` below), so it always
+ * reads upright on screen regardless of which way the board is turned.
  *
  * Construction-line overlay and control-point dragging (quick task 260829-t47, on top of
  * 260829-snm's own move from seven grab points to two): when `showConstruction` is on, the
@@ -58,8 +51,6 @@
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef } from "react";
 import { CalloutChipFrame, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { FOIL_THICKNESS_RANGE_IN, sampleFoil, type FoilSpec } from "@/lib/geometry/foil";
-import type { OutlineGeometry } from "@/lib/geometry/outline";
-import { sampleOutline } from "@/lib/geometry/outline";
 import {
   sideProfileDragPoints,
   solveSideProfileDrag,
@@ -105,13 +96,6 @@ export interface RockerViewerProps {
   /** D-03: `"horizontal"` (nose left, the default) or `"vertical"` (nose up, stations read
    * top-to-bottom). Driven by the toolbar's rotate button, never persisted. */
   orientation?: ViewerOrientation;
-  /** D-08: draws the faint plan-view width reference (below) when true and `outlineGeometry` is
-   * given. Defaults to `true` so a caller that never wires the toggle still gets the reference. */
-  showOutlineReference?: boolean;
-  /** D-07/D-08: the drawn outline, sampled through `sampleOutline` to trace the board's own
-   * half-width at each station. Optional — a consumer with no outline context (e.g. a future
-   * Summary rocker box) simply renders no reference. */
-  outlineGeometry?: OutlineGeometry;
   /** Draws the four construction lines and their plain marker dots (plus, when `onDrag` is also
    * given, the two tip drag targets and faint station lines) when true. Defaults to `false`. */
   showConstruction?: boolean;
@@ -164,8 +148,6 @@ export function RockerViewer({
   length,
   hideCallouts = false,
   orientation = "horizontal",
-  showOutlineReference = true,
-  outlineGeometry,
   showConstruction = false,
   onDrag,
   fitToBoard = false,
@@ -200,9 +182,6 @@ export function RockerViewer({
 
   const bottomPoints: { x: number; y: number }[] = [];
   const deckPoints: { x: number; y: number }[] = [];
-  // The plan-view outline's own half-width at each sampled station, drawn on the SAME axis/scale
-  // as the deck curve above — a faint reference behind the board, never a second editable curve.
-  const outlineRefPoints: { x: number; y: number }[] = [];
   for (let i = 0; i <= SAMPLES; i++) {
     const stationIn = (lengthIn * i) / SAMPLES;
     const stationMm = inchesToMm(stationIn);
@@ -210,10 +189,6 @@ export function RockerViewer({
     const thicknessIn = mmToInches(sampleFoil(foil, length, stationMm));
     bottomPoints.push({ x: pxX(stationIn), y: pxY(rockerLiftIn) });
     deckPoints.push({ x: pxX(stationIn), y: pxY(rockerLiftIn + thicknessIn) });
-    if (outlineGeometry) {
-      const halfWidthIn = mmToInches(sampleOutline(outlineGeometry, stationMm));
-      outlineRefPoints.push({ x: pxX(stationIn), y: pxY(halfWidthIn) });
-    }
   }
 
   // One closed shape: the bottom curve tail-to-nose, a vertical edge closing the nose tip, the
@@ -229,14 +204,6 @@ export function RockerViewer({
       .map((p) => `L ${p.x.toFixed(2)} ${p.y.toFixed(2)}`),
     "Z",
   ].join(" ");
-
-  const outlineRefPath =
-    outlineRefPoints.length > 0
-      ? [
-          `M ${outlineRefPoints[0].x.toFixed(2)} ${outlineRefPoints[0].y.toFixed(2)}`,
-          ...outlineRefPoints.slice(1).map((p) => `L ${p.x.toFixed(2)} ${p.y.toFixed(2)}`),
-        ].join(" ")
-      : null;
 
   const noseX = pxX(lengthIn);
   const tailX = pxX(0);
@@ -398,9 +365,6 @@ export function RockerViewer({
           strokeWidth={1}
           strokeDasharray="4 3"
         />
-        {showOutlineReference && outlineRefPath && (
-          <path d={outlineRefPath} fill="none" stroke="var(--outline-station-line)" strokeWidth={1} strokeDasharray="4 3" />
-        )}
         <path
           d={boardPath}
           fill="var(--outline-board-fill)"
