@@ -5,7 +5,7 @@ milestone_name: milestone
 current_phase: 04
 status: completed
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-08-30T07:39:01.896Z"
+last_updated: "2026-08-30T07:44:40.531Z"
 last_activity: 2026-08-30
 last_activity_desc: "Completed quick task 260830-03j: nose-up rocker callouts hold the template's own on-screen size (pinned cards, print path untouched)"
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-08-30 — Fast task: removed the board-length label from the rocker viewer's drawing
+Last activity: 2026-08-30 — Fast task: more clearance between the board and the rocker cards below it
 
 Progress: [██████████] 100%
 
@@ -205,6 +205,7 @@ Recent decisions affecting current work:
 | 260829-x37 | Rocker screen's construction overlay loses its five dark full-height vertical station lines — the four Bezier steering lines, three knot dots and drag targets stay; the always-on card leader ticks are untouched | 2026-08-29 | dd0bfab | [260829-x37-on-rocker-page-remove-the-the-dark-verti](./quick/260829-x37-on-rocker-page-remove-the-the-dark-verti/) |
 | 260830-03j | Rocker station cards hold a constant on-screen size nose-up, matching the template's own pinned callouts: one `cardScale` scalar (new `cardPinScale`/`maxCardPinScale` in rocker-view-frame) scales card box, both rail anchors, station-axis centring and the whole type stack together, clamped to `[1, ceiling]` where the ceiling is the station pitch — exactly 1.0 horizontal by construction (nose-left is unchangeable), ~2.11 nose-up. Frame reserves at the ceiling, never the live scale, so there is no resize feedback loop. Verified in-browser: nose-up value type renders at 14px (the template's CALLOUT_PX.value); order form's compact print path byte-identical | 2026-08-30 | 4005f3e | [260830-03j-when-rocker-is-displayed-vertical-the-da](./quick/260830-03j-when-rocker-is-displayed-vertical-the-da/) |
 | 260830-fast2 | Rocker viewer's board-length label removed from the drawing (sidebar, datasheet and order form dims strip still print Length); layout module keeps its labelX/labelY reserve, so the nose-up frame carries ~22 units of now-unused top margin — reclaim in a follow-up if it reads loose | 2026-08-30 | 1df2cc9 | (fast task — no plan dir) |
+| 260830-fast3 | Rocker viewer's bottom (rocker) rail gets its own BOTTOM_RAIL_GAP (40, double the shared RAIL_GAP) plus a matching bottomCardBandDepth: the two rails measure from different references — deck clears the worst-case deck line no board reaches (124.6 units on a 6'0"), bottom clears the baseline the board's curve actually touches (was exactly 20) — so one shared gap read as two very different distances. Order form's compact path untouched | 2026-08-30 | a58463c | (fast task — no plan dir) |
 
 ## Deferred Items
 
