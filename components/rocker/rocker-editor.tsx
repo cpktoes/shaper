@@ -6,16 +6,15 @@
  * beside a `main` canvas (`bg-surf-canvas`, `p-3`) holding a `TabbedPanel`.
  *
  * 04-02 Task 1 widened the sidebar to the full `RockerControls` (all four rocker lifts, all five
- * thicknesses) and added the VIEWER tab's toolbar — a rotate-in-place button and a hide-board-
- * outline toggle, the same box treatment the Template screen's own toolbar uses. Task 2 added the
- * second tab: DATASHEET, the D-07 full five-station table with typed imperial entry. Two tabs
- * rather than one split view, because the drawing wants full panel height and the table wants
- * full panel width — the toolbar stays inside the VIEWER tab only. Task 3 adds a third toolbar
- * button — the construction-lines toggle, the hide-board-outline button's sibling — that reveals
- * `RockerViewer`'s construction overlay and its two tip drag targets (quick task 260829-snm
- * reduced this from nine drag targets to two, and the patch is now handed straight to
- * `updateRocker` — one mutator, since a tip drag can only ever touch the rocker spec). 04-05
- * Task 1 adds a fourth: below `RockerControls`, a
+ * thicknesses) and added the VIEWER tab's toolbar — a rotate-in-place button, the same box
+ * treatment the Template screen's own toolbar uses. Task 2 added the second tab: DATASHEET, the
+ * D-07 full five-station table with typed imperial entry. Two tabs rather than one split view,
+ * because the drawing wants full panel height and the table wants full panel width — the toolbar
+ * stays inside the VIEWER tab only. Task 3 adds a second toolbar button — the construction-lines
+ * toggle — that reveals `RockerViewer`'s construction overlay and its two tip drag targets (quick
+ * task 260829-snm reduced this from nine drag targets to two, and the patch is now handed
+ * straight to `updateRocker` — one mutator, since a tip drag can only ever touch the rocker
+ * spec). 04-05 Task 1 adds a third affordance: below `RockerControls`, a
  * development-only "Copy preset values" button mirroring the Template screen's own capture
  * affordance (`outline-editor.tsx`) — it reads the live `rocker`/`foil` back out as pasteable
  * `lib/geometry/presets.ts` source, gated on `process.env.NODE_ENV === "development"` so the
@@ -24,7 +23,7 @@
  */
 
 import { useId, useState } from "react";
-import { LayoutTemplateIcon, LocateFixedIcon } from "lucide-react";
+import { LocateFixedIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
 import { Button } from "@/components/ui/button";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
@@ -117,10 +116,6 @@ export function RockerEditor() {
    * persisted. Per D-03 this screen's default is horizontal (nose left), the OPPOSITE of the
    * Template screen's vertical default, so a reload always comes back horizontal here. */
   const [orientation, setOrientation] = useState<ViewerOrientation>("horizontal");
-  /** D-08: hides the faint plan-view width reference so the rocker line reads alone. Local view
-   * state, not design data, deliberately not persisted — mirrors `showConstruction`'s posture on
-   * the Template screen. */
-  const [showOutlineReference, setShowOutlineReference] = useState(true);
   /** Reveals the construction-line overlay and its two tip drag targets on the side profile.
    * Local view state, not design data, deliberately not persisted — mirrors `showConstruction`'s
    * posture on the Template screen; defaults to `false` there too. */
@@ -206,30 +201,16 @@ export function RockerEditor() {
               </button>
               <button
                 type="button"
-                onClick={() => setShowOutlineReference((v) => !v)}
-                aria-pressed={!showOutlineReference}
-                aria-label={showOutlineReference ? "Hide board outline" : "Show board outline"}
-                title={showOutlineReference ? "Hide board outline" : "Show board outline"}
-                // The one control in this toolbar allowed the accent fill (D-08), same posture as
-                // Template's Construction-Lines button — icon colour folded into the SAME
-                // aria-pressed className expression as the fill, never a separate always-on class
-                // (this codebase has been bitten by that exact bug three times, see
-                // .planning/quick/260825-rmb-*/SUMMARY.md).
-                className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent aria-pressed:hover:bg-surf-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
-              >
-                <LayoutTemplateIcon className="size-6" />
-              </button>
-              <button
-                type="button"
                 onClick={() => setShowConstruction((v) => !v)}
                 aria-pressed={showConstruction}
                 aria-label={showConstruction ? "Hide construction lines" : "Show construction lines"}
                 title={showConstruction ? "Hide construction lines" : "Show construction lines"}
-                // Not accent-filled: the UI spec's Color table reserves the accent fill for the
-                // Hide Board Outline toggle and the drag targets themselves, not a third toolbar
-                // button — so this one takes a neutral pressed state instead (the same
-                // `bg-surf-well` tone the other two buttons already use on hover).
-                className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-pressed:bg-surf-well aria-pressed:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+                // Not accent-filled: the accent fill is now unclaimed on this toolbar — matching
+                // the Template screen's accent-filled Construction Lines button would be a
+                // one-line flip the founder has not asked for — so this one keeps the neutral
+                // pressed state instead (the same `bg-surf-well` tone the other buttons already
+                // use on hover).
+                className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-pressed:bg-surf-well aria-pressed:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
               >
                 <LocateFixedIcon className="size-6" />
               </button>
@@ -237,9 +218,7 @@ export function RockerEditor() {
                 rocker={rocker}
                 foil={foil}
                 length={outline.length}
-                outlineGeometry={outlineGeometry}
                 orientation={orientation}
-                showOutlineReference={showOutlineReference}
                 showConstruction={showConstruction}
                 onDrag={updateRocker}
                 fitToBoard
