@@ -5,9 +5,9 @@ milestone_name: milestone
 current_phase: 04
 status: completed
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-08-30T06:44:40.084Z"
-last_activity: 2026-08-29
-last_activity_desc: Phase 04 execution started
+last_updated: "2026-08-30T07:39:01.896Z"
+last_activity: 2026-08-30
+last_activity_desc: "Completed quick task 260830-03j: nose-up rocker callouts hold the template's own on-screen size (pinned cards, print path untouched)"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-08-30 — Completed quick task 260830-03j: nose-up rocker callouts hold the template's own on-screen size (pinned cards, print path untouched)
+Last activity: 2026-08-30 — Fast task: removed the board-length label from the rocker viewer's drawing
 
 Progress: [██████████] 100%
 
@@ -201,9 +201,10 @@ Recent decisions affecting current work:
 | 260829-uue | Rocker station read-outs split to opposite rails in the template's own card grammar (founder refinement folded in mid-plan): thickness figures as cards on the deck rail (all five are slider inputs), rocker figures on the bottom rail — cards at the two input tips, plain measured readings with the 45° dimension tick at the derived Nose/Center/Tail @ 12" — each leadered to the exact point on its own curve; rocker-view-frame grows the second rail with 29 containment/clearance tests. Order form's ROCKER box loses its two flanking tick squares and gains fitToBoard, so the profile alone fills the box at the board's own length | 2026-08-29 | 7007c72 | [260829-uue-rocker-cards-rocker-dims-on-bottom-side-](./quick/260829-uue-rocker-cards-rocker-dims-on-bottom-side-/) |
 | 260829-vus | Order form's ROCKER window gains compact measurement callouts: five thicknesses on the deck side, four rocker values on the bottom side (centre zero skipped), drawn as bare plain readings with doglegged leaders — cards and station names provably cannot hold 9pt in the 4.70x0.92in box, so a "Thickness above, rocker below" caption legend identifies them; hideCallouts widened to callouts:"full"\|"compact"\|"none", the deck reserve becomes the board's own envelope, and a printed-size model (ORDER_FORM_ROCKER_BOX_PX) pins ≥9pt for representative boards / ≥8pt across the sweep in tests | 2026-08-29 | 58767c6 | [260829-vus-summary-rocker-window-show-five-thicknes](./quick/260829-vus-summary-rocker-window-show-five-thicknes/) |
 | 260829-fast | Order form's rocker profile drawn unfilled: new boardFill prop on RockerViewer (default on, editor unchanged), order form passes false so the sheet prints an outline-only side profile | 2026-08-29 | f6554de | (fast task — no plan dir) |
-| 54 | Summary rocker window: dashed reference line made legible, rocker readings aligned on one row | 2026-08-30 | d69c53f | — |
+| 260830-fast | Summary rocker window: dashed reference line made legible (1-unit stroke washed out at print scale), all four rocker readings aligned on one shared baseline instead of two staggered rows | 2026-08-30 | d69c53f | (fast task — no plan dir) |
 | 260829-x37 | Rocker screen's construction overlay loses its five dark full-height vertical station lines — the four Bezier steering lines, three knot dots and drag targets stay; the always-on card leader ticks are untouched | 2026-08-29 | dd0bfab | [260829-x37-on-rocker-page-remove-the-the-dark-verti](./quick/260829-x37-on-rocker-page-remove-the-the-dark-verti/) |
 | 260830-03j | Rocker station cards hold a constant on-screen size nose-up, matching the template's own pinned callouts: one `cardScale` scalar (new `cardPinScale`/`maxCardPinScale` in rocker-view-frame) scales card box, both rail anchors, station-axis centring and the whole type stack together, clamped to `[1, ceiling]` where the ceiling is the station pitch — exactly 1.0 horizontal by construction (nose-left is unchangeable), ~2.11 nose-up. Frame reserves at the ceiling, never the live scale, so there is no resize feedback loop. Verified in-browser: nose-up value type renders at 14px (the template's CALLOUT_PX.value); order form's compact print path byte-identical | 2026-08-30 | 4005f3e | [260830-03j-when-rocker-is-displayed-vertical-the-da](./quick/260830-03j-when-rocker-is-displayed-vertical-the-da/) |
+| 260830-fast2 | Rocker viewer's board-length label removed from the drawing (sidebar, datasheet and order form dims strip still print Length); layout module keeps its labelX/labelY reserve, so the nose-up frame carries ~22 units of now-unused top margin — reclaim in a follow-up if it reads loose | 2026-08-30 | 1df2cc9 | (fast task — no plan dir) |
 
 ## Deferred Items
 
