@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-08-29 — Completed quick task 260829-x37: rocker construction overlay loses its dark vertical station lines (steering lines, knots and drag targets stay)
+Last activity: 2026-08-30 — Completed quick task 260830-03j: nose-up rocker callouts hold the template's own on-screen size (pinned cards, print path untouched)
 
 Progress: [██████████] 100%
 
@@ -203,6 +203,7 @@ Recent decisions affecting current work:
 | 260829-fast | Order form's rocker profile drawn unfilled: new boardFill prop on RockerViewer (default on, editor unchanged), order form passes false so the sheet prints an outline-only side profile | 2026-08-29 | f6554de | (fast task — no plan dir) |
 | 54 | Summary rocker window: dashed reference line made legible, rocker readings aligned on one row | 2026-08-30 | d69c53f | — |
 | 260829-x37 | Rocker screen's construction overlay loses its five dark full-height vertical station lines — the four Bezier steering lines, three knot dots and drag targets stay; the always-on card leader ticks are untouched | 2026-08-29 | dd0bfab | [260829-x37-on-rocker-page-remove-the-the-dark-verti](./quick/260829-x37-on-rocker-page-remove-the-the-dark-verti/) |
+| 260830-03j | Rocker station cards hold a constant on-screen size nose-up, matching the template's own pinned callouts: one `cardScale` scalar (new `cardPinScale`/`maxCardPinScale` in rocker-view-frame) scales card box, both rail anchors, station-axis centring and the whole type stack together, clamped to `[1, ceiling]` where the ceiling is the station pitch — exactly 1.0 horizontal by construction (nose-left is unchangeable), ~2.11 nose-up. Frame reserves at the ceiling, never the live scale, so there is no resize feedback loop. Verified in-browser: nose-up value type renders at 14px (the template's CALLOUT_PX.value); order form's compact print path byte-identical | 2026-08-30 | 4005f3e | [260830-03j-when-rocker-is-displayed-vertical-the-da](./quick/260830-03j-when-rocker-is-displayed-vertical-the-da/) |
 
 ## Deferred Items
 
