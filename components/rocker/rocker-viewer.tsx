@@ -12,7 +12,10 @@
  *
  * Drafting grammar, per `.planning/sketches/MANIFEST.md`: the flat reference line is a faint
  * dashed line drawn only INSIDE the drawn shape's own extent; the rocker/thickness values read
- * out to an output rail below the baseline, outside the shape.
+ * out to an output rail below the baseline, outside the shape, as bordered data cards drawn on
+ * the same card surface (`CalloutChipFrame`, quick task 260829-t47) the TEMPLATE screen's own
+ * chips use — one card per station, station name over its two values, so the two screens read as
+ * one drawing system.
  *
  * Orientation (D-03): the toolbar's rotate-in-place button flips this viewer between "horizontal"
  * (the default, nose left) and "vertical" (nose up, so the five stations read top-to-bottom the
@@ -30,27 +33,30 @@
  * it is naturally read as a reference rather than as an editable curve — it belongs to the
  * Template screen (D-07), and the toolbar's hide-outline toggle removes it entirely.
  *
- * Construction-line overlay and tip dragging (quick task 260829-snm, on top of Task 3's original
- * 260829-rda work): when `showConstruction` is on, the drawing gains the same construction-line
- * grammar the TEMPLATE viewer already draws — one line, from `geometry.handles`, out of each
- * curve point to the handle that steers the curve there, ending in a small plain dot, with a
- * plain dot on the fixed centre knot too. There are always four lines: the rocker curve is two
- * Bezier segments joined at the centre, and each segment has a steering handle at both of its
- * ends. A plain dot means "this shows you the shape, you cannot grab it" — only the two tips
- * carry a round three-part grab target; the five deck (thickness) points that used to sit on the
- * curve above are gone from the drawing entirely, since the five Thickness sliders in the sidebar
- * are now the only way to set thickness. When `onDrag` is also given, the two tip points
- * `sideProfileDragPoints` enumerates draw as grab targets — the same three-part accent treatment
- * `outline-viewer.tsx`'s drag targets use, counter-scaled to a constant on-screen size — plus
- * faint full-height station lines marking the five measured stations the output rail reads out.
- * Pointer handling converts a screen event to board coordinates through the rotated content
- * group's own `getScreenCTM`, the technique that already makes dragging work in both orientations
- * on the Template screen, then calls `solveSideProfileDrag` and hands the patch straight up — the
- * caller (`rocker-editor.tsx`) passes it straight to `updateRocker`.
+ * Construction-line overlay and control-point dragging (quick task 260829-t47, on top of
+ * 260829-snm's own move from seven grab points to two): when `showConstruction` is on, the
+ * drawing gains the same construction-line grammar the TEMPLATE viewer already draws — one line,
+ * from `geometry.handles`, out of each curve point to the handle that steers the curve there.
+ * There are always four lines: the rocker curve is two Bezier segments joined at the centre, and
+ * each segment has a steering handle at both of its ends. The three KNOTS — tail tip, centre,
+ * nose tip — draw as small plain dots: "this shows you the shape, you cannot grab it." Both tips
+ * are fixed because a tip's own rocker is a headline number set from its slider and its typed
+ * DATASHEET cell, not something to eyeball by dragging; the centre is the curve's own zero by
+ * definition. The four HANDLE TERMINI — the far end of each steering line — are the drawing's
+ * only grab targets, when `onDrag` is also given: `sideProfileDragPoints` enumerates them in
+ * `geometry.handles`' own order, the same three-part accent treatment `outline-viewer.tsx`'s drag
+ * targets use, counter-scaled to a constant on-screen size. Dragging the tail or nose tip's own
+ * handle sets that tip's Angle and Smoothness together; dragging either of the two centre handles
+ * sets that side's Flatness alone, and moving it off its own station-only tangent carries no
+ * information (the constrained-axis behaviour `rocker-drag.ts`'s own tests pin down). Pointer
+ * handling converts a screen event to board coordinates through the rotated content group's own
+ * `getScreenCTM`, the technique that already makes dragging work in both orientations on the
+ * Template screen, then calls `solveSideProfileDrag` (passed the live geometry) and hands the
+ * patch straight up — the caller (`rocker-editor.tsx`) passes it straight to `updateRocker`.
  */
 
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef } from "react";
-import { useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
+import { CalloutChipFrame, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import { FOIL_THICKNESS_RANGE_IN, sampleFoil, type FoilSpec } from "@/lib/geometry/foil";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
@@ -93,9 +99,23 @@ const PX_PER_INCH = (VIEW_W - PAD_X * 2) / BOARD_LENGTH_RANGE_IN.max;
 const PAD_TOP = 26;
 /** Gap between the baseline and the output rail's tick marks. */
 const RAIL_GAP = 20;
-/** Room for the output rail's three stacked text lines (rocker value, thickness value, station
- * name) below the baseline. */
-const RAIL_LABEL_HEIGHT = 58;
+/** Each station card's height, in SVG user units — room for its three stacked rows (station name,
+ * then the two values) at this drawing's existing type scale. */
+const STATION_CARD_HEIGHT = 50;
+/**
+ * Each station card's width, in SVG user units — derived from the rail's own narrowest column
+ * pitch (the 12in tip-to-station span, `12 * PX_PER_INCH`) rather than written as a literal, so
+ * the relationship that keeps neighbouring cards apart survives any future change to the frame's
+ * scale. The rail is sized in user units, not CSS pixels, because a pinned TEMPLATE-sized chip
+ * (`CALLOUT_PX.chipW = 104`) is wider than the narrowest 82-unit pitch at this viewer's realistic
+ * fit scales, which would guarantee an overlap on every board (planner_findings item 8,
+ * 260829-t47). An 8-unit gutter is left between neighbouring cards.
+ */
+const STATION_CARD_WIDTH = 12 * PX_PER_INCH - 8;
+/** Room below the baseline for one station card — re-expressed off `STATION_CARD_HEIGHT` so it
+ * still evaluates to 58 and `viewH` (and every consumer's box aspect, including the Summary order
+ * form's rocker box) is numerically unchanged. */
+const RAIL_LABEL_HEIGHT = STATION_CARD_HEIGHT + 8;
 const BOTTOM_PAD = RAIL_GAP + RAIL_LABEL_HEIGHT;
 /** Curve sampling density — enough to read as smooth at this frame's scale, well past the five
  * knots the monotone splines are built from. */
@@ -312,8 +332,7 @@ export function RockerViewer({
     : [];
 
   // The construction overlay: one line per handle (four, always — two Bezier segments each with a
-  // handle at both ends), from `geometry.handles`, plus a plain dot at every line's terminus and
-  // at the centre knot (the curve's own fixed zero). Every coordinate comes straight off
+  // handle at both ends), from `geometry.handles`. Every coordinate comes straight off
   // `buildRocker`'s own knots/handles, in the same canonical space pxX/pxY draw everything else
   // in — no formula added here, only projection.
   const constructionLines = geometry.handles.map((h) => ({
@@ -322,10 +341,12 @@ export function RockerViewer({
     x2: pxX(mmToInches(h.to.x)),
     y2: pxY(mmToInches(h.to.y)),
   }));
-  const constructionDots = [
-    { cx: pxX(mmToInches(geometry.knots[1].point.x)), cy: pxY(mmToInches(geometry.knots[1].point.y)) },
-    ...geometry.handles.map((h) => ({ cx: pxX(mmToInches(h.to.x)), cy: pxY(mmToInches(h.to.y)) })),
-  ];
+  // Plain dots: all three knots — tail tip, centre, nose tip. Fixed, ungrabbable, showing the
+  // shape only; the four handle termini below are the drawing's only grab targets now.
+  const constructionDots = geometry.knots.map((k) => ({
+    cx: pxX(mmToInches(k.point.x)),
+    cy: pxY(mmToInches(k.point.y)),
+  }));
 
   /** Screen point -> board coordinates: undo the SVG transform, then invert pxX/pxY.
    *
@@ -352,7 +373,7 @@ export function RockerViewer({
     // Every move writes the spec and the redraw arrives back through props — nothing here is
     // cached across renders, which is what keeps the sliders and the datasheet cells in step
     // with the drawing mid-drag.
-    onDrag(solveSideProfileDrag(draggingRef.current, boardPoint));
+    onDrag(solveSideProfileDrag(geometry, draggingRef.current, boardPoint));
   }
 
   function handleDragStart(target: SideProfileDragTarget, event: ReactPointerEvent<SVGElement>) {
@@ -417,6 +438,7 @@ export function RockerViewer({
           <>
             {stations.map((s) => {
               const x = pxX(s.stationIn);
+              const cardX = x - STATION_CARD_WIDTH / 2;
               return (
                 <g key={s.key}>
                   <line
@@ -428,34 +450,39 @@ export function RockerViewer({
                     strokeWidth={1}
                   />
                   <Upright x={x} y={railY} vertical={vertical}>
-                    {s.rockerValue !== null && (
-                      <text
-                        x={x}
-                        y={railY + 12}
-                        textAnchor="middle"
-                        style={{ fontSize: 11, fontWeight: 700, fontFamily: "var(--font-body)" }}
-                        fill="var(--outline-callout-label)"
-                      >
-                        R {s.rockerValue}
-                      </text>
-                    )}
+                    <CalloutChipFrame x={cardX} y={railY} width={STATION_CARD_WIDTH} height={STATION_CARD_HEIGHT} />
                     <text
                       x={x}
-                      y={railY + 26}
-                      textAnchor="middle"
-                      style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
-                      fill="var(--outline-ink)"
-                    >
-                      T {s.thicknessValue}
-                    </text>
-                    <text
-                      x={x}
-                      y={railY + 40}
+                      y={railY + 13}
                       textAnchor="middle"
                       style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
                       fill="var(--outline-callout-label)"
                     >
                       {s.name}
+                    </text>
+                    {/* The rocker row moving from the muted label colour to the ink colour is
+                        deliberate: in this grammar a value is a value, and it is the label above
+                        that is muted. The centre station has no rocker number (its lift is zero
+                        by definition) — an em-dash keeps its row on the same line as the other
+                        four cards, drawn in the muted label colour since it stands in for an
+                        absent value rather than a real one. */}
+                    <text
+                      x={x}
+                      y={railY + 28}
+                      textAnchor="middle"
+                      style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                      fill={s.rockerValue !== null ? "var(--outline-ink)" : "var(--outline-callout-label)"}
+                    >
+                      {s.rockerValue !== null ? `R ${s.rockerValue}` : "R —"}
+                    </text>
+                    <text
+                      x={x}
+                      y={railY + 43}
+                      textAnchor="middle"
+                      style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                      fill="var(--outline-ink)"
+                    >
+                      T {s.thicknessValue}
                     </text>
                   </Upright>
                 </g>
@@ -505,9 +532,9 @@ export function RockerViewer({
                 strokeWidth={1.5}
               />
             ))}
-            {/* Plain marker dots: one at every construction line's terminus, plus one on the
-                centre knot — the curve's own fixed zero. Deliberately plain, not a grab target:
-                these show the shape, they are not draggable. */}
+            {/* Plain marker dots: the three knots — tail tip, centre, nose tip. Deliberately
+                plain, not a grab target: these show the shape, they are not draggable. A tip's
+                own rocker is set from its slider and its typed DATASHEET cell instead. */}
             {constructionDots.map((dt, i) => (
               <circle
                 key={`construction-dot-${i}`}
@@ -518,9 +545,10 @@ export function RockerViewer({
               />
             ))}
             {/* The drag targets themselves: board-fill disc, accent ring, warning core — the same
-                three-part treatment `outline-viewer.tsx` draws its own drag targets with. Only
-                the two tips ever appear here now. pointer-events:none throughout — the
-                transparent hit circles below own every pointer interaction. */}
+                three-part treatment `outline-viewer.tsx` draws its own drag targets with. The
+                four control-point handle termini appear here — the two tip knots and the centre
+                knot are never among them. pointer-events:none throughout — the transparent hit
+                circles below own every pointer interaction. */}
             {dragTargets.map((d) => (
               <g key={`target-${d.target}`} pointerEvents="none">
                 <circle
