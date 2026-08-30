@@ -154,16 +154,18 @@ export function OutlineEditor() {
             type="button"
             aria-label="Export Template"
             title="Export Template"
-            // Same treatment as the rotate button beside it (copied verbatim, see its own long
-            // comment below for why): bordered `surf-ground` fill, never the accent — this
-            // button is also absolutely positioned over the drawing. right-10 sits it
-            // immediately left of the rotate button's right-0, so the two read as one
-            // icon-button pair. `DialogTrigger` (inside ExportPreviewDialog) sets
-            // `aria-expanded`/`aria-haspopup` on this element automatically — the
-            // `aria-expanded:` classes below give the open state its own background, the
-            // same "dialog-open" treatment an `aria-expanded`-driven toggle already gets
-            // elsewhere in this app, never the accent fill (UI spec's accent reservation).
-            className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-expanded:bg-surf-well aria-expanded:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+            // Same box and hover treatment as every button in this toolbar: bordered
+            // `surf-ground` at rest, filling with the accent colour and flipping its icon to
+            // the on-accent colour under the pointer. right-10 sits it immediately left of
+            // the rotate button's right-0, so the two read as one icon-button pair. This
+            // button has no ON state to hold a fill after the pointer leaves — the dialog it
+            // opens covers the drawing, so any fill painted on the button underneath would be
+            // invisible while the dialog is open and only flash as it closes. The
+            // `aria-expanded:` background it used to carry for that open state is gone for the
+            // same reason (D-02): it can't be seen while the dialog is open, and keeping it
+            // would have sat at equal CSS specificity with the new hover fill — an
+            // order-dependent conflict over a state nobody can see.
+            className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
           >
             <DownloadIcon className="size-6" />
           </button>
@@ -183,22 +185,24 @@ export function OutlineEditor() {
         // founder's request for a visible boundary. The border is `surf-line`, not
         // `surf-line-faint` — `line` is the token carrying the 3:1 non-text target a control
         // boundary needs in every theme, per the rule written down at
-        // components/viewer/tabbed-panel.tsx. The fill is `surf-ground`, the same value as
-        // the `surf-panel` surface behind it in all four themes, so it adds no visible plate;
-        // it exists to be opaque, because this button is absolutely positioned over the
-        // drawing and board lines must not run under the glyph. That fill is deliberately
-        // not the accent: anything drawn ON the accent fill must take that fill's paired
-        // on- colour, a rule this codebase has been bitten by three times (see
-        // .planning/quick/260825-rmb-*/SUMMARY.md) — if the accent is ever used here instead,
-        // the icon must take text-surf-on-accent. The button is icon-only, so aria-label is
-        // its accessible name, and per D-05 the label is the only thing that ever changes
-        // between states.
+        // components/viewer/tabbed-panel.tsx. The resting fill is `surf-ground`, the same
+        // value as the `surf-panel` surface behind it in all four themes, so it adds no
+        // visible plate at rest; it exists to be opaque, because this button is absolutely
+        // positioned over the drawing and board lines must not run under the glyph. Under the
+        // pointer the fill switches to the accent colour with its icon following to the
+        // on-accent colour in the same variant — every accent fill in this toolbar is paired
+        // with its on-accent icon colour, a rule this codebase has been bitten by three times
+        // (see .planning/quick/260825-rmb-*/SUMMARY.md). Rotate has no ON state to hold that
+        // fill once the pointer leaves: it flips the board between horizontal and vertical,
+        // and neither orientation is "switched on" (D-01). The button is icon-only, so
+        // aria-label is its accessible name, and per D-05 the label is the only thing that
+        // ever changes between states.
         // top-0/right-0, not top-3/right-3: the card now supplies the 12px inset via
         // TabbedPanel's default padding, so this div's corner already sits where the old
         // offsets used to land. An absolute child offsets from its containing block's
         // padding box, so re-adding an offset here would double the inset and shift the
         // button — leave these at zero.
-        className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+        className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
       >
         <RotateBoardIcon className="size-6" />
       </button>
@@ -208,20 +212,24 @@ export function OutlineEditor() {
         aria-pressed={showConstruction}
         aria-label={showConstruction ? "Hide construction lines" : "Show construction lines"}
         title={showConstruction ? "Hide construction lines" : "Show construction lines"}
-        // Same box as the rotate/Export Template buttons beside it — border, radius, padding,
-        // focus ring all copied verbatim, per D-05's one-menu/one-button visual language. This
-        // is the ONE control in this toolbar the UI spec allows to take the accent fill: when
-        // showConstruction is true the button switches to bg-surf-accent border-surf-accent,
-        // and per the warning above (the accent-on-accent bug this codebase has been bitten by
-        // three times, see .planning/quick/260825-rmb-*/SUMMARY.md) the icon must switch to
-        // text-surf-on-accent in that state rather than staying on the muted ink token — hence
-        // the icon colour is folded into the same aria-pressed className expression as the fill,
-        // not left on a separate always-on class. Icon is LocateFixedIcon, not a ruler: it
+        // Same box as the other three buttons in this toolbar — border, radius, padding, focus
+        // ring all shared, plus every button now fills with the accent colour on hover. This
+        // button additionally carries the toggle add-on: when showConstruction is true it
+        // keeps that same accent fill after the pointer leaves, because construction lines are
+        // a genuine on/off toggle with a truthful aria-pressed hook to hang the persistent fill
+        // on (D-01). Hovering it while it's already on changes nothing, because hover and
+        // pressed now paint the identical accent variant (D-03) — the earlier hover override
+        // that used to defend this button's fill against a neutral hover has been removed;
+        // there is no neutral hover left for it to defend against, and a class whose only job
+        // was defeating a rule that no longer exists is exactly the stale artifact this change
+        // cleans up. Every accent fill here is paired with its on-accent icon colour in the
+        // same variant, a rule this codebase has been bitten by three times (see
+        // .planning/quick/260825-rmb-*/SUMMARY.md). Icon is LocateFixedIcon, not a ruler: it
         // echoes the draggable control point drawn on the construction overlay itself
         // (components/outline/outline-viewer.tsx's drag targets — a ring with a filled centre
         // dot, plus tick marks reads closest to LocateFixed of the candidates lucide-react
         // offers), so the button previews the very glyph the shaper is about to see on the board.
-        className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent aria-pressed:hover:bg-surf-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+        className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
       >
         <LocateFixedIcon className="size-6" />
       </button>
@@ -233,9 +241,11 @@ export function OutlineEditor() {
         title={wideView ? "Show the sidebar" : "Wide view"}
         // Same box as the three buttons beside it. This is both the way in and the way out of
         // wide view — it lives inside the viewer panel, which stays on screen in both states,
-        // so there is always a visible route back. Never accent-filled: the UI spec reserves
-        // that fill for the Construction Lines button alone.
-        className="absolute top-0 right-30 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-well hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+        // so there is always a visible route back. Wide view is a genuine on/off toggle too,
+        // so it carries the same toggle add-on as Construction Lines: it stays accent-filled
+        // the whole time it's on, including while hovered, and drops the fill completely when
+        // off.
+        className="absolute top-0 right-30 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:border-surf-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
       >
         {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
       </button>
