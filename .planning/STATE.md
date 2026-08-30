@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-08-29 — Completed quick task 260829-ugd: rocker gains the template's hide-sidebar button; board-outline overlay removed
+Last activity: 2026-08-29 — Completed quick task 260829-uue: rocker/thickness split to opposite rails in the template's card grammar; order-form rocker box cleaned
 
 Progress: [██████████] 100%
 
@@ -198,6 +198,7 @@ Recent decisions affecting current work:
 | 260829-t47 | Rocker drag moved onto the curve's own steering: the four Bezier control points become the drawing's only grab targets, inverse-solving to Angle+Smoothness at the tips and Flatness at the centre (round-trip tested in rocker-drag.ts), while the two tip-height drags are removed (lifts stay slider/typed-field-only); station read-outs redrawn as data cards on a shared CalloutChipFrame surface extracted from the template's chip system, sized in user units so cards never overlap at any board length | 2026-08-29 | e3e1546 | [260829-t47-rocker-viewer-draggable-curve-control-po](./quick/260829-t47-rocker-viewer-draggable-curve-control-po/) |
 | 260829-tmj | Rocker drawing maximized to the window like the template: the editor's hard-wired ten-foot fixed frame (every board drew as a sliding fraction of 10'0") replaced by a new pure layout module rocker-view-frame.ts that fits each board to the frame's long axis in both orientations — full-width nose-left, content-fitted nose-up (fixing station cards crossing the baseline, the tail card running off the end, and the length label escaping the rotated frame); order form keeps the legacy fixed frame by construction via a fitToBoard prop defaulting off, pinned by test | 2026-08-29 | b002f0e | [260829-tmj-rocker-viewer-maximize-board-drawing-to-](./quick/260829-tmj-rocker-viewer-maximize-board-drawing-to-/) |
 | 260829-ugd | Rocker screen gains the template's hide-sidebar (wide view) button, mirroring outline-editor's wideView/preWideViewConstruction pattern exactly — entering wide view hides the controls aside, drops the main padding, bares the tabbed panel and forces construction lines on, restoring the prior construction state on exit; the faint plan-view board-outline reference overlay and its corner button removed (viewer props, sampling loop, path builder and LayoutTemplateIcon all deleted), construction button shifts to right-10 | 2026-08-29 | 25aab14 | [260829-ugd-rocker-screen-add-the-template-s-hide-si](./quick/260829-ugd-rocker-screen-add-the-template-s-hide-si/) |
+| 260829-uue | Rocker station read-outs split to opposite rails in the template's own card grammar (founder refinement folded in mid-plan): thickness figures as cards on the deck rail (all five are slider inputs), rocker figures on the bottom rail — cards at the two input tips, plain measured readings with the 45° dimension tick at the derived Nose/Center/Tail @ 12" — each leadered to the exact point on its own curve; rocker-view-frame grows the second rail with 29 containment/clearance tests. Order form's ROCKER box loses its two flanking tick squares and gains fitToBoard, so the profile alone fills the box at the board's own length | 2026-08-29 | 7007c72 | [260829-uue-rocker-cards-rocker-dims-on-bottom-side-](./quick/260829-uue-rocker-cards-rocker-dims-on-bottom-side-/) |
 
 ## Deferred Items
 
