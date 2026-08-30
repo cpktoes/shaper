@@ -74,6 +74,8 @@ import { formatFeetInches, formatInchesFraction, inchesToMm, type Mm, mmToInches
 import {
   CARD_NAME_DY,
   CARD_VALUE_DY,
+  COMPACT_BASELINE_DASH,
+  COMPACT_BASELINE_WIDTH,
   COMPACT_LEADER_WIDTH,
   COMPACT_TICK_SIZE,
   COMPACT_VALUE_SIZE,
@@ -538,10 +540,10 @@ export function RockerViewer({
     return { ...s, rockerHeightIn, deckHeightIn };
   });
 
-  // `"compact"` mode's three reading rows (quick task 260829-vus). `pxX` puts the nose at the
+  // `"compact"` mode's two reading rows (quick task 260829-vus). `pxX` puts the nose at the
   // frame's left, so ascending x runs nose to tail — the reverse of `stations`' own tail-to-nose
-  // build order above. Every band depth, row baseline, type size and x position these three lists
-  // hand to `CompactReading` comes off `layout`/`compactRailReadingXs`; nothing here is computed
+  // build order above. Every band depth, row baseline, type size and x position these lists hand
+  // to `CompactReading` comes off `layout`/`compactRailReadingXs`; nothing here is computed
   // that this component doesn't already need to project the curve itself (Rule 1).
   const ascendingStations = [...stations].reverse();
   // Deck row: all five stations (D-01 — every thickness figure is a slider-set input).
@@ -550,21 +552,16 @@ export function RockerViewer({
     width: compactValueWidth(s.thicknessValue),
   }));
   const compactDeckXs = compactRailReadingXs(layout, compactDeckList);
-  // Bottom inner row: the two @ 12" rocker figures (D-02).
-  const compactBottomInnerStations = ascendingStations.filter((s) => s.key === "nose12" || s.key === "tail12");
-  const compactBottomInnerList = compactBottomInnerStations.map((s) => ({
+  // Bottom row: all four rocker figures (D-02) — tips and @ 12" alike — on ONE shared baseline,
+  // through ONE sweep, so the separation between a tip and its 12in neighbour is the sweep's own
+  // guarantee rather than a staggered second row's. The centre station's own rocker figure — the
+  // curve's own zero — is deliberately absent.
+  const compactBottomStations = ascendingStations.filter((s) => s.rockerValue !== null);
+  const compactBottomList = compactBottomStations.map((s) => ({
     stationX: pxX(s.stationIn),
     width: compactValueWidth(s.rockerValue ?? ""),
   }));
-  const compactBottomInnerXs = compactRailReadingXs(layout, compactBottomInnerList);
-  // Bottom outer row: the two tip rocker figures (D-02). The centre station's own rocker figure —
-  // the curve's own zero — is deliberately not among either bottom row.
-  const compactBottomOuterStations = ascendingStations.filter((s) => s.key === "noseTip" || s.key === "tailTip");
-  const compactBottomOuterList = compactBottomOuterStations.map((s) => ({
-    stationX: pxX(s.stationIn),
-    width: compactValueWidth(s.rockerValue ?? ""),
-  }));
-  const compactBottomOuterXs = compactRailReadingXs(layout, compactBottomOuterList);
+  const compactBottomXs = compactRailReadingXs(layout, compactBottomList);
 
   // Both the viewBox string and its frame width/height come straight off the layout — the one
   // place this drawing's frame is decided. The vertical frame is built from its own rotated
@@ -669,15 +666,18 @@ export function RockerViewer({
           horizontal this is a plain pass-through container with no transform. */}
       <g ref={contentRef} transform={vertical ? "rotate(90)" : undefined}>
         {/* The flat surface the board sits on — the rocker's own zero reference, bottom-up — drawn
-            faint and dashed, spanning only the drawn board's own length. */}
+            faint and dashed, spanning only the drawn board's own length. Compact draws it at its
+            own heavier stroke and longer dash (`COMPACT_BASELINE_*`): the 1-unit line washes out
+            entirely at the order form's printed scale, the same wash-out COMPACT_LEADER_WIDTH
+            already corrects for the leaders. */}
         <line
           x1={tailX}
           y1={baselineY}
           x2={noseX}
           y2={baselineY}
           stroke="var(--outline-station-line)"
-          strokeWidth={1}
-          strokeDasharray="4 3"
+          strokeWidth={callouts === "compact" ? COMPACT_BASELINE_WIDTH : 1}
+          strokeDasharray={callouts === "compact" ? COMPACT_BASELINE_DASH : "4 3"}
         />
         <path
           d={boardPath}
@@ -761,10 +761,10 @@ export function RockerViewer({
           </>
         )}
 
-        {/* Compact rails (quick task 260829-vus): three rows of bare readings, no card surface,
+        {/* Compact rails (quick task 260829-vus): two rows of bare readings, no card surface,
             no station name and no board-length label — the sheet's own dims strip already prints
             Length. Every position, band and type size these draw at comes off `layout` and the
-            three lists built above; this branch only zips a reading's own value onto the x the
+            two lists built above; this branch only zips a reading's own value onto the x the
             separation sweep chose for it. */}
         {callouts === "compact" && (
           <>
@@ -778,22 +778,12 @@ export function RockerViewer({
                 value={s.thicknessValue}
               />
             ))}
-            {compactBottomInnerStations.map((s, i) => (
+            {compactBottomStations.map((s, i) => (
               <CompactReading
-                key={`compact-bottom-inner-${s.key}`}
-                textX={compactBottomInnerXs[i]}
+                key={`compact-bottom-${s.key}`}
+                textX={compactBottomXs[i]}
                 stationX={pxX(s.stationIn)}
-                row={compactRows.bottomInner}
-                curveY={pxY(s.rockerHeightIn)}
-                value={s.rockerValue ?? ""}
-              />
-            ))}
-            {compactBottomOuterStations.map((s, i) => (
-              <CompactReading
-                key={`compact-bottom-outer-${s.key}`}
-                textX={compactBottomOuterXs[i]}
-                stationX={pxX(s.stationIn)}
-                row={compactRows.bottomOuter}
+                row={compactRows.bottom}
                 curveY={pxY(s.rockerHeightIn)}
                 value={s.rockerValue ?? ""}
               />

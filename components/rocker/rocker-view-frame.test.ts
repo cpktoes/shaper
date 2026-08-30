@@ -10,7 +10,6 @@ import {
   COMPACT_DECK_BAND,
   COMPACT_EDGE_GUTTER,
   COMPACT_READING_GUTTER,
-  COMPACT_ROW_GAP,
   LENGTH_LABEL_SIZE,
   ORDER_FORM_ROCKER_BOX_PX,
   PAD_X,
@@ -607,7 +606,7 @@ describe("rockerViewLayout — LENGTH_LABEL_SIZE and constants stay finite and p
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
 describe("rockerViewLayout — compact rails: frame geometry", () => {
-  it("returns a 900-wide frame whose height is COMPACT_DECK_BAND + maxDeckIn * scale + COMPACT_BOTTOM_BAND, with three finite compactRows", () => {
+  it("returns a 900-wide frame whose height is COMPACT_DECK_BAND + maxDeckIn * scale + COMPACT_BOTTOM_BAND, with two finite compactRows", () => {
     for (const lengthIn of [60, 78, 120]) {
       for (const orientation of ORIENTATIONS) {
         const layout = rockerViewLayout({
@@ -621,7 +620,7 @@ describe("rockerViewLayout — compact rails: frame geometry", () => {
         const expectedHeight = COMPACT_DECK_BAND + MAX_DECK_IN * layout.scale + COMPACT_BOTTOM_BAND;
         expect(layout.height).toBeCloseTo(expectedHeight, 6);
         expect(layout.viewH).toBeCloseTo(expectedHeight, 6);
-        for (const row of [layout.compactRows.deck, layout.compactRows.bottomInner, layout.compactRows.bottomOuter]) {
+        for (const row of [layout.compactRows.deck, layout.compactRows.bottom]) {
           expect(Number.isFinite(row.textY)).toBe(true);
           expect(Number.isFinite(row.leaderStartY)).toBe(true);
           expect(Number.isFinite(row.kneeY)).toBe(true);
@@ -652,7 +651,7 @@ describe("rockerViewLayout — compact rails: frame geometry", () => {
 });
 
 describe("rockerViewLayout — compact rails: row bands", () => {
-  it("keeps the bottom rail's two rows from overlapping vertically, and keeps each row's deepest/highest glyph inside its own band", () => {
+  it("holds the bottom rail's four rocker figures on ONE shared baseline, each row's deepest/highest glyph inside its own band", () => {
     for (const lengthIn of [60, 78, 120]) {
       const layout = rockerViewLayout({
         lengthIn,
@@ -661,13 +660,12 @@ describe("rockerViewLayout — compact rails: row bands", () => {
         fitToBoard: true,
         stationRails: "compact",
       });
-      const { deck, bottomInner, bottomOuter } = layout.compactRows;
+      const { deck, bottom } = layout.compactRows;
 
-      // Bottom rail: the inner row's own baseline (no descender on these glyphs) sits above the
-      // outer row's own cap-top by exactly COMPACT_ROW_GAP — never overlapping.
-      const innerBottomEdge = bottomInner.textY;
-      const outerTopEdge = bottomOuter.textY - COMPACT_CAP;
-      expect(outerTopEdge - innerBottomEdge).toBeCloseTo(COMPACT_ROW_GAP, 6);
+      // Bottom rail: one row, one baseline — the aligned-row contract itself. Its cap-top clears
+      // the baseline by COMPACT_CURVE_GAP so no glyph touches the board box.
+      const bottomCapTop = bottom.textY - COMPACT_CAP;
+      expect(bottomCapTop).toBeGreaterThan(layout.baselineY);
 
       // Deck row's highest glyph (cap-top) stays inside COMPACT_DECK_BAND, i.e. at or below the
       // frame's own top edge (y = 0).
@@ -675,10 +673,10 @@ describe("rockerViewLayout — compact rails: row bands", () => {
       expect(deckCapTop).toBeGreaterThanOrEqual(0);
       expect(deckCapTop).toBeLessThanOrEqual(COMPACT_DECK_BAND);
 
-      // Bottom outer row's deepest glyph (its own baseline, no descender) stays inside
+      // Bottom row's deepest glyph (its own baseline, no descender) stays inside
       // COMPACT_BOTTOM_BAND, measured up from the frame's own bottom edge.
       const bottomBandFloor = layout.baselineY + COMPACT_BOTTOM_BAND;
-      expect(bottomBandFloor - bottomOuter.textY).toBeCloseTo(COMPACT_EDGE_GUTTER, 6);
+      expect(bottomBandFloor - bottom.textY).toBeCloseTo(COMPACT_EDGE_GUTTER, 6);
     }
   });
 });

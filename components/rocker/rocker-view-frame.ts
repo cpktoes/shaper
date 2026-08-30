@@ -88,14 +88,16 @@ export interface RockerCompactRow {
   kneeY: number;
 }
 
-/** The three rows `rocker-viewer.tsx` draws in `"compact"` mode: one on the deck rail, two on the
- * bottom rail — the two tip figures on the outer row, the two @ 12" figures on the inner row. See
- * this plan's `<design_decision>` section 4 for why the bottom rail needs two rows and the deck
- * rail does not. */
+/** The two rows `rocker-viewer.tsx` draws in `"compact"` mode: one on the deck rail (five
+ * thickness figures) and one on the bottom rail (all four rocker figures, tips and @ 12" alike,
+ * sharing a single text baseline). The bottom rail was originally split across two staggered rows
+ * to keep a tip and its neighbouring @ 12" figure apart on a 10'0" board (260829-vus decision 4);
+ * collapsed to one aligned row on the founder's own print review — `compactRailReadingXs`' sweep
+ * already separates same-row neighbours, doglegging their leaders, so the stagger bought nothing
+ * the sweep does not. */
 export interface RockerCompactRows {
   deck: RockerCompactRow;
-  bottomInner: RockerCompactRow;
-  bottomOuter: RockerCompactRow;
+  bottom: RockerCompactRow;
 }
 
 export interface RockerViewLayout {
@@ -197,8 +199,6 @@ export const COMPACT_CAP_RATIO = 0.72;
 /** Gap left between the board box's own edge (the baseline or the worst-case deck line) and the
  * nearest glyph edge of a compact reading. */
 export const COMPACT_CURVE_GAP = 8;
-/** Gap left between the bottom rail's two rows. */
-export const COMPACT_ROW_GAP = 5;
 /** Gap left outside the outermost row, at the frame's own edge. */
 export const COMPACT_EDGE_GUTTER = 4;
 /** Minimum clear space `compactRailReadingXs` leaves between two readings sharing a row. */
@@ -209,15 +209,21 @@ export const COMPACT_TICK_SIZE = 7;
 /** Stroke width of a compact reading's leader — a 1-unit leader prints at half a pixel and
  * washes out on paper. */
 export const COMPACT_LEADER_WIDTH = 1.6;
+/** The compact baseline's stroke and dash — the full grammar's 1-unit `4 3` dashed baseline
+ * suffers the same half-pixel wash-out as a 1-unit leader at the order form's printed scale, so
+ * the datum the rocker figures measure from was invisible on the sheet. 2 units at `8 6` prints
+ * as a 1px line with 4px dashes: legible, and still subordinate to the board's own ink-coloured
+ * 2-unit outline by colour and dash rather than by weight. */
+export const COMPACT_BASELINE_WIDTH = 2;
+export const COMPACT_BASELINE_DASH = "8 6";
 
 /** Cap height of a compact reading's type, in SVG user units. */
 export const COMPACT_CAP = COMPACT_VALUE_SIZE * COMPACT_CAP_RATIO;
 /** How deep the deck (thickness) band is: curve gap, one row's cap height, edge gutter. */
 export const COMPACT_DECK_BAND = COMPACT_CURVE_GAP + COMPACT_CAP + COMPACT_EDGE_GUTTER;
-/** How deep the bottom (rocker) band is: curve gap, two rows' cap heights and the gap between
- * them, edge gutter. */
-export const COMPACT_BOTTOM_BAND =
-  COMPACT_CURVE_GAP + 2 * COMPACT_CAP + COMPACT_ROW_GAP + COMPACT_EDGE_GUTTER;
+/** How deep the bottom (rocker) band is: curve gap, the single row's cap height, edge gutter —
+ * the same depth as the deck band now that all four rocker figures share one row. */
+export const COMPACT_BOTTOM_BAND = COMPACT_CURVE_GAP + COMPACT_CAP + COMPACT_EDGE_GUTTER;
 
 /** The range-derived fixed scale — `PX_PER_INCH` before this module existed, and still what
  * `fitToBoard: false` (the order form's path) resolves to for every board length alike. */
@@ -328,21 +334,15 @@ export function rockerViewLayout({
   // Centres each card on the station it names (planner_assumptions #4), shared by both rails.
   const cardDy = effectiveHorizontal ? 0 : -cardHeight / 2;
 
-  // The compact rails' own three row anchors — populated in every mode so the field is never
+  // The compact rails' own two row anchors — populated in every mode so the field is never
   // `NaN`; outside compact it is unused and the card fields above carry the drawing.
   const deckTextY = deckTopY - COMPACT_CURVE_GAP;
-  const bottomInnerTextY = baselineY + COMPACT_CURVE_GAP + COMPACT_CAP;
-  const bottomOuterTextY = bottomInnerTextY + COMPACT_CAP + COMPACT_ROW_GAP;
+  const bottomTextY = baselineY + COMPACT_CURVE_GAP + COMPACT_CAP;
   const compactRows: RockerCompactRows = {
     deck: { textY: deckTextY, leaderStartY: deckTextY + 2, kneeY: deckTopY - 2 },
-    bottomInner: {
-      textY: bottomInnerTextY,
-      leaderStartY: bottomInnerTextY - COMPACT_CAP - 2,
-      kneeY: baselineY + 2,
-    },
-    bottomOuter: {
-      textY: bottomOuterTextY,
-      leaderStartY: bottomOuterTextY - COMPACT_CAP - 2,
+    bottom: {
+      textY: bottomTextY,
+      leaderStartY: bottomTextY - COMPACT_CAP - 2,
       kneeY: baselineY + 2,
     },
   };
