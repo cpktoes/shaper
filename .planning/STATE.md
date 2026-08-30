@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-08-29 — Completed quick task 260829-t47: rocker control points draggable, tip-height drags removed, station read-outs as data cards
+Last activity: 2026-08-29 — Completed quick task 260829-tmj: rocker drawing maximized to the window in both orientations
 
 Progress: [██████████] 100%
 
@@ -196,6 +196,7 @@ Recent decisions affecting current work:
 | 260829-rda | Bottom rocker rebuilt on the outline's own three-knot, two-Bezier construction, replacing the five-fixed-point spline that kinked at the 12" stations: nose and tail get Angle + Smoothness, the centre gets Nose/Tail Flatness, and the 12" figures become read-only measurements off the drawn curve (sidebar, datasheet, station rail). Drag targets reduce to the two tips plus five deck points; presets re-expressed with tip lifts unchanged; saved boards with the old four-lift shape migrate via a Zod union + migrateLegacyRocker, keeping tip rockers exactly | 2026-08-29 | 5436694 | [260829-rda-fix-bottom-rocker-curve-template-style-g](./quick/260829-rda-fix-bottom-rocker-curve-template-style-g/) |
 | 260829-snm | Rocker curve gains the template editor's construction overlay — four steering lines and plain dots drawn straight from buildRocker's own knots and handles, centre dot fixed (the rocker's zero) with the two tips as the movers; the five deck thickness grab points removed from the drawing (thickness now edited by its sliders only), collapsing rocker-drag.ts to a two-target solver | 2026-08-29 | c76d8e2 | [260829-snm-add-construction-lines-for-the-rocker-po](./quick/260829-snm-add-construction-lines-for-the-rocker-po/) |
 | 260829-t47 | Rocker drag moved onto the curve's own steering: the four Bezier control points become the drawing's only grab targets, inverse-solving to Angle+Smoothness at the tips and Flatness at the centre (round-trip tested in rocker-drag.ts), while the two tip-height drags are removed (lifts stay slider/typed-field-only); station read-outs redrawn as data cards on a shared CalloutChipFrame surface extracted from the template's chip system, sized in user units so cards never overlap at any board length | 2026-08-29 | e3e1546 | [260829-t47-rocker-viewer-draggable-curve-control-po](./quick/260829-t47-rocker-viewer-draggable-curve-control-po/) |
+| 260829-tmj | Rocker drawing maximized to the window like the template: the editor's hard-wired ten-foot fixed frame (every board drew as a sliding fraction of 10'0") replaced by a new pure layout module rocker-view-frame.ts that fits each board to the frame's long axis in both orientations — full-width nose-left, content-fitted nose-up (fixing station cards crossing the baseline, the tail card running off the end, and the length label escaping the rotated frame); order form keeps the legacy fixed frame by construction via a fitToBoard prop defaulting off, pinned by test | 2026-08-29 | b002f0e | [260829-tmj-rocker-viewer-maximize-board-drawing-to-](./quick/260829-tmj-rocker-viewer-maximize-board-drawing-to-/) |
 
 ## Deferred Items
 
