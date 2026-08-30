@@ -8,11 +8,13 @@
  * Two rails, symmetric about the board: a deck rail above the board (thickness read-outs) and a
  * bottom rail below it (rocker read-outs) — see `deckRailY`/`railY` below. Each rail also carries
  * its own title (`"Thickness"` over the deck rail, `"Rocker"` over the bottom one, `"full"` mode
- * only) — this module decides that title's band, baseline, size and station, per this plan's
- * (260830-2dy) `<design_decision>` sections 2 and 3; `rocker-viewer.tsx` supplies only the words
- * and the paint. `rocker-viewer.tsx` draws from the `RockerViewLayout` this module produces; it
- * derives no scale, band or type-stack arithmetic of its own (quick task 260829-tmj, extended by
- * 260829-uue, 260829-vus and 260830-2dy).
+ * only, words held in `RAIL_LABEL_TEXTS`) — this module decides that title's band, baseline, size
+ * and station, per 260830-2dy's `<design_decision>` sections 2 and 3 (nose-left) and 260830-31h's
+ * sections 1-4 (nose-up, where a title heads its own rail's Center card directly, centred on that
+ * card's own column, rather than sitting outboard of the rail); `rocker-viewer.tsx` supplies only
+ * the words and the paint. `rocker-viewer.tsx` draws from the `RockerViewLayout` this module
+ * produces; it derives no scale, band or type-stack arithmetic of its own (quick task 260829-tmj,
+ * extended by 260829-uue, 260829-vus, 260830-2dy and 260830-31h).
  *
  * The compact grammar (`stationRails: "compact"`) is the Summary order form's own rails: five bare
  * thickness readings above the board, four bare rocker readings below — no card surface, no
@@ -174,19 +176,35 @@ export interface RockerViewLayout {
    * 260830-2dy, extending 260830-03j's pin to the titles). Populated in every mode so the field
    * is never `NaN`; outside `"full"` it is unused. */
   railLabelSize: number;
-  /** The deck (thickness) title's own anchor, in canonical coordinates — the deck rail's own
-   * ceiling-sized far edge, less `RAIL_LABEL_GAP`, so the title is frame-invariant: it never
-   * walks when the card-pin scale changes. Populated in every mode so the field is never `NaN`;
-   * outside `"full"` it is unused. */
+  /** The deck (thickness) title's own anchor, in canonical coordinates. Nose-left this is a text
+   * BASELINE — the deck rail's own ceiling-sized far edge, less `RAIL_LABEL_GAP`, so the title is
+   * frame-invariant: it never walks when the card-pin scale changes. Nose-up this is the title's
+   * own CROSS-AXIS CENTRING instead, equal to `deckRailY` itself — the deck rail's own LIVE
+   * anchor, so the title tracks the cards it heads rather than drifting off-centre from the
+   * column it names whenever the live pin is under the ceiling (quick task 260830-31h,
+   * `<design_decision>` section 1). Populated in every mode so the field is never `NaN`; outside
+   * `"full"` it is unused. */
   deckLabelY: number;
-  /** The bottom (rocker) title's own anchor, in canonical coordinates — the bottom rail's own
-   * ceiling-sized far edge, plus `RAIL_LABEL_GAP` and the title's own cap height, so the GLYPH
-   * edge (not the baseline) sits `RAIL_LABEL_GAP` clear of the cards, matching the deck title's
-   * own visual distance. Populated in every mode so the field is never `NaN`; outside `"full"`
-   * it is unused. */
+  /** The bottom (rocker) title's own anchor, in canonical coordinates. Nose-left this is a text
+   * BASELINE — the bottom rail's own ceiling-sized far edge, plus `RAIL_LABEL_GAP` and the
+   * title's own cap height, so the GLYPH edge (not the baseline) sits `RAIL_LABEL_GAP` clear of
+   * the cards, matching the deck title's own visual distance. Nose-up this is the title's own
+   * CROSS-AXIS CENTRING instead, equal to `railY` itself, the same live-anchor rule `deckLabelY`
+   * follows (quick task 260830-31h). Populated in every mode so the field is never `NaN`; outside
+   * `"full"` it is unused. */
   bottomLabelY: number;
-  /** Both titles' shared station x — the board's own middle station, in canonical coordinates.
-   * Populated in every mode so the field is never `NaN`; outside `"full"` it is unused. */
+  /** Both titles' shared station x, in canonical coordinates. Nose-left this is the board's own
+   * middle station, unchanged. Nose-up this is the title's own BASELINE instead — the middle
+   * station backed off by the Center card's own half-height (its extent along the rotated station
+   * axis) and a gap in EMs (`RAIL_LABEL_STATION_GAP_EM`), so each title sits directly above its
+   * own Center card rather than beside its rail (quick task 260830-31h, `<design_decision>`
+   * sections 1-2).
+   *
+   * A note for the next editor, because its absence is what produced this regression: the two
+   * anchor fields SWAP ROLES between orientations. Nose-left the two `*LabelY` fields are text
+   * BASELINES and `labelStationX` is the horizontal CENTRING. Nose-up the `*LabelY` fields become
+   * the horizontal CENTRING and `labelStationX` becomes the BASELINE. Populated in every mode so
+   * the field is never `NaN`; outside `"full"` it is unused. */
   labelStationX: number;
   minX: number;
   minY: number;
@@ -267,6 +285,40 @@ export const RAIL_LABEL_EDGE_GUTTER = 4;
  * own constant rather than a reach into `COMPACT_CAP_RATIO`, which belongs to the order form's
  * digit-only readings and must stay free to move without dragging the editor's titles with it. */
 export const RAIL_LABEL_CAP_RATIO = 0.72;
+/** The two rail titles' own words (quick task 260830-2dy; moved into this module by 260830-31h so
+ * the drawing's vocabulary and this module's own containment proof can never disagree — see this
+ * plan's `<design_decision>` section 5). Byte-identical to the sidebar's collapsible sections
+ * (`rocker-controls.tsx`) and the DATASHEET's row groups (`rocker-datasheet.tsx`); `rocker-viewer.tsx`
+ * reads these rather than holding its own copies. */
+export const RAIL_LABEL_TEXTS = { deck: "Thickness", bottom: "Rocker" } as const;
+/** This face's widest glyph's em-advance at this weight — a deliberately generous per-character
+ * bound for a containment PROOF, not a text-metrics engine (quick task 260830-31h), the same
+ * posture `COMPACT_DEFAULT_CHAR_ADVANCE` takes for the order form's own digit readings. Kept as
+ * its own constant rather than a reach into that one, for the same reason `RAIL_LABEL_CAP_RATIO`'s
+ * own note gives: these are mixed-case words, narrower than digits, and this drawing's titles must
+ * stay free to move without dragging the print path's readings with them. */
+export const RAIL_LABEL_EM_ADVANCE = 0.6;
+/** The `letterSpacing` a rail title is actually drawn with (`rocker-viewer.tsx`'s `RailTitle`) —
+ * folded into the run-width bound because tracking widens a string's printed run past its bare
+ * glyph advances. */
+export const RAIL_LABEL_TRACKING_EM = 0.08;
+/** How far a title clears its own Center card along the station axis nose-up, as a share of the
+ * title's own type size rather than a bare unit count (quick task 260830-31h, `<design_decision>`
+ * section 2): both the card and the title are pin-scaled, so only a gap riding the SAME pin holds
+ * a constant fraction of the title's own type clear at every card scale — a fixed-unit gap would
+ * drift as the frame's fit scale changed while the two things it separates did not. Set to exactly
+ * what `RAIL_LABEL_GAP` already is as a share of `RAIL_LABEL_SIZE` nose-left, so a title sits the
+ * same fraction of its own type clear of its cards in both orientations. */
+export const RAIL_LABEL_STATION_GAP_EM = RAIL_LABEL_GAP / RAIL_LABEL_SIZE;
+
+/** A rail title's own printed run width, in SVG user units, at `size` — the same deliberately
+ * generous, per-character bound `RAIL_LABEL_EM_ADVANCE`'s note describes, used ONLY to prove a
+ * title's run fits its own card column nose-up (quick task 260830-31h); not a text-metrics engine.
+ * Grows with both the string's own length and the type size, so a title renamed to something
+ * longer than today's two words is still proved against, rather than escaping silently. */
+export function railLabelRunWidth(text: string, size: number): number {
+  return text.length * (RAIL_LABEL_EM_ADVANCE + RAIL_LABEL_TRACKING_EM) * size;
+}
 
 /**
  * The compact rails' own type scale and band constants (quick task 260829-vus) — see this plan's
@@ -349,16 +401,38 @@ export function bottomCardBandDepth(orientation: RockerViewOrientation): number 
 }
 
 /**
- * How deep a rail title's own band is (quick task 260830-2dy) — the gap off the rail's own
- * ceiling-sized edge, the title's own cap-height at the pin CEILING, and the edge gutter to the
- * frame. Reserved at `maxCardPinScale`, never at the live `appliedScale` — the identical rule
+ * How deep a rail title's own band is, per orientation (quick task 260830-2dy, reshaped by
+ * 260830-31h) — the two orientations differ because a title genuinely stacks OUTBOARD of the rail
+ * nose-left, but shares its rail's own card COLUMN nose-up instead (this plan's `<design_decision>`
+ * sections 0 and 4).
+ *
+ * Nose-left: the gap off the rail's own ceiling-sized far edge, the title's own cap-height at the
+ * pin CEILING, and the edge gutter to the frame — unchanged from 260830-2dy, byte for byte.
+ * Reserved at `maxCardPinScale`, never at the live `appliedScale` — the identical rule
  * `cardBandDepth` already follows, and the reason the frame -> fit scale -> card size -> frame
- * loop stays closed (threat T-2DY-03, mirroring the module's own T-03J-02 note). Added OUTSIDE
- * the existing card band on every edge, in both orientations, so a title sits the same distance
- * from its cards whichever way the board is turned.
+ * loop stays closed (threat T-2DY-03, mirroring the module's own T-03J-02 note).
+ *
+ * Nose-up: nothing stacks outboard any more, so there is nothing to reserve by default — but a
+ * hardcoded 0 would be the same class of mistake this task fixes, a number asserted rather than
+ * derived. Instead this returns the part of the longest title's own run, at the vertical CEILING
+ * (the worst case for the same frame-invariance reason as the horizontal arm), that the card
+ * column plus its gutter does NOT already cover: 0 today, since the longest run (~155 units) fits
+ * with room to spare inside the column (~156 units) plus its gutter — and a positive, self-widening
+ * reserve the moment a title is ever renamed to something that column can no longer hold.
  */
 export function railLabelBandDepth(orientation: RockerViewOrientation): number {
-  return RAIL_LABEL_GAP + maxCardPinScale(orientation) * RAIL_LABEL_SIZE + RAIL_LABEL_EDGE_GUTTER;
+  if (orientation === "horizontal") {
+    return RAIL_LABEL_GAP + maxCardPinScale("horizontal") * RAIL_LABEL_SIZE + RAIL_LABEL_EDGE_GUTTER;
+  }
+  const ceiling = maxCardPinScale("vertical");
+  const ceilingLabelSize = RAIL_LABEL_SIZE * ceiling;
+  const longestRun = Math.max(
+    railLabelRunWidth(RAIL_LABEL_TEXTS.deck, ceilingLabelSize),
+    railLabelRunWidth(RAIL_LABEL_TEXTS.bottom, ceilingLabelSize),
+  );
+  const columnReserve = (STATION_CARD_WIDTH * ceiling) / 2 + CARD_GUTTER;
+  const overhang = longestRun / 2 - columnReserve;
+  return overhang > 0 ? overhang + RAIL_LABEL_EDGE_GUTTER : 0;
 }
 
 /**
@@ -525,21 +599,38 @@ export function rockerViewLayout({
 
   const boardSpan = resolveEffectiveLengthIn(lengthIn) * scale;
 
-  // Rail titles' own anchors (quick task 260830-2dy) — see this plan's `<design_decision>`
-  // sections 2 and 3. Anchored off the CEILING-sized rail edge (`maxCardHeight`/`maxCardWidth`),
-  // not the live one, so a title's position is frame-invariant: it never walks when the card-pin
-  // scale changes. Computed in every mode so none can ever be `NaN`; a title is only actually
-  // drawn when `stationRails === "full"`.
+  // Rail titles' own anchors (quick task 260830-2dy, reworked nose-up by 260830-31h) — see this
+  // plan's `<design_decision>` sections 2-3 (2dy) and 1-2 (31h). Computed in every mode so none
+  // can ever be `NaN`; a title is only actually drawn when `stationRails === "full"`.
   const railLabelSize = RAIL_LABEL_SIZE * appliedScale;
-  const deckRailFarY = deckTickEndY - (effectiveHorizontal ? maxCardHeight : maxCardWidth);
-  const deckLabelY = deckRailFarY - RAIL_LABEL_GAP;
-  const bottomRailFarY = tickEndY + (effectiveHorizontal ? maxCardHeight : maxCardWidth);
-  const bottomLabelY = bottomRailFarY + RAIL_LABEL_GAP + railLabelSize * RAIL_LABEL_CAP_RATIO;
-  // The board's own middle station. The vertical half-cap term exists because nose-up the glyph
-  // box grows along the station axis; without it both titles would sit a hair nose-ward of the
-  // middle. Zero in horizontal, so horizontal stays byte-exact on the middle station.
-  const labelStationX =
-    PAD_X + boardSpan / 2 + (effectiveHorizontal ? 0 : (railLabelSize * RAIL_LABEL_CAP_RATIO) / 2);
+  let deckLabelY: number;
+  let bottomLabelY: number;
+  let labelStationX: number;
+  if (effectiveHorizontal) {
+    // Nose-left the title genuinely stacks outboard of the rail's own CEILING-sized far edge
+    // (`maxCardHeight`), not the live one, so its position is frame-invariant: it never walks when
+    // the card-pin scale changes. Unchanged from 260830-2dy, byte for byte.
+    const deckRailFarY = deckTickEndY - maxCardHeight;
+    deckLabelY = deckRailFarY - RAIL_LABEL_GAP;
+    const bottomRailFarY = tickEndY + maxCardHeight;
+    bottomLabelY = bottomRailFarY + RAIL_LABEL_GAP + railLabelSize * RAIL_LABEL_CAP_RATIO;
+    labelStationX = PAD_X + boardSpan / 2;
+  } else {
+    // Nose-up the title heads its own rail's Center card directly, so its cross-axis anchor IS
+    // that rail's own LIVE anchor (`deckRailY`/`railY`, quick task 260830-31h, `<design_decision>`
+    // section 1) — it tracks the cards it heads instead of drifting off-centre from the column it
+    // names whenever the live pin is under the ceiling. A deliberate departure from the ceiling
+    // anchoring the horizontal arm above keeps: the FRAME itself still reads only ceiling values
+    // (nothing in `minX`/`minY`/`width`/`height` reads these two fields), so containment is proved
+    // separately, at the ceiling, in `rocker-view-frame.test.ts`'s run-containment suite — the
+    // worst case for every term below.
+    deckLabelY = deckRailY;
+    bottomLabelY = railY;
+    // Back off the middle station by the Center card's own half-height (its extent along the
+    // rotated station axis) and a gap in EMs (`RAIL_LABEL_STATION_GAP_EM`) — nose is up, so
+    // subtracting moves the word up the screen, clear of the card it heads.
+    labelStationX = PAD_X + boardSpan / 2 - cardHeight / 2 - railLabelSize * RAIL_LABEL_STATION_GAP_EM;
+  }
 
   let minX: number;
   let minY: number;

@@ -16,8 +16,12 @@ import {
   RAIL_GAP,
   RAIL_LABEL_CAP_RATIO,
   RAIL_LABEL_EDGE_GUTTER,
+  RAIL_LABEL_EM_ADVANCE,
   RAIL_LABEL_GAP,
   RAIL_LABEL_SIZE,
+  RAIL_LABEL_STATION_GAP_EM,
+  RAIL_LABEL_TEXTS,
+  RAIL_LABEL_TRACKING_EM,
   READOUT_NAME_DY,
   READOUT_VALUE_DY,
   STATION_CARD_HEIGHT,
@@ -33,6 +37,7 @@ import {
   compactValueWidth,
   maxCardPinScale,
   railLabelBandDepth,
+  railLabelRunWidth,
   rockerViewLayout,
   stationCardRect,
   type RockerCardSide,
@@ -654,25 +659,66 @@ describe("rockerViewLayout — horizontal frame unchanged by the vertical work a
 });
 
 describe("rockerViewLayout — RAIL_LABEL_* constants stay finite and positive", () => {
-  it("exposes the type-scale and band constants used to reserve each rail title's own band", () => {
-    for (const value of [RAIL_LABEL_SIZE, RAIL_LABEL_GAP, RAIL_LABEL_EDGE_GUTTER, RAIL_LABEL_CAP_RATIO]) {
+  it("exposes the type-scale, band and run-width constants used to reserve each rail title's own room", () => {
+    for (const value of [
+      RAIL_LABEL_SIZE,
+      RAIL_LABEL_GAP,
+      RAIL_LABEL_EDGE_GUTTER,
+      RAIL_LABEL_CAP_RATIO,
+      RAIL_LABEL_EM_ADVANCE,
+      RAIL_LABEL_TRACKING_EM,
+      RAIL_LABEL_STATION_GAP_EM,
+    ]) {
       expect(Number.isFinite(value)).toBe(true);
       expect(value).toBeGreaterThan(0);
     }
   });
+
+  it("holds the two titles' own words, byte-identical to the sidebar and DATASHEET vocabulary", () => {
+    expect(RAIL_LABEL_TEXTS.deck).toBe("Thickness");
+    expect(RAIL_LABEL_TEXTS.bottom).toBe("Rocker");
+  });
+
+  it("derives RAIL_LABEL_STATION_GAP_EM as exactly RAIL_LABEL_GAP / RAIL_LABEL_SIZE", () => {
+    expect(RAIL_LABEL_STATION_GAP_EM).toBeCloseTo(RAIL_LABEL_GAP / RAIL_LABEL_SIZE, 12);
+  });
+});
+
+describe("railLabelRunWidth", () => {
+  it("is finite and positive, and grows with both text length and size", () => {
+    const base = railLabelRunWidth("Rocker", RAIL_LABEL_SIZE);
+    expect(Number.isFinite(base)).toBe(true);
+    expect(base).toBeGreaterThan(0);
+    expect(railLabelRunWidth("Thickness", RAIL_LABEL_SIZE)).toBeGreaterThan(base);
+    expect(railLabelRunWidth("Rocker", RAIL_LABEL_SIZE * 2)).toBeGreaterThan(base);
+  });
 });
 
 describe("railLabelBandDepth", () => {
-  it("is finite and positive in both orientations, and equals RAIL_LABEL_GAP + maxCardPinScale(orientation) * RAIL_LABEL_SIZE + RAIL_LABEL_EDGE_GUTTER", () => {
-    for (const orientation of ORIENTATIONS) {
-      const depth = railLabelBandDepth(orientation);
-      expect(Number.isFinite(depth)).toBe(true);
-      expect(depth).toBeGreaterThan(0);
-      expect(depth).toBeCloseTo(
-        RAIL_LABEL_GAP + maxCardPinScale(orientation) * RAIL_LABEL_SIZE + RAIL_LABEL_EDGE_GUTTER,
-        10,
-      );
-    }
+  it("keeps the horizontal arm exactly RAIL_LABEL_GAP + maxCardPinScale('horizontal') * RAIL_LABEL_SIZE + RAIL_LABEL_EDGE_GUTTER, unchanged from 260830-2dy", () => {
+    const depth = railLabelBandDepth("horizontal");
+    expect(Number.isFinite(depth)).toBe(true);
+    expect(depth).toBeGreaterThan(0);
+    expect(depth).toBeCloseTo(
+      RAIL_LABEL_GAP + maxCardPinScale("horizontal") * RAIL_LABEL_SIZE + RAIL_LABEL_EDGE_GUTTER,
+      10,
+    );
+  });
+
+  it("returns exactly 0 nose-up, and proves that zero is DERIVED rather than a literal: half the longest title's run at the vertical ceiling is less than half the card column plus CARD_GUTTER", () => {
+    const ceiling = maxCardPinScale("vertical");
+    const ceilingLabelSize = RAIL_LABEL_SIZE * ceiling;
+    const longestRun = Math.max(
+      railLabelRunWidth(RAIL_LABEL_TEXTS.deck, ceilingLabelSize),
+      railLabelRunWidth(RAIL_LABEL_TEXTS.bottom, ceilingLabelSize),
+    );
+    const columnReserve = (STATION_CARD_WIDTH * ceiling) / 2 + CARD_GUTTER;
+    const margin = columnReserve - longestRun / 2;
+    // The margin is positive (the run fits with room to spare) but not huge — stating it here so a
+    // future change to either constant is proved against, not merely unchanged by luck.
+    expect(margin).toBeGreaterThan(0);
+    expect(margin).toBeLessThan(20);
+    expect(railLabelBandDepth("vertical")).toBe(0);
   });
 });
 
@@ -1142,8 +1188,169 @@ describe("rockerViewLayout — rail titles: horizontal containment", () => {
   });
 });
 
-describe("rockerViewLayout — rail titles: vertical containment", () => {
-  it("keeps both titles' final anchors and glyph extents (baseline and cap top) inside the frame, at 60in/78in/120in and card scales 1, 1.6 and the vertical ceiling", () => {
+describe("rockerViewLayout — rail titles: clearance from their own rail, horizontal (unchanged)", () => {
+  it("keeps the deck title's glyph edge exactly RAIL_LABEL_GAP clear of the deck rail's ceiling-sized far edge, and the bottom title's glyph edge exactly RAIL_LABEL_GAP clear of the bottom rail's, at every card scale", () => {
+    const orientation = "horizontal";
+    const ceiling = maxCardPinScale(orientation);
+    const maxCardHeight = STATION_CARD_HEIGHT * ceiling;
+    for (const lengthIn of [60, 78, 120]) {
+      for (const cardScale of [1, 1.6, ceiling]) {
+        const layout = rockerViewLayout({
+          lengthIn,
+          maxDeckIn: MAX_DECK_IN,
+          orientation,
+          fitToBoard: true,
+          stationRails: "full",
+          cardScale,
+        });
+        const deckRailFarY = layout.deckTickEndY - maxCardHeight;
+        const bottomRailFarY = layout.tickEndY + maxCardHeight;
+        const cap = layout.railLabelSize * RAIL_LABEL_CAP_RATIO;
+
+        expect(deckRailFarY - layout.deckLabelY).toBeCloseTo(RAIL_LABEL_GAP, 8);
+        expect(layout.bottomLabelY - cap - bottomRailFarY).toBeCloseTo(RAIL_LABEL_GAP, 8);
+      }
+    }
+  });
+});
+
+describe("rockerViewLayout — rail titles: centring on the board's middle station, horizontal (unchanged)", () => {
+  it("gives labelStationX exactly PAD_X + (lengthIn * scale) / 2", () => {
+    for (const lengthIn of LENGTHS_IN) {
+      const layout = rockerViewLayout({
+        lengthIn,
+        maxDeckIn: MAX_DECK_IN,
+        orientation: "horizontal",
+        fitToBoard: true,
+        stationRails: "full",
+      });
+      expect(layout.labelStationX).toBeCloseTo(PAD_X + (lengthIn * layout.scale) / 2, 10);
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Rail titles, vertical (quick task 260830-31h) — nose-up a title heads its own rail's Center
+// card directly, centred on that card's own column, rather than sitting outboard of the rail.
+// See this plan's `<design_decision>` for the derivation; the helper below packages the box each
+// suite below tests against.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A vertical (nose-up) rail title's own glyph box, in FINAL (screen) coordinates.
+ *
+ * `RailTitle`'s `Upright` wrapper counter-rotates the text LOCALLY about its own anchor, which
+ * cancels the outer `rotate(90)` at exactly that anchor point — the same composition identity
+ * `stationCardRect`'s own doc comment already proves for a card's width/height (canonical (x, y)
+ * lands at final (-y, x) for the anchor itself; an OFFSET *from* that anchor carries straight
+ * through untouched, rather than rotating with it, because the two rotations cancel to a pure
+ * translation). Concretely: the run (a canonical X-direction offset, since text with
+ * `textAnchor="middle"` spans its own x) lands on the FINAL X axis (the cross axis) — the same
+ * axis `stationCardRect`'s own `width` term lands on; the cap height (a canonical Y-direction
+ * offset, "cap rises above baseline") lands on the FINAL Y axis (the station axis) — the same axis
+ * `stationCardRect`'s own `height` term lands on. This is what makes the deck and bottom titles'
+ * station-axis boxes IDENTICAL: both share one `labelStationX`, so only their cross-axis position
+ * (`deckLabelY` vs `bottomLabelY`) differs.
+ */
+function verticalTitleGlyphBox(labelStationX: number, labelY: number, cap: number, halfRun: number) {
+  const finalX = -labelY;
+  return {
+    crossMin: finalX - halfRun,
+    crossMax: finalX + halfRun,
+    stationMin: labelStationX - cap, // the cap top — the edge FARTHEST from the Center card it heads
+    stationMax: labelStationX, // the baseline — the edge NEAREST the Center card it heads
+  };
+}
+
+describe("rockerViewLayout — rail titles: vertical cross-axis centring on the rail's own live anchor", () => {
+  it("gives deckLabelY exactly deckRailY and bottomLabelY exactly railY, at card scales 1, 1.6 and the vertical ceiling — the title centres on the same column its cards sit in", () => {
+    const ceiling = maxCardPinScale("vertical");
+    for (const cardScale of [1, 1.6, ceiling]) {
+      const layout = rockerViewLayout({
+        lengthIn: 78,
+        maxDeckIn: MAX_DECK_IN,
+        orientation: "vertical",
+        fitToBoard: true,
+        stationRails: "full",
+        cardScale,
+      });
+      expect(layout.deckLabelY).toBe(layout.deckRailY);
+      expect(layout.bottomLabelY).toBe(layout.railY);
+    }
+  });
+});
+
+describe("rockerViewLayout — rail titles: vertical station-axis placement", () => {
+  it("gives labelStationX exactly PAD_X + boardSpan / 2 - cardHeight / 2 - railLabelSize * RAIL_LABEL_STATION_GAP_EM, strictly nose-ward of the middle station", () => {
+    for (const lengthIn of [60, 78, 120]) {
+      const layout = rockerViewLayout({
+        lengthIn,
+        maxDeckIn: MAX_DECK_IN,
+        orientation: "vertical",
+        fitToBoard: true,
+        stationRails: "full",
+      });
+      const boardSpan = lengthIn * layout.scale;
+      const nominal = PAD_X + boardSpan / 2;
+      const expected =
+        nominal - layout.cardHeight / 2 - layout.railLabelSize * RAIL_LABEL_STATION_GAP_EM;
+      expect(layout.labelStationX).toBeCloseTo(expected, 10);
+      expect(layout.labelStationX).toBeLessThan(nominal);
+    }
+  });
+});
+
+describe("rockerViewLayout — rail titles: vertical run containment (the assertion whose absence was this bug)", () => {
+  it("keeps both titles' full glyph box — half the run either side of the anchor, the cap height off it — inside the frame, across the whole length sweep and card scales 1, 1.6 and the vertical ceiling", () => {
+    const ceiling = maxCardPinScale("vertical");
+    for (const lengthIn of LENGTHS_IN) {
+      for (const cardScale of [1, 1.6, ceiling]) {
+        const layout = rockerViewLayout({
+          lengthIn,
+          maxDeckIn: MAX_DECK_IN,
+          orientation: "vertical",
+          fitToBoard: true,
+          stationRails: "full",
+          cardScale,
+        });
+        const cap = layout.railLabelSize * RAIL_LABEL_CAP_RATIO;
+        for (const [text, labelY] of [
+          [RAIL_LABEL_TEXTS.deck, layout.deckLabelY],
+          [RAIL_LABEL_TEXTS.bottom, layout.bottomLabelY],
+        ] as const) {
+          const halfRun = railLabelRunWidth(text, layout.railLabelSize) / 2;
+          const box = verticalTitleGlyphBox(layout.labelStationX, labelY, cap, halfRun);
+          expect(box.crossMin).toBeGreaterThanOrEqual(layout.minX);
+          expect(box.crossMax).toBeLessThanOrEqual(layout.minX + layout.width);
+          expect(box.stationMin).toBeGreaterThanOrEqual(layout.minY);
+          expect(box.stationMax).toBeLessThanOrEqual(layout.minY + layout.height);
+        }
+      }
+    }
+  });
+
+  it("proves the test can fail: the SAME run, anchored the OLD (pre-260830-31h) outboard way, would have escaped today's frame", () => {
+    const ceiling = maxCardPinScale("vertical");
+    const layout = rockerViewLayout({
+      lengthIn: 60,
+      maxDeckIn: MAX_DECK_IN,
+      orientation: "vertical",
+      fitToBoard: true,
+      stationRails: "full",
+      cardScale: ceiling,
+    });
+    const maxCardWidth = STATION_CARD_WIDTH * ceiling;
+    // The pre-fix (260830-2dy) anchoring: outboard of the rail's own ceiling-sized far edge, the
+    // same expression the horizontal arm still uses today (see `railLabelBandDepth`'s doc).
+    const oldDeckLabelY = layout.deckTickEndY - maxCardWidth - RAIL_LABEL_GAP;
+    const halfRun = railLabelRunWidth(RAIL_LABEL_TEXTS.deck, layout.railLabelSize) / 2;
+    const oldCrossMax = -oldDeckLabelY + halfRun;
+    expect(oldCrossMax).toBeGreaterThan(layout.minX + layout.width);
+  });
+});
+
+describe("rockerViewLayout — rail titles: no overlap with their own Center card, vertical", () => {
+  it("keeps a title's glyph box disjoint from its own Center card along the station axis, separated by exactly railLabelSize * RAIL_LABEL_STATION_GAP_EM, at card scales 1, 1.6 and the vertical ceiling", () => {
     const ceiling = maxCardPinScale("vertical");
     for (const lengthIn of [60, 78, 120]) {
       for (const cardScale of [1, 1.6, ceiling]) {
@@ -1156,81 +1363,94 @@ describe("rockerViewLayout — rail titles: vertical containment", () => {
           cardScale,
         });
         const cap = layout.railLabelSize * RAIL_LABEL_CAP_RATIO;
-        // Composition identity (finding 4): canonical (x, y) lands at final (-y, x).
-        const points = [
-          { x: layout.labelStationX, y: layout.deckLabelY }, // deck title baseline
-          { x: layout.labelStationX, y: layout.deckLabelY - cap }, // deck title cap top
-          { x: layout.labelStationX, y: layout.bottomLabelY }, // bottom title baseline
-          { x: layout.labelStationX, y: layout.bottomLabelY - cap }, // bottom title cap top
-        ];
-        for (const p of points) {
-          const finalX = -p.y;
-          const finalY = p.x;
-          expect(finalX).toBeGreaterThanOrEqual(layout.minX);
-          expect(finalX).toBeLessThanOrEqual(layout.minX + layout.width);
-          expect(finalY).toBeGreaterThanOrEqual(layout.minY);
-          expect(finalY).toBeLessThanOrEqual(layout.minY + layout.height);
+        const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * layout.scale;
+        for (const [text, labelY, side] of [
+          [RAIL_LABEL_TEXTS.deck, layout.deckLabelY, "deck"],
+          [RAIL_LABEL_TEXTS.bottom, layout.bottomLabelY, "bottom"],
+        ] as const) {
+          const halfRun = railLabelRunWidth(text, layout.railLabelSize) / 2;
+          const box = verticalTitleGlyphBox(layout.labelStationX, labelY, cap, halfRun);
+          const centerCard = stationCardRect(layout, pxX(lengthIn / 2), "vertical", side);
+          const gap = centerCard.y - box.stationMax;
+          expect(gap).toBeCloseTo(layout.railLabelSize * RAIL_LABEL_STATION_GAP_EM, 8);
         }
       }
     }
   });
 });
 
-describe("rockerViewLayout — rail titles: clearance from their own rail, both orientations", () => {
-  it("keeps the deck title's glyph edge exactly RAIL_LABEL_GAP clear of the deck rail's ceiling-sized far edge, and the bottom title's glyph edge exactly RAIL_LABEL_GAP clear of the bottom rail's, at every card scale", () => {
-    for (const orientation of ORIENTATIONS) {
-      const ceiling = maxCardPinScale(orientation);
-      const maxCardWidth = STATION_CARD_WIDTH * ceiling;
-      const maxCardHeight = STATION_CARD_HEIGHT * ceiling;
-      for (const lengthIn of [60, 78, 120]) {
-        for (const cardScale of [1, 1.6, ceiling]) {
-          const layout = rockerViewLayout({
-            lengthIn,
-            maxDeckIn: MAX_DECK_IN,
-            orientation,
-            fitToBoard: true,
-            stationRails: "full",
-            cardScale,
-          });
-          const deckRailFarY =
-            layout.deckTickEndY - (orientation === "horizontal" ? maxCardHeight : maxCardWidth);
-          const bottomRailFarY =
-            layout.tickEndY + (orientation === "horizontal" ? maxCardHeight : maxCardWidth);
-          const cap = layout.railLabelSize * RAIL_LABEL_CAP_RATIO;
-
-          expect(deckRailFarY - layout.deckLabelY).toBeCloseTo(RAIL_LABEL_GAP, 8);
-          expect(layout.bottomLabelY - cap - bottomRailFarY).toBeCloseTo(RAIL_LABEL_GAP, 8);
-        }
-      }
-    }
-  });
-});
-
-describe("rockerViewLayout — rail titles: centring on the board's middle station", () => {
-  it("gives labelStationX exactly PAD_X + (lengthIn * scale) / 2 in horizontal", () => {
+describe("rockerViewLayout — rail titles: no collision with the NEXT station's card, vertical (the neighbour-collision proof)", () => {
+  it("keeps a title's glyph box clear of the Nose @ 12in card on the same rail across the whole length sweep, worst case at the SHORTEST board, at least 100 units clear at the vertical ceiling", () => {
+    const ceiling = maxCardPinScale("vertical");
+    let minClearance = Infinity;
+    let minClearanceLengthIn = Number.NaN;
     for (const lengthIn of LENGTHS_IN) {
-      const layout = rockerViewLayout({
-        lengthIn,
-        maxDeckIn: MAX_DECK_IN,
-        orientation: "horizontal",
-        fitToBoard: true,
-        stationRails: "full",
-      });
-      expect(layout.labelStationX).toBeCloseTo(PAD_X + (lengthIn * layout.scale) / 2, 10);
-    }
-  });
-
-  it("keeps labelStationX within half a railLabelSize of PAD_X + (lengthIn * scale) / 2 in vertical", () => {
-    for (const lengthIn of [60, 78, 120]) {
       const layout = rockerViewLayout({
         lengthIn,
         maxDeckIn: MAX_DECK_IN,
         orientation: "vertical",
         fitToBoard: true,
         stationRails: "full",
+        cardScale: ceiling,
       });
-      const nominal = PAD_X + (lengthIn * layout.scale) / 2;
-      expect(Math.abs(layout.labelStationX - nominal)).toBeLessThanOrEqual(layout.railLabelSize / 2);
+      const cap = layout.railLabelSize * RAIL_LABEL_CAP_RATIO;
+      const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * layout.scale;
+      for (const [text, labelY, side] of [
+        [RAIL_LABEL_TEXTS.deck, layout.deckLabelY, "deck"],
+        [RAIL_LABEL_TEXTS.bottom, layout.bottomLabelY, "bottom"],
+      ] as const) {
+        const halfRun = railLabelRunWidth(text, layout.railLabelSize) / 2;
+        const box = verticalTitleGlyphBox(layout.labelStationX, labelY, cap, halfRun);
+        const neighbourCard = stationCardRect(layout, pxX(lengthIn - 12), "vertical", side);
+        // The neighbour sits nose-ward of the title (smaller station-axis value); its far
+        // (nose-ward) edge is `y + height`, and the title's own cap top (`stationMin`, its own
+        // smallest station-axis value) is the edge closest to it.
+        const clearance = box.stationMin - (neighbourCard.y + neighbourCard.height);
+        expect(clearance).toBeGreaterThan(0);
+        if (clearance < minClearance) {
+          minClearance = clearance;
+          minClearanceLengthIn = lengthIn;
+        }
+      }
+    }
+    expect(minClearanceLengthIn).toBe(BOARD_LENGTH_RANGE_IN.min);
+    expect(minClearance).toBeGreaterThanOrEqual(100);
+  });
+});
+
+describe("rockerViewLayout — rail titles: no reach into the board, vertical", () => {
+  it("keeps each title's inboard run edge outside the worst-case deck line (deck rail) or the baseline (bottom rail), at card scales 1, 1.6 and the vertical ceiling", () => {
+    const ceiling = maxCardPinScale("vertical");
+    for (const lengthIn of [60, 78, 120]) {
+      for (const cardScale of [1, 1.6, ceiling]) {
+        const layout = rockerViewLayout({
+          lengthIn,
+          maxDeckIn: MAX_DECK_IN,
+          orientation: "vertical",
+          fitToBoard: true,
+          stationRails: "full",
+          cardScale,
+        });
+        const cap = layout.railLabelSize * RAIL_LABEL_CAP_RATIO;
+        const deckTopY = layout.baselineY - MAX_DECK_IN * layout.scale;
+        // The physical baseline and worst-case deck line, drawn directly (not through `Upright`),
+        // land at canonical-x = -baselineY / -deckTopY in the rotated frame (`stationCardRect`'s
+        // own composition identity note).
+        const deckLineFinalX = -deckTopY;
+        const baselineFinalX = -layout.baselineY;
+
+        // The deck rail sits on the LESS-negative side of the deck line (further from the board),
+        // so the deck title's inboard edge — the one closest to the board — is its crossMin.
+        const deckHalfRun = railLabelRunWidth(RAIL_LABEL_TEXTS.deck, layout.railLabelSize) / 2;
+        const deckBox = verticalTitleGlyphBox(layout.labelStationX, layout.deckLabelY, cap, deckHalfRun);
+        expect(deckBox.crossMin).toBeGreaterThanOrEqual(deckLineFinalX - 1e-9);
+
+        // The bottom rail sits on the MORE-negative side of the baseline, so the bottom title's
+        // inboard edge is its crossMax.
+        const bottomHalfRun = railLabelRunWidth(RAIL_LABEL_TEXTS.bottom, layout.railLabelSize) / 2;
+        const bottomBox = verticalTitleGlyphBox(layout.labelStationX, layout.bottomLabelY, cap, bottomHalfRun);
+        expect(bottomBox.crossMax).toBeLessThanOrEqual(baselineFinalX + 1e-9);
+      }
     }
   });
 });

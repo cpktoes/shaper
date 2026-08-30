@@ -20,13 +20,16 @@
  * are. Every read-out, either kind, is leadered from its own rail to the exact point on the curve
  * it measures. That is the `"full"` grammar (`callouts="full"`, the default).
  *
- * Each rail also carries its own title (quick task 260830-2dy): `Thickness` centred outside the
- * deck rail, `Rocker` centred outside the bottom one — the same two words the sidebar's
+ * Each rail also carries its own title (quick task 260830-2dy, words in `RAIL_LABEL_TEXTS`):
+ * `Thickness` for the deck rail, `Rocker` for the bottom one — the same two words the sidebar's
  * collapsible sections (`rocker-controls.tsx`) and the DATASHEET's row groups
- * (`rocker-datasheet.tsx`) already use, so the drawing never needs a third vocabulary. Every
- * position, size and band a title needs is decided in `rocker-view-frame.ts`
- * (`railLabelSize`/`deckLabelY`/`bottomLabelY`/`labelStationX`); `RailTitle` below supplies only
- * the words and the paint, `"full"` grammar only.
+ * (`rocker-datasheet.tsx`) already use, so the drawing never needs a third vocabulary. Nose-left a
+ * title sits centred OUTSIDE its own rail (founder-approved); nose-up it sits directly ABOVE its
+ * own rail's Center card instead, centred on that card's own column, because a word turned upright
+ * on screen presents its full WIDTH across the rail rather than its height, and only the card's own
+ * column has room to spare for that (quick task 260830-31h). Every position, size and band a title
+ * needs is decided in `rocker-view-frame.ts` (`railLabelSize`/`deckLabelY`/`bottomLabelY`/
+ * `labelStationX`); `RailTitle` below supplies only the words and the paint, `"full"` grammar only.
  *
  * A third grammar, `"compact"` (quick task 260829-vus), is the Summary order form's own: the box
  * it prints into is 0.92in tall, far too short for a card's own two-row stack at a printed 9pt, so
@@ -89,6 +92,7 @@ import {
   compactRailReadingXs,
   compactValueWidth,
   PAD_X,
+  RAIL_LABEL_TEXTS,
   type RockerCardType,
   type RockerCompactRow,
   rockerViewLayout,
@@ -323,20 +327,32 @@ function StationReadout({
 }
 
 /**
- * A rail's own title — `Thickness` outside the deck rail, `Rocker` outside the bottom one (quick
- * task 260830-2dy), so the drawing itself says which rail is which rather than a shaper having to
- * infer it from which side of the board a number sits on. The two words are exactly the ones the
- * sidebar's collapsible sections (`rocker-controls.tsx`) and the DATASHEET's row groups
- * (`rocker-datasheet.tsx`) already use — one vocabulary across the whole screen.
+ * A rail's own title — `Thickness` for the deck rail, `Rocker` for the bottom one (quick task
+ * 260830-2dy, `RAIL_LABEL_TEXTS`), so the drawing itself says which rail is which rather than a
+ * shaper having to infer it from which side of the board a number sits on. The two words are
+ * exactly the ones the sidebar's collapsible sections (`rocker-controls.tsx`) and the DATASHEET's
+ * row groups (`rocker-datasheet.tsx`) already use — one vocabulary across the whole screen.
+ *
+ * Nose-left the title sits OUTSIDE the rail, centred on the board's middle station (unchanged,
+ * founder-approved). Nose-up it sits directly ABOVE its own rail's Center card instead, centred on
+ * that card's own column (quick task 260830-31h) — not beside the rail, because a word turned
+ * upright on screen presents its full WIDTH across the rail, and the only place with that much
+ * spare room is the card's own column, not a thin outboard strip.
  *
  * Every position, size and band this needs comes off `layout` (Rule 1) — this component performs
  * no arithmetic of its own, which is why wrapping the text in `Upright` alone is enough to make
  * it read correctly nose-up too, the same treatment a station name row already carries. `callouts
  * === "full"` only; nothing is added to the `"compact"` or `"none"` branches.
  *
- * A note for the next editor: SVG applies trailing letter-spacing after the final glyph, so a
- * centred tracked string sits a fraction of a space left of true centre — accepted, and identical
- * to what the station name rows above already do.
+ * A note for the next editor, because its absence produced the 260830-31h regression: the anchor
+ * fields mean different things in the two orientations (`deckLabelY`/`bottomLabelY` are baselines
+ * nose-left but cross-axis centring nose-up; `labelStationX` is the opposite), and a counter-
+ * rotated run presents its RUN LENGTH across the rail while its cap points along it — so a band
+ * sized only for cap height is not enough nose-up.
+ *
+ * A separate note: SVG applies trailing letter-spacing after the final glyph, so a centred tracked
+ * string sits a fraction of a space left of true centre — accepted, and identical to what the
+ * station name rows above already do.
  */
 function RailTitle({
   x,
@@ -819,10 +835,15 @@ export function RockerViewer({
                 </g>
               );
             })}
-            {/* Rail titles (quick task 260830-2dy): the drawing's own definitive name for each
-                rail, centred on the board's middle station, outside both rails' own cards. */}
-            <RailTitle x={labelStationX} y={deckLabelY} size={railLabelSize} vertical={vertical} text="Thickness" />
-            <RailTitle x={labelStationX} y={bottomLabelY} size={railLabelSize} vertical={vertical} text="Rocker" />
+            {/* Rail titles (quick task 260830-2dy, moved nose-up by 260830-31h): the drawing's own
+                definitive name for each rail. Nose-left, outside both rails' own cards, centred on
+                the board's middle station; nose-up, directly above its own rail's Center card,
+                centred on that card's own column instead — see `RailTitle`'s own doc comment. The
+                words themselves come from `RAIL_LABEL_TEXTS` (this module's own layout, not a
+                second copy here), so the drawing's vocabulary and the layout that proves it fits
+                can never disagree. */}
+            <RailTitle x={labelStationX} y={deckLabelY} size={railLabelSize} vertical={vertical} text={RAIL_LABEL_TEXTS.deck} />
+            <RailTitle x={labelStationX} y={bottomLabelY} size={railLabelSize} vertical={vertical} text={RAIL_LABEL_TEXTS.bottom} />
           </>
         )}
 
