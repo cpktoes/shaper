@@ -219,10 +219,24 @@ export function OrderForm() {
 
             <RailLabel>Rider Info</RailLabel>
 
-            {/* `justify-between` rather than a stack at the top: with the shaper's box gone to page
-                2 the rider fields have more height than they need, and an order form would rather
-                spend it on the gaps between ruled lines — these get written on by hand. */}
-            <div className="flex min-w-0 flex-1 flex-col justify-between gap-1 py-0.5">
+            {/* Each field's ruled line is that field's OWN bottom edge (see OrderFormField — the
+                line is the value span's `border-b`), so spacing the three field boxes evenly is
+                not the same as spacing the ruled LINES evenly — the writing room a shaper actually
+                gets is the gap above each line, not the gap between boxes.
+
+                `justify-evenly` cuts the column's blank space into four equal slots: one above
+                the first line, one between each pair of lines, and one below the last. That makes
+                the space above Name and each line-to-line gap come out the same — `slot + row
+                height` — automatically, at any sheet size, with no number to tune. The bottom slot
+                is one row height less (that's where Height/Weight's own label sits), so the block
+                reads centred rather than pinned to the top.
+
+                No `gap` and no `py` here on purpose: a `gap` only pads the between-line slots, not
+                the top and bottom ones, which recreates exactly the top-crowding this fixes; the
+                padding was that same crowding measured in pixels. Redistributing space lives
+                entirely inside this column — `.order-form-band-header`'s 12% share, and everything
+                below it, is untouched. */}
+            <div className="flex min-w-0 flex-1 flex-col justify-evenly">
               <OrderFormField label="Name" />
               <OrderFormField label="Ph #" />
               <div className="flex gap-3">
