@@ -130,16 +130,17 @@ export interface RockerViewLayout {
   scale: number;
   viewH: number;
   baselineY: number;
-  /** Where a bottom-rail station tick line stops — always `baselineY + RAIL_GAP`, in both
+  /** Where a bottom-rail station tick line stops — always `baselineY + BOTTOM_RAIL_GAP`, in both
    * orientations, so a tick still stops at the card's own near edge rather than running into its
    * middle once the vertical rail moves off this same value (see `railY`). */
   tickEndY: number;
-  /** The bottom (rocker) rail's own anchor. `baselineY + RAIL_GAP` in horizontal; in vertical a
-   * rotated card presents its WIDTH across the rail rather than its height, so the anchor clears
-   * the baseline by `RAIL_GAP + cardWidth / 2` instead. */
+  /** The bottom (rocker) rail's own anchor. `baselineY + BOTTOM_RAIL_GAP` in horizontal; in
+   * vertical a rotated card presents its WIDTH across the rail rather than its height, so the
+   * anchor clears the baseline by `BOTTOM_RAIL_GAP + cardWidth / 2` instead. */
   railY: number;
   /** Where a deck-rail station tick line stops — the mirror of `tickEndY` on the board's other
-   * side, always `deckTopY - RAIL_GAP` in both orientations. */
+   * side, always `deckTopY - RAIL_GAP` in both orientations. Not the same gap the bottom rail
+   * uses — see `BOTTOM_RAIL_GAP` for why the two sides measure differently. */
   deckTickEndY: number;
   /** The deck (thickness) rail's own anchor. In horizontal a deck card hangs UP from the rail, so
    * the anchor is its own top edge (`deckTickEndY - cardHeight`); in vertical the anchor is the
@@ -183,8 +184,27 @@ export const VIEW_W = 900;
 /** Left/right pad inside `VIEW_W` the board's own drawn span sits within. */
 export const PAD_X = 40;
 export const PAD_TOP = 26;
-/** Gap between the baseline (or the worst-case deck line) and a rail's tick marks. */
+/** Gap between the worst-case deck line and the DECK rail's tick marks. */
 export const RAIL_GAP = 20;
+/**
+ * The BOTTOM (rocker) rail's own gap — deliberately larger than `RAIL_GAP`, because the two rails
+ * measure from references the drawn board sits at very differently (founder review, 2026-08-30).
+ *
+ * The deck rail hangs off `deckTopY`, the WORST-CASE deck line this module always reserves
+ * (`maxDeckIn`, 14in of rocker lift plus foil) — a line no realistic board reaches, so the deck
+ * cards already float far clear of the drawn deck curve. The bottom rail hangs off `baselineY`,
+ * the flat surface the board's bottom curve actually TOUCHES at the centre station, where rocker
+ * is zero by construction. One shared gap therefore reads as two different distances: measured on
+ * a 6'0" board, the deck cards cleared the drawn board by 124.6 units while the bottom cards
+ * cleared it by exactly `RAIL_GAP` — the crowding the founder saw.
+ *
+ * A fixed value, not a per-board one: the frame must never resize around whichever board happens
+ * to be loaded (the same rule `maxDeckIn`'s worst-case reserve exists to protect), so this cannot
+ * chase the deck side's own board-dependent slack. Double `RAIL_GAP` gives the bottom cards
+ * clearance comparable to the board box's own drawn depth without the frame growing enough to
+ * shrink the board noticeably.
+ */
+export const BOTTOM_RAIL_GAP = 40;
 /** Each station card's height, in SVG user units — room for a station-name row over a single
  * value row at this drawing's existing type scale (quick task 260829-uue: a card now holds one
  * value instead of two, so this dropped from 50). */
@@ -283,6 +303,15 @@ export const STATION_CARD_WIDTH = 12 * FIXED_SCALE - CARD_GUTTER;
 export function cardBandDepth(orientation: RockerViewOrientation): number {
   const pinCeiling = maxCardPinScale(orientation);
   return RAIL_GAP + pinCeiling * (orientation === "horizontal" ? STATION_CARD_HEIGHT : STATION_CARD_WIDTH) + CARD_GUTTER;
+}
+
+/**
+ * The BOTTOM rail's own band depth — `cardBandDepth` plus the extra clearance `BOTTOM_RAIL_GAP`
+ * buys over `RAIL_GAP`. The band has to grow by exactly what the rail moved, or the bottom card's
+ * far edge walks straight out of the frame.
+ */
+export function bottomCardBandDepth(orientation: RockerViewOrientation): number {
+  return cardBandDepth(orientation) + (BOTTOM_RAIL_GAP - RAIL_GAP);
 }
 
 /**
@@ -411,11 +440,13 @@ export function rockerViewLayout({
     const band = showStationCards ? cardBandDepth(orientation) : 0;
     deckTopY = topPad + band;
     baselineY = deckTopY + maxDeckIn * scale;
-    viewH = baselineY + (showStationCards ? cardBandDepth(orientation) : BARE_PAD);
+    viewH = baselineY + (showStationCards ? bottomCardBandDepth(orientation) : BARE_PAD);
   }
 
-  // Bottom (rocker) rail — unchanged in shape from before this task.
-  const tickEndY = baselineY + RAIL_GAP;
+  // Bottom (rocker) rail — its own, larger gap (see `BOTTOM_RAIL_GAP`): this rail measures from
+  // the baseline the board's bottom curve actually touches, not from the worst-case line the deck
+  // rail clears.
+  const tickEndY = baselineY + BOTTOM_RAIL_GAP;
   const railY = effectiveHorizontal ? tickEndY : tickEndY + cardWidth / 2;
 
   // Deck (thickness) rail — the mirror of the bottom rail on the board's other side.

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import {
   BARE_PAD,
+  BOTTOM_RAIL_GAP,
   CARD_GUTTER,
   CARD_NAME_DY,
   CARD_VALUE_DY,
@@ -22,6 +23,7 @@ import {
   STATION_NAME_SIZE,
   STATION_VALUE_SIZE,
   VIEW_W,
+  bottomCardBandDepth,
   cardBandDepth,
   cardPinScale,
   compactRailReadingXs,
@@ -161,7 +163,7 @@ describe("rockerViewLayout — proportion", () => {
     expect(typeof layout.scale).toBe("number");
   });
 
-  it("gives the frame's cross extent as PAD_TOP + cardBandDepth(orientation) + maxDeckIn * scale + cardBandDepth(orientation), with cards on", () => {
+  it("gives the frame's cross extent as PAD_TOP + cardBandDepth(orientation) + maxDeckIn * scale + bottomCardBandDepth(orientation), with cards on", () => {
     for (const orientation of ORIENTATIONS) {
       for (const fitToBoard of [true, false]) {
         const layout = rockerViewLayout({
@@ -171,9 +173,21 @@ describe("rockerViewLayout — proportion", () => {
           fitToBoard,
           stationRails: "full",
         });
-        const expectedCrossExtent = PAD_TOP + cardBandDepth(orientation) + MAX_DECK_IN * layout.scale + cardBandDepth(orientation);
+        // The two bands are NOT the same depth: the bottom rail clears the baseline the board's
+        // own curve touches, so it carries BOTTOM_RAIL_GAP where the deck rail carries RAIL_GAP.
+        const expectedCrossExtent =
+          PAD_TOP + cardBandDepth(orientation) + MAX_DECK_IN * layout.scale + bottomCardBandDepth(orientation);
         expect(layout.viewH).toBeCloseTo(expectedCrossExtent, 8);
       }
+    }
+  });
+
+  it("makes the bottom band exactly BOTTOM_RAIL_GAP - RAIL_GAP deeper than the deck band, in both orientations", () => {
+    for (const orientation of ORIENTATIONS) {
+      expect(bottomCardBandDepth(orientation) - cardBandDepth(orientation)).toBeCloseTo(
+        BOTTOM_RAIL_GAP - RAIL_GAP,
+        8,
+      );
     }
   });
 
@@ -344,7 +358,7 @@ describe("rockerViewLayout — vertical: containment, both rails", () => {
 });
 
 describe("rockerViewLayout — horizontal: clearance, both rails", () => {
-  it("keeps every deck card's near (bottom) edge RAIL_GAP above the worst-case deck line, every bottom card's near (top) edge RAIL_GAP below the baseline", () => {
+  it("keeps every deck card's near (bottom) edge RAIL_GAP above the worst-case deck line, every bottom card's near (top) edge BOTTOM_RAIL_GAP below the baseline", () => {
     for (const lengthIn of [60, 78, 120]) {
       const layout = rockerViewLayout({
         lengthIn,
@@ -360,7 +374,7 @@ describe("rockerViewLayout — horizontal: clearance, both rails", () => {
         expect(deckTopY - (deckCard.y + deckCard.height)).toBeCloseTo(RAIL_GAP, 6);
 
         const bottomCard = stationCardRect(layout, pxX(stationIn), "horizontal", "bottom");
-        expect(bottomCard.y - layout.baselineY).toBeCloseTo(RAIL_GAP, 6);
+        expect(bottomCard.y - layout.baselineY).toBeCloseTo(BOTTOM_RAIL_GAP, 6);
       }
     }
   });
@@ -967,7 +981,7 @@ describe("rockerViewLayout — cardScale cannot reach compact/none", () => {
 });
 
 describe("rockerViewLayout — vertical: clearance holds at every card scale", () => {
-  it("keeps every card's near edge exactly RAIL_GAP from the board box at cardScale 1, 1.6 and the ceiling", () => {
+  it("keeps each rail's cards exactly their own gap from the board box at cardScale 1, 1.6 and the ceiling", () => {
     const ceiling = maxCardPinScale("vertical");
     for (const lengthIn of [60, 78, 120]) {
       for (const cardScale of [1, 1.6, ceiling]) {
@@ -985,7 +999,7 @@ describe("rockerViewLayout — vertical: clearance holds at every card scale", (
         for (const stationIn of stationsIn(lengthIn)) {
           const bottomCard = stationCardRect(layout, pxX(stationIn), "vertical", "bottom");
           const bottomNearEdge = bottomCard.x + bottomCard.width;
-          expect(baselineFinalX - bottomNearEdge).toBeCloseTo(RAIL_GAP, 6);
+          expect(baselineFinalX - bottomNearEdge).toBeCloseTo(BOTTOM_RAIL_GAP, 6);
 
           const deckCard = stationCardRect(layout, pxX(stationIn), "vertical", "deck");
           const deckNearEdge = deckCard.x;
