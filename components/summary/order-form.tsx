@@ -332,7 +332,7 @@ export function OrderForm() {
                   >
                     <div className="flex min-h-0 flex-1 items-stretch px-1.5 py-1">
                       <div className="relative min-h-0 min-w-0 flex-1">
-                        <RockerViewer rocker={rocker} foil={foil} length={outline.length} callouts="compact" fitToBoard />
+                        <RockerViewer rocker={rocker} foil={foil} length={outline.length} callouts="compact" fitToBoard boardFill={false} />
                       </div>
                     </div>
                   </FormBox>

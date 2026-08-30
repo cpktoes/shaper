@@ -153,6 +153,13 @@ export interface RockerViewerProps {
    * stability depends on this staying fixed the way `outline-viewer.tsx`'s `fixedFrame` still does.
    */
   fitToBoard?: boolean;
+  /**
+   * Paints the board silhouette with the usual `--outline-board-fill` wash when `true` (the
+   * default, every editor view). The Summary order form passes `false` so its printed profile is
+   * an outline-only drawing — the sheet's boxes are ink-frugal by standing decision (260826-lg8),
+   * and an unfilled profile keeps the compact readings' leaders legible against paper.
+   */
+  boardFill?: boolean;
 }
 
 /**
@@ -369,6 +376,7 @@ export function RockerViewer({
   showConstruction = false,
   onDrag,
   fitToBoard = false,
+  boardFill = true,
 }: RockerViewerProps) {
   const vertical = orientation === "vertical";
   const svgRef = useRef<SVGSVGElement>(null);
@@ -673,7 +681,7 @@ export function RockerViewer({
         />
         <path
           d={boardPath}
-          fill="var(--outline-board-fill)"
+          fill={boardFill ? "var(--outline-board-fill)" : "none"}
           stroke="var(--outline-ink)"
           strokeWidth={2}
           strokeLinejoin="round"
