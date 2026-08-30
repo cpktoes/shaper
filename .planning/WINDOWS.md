@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 1
+open_count: 2
 waived_count: 0
 fixed_count: 0
-total_count: 1
-last_updated: 2026-08-21T16:08:14.451Z
+total_count: 2
+last_updated: 2026-08-30T09:04:59.766Z
 ---
 
 # Broken Windows Ledger
@@ -16,6 +16,7 @@ last_updated: 2026-08-21T16:08:14.451Z
 | id | phase | kind | file | line | description | status | reason | recorded_at | resolved_at |
 |----|-------|------|------|------|-------------|--------|--------|-------------|-------------|
 | 1 | 01 | unmet-truth | .planning/phases/01-foundation-port-deploy-the-design-tool/01-04-PLAN.md |  | Task 2 Part B walkthrough narrowed to numbers/units dimension only per user instruction; fin-config-switching, rail-band-recalculation, and per-screen units (steps 5-8) not re-confirmed step-by-step against production this session | open |  | 2026-08-21T16:08:14.451Z |  |
+| 2 | 260830-2dy | unrun-verify | components/rocker/rocker-viewer.tsx |  | Task 3 browser pass (both orientations, Summary sheet check) deferred — executor cannot run npm run dev / a browser inside a worktree; requires human verification | open |  | 2026-08-30T09:04:59.766Z |  |
 
 ````json
 [
@@ -29,6 +30,18 @@ last_updated: 2026-08-21T16:08:14.451Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-08-21T16:08:14.451Z",
+    "resolved_at": null
+  },
+  {
+    "id": 2,
+    "kind": "unrun-verify",
+    "phase": "260830-2dy",
+    "file": "components/rocker/rocker-viewer.tsx",
+    "line": null,
+    "description": "Task 3 browser pass (both orientations, Summary sheet check) deferred — executor cannot run npm run dev / a browser inside a worktree; requires human verification",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-08-30T09:04:59.766Z",
     "resolved_at": null
   }
 ]
