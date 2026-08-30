@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-08-30 — Completed quick task 260830-2dy: rocker drawing's two rails are now titled Thickness and Rocker
+Last activity: 2026-08-30 — Completed quick task 260830-31h: nose-up rail titles moved above the Center cards, fixing the overlap
 
 Progress: [██████████] 100%
 
@@ -211,6 +211,7 @@ Recent decisions affecting current work:
 | 260830-1vn | Fixes a 260830-1g3 regression the founder caught in the dark themes: switching a toolbar button ON also swapped its neutral border for an accent one, which is a FILL token used as a STROKE (forbidden by globals.css's own naming rule) and dropped the control boundary below the 3:1 target in three of four themes — worst in dark, where the ON button lost its outline and read as LESS defined than its OFF neighbours. Fix is pure subtraction: 11 border classes removed across 7 buttons, accent fill untouched. Border-vs-ground now 3.70-4.13 in all four themes | 2026-08-30 | 0d5ae43 | [260830-1vn-the-dark-theme-buttons-aren-t-working-th](./quick/260830-1vn-the-dark-theme-buttons-aren-t-working-th/) |
 | 260830-fast4 | Template's middle-width callout spelled "Center" (was the British "Centre") — the only stray user-facing label; Rocker, Rails and Summary already said Center. Comment prose keeps its British spelling (centreline, centred) | 2026-08-30 | a6d61fd | (fast task — no plan dir) |
 | 260830-2dy | ROCKER editor's drawing gains a title on each rail — "Thickness" centred outside the deck cards, "Rocker" outside the bottom ones, the same words the sidebar sections and datasheet columns already use, so the drawing needs no third vocabulary. Both reserved at the card-pin ceiling so they hold a constant on-screen size and the frame stays resize-stable. Also collects the 260830-fast2 follow-up: the dead board-length label machinery (labelX/labelY, LENGTH_LABEL_SIZE/GAP, PAD_TOP and the stale vertical reserve) is deleted, which hands nose-up its ~22 loose units back — the vertical maximisation bar improved to ~90.9%. Print path pinned byte-identical by a new characterisation test | 2026-08-30 | 02913fa | [260830-2dy-rocker-data-callouts-need-a-definitive-t](./quick/260830-2dy-rocker-data-callouts-need-a-definitive-t/) |
+| 260830-31h | Fixes a 260830-2dy regression the founder caught nose-up: the Thickness title overlapped the Center card by 27px and spilled 15px outside the frame. Cause was the same rotated-element subtlety the module already handles for cards — an upright-counter-rotated title presents its WIDTH across the rail, but railLabelBandDepth reserved only its cap height in both orientations. Per the founder, nose-up each title now sits ABOVE its own Center card, sharing the card column (maxCardWidth) instead of needing an outboard reserve; gap expressed in em of the title's own size so it tracks the pin-scaled cards. Neighbour clearance to Nose @ 12" proved across the length sweep — worst case 136.82 units at 5'0" (the SHORTEST board is tightest here, not the longest). Horizontal byte-identical; print-path pin green unedited | 2026-08-30 | 861f424 | [260830-31h-vertical-rocker-view-rail-titles-collide](./quick/260830-31h-vertical-rocker-view-rail-titles-collide/) |
 
 ## Deferred Items
 
