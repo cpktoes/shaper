@@ -1,13 +1,20 @@
 /**
  * The rocker/foil side-profile viewer's scale and frame — the ONE place this drawing's scale and
- * frame are decided, for both orientations, and for BOTH card rails (quick task 260829-uue). Pure
- * geometry, no React import (per `import type` only for the orientation-shaped literal below), so
- * it can be verified in `rocker-view-frame.test.ts` in isolation from `rocker-viewer.tsx`.
+ * frame are decided, for both orientations, and for all three rail grammars (quick task 260829-uue,
+ * widened to a compact third grammar by 260829-vus). Pure geometry, no React import (per `import
+ * type` only for the orientation-shaped literal below), so it can be verified in
+ * `rocker-view-frame.test.ts` in isolation from `rocker-viewer.tsx`.
  *
  * Two rails, symmetric about the board: a deck rail above the board (thickness read-outs) and a
  * bottom rail below it (rocker read-outs) — see `deckRailY`/`railY` below. `rocker-viewer.tsx`
  * draws from the `RockerViewLayout` this module produces; it derives no scale, band or type-stack
- * arithmetic of its own (quick task 260829-tmj, extended by 260829-uue).
+ * arithmetic of its own (quick task 260829-tmj, extended by 260829-uue and 260829-vus).
+ *
+ * The compact grammar (`stationRails: "compact"`) is the Summary order form's own rails: five bare
+ * thickness readings above the board, four bare rocker readings below — no card surface, no
+ * station name (see this plan's `<design_decision>` section 2 for why the card grammar does not
+ * fit at this box's printed size). Every band depth, row baseline, type size and reading x position
+ * that grammar needs lives here too, so `rocker-viewer.tsx` still derives nothing of its own.
  */
 
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
@@ -20,6 +27,23 @@ export type RockerViewOrientation = "horizontal" | "vertical";
 /** Which rail a station card belongs to: `"deck"` (thickness, above the board) or `"bottom"`
  * (rocker, below the board). */
 export type RockerCardSide = "deck" | "bottom";
+
+/** Which rail grammar `rocker-viewer.tsx` draws (quick task 260829-uue, widened to a third mode by
+ * 260829-vus):
+ *
+ * - `"full"` reserves a card-rail band on both sides of the board and draws the two-part
+ *   card/reading grammar `rocker-editor.tsx` uses — a named input chip at a slider-set figure, a
+ *   plain reading (tick + value + station name) at a derived one.
+ * - `"none"` reserves no band at all — the frame is the board plus a hairline of pad
+ *   (`BARE_PAD`), the original card-less contract this module has always carried.
+ * - `"compact"` reserves the Summary order form's own bare-value rails: five thickness readings
+ *   on the deck side, four rocker readings on the bottom side, no card surface and no station
+ *   name (position and side carry that instead — see this plan's `<design_decision>` section 2).
+ *   Horizontal-only by contract: its one consumer, the order form, never rotates this box, so this
+ *   mode ignores the `orientation` argument entirely — a rotated single-row rail would present its
+ *   own width across the rail the way a card does, which this grammar has no room to spend.
+ */
+export type RockerStationRails = "full" | "compact" | "none";
 
 export interface RockerViewLayoutInput {
   /** The board's own length, in inches. May be a corrupt/degenerate value carried by a saved
@@ -44,13 +68,34 @@ export interface RockerViewLayoutInput {
    */
   fitToBoard: boolean;
   /**
-   * Whether either rail is actually drawn (quick task 260829-uue). A band is reserved on the
-   * frame's cross axis only when a consumer will draw read-outs into it — a compact consumer
-   * (the Summary order form) is not paying for a rail it never renders, and its frame is the
-   * board plus a hairline of pad (`BARE_PAD`) instead. No default: every call site has to say
-   * which it is.
+   * Which rail grammar this call draws (quick task 260829-uue, widened to `"compact"` by
+   * 260829-vus) — see `RockerStationRails`. A band is reserved on the frame's cross axis only
+   * when a mode actually draws into it: `"full"` reserves the card-rail band, `"compact"`
+   * reserves its own bare-value bands (`COMPACT_DECK_BAND` / `COMPACT_BOTTOM_BAND`), `"none"`
+   * reserves nothing but a hairline of pad. No default: every call site has to say which it is.
    */
-  showStationCards: boolean;
+  stationRails: RockerStationRails;
+}
+
+/** One compact-mode reading row's three anchors, in canonical (horizontal) coordinates — see
+ * `rockerViewLayout`'s `compactRows` construction below for the derivation of each. */
+export interface RockerCompactRow {
+  /** The SVG text baseline the reading's value sits on. */
+  textY: number;
+  /** Where the reading's leader line leaves the type, headed for `kneeY` then the curve. */
+  leaderStartY: number;
+  /** Where the leader turns to run straight down (or up) the station, toward the curve. */
+  kneeY: number;
+}
+
+/** The three rows `rocker-viewer.tsx` draws in `"compact"` mode: one on the deck rail, two on the
+ * bottom rail — the two tip figures on the outer row, the two @ 12" figures on the inner row. See
+ * this plan's `<design_decision>` section 4 for why the bottom rail needs two rows and the deck
+ * rail does not. */
+export interface RockerCompactRows {
+  deck: RockerCompactRow;
+  bottomInner: RockerCompactRow;
+  bottomOuter: RockerCompactRow;
 }
 
 export interface RockerViewLayout {
@@ -81,10 +126,14 @@ export interface RockerViewLayout {
   cardDy: number;
   cardWidth: number;
   cardHeight: number;
+  /** The compact rails' own three row anchors (`"compact"` mode only) — populated in every mode
+   * so the field is never `NaN`; outside compact it is unused and the existing card fields above
+   * carry the drawing. */
+  compactRows: RockerCompactRows;
   /** The board-length label's own anchor, in canonical coordinates — horizontal keeps the
    * original `(PAD_X, PAD_TOP - 8)`; vertical moves it clear of the deck rail's nose-station
-   * cards (see `LENGTH_LABEL_GAP`). Always the horizontal values when `showStationCards` is
-   * false, since the label is never drawn there and the field must never be `NaN`. */
+   * cards (see `LENGTH_LABEL_GAP`). Always the horizontal values when `stationRails` is not
+   * `"full"`, since the label is never drawn otherwise and the field must never be `NaN`. */
   labelX: number;
   labelY: number;
   minX: number;
@@ -131,6 +180,44 @@ export const READOUT_NAME_DY = READOUT_VALUE_DY + STATION_VALUE_SIZE;
 export const LENGTH_LABEL_SIZE = 12;
 /** Gap left between the board-length label's own band and the nose station's cards, nose-up. */
 export const LENGTH_LABEL_GAP = 6;
+
+/**
+ * The compact rails' own type scale and band constants (quick task 260829-vus) — see this plan's
+ * `<design_decision>` sections 1-5 for the full derivation. Every value here is named so the
+ * relationship it protects survives any future change to the printed box size, rather than a bare
+ * literal repeated at each use.
+ */
+/** The size that lands on 12px = 9pt of printed type at the order form's own printed scale — see
+ * `compactValuePrintPx` and `ORDER_FORM_ROCKER_BOX_PX`. */
+export const COMPACT_VALUE_SIZE = 24;
+/** Cap height as a share of font size for these readings — they are digits, a fraction slash and
+ * an inch mark, none of which descend, so a band only has to clear the cap, not a full
+ * descender. */
+export const COMPACT_CAP_RATIO = 0.72;
+/** Gap left between the board box's own edge (the baseline or the worst-case deck line) and the
+ * nearest glyph edge of a compact reading. */
+export const COMPACT_CURVE_GAP = 8;
+/** Gap left between the bottom rail's two rows. */
+export const COMPACT_ROW_GAP = 5;
+/** Gap left outside the outermost row, at the frame's own edge. */
+export const COMPACT_EDGE_GUTTER = 4;
+/** Minimum clear space `compactRailReadingXs` leaves between two readings sharing a row. */
+export const COMPACT_READING_GUTTER = 6;
+/** Half-length of a compact reading's 45-degree dimension tick — `CALLOUT_TICK_SIZE`'s 4 units
+ * would print as a 4px dot at this drawing's printed scale, too small to read as a tick. */
+export const COMPACT_TICK_SIZE = 7;
+/** Stroke width of a compact reading's leader — a 1-unit leader prints at half a pixel and
+ * washes out on paper. */
+export const COMPACT_LEADER_WIDTH = 1.6;
+
+/** Cap height of a compact reading's type, in SVG user units. */
+export const COMPACT_CAP = COMPACT_VALUE_SIZE * COMPACT_CAP_RATIO;
+/** How deep the deck (thickness) band is: curve gap, one row's cap height, edge gutter. */
+export const COMPACT_DECK_BAND = COMPACT_CURVE_GAP + COMPACT_CAP + COMPACT_EDGE_GUTTER;
+/** How deep the bottom (rocker) band is: curve gap, two rows' cap heights and the gap between
+ * them, edge gutter. */
+export const COMPACT_BOTTOM_BAND =
+  COMPACT_CURVE_GAP + 2 * COMPACT_CAP + COMPACT_ROW_GAP + COMPACT_EDGE_GUTTER;
 
 /** The range-derived fixed scale — `PX_PER_INCH` before this module existed, and still what
  * `fitToBoard: false` (the order form's path) resolves to for every board length alike. */
@@ -192,44 +279,79 @@ function resolveScale(lengthIn: number, fitToBoard: boolean): number {
  * The horizontal frame is built from its own formulas. The vertical frame is built from its own
  * rotated content — both rails' own outer edges on the cross axis, the label's own band to the
  * tail card's far edge on the long axis — rather than a transposition of the horizontal frame,
- * the defect quick task 260825-w8d fixed on the outline viewer.
+ * the defect quick task 260825-w8d fixed on the outline viewer. Compact ignores the `orientation`
+ * argument entirely (`RockerStationRails`'s own contract) and always takes the horizontal-frame
+ * path — every branch below that would otherwise read `horizontal` reads `effectiveHorizontal`
+ * instead, so a `"compact"` layout is identical whichever orientation the caller happens to pass.
  */
 export function rockerViewLayout({
   lengthIn,
   maxDeckIn,
   orientation,
   fitToBoard,
-  showStationCards,
+  stationRails,
 }: RockerViewLayoutInput): RockerViewLayout {
   const scale = resolveScale(lengthIn, fitToBoard);
   const cardWidth = STATION_CARD_WIDTH;
   const cardHeight = STATION_CARD_HEIGHT;
   const horizontal = orientation === "horizontal";
+  const showStationCards = stationRails === "full";
+  const effectiveHorizontal = horizontal || stationRails === "compact";
 
-  // Bands and baseline, symmetric about the board. A band is reserved on EITHER side only when
-  // cards are actually drawn there — a compact consumer's frame is the board plus a hairline of
-  // pad instead (planner behaviour bullet 2).
-  const topPad = showStationCards ? PAD_TOP : BARE_PAD;
-  const band = showStationCards ? cardBandDepth(orientation) : 0;
-  // The worst-case deck reference — the y the tallest board this app can dial in would reach.
-  const deckTopY = topPad + band;
-  const baselineY = deckTopY + maxDeckIn * scale;
-  const viewH = baselineY + (showStationCards ? cardBandDepth(orientation) : BARE_PAD);
+  // Bands and baseline, symmetric about the board. A band is reserved on EITHER side only when a
+  // mode actually draws into it: "full" reserves the card-rail band, "compact" reserves its own
+  // bare-value bands (sized for 9pt printed type — this plan's `<design_decision>` section 5),
+  // "none" reserves only a hairline of pad.
+  let deckTopY: number;
+  let baselineY: number;
+  let viewH: number;
+  if (stationRails === "compact") {
+    deckTopY = COMPACT_DECK_BAND;
+    baselineY = deckTopY + maxDeckIn * scale;
+    viewH = baselineY + COMPACT_BOTTOM_BAND;
+  } else {
+    const topPad = showStationCards ? PAD_TOP : BARE_PAD;
+    const band = showStationCards ? cardBandDepth(orientation) : 0;
+    deckTopY = topPad + band;
+    baselineY = deckTopY + maxDeckIn * scale;
+    viewH = baselineY + (showStationCards ? cardBandDepth(orientation) : BARE_PAD);
+  }
 
   // Bottom (rocker) rail — unchanged in shape from before this task.
   const tickEndY = baselineY + RAIL_GAP;
-  const railY = horizontal ? tickEndY : tickEndY + cardWidth / 2;
+  const railY = effectiveHorizontal ? tickEndY : tickEndY + cardWidth / 2;
 
   // Deck (thickness) rail — the mirror of the bottom rail on the board's other side.
   const deckTickEndY = deckTopY - RAIL_GAP;
-  const deckRailY = horizontal ? deckTickEndY - cardHeight : deckTickEndY - cardWidth / 2;
+  const deckRailY = effectiveHorizontal ? deckTickEndY - cardHeight : deckTickEndY - cardWidth / 2;
 
   // Centres each card on the station it names (planner_assumptions #4), shared by both rails.
-  const cardDy = horizontal ? 0 : -cardHeight / 2;
+  const cardDy = effectiveHorizontal ? 0 : -cardHeight / 2;
+
+  // The compact rails' own three row anchors — populated in every mode so the field is never
+  // `NaN`; outside compact it is unused and the card fields above carry the drawing.
+  const deckTextY = deckTopY - COMPACT_CURVE_GAP;
+  const bottomInnerTextY = baselineY + COMPACT_CURVE_GAP + COMPACT_CAP;
+  const bottomOuterTextY = bottomInnerTextY + COMPACT_CAP + COMPACT_ROW_GAP;
+  const compactRows: RockerCompactRows = {
+    deck: { textY: deckTextY, leaderStartY: deckTextY + 2, kneeY: deckTopY - 2 },
+    bottomInner: {
+      textY: bottomInnerTextY,
+      leaderStartY: bottomInnerTextY - COMPACT_CAP - 2,
+      kneeY: baselineY + 2,
+    },
+    bottomOuter: {
+      textY: bottomOuterTextY,
+      leaderStartY: bottomOuterTextY - COMPACT_CAP - 2,
+      kneeY: baselineY + 2,
+    },
+  };
 
   // Length label anchor. Horizontal keeps today's value byte-identical. Vertical moves it clear
   // of the deck rail's nose-station cards (finding 6) — but only when cards are actually drawn;
   // otherwise the label is never rendered, and the horizontal values keep the field finite.
+  // Compact never draws the label either (`showStationCards` is false there too), so it lands
+  // here as well, identically regardless of the orientation argument.
   let labelX: number;
   let labelY: number;
   if (horizontal || !showStationCards) {
@@ -247,7 +369,7 @@ export function rockerViewLayout({
   let width: number;
   let height: number;
 
-  if (horizontal) {
+  if (effectiveHorizontal) {
     minX = 0;
     minY = 0;
     width = VIEW_W;
@@ -256,7 +378,8 @@ export function rockerViewLayout({
     // Cross axis (rotated "width"): from the bottom rail's own outer edge to the deck rail's own
     // outer edge — both rails now, rather than only the bottom one. Without cards there is no
     // rail to clear, so the cross axis falls back to the board's own worst-case box plus a
-    // hairline of pad on each side.
+    // hairline of pad on each side. (Compact never reaches this branch — `effectiveHorizontal` is
+    // always true there.)
     const crossFar = showStationCards ? railY + cardWidth / 2 + CARD_GUTTER : baselineY + BARE_PAD;
     const crossNear = showStationCards ? deckRailY - cardWidth / 2 - CARD_GUTTER : deckTopY - BARE_PAD;
     minX = -crossFar;
@@ -288,6 +411,7 @@ export function rockerViewLayout({
     cardDy,
     cardWidth,
     cardHeight,
+    compactRows,
     labelX,
     labelY,
     minX,
@@ -296,6 +420,136 @@ export function rockerViewLayout({
     height,
     viewBox,
   };
+}
+
+/** Per-character em-advance table for the bold body face this drawing's readings are set in — an
+ * advance ESTIMATE for sizing decisions, not a text-metrics engine. `compactRailReadingXs`'s own
+ * separation sweep is what actually protects the layout from a mis-estimated width; this table
+ * only has to be close enough to size the sweep's inputs sensibly. */
+const COMPACT_CHAR_ADVANCE: Record<string, number> = {
+  " ": 0.3,
+  '"': 0.35,
+  "/": 0.42,
+  "-": 0.4,
+};
+/** Advance for every character not in the table above — the digits, this face's widest glyphs at
+ * this weight. */
+const COMPACT_DEFAULT_CHAR_ADVANCE = 0.6;
+
+/** The printed width of a formatted inch string (e.g. `2 15/16"`) at `size` user units, from the
+ * per-character advance table above. */
+export function compactValueWidth(text: string, size: number = COMPACT_VALUE_SIZE): number {
+  let advance = 0;
+  for (const ch of text) {
+    advance += COMPACT_CHAR_ADVANCE[ch] ?? COMPACT_DEFAULT_CHAR_ADVANCE;
+  }
+  return advance * size;
+}
+
+export interface CompactReadingInput {
+  /** The reading's natural (station) centre x, in the frame's own canonical coordinates. */
+  stationX: number;
+  /** The reading's printed width, from `compactValueWidth`. */
+  width: number;
+}
+
+/**
+ * The text centre x for each reading on ONE compact row, given the readings in ascending
+ * `stationX` order (the nose-left projection puts the nose at the frame's left, so ascending x
+ * runs nose to tail).
+ *
+ * Three passes: left-to-right, pushing each reading right until it clears its predecessor by
+ * `COMPACT_READING_GUTTER`; then right-to-left, pulling readings left so the last one's right edge
+ * lands inside the frame's own edge gutter and each still clears its successor; then a final clamp
+ * of the first reading's left edge to the frame's own edge gutter. When nothing collides this
+ * returns the station centres untouched.
+ *
+ * An over-subscribed row (more readings than the row can hold at their natural width) distributes
+ * its shortfall — the leaders dogleg back to their own station — rather than letting two numbers
+ * print on top of each other. That is what makes a tip reading at the frame's own edge safe: `PAD_X`
+ * is 40 units and a tip value can be 48 units wide, and this sweep is what keeps its box inside the
+ * frame regardless of exactly how wide the estimate above says it is.
+ */
+export function compactRailReadingXs(layout: RockerViewLayout, readings: CompactReadingInput[]): number[] {
+  const n = readings.length;
+  if (n === 0) return [];
+  const centers = readings.map((r) => r.stationX);
+
+  // Pass 1: left to right — push each reading right until it clears its predecessor.
+  for (let i = 1; i < n; i++) {
+    const minCenter =
+      centers[i - 1] + readings[i - 1].width / 2 + COMPACT_READING_GUTTER + readings[i].width / 2;
+    if (centers[i] < minCenter) centers[i] = minCenter;
+  }
+
+  // Pass 2: right to left — pull left so the last reading's right edge lands inside the frame's
+  // own edge gutter, and each reading still clears its successor.
+  const maxRightEdge = layout.minX + layout.width - COMPACT_EDGE_GUTTER;
+  const lastRightEdge = centers[n - 1] + readings[n - 1].width / 2;
+  if (lastRightEdge > maxRightEdge) {
+    centers[n - 1] = maxRightEdge - readings[n - 1].width / 2;
+  }
+  for (let i = n - 2; i >= 0; i--) {
+    const maxCenter =
+      centers[i + 1] - readings[i + 1].width / 2 - COMPACT_READING_GUTTER - readings[i].width / 2;
+    if (centers[i] > maxCenter) centers[i] = maxCenter;
+  }
+
+  // Pass 3: clamp the first reading's own left edge to the frame's own edge gutter.
+  const minLeftEdge = layout.minX + COMPACT_EDGE_GUTTER;
+  const firstLeftEdge = centers[0] - readings[0].width / 2;
+  if (firstLeftEdge < minLeftEdge) {
+    centers[0] = minLeftEdge + readings[0].width / 2;
+  }
+
+  return centers;
+}
+
+/**
+ * The Summary order form's own ROCKER box, in printed CSS px at 96px/in — derived, not measured,
+ * from the sheet's own chain (`order-form.tsx`, `use-print-fit.ts`, `order-form.css`,
+ * `order-form-primitives.tsx`'s `FormBox`). This is the one place that derivation is recorded;
+ * anyone changing the sheet's column geometry, band percentages or this box's own flex share has
+ * to update it here.
+ *
+ * Width: printable page width `min(8.5in Letter, 8.27in A4) - 2 * 8mm @page margin` = 7.640in =
+ * 733.4px; less the sheet's own 1.5px border + `p-1.5` (6px) on both sides = 718.4px; less band
+ * 2's `--order-form-spine` (24px) + `--order-form-gap` (4px) = 690.4px; the drawings row gives
+ * `--order-form-left` (0.32) to the rail plots (220.9px) plus a 4px gap, leaving the right column
+ * 465.5px; less the `FormBox`'s own 2px border and its body's `px-1.5` (12px) = 451.5px.
+ *
+ * Height: printable page height `10.370in x 0.995 FIT_SAFETY` = 990.5px; less the sheet inset
+ * (15px) = 975.5px; less the header band (12%, 117.1px), the glassing band (11%, 107.3px), the
+ * page mark (~17px) and three 4px gaps = drawings row 722.1px; less the dims strip (7.4%, 53.4px)
+ * and a 4px gap = 664.7px; `.order-form-rocker` is 18% of the right column = 119.6px; less the
+ * `FormBox`'s own 2px border, its ~21px caption row and its body's `py-1` (8px) = 88.6px.
+ *
+ * These are derived, not measured — the executor cannot run `npm run dev` inside a worktree. An
+ * error in the taller direction only keeps the frame width-bound, i.e. only keeps the type at its
+ * 9pt target — the safe direction to be wrong in. The founder's post-merge print check is the real
+ * verification of this number; see this plan's `<post_merge_check>`.
+ */
+export const ORDER_FORM_ROCKER_BOX_PX = { width: 451.5, height: 88.6 } as const;
+
+export interface RenderedBoxPx {
+  width: number;
+  height: number;
+}
+
+/** The px-per-user-unit a `preserveAspectRatio="xMidYMid meet"` fit applies when this layout's
+ * frame is rendered into `box` — the smaller of the two axis ratios, since the SVG scales
+ * uniformly on both axes (one `scale` field, the same straightedge rule `RockerViewLayout.scale`
+ * itself protects). */
+export function renderedUnitPx(layout: RockerViewLayout, box: RenderedBoxPx = ORDER_FORM_ROCKER_BOX_PX): number {
+  return Math.min(box.width / layout.width, box.height / layout.height);
+}
+
+/** A compact reading's printed type size, in CSS px, when this layout's frame renders into `box` —
+ * `compactValuePrintPx(layout) >= 11.9` is this module's own pin on the 9pt target; `>= 10.67` is
+ * the 8pt floor. See this plan's `<design_decision>` section 5 for the board-length/deck-envelope
+ * table this holds across. */
+export function compactValuePrintPx(layout: RockerViewLayout, box: RenderedBoxPx = ORDER_FORM_ROCKER_BOX_PX): number {
+  return COMPACT_VALUE_SIZE * renderedUnitPx(layout, box);
 }
 
 export interface StationCardRect {

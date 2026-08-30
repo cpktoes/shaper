@@ -5,7 +5,14 @@ import {
   CARD_GUTTER,
   CARD_NAME_DY,
   CARD_VALUE_DY,
+  COMPACT_BOTTOM_BAND,
+  COMPACT_CAP,
+  COMPACT_DECK_BAND,
+  COMPACT_EDGE_GUTTER,
+  COMPACT_READING_GUTTER,
+  COMPACT_ROW_GAP,
   LENGTH_LABEL_SIZE,
+  ORDER_FORM_ROCKER_BOX_PX,
   PAD_X,
   PAD_TOP,
   RAIL_GAP,
@@ -17,6 +24,9 @@ import {
   STATION_VALUE_SIZE,
   VIEW_W,
   cardBandDepth,
+  compactRailReadingXs,
+  compactValuePrintPx,
+  compactValueWidth,
   rockerViewLayout,
   stationCardRect,
   type RockerCardSide,
@@ -36,7 +46,7 @@ const LENGTHS_IN = Array.from(
 const ORIENTATIONS: RockerViewOrientation[] = ["horizontal", "vertical"];
 const SIDES: RockerCardSide[] = ["deck", "bottom"];
 
-describe("rockerViewLayout — order-form path pin (fitToBoard: true, showStationCards: false)", () => {
+describe("rockerViewLayout — order-form path pin (fitToBoard: true, stationRails: \"none\")", () => {
   it("scales every board's own length to span the full 820-unit drawing area, on the card-less path", () => {
     for (const lengthIn of [60, 78, 120]) {
       const layout = rockerViewLayout({
@@ -44,7 +54,7 @@ describe("rockerViewLayout — order-form path pin (fitToBoard: true, showStatio
         maxDeckIn: MAX_DECK_IN,
         orientation: "horizontal",
         fitToBoard: true,
-        showStationCards: false,
+        stationRails: "none",
       });
       expect(lengthIn * layout.scale).toBeCloseTo(VIEW_W - PAD_X * 2, 6);
     }
@@ -57,7 +67,7 @@ describe("rockerViewLayout — order-form path pin (fitToBoard: true, showStatio
         maxDeckIn: MAX_DECK_IN,
         orientation: "horizontal",
         fitToBoard: true,
-        showStationCards: false,
+        stationRails: "none",
       });
       expect(layout.minX).toBe(0);
       expect(layout.minY).toBe(0);
@@ -74,14 +84,14 @@ describe("rockerViewLayout — order-form path pin (fitToBoard: true, showStatio
         maxDeckIn: MAX_DECK_IN,
         orientation: "horizontal",
         fitToBoard: true,
-        showStationCards: false,
+        stationRails: "none",
       });
       const carded = rockerViewLayout({
         lengthIn,
         maxDeckIn: MAX_DECK_IN,
         orientation: "horizontal",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       expect(bare.height).toBeLessThan(carded.height);
     }
@@ -96,7 +106,7 @@ describe("rockerViewLayout — fit (fitToBoard: true)", () => {
         maxDeckIn: MAX_DECK_IN,
         orientation: "horizontal",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       expect(lengthIn * layout.scale).toBeCloseTo(VIEW_W - PAD_X * 2, 6);
     }
@@ -112,7 +122,7 @@ describe("rockerViewLayout — maximisation", () => {
           maxDeckIn: MAX_DECK_IN,
           orientation,
           fitToBoard: true,
-          showStationCards: true,
+          stationRails: "full",
         });
         const span = lengthIn * layout.scale;
         const longAxis = orientation === "horizontal" ? layout.width : layout.height;
@@ -128,7 +138,7 @@ describe("rockerViewLayout — maximisation", () => {
         maxDeckIn: MAX_DECK_IN,
         orientation: "horizontal",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       const span = lengthIn * layout.scale;
       expect(span / layout.width).toBeCloseTo(820 / 900, 3);
@@ -143,7 +153,7 @@ describe("rockerViewLayout — proportion", () => {
       maxDeckIn: MAX_DECK_IN,
       orientation: "horizontal",
       fitToBoard: true,
-      showStationCards: true,
+      stationRails: "full",
     });
     expect(Object.keys(layout)).toContain("scale");
     expect(typeof layout.scale).toBe("number");
@@ -157,7 +167,7 @@ describe("rockerViewLayout — proportion", () => {
           maxDeckIn: MAX_DECK_IN,
           orientation,
           fitToBoard,
-          showStationCards: true,
+          stationRails: "full",
         });
         const expectedCrossExtent = PAD_TOP + cardBandDepth(orientation) + MAX_DECK_IN * layout.scale + cardBandDepth(orientation);
         expect(layout.viewH).toBeCloseTo(expectedCrossExtent, 8);
@@ -172,7 +182,7 @@ describe("rockerViewLayout — proportion", () => {
         maxDeckIn: MAX_DECK_IN,
         orientation,
         fitToBoard: true,
-        showStationCards: false,
+        stationRails: "none",
       });
       const expectedCrossExtent = BARE_PAD + MAX_DECK_IN * layout.scale + BARE_PAD;
       expect(layout.viewH).toBeCloseTo(expectedCrossExtent, 8);
@@ -187,7 +197,7 @@ describe("rockerViewLayout — card pitch", () => {
       maxDeckIn: MAX_DECK_IN,
       orientation: "horizontal",
       fitToBoard: true,
-      showStationCards: true,
+      stationRails: "full",
     });
     const pitch = 12 * layout.scale;
     expect(pitch).toBeCloseTo(82, 6);
@@ -203,7 +213,7 @@ describe("rockerViewLayout — card pitch", () => {
         maxDeckIn: MAX_DECK_IN,
         orientation: "horizontal",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       const gutter = 12 * layout.scale - layout.cardWidth;
       expect(gutter).toBeGreaterThanOrEqual(previousGutter - 1e-9);
@@ -225,7 +235,7 @@ describe("rockerViewLayout — end cards fit (horizontal), both rails", () => {
         maxDeckIn: MAX_DECK_IN,
         orientation: "horizontal",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * layout.scale;
 
@@ -246,8 +256,8 @@ describe("rockerViewLayout — degenerate input", () => {
   it("still produces a finite frame for a zero, negative or NaN length", () => {
     for (const lengthIn of [0, -60, Number.NaN]) {
       for (const orientation of ORIENTATIONS) {
-        for (const showStationCards of [true, false]) {
-          const layout = rockerViewLayout({ lengthIn, maxDeckIn: MAX_DECK_IN, orientation, fitToBoard: true, showStationCards });
+        for (const stationRails of ["full", "none"] as const) {
+          const layout = rockerViewLayout({ lengthIn, maxDeckIn: MAX_DECK_IN, orientation, fitToBoard: true, stationRails });
           expect(Number.isFinite(layout.scale)).toBe(true);
           expect(layout.scale).toBeGreaterThan(0);
           expect(Number.isFinite(layout.viewH)).toBe(true);
@@ -267,7 +277,7 @@ describe("rockerViewLayout — degenerate input", () => {
       maxDeckIn: MAX_DECK_IN,
       orientation: "horizontal",
       fitToBoard: false,
-      showStationCards: true,
+      stationRails: "full",
     });
     for (const lengthIn of [0, -60, Number.NaN]) {
       const layout = rockerViewLayout({
@@ -275,7 +285,7 @@ describe("rockerViewLayout — degenerate input", () => {
         maxDeckIn: MAX_DECK_IN,
         orientation: "horizontal",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       expect(layout.scale).toBeCloseTo(fixedScaleLayout.scale, 10);
     }
@@ -298,7 +308,7 @@ describe("rockerViewLayout — vertical: containment, both rails", () => {
         maxDeckIn: MAX_DECK_IN,
         orientation: "vertical",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * layout.scale;
       for (const side of SIDES) {
@@ -320,7 +330,7 @@ describe("rockerViewLayout — vertical: containment, both rails", () => {
         maxDeckIn: MAX_DECK_IN,
         orientation: "vertical",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * layout.scale;
       for (const side of SIDES) {
@@ -339,7 +349,7 @@ describe("rockerViewLayout — horizontal: clearance, both rails", () => {
         maxDeckIn: MAX_DECK_IN,
         orientation: "horizontal",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * layout.scale;
       const deckTopY = layout.baselineY - MAX_DECK_IN * layout.scale;
@@ -362,7 +372,7 @@ describe("rockerViewLayout — vertical: clearance, both rails", () => {
         maxDeckIn: MAX_DECK_IN,
         orientation: "vertical",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * layout.scale;
       // The physical baseline and worst-case deck line, drawn directly by the outer rotate(90)
@@ -393,7 +403,7 @@ describe("rockerViewLayout — rail vs rail: non-overlap at the same station", (
           maxDeckIn: MAX_DECK_IN,
           orientation,
           fitToBoard: true,
-          showStationCards: true,
+          stationRails: "full",
         });
         const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * layout.scale;
         for (const stationIn of stationsIn(lengthIn)) {
@@ -420,7 +430,7 @@ describe("rockerViewLayout — non-overlap between neighbouring cards, both rail
         maxDeckIn: MAX_DECK_IN,
         orientation: "horizontal",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       const pxX = (stationIn: number) => PAD_X + (120 - stationIn) * layout.scale;
       const cards = stationsIn(120)
@@ -440,7 +450,7 @@ describe("rockerViewLayout — non-overlap between neighbouring cards, both rail
         maxDeckIn: MAX_DECK_IN,
         orientation: "vertical",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       const pxX = (stationIn: number) => PAD_X + (120 - stationIn) * layout.scale;
       // Nose (largest stationIn) projects to the SMALLEST long-axis position, so sort the
@@ -482,7 +492,7 @@ describe("rockerViewLayout — vertical: the board box and the label's run-room"
         maxDeckIn: MAX_DECK_IN,
         orientation: "vertical",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * layout.scale;
       const pxY = (heightIn: number) => layout.baselineY - heightIn * layout.scale;
@@ -512,7 +522,7 @@ describe("rockerViewLayout — vertical: the board box and the label's run-room"
         maxDeckIn: MAX_DECK_IN,
         orientation: "vertical",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       // Under the composition identity (finding 4), canonical (labelX, labelY) lands at final
       // (-labelY, labelX) in the rotated frame.
@@ -539,7 +549,7 @@ describe("rockerViewLayout — vertical: maximisation and independence", () => {
         maxDeckIn: MAX_DECK_IN,
         orientation: "vertical",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       const span = lengthIn * layout.scale;
       expect(span / layout.height).toBeGreaterThanOrEqual(0.88);
@@ -553,14 +563,14 @@ describe("rockerViewLayout — vertical: maximisation and independence", () => {
         maxDeckIn: MAX_DECK_IN,
         orientation: "horizontal",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       const verticalLayout = rockerViewLayout({
         lengthIn,
         maxDeckIn: MAX_DECK_IN,
         orientation: "vertical",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       expect(verticalLayout.width).not.toBeCloseTo(horizontalLayout.height, 1);
       expect(verticalLayout.height).not.toBeCloseTo(horizontalLayout.width, 1);
@@ -576,7 +586,7 @@ describe("rockerViewLayout — horizontal frame unchanged by the vertical work a
         maxDeckIn: MAX_DECK_IN,
         orientation: "horizontal",
         fitToBoard: true,
-        showStationCards: true,
+        stationRails: "full",
       });
       expect(layout.minX).toBe(0);
       expect(layout.minY).toBe(0);
@@ -589,5 +599,231 @@ describe("rockerViewLayout — horizontal frame unchanged by the vertical work a
 describe("rockerViewLayout — LENGTH_LABEL_SIZE and constants stay finite and positive", () => {
   it("exposes the type-scale constants used to reserve the label's own band", () => {
     expect(LENGTH_LABEL_SIZE).toBeGreaterThan(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Compact rails (quick task 260829-vus) — the Summary order form's own bare-value rail grammar.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+describe("rockerViewLayout — compact rails: frame geometry", () => {
+  it("returns a 900-wide frame whose height is COMPACT_DECK_BAND + maxDeckIn * scale + COMPACT_BOTTOM_BAND, with three finite compactRows", () => {
+    for (const lengthIn of [60, 78, 120]) {
+      for (const orientation of ORIENTATIONS) {
+        const layout = rockerViewLayout({
+          lengthIn,
+          maxDeckIn: MAX_DECK_IN,
+          orientation,
+          fitToBoard: true,
+          stationRails: "compact",
+        });
+        expect(layout.width).toBe(VIEW_W);
+        const expectedHeight = COMPACT_DECK_BAND + MAX_DECK_IN * layout.scale + COMPACT_BOTTOM_BAND;
+        expect(layout.height).toBeCloseTo(expectedHeight, 6);
+        expect(layout.viewH).toBeCloseTo(expectedHeight, 6);
+        for (const row of [layout.compactRows.deck, layout.compactRows.bottomInner, layout.compactRows.bottomOuter]) {
+          expect(Number.isFinite(row.textY)).toBe(true);
+          expect(Number.isFinite(row.leaderStartY)).toBe(true);
+          expect(Number.isFinite(row.kneeY)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("is horizontal-only by contract: vertical orientation returns the identical layout to horizontal", () => {
+    for (const lengthIn of [60, 78, 120]) {
+      const horizontalLayout = rockerViewLayout({
+        lengthIn,
+        maxDeckIn: MAX_DECK_IN,
+        orientation: "horizontal",
+        fitToBoard: true,
+        stationRails: "compact",
+      });
+      const verticalLayout = rockerViewLayout({
+        lengthIn,
+        maxDeckIn: MAX_DECK_IN,
+        orientation: "vertical",
+        fitToBoard: true,
+        stationRails: "compact",
+      });
+      expect(verticalLayout).toEqual(horizontalLayout);
+    }
+  });
+});
+
+describe("rockerViewLayout — compact rails: row bands", () => {
+  it("keeps the bottom rail's two rows from overlapping vertically, and keeps each row's deepest/highest glyph inside its own band", () => {
+    for (const lengthIn of [60, 78, 120]) {
+      const layout = rockerViewLayout({
+        lengthIn,
+        maxDeckIn: MAX_DECK_IN,
+        orientation: "horizontal",
+        fitToBoard: true,
+        stationRails: "compact",
+      });
+      const { deck, bottomInner, bottomOuter } = layout.compactRows;
+
+      // Bottom rail: the inner row's own baseline (no descender on these glyphs) sits above the
+      // outer row's own cap-top by exactly COMPACT_ROW_GAP — never overlapping.
+      const innerBottomEdge = bottomInner.textY;
+      const outerTopEdge = bottomOuter.textY - COMPACT_CAP;
+      expect(outerTopEdge - innerBottomEdge).toBeCloseTo(COMPACT_ROW_GAP, 6);
+
+      // Deck row's highest glyph (cap-top) stays inside COMPACT_DECK_BAND, i.e. at or below the
+      // frame's own top edge (y = 0).
+      const deckCapTop = deck.textY - COMPACT_CAP;
+      expect(deckCapTop).toBeGreaterThanOrEqual(0);
+      expect(deckCapTop).toBeLessThanOrEqual(COMPACT_DECK_BAND);
+
+      // Bottom outer row's deepest glyph (its own baseline, no descender) stays inside
+      // COMPACT_BOTTOM_BAND, measured up from the frame's own bottom edge.
+      const bottomBandFloor = layout.baselineY + COMPACT_BOTTOM_BAND;
+      expect(bottomBandFloor - bottomOuter.textY).toBeCloseTo(COMPACT_EDGE_GUTTER, 6);
+    }
+  });
+});
+
+describe("rockerViewLayout — compact rails: printed type size", () => {
+  it("prints at least 11.9px (9pt) for the representative trio (60in/5.0in, 78in/5.5in, 120in/6.5in)", () => {
+    const trio: { lengthIn: number; maxDeckIn: number }[] = [
+      { lengthIn: 60, maxDeckIn: 5.0 },
+      { lengthIn: 78, maxDeckIn: 5.5 },
+      { lengthIn: 120, maxDeckIn: 6.5 },
+    ];
+    for (const { lengthIn, maxDeckIn } of trio) {
+      const layout = rockerViewLayout({
+        lengthIn,
+        maxDeckIn,
+        orientation: "horizontal",
+        fitToBoard: true,
+        stationRails: "compact",
+      });
+      expect(compactValuePrintPx(layout)).toBeGreaterThanOrEqual(11.9);
+    }
+  });
+
+  it("prints at least 10.67px (8pt) across every lengthIn x maxDeckIn combination in the documented sweep", () => {
+    for (const lengthIn of [60, 78, 120]) {
+      for (const maxDeckIn of [4, 5, 6, 7, 8]) {
+        const layout = rockerViewLayout({
+          lengthIn,
+          maxDeckIn,
+          orientation: "horizontal",
+          fitToBoard: true,
+          stationRails: "compact",
+        });
+        expect(compactValuePrintPx(layout)).toBeGreaterThanOrEqual(10.67);
+      }
+    }
+  });
+
+  it("is width-bound (~0.5017 px per user unit) at the representative trio", () => {
+    for (const { lengthIn, maxDeckIn } of [
+      { lengthIn: 60, maxDeckIn: 5.0 },
+      { lengthIn: 78, maxDeckIn: 5.5 },
+      { lengthIn: 120, maxDeckIn: 6.5 },
+    ]) {
+      const layout = rockerViewLayout({
+        lengthIn,
+        maxDeckIn,
+        orientation: "horizontal",
+        fitToBoard: true,
+        stationRails: "compact",
+      });
+      expect(ORDER_FORM_ROCKER_BOX_PX.width / layout.width).toBeCloseTo(0.5017, 3);
+    }
+  });
+});
+
+describe("compactValueWidth", () => {
+  it("returns a wider width for a longer fractional inch string than a short one, both positive and finite", () => {
+    const wide = compactValueWidth('2 15/16"');
+    const narrow = compactValueWidth('5"');
+    expect(Number.isFinite(wide)).toBe(true);
+    expect(Number.isFinite(narrow)).toBe(true);
+    expect(narrow).toBeGreaterThan(0);
+    expect(wide).toBeGreaterThan(narrow);
+  });
+});
+
+describe("compactRailReadingXs", () => {
+  it("keeps every returned text box inside the frame's own x range, including a tip reading whose natural centre sits PAD_X from the frame edge", () => {
+    const layout = rockerViewLayout({
+      lengthIn: 60,
+      maxDeckIn: MAX_DECK_IN,
+      orientation: "horizontal",
+      fitToBoard: true,
+      stationRails: "compact",
+    });
+    const readings = [{ stationX: PAD_X, width: 48 }];
+    const [x] = compactRailReadingXs(layout, readings);
+    expect(x - readings[0].width / 2).toBeGreaterThanOrEqual(layout.minX);
+    expect(x + readings[0].width / 2).toBeLessThanOrEqual(layout.minX + layout.width);
+  });
+
+  it("returns the station centres untouched when nothing collides", () => {
+    const layout = rockerViewLayout({
+      lengthIn: 78,
+      maxDeckIn: MAX_DECK_IN,
+      orientation: "horizontal",
+      fitToBoard: true,
+      stationRails: "compact",
+    });
+    const readings = [
+      { stationX: 200, width: 40 },
+      { stationX: 500, width: 40 },
+      { stationX: 800, width: 40 },
+    ];
+    const xs = compactRailReadingXs(layout, readings);
+    expect(xs).toEqual(readings.map((r) => r.stationX));
+  });
+
+  it("leaves at least COMPACT_READING_GUTTER of clear space between two readings whose natural centres collide", () => {
+    const layout = rockerViewLayout({
+      lengthIn: 78,
+      maxDeckIn: MAX_DECK_IN,
+      orientation: "horizontal",
+      fitToBoard: true,
+      stationRails: "compact",
+    });
+    const readings = [
+      { stationX: 400, width: 60 },
+      { stationX: 420, width: 60 },
+    ];
+    const xs = compactRailReadingXs(layout, readings);
+    const gutter = xs[1] - readings[1].width / 2 - (xs[0] + readings[0].width / 2);
+    expect(gutter).toBeGreaterThanOrEqual(COMPACT_READING_GUTTER - 1e-9);
+  });
+
+  it("distributes the shortfall of a deliberately over-subscribed row (four 300-unit-wide readings crowded together) without letting any pair overlap by more than a rounding epsilon, and keeps every box inside the frame", () => {
+    // A frame wide enough to hold four 300-unit readings once separated (2000 units — well past
+    // any real compact frame, which is always 900 wide) so the two required outcomes — no
+    // overlap, and full containment — are both achievable; the frame this row is actually drawn
+    // on in production never carries readings this wide (a real reading tops out around 98
+    // units, see `compactValueWidth`'s own module comment), so this is a stress test of the sweep
+    // itself, not a real-board scenario.
+    const baseLayout = rockerViewLayout({
+      lengthIn: 78,
+      maxDeckIn: MAX_DECK_IN,
+      orientation: "horizontal",
+      fitToBoard: true,
+      stationRails: "compact",
+    });
+    const layout = { ...baseLayout, minX: 0, width: 2000 };
+    const readings = [
+      { stationX: 400, width: 300 },
+      { stationX: 420, width: 300 },
+      { stationX: 440, width: 300 },
+      { stationX: 460, width: 300 },
+    ];
+    const xs = compactRailReadingXs(layout, readings);
+    for (let i = 0; i < xs.length; i++) {
+      expect(xs[i] - readings[i].width / 2).toBeGreaterThanOrEqual(layout.minX - 1e-6);
+      expect(xs[i] + readings[i].width / 2).toBeLessThanOrEqual(layout.minX + layout.width + 1e-6);
+    }
+    for (let i = 1; i < xs.length; i++) {
+      const overlap = xs[i - 1] + readings[i - 1].width / 2 - (xs[i] - readings[i].width / 2);
+      expect(overlap).toBeLessThanOrEqual(1e-6);
+    }
   });
 });
