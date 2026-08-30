@@ -30,16 +30,23 @@
  * it is naturally read as a reference rather than as an editable curve — it belongs to the
  * Template screen (D-07), and the toolbar's hide-outline toggle removes it entirely.
  *
- * Construction-line dragging (Task 3): when `showConstruction` is on and `onDrag` is given, the
- * seven points `sideProfileDragPoints` enumerates draw as grab targets (quick task 260829-rda
- * shrank this from nine to seven: the rocker line's own three-knot construction stores a lift at
- * only its two tips now, not at four of its five old stations) — the same three-part accent
- * treatment `outline-viewer.tsx`'s drag targets use, counter-scaled to a constant on-screen size
- * — plus faint full-height station lines. Pointer handling converts a screen event to board
- * coordinates through the rotated content group's own `getScreenCTM`, the technique that already
- * makes dragging work in both orientations on the Template screen, then calls
- * `solveSideProfileDrag` and hands the patch up unmerged — the caller (`rocker-editor.tsx`)
- * splits it between `updateRocker`/`updateFoil`.
+ * Construction-line overlay and tip dragging (quick task 260829-snm, on top of Task 3's original
+ * 260829-rda work): when `showConstruction` is on, the drawing gains the same construction-line
+ * grammar the TEMPLATE viewer already draws — one line, from `geometry.handles`, out of each
+ * curve point to the handle that steers the curve there, ending in a small plain dot, with a
+ * plain dot on the fixed centre knot too. There are always four lines: the rocker curve is two
+ * Bezier segments joined at the centre, and each segment has a steering handle at both of its
+ * ends. A plain dot means "this shows you the shape, you cannot grab it" — only the two tips
+ * carry a round three-part grab target; the five deck (thickness) points that used to sit on the
+ * curve above are gone from the drawing entirely, since the five Thickness sliders in the sidebar
+ * are now the only way to set thickness. When `onDrag` is also given, the two tip points
+ * `sideProfileDragPoints` enumerates draw as grab targets — the same three-part accent treatment
+ * `outline-viewer.tsx`'s drag targets use, counter-scaled to a constant on-screen size — plus
+ * faint full-height station lines marking the five measured stations the output rail reads out.
+ * Pointer handling converts a screen event to board coordinates through the rotated content
+ * group's own `getScreenCTM`, the technique that already makes dragging work in both orientations
+ * on the Template screen, then calls `solveSideProfileDrag` and hands the patch straight up — the
+ * caller (`rocker-editor.tsx`) passes it straight to `updateRocker`.
  */
 
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef } from "react";
@@ -58,13 +65,17 @@ import { buildRocker, ROCKER_LIFT_RANGE_IN, sampleRocker, type RockerSpec } from
 import { formatFeetInches, formatInchesFraction, inchesToMm, type Mm, mmToInches } from "@/lib/geometry/units";
 
 /**
- * Drag-target sizing, in CSS pixels — copied from `outline-viewer.tsx`'s own constants (a grab
- * handle is a UI affordance, not board geometry, so it holds a constant on-screen size rather
- * than scaling with the drawing). Divided by the live fit scale at render.
+ * Drag-target and construction-marker sizing, in CSS pixels — copied from `outline-viewer.tsx`'s
+ * own constants (a grab handle or a marker dot is a UI affordance, not board geometry, so it
+ * holds a constant on-screen size rather than scaling with the drawing). Divided by the live fit
+ * scale at render.
  */
 const DRAG_TARGET_OUTER_PX = 7;
 const DRAG_TARGET_RING_PX = 1.6;
 const DRAG_TARGET_CORE_PX = 2.6;
+/** Fixed reference knots and construction-line termini — deliberately plain, so only grabbable
+ * points look grabbable. */
+const KNOT_DOT_PX = 3;
 const DRAG_HIT_PX = 15;
 
 const VIEW_W = 900;
@@ -114,18 +125,17 @@ export interface RockerViewerProps {
    * half-width at each station. Optional — a consumer with no outline context (e.g. a future
    * Summary rocker box) simply renders no reference. */
   outlineGeometry?: OutlineGeometry;
-  /** Draws the nine construction-line drag targets and faint station lines when true. Only
-   * reachable while `onDrag` is also given, since the targets are the construction overlay.
-   * Defaults to `false`. */
+  /** Draws the four construction lines and their plain marker dots (plus, when `onDrag` is also
+   * given, the two tip drag targets and faint station lines) when true. Defaults to `false`. */
   showConstruction?: boolean;
   /**
-   * Direct manipulation: called with the one spec field a dragged point implies, on every
+   * Direct manipulation: called with the rocker-spec patch a dragged tip implies, on every
    * pointer move. Omitted means no hit targets and no handlers at all — a consumer with no
-   * design-state mutators (a future Summary rocker box) renders exactly the same as before this
+   * design-state mutator (a future Summary rocker box) renders exactly the same as before this
    * prop existed. The solve itself lives in `lib/geometry/rocker-drag.ts`; this component only
    * converts screen coordinates into board coordinates and passes the result up.
    */
-  onDrag?: (patch: { rocker?: Partial<RockerSpec>; foil?: Partial<FoilSpec> }) => void;
+  onDrag?: (patch: Partial<RockerSpec>) => void;
 }
 
 /**
@@ -294,12 +304,28 @@ export function RockerViewer({
   // when a drag handler is present, so a consumer with no `onDrag` renders exactly what it did
   // before this prop existed.
   const dragTargets = onDrag
-    ? sideProfileDragPoints(geometry, foil, length).map((d) => ({
+    ? sideProfileDragPoints(geometry).map((d) => ({
         target: d.target,
         cx: pxX(mmToInches(d.point.station)),
         cy: pxY(mmToInches(d.point.height)),
       }))
     : [];
+
+  // The construction overlay: one line per handle (four, always — two Bezier segments each with a
+  // handle at both ends), from `geometry.handles`, plus a plain dot at every line's terminus and
+  // at the centre knot (the curve's own fixed zero). Every coordinate comes straight off
+  // `buildRocker`'s own knots/handles, in the same canonical space pxX/pxY draw everything else
+  // in — no formula added here, only projection.
+  const constructionLines = geometry.handles.map((h) => ({
+    x1: pxX(mmToInches(h.from.x)),
+    y1: pxY(mmToInches(h.from.y)),
+    x2: pxX(mmToInches(h.to.x)),
+    y2: pxY(mmToInches(h.to.y)),
+  }));
+  const constructionDots = [
+    { cx: pxX(mmToInches(geometry.knots[1].point.x)), cy: pxY(mmToInches(geometry.knots[1].point.y)) },
+    ...geometry.handles.map((h) => ({ cx: pxX(mmToInches(h.to.x)), cy: pxY(mmToInches(h.to.y)) })),
+  ];
 
   /** Screen point -> board coordinates: undo the SVG transform, then invert pxX/pxY.
    *
@@ -326,7 +352,7 @@ export function RockerViewer({
     // Every move writes the spec and the redraw arrives back through props — nothing here is
     // cached across renders, which is what keeps the sliders and the datasheet cells in step
     // with the drawing mid-drag.
-    onDrag(solveSideProfileDrag(draggingRef.current, boardPoint, geometry, foil, length));
+    onDrag(solveSideProfileDrag(draggingRef.current, boardPoint));
   }
 
   function handleDragStart(target: SideProfileDragTarget, event: ReactPointerEvent<SVGElement>) {
@@ -450,9 +476,10 @@ export function RockerViewer({
 
         {showConstruction && (
           <>
-            {/* Faint full-height station lines, so the shaper can see what each grab target is
-                attached to — separate from the (shorter, `!hideCallouts`-gated) output-rail
-                ticks above, which only reach the label rail, not the top of the frame. */}
+            {/* Faint full-height station lines. They no longer mark grab points — the deck
+                curve carries none any more — but they still mark the five measured stations the
+                output rail reads out, so the shaper can see which station is which even with the
+                rail's own shorter ticks hidden by a hideCallouts consumer. */}
             {stations.map((s) => (
               <line
                 key={`construction-${s.key}`}
@@ -464,12 +491,38 @@ export function RockerViewer({
                 strokeWidth={1}
               />
             ))}
+            {/* The construction lines: one per handle, out of each curve point toward the handle
+                that steers the curve there — always four, since the rocker curve is two Bezier
+                segments joined at the centre and each segment has a handle at both of its ends. */}
+            {constructionLines.map((cl, i) => (
+              <line
+                key={`construction-line-${i}`}
+                x1={cl.x1}
+                y1={cl.y1}
+                x2={cl.x2}
+                y2={cl.y2}
+                stroke="var(--outline-construction)"
+                strokeWidth={1.5}
+              />
+            ))}
+            {/* Plain marker dots: one at every construction line's terminus, plus one on the
+                centre knot — the curve's own fixed zero. Deliberately plain, not a grab target:
+                these show the shape, they are not draggable. */}
+            {constructionDots.map((dt, i) => (
+              <circle
+                key={`construction-dot-${i}`}
+                cx={dt.cx}
+                cy={dt.cy}
+                r={KNOT_DOT_PX * handleUnit}
+                fill="var(--outline-ink)"
+              />
+            ))}
             {/* The drag targets themselves: board-fill disc, accent ring, warning core — the same
-                three-part treatment `outline-viewer.tsx` draws its own drag targets with.
-                pointer-events:none throughout — the transparent hit circles below own every
-                pointer interaction. */}
+                three-part treatment `outline-viewer.tsx` draws its own drag targets with. Only
+                the two tips ever appear here now. pointer-events:none throughout — the
+                transparent hit circles below own every pointer interaction. */}
             {dragTargets.map((d) => (
-              <g key={`target-${d.target.curve}-${d.target.station}`} pointerEvents="none">
+              <g key={`target-${d.target}`} pointerEvents="none">
                 <circle
                   cx={d.cx}
                   cy={d.cy}
@@ -486,7 +539,7 @@ export function RockerViewer({
                 board. */}
             {dragTargets.map((d) => (
               <circle
-                key={`hit-${d.target.curve}-${d.target.station}`}
+                key={`hit-${d.target}`}
                 cx={d.cx}
                 cy={d.cy}
                 r={DRAG_HIT_PX * handleUnit}

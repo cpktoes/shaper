@@ -12,8 +12,10 @@
  * rather than one split view, because the drawing wants full panel height and the table wants
  * full panel width — the toolbar stays inside the VIEWER tab only. Task 3 adds a third toolbar
  * button — the construction-lines toggle, the hide-board-outline button's sibling — that reveals
- * `RockerViewer`'s nine drag targets; the drag handler here splits the solved patch between
- * `updateRocker` and `updateFoil`. 04-05 Task 1 adds a fourth: below `RockerControls`, a
+ * `RockerViewer`'s construction overlay and its two tip drag targets (quick task 260829-snm
+ * reduced this from nine drag targets to two, and the patch is now handed straight to
+ * `updateRocker` — one mutator, since a tip drag can only ever touch the rocker spec). 04-05
+ * Task 1 adds a fourth: below `RockerControls`, a
  * development-only "Copy preset values" button mirroring the Template screen's own capture
  * affordance (`outline-editor.tsx`) — it reads the live `rocker`/`foil` back out as pasteable
  * `lib/geometry/presets.ts` source, gated on `process.env.NODE_ENV === "development"` so the
@@ -119,22 +121,15 @@ export function RockerEditor() {
    * state, not design data, deliberately not persisted — mirrors `showConstruction`'s posture on
    * the Template screen. */
   const [showOutlineReference, setShowOutlineReference] = useState(true);
-  /** Reveals the nine construction-line drag targets on the side profile. Local view state, not
-   * design data, deliberately not persisted — mirrors `showConstruction`'s posture on the
-   * Template screen; defaults to `false` there too. */
+  /** Reveals the construction-line overlay and its two tip drag targets on the side profile.
+   * Local view state, not design data, deliberately not persisted — mirrors `showConstruction`'s
+   * posture on the Template screen; defaults to `false` there too. */
   const [showConstruction, setShowConstruction] = useState(false);
   const [activeTab, setActiveTab] = useState<RockerTab>("viewer");
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
 
   function toggleSection(key: RockerControlsSectionKey) {
     setSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  /** Splits a drag-solved patch between the two mutators it can touch — a rocker-line drag
-   * returns `{ rocker }`, a deck-curve drag returns `{ foil }`, never both. */
-  function handleViewerDrag(patch: { rocker?: Partial<RockerSpec>; foil?: Partial<FoilSpec> }) {
-    if (patch.rocker) updateRocker(patch.rocker);
-    if (patch.foil) updateFoil(patch.foil);
   }
 
   /** `outline-editor.tsx`'s `handleCopyPreset`, copied verbatim for the rocker/foil pair. */
@@ -246,7 +241,7 @@ export function RockerEditor() {
                 orientation={orientation}
                 showOutlineReference={showOutlineReference}
                 showConstruction={showConstruction}
-                onDrag={handleViewerDrag}
+                onDrag={updateRocker}
               />
             </div>
           ) : (
