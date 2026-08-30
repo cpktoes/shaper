@@ -20,10 +20,16 @@
  * - `CONTOURS`/`RAILS` checkboxes become the real rail section plots.
  * - `FIN SETUP` checkboxes become a fin *system* selector, since which fins go on the board is
  *   now designed on the fins screen; only the box hardware is still an ordering choice.
- * - `ROCKER` draws the board's own side profile across the whole box — `RockerViewer`'s compact
- *   mode (04-05 Task 2, widened by quick task 260829-uue), no card rail or drag targets, just the
- *   closed board shape scaled to its own length. The muse's own `HIGH`/`MEDIUM`/`LOW` ticks are
- *   gone with the flanking columns they used to hold; the drawn curve is the whole panel now.
+ * - `ROCKER` draws the board's own side profile — `RockerViewer`'s `callouts="compact"` mode
+ *   (04-05 Task 2, widened by quick tasks 260829-uue and 260829-vus): five thickness figures read
+ *   above the board and four rocker figures (nose tip, nose @ 12", tail @ 12", tail tip) read
+ *   below it, no card surface and no station name, each a bare value with a leader and a small
+ *   45-degree tick. The centre station carries a thickness figure but no rocker figure — the
+ *   rocker's own zero is not printed, since it is a construction fact rather than a measurement.
+ *   The muse's own `HIGH`/`MEDIUM`/`LOW` ticks are gone with the flanking columns they used to
+ *   hold; the profile is smaller than the bare-curve draft this box carried before, since the
+ *   rails now cost it some height inside the box, but it stays as large as the unchanged box
+ *   allows.
  *
  * *Page 2 is the shaper's reference* — the rail band marking data and the fin placement numbers.
  * These were on the front, in two narrow columns either side of the drawings, and the type they
@@ -297,13 +303,22 @@ export function OrderForm() {
 
                 {/* The right-hand column: the rocker strip over the template window. */}
                 <div className="flex min-h-0 min-w-0 flex-[2] flex-col gap-1">
-                  {/* Rocker — draws the board's own side profile now that the rocker screen exists
-                      (04-05), through `RockerViewer`'s compact `hideCallouts` mode: the closed board
-                      shape and nothing else, no card rail reserved (quick task 260829-uue — a rail
-                      this box never draws is a band it no longer pays for), and `fitToBoard` so the
-                      board is scaled to its own length rather than to a ten-foot one. The drawing
-                      gets the box's whole body — no flanking tick columns holding the tip lifts,
-                      which the drawn curve already shows.
+                  {/* Rocker — draws the board's own side profile through `RockerViewer`'s
+                      `callouts="compact"` mode (quick task 260829-vus, widening 04-05's original
+                      card-less draft): five thickness readings on the deck side of the curve, four
+                      rocker readings on the bottom side (nose tip, nose @ 12", tail @ 12", tail
+                      tip) — the centre station's own rocker reading is deliberately absent, since
+                      it is the curve's own zero by construction rather than a measured figure.
+                      Every reading is a bare value with a leader and a small 45-degree tick, no
+                      card surface and no station name — this box is 0.92in tall at print size, far
+                      too short for a card's own two-row stack at a legible size, so position (which
+                      station) and side (deck = thickness, bottom = rocker) carry what a card's own
+                      name text used to, reinforced by the `captionRight` note below. `fitToBoard`
+                      scales the board to its own length rather than to a ten-foot one, and the
+                      rails now cost the profile some height inside this box — the profile is
+                      smaller than the bare-curve draft this box carried before, but stays as large
+                      as the unchanged box allows (`.order-form-rocker`'s own 18% share is untouched
+                      — see `app/design/summary/order-form.css`).
 
                       It sits above the template window and only as wide as it, rather than spanning
                       the whole body: a rocker profile is the board seen from the side, so the one
@@ -311,12 +326,13 @@ export function OrderForm() {
                       let the rail plots take the full height of the row beside it. */}
                   <FormBox
                     caption="Rocker"
+                    captionRight="Thickness above, rocker below"
                     className="flex-none order-form-rocker"
                     bodyClassName="p-0"
                   >
                     <div className="flex min-h-0 flex-1 items-stretch px-1.5 py-1">
                       <div className="relative min-h-0 min-w-0 flex-1">
-                        <RockerViewer rocker={rocker} foil={foil} length={outline.length} hideCallouts fitToBoard />
+                        <RockerViewer rocker={rocker} foil={foil} length={outline.length} callouts="compact" fitToBoard />
                       </div>
                     </div>
                   </FormBox>
