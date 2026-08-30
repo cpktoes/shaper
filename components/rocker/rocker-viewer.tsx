@@ -70,7 +70,7 @@ import {
   type SideProfileDragTarget,
 } from "@/lib/geometry/rocker-drag";
 import { buildRocker, ROCKER_LIFT_RANGE_IN, sampleRocker, type RockerSpec } from "@/lib/geometry/rocker";
-import { formatFeetInches, formatInchesFraction, inchesToMm, type Mm, mmToInches } from "@/lib/geometry/units";
+import { formatInchesFraction, inchesToMm, type Mm, mmToInches } from "@/lib/geometry/units";
 import {
   cardPinScale,
   COMPACT_BASELINE_DASH,
@@ -460,8 +460,6 @@ export function RockerViewer({
     cardHeight,
     cardType,
     compactRows,
-    labelX,
-    labelY,
   } = layout;
 
   // Nose on the left: station = length (nose tip) draws at the frame's left pad; station = 0
@@ -765,29 +763,13 @@ export function RockerViewer({
                 </g>
               );
             })}
-            <Upright x={labelX} y={labelY} vertical={vertical}>
-              <text
-                x={labelX}
-                y={labelY}
-                // Vertical only: the label's anchor sits near the frame's rail-side edge (final x
-                // near 0), so a start-anchored run overshoots straight past the frame's max x
-                // (today's defect — finding 5). End-anchoring makes it run back INTO the frame
-                // from its own anchor instead. Horizontal is untouched.
-                textAnchor={vertical ? "end" : undefined}
-                style={{ fontSize: 12, fontWeight: 800, fontFamily: "var(--font-display)", letterSpacing: "0.1em" }}
-                fill="var(--outline-ink)"
-              >
-                {formatFeetInches(length)}
-              </text>
-            </Upright>
           </>
         )}
 
-        {/* Compact rails (quick task 260829-vus): two rows of bare readings, no card surface,
-            no station name and no board-length label — the sheet's own dims strip already prints
-            Length. Every position, band and type size these draw at comes off `layout` and the
-            two lists built above; this branch only zips a reading's own value onto the x the
-            separation sweep chose for it. */}
+        {/* Compact rails (quick task 260829-vus): two rows of bare readings, no card surface and
+            no station name. Every position, band and type size these draw at comes off `layout`
+            and the two lists built above; this branch only zips a reading's own value onto the x
+            the separation sweep chose for it. */}
         {callouts === "compact" && (
           <>
             {ascendingStations.map((s, i) => (
