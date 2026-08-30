@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-08-29 — Completed quick task 260829-snm: rocker construction lines added, deck grab points removed
+Last activity: 2026-08-29 — Completed quick task 260829-t47: rocker control points draggable, tip-height drags removed, station read-outs as data cards
 
 Progress: [██████████] 100%
 
@@ -195,6 +195,7 @@ Recent decisions affecting current work:
 | 260826-njn | Disable the McKee Longboard quad model on boards under eight foot: geometry-layer availability rule and fallback to McKee SB/Gun (millimetre comparison so exactly 8'0" stays valid), greyed pill with a plain reason, highlight follows the model actually in force | 2026-08-26 | bb86f57 | [260826-njn-disable-quad-mckee-longboard-model-for-b](./quick/260826-njn-disable-quad-mckee-longboard-model-for-b/) |
 | 260829-rda | Bottom rocker rebuilt on the outline's own three-knot, two-Bezier construction, replacing the five-fixed-point spline that kinked at the 12" stations: nose and tail get Angle + Smoothness, the centre gets Nose/Tail Flatness, and the 12" figures become read-only measurements off the drawn curve (sidebar, datasheet, station rail). Drag targets reduce to the two tips plus five deck points; presets re-expressed with tip lifts unchanged; saved boards with the old four-lift shape migrate via a Zod union + migrateLegacyRocker, keeping tip rockers exactly | 2026-08-29 | 5436694 | [260829-rda-fix-bottom-rocker-curve-template-style-g](./quick/260829-rda-fix-bottom-rocker-curve-template-style-g/) |
 | 260829-snm | Rocker curve gains the template editor's construction overlay — four steering lines and plain dots drawn straight from buildRocker's own knots and handles, centre dot fixed (the rocker's zero) with the two tips as the movers; the five deck thickness grab points removed from the drawing (thickness now edited by its sliders only), collapsing rocker-drag.ts to a two-target solver | 2026-08-29 | c76d8e2 | [260829-snm-add-construction-lines-for-the-rocker-po](./quick/260829-snm-add-construction-lines-for-the-rocker-po/) |
+| 260829-t47 | Rocker drag moved onto the curve's own steering: the four Bezier control points become the drawing's only grab targets, inverse-solving to Angle+Smoothness at the tips and Flatness at the centre (round-trip tested in rocker-drag.ts), while the two tip-height drags are removed (lifts stay slider/typed-field-only); station read-outs redrawn as data cards on a shared CalloutChipFrame surface extracted from the template's chip system, sized in user units so cards never overlap at any board length | 2026-08-29 | e3e1546 | [260829-t47-rocker-viewer-draggable-curve-control-po](./quick/260829-t47-rocker-viewer-draggable-curve-control-po/) |
 
 ## Deferred Items
 
