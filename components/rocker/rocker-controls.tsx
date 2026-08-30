@@ -121,132 +121,138 @@ export function RockerControls({
               />
             </div>
 
-            <div>
-              <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                Nose Angle — {rocker.noseAngle}°
+            <div className="flex items-end gap-4">
+              <div className="flex-1">
+                <div className="mb-2 text-sm text-surf-ink-muted font-normal">
+                  Nose Angle — {rocker.noseAngle}°
+                </div>
+                <Slider
+                  value={rocker.noseAngle}
+                  min={ROCKER_ANGLE_RANGE_DEG.min}
+                  max={ROCKER_ANGLE_RANGE_DEG.max}
+                  step={ROCKER_ANGLE_RANGE_DEG.step}
+                  onValueChange={(v) =>
+                    onChangeRocker({
+                      noseAngle: degrees(
+                        clampFinite(sliderValue(v), ROCKER_ANGLE_RANGE_DEG.min, ROCKER_ANGLE_RANGE_DEG.max),
+                      ),
+                    })
+                  }
+                  className="slider-accent"
+                />
               </div>
-              <Slider
-                value={rocker.noseAngle}
-                min={ROCKER_ANGLE_RANGE_DEG.min}
-                max={ROCKER_ANGLE_RANGE_DEG.max}
-                step={ROCKER_ANGLE_RANGE_DEG.step}
-                onValueChange={(v) =>
-                  onChangeRocker({
-                    noseAngle: degrees(
-                      clampFinite(sliderValue(v), ROCKER_ANGLE_RANGE_DEG.min, ROCKER_ANGLE_RANGE_DEG.max),
-                    ),
-                  })
-                }
-                className="slider-accent"
-              />
+
+              <div className="flex-1">
+                <div className="mb-2 text-sm text-surf-ink-muted font-normal">
+                  Nose Smoothness — {rocker.noseSmoothness}%
+                </div>
+                <Slider
+                  value={rocker.noseSmoothness}
+                  min={ROCKER_SMOOTHNESS_RANGE.min}
+                  max={ROCKER_SMOOTHNESS_RANGE.max}
+                  step={ROCKER_SMOOTHNESS_RANGE.step}
+                  onValueChange={(v) =>
+                    onChangeRocker({
+                      noseSmoothness: clampFinite(
+                        sliderValue(v),
+                        ROCKER_SMOOTHNESS_RANGE.min,
+                        ROCKER_SMOOTHNESS_RANGE.max,
+                      ),
+                    })
+                  }
+                  className="slider-accent"
+                />
+              </div>
             </div>
 
-            <div>
-              <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                Nose Smoothness — {rocker.noseSmoothness}%
+            <div className="flex items-end gap-4">
+              <div className="flex-1">
+                <div className="mb-2 text-sm text-surf-ink-muted font-normal">
+                  Nose Flatness — {rocker.noseFlatness}%
+                </div>
+                <Slider
+                  value={rocker.noseFlatness}
+                  min={ROCKER_FLATNESS_RANGE.min}
+                  max={ROCKER_FLATNESS_RANGE.max}
+                  step={ROCKER_FLATNESS_RANGE.step}
+                  onValueChange={(v) =>
+                    onChangeRocker({
+                      noseFlatness: clampFinite(
+                        sliderValue(v),
+                        ROCKER_FLATNESS_RANGE.min,
+                        ROCKER_FLATNESS_RANGE.max,
+                      ),
+                    })
+                  }
+                  className="slider-accent"
+                />
               </div>
-              <Slider
-                value={rocker.noseSmoothness}
-                min={ROCKER_SMOOTHNESS_RANGE.min}
-                max={ROCKER_SMOOTHNESS_RANGE.max}
-                step={ROCKER_SMOOTHNESS_RANGE.step}
-                onValueChange={(v) =>
-                  onChangeRocker({
-                    noseSmoothness: clampFinite(
-                      sliderValue(v),
-                      ROCKER_SMOOTHNESS_RANGE.min,
-                      ROCKER_SMOOTHNESS_RANGE.max,
-                    ),
-                  })
-                }
-                className="slider-accent"
-              />
+
+              <div className="flex-1">
+                <div className="mb-2 text-sm text-surf-ink-muted font-normal">
+                  Tail Flatness — {rocker.tailFlatness}%
+                </div>
+                <Slider
+                  value={rocker.tailFlatness}
+                  min={ROCKER_FLATNESS_RANGE.min}
+                  max={ROCKER_FLATNESS_RANGE.max}
+                  step={ROCKER_FLATNESS_RANGE.step}
+                  onValueChange={(v) =>
+                    onChangeRocker({
+                      tailFlatness: clampFinite(
+                        sliderValue(v),
+                        ROCKER_FLATNESS_RANGE.min,
+                        ROCKER_FLATNESS_RANGE.max,
+                      ),
+                    })
+                  }
+                  className="slider-accent"
+                />
+              </div>
             </div>
 
-            <div>
-              <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                Nose Flatness — {rocker.noseFlatness}%
+            <div className="flex items-end gap-4">
+              <div className="flex-1">
+                <div className="mb-2 text-sm text-surf-ink-muted font-normal">
+                  Tail Smoothness — {rocker.tailSmoothness}%
+                </div>
+                <Slider
+                  value={rocker.tailSmoothness}
+                  min={ROCKER_SMOOTHNESS_RANGE.min}
+                  max={ROCKER_SMOOTHNESS_RANGE.max}
+                  step={ROCKER_SMOOTHNESS_RANGE.step}
+                  onValueChange={(v) =>
+                    onChangeRocker({
+                      tailSmoothness: clampFinite(
+                        sliderValue(v),
+                        ROCKER_SMOOTHNESS_RANGE.min,
+                        ROCKER_SMOOTHNESS_RANGE.max,
+                      ),
+                    })
+                  }
+                  className="slider-accent"
+                />
               </div>
-              <Slider
-                value={rocker.noseFlatness}
-                min={ROCKER_FLATNESS_RANGE.min}
-                max={ROCKER_FLATNESS_RANGE.max}
-                step={ROCKER_FLATNESS_RANGE.step}
-                onValueChange={(v) =>
-                  onChangeRocker({
-                    noseFlatness: clampFinite(
-                      sliderValue(v),
-                      ROCKER_FLATNESS_RANGE.min,
-                      ROCKER_FLATNESS_RANGE.max,
-                    ),
-                  })
-                }
-                className="slider-accent"
-              />
-            </div>
 
-            <div>
-              <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                Tail Flatness — {rocker.tailFlatness}%
+              <div className="flex-1">
+                <div className="mb-2 text-sm text-surf-ink-muted font-normal">
+                  Tail Angle — {rocker.tailAngle}°
+                </div>
+                <Slider
+                  value={rocker.tailAngle}
+                  min={ROCKER_ANGLE_RANGE_DEG.min}
+                  max={ROCKER_ANGLE_RANGE_DEG.max}
+                  step={ROCKER_ANGLE_RANGE_DEG.step}
+                  onValueChange={(v) =>
+                    onChangeRocker({
+                      tailAngle: degrees(
+                        clampFinite(sliderValue(v), ROCKER_ANGLE_RANGE_DEG.min, ROCKER_ANGLE_RANGE_DEG.max),
+                      ),
+                    })
+                  }
+                  className="slider-accent"
+                />
               </div>
-              <Slider
-                value={rocker.tailFlatness}
-                min={ROCKER_FLATNESS_RANGE.min}
-                max={ROCKER_FLATNESS_RANGE.max}
-                step={ROCKER_FLATNESS_RANGE.step}
-                onValueChange={(v) =>
-                  onChangeRocker({
-                    tailFlatness: clampFinite(
-                      sliderValue(v),
-                      ROCKER_FLATNESS_RANGE.min,
-                      ROCKER_FLATNESS_RANGE.max,
-                    ),
-                  })
-                }
-                className="slider-accent"
-              />
-            </div>
-
-            <div>
-              <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                Tail Smoothness — {rocker.tailSmoothness}%
-              </div>
-              <Slider
-                value={rocker.tailSmoothness}
-                min={ROCKER_SMOOTHNESS_RANGE.min}
-                max={ROCKER_SMOOTHNESS_RANGE.max}
-                step={ROCKER_SMOOTHNESS_RANGE.step}
-                onValueChange={(v) =>
-                  onChangeRocker({
-                    tailSmoothness: clampFinite(
-                      sliderValue(v),
-                      ROCKER_SMOOTHNESS_RANGE.min,
-                      ROCKER_SMOOTHNESS_RANGE.max,
-                    ),
-                  })
-                }
-                className="slider-accent"
-              />
-            </div>
-
-            <div>
-              <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                Tail Angle — {rocker.tailAngle}°
-              </div>
-              <Slider
-                value={rocker.tailAngle}
-                min={ROCKER_ANGLE_RANGE_DEG.min}
-                max={ROCKER_ANGLE_RANGE_DEG.max}
-                step={ROCKER_ANGLE_RANGE_DEG.step}
-                onValueChange={(v) =>
-                  onChangeRocker({
-                    tailAngle: degrees(
-                      clampFinite(sliderValue(v), ROCKER_ANGLE_RANGE_DEG.min, ROCKER_ANGLE_RANGE_DEG.max),
-                    ),
-                  })
-                }
-                className="slider-accent"
-              />
             </div>
 
             <div>
