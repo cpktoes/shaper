@@ -351,6 +351,41 @@ function UprightAt({ x, y, children }: { x: number; y: number; children: ReactNo
   return <g transform={`rotate(90 ${x} ${y})`}>{children}</g>;
 }
 
+/** Corner radius every card surface in this system draws with — `CalloutChip`'s own rect used this
+ * value inline before it was extracted into `CalloutChipFrame` below. */
+export const CALLOUT_CHIP_RADIUS = 4;
+
+export interface CalloutChipFrameProps {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * The one card surface every data card in this system draws on: a rect filled
+ * `var(--outline-page-bg)`, stroked `var(--border)`, corners rounded to `CALLOUT_CHIP_RADIUS`.
+ *
+ * This is the single place the fill, the hairline and the radius are decided — change any of the
+ * three here and every caller changes with it. Two callers today: `CalloutChip` below (the
+ * TEMPLATE and FINS drawings' own named input/output chips) and `rocker-viewer.tsx`'s station
+ * read-out cards. Deliberately just the surface: layout, orientation handling and text content
+ * stay with each caller, so extracting this cannot change either drawing's own math.
+ */
+export function CalloutChipFrame({ x, y, width, height }: CalloutChipFrameProps) {
+  return (
+    <rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      rx={CALLOUT_CHIP_RADIUS}
+      fill="var(--outline-page-bg)"
+      stroke="var(--border)"
+    />
+  );
+}
+
 export interface CalloutChipProps {
   /** The chip's right edge — every chip in a gutter shares this one x, per `OUTLINE_CHIP_RIGHT_X`. */
   x: number;
@@ -393,15 +428,7 @@ export function CalloutChip({ x, y, name, value, nameColor = "var(--outline-call
         <line x1={x} y1={y} x2={leaderToX} y2={y} stroke="var(--outline-station-line)" strokeWidth={1} />
       )}
       <UprightAt x={x} y={y}>
-        <rect
-          x={rectX}
-          y={rectY}
-          width={sizes.chipW}
-          height={sizes.chipH}
-          rx={4}
-          fill="var(--outline-page-bg)"
-          stroke="var(--border)"
-        />
+        <CalloutChipFrame x={rectX} y={rectY} width={sizes.chipW} height={sizes.chipH} />
         <text
           x={centerX}
           y={centerY + sizes.stackNameDy}

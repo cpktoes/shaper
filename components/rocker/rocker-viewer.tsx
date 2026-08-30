@@ -12,7 +12,10 @@
  *
  * Drafting grammar, per `.planning/sketches/MANIFEST.md`: the flat reference line is a faint
  * dashed line drawn only INSIDE the drawn shape's own extent; the rocker/thickness values read
- * out to an output rail below the baseline, outside the shape.
+ * out to an output rail below the baseline, outside the shape, as bordered data cards drawn on
+ * the same card surface (`CalloutChipFrame`, quick task 260829-t47) the TEMPLATE screen's own
+ * chips use — one card per station, station name over its two values, so the two screens read as
+ * one drawing system.
  *
  * Orientation (D-03): the toolbar's rotate-in-place button flips this viewer between "horizontal"
  * (the default, nose left) and "vertical" (nose up, so the five stations read top-to-bottom the
@@ -53,7 +56,7 @@
  */
 
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef } from "react";
-import { useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
+import { CalloutChipFrame, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import { FOIL_THICKNESS_RANGE_IN, sampleFoil, type FoilSpec } from "@/lib/geometry/foil";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
@@ -96,9 +99,23 @@ const PX_PER_INCH = (VIEW_W - PAD_X * 2) / BOARD_LENGTH_RANGE_IN.max;
 const PAD_TOP = 26;
 /** Gap between the baseline and the output rail's tick marks. */
 const RAIL_GAP = 20;
-/** Room for the output rail's three stacked text lines (rocker value, thickness value, station
- * name) below the baseline. */
-const RAIL_LABEL_HEIGHT = 58;
+/** Each station card's height, in SVG user units — room for its three stacked rows (station name,
+ * then the two values) at this drawing's existing type scale. */
+const STATION_CARD_HEIGHT = 50;
+/**
+ * Each station card's width, in SVG user units — derived from the rail's own narrowest column
+ * pitch (the 12in tip-to-station span, `12 * PX_PER_INCH`) rather than written as a literal, so
+ * the relationship that keeps neighbouring cards apart survives any future change to the frame's
+ * scale. The rail is sized in user units, not CSS pixels, because a pinned TEMPLATE-sized chip
+ * (`CALLOUT_PX.chipW = 104`) is wider than the narrowest 82-unit pitch at this viewer's realistic
+ * fit scales, which would guarantee an overlap on every board (planner_findings item 8,
+ * 260829-t47). An 8-unit gutter is left between neighbouring cards.
+ */
+const STATION_CARD_WIDTH = 12 * PX_PER_INCH - 8;
+/** Room below the baseline for one station card — re-expressed off `STATION_CARD_HEIGHT` so it
+ * still evaluates to 58 and `viewH` (and every consumer's box aspect, including the Summary order
+ * form's rocker box) is numerically unchanged. */
+const RAIL_LABEL_HEIGHT = STATION_CARD_HEIGHT + 8;
 const BOTTOM_PAD = RAIL_GAP + RAIL_LABEL_HEIGHT;
 /** Curve sampling density — enough to read as smooth at this frame's scale, well past the five
  * knots the monotone splines are built from. */
@@ -421,6 +438,7 @@ export function RockerViewer({
           <>
             {stations.map((s) => {
               const x = pxX(s.stationIn);
+              const cardX = x - STATION_CARD_WIDTH / 2;
               return (
                 <g key={s.key}>
                   <line
@@ -432,34 +450,39 @@ export function RockerViewer({
                     strokeWidth={1}
                   />
                   <Upright x={x} y={railY} vertical={vertical}>
-                    {s.rockerValue !== null && (
-                      <text
-                        x={x}
-                        y={railY + 12}
-                        textAnchor="middle"
-                        style={{ fontSize: 11, fontWeight: 700, fontFamily: "var(--font-body)" }}
-                        fill="var(--outline-callout-label)"
-                      >
-                        R {s.rockerValue}
-                      </text>
-                    )}
+                    <CalloutChipFrame x={cardX} y={railY} width={STATION_CARD_WIDTH} height={STATION_CARD_HEIGHT} />
                     <text
                       x={x}
-                      y={railY + 26}
-                      textAnchor="middle"
-                      style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
-                      fill="var(--outline-ink)"
-                    >
-                      T {s.thicknessValue}
-                    </text>
-                    <text
-                      x={x}
-                      y={railY + 40}
+                      y={railY + 13}
                       textAnchor="middle"
                       style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
                       fill="var(--outline-callout-label)"
                     >
                       {s.name}
+                    </text>
+                    {/* The rocker row moving from the muted label colour to the ink colour is
+                        deliberate: in this grammar a value is a value, and it is the label above
+                        that is muted. The centre station has no rocker number (its lift is zero
+                        by definition) — an em-dash keeps its row on the same line as the other
+                        four cards, drawn in the muted label colour since it stands in for an
+                        absent value rather than a real one. */}
+                    <text
+                      x={x}
+                      y={railY + 28}
+                      textAnchor="middle"
+                      style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                      fill={s.rockerValue !== null ? "var(--outline-ink)" : "var(--outline-callout-label)"}
+                    >
+                      {s.rockerValue !== null ? `R ${s.rockerValue}` : "R —"}
+                    </text>
+                    <text
+                      x={x}
+                      y={railY + 43}
+                      textAnchor="middle"
+                      style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                      fill="var(--outline-ink)"
+                    >
+                      T {s.thicknessValue}
                     </text>
                   </Upright>
                 </g>
