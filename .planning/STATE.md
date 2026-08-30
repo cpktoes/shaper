@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-08-29 — Completed quick task 260829-vus: order-form rocker window shows compact thickness + rocker callouts at ≥9pt print size
+Last activity: 2026-08-29 — Completed quick task 260829-x37: rocker construction overlay loses its dark vertical station lines (steering lines, knots and drag targets stay)
 
 Progress: [██████████] 100%
 
@@ -202,6 +202,7 @@ Recent decisions affecting current work:
 | 260829-vus | Order form's ROCKER window gains compact measurement callouts: five thicknesses on the deck side, four rocker values on the bottom side (centre zero skipped), drawn as bare plain readings with doglegged leaders — cards and station names provably cannot hold 9pt in the 4.70x0.92in box, so a "Thickness above, rocker below" caption legend identifies them; hideCallouts widened to callouts:"full"\|"compact"\|"none", the deck reserve becomes the board's own envelope, and a printed-size model (ORDER_FORM_ROCKER_BOX_PX) pins ≥9pt for representative boards / ≥8pt across the sweep in tests | 2026-08-29 | 58767c6 | [260829-vus-summary-rocker-window-show-five-thicknes](./quick/260829-vus-summary-rocker-window-show-five-thicknes/) |
 | 260829-fast | Order form's rocker profile drawn unfilled: new boardFill prop on RockerViewer (default on, editor unchanged), order form passes false so the sheet prints an outline-only side profile | 2026-08-29 | f6554de | (fast task — no plan dir) |
 | 54 | Summary rocker window: dashed reference line made legible, rocker readings aligned on one row | 2026-08-30 | d69c53f | — |
+| 260829-x37 | Rocker screen's construction overlay loses its five dark full-height vertical station lines — the four Bezier steering lines, three knot dots and drag targets stay; the always-on card leader ticks are untouched | 2026-08-29 | dd0bfab | [260829-x37-on-rocker-page-remove-the-the-dark-verti](./quick/260829-x37-on-rocker-page-remove-the-the-dark-verti/) |
 
 ## Deferred Items
 
