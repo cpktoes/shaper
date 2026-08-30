@@ -10,12 +10,15 @@
  * curve is the rocker line, and the deck curve is the rocker line plus the foil thickness at each
  * sampled station, closed at both tips so the two curves read as a single board silhouette.
  *
- * Drafting grammar, per `.planning/sketches/MANIFEST.md`: the flat reference line is a faint
- * dashed line drawn only INSIDE the drawn shape's own extent; the rocker/thickness values read
- * out to an output rail below the baseline, outside the shape, as bordered data cards drawn on
- * the same card surface (`CalloutChipFrame`, quick task 260829-t47) the TEMPLATE screen's own
- * chips use — one card per station, station name over its two values, so the two screens read as
- * one drawing system.
+ * Drafting grammar, per `.planning/sketches/MANIFEST.md` and quick task 260829-uue: each
+ * station's read-outs split across TWO rails, one on each side of the board — a rocker rail below
+ * the baseline (the bottom curve it measures) and a thickness rail above the deck curve (the deck
+ * it measures) — drawn in the TEMPLATE screen's own two-part grammar (`callout-primitives.tsx`):
+ * a filled card (`CalloutChipFrame`) for a figure the shaper sets with its own slider, and a plain
+ * reading — no card, a 45-degree `DimensionTick` on the curve instead — for a figure measured off
+ * the drawn curve. On the rocker rail only the two tips are inputs; all five thickness figures
+ * are. Every read-out, either kind, is leadered from its own rail to the exact point on the curve
+ * it measures.
  *
  * Orientation (D-03): the toolbar's rotate-in-place button flips this viewer between "horizontal"
  * (the default, nose left) and "vertical" (nose up, so the five stations read top-to-bottom the
@@ -49,7 +52,7 @@
  */
 
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef } from "react";
-import { CalloutChipFrame, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
+import { CalloutChipFrame, DimensionTick, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { FOIL_THICKNESS_RANGE_IN, sampleFoil, type FoilSpec } from "@/lib/geometry/foil";
 import {
   sideProfileDragPoints,
@@ -59,7 +62,16 @@ import {
 } from "@/lib/geometry/rocker-drag";
 import { buildRocker, ROCKER_LIFT_RANGE_IN, sampleRocker, type RockerSpec } from "@/lib/geometry/rocker";
 import { formatFeetInches, formatInchesFraction, inchesToMm, type Mm, mmToInches } from "@/lib/geometry/units";
-import { PAD_TOP, PAD_X, rockerViewLayout } from "./rocker-view-frame";
+import {
+  CARD_NAME_DY,
+  CARD_VALUE_DY,
+  PAD_X,
+  READOUT_NAME_DY,
+  READOUT_VALUE_DY,
+  rockerViewLayout,
+  STATION_NAME_SIZE,
+  STATION_VALUE_SIZE,
+} from "./rocker-view-frame";
 
 /**
  * Drag-target and construction-marker sizing, in CSS pixels — copied from `outline-viewer.tsx`'s
@@ -83,15 +95,15 @@ export interface RockerViewerProps {
   rocker: RockerSpec;
   foil: FoilSpec;
   length: Mm;
-  /** The compact mode (04-05 Task 2): suppresses the output rail, station tick lines and
+  /** The compact mode (04-05 Task 2): suppresses both card rails, their tick lines and the
    * board-length label, leaving only the closed board shape and baseline — mirrors
    * `outline-viewer.tsx`'s `hideCallouts`. This is what the Summary order form's rocker box
    * renders: no `onDrag` is ever passed there, so the construction overlay's drag targets are
    * already absent regardless of this flag (`dragTargets` is built only `onDrag ? ... : []`).
-   * The frame this component draws in is already fixed regardless of `hideCallouts` — `viewH` is
-   * derived from `ROCKER_LIFT_RANGE_IN.max` + `FOIL_THICKNESS_RANGE_IN.max`, the worst case any
-   * board can dial in, not from this board's own values — so a box sized to hold it never clips
-   * at the extremes. Defaults to `false`. */
+   * This flag now ALSO decides whether the layout module reserves a card band on either side of
+   * the board at all (`showStationCards`, quick task 260829-uue) — a consumer that never draws a
+   * rail is not paying for the band that rail would need, so its frame is the board plus a
+   * hairline of pad instead. Defaults to `false`. */
   hideCallouts?: boolean;
   /** D-03: `"horizontal"` (nose left, the default) or `"vertical"` (nose up, stations read
    * top-to-bottom). Driven by the toolbar's rotate button, never persisted. */
@@ -142,6 +154,129 @@ function Upright({
   return <g transform={`rotate(-90 ${x.toFixed(2)} ${y.toFixed(2)})`}>{children}</g>;
 }
 
+/**
+ * A named input card, mirroring the TEMPLATE screen's own `CalloutChip` (finding 8): a bordered
+ * box on `CalloutChipFrame` holding the station name over its value, leadered — no tick, which is
+ * how the template's own grammar marks an input's leader — from the rail's near edge to the exact
+ * point on the curve it measures.
+ */
+function StationCard({
+  x,
+  rail,
+  tickEnd,
+  curveY,
+  cardDy,
+  cardWidth,
+  cardHeight,
+  vertical,
+  name,
+  value,
+  valueColor = "var(--outline-ink)",
+}: {
+  x: number;
+  rail: number;
+  tickEnd: number;
+  curveY: number;
+  cardDy: number;
+  cardWidth: number;
+  cardHeight: number;
+  vertical: boolean;
+  name: string;
+  value: string;
+  valueColor?: string;
+}) {
+  const cardX = x - cardWidth / 2;
+  return (
+    <g>
+      <line x1={x} y1={tickEnd} x2={x} y2={curveY} stroke="var(--outline-station-line)" strokeWidth={1} />
+      <Upright x={x} y={rail} vertical={vertical}>
+        {/* `cardDy` (0 in horizontal, a no-op) shifts the card along the rotated station axis in
+            vertical, centring it on the station it names — the outer composition is a pure
+            translation (finding 4), so this inner `translate(0, dy)` lands exactly there. */}
+        <g transform={`translate(0, ${cardDy.toFixed(2)})`}>
+          <CalloutChipFrame x={cardX} y={rail} width={cardWidth} height={cardHeight} />
+          <text
+            x={x}
+            y={rail + CARD_NAME_DY}
+            textAnchor="middle"
+            style={{ fontSize: STATION_NAME_SIZE, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
+            fill="var(--outline-callout-label)"
+          >
+            {name}
+          </text>
+          <text
+            x={x}
+            y={rail + CARD_VALUE_DY}
+            textAnchor="middle"
+            style={{ fontSize: STATION_VALUE_SIZE, fontWeight: 700, fontFamily: "var(--font-body)" }}
+            fill={valueColor}
+          >
+            {value}
+          </text>
+        </g>
+      </Upright>
+    </g>
+  );
+}
+
+/**
+ * A derived reading, mirroring the TEMPLATE screen's own `OutputRail` (finding 8): no card
+ * surface at all — a leader to the measured point, a 45-degree `DimensionTick` there, then the
+ * value over the station name, the reverse of a card's own stacking. Rides the same rail anchor
+ * and the same card-sized band a `StationCard` would, so the two line up along one rail and a
+ * card's own containment proof carries this one with it.
+ */
+function StationReadout({
+  x,
+  rail,
+  tickEnd,
+  curveY,
+  cardDy,
+  vertical,
+  name,
+  value,
+  valueColor = "var(--outline-ink)",
+}: {
+  x: number;
+  rail: number;
+  tickEnd: number;
+  curveY: number;
+  cardDy: number;
+  vertical: boolean;
+  name: string;
+  value: string;
+  valueColor?: string;
+}) {
+  return (
+    <g>
+      <line x1={x} y1={tickEnd} x2={x} y2={curveY} stroke="var(--outline-station-line)" strokeWidth={1} />
+      <DimensionTick x={x} y={curveY} />
+      <Upright x={x} y={rail} vertical={vertical}>
+        <g transform={`translate(0, ${cardDy.toFixed(2)})`}>
+          <text
+            x={x}
+            y={rail + READOUT_VALUE_DY}
+            textAnchor="middle"
+            style={{ fontSize: STATION_VALUE_SIZE, fontWeight: 700, fontFamily: "var(--font-body)" }}
+            fill={valueColor}
+          >
+            {value}
+          </text>
+          <text
+            x={x}
+            y={rail + READOUT_NAME_DY}
+            textAnchor="middle"
+            style={{ fontSize: STATION_NAME_SIZE, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
+            fill="var(--outline-callout-label)"
+          >
+            {name}
+          </text>
+        </g>
+      </Upright>
+    </g>
+  );
+}
+
 export function RockerViewer({
   rocker,
   foil,
@@ -171,8 +306,8 @@ export function RockerViewer({
   // The one place the drawing's scale and frame are decided (`rocker-view-frame.ts`) — `scale`,
   // `viewH`, `baselineY` and the frame below all come from here, so `pxX`/`pxY` and the drag
   // inverse can never solve against a different scale than the drawing was made with.
-  const layout = rockerViewLayout({ lengthIn, maxDeckIn, orientation, fitToBoard });
-  const { scale, baselineY, railY, tickEndY, cardDy, cardWidth, cardHeight } = layout;
+  const layout = rockerViewLayout({ lengthIn, maxDeckIn, orientation, fitToBoard, showStationCards: !hideCallouts });
+  const { scale, baselineY, railY, tickEndY, deckRailY, deckTickEndY, cardDy, cardWidth, cardHeight, labelX, labelY } = layout;
 
   // Nose on the left: station = length (nose tip) draws at the frame's left pad; station = 0
   // (tail tip) draws further right. A shorter board's tail simply lands further left, leaving
@@ -208,12 +343,19 @@ export function RockerViewer({
   const noseX = pxX(lengthIn);
   const tailX = pxX(0);
 
-  const stations: {
+  /** Sampled at the same `stationIn` the drawing loop above already samples, so a card and the
+   * curve it leaders to can never disagree about where that station's point sits. `rockerKind`
+   * names the founder's own split (planner finding 9), visible here in one place: the two tips
+   * have their own sliders and get a card; the other three rocker figures are measured off the
+   * drawn curve and get a plain reading. Every thickness figure is a slider, so the deck side
+   * needs no such field — it is a card at all five stations. */
+  const stationInputs: {
     key: string;
     name: string;
     stationIn: number;
     rockerValue: string | null;
     thicknessValue: string;
+    rockerKind: "input" | "derived";
   }[] = [
     {
       key: "tailTip",
@@ -221,6 +363,7 @@ export function RockerViewer({
       stationIn: 0,
       rockerValue: formatInchesFraction(rocker.tailLift),
       thicknessValue: formatInchesFraction(foil.tailTip),
+      rockerKind: "input",
     },
     {
       key: "tail12",
@@ -228,6 +371,7 @@ export function RockerViewer({
       stationIn: 12,
       rockerValue: formatInchesFraction(geometry.tailLiftAt12in),
       thicknessValue: formatInchesFraction(foil.tail12),
+      rockerKind: "derived",
     },
     {
       key: "center",
@@ -235,6 +379,7 @@ export function RockerViewer({
       stationIn: lengthIn / 2,
       rockerValue: null,
       thicknessValue: formatInchesFraction(foil.center),
+      rockerKind: "derived",
     },
     {
       key: "nose12",
@@ -242,6 +387,7 @@ export function RockerViewer({
       stationIn: lengthIn - 12,
       rockerValue: formatInchesFraction(geometry.noseLiftAt12in),
       thicknessValue: formatInchesFraction(foil.nose12),
+      rockerKind: "derived",
     },
     {
       key: "noseTip",
@@ -249,8 +395,15 @@ export function RockerViewer({
       stationIn: lengthIn,
       rockerValue: formatInchesFraction(rocker.noseLift),
       thicknessValue: formatInchesFraction(foil.noseTip),
+      rockerKind: "input",
     },
   ];
+  const stations = stationInputs.map((s) => {
+    const stationMm = inchesToMm(s.stationIn);
+    const rockerHeightIn = mmToInches(sampleRocker(geometry, stationMm));
+    const deckHeightIn = rockerHeightIn + mmToInches(sampleFoil(foil, length, stationMm));
+    return { ...s, rockerHeightIn, deckHeightIn };
+  });
 
   // Both the viewBox string and its frame width/height come straight off the layout — the one
   // place this drawing's frame is decided. The vertical frame is built from its own rotated
@@ -377,66 +530,62 @@ export function RockerViewer({
           <>
             {stations.map((s) => {
               const x = pxX(s.stationIn);
-              const cardX = x - cardWidth / 2;
+              const deckCurveY = pxY(s.deckHeightIn);
+              const rockerCurveY = pxY(s.rockerHeightIn);
               return (
                 <g key={s.key}>
-                  <line
-                    x1={x}
-                    y1={baselineY}
-                    x2={x}
-                    y2={tickEndY}
-                    stroke="var(--outline-station-line)"
-                    strokeWidth={1}
+                  {/* Deck side: every thickness figure has its own slider, so every station
+                      draws as a card. */}
+                  <StationCard
+                    x={x}
+                    rail={deckRailY}
+                    tickEnd={deckTickEndY}
+                    curveY={deckCurveY}
+                    cardDy={cardDy}
+                    cardWidth={cardWidth}
+                    cardHeight={cardHeight}
+                    vertical={vertical}
+                    name={s.name}
+                    value={s.thicknessValue}
                   />
-                  <Upright x={x} y={railY} vertical={vertical}>
-                    {/* `cardDy` (0 in horizontal, a no-op) shifts the card along the rotated
-                        station axis in vertical, centring it on the station it names — the outer
-                        composition is a pure translation (finding 4), so this inner
-                        `translate(0, dy)` lands exactly there. */}
-                    <g transform={`translate(0, ${cardDy.toFixed(2)})`}>
-                      <CalloutChipFrame x={cardX} y={railY} width={cardWidth} height={cardHeight} />
-                      <text
-                        x={x}
-                        y={railY + 13}
-                        textAnchor="middle"
-                        style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
-                        fill="var(--outline-callout-label)"
-                      >
-                        {s.name}
-                      </text>
-                      {/* The rocker row moving from the muted label colour to the ink colour is
-                          deliberate: in this grammar a value is a value, and it is the label above
-                          that is muted. The centre station has no rocker number (its lift is zero
-                          by definition) — an em-dash keeps its row on the same line as the other
-                          four cards, drawn in the muted label colour since it stands in for an
-                          absent value rather than a real one. */}
-                      <text
-                        x={x}
-                        y={railY + 28}
-                        textAnchor="middle"
-                        style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
-                        fill={s.rockerValue !== null ? "var(--outline-ink)" : "var(--outline-callout-label)"}
-                      >
-                        {s.rockerValue !== null ? `R ${s.rockerValue}` : "R —"}
-                      </text>
-                      <text
-                        x={x}
-                        y={railY + 43}
-                        textAnchor="middle"
-                        style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body)" }}
-                        fill="var(--outline-ink)"
-                      >
-                        T {s.thicknessValue}
-                      </text>
-                    </g>
-                  </Upright>
+                  {/* Bottom side: a card at the two tips (their own sliders), a plain reading
+                      everywhere else — measured off the drawn curve rather than set directly.
+                      The centre keeps its em-dash, now as a plain reading rather than a card, in
+                      the muted label colour — it stands in for a value that is zero by
+                      construction rather than one that was measured. */}
+                  {s.rockerKind === "input" ? (
+                    <StationCard
+                      x={x}
+                      rail={railY}
+                      tickEnd={tickEndY}
+                      curveY={rockerCurveY}
+                      cardDy={cardDy}
+                      cardWidth={cardWidth}
+                      cardHeight={cardHeight}
+                      vertical={vertical}
+                      name={s.name}
+                      value={s.rockerValue ?? ""}
+                    />
+                  ) : (
+                    <StationReadout
+                      x={x}
+                      rail={railY}
+                      tickEnd={tickEndY}
+                      curveY={rockerCurveY}
+                      cardDy={cardDy}
+                      vertical={vertical}
+                      name={s.name}
+                      value={s.rockerValue ?? "—"}
+                      valueColor={s.rockerValue !== null ? "var(--outline-ink)" : "var(--outline-callout-label)"}
+                    />
+                  )}
                 </g>
               );
             })}
-            <Upright x={PAD_X} y={PAD_TOP - 8} vertical={vertical}>
+            <Upright x={labelX} y={labelY} vertical={vertical}>
               <text
-                x={PAD_X}
-                y={PAD_TOP - 8}
+                x={labelX}
+                y={labelY}
                 // Vertical only: the label's anchor sits near the frame's rail-side edge (final x
                 // near 0), so a start-anchored run overshoots straight past the frame's max x
                 // (today's defect — finding 5). End-anchoring makes it run back INTO the frame
