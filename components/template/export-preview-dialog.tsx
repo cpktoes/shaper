@@ -8,14 +8,22 @@
  *
  * Post-checkpoint addition (03-04): originally this dialog only ever built the full, true-size
  * tiled template. Modeled on the user's own iShaper reference screenshot, it now opens on an
- * artifact picker — two cards, "Overview Sheet" (one page, every input value plus a scaled
- * reference drawing, `build-overview-pdf.ts`) and "Full Template" (the original tape-together
- * tiled template, `build-template-pdf.ts`, unchanged) — so a shaper who just wants the numbers
- * doesn't have to tape sixteen pages together to get them. Full Template stays the default
- * selection: the dialog's pre-existing behavior regresses for nobody who doesn't touch the new
- * picker. "One capability, one name" (D-03) still holds for the Download button itself — one
- * accent-filled action regardless of which artifact is selected, per the UI spec's accent
- * reservation.
+ * artifact picker — "Overview Sheet" (one page, every input value plus a scaled reference
+ * drawing, `build-overview-pdf.ts`) and "Full Template" (the original tape-together tiled
+ * template, `build-template-pdf.ts`, unchanged) — so a shaper who just wants the numbers doesn't
+ * have to tape sixteen pages together to get them. Full Template stays the default selection: the
+ * dialog's pre-existing behavior regresses for nobody who doesn't touch the new picker. "One
+ * capability, one name" (D-03) still holds for the Download button itself — one accent-filled
+ * action regardless of which artifact is selected, per the UI spec's accent reservation.
+ *
+ * Quick task 260902-cj5 added a third card, "Paper Saver" (`build-strip-pdf.ts`): the same board
+ * as a single-column strip of landscape pages, each one slid sideways onto the curve, printing
+ * noticeably fewer sheets than the Full Template's two-column grid for the same board and paper.
+ * Full Template is STILL the dialog's default selection — nothing about picking Paper Saver ever
+ * runs unless a shaper actively selects that card. The picker's own layout went from a two-up
+ * grid to one stacked column (three cards no longer fit two-up without wrapping their titles),
+ * and the dialog gained a max-height + scroll so the taller picker can never push the Download
+ * button off a laptop-height screen.
  *
  * Reads `useDesign()` itself rather than taking design props — the Summary screen and the
  * Template screen share the same live design store, so no prop threading is needed to reach
@@ -44,8 +52,10 @@ import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
 import { downloadOverviewPdf } from "@/components/template/build-overview-pdf";
 import { downloadTemplatePdf } from "@/components/template/build-template-pdf";
+import { downloadStripPdf } from "@/components/template/build-strip-pdf";
 import {
   PAPER_MM,
+  computeStripLayout,
   computeTemplateLayout,
   computeTemplateMarks,
   type PaperSize,
@@ -55,10 +65,11 @@ import { cn } from "@/lib/utils";
 
 /** Which printable artifact the dialog is currently building — "full" is the default so the
  * dialog's pre-existing single-artifact behavior stays the path of least surprise. */
-type ExportArtifact = "overview" | "full";
+type ExportArtifact = "overview" | "full" | "strip";
 
-/** The picker's own two cards — copy kept short on purpose: the dialog is `sm:max-w-sm` wide, so
- * each card gets roughly half of ~350px once padding and the inter-card gap are subtracted. */
+/** The picker's own three cards — stacked one per row (quick task 260902-cj5: a two-up grid
+ * shredded "Paper Saver" onto two lines and squeezed every description at three columns). Never
+ * "segments" for the strip's own name — it is a continuous strip, not cut-apart pieces. */
 const ARTIFACT_CARDS: { value: ExportArtifact; title: string; description: string }[] = [
   {
     value: "overview",
@@ -69,6 +80,11 @@ const ARTIFACT_CARDS: { value: ExportArtifact; title: string; description: strin
     value: "full",
     title: "Full Template",
     description: "True-size outline tiled across pages you tape together.",
+  },
+  {
+    value: "strip",
+    title: "Paper Saver",
+    description: "Just the rail curve, one page at a time.",
   },
 ];
 
@@ -138,8 +154,24 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
   // Pure geometry, no IO — recomputed synchronously whenever the paper pick changes, so the page
   // count and the diagram both respond to it. No loading state: none is reachable here.
   const layout = useMemo(() => computeTemplateLayout(outlineGeometry, paperSize), [outlineGeometry, paperSize]);
+  const stripLayout = useMemo(() => computeStripLayout(outlineGeometry, paperSize), [outlineGeometry, paperSize]);
   const diagram = useMemo(() => computeDiagramSizing(layout), [layout]);
   const pageCount = layout.pages.length;
+  const stripPageCount = stripLayout.pages.length;
+
+  // Built once and handed to whichever of Full Template / Paper Saver is selected, so the two
+  // branches can never drift apart over what this board measures (post-checkpoint fix, defect 3
+  // refinement carried forward from the Full Template's own dims — see
+  // components/summary/order-form.tsx's DimensionCell strip for where these values originate).
+  const dims = {
+    length: templateValues.length,
+    widePointWidth: templateValues.widePointWidth,
+    centerThickness: railValues.centerThickness,
+    noseWidth12in: outlineGeometry.noseWidthAt12in,
+    tailWidth12in: outlineGeometry.tailWidthAt12in,
+    widePointOffset: outline.widePointOffset,
+    volumeLitres: quotedVolumeLitres,
+  };
 
   function handleDownload() {
     if (generatingRef.current) return;
@@ -158,6 +190,15 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
             paper: paperSize,
             boardName,
           });
+        } else if (artifact === "strip") {
+          downloadStripPdf({
+            layout: stripLayout,
+            marks: computeTemplateMarks(outlineGeometry),
+            geometry: outlineGeometry,
+            paper: paperSize,
+            boardName,
+            dims,
+          });
         } else {
           downloadTemplatePdf({
             layout,
@@ -165,18 +206,7 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
             geometry: outlineGeometry,
             paper: paperSize,
             boardName,
-            dims: {
-              length: templateValues.length,
-              widePointWidth: templateValues.widePointWidth,
-              centerThickness: railValues.centerThickness,
-              // Post-checkpoint fix (defect 3 refinement): the same values the Summary order
-              // form's own dimensions row reads, from the same design state — see
-              // components/summary/order-form.tsx's DimensionCell strip.
-              noseWidth12in: outlineGeometry.noseWidthAt12in,
-              tailWidth12in: outlineGeometry.tailWidthAt12in,
-              widePointOffset: outline.widePointOffset,
-              volumeLitres: quotedVolumeLitres,
-            },
+            dims,
           });
         }
         generatingRef.current = false;
@@ -193,14 +223,14 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={trigger} />
-      <DialogContent className="border-surf-line-faint bg-surf-panel text-surf-ink sm:max-w-sm">
+      <DialogContent className="max-h-[85dvh] overflow-y-auto border-surf-line-faint bg-surf-panel text-surf-ink sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-surf-ink">Export Template</DialogTitle>
           <DialogDescription>Choose what to print, then download.</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-2" role="group" aria-label="What to print">
+          <div className="grid grid-cols-1 gap-2" role="group" aria-label="What to print">
             {ARTIFACT_CARDS.map((card) => (
               <button
                 key={card.value}
@@ -271,6 +301,11 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
                 {pageCount === 1 ? "1 page — no taping needed." : `${pageCount} pages — tape nose to tail.`}
               </p>
             </>
+          ) : artifact === "strip" ? (
+            <p className="text-sm text-surf-ink-muted">
+              {stripPageCount} page{stripPageCount === 1 ? "" : "s"} instead of {pageCount} — the curve only, one
+              page at a time.
+            </p>
           ) : (
             <p className="text-sm text-surf-ink-muted">
               1 page — all the numbers needed to recreate this board.
