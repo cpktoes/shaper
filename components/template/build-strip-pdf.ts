@@ -87,9 +87,10 @@ const NAME_BOX_DIMS_TOP_GAP_MM = 2;
 const NAME_BOX_DIMS_FONT_SIZE_PT = 8;
 const NAME_BOX_DIMS_LINE_HEIGHT_MM = 4.2;
 
-/** The fixed column, from the printable left edge, the big page numeral owns — every label row
- * starts to the right of it, so a numeral can never sit under a label (locked decision: page
- * furniture). */
+/** The fixed-width column the big page numeral owns, measured from wherever
+ * `page.pageNumberHalfWidth` places the numeral on THIS page (the printable left edge on most
+ * pages; nudged clear of the stringer on the pages where it prints) — every label row starts to
+ * the right of it, so a numeral can never sit under a label (locked decision: page furniture). */
 export const STRIP_PAGE_NUMBER_COLUMN_MM = 22;
 const STRIP_PAGE_NUMBER_FONT_SIZE_PT = 36;
 const STRIP_LABEL_FONT_SIZE_PT = 9;
@@ -221,7 +222,7 @@ function drawLabelRows(doc: jsPDF, page: StripPage, margin: number, rows: StripL
   doc.setFont("helvetica", "normal");
   doc.setFontSize(STRIP_LABEL_FONT_SIZE_PT);
   doc.setTextColor(0);
-  const x = margin + STRIP_PAGE_NUMBER_COLUMN_MM;
+  const x = halfWidthToX(page.pageNumberHalfWidth, page, margin) + STRIP_PAGE_NUMBER_COLUMN_MM;
   for (const row of pageRows) {
     const y = stationToY(row.baselineStation, page, margin);
     doc.text(row.text, x, y);
@@ -229,13 +230,16 @@ function drawLabelRows(doc: jsPDF, page: StripPage, margin: number, rows: StripL
 }
 
 /** The big page numeral — the reference's own idiom, a large number rather than a caption —
- * vertically centred in the page's own registration band, left-aligned at the printable edge. */
+ * vertically centred in the page's own registration band, left-aligned at
+ * `page.pageNumberHalfWidth` (the printable left edge on most pages, but nudged clear of the
+ * stringer on the pages where it prints — see that field's own doc comment). */
 function drawPageNumber(doc: jsPDF, page: StripPage, margin: number): void {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(STRIP_PAGE_NUMBER_FONT_SIZE_PT);
   doc.setTextColor(0);
+  const x = halfWidthToX(page.pageNumberHalfWidth, page, margin);
   const y = stationToY(page.pageNumberStation, page, margin);
-  doc.text(page.pageNumber, margin, y, { baseline: "middle" });
+  doc.text(page.pageNumber, x, y, { baseline: "middle" });
 }
 
 function drawScaleSquare(doc: jsPDF, page: StripPage, margin: number, placement: StripFurniturePlacement): void {
