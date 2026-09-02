@@ -711,6 +711,18 @@ export const STRIP_RAIL_INSET_MM = inchesToMm(0.5);
  * baseline this file hands it with no arithmetic of its own. */
 export const STRIP_LABEL_MIN_SEPARATION_MM = 6;
 
+/** Clear space kept between the stringer (half-width 0) and the start of the page-numeral column,
+ * on the pages where the stringer actually prints (`stringerOnPage`). Without it, the numeral
+ * column sits at the printable left edge on those pages too, and the dashed stringer — drawn at
+ * half-width 0, which the sideways slide can put up to `STRIP_RAIL_INSET_MM` to the right of that
+ * edge — runs straight through the numeral. A two-digit numeral at 36pt bold is roughly 14mm wide,
+ * so 4mm of daylight past the stringer clears the whole glyph without pushing the numeral far
+ * enough right to crowd a page's own label column (`STRIP_PAGE_NUMBER_COLUMN_MM` in
+ * `build-strip-pdf.ts`, which measures its own width from wherever this places the numeral). This
+ * is the same rule's consequence as `stringerOnPage` itself — see `StripPage.pageNumberHalfWidth`
+ * below. */
+export const STRIP_NUMERAL_STRINGER_GAP_MM = 4;
+
 /** How far inside its own registration line or mark tick a strip label's baseline sits — the
  * fixed "interior gap" every row keeps clear of the line it belongs to, before any de-collision
  * nudge is added on top. */
@@ -739,6 +751,12 @@ export interface StripPage {
   /** True when this page's own slid window reaches all the way to the stringer (half-width 0),
    * so the dashed centreline is drawn on it. */
   stringerOnPage: boolean;
+  /** Where the page-numeral column begins, in board half-width space: this page's own left
+   * printable edge (`halfWidthRange[0]`) when the stringer is NOT on it, or
+   * `STRIP_NUMERAL_STRINGER_GAP_MM` to the right of the stringer itself (half-width 0) when it IS
+   * — the same rule's consequence as `stringerOnPage` above, so the big numeral can never sit
+   * where the dashed centreline runs through it. */
+  pageNumberHalfWidth: Mm;
   /** The big printed page numeral's own text — just the number, e.g. `"7"`. */
   pageNumber: string;
   /** The page numeral's own baseline station — the midpoint of the page's own registration
@@ -812,6 +830,7 @@ export function computeStripLayout(
     }
 
     const halfWidthStart = Math.max(-STRIP_RAIL_INSET_MM, max + STRIP_RAIL_INSET_MM - usableHalfWidth);
+    const stringerOnPage = halfWidthStart <= 0;
 
     return {
       index,
@@ -819,7 +838,8 @@ export function computeStripLayout(
       halfWidthRange: [mm(halfWidthStart), mm(halfWidthStart + usableHalfWidth)],
       minHalfWidth: mm(min),
       maxHalfWidth: mm(max),
-      stringerOnPage: halfWidthStart <= 0,
+      stringerOnPage,
+      pageNumberHalfWidth: mm(stringerOnPage ? STRIP_NUMERAL_STRINGER_GAP_MM : halfWidthStart),
       pageNumber: `${index + 1}`,
       pageNumberStation: mm((stationStart + stationEnd) / 2),
     };

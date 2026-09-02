@@ -11,6 +11,7 @@ import {
   PAPER_MM,
   STRIP_LABEL_INTERIOR_GAP_MM,
   STRIP_LABEL_MIN_SEPARATION_MM,
+  STRIP_NUMERAL_STRINGER_GAP_MM,
   STRIP_RAIL_INSET_MM,
   TEMPLATE_MARGIN_MM,
   TEMPLATE_OVERLAP_MM,
@@ -744,6 +745,36 @@ describe("computeStripLayout", () => {
           }
           expect(layout.pages[0].stringerOnPage).toBe(true);
           expect(layout.pages[layout.pages.length - 1].stringerOnPage).toBe(true);
+        },
+      );
+
+      it.each(BOARD_PRESETS)(
+        "$id: pageNumberHalfWidth sits STRIP_NUMERAL_STRINGER_GAP_MM to the right of the stringer when it prints on the page, otherwise it equals the page's own left printable edge (fix round 1, quick task 260902-cj5 — the numeral must clear the stringer)",
+        (preset) => {
+          const geometry = buildOutline(preset.outline);
+          const layout = computeStripLayout(geometry, paper);
+          for (const page of layout.pages) {
+            if (page.stringerOnPage) {
+              expect(page.pageNumberHalfWidth).toBeCloseTo(STRIP_NUMERAL_STRINGER_GAP_MM, 6);
+              // The numeral column must not slide back onto or past the stringer itself.
+              expect(page.pageNumberHalfWidth).toBeGreaterThan(0);
+            } else {
+              expect(page.pageNumberHalfWidth).toBeCloseTo(page.halfWidthRange[0], 6);
+            }
+          }
+        },
+      );
+
+      it.each(BOARD_PRESETS)(
+        "$id: non-stringer pages keep the numeral at the page's own left printable edge, byte-identical to before this fix",
+        (preset) => {
+          const geometry = buildOutline(preset.outline);
+          const layout = computeStripLayout(geometry, paper);
+          for (const page of layout.pages) {
+            if (!page.stringerOnPage) {
+              expect(page.pageNumberHalfWidth).toBe(page.halfWidthRange[0]);
+            }
+          }
         },
       );
 

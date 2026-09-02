@@ -9,6 +9,7 @@ import {
   computeTemplateMarks,
   stripLabelRows,
   type PaperSize,
+  type StripLayout,
 } from "@/lib/geometry/template";
 import { litres } from "@/lib/geometry/units";
 import { nameBlockContent, templateNameBlockDimsText, templateNameBlockText } from "./build-template-pdf";
@@ -155,6 +156,13 @@ describe("stripPageZeroFurnitureRects", () => {
   }
 });
 
+/** Mirrors `halfWidthToX` in `build-strip-pdf.ts` (not exported — it's the drawing module's own
+ * page-local projection), so the test can check where the numeral column actually lands on a
+ * given page without re-implementing the whole drawing module. */
+function numeralX(layout: StripLayout, page: StripLayout["pages"][number]): number {
+  return layout.margin + (page.pageNumberHalfWidth - page.halfWidthRange[0]);
+}
+
 describe("label row placement", () => {
   for (const paper of PAPERS) {
     it.each(BOARD_PRESETS)(
@@ -165,14 +173,40 @@ describe("label row placement", () => {
         const marks = computeTemplateMarks(geometry);
         const rows = stripLabelRows(layout, marks, geometry);
 
-        // The drawing module places every row at a fixed x = margin + STRIP_PAGE_NUMBER_COLUMN_MM,
-        // strictly to the right of the numeral's own x = margin — this is a property of the
-        // drawing module's own two fixed x-positions, asserted directly rather than re-deriving
-        // jsPDF's own internal text-placement state.
-        const numeralX = layout.margin;
-        const labelX = layout.margin + STRIP_PAGE_NUMBER_COLUMN_MM;
-        expect(labelX).toBeGreaterThan(numeralX);
         expect(rows.length).toBeGreaterThan(0);
+      },
+    );
+
+    it.each(BOARD_PRESETS)(
+      `$id (${paper}): the label column always starts strictly to the right of the numeral column, on every page including the ones where the stringer shifts the numeral right (fix round 1, quick task 260902-cj5)`,
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+
+        // The drawing module places every label row at
+        // x = halfWidthToX(page.pageNumberHalfWidth, page, margin) + STRIP_PAGE_NUMBER_COLUMN_MM
+        // — strictly to the right of the numeral's own x, on EVERY page, not just the pages where
+        // the numeral sits at the fixed printable left edge.
+        for (const page of layout.pages) {
+          const nX = numeralX(layout, page);
+          const labelX = nX + STRIP_PAGE_NUMBER_COLUMN_MM;
+          expect(labelX).toBeGreaterThan(nX);
+        }
+      },
+    );
+
+    it.each(BOARD_PRESETS)(
+      `$id (${paper}): the numeral sits strictly to the right of the stringer's own x on every page where the stringer prints — the defect this fix closes (fix round 1, quick task 260902-cj5)`,
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+
+        for (const page of layout.pages) {
+          if (!page.stringerOnPage) continue;
+          const stringerX = layout.margin + (0 - page.halfWidthRange[0]);
+          const nX = numeralX(layout, page);
+          expect(nX).toBeGreaterThan(stringerX);
+        }
       },
     );
   }
