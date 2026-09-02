@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { WIDEPOINT_WIDTH_RANGE_IN } from "./board";
 import { MEASURE_STATION_MM, buildOutline, sampleOutline } from "./outline";
@@ -31,6 +32,61 @@ const TOLERANCE_MM = 1e-6;
 function overlapLength(aRange: [number, number], bRange: [number, number]): number {
   return Math.min(aRange[1], bRange[1]) - Math.max(aRange[0], bRange[0]);
 }
+
+/**
+ * Characterisation pin (quick task 260902-cj5) — written BEFORE any strip-layout code exists in
+ * `lib/geometry/template.ts`, and never edited afterwards for the rest of that task. It exists so
+ * the new Paper Saver strip work can never silently perturb the Overview Sheet's and the Full
+ * Template's own tile-grid math: if the digest below ever changes, the strip work broke something
+ * in the existing tiled layout and THAT is what must be fixed — never this test.
+ *
+ * One digest per (board preset x paper), over the combined JSON of every existing exported
+ * function this file's own artifacts read from: `computeTemplateLayout`, `computeTemplateMarks`,
+ * `markPlacements`, `markLineSegments`, `templatePageBoxes`, `computeTailClosure`,
+ * `tailClosureSegments`, `nameBlockPlacement`. Only the first 16 hex characters of the sha256 are
+ * kept — enough to catch any real change, short enough to read at a glance in a failure diff.
+ */
+describe("existing tile-grid output is unchanged by the strip work (characterisation pin, quick task 260902-cj5 — frozen, never edit)", () => {
+  const EXPECTED_TILE_GRID_DIGESTS: Record<string, string> = {
+    "shortboard-letter": "b44c287a1203b6e7",
+    "shortboard-a4": "cd43ab684592226c",
+    "fish-letter": "80dd9f2ae2cc89be",
+    "fish-a4": "f8dfa62d670f076e",
+    "midlength-letter": "c44a5c300a92802b",
+    "midlength-a4": "e0ead812d01197aa",
+    "longboard-letter": "a4c29bc92109c090",
+    "longboard-a4": "365d2e5e1ba27b50",
+  };
+
+  for (const paper of PAPERS) {
+    it.each(BOARD_PRESETS)(`$id (${paper}): tile-grid digest matches the pinned value`, (preset) => {
+      const geometry = buildOutline(preset.outline);
+      const layout = computeTemplateLayout(geometry, paper);
+      const marks = computeTemplateMarks(geometry);
+      const placements = markPlacements(layout, marks, geometry);
+      const lineSegments = markLineSegments(layout, marks, geometry);
+      const boxes = templatePageBoxes(layout);
+      const closure = computeTailClosure(geometry) ?? null;
+      const closureSegments = closure ? tailClosureSegments(layout, closure) : [];
+      const namePlacement = nameBlockPlacement(layout, geometry);
+
+      const combined = {
+        layout,
+        marks,
+        placements,
+        lineSegments,
+        boxes,
+        closure,
+        closureSegments,
+        namePlacement,
+      };
+      const digest = createHash("sha256").update(JSON.stringify(combined)).digest("hex").slice(0, 16);
+
+      const key = `${preset.id}-${paper}`;
+      expect(digest).toBe(EXPECTED_TILE_GRID_DIGESTS[key]);
+    });
+  }
+});
 
 describe("computeTemplateLayout", () => {
   for (const paper of PAPERS) {
