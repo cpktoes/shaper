@@ -83,8 +83,8 @@ const ARTIFACT_CARDS: { value: ExportArtifact; title: string; description: strin
   },
   {
     value: "strip",
-    title: "Paper Saver",
-    description: "Just the rail curve, one page at a time.",
+    title: "Full Sized Template - Paper Saver",
+    description: 'True-size, full-length landscape print. Great for boards ≤20.5" Wide.',
   },
 ];
 
