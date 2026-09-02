@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The preview-first export dialog (D-04): an artifact picker (Overview Sheet vs. Full Template)
+ * The preview-first export dialog (D-04): an artifact picker (Overview Sheet vs. Full Sized Template)
  * over shared paper-size/preview chrome, before any PDF bytes exist, then builds the file only
  * when "Download PDF" is pressed. Shared by both entry points (Template screen toolbar, Summary
  * screen action row, D-03) via the `trigger` prop, so there is exactly one dialog implementation.
@@ -9,17 +9,17 @@
  * Post-checkpoint addition (03-04): originally this dialog only ever built the full, true-size
  * tiled template. Modeled on the user's own iShaper reference screenshot, it now opens on an
  * artifact picker — "Overview Sheet" (one page, every input value plus a scaled reference
- * drawing, `build-overview-pdf.ts`) and "Full Template" (the original tape-together tiled
+ * drawing, `build-overview-pdf.ts`) and "Full Sized Template" (the original tape-together tiled
  * template, `build-template-pdf.ts`, unchanged) — so a shaper who just wants the numbers doesn't
- * have to tape sixteen pages together to get them. Full Template stays the default selection: the
+ * have to tape sixteen pages together to get them. Full Sized Template stays the default selection: the
  * dialog's pre-existing behavior regresses for nobody who doesn't touch the new picker. "One
  * capability, one name" (D-03) still holds for the Download button itself — one accent-filled
  * action regardless of which artifact is selected, per the UI spec's accent reservation.
  *
  * Quick task 260902-cj5 added a third card, "Paper Saver" (`build-strip-pdf.ts`): the same board
  * as a single-column strip of landscape pages, each one slid sideways onto the curve, printing
- * noticeably fewer sheets than the Full Template's two-column grid for the same board and paper.
- * Full Template is STILL the dialog's default selection — nothing about picking Paper Saver ever
+ * noticeably fewer sheets than the Full Sized Template's two-column grid for the same board and paper.
+ * Full Sized Template is STILL the dialog's default selection — nothing about picking Paper Saver ever
  * runs unless a shaper actively selects that card. The picker's own layout went from a two-up
  * grid to one stacked column (three cards no longer fit two-up without wrapping their titles),
  * and the dialog gained a max-height + scroll so the taller picker can never push the Download
@@ -78,8 +78,8 @@ const ARTIFACT_CARDS: { value: ExportArtifact; title: string; description: strin
   },
   {
     value: "full",
-    title: "Full Template",
-    description: "True-size outline tiled across pages you tape together.",
+    title: "Full Sized Template",
+    description: "True-size, full-length half board template",
   },
   {
     value: "strip",
@@ -159,9 +159,9 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
   const pageCount = layout.pages.length;
   const stripPageCount = stripLayout.pages.length;
 
-  // Built once and handed to whichever of Full Template / Paper Saver is selected, so the two
+  // Built once and handed to whichever of Full Sized Template / Paper Saver is selected, so the two
   // branches can never drift apart over what this board measures (post-checkpoint fix, defect 3
-  // refinement carried forward from the Full Template's own dims — see
+  // refinement carried forward from the Full Sized Template's own dims — see
   // components/summary/order-form.tsx's DimensionCell strip for where these values originate).
   const dims = {
     length: templateValues.length,
