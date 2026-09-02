@@ -12,7 +12,7 @@
  */
 
 import { MEASURE_STATION_MM, type OutlineGeometry, sampleOutline } from "./outline";
-import { type Mm, inchesToMm, mm } from "./units";
+import { type Mm, formatInchesFraction, inchesToMm, mm } from "./units";
 
 /** The board name + dims block's fixed width (D-08) — kept here, next to
  * `nameBlockPlacement`, rather than in the drawing module, so the geometry that decides WHERE the
@@ -684,4 +684,393 @@ export function nameBlockPlacement(
   // next page down, not the edge of the printed sheet itself.
   const fallbackTop = Math.min(searchFloor + boxHeightMm, searchCeiling);
   return { pageIndex: page.index, topStation: mm(fallbackTop), halfWidthStart };
+}
+
+/**
+ * Paper Saver strip layout math (quick task 260902-cj5).
+ *
+ * The tiled template above spends a whole second column of paper on the flat middle of a board
+ * where nothing is drawn. This is the alternative a shaper can pick instead: one continuous,
+ * single-column strip of LANDSCAPE pages, each one slid sideways so only the rail-curve region
+ * uses paper, with the two registration lines every page carries labelled so the curve can be
+ * faired by hand between any two marks. Nothing here draws anything — `computeStripLayout` and
+ * its siblings below hand finished numbers and finished strings to
+ * `components/template/build-strip-pdf.ts`, which performs no page arithmetic of its own, exactly
+ * the same contract `computeTemplateLayout` already keeps with `build-template-pdf.ts`.
+ */
+
+/** How far the anchored end of a page's slid curve sits inside its own printable edge — the
+ * mechanism (`computeStripLayout`, below) that both slides the page onto the curve AND decides
+ * whether the stringer lands on it, from one shared expression. */
+export const STRIP_RAIL_INSET_MM = inchesToMm(0.5);
+
+/** Minimum station distance kept between any two printed label rows on one strip page — below
+ * this, two rows of text read as one smear rather than two legible lines. Named the same way
+ * `MARK_LABEL_COLLISION_THRESHOLD_MM` above already is: a print-legibility constant that belongs
+ * in this pure module, not a drawing-module magic number, since the drawing module draws whatever
+ * baseline this file hands it with no arithmetic of its own. */
+export const STRIP_LABEL_MIN_SEPARATION_MM = 6;
+
+/** How far inside its own registration line or mark tick a strip label's baseline sits — the
+ * fixed "interior gap" every row keeps clear of the line it belongs to, before any de-collision
+ * nudge is added on top. */
+export const STRIP_LABEL_INTERIOR_GAP_MM = 3;
+
+/** One landscape page of the Paper Saver strip — the station band it covers, the sideways-slid
+ * half-width band it prints, and the big page numeral it carries. Reading order runs nose to
+ * tail, matching the tiled template's own row order: index 0 is the nose tip. */
+export interface StripPage {
+  /** 0-based reading order — nose first. */
+  index: number;
+  /** [start, end] in millimetres along the station axis (0 = tail, geometry.length = nose). May
+   * run slightly past 0 on the final page — that's blank paper past the board's own tail tip, not
+   * a gap in coverage, exactly like `TemplatePage.stationRange`'s own doc explains. */
+  stationRange: [Mm, Mm];
+  /** [start, end] in millimetres along the half-width axis, already slid sideways onto the curve
+   * (see the module doc comment above) — 0 is the stringer, so a page whose range starts at or
+   * below 0 is the one that prints it. */
+  halfWidthRange: [Mm, Mm];
+  /** The true minimum half-width the outline curve reaches over this page's own station band —
+   * exposed so a test can prove the whole curve stays on the paper rather than assuming it. */
+  minHalfWidth: Mm;
+  /** The true maximum half-width the outline curve reaches over this page's own station band —
+   * the value the sideways slide is computed from. */
+  maxHalfWidth: Mm;
+  /** True when this page's own slid window reaches all the way to the stringer (half-width 0),
+   * so the dashed centreline is drawn on it. */
+  stringerOnPage: boolean;
+  /** The big printed page numeral's own text — just the number, e.g. `"7"`. */
+  pageNumber: string;
+  /** The page numeral's own baseline station — the midpoint of the page's own registration
+   * band, so the numeral sits centred between whichever of its two lines are actually drawn. */
+  pageNumberStation: Mm;
+}
+
+/** The complete Paper Saver strip for one board at one paper size. */
+export interface StripLayout {
+  pages: StripPage[];
+  paper: PaperSize;
+  margin: Mm;
+  overlap: Mm;
+  /** The printable span of the station axis, on this paper's own SHORT edge (the vertical extent
+   * of a landscape page) — see the module doc comment above for why the axis assignment is
+   * reversed from the tiled template's own portrait layout. */
+  usableStation: Mm;
+  /** The printable span of the half-width axis, on this paper's own LONG edge (the horizontal
+   * extent of a landscape page). */
+  usableHalfWidth: Mm;
+}
+
+/**
+ * Tiles the board's own station axis (0..geometry.length) into a single column of landscape
+ * pages, then slides each page's half-width window sideways so only the curve's own region uses
+ * paper (locked decision: print every page — no straightness rule, no skipping). Reuses the tiled
+ * template's own `tileCount`/`buildWindows` helpers (same file, no edit to either) with
+ * `fromEnd = true`, so page 0 sits flush with the nose tip exactly the way the tiled template's
+ * own row 0 does.
+ *
+ * The slide is one expression with two readings (`<design_decision>` section 3 of the plan):
+ * pin the stringer half an inch inside the left printable edge when the whole board fits across
+ * the page at this station (the stringer prints), otherwise pin the outermost rail point half an
+ * inch inside the RIGHT printable edge and let the page slide out past the stringer (the stringer
+ * does not print). No page ever looks at a neighbour — it is a pure function of its own station
+ * band and the paper.
+ */
+export function computeStripLayout(
+  geometry: OutlineGeometry,
+  paper: PaperSize,
+  margin: Mm = TEMPLATE_MARGIN_MM,
+  overlap: Mm = TEMPLATE_OVERLAP_MM,
+): StripLayout {
+  const paperSize = PAPER_MM[paper];
+  // Landscape: the paper's own SHORT edge (its stored portrait `width`) becomes the page's
+  // vertical extent, tiling the station axis; the paper's own LONG edge (stored portrait
+  // `height`) becomes the page's horizontal extent, tiling the half-width axis.
+  const usableStation = paperSize.width - 2 * margin;
+  const usableHalfWidth = paperSize.height - 2 * margin;
+
+  const count = tileCount(geometry.length, usableStation, overlap);
+  const stationWindows = buildWindows(geometry.length, usableStation, overlap, count, true);
+
+  const pages: StripPage[] = stationWindows.map(([stationStart, stationEnd], index) => {
+    const clampedStart = Math.max(stationStart, 0);
+    const clampedEnd = Math.min(stationEnd, geometry.length);
+
+    let min = Math.min(
+      sampleOutline(geometry, mm(clampedStart)),
+      sampleOutline(geometry, mm(clampedEnd)),
+    );
+    let max = Math.max(
+      sampleOutline(geometry, mm(clampedStart)),
+      sampleOutline(geometry, mm(clampedEnd)),
+    );
+    for (const point of geometry.points) {
+      if (point.station >= stationStart && point.station <= stationEnd) {
+        min = Math.min(min, point.halfWidth);
+        max = Math.max(max, point.halfWidth);
+      }
+    }
+
+    const halfWidthStart = Math.max(-STRIP_RAIL_INSET_MM, max + STRIP_RAIL_INSET_MM - usableHalfWidth);
+
+    return {
+      index,
+      stationRange: [mm(stationStart), mm(stationEnd)],
+      halfWidthRange: [mm(halfWidthStart), mm(halfWidthStart + usableHalfWidth)],
+      minHalfWidth: mm(min),
+      maxHalfWidth: mm(max),
+      stringerOnPage: halfWidthStart <= 0,
+      pageNumber: `${index + 1}`,
+      pageNumberStation: mm((stationStart + stationEnd) / 2),
+    };
+  });
+
+  return {
+    pages,
+    paper,
+    margin,
+    overlap,
+    usableStation: mm(usableStation),
+    usableHalfWidth: mm(usableHalfWidth),
+  };
+}
+
+/** One page's own printed registration line — the alignment device a shaper marks against the
+ * neighbouring sheet, labelled with its own station and the rail's half-width there so the same
+ * label can be read off either page it appears on. */
+export interface StripRegistrationLine {
+  pageIndex: number;
+  station: Mm;
+  /** Which of this page's two printable edges the line sits near — `"nose"` for the one shared
+   * with the previous (more nose-ward) page, `"tail"` for the one shared with the next. */
+  edge: "nose" | "tail";
+  halfWidth: Mm;
+  label: string;
+}
+
+/** The registration line's own printed text — station and rail half-width, both through
+ * `formatInchesFraction` (CLAUDE.md Rule 2), e.g. `36" from tail — rail 10 3/4"` (locked
+ * decision). */
+function stripRegistrationLabel(station: Mm, halfWidth: Mm): string {
+  return `${formatInchesFraction(station)} from tail — rail ${formatInchesFraction(halfWidth)}`;
+}
+
+/**
+ * The two registration lines every interior page carries (one each for the nose-ward and
+ * tail-ward pages of the strip's own single column), computed ONCE per shared page boundary and
+ * handed to both of the pages that border it — so page N's `"tail"` line and page N+1's `"nose"`
+ * line are the same station and the same label BY CONSTRUCTION, never by two separate
+ * computations that happen to agree. Page 0 gets no `"nose"` line (nothing borders it toward the
+ * nose) and the final page gets no `"tail"` line (nothing borders it toward the tail) — a
+ * registration line's only job is to align against a neighbouring sheet.
+ */
+export function stripRegistrationLines(layout: StripLayout, geometry: OutlineGeometry): StripRegistrationLine[] {
+  const { pages, overlap } = layout;
+  const halfOverlap = overlap / 2;
+  const lines: StripRegistrationLine[] = [];
+
+  for (let i = 0; i < pages.length - 1; i++) {
+    const noseward = pages[i];
+    const tailward = pages[i + 1];
+    const station = mm(noseward.stationRange[0] + halfOverlap);
+    const halfWidth = sampleOutline(geometry, station);
+    const label = stripRegistrationLabel(station, halfWidth);
+
+    lines.push({ pageIndex: noseward.index, station, edge: "tail", halfWidth, label });
+    lines.push({ pageIndex: tailward.index, station, edge: "nose", halfWidth, label });
+  }
+
+  return lines;
+}
+
+/** One page's own clipped portion of a working mark's stringer-to-curve tick — mirrors
+ * `TemplateMarkLineSegment`'s own per-page splitting for the tiled template, but clipped to the
+ * strip page's own SLID half-width window rather than a fixed column. */
+export interface StripMarkSegment {
+  pageIndex: number;
+  mark: keyof TemplateMarks;
+  /** The mark's station, in the board's own absolute station frame. */
+  station: Mm;
+  /** [start, end] half-width bounds of this page's own portion of the mark's full stringer (0) to
+   * curve (`halfWidthExtent`) span, clipped to this page's own slid half-width window. */
+  halfWidthRange: [Mm, Mm];
+  /** The board's own full half-width at this mark's station (`sampleOutline`) — the tick's true,
+   * unclipped end point. */
+  halfWidthExtent: Mm;
+  label: string;
+}
+
+/**
+ * The working marks (nose 12in, tail 12in, centre, widepoint, and the tail block on a squared
+ * tail), clipped to whichever page's own station band and slid half-width window they fall on —
+ * a mark inside a shared overlap band appears once per page, matching `markPlacements`'s own
+ * behaviour for the tiled template.
+ */
+export function stripMarkSegments(
+  layout: StripLayout,
+  marks: TemplateMarks,
+  geometry: OutlineGeometry,
+): StripMarkSegment[] {
+  const segments: StripMarkSegment[] = [];
+  const markNames = Object.keys(marks) as (keyof TemplateMarks)[];
+
+  for (const markName of markNames) {
+    const station = marks[markName];
+    if (station === undefined) continue; // tailBlock is absent for a pin/round tail
+    const halfWidthExtent = sampleOutline(geometry, station);
+    const label = `${MARK_LABELS[markName]} — ${formatInchesFraction(mm(halfWidthExtent * 2))}`;
+
+    for (const page of layout.pages) {
+      if (station < page.stationRange[0] || station > page.stationRange[1]) continue;
+
+      const clippedStart = Math.max(0, page.halfWidthRange[0]);
+      const clippedEnd = Math.min(halfWidthExtent, page.halfWidthRange[1]);
+      if (clippedEnd <= clippedStart) continue; // this page's own slid window never reaches the mark
+
+      segments.push({
+        pageIndex: page.index,
+        mark: markName,
+        station,
+        halfWidthRange: [mm(clippedStart), mm(clippedEnd)],
+        halfWidthExtent,
+        label,
+      });
+    }
+  }
+
+  return segments;
+}
+
+/** One printed text row on one strip page — a registration line's label or a working mark's
+ * label, already placed at its final baseline station so the drawing module performs no
+ * arithmetic of its own converting it to a y coordinate. */
+export interface StripLabelRow {
+  pageIndex: number;
+  kind: "registration" | "mark";
+  baselineStation: Mm;
+  text: string;
+}
+
+/**
+ * Every printed text row across the whole strip, de-collided per page. Registration rows are
+ * pinned at their line's own station, offset by the fixed `STRIP_LABEL_INTERIOR_GAP_MM` toward
+ * the page's own interior — they never move, because the identical label on two neighbouring
+ * pages (the whole point of the registration mechanism) must always read at the same distance
+ * from its own line. A mark row starts at its own default position (just above its tick, `station
+ * + STRIP_LABEL_INTERIOR_GAP_MM`) and is nudged to the opposite side only when that default would
+ * sit closer than `STRIP_LABEL_MIN_SEPARATION_MM` to an already-placed row on the same page.
+ */
+export function stripLabelRows(
+  layout: StripLayout,
+  marks: TemplateMarks,
+  geometry: OutlineGeometry,
+): StripLabelRow[] {
+  const lines = stripRegistrationLines(layout, geometry);
+  const segments = stripMarkSegments(layout, marks, geometry);
+  const gap = STRIP_LABEL_INTERIOR_GAP_MM;
+
+  const rows: StripLabelRow[] = [];
+  const byPage = new Map<number, StripLabelRow[]>();
+
+  const place = (row: StripLabelRow) => {
+    rows.push(row);
+    const list = byPage.get(row.pageIndex);
+    if (list) list.push(row);
+    else byPage.set(row.pageIndex, [row]);
+  };
+
+  // Registration rows first and pinned — every mark row's de-collision check sees the full set.
+  for (const line of lines) {
+    const baselineStation = mm(line.edge === "nose" ? line.station - gap : line.station + gap);
+    place({ pageIndex: line.pageIndex, kind: "registration", baselineStation, text: line.label });
+  }
+
+  for (const segment of segments) {
+    const above = segment.station + gap; // the default: "just above its tick"
+    const below = segment.station - gap;
+    const existing = byPage.get(segment.pageIndex) ?? [];
+
+    // Push a candidate baseline away from every row it currently sits too close to, walking
+    // outward (in the given direction) from whichever offending row is nearest, until nothing on
+    // the page sits within STRIP_LABEL_MIN_SEPARATION_MM of it. Bounded iteration count: there are
+    // only ever a handful of rows on one page (two registration lines plus a few marks), so this
+    // settles in well under the cap; the cap itself only guards against a pathological input ever
+    // looping forever.
+    const settle = (start: number, direction: 1 | -1): number => {
+      let candidate = start;
+      for (let i = 0; i < 20; i++) {
+        const colliding = existing.filter(
+          (row) => Math.abs(row.baselineStation - candidate) < STRIP_LABEL_MIN_SEPARATION_MM,
+        );
+        if (colliding.length === 0) return candidate;
+        const nearest = colliding.reduce((closest, row) =>
+          Math.abs(row.baselineStation - candidate) < Math.abs(closest.baselineStation - candidate) ? row : closest,
+        );
+        candidate = nearest.baselineStation + direction * STRIP_LABEL_MIN_SEPARATION_MM;
+      }
+      return candidate;
+    };
+
+    const settledAbove = settle(above, 1);
+    const settledBelow = settle(below, -1);
+    // Keep whichever side needed the smaller total nudge away from the tick's own natural
+    // position — the side "further from the row it collides with" per <design_decision>, without
+    // travelling further than necessary once it IS clear.
+    const baselineStation = mm(
+      Math.abs(settledBelow - below) < Math.abs(settledAbove - above) ? settledBelow : settledAbove,
+    );
+
+    place({ pageIndex: segment.pageIndex, kind: "mark", baselineStation, text: segment.label });
+  }
+
+  return rows;
+}
+
+/** Where one piece of page-0 furniture goes — its own nose-most (top) station edge and its own
+ * left edge, measured out from the stringer, mirroring `NameBlockPlacement`'s own shape. */
+export interface StripFurniturePlacement {
+  topStation: Mm;
+  halfWidthStart: Mm;
+}
+
+/** Page 0's own two pieces of fixed furniture — the scale-check square and the board name/dims
+ * block beneath it — both anchored to the printable top-right corner: the blank paper outboard of
+ * the nose taper (locked decision: page 1 alone carries these). */
+export interface StripPageZeroFurniture {
+  scaleSquare: StripFurniturePlacement;
+  nameBlock: StripFurniturePlacement;
+}
+
+/**
+ * Places page 0's scale square and name/dims block, both anchored to the page's own printable
+ * top-right corner (the top of its own station band, the outward end of its own slid half-width
+ * window) — scale square first, name block beneath it with a caption's worth of room plus a gap
+ * in between. Pure arithmetic on the layout: the drawing module passes in its own fixed sizes
+ * (matching the reused `build-template-pdf.ts` drawing constants) so no drawing constant leaks
+ * into this file.
+ */
+export function stripPageZeroFurniture(
+  layout: StripLayout,
+  sizes: {
+    scaleSquareMm: number;
+    scaleCaptionMm: number;
+    nameBoxWidthMm: number;
+    nameBoxHeightMm: number;
+    gapMm: number;
+  },
+): StripPageZeroFurniture {
+  const page0 = layout.pages[0];
+  const rightEdge = page0.halfWidthRange[1];
+  const topEdge = page0.stationRange[1];
+
+  const scaleSquareTop = mm(topEdge);
+  const scaleSquareHalfWidthStart = mm(rightEdge - sizes.scaleSquareMm);
+
+  const nameBlockTop = mm(topEdge - sizes.scaleSquareMm - sizes.scaleCaptionMm - sizes.gapMm);
+  const nameBlockHalfWidthStart = mm(rightEdge - sizes.nameBoxWidthMm);
+
+  return {
+    scaleSquare: { topStation: scaleSquareTop, halfWidthStart: scaleSquareHalfWidthStart },
+    nameBlock: { topStation: nameBlockTop, halfWidthStart: nameBlockHalfWidthStart },
+  };
 }
