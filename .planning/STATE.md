@@ -5,9 +5,9 @@ milestone_name: milestone
 current_phase: 04
 status: completed
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-08-30T08:41:14.784Z"
-last_activity: 2026-08-30
-last_activity_desc: "Completed quick task 260830-03j: nose-up rocker callouts hold the template's own on-screen size (pinned cards, print path untouched)"
+last_updated: "2026-09-02T21:43:38.131Z"
+last_activity: 2026-09-02
+last_activity_desc: "Completed quick task 260902-cj5: Paper Saver strip export (third Export Template card)"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-09-02 — Completed quick task 260902-cj5: Paper Saver strip export (third Export Template card)
+Last activity: 2026-09-02 — Fast task: export card renamed Full Sized Template
 
 Progress: [██████████] 100%
 
@@ -214,6 +214,7 @@ Recent decisions affecting current work:
 | 260830-31h | Fixes a 260830-2dy regression the founder caught nose-up: the Thickness title overlapped the Center card by 27px and spilled 15px outside the frame. Cause was the same rotated-element subtlety the module already handles for cards — an upright-counter-rotated title presents its WIDTH across the rail, but railLabelBandDepth reserved only its cap height in both orientations. Per the founder, nose-up each title now sits ABOVE its own Center card, sharing the card column (maxCardWidth) instead of needing an outboard reserve; gap expressed in em of the title's own size so it tracks the pin-scaled cards. Neighbour clearance to Nose @ 12" proved across the length sweep — worst case 136.82 units at 5'0" (the SHORTEST board is tightest here, not the longest). Horizontal byte-identical; print-path pin green unedited | 2026-08-30 | 861f424 | [260830-31h-vertical-rocker-view-rail-titles-collide](./quick/260830-31h-vertical-rocker-view-rail-titles-collide/) |
 | 260830-43t | Order form's RIDER INFO lines re-spaced: the three ruled lines were evenly spaced as BOXES but not as INK — because each field is items-baseline, its rule is the row's bottom edge, so the writing room went 21 / 57 / 57 with 2px stranded dead under the last rule. justify-between + gap-1 + py-0.5 becomes justify-evenly (three deletions, one word, no pixel constant): four equal slots make head and both pitches equal by construction at any scale. Measured after: 39 / 39 / 39 with a 20px tail; Name dropped 18px, Ph # held exactly at 242.5, Height rose 18px. A justify-start + fixed-padding alternative was rejected — it goes negative around a 610px container. Band's 12% share untouched, so ORDER_FORM_ROCKER_BOX_PX's derivation and the print-fit chain stay valid (rocker box measured unmoved) | 2026-08-30 | c4efdca | [260830-43t-summary-rider-info-needs-more-headroom-a](./quick/260830-43t-summary-rider-info-needs-more-headroom-a/) |
 | 260902-cj5 | Paper Saver export (the founder's paper-saving option): a third Export Template card printing the half-outline as a continuous single-column strip of LANDSCAPE pages at 1:1, each page slid sideways onto the rail curve so the blank stringer-to-rail stretch is never printed (one column instead of two: 10 pages instead of 16 for the 6'0" default on Letter). Every page: curve, big numeral, two registration lines each labelled with station and rail half-width — page N's bottom label equals page N+1's top label by construction. Page 1 adds the 2in scale square and name/dims block; station marks drawn where they fall; every page printed, middle included. Layout math pure and tested in template.ts (1270 → 1552 tests); the tiled template's own math pinned by a sha256 digest; both existing exports zero-line untouched. Verified: 9/9 must-haves, Needs Review only for the physical print and two judgement calls. Fix round 1 after the rendered-page review: numeral column steps right of the stringer on stringer pages (92a8a4e) | 2026-09-02 | a85aaa6 | [260902-cj5-curve-segments-paper-saving-template-exp](./quick/260902-cj5-curve-segments-paper-saving-template-exp/) |
+| 260902-fast | Export dialog's middle card renamed "Full Sized Template" with caption "True-size, full-length half board template" (was "Full Template" / "True-size outline tiled across pages you tape together."); the file's comment mentions renamed to match, no behaviour change | 2026-09-02 | aa9a615 | (fast task — no plan dir) |
 
 ## Deferred Items
 
