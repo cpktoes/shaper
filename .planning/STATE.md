@@ -5,7 +5,7 @@ milestone_name: milestone
 current_phase: 04
 status: completed
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-09-02T21:43:38.131Z"
+last_updated: "2026-09-02T21:48:28.710Z"
 last_activity: 2026-09-02
 last_activity_desc: "Completed quick task 260902-cj5: Paper Saver strip export (third Export Template card)"
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-09-02 — Fast task: export card renamed Full Sized Template
+Last activity: 2026-09-02 — Fast task: Paper Saver export card retitled with width guidance
 
 Progress: [██████████] 100%
 
@@ -215,6 +215,7 @@ Recent decisions affecting current work:
 | 260830-43t | Order form's RIDER INFO lines re-spaced: the three ruled lines were evenly spaced as BOXES but not as INK — because each field is items-baseline, its rule is the row's bottom edge, so the writing room went 21 / 57 / 57 with 2px stranded dead under the last rule. justify-between + gap-1 + py-0.5 becomes justify-evenly (three deletions, one word, no pixel constant): four equal slots make head and both pitches equal by construction at any scale. Measured after: 39 / 39 / 39 with a 20px tail; Name dropped 18px, Ph # held exactly at 242.5, Height rose 18px. A justify-start + fixed-padding alternative was rejected — it goes negative around a 610px container. Band's 12% share untouched, so ORDER_FORM_ROCKER_BOX_PX's derivation and the print-fit chain stay valid (rocker box measured unmoved) | 2026-08-30 | c4efdca | [260830-43t-summary-rider-info-needs-more-headroom-a](./quick/260830-43t-summary-rider-info-needs-more-headroom-a/) |
 | 260902-cj5 | Paper Saver export (the founder's paper-saving option): a third Export Template card printing the half-outline as a continuous single-column strip of LANDSCAPE pages at 1:1, each page slid sideways onto the rail curve so the blank stringer-to-rail stretch is never printed (one column instead of two: 10 pages instead of 16 for the 6'0" default on Letter). Every page: curve, big numeral, two registration lines each labelled with station and rail half-width — page N's bottom label equals page N+1's top label by construction. Page 1 adds the 2in scale square and name/dims block; station marks drawn where they fall; every page printed, middle included. Layout math pure and tested in template.ts (1270 → 1552 tests); the tiled template's own math pinned by a sha256 digest; both existing exports zero-line untouched. Verified: 9/9 must-haves, Needs Review only for the physical print and two judgement calls. Fix round 1 after the rendered-page review: numeral column steps right of the stringer on stringer pages (92a8a4e) | 2026-09-02 | a85aaa6 | [260902-cj5-curve-segments-paper-saving-template-exp](./quick/260902-cj5-curve-segments-paper-saving-template-exp/) |
 | 260902-fast | Export dialog's middle card renamed "Full Sized Template" with caption "True-size, full-length half board template" (was "Full Template" / "True-size outline tiled across pages you tape together."); the file's comment mentions renamed to match, no behaviour change | 2026-09-02 | aa9a615 | (fast task — no plan dir) |
+| 260902-fast2 | Export dialog's third card retitled "Full Sized Template - Paper Saver" with caption "True-size, full-length landscape print. Great for boards ≤20.5\" Wide." (was "Paper Saver" / "Just the rail curve, one page at a time."); copy only, comments keep the short name Paper Saver since the title still carries it | 2026-09-02 | e5e707a | (fast task — no plan dir) |
 
 ## Deferred Items
 
