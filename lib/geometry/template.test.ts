@@ -103,6 +103,77 @@ describe("existing tile-grid output is unchanged by the strip work (characterisa
 });
 
 /**
+ * Characterisation pin (quick task 260903-18d, Task 1) — captured from
+ * `lib/geometry/template.ts` exactly as it stood BEFORE this task's two-sided (curve-side plus
+ * stringer-side) name-block clearance change touched a single line of source, and never edited
+ * for the rest of this task. It hashes the SEVEN tile-grid functions the cj5 pin above ALSO
+ * covers, minus `nameBlockPlacement` — the one function this task deliberately changes on the
+ * founder's instruction (give the block 4mm of clearance on the curve side, matching the
+ * stringer side it already has).
+ *
+ * This pin's green, held through Task 2 without being edited, is the proof that recapturing the
+ * cj5 pin's eight digests in Task 2 is a name-block move and not a tile-grid regression — the
+ * whole point of `design_decision` §1 of this task's plan: split the proof from the pin, then
+ * recapture, never overwrite on trust. Without a digest captured before the source moved, "the
+ * other seven are fine" would be a claim, not a fact.
+ *
+ * Captured via: `git diff --quiet lib/geometry/template.ts && git diff --cached --quiet
+ * lib/geometry/template.ts` (both exited 0 — the module was provably untouched), then
+ * `npx vitest run lib/geometry/template.test.ts` with this digest map empty, reading the eight
+ * actual digests out of the failure output and pasting them in below.
+ *
+ * A characterisation digest has no closed form to derive it from — capturing the current output
+ * IS its definition — so this one narrow hand-transcription is a deliberate, documented exception
+ * to CLAUDE.md Rule 1's "never hand-transcribe an expected number." Rule 1's prohibition governs
+ * geometry FORMULA values, whose authority is the prototype's own fixtures; it was never meant to
+ * forbid the one kind of number that only exists as "whatever the unmodified code produced."
+ */
+describe(
+  "existing seven-of-eight tile-grid functions are unchanged by the two-sided clearance work (characterisation pin, quick task 260903-18d, Task 1 — frozen, never edit)",
+  () => {
+    const EXPECTED_SEVEN_FUNCTION_DIGESTS: Record<string, string> = {
+      "shortboard-letter": "5f124970774b6dd7",
+      "shortboard-a4": "51fab7d7595ab86e",
+      "fish-letter": "b4b8f5d3079c3fdd",
+      "fish-a4": "35a80421f8529063",
+      "midlength-letter": "64cdca8ff6c905ee",
+      "midlength-a4": "f35fc384265d9c84",
+      "longboard-letter": "bafd881a02437fc0",
+      "longboard-a4": "7c1eb57da94e799b",
+    };
+
+    for (const paper of PAPERS) {
+      it.each(BOARD_PRESETS)(`$id (${paper}): seven-function tile-grid digest matches the pinned value`, (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeTemplateLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const placements = markPlacements(layout, marks, geometry);
+        const lineSegments = markLineSegments(layout, marks, geometry);
+        const boxes = templatePageBoxes(layout);
+        const closure = computeTailClosure(geometry) ?? null;
+        const closureSegments = closure ? tailClosureSegments(layout, closure) : [];
+        // namePlacement deliberately excluded — nameBlockPlacement is the one function this task
+        // changes; this pin exists to prove the other seven did not move.
+
+        const combined = {
+          layout,
+          marks,
+          placements,
+          lineSegments,
+          boxes,
+          closure,
+          closureSegments,
+        };
+        const digest = createHash("sha256").update(JSON.stringify(combined)).digest("hex").slice(0, 16);
+
+        const key = `${preset.id}-${paper}`;
+        expect(digest).toBe(EXPECTED_SEVEN_FUNCTION_DIGESTS[key]);
+      });
+    }
+  },
+);
+
+/**
  * Characterisation pin (quick task 260902-kon) — written BEFORE this task's name-block placement
  * scan touches lib/geometry/template.ts, and never edited afterwards for the rest of this task. It
  * exists so moving the board name + dims block inside the outline can never silently perturb
