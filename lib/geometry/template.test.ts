@@ -59,17 +59,28 @@ function overlapLength(aRange: [number, number], bRange: [number, number]): numb
  * `markPlacements`, `markLineSegments`, `templatePageBoxes`, `computeTailClosure`,
  * `tailClosureSegments`, `nameBlockPlacement`. Only the first 16 hex characters of the sha256 are
  * kept — enough to catch any real change, short enough to read at a glance in a failure diff.
+ *
+ * **Dated amendment (2026-09-03, quick task 260903-18d, Task 2 — the one authorised recapture):**
+ * these eight digests were recaptured because `nameBlockPlacement` — the one function this pin
+ * ALSO covers — changed on the founder's own instruction, to give the board name + dims block
+ * 4mm of clearance from the outline curve on its outboard edge, matching the 4mm it already kept
+ * from the stringer on its inboard edge. Nothing else in this pin's coverage moved: the sibling
+ * seven-function pin below (quick task 260903-18d, Task 1), captured from this same module BEFORE
+ * that change touched a single line of source, stayed green through it — that green is the proof
+ * this recapture is a name-block move, not a tile-grid regression riding along under a
+ * rubber-stamped digest. See `design_decision` §1 of that task's plan for the full ruling: split
+ * the proof from the pin, then recapture, never overwrite on trust.
  */
 describe("existing tile-grid output is unchanged by the strip work (characterisation pin, quick task 260902-cj5 — frozen, never edit)", () => {
   const EXPECTED_TILE_GRID_DIGESTS: Record<string, string> = {
-    "shortboard-letter": "b44c287a1203b6e7",
-    "shortboard-a4": "cd43ab684592226c",
-    "fish-letter": "80dd9f2ae2cc89be",
-    "fish-a4": "f8dfa62d670f076e",
-    "midlength-letter": "c44a5c300a92802b",
-    "midlength-a4": "e0ead812d01197aa",
-    "longboard-letter": "a4c29bc92109c090",
-    "longboard-a4": "365d2e5e1ba27b50",
+    "shortboard-letter": "3cbffdc1fc29fa49",
+    "shortboard-a4": "573ce98f01b1d7a7",
+    "fish-letter": "a66579d72725acd7",
+    "fish-a4": "d864434a96c6998c",
+    "midlength-letter": "1fe9ee315661716e",
+    "midlength-a4": "cb478689363b1126",
+    "longboard-letter": "bd3e876c54d16acb",
+    "longboard-a4": "22351bde3916eecf",
   };
 
   for (const paper of PAPERS) {
@@ -101,6 +112,77 @@ describe("existing tile-grid output is unchanged by the strip work (characterisa
     });
   }
 });
+
+/**
+ * Characterisation pin (quick task 260903-18d, Task 1) — captured from
+ * `lib/geometry/template.ts` exactly as it stood BEFORE this task's two-sided (curve-side plus
+ * stringer-side) name-block clearance change touched a single line of source, and never edited
+ * for the rest of this task. It hashes the SEVEN tile-grid functions the cj5 pin above ALSO
+ * covers, minus `nameBlockPlacement` — the one function this task deliberately changes on the
+ * founder's instruction (give the block 4mm of clearance on the curve side, matching the
+ * stringer side it already has).
+ *
+ * This pin's green, held through Task 2 without being edited, is the proof that recapturing the
+ * cj5 pin's eight digests in Task 2 is a name-block move and not a tile-grid regression — the
+ * whole point of `design_decision` §1 of this task's plan: split the proof from the pin, then
+ * recapture, never overwrite on trust. Without a digest captured before the source moved, "the
+ * other seven are fine" would be a claim, not a fact.
+ *
+ * Captured via: `git diff --quiet lib/geometry/template.ts && git diff --cached --quiet
+ * lib/geometry/template.ts` (both exited 0 — the module was provably untouched), then
+ * `npx vitest run lib/geometry/template.test.ts` with this digest map empty, reading the eight
+ * actual digests out of the failure output and pasting them in below.
+ *
+ * A characterisation digest has no closed form to derive it from — capturing the current output
+ * IS its definition — so this one narrow hand-transcription is a deliberate, documented exception
+ * to CLAUDE.md Rule 1's "never hand-transcribe an expected number." Rule 1's prohibition governs
+ * geometry FORMULA values, whose authority is the prototype's own fixtures; it was never meant to
+ * forbid the one kind of number that only exists as "whatever the unmodified code produced."
+ */
+describe(
+  "existing seven-of-eight tile-grid functions are unchanged by the two-sided clearance work (characterisation pin, quick task 260903-18d, Task 1 — frozen, never edit)",
+  () => {
+    const EXPECTED_SEVEN_FUNCTION_DIGESTS: Record<string, string> = {
+      "shortboard-letter": "5f124970774b6dd7",
+      "shortboard-a4": "51fab7d7595ab86e",
+      "fish-letter": "b4b8f5d3079c3fdd",
+      "fish-a4": "35a80421f8529063",
+      "midlength-letter": "64cdca8ff6c905ee",
+      "midlength-a4": "f35fc384265d9c84",
+      "longboard-letter": "bafd881a02437fc0",
+      "longboard-a4": "7c1eb57da94e799b",
+    };
+
+    for (const paper of PAPERS) {
+      it.each(BOARD_PRESETS)(`$id (${paper}): seven-function tile-grid digest matches the pinned value`, (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeTemplateLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const placements = markPlacements(layout, marks, geometry);
+        const lineSegments = markLineSegments(layout, marks, geometry);
+        const boxes = templatePageBoxes(layout);
+        const closure = computeTailClosure(geometry) ?? null;
+        const closureSegments = closure ? tailClosureSegments(layout, closure) : [];
+        // namePlacement deliberately excluded — nameBlockPlacement is the one function this task
+        // changes; this pin exists to prove the other seven did not move.
+
+        const combined = {
+          layout,
+          marks,
+          placements,
+          lineSegments,
+          boxes,
+          closure,
+          closureSegments,
+        };
+        const digest = createHash("sha256").update(JSON.stringify(combined)).digest("hex").slice(0, 16);
+
+        const key = `${preset.id}-${paper}`;
+        expect(digest).toBe(EXPECTED_SEVEN_FUNCTION_DIGESTS[key]);
+      });
+    }
+  },
+);
 
 /**
  * Characterisation pin (quick task 260902-kon) — written BEFORE this task's name-block placement
@@ -700,16 +782,17 @@ describe("nameBlockPlacement", () => {
   for (const paper of PAPERS) {
     describe(paper, () => {
       it.each(BOARD_PRESETS)(
-        "$id: the name block's every corner lands inside the outline on page 0 (post-checkpoint fix, defect 3)",
+        "$id: the name block's every corner lands inside the outline on page 0 (post-checkpoint fix, defect 3), with NAME_BOX_CLEARANCE_MM of daylight reserved past its outboard edge as well as its inboard one (quick task 260903-18d)",
         (preset) => {
           const geometry = buildOutline(preset.outline);
           const layout = computeTemplateLayout(geometry, paper);
           const placement = nameBlockPlacement(layout, geometry);
 
           expect(placement.pageIndex).toBe(0);
+          // The inboard (stringer-side) edge is bit-for-bit unchanged by this task.
           expect(placement.halfWidthStart).toBe(NAME_BOX_CLEARANCE_MM);
 
-          const requiredHalfWidth = NAME_BOX_CLEARANCE_MM + NAME_BOX_WIDTH_MM;
+          const requiredHalfWidth = NAME_BOX_CLEARANCE_MM + NAME_BOX_WIDTH_MM + NAME_BOX_CLEARANCE_MM;
           const bottomStation = mm(placement.topStation - NAME_BOX_HEIGHT_MM);
 
           // Every corner of the box is inside the outline: the left corners (at halfWidthStart)
@@ -722,6 +805,26 @@ describe("nameBlockPlacement", () => {
           const page0 = layout.pages[0];
           expect(placement.topStation).toBeLessThanOrEqual(page0.stationRange[1]);
           expect(bottomStation).toBeGreaterThanOrEqual(page0.stationRange[0]);
+        },
+      );
+
+      it.each(BOARD_PRESETS)(
+        "$id: the outline curve clears the block's outboard (curve-side) edge by at least NAME_BOX_CLEARANCE_MM over the block's whole station span — the founder's requirement, asserted directly rather than merely implied by containment (quick task 260903-18d)",
+        (preset) => {
+          const geometry = buildOutline(preset.outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const placement = nameBlockPlacement(layout, geometry);
+          const bottomStation = placement.topStation - NAME_BOX_HEIGHT_MM;
+          const blockRightEdge = placement.halfWidthStart + NAME_BOX_WIDTH_MM;
+
+          const step = 1;
+          let minHalfWidth = Infinity;
+          for (let station = bottomStation; station <= placement.topStation; station += step) {
+            minHalfWidth = Math.min(minHalfWidth, sampleOutline(geometry, mm(station)));
+          }
+          minHalfWidth = Math.min(minHalfWidth, sampleOutline(geometry, mm(placement.topStation)));
+
+          expect(minHalfWidth - blockRightEdge).toBeGreaterThanOrEqual(NAME_BOX_CLEARANCE_MM - TOLERANCE_MM);
         },
       );
 
@@ -1258,7 +1361,7 @@ describe("stripFurniture", () => {
       );
 
       it.each(BOARD_PRESETS)(
-        "$id: the name block's left edge sits NAME_BOX_CLEARANCE_MM off the stringer, and the outline's minimum half-width over its whole height reaches clearance + box width",
+        "$id: the name block's left edge sits NAME_BOX_CLEARANCE_MM off the stringer, and the outline's minimum half-width over its whole height reaches clearance + box width + clearance (quick task 260903-18d: the second clearance term is the curve-side gap)",
         (preset) => {
           const geometry = buildOutline(preset.outline);
           const layout = computeStripLayout(geometry, paper);
@@ -1272,13 +1375,36 @@ describe("stripFurniture", () => {
           expect(nameBlock.halfWidthStart).toBeCloseTo(expectedLeftEdge, 6);
 
           const bottom = nameBlock.topStation - SIZES.nameBoxHeightMm;
-          const requiredHalfWidth = nameBlock.halfWidthStart + SIZES.nameBoxWidthMm;
+          const requiredHalfWidth = nameBlock.halfWidthStart + SIZES.nameBoxWidthMm + NAME_BOX_CLEARANCE_MM;
           const step = 1;
           let minHalfWidth = Infinity;
           for (let station = bottom; station <= nameBlock.topStation; station += step) {
             minHalfWidth = Math.min(minHalfWidth, sampleOutline(geometry, mm(station)));
           }
           expect(minHalfWidth).toBeGreaterThanOrEqual(requiredHalfWidth - TOLERANCE_MM);
+        },
+      );
+
+      it.each(BOARD_PRESETS)(
+        "$id: the outline curve clears the block's outboard (curve-side) edge by at least NAME_BOX_CLEARANCE_MM over the block's whole station span — the founder's requirement, asserted directly rather than merely implied by containment (quick task 260903-18d)",
+        (preset) => {
+          const geometry = buildOutline(preset.outline);
+          const layout = computeStripLayout(geometry, paper);
+          const marks = computeTemplateMarks(geometry);
+          const labelRows = stripLabelRows(layout, marks, geometry);
+          const furniture = stripFurniture(layout, geometry, labelRows, SIZES);
+          const { nameBlock } = furniture;
+          const bottom = nameBlock.topStation - SIZES.nameBoxHeightMm;
+          const blockRightEdge = nameBlock.halfWidthStart + SIZES.nameBoxWidthMm;
+
+          const step = 1;
+          let minHalfWidth = Infinity;
+          for (let station = bottom; station <= nameBlock.topStation; station += step) {
+            minHalfWidth = Math.min(minHalfWidth, sampleOutline(geometry, mm(station)));
+          }
+          minHalfWidth = Math.min(minHalfWidth, sampleOutline(geometry, mm(nameBlock.topStation)));
+
+          expect(minHalfWidth - blockRightEdge).toBeGreaterThanOrEqual(NAME_BOX_CLEARANCE_MM - TOLERANCE_MM);
         },
       );
 
@@ -1415,7 +1541,10 @@ describe("stripFurniture", () => {
 
     // The naive first-fitting band (containment only, no furniture clearance) is what Tier 2 would
     // find — derive it directly to prove the real Tier-1 answer moved off it because of the numeral.
-    const requiredHalfWidth = Math.max(0, page.halfWidthRange[0]) + NAME_BOX_CLEARANCE_MM + SIZES.nameBoxWidthMm;
+    // requiredHalfWidth mirrors scanPagesForNameBlock's own two-sided formula (quick task
+    // 260903-18d): the box's left edge, its width, and a second clearanceMm past its outboard edge.
+    const requiredHalfWidth =
+      Math.max(0, page.halfWidthRange[0]) + NAME_BOX_CLEARANCE_MM + SIZES.nameBoxWidthMm + NAME_BOX_CLEARANCE_MM;
     const hasNosewardNeighbor = page.index > 0;
     const hasTailwardNeighbor = page.index < layout.pages.length - 1;
     const floor = page.stationRange[0] + (hasTailwardNeighbor ? layout.overlap : 0);
@@ -1467,7 +1596,7 @@ describe("stripFurniture", () => {
       const page0 = layout.pages[0];
 
       const leftEdge = Math.max(0, page0.halfWidthRange[0]) + NAME_BOX_CLEARANCE_MM;
-      const requiredHalfWidth = leftEdge + SIZES.nameBoxWidthMm;
+      const requiredHalfWidth = leftEdge + SIZES.nameBoxWidthMm + NAME_BOX_CLEARANCE_MM;
       const hasTailwardNeighbor = layout.pages.length > 1;
       const floor = page0.stationRange[0] + (hasTailwardNeighbor ? layout.overlap : 0);
       const ceiling = Math.min(page0.stationRange[1], geometry.length);
@@ -1487,7 +1616,7 @@ describe("stripFurniture", () => {
       expect(anyFits).toBe(false);
     });
 
-    it(`needle-nose (${paper}): the block lands on page index 1, not 0, still inside the outline and at the same 4mm stringer clearance`, () => {
+    it(`needle-nose (${paper}): the block lands on a later page, not 0, still inside the outline and at the same 4mm stringer clearance — every page before it genuinely cannot hold the block (quick task 260903-18d: the wider rule can push the landing page further than it did before)`, () => {
       const geometry = buildNeedleNoseGeometry();
       const layout = computeStripLayout(geometry, paper);
       const marks = computeTemplateMarks(geometry);
@@ -1495,12 +1624,53 @@ describe("stripFurniture", () => {
       const furniture = stripFurniture(layout, geometry, labelRows, SIZES);
       const { nameBlock } = furniture;
 
-      expect(nameBlock.pageIndex).toBe(1);
-      expect(nameBlock.halfWidthStart).toBeCloseTo(NAME_BOX_CLEARANCE_MM, 6);
+      // Under the old, stringer-only rule this always landed on page index 1. The wider rule is
+      // expected to push that landing page further on at least one paper size — assert the
+      // property the literal page number was standing in for, not the number itself.
+      expect(nameBlock.pageIndex).toBeGreaterThan(0);
+
+      // Every page BEFORE the one it actually landed on genuinely cannot hold the block — the same
+      // scan the sibling "page 0 genuinely cannot hold it" test above performs, generalised to a
+      // loop over every earlier page.
+      for (let earlierIndex = 0; earlierIndex < nameBlock.pageIndex; earlierIndex++) {
+        const earlierPage = layout.pages[earlierIndex];
+        const earlierLeftEdge = Math.max(0, earlierPage.halfWidthRange[0]) + NAME_BOX_CLEARANCE_MM;
+        const earlierRequiredHalfWidth = earlierLeftEdge + SIZES.nameBoxWidthMm + NAME_BOX_CLEARANCE_MM;
+        const hasNosewardNeighbor = earlierIndex > 0;
+        const hasTailwardNeighbor = earlierIndex < layout.pages.length - 1;
+        const earlierFloor = earlierPage.stationRange[0] + (hasTailwardNeighbor ? layout.overlap : 0);
+        const earlierCeiling = Math.min(
+          earlierPage.stationRange[1] - (hasNosewardNeighbor ? layout.overlap : 0),
+          geometry.length,
+        );
+
+        let anyFitsOnEarlierPage = false;
+        for (
+          let candidate = earlierCeiling;
+          candidate - SIZES.nameBoxHeightMm >= earlierFloor;
+          candidate -= 1
+        ) {
+          const bottom = candidate - SIZES.nameBoxHeightMm;
+          let min = Infinity;
+          for (let station = bottom; station <= candidate; station += 1) {
+            min = Math.min(min, sampleOutline(geometry, mm(station)));
+          }
+          if (min >= earlierRequiredHalfWidth) {
+            anyFitsOnEarlierPage = true;
+            break;
+          }
+        }
+        expect(anyFitsOnEarlierPage).toBe(false);
+      }
 
       const page = layout.pages[nameBlock.pageIndex];
+      // The inboard (stringer-side) edge keeps its own formula regardless of which page the block
+      // ultimately lands on.
+      const expectedLeftEdge = Math.max(0, page.halfWidthRange[0]) + NAME_BOX_CLEARANCE_MM;
+      expect(nameBlock.halfWidthStart).toBeCloseTo(expectedLeftEdge, 6);
+
       const bottom = nameBlock.topStation - SIZES.nameBoxHeightMm;
-      const requiredHalfWidth = nameBlock.halfWidthStart + SIZES.nameBoxWidthMm;
+      const requiredHalfWidth = nameBlock.halfWidthStart + SIZES.nameBoxWidthMm + NAME_BOX_CLEARANCE_MM;
       let minHalfWidth = Infinity;
       for (let station = bottom; station <= nameBlock.topStation; station += 1) {
         minHalfWidth = Math.min(minHalfWidth, sampleOutline(geometry, mm(station)));
@@ -1526,8 +1696,9 @@ describe("stripFurniture", () => {
         const page = layout.pages[nameBlock.pageIndex];
         const bottom = nameBlock.topStation - SIZES.nameBoxHeightMm;
 
-        // Inside the outline over the box's own height.
-        const requiredHalfWidth = nameBlock.halfWidthStart + SIZES.nameBoxWidthMm;
+        // Inside the outline over the box's own height, with clearanceMm reserved past the box's
+        // outboard edge as well as its inboard one (quick task 260903-18d).
+        const requiredHalfWidth = nameBlock.halfWidthStart + SIZES.nameBoxWidthMm + NAME_BOX_CLEARANCE_MM;
         let minHalfWidth = Infinity;
         for (let station = bottom; station <= nameBlock.topStation; station += 1) {
           minHalfWidth = Math.min(minHalfWidth, sampleOutline(geometry, mm(station)));
