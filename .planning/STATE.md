@@ -5,7 +5,7 @@ milestone_name: milestone
 current_phase: 04
 status: completed
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-09-02T21:48:28.710Z"
+last_updated: "2026-09-03T03:11:21.018Z"
 last_activity: 2026-09-02
 last_activity_desc: "Completed quick task 260902-cj5: Paper Saver strip export (third Export Template card)"
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-09-02 — Completed quick task 260902-kon: Paper Saver page 1 name/dims block moved inside the outline
+Last activity: 2026-09-02 — Fast task: Full Sized Template caption ends with a period
 
 Progress: [██████████] 100%
 
@@ -217,6 +217,7 @@ Recent decisions affecting current work:
 | 260902-kon | Paper Saver page 1: the board name/dims block moves INSIDE the outline (4mm off the stringer, between stringer and rail curve) so the dims survive cutting the template out along the curve; the 2in scale square and caption stay exactly where they were, pinned as literal numbers. Placement decided in template.ts: first band down from the nose wide enough for the block, kept clear of the registration line and every label row, and stepped down past the page numeral's station where they would overlap (midlength needed it); a page-walk fallback puts it on the first page that fits (a legal needle-nose spec lands on page 2) and never lets it cross the curve. All four presets land on page 1 on both papers. Strip maths pinned byte-identical by a digest; 1552 to 1622 tests. Verified by rendering page 1 of five samples. Open: the block's top corner grazes the curve on most boards (no curve-side clearance, same as the full template), founder's call whether to add 4mm there | 2026-09-02 | c7d13a6 | [260902-kon-the-2in-box-is-good-move-the-board-info-](./quick/260902-kon-the-2in-box-is-good-move-the-board-info-/) |
 | 260902-fast | Export dialog's middle card renamed "Full Sized Template" with caption "True-size, full-length half board template" (was "Full Template" / "True-size outline tiled across pages you tape together."); the file's comment mentions renamed to match, no behaviour change | 2026-09-02 | aa9a615 | (fast task — no plan dir) |
 | 260902-fast2 | Export dialog's third card retitled "Full Sized Template - Paper Saver" with caption "True-size, full-length landscape print. Great for boards ≤20.5\" Wide." (was "Paper Saver" / "Just the rail curve, one page at a time."); copy only, comments keep the short name Paper Saver since the title still carries it | 2026-09-02 | e5e707a | (fast task — no plan dir) |
+| 260902-fast4 | Full Sized Template caption ends with a period, matching the Paper Saver card | 2026-09-03 | 3113da7 | (fast task — no plan dir) |
 
 ## Deferred Items
 
