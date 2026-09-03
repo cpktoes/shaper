@@ -444,7 +444,10 @@ describe("name block containment (post-checkpoint fix, defect 3: box fully insid
         const { height } = nameBlockContent(doc, dims);
         const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, height, NAME_BOX_CLEARANCE_MM);
 
-        const requiredHalfWidth = NAME_BOX_CLEARANCE_MM + NAME_BOX_WIDTH_MM;
+        // Quick task 260903-18d: the required half-width now reserves NAME_BOX_CLEARANCE_MM on
+        // BOTH sides of the box — the existing inboard gap off the stringer, and a new outboard
+        // gap the curve itself must clear past the box's own right edge.
+        const requiredHalfWidth = NAME_BOX_CLEARANCE_MM + NAME_BOX_WIDTH_MM + NAME_BOX_CLEARANCE_MM;
         const bottomStation = mm(placement.topStation - height);
 
         expect(sampleOutline(geometry, placement.topStation)).toBeGreaterThanOrEqual(requiredHalfWidth);
@@ -453,7 +456,43 @@ describe("name block containment (post-checkpoint fix, defect 3: box fully insid
         const page0 = layout.pages[0];
         expect(placement.topStation).toBeLessThanOrEqual(page0.stationRange[1]);
         expect(bottomStation).toBeGreaterThanOrEqual(page0.stationRange[0]);
+
+        // Never reaches the narrow-nose fallback at the box's own real, drawn height: the fallback
+        // clamps position without proving containment, so if it had been reached here, the two
+        // containment assertions above would (for a real preset) be the ones catching it.
+        expect(placement.pageIndex).toBe(0);
       });
+
+      it.each(BOARD_PRESETS)(
+        "$id: the outline curve clears the real (name + full dims row) box's outboard (curve-side) edge by at least NAME_BOX_CLEARANCE_MM over the box's whole station span — the founder's requirement, asserted directly rather than merely implied by containment (quick task 260903-18d)",
+        (preset) => {
+          const geometry = buildOutline(preset.outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const doc = new jsPDF({ unit: "mm" });
+          const dims = {
+            length: geometry.length,
+            widePointWidth: geometry.halfWidePointWidth,
+            centerThickness: preset.rails.center.boardThickness,
+            noseWidth12in: geometry.noseWidthAt12in,
+            tailWidth12in: geometry.tailWidthAt12in,
+            widePointOffset: preset.outline.widePointOffset,
+            volumeLitres: litres(27.4),
+          };
+          const { height } = nameBlockContent(doc, dims);
+          const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, height, NAME_BOX_CLEARANCE_MM);
+          const bottomStation = placement.topStation - height;
+          const blockRightEdge = placement.halfWidthStart + NAME_BOX_WIDTH_MM;
+
+          const step = 1;
+          let minHalfWidth = Infinity;
+          for (let station = bottomStation; station <= placement.topStation; station += step) {
+            minHalfWidth = Math.min(minHalfWidth, sampleOutline(geometry, mm(station)));
+          }
+          minHalfWidth = Math.min(minHalfWidth, sampleOutline(geometry, mm(placement.topStation)));
+
+          expect(minHalfWidth - blockRightEdge).toBeGreaterThanOrEqual(NAME_BOX_CLEARANCE_MM - 1e-6);
+        },
+      );
     });
   }
 });

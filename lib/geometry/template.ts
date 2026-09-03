@@ -26,7 +26,13 @@ export const NAME_BOX_WIDTH_MM = 74;
  * `nameBlockPlacement`'s default; the real drawn box is taller (the drawing module computes its
  * actual height from however many lines the dims row wraps to, and passes that in explicitly). */
 export const NAME_BOX_HEIGHT_MM = 20;
-/** How far the box's left edge sits out from the stringer (half-width 0). */
+/** The board name + dims block's clearance, kept on BOTH edges of the box (quick task 260903-18d
+ * — "give the 4mm of clearance on both template prints"): the box's left (inboard) edge sits this
+ * far out from the stringer (half-width 0), AND the outline curve itself must clear the box's
+ * right (outboard) edge by this same distance, so a shaper cutting the template along the curve
+ * never slices through the box. One constant, one rule, used the same way in both places it
+ * applies — `nameBlockPlacement` (the tiled sheet) and `scanPagesForNameBlock` (the Paper Saver
+ * strip). */
 export const NAME_BOX_CLEARANCE_MM = 4;
 
 /** Paper sizes this phase supports — a closed compile-time union, never a validated free string
@@ -630,7 +636,10 @@ function minHalfWidthOverStationSpan(geometry: OutlineGeometry, top: number, bot
  * station of its nose-most edge, and its left edge's clearance from the stringer. Chosen so every
  * corner of the fixed-size box lands inside the outline (post-checkpoint fix, defect 3: "the Board
  * Name and dimension box needs to be contained INSIDE the board outline on page 1"), scanning down
- * from the nose tip until the outline is wide enough, over the box's whole height, to hold it.
+ * from the nose tip until the outline is wide enough, over the box's whole height, to hold the box
+ * AND leave `NAME_BOX_CLEARANCE_MM` of daylight between the box's own right (outboard) edge and
+ * the curve — the same clearance the box's left (inboard) edge already keeps off the stringer
+ * (quick task 260903-18d — "give the 4mm of clearance on both template prints").
  *
  * Also keeps the box's bottom edge clear of the row-overlap band page 0 shares with the next page
  * down — that band is the shared duplicate-content strip `templatePageBoxes` marks off with its
@@ -653,7 +662,13 @@ export function nameBlockPlacement(
 ): NameBlockPlacement {
   const page = layout.pages.find((p) => p.index === 0) ?? layout.pages[0];
   const halfWidthStart = mm(clearanceMm);
-  const requiredHalfWidth = clearanceMm + boxWidthMm;
+  // Reserves clearanceMm on BOTH sides of the box: the existing inboard gap off the stringer
+  // (already baked into halfWidthStart, added here again as the left edge's own contribution to
+  // the required span) plus a second, outboard clearanceMm the curve itself must clear past the
+  // box's own right edge (quick task 260903-18d — "give the 4mm of clearance on both template
+  // prints"). The stringer-side clearance itself is unchanged; only this required-half-width total
+  // grew, from `clearanceMm + boxWidthMm` to `clearanceMm + boxWidthMm + clearanceMm`.
+  const requiredHalfWidth = clearanceMm + boxWidthMm + clearanceMm;
 
   const overlapReserve = layout.rows > 1 ? layout.overlap : 0;
   const searchFloor = page.stationRange[0] + overlapReserve;
@@ -1109,22 +1124,31 @@ function bandClearsExclusionZone(top: number, bottom: number, center: number, ga
 
 /**
  * Scans the strip's pages nose-to-tail for the first station band, on the first page, that holds
- * the board name + dims block fully inside the outline while clearing whichever furniture
- * constraints `requireFurnitureClearance` asks for. One function serves the first two of
- * `stripFurniture`'s three fallback tiers: Tier 1 calls it with `requireFurnitureClearance: true`
- * (containment plus label-row and numeral clearance); Tier 2 calls it again with `false`
- * (containment only), reached only when no page satisfies Tier 1 — unreachable for any board the
- * outline editor can produce.
+ * the board name + dims block fully inside the outline — clearing `clearanceMm` of daylight past
+ * BOTH the stringer (inboard) and the curve (outboard, quick task 260903-18d — "give the 4mm of
+ * clearance on both template prints") — while clearing whichever furniture constraints
+ * `requireFurnitureClearance` asks for. One function serves the first two of `stripFurniture`'s
+ * three fallback tiers: Tier 1 calls it with `requireFurnitureClearance: true` (containment plus
+ * label-row and numeral clearance); Tier 2 calls it again with `false` (containment only), reached
+ * only when no page satisfies Tier 1 — unreachable for any board the outline editor can produce.
  *
  * Within a page, the left edge is the greater of zero and the page's own left printable edge, plus
  * `clearanceMm` — on a page whose own slid window still reaches the stringer (the common case),
  * that resolves to exactly `clearanceMm` off the true stringer; on a page that doesn't reach it,
  * the box stays `clearanceMm` off wherever the page's own printable window starts instead, never
  * closer to the true stringer than that (`design_decision` §2 of quick task 260902-kon). The
- * search floor and ceiling reserve `layout.overlap` on whichever of the page's own station edges
- * border a neighbouring page — the same shared duplicate-content strip a registration line and its
- * label already keep clear of, so furniture never belongs there either (`design_decision` §1) —
- * and the ceiling is clamped to the board's own length.
+ * required half-width the box's station band must clear over its whole height is
+ * `leftEdge + boxWidthMm + clearanceMm` — the box's own left edge, its width, and a second
+ * `clearanceMm` reserved past the box's right (outboard) edge, so the outline curve keeps the same
+ * daylight there that the stringer side already gets. That trailing clearance term belongs only to
+ * this outline-containment check — the separate paper-fit guard just below, which asks only
+ * whether the box's own drawn footprint fits the page at all, is deliberately NOT widened by it
+ * (`design_decision` §2 of quick task 260903-18d's plan: folding it in would skip a page for want
+ * of 4mm of paper that nothing is ever drawn on). The search floor and ceiling reserve
+ * `layout.overlap` on whichever of the page's own station edges border a neighbouring page — the
+ * same shared duplicate-content strip a registration line and its label already keep clear of, so
+ * furniture never belongs there either (`design_decision` §1 of quick task 260902-kon) — and the
+ * ceiling is clamped to the board's own length.
  */
 function scanPagesForNameBlock(
   layout: StripLayout,
@@ -1137,8 +1161,22 @@ function scanPagesForNameBlock(
 ): StripFurniturePlacement | undefined {
   for (const page of layout.pages) {
     const leftEdge = Math.max(0, page.halfWidthRange[0]) + clearanceMm;
-    const requiredHalfWidth = leftEdge + boxWidthMm;
-    if (requiredHalfWidth > page.halfWidthRange[1]) continue; // this page can't hold the box at full width at all
+    // The box's own drawn footprint — used ONLY by the paper-fit guard immediately below, which
+    // compares it against the page's own printable right edge, never against the outline curve.
+    // Named separately from `requiredHalfWidth` below so the two quantities can never be merged by
+    // accident: the outboard clearance term is a property of the curve-containment check alone
+    // (`design_decision` §2 of quick task 260903-18d's plan).
+    const boxFootprintRightEdge = leftEdge + boxWidthMm;
+    if (boxFootprintRightEdge > page.halfWidthRange[1]) continue; // this page can't hold the box at full width at all
+
+    // The curve-containment requirement: the box's own left edge, its width, and a second
+    // clearanceMm past its outboard edge, so the curve keeps the same daylight past the box that
+    // the stringer already keeps before it (quick task 260903-18d — "give the 4mm of clearance on
+    // both template prints"). Written out from `leftEdge` again (rather than reused from
+    // `boxFootprintRightEdge` above) so this expression reads as one rule with
+    // `nameBlockPlacement`'s own `clearanceMm + boxWidthMm + clearanceMm`, not as an
+    // implementation detail of the paper-fit guard.
+    const requiredHalfWidth = leftEdge + boxWidthMm + clearanceMm;
 
     const hasNosewardNeighbor = page.index > 0;
     const hasTailwardNeighbor = page.index < layout.pages.length - 1;
@@ -1190,10 +1228,13 @@ function scanPagesForNameBlock(
  *   `STRIP_FURNITURE_NUMERAL_GAP_MM`. This tier finds a home for every preset at both paper sizes,
  *   and for a legal needle-nosed board on a later page of the same template.
  * - **Tier 2**: the same scan with the label-row and numeral clearances dropped, keeping the one
- *   constraint that never relaxes — the block still lands fully inside the outline. Unreachable
- *   for any board the outline editor can produce: the widepoint alone is always at least
- *   `WIDEPOINT_WIDTH_RANGE_IN.min` of full width, so a fitting band always exists somewhere on the
- *   strip.
+ *   constraint that never relaxes — the block still lands fully inside the outline, clear of the
+ *   curve by `NAME_BOX_CLEARANCE_MM` on its outboard edge as well as its inboard one (quick task
+ *   260903-18d). Unreachable for any board the outline editor can produce: the widepoint's own
+ *   minimum half-width (`WIDEPOINT_WIDTH_RANGE_IN.min`, 16in full width, 203.2mm half-width) is
+ *   always comfortably clear of the required half-width, which after this task's two-sided
+ *   clearance change rises from 78mm to 82mm (`NAME_BOX_CLEARANCE_MM` x2 + `NAME_BOX_WIDTH_MM` =
+ *   4 + 74 + 4) — so a fitting band always exists somewhere on the strip.
  * - **Tier 3**: page 0's own deepest searchable band, mirroring `nameBlockPlacement`'s own fallback
  *   posture for the tiled template. Also unreachable for any real board; it exists only so this
  *   function has a defined answer for every input.
