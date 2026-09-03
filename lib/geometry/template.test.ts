@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { WIDEPOINT_WIDTH_RANGE_IN } from "./board";
+import { BOARD_LENGTH_RANGE_IN, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
 import { MEASURE_STATION_MM, buildOutline, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import {
@@ -35,7 +35,7 @@ import {
   type TemplateMarks,
   templatePageBoxes,
 } from "./template";
-import { formatInchesFraction, inchesToMm, mm } from "./units";
+import { degrees, formatInchesFraction, inchesToMm, mm } from "./units";
 
 const PAPERS: PaperSize[] = ["letter", "a4"];
 const TOLERANCE_MM = 1e-6;
@@ -1443,5 +1443,115 @@ describe("stripFurniture", () => {
     expect(naiveCollidesWithNumeral).toBe(true);
     expect(nameBlock.topStation).not.toBeCloseTo(naiveTop!, 6);
     expect(nameBlock.topStation).toBeLessThan(naiveTop!);
+  });
+
+  /** A legal, in-range spec a real shaper could draw with the outline editor's own sliders — every
+   * one of the four overridden fields sits at its own legal extreme (`BOARD_LENGTH_RANGE_IN.max`,
+   * `WIDEPOINT_WIDTH_RANGE_IN.min`, the nose angle slider's own 35deg floor, 0% nose fullness), not
+   * a hand-fabricated `OutlineGeometry`. This matters because the narrow-nose fallback this task
+   * adds is reachable by a real user's board, not a defensive branch nobody can trigger. */
+  function buildNeedleNoseGeometry() {
+    return buildOutline({
+      ...BOARD_PRESETS[0].outline,
+      length: inchesToMm(BOARD_LENGTH_RANGE_IN.max),
+      widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.min),
+      noseAngle: degrees(35),
+      noseFullness: 0,
+    });
+  }
+
+  for (const paper of PAPERS) {
+    it(`needle-nose (${paper}): page 0 genuinely cannot hold the block — no band on page 0 reaches the required half-width over the box's own height`, () => {
+      const geometry = buildNeedleNoseGeometry();
+      const layout = computeStripLayout(geometry, paper);
+      const page0 = layout.pages[0];
+
+      const leftEdge = Math.max(0, page0.halfWidthRange[0]) + NAME_BOX_CLEARANCE_MM;
+      const requiredHalfWidth = leftEdge + SIZES.nameBoxWidthMm;
+      const hasTailwardNeighbor = layout.pages.length > 1;
+      const floor = page0.stationRange[0] + (hasTailwardNeighbor ? layout.overlap : 0);
+      const ceiling = Math.min(page0.stationRange[1], geometry.length);
+
+      let anyFits = false;
+      for (let candidate = ceiling; candidate - SIZES.nameBoxHeightMm >= floor; candidate -= 1) {
+        const bottom = candidate - SIZES.nameBoxHeightMm;
+        let min = Infinity;
+        for (let station = bottom; station <= candidate; station += 1) {
+          min = Math.min(min, sampleOutline(geometry, mm(station)));
+        }
+        if (min >= requiredHalfWidth) {
+          anyFits = true;
+          break;
+        }
+      }
+      expect(anyFits).toBe(false);
+    });
+
+    it(`needle-nose (${paper}): the block lands on page index 1, not 0, still inside the outline and at the same 4mm stringer clearance`, () => {
+      const geometry = buildNeedleNoseGeometry();
+      const layout = computeStripLayout(geometry, paper);
+      const marks = computeTemplateMarks(geometry);
+      const labelRows = stripLabelRows(layout, marks, geometry);
+      const furniture = stripFurniture(layout, geometry, labelRows, SIZES);
+      const { nameBlock } = furniture;
+
+      expect(nameBlock.pageIndex).toBe(1);
+      expect(nameBlock.halfWidthStart).toBeCloseTo(NAME_BOX_CLEARANCE_MM, 6);
+
+      const page = layout.pages[nameBlock.pageIndex];
+      const bottom = nameBlock.topStation - SIZES.nameBoxHeightMm;
+      const requiredHalfWidth = nameBlock.halfWidthStart + SIZES.nameBoxWidthMm;
+      let minHalfWidth = Infinity;
+      for (let station = bottom; station <= nameBlock.topStation; station += 1) {
+        minHalfWidth = Math.min(minHalfWidth, sampleOutline(geometry, mm(station)));
+      }
+      expect(minHalfWidth).toBeGreaterThanOrEqual(requiredHalfWidth - TOLERANCE_MM);
+
+      // Never buys its fit outboard, and never at a page other than the printable pages that
+      // actually exist.
+      expect(nameBlock.pageIndex).toBeGreaterThanOrEqual(0);
+      expect(nameBlock.pageIndex).toBeLessThan(page ? layout.pages.length : -1);
+    });
+  }
+
+  it("every preset at both papers: the name block lands inside the outline, clear of label rows, clear of the numeral, and clear of the overlap bands — recorded per page and station band", () => {
+    for (const paper of PAPERS) {
+      for (const preset of BOARD_PRESETS) {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const labelRows = stripLabelRows(layout, marks, geometry);
+        const furniture = stripFurniture(layout, geometry, labelRows, SIZES);
+        const { nameBlock } = furniture;
+        const page = layout.pages[nameBlock.pageIndex];
+        const bottom = nameBlock.topStation - SIZES.nameBoxHeightMm;
+
+        // Inside the outline over the box's own height.
+        const requiredHalfWidth = nameBlock.halfWidthStart + SIZES.nameBoxWidthMm;
+        let minHalfWidth = Infinity;
+        for (let station = bottom; station <= nameBlock.topStation; station += 1) {
+          minHalfWidth = Math.min(minHalfWidth, sampleOutline(geometry, mm(station)));
+        }
+        expect(minHalfWidth).toBeGreaterThanOrEqual(requiredHalfWidth - TOLERANCE_MM);
+
+        // Clear of the overlap band on any edge that borders a neighbouring page.
+        const hasNosewardNeighbor = page.index > 0;
+        const hasTailwardNeighbor = page.index < layout.pages.length - 1;
+        const floor = page.stationRange[0] + (hasTailwardNeighbor ? layout.overlap : 0);
+        const ceiling = Math.min(page.stationRange[1] - (hasNosewardNeighbor ? layout.overlap : 0), geometry.length);
+        expect(bottom).toBeGreaterThanOrEqual(floor - TOLERANCE_MM);
+        expect(nameBlock.topStation).toBeLessThanOrEqual(ceiling + TOLERANCE_MM);
+
+        // Clear of every label row on its own page by the row gap, and of the numeral by the numeral gap.
+        for (const row of labelRows.filter((r) => r.pageIndex === nameBlock.pageIndex)) {
+          const clearsAbove = nameBlock.topStation <= row.baselineStation - STRIP_FURNITURE_ROW_GAP_MM;
+          const clearsBelow = bottom >= row.baselineStation + STRIP_FURNITURE_ROW_GAP_MM;
+          expect(clearsAbove || clearsBelow).toBe(true);
+        }
+        const clearsNumeralAbove = nameBlock.topStation <= page.pageNumberStation - STRIP_FURNITURE_NUMERAL_GAP_MM;
+        const clearsNumeralBelow = bottom >= page.pageNumberStation + STRIP_FURNITURE_NUMERAL_GAP_MM;
+        expect(clearsNumeralAbove || clearsNumeralBelow).toBe(true);
+      }
+    }
   });
 });
