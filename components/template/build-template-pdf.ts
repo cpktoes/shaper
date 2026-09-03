@@ -21,10 +21,12 @@ import {
   markLineSegments,
   markPlacements,
   nameBlockPlacement,
+  scaleSquarePlacement,
   tailClosureSegments,
   type HowToBoxPlacement,
   type NameBlockPlacement,
   type PaperSize,
+  type ScaleSquarePlacement,
   type TailClosureSegment,
   type TemplateLayout,
   type TemplateMarkLineSegment,
@@ -84,11 +86,21 @@ const SCALE_SQUARE_LINE_WEIGHT_MM = 0.35;
 /** Room reserved below the scale square for its own caption text (round 3 post-checkpoint fix,
  * defect 2: "the 2in box and instructions are not inside the margin/line up lines") — split into a
  * gap and a text-height allowance so the scale-square furniture rectangle's own bottom edge lands
- * exactly where the how-to box begins (`SCALE_SQUARE_CAPTION_GAP_MM + SCALE_SQUARE_CAPTION_HEIGHT_MM`
- * equals `HOWTO_BOX_TOP_GAP_MM` below), never overlapping it even after this round's containment
- * fix. */
+ * exactly where the how-to box begins when the square sits in its usual outboard corner
+ * (`SCALE_SQUARE_CAPTION_GAP_MM + SCALE_SQUARE_CAPTION_HEIGHT_MM` equals `HOWTO_BOX_TOP_GAP_MM`
+ * below). Quick task 260903-h7t moved the square's own DECISION of where it sits on page 0 into
+ * `lib/geometry/template.ts`'s `scaleSquarePlacement` — its corner spot by default (D-07, costs
+ * the board no drawing area), or stacked inside the outline under whichever furniture is currently
+ * lowest on the page when the curve reaches the corner spot's own footprint (measured on the
+ * widest longboard: 5.8mm/11.7mm into the footprint at Letter/A4; on a 100%-nose-fullness
+ * longboard: 1.8mm/7.7mm; the plain longboard preset stays clear by 8.4mm/2.5mm). This module only
+ * converts that decision into page-local millimetres — see `scaleSquareRect`. */
 const SCALE_SQUARE_CAPTION_GAP_MM = 5;
 const SCALE_SQUARE_CAPTION_HEIGHT_MM = 3;
+/** The square's own full vertical footprint on the page — its own height plus the caption's
+ * reserved space below it — named once here rather than repeated at every call site that needs the
+ * square's whole reserved band, not just the drawn square itself (quick task 260903-h7t). */
+const SCALE_SQUARE_FOOTPRINT_HEIGHT_MM = SCALE_SQUARE_MM + SCALE_SQUARE_CAPTION_GAP_MM + SCALE_SQUARE_CAPTION_HEIGHT_MM;
 const NAME_BOX_LINE_WEIGHT_MM = 0.25;
 const NAME_BOX_PADDING_MM = 3;
 /** The name block's own text width budget — Print Artifact Contract #6: a name too long for the
@@ -260,34 +272,55 @@ function pageBoxRect(box: TemplatePageBox, page: TemplatePage, margin: number): 
   return { name: "alignment-box", x: left, y: top, width: right - left, height: bottom - top };
 }
 
-/** The scale square's own rectangle, including its caption's reserved height — anchored to the
- * page's own alignment box (round 3 post-checkpoint fix, defect 2: "the 2in box... [is] not
- * inside the margin/line up lines"), matches `drawScaleSquare`'s placement exactly, so the
- * furniture-avoidance and containment checks below are built from the real drawn area. */
-function scaleSquareRect(box: TemplatePageBox, page: TemplatePage, margin: number): TemplateFurnitureRect {
-  const boxRect = pageBoxRect(box, page, margin);
+/** The scale square's own rectangle, including its caption's reserved height — converted straight
+ * from the square's own resolved placement (`ScaleSquarePlacement`, quick task 260903-h7t) rather
+ * than anchored to the page's alignment box. When the square is in its usual "corner" position
+ * this is algebraically the same affine map the old `pageBoxRect`-anchored formula used, regrouped
+ * — `halfWidthToX`/`stationToY` are both slope-1 maps, so the reproduced x/y agree with the
+ * historical rect to floating-point noise (proved by a round-trip test in
+ * `build-template-pdf.test.ts`). When the square is "interior" instead, this is the rect stacked
+ * under whichever furniture is lowest on the page. Matches `drawScaleSquare`'s placement exactly,
+ * so the furniture-avoidance and containment checks below are built from the real drawn area. */
+function scaleSquareRect(
+  scaleSquare: { placement: ScaleSquarePlacement; squareMm: number; footprintHeightMm: number },
+  page: TemplatePage,
+  margin: number,
+): TemplateFurnitureRect {
+  const { placement, squareMm, footprintHeightMm } = scaleSquare;
   return {
     name: "scale-square",
-    x: boxRect.x + boxRect.width - SCALE_SQUARE_MM,
-    y: boxRect.y,
-    width: SCALE_SQUARE_MM,
-    height: SCALE_SQUARE_MM + SCALE_SQUARE_CAPTION_GAP_MM + SCALE_SQUARE_CAPTION_HEIGHT_MM,
+    x: halfWidthToX(placement.halfWidthStart, page, margin),
+    y: stationToY(placement.topStation, page, margin),
+    width: squareMm,
+    height: footprintHeightMm,
   };
 }
 
-/** D-07's 2in x 2in scale-check square — nose page only, in the alignment box's own top-outward
- * corner (round 3 post-checkpoint fix, defect 2), a corner the curve never reaches (near the nose
- * tip the outline hugs the stringer, so that corner is always clear). */
-function drawScaleSquare(doc: jsPDF, page: TemplatePage, margin: number, box: TemplatePageBox): void {
-  if (page.index !== 0) return;
-  const { x, y } = scaleSquareRect(box, page, margin);
+/** D-07's 2in x 2in scale-check square. In its usual "corner" spot (the alignment box's own
+ * top-outward corner) whenever the outline curve doesn't reach into the square's own footprint
+ * there; moved "interior" — inside the outline, stacked under whichever furniture is currently
+ * lowest on the page — on the boards where it does (quick task 260903-h7t: measured 5.8mm/11.7mm
+ * into the corner footprint on the widest longboard at Letter/A4, 1.8mm/7.7mm on a
+ * 100%-nose-fullness longboard; every board the app ships as a preset keeps the corner spot on
+ * both paper sizes). The DECISION of which lives in `lib/geometry/template.ts`'s
+ * `scaleSquarePlacement` — this function only draws on whichever page the resolved placement's own
+ * `pageIndex` names (always page 0 today), never a hard-coded page check. */
+function drawScaleSquare(
+  doc: jsPDF,
+  page: TemplatePage,
+  margin: number,
+  scaleSquare: { placement: ScaleSquarePlacement; squareMm: number; footprintHeightMm: number },
+): void {
+  if (page.index !== scaleSquare.placement.pageIndex) return;
+  const { x, y } = scaleSquareRect(scaleSquare, page, margin);
+  const { squareMm } = scaleSquare;
   doc.setDrawColor(0);
   doc.setLineWidth(SCALE_SQUARE_LINE_WEIGHT_MM);
-  doc.rect(x, y, SCALE_SQUARE_MM, SCALE_SQUARE_MM, "S");
+  doc.rect(x, y, squareMm, squareMm, "S");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(0);
-  doc.text('2" x 2" — measure before taping', x + SCALE_SQUARE_MM / 2, y + SCALE_SQUARE_MM + SCALE_SQUARE_CAPTION_GAP_MM, {
+  doc.text('2" x 2" — measure before taping', x + squareMm / 2, y + squareMm + SCALE_SQUARE_CAPTION_GAP_MM, {
     align: "center",
   });
 }
@@ -429,11 +462,16 @@ function drawTailClosure(doc: jsPDF, page: TemplatePage, margin: number, segment
 /** The how-to box's plain-English lines (D-10 / Print Artifact Contract #4), pure data — a small
  * exported helper so its line count (3 vs. 4) is testable without reading the rendered page. The
  * sideways-taping line only applies when the grid actually has more than one column; omitted
- * entirely for the common single-column case rather than printing a caveat that never applies. */
+ * entirely for the common single-column case rather than printing a caveat that never applies.
+ *
+ * Line 2 names the 2in x 2in square by its own size, not by where it sits on the page (quick task
+ * 260903-h7t) — on the widest longboard and a 100%-nose-fullness longboard the square now prints
+ * BELOW the how-to box rather than above it, so "the square above" would be false on exactly the
+ * two boards this task moves it on. */
 export function templateHowToLines(layout: TemplateLayout): string[] {
   const lines = [
     'Print at 100% — turn off "Fit to page."',
-    'Measure the square above. It should be exactly 2" x 2".',
+    'Measure the 2" x 2" square. It should be exactly 2" x 2".',
     "Lay each page so its edge lines up on the next page's border line — the curve should match where they overlap — then tape.",
   ];
   if (layout.columns > 1) {
@@ -518,23 +556,20 @@ function computeHowToBoxPlacement(
   return { placement, boxWidthMm: HOWTO_BOX_WIDTH_MM, boxHeightMm, lines };
 }
 
-/** The nose-page how-to box's own rectangle — computed once so the drawing function and the
- * furniture-collision math in `templatePageZeroFurnitureRects` agree on exactly the same box,
- * including its height, which varies with how many lines defect 1's wrapping produced, AND its
- * position, which now varies with whether the curve clears the outboard spot (quick task
- * 260903-fqv). Converts `computeHowToBoxPlacement`'s station/half-width answer through
- * `stationToY`/`halfWidthToX`, exactly as `drawNameBlock` already does — no placement arithmetic
- * of its own beyond that conversion. */
+/** The nose-page how-to box's own rectangle — converted from the already-resolved
+ * `computeHowToBoxPlacement` result (`ResolvedPageZeroFurniture`, quick task 260903-h7t) so the
+ * drawing function and the furniture-collision math in `templatePageZeroFurnitureRects` agree on
+ * exactly the same box, including its height, which varies with how many lines defect 1's wrapping
+ * produced, AND its position, which varies with whether the curve clears the outboard spot (quick
+ * task 260903-fqv). Converts the station/half-width answer through `stationToY`/`halfWidthToX`,
+ * exactly as `drawNameBlock` already does — no placement arithmetic, and no re-computation, of its
+ * own. */
 function howToBoxRect(
-  doc: jsPDF,
-  layout: TemplateLayout,
-  geometry: OutlineGeometry,
-  box: TemplatePageBox,
+  howToBox: { placement: HowToBoxPlacement; boxWidthMm: number; boxHeightMm: number; lines: string[] },
   page: TemplatePage,
   margin: number,
-  nameBlock: ResolvedNameBlock,
 ): { x: number; y: number; width: number; height: number; lines: string[]; position: HowToBoxPlacement["position"] } {
-  const { placement, boxWidthMm, boxHeightMm, lines } = computeHowToBoxPlacement(doc, layout, geometry, box, nameBlock);
+  const { placement, boxWidthMm, boxHeightMm, lines } = howToBox;
   return {
     x: halfWidthToX(placement.halfWidthStart, page, margin),
     y: stationToY(placement.topStation, page, margin),
@@ -553,16 +588,13 @@ function howToBoxRect(
  * failure a wrong print scale causes silently and expensively. */
 function drawHowToBox(
   doc: jsPDF,
-  layout: TemplateLayout,
-  geometry: OutlineGeometry,
   page: TemplatePage,
   margin: number,
-  box: TemplatePageBox,
-  nameBlock: ResolvedNameBlock,
+  howToBox: { placement: HowToBoxPlacement; boxWidthMm: number; boxHeightMm: number; lines: string[] },
 ): void {
   if (page.index !== 0) return;
 
-  const { x, y, width, height, lines } = howToBoxRect(doc, layout, geometry, box, page, margin, nameBlock);
+  const { x, y, width, height, lines } = howToBoxRect(howToBox, page, margin);
 
   doc.setDrawColor(0);
   doc.setLineWidth(HOWTO_BOX_LINE_WEIGHT_MM);
@@ -682,6 +714,82 @@ function resolvePageZeroNameBlock(
   return { placement, content };
 }
 
+/** The scale square's own placement (`ScaleSquarePlacement` — the board's own station/half-width
+ * frame, not page-local millimetres) plus its size and footprint height (quick task 260903-h7t) —
+ * the ONE computation `scaleSquareRect` converts to page-local mm and `templateScaleSquarePlacement`
+ * (exported, below) hands straight to a test. Builds the corner candidate exactly the way the
+ * square has always been drawn (right-anchored to the alignment box's own top-outward corner), then
+ * asks `scaleSquarePlacement` whether the curve actually clears it — its usual corner spot when it
+ * does (D-07), otherwise stacked inside the outline under whichever furniture is currently lowest
+ * on the page (the how-to box's bottom when the how-to box is interior, otherwise the name block's
+ * bottom — `scaleSquarePlacement` itself decides which). Performs no arithmetic beyond building
+ * that candidate. */
+function computeScaleSquarePlacement(
+  layout: TemplateLayout,
+  geometry: OutlineGeometry,
+  box: TemplatePageBox,
+  howToBox: { placement: HowToBoxPlacement; boxWidthMm: number; boxHeightMm: number; lines: string[] },
+  nameBlock: ResolvedNameBlock,
+): { placement: ScaleSquarePlacement; squareMm: number; footprintHeightMm: number } {
+  // Today's corner rect, in the board's own station/half-width frame rather than page-local mm —
+  // the same affine map regrouped, so converting it back through stationToY/halfWidthToX
+  // reproduces the historical x/y to floating-point noise (see the buildTemplatePdf test that
+  // proves this round trip).
+  const candidate = {
+    topStation: box.stationRange[1],
+    halfWidthStart: box.halfWidthRange[1] - SCALE_SQUARE_MM,
+  };
+
+  const placement = scaleSquarePlacement(
+    layout,
+    geometry,
+    candidate,
+    SCALE_SQUARE_MM,
+    SCALE_SQUARE_FOOTPRINT_HEIGHT_MM,
+    howToBox.placement,
+    howToBox.boxHeightMm,
+    nameBlock.placement,
+    nameBlock.content.height,
+    NAME_BOX_CLEARANCE_MM,
+  );
+
+  return { placement, squareMm: SCALE_SQUARE_MM, footprintHeightMm: SCALE_SQUARE_FOOTPRINT_HEIGHT_MM };
+}
+
+/** Page 0's three pieces of furniture — the board name + dims block, the how-to box and the 2in
+ * scale-check square — resolved ONCE, in that fixed dependency order (quick task 260903-h7t): the
+ * square stacks under the how-to box, which stacks under the name block, so a second,
+ * independently computed placement anywhere in that chain could put the drawn furniture and the
+ * tested furniture in different places — a scale square drawn somewhere the tests never look is
+ * exactly the failure this task exists to prevent (extends the `ResolvedNameBlock` /
+ * `computeHowToBoxPlacement` pattern quick task 260903-fqv already established, rather than adding
+ * a second, parallel resolve path). `buildTemplatePdf` calls this once before its page loop and
+ * hands the same object to `drawNameBlock`, `drawHowToBox` and `drawScaleSquare`;
+ * `templatePageZeroFurnitureRects` calls it once too, so the furniture a test inspects is exactly
+ * the furniture actually drawn. */
+interface ResolvedPageZeroFurniture {
+  nameBlock: ResolvedNameBlock;
+  howToBox: { placement: HowToBoxPlacement; boxWidthMm: number; boxHeightMm: number; lines: string[] };
+  scaleSquare: { placement: ScaleSquarePlacement; squareMm: number; footprintHeightMm: number };
+}
+
+/** Resolves all three of page 0's furniture pieces together (see `ResolvedPageZeroFurniture`'s own
+ * doc comment for why the order is fixed and why nothing may resolve twice). Name block first (it
+ * has no dependency on the other two), then the how-to box (depends on the name block), then the
+ * scale square (depends on both). */
+function resolvePageZeroFurniture(
+  doc: jsPDF,
+  layout: TemplateLayout,
+  geometry: OutlineGeometry,
+  box: TemplatePageBox,
+  dims: BuildTemplatePdfOptions["dims"],
+): ResolvedPageZeroFurniture {
+  const nameBlock = resolvePageZeroNameBlock(doc, layout, geometry, dims);
+  const howToBox = computeHowToBoxPlacement(doc, layout, geometry, box, nameBlock);
+  const scaleSquare = computeScaleSquarePlacement(layout, geometry, box, howToBox, nameBlock);
+  return { nameBlock, howToBox, scaleSquare };
+}
+
 /** D-08's board name + dims block: a bordered box on page 1 (the nose page), positioned by
  * `nameBlockPlacement` so it's fully contained inside the outline's own interior there —
  * post-checkpoint fix, defect 3: "the Board Name and dimension box needs to be contained INSIDE
@@ -743,12 +851,14 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
   const tailClosure = computeTailClosure(geometry);
   const tailClosureSeg = tailClosure ? tailClosureSegments(layout, tailClosure) : [];
   const boxes = templatePageBoxes(layout);
-  // Resolved once, before the page loop (quick task 260903-fqv): the how-to box now stacks under
-  // the name block, so a second, independently computed name placement could put the drawn box
-  // and the tested box in different places (T-fqv-02). Safe to hoist ahead of the how-to box's own
-  // font measurements — templateHowToWrappedLines and nameBlockContent each set their own font
-  // family and size before measuring, so neither depends on the other's leftover font state.
-  const nameBlock = resolvePageZeroNameBlock(doc, layout, geometry, dims);
+  // Resolved once, before the page loop (quick task 260903-fqv, widened to all three furniture
+  // pieces by 260903-h7t): the how-to box stacks under the name block and the scale square stacks
+  // under whichever of those two is lowest, so a second, independently computed placement anywhere
+  // in that chain could put the drawn furniture and the tested furniture in different places
+  // (T-fqv-02). Safe to hoist ahead of the how-to box's own font measurements —
+  // templateHowToWrappedLines and nameBlockContent each set their own font family and size before
+  // measuring, so neither depends on the other's leftover font state.
+  const furniture = resolvePageZeroFurniture(doc, layout, geometry, boxes[0], dims);
 
   layout.pages.forEach((page, i) => {
     if (i > 0) doc.addPage(paper, "portrait");
@@ -757,11 +867,11 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
     drawPageBox(doc, page, boxes[i], margin);
     drawMarks(doc, page, margin, placements, segments);
     drawTailClosure(doc, page, margin, tailClosureSeg);
-    drawScaleSquare(doc, page, margin, boxes[i]);
-    drawHowToBox(doc, layout, geometry, page, margin, boxes[i], nameBlock);
+    drawScaleSquare(doc, page, margin, furniture.scaleSquare);
+    drawHowToBox(doc, page, margin, furniture.howToBox);
     drawPageLabel(doc, page, margin, paperDims.width, paperDims.height);
     if (page.index === 0) {
-      drawNameBlock(doc, page, margin, nameBlock, boardName);
+      drawNameBlock(doc, page, margin, furniture.nameBlock, boardName);
     }
   });
 
@@ -791,23 +901,24 @@ export function templatePageZeroFurnitureRects(options: BuildTemplatePdfOptions)
   const box = templatePageBoxes(layout)[0];
   const doc = new jsPDF({ unit: "mm", format: paper, orientation: "portrait" });
 
+  // The same single resolved bundle buildTemplatePdf uses, so the scale square, the how-to box and
+  // the name block this function reports are exactly the ones actually drawn (quick task
+  // 260903-fqv, T-fqv-02; widened to all three pieces by 260903-h7t).
+  const furniture = resolvePageZeroFurniture(doc, layout, geometry, box, dims);
+
   const rects: TemplateFurnitureRect[] = [];
 
-  rects.push(scaleSquareRect(box, page, margin));
+  rects.push(scaleSquareRect(furniture.scaleSquare, page, margin));
 
-  // The same resolved name block buildTemplatePdf uses, so the how-to box and the name block this
-  // function reports are exactly the ones actually drawn (quick task 260903-fqv, T-fqv-02).
-  const nameBlock = resolvePageZeroNameBlock(doc, layout, geometry, dims);
-
-  const howTo = howToBoxRect(doc, layout, geometry, box, page, margin, nameBlock);
+  const howTo = howToBoxRect(furniture.howToBox, page, margin);
   rects.push({ name: "how-to-box", x: howTo.x, y: howTo.y, width: howTo.width, height: howTo.height });
 
   rects.push({
     name: "name-block",
-    x: halfWidthToX(nameBlock.placement.halfWidthStart, page, margin),
-    y: stationToY(nameBlock.placement.topStation, page, margin),
+    x: halfWidthToX(furniture.nameBlock.placement.halfWidthStart, page, margin),
+    y: stationToY(furniture.nameBlock.placement.topStation, page, margin),
     width: NAME_BOX_WIDTH_MM,
-    height: nameBlock.content.height,
+    height: furniture.nameBlock.content.height,
   });
 
   return rects;
@@ -817,16 +928,32 @@ export function templatePageZeroFurnitureRects(options: BuildTemplatePdfOptions)
  * station/half-width frame — exported for testability (mirrors `templatePageZeroBoxRect` and
  * `markLabelRect`'s own "exported for testability" pattern) so a test can assert the box clears
  * the curve directly against `sampleOutline` without re-deriving `stationToY`/`halfWidthToX`'s own
- * millimetre conversion. Backed by the exact same `computeHowToBoxPlacement` the drawing path
- * uses. */
+ * millimetre conversion. Backed by the exact same single-resolved-bundle computation the drawing
+ * path uses (`resolvePageZeroFurniture`). */
 export function templateHowToBoxPlacement(
   options: BuildTemplatePdfOptions,
 ): { placement: HowToBoxPlacement; boxWidthMm: number; boxHeightMm: number; lines: string[] } {
   const { layout, geometry, dims, paper } = options;
   const box = templatePageBoxes(layout)[0];
   const doc = new jsPDF({ unit: "mm", format: paper, orientation: "portrait" });
-  const nameBlock = resolvePageZeroNameBlock(doc, layout, geometry, dims);
-  return computeHowToBoxPlacement(doc, layout, geometry, box, nameBlock);
+  const furniture = resolvePageZeroFurniture(doc, layout, geometry, box, dims);
+  return furniture.howToBox;
+}
+
+/** The 2in x 2in scale-check square's placement, size and footprint height, in the board's own
+ * station/half-width frame — exported for testability (quick task 260903-h7t), mirroring
+ * `templateHowToBoxPlacement`'s own pattern, so a test can assert the square clears the curve
+ * directly against `sampleOutline` without re-deriving `stationToY`/`halfWidthToX`'s own
+ * millimetre conversion. Backed by the exact same single-resolved-bundle computation the drawing
+ * path uses (`resolvePageZeroFurniture`). */
+export function templateScaleSquarePlacement(
+  options: BuildTemplatePdfOptions,
+): { placement: ScaleSquarePlacement; squareMm: number; footprintHeightMm: number } {
+  const { layout, geometry, dims, paper } = options;
+  const box = templatePageBoxes(layout)[0];
+  const doc = new jsPDF({ unit: "mm", format: paper, orientation: "portrait" });
+  const furniture = resolvePageZeroFurniture(doc, layout, geometry, box, dims);
+  return furniture.scaleSquare;
 }
 
 /** Page 0's own alignment box, converted into the same local millimetre rectangle space
