@@ -728,6 +728,28 @@ export const STRIP_NUMERAL_STRINGER_GAP_MM = 4;
  * nudge is added on top. */
 export const STRIP_LABEL_INTERIOR_GAP_MM = 3;
 
+/** Clear space kept between the board name + dims block and any printed label row's own baseline
+ * station, on whichever page the block lands on — the row gap the block's placement scan reserves
+ * on top of the shared registration-overlap band it already keeps clear of (`design_decision` §1 of
+ * quick task 260902-kon: moving the name block inside the outline). The label column starts to the
+ * right of the numeral (`STRIP_PAGE_NUMBER_COLUMN_MM` in `build-strip-pdf.ts`), which is inside the
+ * block's own horizontal span, so a working mark's label row — which can land at any station on a
+ * fallback page — would otherwise print straight through the box. Named the same size as
+ * `STRIP_LABEL_MIN_SEPARATION_MM`, the distance below which two printed rows stop reading as two
+ * things. */
+export const STRIP_FURNITURE_ROW_GAP_MM = 6;
+
+/** Clear space kept between the board name + dims block's own station band and the big page
+ * numeral's own baseline station (`page.pageNumberStation`), on whichever page the block lands on
+ * (`design_decision` §2 of quick task 260902-kon). The block's left edge stays hard against the
+ * stringer at `NAME_BOX_CLEARANCE_MM` on every page, and the numeral's own placement rule is never
+ * touched, so the two always overlap horizontally — this station exclusion is the one rule keeping
+ * them from also overlapping vertically. Sized as roughly half the numeral's own cap height (~4.6mm
+ * at 36pt bold) plus 5.4mm of daylight, not a full-page-height corridor: reserving the numeral's
+ * whole column width — the alternative the plan rejected — would cost the block 22mm of the
+ * outline's own half-width, on the one axis it has none to spare. */
+export const STRIP_FURNITURE_NUMERAL_GAP_MM = 10;
+
 /** One landscape page of the Paper Saver strip — the station band it covers, the sideways-slid
  * half-width band it prints, and the big page numeral it carries. Reading order runs nose to
  * tail, matching the tiled template's own row order: index 0 is the nose tip. */
@@ -1046,51 +1068,189 @@ export function stripLabelRows(
   return rows;
 }
 
-/** Where one piece of page-0 furniture goes — its own nose-most (top) station edge and its own
- * left edge, measured out from the stringer, mirroring `NameBlockPlacement`'s own shape. */
+/** Where one piece of strip furniture goes — its own nose-most (top) station edge, its own left
+ * edge measured out from the stringer, and which page of the strip carries it. Mirrors
+ * `NameBlockPlacement`'s own shape, plus `pageIndex`: the scale square's is always 0 (locked
+ * founder decision), but the name block's placement scan (`stripFurniture`, below) can move the
+ * block to a later page when a narrow nose won't hold it on page 1, so the field can't be
+ * assumed. */
 export interface StripFurniturePlacement {
+  pageIndex: number;
   topStation: Mm;
   halfWidthStart: Mm;
 }
 
-/** Page 0's own two pieces of fixed furniture — the scale-check square and the board name/dims
- * block beneath it — both anchored to the printable top-right corner: the blank paper outboard of
- * the nose taper (locked decision: page 1 alone carries these). */
-export interface StripPageZeroFurniture {
+/** The strip's two pieces of fixed furniture. Named for what each one is, not for where it lives —
+ * after quick task 260902-kon the name block is no longer guaranteed to be page-0 furniture, and
+ * this repo does not leave a name lying about what the thing is. */
+export interface StripFurniture {
+  /** Anchored to page 1's own printable top-right corner — the blank paper outside the nose taper
+   * — by locked founder decision ("the 2in box is good," quick task 260902-kon). `pageIndex` is
+   * always 0 and the two lines of arithmetic below are deliberately untouched by that task. */
   scaleSquare: StripFurniturePlacement;
+  /** Scanned into the first station band, on the first page, that sits fully inside the outline
+   * and clears that page's own registration-overlap band, every label row on it, and the
+   * numeral's own station (`stripFurniture`'s own doc comment has the full rule). Supersedes quick
+   * task 260902-cj5's decision to anchor this to the same outboard corner as the scale square, on
+   * the founder's instruction: the printed template is cut out along the outline curve, so
+   * anything outboard of it is offcut, and the board's own name and dims should not be thrown away
+   * with the offcut. */
   nameBlock: StripFurniturePlacement;
 }
 
+/** True when the station band `[bottom, top]` clears an exclusion zone of `gap` millimetres on
+ * either side of `center` — the one shape behind both the label-row and the numeral exclusions
+ * `scanPagesForNameBlock` applies to a candidate band. `gap` is a MINIMUM separation, so a band
+ * sitting exactly `gap` away (top exactly at `center - gap`, or bottom exactly at `center + gap`)
+ * already clears it — the comparisons are inclusive, not strict. */
+function bandClearsExclusionZone(top: number, bottom: number, center: number, gap: number): boolean {
+  return top <= center - gap || bottom >= center + gap;
+}
+
 /**
- * Places page 0's scale square and name/dims block, both anchored to the page's own printable
- * top-right corner (the top of its own station band, the outward end of its own slid half-width
- * window) — scale square first, name block beneath it with a caption's worth of room plus a gap
- * in between. Pure arithmetic on the layout: the drawing module passes in its own fixed sizes
- * (matching the reused `build-template-pdf.ts` drawing constants) so no drawing constant leaks
- * into this file.
+ * Scans the strip's pages nose-to-tail for the first station band, on the first page, that holds
+ * the board name + dims block fully inside the outline while clearing whichever furniture
+ * constraints `requireFurnitureClearance` asks for. One function serves the first two of
+ * `stripFurniture`'s three fallback tiers: Tier 1 calls it with `requireFurnitureClearance: true`
+ * (containment plus label-row and numeral clearance); Tier 2 calls it again with `false`
+ * (containment only), reached only when no page satisfies Tier 1 — unreachable for any board the
+ * outline editor can produce.
+ *
+ * Within a page, the left edge is the greater of zero and the page's own left printable edge, plus
+ * `clearanceMm` — on a page whose own slid window still reaches the stringer (the common case),
+ * that resolves to exactly `clearanceMm` off the true stringer; on a page that doesn't reach it,
+ * the box stays `clearanceMm` off wherever the page's own printable window starts instead, never
+ * closer to the true stringer than that (`design_decision` §2 of quick task 260902-kon). The
+ * search floor and ceiling reserve `layout.overlap` on whichever of the page's own station edges
+ * border a neighbouring page — the same shared duplicate-content strip a registration line and its
+ * label already keep clear of, so furniture never belongs there either (`design_decision` §1) —
+ * and the ceiling is clamped to the board's own length.
  */
-export function stripPageZeroFurniture(
+function scanPagesForNameBlock(
   layout: StripLayout,
+  geometry: OutlineGeometry,
+  labelRows: StripLabelRow[],
+  boxWidthMm: number,
+  boxHeightMm: number,
+  clearanceMm: number,
+  requireFurnitureClearance: boolean,
+): StripFurniturePlacement | undefined {
+  for (const page of layout.pages) {
+    const leftEdge = Math.max(0, page.halfWidthRange[0]) + clearanceMm;
+    const requiredHalfWidth = leftEdge + boxWidthMm;
+    if (requiredHalfWidth > page.halfWidthRange[1]) continue; // this page can't hold the box at full width at all
+
+    const hasNosewardNeighbor = page.index > 0;
+    const hasTailwardNeighbor = page.index < layout.pages.length - 1;
+    const floor = page.stationRange[0] + (hasTailwardNeighbor ? layout.overlap : 0);
+    const ceiling = Math.min(page.stationRange[1] - (hasNosewardNeighbor ? layout.overlap : 0), geometry.length);
+
+    const pageRows = requireFurnitureClearance ? labelRows.filter((row) => row.pageIndex === page.index) : [];
+
+    for (let candidate = ceiling; candidate - boxHeightMm >= floor; candidate -= NAME_BLOCK_SEARCH_STEP_MM) {
+      const bottom = candidate - boxHeightMm;
+
+      if (requireFurnitureClearance) {
+        const clearsRows = pageRows.every((row) =>
+          bandClearsExclusionZone(candidate, bottom, row.baselineStation, STRIP_FURNITURE_ROW_GAP_MM),
+        );
+        if (!clearsRows) continue;
+
+        const clearsNumeral = bandClearsExclusionZone(
+          candidate,
+          bottom,
+          page.pageNumberStation,
+          STRIP_FURNITURE_NUMERAL_GAP_MM,
+        );
+        if (!clearsNumeral) continue;
+      }
+
+      if (minHalfWidthOverStationSpan(geometry, candidate, bottom) >= requiredHalfWidth) {
+        return { pageIndex: page.index, topStation: mm(candidate), halfWidthStart: mm(leftEdge) };
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Places the strip's two pieces of fixed furniture (see `StripFurniture`'s own doc comment for
+ * what each one is and why).
+ *
+ * The scale square's two lines of arithmetic are exactly what they were before quick task
+ * 260902-kon — anchored to page 1's own printable top-right corner, `pageIndex` fixed at 0 —
+ * because the founder reviewed the rendered strip and ruled the 2in box is good exactly where it
+ * is.
+ *
+ * The name block is placed by a three-tier fallback (`design_decision` §3), so the function is
+ * total and never throws:
+ * - **Tier 1**: `scanPagesForNameBlock` with every constraint — inside the outline over the box's
+ *   whole height, clear of the page's own registration-overlap band, clear of every label row on
+ *   that page by `STRIP_FURNITURE_ROW_GAP_MM`, and clear of the numeral's own station by
+ *   `STRIP_FURNITURE_NUMERAL_GAP_MM`. This tier finds a home for every preset at both paper sizes,
+ *   and for a legal needle-nosed board on a later page of the same template.
+ * - **Tier 2**: the same scan with the label-row and numeral clearances dropped, keeping the one
+ *   constraint that never relaxes — the block still lands fully inside the outline. Unreachable
+ *   for any board the outline editor can produce: the widepoint alone is always at least
+ *   `WIDEPOINT_WIDTH_RANGE_IN.min` of full width, so a fitting band always exists somewhere on the
+ *   strip.
+ * - **Tier 3**: page 0's own deepest searchable band, mirroring `nameBlockPlacement`'s own fallback
+ *   posture for the tiled template. Also unreachable for any real board; it exists only so this
+ *   function has a defined answer for every input.
+ */
+export function stripFurniture(
+  layout: StripLayout,
+  geometry: OutlineGeometry,
+  labelRows: StripLabelRow[],
   sizes: {
     scaleSquareMm: number;
-    scaleCaptionMm: number;
     nameBoxWidthMm: number;
     nameBoxHeightMm: number;
-    gapMm: number;
   },
-): StripPageZeroFurniture {
+  clearanceMm: number = NAME_BOX_CLEARANCE_MM,
+): StripFurniture {
   const page0 = layout.pages[0];
   const rightEdge = page0.halfWidthRange[1];
   const topEdge = page0.stationRange[1];
 
-  const scaleSquareTop = mm(topEdge);
-  const scaleSquareHalfWidthStart = mm(rightEdge - sizes.scaleSquareMm);
-
-  const nameBlockTop = mm(topEdge - sizes.scaleSquareMm - sizes.scaleCaptionMm - sizes.gapMm);
-  const nameBlockHalfWidthStart = mm(rightEdge - sizes.nameBoxWidthMm);
-
-  return {
-    scaleSquare: { topStation: scaleSquareTop, halfWidthStart: scaleSquareHalfWidthStart },
-    nameBlock: { topStation: nameBlockTop, halfWidthStart: nameBlockHalfWidthStart },
+  const scaleSquare: StripFurniturePlacement = {
+    pageIndex: 0,
+    topStation: mm(topEdge),
+    halfWidthStart: mm(rightEdge - sizes.scaleSquareMm),
   };
+
+  let nameBlock = scanPagesForNameBlock(
+    layout,
+    geometry,
+    labelRows,
+    sizes.nameBoxWidthMm,
+    sizes.nameBoxHeightMm,
+    clearanceMm,
+    true,
+  );
+  if (!nameBlock) {
+    // Tier 2 — unreachable for any board the outline editor can produce; see this function's own
+    // doc comment.
+    nameBlock = scanPagesForNameBlock(
+      layout,
+      geometry,
+      labelRows,
+      sizes.nameBoxWidthMm,
+      sizes.nameBoxHeightMm,
+      clearanceMm,
+      false,
+    );
+  }
+  if (!nameBlock) {
+    // Tier 3 — also unreachable for any real board; mirrors `nameBlockPlacement`'s own deepest-band
+    // fallback so this function always returns a defined answer.
+    const leftEdge = Math.max(0, page0.halfWidthRange[0]) + clearanceMm;
+    const hasTailwardNeighbor = layout.pages.length > 1;
+    const floor = page0.stationRange[0] + (hasTailwardNeighbor ? layout.overlap : 0);
+    const ceiling = Math.min(page0.stationRange[1], geometry.length);
+    const fallbackTop = Math.min(floor + sizes.nameBoxHeightMm, ceiling);
+    nameBlock = { pageIndex: 0, topStation: mm(fallbackTop), halfWidthStart: mm(leftEdge) };
+  }
+
+  return { scaleSquare, nameBlock };
 }

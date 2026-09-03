@@ -3,7 +3,7 @@
  * `build-template-pdf.ts`. Draws the strip layout `lib/geometry/template.ts`'s
  * `computeStripLayout` and its siblings already compute onto an actual multi-page PDF. Computes
  * nothing itself: every number here either comes from `StripLayout` / `StripRegistrationLine` /
- * `StripMarkSegment` / `StripLabelRow` / `StripPageZeroFurniture` or is a fixed drawing constant
+ * `StripMarkSegment` / `StripLabelRow` / `StripFurniture` or is a fixed drawing constant
  * (line weights, dash patterns, the 2in scale square, the name/dims box sizing) — no page
  * arithmetic happens in this file.
  *
@@ -25,9 +25,9 @@ import {
   type StripPage,
   type StripRegistrationLine,
   type TemplateMarks,
+  stripFurniture,
   stripLabelRows,
   stripMarkSegments,
-  stripPageZeroFurniture,
   stripRegistrationLines,
 } from "@/lib/geometry/template";
 import { inchesToMm } from "@/lib/geometry/units";
@@ -75,8 +75,6 @@ const SCALE_SQUARE_LINE_WEIGHT_MM = 0.35;
 const SCALE_SQUARE_CAPTION_GAP_MM = 5;
 const SCALE_SQUARE_CAPTION_HEIGHT_MM = 3;
 const SCALE_SQUARE_CAPTION_TEXT = '2" x 2" — measure before taping';
-/** Gap kept between the scale square's own caption and the name block beneath it. */
-const FURNITURE_GAP_MM = 6;
 
 const NAME_BOX_LINE_WEIGHT_MM = 0.25;
 const NAME_BOX_PADDING_MM = 3;
@@ -291,28 +289,32 @@ function drawNameBlock(
   });
 }
 
-/** Page 0's own furniture placements, in board station/half-width space — computed once so
- * `buildStripPdf` and `stripPageZeroFurnitureRects` (the pure-test half of "furniture stays inside
- * the page and never overlaps") always agree on exactly the same boxes. */
-function computePageZeroFurniture(
+/** The strip's own furniture placements, in board station/half-width space — computed once so
+ * `buildStripPdf` and `stripFurnitureRects` (the pure-test half of "furniture stays inside its own
+ * page and never overlaps") always agree on exactly the same boxes and the same pages. */
+function computeStripFurniture(
   doc: jsPDF,
   layout: StripLayout,
+  marks: TemplateMarks,
+  geometry: OutlineGeometry,
   dims: BuildStripPdfOptions["dims"],
 ): { scaleSquare: StripFurniturePlacement; nameBlock: StripFurniturePlacement; nameBoxHeight: number } {
   const { height: nameBoxHeight } = nameBlockContent(doc, dims);
-  const furniture = stripPageZeroFurniture(layout, {
+  const labelRows = stripLabelRows(layout, marks, geometry);
+  const furniture = stripFurniture(layout, geometry, labelRows, {
     scaleSquareMm: SCALE_SQUARE_MM,
-    scaleCaptionMm: SCALE_SQUARE_CAPTION_GAP_MM + SCALE_SQUARE_CAPTION_HEIGHT_MM,
     nameBoxWidthMm: NAME_BOX_WIDTH_MM,
     nameBoxHeightMm: nameBoxHeight,
-    gapMm: FURNITURE_GAP_MM,
   });
   return { scaleSquare: furniture.scaleSquare, nameBlock: furniture.nameBlock, nameBoxHeight };
 }
 
 /** Builds the multi-page jsPDF document for one `StripLayout` — a landscape page per station band,
  * each one slid sideways onto the curve. Iterates data handed to it; nothing in this function
- * computes strip geometry of its own. */
+ * computes strip geometry of its own. The scale square and the name block are each drawn on
+ * whichever page their own `pageIndex` names — almost always both page 0, but a narrow-nosed
+ * board's name block can land on a later page (`stripFurniture`), so the two are checked
+ * independently rather than both being gated on `page.index === 0`. */
 export function buildStripPdf(options: BuildStripPdfOptions): jsPDF {
   const { layout, marks, geometry, paper, boardName, dims } = options;
   const margin = layout.margin;
@@ -324,7 +326,7 @@ export function buildStripPdf(options: BuildStripPdfOptions): jsPDF {
   const lines = stripRegistrationLines(layout, geometry);
   const segments = stripMarkSegments(layout, marks, geometry);
   const rows = stripLabelRows(layout, marks, geometry);
-  const { scaleSquare, nameBlock } = computePageZeroFurniture(doc, layout, dims);
+  const { scaleSquare, nameBlock } = computeStripFurniture(doc, layout, marks, geometry, dims);
 
   layout.pages.forEach((page, i) => {
     if (i > 0) doc.addPage(paper, "landscape");
@@ -336,8 +338,10 @@ export function buildStripPdf(options: BuildStripPdfOptions): jsPDF {
     drawLabelRows(doc, page, margin, rows);
     drawPageNumber(doc, page, margin);
 
-    if (page.index === 0) {
+    if (page.index === scaleSquare.pageIndex) {
       drawScaleSquare(doc, page, margin, scaleSquare);
+    }
+    if (page.index === nameBlock.pageIndex) {
       drawNameBlock(doc, page, margin, nameBlock, boardName, dims);
     }
   });
@@ -345,24 +349,41 @@ export function buildStripPdf(options: BuildStripPdfOptions): jsPDF {
   return doc;
 }
 
-/** Page 0's own scale square and name block, converted into page-local millimetre rectangles — the
- * pure-test half of "furniture stays inside the page and the two pieces never overlap," mirroring
- * `templatePageZeroFurnitureRects`'s own contract for the tiled template. */
-export function stripPageZeroFurnitureRects(options: BuildStripPdfOptions): TemplateFurnitureRect[] {
-  const { layout, dims, paper } = options;
+/** A `TemplateFurnitureRect` that also carries the page it was projected onto — the strip's own
+ * furniture can land on different pages of the same document (the scale square always page 0, the
+ * name block wherever `stripFurniture` scanned it to), so a rect alone is no longer enough to say
+ * where it prints. */
+export interface StripFurnitureRect extends TemplateFurnitureRect {
+  pageIndex: number;
+}
+
+/** The strip's scale square and name block, each converted into ITS OWN page's local millimetre
+ * rectangle — the pure-test half of "furniture stays inside its own page and the two pieces never
+ * overlap when they share one," mirroring `templatePageZeroFurnitureRects`'s own contract for the
+ * tiled template. */
+export function stripFurnitureRects(options: BuildStripPdfOptions): StripFurnitureRect[] {
+  const { layout, marks, geometry, dims, paper } = options;
   const margin = layout.margin;
-  const page0 = layout.pages[0];
   const doc = new jsPDF({ unit: "mm", format: paper, orientation: "landscape" });
 
-  const { scaleSquare, nameBlock, nameBoxHeight } = computePageZeroFurniture(doc, layout, dims);
+  const { scaleSquare, nameBlock, nameBoxHeight } = computeStripFurniture(doc, layout, marks, geometry, dims);
 
-  const toRect = (name: string, placement: StripFurniturePlacement, width: number, height: number): TemplateFurnitureRect => ({
-    name,
-    x: halfWidthToX(placement.halfWidthStart, page0, margin),
-    y: stationToY(placement.topStation, page0, margin),
-    width,
-    height,
-  });
+  const toRect = (
+    name: string,
+    placement: StripFurniturePlacement,
+    width: number,
+    height: number,
+  ): StripFurnitureRect => {
+    const page = layout.pages[placement.pageIndex];
+    return {
+      name,
+      pageIndex: placement.pageIndex,
+      x: halfWidthToX(placement.halfWidthStart, page, margin),
+      y: stationToY(placement.topStation, page, margin),
+      width,
+      height,
+    };
+  };
 
   return [
     toRect(
@@ -375,17 +396,19 @@ export function stripPageZeroFurnitureRects(options: BuildStripPdfOptions): Temp
   ];
 }
 
-/** Page 0's own printable rectangle, in the same page-local millimetre space
- * `stripPageZeroFurnitureRects` returns — so a test can assert both pieces of furniture are fully
- * contained inside it (`rectContains`) without re-deriving the station/half-width-to-mm
- * conversion. Exported for testability alongside the re-exported `rectContains`/`rectsOverlap`. */
-export function stripPageZeroPrintableRect(layout: StripLayout): TemplateFurnitureRect {
-  const page0 = layout.pages[0];
+/** One page's own printable rectangle, in the same page-local millimetre space
+ * `stripFurnitureRects` returns — so a test can assert a piece of furniture is fully contained
+ * inside the page it actually landed on (`rectContains`) without re-deriving the
+ * station/half-width-to-mm conversion. Takes the page index it should describe, since furniture
+ * is no longer always on page 0. Exported for testability alongside the re-exported
+ * `rectContains`/`rectsOverlap`. */
+export function stripPrintableRect(layout: StripLayout, pageIndex: number): TemplateFurnitureRect {
+  const page = layout.pages[pageIndex];
   const margin = layout.margin;
-  const left = halfWidthToX(page0.halfWidthRange[0], page0, margin);
-  const right = halfWidthToX(page0.halfWidthRange[1], page0, margin);
-  const top = stationToY(page0.stationRange[1], page0, margin);
-  const bottom = stationToY(page0.stationRange[0], page0, margin);
+  const left = halfWidthToX(page.halfWidthRange[0], page, margin);
+  const right = halfWidthToX(page.halfWidthRange[1], page, margin);
+  const top = stationToY(page.stationRange[1], page, margin);
+  const bottom = stationToY(page.stationRange[0], page, margin);
   return { name: "printable-rect", x: left, y: top, width: right - left, height: bottom - top };
 }
 
