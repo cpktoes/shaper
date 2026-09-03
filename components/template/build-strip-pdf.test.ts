@@ -19,8 +19,8 @@ import {
   rectContains,
   rectsOverlap,
   stripFileName,
-  stripPageZeroFurnitureRects,
-  stripPageZeroPrintableRect,
+  stripFurnitureRects,
+  stripPrintableRect,
   type BuildStripPdfOptions,
 } from "./build-strip-pdf";
 
@@ -130,28 +130,42 @@ describe("stripFileName", () => {
   });
 });
 
-describe("stripPageZeroFurnitureRects", () => {
+describe("stripFurnitureRects", () => {
   for (const paper of PAPERS) {
     describe(paper, () => {
       it.each(BOARD_PRESETS)(
-        "$id: both the scale square and the name block are fully inside page 0's own printable rectangle",
+        "$id: both the scale square and the name block are fully inside THEIR OWN page's printable rectangle",
         (preset) => {
           const options = buildOptionsFor(preset, paper);
-          const printable = stripPageZeroPrintableRect(options.layout);
-          const rects = stripPageZeroFurnitureRects(options);
+          const rects = stripFurnitureRects(options);
 
           expect(rects.map((r) => r.name).sort()).toEqual(["name-block", "scale-square"]);
           for (const rect of rects) {
+            const printable = stripPrintableRect(options.layout, rect.pageIndex);
             expect(rectContains(printable, rect)).toBe(true);
           }
         },
       );
 
-      it.each(BOARD_PRESETS)("$id: the scale square and the name block never overlap", (preset) => {
+      it.each(BOARD_PRESETS)("$id: every preset's name block lands on page 0, same as the scale square", (preset) => {
         const options = buildOptionsFor(preset, paper);
-        const rects = stripPageZeroFurnitureRects(options);
-        expect(rectsOverlap(rects[0], rects[1])).toBe(false);
+        const rects = stripFurnitureRects(options);
+        for (const rect of rects) {
+          expect(rect.pageIndex).toBe(0);
+        }
       });
+
+      it.each(BOARD_PRESETS)(
+        "$id: when the scale square and the name block share a page, they never overlap",
+        (preset) => {
+          const options = buildOptionsFor(preset, paper);
+          const rects = stripFurnitureRects(options);
+          const scaleSquare = rects.find((r) => r.name === "scale-square")!;
+          const nameBlock = rects.find((r) => r.name === "name-block")!;
+          if (scaleSquare.pageIndex !== nameBlock.pageIndex) return; // different pages, nothing to check
+          expect(rectsOverlap(scaleSquare, nameBlock)).toBe(false);
+        },
+      );
     });
   }
 });
