@@ -1,3 +1,4 @@
+import { writeFileSync } from "node:fs";
 import jsPDF from "jspdf";
 import { describe, expect, it } from "vitest";
 import { WIDEPOINT_WIDTH_RANGE_IN } from "@/lib/geometry/board";
@@ -11,6 +12,7 @@ import {
   computeTemplateMarks,
   markPlacements,
   nameBlockPlacement,
+  type PaperSize,
 } from "@/lib/geometry/template";
 import { inchesToMm, litres, mm } from "@/lib/geometry/units";
 import {
@@ -98,6 +100,24 @@ describe("buildTemplatePdf", () => {
         expect(doc.getNumberOfPages()).toBe(layout.pages.length);
       }
     }
+  });
+
+  // The plan's own opt-in hook (mirrors build-strip-pdf.test.ts's STRIP_PDF_OUT): set
+  // TEMPLATE_PDF_OUT to a real path and this test writes a real, renderable Full Sized Template
+  // PDF there for a human (or a headless PDF renderer) to inspect page by page. Skipped by default
+  // so the suite never touches disk in CI; a permanent part of the suite, not a throwaway.
+  it.skipIf(!process.env.TEMPLATE_PDF_OUT)("writes a sample tiled template PDF to TEMPLATE_PDF_OUT for manual review", () => {
+    const outPath = process.env.TEMPLATE_PDF_OUT!;
+    const presetId = process.env.TEMPLATE_PDF_PRESET ?? "longboard";
+    const paper = (process.env.TEMPLATE_PDF_PAPER as PaperSize | undefined) ?? "letter";
+    const preset = BOARD_PRESETS.find((p) => p.id === presetId) ?? BOARD_PRESETS[BOARD_PRESETS.length - 1];
+
+    const options = buildOptionsFor(preset, paper);
+    const doc = buildTemplatePdf(options);
+    const bytes = doc.output("arraybuffer");
+    writeFileSync(outPath, Buffer.from(bytes));
+
+    expect(doc.getNumberOfPages()).toBe(options.layout.pages.length);
   });
 });
 
