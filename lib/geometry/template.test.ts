@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { BOARD_LENGTH_RANGE_IN, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
-import { MEASURE_STATION_MM, buildOutline, sampleOutline } from "./outline";
+import { MEASURE_STATION_MM, buildOutline, type OutlineGeometry, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import {
   MARK_LABEL_COLLISION_THRESHOLD_MM,
@@ -9,6 +9,7 @@ import {
   NAME_BOX_HEIGHT_MM,
   NAME_BOX_WIDTH_MM,
   PAPER_MM,
+  SCALE_SQUARE_CORNER_CLEARANCE_MM,
   STRIP_FURNITURE_NUMERAL_GAP_MM,
   STRIP_FURNITURE_ROW_GAP_MM,
   STRIP_LABEL_INTERIOR_GAP_MM,
@@ -25,12 +26,16 @@ import {
   markLineSegments,
   markPlacements,
   nameBlockPlacement,
+  scaleSquarePlacement,
   stripFurniture,
   stripLabelRows,
   stripMarkSegments,
   stripRegistrationLines,
   tailClosureSegments,
+  type HowToBoxPlacement,
+  type NameBlockPlacement,
   type PaperSize,
+  type ScaleSquarePlacement,
   type StripFurniturePlacement,
   type TemplateLayout,
   type TemplateMarks,
@@ -1929,5 +1934,290 @@ describe("howToBoxPlacement", () => {
     const expectedCeiling = Math.min(interiorCeiling, pageCeiling);
     expect(placement.topStation).toBeCloseTo(expectedCeiling, 6);
     expect(placement.topStation).toBeGreaterThanOrEqual(page0.stationRange[0] - TOLERANCE_MM);
+  });
+});
+
+describe("scaleSquarePlacement", () => {
+  // Test inputs, not expected values — mirrors build-template-pdf.ts's own SCALE_SQUARE_MM /
+  // SCALE_SQUARE_CAPTION_GAP_MM / SCALE_SQUARE_CAPTION_HEIGHT_MM (5mm gap, 3mm caption text) so the
+  // geometry tests exercise the same footprint the drawing module actually reserves, but these are
+  // still plain test inputs per CLAUDE.md Rule 1 — never a millimetre figure the new code produced.
+  const SQUARE_MM = inchesToMm(2);
+  const FOOTPRINT_HEIGHT_MM = SQUARE_MM + 5 + 3;
+
+  // Mirrors build-template-pdf.ts's own how-to box constants — used only to derive the how-to
+  // placement handed in as scaleSquarePlacement's own howToBox argument, the same way the
+  // howToBoxPlacement describe block above derives its own outboard candidate.
+  const HOWTO_BOX_WIDTH_MM = 70;
+  const HOWTO_BOX_HEIGHT_MM = 46;
+  const HOWTO_BOX_TOP_GAP_MM = 8;
+
+  const WIDE_VARIANTS = [
+    {
+      id: "widest-shortboard",
+      outline: { ...BOARD_PRESETS[0].outline, widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max) },
+    },
+    {
+      id: "widest-longboard",
+      outline: { ...BOARD_PRESETS[3].outline, widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max) },
+    },
+    {
+      id: "fullnose-longboard",
+      outline: { ...BOARD_PRESETS[3].outline, noseFullness: 100 },
+    },
+  ];
+
+  const ALL_CASES = [...BOARD_PRESETS.map((preset) => ({ id: preset.id, outline: preset.outline })), ...WIDE_VARIANTS];
+
+  /** The square's own corner candidate, exactly the way `build-template-pdf.ts`'s
+   * `computeScaleSquarePlacement` derives it from the page's own alignment box. */
+  function cornerCandidate(layout: TemplateLayout): { topStation: number; halfWidthStart: number } {
+    const box = templatePageBoxes(layout)[0];
+    return {
+      topStation: box.stationRange[1],
+      halfWidthStart: box.halfWidthRange[1] - SQUARE_MM,
+    };
+  }
+
+  /** Derives the how-to box placement to hand in, by calling `howToBoxPlacement` itself — the same
+   * pattern the `howToBoxPlacement` describe block above uses for its own outboard candidate. */
+  function deriveHowToBox(layout: TemplateLayout, geometry: OutlineGeometry, nameBlock: NameBlockPlacement) {
+    const box = templatePageBoxes(layout)[0];
+    const howToCandidate = {
+      topStation: box.stationRange[1] - SQUARE_MM - HOWTO_BOX_TOP_GAP_MM,
+      halfWidthStart: box.halfWidthRange[1] - HOWTO_BOX_WIDTH_MM,
+    };
+    return howToBoxPlacement(
+      layout,
+      geometry,
+      howToCandidate,
+      HOWTO_BOX_WIDTH_MM,
+      HOWTO_BOX_HEIGHT_MM,
+      nameBlock,
+      NAME_BOX_HEIGHT_MM,
+    );
+  }
+
+  /** Resolves name block, how-to box and the square's own placement in the same dependency order
+   * `resolvePageZeroFurniture` uses in the builder — one call site per test, so every test below
+   * calls `scaleSquarePlacement` the same way. */
+  function computeScaleSquarePlacement(
+    layout: TemplateLayout,
+    geometry: OutlineGeometry,
+    footprintHeightMm: number = FOOTPRINT_HEIGHT_MM,
+    candidate: { topStation: number; halfWidthStart: number } = cornerCandidate(layout),
+  ): { placement: ScaleSquarePlacement; nameBlock: NameBlockPlacement; howToBox: HowToBoxPlacement } {
+    const nameBlock = nameBlockPlacement(layout, geometry);
+    const howToBox = deriveHowToBox(layout, geometry, nameBlock);
+    const placement = scaleSquarePlacement(
+      layout,
+      geometry,
+      candidate,
+      SQUARE_MM,
+      footprintHeightMm,
+      howToBox,
+      HOWTO_BOX_HEIGHT_MM,
+      nameBlock,
+      NAME_BOX_HEIGHT_MM,
+    );
+    return { placement, nameBlock, howToBox };
+  }
+
+  function maxHalfWidthOverSpan(geometry: OutlineGeometry, top: number, bottom: number): number {
+    let max = -Infinity;
+    for (let station = bottom; station <= top; station += 1) {
+      max = Math.max(max, sampleOutline(geometry, mm(station)));
+    }
+    max = Math.max(max, sampleOutline(geometry, mm(top)));
+    return max;
+  }
+
+  function minHalfWidthOverSpan(geometry: OutlineGeometry, top: number, bottom: number): number {
+    let min = Infinity;
+    for (let station = bottom; station <= top; station += 1) {
+      min = Math.min(min, sampleOutline(geometry, mm(station)));
+    }
+    min = Math.min(min, sampleOutline(geometry, mm(top)));
+    return min;
+  }
+
+  for (const paper of PAPERS) {
+    describe(paper, () => {
+      it.each(ALL_CASES)(
+        "$id: position agrees with the geometry — corner exactly when the candidate's own curve-side clearance is at least SCALE_SQUARE_CORNER_CLEARANCE_MM",
+        ({ outline }) => {
+          const geometry = buildOutline(outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const candidate = cornerCandidate(layout);
+          const { placement } = computeScaleSquarePlacement(layout, geometry);
+
+          const bottom = candidate.topStation - FOOTPRINT_HEIGHT_MM;
+          const maxHalfWidth = maxHalfWidthOverSpan(geometry, candidate.topStation, bottom);
+          const cornerClearance = candidate.halfWidthStart - maxHalfWidth;
+          const expectedPosition = cornerClearance >= SCALE_SQUARE_CORNER_CLEARANCE_MM ? "corner" : "interior";
+
+          expect(placement.position).toBe(expectedPosition);
+        },
+      );
+
+      it.each(ALL_CASES)(
+        "$id: when corner, the placement equals the candidate field-for-field with pageIndex 0",
+        ({ outline }) => {
+          const geometry = buildOutline(outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const candidate = cornerCandidate(layout);
+          const { placement } = computeScaleSquarePlacement(layout, geometry);
+
+          if (placement.position !== "corner") return; // covered by the interior test below
+
+          expect(placement.pageIndex).toBe(0);
+          expect(placement.topStation).toBe(candidate.topStation);
+          expect(placement.halfWidthStart).toBe(candidate.halfWidthStart);
+        },
+      );
+
+      it.each(ALL_CASES)(
+        "$id: when interior, halfWidthStart is NAME_BOX_CLEARANCE_MM, the square clears the curve by NAME_BOX_CLEARANCE_MM over its whole footprint, its bottom is at or above the search floor, and its top is at or below the stacking edge minus NAME_BOX_CLEARANCE_MM",
+        ({ outline }) => {
+          const geometry = buildOutline(outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const { placement, nameBlock, howToBox } = computeScaleSquarePlacement(layout, geometry);
+
+          if (placement.position !== "interior") return; // covered by the corner test above
+
+          expect(placement.halfWidthStart).toBe(NAME_BOX_CLEARANCE_MM);
+
+          const bottom = placement.topStation - FOOTPRINT_HEIGHT_MM;
+          const requiredHalfWidth = NAME_BOX_CLEARANCE_MM + SQUARE_MM + NAME_BOX_CLEARANCE_MM;
+          const minHalfWidth = minHalfWidthOverSpan(geometry, placement.topStation, bottom);
+          expect(minHalfWidth).toBeGreaterThanOrEqual(requiredHalfWidth - TOLERANCE_MM);
+
+          const page0 = layout.pages[0];
+          const overlapReserve = layout.rows > 1 ? layout.overlap : 0;
+          const searchFloor = page0.stationRange[0] + overlapReserve;
+          expect(bottom).toBeGreaterThanOrEqual(searchFloor - TOLERANCE_MM);
+
+          const stackingEdge =
+            howToBox.position === "interior"
+              ? howToBox.topStation - HOWTO_BOX_HEIGHT_MM
+              : nameBlock.topStation - NAME_BOX_HEIGHT_MM;
+          expect(placement.topStation).toBeLessThanOrEqual(stackingEdge - NAME_BOX_CLEARANCE_MM + TOLERANCE_MM);
+        },
+      );
+    });
+  }
+
+  it("SCALE_SQUARE_CORNER_CLEARANCE_MM is the founder's locked 0mm trigger, deliberately separate from NAME_BOX_CLEARANCE_MM", () => {
+    expect(SCALE_SQUARE_CORNER_CLEARANCE_MM).toBe(0);
+    expect(SCALE_SQUARE_CORNER_CLEARANCE_MM).not.toBe(NAME_BOX_CLEARANCE_MM);
+  });
+
+  it(
+    "derived outcome matches the planning facts: shortboard, fish, midlength, longboard and the widest shortboard keep the corner; the widest longboard and the noseFullness-100 longboard move interior",
+    () => {
+      const expectedCorner = new Set(["shortboard", "fish", "midlength", "longboard", "widest-shortboard"]);
+      for (const paper of PAPERS) {
+        for (const { id, outline } of ALL_CASES) {
+          const geometry = buildOutline(outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const { placement } = computeScaleSquarePlacement(layout, geometry);
+
+          expect(placement.position).toBe(expectedCorner.has(id) ? "corner" : "interior");
+        }
+      }
+    },
+  );
+
+  it("invariant: whenever the square is interior, the how-to box is interior too", () => {
+    for (const paper of PAPERS) {
+      for (const { outline } of ALL_CASES) {
+        const geometry = buildOutline(outline);
+        const layout = computeTemplateLayout(geometry, paper);
+        const { placement, howToBox } = computeScaleSquarePlacement(layout, geometry);
+
+        if (placement.position === "interior") {
+          expect(howToBox.position).toBe("interior");
+        }
+      }
+    }
+  });
+
+  it("pathological case: an oversized footprint height finds no interior band, and the fallback keeps the square on page 0 at or below the stacking ceiling rather than throwing", () => {
+    const preset = BOARD_PRESETS[0];
+    const geometry = buildOutline(preset.outline);
+    const layout = computeTemplateLayout(geometry, "letter");
+    const page0 = layout.pages[0];
+    const oversizedFootprintHeightMm = page0.stationRange[1] - page0.stationRange[0] + 1000;
+
+    const nameBlock = nameBlockPlacement(layout, geometry);
+    const howToBox = deriveHowToBox(layout, geometry, nameBlock);
+    const candidate = cornerCandidate(layout);
+    const placement = scaleSquarePlacement(
+      layout,
+      geometry,
+      candidate,
+      SQUARE_MM,
+      oversizedFootprintHeightMm,
+      howToBox,
+      HOWTO_BOX_HEIGHT_MM,
+      nameBlock,
+      NAME_BOX_HEIGHT_MM,
+    );
+
+    expect(placement.position).toBe("interior");
+    const stackingEdge =
+      howToBox.position === "interior"
+        ? howToBox.topStation - HOWTO_BOX_HEIGHT_MM
+        : nameBlock.topStation - NAME_BOX_HEIGHT_MM;
+    const pageCeiling = Math.min(page0.stationRange[1], geometry.length);
+    const expectedCeiling = Math.min(stackingEdge - NAME_BOX_CLEARANCE_MM, pageCeiling);
+    expect(placement.topStation).toBeCloseTo(expectedCeiling, 6);
+    expect(placement.topStation).toBeGreaterThanOrEqual(page0.stationRange[0] - TOLERANCE_MM);
+  });
+
+  it("defensive name-block stacking branch: when the corner is refused and the how-to box is (artificially) outboard, the square stacks under the name block instead — no real board reaches this branch, since the how-to box is always interior whenever the square's corner is refused", () => {
+    const preset = BOARD_PRESETS[3]; // longboard
+    const geometry = buildOutline(preset.outline);
+    const layout = computeTemplateLayout(geometry, "letter");
+    const nameBlock = nameBlockPlacement(layout, geometry);
+
+    const naturalCandidate = cornerCandidate(layout);
+    // Push the candidate's own curve-side edge all the way to the stringer so the corner check is
+    // refused regardless of the real outline's own clearance at this candidate span.
+    const forcedCandidate = { topStation: naturalCandidate.topStation, halfWidthStart: 0 };
+
+    // A constructed how-to placement whose own position is "outboard" — no real board reaches
+    // this branch (on every board where the square's corner is refused, the how-to box is
+    // already interior), so this input is hand-built rather than derived from
+    // `howToBoxPlacement` itself, exactly per the plan's Test 8.
+    const outboardHowToBox = {
+      pageIndex: 0,
+      topStation: mm(naturalCandidate.topStation),
+      halfWidthStart: mm(0),
+      position: "outboard" as const,
+    };
+
+    const placement = scaleSquarePlacement(
+      layout,
+      geometry,
+      forcedCandidate,
+      SQUARE_MM,
+      FOOTPRINT_HEIGHT_MM,
+      outboardHowToBox,
+      HOWTO_BOX_HEIGHT_MM,
+      nameBlock,
+      NAME_BOX_HEIGHT_MM,
+    );
+
+    expect(placement.position).toBe("interior");
+
+    const expectedTop = nameBlock.topStation - NAME_BOX_HEIGHT_MM - NAME_BOX_CLEARANCE_MM;
+    expect(placement.topStation).toBeCloseTo(expectedTop, 6);
+
+    // Proof the name-block branch (not the how-to-box branch) was taken: the ceiling the how-to
+    // box's own interior bottom would have produced sits further from the nose (a smaller
+    // station) than the name-block ceiling actually used.
+    const howToBoxCeiling = outboardHowToBox.topStation - HOWTO_BOX_HEIGHT_MM - NAME_BOX_CLEARANCE_MM;
+    expect(placement.topStation).toBeGreaterThan(howToBoxCeiling);
   });
 });

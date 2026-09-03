@@ -31,6 +31,7 @@ import {
   templateNameBlockText,
   templatePageZeroBoxRect,
   templatePageZeroFurnitureRects,
+  templateScaleSquarePlacement,
   wrapTextToWidth,
 } from "./build-template-pdf";
 
@@ -161,9 +162,20 @@ describe("buildTemplatePdf", () => {
     const outPath = process.env.TEMPLATE_PDF_OUT!;
     const presetId = process.env.TEMPLATE_PDF_PRESET ?? "longboard";
     const paper = (process.env.TEMPLATE_PDF_PAPER as PaperSize | undefined) ?? "letter";
-    const preset = BOARD_PRESETS.find((p) => p.id === presetId) ?? BOARD_PRESETS[BOARD_PRESETS.length - 1];
 
-    const options = buildOptionsFor(preset, paper);
+    // Quick task 260903-h7t: TEMPLATE_PDF_PRESET also accepts the wide-variant ids from this
+    // file's own WIDE_TEMPLATE_CASES (built via buildOptionsForOutline) — the two boards this task
+    // actually moves the scale square on (widest-longboard, fullnose-longboard) are not shipped
+    // presets, so without this the founder could not be shown the change at all. The four named
+    // preset ids keep working exactly as before.
+    const wideCase = WIDE_TEMPLATE_CASES.find((c) => c.id === presetId);
+    const options = wideCase
+      ? buildOptionsForOutline(wideCase.basePreset, wideCase.outline, wideCase.basePreset.name, paper)
+      : buildOptionsFor(
+          BOARD_PRESETS.find((p) => p.id === presetId) ?? BOARD_PRESETS[BOARD_PRESETS.length - 1],
+          paper,
+        );
+
     const doc = buildTemplatePdf(options);
     const bytes = doc.output("arraybuffer");
     writeFileSync(outPath, Buffer.from(bytes));
@@ -244,6 +256,38 @@ describe("templateHowToLines", () => {
     expect(lines).toHaveLength(4);
     expect(lines[3].toLowerCase()).toContain("left to right");
   });
+
+  it(
+    'instruction line 2 names the square by its own size, not by where it sits on the page (quick task 260903-h7t — the square now prints below the how-to box on two boards, so "the square above" would be false there)',
+    () => {
+      const preset = BOARD_PRESETS[0];
+      const geometry = buildOutline(preset.outline);
+      const layout = computeTemplateLayout(geometry, "letter");
+      const lines = templateHowToLines(layout);
+
+      expect(lines[1]).toContain('2" x 2"');
+      expect(lines[1].toLowerCase()).not.toContain("above");
+    },
+  );
+
+  it(
+    "instruction line 2 (the one this task's wording change touches) wraps to at most two rows inside the how-to box's own inner width, for every preset and paper size — matches today's 80.7mm line and keeps the how-to box the same 8 wrapped rows / 46mm tall it already is; a future wording change that would grow the box is caught here rather than by a founder noticing the layout shifted",
+    () => {
+      for (const preset of BOARD_PRESETS) {
+        const geometry = buildOutline(preset.outline);
+        for (const paper of ["letter", "a4"] as const) {
+          const layout = computeTemplateLayout(geometry, paper);
+          const doc = new jsPDF({ unit: "mm" });
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+
+          const lines = templateHowToLines(layout);
+          const rows = wrapTextToWidth(`2. ${lines[1]}`, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM, doc);
+          expect(rows.length).toBeLessThanOrEqual(2);
+        }
+      }
+    },
+  );
 });
 
 describe("wrapTextToWidth (post-checkpoint fix, defect 1)", () => {
@@ -799,6 +843,142 @@ describe("templateHowToBoxPlacement / howToBoxRect", () => {
         const options = build(paper);
         const { placement } = templateHowToBoxPlacement(options);
         expect(placement.position).toBe(expectedOutboard.has(id) ? "outboard" : "interior");
+      }
+    }
+  });
+});
+
+/**
+ * `templateScaleSquarePlacement` / `scaleSquareRect` tests (quick task 260903-h7t — the rail curve
+ * was running into the 2in x 2in scale-check square's own footprint on two extreme boards). Every
+ * expected value below is derived — from `sampleOutline`, the layout's own numbers, or arithmetic
+ * over named constants — never a millimetre figure read back out of what the new code printed
+ * (CLAUDE.md Rule 1). Uses `buildOptionsFor`/`buildOptionsForOutline` for real per-preset geometry
+ * — the existing pairwise overlap and containment tests above use `buildOptions(paper)`, which is
+ * always the shortboard's own geometry with only the board name swapped, so they never exercise a
+ * longboard's page 0. Reuses `ALL_HOWTO_BOX_CASES` so both boxes are exercised on the same boards.
+ */
+describe("templateScaleSquarePlacement / scaleSquareRect", () => {
+  const ROUND_TRIP_TOLERANCE_MM = 1e-6;
+
+  describe('corner round trip (the founder\'s own D-07 spot, reproduced through the new geometry layer)', () => {
+    for (const paper of ["letter", "a4"] as const) {
+      it.each(BOARD_PRESETS)(
+        `$id (${paper}): when the placement comes back "corner", the drawn rect matches the historical fixed formula (right-anchored to the alignment box's own top-outward corner) within floating-point tolerance`,
+        (preset) => {
+          const options = buildOptionsFor(preset, paper);
+          const { placement, squareMm } = templateScaleSquarePlacement(options);
+          if (placement.position !== "corner") return; // covered by the interior assertions below
+
+          const boxRect = templatePageZeroBoxRect(options.layout);
+          // The historical fixed formula, recomputed here rather than imported, so this test
+          // proves the NEW code reproduces the OLD behaviour rather than merely agreeing with
+          // itself: x = alignment box's right edge minus the square's own width; y = alignment
+          // box's own top edge (`inchesToMm(2)` mirrors build-template-pdf.ts's own SCALE_SQUARE_MM,
+          // per CLAUDE.md Rule 2 — never a bare 50.8 literal).
+          const expectedX = boxRect.x + boxRect.width - inchesToMm(2);
+          const expectedY = boxRect.y;
+
+          const rects = templatePageZeroFurnitureRects(options);
+          const square = rects.find((r) => r.name === "scale-square")!;
+
+          expect(square.width).toBeCloseTo(squareMm, 6);
+          expect(Math.abs(square.x - expectedX)).toBeLessThan(ROUND_TRIP_TOLERANCE_MM);
+          expect(Math.abs(square.y - expectedY)).toBeLessThan(ROUND_TRIP_TOLERANCE_MM);
+        },
+      );
+    }
+  });
+
+  describe("outcome derived from the curve's own clearance (corner when clear, interior otherwise)", () => {
+    for (const paper of ["letter", "a4"] as const) {
+      describe(paper, () => {
+        it.each(ALL_HOWTO_BOX_CASES)(
+          "$id: when interior, the square's left edge sits exactly NAME_BOX_CLEARANCE_MM off the stringer and clears the curve by NAME_BOX_CLEARANCE_MM on both sides over its own footprint",
+          ({ build }) => {
+            const options = build(paper);
+            const { placement, squareMm, footprintHeightMm } = templateScaleSquarePlacement(options);
+
+            if (placement.position !== "interior") return; // covered by the corner round trip above
+
+            // Assert the 4mm stringer offset against the placement's own halfWidthStart in the
+            // board's frame rather than against page millimetres, since halfWidthToX is not
+            // exported.
+            expect(placement.halfWidthStart).toBe(NAME_BOX_CLEARANCE_MM);
+
+            const bottom = placement.topStation - footprintHeightMm;
+            const requiredHalfWidth = NAME_BOX_CLEARANCE_MM + squareMm + NAME_BOX_CLEARANCE_MM;
+            const step = 1;
+            let minHalfWidth = Infinity;
+            for (let station = bottom; station <= placement.topStation; station += step) {
+              minHalfWidth = Math.min(minHalfWidth, sampleOutline(options.geometry, mm(station)));
+            }
+            minHalfWidth = Math.min(minHalfWidth, sampleOutline(options.geometry, mm(placement.topStation)));
+
+            expect(minHalfWidth).toBeGreaterThanOrEqual(requiredHalfWidth - ROUND_TRIP_TOLERANCE_MM);
+          },
+        );
+      });
+    }
+  });
+
+  it.each(ALL_HOWTO_BOX_CASES)(
+    "$id (letter): when interior, the square never overlaps the how-to box and its top sits at least NAME_BOX_CLEARANCE_MM below the how-to box's own bottom edge",
+    ({ build }) => {
+      const options = build("letter");
+      const { placement } = templateScaleSquarePlacement(options);
+      if (placement.position !== "interior") return; // covered by the corner round trip above
+
+      const rects = templatePageZeroFurnitureRects(options);
+      const square = rects.find((r) => r.name === "scale-square")!;
+      const howTo = rects.find((r) => r.name === "how-to-box")!;
+      expect(rectsOverlap(square, howTo)).toBe(false);
+
+      // In page-local mm, y grows toward the tail — the how-to box's own bottom edge is
+      // howTo.y + howTo.height; the square's own top (square.y) must sit at least
+      // NAME_BOX_CLEARANCE_MM further down the page than that, i.e. numerically greater.
+      const howToBottom = howTo.y + howTo.height;
+      expect(square.y - howToBottom).toBeGreaterThanOrEqual(NAME_BOX_CLEARANCE_MM - 1e-6);
+    },
+  );
+
+  it.each(BOARD_PRESETS)(
+    "$id (letter): every page-0 furniture rectangle stays free of overlaps and fully inside the alignment box, using this board's own real geometry",
+    (preset) => {
+      const options = buildOptionsFor(preset, "letter");
+      const boxRect = templatePageZeroBoxRect(options.layout);
+      const rects = templatePageZeroFurnitureRects(options);
+      for (let i = 0; i < rects.length; i++) {
+        expect(rectContains(boxRect, rects[i])).toBe(true);
+        for (let j = i + 1; j < rects.length; j++) {
+          expect(rectsOverlap(rects[i], rects[j])).toBe(false);
+        }
+      }
+    },
+  );
+
+  it.each(WIDE_TEMPLATE_CASES)(
+    "$id (letter): every page-0 furniture rectangle stays free of overlaps and fully inside the alignment box, on the wide variant this task actually changes the square's placement on",
+    ({ basePreset, outline }) => {
+      const options = buildOptionsForOutline(basePreset, outline, basePreset.name, "letter");
+      const boxRect = templatePageZeroBoxRect(options.layout);
+      const rects = templatePageZeroFurnitureRects(options);
+      for (let i = 0; i < rects.length; i++) {
+        expect(rectContains(boxRect, rects[i])).toBe(true);
+        for (let j = i + 1; j < rects.length; j++) {
+          expect(rectsOverlap(rects[i], rects[j])).toBe(false);
+        }
+      }
+    },
+  );
+
+  it("derived outcome matches the planning facts: shortboard, fish, midlength, longboard and the widest shortboard keep the corner; the widest longboard and the noseFullness-100 longboard move interior", () => {
+    const expectedCorner = new Set(["shortboard", "fish", "midlength", "longboard", "widest-shortboard"]);
+    for (const paper of ["letter", "a4"] as const) {
+      for (const { id, build } of ALL_HOWTO_BOX_CASES) {
+        const options = build(paper);
+        const { placement } = templateScaleSquarePlacement(options);
+        expect(placement.position).toBe(expectedCorner.has(id) ? "corner" : "interior");
       }
     }
   });

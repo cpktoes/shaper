@@ -714,9 +714,9 @@ const HOWTO_BOX_FINE_SAMPLE_STEP_MM = 1;
 /** The minimum AND maximum outline half-width over a station span, sampled every
  * `HOWTO_BOX_FINE_SAMPLE_STEP_MM` millimetres and folding in both endpoints explicitly — a
  * floating-point `station += step` accumulation can stop a fraction short of `top`, silently
- * skipping the exact sample a maximum check depends on. Used only by `howToBoxPlacement`; the
- * existing `minHalfWidthOverStationSpan` above keeps its original 5-sample coarseness for
- * `nameBlockPlacement`, unmodified. */
+ * skipping the exact sample a maximum check depends on. Used by `howToBoxPlacement` and
+ * `scaleSquarePlacement` (quick task 260903-h7t); the existing `minHalfWidthOverStationSpan` above
+ * keeps its original 5-sample coarseness for `nameBlockPlacement`, unmodified. */
 function minMaxHalfWidthOverStationSpanFine(
   geometry: OutlineGeometry,
   top: number,
@@ -836,6 +836,142 @@ export function howToBoxPlacement(
   // printable range. Does not prove containment — only that the box stays on the sheet and below
   // the name block.
   const fallbackTop = Math.min(searchFloor + boxHeightMm, searchCeiling);
+  return {
+    pageIndex: page.index,
+    topStation: mm(fallbackTop),
+    halfWidthStart: mm(halfWidthStart),
+    position: "interior",
+  };
+}
+
+/** The founder's own trigger for keeping the 2in x 2in scale-check square in its top-outward
+ * corner spot on page 0 (quick task 260903-h7t — the corner was previously believed to be "a
+ * corner the curve never reaches", which measured false on the widest longboard and a
+ * 100%-nose-fullness longboard). This is a DECISION, not a formula: the founder chose to keep the
+ * corner whenever the curve merely touches the square's own footprint (clearance >= 0), rather
+ * than requiring the same `NAME_BOX_CLEARANCE_MM` (4mm) of daylight every other page-0 box
+ * requires — specifically so the plain longboard preset keeps its corner square on both paper
+ * sizes, where its measured clearance is only 2.5mm at A4. A later tidy-up that folds this into
+ * `NAME_BOX_CLEARANCE_MM` would silently move the longboard's square off the corner at A4. Keep
+ * this its own named constant. */
+export const SCALE_SQUARE_CORNER_CLEARANCE_MM = 0;
+
+/** Where the 2in x 2in scale-check square goes on page 0 (quick task 260903-h7t) — its usual
+ * top-outward corner spot by default, or stacked inside the outline under whichever piece of
+ * page-0 furniture is currently lowest, on the boards where the curve actually reaches into the
+ * corner spot's own footprint. */
+export interface ScaleSquarePlacement {
+  pageIndex: number;
+  /** The square's nose-most (top) edge, in the board's own absolute station frame. */
+  topStation: Mm;
+  /** The square's left edge, measured out from the stringer (half-width 0). */
+  halfWidthStart: Mm;
+  /** Which of the two placements this is — kept on the result so a caller (and a test) can name
+   * the branch without re-deriving the clearance check. */
+  position: "corner" | "interior";
+}
+
+/**
+ * Decides where the 2in x 2in scale-check square goes on page 0. `candidate` is the caller's
+ * corner proposal — today's fixed top-outward-corner spot, expressed in the board's own
+ * station/half-width frame rather than page-local millimetres.
+ *
+ * **The corner is preferred** (it is the founder's chosen spot, D-07, and it costs the board no
+ * drawing area): kept whenever the outline curve's MAXIMUM half-width anywhere across the
+ * candidate's own footprint span clears the candidate's own curve-side edge by at least
+ * `cornerClearanceMm` — the founder's deliberately loose 0mm trigger
+ * (`SCALE_SQUARE_CORNER_CLEARANCE_MM`), not the stricter 4mm `NAME_BOX_CLEARANCE_MM` every other
+ * page-0 box uses. The maximum, not the minimum, because clearance is measured from the square's
+ * own curve-side edge inward — the curve's single widest point anywhere in the footprint's height
+ * is the one point that can reach into it.
+ *
+ * **Interior is the fallback**, on the rare board where the curve genuinely reaches the corner
+ * spot: the square stacks under whatever furniture is already lowest on page 0 — the how-to box's
+ * bottom edge when the how-to box is interior, otherwise the name block's bottom edge, since on
+ * every board that reaches this branch the how-to box is provably interior already (the outline
+ * only widens from the tip outward, and the how-to box's own outboard spot is both deeper on the
+ * page and further inboard than the square's corner spot, so the curve reaches the box's spot
+ * first). The square's top starts `clearanceMm` below that bottom edge and `clearanceMm` off the
+ * stringer, then scans toward the tail in `NAME_BLOCK_SEARCH_STEP_MM` steps — exactly the way
+ * `howToBoxPlacement`'s own interior branch scans — until a station band clears the curve by
+ * `clearanceMm` on both sides over the square's own width.
+ *
+ * Last resort (a pathological board no real preset can produce): the deepest band whose bottom
+ * sits at page 0's own search floor, clamped so the square's top never rises back above the
+ * stacking ceiling or page 0's own printable range. This branch does not prove containment — only
+ * that the square stays on the sheet and below the furniture already above it.
+ */
+export function scaleSquarePlacement(
+  layout: TemplateLayout,
+  geometry: OutlineGeometry,
+  candidate: { topStation: number; halfWidthStart: number },
+  squareMm: number,
+  footprintHeightMm: number,
+  howToBox: HowToBoxPlacement,
+  howToBoxHeightMm: number,
+  nameBlock: NameBlockPlacement,
+  nameBlockHeightMm: number,
+  clearanceMm: number = NAME_BOX_CLEARANCE_MM,
+  cornerClearanceMm: number = SCALE_SQUARE_CORNER_CLEARANCE_MM,
+): ScaleSquarePlacement {
+  const page = layout.pages.find((p) => p.index === 0) ?? layout.pages[0];
+
+  const candidateBottom = candidate.topStation - footprintHeightMm;
+  const { max: cornerCurveMax } = minMaxHalfWidthOverStationSpanFine(
+    geometry,
+    candidate.topStation,
+    candidateBottom,
+  );
+  if (candidate.halfWidthStart - cornerCurveMax >= cornerClearanceMm) {
+    return {
+      pageIndex: page.index,
+      topStation: mm(candidate.topStation),
+      halfWidthStart: mm(candidate.halfWidthStart),
+      position: "corner",
+    };
+  }
+
+  // Interior: stacked under whichever piece of page-0 furniture is currently lowest,
+  // clearanceMm off the stringer. Built from squareMm — NEVER from footprintHeightMm, which is
+  // numerically equal to this required-half-width total today (58.8mm both) purely by
+  // coincidence: the footprint height is the square's own vertical reach including its caption,
+  // while this is the square's WIDTH plus a clearance gap on each side. The two must never be
+  // conflated even though today's numbers happen to agree.
+  const halfWidthStart = clearanceMm;
+  const requiredHalfWidth = clearanceMm + squareMm + clearanceMm;
+  const stackingBottomEdge =
+    howToBox.position === "interior"
+      ? howToBox.topStation - howToBoxHeightMm
+      : nameBlock.topStation - nameBlockHeightMm;
+
+  const overlapReserve = layout.rows > 1 ? layout.overlap : 0;
+  const searchFloor = page.stationRange[0] + overlapReserve;
+  const pageCeiling = Math.min(page.stationRange[1], geometry.length);
+  const searchCeiling = Math.min(stackingBottomEdge - clearanceMm, pageCeiling);
+
+  for (
+    let top = searchCeiling;
+    top - footprintHeightMm >= searchFloor;
+    top -= NAME_BLOCK_SEARCH_STEP_MM
+  ) {
+    const bottom = top - footprintHeightMm;
+    const { min } = minMaxHalfWidthOverStationSpanFine(geometry, top, bottom);
+    if (min >= requiredHalfWidth) {
+      return {
+        pageIndex: page.index,
+        topStation: mm(top),
+        halfWidthStart: mm(halfWidthStart),
+        position: "interior",
+      };
+    }
+  }
+
+  // No station band under the stacking ceiling clears the square at full width (a pathological
+  // board) — fall back to the deepest band searched, mirroring howToBoxPlacement's own
+  // last-resort posture, clamped so the square's top never rises back above the stacking ceiling
+  // or page 0's own printable range. Does not prove containment — only that the square stays on
+  // the sheet and below the furniture already above it.
+  const fallbackTop = Math.min(searchFloor + footprintHeightMm, searchCeiling);
   return {
     pageIndex: page.index,
     topStation: mm(fallbackTop),
