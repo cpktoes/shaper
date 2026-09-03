@@ -1,0 +1,71 @@
+outline keys: length, widePointWidth, widePointOffset, tailRailLength, noseRailLength, noseAngle, noseFullness, tailAngle, tailFullness, tail
+shortboard          letter cols=2 rows=8 boxRightHW=183.2 len=1880 nose12=11.25in
+   howTo(outboard now): leftHW=113.2 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=65.2 CLEARANCE=48.0 (deepest station from tip still 4mm clear: 207.5)
+   square: leftHW=132.4 span(fromTip)=0.0..58.8 maxCurveHW=41.2 clr=91.2
+   nameBlock: top(fromTip)=142.0 h=25.6 bottom(fromTip)=167.6 page0floor(fromTip)=246.7 roomBelowNB=79.1
+   interior candidate (4mm under name block): span(fromTip)=171.6..217.6 minCurveHW=95.0 required=78 fits=true bottomAboveFloorBy=29.1
+shortboard          a4     cols=2 rows=8 boxRightHW=177.3 len=1880 nose12=11.25in
+   howTo(outboard now): leftHW=107.3 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=65.2 CLEARANCE=42.1 (deepest station from tip still 4mm clear: 192.5)
+   square: leftHW=126.5 span(fromTip)=0.0..58.8 maxCurveHW=41.2 clr=85.3
+   nameBlock: top(fromTip)=142.0 h=25.6 bottom(fromTip)=167.6 page0floor(fromTip)=264.3 roomBelowNB=96.7
+   interior candidate (4mm under name block): span(fromTip)=171.6..217.6 minCurveHW=95.0 required=78 fits=true bottomAboveFloorBy=46.7
+fish                letter cols=2 rows=7 boxRightHW=183.2 len=1676 nose12=15.87in
+   howTo(outboard now): leftHW=113.2 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=117.3 CLEARANCE=-4.1 (deepest station from tip still 4mm clear: 93.0)
+   square: leftHW=132.4 span(fromTip)=-0.0..58.8 maxCurveHW=82.3 clr=50.1
+   nameBlock: top(fromTip)=59.0 h=25.6 bottom(fromTip)=84.6 page0floor(fromTip)=246.7 roomBelowNB=162.1
+   interior candidate (4mm under name block): span(fromTip)=88.6..134.6 minCurveHW=106.2 required=78 fits=true bottomAboveFloorBy=112.1
+fish                a4     cols=2 rows=7 boxRightHW=177.3 len=1676 nose12=15.87in
+   howTo(outboard now): leftHW=107.3 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=117.3 CLEARANCE=-10.0 (deepest station from tip still 4mm clear: 85.0)
+   square: leftHW=126.5 span(fromTip)=0.0..58.8 maxCurveHW=82.3 clr=44.2
+   nameBlock: top(fromTip)=59.0 h=25.6 bottom(fromTip)=84.6 page0floor(fromTip)=264.3 roomBelowNB=179.7
+   interior candidate (4mm under name block): span(fromTip)=88.6..134.6 minCurveHW=106.2 required=78 fits=true bottomAboveFloorBy=129.7
+midlength           letter cols=2 rows=9 boxRightHW=183.2 len=2134 nose12=14.32in
+   howTo(outboard now): leftHW=113.2 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=97.6 CLEARANCE=15.6 (deepest station from tip still 4mm clear: 125.5)
+   square: leftHW=132.4 span(fromTip)=0.0..58.8 maxCurveHW=66.5 clr=65.9
+   nameBlock: top(fromTip)=81.0 h=25.6 bottom(fromTip)=106.6 page0floor(fromTip)=246.7 roomBelowNB=140.1
+   interior candidate (4mm under name block): span(fromTip)=110.6..156.6 minCurveHW=101.0 required=78 fits=true bottomAboveFloorBy=90.1
+midlength           a4     cols=2 rows=9 boxRightHW=177.3 len=2134 nose12=14.32in
+   howTo(outboard now): leftHW=107.3 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=97.6 CLEARANCE=9.7 (deepest station from tip still 4mm clear: 115.0)
+   square: leftHW=126.5 span(fromTip)=0.0..58.8 maxCurveHW=66.5 clr=60.0
+   nameBlock: top(fromTip)=81.0 h=25.6 bottom(fromTip)=106.6 page0floor(fromTip)=264.3 roomBelowNB=157.7
+   interior candidate (4mm under name block): span(fromTip)=110.6..156.6 minCurveHW=101.0 required=78 fits=true bottomAboveFloorBy=107.7
+longboard           letter cols=2 rows=12 boxRightHW=183.2 len=2743 nose12=17.91in
+   howTo(outboard now): leftHW=113.2 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=156.9 CLEARANCE=-43.7 (deepest station from tip still 4mm clear: 44.0)
+   square: leftHW=132.4 span(fromTip)=0.0..58.8 maxCurveHW=124.0 clr=8.4
+   nameBlock: top(fromTip)=23.0 h=25.6 bottom(fromTip)=48.6 page0floor(fromTip)=246.7 roomBelowNB=198.1
+   interior candidate (4mm under name block): span(fromTip)=52.6..98.6 minCurveHW=118.2 required=78 fits=true bottomAboveFloorBy=148.1
+longboard           a4     cols=2 rows=11 boxRightHW=177.3 len=2743 nose12=17.91in
+   howTo(outboard now): leftHW=107.3 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=156.9 CLEARANCE=-49.6 (deepest station from tip still 4mm clear: 38.5)
+   square: leftHW=126.5 span(fromTip)=0.0..58.8 maxCurveHW=124.0 clr=2.5
+   nameBlock: top(fromTip)=23.0 h=25.6 bottom(fromTip)=48.6 page0floor(fromTip)=264.3 roomBelowNB=215.7
+   interior candidate (4mm under name block): span(fromTip)=52.6..98.6 minCurveHW=118.2 required=78 fits=true bottomAboveFloorBy=165.7
+widest-shortboard   letter cols=2 rows=8 boxRightHW=183.2 len=1880 nose12=15.02in
+   howTo(outboard now): leftHW=113.2 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=84.8 CLEARANCE=28.4 (deepest station from tip still 4mm clear: 144.0)
+   square: leftHW=132.4 span(fromTip)=0.0..58.8 maxCurveHW=52.3 clr=80.1
+   nameBlock: top(fromTip)=101.0 h=25.6 bottom(fromTip)=126.6 page0floor(fromTip)=246.7 roomBelowNB=120.1
+   interior candidate (4mm under name block): span(fromTip)=130.6..176.6 minCurveHW=101.3 required=78 fits=true bottomAboveFloorBy=70.1
+widest-shortboard   a4     cols=2 rows=8 boxRightHW=177.3 len=1880 nose12=15.02in
+   howTo(outboard now): leftHW=107.3 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=84.8 CLEARANCE=22.5 (deepest station from tip still 4mm clear: 134.0)
+   square: leftHW=126.5 span(fromTip)=0.0..58.8 maxCurveHW=52.3 clr=74.2
+   nameBlock: top(fromTip)=101.0 h=25.6 bottom(fromTip)=126.6 page0floor(fromTip)=264.3 roomBelowNB=137.7
+   interior candidate (4mm under name block): span(fromTip)=130.6..176.6 minCurveHW=101.3 required=78 fits=true bottomAboveFloorBy=87.7
+widest-longboard    letter cols=2 rows=12 boxRightHW=183.2 len=2743 nose12=19.93in
+   howTo(outboard now): leftHW=113.2 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=174.8 CLEARANCE=-61.6 (deepest station from tip still 4mm clear: 34.5)
+   square: leftHW=132.4 span(fromTip)=0.0..58.8 maxCurveHW=138.2 clr=-5.8
+   nameBlock: top(fromTip)=19.0 h=25.6 bottom(fromTip)=44.6 page0floor(fromTip)=246.7 roomBelowNB=202.1
+   interior candidate (4mm under name block): span(fromTip)=48.6..94.6 minCurveHW=127.5 required=78 fits=true bottomAboveFloorBy=152.1
+widest-longboard    a4     cols=2 rows=11 boxRightHW=177.3 len=2743 nose12=19.93in
+   howTo(outboard now): leftHW=107.3 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=174.8 CLEARANCE=-67.5 (deepest station from tip still 4mm clear: 30.5)
+   square: leftHW=126.5 span(fromTip)=0.0..58.8 maxCurveHW=138.2 clr=-11.7
+   nameBlock: top(fromTip)=19.0 h=25.6 bottom(fromTip)=44.6 page0floor(fromTip)=264.3 roomBelowNB=219.7
+   interior candidate (4mm under name block): span(fromTip)=48.6..94.6 minCurveHW=127.5 required=78 fits=true bottomAboveFloorBy=169.7
+fullnose-longboard  letter cols=2 rows=12 boxRightHW=183.2 len=2743 nose12=18.71in
+   howTo(outboard now): leftHW=113.2 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=168.3 CLEARANCE=-55.1 (deepest station from tip still 4mm clear: 36.0)
+   square: leftHW=132.4 span(fromTip)=0.0..58.8 maxCurveHW=134.2 clr=-1.8
+   nameBlock: top(fromTip)=19.0 h=25.6 bottom(fromTip)=44.6 page0floor(fromTip)=246.7 roomBelowNB=202.1
+   interior candidate (4mm under name block): span(fromTip)=48.6..94.6 minCurveHW=124.1 required=78 fits=true bottomAboveFloorBy=152.1
+fullnose-longboard  a4     cols=2 rows=11 boxRightHW=177.3 len=2743 nose12=18.71in
+   howTo(outboard now): leftHW=107.3 w=70 h=46.0 lines=8 span(fromTip)=58.8..104.8 maxCurveHW=168.3 CLEARANCE=-61.0 (deepest station from tip still 4mm clear: 32.0)
+   square: leftHW=126.5 span(fromTip)=0.0..58.8 maxCurveHW=134.2 clr=-7.7
+   nameBlock: top(fromTip)=19.0 h=25.6 bottom(fromTip)=44.6 page0floor(fromTip)=264.3 roomBelowNB=219.7
+   interior candidate (4mm under name block): span(fromTip)=48.6..94.6 minCurveHW=124.1 required=78 fits=true bottomAboveFloorBy=169.7
