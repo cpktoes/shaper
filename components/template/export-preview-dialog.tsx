@@ -79,7 +79,7 @@ const ARTIFACT_CARDS: { value: ExportArtifact; title: string; description: strin
   {
     value: "full",
     title: "Full Sized Template",
-    description: "True-size, full-length half board template",
+    description: "True-size, full-length half board template.",
   },
   {
     value: "strip",
