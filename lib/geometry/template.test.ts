@@ -21,6 +21,7 @@ import {
   computeTailClosure,
   computeTemplateLayout,
   computeTemplateMarks,
+  howToBoxPlacement,
   markLineSegments,
   markPlacements,
   nameBlockPlacement,
@@ -1724,5 +1725,209 @@ describe("stripFurniture", () => {
         expect(clearsNumeralAbove || clearsNumeralBelow).toBe(true);
       }
     }
+  });
+});
+
+/**
+ * `howToBoxPlacement` tests (quick task 260903-fqv — the rail curve was running through the how-to
+ * instruction box on page 1's nose page for a wide-nosed board). Every expected value below is
+ * derived — from `sampleOutline`, from the layout's own numbers (`templatePageBoxes`,
+ * `nameBlockPlacement`), or from arithmetic over named constants — never a millimetre figure read
+ * back out of what the new code printed (CLAUDE.md Rule 1). The how-to box's own size (70mm wide,
+ * 46mm tall — every preset's real drawn size, a planning fact recorded in
+ * `260903-fqv-probe-measurements.txt`) is a TEST INPUT here, not an expected value, so it may be a
+ * plain number; the outboard candidate itself is still derived from `templatePageBoxes(layout)[0]`
+ * exactly the way `components/template/build-template-pdf.ts`'s own `howToBoxRect` computes it,
+ * never a hand-typed half-width.
+ */
+describe("howToBoxPlacement", () => {
+  const HOWTO_BOX_WIDTH_MM = 70;
+  const HOWTO_BOX_HEIGHT_MM = 46;
+  // Mirrors build-template-pdf.ts's own SCALE_SQUARE_MM / HOWTO_BOX_TOP_GAP_MM — used only to
+  // derive the outboard candidate the same way the drawing module does, never asserted on
+  // directly.
+  const CANDIDATE_SCALE_SQUARE_MM = inchesToMm(2);
+  const CANDIDATE_HOWTO_BOX_TOP_GAP_MM = 8;
+
+  const WIDE_VARIANTS = [
+    {
+      id: "widest-shortboard",
+      outline: { ...BOARD_PRESETS[0].outline, widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max) },
+    },
+    {
+      id: "widest-longboard",
+      outline: { ...BOARD_PRESETS[3].outline, widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max) },
+    },
+    {
+      id: "fullnose-longboard",
+      outline: { ...BOARD_PRESETS[3].outline, noseFullness: 100 },
+    },
+  ];
+
+  const ALL_CASES = [...BOARD_PRESETS.map((preset) => ({ id: preset.id, outline: preset.outline })), ...WIDE_VARIANTS];
+
+  function outboardCandidate(layout: TemplateLayout): { topStation: number; halfWidthStart: number } {
+    const box = templatePageBoxes(layout)[0];
+    return {
+      topStation: box.stationRange[1] - CANDIDATE_SCALE_SQUARE_MM - CANDIDATE_HOWTO_BOX_TOP_GAP_MM,
+      halfWidthStart: box.halfWidthRange[1] - HOWTO_BOX_WIDTH_MM,
+    };
+  }
+
+  for (const paper of PAPERS) {
+    describe(paper, () => {
+      it.each(ALL_CASES)(
+        "$id: position agrees with the geometry — outboard exactly when the candidate's own curve-side clearance is at least NAME_BOX_CLEARANCE_MM",
+        ({ outline }) => {
+          const geometry = buildOutline(outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const nameBlock = nameBlockPlacement(layout, geometry);
+          const candidate = outboardCandidate(layout);
+
+          const step = 1;
+          const bottom = candidate.topStation - HOWTO_BOX_HEIGHT_MM;
+          let maxHalfWidth = -Infinity;
+          for (let station = bottom; station <= candidate.topStation; station += step) {
+            maxHalfWidth = Math.max(maxHalfWidth, sampleOutline(geometry, mm(station)));
+          }
+          maxHalfWidth = Math.max(maxHalfWidth, sampleOutline(geometry, mm(candidate.topStation)));
+          const outboardClearance = candidate.halfWidthStart - maxHalfWidth;
+          const expectedPosition = outboardClearance >= NAME_BOX_CLEARANCE_MM ? "outboard" : "interior";
+
+          const placement = howToBoxPlacement(
+            layout,
+            geometry,
+            candidate,
+            HOWTO_BOX_WIDTH_MM,
+            HOWTO_BOX_HEIGHT_MM,
+            nameBlock,
+            NAME_BOX_HEIGHT_MM,
+          );
+
+          expect(placement.position).toBe(expectedPosition);
+        },
+      );
+
+      it.each(ALL_CASES)(
+        "$id: when outboard, the returned placement equals the candidate field-for-field",
+        ({ outline }) => {
+          const geometry = buildOutline(outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const nameBlock = nameBlockPlacement(layout, geometry);
+          const candidate = outboardCandidate(layout);
+
+          const placement = howToBoxPlacement(
+            layout,
+            geometry,
+            candidate,
+            HOWTO_BOX_WIDTH_MM,
+            HOWTO_BOX_HEIGHT_MM,
+            nameBlock,
+            NAME_BOX_HEIGHT_MM,
+          );
+
+          if (placement.position !== "outboard") return; // covered by the interior test below
+
+          expect(placement.pageIndex).toBe(0);
+          expect(placement.topStation).toBe(candidate.topStation);
+          expect(placement.halfWidthStart).toBe(candidate.halfWidthStart);
+        },
+      );
+
+      it.each(ALL_CASES)(
+        "$id: when interior, halfWidthStart is NAME_BOX_CLEARANCE_MM, the box clears the curve by NAME_BOX_CLEARANCE_MM over its whole span, its bottom is at or above the search floor, and its top is at or below the name block's bottom minus NAME_BOX_CLEARANCE_MM",
+        ({ outline }) => {
+          const geometry = buildOutline(outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const nameBlock = nameBlockPlacement(layout, geometry);
+          const candidate = outboardCandidate(layout);
+
+          const placement = howToBoxPlacement(
+            layout,
+            geometry,
+            candidate,
+            HOWTO_BOX_WIDTH_MM,
+            HOWTO_BOX_HEIGHT_MM,
+            nameBlock,
+            NAME_BOX_HEIGHT_MM,
+          );
+
+          if (placement.position !== "interior") return; // covered by the outboard test above
+
+          expect(placement.halfWidthStart).toBe(NAME_BOX_CLEARANCE_MM);
+
+          const bottom = placement.topStation - HOWTO_BOX_HEIGHT_MM;
+          const requiredHalfWidth = NAME_BOX_CLEARANCE_MM + HOWTO_BOX_WIDTH_MM + NAME_BOX_CLEARANCE_MM;
+          const step = 1;
+          let minHalfWidth = Infinity;
+          for (let station = bottom; station <= placement.topStation; station += step) {
+            minHalfWidth = Math.min(minHalfWidth, sampleOutline(geometry, mm(station)));
+          }
+          minHalfWidth = Math.min(minHalfWidth, sampleOutline(geometry, mm(placement.topStation)));
+          expect(minHalfWidth).toBeGreaterThanOrEqual(requiredHalfWidth - TOLERANCE_MM);
+
+          const page0 = layout.pages[0];
+          const overlapReserve = layout.rows > 1 ? layout.overlap : 0;
+          const searchFloor = page0.stationRange[0] + overlapReserve;
+          expect(bottom).toBeGreaterThanOrEqual(searchFloor - TOLERANCE_MM);
+
+          const interiorCeiling = nameBlock.topStation - NAME_BOX_HEIGHT_MM - NAME_BOX_CLEARANCE_MM;
+          expect(placement.topStation).toBeLessThanOrEqual(interiorCeiling + TOLERANCE_MM);
+        },
+      );
+    });
+  }
+
+  it(
+    "derived outcome matches the planning facts: shortboard, midlength and the widest shortboard stay outboard; fish, longboard, the widest longboard and the noseFullness-100 longboard go interior",
+    () => {
+      const expectedOutboard = new Set(["shortboard", "midlength", "widest-shortboard"]);
+      for (const paper of PAPERS) {
+        for (const { id, outline } of ALL_CASES) {
+          const geometry = buildOutline(outline);
+          const layout = computeTemplateLayout(geometry, paper);
+          const nameBlock = nameBlockPlacement(layout, geometry);
+          const candidate = outboardCandidate(layout);
+          const placement = howToBoxPlacement(
+            layout,
+            geometry,
+            candidate,
+            HOWTO_BOX_WIDTH_MM,
+            HOWTO_BOX_HEIGHT_MM,
+            nameBlock,
+            NAME_BOX_HEIGHT_MM,
+          );
+
+          expect(placement.position).toBe(expectedOutboard.has(id) ? "outboard" : "interior");
+        }
+      }
+    },
+  );
+
+  it("pathological case: an oversized box height finds no interior band, and the fallback keeps the box on page 0 and below the name block rather than throwing or exceeding the ceiling", () => {
+    const preset = BOARD_PRESETS[0];
+    const geometry = buildOutline(preset.outline);
+    const layout = computeTemplateLayout(geometry, "letter");
+    const nameBlock = nameBlockPlacement(layout, geometry);
+    const candidate = outboardCandidate(layout);
+    const page0 = layout.pages[0];
+    const oversizedBoxHeightMm = page0.stationRange[1] - page0.stationRange[0] + 1000;
+
+    const placement = howToBoxPlacement(
+      layout,
+      geometry,
+      candidate,
+      HOWTO_BOX_WIDTH_MM,
+      oversizedBoxHeightMm,
+      nameBlock,
+      NAME_BOX_HEIGHT_MM,
+    );
+
+    expect(placement.position).toBe("interior");
+    const interiorCeiling = nameBlock.topStation - NAME_BOX_HEIGHT_MM - NAME_BOX_CLEARANCE_MM;
+    const pageCeiling = Math.min(page0.stationRange[1], geometry.length);
+    const expectedCeiling = Math.min(interiorCeiling, pageCeiling);
+    expect(placement.topStation).toBeCloseTo(expectedCeiling, 6);
+    expect(placement.topStation).toBeGreaterThanOrEqual(page0.stationRange[0] - TOLERANCE_MM);
   });
 });

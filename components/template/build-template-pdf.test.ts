@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import jsPDF from "jspdf";
 import { describe, expect, it } from "vitest";
-import { WIDEPOINT_WIDTH_RANGE_IN } from "@/lib/geometry/board";
+import { WIDEPOINT_WIDTH_RANGE_IN, type OutlineSpec } from "@/lib/geometry/board";
 import { buildOutline, sampleOutline } from "@/lib/geometry/outline";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import {
@@ -22,6 +22,7 @@ import {
   nameBlockContent,
   rectContains,
   rectsOverlap,
+  templateHowToBoxPlacement,
   templateHowToLines,
   templateHowToWrappedLines,
   templateMarkDimensionText,
@@ -38,7 +39,21 @@ function buildOptions(paper: "letter" | "a4" = "letter") {
 }
 
 function buildOptionsFor(preset: (typeof BOARD_PRESETS)[number], paper: "letter" | "a4" = "letter") {
-  const geometry = buildOutline(preset.outline);
+  return buildOptionsForOutline(preset, preset.outline, preset.name, paper);
+}
+
+/** Like `buildOptionsFor`, but for a wide-variant outline that isn't one of the four named
+ * `BOARD_PRESETS` (quick task 260903-fqv — the widest shortboard/longboard and a full-nose
+ * longboard, built the same way the geometry-layer tests build their own wide variants: spread
+ * `basePreset.outline` and override the one field). `basePreset` supplies everything the wide
+ * variant doesn't override — its rails (for `centerThickness`) and its own outline as a base. */
+function buildOptionsForOutline(
+  basePreset: (typeof BOARD_PRESETS)[number],
+  outline: OutlineSpec,
+  boardName: string,
+  paper: "letter" | "a4" = "letter",
+) {
+  const geometry = buildOutline(outline);
   const layout = computeTemplateLayout(geometry, paper);
   const marks = computeTemplateMarks(geometry);
   return {
@@ -46,18 +61,54 @@ function buildOptionsFor(preset: (typeof BOARD_PRESETS)[number], paper: "letter"
     marks,
     geometry,
     paper,
-    boardName: preset.name,
+    boardName,
     dims: {
       length: geometry.length,
       widePointWidth: geometry.halfWidePointWidth,
-      centerThickness: preset.rails.center.boardThickness,
+      centerThickness: basePreset.rails.center.boardThickness,
       noseWidth12in: geometry.noseWidthAt12in,
       tailWidth12in: geometry.tailWidthAt12in,
-      widePointOffset: preset.outline.widePointOffset,
+      widePointOffset: outline.widePointOffset,
       volumeLitres: litres(27.4),
     },
   };
 }
+
+/** The three wide variants Task 1's geometry-layer tests also cover (`lib/geometry/template.test.ts`
+ * — `howToBoxPlacement`'s own describe block), rebuilt here for the drawing-module tests so both
+ * layers exercise the same boards. */
+const WIDE_TEMPLATE_CASES = [
+  {
+    id: "widest-shortboard",
+    basePreset: BOARD_PRESETS[0],
+    outline: { ...BOARD_PRESETS[0].outline, widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max) },
+  },
+  {
+    id: "widest-longboard",
+    basePreset: BOARD_PRESETS[3],
+    outline: { ...BOARD_PRESETS[3].outline, widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max) },
+  },
+  {
+    id: "fullnose-longboard",
+    basePreset: BOARD_PRESETS[3],
+    outline: { ...BOARD_PRESETS[3].outline, noseFullness: 100 },
+  },
+];
+
+/** Every case Task 2's how-to box tests run against — the four named presets (real per-preset
+ * geometry via `buildOptionsFor`, never `buildOptions`' always-shortboard shortcut) plus the three
+ * wide variants above. Each entry's `build` defers paper selection so the same case list drives
+ * both `letter` and `a4` describe blocks. */
+const ALL_HOWTO_BOX_CASES = [
+  ...BOARD_PRESETS.map((preset) => ({
+    id: preset.id,
+    build: (paper: "letter" | "a4") => buildOptionsFor(preset, paper),
+  })),
+  ...WIDE_TEMPLATE_CASES.map(({ id, basePreset, outline }) => ({
+    id,
+    build: (paper: "letter" | "a4") => buildOptionsForOutline(basePreset, outline, basePreset.name, paper),
+  })),
+];
 
 describe("buildTemplatePdf", () => {
   it("produces one PDF page per layout page, with valid PDF bytes, marks included", () => {
@@ -635,3 +686,120 @@ describe(
     });
   },
 );
+
+/**
+ * `templateHowToBoxPlacement` / `howToBoxRect` tests (quick task 260903-fqv — the rail curve was
+ * running through the how-to instruction box on a wide-nosed board's nose page). Every expected
+ * value below is derived — from `sampleOutline`, the layout's own numbers, or arithmetic over
+ * named constants — never a millimetre figure read back out of what the new code printed (CLAUDE.md
+ * Rule 1). Uses `buildOptionsFor`/`buildOptionsForOutline` for real per-preset geometry — the
+ * existing pairwise overlap tests above use `buildOptions(paper)`, which is always the shortboard's
+ * own geometry with only the board name swapped, so they never exercise a longboard's page 0.
+ */
+describe("templateHowToBoxPlacement / howToBoxRect", () => {
+  const ROUND_TRIP_TOLERANCE_MM = 1e-6;
+
+  describe("outboard round trip (the founder's own D-10 spot, reproduced through the new geometry layer)", () => {
+    for (const paper of ["letter", "a4"] as const) {
+      it.each(BOARD_PRESETS)(
+        `$id (${paper}): when the placement comes back outboard, the drawn rect matches the historical fixed formula (right-anchored to the alignment box, HOWTO_BOX_TOP_GAP_MM below the scale square) within floating-point tolerance`,
+        (preset) => {
+          const options = buildOptionsFor(preset, paper);
+          const { placement, boxWidthMm } = templateHowToBoxPlacement(options);
+          if (placement.position !== "outboard") return; // covered by the interior assertions below
+
+          const boxRect = templatePageZeroBoxRect(options.layout);
+          // The historical fixed formula, recomputed here rather than imported, so this test
+          // proves the NEW code reproduces the OLD behaviour rather than merely agreeing with
+          // itself: x = alignment box's right edge minus the box's own width; y = alignment box's
+          // top edge plus the 2in scale square plus its own top gap (both fixed drawing
+          // constants, mirrored from build-template-pdf.ts's own SCALE_SQUARE_MM/
+          // HOWTO_BOX_TOP_GAP_MM).
+          const expectedX = boxRect.x + boxRect.width - boxWidthMm;
+          const expectedY = boxRect.y + inchesToMm(2) + 8;
+
+          const rects = templatePageZeroFurnitureRects(options);
+          const howTo = rects.find((r) => r.name === "how-to-box")!;
+
+          expect(Math.abs(howTo.x - expectedX)).toBeLessThan(ROUND_TRIP_TOLERANCE_MM);
+          expect(Math.abs(howTo.y - expectedY)).toBeLessThan(ROUND_TRIP_TOLERANCE_MM);
+        },
+      );
+    }
+  });
+
+  describe("outcome derived from the curve's own clearance (outboard when clear, interior otherwise)", () => {
+    for (const paper of ["letter", "a4"] as const) {
+      describe(paper, () => {
+        it.each(ALL_HOWTO_BOX_CASES)(
+          "$id: the how-to box clears the curve by NAME_BOX_CLEARANCE_MM on its curve-side edge (outboard) or on both sides (interior)",
+          ({ build }) => {
+            const options = build(paper);
+            const { placement, boxWidthMm, boxHeightMm } = templateHowToBoxPlacement(options);
+            const bottom = placement.topStation - boxHeightMm;
+
+            const step = 1;
+            let minHalfWidth = Infinity;
+            let maxHalfWidth = -Infinity;
+            for (let station = bottom; station <= placement.topStation; station += step) {
+              const halfWidth = sampleOutline(options.geometry, mm(station));
+              minHalfWidth = Math.min(minHalfWidth, halfWidth);
+              maxHalfWidth = Math.max(maxHalfWidth, halfWidth);
+            }
+            const topHalfWidth = sampleOutline(options.geometry, mm(placement.topStation));
+            minHalfWidth = Math.min(minHalfWidth, topHalfWidth);
+            maxHalfWidth = Math.max(maxHalfWidth, topHalfWidth);
+
+            if (placement.position === "outboard") {
+              expect(placement.halfWidthStart - maxHalfWidth).toBeGreaterThanOrEqual(
+                NAME_BOX_CLEARANCE_MM - ROUND_TRIP_TOLERANCE_MM,
+              );
+            } else {
+              expect(placement.halfWidthStart).toBe(NAME_BOX_CLEARANCE_MM);
+              const requiredHalfWidth = NAME_BOX_CLEARANCE_MM + boxWidthMm + NAME_BOX_CLEARANCE_MM;
+              expect(minHalfWidth).toBeGreaterThanOrEqual(requiredHalfWidth - ROUND_TRIP_TOLERANCE_MM);
+            }
+          },
+        );
+      });
+    }
+  });
+
+  it.each(ALL_HOWTO_BOX_CASES)(
+    "$id (letter): when interior, the how-to box never overlaps the name block and keeps at least NAME_BOX_CLEARANCE_MM between the name block's bottom edge and its own top edge",
+    ({ build }) => {
+      const options = build("letter");
+      const { placement } = templateHowToBoxPlacement(options);
+      if (placement.position !== "interior") return; // covered by the outboard round-trip test above
+
+      const rects = templatePageZeroFurnitureRects(options);
+      const howTo = rects.find((r) => r.name === "how-to-box")!;
+      const nameBlockRect = rects.find((r) => r.name === "name-block")!;
+      expect(rectsOverlap(howTo, nameBlockRect)).toBe(false);
+
+      const doc = new jsPDF({ unit: "mm" });
+      const nameBlockHeight = nameBlockContent(doc, options.dims).height;
+      const nameBlock = nameBlockPlacement(
+        options.layout,
+        options.geometry,
+        NAME_BOX_WIDTH_MM,
+        nameBlockHeight,
+        NAME_BOX_CLEARANCE_MM,
+      );
+      const nameBlockBottom = nameBlock.topStation - nameBlockHeight;
+      const gap = nameBlockBottom - placement.topStation;
+      expect(gap).toBeGreaterThanOrEqual(NAME_BOX_CLEARANCE_MM - 1e-6);
+    },
+  );
+
+  it("derived outcome matches the planning facts: shortboard, midlength and the widest shortboard stay outboard; fish, longboard, the widest longboard and the noseFullness-100 longboard go interior", () => {
+    const expectedOutboard = new Set(["shortboard", "midlength", "widest-shortboard"]);
+    for (const paper of ["letter", "a4"] as const) {
+      for (const { id, build } of ALL_HOWTO_BOX_CASES) {
+        const options = build(paper);
+        const { placement } = templateHowToBoxPlacement(options);
+        expect(placement.position).toBe(expectedOutboard.has(id) ? "outboard" : "interior");
+      }
+    }
+  });
+});

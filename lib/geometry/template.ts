@@ -26,13 +26,13 @@ export const NAME_BOX_WIDTH_MM = 74;
  * `nameBlockPlacement`'s default; the real drawn box is taller (the drawing module computes its
  * actual height from however many lines the dims row wraps to, and passes that in explicitly). */
 export const NAME_BOX_HEIGHT_MM = 20;
-/** The board name + dims block's clearance, kept on BOTH edges of the box (quick task 260903-18d
- * — "give the 4mm of clearance on both template prints"): the box's left (inboard) edge sits this
- * far out from the stringer (half-width 0), AND the outline curve itself must clear the box's
- * right (outboard) edge by this same distance, so a shaper cutting the template along the curve
- * never slices through the box. One constant, one rule, used the same way in both places it
- * applies — `nameBlockPlacement` (the tiled sheet) and `scanPagesForNameBlock` (the Paper Saver
- * strip). */
+/** The 4mm-of-daylight rule for page-0 furniture generally (quick task 260903-18d — "give the 4mm
+ * of clearance on both template prints" — broadened by quick task 260903-fqv to also govern the
+ * how-to box): a box's inboard edge sits this far out from the stringer (half-width 0), AND the
+ * outline curve itself must clear a box's outboard edge by this same distance, so a shaper
+ * cutting the template along the curve never slices through it. One constant, one rule, used the
+ * same way at every call site — `nameBlockPlacement` and `howToBoxPlacement` (the tiled sheet) and
+ * `scanPagesForNameBlock` (the Paper Saver strip). */
 export const NAME_BOX_CLEARANCE_MM = 4;
 
 /** Paper sizes this phase supports — a closed compile-time union, never a validated free string
@@ -699,6 +699,149 @@ export function nameBlockPlacement(
   // next page down, not the edge of the printed sheet itself.
   const fallbackTop = Math.min(searchFloor + boxHeightMm, searchCeiling);
   return { pageIndex: page.index, topStation: mm(fallbackTop), halfWidthStart };
+}
+
+/** Fine sampling step for `howToBoxPlacement`'s own outboard-clearance and interior-containment
+ * checks (quick task 260903-fqv) — a named constant so the step is never inlined as a bare `1`.
+ * The existing `NAME_BLOCK_HEIGHT_SAMPLES` (5 samples) is deliberately NOT reused here: five
+ * samples across a 46mm-tall how-to box are roughly 9mm apart, which is fine for a MINIMUM (a
+ * narrow point missed between two samples only makes the check more conservative than it needs to
+ * be) but wrong in the unsafe direction for a MAXIMUM — the curve's true widest point, hiding
+ * between two 9mm-apart samples, could sit outside the box while a coarse scan reports the box
+ * clear. */
+const HOWTO_BOX_FINE_SAMPLE_STEP_MM = 1;
+
+/** The minimum AND maximum outline half-width over a station span, sampled every
+ * `HOWTO_BOX_FINE_SAMPLE_STEP_MM` millimetres and folding in both endpoints explicitly — a
+ * floating-point `station += step` accumulation can stop a fraction short of `top`, silently
+ * skipping the exact sample a maximum check depends on. Used only by `howToBoxPlacement`; the
+ * existing `minHalfWidthOverStationSpan` above keeps its original 5-sample coarseness for
+ * `nameBlockPlacement`, unmodified. */
+function minMaxHalfWidthOverStationSpanFine(
+  geometry: OutlineGeometry,
+  top: number,
+  bottom: number,
+): { min: number; max: number } {
+  let min = Infinity;
+  let max = -Infinity;
+  for (let station = bottom; station < top; station += HOWTO_BOX_FINE_SAMPLE_STEP_MM) {
+    const halfWidth = sampleOutline(geometry, mm(station));
+    min = Math.min(min, halfWidth);
+    max = Math.max(max, halfWidth);
+  }
+  // Fold in both endpoints explicitly, regardless of where the loop above stopped.
+  const bottomHalfWidth = sampleOutline(geometry, mm(bottom));
+  const topHalfWidth = sampleOutline(geometry, mm(top));
+  min = Math.min(min, bottomHalfWidth, topHalfWidth);
+  max = Math.max(max, bottomHalfWidth, topHalfWidth);
+  return { min, max };
+}
+
+/** Where the how-to instruction box goes on page 0 (quick task 260903-fqv) — beside the scale
+ * square by default (D-10), or inside the outline under the board name + dims block when the
+ * outline curve runs through the outboard spot instead. */
+export interface HowToBoxPlacement {
+  pageIndex: number;
+  /** The box's nose-most (top) edge, in the board's own absolute station frame. */
+  topStation: Mm;
+  /** The box's left edge, measured out from the stringer (half-width 0). */
+  halfWidthStart: Mm;
+  /** Which of the two placements this is — kept on the result so a caller (and a test) can name
+   * the branch without re-deriving the clearance check. */
+  position: "outboard" | "interior";
+}
+
+/**
+ * Decides where the how-to instruction box goes on page 0 (quick task 260903-fqv — the rail curve
+ * was running straight through it on a wide-nosed board). `candidate` is the caller's outboard
+ * proposal — today's fixed spot beside the scale square, expressed in the board's own
+ * station/half-width frame rather than page-local millimetres.
+ *
+ * **Outboard is preferred** (D-10 — "beside the scale square" — costs the board no drawing area):
+ * kept whenever the outline curve's MAXIMUM half-width anywhere across the candidate's own station
+ * span clears the candidate's own curve-side edge by at least `clearanceMm`. The maximum, not the
+ * minimum, because clearance is measured from the box's edge inward — the curve's single widest
+ * point anywhere in the box's height is the one point that can reach into it.
+ *
+ * **Interior is the fallback**: on a wide nose there is no outboard position on page 0 that a
+ * 70mm box fits into at all — the blank paper outside the curve on that page is a wedge that only
+ * narrows toward the tail, so a narrower or taller box only makes it worse. The box instead stacks
+ * directly under the board name + dims block (`nameBlockPlacement`'s own result), `clearanceMm`
+ * below its bottom edge and `clearanceMm` off the stringer, then scans toward the tail in
+ * `NAME_BLOCK_SEARCH_STEP_MM` steps — exactly the way `nameBlockPlacement` itself scans — until a
+ * station band clears the curve by `clearanceMm` on both sides over the box's whole height.
+ *
+ * Last resort (a pathological board no real preset can produce): the deepest band whose bottom
+ * sits at page 0's own search floor, clamped so the box's top never rises back above the interior
+ * ceiling (the name block's bottom minus the gap) or page 0's own printable range. This branch
+ * does not prove containment — only that the box stays on the sheet and below the name block.
+ */
+export function howToBoxPlacement(
+  layout: TemplateLayout,
+  geometry: OutlineGeometry,
+  candidate: { topStation: number; halfWidthStart: number },
+  boxWidthMm: number,
+  boxHeightMm: number,
+  nameBlock: NameBlockPlacement,
+  nameBlockHeightMm: number,
+  clearanceMm: number = NAME_BOX_CLEARANCE_MM,
+): HowToBoxPlacement {
+  const page = layout.pages.find((p) => p.index === 0) ?? layout.pages[0];
+
+  const candidateBottom = candidate.topStation - boxHeightMm;
+  const { max: outboardCurveMax } = minMaxHalfWidthOverStationSpanFine(
+    geometry,
+    candidate.topStation,
+    candidateBottom,
+  );
+  if (candidate.halfWidthStart - outboardCurveMax >= clearanceMm) {
+    return {
+      pageIndex: page.index,
+      topStation: mm(candidate.topStation),
+      halfWidthStart: mm(candidate.halfWidthStart),
+      position: "outboard",
+    };
+  }
+
+  // Interior: stacked under the name block, clearanceMm off the stringer.
+  const halfWidthStart = clearanceMm;
+  const requiredHalfWidth = clearanceMm + boxWidthMm + clearanceMm;
+  const interiorCeiling = nameBlock.topStation - nameBlockHeightMm - clearanceMm;
+
+  const overlapReserve = layout.rows > 1 ? layout.overlap : 0;
+  const searchFloor = page.stationRange[0] + overlapReserve;
+  const pageCeiling = Math.min(page.stationRange[1], geometry.length);
+  const searchCeiling = Math.min(interiorCeiling, pageCeiling);
+
+  for (
+    let top = searchCeiling;
+    top - boxHeightMm >= searchFloor;
+    top -= NAME_BLOCK_SEARCH_STEP_MM
+  ) {
+    const bottom = top - boxHeightMm;
+    const { min } = minMaxHalfWidthOverStationSpanFine(geometry, top, bottom);
+    if (min >= requiredHalfWidth) {
+      return {
+        pageIndex: page.index,
+        topStation: mm(top),
+        halfWidthStart: mm(halfWidthStart),
+        position: "interior",
+      };
+    }
+  }
+
+  // No station band under the name block clears the box at full width (a pathological board) —
+  // fall back to the deepest band searched, mirroring nameBlockPlacement's own last-resort
+  // posture, clamped so the box's top never rises back above the interior ceiling or page 0's own
+  // printable range. Does not prove containment — only that the box stays on the sheet and below
+  // the name block.
+  const fallbackTop = Math.min(searchFloor + boxHeightMm, searchCeiling);
+  return {
+    pageIndex: page.index,
+    topStation: mm(fallbackTop),
+    halfWidthStart: mm(halfWidthStart),
+    position: "interior",
+  };
 }
 
 /**
