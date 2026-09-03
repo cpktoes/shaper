@@ -17,10 +17,13 @@ import {
   NAME_BOX_WIDTH_MM,
   PAPER_MM,
   computeTailClosure,
+  howToBoxPlacement,
   markLineSegments,
   markPlacements,
   nameBlockPlacement,
   tailClosureSegments,
+  type HowToBoxPlacement,
+  type NameBlockPlacement,
   type PaperSize,
   type TailClosureSegment,
   type TemplateLayout,
@@ -136,12 +139,20 @@ const MARK_LABEL_TEXT_HEIGHT_MM = 3.5;
  * drawn at the stringer's own dashed weight/pattern instead, since that edge IS the stringer. */
 const BOX_LINE_WEIGHT_MM = 0.25;
 
-/** The nose-page how-to box (D-10) — plain-bordered, 9pt regular, beside the scale square. */
+/** The nose-page how-to box — plain-bordered, 9pt regular. Beside the scale square by default
+ * (D-10), the same spot it's always occupied; but on a wide-nosed board the rail curve can run
+ * straight through that spot, so quick task 260903-fqv moved the DECISION of where it goes into
+ * `lib/geometry/template.ts`'s `howToBoxPlacement` — this module only converts that decision into
+ * page-local millimetres (`howToBoxRect`, below). When the curve doesn't clear the outboard spot
+ * by `NAME_BOX_CLEARANCE_MM`, the box moves inside the outline instead, directly under the board
+ * name + dims block. */
 const HOWTO_BOX_LINE_WEIGHT_MM = 0.25;
 const HOWTO_BOX_WIDTH_MM = 70;
 const HOWTO_BOX_PADDING_MM = 3;
 const HOWTO_BOX_LINE_HEIGHT_MM = 5;
-/** Gap below the scale-check square's own label before the how-to box begins. */
+/** Gap below the scale-check square's own label before the how-to box begins — used only to build
+ * the OUTBOARD candidate `howToBoxPlacement` may or may not accept; the box's real position can
+ * differ from this when the curve doesn't clear it (quick task 260903-fqv). */
 const HOWTO_BOX_TOP_GAP_MM = 8;
 /** The how-to box's own text width budget, inside its border and padding — post-checkpoint fix,
  * defect 1: a line too wide for this wraps rather than running past the box's right edge. */
@@ -466,32 +477,92 @@ export function templateHowToWrappedLines(layout: TemplateLayout, doc: jsPDF, in
   return wrapped;
 }
 
+/** The how-to box's own placement (`HowToBoxPlacement` — the board's own station/half-width
+ * frame, not page-local millimetres) plus its box width, box height and wrapped lines — the ONE
+ * computation `howToBoxRect` converts to page-local mm and `templateHowToBoxPlacement` (exported,
+ * below) hands straight to a test. Builds the outboard candidate exactly the way the box has
+ * always been drawn (right-anchored to the alignment box, `HOWTO_BOX_TOP_GAP_MM` below the scale
+ * square), then asks `howToBoxPlacement` whether the curve actually clears it — beside the scale
+ * square when it does (D-10), otherwise inside the outline under the board name + dims block
+ * (quick task 260903-fqv). */
+function computeHowToBoxPlacement(
+  doc: jsPDF,
+  layout: TemplateLayout,
+  geometry: OutlineGeometry,
+  box: TemplatePageBox,
+  nameBlock: ResolvedNameBlock,
+): { placement: HowToBoxPlacement; boxWidthMm: number; boxHeightMm: number; lines: string[] } {
+  const lines = templateHowToWrappedLines(layout, doc, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM);
+  const boxHeightMm = HOWTO_BOX_PADDING_MM * 2 + lines.length * HOWTO_BOX_LINE_HEIGHT_MM;
+
+  // Today's outboard rect, in the board's own station/half-width frame rather than page-local mm
+  // — the same affine map regrouped, so converting it back through stationToY/halfWidthToX
+  // reproduces the historical x/y to floating-point noise (see the buildTemplatePdf test that
+  // proves this round trip).
+  const candidate = {
+    topStation: box.stationRange[1] - SCALE_SQUARE_MM - HOWTO_BOX_TOP_GAP_MM,
+    halfWidthStart: box.halfWidthRange[1] - HOWTO_BOX_WIDTH_MM,
+  };
+
+  const placement = howToBoxPlacement(
+    layout,
+    geometry,
+    candidate,
+    HOWTO_BOX_WIDTH_MM,
+    boxHeightMm,
+    nameBlock.placement,
+    nameBlock.content.height,
+    NAME_BOX_CLEARANCE_MM,
+  );
+
+  return { placement, boxWidthMm: HOWTO_BOX_WIDTH_MM, boxHeightMm, lines };
+}
+
 /** The nose-page how-to box's own rectangle — computed once so the drawing function and the
  * furniture-collision math in `templatePageZeroFurnitureRects` agree on exactly the same box,
- * including its height, which now varies with how many lines defect 1's wrapping produced.
- * Anchored to the page's own alignment box (round 3 post-checkpoint fix, defect 2), not the raw
- * printable edge. */
+ * including its height, which varies with how many lines defect 1's wrapping produced, AND its
+ * position, which now varies with whether the curve clears the outboard spot (quick task
+ * 260903-fqv). Converts `computeHowToBoxPlacement`'s station/half-width answer through
+ * `stationToY`/`halfWidthToX`, exactly as `drawNameBlock` already does — no placement arithmetic
+ * of its own beyond that conversion. */
 function howToBoxRect(
   doc: jsPDF,
   layout: TemplateLayout,
+  geometry: OutlineGeometry,
   box: TemplatePageBox,
   page: TemplatePage,
   margin: number,
-): { x: number; y: number; width: number; height: number; lines: string[] } {
-  const lines = templateHowToWrappedLines(layout, doc, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM);
-  const height = HOWTO_BOX_PADDING_MM * 2 + lines.length * HOWTO_BOX_LINE_HEIGHT_MM;
-  const boxRect = pageBoxRect(box, page, margin);
-  const x = boxRect.x + boxRect.width - HOWTO_BOX_WIDTH_MM;
-  const y = boxRect.y + SCALE_SQUARE_MM + HOWTO_BOX_TOP_GAP_MM;
-  return { x, y, width: HOWTO_BOX_WIDTH_MM, height, lines };
+  nameBlock: ResolvedNameBlock,
+): { x: number; y: number; width: number; height: number; lines: string[]; position: HowToBoxPlacement["position"] } {
+  const { placement, boxWidthMm, boxHeightMm, lines } = computeHowToBoxPlacement(doc, layout, geometry, box, nameBlock);
+  return {
+    x: halfWidthToX(placement.halfWidthStart, page, margin),
+    y: stationToY(placement.topStation, page, margin),
+    width: boxWidthMm,
+    height: boxHeightMm,
+    lines,
+    position: placement.position,
+  };
 }
 
-/** Nose page only, beside the scale square — the one thing on the template that prevents the
+/** Nose page only. Beside the scale square when the curve clears it (D-10, the founder's chosen
+ * spot, costing the board no drawing area); inside the outline under the board name + dims block
+ * when it doesn't (quick task 260903-fqv — the blank paper outside the curve on this page is a
+ * wedge that only narrows toward the tail, so on a wide-nosed board there is no outboard spot a
+ * 70mm box fits into at all). Either way, this is the one thing on the template that prevents the
  * failure a wrong print scale causes silently and expensively. */
-function drawHowToBox(doc: jsPDF, layout: TemplateLayout, page: TemplatePage, margin: number, box: TemplatePageBox): void {
+function drawHowToBox(
+  doc: jsPDF,
+  layout: TemplateLayout,
+  geometry: OutlineGeometry,
+  page: TemplatePage,
+  margin: number,
+  box: TemplatePageBox,
+  nameBlock: ResolvedNameBlock,
+): void {
   if (page.index !== 0) return;
 
-  const { x, y, width, height, lines } = howToBoxRect(doc, layout, box, page, margin);
+  const { x, y, width, height, lines } = howToBoxRect(doc, layout, geometry, box, page, margin, nameBlock);
 
   doc.setDrawColor(0);
   doc.setLineWidth(HOWTO_BOX_LINE_WEIGHT_MM);
@@ -584,6 +655,33 @@ export function nameBlockContent(
   return { dimsLines, height };
 }
 
+/** Page 0's board name + dims block, resolved ONCE — its content (`nameBlockContent`) and its
+ * placement (`nameBlockPlacement`) together — and handed to every drawing path that needs it
+ * (quick task 260903-fqv, T-fqv-02). The how-to box now stacks directly under this block, so if
+ * the drawing path and a second, independently computed placement ever disagreed, the printed box
+ * and the tested box could silently drift apart. `buildTemplatePdf` computes this once per page 0,
+ * before its page loop, and passes the same object to both `drawHowToBox` and `drawNameBlock`. */
+interface ResolvedNameBlock {
+  placement: NameBlockPlacement;
+  content: { dimsLines: string[]; height: number };
+}
+
+/** Resolves page 0's name block content and placement together (see `ResolvedNameBlock`'s own doc
+ * comment for why). `templateHowToWrappedLines` (called by `computeHowToBoxPlacement`, below) and
+ * `nameBlockContent` each set their own font family and size before measuring, so calling this
+ * ahead of the how-to box's own computation is safe — neither depends on the other's leftover font
+ * state; do not "fix" the order back on the assumption that it matters. */
+function resolvePageZeroNameBlock(
+  doc: jsPDF,
+  layout: TemplateLayout,
+  geometry: OutlineGeometry,
+  dims: BuildTemplatePdfOptions["dims"],
+): ResolvedNameBlock {
+  const content = nameBlockContent(doc, dims);
+  const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, content.height, NAME_BOX_CLEARANCE_MM);
+  return { placement, content };
+}
+
 /** D-08's board name + dims block: a bordered box on page 1 (the nose page), positioned by
  * `nameBlockPlacement` so it's fully contained inside the outline's own interior there —
  * post-checkpoint fix, defect 3: "the Board Name and dimension box needs to be contained INSIDE
@@ -591,18 +689,19 @@ export function nameBlockContent(
  * The box now carries every value the order form's own dimensions row does, not just three of
  * seven, so its real height (name line plus however many lines the fuller dims row wraps to) is
  * computed first and fed into `nameBlockPlacement` — containment wins over a fixed position, so a
- * board whose nose narrows fastest gets the box moved further down page 1 rather than clipped. */
+ * board whose nose narrows fastest gets the box moved further down page 1 rather than clipped.
+ * Takes the already-`resolvePageZeroNameBlock`-resolved block (quick task 260903-fqv) rather than
+ * computing its own — the how-to box shares this exact same computation, so the drawn block and
+ * the box stacked beneath it can never silently disagree about where the block's bottom edge is. */
 function drawNameBlock(
   doc: jsPDF,
   page: TemplatePage,
   margin: number,
-  layout: TemplateLayout,
-  geometry: OutlineGeometry,
+  nameBlock: ResolvedNameBlock,
   boardName: string,
-  dims: BuildTemplatePdfOptions["dims"],
 ): void {
-  const { dimsLines, height } = nameBlockContent(doc, dims);
-  const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, height, NAME_BOX_CLEARANCE_MM);
+  const { dimsLines, height } = nameBlock.content;
+  const { placement } = nameBlock;
   const x = halfWidthToX(placement.halfWidthStart, page, margin);
   const y = stationToY(placement.topStation, page, margin);
 
@@ -644,6 +743,12 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
   const tailClosure = computeTailClosure(geometry);
   const tailClosureSeg = tailClosure ? tailClosureSegments(layout, tailClosure) : [];
   const boxes = templatePageBoxes(layout);
+  // Resolved once, before the page loop (quick task 260903-fqv): the how-to box now stacks under
+  // the name block, so a second, independently computed name placement could put the drawn box
+  // and the tested box in different places (T-fqv-02). Safe to hoist ahead of the how-to box's own
+  // font measurements — templateHowToWrappedLines and nameBlockContent each set their own font
+  // family and size before measuring, so neither depends on the other's leftover font state.
+  const nameBlock = resolvePageZeroNameBlock(doc, layout, geometry, dims);
 
   layout.pages.forEach((page, i) => {
     if (i > 0) doc.addPage(paper, "portrait");
@@ -653,10 +758,10 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
     drawMarks(doc, page, margin, placements, segments);
     drawTailClosure(doc, page, margin, tailClosureSeg);
     drawScaleSquare(doc, page, margin, boxes[i]);
-    drawHowToBox(doc, layout, page, margin, boxes[i]);
+    drawHowToBox(doc, layout, geometry, page, margin, boxes[i], nameBlock);
     drawPageLabel(doc, page, margin, paperDims.width, paperDims.height);
     if (page.index === 0) {
-      drawNameBlock(doc, page, margin, layout, geometry, boardName, dims);
+      drawNameBlock(doc, page, margin, nameBlock, boardName);
     }
   });
 
@@ -690,20 +795,38 @@ export function templatePageZeroFurnitureRects(options: BuildTemplatePdfOptions)
 
   rects.push(scaleSquareRect(box, page, margin));
 
-  const howTo = howToBoxRect(doc, layout, box, page, margin);
+  // The same resolved name block buildTemplatePdf uses, so the how-to box and the name block this
+  // function reports are exactly the ones actually drawn (quick task 260903-fqv, T-fqv-02).
+  const nameBlock = resolvePageZeroNameBlock(doc, layout, geometry, dims);
+
+  const howTo = howToBoxRect(doc, layout, geometry, box, page, margin, nameBlock);
   rects.push({ name: "how-to-box", x: howTo.x, y: howTo.y, width: howTo.width, height: howTo.height });
 
-  const { height: nameBoxHeight } = nameBlockContent(doc, dims);
-  const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, nameBoxHeight, NAME_BOX_CLEARANCE_MM);
   rects.push({
     name: "name-block",
-    x: halfWidthToX(placement.halfWidthStart, page, margin),
-    y: stationToY(placement.topStation, page, margin),
+    x: halfWidthToX(nameBlock.placement.halfWidthStart, page, margin),
+    y: stationToY(nameBlock.placement.topStation, page, margin),
     width: NAME_BOX_WIDTH_MM,
-    height: nameBoxHeight,
+    height: nameBlock.content.height,
   });
 
   return rects;
+}
+
+/** The how-to box's placement, box width, box height and wrapped lines, in the board's own
+ * station/half-width frame — exported for testability (mirrors `templatePageZeroBoxRect` and
+ * `markLabelRect`'s own "exported for testability" pattern) so a test can assert the box clears
+ * the curve directly against `sampleOutline` without re-deriving `stationToY`/`halfWidthToX`'s own
+ * millimetre conversion. Backed by the exact same `computeHowToBoxPlacement` the drawing path
+ * uses. */
+export function templateHowToBoxPlacement(
+  options: BuildTemplatePdfOptions,
+): { placement: HowToBoxPlacement; boxWidthMm: number; boxHeightMm: number; lines: string[] } {
+  const { layout, geometry, dims, paper } = options;
+  const box = templatePageBoxes(layout)[0];
+  const doc = new jsPDF({ unit: "mm", format: paper, orientation: "portrait" });
+  const nameBlock = resolvePageZeroNameBlock(doc, layout, geometry, dims);
+  return computeHowToBoxPlacement(doc, layout, geometry, box, nameBlock);
 }
 
 /** Page 0's own alignment box, converted into the same local millimetre rectangle space
@@ -717,29 +840,45 @@ export function templatePageZeroBoxRect(layout: TemplateLayout): TemplateFurnitu
   return pageBoxRect(box, page, layout.margin);
 }
 
-/** Floating-point slack for `rectContains`' edge-flush comparisons — furniture anchored flush
- * with the alignment box's own edge (e.g. the scale square's right edge exactly matching the
- * box's right edge) can land a few ULPs on either side purely from accumulated millimetre
- * arithmetic, not a real containment failure. Far smaller than anything a printed page could
- * register. */
-const RECT_CONTAINS_EPSILON_MM = 1e-6;
+/** Floating-point slack for `rectContains`' and `rectsOverlap`'s own edge-flush comparisons —
+ * furniture anchored flush against another piece's edge (the scale square's bottom edge meeting
+ * the how-to box's top edge, or a rect flush with the alignment box's own edge) can land a few
+ * ULPs on either side purely from accumulated millimetre arithmetic, not a real containment or
+ * overlap. Far smaller than anything a printed page could register. Widened in scope by quick task
+ * 260903-fqv: converting the how-to box's outboard position through `howToBoxPlacement`'s
+ * station/half-width frame and back is the SAME affine map the old fixed formula used, regrouped —
+ * algebraically identical, but two arithmetic paths to the same touching edge can still disagree
+ * by a few ULPs (e.g. 68.799999999999997 vs. 68.799999999999954), which used to be enough to trip
+ * `rectsOverlap`'s strict inequality even though nothing moved at jsPDF's own 2-decimal-place
+ * output precision. */
+const RECT_EDGE_EPSILON_MM = 1e-6;
 
-/** True when `inner` is fully contained inside `outer` (within `RECT_CONTAINS_EPSILON_MM`) — the
+/** True when `inner` is fully contained inside `outer` (within `RECT_EDGE_EPSILON_MM`) — the
  * containment counterpart to `rectsOverlap`'s "these two never touch" check (round 3
  * post-checkpoint fix, defect 2). */
 export function rectContains(outer: TemplateFurnitureRect, inner: TemplateFurnitureRect): boolean {
   return (
-    inner.x >= outer.x - RECT_CONTAINS_EPSILON_MM &&
-    inner.y >= outer.y - RECT_CONTAINS_EPSILON_MM &&
-    inner.x + inner.width <= outer.x + outer.width + RECT_CONTAINS_EPSILON_MM &&
-    inner.y + inner.height <= outer.y + outer.height + RECT_CONTAINS_EPSILON_MM
+    inner.x >= outer.x - RECT_EDGE_EPSILON_MM &&
+    inner.y >= outer.y - RECT_EDGE_EPSILON_MM &&
+    inner.x + inner.width <= outer.x + outer.width + RECT_EDGE_EPSILON_MM &&
+    inner.y + inner.height <= outer.y + outer.height + RECT_EDGE_EPSILON_MM
   );
 }
 
 /** Axis-aligned rectangle overlap test — exported so the test file can assert on
- * `templatePageZeroFurnitureRects`' output without reimplementing this check itself. */
+ * `templatePageZeroFurnitureRects`' output without reimplementing this check itself. Two rects
+ * that only TOUCH (edges flush, within `RECT_EDGE_EPSILON_MM`) are never "overlapping" — shrinking
+ * each rect inward by that epsilon before comparing keeps a real, many-millimetre overlap reported
+ * exactly as before, while a same-edge pair that only disagrees by a few ULPs of floating-point
+ * noise (quick task 260903-fqv — see `RECT_EDGE_EPSILON_MM`'s own doc comment) reads as touching,
+ * not overlapping. */
 export function rectsOverlap(a: TemplateFurnitureRect, b: TemplateFurnitureRect): boolean {
-  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+  return (
+    a.x < b.x + b.width - RECT_EDGE_EPSILON_MM &&
+    a.x + a.width > b.x + RECT_EDGE_EPSILON_MM &&
+    a.y < b.y + b.height - RECT_EDGE_EPSILON_MM &&
+    a.y + a.height > b.y + RECT_EDGE_EPSILON_MM
+  );
 }
 
 /** Slugifies a board name into a safe file-name fragment (alphanumerics and hyphens only) — a
