@@ -307,3 +307,11 @@ label" still holds by construction. Fix commit: 92a8a4e.
 **Open for the founder:** the physical 2in-square print check; and the two judgement calls — the
 registration lines' 0.65in placement, and the label wording (`36" from tail — rail 10 3/4"`:
 "from tail" as the station call-out, and rail half-width rather than full width).
+
+## Founder sign-off (2026-09-02)
+
+The three items left open at the checkpoint are closed: the printed 2in square measured 2in with
+a ruler (true 1:1 confirmed on paper); the registration lines' 0.65in-from-edge placement reads
+right; and the label wording — `36" from tail — rail 10 3/4"`, station called out from the tail,
+rail HALF-width — stands. The one change requested from the review is the name/dims block's
+curve-side clearance, taken up as quick task 260902 (see STATE.md).
