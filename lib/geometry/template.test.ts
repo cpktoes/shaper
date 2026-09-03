@@ -99,6 +99,104 @@ describe("existing tile-grid output is unchanged by the strip work (characterisa
   }
 });
 
+/**
+ * Characterisation pin (quick task 260902-kon) — written BEFORE this task's name-block placement
+ * scan touches lib/geometry/template.ts, and never edited afterwards for the rest of this task. It
+ * exists so moving the board name + dims block inside the outline can never silently perturb
+ * anything else the Paper Saver strip already draws: if the digest below ever changes, this task
+ * broke something in the strip's own unrelated maths — station bands, sideways slides,
+ * stringer-on-page flags, numeral columns, numeral stations, registration lines and their labels,
+ * mark segments, or label-row baselines — and THAT is what must be fixed, never this test.
+ *
+ * One digest per (board preset x paper), over `computeStripLayout`'s full page list (station
+ * ranges, half-width ranges, min and max half-widths, stringerOnPage, pageNumberHalfWidth,
+ * pageNumber, pageNumberStation) plus `stripRegistrationLines`, `stripMarkSegments` and
+ * `stripLabelRows` — every strip function whose output must stay byte-identical. Only the first
+ * 16 hex characters of the sha256 are kept, matching the sibling tile-grid pin above.
+ *
+ * Separately, and in this same frozen describe block, the 2in scale square's own `topStation` and
+ * `halfWidthStart` are pinned as LITERAL expected numbers per preset x paper — read straight out
+ * of the unmodified `stripPageZeroFurniture`, not folded into the digest. Task 2 renames that
+ * function and changes its signature, so a digest over its whole return value would have to be
+ * re-captured after the very change this pin exists to check; these two literals per preset x
+ * paper survive the signature change intact and are what proves the founder's ruling — "the 2in
+ * box is good" — held after the name block moved. These two numbers are the founder's locked
+ * constraint, not an implementation detail: they must never change as a result of this task.
+ */
+describe("Paper Saver strip output is unchanged by the name-block move (characterisation pin, quick task 260902-kon — frozen, never edit)", () => {
+  const STRIP_FURNITURE_SIZES = {
+    scaleSquareMm: inchesToMm(2),
+    scaleCaptionMm: 6,
+    nameBoxWidthMm: NAME_BOX_WIDTH_MM,
+    nameBoxHeightMm: NAME_BOX_HEIGHT_MM,
+    gapMm: 5,
+  };
+
+  const EXPECTED_STRIP_DIGESTS: Record<string, string> = {
+    "shortboard-letter": "8db3300a9fe73343",
+    "fish-letter": "5fc398236102754d",
+    "midlength-letter": "b519d5721ae9fce2",
+    "longboard-letter": "31f93c1bece999bb",
+    "shortboard-a4": "4b3eaa420dd33e68",
+    "fish-a4": "324dafca30f44e27",
+    "midlength-a4": "d84b5dceca37f0f9",
+    "longboard-a4": "9812a910f1b136cb",
+  };
+
+  const EXPECTED_SCALE_SQUARE: Record<string, { topStation: number; halfWidthStart: number }> = {
+    "shortboard-letter": { topStation: 1879.6, halfWidthStart: 195.89999999999998 },
+    "fish-letter": { topStation: 1676.3999999999999, halfWidthStart: 195.89999999999998 },
+    "midlength-letter": { topStation: 2133.6, halfWidthStart: 195.89999999999998 },
+    "longboard-letter": { topStation: 2743.2, halfWidthStart: 195.89999999999998 },
+    "shortboard-a4": { topStation: 1879.6, halfWidthStart: 213.5 },
+    "fish-a4": { topStation: 1676.3999999999999, halfWidthStart: 213.5 },
+    "midlength-a4": { topStation: 2133.6, halfWidthStart: 213.5 },
+    "longboard-a4": { topStation: 2743.2, halfWidthStart: 213.5 },
+  };
+
+  for (const paper of PAPERS) {
+    it.each(BOARD_PRESETS)(`$id (${paper}): strip digest matches the pinned value`, (preset) => {
+      const geometry = buildOutline(preset.outline);
+      const layout = computeStripLayout(geometry, paper);
+      const marks = computeTemplateMarks(geometry);
+
+      const pages = layout.pages.map((page) => ({
+        stationRange: page.stationRange,
+        halfWidthRange: page.halfWidthRange,
+        minHalfWidth: page.minHalfWidth,
+        maxHalfWidth: page.maxHalfWidth,
+        stringerOnPage: page.stringerOnPage,
+        pageNumberHalfWidth: page.pageNumberHalfWidth,
+        pageNumber: page.pageNumber,
+        pageNumberStation: page.pageNumberStation,
+      }));
+      const lines = stripRegistrationLines(layout, geometry);
+      const segments = stripMarkSegments(layout, marks, geometry);
+      const rows = stripLabelRows(layout, marks, geometry);
+
+      const combined = { pages, lines, segments, rows };
+      const digest = createHash("sha256").update(JSON.stringify(combined)).digest("hex").slice(0, 16);
+
+      const key = `${preset.id}-${paper}`;
+      expect(digest).toBe(EXPECTED_STRIP_DIGESTS[key]);
+    });
+
+    it.each(BOARD_PRESETS)(
+      `$id (${paper}): the 2in scale square's topStation and halfWidthStart are the founder's locked constraint — literal numbers, not a digest`,
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+        const furniture = stripPageZeroFurniture(layout, STRIP_FURNITURE_SIZES);
+
+        const key = `${preset.id}-${paper}`;
+        const expected = EXPECTED_SCALE_SQUARE[key];
+        expect(furniture.scaleSquare.topStation).toBeCloseTo(expected.topStation, 6);
+        expect(furniture.scaleSquare.halfWidthStart).toBeCloseTo(expected.halfWidthStart, 6);
+      },
+    );
+  }
+});
+
 describe("computeTemplateLayout", () => {
   for (const paper of PAPERS) {
     describe(paper, () => {
