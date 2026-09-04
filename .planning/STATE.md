@@ -5,8 +5,8 @@ milestone_name: Imperial vs Metric
 current_phase: 5
 current_phase_name: The Units Chooser
 status: planning
-stopped_at: Phase 5 context gathered
-last_updated: "2026-09-04T20:34:36.435Z"
+stopped_at: Phase 5 UI-SPEC approved
+last_updated: "2026-09-04T20:52:19.749Z"
 last_activity: 2026-09-04
 last_activity_desc: Milestone v1.1 roadmap created (Phases 5-7, all 14 requirements mapped)
 progress:
@@ -273,7 +273,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-04T20:34:36.413Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-the-units-chooser/05-CONTEXT.md
+Last session: 2026-09-04T20:52:19.725Z
+Stopped at: Phase 5 UI-SPEC approved
+Resume file: .planning/phases/05-the-units-chooser/05-UI-SPEC.md
 Next action: `/gsd-plan-phase 5`
