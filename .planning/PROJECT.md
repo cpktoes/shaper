@@ -15,6 +15,19 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 - **Success metric**: Not yet defined — revisit once free/paid split is scoped
 - **Strategy notes**: See `M1`–`M6` build order in Context below
 
+## Current Milestone: v1.1 Imperial vs Metric
+
+**Goal:** A shaper can switch the whole app between Imperial and Metric, and every number they read on screen or on paper follows.
+
+**Target features:**
+- A units chooser in the settings menu beside the theme chooser, reading Imperial / Metric, saved on the shaper's account and remembered per browser when signed out (sign-in stays a nudge, never a gate)
+- All five design screens switch: sliders, typed entry, viewer callouts and data tables. Metric is all-metric, length included: cm for length and widths, whole millimetres for rail band marks, rocker heights and foil thickness; volume stays litres in both systems
+- The Summary order form and the Overview Sheet print in the chosen system
+- The Full Sized Template and Paper Saver print their labels, name/dims block and scale-check caption in the chosen system (whether the scale square becomes a 50 mm square in Metric is decided in the phase)
+- Rack cards and board names show dimensions in the chosen system
+
+**Key context:** Data is already stored in millimetres, so this is presentation work plus one new account column (code deploys before the production migration runs). Every conversion stays in `lib/geometry/units.ts` (Rule 1); typed entry in Metric accepts decimal centimetres and whole millimetres. Deferred twice by the founder (Phase 1 UAT, then the settings-menu task 260824-m6k); roughly 300 display sites across about 25 files.
+
 ## Requirements
 
 ### Validated
@@ -34,7 +47,11 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 
 ### Active
 
-*(none — all v1.0 requirements validated)*
+- [ ] User can choose Imperial or Metric from the settings menu; the choice is saved on their account and remembered per browser when signed out
+- [ ] Every measurement on the five design screens (sliders, typed entry, callouts, tables) reads in the chosen system — cm for length and widths, mm for rail band, rocker and foil values, litres for volume either way
+- [ ] The Summary order form and Overview Sheet print in the chosen system
+- [ ] The Full Sized Template and Paper Saver print their labels, dims block and scale-check caption in the chosen system
+- [ ] Rack cards and board names show dimensions in the chosen system
 
 ### Out of Scope
 
@@ -67,7 +84,7 @@ templates ("the math is right").
 ## Constraints
 
 - **Geometry math**: All geometry math (outline, rocker, rail band, foil, fin placement, volume) must live in pure TypeScript files under `lib/`, with unit tests — the calculators are the core value proposition, so their correctness must be verifiable in isolation from UI code
-- **Units**: UI displays inches and litres (how shapers think and talk); all data is stored in metric internally — for internal precision/consistency while matching shaper-familiar units at the surface
+- **Units**: UI displays the shaper's chosen system — Imperial (feet-inches and fractions) by default, or Metric (cm and mm) from milestone v1.1 — with litres for volume either way; all data is stored in metric internally and every conversion goes through `lib/geometry/units.ts` — for internal precision/consistency while matching how each shaper reads a tape measure
 - **Audience**: Users are shapers and surfers, not developers — UI must be approachable to non-technical users, and changes/explanations should be communicated in plain English
 - **Tech stack**: Prescribed by the founder's build guide — Next.js (latest, App Router) + TypeScript + Tailwind CSS v4 + shadcn/ui; Neon Postgres via Drizzle ORM; Clerk for auth (Clerk Billing later for subscriptions); hosted on Vercel; Vitest for unit tests, Playwright for e2e — not to be substituted without discussion
 
@@ -87,6 +104,9 @@ templates ("the math is right").
 | Autosave (debounced, with failure backoff) instead of manual-save-first | A shaper mid-design shouldn't lose work to a forgotten button; save state shown in the nav, dirty only clears when the server confirms the latest snapshot | Working (Phase 2) |
 | Delete has no trash/undo — a typed-name confirm is the safety (D-13) | Keeps v1 simple; recorded as an accepted risk (AR-02-02) so a later phase revisits it deliberately | Accepted (Phase 2) |
 | Two Neon branches: production + copy-on-write development; code deploys before production migrates | Local work can never touch a real shaper's boards, and the live site always understands the schema it reads | Working (Phase 2) |
+| Units chooser reads Imperial vs Metric, not inches vs cm | The choice is a measuring system, not a pair of units: feet-inches and fractions on one side, cm and mm on the other (founder, v1.1 kickoff) | — Pending (v1.1) |
+| Metric is all-metric, length included: cm for length and widths, whole mm for rail band, rocker and foil values | One rule, the way Shape3d and BoardCAD switch; mm is what a metric tape measure reads at small sizes | — Pending (v1.1) |
+| Units preference lives on the account, with a per-browser fallback when signed out | Follows the shaper across devices; sign-in stays a nudge, never a gate | — Pending (v1.1) |
 
 ## Evolution
 
@@ -106,4 +126,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-29 after Phase 4 completion — all v1.0 milestone requirements validated*
+*Last updated: 2026-09-04 after starting milestone v1.1 Imperial vs Metric*
