@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  MM_PER_CM,
   MM_PER_INCH,
+  centimetresToMm,
   cubicMmToLitres,
+  formatCentimetres,
   formatFeetInches,
   formatInchesFraction,
   formatSignedInchesFraction,
   inchesToMm,
+  mm,
+  mmToCentimetres,
   mmToInches,
   parseImperial,
   squareMmToSquareInches,
@@ -131,6 +136,43 @@ describe("units boundary", () => {
 
     it("returns null for unparseable text", () => {
       expect(parseImperial("abc")).toBeNull();
+    });
+  });
+
+  describe("formatCentimetres", () => {
+    it("keeps a trailing .0 rather than stripping it", () => {
+      expect(formatCentimetres(mm(1880))).toBe("188.0");
+    });
+
+    it("formats a width converted from inches", () => {
+      expect(formatCentimetres(inchesToMm(20.25))).toBe("51.4");
+    });
+
+    it("formats a thickness converted from inches", () => {
+      expect(formatCentimetres(inchesToMm(2.625))).toBe("6.7");
+    });
+
+    it("rounds a value on the half-millimetre boundary away from zero, not on float noise", () => {
+      expect(formatCentimetres(mm(514.05))).toBe("51.4");
+    });
+
+    it("signs the nudge for a negative value", () => {
+      expect(formatCentimetres(mm(-514.05))).toBe("-51.4");
+    });
+
+    it("formats zero with a trailing .0", () => {
+      expect(formatCentimetres(mm(0))).toBe("0.0");
+    });
+  });
+
+  describe("mmToCentimetres / centimetresToMm", () => {
+    it("round-trips a millimetre value through centimetres", () => {
+      expect(mmToCentimetres(mm(1880))).toBe(188);
+      expect(centimetresToMm(188)).toBe(1880);
+    });
+
+    it("exposes MM_PER_CM as 10", () => {
+      expect(MM_PER_CM).toBe(10);
     });
   });
 });
