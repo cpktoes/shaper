@@ -85,13 +85,23 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
   4. Switching to Metric and back leaves every saved board untouched — the same dimensions, down to the same sixteenth — and nothing in the rack has been rewritten
 
 **Plans**: 7 plans
+**Wave 1**
 
   - [ ] 05-01-PLAN.md — Tracer: the gear-menu chooser through one shared preference into `units.ts` and out to a rack card label, server-rendered from the first paint
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
   - [ ] 05-02-PLAN.md — The account home: a nullable per-user units column, its migration, the auth-first write, and the sign-in handoff
   - [ ] 05-03-PLAN.md — One shared card line, and preset cards gain their dimensions line
   - [ ] 05-04-PLAN.md — The whole-millimetre family and the metric parser, the UNIT-05 isolation guard, and the CLAUDE.md Rule 2 rewrite
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
   - [ ] 05-05-PLAN.md — Folded todo: one shared slider row across all five control sidebars
   - [ ] 05-06-PLAN.md — Folded todo: one shared viewer toolbar button across the TEMPLATE and ROCKER screens
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
   - [ ] 05-07-PLAN.md — Ship it: push, let Vercel deploy, then migrate production, and check the whole chain live
 
 **Phase notes**:
