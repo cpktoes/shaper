@@ -117,6 +117,54 @@ specified here.
 
 ---
 
+## UI Considerations
+
+Probe run 2026-09-04 (engine: `ui-consideration-probe.cjs`, 4 surfaces, 24 applicable
+considerations). Element kinds were authored by the orchestrator from each surface's prose — the
+heuristic classifier over-detected on the radio group (form, list, media, static-content all tripped
+on its prose) and under-detected on the card lines, so the kinds below are the confirmed union: the
+radio group carries `form` deliberately, because its no-stored-value state (D-10) is a real design
+consideration. **Resolved: 22 explicit, 2 backstop, 0 unresolved.** Non-interactive session:
+resolutions are the orchestrator's recommended dispositions under the `--auto` convention, grounded
+in `components/settings-menu.tsx`, `components/setup/preset-card.tsx`,
+`components/setup/board-rack-card.tsx` and `components/setup/board-rack.tsx` as they exist today.
+
+The two `backstop` rows are the same requirement seen from both card types — D-12's "never a blink
+of inches" — and lift into the plan's `must_haves` as `{ statement, verification: backstop }`: at
+verify time they are confirmed only by a wired test (a server-render of the card line with the
+cookie/account value set to metric, asserting the metric string is in the HTML) plus a visual reload
+check, never by a code-reading inference. Empty/loading/error COPY stays in the Copywriting Contract
+above; these rows cover state shape and reference it rather than restating it.
+
+| Category | Element | Status | Resolution / Reason |
+|----------|---------|--------|---------------------|
+| empty | units-radio-group (form · nav · interactive-control) | ✅ covered | With no stored preference anywhere — no account value, no localStorage key, no cookie — the Units group renders with the Imperial row checked, and nothing is written to any of the three stores until the shaper clicks a row (D-10). Pinned by a unit test on the preference module: parse-with-fallback returns Imperial for an absent value, and mounting performs no write. |
+| loading | units-radio-group (form · nav · interactive-control) | ✅ covered | The group reads its value synchronously from the provider's useSyncExternalStore snapshot; there is no pending, disabled or spinner state while the background account write is in flight — the CheckIcon moves to the clicked row on the click itself (D-11). |
+| error | units-radio-group (form · nav · interactive-control) | ✅ covered | A failed account write shows nothing in the menu — no error row, toast or reverted check; the write retries quietly with backoff in the background (D-11, mirroring lib/models/autosave.ts) and both rows stay clickable. Pinned by a unit test on the write's retry logic: a rejected write leaves the on-screen value unchanged and schedules a retry. |
+| partial | units-radio-group (form · nav · interactive-control) | ✅ covered | The Menu.RadioGroup holds exactly one of two values ('imperial' \| 'metric'); one row is always checked and there is no indeterminate or half-selected state. |
+| overflow | units-radio-group (form · nav · interactive-control) | ✅ covered | The popup is min-w-64 (256px) and grows to its widest row. The Units rows reuse ThemeRow's flex layout — a flex-1 leading-tight text column between a fixed 16px icon and a fixed 16px indicator slot — so a detail wider than the column wraps to a second line rather than clipping; and the longest Units detail (the metric example, about 21 characters) is shorter than the existing System row's 35-character detail ('Follows the OS — Daylight right now') that already sets the popup width, so both rows stay single-line. |
+| long-text | units-radio-group (form · nav · interactive-control) | ✅ covered | Row labels are the fixed strings 'Imperial' and 'Metric'; the detail is a bounded formatted string from a fixed reference board. No user-shaped or unbounded text ever flows through the rows. |
+| overflow | units-row-live-example (static-content) | ✅ covered | The example quotes one fixed reference board (the Shortboard preset), so its length never varies at runtime: about 21–25 characters in either system (e.g. 6'2" · 20 1/4" · 2 5/8" and 188.0 × 51.4 × 6.7 cm), shorter than the existing System row's 35-character detail that already sets the popup's width. ThemeRow's flex-1 text column wraps rather than clips if a font ever pushed it over. |
+| long-text | units-row-live-example (static-content) | ✅ covered | The string is units.ts formatter output over fixed millimetre values — a feet-and-inches value and two sixteenth fractions, or three one-decimal centimetre values — so its length is bounded by the formatters themselves (never more than about 25 characters); it is never typed or user-supplied. |
+| empty | preset-card-dims-line (list-collection · static-content) | ✅ covered | BOARD_PRESETS is a fixed built-in list of four full boards (Shortboard, Fish, Mid-length, Longboard); a preset card never renders without a board, and summarizeDesign() of a full board always yields all four numbers, so the line has no zero-data state. |
+| loading | preset-card-dims-line (list-collection · static-content) | 🧪 backstop | A Metric shaper's preset cards must read metric on the very first server-rendered paint, with no imperial flash (D-12): the units provider's server snapshot is derived from the cookie (signed out) or the account value (signed in), never a fixed default. Needs wired evidence, not a code-reading inference — a test that renders the card line with the cookie/account value set to metric and asserts the metric string is present in the server HTML (the lib/theme.test.ts drift-guard idiom), plus a visual reload check in Daylight and Slate. |
+| error | preset-card-dims-line (list-collection · static-content) | ✅ covered | The line is computed synchronously from the preset's own in-memory geometry through summarizeDesign(); there is no fetch and no failable operation, so no error state exists for it. |
+| populated | preset-card-dims-line (list-collection · static-content) | ✅ covered | The normal state is one four-number line in the chosen system under the preset name — Imperial 6'2" · 20 1/4" · 2 5/8" · 34.0 L (today's format, unchanged) or Metric 188.0 × 51.4 × 6.7 cm · 34.0 L (D-01/D-03) — in CardMetadataLine's exact classes (text-xs leading-[1.4] font-semibold text-surf-ink-muted), reading identically to the rack card's line (D-14). |
+| partial | preset-card-dims-line (list-collection · static-content) | ✅ covered | Every BoardPreset carries a complete outline, rocker, foil, rails and fins (Phase 4 D-12), so summarizeDesign() always has every input; a partially-defined preset cannot exist at render time. |
+| overflow | preset-card-dims-line (list-collection · static-content) | ✅ covered | The card is flex w-full flex-col in a 1/2/4-column grid with no fixed line width, and the line carries no truncate; the longest string the formatters can produce is about 30–35 characters (e.g. 188.0 × 51.4 × 6.7 cm · 34.0 L), which wraps as ordinary text at narrow widths rather than clipping — the same behaviour as the rack card's line today. |
+| zero-one-many | preset-card-dims-line (list-collection · static-content) | ✅ covered | The preset grid always shows exactly four cards (BOARD_PRESETS is fixed); the grid, its column rules and the card count are untouched by this phase, so there is no zero/one/many variability to design for. |
+| long-text | preset-card-dims-line (list-collection · static-content) | ✅ covered | The line contains only formatter output (feet-and-inches, sixteenth fractions or one-decimal centimetres, and litres to one decimal) plus fixed separators; no user text flows through it. The preset name and descriptor around it are pre-existing fixed strings. |
+| empty | rack-card-dims-line (list-collection · static-content) | ✅ covered | The rack renders nothing at all when it has no entries (board-rack.tsx: there is no empty-rack state to design), and CardMetadataLine only renders inside a card that already has a design summary — so the line itself has no empty state. Unchanged by this phase. |
+| loading | rack-card-dims-line (list-collection · static-content) | 🧪 backstop | Same first-paint requirement as the preset line (D-12): the saved-board list is server-rendered by app/page.tsx, so the rack lines must already read in the chosen system in the server HTML — the account value (signed in) or cookie (signed out) is read before render. Needs the same wired test exercising a rack card, plus a visual check that a reload as a Metric shaper never shows an inch line first. |
+| error | rack-card-dims-line (list-collection · static-content) | ✅ covered | The line formats a stored design snapshot that has already loaded with the page; a failed model-list load is Phase 2's existing concern and is unchanged. Switching systems cannot fail — it re-labels rendered text and never touches the row (D-16). |
+| populated | rack-card-dims-line (list-collection · static-content) | ✅ covered | Same two forms as the preset line — Imperial 6'2" · 20 1/4" · 2 5/8" · 34.0 L exactly as today, Metric 188.0 × 51.4 × 6.7 cm · 34.0 L — with the classes unchanged (text-xs leading-[1.4] font-semibold text-surf-ink-muted). A pick re-labels every rack card on the click, and choosing Imperial again restores today's string byte for byte. |
+| partial | rack-card-dims-line (list-collection · static-content) | ✅ covered | Older saved boards are backfilled to a complete snapshot (Phase 4 D-15) before summarizeDesign() runs, so the line always has four real numbers; and because the preference lives outside DesignState (D-16), switching systems never leaves a row half-converted and never rewrites a stored millimetre value. |
+| overflow | rack-card-dims-line (list-collection · static-content) | ✅ covered | Same card shell as the preset card (flex w-full flex-col, 1/2/4-column grid); the line has no truncate (only the board name above it does), and the metric form is bounded at about 30–35 characters by the formatters, so at narrow widths it wraps rather than clips — no change from today apart from a few extra characters. |
+| zero-one-many | rack-card-dims-line (list-collection · static-content) | ✅ covered | Zero, one and many saved boards are Phase 2's existing rack states (its empty copy, the in-progress card, the grid) and are untouched here; the line is per-card and identical whether the rack holds one board or twenty. |
+| long-text | rack-card-dims-line (list-collection · static-content) | ✅ covered | Only formatter output and fixed separators flow through the line; the board name — the one user-shaped string on the card — sits above it with its existing block truncate, unchanged. |
+
+---
+
 ## Registry Safety
 
 | Registry | Blocks Used | Safety Gate |
@@ -197,11 +245,11 @@ affordance pointing at the gear menu. The gear icon itself is unchanged.
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-09-04 (gsd-ui-checker: UI-SPEC VERIFIED, 6/6 dimensions, no recommendations; UI-consideration probe: 24/24 resolved — 22 explicit, 2 backstop)
