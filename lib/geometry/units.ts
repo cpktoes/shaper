@@ -36,6 +36,50 @@ export function cubicMmToLitres(volumeMm3: number): Litres {
 }
 
 /**
+ * The app's two measuring systems. Imperial is one variant of this type, not the app's
+ * privileged default — every display site that reads a design value takes a `UnitsSystem`
+ * argument rather than defaulting to inches with a metric branch bolted alongside (v1.1
+ * kickoff: adopt "chosen units system" as the primary noun before ~300 Phase 6 call sites are
+ * written against it, so none of them inherit an Imperial-favoring asymmetry).
+ */
+export type UnitsSystem = "imperial" | "metric";
+
+/** Every registered system, in menu order. Iterate this — never name the two systems by hand —
+ * so a future system addition (or a silently dropped branch) fails a test instead of falling
+ * back to Imperial. See `lib/geometry/summary-line.test.ts`'s invariant test. */
+export const UNITS_SYSTEMS: readonly UnitsSystem[] = ["imperial", "metric"];
+
+export const MM_PER_CM = 10;
+
+export function mmToCentimetres(value: Mm): number {
+  return value / MM_PER_CM;
+}
+
+export function centimetresToMm(value: number): Mm {
+  return mm(value * MM_PER_CM);
+}
+
+/**
+ * Formats a millimetre value as a bare centimetre number with exactly one decimal place —
+ * `"188.0"`, never `"188"` and never with a unit suffix. A tenth of a centimetre is one
+ * millimetre, which is what a metric tape measure actually reads, and the trailing zero is
+ * kept deliberately (D-01): the unit itself is composed once, at the end of a whole dims line,
+ * by the caller (`lib/geometry/summary-line.ts`), not by this function.
+ *
+ * Applies the same signed epsilon nudge (`1e-9`, negated for negative values) that
+ * `formatInchesFraction` documents, before `toFixed(1)`: a value that round-tripped through
+ * inches (or picked up float noise any other way) can land a few ULPs on the wrong side of a
+ * tenths-of-a-centimetre rounding boundary, and the nudge pushes it back onto the correct side
+ * without changing any genuinely different value's rounding.
+ */
+export function formatCentimetres(value: Mm): string {
+  const cm = mmToCentimetres(value);
+  const nudge = cm < 0 ? -1e-9 : 1e-9;
+  const rounded = Math.round((cm + nudge) * 10) / 10;
+  return rounded.toFixed(1);
+}
+
+/**
  * Converts a design area from square millimetres to square inches — the only other place besides
  * `mmToInches` that turns `MM_PER_INCH` into a real device number, so the Overview Sheet's printed
  * "Template Area" can never drift from the same `area` field `lib/geometry/outline.ts` computes
