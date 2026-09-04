@@ -7,7 +7,7 @@ files:
   - components/site-nav.tsx
   - lib/geometry/units.ts
 source: UAT feedback, phase 01
-resolves_phase:
+resolves_phase: 5
 ---
 
 # Global settings: units toggle (inches vs cm) and colour themes
