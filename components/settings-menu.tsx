@@ -15,9 +15,24 @@
 
 import { Fragment } from "react";
 import { Menu } from "@base-ui/react/menu";
-import { CheckIcon, MonitorIcon, MoonIcon, SettingsIcon, SunIcon } from "lucide-react";
+import { CheckIcon, MonitorIcon, MoonIcon, RulerIcon, SettingsIcon, SunIcon } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
+import { useUnits } from "@/components/units-provider";
+import { formatDimsExample, presetSummary } from "@/lib/geometry/summary-line";
+import { BOARD_PRESETS } from "@/lib/geometry/presets";
+import type { UnitsSystem } from "@/lib/geometry/units";
 import { THEMES, type ThemeMode, type ThemePreference } from "@/lib/theme";
+
+/**
+ * The D-06 live example board — a fixed reference (Shortboard) run through the same
+ * `summarizeDesign()` pipeline the cards use, computed once at module load. Fixed rather than
+ * the board in progress so the row never moves while a shaper edits (UI-SPEC's resolved
+ * assumption): switching units mid-edit should not also make the menu's own example jump.
+ */
+const UNITS_EXAMPLE_SUMMARY = presetSummary(
+  // Shortboard is always present in BOARD_PRESETS — see lib/geometry/presets.ts.
+  BOARD_PRESETS.find((preset) => preset.id === "shortboard")!,
+);
 
 const MODE_ICON: Record<ThemeMode, typeof SunIcon> = { light: SunIcon, dark: MoonIcon };
 const MODE_LABEL: Record<ThemeMode, string> = { light: "Light", dark: "Dark" };
@@ -26,6 +41,7 @@ const MODES: ThemeMode[] = ["light", "dark"];
 
 export function SettingsMenu() {
   const { preference, setPreference, systemTheme } = useTheme();
+  const { system, setSystem } = useUnits();
 
   return (
     <Menu.Root>
@@ -40,9 +56,35 @@ export function SettingsMenu() {
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="end" sideOffset={10} className="isolate z-50">
           <Menu.Popup className="min-w-64 origin-(--transform-origin) rounded-lg border border-surf-line-faint bg-surf-panel p-1.5 shadow-lg outline-none duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+            {/* Units sits above Theme (D-05) — a sibling Menu.RadioGroup, not nested inside it.
+                Base UI walks a RadioGroup's own children to register its items, so neither
+                group may be wrapped in an intervening element. */}
+            <Menu.RadioGroup
+              value={system}
+              onValueChange={(next) => setSystem(next as UnitsSystem)}
+            >
+              <Menu.GroupLabel className="px-2 pt-1 pb-2 text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase">
+                Units
+              </Menu.GroupLabel>
+
+              <UnitsRow
+                value="imperial"
+                label="Imperial"
+                detail={formatDimsExample(UNITS_EXAMPLE_SUMMARY, "imperial")}
+              />
+              <UnitsRow
+                value="metric"
+                label="Metric"
+                detail={formatDimsExample(UNITS_EXAMPLE_SUMMARY, "metric")}
+              />
+            </Menu.RadioGroup>
+
             <Menu.RadioGroup
               value={preference}
               onValueChange={(next) => setPreference(next as ThemePreference)}
+              // Same top spacing the "Light"/"Dark" mode headings already use, so the rhythm
+              // between the two top-level groups matches the rhythm inside them.
+              className="mt-1.5"
             >
               {/* Inside the RadioGroup, not beside it: Base UI's group parts read a context
                   only Menu.Group/Menu.RadioGroup provide, and it throws otherwise. It is also
@@ -119,6 +161,40 @@ function ThemeRow({
       <Menu.RadioItemIndicator
         // `keepMounted` is off by default, so the icon is simply absent for unselected rows —
         // the flex layout leaves the gap either way.
+        render={<span className="flex size-4 shrink-0 items-center justify-center" />}
+      >
+        <CheckIcon aria-hidden className="size-4 text-surf-accent-ink" />
+      </Menu.RadioItemIndicator>
+    </Menu.RadioItem>
+  );
+}
+
+/**
+ * `ThemeRow` with the icon fixed to a ruler for both rows (D-07) instead of a per-value icon —
+ * unlike Theme, where the icon varies by mode, Units has only one dimension of variation (the
+ * system), so one icon suffices and a second would imply a distinction that doesn't exist.
+ */
+function UnitsRow({
+  value,
+  label,
+  detail,
+}: {
+  value: UnitsSystem;
+  label: string;
+  detail: string;
+}) {
+  return (
+    <Menu.RadioItem
+      value={value}
+      closeOnClick={false}
+      className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none select-none data-highlighted:bg-surf-well"
+    >
+      <RulerIcon aria-hidden className="size-4 shrink-0 text-surf-ink-muted" />
+      <span className="flex-1 leading-tight">
+        <span className="block text-sm text-surf-ink">{label}</span>
+        <span className="block text-[11px] text-surf-ink-muted">{detail}</span>
+      </span>
+      <Menu.RadioItemIndicator
         render={<span className="flex size-4 shrink-0 items-center justify-center" />}
       >
         <CheckIcon aria-hidden className="size-4 text-surf-accent-ink" />
