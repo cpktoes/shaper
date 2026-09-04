@@ -1,11 +1,11 @@
 # Requirements: Shaper
 
-**Defined:** 2026-08-18
+**Defined:** 2026-08-18 (v1.0) · v1.1 added 2026-09-04
 **Core Value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
 
-## v1 Requirements
+## v1.0 Requirements (complete)
 
-Requirements for initial release. Each maps to roadmap phases.
+The initial release — every requirement below shipped and was validated across Phases 1–4.
 
 ### Accounts
 
@@ -61,9 +61,44 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **UNIT-01**: UI displays dimensions in inches and volume in litres, regardless of internal (metric) storage
 
-## v2 Requirements
+## v1.1 Requirements — Imperial vs Metric
 
-Deferred to future release. Tracked but not in current roadmap. Per the founder's build guide, free-tier usage should be validated with real shapers before billing and public sharing are built (guide milestones M4–M6).
+The current milestone. A shaper can switch the whole app between Imperial and Metric, and every
+number they read on screen or on paper follows. Decided at kickoff (2026-09-04): the chooser reads
+Imperial / Metric (a measuring system, not a pair of units); Metric is all-metric, length included
+— cm for length and widths, whole millimetres for rail band, rocker and foil values; volume stays
+litres either way; the preference lives on the account with a per-browser fallback when signed out.
+UNIT-01 (inches only) is superseded by this milestone.
+
+### Units Preference
+
+- [ ] **UNIT-02**: User can choose Imperial or Metric from the settings menu, beside the theme chooser; Imperial is the default for everyone until they change it
+- [ ] **UNIT-03**: A signed-in user's choice is saved on their account and applies on any device they sign in from
+- [ ] **UNIT-04**: A signed-out user's choice is remembered on that browser; on sign-in the account's saved choice applies if it has one, otherwise the browser's choice becomes the account's
+- [ ] **UNIT-05**: Switching systems changes only how numbers are shown and typed — saved designs do not change, and switching back reproduces the original values exactly
+
+### Design Screens
+
+- [ ] **SCRN-01**: In Metric, every slider and value on the outline, rails, fins, volume and rocker screens reads in cm for length and widths and whole mm for rail band, rocker and foil values, with sliders stepping on whole millimetres
+- [ ] **SCRN-02**: In Metric, typed entry accepts decimal centimetres and whole millimetres and re-prints in the chosen system; unreadable input reverts, as it does today
+- [ ] **SCRN-03**: Viewer callouts and data tables (rail band marks, fin placement numbers, rocker datasheet, volume card) read in the chosen system
+- [ ] **SCRN-04**: Preset cards on the setup screen show their dimensions in the chosen system
+- [ ] **SCRN-05**: Volume reads in litres in both systems
+
+### Printed Outputs
+
+- [ ] **PRNT-01**: The Summary order form prints every measurement in the chosen system
+- [ ] **PRNT-02**: The Overview Sheet PDF prints in the chosen system
+- [ ] **PRNT-03**: The Full Sized Template and Paper Saver print their marks, labels and name/dims block in the chosen system
+- [ ] **PRNT-04**: In Metric, the printed scale-check square is captioned in millimetres so a metric ruler can verify print scale (whether it stays 2in or becomes 50 mm is settled in the phase discussion)
+
+### Rack
+
+- [ ] **RACK-01**: Rack cards on the setup screen show each board's dimensions in the chosen system
+
+## Future Requirements
+
+Deferred to a later release. Tracked but not in the current roadmap. Per the founder's build guide, free-tier usage should be validated with real shapers before billing and public sharing are built (guide milestones M4–M6).
 
 ### Accounts
 
@@ -89,6 +124,10 @@ Explicitly excluded. Documented to prevent scope creep.
 | Feature | Reason |
 |---------|--------|
 | CNC file export | Product is explicitly for hand shapers working foam by hand, not CNC-cut boards |
+| Mixed measuring systems (e.g. feet-and-inches length with metric widths) | Decided at the v1.1 kickoff: Metric is all-metric, one rule, the way Shape3d and BoardCAD switch |
+| Rewriting dimensions a shaper typed into a board's name | Names are free text and stay exactly as typed |
+| Per-board units | The preference belongs to the shaper, not the design |
+| Volume in anything other than litres | Litres are how shapers talk about volume in both systems |
 
 ## Traceability
 
@@ -114,13 +153,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VIZ-01 | Phase 1 | Complete |
 | TMPL-01 | Phase 3 | Complete |
 | UNIT-01 | Phase 1 | Complete |
+| UNIT-02 | — | Pending |
+| UNIT-03 | — | Pending |
+| UNIT-04 | — | Pending |
+| UNIT-05 | — | Pending |
+| SCRN-01 | — | Pending |
+| SCRN-02 | — | Pending |
+| SCRN-03 | — | Pending |
+| SCRN-04 | — | Pending |
+| SCRN-05 | — | Pending |
+| PRNT-01 | — | Pending |
+| PRNT-02 | — | Pending |
+| PRNT-03 | — | Pending |
+| PRNT-04 | — | Pending |
+| RACK-01 | — | Pending |
 
 **Coverage:**
 
-- v1 requirements: 18 total
-- Mapped to phases: 18
-- Unmapped: 0 ✓
+- v1.0 requirements: 18 total, mapped to phases: 18, unmapped: 0 ✓
+- v1.1 requirements: 14 total, mapped to phases: 0, unmapped: 14 ⚠️ (roadmap pending)
 
 ---
 *Requirements defined: 2026-08-18*
-*Last updated: 2026-08-18 after roadmap creation*
+*Last updated: 2026-09-04 after defining milestone v1.1 requirements*
