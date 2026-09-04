@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Imperial vs Metric
 status: planning
-last_updated: "2026-09-04T18:20:57.863Z"
+last_updated: "2026-09-04T19:05:00.000Z"
 last_activity: 2026-09-04
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-28)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 04 — rocker-foil-editors
+**Current focus:** Phase 05 — the units chooser (milestone v1.1, 3 phases)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 5 of 7 — The Units Chooser (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-09-04 — Milestone v1.1 started
+Status: Roadmap complete — ready to plan Phase 5
+Last activity: 2026-09-04 — Milestone v1.1 roadmap created (Phases 5-7, all 14 requirements mapped)
+
+**Milestone v1.1 phases:**
+
+| Phase | Name | Requirements | Status |
+|-------|------|--------------|--------|
+| 5 | The Units Chooser | UNIT-02, UNIT-03, UNIT-04, UNIT-05, SCRN-04, RACK-01 | Not started |
+| 6 | The Design Screens in Metric | SCRN-01, SCRN-02, SCRN-03, SCRN-05 | Not started |
+| 7 | Metric on Paper | PRNT-01, PRNT-02, PRNT-03, PRNT-04 | Not started |
 
 ## Performance Metrics
 
@@ -262,6 +270,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-29
-Stopped at: Phase 4 complete — milestone v1.0 fully complete (all 4 phases), UAT 9/9 passed, security verified
+Last session: 2026-09-04
+Stopped at: Milestone v1.1 roadmap created — Phases 5-7 defined, 14/14 requirements mapped, nothing executed yet
 Resume file: None
+Next action: `/gsd-plan-phase 5`

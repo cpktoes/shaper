@@ -153,26 +153,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VIZ-01 | Phase 1 | Complete |
 | TMPL-01 | Phase 3 | Complete |
 | UNIT-01 | Phase 1 | Complete |
-| UNIT-02 | — | Pending |
-| UNIT-03 | — | Pending |
-| UNIT-04 | — | Pending |
-| UNIT-05 | — | Pending |
-| SCRN-01 | — | Pending |
-| SCRN-02 | — | Pending |
-| SCRN-03 | — | Pending |
-| SCRN-04 | — | Pending |
-| SCRN-05 | — | Pending |
-| PRNT-01 | — | Pending |
-| PRNT-02 | — | Pending |
-| PRNT-03 | — | Pending |
-| PRNT-04 | — | Pending |
-| RACK-01 | — | Pending |
+| UNIT-02 | Phase 5 | Pending |
+| UNIT-03 | Phase 5 | Pending |
+| UNIT-04 | Phase 5 | Pending |
+| UNIT-05 | Phase 5 | Pending |
+| SCRN-01 | Phase 6 | Pending |
+| SCRN-02 | Phase 6 | Pending |
+| SCRN-03 | Phase 6 | Pending |
+| SCRN-04 | Phase 5 | Pending |
+| SCRN-05 | Phase 6 | Pending |
+| PRNT-01 | Phase 7 | Pending |
+| PRNT-02 | Phase 7 | Pending |
+| PRNT-03 | Phase 7 | Pending |
+| PRNT-04 | Phase 7 | Pending |
+| RACK-01 | Phase 5 | Pending |
 
 **Coverage:**
 
 - v1.0 requirements: 18 total, mapped to phases: 18, unmapped: 0 ✓
-- v1.1 requirements: 14 total, mapped to phases: 0, unmapped: 14 ⚠️ (roadmap pending)
+- v1.1 requirements: 14 total, mapped to phases: 14, unmapped: 0 ✓ (Phase 5: 6, Phase 6: 4, Phase 7: 4)
 
 ---
 *Requirements defined: 2026-08-18*
-*Last updated: 2026-09-04 after defining milestone v1.1 requirements*
+*Last updated: 2026-09-04 after mapping milestone v1.1 requirements to Phases 5-7 in ROADMAP.md*
