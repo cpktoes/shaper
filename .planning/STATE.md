@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Imperial vs Metric
-current_phase: 5
+current_phase: 05
 current_phase_name: The Units Chooser
-status: planning
+status: executing
 stopped_at: Phase 5 UI-SPEC approved
-last_updated: "2026-09-04T21:33:12.241Z"
+last_updated: "2026-09-04T21:47:23.734Z"
 last_activity: 2026-09-04
 last_activity_desc: Milestone v1.1 roadmap created (Phases 5-7, all 14 requirements mapped)
 progress:
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-28)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 05 — the units chooser (milestone v1.1, 3 phases)
+**Current focus:** Phase 05 — The Units Chooser
 
 ## Current Position
 
-Phase: 5 of 7 — The Units Chooser (not started)
-Plan: —
-Status: Roadmap complete — ready to plan Phase 5
-Last activity: 2026-09-04 — Milestone v1.1 roadmap created (Phases 5-7, all 14 requirements mapped)
+Phase: 05 (The Units Chooser) — EXECUTING
+Plan: 1 of 7
+Status: Executing Phase 05
+Last activity: 2026-09-04 — Phase 05 execution started
 
 **Milestone v1.1 phases:**
 
