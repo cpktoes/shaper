@@ -32,9 +32,10 @@
 import { useDesign } from "@/components/design/design-store";
 import { OutlineViewer } from "@/components/outline/outline-viewer";
 import { RackCardMenu } from "@/components/setup/rack-card-menu";
+import { useUnits } from "@/components/units-provider";
 import { buildOutline } from "@/lib/geometry/outline";
 import { summarizeDesign, type DesignSummary } from "@/lib/geometry/design";
-import { formatFeetInches, formatInchesFraction } from "@/lib/geometry/units";
+import { formatSummaryLine } from "@/lib/geometry/summary-line";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
@@ -93,10 +94,13 @@ function CardThumbnail({ geometry, outline }: { geometry: OutlineGeometry; outli
 }
 
 function CardMetadataLine({ summary }: { summary: DesignSummary }) {
+  // The composition itself lives in lib/geometry/summary-line.ts (shared with the settings
+  // menu's live example, and — from 05-02 onward — the preset cards) so a card's four numbers
+  // are always produced the same way in whichever system the shaper picked.
+  const { system } = useUnits();
   return (
     <span className="text-xs leading-[1.4] font-semibold text-surf-ink-muted">
-      {formatFeetInches(summary.length)} · {formatInchesFraction(summary.widePointWidth)} ·{" "}
-      {formatInchesFraction(summary.centerThickness)} · {summary.volumeLitres.toFixed(1)} L
+      {formatSummaryLine(summary, system)}
     </span>
   );
 }

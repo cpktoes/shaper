@@ -5,7 +5,9 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { SiteNav } from "@/components/site-nav";
 import { DesignProvider as Provider } from "@/components/design/design-store";
 import { ThemeProvider } from "@/components/theme-provider";
+import { UnitsProvider } from "@/components/units-provider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { resolveUnitsHandoff } from "@/lib/units-server";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -42,8 +44,16 @@ export const metadata: Metadata = {
  * that should scroll (e.g. the outline editor's control sidebar, which already opts into its own
  * `overflow-y-auto`). Clamping here is what makes that descendant-level scrolling possible instead
  * of page-level scrolling swallowing it.
+ *
+ * `async` because it calls `resolveUnitsHandoff()` before returning (D-12): the numbers a
+ * shaper reads have to be right in the server's own HTML, not corrected after the fact like
+ * the theme (CSS, patchable by the pre-hydration script below). Reading a cookie here opts
+ * every route into dynamic rendering — a deliberate cost of "never a blink of inches", and
+ * `app/page.tsx` already renders dynamically today for the same reason (its own `auth()` +
+ * model-list read).
  */
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const unitsHandoff = await resolveUnitsHandoff();
   return (
     // ClerkProvider is the outermost app-level provider — it owns nothing about the theme or
     // the board, only the signed-in/signed-out session every screen can read via `useUser()`.
@@ -79,14 +89,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         </head>
         <body className="flex h-full flex-col overflow-hidden bg-surf-ground">
-          <ThemeProvider>
-            <Provider>
-              <div className="flex min-h-0 flex-1 flex-col">
-                <SiteNav />
-                {children}
-              </div>
-            </Provider>
-          </ThemeProvider>
+          {/* Outside ThemeProvider, not nested inside it — the units value has to be available
+              to everything the nav renders, including the settings menu's Units group beside
+              its Theme group. No pre-hydration script counterpart: units renders text, and the
+              server snapshot above is already correct, so there is nothing to patch before
+              paint the way THEME_INIT_SCRIPT patches a stale dark-theme class. */}
+          <UnitsProvider handoff={unitsHandoff}>
+            <ThemeProvider>
+              <Provider>
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <SiteNav />
+                  {children}
+                </div>
+              </Provider>
+            </ThemeProvider>
+          </UnitsProvider>
         </body>
       </html>
     </ClerkProvider>
