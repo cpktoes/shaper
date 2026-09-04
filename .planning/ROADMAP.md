@@ -84,7 +84,16 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
   3. Signed in, the choice is waiting on any other browser or device the shaper signs in from; signed out, that browser remembers it on its own, and signing in either adopts the account's saved choice or promotes the browser's when the account has none
   4. Switching to Metric and back leaves every saved board untouched — the same dimensions, down to the same sixteenth — and nothing in the rack has been rewritten
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+  - [ ] 05-01-PLAN.md — Tracer: the gear-menu chooser through one shared preference into `units.ts` and out to a rack card label, server-rendered from the first paint
+  - [ ] 05-02-PLAN.md — The account home: a nullable per-user units column, its migration, the auth-first write, and the sign-in handoff
+  - [ ] 05-03-PLAN.md — One shared card line, and preset cards gain their dimensions line
+  - [ ] 05-04-PLAN.md — The whole-millimetre family and the metric parser, the UNIT-05 isolation guard, and the CLAUDE.md Rule 2 rewrite
+  - [ ] 05-05-PLAN.md — Folded todo: one shared slider row across all five control sidebars
+  - [ ] 05-06-PLAN.md — Folded todo: one shared viewer toolbar button across the TEMPLATE and ROCKER screens
+  - [ ] 05-07-PLAN.md — Ship it: push, let Vercel deploy, then migrate production, and check the whole chain live
+
 **Phase notes**:
 
   - Rule 1 applies: the metric side of the number rules (cm and whole-mm formatting, decimal-cm and whole-mm parsing, rounding, and the round-trip guarantee behind UNIT-05) is added to `lib/geometry/units.ts` beside the existing imperial functions, pure and unit-tested. Components read the chosen system through one hook/context rather than each converting on its own.
