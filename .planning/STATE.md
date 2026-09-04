@@ -2,15 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Imperial vs Metric
+current_phase: 5
+current_phase_name: The Units Chooser
 status: planning
-last_updated: "2026-09-04T19:05:00.000Z"
+stopped_at: Phase 5 context gathered
+last_updated: "2026-09-04T20:34:36.435Z"
 last_activity: 2026-09-04
+last_activity_desc: Milestone v1.1 roadmap created (Phases 5-7, all 14 requirements mapped)
 progress:
-  total_phases: 3
+  total_phases: 1
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -270,7 +273,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-04
-Stopped at: Milestone v1.1 roadmap created — Phases 5-7 defined, 14/14 requirements mapped, nothing executed yet
-Resume file: None
+Last session: 2026-09-04T20:34:36.413Z
+Stopped at: Phase 5 context gathered
+Resume file: .planning/phases/05-the-units-chooser/05-CONTEXT.md
 Next action: `/gsd-plan-phase 5`
