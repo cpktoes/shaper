@@ -326,7 +326,7 @@ export function OutlineViewer({
 
   // Imperial keeps the dual feet-and-inches / total-inches form; Metric has no equivalent
   // duality, so it reads a single centimetre figure. Composed from formatLength/formatDim
-  // rather than calling formatFeetInches/formatInchesFraction directly — both still produce
+  // rather than calling the raw imperial units.ts formatters directly — both still produce
   // exactly the same imperial strings internally, but routing through the display boundary
   // keeps this file out of the banned-formatter list the units-isolation ledger checks.
   const lengthCalloutText =
