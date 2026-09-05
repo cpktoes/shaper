@@ -28,9 +28,11 @@
 import { useMemo, useRef } from "react";
 import type { FinMark, FinPlacementResult, FinRole, FinTailShape, FinLateralKind } from "@/lib/geometry/fins";
 import { tailHalfWidthAt, tailOffTailAtHalfWidth, tailOutlineHalfPoints } from "@/lib/geometry/fins";
-import { formatFeetInches, formatInchesFraction, inchesToMm, mm, mmToInches, type Mm } from "@/lib/geometry/units";
+import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
+import { formatDim, formatLength, formatMark } from "@/lib/geometry/measure-display";
 import type { Point2D } from "@/lib/geometry/board";
 import { CALLOUT_FONT_VALUE, CALLOUT_PX, DimensionTick, useSvgFitScale } from "@/components/viewer/callout-primitives";
+import { useUnits } from "@/components/units-provider";
 
 const SCALE = 14;
 const ORIGIN_X = 260;
@@ -209,14 +211,17 @@ function dimsForMark(
   sharedBoundaryPx: number,
   leftTierStackPx: number,
   maxLeftTier: number,
+  system: UnitsSystem,
 ): FinDim[] {
   const { mark, teX, teY, leX, leY } = geom;
   const dims: FinDim[] = [];
   const offTailIn = mmToInches(mark.offTail);
   const w12In = mmToInches(tailWidth12);
-  const toeDisplay = formatInchesFraction(mark.toe, 16);
-  const lateralValueDisplay = mark.lateralValue !== null ? formatInchesFraction(mark.lateralValue, 16) : "";
-  const offTailDisplay = formatInchesFraction(mark.offTail, 16);
+  // Toe-in and the lateral value (an off-rail distance or a half spread) are mark-family; the
+  // off-tail value is a distance up the board, dim-family — each carries its own unit per D-09.
+  const toeDisplay = formatMark(mark.toe, system);
+  const lateralValueDisplay = mark.lateralValue !== null ? formatMark(mark.lateralValue, system) : "";
+  const offTailDisplay = formatDim(mark.offTail, system);
   const dimsSide: -1 | 1 = mark.role === "rear" ? 1 : -1;
 
   if (mark.side === dimsSide || mark.side === 0) {
@@ -386,6 +391,10 @@ export function FinViewer({
   compact = false,
   boardLength,
 }: FinViewerProps) {
+  // Read directly rather than threaded as a prop (the CardMetadataLine pattern): the viewer's
+  // public props stay unchanged, and system is passed as a plain parameter into this file's own
+  // local helpers below (dimsForMark), never converted inside a shared primitive.
+  const { system } = useUnits();
   const { filled, open } = useMemo(
     () => buildOutlinePaths(tailShape, tailWidth12, outlineOverride ?? undefined),
     [tailShape, tailWidth12, outlineOverride],
@@ -413,9 +422,9 @@ export function FinViewer({
     () =>
       marksGeom.map((geom) => ({
         geom,
-        dims: dimsForMark(geom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier),
+        dims: dimsForMark(geom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier, system),
       })),
-    [marksGeom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier],
+    [marksGeom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier, system],
   );
 
   const w12In = mmToInches(tailWidth12);
@@ -551,7 +560,7 @@ export function FinViewer({
                   textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}`,
                 }}
               >
-                {`${formatFeetInches(boardLength)} · ${formatInchesFraction(tailWidth12, 16)} tail`}
+                {`${formatLength(boardLength, system)} · ${formatDim(tailWidth12, system)} tail`}
               </text>
             )}
             {showCallouts &&
@@ -586,7 +595,7 @@ export function FinViewer({
               <svg width={16} height={4} className="mr-1">
                 <line x1={0} y1={2} x2={16} y2={2} stroke="var(--color-surf-accent-ink)" strokeWidth={3} strokeDasharray={entry.dash} />
               </svg>
-              Base Length ({entry.label}):&nbsp;{formatInchesFraction(entry.baseLength, 16)}
+              Base Length ({entry.label}):&nbsp;{formatMark(entry.baseLength, system)}
             </span>
           ))}
         </div>
