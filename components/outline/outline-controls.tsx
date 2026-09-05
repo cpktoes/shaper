@@ -26,6 +26,7 @@ import {
   mm,
   mmToInches,
 } from "@/lib/geometry/units";
+import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { TailShapeIcon, type IconTailShape } from "./tail-shape-icon";
 
 const TAIL_SHAPES: IconTailShape[] = ["pin", "round", "diamond", "squash", "swallow"];
@@ -41,10 +42,6 @@ interface OutlineControlsProps {
 function clampFinite(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, value));
-}
-
-function sliderValue(v: number | readonly number[]): number {
-  return typeof v === "number" ? v : (v[0] ?? 0);
 }
 
 /** Reads the tail shape's end width uniformly — pin/round carry no endWidth field, so they read as zero. */
@@ -77,56 +74,6 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <div className="mt-1.5 border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">
       {children}
-    </div>
-  );
-}
-
-function SliderRow({
-  label,
-  displayValue,
-  value,
-  min,
-  max,
-  step,
-  onValueChange,
-  disabled,
-  leftHint,
-  rightHint,
-  note,
-}: {
-  label: string;
-  displayValue: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onValueChange: (value: number) => void;
-  disabled?: boolean;
-  leftHint?: string;
-  rightHint?: string;
-  note?: string;
-}) {
-  return (
-    <div className={disabled ? "flex-1 opacity-40" : "flex-1"}>
-      <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-        {label} — {displayValue}
-      </div>
-      <Slider
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-        onValueChange={(v) => onValueChange(sliderValue(v))}
-        className="slider-accent"
-      />
-      {(leftHint || rightHint) && (
-        <div className="mt-0.5 flex justify-between text-xs text-surf-ink-muted font-normal">
-          <span>{leftHint}</span>
-          <span>{rightHint}</span>
-        </div>
-      )}
-      {note && <div className="mt-0.5 text-[10px] text-surf-warning-ink">{note}</div>}
     </div>
   );
 }
@@ -169,6 +116,10 @@ export function OutlineControls({
       </div>
 
       <SectionHeading>Board Length</SectionHeading>
+      {/* Board Length keeps its own hand-rolled markup — the feet/inches Select combo sits
+          between the label and the slider, which SliderRow's fixed label-then-track layout has
+          no room for. Named in slider-row.test.ts's allowlist alongside its FINS and VOLUME
+          counterparts, which share this exact shape. */}
       <div>
         <div className="mb-2 text-sm text-surf-ink-muted font-normal">
           Board Length — {formatFeetInches(outline.length)}
@@ -218,6 +169,7 @@ export function OutlineControls({
       <SectionHeading>Nose Controls</SectionHeading>
       <div className="flex gap-4">
         <SliderRow
+          className="flex-1"
           label="Nose Angle"
           displayValue={`${outline.noseAngle}°`}
           value={outline.noseAngle}
@@ -229,6 +181,7 @@ export function OutlineControls({
           rightHint="Round"
         />
         <SliderRow
+          className="flex-1"
           label="Fullness"
           displayValue={`${outline.noseFullness}%`}
           value={outline.noseFullness}
@@ -244,6 +197,7 @@ export function OutlineControls({
       <SectionHeading>Widepoint Controls</SectionHeading>
       <div className="flex gap-4">
         <SliderRow
+          className="flex-1"
           label="Width"
           displayValue={formatInchesFraction(outline.widePointWidth)}
           value={mmToInches(outline.widePointWidth)}
@@ -259,6 +213,7 @@ export function OutlineControls({
           }
         />
         <SliderRow
+          className="flex-1"
           label="Offset"
           displayValue={formatSignedInchesFraction(outline.widePointOffset)}
           value={mmToInches(outline.widePointOffset)}
@@ -274,6 +229,7 @@ export function OutlineControls({
       </div>
       <div className="flex gap-4">
         <SliderRow
+          className="flex-1"
           label="Tail Rail"
           displayValue={`${outline.tailRailLength}%`}
           value={outline.tailRailLength}
@@ -285,6 +241,7 @@ export function OutlineControls({
           rightHint="Long"
         />
         <SliderRow
+          className="flex-1"
           label="Nose Rail"
           displayValue={`${outline.noseRailLength}%`}
           value={outline.noseRailLength}
@@ -339,6 +296,7 @@ export function OutlineControls({
 
       <div className="flex gap-4">
         <SliderRow
+          className="flex-1"
           label="Tail Block"
           displayValue={formatInchesFraction(
             tailBlockPinned ? mm(0) : inchesToMm(tailEndWidthIn(outline.tail)),
@@ -351,6 +309,7 @@ export function OutlineControls({
           onValueChange={(v) => onChange({ tail: withEndWidth(outline.tail, clampFinite(v, 0, 16)) })}
         />
         <SliderRow
+          className="flex-1"
           label="Depth"
           displayValue={
             isDiamond
@@ -385,6 +344,7 @@ export function OutlineControls({
 
       <div className="flex gap-4">
         <SliderRow
+          className="flex-1"
           label="Tail Angle"
           displayValue={`${outline.tailAngle}°`}
           value={outline.tailAngle}
@@ -397,6 +357,7 @@ export function OutlineControls({
           rightHint="Round"
         />
         <SliderRow
+          className="flex-1"
           label="Fullness"
           displayValue={`${outline.tailFullness}%`}
           value={outline.tailFullness}

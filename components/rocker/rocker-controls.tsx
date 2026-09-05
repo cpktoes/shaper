@@ -15,14 +15,13 @@
  * design state and the section-open state; this component just renders it (mirroring how
  * `RailControls` is shaped).
  *
- * Each slider below is still written out individually rather than through a shared SliderRow
- * component like the TEMPLATE sidebar's own. That stays a deliberate standing choice about the
- * conversions, not a reason the rows could not sit two to a line: every rocker slider commits its
- * number through a different conversion — the two lifts convert between inches and millimetres,
- * the two Angle sliders carry a branded degrees type, the rest are plain percentages — and folding
- * that behind one shared wrapper would hide each slider's own conversion at its call site. The
- * shared, paired-row version of this markup is recorded as a pending todo, to be taken once a
- * third sidebar wants the same paired treatment.
+ * Every slider below is now drawn by the shared `SliderRow` component
+ * (components/design/slider-row.tsx). Each one still commits its own number through its own
+ * conversion at its call site — the two lifts convert between inches and millimetres, the two
+ * Angle sliders carry a branded degrees type, the rest are plain percentages — `SliderRow` never
+ * sees or touches that conversion; it only renders the row and reports the raw number back
+ * through `onValueChange`. The paired two-per-line rows keep their flex parent here; each child
+ * now passes its own flex sizing through `SliderRow`'s `className` instead of a wrapper div.
  *
  * Quick task 260829-rda replaced the four typed rocker-lift sliders with eight shape controls
  * (Nose/Tail Rocker, Angle, Smoothness, Flatness), matching `outline-controls.tsx`'s own
@@ -32,7 +31,7 @@
  */
 
 import type { ReactNode } from "react";
-import { Slider } from "@/components/ui/slider";
+import { SliderRow } from "@/components/design/slider-row";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec } from "@/lib/geometry/foil";
 import {
   ROCKER_ANGLE_RANGE_DEG,
@@ -61,10 +60,6 @@ interface RockerControlsProps {
 function clampFinite(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, value));
-}
-
-function sliderValue(v: number | readonly number[]): number {
-  return typeof v === "number" ? v : (v[0] ?? 0);
 }
 
 /** Copied verbatim from `rail-controls.tsx`'s `SectionHeading` — same border, uppercase,
@@ -113,179 +108,121 @@ export function RockerControls({
               the drawn curve, not set by hand.
             </div>
 
-            <div>
-              <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                Nose Rocker — {formatInchesFraction(rocker.noseLift)}
-              </div>
-              <Slider
-                value={mmToInches(rocker.noseLift)}
-                min={ROCKER_LIFT_RANGE_IN.min}
-                max={ROCKER_LIFT_RANGE_IN.max}
-                step={ROCKER_LIFT_RANGE_IN.step}
+            <SliderRow
+              label={`Nose Rocker — ${formatInchesFraction(rocker.noseLift)}`}
+              value={mmToInches(rocker.noseLift)}
+              min={ROCKER_LIFT_RANGE_IN.min}
+              max={ROCKER_LIFT_RANGE_IN.max}
+              step={ROCKER_LIFT_RANGE_IN.step}
+              onValueChange={(v) =>
+                onChangeRocker({
+                  noseLift: inchesToMm(clampFinite(v, ROCKER_LIFT_RANGE_IN.min, ROCKER_LIFT_RANGE_IN.max)),
+                })
+              }
+            />
+
+            <div className="flex items-end gap-4">
+              <SliderRow
+                className="flex-1"
+                label={`Nose Angle — ${rocker.noseAngle}°`}
+                value={rocker.noseAngle}
+                min={ROCKER_ANGLE_RANGE_DEG.min}
+                max={ROCKER_ANGLE_RANGE_DEG.max}
+                step={ROCKER_ANGLE_RANGE_DEG.step}
                 onValueChange={(v) =>
                   onChangeRocker({
-                    noseLift: inchesToMm(
-                      clampFinite(sliderValue(v), ROCKER_LIFT_RANGE_IN.min, ROCKER_LIFT_RANGE_IN.max),
-                    ),
+                    noseAngle: degrees(clampFinite(v, ROCKER_ANGLE_RANGE_DEG.min, ROCKER_ANGLE_RANGE_DEG.max)),
                   })
                 }
-                className="slider-accent"
+              />
+
+              <SliderRow
+                className="flex-1"
+                label={`Nose Smoothness — ${rocker.noseSmoothness}%`}
+                value={rocker.noseSmoothness}
+                min={ROCKER_SMOOTHNESS_RANGE.min}
+                max={ROCKER_SMOOTHNESS_RANGE.max}
+                step={ROCKER_SMOOTHNESS_RANGE.step}
+                onValueChange={(v) =>
+                  onChangeRocker({
+                    noseSmoothness: clampFinite(v, ROCKER_SMOOTHNESS_RANGE.min, ROCKER_SMOOTHNESS_RANGE.max),
+                  })
+                }
               />
             </div>
 
             <div className="flex items-end gap-4">
-              <div className="flex-1">
-                <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                  Nose Angle — {rocker.noseAngle}°
-                </div>
-                <Slider
-                  value={rocker.noseAngle}
-                  min={ROCKER_ANGLE_RANGE_DEG.min}
-                  max={ROCKER_ANGLE_RANGE_DEG.max}
-                  step={ROCKER_ANGLE_RANGE_DEG.step}
-                  onValueChange={(v) =>
-                    onChangeRocker({
-                      noseAngle: degrees(
-                        clampFinite(sliderValue(v), ROCKER_ANGLE_RANGE_DEG.min, ROCKER_ANGLE_RANGE_DEG.max),
-                      ),
-                    })
-                  }
-                  className="slider-accent"
-                />
-              </div>
-
-              <div className="flex-1">
-                <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                  Nose Smoothness — {rocker.noseSmoothness}%
-                </div>
-                <Slider
-                  value={rocker.noseSmoothness}
-                  min={ROCKER_SMOOTHNESS_RANGE.min}
-                  max={ROCKER_SMOOTHNESS_RANGE.max}
-                  step={ROCKER_SMOOTHNESS_RANGE.step}
-                  onValueChange={(v) =>
-                    onChangeRocker({
-                      noseSmoothness: clampFinite(
-                        sliderValue(v),
-                        ROCKER_SMOOTHNESS_RANGE.min,
-                        ROCKER_SMOOTHNESS_RANGE.max,
-                      ),
-                    })
-                  }
-                  className="slider-accent"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-end gap-4">
-              <div className="flex-1">
-                <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                  Nose Flatness — {rocker.noseFlatness}%
-                </div>
-                <Slider
-                  value={rocker.noseFlatness}
-                  min={ROCKER_FLATNESS_RANGE.min}
-                  max={ROCKER_FLATNESS_RANGE.max}
-                  step={ROCKER_FLATNESS_RANGE.step}
-                  onValueChange={(v) =>
-                    onChangeRocker({
-                      noseFlatness: clampFinite(
-                        sliderValue(v),
-                        ROCKER_FLATNESS_RANGE.min,
-                        ROCKER_FLATNESS_RANGE.max,
-                      ),
-                    })
-                  }
-                  className="slider-accent"
-                />
-              </div>
-
-              <div className="flex-1">
-                <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                  Tail Flatness — {rocker.tailFlatness}%
-                </div>
-                <Slider
-                  value={rocker.tailFlatness}
-                  min={ROCKER_FLATNESS_RANGE.min}
-                  max={ROCKER_FLATNESS_RANGE.max}
-                  step={ROCKER_FLATNESS_RANGE.step}
-                  onValueChange={(v) =>
-                    onChangeRocker({
-                      tailFlatness: clampFinite(
-                        sliderValue(v),
-                        ROCKER_FLATNESS_RANGE.min,
-                        ROCKER_FLATNESS_RANGE.max,
-                      ),
-                    })
-                  }
-                  className="slider-accent"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-end gap-4">
-              <div className="flex-1">
-                <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                  Tail Smoothness — {rocker.tailSmoothness}%
-                </div>
-                <Slider
-                  value={rocker.tailSmoothness}
-                  min={ROCKER_SMOOTHNESS_RANGE.min}
-                  max={ROCKER_SMOOTHNESS_RANGE.max}
-                  step={ROCKER_SMOOTHNESS_RANGE.step}
-                  onValueChange={(v) =>
-                    onChangeRocker({
-                      tailSmoothness: clampFinite(
-                        sliderValue(v),
-                        ROCKER_SMOOTHNESS_RANGE.min,
-                        ROCKER_SMOOTHNESS_RANGE.max,
-                      ),
-                    })
-                  }
-                  className="slider-accent"
-                />
-              </div>
-
-              <div className="flex-1">
-                <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                  Tail Angle — {rocker.tailAngle}°
-                </div>
-                <Slider
-                  value={rocker.tailAngle}
-                  min={ROCKER_ANGLE_RANGE_DEG.min}
-                  max={ROCKER_ANGLE_RANGE_DEG.max}
-                  step={ROCKER_ANGLE_RANGE_DEG.step}
-                  onValueChange={(v) =>
-                    onChangeRocker({
-                      tailAngle: degrees(
-                        clampFinite(sliderValue(v), ROCKER_ANGLE_RANGE_DEG.min, ROCKER_ANGLE_RANGE_DEG.max),
-                      ),
-                    })
-                  }
-                  className="slider-accent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                Tail Rocker — {formatInchesFraction(rocker.tailLift)}
-              </div>
-              <Slider
-                value={mmToInches(rocker.tailLift)}
-                min={ROCKER_LIFT_RANGE_IN.min}
-                max={ROCKER_LIFT_RANGE_IN.max}
-                step={ROCKER_LIFT_RANGE_IN.step}
+              <SliderRow
+                className="flex-1"
+                label={`Nose Flatness — ${rocker.noseFlatness}%`}
+                value={rocker.noseFlatness}
+                min={ROCKER_FLATNESS_RANGE.min}
+                max={ROCKER_FLATNESS_RANGE.max}
+                step={ROCKER_FLATNESS_RANGE.step}
                 onValueChange={(v) =>
                   onChangeRocker({
-                    tailLift: inchesToMm(
-                      clampFinite(sliderValue(v), ROCKER_LIFT_RANGE_IN.min, ROCKER_LIFT_RANGE_IN.max),
-                    ),
+                    noseFlatness: clampFinite(v, ROCKER_FLATNESS_RANGE.min, ROCKER_FLATNESS_RANGE.max),
                   })
                 }
-                className="slider-accent"
+              />
+
+              <SliderRow
+                className="flex-1"
+                label={`Tail Flatness — ${rocker.tailFlatness}%`}
+                value={rocker.tailFlatness}
+                min={ROCKER_FLATNESS_RANGE.min}
+                max={ROCKER_FLATNESS_RANGE.max}
+                step={ROCKER_FLATNESS_RANGE.step}
+                onValueChange={(v) =>
+                  onChangeRocker({
+                    tailFlatness: clampFinite(v, ROCKER_FLATNESS_RANGE.min, ROCKER_FLATNESS_RANGE.max),
+                  })
+                }
               />
             </div>
+
+            <div className="flex items-end gap-4">
+              <SliderRow
+                className="flex-1"
+                label={`Tail Smoothness — ${rocker.tailSmoothness}%`}
+                value={rocker.tailSmoothness}
+                min={ROCKER_SMOOTHNESS_RANGE.min}
+                max={ROCKER_SMOOTHNESS_RANGE.max}
+                step={ROCKER_SMOOTHNESS_RANGE.step}
+                onValueChange={(v) =>
+                  onChangeRocker({
+                    tailSmoothness: clampFinite(v, ROCKER_SMOOTHNESS_RANGE.min, ROCKER_SMOOTHNESS_RANGE.max),
+                  })
+                }
+              />
+
+              <SliderRow
+                className="flex-1"
+                label={`Tail Angle — ${rocker.tailAngle}°`}
+                value={rocker.tailAngle}
+                min={ROCKER_ANGLE_RANGE_DEG.min}
+                max={ROCKER_ANGLE_RANGE_DEG.max}
+                step={ROCKER_ANGLE_RANGE_DEG.step}
+                onValueChange={(v) =>
+                  onChangeRocker({
+                    tailAngle: degrees(clampFinite(v, ROCKER_ANGLE_RANGE_DEG.min, ROCKER_ANGLE_RANGE_DEG.max)),
+                  })
+                }
+              />
+            </div>
+
+            <SliderRow
+              label={`Tail Rocker — ${formatInchesFraction(rocker.tailLift)}`}
+              value={mmToInches(rocker.tailLift)}
+              min={ROCKER_LIFT_RANGE_IN.min}
+              max={ROCKER_LIFT_RANGE_IN.max}
+              step={ROCKER_LIFT_RANGE_IN.step}
+              onValueChange={(v) =>
+                onChangeRocker({
+                  tailLift: inchesToMm(clampFinite(v, ROCKER_LIFT_RANGE_IN.min, ROCKER_LIFT_RANGE_IN.max)),
+                })
+              }
+            />
 
             {/* Read-only, derived off the built curve — a shaper sees the two standard 12"
                 figures without being able to force them (they were the abrupt-kink source before
@@ -304,105 +241,70 @@ export function RockerControls({
         </SectionHeading>
         {sectionOpen.thickness && (
           <div className="flex flex-col gap-3.5 pt-3">
-            <div>
-              <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                Nose Tip — {formatInchesFraction(foil.noseTip)}
-              </div>
-              <Slider
-                value={mmToInches(foil.noseTip)}
-                min={FOIL_THICKNESS_RANGE_IN.min}
-                max={FOIL_THICKNESS_RANGE_IN.max}
-                step={FOIL_THICKNESS_RANGE_IN.step}
-                onValueChange={(v) =>
-                  onChangeFoil({
-                    noseTip: inchesToMm(
-                      clampFinite(sliderValue(v), FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max),
-                    ),
-                  })
-                }
-                className="slider-accent"
-              />
-            </div>
+            <SliderRow
+              label={`Nose Tip — ${formatInchesFraction(foil.noseTip)}`}
+              value={mmToInches(foil.noseTip)}
+              min={FOIL_THICKNESS_RANGE_IN.min}
+              max={FOIL_THICKNESS_RANGE_IN.max}
+              step={FOIL_THICKNESS_RANGE_IN.step}
+              onValueChange={(v) =>
+                onChangeFoil({
+                  noseTip: inchesToMm(clampFinite(v, FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max)),
+                })
+              }
+            />
 
-            <div>
-              <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                Nose @ 12&quot; — {formatInchesFraction(foil.nose12)}
-              </div>
-              <Slider
-                value={mmToInches(foil.nose12)}
-                min={FOIL_THICKNESS_RANGE_IN.min}
-                max={FOIL_THICKNESS_RANGE_IN.max}
-                step={FOIL_THICKNESS_RANGE_IN.step}
-                onValueChange={(v) =>
-                  onChangeFoil({
-                    nose12: inchesToMm(
-                      clampFinite(sliderValue(v), FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max),
-                    ),
-                  })
-                }
-                className="slider-accent"
-              />
-            </div>
+            <SliderRow
+              label={`Nose @ 12" — ${formatInchesFraction(foil.nose12)}`}
+              value={mmToInches(foil.nose12)}
+              min={FOIL_THICKNESS_RANGE_IN.min}
+              max={FOIL_THICKNESS_RANGE_IN.max}
+              step={FOIL_THICKNESS_RANGE_IN.step}
+              onValueChange={(v) =>
+                onChangeFoil({
+                  nose12: inchesToMm(clampFinite(v, FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max)),
+                })
+              }
+            />
 
-            <div>
-              <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                Center — {formatInchesFraction(foil.center)}
-              </div>
-              <Slider
-                value={mmToInches(foil.center)}
-                min={FOIL_THICKNESS_RANGE_IN.min}
-                max={FOIL_THICKNESS_RANGE_IN.max}
-                step={FOIL_THICKNESS_RANGE_IN.step}
-                onValueChange={(v) =>
-                  onChangeFoil({
-                    center: inchesToMm(
-                      clampFinite(sliderValue(v), FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max),
-                    ),
-                  })
-                }
-                className="slider-accent"
-              />
-            </div>
+            <SliderRow
+              label={`Center — ${formatInchesFraction(foil.center)}`}
+              value={mmToInches(foil.center)}
+              min={FOIL_THICKNESS_RANGE_IN.min}
+              max={FOIL_THICKNESS_RANGE_IN.max}
+              step={FOIL_THICKNESS_RANGE_IN.step}
+              onValueChange={(v) =>
+                onChangeFoil({
+                  center: inchesToMm(clampFinite(v, FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max)),
+                })
+              }
+            />
 
-            <div>
-              <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                Tail @ 12&quot; — {formatInchesFraction(foil.tail12)}
-              </div>
-              <Slider
-                value={mmToInches(foil.tail12)}
-                min={FOIL_THICKNESS_RANGE_IN.min}
-                max={FOIL_THICKNESS_RANGE_IN.max}
-                step={FOIL_THICKNESS_RANGE_IN.step}
-                onValueChange={(v) =>
-                  onChangeFoil({
-                    tail12: inchesToMm(
-                      clampFinite(sliderValue(v), FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max),
-                    ),
-                  })
-                }
-                className="slider-accent"
-              />
-            </div>
+            <SliderRow
+              label={`Tail @ 12" — ${formatInchesFraction(foil.tail12)}`}
+              value={mmToInches(foil.tail12)}
+              min={FOIL_THICKNESS_RANGE_IN.min}
+              max={FOIL_THICKNESS_RANGE_IN.max}
+              step={FOIL_THICKNESS_RANGE_IN.step}
+              onValueChange={(v) =>
+                onChangeFoil({
+                  tail12: inchesToMm(clampFinite(v, FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max)),
+                })
+              }
+            />
 
-            <div>
-              <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-                Tail Tip — {formatInchesFraction(foil.tailTip)}
-              </div>
-              <Slider
-                value={mmToInches(foil.tailTip)}
-                min={FOIL_THICKNESS_RANGE_IN.min}
-                max={FOIL_THICKNESS_RANGE_IN.max}
-                step={FOIL_THICKNESS_RANGE_IN.step}
-                onValueChange={(v) =>
-                  onChangeFoil({
-                    tailTip: inchesToMm(
-                      clampFinite(sliderValue(v), FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max),
-                    ),
-                  })
-                }
-                className="slider-accent"
-              />
-            </div>
+            <SliderRow
+              label={`Tail Tip — ${formatInchesFraction(foil.tailTip)}`}
+              value={mmToInches(foil.tailTip)}
+              min={FOIL_THICKNESS_RANGE_IN.min}
+              max={FOIL_THICKNESS_RANGE_IN.max}
+              step={FOIL_THICKNESS_RANGE_IN.step}
+              onValueChange={(v) =>
+                onChangeFoil({
+                  tailTip: inchesToMm(clampFinite(v, FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max)),
+                })
+              }
+            />
           </div>
         )}
       </div>
