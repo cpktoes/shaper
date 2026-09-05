@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Imperial vs Metric
-current_phase: 6
-current_phase_name: The Design Screens in Metric
+current_phase: 06
+current_phase_name: the-design-screens-in-metric
 status: executing
 stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-09-05T15:07:11.085Z"
+last_updated: "2026-09-05T15:10:16.270Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 05 Wave 3 closed out — 05-05 (shared slider row) and 05-06 (shared viewer toolbar button) both complete
 progress:
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-28)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 05 — The Units Chooser
+**Current focus:** Phase 06 — the-design-screens-in-metric
 
 ## Current Position
 
-Phase: 6 — The Design Screens in Metric
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-09-05 — Phase 05 complete, transitioned to Phase 6
+Phase: 06 (the-design-screens-in-metric) — EXECUTING
+Plan: 1 of 7
+Status: Executing Phase 06
+Last activity: 2026-09-05 — Phase 06 execution started
 
 **Milestone v1.1 phases:**
 
