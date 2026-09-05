@@ -11,8 +11,10 @@
 
 import { useRef } from "react";
 import { CALLOUT_PX, useSvgFitScale } from "@/components/viewer/callout-primitives";
+import { useUnits } from "@/components/units-provider";
+import { formatMarkBare } from "@/lib/geometry/measure-display";
 import type { RailSectionKey, RailSectionOutput, RailSegmentKey } from "@/lib/geometry/rail-bands";
-import { type Mm, mmToInches } from "@/lib/geometry/units";
+import { inchesToMm, mm, type Mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
 
 const SCALE = 56; // px per inch, matches buildPlot's default scale for all output-card plots
 const LEFT_PAD = 22;
@@ -94,23 +96,130 @@ export function computeRailPlotBounds(output: RailSectionOutput, xAxisMin: Mm) {
   return { minX, minY, maxY, width, height };
 }
 
+/** A grid/axis tick, expressed in the same display domain (inches) the component's own `px()`/
+ * `py()` pixel projection already works in — so the projection code stays completely local to the
+ * component and unchanged by this function's Metric branch. */
+export interface RailPlotTick {
+  value: number;
+  label: string;
+}
+
+export interface RailPlotGrid {
+  /** Vertical grid-line x positions (inches domain), from the apex (0) outward to the leftmost
+   * line — descending, matching the order the component's own loop drew them in before this
+   * extraction. */
+  xGridPositions: number[];
+  /** Horizontal grid-line y positions (inches domain), from the bottom (0) upward — ascending. */
+  yGridPositions: number[];
+  /** The leftmost vertical grid-line position — horizontal grid lines span from here to the apex
+   * (x=0), exactly as the component's own render loop already spans them. */
+  xGridMin: number;
+  xTicks: RailPlotTick[];
+  yTicks: RailPlotTick[];
+}
+
+// Sanity ceiling only (today's inline `40`/`-40` literals) — stops the grid running away on an
+// extreme section; never a binding constraint in practice.
+const MAX_GRID_EXTENT_IN = 40;
+
+/**
+ * The rail plot's grid pitch and tick labels (D-11) — the one place in this phase where Metric is
+ * a real algorithm change, not a formatter swap. Extracted so it is callable from a test without
+ * rendering React; works entirely in the DISPLAY domain (inches) `px()`/`py()` already expect, so
+ * the caller's pixel projection is completely unchanged — only the positions and labels handed
+ * back differ per system.
+ *
+ * Imperial reproduces today's exact loop and clamp: one grid line and tick per whole inch inside
+ * the same `[-40, 40]` sanity ceiling, labelled with today's bare absolute number, no unit shown.
+ *
+ * Metric iterates on a 10mm pitch across the SAME physical bounds — converted with
+ * `mmToInches`/`inchesToMm` rather than restating a factor (CLAUDE.md Rule 2), never touching the
+ * bounds themselves — labelling each tick with its absolute millimetre value through
+ * `formatMarkBare` (a tick's position is a real physical length, the same "mark" family every rail
+ * band mark reads in, so it flows through the same display boundary rather than a hand-rolled
+ * `String(v)`), and appending `" mm"` to the first non-zero tick outward from the origin on each
+ * axis (the UI-SPEC's own assumption for where a shaper's eye starts reading outward from the
+ * board's corner).
+ */
+export function buildRailPlotGrid(
+  bounds: { minX: number; minY: number; maxY: number },
+  system: UnitsSystem,
+): RailPlotGrid {
+  const xAxisMinIn = bounds.minX + 0.15;
+  const yAxisMaxIn = bounds.maxY - 0.15;
+
+  if (system === "imperial") {
+    const xGridMin = Math.max(-MAX_GRID_EXTENT_IN, Number.isFinite(Math.floor(xAxisMinIn)) ? Math.floor(xAxisMinIn) : 0);
+    const yGridMax = Math.min(MAX_GRID_EXTENT_IN, Number.isFinite(Math.floor(yAxisMaxIn)) ? Math.floor(yAxisMaxIn) : 0);
+    const xGridPositions: number[] = [];
+    for (let i = 0; i >= xGridMin; i--) xGridPositions.push(i);
+    const yGridPositions: number[] = [];
+    for (let j = 0; j <= yGridMax; j++) yGridPositions.push(j);
+    return {
+      xGridPositions,
+      yGridPositions,
+      xGridMin,
+      xTicks: xGridPositions.map((i) => ({ value: i, label: `${Math.abs(i)}` })),
+      yTicks: yGridPositions.map((j) => ({ value: j, label: `${j}` })),
+    };
+  }
+
+  const xAxisMinMm = inchesToMm(xAxisMinIn);
+  const yAxisMaxMm = inchesToMm(yAxisMaxIn);
+  const maxExtentMm = inchesToMm(MAX_GRID_EXTENT_IN);
+  const xGridMinMm = Number.isFinite(xAxisMinMm)
+    ? Math.max(-maxExtentMm, Math.floor(xAxisMinMm / 10) * 10)
+    : 0;
+  const yGridMaxMm = Number.isFinite(yAxisMaxMm)
+    ? Math.min(maxExtentMm, Math.floor(yAxisMaxMm / 10) * 10)
+    : 0;
+
+  const xPositionsMm: number[] = [];
+  for (let i = 0; i >= xGridMinMm; i -= 10) xPositionsMm.push(i);
+  const yPositionsMm: number[] = [];
+  for (let j = 0; j <= yGridMaxMm; j += 10) yPositionsMm.push(j);
+
+  // The first non-zero tick outward from the origin on each axis — [ASSUMPTION] per the UI-SPEC,
+  // chosen because it's the tick nearest where a shaper's eye starts reading outward from the
+  // board's corner. Both arrays are ordered from 0 outward, so this is simply the first non-zero
+  // element.
+  const firstNonZeroX = xPositionsMm.find((v) => v !== 0);
+  const firstNonZeroY = yPositionsMm.find((v) => v !== 0);
+
+  // Bare mm labels route through the display boundary's own `formatMarkBare` — a tick's absolute
+  // position is a real physical length on the board, the same "mark" family every rail band mark
+  // reads in — rather than a hand-rolled `String(v)` that would drift out of step with how every
+  // other mm-family bare number in the app is produced.
+  return {
+    xGridPositions: xPositionsMm.map((v) => mmToInches(mm(v))),
+    yGridPositions: yPositionsMm.map((v) => mmToInches(mm(v))),
+    xGridMin: mmToInches(mm(xGridMinMm)),
+    xTicks: xPositionsMm.map((v) => {
+      const bare = formatMarkBare(mm(Math.abs(v)), "metric");
+      return { value: mmToInches(mm(v)), label: v === firstNonZeroX ? `${bare} mm` : bare };
+    }),
+    yTicks: yPositionsMm.map((v) => {
+      const bare = formatMarkBare(mm(Math.abs(v)), "metric");
+      return { value: mmToInches(mm(v)), label: v === firstNonZeroY ? `${bare} mm` : bare };
+    }),
+  };
+}
+
 export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSectionPlotProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const { system } = useUnits();
   const { result, segments, domed, boardThickness, thicknessEff } = output;
   const blankThicknessIn = domed ? mmToInches(boardThickness) : mmToInches(thicknessEff);
 
   const { minX, minY, maxY, width, height } = computeRailPlotBounds(output, xAxisMin);
-  const xAxisMinIn = minX + 0.15;
-  const yAxisMaxIn = maxY - 0.15;
   const px = (x: number) => (x - minX) * SCALE + LEFT_PAD;
   const py = (y: number) => (maxY - y) * SCALE;
 
-  const xGridMin = Math.max(-40, Number.isFinite(Math.floor(xAxisMinIn)) ? Math.floor(xAxisMinIn) : 0);
-  const yGridMax = Math.min(40, Number.isFinite(Math.floor(yAxisMaxIn)) ? Math.floor(yAxisMaxIn) : 0);
+  const grid = buildRailPlotGrid({ minX, minY, maxY }, system);
 
   const gridLines: { x1: number; y1: number; x2: number; y2: number }[] = [];
-  for (let i = 0; i >= xGridMin; i--) gridLines.push({ x1: px(i), y1: py(minY), x2: px(i), y2: py(maxY) });
-  for (let j = 0; j <= yGridMax; j++) gridLines.push({ x1: px(xGridMin), y1: py(j), x2: px(0), y2: py(j) });
+  for (const i of grid.xGridPositions) gridLines.push({ x1: px(i), y1: py(minY), x2: px(i), y2: py(maxY) });
+  for (const j of grid.yGridPositions) gridLines.push({ x1: px(grid.xGridMin), y1: py(j), x2: px(0), y2: py(j) });
 
   const refLines = [
     { x1: px(minX), y1: py(0), x2: px(0.1), y2: py(0) },
@@ -142,22 +251,26 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSection
     if (domedBandSeg) dots.push({ cx: px(0), cy: py(mmToInches(domedBandSeg.p1.y)), color: "#6b8e4e" });
   }
 
-  const xTicks: { x1: number; y1: number; x2: number; y2: number; label: string; lx: number; ly: number }[] = [];
-  for (let i = 0; i >= xGridMin; i--) {
-    xTicks.push({ x1: px(i), y1: py(0) - 4, x2: px(i), y2: py(0) + 4, label: `${Math.abs(i)}`, lx: px(i), ly: py(0) + 16 });
-  }
-  const yTicks: { x1: number; y1: number; x2: number; y2: number; label: string; lx: number; ly: number }[] = [];
-  for (let j = 0; j <= yGridMax; j++) {
-    yTicks.push({
+  const xTicks: { x1: number; y1: number; x2: number; y2: number; label: string; lx: number; ly: number }[] =
+    grid.xTicks.map((tick) => ({
+      x1: px(tick.value),
+      y1: py(0) - 4,
+      x2: px(tick.value),
+      y2: py(0) + 4,
+      label: tick.label,
+      lx: px(tick.value),
+      ly: py(0) + 16,
+    }));
+  const yTicks: { x1: number; y1: number; x2: number; y2: number; label: string; lx: number; ly: number }[] =
+    grid.yTicks.map((tick) => ({
       x1: px(minX) - 4,
-      y1: py(j),
+      y1: py(tick.value),
       x2: px(minX) + 4,
-      y2: py(j),
-      label: `${j}`,
+      y2: py(tick.value),
+      label: tick.label,
       lx: px(minX) - 8,
-      ly: py(j) + 3,
-    });
-  }
+      ly: py(tick.value) + 3,
+    }));
 
   // Axis tick labels counter the plot's fit so they read at the same on-screen size as every
   // other callout in the app, rather than tracking however wide the plot happens to render.
