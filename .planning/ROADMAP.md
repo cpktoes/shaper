@@ -126,7 +126,7 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
   4. Volume reads in litres in both systems, and the same litres figure is quoted on every screen as it is now
   5. A shaper can flip between systems mid-design and the board itself never moves — the outline, rocker and foil are exactly where they left them
 
-**Plans**: 7/7 plans executed
+**Plans**: 7/9 plans executed — two gap-closure plans open from UAT
 **Wave 1**
 
   - [x] 06-01-PLAN.md — Tracer: one shared display layer and one metric-bounds helper, proven end to end on the Template Builder's widepoint width, then the rest of that screen
@@ -154,6 +154,14 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
 **Wave 7** *(blocked on Wave 6 completion)*
 
   - [x] 06-07-PLAN.md — The VOLUME screen and the volume card's area and cubic lines, then close the ledger and check what the Summary inherited
+
+**Wave 8 (gap closure)** *(from UAT gaps G-06-12 and G-06-15 — fin placement numbers read in centimetres)*
+
+  - [ ] 06-08-PLAN.md — Every fin placement number reads in whole millimetres — the DATA tab, the sidebar, the drawing and the toe-aim tables — while board length and tail width stay in centimetres
+
+**Wave 9 (gap closure)** *(blocked on Wave 8 completion; from UAT gap G-06-4 — the typed box clips its own text)*
+
+  - [ ] 06-09-PLAN.md — The typed board length box widens to show its whole value, and the rocker datasheet's cells stay exactly as they are
 
 **Phase notes**:
 
