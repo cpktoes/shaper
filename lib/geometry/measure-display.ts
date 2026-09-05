@@ -226,6 +226,31 @@ export function measureSlider(
   };
 }
 
+/**
+ * Bridges `measureSlider`'s SLIDER-domain bounds (always millimetres in Metric) to
+ * `commitTypedMeasure`'s FIELD-domain bounds (millimetres for `"mark"`, but centimetres for
+ * `"dim"`/`"length"` — the field's own typed unit, D-08). Every `MeasureField` caller must run its
+ * `measureSlider` result through this before handing `min`/`max` to `MeasureField`, or a Metric
+ * `"dim"`/`"length"` field ends up comparing a centimetre-scale parse against millimetre-scale
+ * bounds — see `commitTypedMeasure`'s doc comment and CR-01 in the Phase 6 review for exactly what
+ * that silent scale mismatch does (a typed `188` landing as 1880mm gets clamped up to a
+ * millimetre-scale "minimum" and stored as centimetres of that, ~10x too large).
+ *
+ * Imperial is untouched (`view.min`/`view.max`, already inches). Metric `"mark"` is untouched too
+ * (already millimetres, the field's own unit). Metric `"dim"`/`"length"` converts both bounds
+ * through `mmToCentimetres` — never restate the `/10` here, this is the one place it happens.
+ */
+export function typedFieldBounds(
+  view: Pick<MeasureSliderView, "min" | "max">,
+  family: MeasureFamily | "length",
+  system: UnitsSystem,
+): { min: number; max: number } {
+  if (system === "imperial" || family === "mark") {
+    return { min: view.min, max: view.max };
+  }
+  return { min: mmToCentimetres(mm(view.min)), max: mmToCentimetres(mm(view.max)) };
+}
+
 /** The exact copy `ImperialField` already shows on an unreadable typed value — byte-identical,
  * never touched by this phase. */
 function imperialErrorLine(typed: string): string {
@@ -262,6 +287,11 @@ export interface TypedMeasureCommit {
  * `min`/`max` are in the DISPLAY domain the parse will land in: inches for `system: "imperial"`;
  * millimetres for a `"mark"` family field in Metric (the field's own unit is mm); centimetres for
  * a `"dim"` or `"length"` family field in Metric (the field's own unit is cm, D-08).
+ *
+ * A caller building `min`/`max` from `measureSlider`'s view must run it through
+ * `typedFieldBounds` first — `measureSlider`'s own bounds are always millimetres in Metric, which
+ * is the wrong domain for a `"dim"`/`"length"` field here and was the exact defect in CR-01 of the
+ * Phase 6 review (a Metric Board Length field silently stored a length ~10x too long).
  *
  * On an unreadable typed string the parser (`parseImperial` imperial, `parseMetric` metric)
  * returns `null` and this returns `current` unchanged, `current`'s own re-formatted display, and

@@ -24,7 +24,14 @@ import {
   type Mm,
   mmToInches,
 } from "@/lib/geometry/units";
-import { formatDim, formatLength, formatMark, formatSignedDim, measureSlider } from "@/lib/geometry/measure-display";
+import {
+  formatDim,
+  formatLength,
+  formatMark,
+  formatSignedDim,
+  measureSlider,
+  typedFieldBounds,
+} from "@/lib/geometry/measure-display";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { MeasureField } from "@/components/design/measure-field";
 import { useUnits } from "@/components/units-provider";
@@ -124,6 +131,9 @@ export function OutlineControls({
           this exact shape. */}
       {(() => {
         const boardLength = measureSlider(outline.length, BOARD_LENGTH_RANGE_IN, 1, 10, system);
+        // The typed field's own bounds are in ITS domain (centimetres in Metric, D-08) — never
+        // the slider's raw millimetre bounds. See typedFieldBounds's doc comment / CR-01.
+        const boardLengthFieldBounds = typedFieldBounds(boardLength, "length", system);
         return (
           <div>
             <div className="mb-2 text-sm text-surf-ink-muted font-normal">
@@ -169,8 +179,8 @@ export function OutlineControls({
                   onCommit={(next) => onChange({ length: next })}
                   label="Board Length"
                   family="length"
-                  min={boardLength.min}
-                  max={boardLength.max}
+                  min={boardLengthFieldBounds.min}
+                  max={boardLengthFieldBounds.max}
                   system={system}
                 />
               )}

@@ -16,7 +16,7 @@ import type { VolumeResult, VolumeSpec } from "@/lib/geometry/volume";
 import { BOARD_TYPE_STEP_COUNT } from "@/lib/geometry/volume";
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import { inchesToMm, mmToInches } from "@/lib/geometry/units";
-import { formatDim, formatLength, measureSlider } from "@/lib/geometry/measure-display";
+import { formatDim, formatLength, measureSlider, typedFieldBounds } from "@/lib/geometry/measure-display";
 
 const WIDTH_BOUNDS = { min: 16, max: 24, step: 0.125 };
 const CENTER_THICKNESS_BOUNDS = { min: 1.75, max: 3.5, step: 0.0625 };
@@ -60,6 +60,9 @@ export function VolumeControls({
       length: inchesToMm(clampFinite(totalIn, BOARD_LENGTH_RANGE_IN.min, BOARD_LENGTH_RANGE_IN.max)),
     });
   const boardLength = measureSlider(effectiveVolume.length, BOARD_LENGTH_RANGE_IN, 1, 10, system);
+  // The typed field's own bounds are in ITS domain (centimetres in Metric, D-08) — never the
+  // slider's raw millimetre bounds. See typedFieldBounds's doc comment / CR-01.
+  const boardLengthFieldBounds = typedFieldBounds(boardLength, "length", system);
 
   const boardWidth = measureSlider(effectiveVolume.width, WIDTH_BOUNDS, WIDTH_BOUNDS.step, 1, system);
   const centerThickness = measureSlider(
@@ -161,8 +164,8 @@ export function VolumeControls({
               onCommit={(next) => onChange({ length: next })}
               label="Board Length"
               family="length"
-              min={boardLength.min}
-              max={boardLength.max}
+              min={boardLengthFieldBounds.min}
+              max={boardLengthFieldBounds.max}
               system={system}
               disabled={dimensionsDisabled}
             />

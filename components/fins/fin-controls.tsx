@@ -30,7 +30,14 @@ import {
   type TwinTemplate,
 } from "@/lib/geometry/fins";
 import { inchesToMm, mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
-import { formatDim, formatLength, formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
+import {
+  formatDim,
+  formatLength,
+  formatMark,
+  measureSlider,
+  stationLabel,
+  typedFieldBounds,
+} from "@/lib/geometry/measure-display";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { MeasureField } from "@/components/design/measure-field";
 import { useUnits } from "@/components/units-provider";
@@ -222,6 +229,9 @@ export function FinControls({
   const lengthInches = Math.round(lengthIn - lengthFeet * 12);
   const setLengthIn = (totalIn: number) => onChange({ boardLength: inchesToMm(clampFinite(totalIn, 48, 144)) });
   const boardLength = measureSlider(spec.boardLength, { min: 48, max: 144 }, 1, 10, system);
+  // The typed field's own bounds are in ITS domain (centimetres in Metric, D-08) — never the
+  // slider's raw millimetre bounds. See typedFieldBounds's doc comment / CR-01.
+  const boardLengthFieldBounds = typedFieldBounds(boardLength, "length", system);
 
   // Tail Width @ 12" stays its own hand-rolled Slider (allowlisted in slider-row.test.ts) rather
   // than migrating to SliderRow — see the comment above this block's JSX for why.
@@ -349,8 +359,8 @@ export function FinControls({
               onCommit={(next) => onChange({ boardLength: next })}
               label="Board Length"
               family="length"
-              min={boardLength.min}
-              max={boardLength.max}
+              min={boardLengthFieldBounds.min}
+              max={boardLengthFieldBounds.max}
               system={system}
               disabled={importTemplate}
             />
