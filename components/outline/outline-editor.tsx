@@ -1,10 +1,11 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 import { DownloadIcon, LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
+import { RotateBoardIcon, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { ExportPreviewDialog } from "@/components/template/export-preview-dialog";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import { mmToInches } from "@/lib/geometry/units";
@@ -60,44 +61,6 @@ function buildPresetSource(spec: OutlineSpec): string {
   ].join("\n");
 }
 
-/**
- * The Template screen's rotate-board glyph, lifted verbatim from
- * `.planning/sketches/006-orientation-switch/index.html`'s `#rotateBtn`.
- *
- * Both orientations shown at once, the way a phone's "rotate screen" icon does it: an upright
- * board, the same board on its side nose-left, and one arrow between them — clearer than a
- * single tilted shape, and per D-05 it is the ONE glyph for both button states (only the
- * `aria-label` changes). One planshape reused twice through `<use>`, at the SAME 0.62 scale, so
- * it reads as one board being turned rather than two boards of different sizes; `strokeWidth` is
- * 2.42 so the drawn weight lands at 1.5 after that shared scale. The gap between the two copies
- * is what keeps it readable small — the sketch's proof sheet found the glyph gets tight below
- * about 16px, which is why the button uses `size-6` (24px): the founder asked for a larger icon,
- * and sketch 006's README already carried this as its one open caveat, recommending a 20-22px
- * icon in a slightly larger button if the sketch ever got built.
- */
-function RotateBoardIcon({ className }: { className?: string }) {
-  // SVG ids are document-global — a literal id would collide with another element's <use href>
-  // if this ever rendered twice on one page. useId gives a per-instance id; React's own id
-  // punctuation (colons) is stripped so it stays a valid URL fragment for the href below.
-  const glyphId = `shaper-board-glyph-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
-      <defs>
-        <path
-          id={glyphId}
-          d="M12 3.3C11.0 6.2 9.88 9.5 9.85 12.6 9.82 15.6 10.4 18.2 11.1 20.3a0.95 0.95 0 0 0 1.8 0C13.6 18.2 14.18 15.6 14.15 12.6 14.12 9.5 13.0 6.2 12 3.3Z"
-        />
-      </defs>
-      <g stroke="currentColor" strokeLinejoin="round" fill="none" strokeWidth={2.42}>
-        <use href={`#${glyphId}`} transform="translate(17.2,12.5) scale(0.62) translate(-12,-12.3)" />
-        <use href={`#${glyphId}`} transform="translate(8.5,17) rotate(-90) scale(0.62) translate(-12,-12.3)" />
-      </g>
-      <path d="M14.5 6.5A8 8 0 0 0 4.5 11.8" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-      <path d="M4.29 13.89 3.06 11.66 5.94 11.94Z" fill="currentColor" />
-    </svg>
-  );
-}
-
 export function OutlineEditor() {
   const { outline, updateOutline, outlineGeometry, finPlacement } = useDesign();
   const [showConstruction, setShowConstruction] = useState(false);
@@ -150,112 +113,50 @@ export function OutlineEditor() {
     <div className="relative flex min-h-0 flex-1 items-stretch justify-center gap-6">
       <ExportPreviewDialog
         trigger={
-          <button
-            type="button"
-            aria-label="Export Template"
-            title="Export Template"
-            // Same box and hover treatment as every button in this toolbar: bordered
-            // `surf-ground` at rest, filling with the accent colour and flipping its icon to
-            // the on-accent colour under the pointer. right-10 sits it immediately left of
-            // the rotate button's right-0, so the two read as one icon-button pair. This
-            // button has no ON state to hold a fill after the pointer leaves — the dialog it
-            // opens covers the drawing, so any fill painted on the button underneath would be
-            // invisible while the dialog is open and only flash as it closes. The
-            // `aria-expanded:` background it used to carry for that open state is gone for the
-            // same reason (D-02): it can't be seen while the dialog is open, and keeping it
-            // would have sat at equal CSS specificity with the new hover fill — an
-            // order-dependent conflict over a state nobody can see.
-            className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
-          >
+          // Slot 1 (right-10) sits immediately left of Rotate's slot 0 (right-0), so the two
+          // read as one icon-button pair. This button has no ON state to hold a fill after the
+          // pointer leaves — the dialog it opens covers the drawing, so any fill painted on the
+          // button underneath would be invisible while the dialog is open and only flash as it
+          // closes, which is why it carries no `pressed` prop at all.
+          <ViewerToolbarButton label="Export Template" slot={1}>
             <DownloadIcon className="size-6" />
-          </button>
+          </ViewerToolbarButton>
         }
       />
-      <button
-        type="button"
+      <ViewerToolbarButton
         onClick={() => setOrientation((o) => (o === "vertical" ? "horizontal" : "vertical"))}
-        aria-label={
+        label={
           orientation === "vertical"
             ? "Rotate the board to horizontal"
             : "Rotate the board to vertical"
         }
         title="Rotate the board"
-        // SettingsMenu's icon-button treatment (components/settings-menu.tsx) — the app's
-        // existing precedent for an icon-only control. Bordered and filled, per the
-        // founder's request for a visible boundary. The border is `surf-line`, not
-        // `surf-line-faint` — `line` is the token carrying the 3:1 non-text target a control
-        // boundary needs in every theme, per the rule written down at
-        // components/viewer/tabbed-panel.tsx. That grey edge holds in every state — resting,
-        // hovered and (on the two toggle buttons beside this one) pressed — only the fill and
-        // the icon colour ever change. An earlier version of this toolbar tinted the edge to
-        // match the fill instead, and quick task 260830-1vn removed it: measured against the
-        // page, the grey edge clears 3.70-4.13:1 in all four themes while the tinted edge only
-        // cleared it in one (2.01 / 3.58 / 2.16 / 6.32 for daylight / chalk / slate / phosphor),
-        // so a switched-ON button read as softer, less-defined than its switched-off neighbours
-        // — worst in the dark themes, where the founder actually noticed it. The resting fill is `surf-ground`, the same
-        // value as the `surf-panel` surface behind it in all four themes, so it adds no
-        // visible plate at rest; it exists to be opaque, because this button is absolutely
-        // positioned over the drawing and board lines must not run under the glyph. Under the
-        // pointer the fill switches to the accent colour with its icon following to the
-        // on-accent colour in the same variant — every accent fill in this toolbar is paired
-        // with its on-accent icon colour, a rule this codebase has been bitten by three times
-        // (see .planning/quick/260825-rmb-*/SUMMARY.md). Rotate has no ON state to hold that
-        // fill once the pointer leaves: it flips the board between horizontal and vertical,
-        // and neither orientation is "switched on" (D-01). The button is icon-only, so
-        // aria-label is its accessible name, and per D-05 the label is the only thing that
-        // ever changes between states.
-        // top-0/right-0, not top-3/right-3: the card now supplies the 12px inset via
-        // TabbedPanel's default padding, so this div's corner already sits where the old
-        // offsets used to land. An absolute child offsets from its containing block's
-        // padding box, so re-adding an offset here would double the inset and shift the
-        // button — leave these at zero.
-        className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+        slot={0}
       >
         <RotateBoardIcon className="size-6" />
-      </button>
-      <button
-        type="button"
+      </ViewerToolbarButton>
+      <ViewerToolbarButton
         onClick={() => setShowConstruction((v) => !v)}
-        aria-pressed={showConstruction}
-        aria-label={showConstruction ? "Hide construction lines" : "Show construction lines"}
-        title={showConstruction ? "Hide construction lines" : "Show construction lines"}
-        // Same box as the other three buttons in this toolbar — border, radius, padding, focus
-        // ring all shared, plus every button now fills with the accent colour on hover. This
-        // button additionally carries the toggle add-on: when showConstruction is true it
-        // keeps that same accent fill after the pointer leaves, because construction lines are
-        // a genuine on/off toggle with a truthful aria-pressed hook to hang the persistent fill
-        // on (D-01). Hovering it while it's already on changes nothing, because hover and
-        // pressed now paint the identical accent variant (D-03) — the earlier hover override
-        // that used to defend this button's fill against a neutral hover has been removed;
-        // there is no neutral hover left for it to defend against, and a class whose only job
-        // was defeating a rule that no longer exists is exactly the stale artifact this change
-        // cleans up. Every accent fill here is paired with its on-accent icon colour in the
-        // same variant, a rule this codebase has been bitten by three times (see
-        // .planning/quick/260825-rmb-*/SUMMARY.md). Icon is LocateFixedIcon, not a ruler: it
-        // echoes the draggable control point drawn on the construction overlay itself
-        // (components/outline/outline-viewer.tsx's drag targets — a ring with a filled centre
-        // dot, plus tick marks reads closest to LocateFixed of the candidates lucide-react
-        // offers), so the button previews the very glyph the shaper is about to see on the board.
-        className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+        pressed={showConstruction}
+        label={showConstruction ? "Hide construction lines" : "Show construction lines"}
+        slot={2}
+        // Icon is LocateFixedIcon, not a ruler: it echoes the draggable control point drawn on
+        // the construction overlay itself (components/outline/outline-viewer.tsx's drag
+        // targets — a ring with a filled centre dot, plus tick marks reads closest to
+        // LocateFixed of the candidates lucide-react offers), so the button previews the very
+        // glyph the shaper is about to see on the board.
       >
         <LocateFixedIcon className="size-6" />
-      </button>
-      <button
-        type="button"
+      </ViewerToolbarButton>
+      <ViewerToolbarButton
         onClick={handleToggleWideView}
-        aria-pressed={wideView}
-        aria-label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
+        pressed={wideView}
+        label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
         title={wideView ? "Show the sidebar" : "Wide view"}
-        // Same box as the three buttons beside it. This is both the way in and the way out of
-        // wide view — it lives inside the viewer panel, which stays on screen in both states,
-        // so there is always a visible route back. Wide view is a genuine on/off toggle too,
-        // so it carries the same toggle add-on as Construction Lines: it stays accent-filled
-        // the whole time it's on, including while hovered, and drops the fill completely when
-        // off.
-        className="absolute top-0 right-30 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+        slot={3}
       >
         {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
-      </button>
+      </ViewerToolbarButton>
       <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center">
         <div className="relative flex min-h-0 w-full flex-1 justify-center">
           {/* A plain filled box — the drawing sizes itself inside it via preserveAspectRatio.
