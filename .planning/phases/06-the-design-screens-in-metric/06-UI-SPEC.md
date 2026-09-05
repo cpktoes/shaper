@@ -125,13 +125,13 @@ hand-typed inline, always run through `lib/geometry/units.ts`:
 | ROCKER `@ 12"` read-outs | `Nose @ 12" — 3 1/8"` | `Nose @ 30.5 cm — 79 mm` |
 | RAILS per-section thickness label | `Thickness @12" — 2 5/8"` | `Thickness @ 30.5 cm — 67 mm` |
 | FINS summary line (`fin-data-panel.tsx`) | `6'2" · 20 1/4" tail @12" · Thruster · Round tail` | `188.0 cm · 51.4 cm tail @ 30.5 cm · Thruster · Round tail` |
-| FINS sidebar Tail Width label | `Tail Width @ 12" — 14 1/2"` | `Tail Width @ 30.5 cm — 37 cm` |
-| Toe-aim modal title (`toe-aim-table-modal.tsx`) | `nearest to 6'2" · 14 1/2" tail` | `nearest to 188.0 cm · 37 cm tail` |
+| FINS sidebar Tail Width label | `Tail Width @ 12" — 14 1/2"` | `Tail Width @ 30.5 cm — 36.8 cm` |
+| Toe-aim modal title (`toe-aim-table-modal.tsx`) | `nearest to 6'2" · 14 1/2" tail` | `nearest to 188.0 cm · 36.8 cm tail` |
 | Toe-aim table headings | `Front-fin aim distance (in)` / `Rear-fin aim distance (in)` | `Front-fin aim distance (cm)` / `Rear-fin aim distance (cm)` |
-| Fin base length (D-02, standard) | `2 1/4" standard` | `57 mm standard` |
+| Fin base length (D-02, standard) | `4 1/2" standard` | `114 mm standard` |
 | Volume card area line | `Board Area (estimated) — 1234.5 sq in` | `Board Area (estimated) — 7964 cm²` |
 | Volume card area line (imported) | `Template Area — 1234.5 sq in (imported)` | `Template Area — 7964 cm² (imported)` |
-| Volume card cubic supporting line | `(34020 cu in)` | `(34020 cm³)` |
+| Volume card cubic supporting line | `(2075.9 cu in)` | `(34020 cm³)` |
 | ROCKER datasheet row labels | `Width` / `Thickness` / `Rocker` (no unit) | `Width (cm)` / `Thickness (mm)` / `Rocker (mm)` |
 | ROCKER datasheet station headers | `Nose @ 12"` etc. (unchanged) | `Nose @ 30.5 cm` etc. (D-03: through the station constant, never `@ 30 cm`) |
 | Rail data table column headers | `Deck` / `Bottom` / `Rail` (no unit) | `Deck (mm)` / `Bottom (mm)` / `Rail (mm)` |
@@ -237,9 +237,9 @@ Metric step is 1 mm for every non-length slider, 1 cm for length (D-05). Metric 
 inch range's D-06 inward rounding — a single tested helper in `lib/geometry/units.ts` produces every
 one of them; no screen hand-types a metric range constant.
 
-Percent and degree sliders (Nose Angle, Fullness, Tail Rail %, Deck Profile %, Corner Cut % where
-percentage-based, Smoothness, Flatness, Board Type, cant angles) are **untouched** — same label, same
-bounds, same step, in both systems (D-01's "unchanged in both systems" list).
+Percent and degree sliders (Nose Angle, Fullness, Tail Rail %, Deck Profile %, Smoothness, Flatness,
+Board Type, cant angles) are **untouched** — same label, same bounds, same step, in both systems
+(D-01's "unchanged in both systems" list).
 
 ### ROCKER datasheet (`rocker-datasheet.tsx`) — D-03, D-10, D-12
 
@@ -274,17 +274,18 @@ bounds, same step, in both systems (D-01's "unchanged in both systems" list).
 
 ### FINS (`fin-controls.tsx`, `fin-viewer.tsx`, `fin-data-panel.tsx`, `toe-aim-table-modal.tsx`) — D-01, D-02, D-03, D-09
 
-- Tail Width `@ 12"` sidebar label and slider: becomes `Tail Width @ 30.5 cm` (D-03), mm-family
-  value with cm-family... **correction, per D-01's table**: fin tail width at the station is listed
-  under the **cm** column ("fins tail width `@ 30.5 cm`" appears in the cm row of D-01's table), so
-  the value itself reads in cm (`37 cm`), only the station name uses the honest `30.5 cm` conversion.
+- Tail Width `@ 12"` sidebar label and slider: becomes `Tail Width @ 30.5 cm` (D-03). Per D-01's
+  table, fin tail width at the station is a **cm**-family value ("fins tail width `@ 30.5 cm`"
+  appears in the cm row of D-01's table), so the value itself reads in cm to one decimal (`36.8
+  cm`, never a stripped whole number per Phase 5 D-01) — only the station name uses the honest
+  `30.5 cm` conversion.
 - `BaseLengthField` (`fin-controls.tsx`): editing-mode `type="number"` input switches to an mm-domain
   number (whole mm, step 1, D-06 bounds `64–190`); the label above is unchanged text, the blurred
   display reads `{formatWholeMm} mm` + `" standard"` when un-overridden, matching today's `{inches}"
   standard` shape exactly.
 - `fin-data-panel.tsx` summary line and `toe-aim-table-modal.tsx` title: composed strings per the
   Copywriting Contract's Fixed Strings table above — both follow the D-09 own-unit-per-value rule
-  (`188.0 cm · 37 cm tail`, never a single trailing unit for two different numbers).
+  (`188.0 cm · 36.8 cm tail`, never a single trailing unit for two different numbers).
 - `toe-aim-table-modal.tsx` headings: literal `(in)` → `(cm)` in Metric (D-10); the table's own
   numeric cells come from `lib/geometry/fins.ts`'s `toeAimTableFor` — the planner should make that
   view system-aware (still returning pre-formatted display strings) rather than reformatting in the
