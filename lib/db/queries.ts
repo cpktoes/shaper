@@ -8,8 +8,7 @@
  * still scoping every read.
  */
 
-import { desc } from "drizzle-orm";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "./client";
 import { models, userPreferences } from "./schema";
 import { parseUnitsPreference } from "@/lib/units-preference";
