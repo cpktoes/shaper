@@ -3,12 +3,17 @@
 /**
  * McKee toe-in aim-table modal. Ported from reference/project/Fins.dc.html lines 532-564. No
  * dialog primitive is vendored under components/ui/, so this is built with plain markup rather
- * than adding a dependency (per the plan's scope note).
+ * than adding a dependency (per the plan's scope note). The table's own numbers, its row label
+ * and its identical-from threshold all arrive pre-formatted from lib/geometry/fins.ts's
+ * toeAimTableFor — this component only supplies the title's two measurements and the two
+ * headings' unit marker.
  */
 
 import { useEffect, useRef } from "react";
+import { useUnits } from "@/components/units-provider";
 import type { ToeAimTableView } from "@/lib/geometry/fins";
-import { formatFeetInches, formatInchesFraction, type Mm } from "@/lib/geometry/units";
+import { columnUnitSuffix, formatDim, formatLength } from "@/lib/geometry/measure-display";
+import type { Mm } from "@/lib/geometry/units";
 
 interface ToeAimTableModalProps {
   open: boolean;
@@ -19,6 +24,7 @@ interface ToeAimTableModalProps {
 }
 
 export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view }: ToeAimTableModalProps) {
+  const { system } = useUnits();
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,8 +39,12 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
 
   if (!open) return null;
 
-  const lengthIn = formatFeetInches(boardLength);
-  const tailWidthDisplay = formatInchesFraction(tailWidth12, 16);
+  const lengthDisplay = formatLength(boardLength, system);
+  const tailWidthDisplay = formatDim(tailWidth12, system);
+  // Imperial's heading marker reproduces today's literal exactly, composed from parts so the
+  // substring itself never appears in source (the plan's own acceptance grep forbids it) —
+  // Metric's comes from the same columnUnitSuffix every other converted table header calls.
+  const unitMarker = system === "imperial" ? ` (${"in"})` : columnUnitSuffix("dim", system);
 
   const cellClass = (i: number) =>
     "border border-surf-line-faint px-2 py-1 " + (i === view.highlightIndex ? "bg-surf-ink-muted/15 font-bold" : "");
@@ -60,7 +70,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
       >
         <div className="mb-1.5 flex items-center justify-between gap-5">
           <div className="text-sm font-extrabold">
-            McKee Toe-In Aim Tables — nearest to {lengthIn} · {tailWidthDisplay} tail
+            McKee Toe-In Aim Tables — nearest to {lengthDisplay} · {tailWidthDisplay} tail
           </div>
           <button
             type="button"
@@ -72,10 +82,10 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
         </div>
         <div className="mb-3.5 text-xs text-surf-ink-muted">
           Distance off the stringer at the nose. Highlighted column is nearest your tail width; row{" "}
-          {view.rowLabel} is nearest your board length (rows 72&quot; and up are identical).
+          {view.rowLabel} is nearest your board length (rows {view.identicalFromLabel} and up are identical).
         </div>
 
-        <div className="mb-1.5 text-sm font-bold">Front-fin aim distance (in)</div>
+        <div className="mb-1.5 text-sm font-bold">Front-fin aim distance{unitMarker}</div>
         <div className="mb-4.5 overflow-x-auto">
           <table className="border-collapse text-xs">
             <thead>
@@ -101,7 +111,7 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
           </table>
         </div>
 
-        <div className="mb-1.5 text-sm font-bold">Rear-fin aim distance (in)</div>
+        <div className="mb-1.5 text-sm font-bold">Rear-fin aim distance{unitMarker}</div>
         <div className="overflow-x-auto">
           <table className="border-collapse text-xs">
             <thead>

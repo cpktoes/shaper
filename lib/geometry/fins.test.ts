@@ -17,6 +17,7 @@ import {
   type TwinTemplate,
 } from "./fins";
 import { formatInchesFraction, inchesToMm, type Mm, mmToInches } from "./units";
+import { formatDim, formatDimBare } from "./measure-display";
 import { TOE_AIM_TABLE, TOE_AIM_TABLE_COLUMNS } from "./toe-aim-tables";
 import golden from "./__fixtures__/prototype-fins-golden.json";
 
@@ -201,7 +202,9 @@ describe("computeFinPlacement golden parity", () => {
 
       if (fixture.vals.toeTable) {
         it("matches the golden toe-in aim table view", () => {
-          const view = toeAimTableFor(spec.boardLength, spec.tailWidth12);
+          // Imperial: toeAimTableFor now returns display-ready strings, so a golden numeric
+          // value is compared against its own stringified form rather than the raw number.
+          const view = toeAimTableFor(spec.boardLength, spec.tailWidth12, "imperial");
           const goldenTable = fixture.vals.toeTable as {
             cols: { value: number; hiStyle: string }[];
             rowLabel: string;
@@ -209,9 +212,9 @@ describe("computeFinPlacement golden parity", () => {
             rear: { value: number; hiStyle: string }[];
           };
           expect(view.rowLabel).toBe(goldenTable.rowLabel);
-          expect(view.columns).toEqual(goldenTable.cols.map((c) => c.value));
-          expect(view.front).toEqual(goldenTable.front.map((c) => c.value));
-          expect(view.rear).toEqual(goldenTable.rear.map((c) => c.value));
+          expect(view.columns).toEqual(goldenTable.cols.map((c) => String(c.value)));
+          expect(view.front).toEqual(goldenTable.front.map((c) => String(c.value)));
+          expect(view.rear).toEqual(goldenTable.rear.map((c) => String(c.value)));
           const expectedHighlight = goldenTable.cols.findIndex((c) => c.hiStyle.includes("var(--accent)"));
           expect(view.highlightIndex).toBe(expectedHighlight);
         });
@@ -307,13 +310,13 @@ describe("toeAimTableFor row selection", () => {
     [72, "72+"],
     [120, "72+"],
   ])("board length %iin selects row %s", (lengthIn, expectedRow) => {
-    const view = toeAimTableFor(inchesToMm(lengthIn), inchesToMm(13));
+    const view = toeAimTableFor(inchesToMm(lengthIn), inchesToMm(13), "imperial");
     expect(view.rowLabel).toBe(expectedRow);
   });
 
   it("falls back to the 72+ row's values when the length is below the table's own rows", () => {
-    const below = toeAimTableFor(inchesToMm(59), inchesToMm(13));
-    const at72 = toeAimTableFor(inchesToMm(72), inchesToMm(13));
+    const below = toeAimTableFor(inchesToMm(59), inchesToMm(13), "imperial");
+    const at72 = toeAimTableFor(inchesToMm(72), inchesToMm(13), "imperial");
     expect(below.front).toEqual(at72.front);
     expect(below.rear).toEqual(at72.rear);
   });
@@ -435,5 +438,133 @@ describe("McKee Longboard quad model needs an eight-foot board", () => {
       );
       expect(longAtEightFeet.marks.filter((m) => m.role === "center").length).toBe(0);
     });
+  });
+});
+
+describe("FinSummaryRow.family and FinSummaryGroup.fullSpreadFamily (D-01)", () => {
+  it("thruster: every Off-Tail row is dim; every other row (Off-Rail, Toe-In, Fin Base/Box Length) is mark", () => {
+    const result = computeFinPlacement({ ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "thruster" });
+    let sawOffTail = false;
+    let sawMark = false;
+    for (const section of result.sections) {
+      for (const group of section.groups) {
+        for (const row of group.rows) {
+          if (row.label === "Off-Tail") {
+            sawOffTail = true;
+            expect(row.family).toBe("dim");
+          } else {
+            sawMark = true;
+            expect(row.family).toBe("mark");
+          }
+        }
+      }
+    }
+    expect(sawOffTail).toBe(true);
+    expect(sawMark).toBe(true);
+  });
+
+  it("quad (McKee SB/Gun rear): the rear pair's Off-Tail is dim, and its Off-Stringer/Toe-In rows are mark", () => {
+    const result = computeFinPlacement({
+      ...DEFAULT_FIN_PLACEMENT_SPEC,
+      finSetup: "quad",
+      quadRearModel: "mckeeSB",
+    });
+    const rearSection = result.sections.find((s) => s.label === "Rear Fins");
+    expect(rearSection).toBeDefined();
+    const trailing = rearSection!.groups.find((g) => g.heading === "Trailing Edge")!;
+    const leading = rearSection!.groups.find((g) => g.heading === "Leading Edge")!;
+    const offTailRow = trailing.rows.find((r) => r.label === "Off-Tail")!;
+    const offStringerRow = trailing.rows.find((r) => r.label === "Off-Stringer (1/2 Spread)")!;
+    const toeRow = leading.rows.find((r) => r.label === "Toe-In")!;
+    expect(offTailRow.family).toBe("dim");
+    expect(offStringerRow.family).toBe("mark");
+    expect(toeRow.family).toBe("mark");
+  });
+
+  it("quad rear's Off-Tail stays dim even under the Basic-Off-Rail model, whose row label switches to Off-Rail", () => {
+    const result = computeFinPlacement({
+      ...DEFAULT_FIN_PLACEMENT_SPEC,
+      finSetup: "quad",
+      quadRearModel: "basicOffRail",
+    });
+    const rearSection = result.sections.find((s) => s.label === "Rear Fins")!;
+    const trailing = rearSection.groups.find((g) => g.heading === "Trailing Edge")!;
+    const offTailRow = trailing.rows.find((r) => r.label === "Off-Tail")!;
+    const offRailRow = trailing.rows.find((r) => r.label === "Off-Rail")!;
+    expect(offTailRow.family).toBe("dim");
+    expect(offRailRow.family).toBe("mark");
+  });
+
+  it("every group with a non-null fullSpread has a non-null fullSpreadFamily of 'mark'; every null-fullSpread group has a null fullSpreadFamily", () => {
+    const result = computeFinPlacement({
+      ...DEFAULT_FIN_PLACEMENT_SPEC,
+      finSetup: "quad",
+      quadRearModel: "mckeeSB",
+    });
+    let sawNonNullFullSpread = false;
+    for (const section of result.sections) {
+      for (const group of section.groups) {
+        if (group.fullSpread !== null) {
+          sawNonNullFullSpread = true;
+          expect(group.fullSpreadFamily).toBe("mark");
+        } else {
+          expect(group.fullSpreadFamily).toBeNull();
+        }
+      }
+    }
+    expect(sawNonNullFullSpread).toBe(true);
+  });
+
+  it("the Basic-Off-Rail quad rear model has no Full Spread line, so its group's fullSpreadFamily is null too", () => {
+    const result = computeFinPlacement({
+      ...DEFAULT_FIN_PLACEMENT_SPEC,
+      finSetup: "quad",
+      quadRearModel: "basicOffRail",
+    });
+    const rearSection = result.sections.find((s) => s.label === "Rear Fins")!;
+    const trailing = rearSection.groups.find((g) => g.heading === "Trailing Edge")!;
+    expect(trailing.fullSpread).toBeNull();
+    expect(trailing.fullSpreadFamily).toBeNull();
+  });
+});
+
+describe("toeAimTableFor is system-aware (D-01, D-10)", () => {
+  // A 6'0" board with a 13in tail width @12" — same board as DEFAULT_FIN_PLACEMENT_SPEC — lands
+  // on the open-ended "72+" row and highlights column index 9 (13in is TOE_AIM_TABLE_COLUMNS[9]).
+  const boardLength = inchesToMm(72);
+  const tailWidth12 = inchesToMm(13);
+
+  it("imperial: every returned string is today's raw inch number stringified, and the row label is the bare key", () => {
+    const view = toeAimTableFor(boardLength, tailWidth12, "imperial");
+    expect(view.columns).toEqual(TOE_AIM_TABLE_COLUMNS.map((c) => String(c)));
+    expect(view.front).toEqual(TOE_AIM_TABLE.front["72+"].map((v) => String(v)));
+    expect(view.rear).toEqual(TOE_AIM_TABLE.rear["72+"].map((v) => String(v)));
+    expect(view.rowLabel).toBe("72+");
+    expect(view.identicalFromLabel).toBe('72"');
+  });
+
+  it("metric: every column/cell is one-decimal centimetres derived from the inch table constant, and the row label keeps its '+' marker", () => {
+    const view = toeAimTableFor(boardLength, tailWidth12, "metric");
+    // Provenance: every expected metric value below is the SAME inch number the imperial
+    // assertion above reads off TOE_AIM_TABLE_COLUMNS/TOE_AIM_TABLE, run through
+    // inchesToMm -> formatDimBare("metric") — never a hand-transcribed centimetre figure.
+    expect(view.columns).toEqual(TOE_AIM_TABLE_COLUMNS.map((c) => formatDimBare(inchesToMm(c), "metric")));
+    expect(view.front).toEqual(TOE_AIM_TABLE.front["72+"].map((v) => formatDimBare(inchesToMm(v), "metric")));
+    expect(view.rear).toEqual(TOE_AIM_TABLE.rear["72+"].map((v) => formatDimBare(inchesToMm(v), "metric")));
+    // rowLabel "72+" -> the honest cm conversion of 72in, with the trailing "+" preserved.
+    expect(view.rowLabel).toBe(`${formatDimBare(inchesToMm(72), "metric")}+`);
+    expect(view.identicalFromLabel).toBe(formatDim(inchesToMm(72), "metric"));
+  });
+
+  it("metric: a row key with no '+' (a board under 60in) converts without adding one", () => {
+    const view = toeAimTableFor(inchesToMm(59), tailWidth12, "metric");
+    expect(view.rowLabel).toBe(formatDimBare(inchesToMm(59), "metric"));
+  });
+
+  it("highlightIndex is identical in both systems for the same board", () => {
+    const imperial = toeAimTableFor(boardLength, tailWidth12, "imperial");
+    const metric = toeAimTableFor(boardLength, tailWidth12, "metric");
+    expect(imperial.highlightIndex).toBe(metric.highlightIndex);
+    expect(imperial.highlightIndex).toBe(9);
   });
 });
