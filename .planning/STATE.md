@@ -5,8 +5,8 @@ milestone_name: Imperial vs Metric
 current_phase: 6
 current_phase_name: The Design Screens in Metric
 status: planning
-stopped_at: Phase 6 context gathered
-last_updated: "2026-09-05T07:47:20.112Z"
+stopped_at: Phase 6 UI-SPEC approved
+last_updated: "2026-09-05T08:07:04.534Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 05 Wave 3 closed out — 05-05 (shared slider row) and 05-06 (shared viewer toolbar button) both complete
 progress:
@@ -281,7 +281,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-05T07:47:20.083Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-the-design-screens-in-metric/06-CONTEXT.md
+Last session: 2026-09-05T08:07:04.505Z
+Stopped at: Phase 6 UI-SPEC approved
+Resume file: .planning/phases/06-the-design-screens-in-metric/06-UI-SPEC.md
 Next action: `/gsd-execute-phase 5` (only 05-07 — ship it — remains)
