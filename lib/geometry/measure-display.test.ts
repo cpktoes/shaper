@@ -3,6 +3,8 @@ import { BOARD_LENGTH_RANGE_IN, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
 import { MEASURE_STATION_MM } from "./outline";
 import {
   commitTypedMeasure,
+  formatArea,
+  formatCubicVolume,
   formatDim,
   formatDimBare,
   formatLength,
@@ -14,14 +16,19 @@ import {
   columnUnitSuffix,
 } from "./measure-display";
 import {
+  MM_PER_CM,
+  MM_PER_INCH,
   UNITS_SYSTEMS,
   centimetresToMm,
+  cubicInchesToCubicMm,
+  cubicMmToCubicCentimetres,
   formatCentimetres,
   formatFeetInches,
   formatInchesFraction,
   formatSignedInchesFraction,
   inchesToMm,
   mm,
+  squareMmToSquareInches,
   type UnitsSystem,
 } from "./units";
 
@@ -113,6 +120,33 @@ describe("formatLength", () => {
 
   it("metric branch is formatCentimetres plus cm, no dual form", () => {
     expect(formatLength(mm(1880), "metric")).toBe("188.0 cm");
+  });
+});
+
+describe("formatArea", () => {
+  it("imperial branch is squareMmToSquareInches to one decimal plus 'sq in', unchanged", () => {
+    // 100 sq in = 100 * 25.4^2 sq mm.
+    const areaMm2 = 100 * MM_PER_INCH * MM_PER_INCH;
+    expect(formatArea(areaMm2, "imperial")).toBe(`${squareMmToSquareInches(areaMm2).toFixed(1)} sq in`);
+    expect(formatArea(areaMm2, "imperial")).toBe("100.0 sq in");
+  });
+
+  it("metric branch is a whole square-centimetre figure with its own unit, no parentheses or suffix", () => {
+    // 7964 sq cm = 7964 * 10^2 sq mm.
+    const areaMm2 = 7964 * MM_PER_CM * MM_PER_CM;
+    expect(formatArea(areaMm2, "metric")).toBe("7964 cm²");
+  });
+});
+
+describe("formatCubicVolume", () => {
+  it("imperial branch is the existing one-decimal cubic-inch figure plus 'cu in', unchanged, no parentheses", () => {
+    expect(formatCubicVolume(2075.9, "imperial")).toBe("2075.9 cu in");
+  });
+
+  it("metric branch converts through cubicInchesToCubicMm then cubicMmToCubicCentimetres, no parentheses", () => {
+    const volumeCubicInches = 2075.9;
+    const expectedCm3 = Math.round(cubicMmToCubicCentimetres(cubicInchesToCubicMm(volumeCubicInches)));
+    expect(formatCubicVolume(volumeCubicInches, "metric")).toBe(`${expectedCm3} cm³`);
   });
 });
 
@@ -549,6 +583,8 @@ describe("UNITS_SYSTEMS invariant — a dropped branch fails here rather than fa
       (system) => formatMark(value, system),
       (system) => formatMarkBare(value, system),
       (system) => formatSignedDim(value, system),
+      (system) => formatArea(7964 * MM_PER_CM * MM_PER_CM, system),
+      (system) => formatCubicVolume(2075.9, system),
       (system) => formatLength(value, system),
       (system) => stationLabel(system),
     ];

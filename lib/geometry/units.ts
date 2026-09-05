@@ -209,6 +209,35 @@ export function squareMmToSquareInches(areaMm2: number): number {
 }
 
 /**
+ * Converts a design area from square millimetres to square centimetres — the Metric sibling of
+ * `squareMmToSquareInches`, and the only place the volume card's area line (D-04) converts, so it
+ * can never drift from the same `area` field `lib/geometry/outline.ts` computes for everything
+ * else (CLAUDE.md Rule 2: never reach for 10 anywhere else).
+ */
+export function squareMmToSquareCentimetres(areaMm2: number): number {
+  return areaMm2 / (MM_PER_CM * MM_PER_CM);
+}
+
+/**
+ * Converts a design volume from cubic millimetres to cubic centimetres — the volume card's
+ * supporting-line conversion (D-04), landing beside `squareMmToSquareCentimetres` rather than as a
+ * component-level `/ 1000`.
+ */
+export function cubicMmToCubicCentimetres(volumeMm3: number): number {
+  return volumeMm3 / (MM_PER_CM * MM_PER_CM * MM_PER_CM);
+}
+
+/**
+ * Converts a design volume from cubic inches to cubic millimetres — the volume estimator's own
+ * inch-domain core (`lib/geometry/volume.ts`) reports `volumeCubicInches`, and this is the one
+ * place that number crosses back into millimetres before `cubicMmToCubicCentimetres` takes it the
+ * rest of the way to a metric supporting line, so neither factor is restated at the call site.
+ */
+export function cubicInchesToCubicMm(volumeIn3: number): number {
+  return volumeIn3 * (MM_PER_INCH * MM_PER_INCH * MM_PER_INCH);
+}
+
+/**
  * Formats a millimetre value as an imperial fraction string, e.g. `18 1/2"`.
  * Ported from the prototype's `toFrac` (reference/project/Template.dc.html
  * lines 309-320): round to the nearest 1/denominator, split whole and

@@ -4,6 +4,8 @@ import {
   MM_PER_CM,
   MM_PER_INCH,
   centimetresToMm,
+  cubicInchesToCubicMm,
+  cubicMmToCubicCentimetres,
   cubicMmToLitres,
   formatCentimetres,
   formatFeetInches,
@@ -18,6 +20,7 @@ import {
   parseImperial,
   parseMetric,
   roundToWholeMm,
+  squareMmToSquareCentimetres,
   squareMmToSquareInches,
 } from "./units";
 
@@ -39,6 +42,24 @@ describe("units boundary", () => {
     expect(squareMmToSquareInches(MM_PER_INCH * MM_PER_INCH)).toBeCloseTo(1, 9);
     // A board-scale area (roughly a 74in x 19in outline's rough bounding box) round-trips too.
     expect(squareMmToSquareInches(0)).toBe(0);
+  });
+
+  it("converts square millimetres to square centimetres", () => {
+    // A 1cm x 1cm square is 10mm x 10mm = 100 sq mm, and should read back as 1 sq cm.
+    expect(squareMmToSquareCentimetres(MM_PER_CM * MM_PER_CM)).toBeCloseTo(1, 9);
+    expect(squareMmToSquareCentimetres(0)).toBe(0);
+  });
+
+  it("converts cubic millimetres to cubic centimetres", () => {
+    // A 1cm cube is 10mm x 10mm x 10mm = 1000 cu mm, and should read back as 1 cu cm.
+    expect(cubicMmToCubicCentimetres(MM_PER_CM * MM_PER_CM * MM_PER_CM)).toBeCloseTo(1, 9);
+    expect(cubicMmToCubicCentimetres(0)).toBe(0);
+  });
+
+  it("converts cubic inches to cubic millimetres", () => {
+    // A 1in cube is 25.4mm x 25.4mm x 25.4mm — the inverse of mmToInches cubed.
+    expect(cubicInchesToCubicMm(1)).toBeCloseTo(MM_PER_INCH * MM_PER_INCH * MM_PER_INCH, 9);
+    expect(cubicInchesToCubicMm(0)).toBe(0);
   });
 
   describe("formatInchesFraction", () => {
