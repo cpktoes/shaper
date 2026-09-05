@@ -65,15 +65,38 @@ to them. So every formula belongs in `lib/geometry/` — `board.ts` (types), `ou
   `scripts/extract-prototype-*-golden.mjs` executing the original prototype's own
   functions. Never hand-transcribe an expected number — regenerate the fixture.
 
-## Rule 2 — inches and litres on screen, metric in the data
+## Rule 2 — the shaper picks the system, metric in the data either way
 
-Shapers think and talk in inches and litres, so that is what the UI shows. Everything
-stored or computed is metric, using the branded `Mm` / `Degrees` / `Litres` types.
+A shaper picks **Imperial** or **Metric** from the gear menu in the top bar. Signed in, that
+choice is saved on their account and follows them to any device; signed out, the browser
+remembers it on its own. Until someone touches the chooser, everyone sees Imperial exactly as
+the app has always shown it.
+
+**Metric means all-metric**, length included, and it splits into two families of number decided
+by what the number *is*, not by which screen it's on. **Dims** — a board's length, widths and
+headline thickness, the numbers a shaper quotes as a size — read in centimetres to one decimal
+(`188.0 × 51.4 × 6.7 cm`). **Marks** — rail band marks, rocker heights, the five foil station
+thicknesses — read in whole millimetres, because that's what a metric tape actually reads for
+the small stuff. So a foil's centre thickness reads `6.7` on a card's dimensions line and `67`
+in a datasheet column, and both are correct for what they show. Litres read the same in both
+systems.
+
+**Storage never changes.** Everything stored or computed is metric, using the branded `Mm` /
+`Degrees` / `Litres` types, no matter which system a shaper has chosen to look at.
 
 Every conversion of a *design value* — in from a control, out to a label — goes through
-`lib/geometry/units.ts`, including imperial-fraction formatting. Don't reach for 25.4
-anywhere else. (`components/summary/use-print-fit.ts` has its own copy on purpose: it
-scales paper sizes, not board dimensions.)
+`lib/geometry/units.ts`, including imperial-fraction formatting and the cm/mm rules above.
+Don't reach for 25.4 (or 10) anywhere else. (`components/summary/use-print-fit.ts` has its own
+copy on purpose: it scales paper sizes, not board dimensions.)
+
+**The preference is display-only.** Switching systems changes how numbers are shown and typed
+and nothing else — no saved board is ever rewritten, and switching back reproduces every value
+exactly. The preference lives outside the design state and outside a saved board's own data, so
+there's no such thing as "per-board units."
+
+**Where this applies today:** the setup screen's preset cards and rack cards follow the chosen
+system now. The five design screens, and anything that comes out of a printer, still read in
+inches — converting those is later work, not a gap in this rule.
 
 ## Layout
 

@@ -80,6 +80,69 @@ export function formatCentimetres(value: Mm): string {
 }
 
 /**
+ * Formats a millimetre value as a bare whole-millimetre number — `"67"`, never `"67.0"` and never
+ * with a unit suffix. This is D-02's **marks** family: rail band marks, rocker heights and the
+ * five foil station thicknesses — the numbers a shaper measures with a rule against the board
+ * rather than reads off as a size. `formatCentimetres` is the **dims** family (a board's length,
+ * widths and headline thickness, the numbers a shaper quotes as a size); which family a value
+ * belongs to is decided by what the number *is*, not by which screen it appears on — a foil's
+ * centre thickness reads `6.7` on a card's dimensions line and `67` in the ROCKER datasheet
+ * column, and both are correct for what they show.
+ *
+ * Applies the same signed epsilon nudge (`1e-9`, negated for negative values) that
+ * `formatInchesFraction` and `formatCentimetres` document, before rounding: a value that
+ * round-tripped through inches (or picked up float noise any other way) can land a few ULPs on
+ * the wrong side of a whole-millimetre boundary, and the nudge pushes it back onto the correct
+ * side — and, just as importantly, keeps this formatter's tie-break in agreement with
+ * `formatCentimetres`'s, so the two never disagree about which way the same value rounds.
+ */
+export function formatWholeMm(value: Mm): string {
+  const nudge = value < 0 ? -1e-9 : 1e-9;
+  const rounded = Math.round(value + nudge);
+  return String(rounded);
+}
+
+/**
+ * Snaps a millimetre value to the nearest whole millimetre — the metric counterpart of
+ * `roundToSixteenthInch`. A snap on the model, not a display nicety: this is what Phase 6's
+ * sliders step by when reading in Metric, so the stored value and the label always agree without
+ * either one silently drifting a fraction of a millimetre from the other. Uses the same signed
+ * epsilon nudge as `formatWholeMm`, so `formatWholeMm(roundToWholeMm(v))` always equals
+ * `formatWholeMm(v)` — snapping first never changes what a shaper reads.
+ */
+export function roundToWholeMm(value: Mm): Mm {
+  const nudge = value < 0 ? -1e-9 : 1e-9;
+  return mm(Math.round(value + nudge));
+}
+
+/**
+ * Parses a free-form metric length string into millimetres (D-04). A bare number is read as
+ * `fieldUnit` — a centimetre field reads `"51.4"` as 51.4cm, a millimetre field reads `"67"` as
+ * 67mm — and an explicit `cm` or `mm` suffix (either case, with or without a preceding space)
+ * overrides the field's own unit, so `"514 mm"` typed into a centimetre field still works.
+ *
+ * Returns `null` — never throws — for empty or whitespace-only input, for a suffix with no
+ * number, and for anything that does not match cleanly: a comma decimal separator (`"51,4"`) and
+ * an imperial fraction (`"5 1/2"`) are both rejected rather than guessed at, because guessing
+ * either would silently produce a wrong number a shaper might cut to (T-05-15). This mirrors
+ * `parseImperial`'s return-null-never-throw contract exactly, because the typed field's commit
+ * path reverts to the last good value on `null`.
+ */
+export function parseMetric(input: string, fieldUnit: "cm" | "mm"): Mm | null {
+  if (input == null) return null;
+  const trimmed = input.trim();
+  if (trimmed.length === 0) return null;
+
+  const match = trimmed.match(/^(-?\d+(?:\.\d+)?)\s*(cm|mm)?$/i);
+  if (!match) return null;
+
+  const [, numStr, unitSuffix] = match;
+  const value = parseFloat(numStr);
+  const unit = unitSuffix ? (unitSuffix.toLowerCase() as "cm" | "mm") : fieldUnit;
+  return unit === "cm" ? centimetresToMm(value) : mm(value);
+}
+
+/**
  * Converts a design area from square millimetres to square inches — the only other place besides
  * `mmToInches` that turns `MM_PER_INCH` into a real device number, so the Overview Sheet's printed
  * "Template Area" can never drift from the same `area` field `lib/geometry/outline.ts` computes
