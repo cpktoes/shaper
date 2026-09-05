@@ -190,6 +190,14 @@ None - no external service configuration required.
 - Two backstops (no-flash-of-inches, the print-preview overflow audit) and a full five-screen sweep remain as explicit human-check items for the end-of-phase UAT batch, alongside every `<human-check>` deferred by Plans 01-06's own summaries.
 - No blockers. `npm test` (1998 passed, 2 skipped), `npx tsc --noEmit` (ignoring the known phantom `LayoutProps` worktree noise) and `npm run lint` (0 errors, pre-existing unrelated warnings only) are all clean. `npm run build` was not run in this worktree per the project's known Turbopack-in-worktree limitation — the orchestrator runs the real build on the main checkout after merge.
 
+## Self-Check: PASSED
+
+- `.planning/phases/06-the-design-screens-in-metric/06-07-SUMMARY.md` - FOUND
+- `537b157` (Task 1 commit) - FOUND
+- `388258a` (Task 2 commit) - FOUND
+- `60aed82` (Task 3 commit) - FOUND
+- `3942f7d` (this SUMMARY's own commit) - FOUND
+
 ---
 *Phase: 06-the-design-screens-in-metric*
 *Completed: 2026-09-05*
