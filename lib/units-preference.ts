@@ -230,9 +230,11 @@ export function createUnitsWriteQueue(deps: UnitsWriteQueueDeps): UnitsWriteQueu
         const delay = nextUnitsWriteRetryDelayMs(attempt);
         attempt += 1;
         if (delay === null) {
-          // Ladder exhausted for a value still desired — gives up silently (D-11: no toast, no
-          // banner). `error` is intentionally unused for now; see WR-03 in the next commit.
-          void error;
+          // Ladder exhausted for a value still desired — shaper-facing silence stays intact
+          // (D-11: no toast, no banner), but an operator needs something to grep for if this
+          // keeps happening outside the expected pre-migration window (mirrors the read-side
+          // logging in lib/units-server.ts).
+          console.error("Shaper: failed to save units preference after exhausting retries", error);
           return;
         }
         pendingTimer = setTimer(() => {

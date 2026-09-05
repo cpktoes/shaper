@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { UnitsSystem } from "./geometry/units";
 import {
   DEFAULT_UNITS_SYSTEM,
@@ -188,6 +188,12 @@ describe("units preference boundary", () => {
   });
 
   describe("createUnitsWriteQueue (WR-01: serialized account writes)", () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    afterEach(() => {
+      consoleErrorSpy.mockClear();
+    });
+
     it("a second pick while the first write is in flight results in exactly one more write, for the newer value, after the first SUCCEEDS", async () => {
       const calls: UnitsSystem[] = [];
       let resolveFirst!: () => void;
@@ -250,20 +256,24 @@ describe("units preference boundary", () => {
       expect(save).toHaveBeenCalledTimes(1);
       expect(scheduled).toHaveLength(1);
       expect(scheduled[0].delay).toBe(UNITS_WRITE_RETRY_DELAYS_MS[0]);
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
 
       await runNext();
       expect(save).toHaveBeenCalledTimes(2);
       expect(scheduled).toHaveLength(1);
       expect(scheduled[0].delay).toBe(UNITS_WRITE_RETRY_DELAYS_MS[1]);
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
 
       await runNext();
       expect(save).toHaveBeenCalledTimes(3);
       expect(scheduled).toHaveLength(1);
       expect(scheduled[0].delay).toBe(UNITS_WRITE_RETRY_DELAYS_MS[2]);
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
 
       await runNext();
       expect(save).toHaveBeenCalledTimes(4);
       expect(scheduled).toHaveLength(0); // ladder exhausted — no further retry scheduled
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1); // WR-03: logged once on abandonment
     });
 
     it("a pick that changes the desired value cancels a pending retry timer", async () => {
