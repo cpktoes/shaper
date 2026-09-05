@@ -4,15 +4,15 @@ milestone: v1.1
 milestone_name: Imperial vs Metric
 current_phase: 6
 current_phase_name: The Design Screens in Metric
-status: planning
+status: executing
 stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-09-05T08:07:04.534Z"
+last_updated: "2026-09-05T15:07:11.085Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 05 Wave 3 closed out — 05-05 (shared slider row) and 05-06 (shared viewer toolbar button) both complete
 progress:
   total_phases: 2
   completed_phases: 1
-  total_plans: 7
+  total_plans: 14
   completed_plans: 7
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 
 Phase: 6 — The Design Screens in Metric
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-09-05 — Phase 05 complete, transitioned to Phase 6
 
 **Milestone v1.1 phases:**
