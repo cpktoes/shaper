@@ -122,3 +122,25 @@ export function decideUnitsHandoff(input: {
   }
   return { system: DEFAULT_UNITS_SYSTEM, adoptIntoBrowser: null, promoteToAccount: null };
 }
+
+/**
+ * The background account write's retry schedule (D-11): roughly one second, four seconds, then
+ * fifteen seconds. A units pick is a single discrete click, not a stream of slider drags, so
+ * there is no debounce here — only this bounded ladder. It is bounded on purpose: between the
+ * push to `main` and the production migration (05-07), the `user_preferences` table does not
+ * exist yet, and an unbounded retry would hammer the database for every shaper who touches the
+ * chooser during that window. Once the ladder is exhausted the write gives up quietly — no
+ * toast, no banner, nothing the shaper ever sees (D-11).
+ */
+export const UNITS_WRITE_RETRY_DELAYS_MS: readonly number[] = [1_000, 4_000, 15_000];
+
+/**
+ * The delay before the next retry attempt, or `null` once the ladder is exhausted. `attempt` is
+ * the zero-based count of retries already made (0 before the first retry, 1 before the second,
+ * and so on) — a negative attempt floors to the first rung rather than throwing, the same
+ * defensive-floor discipline the rest of this module uses for untrusted input.
+ */
+export function nextUnitsWriteRetryDelayMs(attempt: number): number | null {
+  const index = Math.max(attempt, 0);
+  return index < UNITS_WRITE_RETRY_DELAYS_MS.length ? UNITS_WRITE_RETRY_DELAYS_MS[index] : null;
+}

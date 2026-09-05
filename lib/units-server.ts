@@ -6,17 +6,35 @@
  * frame, and unlike the theme (CSS, correctable before paint by a pre-hydration script)
  * rendered text cannot be patched up after the fact.
  *
- * This plan covers only the signed-out, browser-remembered path: the cookie is the one thing
- * the server can see. 05-02 extends this function to also call `await auth()` and read the
- * shaper's stored account row, passing both into `decideUnitsHandoff` — the shape of this
- * function (an async resolver returning a `UnitsHandoff`) does not change when it does.
+ * Both inputs are now real: `signedIn` comes from `await auth()`, and a signed-in shaper's
+ * account value comes from `readUnitsPreference`. The account read is wrapped in try/catch and
+ * degrades to `null` (the same as "no account value") on any failure — a database problem, or
+ * the `user_preferences` table not existing yet between the push to `main` and the production
+ * migration (05-07) — must never break the page, exactly the way `app/page.tsx`'s
+ * `BoardRackData` degrades a failed board-list read to an empty rack rather than a broken page.
  */
 
+import { auth } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
+import { readUnitsPreference } from "./db/queries";
 import { UNITS_COOKIE_NAME, decideUnitsHandoff, parseUnitsPreference, type UnitsHandoff } from "./units-preference";
 
 export async function resolveUnitsHandoff(): Promise<UnitsHandoff> {
+  const { userId } = await auth();
   const cookieStore = await cookies();
   const browser = parseUnitsPreference(cookieStore.get(UNITS_COOKIE_NAME)?.value ?? null);
-  return decideUnitsHandoff({ signedIn: false, account: null, browser });
+
+  let account: Awaited<ReturnType<typeof readUnitsPreference>> | null = null;
+  if (userId) {
+    try {
+      account = await readUnitsPreference(userId);
+    } catch (error) {
+      // A failed or not-yet-existing user_preferences table degrades to the cookie value —
+      // never breaks the page.
+      console.error("Shaper: failed to read units preference", error);
+      account = null;
+    }
+  }
+
+  return decideUnitsHandoff({ signedIn: userId !== null, account, browser });
 }

@@ -4,7 +4,9 @@ import {
   UNITS_COOKIE_MAX_AGE_SECONDS,
   UNITS_COOKIE_NAME,
   UNITS_STORAGE_KEY,
+  UNITS_WRITE_RETRY_DELAYS_MS,
   decideUnitsHandoff,
+  nextUnitsWriteRetryDelayMs,
   parseUnitsPreference,
   readUnitsCookie,
   resolveUnitsSystem,
@@ -122,6 +124,29 @@ describe("units preference boundary", () => {
     it("promoteToAccount is never non-null when account is non-null", () => {
       const result = decideUnitsHandoff({ signedIn: true, account: "imperial", browser: "metric" });
       expect(result.promoteToAccount).toBeNull();
+    });
+  });
+
+  describe("UNITS_WRITE_RETRY_DELAYS_MS / nextUnitsWriteRetryDelayMs", () => {
+    it("the ladder is non-empty and strictly increasing", () => {
+      expect(UNITS_WRITE_RETRY_DELAYS_MS.length).toBeGreaterThan(0);
+      for (let i = 1; i < UNITS_WRITE_RETRY_DELAYS_MS.length; i++) {
+        expect(UNITS_WRITE_RETRY_DELAYS_MS[i]).toBeGreaterThan(UNITS_WRITE_RETRY_DELAYS_MS[i - 1]);
+      }
+    });
+
+    it("returns the first, second and third rungs for attempts 0, 1 and 2", () => {
+      expect(nextUnitsWriteRetryDelayMs(0)).toBe(UNITS_WRITE_RETRY_DELAYS_MS[0]);
+      expect(nextUnitsWriteRetryDelayMs(1)).toBe(UNITS_WRITE_RETRY_DELAYS_MS[1]);
+      expect(nextUnitsWriteRetryDelayMs(2)).toBe(UNITS_WRITE_RETRY_DELAYS_MS[2]);
+    });
+
+    it("returns null once the ladder is exhausted — the write gives up quietly rather than retrying forever", () => {
+      expect(nextUnitsWriteRetryDelayMs(UNITS_WRITE_RETRY_DELAYS_MS.length)).toBeNull();
+    });
+
+    it("returns the first delay for a negative attempt — a defensive floor, not a throw", () => {
+      expect(nextUnitsWriteRetryDelayMs(-1)).toBe(UNITS_WRITE_RETRY_DELAYS_MS[0]);
     });
   });
 });
