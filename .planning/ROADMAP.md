@@ -126,7 +126,7 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
   4. Volume reads in litres in both systems, and the same litres figure is quoted on every screen as it is now
   5. A shaper can flip between systems mid-design and the board itself never moves — the outline, rocker and foil are exactly where they left them
 
-**Plans**: 4/7 plans executed
+**Plans**: 5/7 plans executed
 **Wave 1**
 
   - [x] 06-01-PLAN.md — Tracer: one shared display layer and one metric-bounds helper, proven end to end on the Template Builder's widepoint width, then the rest of that screen
@@ -145,7 +145,7 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-  - [ ] 06-05-PLAN.md — The fin model learns which of its numbers are lengths and which are marks; the DATA tab and the toe-aim tables convert
+  - [x] 06-05-PLAN.md — The fin model learns which of its numbers are lengths and which are marks; the DATA tab and the toe-aim tables convert
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -196,5 +196,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 3. Volume, Templates & Verified Math | 7/7 | Complete    | 2026-08-28 |
 | 4. Rocker & Foil Editors | 5/5 | Complete    | 2026-08-29 |
 | 5. The Units Chooser | 7/7 | Complete    | 2026-09-05 |
-| 6. The Design Screens in Metric | 4/7 | In Progress|  |
+| 6. The Design Screens in Metric | 5/7 | In Progress|  |
 | 7. Metric on Paper | 0/? | Not started | - |
