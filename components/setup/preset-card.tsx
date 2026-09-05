@@ -13,11 +13,19 @@
  * around its panel, so the card as a whole mirrors that treatment: structural weight on the
  * outer box, receding weight on the inner one. See the comment above `return` for the full
  * stack.
+ *
+ * Between the name and the descriptor sits a dims line (`CardMetadataLine`, shared with the
+ * rack cards) showing the same four numbers a shaper gets by clicking this preset — length,
+ * width, thickness, litres — in the chosen units system (D-13, D-14). No hint, tip or arrow
+ * points at the units chooser; the card just reads in whichever system is picked (D-15).
  */
 
+import { useMemo } from "react";
 import { OutlineViewer } from "@/components/outline/outline-viewer";
+import { CardMetadataLine } from "@/components/setup/card-metadata-line";
 import * as outlineGeometryLib from "@/lib/geometry/outline";
 import type { BoardPreset } from "@/lib/geometry/presets";
+import { presetSummary } from "@/lib/geometry/summary-line";
 import { cn } from "@/lib/utils";
 
 interface PresetCardProps {
@@ -30,6 +38,10 @@ export function PresetCard({ preset, onSelect, className }: PresetCardProps) {
   // The same pure outline-geometry computation the click below applies to the shared store —
   // see this plan's prohibition against a second drawing routine or a cached/pre-rendered image.
   const geometry = outlineGeometryLib.buildOutline(preset.outline);
+  // presetSummary runs the same summarizeDesign() pipeline over exactly the state applyPreset
+  // writes into the store (D-13) — so the numbers on this card are the numbers a shaper gets
+  // when they click it, never a second, divergent computation.
+  const summary = useMemo(() => presetSummary(preset), [preset]);
 
   // The stack, outermost first: page (--surf-ground) -> sand frame (--surf-canvas, 12px band)
   // -> structural line (--surf-line, on the window box) -> window (--surf-tab-active, 12px
@@ -74,6 +86,7 @@ export function PresetCard({ preset, onSelect, className }: PresetCardProps) {
         </div>
       </div>
       <span className="text-[20px] leading-[1.2] font-semibold text-foreground">{preset.name}</span>
+      <CardMetadataLine summary={summary} />
       <span className="text-sm leading-[1.5] text-surf-ink-muted">{preset.descriptor}</span>
       <span className="text-xs leading-[1.4] font-semibold tracking-architectural text-surf-accent-ink uppercase">
         Start Shaping
