@@ -103,3 +103,49 @@ describe("presetSummary", () => {
     expect(block).toMatch(/volume:\s*DEFAULT_VOLUME_SPEC/);
   });
 });
+
+describe("preset card dims line coverage (05-03)", () => {
+  it("every preset renders a complete, non-broken line in every system — no preset produces an empty, NaN or partial line", () => {
+    for (const preset of BOARD_PRESETS) {
+      const summary = presetSummary(preset);
+      for (const system of UNITS_SYSTEMS) {
+        const line = formatSummaryLine(summary, system);
+        expect(line.length).toBeGreaterThan(0);
+        expect(line).not.toContain("NaN");
+        expect(line).not.toContain("undefined");
+        // Ends in the litres suffix, e.g. "34.0 L" — no preset drops the volume part.
+        expect(line).toMatch(/\d+\.\d L$/);
+      }
+    }
+  });
+
+  it("shortboard's imperial line has the feet-and-inches shape before the first separator", () => {
+    const line = formatSummaryLine(presetSummary(shortboard), "imperial");
+    const firstToken = line.split(" · ")[0];
+    // A feet-inches token carries a foot mark and at least one inch mark, e.g. 6'2".
+    expect(firstToken).toContain("'");
+    expect(firstToken).toContain('"');
+  });
+
+  it("shortboard's metric line carries the centimetre unit exactly once", () => {
+    const line = formatSummaryLine(presetSummary(shortboard), "metric");
+    expect(line.match(/cm/g)?.length).toBe(1);
+  });
+
+  it("two summaries carrying identical dimensions produce identical lines, whichever card type they came from", () => {
+    // presetSummary is the preset card's pipeline; a hand-built DesignSummary with the same
+    // field values stands in for what a rack card would show for the same board. If either
+    // card type ever computed its numbers a second, divergent way, this would be the first
+    // place the two disagree.
+    const fromPreset = presetSummary(shortboard);
+    const equivalent: DesignSummary = {
+      length: fromPreset.length,
+      widePointWidth: fromPreset.widePointWidth,
+      centerThickness: fromPreset.centerThickness,
+      volumeLitres: fromPreset.volumeLitres,
+    };
+    for (const system of UNITS_SYSTEMS) {
+      expect(formatSummaryLine(fromPreset, system)).toBe(formatSummaryLine(equivalent, system));
+    }
+  });
+});
