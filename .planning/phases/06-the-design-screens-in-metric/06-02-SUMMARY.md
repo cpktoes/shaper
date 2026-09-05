@@ -170,6 +170,16 @@ None - no external service configuration required.
 - `volume-controls.tsx` and `fin-controls.tsx` remain `converted: false` in the ledger — each still has unconverted sliders (Board Width/Center Thickness on VOLUME belong to Plan 07; the fin-placement sliders belong to Plan 06).
 - No blockers. `npm run build` was not run in this worktree per the project's known Turbopack-in-worktree limitation — the orchestrator runs the real build on the main checkout after merge.
 
+## Self-Check: PASSED
+
+- `components/design/measure-field.tsx` - FOUND
+- `components/design/measure-field.test.ts` - FOUND
+- `.planning/phases/06-the-design-screens-in-metric/06-02-SUMMARY.md` - FOUND
+- `268b6fc` (Task 1 commit) - FOUND
+- `74d2c6f` (Task 2 commit) - FOUND
+- `848692c` (Task 3 commit) - FOUND
+- `b87a448` (this SUMMARY's own commit) - FOUND
+
 ---
 *Phase: 06-the-design-screens-in-metric*
 *Completed: 2026-09-05*
