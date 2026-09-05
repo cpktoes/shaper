@@ -29,8 +29,8 @@ import {
   type ThrusterFrontModel,
   type TwinTemplate,
 } from "@/lib/geometry/fins";
-import { formatInchesFraction, inchesToMm, mmToInches, type Mm } from "@/lib/geometry/units";
-import { formatLength, measureSlider } from "@/lib/geometry/measure-display";
+import { inchesToMm, mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
+import { formatDim, formatLength, formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { MeasureField } from "@/components/design/measure-field";
 import { useUnits } from "@/components/units-provider";
@@ -118,39 +118,53 @@ function PillButton({
 }
 
 /** A base-length field: text + Override button until pressed, then a number input, matching the
- * prototype's baseLenXEditing toggle (Fins.dc.html lines 241-249 and onToggleBaseLenXEdit). */
+ * prototype's baseLenXEditing toggle (Fins.dc.html lines 241-249 and onToggleBaseLenXEdit). The
+ * number box's domain (inches stepping 1/8, or Metric's whole millimetres stepping 1) is decided
+ * by the caller's own `measureSlider` call against `BASE_LEN_BOUNDS`, so this field never converts
+ * on its own (CLAUDE.md Rule 2). */
 function BaseLengthField({
   label,
-  valueIn,
+  value,
+  system,
+  min,
+  max,
+  step,
+  toMm,
   overridden,
   editing,
   onOverride,
-  onChangeIn,
+  onChange,
 }: {
   label: string;
-  valueIn: number;
+  value: Mm;
+  system: UnitsSystem;
+  min: number;
+  max: number;
+  step: number;
+  toMm: (dragged: number) => Mm;
   overridden: boolean;
   editing: boolean;
   onOverride: () => void;
-  onChangeIn: (valueIn: number) => void;
+  onChange: (next: Mm) => void;
 }) {
+  const displayValue = system === "metric" ? value : mmToInches(value);
   return (
     <div>
       <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">{label}</div>
       {editing ? (
         <input
           type="number"
-          min={BASE_LEN_BOUNDS.min}
-          max={BASE_LEN_BOUNDS.max}
-          step={BASE_LEN_BOUNDS.step}
-          value={valueIn}
-          onChange={(e) => onChangeIn(clampFinite(parseFloat(e.target.value), BASE_LEN_BOUNDS.min, BASE_LEN_BOUNDS.max))}
+          min={min}
+          max={max}
+          step={step}
+          value={displayValue}
+          onChange={(e) => onChange(toMm(parseFloat(e.target.value)))}
           className="w-full rounded-md border border-outline-sidebar-input-border bg-outline-sidebar-input-bg px-2 py-1.5 text-[13px] text-outline-sidebar-text"
         />
       ) : (
         <div className="flex items-center justify-between">
           <span className="text-sm font-bold">
-            {formatInchesFraction(inchesToMm(valueIn), 16)}
+            {formatMark(value, system)}
             {!overridden && " standard"}
           </span>
           <button
@@ -209,7 +223,16 @@ export function FinControls({
   const setLengthIn = (totalIn: number) => onChange({ boardLength: inchesToMm(clampFinite(totalIn, 48, 144)) });
   const boardLength = measureSlider(spec.boardLength, { min: 48, max: 144 }, 1, 10, system);
 
-  const w12In = mmToInches(spec.tailWidth12);
+  // Tail Width @ 12" stays its own hand-rolled Slider (allowlisted in slider-row.test.ts) rather
+  // than migrating to SliderRow — see the comment above this block's JSX for why.
+  const tailWidth12Slider = measureSlider(spec.tailWidth12, { min: 10, max: 18 }, 0.125, 1, system);
+
+  // Each Fin Base Length field's own display-domain bounds/step/toMm (D-06: 64-190mm stepping 1
+  // in Metric, today's 2.5-7.5in stepping 1/8 in Imperial) — one measureSlider call per field,
+  // computed here so BaseLengthField itself never converts (CLAUDE.md Rule 2).
+  const baseLenCenterSlider = measureSlider(spec.advanced.baseLenCenter, BASE_LEN_BOUNDS, BASE_LEN_BOUNDS.step, 1, system);
+  const baseLenForwardSlider = measureSlider(spec.advanced.baseLenForward, BASE_LEN_BOUNDS, BASE_LEN_BOUNDS.step, 1, system);
+  const baseLenRearSlider = measureSlider(spec.advanced.baseLenRear, BASE_LEN_BOUNDS, BASE_LEN_BOUNDS.step, 1, system);
 
   const updateAdvanced = (patch: Partial<FinAdvancedSpec>) => onChange({ advanced: { ...spec.advanced, ...patch } });
 
@@ -230,6 +253,29 @@ export function FinControls({
   };
 
   const { flags, resolved } = result;
+
+  // Each remaining measurement control's own display-domain bounds/step/toMm — one measureSlider
+  // call per control, feeding both its onValueChange and (for the two dim-family labels below) the
+  // resolved distance the label prints, which is a different value from the one the track holds
+  // and must not be conflated with it.
+  const centerPositionSlider = measureSlider(spec.advanced.centerPositionOffset, POS_BOUNDS, POS_BOUNDS.step, 1, system);
+  const forwardPositionSlider = measureSlider(spec.advanced.forwardPositionOffset, POS_BOUNDS, POS_BOUNDS.step, 1, system);
+  const rearPositionSlider = measureSlider(spec.advanced.rearPositionOffset, POS_BOUNDS, POS_BOUNDS.step, 1, system);
+  const forwardToeSlider = measureSlider(resolved.forwardToe, TOE_BOUNDS, TOE_BOUNDS.step, 1, system);
+  const rearToeSlider = measureSlider(resolved.rearToe, TOE_BOUNDS, TOE_BOUNDS.step, 1, system);
+  const quadRearOffRailSlider = measureSlider(resolved.quadRearOffRail, OFF_RAIL_BOUNDS, OFF_RAIL_BOUNDS.step, 1, system);
+  const quadRearOffTailSlider = measureSlider(
+    resolved.quadRearOffTailBase,
+    OFF_TAIL_OVERRIDE_BOUNDS,
+    OFF_TAIL_OVERRIDE_BOUNDS.step,
+    1,
+    system,
+  );
+  // The quad rear off-tail rule's fixed quarter-inch term, read through the display boundary in
+  // both systems (D-09) rather than a hand-typed literal — Metric rounds the model's exact quarter
+  // inch to the nearest whole millimetre for this heading only; the field below it still shows the
+  // actual computed value.
+  const quarterInchRuleText = formatMark(inchesToMm(0.25), system);
 
   return (
     <div className="flex h-full flex-col gap-5">
@@ -323,15 +369,15 @@ export function FinControls({
 
       <div style={{ opacity: importTemplate ? 0.45 : 1 }}>
         <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
-          Tail Width @ 12&quot; — {formatInchesFraction(spec.tailWidth12, 16)}
+          {`Tail Width @ ${stationLabel(system)} — ${formatDim(spec.tailWidth12, system)}`}
         </div>
         <Slider
-          value={w12In}
-          min={10}
-          max={18}
-          step={0.125}
+          value={tailWidth12Slider.value}
+          min={tailWidth12Slider.min}
+          max={tailWidth12Slider.max}
+          step={tailWidth12Slider.step}
           disabled={importTemplate}
-          onValueChange={(v) => onChange({ tailWidth12: inchesToMm(clampFinite(sliderValue(v), 10, 18)) })}
+          onValueChange={(v) => onChange({ tailWidth12: tailWidth12Slider.toMm(sliderValue(v)) })}
           className="slider-accent"
         />
       </div>
@@ -477,24 +523,29 @@ export function FinControls({
                 <div className="mb-2.5">
                   <BaseLengthField
                     label={flags.centerBaseLenFieldLabel}
-                    valueIn={mmToInches(spec.advanced.baseLenCenter)}
+                    value={spec.advanced.baseLenCenter}
+                    system={system}
+                    min={baseLenCenterSlider.min}
+                    max={baseLenCenterSlider.max}
+                    step={baseLenCenterSlider.step}
+                    toMm={baseLenCenterSlider.toMm}
                     overridden={spec.advanced.baseLenCenterOverridden}
                     editing={editingCenter}
                     onOverride={() => {
                       setEditingCenter(true);
                       updateAdvanced({ baseLenCenterOverridden: true });
                     }}
-                    onChangeIn={(v) => updateAdvanced({ baseLenCenter: inchesToMm(v), baseLenCenterOverridden: true })}
+                    onChange={(next) => updateAdvanced({ baseLenCenter: next, baseLenCenterOverridden: true })}
                   />
                 </div>
                 <SliderRow
                   density="tight"
-                  label={`Forward/Aft position — ${formatInchesFraction(resolved.centerOffTail, 16)}`}
-                  value={mmToInches(spec.advanced.centerPositionOffset)}
-                  min={POS_BOUNDS.min}
-                  max={POS_BOUNDS.max}
-                  step={POS_BOUNDS.step}
-                  onValueChange={(v) => updateAdvanced({ centerPositionOffset: inchesToMm(v) })}
+                  label={`Forward/Aft position — ${formatDim(resolved.centerOffTail, system)}`}
+                  value={centerPositionSlider.value}
+                  min={centerPositionSlider.min}
+                  max={centerPositionSlider.max}
+                  step={centerPositionSlider.step}
+                  onValueChange={(v) => updateAdvanced({ centerPositionOffset: centerPositionSlider.toMm(v) })}
                   leftHint="Drivey (near tail)"
                   rightHint="Loose (far from tail)"
                 />
@@ -509,42 +560,45 @@ export function FinControls({
                 <div className="mb-2.5">
                   <BaseLengthField
                     label="Fin Base Length"
-                    valueIn={mmToInches(spec.advanced.baseLenForward)}
+                    value={spec.advanced.baseLenForward}
+                    system={system}
+                    min={baseLenForwardSlider.min}
+                    max={baseLenForwardSlider.max}
+                    step={baseLenForwardSlider.step}
+                    toMm={baseLenForwardSlider.toMm}
                     overridden={spec.advanced.baseLenForwardOverridden}
                     editing={editingForward}
                     onOverride={() => {
                       setEditingForward(true);
                       updateAdvanced({ baseLenForwardOverridden: true });
                     }}
-                    onChangeIn={(v) => updateAdvanced({ baseLenForward: inchesToMm(v), baseLenForwardOverridden: true })}
+                    onChange={(next) => updateAdvanced({ baseLenForward: next, baseLenForwardOverridden: true })}
                   />
                 </div>
                 <div className="mb-2.5">
                   <SliderRow
                     density="tight"
-                    label={`Forward/Aft position — ${formatInchesFraction(
+                    label={`Forward/Aft position — ${formatDim(
                       spec.finSetup === "2plus1" ? resolved.sideOffTail : spec.finSetup === "twin" ? resolved.twinOffTail : resolved.frontOffTail,
-                      16,
+                      system,
                     )} (off-rail unchanged)`}
-                    value={mmToInches(spec.advanced.forwardPositionOffset)}
-                    min={POS_BOUNDS.min}
-                    max={POS_BOUNDS.max}
-                    step={POS_BOUNDS.step}
-                    onValueChange={(v) => updateAdvanced({ forwardPositionOffset: inchesToMm(v) })}
+                    value={forwardPositionSlider.value}
+                    min={forwardPositionSlider.min}
+                    max={forwardPositionSlider.max}
+                    step={forwardPositionSlider.step}
+                    onValueChange={(v) => updateAdvanced({ forwardPositionOffset: forwardPositionSlider.toMm(v) })}
                     leftHint="Loose (fwd)"
                     rightHint="Drivey (back)"
                   />
                 </div>
                 <SliderRow
                   density="tight"
-                  label={`Toe-in — ${formatInchesFraction(resolved.forwardToe, 16)}`}
-                  value={mmToInches(resolved.forwardToe)}
-                  min={TOE_BOUNDS.min}
-                  max={TOE_BOUNDS.max}
-                  step={TOE_BOUNDS.step}
-                  onValueChange={(v) =>
-                    updateAdvanced({ forwardToeOverride: inchesToMm(clampFinite(v, TOE_BOUNDS.min, TOE_BOUNDS.max)) })
-                  }
+                  label={`Toe-in — ${formatMark(resolved.forwardToe, system)}`}
+                  value={forwardToeSlider.value}
+                  min={forwardToeSlider.min}
+                  max={forwardToeSlider.max}
+                  step={forwardToeSlider.step}
+                  onValueChange={(v) => updateAdvanced({ forwardToeOverride: forwardToeSlider.toMm(v) })}
                   leftHint="Drivey (less)"
                   rightHint="Loose (more)"
                 />
@@ -568,33 +622,36 @@ export function FinControls({
                 <div className="mb-2.5">
                   <BaseLengthField
                     label="Fin Base Length"
-                    valueIn={mmToInches(spec.advanced.baseLenRear)}
+                    value={spec.advanced.baseLenRear}
+                    system={system}
+                    min={baseLenRearSlider.min}
+                    max={baseLenRearSlider.max}
+                    step={baseLenRearSlider.step}
+                    toMm={baseLenRearSlider.toMm}
                     overridden={spec.advanced.baseLenRearOverridden}
                     editing={editingRear}
                     onOverride={() => {
                       setEditingRear(true);
                       updateAdvanced({ baseLenRearOverridden: true });
                     }}
-                    onChangeIn={(v) => updateAdvanced({ baseLenRear: inchesToMm(v), baseLenRearOverridden: true })}
+                    onChange={(next) => updateAdvanced({ baseLenRear: next, baseLenRearOverridden: true })}
                   />
                 </div>
                 {flags.showRearOffTailOverride && (
                   <div className="mb-2.5">
                     <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
-                      Rear Off-Tail Position (½ front off-tail + 1/4&quot;)
+                      {`Rear Off-Tail Position (½ front off-tail + ${quarterInchRuleText})`}
                     </div>
                     {editingRearOffTail ? (
                       <input
                         type="number"
-                        min={OFF_TAIL_OVERRIDE_BOUNDS.min}
-                        max={OFF_TAIL_OVERRIDE_BOUNDS.max}
-                        step={OFF_TAIL_OVERRIDE_BOUNDS.step}
-                        value={mmToInches(resolved.quadRearOffTailBase)}
+                        min={quadRearOffTailSlider.min}
+                        max={quadRearOffTailSlider.max}
+                        step={quadRearOffTailSlider.step}
+                        value={quadRearOffTailSlider.value}
                         onChange={(e) =>
                           updateAdvanced({
-                            quadRearOffTailOverride: inchesToMm(
-                              clampFinite(parseFloat(e.target.value), OFF_TAIL_OVERRIDE_BOUNDS.min, OFF_TAIL_OVERRIDE_BOUNDS.max),
-                            ),
+                            quadRearOffTailOverride: quadRearOffTailSlider.toMm(parseFloat(e.target.value)),
                             quadRearOffTailOverridden: true,
                           })
                         }
@@ -603,8 +660,8 @@ export function FinControls({
                     ) : (
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-bold">
-                          {formatInchesFraction(resolved.quadRearOffTailBase, 16)}
-                          {spec.advanced.quadRearOffTailOverridden ? " override" : ' auto (½ front off-tail + 1/4")'}
+                          {formatDim(resolved.quadRearOffTailBase, system)}
+                          {spec.advanced.quadRearOffTailOverridden ? " override" : ` auto (½ front off-tail + ${quarterInchRuleText})`}
                         </span>
                         <button
                           type="button"
@@ -626,12 +683,12 @@ export function FinControls({
                 <div className="mb-2.5">
                   <SliderRow
                     density="tight"
-                    label={`Forward/Aft position — ${formatInchesFraction(resolved.pairOffTail, 16)} (off-rail unchanged)`}
-                    value={mmToInches(spec.advanced.rearPositionOffset)}
-                    min={POS_BOUNDS.min}
-                    max={POS_BOUNDS.max}
-                    step={POS_BOUNDS.step}
-                    onValueChange={(v) => updateAdvanced({ rearPositionOffset: inchesToMm(v) })}
+                    label={`Forward/Aft position — ${formatDim(resolved.pairOffTail, system)} (off-rail unchanged)`}
+                    value={rearPositionSlider.value}
+                    min={rearPositionSlider.min}
+                    max={rearPositionSlider.max}
+                    step={rearPositionSlider.step}
+                    onValueChange={(v) => updateAdvanced({ rearPositionOffset: rearPositionSlider.toMm(v) })}
                     leftHint="Loose (fwd)"
                     rightHint="Drivey (back)"
                   />
@@ -640,29 +697,25 @@ export function FinControls({
                   <div className="mb-2.5">
                     <SliderRow
                       density="tight"
-                      label={`Off-Rail — ${formatInchesFraction(resolved.quadRearOffRail, 16)}`}
-                      value={mmToInches(resolved.quadRearOffRail)}
-                      min={OFF_RAIL_BOUNDS.min}
-                      max={OFF_RAIL_BOUNDS.max}
-                      step={OFF_RAIL_BOUNDS.step}
+                      label={`Off-Rail — ${formatMark(resolved.quadRearOffRail, system)}`}
+                      value={quadRearOffRailSlider.value}
+                      min={quadRearOffRailSlider.min}
+                      max={quadRearOffRailSlider.max}
+                      step={quadRearOffRailSlider.step}
                       onValueChange={(v) =>
-                        updateAdvanced({
-                          quadRearOffRailOverride: inchesToMm(clampFinite(v, OFF_RAIL_BOUNDS.min, OFF_RAIL_BOUNDS.max)),
-                        })
+                        updateAdvanced({ quadRearOffRailOverride: quadRearOffRailSlider.toMm(v) })
                       }
                     />
                   </div>
                 )}
                 <SliderRow
                   density="tight"
-                  label={`Toe-in — ${formatInchesFraction(resolved.rearToe, 16)}`}
-                  value={mmToInches(resolved.rearToe)}
-                  min={TOE_BOUNDS.min}
-                  max={TOE_BOUNDS.max}
-                  step={TOE_BOUNDS.step}
-                  onValueChange={(v) =>
-                    updateAdvanced({ rearToeOverride: inchesToMm(clampFinite(v, TOE_BOUNDS.min, TOE_BOUNDS.max)) })
-                  }
+                  label={`Toe-in — ${formatMark(resolved.rearToe, system)}`}
+                  value={rearToeSlider.value}
+                  min={rearToeSlider.min}
+                  max={rearToeSlider.max}
+                  step={rearToeSlider.step}
+                  onValueChange={(v) => updateAdvanced({ rearToeOverride: rearToeSlider.toMm(v) })}
                   leftHint="Drivey (less)"
                   rightHint="Loose (more)"
                 />
