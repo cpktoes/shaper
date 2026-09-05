@@ -16,6 +16,13 @@
  * 05-02 fills in the account side: a fire-and-forget write on every pick (with a bounded quiet
  * retry, mirroring `lib/models/autosave.ts`'s "a rejected write can never claim success"
  * discipline), plus a one-time promotion of an explicit browser pick into an empty account.
+ *
+ * The account side also means the client's own snapshot can no longer just prefer localStorage
+ * unconditionally (WR-02): a shaper who picked Metric on one device and signs in on a browser
+ * that still has an older `imperial` cached from before has a real disagreement to reconcile,
+ * not just an absent value to fall back past. Until the adoption effect below has actually run
+ * (or there was nothing to adopt), the client snapshot defers to the server's resolved system —
+ * see the `reconciledRef` comment further down.
  */
 
 import {
@@ -90,7 +97,28 @@ export function UnitsProvider({
   handoff: UnitsHandoff;
   children: ReactNode;
 }) {
-  const getSnapshot = useCallback(() => getStoredPreference() ?? handoff.system, [handoff.system]);
+  // WR-02: the server-resolved system is authoritative until the browser has actually been
+  // reconciled to it. `getSnapshot` used to prefer localStorage unconditionally — correct when
+  // there was nothing to reconcile, but wrong the moment `handoff.adoptIntoBrowser` names an
+  // account value: React re-invokes `getSnapshot` in a passive effect right after mount, and if
+  // localStorage still held a stale value from another device or an earlier signed-out session,
+  // that mount-time re-check would force a render to the WRONG system for one frame, before the
+  // adoption effect below corrects storage and forces a second render back to the right one — a
+  // metric -> imperial -> metric flash on exactly the sign-in-on-a-new-device path this feature
+  // exists to get right (the scenario D-12 promises never happens).
+  //
+  // `reconciledRef` starts `true` when there is nothing to reconcile (signed out, or no account
+  // value — today's original behaviour, unchanged) and `false` whenever an account value is
+  // about to be adopted. It flips to `true` in exactly two places: at the end of the adoption
+  // effect below (including its early-return branch where storage already agreed), and inside
+  // `setSystem` (a click always wins immediately, reconciled or not). `getSnapshot` stays pure
+  // apart from reading this ref and localStorage — it never flips the ref itself.
+  const reconciledRef = useRef(handoff.adoptIntoBrowser === null);
+
+  const getSnapshot = useCallback(() => {
+    if (!reconciledRef.current) return handoff.system;
+    return getStoredPreference() ?? handoff.system;
+  }, [handoff.system]);
   const getServerSnapshot = useCallback(() => handoff.system, [handoff.system]);
 
   const system = useSyncExternalStore(subscribeToStoredPreference, getSnapshot, getServerSnapshot);
@@ -133,6 +161,9 @@ export function UnitsProvider({
       // Storage blocked — the choice still applies for this render (the emit below), it just
       // won't survive a reload. Better than refusing to switch.
     }
+    // A click always wins immediately, reconciled or not — `getSnapshot` must reflect it on the
+    // very next read, so this flips before the emit below (WR-02).
+    reconciledRef.current = true;
     // Emitted synchronously, on the click itself — a passive effect would run after paint,
     // showing one frame of the old system before the cards re-label (D-07's "watch the cards
     // behind the menu re-label as they click"). The screen has already switched by the time the
@@ -142,10 +173,16 @@ export function UnitsProvider({
   }, [scheduleAccountWrite]);
 
   // Adopts a signed-in shaper's account choice into the browser (D-09). Only writes when the
-  // browser doesn't already agree, so it never stomps a value that's already correct.
+  // browser doesn't already agree, so it never stomps a value that's already correct. Either way
+  // this effect ends by flipping `reconciledRef` to `true` and emitting (WR-02) — from this point
+  // on `getSnapshot` is safe to read localStorage again, because it now agrees with `handoff`.
   useEffect(() => {
-    if (handoff.adoptIntoBrowser === null) return;
-    if (getStoredPreference() === handoff.adoptIntoBrowser) return;
+    if (handoff.adoptIntoBrowser === null) return; // nothing to reconcile — reconciledRef started true
+    if (getStoredPreference() === handoff.adoptIntoBrowser) {
+      reconciledRef.current = true;
+      emitPreferenceChange();
+      return;
+    }
     try {
       localStorage.setItem(UNITS_STORAGE_KEY, handoff.adoptIntoBrowser);
       document.cookie = unitsCookieString(handoff.adoptIntoBrowser);
@@ -153,6 +190,7 @@ export function UnitsProvider({
       // Storage blocked — this session still shows the account's choice via `handoff.system`
       // (the initial snapshot), it just won't be mirrored into the browser for next time.
     }
+    reconciledRef.current = true;
     emitPreferenceChange();
   }, [handoff.adoptIntoBrowser]);
 

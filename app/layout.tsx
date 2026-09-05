@@ -92,8 +92,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           {/* Outside ThemeProvider, not nested inside it — the units value has to be available
               to everything the nav renders, including the settings menu's Units group beside
               its Theme group. No pre-hydration script counterpart: units renders text, and the
-              server snapshot above is already correct, so there is nothing to patch before
-              paint the way THEME_INIT_SCRIPT patches a stale dark-theme class. */}
+              server snapshot above is already correct for first paint, so there is nothing to
+              patch before paint the way THEME_INIT_SCRIPT patches a stale dark-theme class.
+              First paint is not the whole story, though: the client's own snapshot can disagree
+              with the server's right after mount (a signed-in shaper's browser still holding an
+              older cached value from another device) — UnitsProvider's `reconciledRef` is what
+              keeps that disagreement from ever reaching the screen as a flash; see its own
+              doc comment (WR-02). */}
           <UnitsProvider handoff={unitsHandoff}>
             <ThemeProvider>
               <Provider>
