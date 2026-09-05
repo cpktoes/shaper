@@ -12,6 +12,7 @@ import {
   type RailSectionSpec,
 } from "@/lib/geometry/rail-bands";
 import { formatInchesFraction, inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
+import { SliderRow, sliderValue } from "@/components/design/slider-row";
 
 interface RailControlsProps {
   /** The effective spec (D-09) — `boardThickness` on each section already reflects the foil's
@@ -50,10 +51,6 @@ function clampFinite(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function sliderValue(v: number | readonly number[]): number {
-  return typeof v === "number" ? v : (v[0] ?? 0);
-}
-
 /** rawStep/steps/percentStep from the prototype's `deckProfileFor`, so both slider endpoints
  * (including 100% Flat) stay exactly reachable regardless of the section's own thickness. */
 function deckProfileStep(thicknessIn: number): number {
@@ -86,52 +83,6 @@ function SectionHeading({
       <span>{children}</span>
       <span>{open ? "▾" : "▸"}</span>
     </button>
-  );
-}
-
-function ControlSlider({
-  label,
-  value,
-  min,
-  max,
-  step,
-  onValueChange,
-  disabled,
-  hintLeft,
-  hintRight,
-  note,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onValueChange: (value: number) => void;
-  disabled?: boolean;
-  hintLeft?: string;
-  hintRight?: string;
-  note?: string;
-}) {
-  return (
-    <div className={disabled ? "opacity-40" : undefined}>
-      <div className="mb-2 text-sm text-surf-ink-muted font-normal">{label}</div>
-      <Slider
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-        onValueChange={(v) => onValueChange(sliderValue(v))}
-        className="slider-accent"
-      />
-      {(hintLeft || hintRight) && (
-        <div className="mt-0.5 flex justify-between text-xs text-surf-ink-muted font-normal">
-          <span>{hintLeft}</span>
-          <span>{hintRight}</span>
-        </div>
-      )}
-      {note && <div className="mt-0.5 text-[10px] text-surf-warning-ink">{note}</div>}
-    </div>
   );
 }
 
@@ -211,7 +162,7 @@ function RailSectionControls({
       </SectionHeading>
       {open && (
         <>
-          <ControlSlider
+          <SliderRow
             label={`${SECTION_THICKNESS_LABEL[sectionKey]} — ${formatInchesFraction(spec.boardThickness)}`}
             value={boardThicknessIn}
             min={thicknessBounds.min}
@@ -223,15 +174,15 @@ function RailSectionControls({
             }
           />
 
-          <ControlSlider
+          <SliderRow
             label={`Deck Profile — ${formatInchesFraction(output.railThicknessClamped)} (Tapered Thickness)`}
             value={deckProfileSliderValue}
             min={66}
             max={100}
             step={deckProfileSliderStep}
             onValueChange={(v) => onChange({ deckPercent: clampFinite(166 - v, 66, 100) })}
-            hintLeft="Flat"
-            hintRight="Heavily Domed"
+            leftHint="Flat"
+            rightHint="Heavily Domed"
           />
 
           <div className="flex gap-3.5">

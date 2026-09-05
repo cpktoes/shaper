@@ -30,6 +30,7 @@ import {
   type TwinTemplate,
 } from "@/lib/geometry/fins";
 import { formatFeetInches, formatInchesFraction, inchesToMm, mmToInches, type Mm } from "@/lib/geometry/units";
+import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { FinSetupIcon, type FinSetupKind } from "./fin-setup-icon";
 
 const TAIL_SHAPES: IconTailShape[] = ["pin", "round", "diamond", "squash", "swallow"];
@@ -51,9 +52,6 @@ const OFF_TAIL_OVERRIDE_BOUNDS = { min: 0.5, max: 12, step: 1 / 16 };
 function clampFinite(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, value));
-}
-function sliderValue(v: number | readonly number[]): number {
-  return typeof v === "number" ? v : (v[0] ?? 0);
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
@@ -82,46 +80,6 @@ function DisclosureHeading({
       <span>{children}</span>
       <span>{open ? "▾" : "▸"}</span>
     </button>
-  );
-}
-
-function RangeRow({
-  label,
-  value,
-  min,
-  max,
-  step,
-  onValueChange,
-  leftHint,
-  rightHint,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onValueChange: (value: number) => void;
-  leftHint?: string;
-  rightHint?: string;
-}) {
-  return (
-    <div>
-      <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">{label}</div>
-      <Slider
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onValueChange={(v) => onValueChange(sliderValue(v))}
-        className="slider-accent"
-      />
-      {(leftHint || rightHint) && (
-        <div className="mt-0.5 flex justify-between text-xs text-surf-ink-muted font-normal">
-          <span>{leftHint}</span>
-          <span>{rightHint}</span>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -500,7 +458,8 @@ export function FinControls({
                     onChangeIn={(v) => updateAdvanced({ baseLenCenter: inchesToMm(v), baseLenCenterOverridden: true })}
                   />
                 </div>
-                <RangeRow
+                <SliderRow
+                  density="tight"
                   label={`Forward/Aft position — ${formatInchesFraction(resolved.centerOffTail, 16)}`}
                   value={mmToInches(spec.advanced.centerPositionOffset)}
                   min={POS_BOUNDS.min}
@@ -532,7 +491,8 @@ export function FinControls({
                   />
                 </div>
                 <div className="mb-2.5">
-                  <RangeRow
+                  <SliderRow
+                    density="tight"
                     label={`Forward/Aft position — ${formatInchesFraction(
                       spec.finSetup === "2plus1" ? resolved.sideOffTail : spec.finSetup === "twin" ? resolved.twinOffTail : resolved.frontOffTail,
                       16,
@@ -546,7 +506,8 @@ export function FinControls({
                     rightHint="Drivey (back)"
                   />
                 </div>
-                <RangeRow
+                <SliderRow
+                  density="tight"
                   label={`Toe-in — ${formatInchesFraction(resolved.forwardToe, 16)}`}
                   value={mmToInches(resolved.forwardToe)}
                   min={TOE_BOUNDS.min}
@@ -634,7 +595,8 @@ export function FinControls({
                   </div>
                 )}
                 <div className="mb-2.5">
-                  <RangeRow
+                  <SliderRow
+                    density="tight"
                     label={`Forward/Aft position — ${formatInchesFraction(resolved.pairOffTail, 16)} (off-rail unchanged)`}
                     value={mmToInches(spec.advanced.rearPositionOffset)}
                     min={POS_BOUNDS.min}
@@ -647,7 +609,8 @@ export function FinControls({
                 </div>
                 {flags.showRearOffRailSlider && (
                   <div className="mb-2.5">
-                    <RangeRow
+                    <SliderRow
+                      density="tight"
                       label={`Off-Rail — ${formatInchesFraction(resolved.quadRearOffRail, 16)}`}
                       value={mmToInches(resolved.quadRearOffRail)}
                       min={OFF_RAIL_BOUNDS.min}
@@ -661,7 +624,8 @@ export function FinControls({
                     />
                   </div>
                 )}
-                <RangeRow
+                <SliderRow
+                  density="tight"
                   label={`Toe-in — ${formatInchesFraction(resolved.rearToe, 16)}`}
                   value={mmToInches(resolved.rearToe)}
                   min={TOE_BOUNDS.min}
