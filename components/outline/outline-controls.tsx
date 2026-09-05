@@ -19,14 +19,14 @@ import {
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import {
   degrees,
-  formatFeetInches,
   inchesToMm,
   mm,
   type Mm,
   mmToInches,
 } from "@/lib/geometry/units";
-import { formatDim, formatMark, formatSignedDim, measureSlider } from "@/lib/geometry/measure-display";
+import { formatDim, formatLength, formatMark, formatSignedDim, measureSlider } from "@/lib/geometry/measure-display";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
+import { MeasureField } from "@/components/design/measure-field";
 import { useUnits } from "@/components/units-provider";
 import { TailShapeIcon, type IconTailShape } from "./tail-shape-icon";
 
@@ -117,55 +117,75 @@ export function OutlineControls({
       </div>
 
       <SectionHeading>Board Length</SectionHeading>
-      {/* Board Length keeps its own hand-rolled markup — the feet/inches Select combo sits
-          between the label and the slider, which SliderRow's fixed label-then-track layout has
-          no room for. Named in slider-row.test.ts's allowlist alongside its FINS and VOLUME
-          counterparts, which share this exact shape. */}
-      <div>
-        <div className="mb-2 text-sm text-surf-ink-muted font-normal">
-          Board Length — {formatFeetInches(outline.length)}
-        </div>
-        <div className="mb-2 flex gap-2">
-          <Select
-            value={lengthFeet}
-            onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
-          >
-            <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[5, 6, 7, 8, 9, 10].map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f}&apos;
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={lengthInches}
-            onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
-          >
-            <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: 12 }, (_, i) => i).map((i) => (
-                <SelectItem key={i} value={i}>
-                  {i}&quot;
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Slider
-          value={lengthIn}
-          min={BOARD_LENGTH_RANGE_IN.min}
-          max={BOARD_LENGTH_RANGE_IN.max}
-          step={1}
-          onValueChange={(v) => setLengthIn(sliderValue(v))}
-          className="slider-accent"
-        />
-      </div>
+      {/* Board Length keeps its own hand-rolled markup: a label row, then either the feet/inches
+          Select combo (Imperial) or one typed centimetre field (Metric, D-08), then the slider —
+          a shape SliderRow's fixed label-then-track layout has no slot for either way. Named in
+          slider-row.test.ts's allowlist alongside its FINS and VOLUME counterparts, which share
+          this exact shape. */}
+      {(() => {
+        const boardLength = measureSlider(outline.length, BOARD_LENGTH_RANGE_IN, 1, 10, system);
+        return (
+          <div>
+            <div className="mb-2 text-sm text-surf-ink-muted font-normal">
+              Board Length — {formatLength(outline.length, system)}
+            </div>
+            <div className="mb-2 flex gap-2">
+              {system === "imperial" ? (
+                <>
+                  <Select
+                    value={lengthFeet}
+                    onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
+                  >
+                    <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[5, 6, 7, 8, 9, 10].map((f) => (
+                        <SelectItem key={f} value={f}>
+                          {f}&apos;
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={lengthInches}
+                    onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
+                  >
+                    <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 12 }, (_, i) => i).map((i) => (
+                        <SelectItem key={i} value={i}>
+                          {i}&quot;
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              ) : (
+                <MeasureField
+                  value={outline.length}
+                  onCommit={(next) => onChange({ length: next })}
+                  label="Board Length"
+                  family="length"
+                  min={boardLength.min}
+                  max={boardLength.max}
+                  system={system}
+                />
+              )}
+            </div>
+            <Slider
+              value={boardLength.value}
+              min={boardLength.min}
+              max={boardLength.max}
+              step={boardLength.step}
+              onValueChange={(v) => onChange({ length: boardLength.toMm(sliderValue(v)) })}
+              className="slider-accent"
+            />
+          </div>
+        );
+      })()}
 
       <SectionHeading>Nose Controls</SectionHeading>
       <div className="flex gap-4">

@@ -41,7 +41,7 @@ const ALLOWLIST: { file: string; count: number; reason: string }[] = [
     file: OUTLINE_PATH,
     count: 1,
     reason:
-      "Board Length's feet/inches Select combo sits between the label and the slider — SliderRow has no slot for it.",
+      "Board Length's middle row sits between the label and the slider and branches per system — the feet/inches Select combo in Imperial, one typed centimetre field in Metric (D-08) — a shape SliderRow has no slot for either way.",
   },
   {
     file: RAILS_PATH,
@@ -58,7 +58,8 @@ const ALLOWLIST: { file: string; count: number; reason: string }[] = [
   {
     file: VOLUME_PATH,
     count: 1,
-    reason: "Board Length has the same Select-combo shape as its TEMPLATE and FINS counterparts.",
+    reason:
+      "Board Length's per-system middle row has the same shape as its TEMPLATE and FINS counterparts — the feet/inches Select combo in Imperial, one typed centimetre field in Metric (D-08).",
   },
 ];
 

@@ -52,6 +52,11 @@ export interface MeasureFieldProps {
   /** Bare mode (no unit suffix) for D-12's in-table cells; standalone (the default) suffixes the
    * value with its own unit. */
   bare?: boolean;
+  /** Passed straight to the underlying `Input`, matching the Select/Slider `disabled` prop a
+   * caller's Imperial branch already sets when a value is driven from elsewhere (e.g. the VOLUME
+   * screen's "Measure This Board's Real Shape" import toggle) — a typed value under a value the
+   * shaper can't otherwise touch would be a correctness gap, not a cosmetic one. */
+  disabled?: boolean;
 }
 
 /** The blurred display for the current stored value — the same string `commitTypedMeasure` would
@@ -76,6 +81,7 @@ export function MeasureField({
   max,
   system,
   bare = false,
+  disabled = false,
 }: MeasureFieldProps) {
   const [focused, setFocused] = useState(false);
   const [raw, setRaw] = useState(() => displayFor(value, family, system, bare));
@@ -94,6 +100,7 @@ export function MeasureField({
       <Input
         type="text"
         inputMode="text"
+        disabled={disabled}
         aria-label={label}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
