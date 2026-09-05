@@ -31,10 +31,11 @@ import {
 import { saveUnitsPreference } from "@/app/actions/units";
 import {
   UNITS_STORAGE_KEY,
-  nextUnitsWriteRetryDelayMs,
+  createUnitsWriteQueue,
   parseUnitsPreference,
   unitsCookieString,
   type UnitsHandoff,
+  type UnitsWriteQueue,
 } from "@/lib/units-preference";
 import type { UnitsSystem } from "@/lib/geometry/units";
 
@@ -95,41 +96,32 @@ export function UnitsProvider({
   const system = useSyncExternalStore(subscribeToStoredPreference, getSnapshot, getServerSnapshot);
 
   /* -- the background account write (D-11) --------------------------------------------- */
-  // Holds the pending retry's timeout handle and how many attempts have already failed, so a
-  // newer pick can cancel a stale retry in flight and start its own attempt count at zero — a
-  // rejected write for an OLDER system must never land after a NEWER one already succeeded.
-  const pendingWriteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const writeAttemptRef = useRef(0);
+  // The actual sequencing policy — "at most one save in flight, the last pick always lands
+  // last" — lives in lib/units-preference.ts's `createUnitsWriteQueue`, pure and unit-tested the
+  // same way lib/models/autosave.ts keeps its decisions pure while the component only wires a
+  // timer to them (WR-01). This provider only supplies the real Server Action and real
+  // setTimeout/clearTimeout, and forwards every pick to `request`.
+  const writeQueueRef = useRef<UnitsWriteQueue | null>(null);
+  function getWriteQueue(): UnitsWriteQueue {
+    if (writeQueueRef.current === null) {
+      writeQueueRef.current = createUnitsWriteQueue({
+        save: saveUnitsPreference,
+        setTimer: (callback, delayMs) => setTimeout(callback, delayMs),
+        clearTimer: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+      });
+    }
+    return writeQueueRef.current;
+  }
 
   const scheduleAccountWrite = useCallback((next: UnitsSystem) => {
-    if (pendingWriteTimeoutRef.current !== null) {
-      clearTimeout(pendingWriteTimeoutRef.current);
-      pendingWriteTimeoutRef.current = null;
-    }
-    writeAttemptRef.current = 0;
-
-    const attemptWrite = () => {
-      saveUnitsPreference(next).catch(() => {
-        // A rejected write can never be reported as success or cause the on-screen system to
-        // change (the `nextStatusAfter` discipline from lib/models/autosave.ts) — it only ever
-        // schedules a quiet retry, or gives up silently once the ladder is exhausted. No toast,
-        // no banner, no reverted check (D-11).
-        const delay = nextUnitsWriteRetryDelayMs(writeAttemptRef.current);
-        writeAttemptRef.current += 1;
-        if (delay === null) return;
-        pendingWriteTimeoutRef.current = setTimeout(attemptWrite, delay);
-      });
-    };
-    attemptWrite();
+    getWriteQueue().request(next);
   }, []);
 
-  // Clears any in-flight retry on unmount — nothing should keep firing after the provider is
-  // gone.
+  // Cancels any in-flight retry timer on unmount — nothing should keep firing after the provider
+  // is gone.
   useEffect(() => {
     return () => {
-      if (pendingWriteTimeoutRef.current !== null) {
-        clearTimeout(pendingWriteTimeoutRef.current);
-      }
+      writeQueueRef.current?.dispose();
     };
   }, []);
 

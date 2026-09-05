@@ -144,3 +144,115 @@ export function nextUnitsWriteRetryDelayMs(attempt: number): number | null {
   const index = Math.max(attempt, 0);
   return index < UNITS_WRITE_RETRY_DELAYS_MS.length ? UNITS_WRITE_RETRY_DELAYS_MS[index] : null;
 }
+
+/**
+ * The account write's serialization policy (WR-01 fix), pure and tested the same way
+ * `lib/models/autosave.ts` keeps `decideAutosave`/`nextStatusAfter` pure while the component only
+ * wires a timer to them. A token only stops a stale *retry*; it does nothing about two overlapping
+ * first attempts completing out of order. So instead of a token, this queue guarantees the
+ * property that actually matters: at most one `save` call is ever in flight, and the last pick
+ * always lands last.
+ *
+ * `request(system)` is called on every pick (and once for the 05-02 account-promotion write).
+ * It always records `system` as the "desired" value. If nothing is in flight, it starts a write
+ * immediately (after cancelling any pending retry timer and resetting the attempt count — a
+ * fresh pick means a fresh ladder). If a write is already in flight, `request` does nothing else:
+ * the in-flight write's own completion handler re-reads the desired value once it settles.
+ *
+ * When a write settles — success or failure — the desired value is checked again:
+ * - If the desired value now differs from what was just written, a fresh attempt (attempt count
+ *   reset to 0) starts for the desired value, regardless of whether the just-settled write
+ *   succeeded or failed. This is what makes "the last pick always lands last" true even when two
+ *   picks race a slow network: the newer pick's write never has to out-race the older one, it
+ *   simply starts after the older one is done, however it finished.
+ * - Only when the desired value still equals the value that just failed does the bounded retry
+ *   ladder (`nextUnitsWriteRetryDelayMs`) apply, on its own timer.
+ * - Once the ladder is exhausted for a value that is still desired, the write is abandoned
+ *   silently for the shaper (D-11) but logged once for an operator (WR-03), mirroring the
+ *   read-side logging in `lib/units-server.ts`.
+ */
+export interface UnitsWriteQueueDeps {
+  /** The Server Action call itself — `app/actions/units.ts`'s `saveUnitsPreference` in
+   * production, a fake promise-returning function in tests. */
+  save: (system: UnitsSystem) => Promise<void>;
+  /** `setTimeout` in production, a fake recording scheduler in tests — this module never reaches
+   * for a browser global directly, so it can be driven deterministically without fake timers. */
+  setTimer: (callback: () => void, delayMs: number) => unknown;
+  /** `clearTimeout` in production, paired with whatever handle `setTimer` returned. */
+  clearTimer: (handle: unknown) => void;
+}
+
+export interface UnitsWriteQueue {
+  /** Records `system` as the value the account should end up holding, and starts or continues
+   * writing towards it. Safe to call on every pick — never throws, never blocks the caller. */
+  request(system: UnitsSystem): void;
+  /** Cancels any pending retry timer. Call on unmount — nothing should keep firing after the
+   * provider using this queue is gone. */
+  dispose(): void;
+}
+
+export function createUnitsWriteQueue(deps: UnitsWriteQueueDeps): UnitsWriteQueue {
+  const { save, setTimer, clearTimer } = deps;
+
+  let desired: UnitsSystem | null = null;
+  let inFlight = false;
+  let attempt = 0;
+  let pendingTimer: unknown = null;
+
+  function clearPendingTimer() {
+    if (pendingTimer !== null) {
+      clearTimer(pendingTimer);
+      pendingTimer = null;
+    }
+  }
+
+  function startAttempt(system: UnitsSystem) {
+    inFlight = true;
+    save(system).then(
+      () => {
+        inFlight = false;
+        // Success settles `system`, not necessarily `desired` — a pick made while this write was
+        // in flight only recorded itself in `desired`; it never fired its own overlapping call.
+        if (desired !== null && desired !== system) {
+          attempt = 0;
+          startAttempt(desired);
+        }
+      },
+      (error: unknown) => {
+        inFlight = false;
+        if (desired !== system) {
+          // Superseded while in flight — the failed value is no longer wanted, so the ladder
+          // for it is irrelevant. Start fresh for whatever is actually desired now.
+          attempt = 0;
+          if (desired !== null) startAttempt(desired);
+          return;
+        }
+        const delay = nextUnitsWriteRetryDelayMs(attempt);
+        attempt += 1;
+        if (delay === null) {
+          // Ladder exhausted for a value still desired — gives up silently (D-11: no toast, no
+          // banner). `error` is intentionally unused for now; see WR-03 in the next commit.
+          void error;
+          return;
+        }
+        pendingTimer = setTimer(() => {
+          pendingTimer = null;
+          startAttempt(system);
+        }, delay);
+      },
+    );
+  }
+
+  return {
+    request(system: UnitsSystem) {
+      desired = system;
+      clearPendingTimer();
+      if (inFlight) return; // the in-flight write's completion handler will re-check `desired`
+      attempt = 0;
+      startAttempt(system);
+    },
+    dispose() {
+      clearPendingTimer();
+    },
+  };
+}
