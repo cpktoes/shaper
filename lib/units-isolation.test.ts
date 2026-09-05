@@ -165,9 +165,9 @@ describe("the design screens read every measurement through the display boundary
   const DESIGN_SCREEN_DISPLAY_FILES: { file: string; converted: boolean }[] = [
     { file: "components/outline/outline-controls.tsx", converted: true },
     { file: "components/outline/outline-viewer.tsx", converted: true },
-    { file: "components/rocker/rocker-controls.tsx", converted: false },
+    { file: "components/rocker/rocker-controls.tsx", converted: true },
     { file: "components/rocker/rocker-datasheet.tsx", converted: true },
-    { file: "components/rocker/rocker-viewer.tsx", converted: false },
+    { file: "components/rocker/rocker-viewer.tsx", converted: true },
     { file: "components/rails/rail-controls.tsx", converted: false },
     { file: "components/rails/rail-data-table.tsx", converted: false },
     { file: "components/rails/rail-section-plot.tsx", converted: false },
