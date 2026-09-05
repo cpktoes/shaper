@@ -6,7 +6,7 @@ current_phase: 05
 current_phase_name: The Units Chooser
 status: executing
 stopped_at: Phase 5 UI-SPEC approved
-last_updated: "2026-09-05T01:27:58.559Z"
+last_updated: "2026-09-05T01:30:48.048Z"
 last_activity: 2026-09-04
 last_activity_desc: Milestone v1.1 roadmap created (Phases 5-7, all 14 requirements mapped)
 progress:
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 ## Current Position
 
 Phase: 05 (The Units Chooser) — EXECUTING
-Plan: 2 of 7 complete (05-01, 05-04) — 05-03 at checkpoint, 05-02 running
+Plan: 3 of 7 complete (05-01, 05-02, 05-04) — 05-03 awaiting checkpoint approval
 Status: Executing Phase 05
 Last activity: 2026-09-04 — Phase 05 execution started
 
