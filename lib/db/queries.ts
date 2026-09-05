@@ -11,7 +11,9 @@
 import { desc } from "drizzle-orm";
 import { eq } from "drizzle-orm";
 import { db } from "./client";
-import { models } from "./schema";
+import { models, userPreferences } from "./schema";
+import { parseUnitsPreference } from "@/lib/units-preference";
+import type { UnitsSystem } from "@/lib/geometry/units";
 
 export interface ListedModel {
   id: string;
@@ -40,4 +42,21 @@ export async function listModels(clerkId: string): Promise<ListedModel[]> {
     .from(models)
     .where(eq(models.clerkUserId, clerkId))
     .orderBy(desc(models.updatedAt), desc(models.id));
+}
+
+/**
+ * A shaper's saved units preference, or `null` when the row is missing (no preferences row yet
+ * — the account has never had anything written to it) or when its `units` column holds
+ * anything outside the two registered systems (a hand-edit, a legacy value, table drift). The
+ * value is run through `parseUnitsPreference`'s allow-list rather than trusted as-is, so a junk
+ * column value reads as "no choice" and renders Imperial instead of crashing or being honored.
+ *
+ * Read-only contract, same register as `listModels`: one `select`, no counters, no last-seen
+ * stamp, no write of any kind.
+ */
+export async function readUnitsPreference(clerkId: string): Promise<UnitsSystem | null> {
+  const [row] = await db.select({ units: userPreferences.units })
+    .from(userPreferences)
+    .where(eq(userPreferences.clerkUserId, clerkId));
+  return parseUnitsPreference(row?.units ?? null);
 }

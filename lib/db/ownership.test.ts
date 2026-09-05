@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const ACTIONS_PATH = join(REPO_ROOT, "app/design/actions.ts");
 const QUERIES_PATH = join(REPO_ROOT, "lib/db/queries.ts");
+const UNITS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/units.ts");
 
 /** Strips `//` line comments and `/* *\/` block comments, same helper as lib/auth/open-access.test.ts. */
 function stripComments(source: string): string {
@@ -58,9 +59,13 @@ function exportedFunctionSignatures(source: string): { name: string; params: str
 describe("ownership (D-11's counterpart: never trust client-supplied identity)", () => {
   const actionsSource = stripComments(readFileSync(ACTIONS_PATH, "utf8"));
   const queriesSource = stripComments(readFileSync(QUERIES_PATH, "utf8"));
+  const unitsActionsSource = stripComments(readFileSync(UNITS_ACTIONS_PATH, "utf8"));
 
-  it("every exported async function in app/design/actions.ts awaits auth() before any database call", () => {
-    const fns = exportedAsyncFunctions(actionsSource);
+  it("every exported async function in app/design/actions.ts and app/actions/units.ts awaits auth() before any database call", () => {
+    const fns = [
+      ...exportedAsyncFunctions(actionsSource),
+      ...exportedAsyncFunctions(unitsActionsSource),
+    ];
     expect(fns.length).toBeGreaterThan(0);
     for (const fn of fns) {
       const authIndex = fn.body.indexOf("await auth()");
@@ -79,6 +84,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
     const signatures = [
       ...exportedFunctionSignatures(actionsSource),
       ...exportedFunctionSignatures(queriesSource),
+      ...exportedFunctionSignatures(unitsActionsSource),
     ];
     expect(signatures.length).toBeGreaterThan(0);
     const offenders = signatures.filter((fn) => /userId|ownerId|clerkUserId/.test(fn.params));
@@ -93,10 +99,18 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
     expect(fns).toEqual(["deleteModel", "duplicateModel", "renameModel", "saveModel"]);
   });
 
-  it("every Drizzle statement touching the models table constrains on the owning-user column", () => {
+  it("app/actions/units.ts exports exactly the expected action and no others", () => {
+    // Mirrors the assertion above for app/design/actions.ts — a second action added here later
+    // without being named fails this test loudly rather than silently skipping these contracts.
+    const fns = exportedAsyncFunctions(unitsActionsSource).map((fn) => fn.name).sort();
+    expect(fns).toEqual(["saveUnitsPreference"]);
+  });
+
+  it("every Drizzle statement touching an owned table constrains on the owning-user column", () => {
     for (const [label, source] of [
       ["app/design/actions.ts", actionsSource],
       ["lib/db/queries.ts", queriesSource],
+      ["app/actions/units.ts", unitsActionsSource],
     ] as const) {
       // Split on each db.<verb>( call so every statement is inspected against the text between
       // it and the NEXT db call (or end of source) — the statement's own where/values clause.
@@ -115,8 +129,11 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
           // not by a WHERE clause (there's nothing to constrain on a row that doesn't exist yet).
           expect(statement, `${label}: insert does not set clerkUserId`).toMatch(/clerkUserId\s*:/);
         } else {
+          // Generalised to accept any table's clerkUserId column (an identifier followed by
+          // `.clerkUserId`), not just `models.clerkUserId` — so `userPreferences.clerkUserId`
+          // in the units read/write is checked by the same assertion, not a second copy of it.
           expect(statement, `${label}: ${call.verb} does not scope by clerkUserId`).toMatch(
-            /eq\(\s*models\.clerkUserId\s*,/,
+            /eq\(\s*[A-Za-z_][A-Za-z0-9_]*\.clerkUserId\s*,/,
           );
         }
       });
