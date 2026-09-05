@@ -3,7 +3,7 @@ status: complete
 phase: 06-the-design-screens-in-metric
 source: [06-VERIFICATION.md]
 started: 2026-09-05T20:43:11.570Z
-updated: 2026-09-05T21:29:13.975Z
+updated: 2026-09-05T21:32:59.474Z
 ---
 
 ## Current Test
@@ -88,9 +88,8 @@ result: pass
 
 ### 18. Backstop 2 — the order form's overflow audit on Metric: with Metric chosen, open the browser's print preview of /design/summary and re-run the order form's usual overflow check on every compact panel. The compact rail table's section headers now carry a unit suffix, and those panels clip their overflow by design, so confirm no header or row is cut off on paper on both Letter and A4. Record the result in the summary; if anything clips, file it rather than widening a panel here.
 expected: No clipped headers/rows on Letter or A4 print preview
-result: issue
-reported: "Primary dims show in inches.  Fin data also shows in inches."
-severity: major
+result: skipped
+reason: "Deferred follow-up: the Summary order form is the same component on screen and on paper; Phase 7 (Metric on Paper, PRNT-01) converts it. User confirmed: leave for Phase 7."
 
 ### 19. Sweep the five design screens on Metric looking for any stray inch mark, and on Imperial confirm every screen reads exactly as it did before the phase.
 expected: No stray inch marks anywhere in Metric; Imperial fully unchanged
@@ -101,10 +100,16 @@ result: pass
 
 total: 19
 passed: 15
-issues: 4
+issues: 3
 pending: 0
-skipped: 0
+skipped: 1
 blocked: 0
+
+## Deferred Follow-Ups
+
+- test: 18
+  idea: "Primary dims show in inches.  Fin data also shows in inches. (Summary order form on Metric) — deferred to Phase 7 / PRNT-01 by user decision"
+  deferred_at: 2026-09-05
 
 ## Gaps
 - gap_id: G-06-4
@@ -120,6 +125,7 @@ blocked: 0
   status: failed
   reason: "User reported: all fin placement data should be in mm"
   severity: major
+  decision: "User decision 2026-09-05: every fin PLACEMENT number (distance up from the tail, off-rail, toe-in) reads in whole millimetres on the DATA tab, the sidebar sliders and the drawing callouts; board length and tail width (summary line, Tail Width slider, toe-aim table headings) stay in centimetres."
   test: 12
   artifacts: []
   missing: []
@@ -128,14 +134,8 @@ blocked: 0
   status: failed
   reason: "User reported: all fin dims should be mm"
   severity: major
+  decision: "Same root as G-06-12 — fix together; fin drawing off-tail callouts, summary line's off-tail figures and base-length legend read in mm; board dims stay cm."
+  related: G-06-12
   test: 15
-  artifacts: []
-  missing: []
-- gap_id: G-06-18
-  truth: "No clipped headers/rows on Letter or A4 print preview"
-  status: failed
-  reason: "User reported: Primary dims show in inches.  Fin data also shows in inches."
-  severity: major
-  test: 18
   artifacts: []
   missing: []
