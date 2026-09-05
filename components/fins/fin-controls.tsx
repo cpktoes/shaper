@@ -29,8 +29,11 @@ import {
   type ThrusterFrontModel,
   type TwinTemplate,
 } from "@/lib/geometry/fins";
-import { formatFeetInches, formatInchesFraction, inchesToMm, mmToInches, type Mm } from "@/lib/geometry/units";
+import { formatInchesFraction, inchesToMm, mmToInches, type Mm } from "@/lib/geometry/units";
+import { formatLength, measureSlider } from "@/lib/geometry/measure-display";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
+import { MeasureField } from "@/components/design/measure-field";
+import { useUnits } from "@/components/units-provider";
 import { FinSetupIcon, type FinSetupKind } from "./fin-setup-icon";
 
 const TAIL_SHAPES: IconTailShape[] = ["pin", "round", "diamond", "squash", "swallow"];
@@ -194,6 +197,7 @@ export function FinControls({
   importTemplate,
   onToggleImportTemplate,
 }: FinControlsProps) {
+  const { system } = useUnits();
   const [editingForward, setEditingForward] = useState(false);
   const [editingRear, setEditingRear] = useState(false);
   const [editingCenter, setEditingCenter] = useState(false);
@@ -203,6 +207,7 @@ export function FinControls({
   const lengthFeet = Math.floor(lengthIn / 12);
   const lengthInches = Math.round(lengthIn - lengthFeet * 12);
   const setLengthIn = (totalIn: number) => onChange({ boardLength: inchesToMm(clampFinite(totalIn, 48, 144)) });
+  const boardLength = measureSlider(spec.boardLength, { min: 48, max: 144 }, 1, 10, system);
 
   const w12In = mmToInches(spec.tailWidth12);
 
@@ -244,58 +249,74 @@ export function FinControls({
       </div>
 
       {/* Board Length and Tail Width @ 12" (below) both keep their own hand-rolled markup rather
-          than migrating to SliderRow. Board Length's feet/inches Select combo between the label
-          and the slider has no home in SliderRow's fixed layout — matching its TEMPLATE and
-          VOLUME counterparts, named in slider-row.test.ts's allowlist. Tail Width @ 12" would fit
-          the row on its own, but it shares this exact 0.45 opacity dimming with Board Length under
-          the same importTemplate toggle; migrating only one would leave two adjacent sliders
-          dimming to visibly different shades (SliderRow's own disabled state dims to Tailwind's
-          0.4, not 0.45), so both stay hand-rolled together and are named in the allowlist too. */}
+          than migrating to SliderRow. Board Length's middle row branches per system — the
+          feet/inches Select combo in Imperial, one typed centimetre field in Metric (D-08) —
+          matching its TEMPLATE and VOLUME counterparts, named in slider-row.test.ts's allowlist.
+          Tail Width @ 12" would fit the row on its own, but it shares this exact 0.45 opacity
+          dimming with Board Length under the same importTemplate toggle; migrating only one would
+          leave two adjacent sliders dimming to visibly different shades (SliderRow's own disabled
+          state dims to Tailwind's 0.4, not 0.45), so both stay hand-rolled together and are named
+          in the allowlist too. */}
       <div style={{ opacity: importTemplate ? 0.45 : 1 }}>
         <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
-          Board Length — {formatFeetInches(spec.boardLength)}
+          Board Length — {formatLength(spec.boardLength, system)}
         </div>
         <div className="mb-2 flex gap-2">
-          <Select
-            value={lengthFeet}
-            onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
-            disabled={importTemplate}
-          >
-            <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[4, 5, 6, 7, 8, 9, 10, 11, 12].map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f}&apos;
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={lengthInches}
-            onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
-            disabled={importTemplate}
-          >
-            <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: 12 }, (_, i) => i).map((i) => (
-                <SelectItem key={i} value={i}>
-                  {i}&quot;
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {system === "imperial" ? (
+            <>
+              <Select
+                value={lengthFeet}
+                onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
+                disabled={importTemplate}
+              >
+                <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[4, 5, 6, 7, 8, 9, 10, 11, 12].map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f}&apos;
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={lengthInches}
+                onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
+                disabled={importTemplate}
+              >
+                <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => i).map((i) => (
+                    <SelectItem key={i} value={i}>
+                      {i}&quot;
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          ) : (
+            <MeasureField
+              value={spec.boardLength}
+              onCommit={(next) => onChange({ boardLength: next })}
+              label="Board Length"
+              family="length"
+              min={boardLength.min}
+              max={boardLength.max}
+              system={system}
+              disabled={importTemplate}
+            />
+          )}
         </div>
         <Slider
-          value={lengthIn}
-          min={48}
-          max={144}
-          step={1}
+          value={boardLength.value}
+          min={boardLength.min}
+          max={boardLength.max}
+          step={boardLength.step}
           disabled={importTemplate}
-          onValueChange={(v) => setLengthIn(sliderValue(v))}
+          onValueChange={(v) => onChange({ boardLength: boardLength.toMm(sliderValue(v)) })}
           className="slider-accent"
         />
       </div>

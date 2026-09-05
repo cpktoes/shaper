@@ -15,6 +15,7 @@ import {
 } from "./measure-display";
 import {
   UNITS_SYSTEMS,
+  centimetresToMm,
   formatCentimetres,
   formatFeetInches,
   formatInchesFraction,
@@ -340,6 +341,202 @@ describe("commitTypedMeasure", () => {
       expect(result.value).toBe(current);
       expect(result.error).not.toBeNull();
     }
+  });
+
+  it("an empty or whitespace-only typed string reverts to current with the millimetre error line", () => {
+    for (const typed of ["", "   "]) {
+      const current = mm(66);
+      const result = commitTypedMeasure({
+        typed,
+        current,
+        family: "mark",
+        min: 4,
+        max: 127,
+        system: "metric",
+        bare: false,
+      });
+      expect(result.value).toBe(current);
+      expect(result.display).toBe(formatMark(current, "metric"));
+      expect(result.error).not.toBeNull();
+    }
+  });
+
+  it("metric mark-family: an explicit cm suffix overrides the field's own mm unit (D-04)", () => {
+    // 6.7cm is 67mm exactly (MM_PER_CM = 10) — the same millimetre "67" typed bare lands on.
+    const result = commitTypedMeasure({
+      typed: "6.7 cm",
+      current: mm(0),
+      family: "mark",
+      min: 4,
+      max: 127,
+      system: "metric",
+      bare: false,
+    });
+    expect(result.error).toBeNull();
+    expect(result.value).toBe(mm(67));
+  });
+
+  it("metric mark-family: a value between two millimetres snaps to the nearer whole mm", () => {
+    const result = commitTypedMeasure({
+      typed: "66.6",
+      current: mm(0),
+      family: "mark",
+      min: 4,
+      max: 127,
+      system: "metric",
+      bare: false,
+    });
+    expect(result.value).toBe(mm(67));
+  });
+
+  it("metric mark-family: a value below the minimum clamps up to it", () => {
+    const result = commitTypedMeasure({
+      typed: "1",
+      current: mm(0),
+      family: "mark",
+      min: 4,
+      max: 127,
+      system: "metric",
+      bare: false,
+    });
+    expect(result.value).toBe(mm(4));
+  });
+
+  it("metric dim-family: a readable typed centimetre value is clamped and snapped to whole mm", () => {
+    const result = commitTypedMeasure({
+      typed: "188",
+      current: mm(0),
+      family: "dim",
+      min: 153,
+      max: 304,
+      system: "metric",
+      bare: false,
+    });
+    expect(result.error).toBeNull();
+    expect(result.value).toBe(centimetresToMm(188));
+    expect(result.display).toBe("188.0 cm");
+  });
+
+  it("metric dim-family: a half-centimetre value commits exactly", () => {
+    const result = commitTypedMeasure({
+      typed: "188.5",
+      current: mm(0),
+      family: "dim",
+      min: 153,
+      max: 304,
+      system: "metric",
+      bare: false,
+    });
+    expect(result.error).toBeNull();
+    expect(result.value).toBe(centimetresToMm(188.5));
+  });
+
+  it("metric dim-family: an explicit mm suffix overrides the field's own cm unit (D-04)", () => {
+    const result = commitTypedMeasure({
+      typed: "1880 mm",
+      current: mm(0),
+      family: "dim",
+      min: 153,
+      max: 304,
+      system: "metric",
+      bare: false,
+    });
+    expect(result.error).toBeNull();
+    expect(result.value).toBe(mm(1880));
+  });
+
+  it("metric dim-family: a value above the maximum clamps down to it", () => {
+    const result = commitTypedMeasure({
+      typed: "400",
+      current: mm(0),
+      family: "dim",
+      min: 153,
+      max: 304,
+      system: "metric",
+      bare: false,
+    });
+    expect(result.value).toBe(centimetresToMm(304));
+  });
+
+  it("imperial: a feet-and-inches string on a length-family field commits what parseImperial always has", () => {
+    const result = commitTypedMeasure({
+      typed: "6'2",
+      current: mm(0),
+      family: "length",
+      min: BOARD_LENGTH_RANGE_IN.min,
+      max: BOARD_LENGTH_RANGE_IN.max,
+      system: "imperial",
+      bare: false,
+    });
+    expect(result.error).toBeNull();
+    // 6'2" is 74in; inchesToMm(74) is the provenance every other imperial case here derives from.
+    expect(result.value).toBe(inchesToMm(74));
+    expect(result.display).toBe(formatFeetInches(inchesToMm(74)));
+  });
+
+  it("imperial: an out-of-range number clamps in the inch domain before snapping", () => {
+    const result = commitTypedMeasure({
+      typed: "200",
+      current: mm(0),
+      family: "dim",
+      min: WIDEPOINT_WIDTH_RANGE_IN.min,
+      max: WIDEPOINT_WIDTH_RANGE_IN.max,
+      system: "imperial",
+      bare: false,
+    });
+    expect(result.value).toBe(inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max));
+  });
+
+  it("boundary: a metric value typed at exactly min or max is accepted and reprinted unchanged", () => {
+    const atMin = commitTypedMeasure({
+      typed: "4",
+      current: mm(0),
+      family: "mark",
+      min: 4,
+      max: 127,
+      system: "metric",
+      bare: false,
+    });
+    expect(atMin.value).toBe(mm(4));
+    expect(atMin.error).toBeNull();
+
+    const atMax = commitTypedMeasure({
+      typed: "127",
+      current: mm(0),
+      family: "mark",
+      min: 4,
+      max: 127,
+      system: "metric",
+      bare: false,
+    });
+    expect(atMax.value).toBe(mm(127));
+    expect(atMax.error).toBeNull();
+  });
+
+  it("boundary: an imperial value typed at exactly min or max is accepted and reprinted unchanged", () => {
+    const atMin = commitTypedMeasure({
+      typed: String(WIDEPOINT_WIDTH_RANGE_IN.min),
+      current: mm(0),
+      family: "dim",
+      min: WIDEPOINT_WIDTH_RANGE_IN.min,
+      max: WIDEPOINT_WIDTH_RANGE_IN.max,
+      system: "imperial",
+      bare: false,
+    });
+    expect(atMin.value).toBe(inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.min));
+    expect(atMin.error).toBeNull();
+
+    const atMax = commitTypedMeasure({
+      typed: String(WIDEPOINT_WIDTH_RANGE_IN.max),
+      current: mm(0),
+      family: "dim",
+      min: WIDEPOINT_WIDTH_RANGE_IN.min,
+      max: WIDEPOINT_WIDTH_RANGE_IN.max,
+      system: "imperial",
+      bare: false,
+    });
+    expect(atMax.value).toBe(inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max));
+    expect(atMax.error).toBeNull();
   });
 });
 

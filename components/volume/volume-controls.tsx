@@ -10,9 +10,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
+import { MeasureField } from "@/components/design/measure-field";
+import { useUnits } from "@/components/units-provider";
 import type { VolumeResult, VolumeSpec } from "@/lib/geometry/volume";
 import { BOARD_TYPE_STEP_COUNT } from "@/lib/geometry/volume";
+import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import { formatInchesFraction, inchesToMm, mmToInches } from "@/lib/geometry/units";
+import { formatLength, measureSlider } from "@/lib/geometry/measure-display";
 
 const WIDTH_BOUNDS = { min: 16, max: 24, step: 0.125 };
 const CENTER_THICKNESS_BOUNDS = { min: 1.75, max: 3.5, step: 0.0625 };
@@ -47,10 +51,15 @@ export function VolumeControls({
   onToggleImportTemplateDimensions,
   onToggleImportRailThickness,
 }: VolumeControlsProps) {
+  const { system } = useUnits();
   const lengthIn = mmToInches(effectiveVolume.length);
   const lengthFeet = Math.floor(lengthIn / 12);
   const lengthInches = Math.round(lengthIn - lengthFeet * 12);
-  const setLengthIn = (totalIn: number) => onChange({ length: inchesToMm(clampFinite(totalIn, 60, 120)) });
+  const setLengthIn = (totalIn: number) =>
+    onChange({
+      length: inchesToMm(clampFinite(totalIn, BOARD_LENGTH_RANGE_IN.min, BOARD_LENGTH_RANGE_IN.max)),
+    });
+  const boardLength = measureSlider(effectiveVolume.length, BOARD_LENGTH_RANGE_IN, 1, 10, system);
 
   const widthIn = mmToInches(effectiveVolume.width);
   const centerThicknessIn = mmToInches(effectiveVolume.centerThickness);
@@ -95,55 +104,71 @@ export function VolumeControls({
         </label>
       )}
 
-      {/* Board Length keeps its own hand-rolled markup — the feet/inches Select combo sits
-          between the label and the slider, which SliderRow's fixed label-then-track layout has
-          no room for. Named in slider-row.test.ts's allowlist alongside its TEMPLATE and FINS
-          counterparts, which share this exact shape. */}
+      {/* Board Length keeps its own hand-rolled markup: a label row, then either the feet/inches
+          Select combo (Imperial) or one typed centimetre field (Metric, D-08), then the slider —
+          a shape SliderRow's fixed label-then-track layout has no slot for either way. Named in
+          slider-row.test.ts's allowlist alongside its TEMPLATE and FINS counterparts, which share
+          this exact shape. */}
       <div style={{ opacity: dimensionsOpacity }}>
         <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
-          Board Length — {lengthFeet}&apos;{lengthInches}&quot;
+          Board Length — {formatLength(effectiveVolume.length, system)}
         </div>
         <div className="mb-2 flex gap-2">
-          <Select
-            value={lengthFeet}
-            onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
-            disabled={dimensionsDisabled}
-          >
-            <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {FEET_OPTIONS.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f}&apos;
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={lengthInches}
-            onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
-            disabled={dimensionsDisabled}
-          >
-            <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {INCHES_OPTIONS.map((i) => (
-                <SelectItem key={i} value={i}>
-                  {i}&quot;
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {system === "imperial" ? (
+            <>
+              <Select
+                value={lengthFeet}
+                onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
+                disabled={dimensionsDisabled}
+              >
+                <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FEET_OPTIONS.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f}&apos;
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={lengthInches}
+                onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
+                disabled={dimensionsDisabled}
+              >
+                <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {INCHES_OPTIONS.map((i) => (
+                    <SelectItem key={i} value={i}>
+                      {i}&quot;
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          ) : (
+            <MeasureField
+              value={effectiveVolume.length}
+              onCommit={(next) => onChange({ length: next })}
+              label="Board Length"
+              family="length"
+              min={boardLength.min}
+              max={boardLength.max}
+              system={system}
+              disabled={dimensionsDisabled}
+            />
+          )}
         </div>
         <Slider
-          value={lengthIn}
-          min={60}
-          max={120}
-          step={1}
+          value={boardLength.value}
+          min={boardLength.min}
+          max={boardLength.max}
+          step={boardLength.step}
           disabled={dimensionsDisabled}
-          onValueChange={(v) => setLengthIn(sliderValue(v))}
+          onValueChange={(v) => onChange({ length: boardLength.toMm(sliderValue(v)) })}
           className="slider-accent"
         />
       </div>
