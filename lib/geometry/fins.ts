@@ -43,7 +43,8 @@
  */
 
 import type { Point2D } from "./board";
-import { type Mm, inchesToMm, mm, mmToInches, type MeasureFamily } from "./units";
+import { formatDim, formatDimBare } from "./measure-display";
+import { type Mm, inchesToMm, mm, mmToInches, type MeasureFamily, type UnitsSystem } from "./units";
 import { TOE_AIM_TABLE, TOE_AIM_TABLE_COLUMNS, type ToeAimTableRowKey } from "./toe-aim-tables";
 
 export type FinSetup = "single" | "twin" | "thruster" | "2plus1" | "quad";
@@ -214,11 +215,17 @@ export interface FinPlacementResult {
 }
 
 export interface ToeAimTableView {
-  columns: readonly number[];
+  /** Display-ready — bare imperial numbers stringified, or one-decimal centimetres in Metric. */
+  columns: readonly string[];
+  /** Display-ready — today's raw row key (`"67"`, `"72+"`) in Imperial, the honest centimetre
+   * conversion (with the same trailing `+` marker) in Metric. */
   rowLabel: string;
-  front: readonly number[];
-  rear: readonly number[];
+  front: readonly string[];
+  rear: readonly string[];
   highlightIndex: number;
+  /** The display of the board length at and above which every row is identical — today's
+   * seventy-two inches, so the modal's explanatory line never holds a fixed inch figure. */
+  identicalFromLabel: string;
 }
 
 export const THRUSTER_FRONT_MODELS: { value: ThrusterFrontModel; label: string }[] = [
@@ -1138,8 +1145,17 @@ export function resetAdvanced(setup: FinSetup): FinAdvancedSpec {
   };
 }
 
-/** Ported from `toeTableData` (Fins.dc.html lines 957-968). */
-export function toeAimTableFor(boardLength: Mm, tailWidth12: Mm): ToeAimTableView {
+/**
+ * Ported from `toeTableData` (Fins.dc.html lines 957-968), and the one place the toe-aim
+ * reference table becomes the shaper's own units. The selection arithmetic — the row key, the
+ * nearest-column search, the highlight index — is exactly what shipped before this plan and
+ * never touches `system`; only the shape of what is RETURNED changes. This lives here, not in
+ * `toe-aim-table-modal.tsx`, because the table is a published reference in inches and turning it
+ * into the shaper's units is a property of the view, not of whichever component happens to draw
+ * it — so any future consumer of this table gets the same numbers the modal does, with no risk
+ * of two call sites silently disagreeing about how to format it.
+ */
+export function toeAimTableFor(boardLength: Mm, tailWidth12: Mm, system: UnitsSystem): ToeAimTableView {
   const L = mmToInches(boardLength);
   const W = mmToInches(tailWidth12);
   const rowKey = (L >= 72 ? "72+" : String(Math.round(L))) as ToeAimTableRowKey;
@@ -1149,10 +1165,32 @@ export function toeAimTableFor(boardLength: Mm, tailWidth12: Mm): ToeAimTableVie
     if (Math.abs(c - W) < Math.abs(TOE_AIM_TABLE_COLUMNS[highlightIndex] - W)) highlightIndex = i;
   });
 
-  const front = TOE_AIM_TABLE.front[rowKey] ?? TOE_AIM_TABLE.front["72+"];
-  const rear = TOE_AIM_TABLE.rear[rowKey] ?? TOE_AIM_TABLE.rear["72+"];
+  const frontRaw = TOE_AIM_TABLE.front[rowKey] ?? TOE_AIM_TABLE.front["72+"];
+  const rearRaw = TOE_AIM_TABLE.rear[rowKey] ?? TOE_AIM_TABLE.rear["72+"];
 
-  return { columns: TOE_AIM_TABLE_COLUMNS, rowLabel: rowKey, front, rear, highlightIndex };
+  // Toe-aim distances are dims-family (D-01: the same family a fin's tail width @12" reads in),
+  // so a table value converts through formatDimBare — bare because the modal's own column header
+  // already carries the unit (D-10). Imperial reproduces exactly what the modal prints today: the
+  // raw inch number stringified, no formatting applied.
+  const formatValue = (v: number): string => (system === "imperial" ? String(v) : formatDimBare(inchesToMm(v), system));
+
+  // The row key's open-ended form ("72+") keeps its trailing "+" marker in Metric; the numeric
+  // part converts the same way every other cell does.
+  const formatRowLabel = (key: ToeAimTableRowKey): string => {
+    if (system === "imperial") return key;
+    const hasPlus = key.endsWith("+");
+    const numericIn = parseInt(hasPlus ? key.slice(0, -1) : key, 10);
+    return `${formatDimBare(inchesToMm(numericIn), system)}${hasPlus ? "+" : ""}`;
+  };
+
+  return {
+    columns: TOE_AIM_TABLE_COLUMNS.map(formatValue),
+    rowLabel: formatRowLabel(rowKey),
+    front: frontRaw.map(formatValue),
+    rear: rearRaw.map(formatValue),
+    highlightIndex,
+    identicalFromLabel: formatDim(inchesToMm(72), system),
+  };
 }
 
 export function computeFinPlacement(spec: FinPlacementSpec): FinPlacementResult {

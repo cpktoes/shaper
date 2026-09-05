@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useUnits } from "@/components/units-provider";
 import { useDesign } from "@/components/design/design-store";
 import { toeAimTableFor, type FinAdvancedSpec, type FinPlacementSpec } from "@/lib/geometry/fins";
 import { mmToInches, type Mm } from "@/lib/geometry/units";
@@ -106,6 +107,7 @@ export function FinPlacementEditor() {
   const [activeTab, setActiveTab] = useState<FinTab>("viewer");
   const [toeTableOpen, setToeTableOpen] = useState(false);
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
+  const { system } = useUnits();
 
   function handleCopyPreset() {
     const text = buildPresetSource(rawSpec);
@@ -119,8 +121,8 @@ export function FinPlacementEditor() {
   }
 
   const toeTableView = useMemo(
-    () => toeAimTableFor(spec.boardLength, spec.tailWidth12),
-    [spec.boardLength, spec.tailWidth12],
+    () => toeAimTableFor(spec.boardLength, spec.tailWidth12, system),
+    [spec.boardLength, spec.tailWidth12, system],
   );
 
   return (
