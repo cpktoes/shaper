@@ -8,11 +8,14 @@ import {
   formatFeetInches,
   formatInchesFraction,
   formatSignedInchesFraction,
+  formatWholeMm,
   inchesToMm,
   mm,
   mmToCentimetres,
   mmToInches,
   parseImperial,
+  parseMetric,
+  roundToWholeMm,
   squareMmToSquareInches,
 } from "./units";
 
@@ -173,6 +176,137 @@ describe("units boundary", () => {
 
     it("exposes MM_PER_CM as 10", () => {
       expect(MM_PER_CM).toBe(10);
+    });
+  });
+
+  // D-02's marks family — rail band marks, rocker heights and the five foil station
+  // thicknesses — read in whole millimetres, a nearest-rule the same signed-epsilon
+  // discipline as formatCentimetres, so the two formatters never disagree about the
+  // same value. Expected values below are computed from the known conversion (ten
+  // millimetres to the centimetre / 25.4mm to the inch) — there is no prototype
+  // ancestor for the metric side, so there is no golden fixture to extract.
+  describe("formatWholeMm", () => {
+    it("formats a whole millimetre value with no decimal", () => {
+      expect(formatWholeMm(mm(67))).toBe("67");
+    });
+
+    it("rounds up to the nearest whole millimetre", () => {
+      expect(formatWholeMm(mm(66.6))).toBe("67");
+    });
+
+    it("rounds down to the nearest whole millimetre", () => {
+      expect(formatWholeMm(mm(66.4))).toBe("66");
+    });
+
+    it("reads the same value formatCentimetres reads as 6.7 — a thickness reads 67 as a mark", () => {
+      // 2.625in * 25.4 = 66.675mm, which formatCentimetres reads as "6.7" (6.675cm rounded).
+      expect(formatWholeMm(inchesToMm(2.625))).toBe("67");
+      expect(formatCentimetres(inchesToMm(2.625))).toBe("6.7");
+    });
+
+    it("rounds a value exactly on the half-millimetre boundary away from zero", () => {
+      // Matches formatCentimetres's tie-break discipline, so the two never disagree.
+      expect(formatWholeMm(mm(66.5))).toBe("67");
+    });
+
+    it("signs the nudge for a negative half-millimetre boundary", () => {
+      expect(formatWholeMm(mm(-66.5))).toBe("-67");
+    });
+
+    it("formats zero with no decimal point and no minus sign", () => {
+      expect(formatWholeMm(mm(0))).toBe("0");
+    });
+  });
+
+  describe("roundToWholeMm", () => {
+    it("snaps up to the nearest whole millimetre", () => {
+      expect(roundToWholeMm(mm(66.6))).toBe(mm(67));
+    });
+
+    it("snaps down to the nearest whole millimetre", () => {
+      expect(roundToWholeMm(mm(66.4))).toBe(mm(66));
+    });
+
+    it("leaves an already-whole value unchanged", () => {
+      expect(roundToWholeMm(mm(67))).toBe(mm(67));
+    });
+
+    it("agrees with formatWholeMm — snapping first never changes the printed value", () => {
+      const table = [mm(66.6), mm(66.4), mm(66.5), mm(-66.5), mm(0), inchesToMm(2.625)];
+      for (const value of table) {
+        expect(formatWholeMm(roundToWholeMm(value))).toBe(formatWholeMm(value));
+      }
+    });
+  });
+
+  describe("parseMetric", () => {
+    it("reads a bare number as the field's own unit — cm field", () => {
+      expect(parseMetric("51.4", "cm")).toBe(mm(514));
+    });
+
+    it("reads a bare number as the field's own unit — mm field", () => {
+      expect(parseMetric("67", "mm")).toBe(mm(67));
+    });
+
+    it("an explicit mm suffix overrides a cm field", () => {
+      expect(parseMetric("514 mm", "cm")).toBe(mm(514));
+    });
+
+    it("an explicit cm suffix (no space) overrides a mm field", () => {
+      expect(parseMetric("6.7cm", "mm")).toBe(mm(67));
+    });
+
+    it("tolerates case and surrounding whitespace on the suffix", () => {
+      expect(parseMetric("51.4 CM", "mm")).toBe(mm(514));
+      expect(parseMetric(" 51.4cm ", "mm")).toBe(mm(514));
+    });
+
+    it("does not accept a comma decimal separator", () => {
+      expect(parseMetric("51,4", "cm")).toBeNull();
+    });
+
+    it("keeps the sign on a negative value", () => {
+      expect(parseMetric("-5.1", "cm")).toBe(mm(-51));
+    });
+
+    it("returns null for an empty string", () => {
+      expect(parseMetric("", "cm")).toBeNull();
+    });
+
+    it("returns null for whitespace-only input", () => {
+      expect(parseMetric("   ", "cm")).toBeNull();
+    });
+
+    it("returns null for a suffix with no number", () => {
+      expect(parseMetric("cm", "cm")).toBeNull();
+    });
+
+    it("returns null for unparseable text", () => {
+      expect(parseMetric("abc", "cm")).toBeNull();
+    });
+
+    it("returns null for an imperial fraction typed into a metric field", () => {
+      expect(parseMetric("5 1/2", "cm")).toBeNull();
+    });
+
+    it("returns null for a second decimal point", () => {
+      expect(parseMetric("5.1.2", "cm")).toBeNull();
+    });
+
+    it("round-trips through formatCentimetres within half a millimetre", () => {
+      const table = [mm(514.35), mm(1880), mm(66.7), mm(3.2)];
+      for (const value of table) {
+        const parsed = parseMetric(formatCentimetres(value), "cm")!;
+        expect(Math.abs(parsed - value)).toBeLessThanOrEqual(0.5);
+      }
+    });
+
+    it("round-trips through formatWholeMm within half a millimetre", () => {
+      const table = [mm(514.35), mm(1880), mm(66.7), mm(3.2)];
+      for (const value of table) {
+        const parsed = parseMetric(formatWholeMm(value), "mm")!;
+        expect(Math.abs(parsed - value)).toBeLessThanOrEqual(0.5);
+      }
     });
   });
 });
