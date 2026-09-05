@@ -19,7 +19,6 @@ import {
   formatFeetInches,
   formatInchesFraction,
   formatSignedInchesFraction,
-  formatWholeMm,
   inchesToMm,
   mm,
   type UnitsSystem,
