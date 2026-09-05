@@ -53,7 +53,7 @@ const ALLOWLIST: { file: string; count: number; reason: string }[] = [
     file: FINS_PATH,
     count: 2,
     reason:
-      "Board Length has the same Select-combo shape as TEMPLATE's; Tail Width @ 12\" would fit the row alone, but it shares one 0.45 opacity dimming state with Board Length under the importTemplate toggle, and SliderRow's own disabled dimming is Tailwind's 0.4 — migrating only one would leave two adjacent sliders visibly mismatched, so both stay together.",
+      "Board Length's per-system middle row (feet/inches Select combo in Imperial, one typed centimetre field in Metric, D-08) has the same shape as TEMPLATE's and VOLUME's; Tail Width @ 12\" would fit the row alone, but it shares one 0.45 opacity dimming state with Board Length under the importTemplate toggle, and SliderRow's own disabled dimming is Tailwind's 0.4 — migrating only one would leave two adjacent sliders visibly mismatched, so both stay together.",
   },
   {
     file: VOLUME_PATH,
