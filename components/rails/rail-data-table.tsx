@@ -1,11 +1,21 @@
+"use client";
+
 /**
  * DATA page: the merged three-column rail data table, ported from the prototype's
  * `railDataGroups` merge (reference/project/Rails.dc.html lines 1314-1336) plus its italic
  * footnote card (line 444).
+ *
+ * Metric (D-10): every cell reads a bare whole millimetre and each open section's own column
+ * header gains ` (mm)` — `formatCell` is the one choke point every cell in both the full and the
+ * compact variant flows through, so converting it here also converts the Summary order form's
+ * embedded rail card (an accepted part-converted step toward Phase 7). Imperial stays
+ * byte-identical: cells keep their inch marks and headers carry no suffix.
  */
 
 import { mergeRailDataTable, type RailDataGroup, type RailDataValue, type RailSectionKey } from "@/lib/geometry/rail-bands";
-import { formatInchesFraction } from "@/lib/geometry/units";
+import { columnUnitSuffix, formatMarkBare } from "@/lib/geometry/measure-display";
+import { useUnits } from "@/components/units-provider";
+import type { UnitsSystem } from "@/lib/geometry/units";
 
 interface RailDataTableSection {
   key: RailSectionKey;
@@ -22,13 +32,14 @@ interface RailDataTableProps {
   compact?: boolean;
 }
 
-function formatCell(value: RailDataValue): string {
+function formatCell(value: RailDataValue, system: UnitsSystem): string {
   if (value === "hard-edge") return "Hard Edge";
   if (value === null) return "—";
-  return formatInchesFraction(value, 16);
+  return formatMarkBare(value, system);
 }
 
 export function RailDataTable({ sections, compact = false }: RailDataTableProps) {
+  const { system } = useUnits();
   const merged = mergeRailDataTable(sections.map((s) => ({ key: s.key, dataGroups: s.dataGroups })));
 
   if (compact) {
@@ -47,6 +58,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
           {sections.map((s) => (
             <div key={s.key} className="min-w-0 flex-1 text-right font-extrabold text-surf-ink">
               {s.title}
+              {columnUnitSuffix("mark", system)}
             </div>
           ))}
         </div>
@@ -67,7 +79,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
                 <div className="min-w-0 flex-[1.4] text-surf-ink-muted">{row.label}</div>
                 {row.cells.map((cell, i) => (
                   <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-surf-ink">
-                    {formatCell(cell)}
+                    {formatCell(cell, system)}
                   </div>
                 ))}
               </div>
@@ -88,6 +100,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
               {sections.map((s) => (
                 <div key={s.key} className="min-w-0 flex-1 text-right text-sm font-extrabold text-surf-ink">
                   {s.title}
+                  {columnUnitSuffix("mark", system)}
                 </div>
               ))}
             </div>
@@ -101,7 +114,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
                     <div className="min-w-0 flex-[1.4] text-surf-ink-muted">{row.label}</div>
                     {row.cells.map((cell, i) => (
                       <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-surf-ink">
-                        {formatCell(cell)}
+                        {formatCell(cell, system)}
                       </div>
                     ))}
                   </div>
