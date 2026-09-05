@@ -17,7 +17,9 @@
  * Every dimension and the litres figure on either variant is formatted through
  * `lib/geometry/units.ts` — never converted inline — and the board name always truncates via CSS
  * (`block truncate`), never a code-level slice, so a long multi-byte or emoji name can never be
- * split mid-grapheme.
+ * split mid-grapheme. The four-number dims line itself is composed by the shared
+ * `CardMetadataLine` component (also used by the preset cards), so both card types can never
+ * disagree about how a board's size is written.
  *
  * The saved variant also carries the D-13 Rename/Duplicate/Delete menu (`RackCardMenu`). Because
  * the card itself is a whole-card `<button>`, the menu's trigger cannot be nested inside it —
@@ -31,11 +33,10 @@
 
 import { useDesign } from "@/components/design/design-store";
 import { OutlineViewer } from "@/components/outline/outline-viewer";
+import { CardMetadataLine } from "@/components/setup/card-metadata-line";
 import { RackCardMenu } from "@/components/setup/rack-card-menu";
-import { useUnits } from "@/components/units-provider";
 import { buildOutline } from "@/lib/geometry/outline";
-import { summarizeDesign, type DesignSummary } from "@/lib/geometry/design";
-import { formatSummaryLine } from "@/lib/geometry/summary-line";
+import { summarizeDesign } from "@/lib/geometry/design";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
@@ -90,18 +91,6 @@ function CardThumbnail({ geometry, outline }: { geometry: OutlineGeometry; outli
         <OutlineViewer geometry={geometry} outline={outline} showConstruction={false} hideCallouts />
       </div>
     </div>
-  );
-}
-
-function CardMetadataLine({ summary }: { summary: DesignSummary }) {
-  // The composition itself lives in lib/geometry/summary-line.ts (shared with the settings
-  // menu's live example, and — from 05-02 onward — the preset cards) so a card's four numbers
-  // are always produced the same way in whichever system the shaper picked.
-  const { system } = useUnits();
-  return (
-    <span className="text-xs leading-[1.4] font-semibold text-surf-ink-muted">
-      {formatSummaryLine(summary, system)}
-    </span>
   );
 }
 
