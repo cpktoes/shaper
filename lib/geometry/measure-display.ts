@@ -22,6 +22,8 @@
 import { MEASURE_STATION_MM } from "./outline";
 import {
   centimetresToMm,
+  cubicInchesToCubicMm,
+  cubicMmToCubicCentimetres,
   formatCentimetres,
   formatFeetInches,
   formatInchesFraction,
@@ -36,6 +38,8 @@ import {
   parseMetric,
   roundToSixteenthInch,
   roundToWholeMm,
+  squareMmToSquareCentimetres,
+  squareMmToSquareInches,
   type Mm,
   type MeasureFamily,
   type UnitsSystem,
@@ -107,6 +111,40 @@ export function formatSignedDim(value: Mm, system: UnitsSystem): string {
  */
 export function formatLength(value: Mm, system: UnitsSystem): string {
   return system === "metric" ? `${formatCentimetres(value)} cm` : formatFeetInches(value);
+}
+
+/**
+ * The volume card's area line (D-04): imperial the existing one-decimal square-inch figure,
+ * metric a whole square-centimetre figure with its own unit — `7964 cm²`. A square-centimetre
+ * value in the thousands has no meaningful tenths a shaper would cut to, so a whole number is the
+ * honest precision here — the same reasoning `formatCubicVolume` below applies to the supporting
+ * line under the litres. Neither branch wraps its output in parentheses or appends an
+ * "(imported)" suffix — the card composes both, exactly as it does today.
+ */
+export function formatArea(areaMm2: number, system: UnitsSystem): string {
+  if (system === "metric") {
+    const cm2 = squareMmToSquareCentimetres(areaMm2);
+    const nudge = cm2 < 0 ? -1e-9 : 1e-9;
+    return `${Math.round(cm2 + nudge)} cm²`;
+  }
+  return `${squareMmToSquareInches(areaMm2).toFixed(1)} sq in`;
+}
+
+/**
+ * The volume card's cubic supporting line (D-04): imperial the existing one-decimal cubic-inch
+ * figure, metric a whole cubic-centimetre figure — `34020 cm³`, converted through
+ * `cubicInchesToCubicMm` then `cubicMmToCubicCentimetres` so neither factor is restated here. A
+ * cubic-centimetre value at this scale has no meaningful tenths a shaper would cut to, the same
+ * reasoning `formatArea` above applies to its own line. Neither branch wraps its output in
+ * parentheses — the card composes those, exactly as it does today.
+ */
+export function formatCubicVolume(volumeCubicInches: number, system: UnitsSystem): string {
+  if (system === "metric") {
+    const cm3 = cubicMmToCubicCentimetres(cubicInchesToCubicMm(volumeCubicInches));
+    const nudge = cm3 < 0 ? -1e-9 : 1e-9;
+    return `${Math.round(cm3 + nudge)} cm³`;
+  }
+  return `${volumeCubicInches.toFixed(1)} cu in`;
 }
 
 /**

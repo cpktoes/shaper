@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * The Volume Calculation card, ported from reference/project/Volume.dc.html lines 107-149.
  * Card-and-rows treatment follows components/rails/rail-data-table.tsx. Every number here comes
@@ -13,9 +15,8 @@
 
 import type { Litres } from "@/lib/geometry/units";
 import type { VolumeResult } from "@/lib/geometry/volume";
-import { formatInchesFraction, MM_PER_INCH } from "@/lib/geometry/units";
-
-const SQMM_PER_SQIN = MM_PER_INCH * MM_PER_INCH;
+import { useUnits } from "@/components/units-provider";
+import { formatArea, formatCubicVolume, formatMark } from "@/lib/geometry/measure-display";
 
 interface VolumeCalculationCardProps {
   result: VolumeResult;
@@ -76,9 +77,9 @@ export function VolumeCalculationCard({
   centerThicknessDisplayLabel,
   compact = false,
 }: VolumeCalculationCardProps) {
-  const areaSqIn = result.area / SQMM_PER_SQIN;
+  const { system } = useUnits();
   const areaRowLabel = result.importingTemplate ? "Template Area" : "Board Area (estimated)";
-  const areaSqInDisplay = `${areaSqIn.toFixed(1)} sq in${result.importingTemplate ? " (imported)" : ""}`;
+  const areaSqInDisplay = `${formatArea(result.area, system)}${result.importingTemplate ? " (imported)" : ""}`;
   const weightedThicknessLabel = result.geomReady ? "Length-Weighted Effective Thickness" : "Weighted Thickness";
   // D-13's method disclosure: which of the two figures quotedVolumeLitres actually is.
   const methodLine = result.importingTemplate
@@ -86,7 +87,7 @@ export function VolumeCalculationCard({
     : "From the board-type factor tables (quick estimate).";
   const supportingLine = result.importingTemplate
     ? `${crossSectionStationCount} cross-sections integrated`
-    : `(${result.volumeCubicInches.toFixed(1)} cu in)`;
+    : `(${formatCubicVolume(result.volumeCubicInches, system)})`;
 
   if (compact) {
     return (
@@ -103,22 +104,22 @@ export function VolumeCalculationCard({
           <>
             <Row
               label="Tail Cross-Section Thickness"
-              value={formatInchesFraction(result.tailCrossSectionThickness!)}
+              value={formatMark(result.tailCrossSectionThickness!, system)}
               compact
             />
             <Row
               label="Center Cross-Section Thickness"
-              value={formatInchesFraction(result.centerCrossSectionThickness!)}
+              value={formatMark(result.centerCrossSectionThickness!, system)}
               compact
             />
             <Row
               label="Nose Cross-Section Thickness"
-              value={formatInchesFraction(result.noseCrossSectionThickness!)}
+              value={formatMark(result.noseCrossSectionThickness!, system)}
               compact
             />
           </>
         )}
-        <Row label={weightedThicknessLabel} value={formatInchesFraction(result.weightedThickness)} compact />
+        <Row label={weightedThicknessLabel} value={formatMark(result.weightedThickness, system)} compact />
 
         <div className="mt-1 flex items-baseline justify-between border-t-2 border-surf-line-faint pt-1.5 pb-1">
           <span
@@ -159,19 +160,19 @@ export function VolumeCalculationCard({
           <>
             <Row
               label="Tail Cross-Section Thickness"
-              value={formatInchesFraction(result.tailCrossSectionThickness!)}
+              value={formatMark(result.tailCrossSectionThickness!, system)}
             />
             <Row
               label="Center Cross-Section Thickness"
-              value={formatInchesFraction(result.centerCrossSectionThickness!)}
+              value={formatMark(result.centerCrossSectionThickness!, system)}
             />
             <Row
               label="Nose Cross-Section Thickness"
-              value={formatInchesFraction(result.noseCrossSectionThickness!)}
+              value={formatMark(result.noseCrossSectionThickness!, system)}
             />
           </>
         )}
-        <Row label={weightedThicknessLabel} value={formatInchesFraction(result.weightedThickness)} />
+        <Row label={weightedThicknessLabel} value={formatMark(result.weightedThickness, system)} />
 
         <div className="mt-1.5 flex items-baseline justify-between border-t-2 border-surf-line-faint pt-3.5 pb-2">
           <span className="text-sm font-bold text-surf-ink-muted">Estimated Volume</span>

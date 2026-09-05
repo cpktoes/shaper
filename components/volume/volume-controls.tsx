@@ -15,8 +15,8 @@ import { useUnits } from "@/components/units-provider";
 import type { VolumeResult, VolumeSpec } from "@/lib/geometry/volume";
 import { BOARD_TYPE_STEP_COUNT } from "@/lib/geometry/volume";
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
-import { formatInchesFraction, inchesToMm, mmToInches } from "@/lib/geometry/units";
-import { formatLength, measureSlider } from "@/lib/geometry/measure-display";
+import { inchesToMm, mmToInches } from "@/lib/geometry/units";
+import { formatDim, formatLength, measureSlider } from "@/lib/geometry/measure-display";
 
 const WIDTH_BOUNDS = { min: 16, max: 24, step: 0.125 };
 const CENTER_THICKNESS_BOUNDS = { min: 1.75, max: 3.5, step: 0.0625 };
@@ -61,8 +61,14 @@ export function VolumeControls({
     });
   const boardLength = measureSlider(effectiveVolume.length, BOARD_LENGTH_RANGE_IN, 1, 10, system);
 
-  const widthIn = mmToInches(effectiveVolume.width);
-  const centerThicknessIn = mmToInches(effectiveVolume.centerThickness);
+  const boardWidth = measureSlider(effectiveVolume.width, WIDTH_BOUNDS, WIDTH_BOUNDS.step, 1, system);
+  const centerThickness = measureSlider(
+    effectiveVolume.centerThickness,
+    CENTER_THICKNESS_BOUNDS,
+    CENTER_THICKNESS_BOUNDS.step,
+    1,
+    system,
+  );
 
   const { templateAvailable, railAvailable, importingTemplate, importingRailThickness } = volumeResult;
   const dimensionsDisabled = importingTemplate;
@@ -175,30 +181,24 @@ export function VolumeControls({
 
       <SliderRow
         density="tight"
-        label={`Board Width — ${formatInchesFraction(effectiveVolume.width)}`}
-        value={widthIn}
-        min={WIDTH_BOUNDS.min}
-        max={WIDTH_BOUNDS.max}
-        step={WIDTH_BOUNDS.step}
+        label={`Board Width — ${formatDim(effectiveVolume.width, system)}`}
+        value={boardWidth.value}
+        min={boardWidth.min}
+        max={boardWidth.max}
+        step={boardWidth.step}
         disabled={dimensionsDisabled}
-        onValueChange={(v) =>
-          onChange({ width: inchesToMm(clampFinite(v, WIDTH_BOUNDS.min, WIDTH_BOUNDS.max)) })
-        }
+        onValueChange={(v) => onChange({ width: boardWidth.toMm(v) })}
       />
 
       <SliderRow
         density="tight"
-        label={`Center Thickness — ${formatInchesFraction(effectiveVolume.centerThickness)}`}
-        value={centerThicknessIn}
-        min={CENTER_THICKNESS_BOUNDS.min}
-        max={CENTER_THICKNESS_BOUNDS.max}
-        step={CENTER_THICKNESS_BOUNDS.step}
+        label={`Center Thickness — ${formatDim(effectiveVolume.centerThickness, system)}`}
+        value={centerThickness.value}
+        min={centerThickness.min}
+        max={centerThickness.max}
+        step={centerThickness.step}
         disabled={thicknessDisabled}
-        onValueChange={(v) =>
-          onChange({
-            centerThickness: inchesToMm(clampFinite(v, CENTER_THICKNESS_BOUNDS.min, CENTER_THICKNESS_BOUNDS.max)),
-          })
-        }
+        onValueChange={(v) => onChange({ centerThickness: centerThickness.toMm(v) })}
       />
 
       {!importingRailThickness && (

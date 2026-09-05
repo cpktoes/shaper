@@ -150,6 +150,16 @@ describe("units isolation (UNIT-05, D-16)", () => {
  * list until Plan 03 deleted it, once its last consumer (`rocker-datasheet.tsx`'s typed cells)
  * moved to `components/design/measure-field.tsx`. The completeness assertion below is what makes a
  * THIRD kind — a display file nobody listed — impossible to introduce unnoticed.
+ *
+ * As of Plan 07, every entry in `DESIGN_SCREEN_DISPLAY_FILES` reads `converted: true` and the
+ * closing assertion below fails the suite the moment a new one does not: every number a shaper
+ * reads on the five design screens — outline, rocker, rails, fins, volume — now comes from this
+ * one boundary, in the system they chose. The Summary order form is a different story: it reuses
+ * four of these now-converted components (`OutlineViewer`, `RockerViewer`'s compact callouts,
+ * `RailSectionPlot`, `RailDataTable`'s compact mode) and so reads Metric wherever it reuses one of
+ * them, while the rest of the order form — the panels that compose their own imperial strings
+ * rather than reusing a converted component — stays in inches until Phase 7. That is
+ * CONTEXT.md's Phase Boundary working as designed, not a gap in this ledger.
  */
 describe("the design screens read every measurement through the display boundary", () => {
   // Built from parts so this test file — which necessarily names every one of these identifiers
@@ -175,9 +185,9 @@ describe("the design screens read every measurement through the display boundary
     { file: "components/fins/fin-viewer.tsx", converted: true },
     { file: "components/fins/fin-data-panel.tsx", converted: true },
     { file: "components/fins/toe-aim-table-modal.tsx", converted: true },
-    { file: "components/volume/volume-controls.tsx", converted: false },
-    { file: "components/volume/volume-calculation-card.tsx", converted: false },
-    { file: "components/volume/volume-estimator.tsx", converted: false },
+    { file: "components/volume/volume-controls.tsx", converted: true },
+    { file: "components/volume/volume-calculation-card.tsx", converted: true },
+    { file: "components/volume/volume-estimator.tsx", converted: true },
   ];
 
   const OUT_OF_SCOPE_UNITS_FILES: { file: string; reason: string }[] = [
@@ -273,5 +283,62 @@ describe("the design screens read every measurement through the display boundary
     for (const entry of OUT_OF_SCOPE_UNITS_FILES) {
       expect(entry.reason.length, `${entry.file} has no reason`).toBeGreaterThan(0);
     }
+  });
+
+  /**
+   * The phase's closing assertion. Every one of the fifteen design-screen display files this
+   * phase names has flipped `converted: true` across Plans 01-07 — from this point a new file
+   * added to `DESIGN_SCREEN_DISPLAY_FILES` above starts life as `converted: false` and fails
+   * this test, so a shaper's Metric switch can never silently stop reaching a new screen
+   * element the way it could if this were left to a reviewer's memory.
+   */
+  it("every design-screen display file is converted — the phase's closing assertion", () => {
+    const unconverted = DESIGN_SCREEN_DISPLAY_FILES.filter((entry) => !entry.converted).map((entry) => entry.file);
+    expect(unconverted, `these ledger entries are not yet converted: ${unconverted.join(", ")}`).toEqual([]);
+  });
+});
+
+/**
+ * The Summary order form's flash-free guarantee (D-12) is structural, not something a design-
+ * screen unit test can exercise: it depends on WHERE `UnitsProvider` sits in the render tree and
+ * WHETHER the Summary route re-resolves or re-wraps it. Following `lib/theme.test.ts`'s own
+ * drift-guard idiom — read the real source, strip comments, assert a structural property — rather
+ * than rendering anything (there is no DOM available in this vitest config, per
+ * `components/design/measure-field.test.ts`'s own note).
+ *
+ * This pins three facts at once: the provider is mounted once, at the root, already carrying a
+ * server-resolved system before any route-specific code runs; the Summary route adds no provider
+ * of its own that could re-resolve (and disagree with) that root value; and the component tree
+ * the Summary renders is a client component, so the shared viewer/table components it reuses read
+ * `useUnits()` from the exact same server-rendered context the five design screens do — the two
+ * UI-SPEC backstops (`summary-carry-through · loading`, the no-flash/no-hydration-mismatch check)
+ * this test makes structurally provable rather than merely plausible.
+ */
+describe("the Summary's flash-free path is structural (D-12 backstop)", () => {
+  it("app/layout.tsx renders UnitsProvider once, wrapping a server-resolved handoff", () => {
+    const source = readStripped("app/layout.tsx");
+    expect(source, "app/layout.tsx does not import UnitsProvider").toMatch(
+      /from\s+["']@\/components\/units-provider["']/,
+    );
+    expect(source, "app/layout.tsx does not call resolveUnitsHandoff").toMatch(/resolveUnitsHandoff\(/);
+    expect(source, "app/layout.tsx does not render <UnitsProvider").toMatch(/<UnitsProvider\b/);
+  });
+
+  it("app/design/summary/page.tsx declares no units provider of its own", () => {
+    const source = readStripped("app/design/summary/page.tsx");
+    expect(source, "app/design/summary/page.tsx references UnitsProvider or the units provider module").not.toMatch(
+      /UnitsProvider|units-provider/,
+    );
+  });
+
+  it("components/summary/order-form.tsx is a client component", () => {
+    // Read raw (not stripped): "use client" must be the file's literal leading directive, not
+    // merely a string that survives comment-stripping somewhere else in the file.
+    const source = readFileSync(join(REPO_ROOT, "components/summary/order-form.tsx"), "utf8");
+    const firstStatement = source.trimStart().slice(0, 20);
+    expect(
+      firstStatement.startsWith('"use client"') || firstStatement.startsWith("'use client'"),
+      "components/summary/order-form.tsx does not open with a \"use client\" directive",
+    ).toBe(true);
   });
 });

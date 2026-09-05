@@ -7,7 +7,8 @@
  */
 
 import { useDesign } from "@/components/design/design-store";
-import { formatFeetInches, formatInchesFraction } from "@/lib/geometry/units";
+import { useUnits } from "@/components/units-provider";
+import { formatDim, formatLength } from "@/lib/geometry/measure-display";
 import { SIMPSON_PANEL_COUNT } from "@/lib/geometry/volume";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { VolumeCalculationCard } from "./volume-calculation-card";
@@ -22,6 +23,7 @@ export function VolumeEstimator() {
     toggleImportTemplateDimensions,
     toggleImportRailThickness,
   } = useDesign();
+  const { system } = useUnits();
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-nowrap">
@@ -42,9 +44,9 @@ export function VolumeEstimator() {
           result={volumeResult}
           quotedVolumeLitres={quotedVolumeLitres}
           crossSectionStationCount={SIMPSON_PANEL_COUNT + 1}
-          lengthDisplay={formatFeetInches(effectiveVolume.length)}
-          widthDisplayLabel={formatInchesFraction(effectiveVolume.width)}
-          centerThicknessDisplayLabel={formatInchesFraction(effectiveVolume.centerThickness)}
+          lengthDisplay={formatLength(effectiveVolume.length, system)}
+          widthDisplayLabel={formatDim(effectiveVolume.width, system)}
+          centerThicknessDisplayLabel={formatDim(effectiveVolume.centerThickness, system)}
         />
         </TabbedPanel>
       </main>
