@@ -5,15 +5,15 @@ milestone_name: Imperial vs Metric
 current_phase: 05
 current_phase_name: The Units Chooser
 status: executing
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-09-05T01:42:02.631Z"
-last_activity: 2026-09-04
-last_activity_desc: Milestone v1.1 roadmap created (Phases 5-7, all 14 requirements mapped)
+stopped_at: Completed 05-05-PLAN.md and 05-06-PLAN.md
+last_updated: "2026-09-05T02:16:04.656Z"
+last_activity: 2026-09-05
+last_activity_desc: Phase 05 Wave 3 closed out — 05-05 (shared slider row) and 05-06 (shared viewer toolbar button) both complete
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 6
 ---
 
 # Project State
@@ -28,15 +28,15 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 ## Current Position
 
 Phase: 05 (The Units Chooser) — EXECUTING
-Plan: 4 of 7 complete (05-01, 05-02, 05-04) — 05-03 awaiting checkpoint approval
+Plan: 6 of 7 complete (05-01, 05-02, 05-03, 05-04, 05-05, 05-06) — only 05-07 (ship it) remains
 Status: Ready to execute
-Last activity: 2026-09-04 — Phase 05 execution started
+Last activity: 2026-09-05 — Phase 05 Wave 3 (05-05, 05-06) closed out
 
 **Milestone v1.1 phases:**
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 5 | The Units Chooser | UNIT-02, UNIT-03, UNIT-04, UNIT-05, SCRN-04, RACK-01 | Not started |
+| 5 | The Units Chooser | UNIT-02, UNIT-03, UNIT-04, UNIT-05, SCRN-04, RACK-01 | In Progress (6/7 plans) |
 | 6 | The Design Screens in Metric | SCRN-01, SCRN-02, SCRN-03, SCRN-05 | Not started |
 | 7 | Metric on Paper | PRNT-01, PRNT-02, PRNT-03, PRNT-04 | Not started |
 
@@ -78,6 +78,8 @@ Last activity: 2026-09-04 — Phase 05 execution started
 | Phase 02 P05 | 15min | 2 tasks | 6 files |
 | Phase 02 P06 | 50min | 4 tasks | 8 files |
 | Phase 05 P03 | 5min | 3 tasks | 4 files |
+| Phase 05 P05 | 12min | 3 tasks | 7 files |
+| Phase 05 P06 | 6min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -128,6 +130,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 2] 02-06: Clerk sign-in dialog rebuilt on one combined <SignIn withSignUp> flow — the two-component design's own footer link pointed at an unreachable Account Portal subdomain on *.vercel.app
 - [Phase ?]: [Phase 2] 02-06: in-progress rack card gated on modelId === null, not dirty/saveStatus, so a saved-and-autosaving board stops wearing a false not-saved badge
 - [Phase ?]: [Quick 260827-wzw]: Board-actions menu trigger given its own card-sized relative wrapper (not the outer flex column, which also holds the duplicate-error message) so its bottom-right offset always measures from the card's own corner
+- [Phase 05]: [Phase 5] 05-06: rocker-editor.tsx's header comment, which used to describe its viewer toolbar as a deliberate faithful local mirror of outline-editor.tsx, was rewritten to say the button and rotate glyph are now shared via components/viewer/toolbar-button.tsx -- the standing posture it recorded was deliberately overturned by this plan
+- [Phase 05]: [Phase 5] 05-05: 34 of the planned 38+ SliderRow renders were migrated; eight sliders (three Board Length Select-combos, FINS' paired Tail Width @ 12in, and RAILS' Family/Ratio/Corner Cut Offset/Bottom Tuck 3) were deliberately left hand-rolled and named in slider-row.test.ts's allowlist with a reason each, since their shape doesn't fit SliderRow without changing how they look -- approved by the shaper at the checkpoint with the shortfall disclosed
 
 ### Pending Todos
 
@@ -274,7 +278,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-05T01:42:02.607Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-09-05T02:16:04.629Z
+Stopped at: Completed 05-05-PLAN.md and 05-06-PLAN.md
 Resume file: None
-Next action: `/gsd-plan-phase 5`
+Next action: `/gsd-execute-phase 5` (only 05-07 — ship it — remains)

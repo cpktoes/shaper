@@ -84,7 +84,7 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
   3. Signed in, the choice is waiting on any other browser or device the shaper signs in from; signed out, that browser remembers it on its own, and signing in either adopts the account's saved choice or promotes the browser's when the account has none
   4. Switching to Metric and back leaves every saved board untouched — the same dimensions, down to the same sixteenth — and nothing in the rack has been rewritten
 
-**Plans**: 4/7 plans executed
+**Plans**: 6/7 plans executed
 **Wave 1**
 
   - [x] 05-01-PLAN.md — Tracer: the gear-menu chooser through one shared preference into `units.ts` and out to a rack card label, server-rendered from the first paint
@@ -97,8 +97,8 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-  - [ ] 05-05-PLAN.md — Folded todo: one shared slider row across all five control sidebars
-  - [ ] 05-06-PLAN.md — Folded todo: one shared viewer toolbar button across the TEMPLATE and ROCKER screens
+  - [x] 05-05-PLAN.md — Folded todo: one shared slider row across all five control sidebars
+  - [x] 05-06-PLAN.md — Folded todo: one shared viewer toolbar button across the TEMPLATE and ROCKER screens
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -164,6 +164,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 2. Accounts & Saved Designs | 6/6 | Complete    | 2026-08-28 |
 | 3. Volume, Templates & Verified Math | 7/7 | Complete    | 2026-08-28 |
 | 4. Rocker & Foil Editors | 5/5 | Complete    | 2026-08-29 |
-| 5. The Units Chooser | 4/7 | In Progress|  |
+| 5. The Units Chooser | 6/7 | In Progress|  |
 | 6. The Design Screens in Metric | 0/? | Not started | - |
 | 7. Metric on Paper | 0/? | Not started | - |
