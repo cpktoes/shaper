@@ -23,19 +23,26 @@
  *
  * Quick task 260829-ugd adds the same hide-sidebar wide view `outline-editor.tsx` carries: a third
  * toolbar button that removes the `aside` from the tree entirely (rather than shrinking it) and
- * hands that width to the drawing. This is a faithful local mirror, not a shared extraction — the
- * same posture this file already takes with `RotateBoardIcon` and `buildRockerPresetSource`.
- * `bare` removes the tab strip, and this screen has two tabs (DATASHEET is unreachable while wide
- * view is on) — safe because the button that turns wide view on lives inside the VIEWER tab's own
- * toolbar and stays on screen in both states, so the active tab is invariantly VIEWER whenever
- * wide view is on, and one press always brings the strip back.
+ * hands that width to the drawing. The toolbar button and the rotate glyph are now shared — both
+ * screens draw their floating toolbar from `components/viewer/toolbar-button.tsx`'s
+ * `ViewerToolbarButton` and `RotateBoardIcon` (05-06), which overturns this file's earlier
+ * "faithful local mirror, not a shared extraction" posture: that class string and glyph were
+ * hand-edited in all seven button instances across both files, twice in one day, and that real
+ * cost is what changed the decision, not this screen's own needs. `buildRockerPresetSource`
+ * stays a local counterpart to `outline-editor.tsx`'s own preset-capture function — the dev-only
+ * capture affordance was never part of this extraction. `bare` removes the tab strip, and this
+ * screen has two tabs (DATASHEET is unreachable while wide view is on) — safe because the button
+ * that turns wide view on lives inside the VIEWER tab's own toolbar and stays on screen in both
+ * states, so the active tab is invariantly VIEWER whenever wide view is on, and one press always
+ * brings the strip back.
  */
 
-import { useId, useState } from "react";
+import { useState } from "react";
 import { LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
 import { Button } from "@/components/ui/button";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
+import { RotateBoardIcon, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { type FoilSpec } from "@/lib/geometry/foil";
 import { buildRocker, type RockerSpec } from "@/lib/geometry/rocker";
@@ -82,35 +89,6 @@ const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
   { id: "viewer", label: "VIEWER" },
   { id: "datasheet", label: "DATASHEET" },
 ];
-
-/**
- * The Template screen's rotate-board glyph, copied verbatim from `outline-editor.tsx` per D-03
- * ("carries the same rotate-in-place button the Template screen has"). See that file's own long
- * comment for why the glyph is built this way (one planshape reused twice through `<use>`, a
- * `useId`-scoped id so it never collides if this ever rendered twice on one page). Not extracted
- * into a shared module — `outline-editor.tsx` doesn't export it either, so copying keeps each
- * screen's toolbar self-contained, the same posture this screen's own `ControlSlider`-style
- * markup already takes.
- */
-function RotateBoardIcon({ className }: { className?: string }) {
-  const glyphId = `shaper-board-glyph-${useId().replace(/[^a-zA-Z0-9-]/g, "")}`;
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
-      <defs>
-        <path
-          id={glyphId}
-          d="M12 3.3C11.0 6.2 9.88 9.5 9.85 12.6 9.82 15.6 10.4 18.2 11.1 20.3a0.95 0.95 0 0 0 1.8 0C13.6 18.2 14.18 15.6 14.15 12.6 14.12 9.5 13.0 6.2 12 3.3Z"
-        />
-      </defs>
-      <g stroke="currentColor" strokeLinejoin="round" fill="none" strokeWidth={2.42}>
-        <use href={`#${glyphId}`} transform="translate(17.2,12.5) scale(0.62) translate(-12,-12.3)" />
-        <use href={`#${glyphId}`} transform="translate(8.5,17) rotate(-90) scale(0.62) translate(-12,-12.3)" />
-      </g>
-      <path d="M14.5 6.5A8 8 0 0 0 4.5 11.8" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-      <path d="M4.29 13.89 3.06 11.66 5.94 11.94Z" fill="currentColor" />
-    </svg>
-  );
-}
 
 export function RockerEditor() {
   const { rocker, updateRocker, foil, updateFoil, outline, outlineGeometry } = useDesign();
@@ -230,50 +208,30 @@ export function RockerEditor() {
             // toolbar stays inside this tab only (Task 2's plan text) — DATASHEET has no drawing
             // to rotate or hide a reference under.
             <div className="relative flex min-h-0 flex-1 items-center justify-center">
-              <button
-                type="button"
+              <ViewerToolbarButton
                 onClick={() => setOrientation((o) => (o === "horizontal" ? "vertical" : "horizontal"))}
-                aria-label="Rotate the board"
-                title="Rotate the board"
-                className="absolute top-0 right-0 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+                label="Rotate the board"
+                slot={0}
               >
                 <RotateBoardIcon className="size-6" />
-              </button>
-              <button
-                type="button"
+              </ViewerToolbarButton>
+              <ViewerToolbarButton
                 onClick={() => setShowConstruction((v) => !v)}
-                aria-pressed={showConstruction}
-                aria-label={showConstruction ? "Hide construction lines" : "Show construction lines"}
-                title={showConstruction ? "Hide construction lines" : "Show construction lines"}
-                // Same shared toolbar rule as the Template screen's own Construction Lines
-                // button (outline-editor.tsx): every button in this toolbar fills with the
-                // accent colour on hover, and this one additionally carries the toggle
-                // add-on — it keeps that accent fill after the pointer leaves whenever
-                // showConstruction is on, because construction lines are a genuine on/off
-                // toggle with a truthful aria-pressed hook to hang the persistent fill on.
-                // Hovering it while already on changes nothing, since hover and pressed paint
-                // the identical accent variant. The border stays neutral in every one of those
-                // states here too — see outline-editor.tsx's Rotate button comment for why.
-                className="absolute top-0 right-10 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+                pressed={showConstruction}
+                label={showConstruction ? "Hide construction lines" : "Show construction lines"}
+                slot={1}
               >
                 <LocateFixedIcon className="size-6" />
-              </button>
-              <button
-                type="button"
+              </ViewerToolbarButton>
+              <ViewerToolbarButton
                 onClick={handleToggleWideView}
-                aria-pressed={wideView}
-                aria-label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
+                pressed={wideView}
+                label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
                 title={wideView ? "Show the sidebar" : "Wide view"}
-                // Same box as the two buttons beside it. This is both the way in and the way out
-                // of wide view — it lives inside the VIEWER tab's own toolbar, which stays on
-                // screen in both states, so there is always a visible route back. Wide view is
-                // a genuine on/off toggle too, so it carries the same toggle add-on as
-                // Construction Lines: it stays accent-filled the whole time it's on, including
-                // while hovered, and drops the fill completely when off.
-                className="absolute top-0 right-20 z-10 flex cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent aria-pressed:bg-surf-accent aria-pressed:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+                slot={2}
               >
                 {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
-              </button>
+              </ViewerToolbarButton>
               <RockerViewer
                 rocker={rocker}
                 foil={foil}
