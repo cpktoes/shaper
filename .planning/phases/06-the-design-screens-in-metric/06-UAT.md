@@ -3,7 +3,7 @@ status: diagnosed
 phase: 06-the-design-screens-in-metric
 source: [06-VERIFICATION.md]
 started: 2026-09-05T20:43:11.570Z
-updated: 2026-09-05T21:45:59.251Z
+updated: 2026-09-05T22:01:37.245Z
 ---
 
 ## Current Test
@@ -151,7 +151,7 @@ blocked: 0
     - "Keep board dims in cm: fin-controls Tail Width (~385) and Board Length (~321), fin-data-panel summary line (~43-45), fin-viewer compact heading (~563), toe-aim modal title (~42-43), fins.ts toe-aim columns/rowLabel/identicalFromLabel (~1187-1192)"
     - "Update fins.test.ts expectations (derive strings via inchesToMm -> formatMark, never hand-typed); golden-parity blocks and fullSpreadFamily tests stay untouched and green"
     - "Record the superseding decision in 06-CONTEXT.md D-01 (~75, ~342) and 06-UI-SPEC.md (~152, ~328-330); consider adding fin placement numbers to CLAUDE.md Rule 2's Marks list"
-    - "Toe-aim table CELL values (aim distances off the stringer): pending shaper decision, see G-06-12 decision field"
+    - "Toe-aim table CELL values move to mm too (shaper decision 2026-09-05): in lib/geometry/fins.ts toeAimTableFor (~1175) split formatValue so columns/rowLabel/identicalFromLabel keep the cm dim formatter while front/rear cells use formatMarkBare; components/fins/toe-aim-table-modal.tsx ~47 columnUnitSuffix('mark', system); lib/geometry/fins.test.ts ~552-553 expectations via formatMarkBare; Imperial unaffected"
   debug_session: .planning/debug/fin-placement-numbers-in-cm.md
 - gap_id: G-06-15
   truth: "Fin viewer callouts correct, board unmoved, both themes"
