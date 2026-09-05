@@ -79,11 +79,11 @@ UNIT-01 (inches only) is superseded by this milestone.
 
 ### Design Screens
 
-- [ ] **SCRN-01**: In Metric, every slider and value on the outline, rails, fins, volume and rocker screens reads in cm for length and widths and whole mm for rail band, rocker and foil values, with sliders stepping on whole millimetres
+- [x] **SCRN-01**: In Metric, every slider and value on the outline, rails, fins, volume and rocker screens reads in cm for length and widths and whole mm for rail band, rocker and foil values, with sliders stepping on whole millimetres
 - [ ] **SCRN-02**: In Metric, typed entry accepts decimal centimetres and whole millimetres and re-prints in the chosen system; unreadable input reverts, as it does today
-- [ ] **SCRN-03**: Viewer callouts and data tables (rail band marks, fin placement numbers, rocker datasheet, volume card) read in the chosen system
+- [x] **SCRN-03**: Viewer callouts and data tables (rail band marks, fin placement numbers, rocker datasheet, volume card) read in the chosen system
 - [x] **SCRN-04**: Preset cards on the setup screen show their dimensions in the chosen system
-- [ ] **SCRN-05**: Volume reads in litres in both systems
+- [x] **SCRN-05**: Volume reads in litres in both systems
 
 ### Printed Outputs
 
@@ -157,11 +157,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UNIT-03 | Phase 5 | Complete |
 | UNIT-04 | Phase 5 | Complete |
 | UNIT-05 | Phase 5 | Complete |
-| SCRN-01 | Phase 6 | Pending |
+| SCRN-01 | Phase 6 | Complete |
 | SCRN-02 | Phase 6 | Pending |
-| SCRN-03 | Phase 6 | Pending |
+| SCRN-03 | Phase 6 | Complete |
 | SCRN-04 | Phase 5 | Complete |
-| SCRN-05 | Phase 6 | Pending |
+| SCRN-05 | Phase 6 | Complete |
 | PRNT-01 | Phase 7 | Pending |
 | PRNT-02 | Phase 7 | Pending |
 | PRNT-03 | Phase 7 | Pending |
