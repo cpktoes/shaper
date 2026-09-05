@@ -1,14 +1,17 @@
+completed: 2026-09-05
 ---
 created: 2026-08-30
 title: Extract a shared SliderRow component and migrate all five control sidebars
 area: ui
 severity: minor
 files:
+
   - components/outline/outline-controls.tsx
   - components/rocker/rocker-controls.tsx
   - components/rails/rail-controls.tsx
   - components/fins/fin-controls.tsx
   - components/volume/volume-controls.tsx
+
 source: quick task 260830-122 (paired the rocker sidebar's angle/smoothness and flatness sliders)
 resolves_phase:
 ---
@@ -30,6 +33,7 @@ own:
 1. **Extracting for two files is a half-migration.** `rail-controls.tsx`, `fin-controls.tsx` and
    `volume-controls.tsx` would still hand-roll the same markup, leaving three stragglers and a
    component that is "the shared one" only sometimes.
+
 2. **It would touch the TEMPLATE screen for no visible gain.** `outline-controls.tsx`'s `SliderRow`
    already carries disabled/hint/note behaviour and a clamped-depth warning that a two-line rocker
    task had no reason to re-verify.

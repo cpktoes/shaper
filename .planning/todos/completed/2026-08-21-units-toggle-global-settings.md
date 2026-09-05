@@ -1,11 +1,14 @@
+completed: 2026-09-05
 ---
 created: 2026-08-21
 title: Global settings: units toggle (inches vs cm) and colour themes
 area: ui
 severity: minor
 files:
+
   - components/site-nav.tsx
   - lib/geometry/units.ts
+
 source: UAT feedback, phase 01
 resolves_phase: 5
 ---

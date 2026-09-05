@@ -1,11 +1,14 @@
+completed: 2026-09-05
 ---
 created: 2026-08-30
 title: Extract a shared viewer toolbar button and migrate all screens onto it
 area: ui
 severity: minor
 files:
+
   - components/outline/outline-editor.tsx
   - components/rocker/rocker-editor.tsx
+
 source: quick task 260830-1g3
 resolves_phase:
 ---
@@ -20,8 +23,10 @@ between the two files rather than shared. That mirroring now covers three duplic
 1. **The button's class string.** Both files carry the same long Tailwind utility string —
    border, radius, padding, the hover accent trio, and (for the toggles) the pressed accent
    add-on — copied verbatim rather than composed once.
+
 2. **The button's box treatment.** Same absolute positioning pattern, same right-offset stepping,
    same icon sizing (`size-6`).
+
 3. **`RotateBoardIcon` itself**, which is already defined twice — once in `outline-editor.tsx`,
    once in `rocker-editor.tsx` — byte-identical, per that file's own header comment describing
    itself as "a faithful local mirror, not a shared extraction."
