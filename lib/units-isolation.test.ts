@@ -139,16 +139,17 @@ describe("units isolation (UNIT-05, D-16)", () => {
  *
  * `DESIGN_SCREEN_DISPLAY_FILES` names every file this phase eventually converts to read through
  * `lib/geometry/measure-display.ts`, each with a `converted` flag this phase flips true as its
- * own plan lands (Task 3 flips `outline-viewer.tsx`; later plans flip the rest — a file may keep
- * `formatFeetInches` for an as-yet-unconverted Board Length control and so stay `false` even
- * after some of its own sliders are done, exactly `outline-controls.tsx`'s situation after this
- * plan's Task 2). `OUT_OF_SCOPE_UNITS_FILES` names the two kinds of file that legitimately read
- * `lib/geometry/units` without ever becoming a display site this phase converts: the four dev-only
- * "copy preset values" builders, which serialise `inchesToMm(...)` source text for `presets.ts`
- * rather than displaying anything, and `imperial-field.tsx`, the typed-entry contract itself
- * (replaced by `components/design/measure-field.tsx` in Plan 03, which removes this entry). The
- * completeness assertion below is what makes a THIRD kind — a display file nobody listed —
- * impossible to introduce unnoticed.
+ * own plan lands (Task 3 flips `outline-viewer.tsx`; Plan 03 Task 2 flips `rocker-datasheet.tsx`;
+ * later plans flip the rest — a file may keep `formatFeetInches` for an as-yet-unconverted Board
+ * Length control and so stay `false` even after some of its own sliders are done, exactly
+ * `outline-controls.tsx`'s situation after Plan 01's Task 2). `OUT_OF_SCOPE_UNITS_FILES` names the
+ * one remaining kind of file that legitimately reads `lib/geometry/units` without ever becoming a
+ * display site this phase converts: the four dev-only "copy preset values" builders, which
+ * serialise `inchesToMm(...)` source text for `presets.ts` rather than displaying anything.
+ * `imperial-field.tsx` — the app's original typed-entry contract — was itself a member of this
+ * list until Plan 03 deleted it, once its last consumer (`rocker-datasheet.tsx`'s typed cells)
+ * moved to `components/design/measure-field.tsx`. The completeness assertion below is what makes a
+ * THIRD kind — a display file nobody listed — impossible to introduce unnoticed.
  */
 describe("the design screens read every measurement through the display boundary", () => {
   // Built from parts so this test file — which necessarily names every one of these identifiers
@@ -164,9 +165,9 @@ describe("the design screens read every measurement through the display boundary
   const DESIGN_SCREEN_DISPLAY_FILES: { file: string; converted: boolean }[] = [
     { file: "components/outline/outline-controls.tsx", converted: true },
     { file: "components/outline/outline-viewer.tsx", converted: true },
-    { file: "components/rocker/rocker-controls.tsx", converted: false },
-    { file: "components/rocker/rocker-datasheet.tsx", converted: false },
-    { file: "components/rocker/rocker-viewer.tsx", converted: false },
+    { file: "components/rocker/rocker-controls.tsx", converted: true },
+    { file: "components/rocker/rocker-datasheet.tsx", converted: true },
+    { file: "components/rocker/rocker-viewer.tsx", converted: true },
     { file: "components/rails/rail-controls.tsx", converted: false },
     { file: "components/rails/rail-data-table.tsx", converted: false },
     { file: "components/rails/rail-section-plot.tsx", converted: false },
@@ -199,11 +200,6 @@ describe("the design screens read every measurement through the display boundary
       file: "components/fins/fin-placement-editor.tsx",
       reason:
         "Dev-only 'copy preset values' builder — serialises inchesToMm(...) source text for presets.ts, not a display site.",
-    },
-    {
-      file: "components/rocker/imperial-field.tsx",
-      reason:
-        "The typed-entry contract itself, not a display site consuming it — replaced by components/design/measure-field.tsx in Plan 03, at which point Plan 03 removes this entry.",
     },
   ];
 

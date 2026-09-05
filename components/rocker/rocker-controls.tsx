@@ -32,7 +32,9 @@
 
 import type { ReactNode } from "react";
 import { SliderRow } from "@/components/design/slider-row";
+import { useUnits } from "@/components/units-provider";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec } from "@/lib/geometry/foil";
+import { formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
 import {
   ROCKER_ANGLE_RANGE_DEG,
   ROCKER_FLATNESS_RANGE,
@@ -41,7 +43,7 @@ import {
   type RockerGeometry,
   type RockerSpec,
 } from "@/lib/geometry/rocker";
-import { degrees, formatInchesFraction, inchesToMm, mmToInches } from "@/lib/geometry/units";
+import { degrees } from "@/lib/geometry/units";
 
 export type RockerControlsSectionKey = "rocker" | "thickness";
 
@@ -94,6 +96,14 @@ export function RockerControls({
   sectionOpen,
   onToggleSectionOpen,
 }: RockerControlsProps) {
+  const { system } = useUnits();
+  const noseLiftSlider = measureSlider(rocker.noseLift, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
+  const tailLiftSlider = measureSlider(rocker.tailLift, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
+  const noseTipSlider = measureSlider(foil.noseTip, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
+  const nose12Slider = measureSlider(foil.nose12, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
+  const centerSlider = measureSlider(foil.center, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
+  const tail12Slider = measureSlider(foil.tail12, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
+  const tailTipSlider = measureSlider(foil.tailTip, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -104,21 +114,17 @@ export function RockerControls({
           <div className="flex flex-col gap-3.5 pt-3">
             <div className="mb-1.5 text-[10px] text-surf-ink-muted font-normal">
               Rocker is measured up from a flat surface with the board bottom-down — the center is
-              the zero it&apos;s measured against. The two 12&quot; figures below are measured off
-              the drawn curve, not set by hand.
+              the zero it&apos;s measured against. The two {stationLabel(system)} figures below are
+              measured off the drawn curve, not set by hand.
             </div>
 
             <SliderRow
-              label={`Nose Rocker — ${formatInchesFraction(rocker.noseLift)}`}
-              value={mmToInches(rocker.noseLift)}
-              min={ROCKER_LIFT_RANGE_IN.min}
-              max={ROCKER_LIFT_RANGE_IN.max}
-              step={ROCKER_LIFT_RANGE_IN.step}
-              onValueChange={(v) =>
-                onChangeRocker({
-                  noseLift: inchesToMm(clampFinite(v, ROCKER_LIFT_RANGE_IN.min, ROCKER_LIFT_RANGE_IN.max)),
-                })
-              }
+              label={`Nose Rocker — ${formatMark(rocker.noseLift, system)}`}
+              value={noseLiftSlider.value}
+              min={noseLiftSlider.min}
+              max={noseLiftSlider.max}
+              step={noseLiftSlider.step}
+              onValueChange={(v) => onChangeRocker({ noseLift: noseLiftSlider.toMm(v) })}
             />
 
             <div className="flex items-end gap-4">
@@ -212,24 +218,21 @@ export function RockerControls({
             </div>
 
             <SliderRow
-              label={`Tail Rocker — ${formatInchesFraction(rocker.tailLift)}`}
-              value={mmToInches(rocker.tailLift)}
-              min={ROCKER_LIFT_RANGE_IN.min}
-              max={ROCKER_LIFT_RANGE_IN.max}
-              step={ROCKER_LIFT_RANGE_IN.step}
-              onValueChange={(v) =>
-                onChangeRocker({
-                  tailLift: inchesToMm(clampFinite(v, ROCKER_LIFT_RANGE_IN.min, ROCKER_LIFT_RANGE_IN.max)),
-                })
-              }
+              label={`Tail Rocker — ${formatMark(rocker.tailLift, system)}`}
+              value={tailLiftSlider.value}
+              min={tailLiftSlider.min}
+              max={tailLiftSlider.max}
+              step={tailLiftSlider.step}
+              onValueChange={(v) => onChangeRocker({ tailLift: tailLiftSlider.toMm(v) })}
             />
 
-            {/* Read-only, derived off the built curve — a shaper sees the two standard 12"
+            {/* Read-only, derived off the built curve — a shaper sees the two standard station
                 figures without being able to force them (they were the abrupt-kink source before
-                260829-rda). */}
+                260829-rda). The station name comes from stationLabel so the sidebar, the datasheet
+                and the viewer can never disagree about where the measuring station is. */}
             <div className="flex items-center justify-between border-t border-surf-line-faint pt-2.5 text-[10px] text-surf-ink-muted font-normal">
-              <span>Nose @ 12&quot; — {formatInchesFraction(geometry.noseLiftAt12in)}</span>
-              <span>Tail @ 12&quot; — {formatInchesFraction(geometry.tailLiftAt12in)}</span>
+              <span>Nose @ {stationLabel(system)} — {formatMark(geometry.noseLiftAt12in, system)}</span>
+              <span>Tail @ {stationLabel(system)} — {formatMark(geometry.tailLiftAt12in, system)}</span>
             </div>
           </div>
         )}
@@ -242,68 +245,48 @@ export function RockerControls({
         {sectionOpen.thickness && (
           <div className="flex flex-col gap-3.5 pt-3">
             <SliderRow
-              label={`Nose Tip — ${formatInchesFraction(foil.noseTip)}`}
-              value={mmToInches(foil.noseTip)}
-              min={FOIL_THICKNESS_RANGE_IN.min}
-              max={FOIL_THICKNESS_RANGE_IN.max}
-              step={FOIL_THICKNESS_RANGE_IN.step}
-              onValueChange={(v) =>
-                onChangeFoil({
-                  noseTip: inchesToMm(clampFinite(v, FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max)),
-                })
-              }
+              label={`Nose Tip — ${formatMark(foil.noseTip, system)}`}
+              value={noseTipSlider.value}
+              min={noseTipSlider.min}
+              max={noseTipSlider.max}
+              step={noseTipSlider.step}
+              onValueChange={(v) => onChangeFoil({ noseTip: noseTipSlider.toMm(v) })}
             />
 
             <SliderRow
-              label={`Nose @ 12" — ${formatInchesFraction(foil.nose12)}`}
-              value={mmToInches(foil.nose12)}
-              min={FOIL_THICKNESS_RANGE_IN.min}
-              max={FOIL_THICKNESS_RANGE_IN.max}
-              step={FOIL_THICKNESS_RANGE_IN.step}
-              onValueChange={(v) =>
-                onChangeFoil({
-                  nose12: inchesToMm(clampFinite(v, FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max)),
-                })
-              }
+              label={`Nose @ ${stationLabel(system)} — ${formatMark(foil.nose12, system)}`}
+              value={nose12Slider.value}
+              min={nose12Slider.min}
+              max={nose12Slider.max}
+              step={nose12Slider.step}
+              onValueChange={(v) => onChangeFoil({ nose12: nose12Slider.toMm(v) })}
             />
 
             <SliderRow
-              label={`Center — ${formatInchesFraction(foil.center)}`}
-              value={mmToInches(foil.center)}
-              min={FOIL_THICKNESS_RANGE_IN.min}
-              max={FOIL_THICKNESS_RANGE_IN.max}
-              step={FOIL_THICKNESS_RANGE_IN.step}
-              onValueChange={(v) =>
-                onChangeFoil({
-                  center: inchesToMm(clampFinite(v, FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max)),
-                })
-              }
+              label={`Center — ${formatMark(foil.center, system)}`}
+              value={centerSlider.value}
+              min={centerSlider.min}
+              max={centerSlider.max}
+              step={centerSlider.step}
+              onValueChange={(v) => onChangeFoil({ center: centerSlider.toMm(v) })}
             />
 
             <SliderRow
-              label={`Tail @ 12" — ${formatInchesFraction(foil.tail12)}`}
-              value={mmToInches(foil.tail12)}
-              min={FOIL_THICKNESS_RANGE_IN.min}
-              max={FOIL_THICKNESS_RANGE_IN.max}
-              step={FOIL_THICKNESS_RANGE_IN.step}
-              onValueChange={(v) =>
-                onChangeFoil({
-                  tail12: inchesToMm(clampFinite(v, FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max)),
-                })
-              }
+              label={`Tail @ ${stationLabel(system)} — ${formatMark(foil.tail12, system)}`}
+              value={tail12Slider.value}
+              min={tail12Slider.min}
+              max={tail12Slider.max}
+              step={tail12Slider.step}
+              onValueChange={(v) => onChangeFoil({ tail12: tail12Slider.toMm(v) })}
             />
 
             <SliderRow
-              label={`Tail Tip — ${formatInchesFraction(foil.tailTip)}`}
-              value={mmToInches(foil.tailTip)}
-              min={FOIL_THICKNESS_RANGE_IN.min}
-              max={FOIL_THICKNESS_RANGE_IN.max}
-              step={FOIL_THICKNESS_RANGE_IN.step}
-              onValueChange={(v) =>
-                onChangeFoil({
-                  tailTip: inchesToMm(clampFinite(v, FOIL_THICKNESS_RANGE_IN.min, FOIL_THICKNESS_RANGE_IN.max)),
-                })
-              }
+              label={`Tail Tip — ${formatMark(foil.tailTip, system)}`}
+              value={tailTipSlider.value}
+              min={tailTipSlider.min}
+              max={tailTipSlider.max}
+              step={tailTipSlider.step}
+              onValueChange={(v) => onChangeFoil({ tailTip: tailTipSlider.toMm(v) })}
             />
           </div>
         )}

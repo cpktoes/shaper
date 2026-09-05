@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Rocker/foil side-profile viewer.
  *
@@ -73,7 +75,9 @@
 
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef } from "react";
 import { CALLOUT_PX, CalloutChipFrame, DimensionTick, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
+import { useUnits } from "@/components/units-provider";
 import { FOIL_THICKNESS_RANGE_IN, sampleFoil, type FoilSpec } from "@/lib/geometry/foil";
+import { formatMark, stationLabel } from "@/lib/geometry/measure-display";
 import {
   sideProfileDragPoints,
   solveSideProfileDrag,
@@ -81,7 +85,7 @@ import {
   type SideProfileDragTarget,
 } from "@/lib/geometry/rocker-drag";
 import { buildRocker, ROCKER_LIFT_RANGE_IN, sampleRocker, type RockerSpec } from "@/lib/geometry/rocker";
-import { formatInchesFraction, inchesToMm, type Mm, mmToInches } from "@/lib/geometry/units";
+import { inchesToMm, type Mm, mmToInches } from "@/lib/geometry/units";
 import {
   cardPinScale,
   COMPACT_BASELINE_DASH,
@@ -452,6 +456,7 @@ export function RockerViewer({
   fitToBoard = false,
   boardFill = true,
 }: RockerViewerProps) {
+  const { system } = useUnits();
   const vertical = orientation === "vertical";
   const svgRef = useRef<SVGSVGElement>(null);
   /** The content group carrying the rotation, in vertical — see `toBoardPoint` below for why the
@@ -585,16 +590,16 @@ export function RockerViewer({
       key: "tailTip",
       name: "Tail Tip",
       stationIn: 0,
-      rockerValue: formatInchesFraction(rocker.tailLift),
-      thicknessValue: formatInchesFraction(foil.tailTip),
+      rockerValue: formatMark(rocker.tailLift, system),
+      thicknessValue: formatMark(foil.tailTip, system),
       rockerKind: "input",
     },
     {
       key: "tail12",
-      name: 'Tail @ 12"',
+      name: `Tail @ ${stationLabel(system)}`,
       stationIn: 12,
-      rockerValue: formatInchesFraction(geometry.tailLiftAt12in),
-      thicknessValue: formatInchesFraction(foil.tail12),
+      rockerValue: formatMark(geometry.tailLiftAt12in, system),
+      thicknessValue: formatMark(foil.tail12, system),
       rockerKind: "derived",
     },
     {
@@ -602,23 +607,23 @@ export function RockerViewer({
       name: "Center",
       stationIn: lengthIn / 2,
       rockerValue: null,
-      thicknessValue: formatInchesFraction(foil.center),
+      thicknessValue: formatMark(foil.center, system),
       rockerKind: "derived",
     },
     {
       key: "nose12",
-      name: 'Nose @ 12"',
+      name: `Nose @ ${stationLabel(system)}`,
       stationIn: lengthIn - 12,
-      rockerValue: formatInchesFraction(geometry.noseLiftAt12in),
-      thicknessValue: formatInchesFraction(foil.nose12),
+      rockerValue: formatMark(geometry.noseLiftAt12in, system),
+      thicknessValue: formatMark(foil.nose12, system),
       rockerKind: "derived",
     },
     {
       key: "noseTip",
       name: "Nose Tip",
       stationIn: lengthIn,
-      rockerValue: formatInchesFraction(rocker.noseLift),
-      thicknessValue: formatInchesFraction(foil.noseTip),
+      rockerValue: formatMark(rocker.noseLift, system),
+      thicknessValue: formatMark(foil.noseTip, system),
       rockerKind: "input",
     },
   ];
