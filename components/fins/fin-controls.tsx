@@ -243,6 +243,14 @@ export function FinControls({
         </label>
       </div>
 
+      {/* Board Length and Tail Width @ 12" (below) both keep their own hand-rolled markup rather
+          than migrating to SliderRow. Board Length's feet/inches Select combo between the label
+          and the slider has no home in SliderRow's fixed layout — matching its TEMPLATE and
+          VOLUME counterparts, named in slider-row.test.ts's allowlist. Tail Width @ 12" would fit
+          the row on its own, but it shares this exact 0.45 opacity dimming with Board Length under
+          the same importTemplate toggle; migrating only one would leave two adjacent sliders
+          dimming to visibly different shades (SliderRow's own disabled state dims to Tailwind's
+          0.4, not 0.45), so both stay hand-rolled together and are named in the allowlist too. */}
       <div style={{ opacity: importTemplate ? 0.45 : 1 }}>
         <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
           Board Length — {formatFeetInches(spec.boardLength)}

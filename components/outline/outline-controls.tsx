@@ -116,6 +116,10 @@ export function OutlineControls({
       </div>
 
       <SectionHeading>Board Length</SectionHeading>
+      {/* Board Length keeps its own hand-rolled markup — the feet/inches Select combo sits
+          between the label and the slider, which SliderRow's fixed label-then-track layout has
+          no room for. Named in slider-row.test.ts's allowlist alongside its FINS and VOLUME
+          counterparts, which share this exact shape. */}
       <div>
         <div className="mb-2 text-sm text-surf-ink-muted font-normal">
           Board Length — {formatFeetInches(outline.length)}

@@ -9,6 +9,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import type { VolumeResult, VolumeSpec } from "@/lib/geometry/volume";
 import { BOARD_TYPE_STEP_COUNT } from "@/lib/geometry/volume";
 import { formatInchesFraction, inchesToMm, mmToInches } from "@/lib/geometry/units";
@@ -21,9 +22,6 @@ const INCHES_OPTIONS = Array.from({ length: 12 }, (_, i) => i);
 function clampFinite(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, value));
-}
-function sliderValue(v: number | readonly number[]): number {
-  return typeof v === "number" ? v : (v[0] ?? 0);
 }
 
 function PrimaryInputsHeading() {
@@ -61,7 +59,6 @@ export function VolumeControls({
   const dimensionsDisabled = importingTemplate;
   const dimensionsOpacity = importingTemplate ? 0.4 : 1;
   const thicknessDisabled = importingRailThickness;
-  const thicknessOpacity = importingRailThickness ? 0.4 : 1;
 
   return (
     <div className="flex h-full flex-col gap-5">
@@ -98,6 +95,10 @@ export function VolumeControls({
         </label>
       )}
 
+      {/* Board Length keeps its own hand-rolled markup — the feet/inches Select combo sits
+          between the label and the slider, which SliderRow's fixed label-then-track layout has
+          no room for. Named in slider-row.test.ts's allowlist alongside its TEMPLATE and FINS
+          counterparts, which share this exact shape. */}
       <div style={{ opacity: dimensionsOpacity }}>
         <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
           Board Length — {lengthFeet}&apos;{lengthInches}&quot;
@@ -147,67 +148,49 @@ export function VolumeControls({
         />
       </div>
 
-      <div style={{ opacity: dimensionsOpacity }}>
-        <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
-          Board Width — {formatInchesFraction(effectiveVolume.width)}
-        </div>
-        <Slider
-          value={widthIn}
-          min={WIDTH_BOUNDS.min}
-          max={WIDTH_BOUNDS.max}
-          step={WIDTH_BOUNDS.step}
-          disabled={dimensionsDisabled}
-          onValueChange={(v) =>
-            onChange({
-              width: inchesToMm(clampFinite(sliderValue(v), WIDTH_BOUNDS.min, WIDTH_BOUNDS.max)),
-            })
-          }
-          className="slider-accent"
-        />
-      </div>
+      <SliderRow
+        density="tight"
+        label={`Board Width — ${formatInchesFraction(effectiveVolume.width)}`}
+        value={widthIn}
+        min={WIDTH_BOUNDS.min}
+        max={WIDTH_BOUNDS.max}
+        step={WIDTH_BOUNDS.step}
+        disabled={dimensionsDisabled}
+        onValueChange={(v) =>
+          onChange({ width: inchesToMm(clampFinite(v, WIDTH_BOUNDS.min, WIDTH_BOUNDS.max)) })
+        }
+      />
 
-      <div style={{ opacity: thicknessOpacity }}>
-        <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
-          Center Thickness — {formatInchesFraction(effectiveVolume.centerThickness)}
-        </div>
-        <Slider
-          value={centerThicknessIn}
-          min={CENTER_THICKNESS_BOUNDS.min}
-          max={CENTER_THICKNESS_BOUNDS.max}
-          step={CENTER_THICKNESS_BOUNDS.step}
-          disabled={thicknessDisabled}
-          onValueChange={(v) =>
-            onChange({
-              centerThickness: inchesToMm(
-                clampFinite(sliderValue(v), CENTER_THICKNESS_BOUNDS.min, CENTER_THICKNESS_BOUNDS.max),
-              ),
-            })
-          }
-          className="slider-accent"
-        />
-      </div>
+      <SliderRow
+        density="tight"
+        label={`Center Thickness — ${formatInchesFraction(effectiveVolume.centerThickness)}`}
+        value={centerThicknessIn}
+        min={CENTER_THICKNESS_BOUNDS.min}
+        max={CENTER_THICKNESS_BOUNDS.max}
+        step={CENTER_THICKNESS_BOUNDS.step}
+        disabled={thicknessDisabled}
+        onValueChange={(v) =>
+          onChange({
+            centerThickness: inchesToMm(clampFinite(v, CENTER_THICKNESS_BOUNDS.min, CENTER_THICKNESS_BOUNDS.max)),
+          })
+        }
+      />
 
       {!importingRailThickness && (
-        <div style={{ opacity: thicknessOpacity }}>
-          <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">Board Type</div>
-          <Slider
-            value={effectiveVolume.boardTypeIndex}
-            min={0}
-            max={BOARD_TYPE_STEP_COUNT - 1}
-            step={1}
-            disabled={thicknessDisabled}
-            onValueChange={(v) =>
-              onChange({
-                boardTypeIndex: clampFinite(sliderValue(v), 0, BOARD_TYPE_STEP_COUNT - 1),
-              })
-            }
-            className="slider-accent"
-          />
-          <div className="mt-0.5 flex justify-between text-xs text-surf-ink-muted font-normal">
-            <span>Performance</span>
-            <span>Beefy</span>
-          </div>
-        </div>
+        <SliderRow
+          density="tight"
+          label="Board Type"
+          value={effectiveVolume.boardTypeIndex}
+          min={0}
+          max={BOARD_TYPE_STEP_COUNT - 1}
+          step={1}
+          disabled={thicknessDisabled}
+          onValueChange={(v) =>
+            onChange({ boardTypeIndex: clampFinite(v, 0, BOARD_TYPE_STEP_COUNT - 1) })
+          }
+          leftHint="Performance"
+          rightHint="Beefy"
+        />
       )}
     </div>
   );

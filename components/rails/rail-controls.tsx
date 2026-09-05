@@ -185,6 +185,12 @@ function RailSectionControls({
             rightHint="Heavily Domed"
           />
 
+          {/* Family and Ratio (below) both keep their own hand-rolled markup. Family's hint row
+              carries three captions (Boxy/Medium/Knifey) where SliderRow's fixed hint slot only
+              has room for two; Ratio's own hint row is the four-caption RatioTickCaptions plus a
+              Sym checkbox sharing its heading line, neither of which SliderRow's plain-string
+              label and two-hint layout can hold. Both are named in slider-row.test.ts's
+              allowlist. */}
           <div className="flex gap-3.5">
             <div className="min-w-0 flex-1">
               <div className="mb-2 min-h-5 leading-5 text-sm text-surf-ink-muted font-normal">
@@ -242,6 +248,10 @@ function RailSectionControls({
             </SectionHeading>
             {advancedOpen && (
               <div className="flex flex-col gap-3 pl-3 pt-3">
+                {/* Corner Cut Offset and Bottom Tuck 3 (below) both keep their own hand-rolled
+                    markup — each one's heading line carries its own checkbox (Remove / Use
+                    Single Tuck) beside the label, which SliderRow's plain-string `label` prop has
+                    no slot for. Both are named in slider-row.test.ts's allowlist. */}
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
                     <div className="text-sm text-surf-ink-muted font-normal">
