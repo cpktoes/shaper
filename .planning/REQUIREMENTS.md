@@ -72,17 +72,17 @@ UNIT-01 (inches only) is superseded by this milestone.
 
 ### Units Preference
 
-- [ ] **UNIT-02**: User can choose Imperial or Metric from the settings menu, beside the theme chooser; Imperial is the default for everyone until they change it
-- [ ] **UNIT-03**: A signed-in user's choice is saved on their account and applies on any device they sign in from
-- [ ] **UNIT-04**: A signed-out user's choice is remembered on that browser; on sign-in the account's saved choice applies if it has one, otherwise the browser's choice becomes the account's
-- [ ] **UNIT-05**: Switching systems changes only how numbers are shown and typed — saved designs do not change, and switching back reproduces the original values exactly
+- [x] **UNIT-02**: User can choose Imperial or Metric from the settings menu, beside the theme chooser; Imperial is the default for everyone until they change it
+- [x] **UNIT-03**: A signed-in user's choice is saved on their account and applies on any device they sign in from
+- [x] **UNIT-04**: A signed-out user's choice is remembered on that browser; on sign-in the account's saved choice applies if it has one, otherwise the browser's choice becomes the account's
+- [x] **UNIT-05**: Switching systems changes only how numbers are shown and typed — saved designs do not change, and switching back reproduces the original values exactly
 
 ### Design Screens
 
 - [ ] **SCRN-01**: In Metric, every slider and value on the outline, rails, fins, volume and rocker screens reads in cm for length and widths and whole mm for rail band, rocker and foil values, with sliders stepping on whole millimetres
 - [ ] **SCRN-02**: In Metric, typed entry accepts decimal centimetres and whole millimetres and re-prints in the chosen system; unreadable input reverts, as it does today
 - [ ] **SCRN-03**: Viewer callouts and data tables (rail band marks, fin placement numbers, rocker datasheet, volume card) read in the chosen system
-- [ ] **SCRN-04**: Preset cards on the setup screen show their dimensions in the chosen system
+- [x] **SCRN-04**: Preset cards on the setup screen show their dimensions in the chosen system
 - [ ] **SCRN-05**: Volume reads in litres in both systems
 
 ### Printed Outputs
@@ -94,7 +94,7 @@ UNIT-01 (inches only) is superseded by this milestone.
 
 ### Rack
 
-- [ ] **RACK-01**: Rack cards on the setup screen show each board's dimensions in the chosen system
+- [x] **RACK-01**: Rack cards on the setup screen show each board's dimensions in the chosen system
 
 ## Future Requirements
 
@@ -153,20 +153,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VIZ-01 | Phase 1 | Complete |
 | TMPL-01 | Phase 3 | Complete |
 | UNIT-01 | Phase 1 | Complete |
-| UNIT-02 | Phase 5 | Pending |
-| UNIT-03 | Phase 5 | Pending |
-| UNIT-04 | Phase 5 | Pending |
-| UNIT-05 | Phase 5 | Pending |
+| UNIT-02 | Phase 5 | Complete |
+| UNIT-03 | Phase 5 | Complete |
+| UNIT-04 | Phase 5 | Complete |
+| UNIT-05 | Phase 5 | Complete |
 | SCRN-01 | Phase 6 | Pending |
 | SCRN-02 | Phase 6 | Pending |
 | SCRN-03 | Phase 6 | Pending |
-| SCRN-04 | Phase 5 | Pending |
+| SCRN-04 | Phase 5 | Complete |
 | SCRN-05 | Phase 6 | Pending |
 | PRNT-01 | Phase 7 | Pending |
 | PRNT-02 | Phase 7 | Pending |
 | PRNT-03 | Phase 7 | Pending |
 | PRNT-04 | Phase 7 | Pending |
-| RACK-01 | Phase 5 | Pending |
+| RACK-01 | Phase 5 | Complete |
 
 **Coverage:**
 
