@@ -29,7 +29,7 @@ import {
   type ThrusterFrontModel,
   type TwinTemplate,
 } from "@/lib/geometry/fins";
-import { inchesToMm, mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
+import { inchesToMm, mm, mmToInches, roundToWholeMm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import {
   formatDim,
   formatLength,
@@ -154,7 +154,10 @@ function BaseLengthField({
   onOverride: () => void;
   onChange: (next: Mm) => void;
 }) {
-  const displayValue = system === "metric" ? value : mmToInches(value);
+  // Metric snaps the seed value onto the whole-millimetre grid, matching roundToWholeMm's
+  // documented invariant and the read-only display above (formatMark rounds the same way) --
+  // otherwise clicking "Override" opens the box on a raw stored value like 114.3 (WR-01).
+  const displayValue = system === "metric" ? roundToWholeMm(value) : mmToInches(value);
   return (
     <div>
       <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">{label}</div>
@@ -658,7 +661,15 @@ export function FinControls({
                         min={quadRearOffTailSlider.min}
                         max={quadRearOffTailSlider.max}
                         step={quadRearOffTailSlider.step}
-                        value={quadRearOffTailSlider.value}
+                        // measureSlider's metric value clamps but never snaps -- the resolved
+                        // off-tail base (½ front off-tail + a quarter inch) can land on a
+                        // non-integer millimetre, so this seeds the same whole-millimetre grid
+                        // BaseLengthField does above (WR-01).
+                        value={
+                          system === "metric"
+                            ? roundToWholeMm(mm(quadRearOffTailSlider.value))
+                            : quadRearOffTailSlider.value
+                        }
                         onChange={(e) =>
                           updateAdvanced({
                             quadRearOffTailOverride: quadRearOffTailSlider.toMm(parseFloat(e.target.value)),
