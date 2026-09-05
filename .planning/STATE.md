@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Imperial vs Metric
-current_phase: 05
-current_phase_name: The Units Chooser
-status: executing
+current_phase: 6
+current_phase_name: The Design Screens in Metric
+status: planning
 stopped_at: Completed 05-07-PLAN.md — Phase 05 all 7 plans executed, production deployed and migrated, awaiting phase verification
-last_updated: "2026-09-05T07:03:03.237Z"
+last_updated: "2026-09-05T07:12:44.808Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 05 Wave 3 closed out — 05-05 (shared slider row) and 05-06 (shared viewer toolbar button) both complete
 progress:
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 
 ## Current Position
 
-Phase: 05 (The Units Chooser) — EXECUTING
-Plan: 7 of 7 complete (05-01, 05-02, 05-03, 05-04, 05-05, 05-06, 05-07) — all plans executed
-Status: Deployed and migrated to production, approved on the live site; awaiting phase verification
-Last activity: 2026-09-05 — Phase 05 Plan 7 (ship it) closed out: pushed, deployed, migrated production, live walkthrough approved
+Phase: 6 — The Design Screens in Metric
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-05 — Phase 05 complete, transitioned to Phase 6
 
 **Milestone v1.1 phases:**
 
@@ -44,7 +44,7 @@ Last activity: 2026-09-05 — Phase 05 Plan 7 (ship it) closed out: pushed, depl
 
 **Velocity:**
 
-- Total plans completed: 22
+- Total plans completed: 29
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -56,6 +56,7 @@ Last activity: 2026-09-05 — Phase 05 Plan 7 (ship it) closed out: pushed, depl
 | 02 | 6 | - | - |
 | 03 | 7 | - | - |
 | 04 | 5 | - | - |
+| 05 | 7 | - | - |
 
 **Recent Trend:**
 

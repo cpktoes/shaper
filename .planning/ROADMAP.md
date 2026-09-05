@@ -24,7 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Milestone v1.1 — Imperial vs Metric (current)**
 
-- [ ] **Phase 5: The Units Chooser** - Imperial/Metric picker in the settings menu, saved on the account and remembered per browser, proving itself on the setup screen's preset and rack cards
+- [x] **Phase 5: The Units Chooser** - Imperial/Metric picker in the settings menu, saved on the account and remembered per browser, proving itself on the setup screen's preset and rack cards (completed 2026-09-05)
 - [ ] **Phase 6: The Design Screens in Metric** - Every slider, typed field, viewer callout and data table on the five design screens reads and accepts the chosen system
 - [ ] **Phase 7: Metric on Paper** - The order form, Overview Sheet, Full Sized Template and Paper Saver all print in the chosen system, with 1:1 scale still true
 
@@ -164,6 +164,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 2. Accounts & Saved Designs | 6/6 | Complete    | 2026-08-28 |
 | 3. Volume, Templates & Verified Math | 7/7 | Complete    | 2026-08-28 |
 | 4. Rocker & Foil Editors | 5/5 | Complete    | 2026-08-29 |
-| 5. The Units Chooser | 7/7 | In Progress|  |
+| 5. The Units Chooser | 7/7 | Complete    | 2026-09-05 |
 | 6. The Design Screens in Metric | 0/? | Not started | - |
 | 7. Metric on Paper | 0/? | Not started | - |
