@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BOARD_LENGTH_RANGE_IN, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
 import {
   MM_PER_CM,
   MM_PER_INCH,
@@ -10,6 +11,7 @@ import {
   formatSignedInchesFraction,
   formatWholeMm,
   inchesToMm,
+  metricSliderRange,
   mm,
   mmToCentimetres,
   mmToInches,
@@ -306,6 +308,78 @@ describe("units boundary", () => {
       for (const value of table) {
         const parsed = parseMetric(formatWholeMm(value), "mm")!;
         expect(Math.abs(parsed - value)).toBeLessThanOrEqual(0.5);
+      }
+    });
+  });
+
+  // D-06's guarantee: a metric slider's bounds are derived from the same inch constant every
+  // imperial call site already reads, rounded INWARD onto the metric step grid (minimum up,
+  // maximum down) so nothing a metric shaper sets can ever sit outside Imperial's own range.
+  // Every expectation below is computed from the named inch range with a provenance comment —
+  // never hand-transcribed — following CLAUDE.md Rule 1 and the sanctioned metric exception
+  // Phase 4 D-14 and Phase 5 already used.
+  describe("metricSliderRange", () => {
+    it("WIDEPOINT_WIDTH_RANGE_IN (16-25in) at 1mm step lands on 407-635, not 634 (the nudge's whole point)", () => {
+      // 16 * 25.4 = 406.4mm (not on the 1mm grid, rounds up); 25 * 25.4 computes to
+      // 634.99999999999996 in IEEE double arithmetic, not the mathematically exact 635 — the
+      // nudge is what keeps this landing on 635 rather than silently stopping one mm short.
+      expect(metricSliderRange(WIDEPOINT_WIDTH_RANGE_IN, 1)).toEqual({ min: 407, max: 635, step: 1 });
+    });
+
+    it("BOARD_LENGTH_RANGE_IN (60-120in) at 10mm step lands on 1530-3040", () => {
+      // 60 * 25.4 = 1524mm, rounded up to the next 10mm stop (1530); 120 * 25.4 = 3048mm,
+      // rounded down to the prior 10mm stop (3040).
+      expect(metricSliderRange(BOARD_LENGTH_RANGE_IN, 10)).toEqual({ min: 1530, max: 3040, step: 10 });
+    });
+
+    it("a 48-144in range (FINS board length) at 10mm step lands on 1220-3650", () => {
+      // 48 * 25.4 = 1219.2mm rounds up to 1220; 144 * 25.4 = 3657.6mm rounds down to 3650.
+      expect(metricSliderRange({ min: 48, max: 144 }, 10)).toEqual({ min: 1220, max: 3650, step: 10 });
+    });
+
+    it("a 0-9in range at 1mm step lands on 0-228", () => {
+      // 0 * 25.4 = 0mm, already on the grid; 9 * 25.4 = 228.6mm rounds down to 228.
+      expect(metricSliderRange({ min: 0, max: 9 }, 1)).toEqual({ min: 0, max: 228, step: 1 });
+    });
+
+    it("a 0.125-5in range at 1mm step lands on 4-127", () => {
+      // 0.125 * 25.4 = 3.175mm rounds up to 4; 5 * 25.4 = 127mm, exactly on the grid.
+      expect(metricSliderRange({ min: 0.125, max: 5 }, 1)).toEqual({ min: 4, max: 127, step: 1 });
+    });
+
+    it("a 0-0.5in range at 1mm step lands on 0-12", () => {
+      // 0 * 25.4 = 0mm; 0.5 * 25.4 = 12.7mm rounds down to 12.
+      expect(metricSliderRange({ min: 0, max: 0.5 }, 1)).toEqual({ min: 0, max: 12, step: 1 });
+    });
+
+    it("a 1-2in range at 1mm step lands on 26-50", () => {
+      // 1 * 25.4 = 25.4mm rounds up to 26; 2 * 25.4 = 50.8mm rounds down to 50.
+      expect(metricSliderRange({ min: 1, max: 2 }, 1)).toEqual({ min: 26, max: 50, step: 1 });
+    });
+
+    it("a 2.5-7.5in range at 1mm step lands on 64-190", () => {
+      // 2.5 * 25.4 = 63.5mm rounds up to 64; 7.5 * 25.4 = 190.5mm rounds down to 190.
+      expect(metricSliderRange({ min: 2.5, max: 7.5 }, 1)).toEqual({ min: 64, max: 190, step: 1 });
+    });
+
+    it("every returned range lies inside its own imperial range, to within the nudge's own 1e-6mm tolerance", () => {
+      const cases: Array<{ rangeIn: { min: number; max: number }; stepMm: number }> = [
+        { rangeIn: WIDEPOINT_WIDTH_RANGE_IN, stepMm: 1 },
+        { rangeIn: BOARD_LENGTH_RANGE_IN, stepMm: 10 },
+        { rangeIn: { min: 48, max: 144 }, stepMm: 10 },
+        { rangeIn: { min: 0, max: 9 }, stepMm: 1 },
+        { rangeIn: { min: 0.125, max: 5 }, stepMm: 1 },
+        { rangeIn: { min: 0, max: 0.5 }, stepMm: 1 },
+        { rangeIn: { min: 1, max: 2 }, stepMm: 1 },
+        { rangeIn: { min: 2.5, max: 7.5 }, stepMm: 1 },
+      ];
+      const TOLERANCE_MM = 1e-6;
+      for (const { rangeIn, stepMm } of cases) {
+        const result = metricSliderRange(rangeIn, stepMm);
+        expect(result.min).toBeGreaterThanOrEqual(rangeIn.min * MM_PER_INCH - TOLERANCE_MM);
+        expect(result.max).toBeLessThanOrEqual(rangeIn.max * MM_PER_INCH + TOLERANCE_MM);
+        expect(result.min % stepMm).toBeCloseTo(0, 6);
+        expect(result.max % stepMm).toBeCloseTo(0, 6);
       }
     });
   });

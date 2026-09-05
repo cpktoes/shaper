@@ -26,7 +26,9 @@ import {
   mm,
   mmToInches,
 } from "@/lib/geometry/units";
+import { formatDim, measureSlider } from "@/lib/geometry/measure-display";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
+import { useUnits } from "@/components/units-provider";
 import { TailShapeIcon, type IconTailShape } from "./tail-shape-icon";
 
 const TAIL_SHAPES: IconTailShape[] = ["pin", "round", "diamond", "squash", "swallow"];
@@ -85,6 +87,7 @@ export function OutlineControls({
   showConstruction,
   onToggleConstruction,
 }: OutlineControlsProps) {
+  const { system } = useUnits();
   const lengthIn = mmToInches(outline.length);
   const lengthFeet = Math.floor(lengthIn / 12);
   const lengthInches = Math.round(lengthIn - lengthFeet * 12);
@@ -196,22 +199,27 @@ export function OutlineControls({
 
       <SectionHeading>Widepoint Controls</SectionHeading>
       <div className="flex gap-4">
-        <SliderRow
-          className="flex-1"
-          label="Width"
-          displayValue={formatInchesFraction(outline.widePointWidth)}
-          value={mmToInches(outline.widePointWidth)}
-          min={WIDEPOINT_WIDTH_RANGE_IN.min}
-          max={WIDEPOINT_WIDTH_RANGE_IN.max}
-          step={0.125}
-          onValueChange={(v) =>
-            onChange({
-              widePointWidth: inchesToMm(
-                clampFinite(v, WIDEPOINT_WIDTH_RANGE_IN.min, WIDEPOINT_WIDTH_RANGE_IN.max),
-              ),
-            })
-          }
-        />
+        {(() => {
+          const width = measureSlider(
+            outline.widePointWidth,
+            WIDEPOINT_WIDTH_RANGE_IN,
+            0.125,
+            1,
+            system,
+          );
+          return (
+            <SliderRow
+              className="flex-1"
+              label="Width"
+              displayValue={formatDim(outline.widePointWidth, system)}
+              value={width.value}
+              min={width.min}
+              max={width.max}
+              step={width.step}
+              onValueChange={(v) => onChange({ widePointWidth: width.toMm(v) })}
+            />
+          );
+        })()}
         <SliderRow
           className="flex-1"
           label="Offset"
