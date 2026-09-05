@@ -437,3 +437,90 @@ describe("McKee Longboard quad model needs an eight-foot board", () => {
     });
   });
 });
+
+describe("FinSummaryRow.family and FinSummaryGroup.fullSpreadFamily (D-01)", () => {
+  it("thruster: every Off-Tail row is dim; every other row (Off-Rail, Toe-In, Fin Base/Box Length) is mark", () => {
+    const result = computeFinPlacement({ ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "thruster" });
+    let sawOffTail = false;
+    let sawMark = false;
+    for (const section of result.sections) {
+      for (const group of section.groups) {
+        for (const row of group.rows) {
+          if (row.label === "Off-Tail") {
+            sawOffTail = true;
+            expect(row.family).toBe("dim");
+          } else {
+            sawMark = true;
+            expect(row.family).toBe("mark");
+          }
+        }
+      }
+    }
+    expect(sawOffTail).toBe(true);
+    expect(sawMark).toBe(true);
+  });
+
+  it("quad (McKee SB/Gun rear): the rear pair's Off-Tail is dim, and its Off-Stringer/Toe-In rows are mark", () => {
+    const result = computeFinPlacement({
+      ...DEFAULT_FIN_PLACEMENT_SPEC,
+      finSetup: "quad",
+      quadRearModel: "mckeeSB",
+    });
+    const rearSection = result.sections.find((s) => s.label === "Rear Fins");
+    expect(rearSection).toBeDefined();
+    const trailing = rearSection!.groups.find((g) => g.heading === "Trailing Edge")!;
+    const leading = rearSection!.groups.find((g) => g.heading === "Leading Edge")!;
+    const offTailRow = trailing.rows.find((r) => r.label === "Off-Tail")!;
+    const offStringerRow = trailing.rows.find((r) => r.label === "Off-Stringer (1/2 Spread)")!;
+    const toeRow = leading.rows.find((r) => r.label === "Toe-In")!;
+    expect(offTailRow.family).toBe("dim");
+    expect(offStringerRow.family).toBe("mark");
+    expect(toeRow.family).toBe("mark");
+  });
+
+  it("quad rear's Off-Tail stays dim even under the Basic-Off-Rail model, whose row label switches to Off-Rail", () => {
+    const result = computeFinPlacement({
+      ...DEFAULT_FIN_PLACEMENT_SPEC,
+      finSetup: "quad",
+      quadRearModel: "basicOffRail",
+    });
+    const rearSection = result.sections.find((s) => s.label === "Rear Fins")!;
+    const trailing = rearSection.groups.find((g) => g.heading === "Trailing Edge")!;
+    const offTailRow = trailing.rows.find((r) => r.label === "Off-Tail")!;
+    const offRailRow = trailing.rows.find((r) => r.label === "Off-Rail")!;
+    expect(offTailRow.family).toBe("dim");
+    expect(offRailRow.family).toBe("mark");
+  });
+
+  it("every group with a non-null fullSpread has a non-null fullSpreadFamily of 'mark'; every null-fullSpread group has a null fullSpreadFamily", () => {
+    const result = computeFinPlacement({
+      ...DEFAULT_FIN_PLACEMENT_SPEC,
+      finSetup: "quad",
+      quadRearModel: "mckeeSB",
+    });
+    let sawNonNullFullSpread = false;
+    for (const section of result.sections) {
+      for (const group of section.groups) {
+        if (group.fullSpread !== null) {
+          sawNonNullFullSpread = true;
+          expect(group.fullSpreadFamily).toBe("mark");
+        } else {
+          expect(group.fullSpreadFamily).toBeNull();
+        }
+      }
+    }
+    expect(sawNonNullFullSpread).toBe(true);
+  });
+
+  it("the Basic-Off-Rail quad rear model has no Full Spread line, so its group's fullSpreadFamily is null too", () => {
+    const result = computeFinPlacement({
+      ...DEFAULT_FIN_PLACEMENT_SPEC,
+      finSetup: "quad",
+      quadRearModel: "basicOffRail",
+    });
+    const rearSection = result.sections.find((s) => s.label === "Rear Fins")!;
+    const trailing = rearSection.groups.find((g) => g.heading === "Trailing Edge")!;
+    expect(trailing.fullSpread).toBeNull();
+    expect(trailing.fullSpreadFamily).toBeNull();
+  });
+});
