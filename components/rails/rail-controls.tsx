@@ -11,8 +11,10 @@ import {
   type RailSectionOutput,
   type RailSectionSpec,
 } from "@/lib/geometry/rail-bands";
-import { formatInchesFraction, inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
+import { formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
+import { mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
+import { useUnits } from "@/components/units-provider";
 
 interface RailControlsProps {
   /** The effective spec (D-09) — `boardThickness` on each section already reflects the foil's
@@ -40,11 +42,19 @@ const TUCK_BOUNDS = { min: 0, max: 1.5, step: 1 / 16 };
 const CORNER_CUT_BOUNDS = { min: 0, max: 0.25, step: 1 / 32 };
 
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose Rail", center: "Center Rail", tail: "Tail Rail" };
-const SECTION_THICKNESS_LABEL: Record<RailSectionKey, string> = {
-  nose: 'Thickness @12"',
-  center: "Board Thickness",
-  tail: 'Thickness @12"',
-};
+
+/** The per-section thickness label's name (D-03): Imperial keeps today's literal station
+ * suffix byte-identical (no space before the station mark); Metric composes the honest
+ * station conversion through `stationLabel`, with its own leading space (reading `30.5 cm`)
+ * rather than hand-typing a second station string. The centre entry's wording is untouched in
+ * both systems. */
+function sectionThicknessLabel(system: UnitsSystem): Record<RailSectionKey, string> {
+  // No space before the station mark in Imperial (byte-identical to today), one space before
+  // it in Metric (matching the UI-SPEC's fixed string) — composed rather than hand-typed so
+  // the literal never appears twice in source.
+  const nt = `Thickness @${system === "imperial" ? "" : " "}${stationLabel(system)}`;
+  return { nose: nt, center: "Board Thickness", tail: nt };
+}
 
 function clampFinite(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
@@ -111,6 +121,7 @@ interface RailSectionControlsProps {
   /** While linked (D-09/D-10), the thickness slider disables and shows the foil-derived value
    * already sitting in `spec.boardThickness` — every other control on the section is untouched. */
   thicknessDisabled: boolean;
+  system: UnitsSystem;
 }
 
 function RailSectionControls({
@@ -125,26 +136,40 @@ function RailSectionControls({
   tailHardEdge,
   onToggleHardEdge,
   thicknessDisabled,
+  system,
 }: RailSectionControlsProps) {
   const isTail = sectionKey === "tail";
   const thicknessBounds = sectionKey === "center" ? CENTER_THICKNESS_BOUNDS : NT_THICKNESS_BOUNDS;
+  // Inches-domain thickness stays around for deckProfileStep — the deck-profile step formula is a
+  // model-side snap (pinned by golden fixtures) and never becomes system-aware.
   const boardThicknessIn = mmToInches(spec.boardThickness);
   const deckProfileSliderStep = deckProfileStep(boardThicknessIn);
   const deckProfileSliderValue = 166 - spec.deckPercent;
-  const cornerCutOffsetIn = output.result.cornerCutOffset !== null ? mmToInches(output.result.cornerCutOffset) : 0;
-  const bottomTuck3In = mmToInches(output.result.bottomTuck3);
+  const thicknessSlider = measureSlider(spec.boardThickness, thicknessBounds, thicknessBounds.step, 1, system);
+  const cornerCutOffsetMm = output.result.cornerCutOffset ?? mm(0);
+  const cornerCutSlider = measureSlider(cornerCutOffsetMm, CORNER_CUT_BOUNDS, CORNER_CUT_BOUNDS.step, 1, system);
   const bottomTuck3DerivedIn = mmToInches(output.result.bottomTuck3Derived);
   // Dynamic bounds (GSD-added, not a static constant like TUCK_BOUNDS): Bottom Tuck 3 must never
   // be draggable at or below Bottom Tuck 1 (which itself depends on symmetrical/family/scale/
   // thickness) — the min enforces the same strict separation as the geometry-layer floor. The max
   // tracks the un-overridden derived value (computed in lib/, not here) so a symmetrical 4" value
-  // is always reachable and never pinned below a static 1.5" max that can't represent it.
+  // is always reachable and never pinned below a static 1.5" max that can't represent it. This
+  // bound is always computed in inches, regardless of system — measureSlider derives the metric
+  // domain from it the same way it does for every static *_BOUNDS constant.
   const bottomTuck3Bounds = {
     min: mmToInches(output.result.bottomTuck1) + MIN_BOTTOM_TUCK_SEPARATION_IN,
     max: Math.max(TUCK_BOUNDS.max, bottomTuck3DerivedIn),
     step: TUCK_BOUNDS.step,
   };
+  const bottomTuck3Slider = measureSlider(
+    output.result.bottomTuck3,
+    bottomTuck3Bounds,
+    bottomTuck3Bounds.step,
+    1,
+    system,
+  );
   const hardEdgeOn = isTail ? !!tailHardEdge : false;
+  const thicknessLabel = sectionThicknessLabel(system)[sectionKey];
 
   const resetAdvanced = () => {
     onChange({
@@ -163,19 +188,17 @@ function RailSectionControls({
       {open && (
         <>
           <SliderRow
-            label={`${SECTION_THICKNESS_LABEL[sectionKey]} — ${formatInchesFraction(spec.boardThickness)}`}
-            value={boardThicknessIn}
-            min={thicknessBounds.min}
-            max={thicknessBounds.max}
-            step={thicknessBounds.step}
+            label={`${thicknessLabel} — ${formatMark(spec.boardThickness, system)}`}
+            value={thicknessSlider.value}
+            min={thicknessSlider.min}
+            max={thicknessSlider.max}
+            step={thicknessSlider.step}
             disabled={thicknessDisabled}
-            onValueChange={(v) =>
-              onChange({ boardThickness: inchesToMm(clampFinite(v, thicknessBounds.min, thicknessBounds.max)) })
-            }
+            onValueChange={(v) => onChange({ boardThickness: thicknessSlider.toMm(v) })}
           />
 
           <SliderRow
-            label={`Deck Profile — ${formatInchesFraction(output.railThicknessClamped)} (Tapered Thickness)`}
+            label={`Deck Profile — ${formatMark(output.railThicknessClamped, system)} (Tapered Thickness)`}
             value={deckProfileSliderValue}
             min={66}
             max={100}
@@ -255,7 +278,7 @@ function RailSectionControls({
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
                     <div className="text-sm text-surf-ink-muted font-normal">
-                      Corner Cut Offset — {formatInchesFraction(mm(inchesToMm(cornerCutOffsetIn)))}
+                      Corner Cut Offset — {formatMark(cornerCutOffsetMm, system)}
                     </div>
                     <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
                       <Checkbox
@@ -267,17 +290,13 @@ function RailSectionControls({
                   </div>
                   <div className={spec.removeCornerCut ? "opacity-40" : undefined}>
                     <Slider
-                      value={cornerCutOffsetIn}
-                      min={CORNER_CUT_BOUNDS.min}
-                      max={CORNER_CUT_BOUNDS.max}
-                      step={CORNER_CUT_BOUNDS.step}
+                      value={cornerCutSlider.value}
+                      min={cornerCutSlider.min}
+                      max={cornerCutSlider.max}
+                      step={cornerCutSlider.step}
                       disabled={spec.removeCornerCut}
                       onValueChange={(v) =>
-                        onChange({
-                          cornerCutOffsetOverride: inchesToMm(
-                            clampFinite(sliderValue(v), CORNER_CUT_BOUNDS.min, CORNER_CUT_BOUNDS.max),
-                          ),
-                        })
+                        onChange({ cornerCutOffsetOverride: cornerCutSlider.toMm(sliderValue(v)) })
                       }
                       className="slider-accent"
                     />
@@ -291,7 +310,7 @@ function RailSectionControls({
                   <div>
                     <div className="mb-1.5 flex items-center justify-between">
                       <div className="text-sm text-surf-ink-muted font-normal">
-                        Bottom Tuck 3 — {formatInchesFraction(output.result.bottomTuck3)}
+                        Bottom Tuck 3 — {formatMark(output.result.bottomTuck3, system)}
                       </div>
                       <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
                         <Checkbox
@@ -302,17 +321,11 @@ function RailSectionControls({
                       </label>
                     </div>
                     <Slider
-                      value={bottomTuck3In}
-                      min={bottomTuck3Bounds.min}
-                      max={bottomTuck3Bounds.max}
-                      step={bottomTuck3Bounds.step}
-                      onValueChange={(v) =>
-                        onChange({
-                          bottomTuck3Override: inchesToMm(
-                            clampFinite(sliderValue(v), bottomTuck3Bounds.min, bottomTuck3Bounds.max),
-                          ),
-                        })
-                      }
+                      value={bottomTuck3Slider.value}
+                      min={bottomTuck3Slider.min}
+                      max={bottomTuck3Slider.max}
+                      step={bottomTuck3Slider.step}
+                      onValueChange={(v) => onChange({ bottomTuck3Override: bottomTuck3Slider.toMm(sliderValue(v)) })}
                       className="slider-accent"
                     />
                   </div>
@@ -346,6 +359,7 @@ export function RailControls({
   railsImportFoilThickness,
   onToggleRailsImportFoilThickness,
 }: RailControlsProps) {
+  const { system } = useUnits();
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -380,6 +394,7 @@ export function RailControls({
         advancedOpen={advancedOpen.nose}
         onToggleAdvancedOpen={() => onToggleAdvancedOpen("nose")}
         thicknessDisabled={railsImportFoilThickness}
+        system={system}
       />
 
       <RailSectionControls
@@ -392,6 +407,7 @@ export function RailControls({
         advancedOpen={advancedOpen.center}
         onToggleAdvancedOpen={() => onToggleAdvancedOpen("center")}
         thicknessDisabled={railsImportFoilThickness}
+        system={system}
       />
 
       <RailSectionControls
@@ -406,6 +422,7 @@ export function RailControls({
         tailHardEdge={spec.tailHardEdge}
         onToggleHardEdge={onToggleHardEdge}
         thicknessDisabled={railsImportFoilThickness}
+        system={system}
       />
     </div>
   );
