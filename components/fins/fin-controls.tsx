@@ -29,8 +29,8 @@ import {
   type ThrusterFrontModel,
   type TwinTemplate,
 } from "@/lib/geometry/fins";
-import { formatInchesFraction, inchesToMm, mmToInches, type Mm } from "@/lib/geometry/units";
-import { formatLength, measureSlider } from "@/lib/geometry/measure-display";
+import { formatInchesFraction, inchesToMm, mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
+import { formatDim, formatLength, formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { MeasureField } from "@/components/design/measure-field";
 import { useUnits } from "@/components/units-provider";
@@ -118,39 +118,53 @@ function PillButton({
 }
 
 /** A base-length field: text + Override button until pressed, then a number input, matching the
- * prototype's baseLenXEditing toggle (Fins.dc.html lines 241-249 and onToggleBaseLenXEdit). */
+ * prototype's baseLenXEditing toggle (Fins.dc.html lines 241-249 and onToggleBaseLenXEdit). The
+ * number box's domain (inches stepping 1/8, or Metric's whole millimetres stepping 1) is decided
+ * by the caller's own `measureSlider` call against `BASE_LEN_BOUNDS`, so this field never converts
+ * on its own (CLAUDE.md Rule 2). */
 function BaseLengthField({
   label,
-  valueIn,
+  value,
+  system,
+  min,
+  max,
+  step,
+  toMm,
   overridden,
   editing,
   onOverride,
-  onChangeIn,
+  onChange,
 }: {
   label: string;
-  valueIn: number;
+  value: Mm;
+  system: UnitsSystem;
+  min: number;
+  max: number;
+  step: number;
+  toMm: (dragged: number) => Mm;
   overridden: boolean;
   editing: boolean;
   onOverride: () => void;
-  onChangeIn: (valueIn: number) => void;
+  onChange: (next: Mm) => void;
 }) {
+  const displayValue = system === "metric" ? value : mmToInches(value);
   return (
     <div>
       <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">{label}</div>
       {editing ? (
         <input
           type="number"
-          min={BASE_LEN_BOUNDS.min}
-          max={BASE_LEN_BOUNDS.max}
-          step={BASE_LEN_BOUNDS.step}
-          value={valueIn}
-          onChange={(e) => onChangeIn(clampFinite(parseFloat(e.target.value), BASE_LEN_BOUNDS.min, BASE_LEN_BOUNDS.max))}
+          min={min}
+          max={max}
+          step={step}
+          value={displayValue}
+          onChange={(e) => onChange(toMm(parseFloat(e.target.value)))}
           className="w-full rounded-md border border-outline-sidebar-input-border bg-outline-sidebar-input-bg px-2 py-1.5 text-[13px] text-outline-sidebar-text"
         />
       ) : (
         <div className="flex items-center justify-between">
           <span className="text-sm font-bold">
-            {formatInchesFraction(inchesToMm(valueIn), 16)}
+            {formatMark(value, system)}
             {!overridden && " standard"}
           </span>
           <button
@@ -209,7 +223,16 @@ export function FinControls({
   const setLengthIn = (totalIn: number) => onChange({ boardLength: inchesToMm(clampFinite(totalIn, 48, 144)) });
   const boardLength = measureSlider(spec.boardLength, { min: 48, max: 144 }, 1, 10, system);
 
-  const w12In = mmToInches(spec.tailWidth12);
+  // Tail Width @ 12" stays its own hand-rolled Slider (allowlisted in slider-row.test.ts) rather
+  // than migrating to SliderRow — see the comment above this block's JSX for why.
+  const tailWidth12Slider = measureSlider(spec.tailWidth12, { min: 10, max: 18 }, 0.125, 1, system);
+
+  // Each Fin Base Length field's own display-domain bounds/step/toMm (D-06: 64-190mm stepping 1
+  // in Metric, today's 2.5-7.5in stepping 1/8 in Imperial) — one measureSlider call per field,
+  // computed here so BaseLengthField itself never converts (CLAUDE.md Rule 2).
+  const baseLenCenterSlider = measureSlider(spec.advanced.baseLenCenter, BASE_LEN_BOUNDS, BASE_LEN_BOUNDS.step, 1, system);
+  const baseLenForwardSlider = measureSlider(spec.advanced.baseLenForward, BASE_LEN_BOUNDS, BASE_LEN_BOUNDS.step, 1, system);
+  const baseLenRearSlider = measureSlider(spec.advanced.baseLenRear, BASE_LEN_BOUNDS, BASE_LEN_BOUNDS.step, 1, system);
 
   const updateAdvanced = (patch: Partial<FinAdvancedSpec>) => onChange({ advanced: { ...spec.advanced, ...patch } });
 
@@ -323,15 +346,15 @@ export function FinControls({
 
       <div style={{ opacity: importTemplate ? 0.45 : 1 }}>
         <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
-          Tail Width @ 12&quot; — {formatInchesFraction(spec.tailWidth12, 16)}
+          {`Tail Width @ ${stationLabel(system)} — ${formatDim(spec.tailWidth12, system)}`}
         </div>
         <Slider
-          value={w12In}
-          min={10}
-          max={18}
-          step={0.125}
+          value={tailWidth12Slider.value}
+          min={tailWidth12Slider.min}
+          max={tailWidth12Slider.max}
+          step={tailWidth12Slider.step}
           disabled={importTemplate}
-          onValueChange={(v) => onChange({ tailWidth12: inchesToMm(clampFinite(sliderValue(v), 10, 18)) })}
+          onValueChange={(v) => onChange({ tailWidth12: tailWidth12Slider.toMm(sliderValue(v)) })}
           className="slider-accent"
         />
       </div>
@@ -477,14 +500,19 @@ export function FinControls({
                 <div className="mb-2.5">
                   <BaseLengthField
                     label={flags.centerBaseLenFieldLabel}
-                    valueIn={mmToInches(spec.advanced.baseLenCenter)}
+                    value={spec.advanced.baseLenCenter}
+                    system={system}
+                    min={baseLenCenterSlider.min}
+                    max={baseLenCenterSlider.max}
+                    step={baseLenCenterSlider.step}
+                    toMm={baseLenCenterSlider.toMm}
                     overridden={spec.advanced.baseLenCenterOverridden}
                     editing={editingCenter}
                     onOverride={() => {
                       setEditingCenter(true);
                       updateAdvanced({ baseLenCenterOverridden: true });
                     }}
-                    onChangeIn={(v) => updateAdvanced({ baseLenCenter: inchesToMm(v), baseLenCenterOverridden: true })}
+                    onChange={(next) => updateAdvanced({ baseLenCenter: next, baseLenCenterOverridden: true })}
                   />
                 </div>
                 <SliderRow
@@ -509,14 +537,19 @@ export function FinControls({
                 <div className="mb-2.5">
                   <BaseLengthField
                     label="Fin Base Length"
-                    valueIn={mmToInches(spec.advanced.baseLenForward)}
+                    value={spec.advanced.baseLenForward}
+                    system={system}
+                    min={baseLenForwardSlider.min}
+                    max={baseLenForwardSlider.max}
+                    step={baseLenForwardSlider.step}
+                    toMm={baseLenForwardSlider.toMm}
                     overridden={spec.advanced.baseLenForwardOverridden}
                     editing={editingForward}
                     onOverride={() => {
                       setEditingForward(true);
                       updateAdvanced({ baseLenForwardOverridden: true });
                     }}
-                    onChangeIn={(v) => updateAdvanced({ baseLenForward: inchesToMm(v), baseLenForwardOverridden: true })}
+                    onChange={(next) => updateAdvanced({ baseLenForward: next, baseLenForwardOverridden: true })}
                   />
                 </div>
                 <div className="mb-2.5">
@@ -568,14 +601,19 @@ export function FinControls({
                 <div className="mb-2.5">
                   <BaseLengthField
                     label="Fin Base Length"
-                    valueIn={mmToInches(spec.advanced.baseLenRear)}
+                    value={spec.advanced.baseLenRear}
+                    system={system}
+                    min={baseLenRearSlider.min}
+                    max={baseLenRearSlider.max}
+                    step={baseLenRearSlider.step}
+                    toMm={baseLenRearSlider.toMm}
                     overridden={spec.advanced.baseLenRearOverridden}
                     editing={editingRear}
                     onOverride={() => {
                       setEditingRear(true);
                       updateAdvanced({ baseLenRearOverridden: true });
                     }}
-                    onChangeIn={(v) => updateAdvanced({ baseLenRear: inchesToMm(v), baseLenRearOverridden: true })}
+                    onChange={(next) => updateAdvanced({ baseLenRear: next, baseLenRearOverridden: true })}
                   />
                 </div>
                 {flags.showRearOffTailOverride && (
