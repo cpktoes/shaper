@@ -175,9 +175,9 @@ describe("the design screens read every measurement through the display boundary
     { file: "components/fins/fin-viewer.tsx", converted: true },
     { file: "components/fins/fin-data-panel.tsx", converted: true },
     { file: "components/fins/toe-aim-table-modal.tsx", converted: true },
-    { file: "components/volume/volume-controls.tsx", converted: false },
-    { file: "components/volume/volume-calculation-card.tsx", converted: false },
-    { file: "components/volume/volume-estimator.tsx", converted: false },
+    { file: "components/volume/volume-controls.tsx", converted: true },
+    { file: "components/volume/volume-calculation-card.tsx", converted: true },
+    { file: "components/volume/volume-estimator.tsx", converted: true },
   ];
 
   const OUT_OF_SCOPE_UNITS_FILES: { file: string; reason: string }[] = [
