@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -57,8 +57,12 @@ describe("units isolation (UNIT-05, D-16)", () => {
     expect(source, "design-snapshot.ts declares a units field").not.toMatch(/\bunits\s*[:?]/i);
   });
 
-  it("lib/geometry/units.ts and lib/geometry/summary-line.ts stay pure (Rule 1)", () => {
-    for (const relative of ["lib/geometry/units.ts", "lib/geometry/summary-line.ts"]) {
+  it("lib/geometry/units.ts, lib/geometry/summary-line.ts and lib/geometry/measure-display.ts stay pure (Rule 1)", () => {
+    for (const relative of [
+      "lib/geometry/units.ts",
+      "lib/geometry/summary-line.ts",
+      "lib/geometry/measure-display.ts",
+    ]) {
       const source = readStripped(relative);
       expect(source, `${relative} imports React`).not.toMatch(/from\s+["']react["']/);
       expect(source, `${relative} references a browser global`).not.toMatch(
@@ -125,5 +129,153 @@ describe("units isolation (UNIT-05, D-16)", () => {
     expect(Object.is(summary.centerThickness, originalThickness)).toBe(true);
     expect(Object.is(summary.volumeLitres, originalVolume)).toBe(true);
     expect(last).toBe(first);
+  });
+});
+
+/**
+ * Phase 6 converts roughly 300 display sites across five screens over seven plans — nothing
+ * short of a mechanical guard could catch a stray call to an imperial formatter reintroduced
+ * mid-phase, or a brand-new display file nobody remembered to add to the ledger below.
+ *
+ * `DESIGN_SCREEN_DISPLAY_FILES` names every file this phase eventually converts to read through
+ * `lib/geometry/measure-display.ts`, each with a `converted` flag this phase flips true as its
+ * own plan lands (Task 3 flips `outline-viewer.tsx`; later plans flip the rest — a file may keep
+ * `formatFeetInches` for an as-yet-unconverted Board Length control and so stay `false` even
+ * after some of its own sliders are done, exactly `outline-controls.tsx`'s situation after this
+ * plan's Task 2). `OUT_OF_SCOPE_UNITS_FILES` names the two kinds of file that legitimately read
+ * `lib/geometry/units` without ever becoming a display site this phase converts: the four dev-only
+ * "copy preset values" builders, which serialise `inchesToMm(...)` source text for `presets.ts`
+ * rather than displaying anything, and `imperial-field.tsx`, the typed-entry contract itself
+ * (replaced by `components/design/measure-field.tsx` in Plan 03, which removes this entry). The
+ * completeness assertion below is what makes a THIRD kind — a display file nobody listed —
+ * impossible to introduce unnoticed.
+ */
+describe("the design screens read every measurement through the display boundary", () => {
+  // Built from parts so this test file — which necessarily names every one of these identifiers
+  // in its own prose above — can never match its own needles.
+  const BANNED_DISPLAY_FORMATTERS: string[] = [
+    ["format", "InchesFraction"].join(""),
+    ["format", "FeetInches"].join(""),
+    ["format", "SignedInchesFraction"].join(""),
+    ["format", "Centimetres"].join(""),
+    ["format", "WholeMm"].join(""),
+  ];
+
+  const DESIGN_SCREEN_DISPLAY_FILES: { file: string; converted: boolean }[] = [
+    { file: "components/outline/outline-controls.tsx", converted: false },
+    { file: "components/outline/outline-viewer.tsx", converted: true },
+    { file: "components/rocker/rocker-controls.tsx", converted: false },
+    { file: "components/rocker/rocker-datasheet.tsx", converted: false },
+    { file: "components/rocker/rocker-viewer.tsx", converted: false },
+    { file: "components/rails/rail-controls.tsx", converted: false },
+    { file: "components/rails/rail-data-table.tsx", converted: false },
+    { file: "components/rails/rail-section-plot.tsx", converted: false },
+    { file: "components/fins/fin-controls.tsx", converted: false },
+    { file: "components/fins/fin-viewer.tsx", converted: false },
+    { file: "components/fins/fin-data-panel.tsx", converted: false },
+    { file: "components/fins/toe-aim-table-modal.tsx", converted: false },
+    { file: "components/volume/volume-controls.tsx", converted: false },
+    { file: "components/volume/volume-calculation-card.tsx", converted: false },
+    { file: "components/volume/volume-estimator.tsx", converted: false },
+  ];
+
+  const OUT_OF_SCOPE_UNITS_FILES: { file: string; reason: string }[] = [
+    {
+      file: "components/outline/outline-editor.tsx",
+      reason:
+        "Dev-only 'copy preset values' builder — serialises inchesToMm(...) source text for presets.ts, not a display site.",
+    },
+    {
+      file: "components/rocker/rocker-editor.tsx",
+      reason:
+        "Dev-only 'copy preset values' builder — serialises inchesToMm(...) source text for presets.ts, not a display site.",
+    },
+    {
+      file: "components/rails/rail-band-editor.tsx",
+      reason:
+        "Dev-only 'copy preset values' builder — serialises inchesToMm(...) source text for presets.ts, not a display site.",
+    },
+    {
+      file: "components/fins/fin-placement-editor.tsx",
+      reason:
+        "Dev-only 'copy preset values' builder — serialises inchesToMm(...) source text for presets.ts, not a display site.",
+    },
+    {
+      file: "components/rocker/imperial-field.tsx",
+      reason:
+        "The typed-entry contract itself, not a display site consuming it — replaced by components/design/measure-field.tsx in Plan 03, at which point Plan 03 removes this entry.",
+    },
+  ];
+
+  /** The five screen folders every display site and every out-of-scope file lives under. */
+  const SCREEN_FOLDERS = ["outline", "rocker", "rails", "fins", "volume"];
+
+  /** Every `.tsx` file under `components/{outline,rocker,rails,fins,volume}/`, relative to the
+   * repo root — walked fresh each run so a new file is caught the moment it appears. */
+  function findScreenTsxFiles(): string[] {
+    const found: string[] = [];
+    for (const folder of SCREEN_FOLDERS) {
+      const dir = join(REPO_ROOT, "components", folder);
+      if (!existsSync(dir)) continue;
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        if (statSync(full).isFile() && entry.endsWith(".tsx")) {
+          found.push(`components/${folder}/${entry}`);
+        }
+      }
+    }
+    return found;
+  }
+
+  it("every file named in either list exists on disk", () => {
+    for (const { file } of DESIGN_SCREEN_DISPLAY_FILES) {
+      expect(existsSync(join(REPO_ROOT, file)), `${file} (DESIGN_SCREEN_DISPLAY_FILES) does not exist`).toBe(true);
+    }
+    for (const { file } of OUT_OF_SCOPE_UNITS_FILES) {
+      expect(existsSync(join(REPO_ROOT, file)), `${file} (OUT_OF_SCOPE_UNITS_FILES) does not exist`).toBe(true);
+    }
+  });
+
+  it("every converted:true entry imports from the display boundary", () => {
+    for (const { file, converted } of DESIGN_SCREEN_DISPLAY_FILES) {
+      if (!converted) continue;
+      const source = readStripped(file);
+      expect(source, `${file} is marked converted but does not import @/lib/geometry/measure-display`).toMatch(
+        /@\/lib\/geometry\/measure-display/,
+      );
+    }
+  });
+
+  it("every converted:true entry's stripped source contains none of the banned formatters", () => {
+    for (const { file, converted } of DESIGN_SCREEN_DISPLAY_FILES) {
+      if (!converted) continue;
+      const source = readStripped(file);
+      for (const banned of BANNED_DISPLAY_FORMATTERS) {
+        expect(source, `${file} is marked converted but still calls ${banned}`).not.toContain(banned);
+      }
+    }
+  });
+
+  it("every screen .tsx that imports lib/geometry/units is named in one of the two lists", () => {
+    const named = new Set([
+      ...DESIGN_SCREEN_DISPLAY_FILES.map((entry) => entry.file),
+      ...OUT_OF_SCOPE_UNITS_FILES.map((entry) => entry.file),
+    ]);
+    const unnamedImporters: string[] = [];
+    for (const file of findScreenTsxFiles()) {
+      const source = readStripped(file);
+      if (!/@\/lib\/geometry\/units/.test(source)) continue;
+      if (!named.has(file)) unnamedImporters.push(file);
+    }
+    expect(
+      unnamedImporters,
+      `these files import lib/geometry/units but are named in neither DESIGN_SCREEN_DISPLAY_FILES nor OUT_OF_SCOPE_UNITS_FILES: ${unnamedImporters.join(", ")}`,
+    ).toEqual([]);
+  });
+
+  it("every out-of-scope entry carries a reason and points at a real file", () => {
+    for (const entry of OUT_OF_SCOPE_UNITS_FILES) {
+      expect(entry.reason.length, `${entry.file} has no reason`).toBeGreaterThan(0);
+    }
   });
 });

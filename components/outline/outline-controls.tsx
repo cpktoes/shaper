@@ -20,13 +20,14 @@ import type { OutlineGeometry } from "@/lib/geometry/outline";
 import {
   degrees,
   formatFeetInches,
-  formatInchesFraction,
-  formatSignedInchesFraction,
   inchesToMm,
   mm,
+  type Mm,
   mmToInches,
 } from "@/lib/geometry/units";
+import { formatDim, formatMark, formatSignedDim, measureSlider } from "@/lib/geometry/measure-display";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
+import { useUnits } from "@/components/units-provider";
 import { TailShapeIcon, type IconTailShape } from "./tail-shape-icon";
 
 const TAIL_SHAPES: IconTailShape[] = ["pin", "round", "diamond", "squash", "swallow"];
@@ -55,8 +56,7 @@ function tailEndWidthIn(tail: TailShape): number {
   }
 }
 
-function withEndWidth(tail: TailShape, endWidthIn: number): TailShape {
-  const endWidth = inchesToMm(endWidthIn);
+function withEndWidth(tail: TailShape, endWidth: Mm): TailShape {
   switch (tail.kind) {
     case "pin":
     case "round":
@@ -85,6 +85,7 @@ export function OutlineControls({
   showConstruction,
   onToggleConstruction,
 }: OutlineControlsProps) {
+  const { system } = useUnits();
   const lengthIn = mmToInches(outline.length);
   const lengthFeet = Math.floor(lengthIn / 12);
   const lengthInches = Math.round(lengthIn - lengthFeet * 12);
@@ -196,36 +197,44 @@ export function OutlineControls({
 
       <SectionHeading>Widepoint Controls</SectionHeading>
       <div className="flex gap-4">
-        <SliderRow
-          className="flex-1"
-          label="Width"
-          displayValue={formatInchesFraction(outline.widePointWidth)}
-          value={mmToInches(outline.widePointWidth)}
-          min={WIDEPOINT_WIDTH_RANGE_IN.min}
-          max={WIDEPOINT_WIDTH_RANGE_IN.max}
-          step={0.125}
-          onValueChange={(v) =>
-            onChange({
-              widePointWidth: inchesToMm(
-                clampFinite(v, WIDEPOINT_WIDTH_RANGE_IN.min, WIDEPOINT_WIDTH_RANGE_IN.max),
-              ),
-            })
-          }
-        />
-        <SliderRow
-          className="flex-1"
-          label="Offset"
-          displayValue={formatSignedInchesFraction(outline.widePointOffset)}
-          value={mmToInches(outline.widePointOffset)}
-          min={-12}
-          max={12}
-          step={0.25}
-          onValueChange={(v) =>
-            onChange({ widePointOffset: inchesToMm(clampFinite(v, -12, 12)) })
-          }
-          leftHint="Tail"
-          rightHint="Nose"
-        />
+        {(() => {
+          const width = measureSlider(
+            outline.widePointWidth,
+            WIDEPOINT_WIDTH_RANGE_IN,
+            0.125,
+            1,
+            system,
+          );
+          return (
+            <SliderRow
+              className="flex-1"
+              label="Width"
+              displayValue={formatDim(outline.widePointWidth, system)}
+              value={width.value}
+              min={width.min}
+              max={width.max}
+              step={width.step}
+              onValueChange={(v) => onChange({ widePointWidth: width.toMm(v) })}
+            />
+          );
+        })()}
+        {(() => {
+          const offset = measureSlider(outline.widePointOffset, { min: -12, max: 12 }, 0.25, 1, system);
+          return (
+            <SliderRow
+              className="flex-1"
+              label="Offset"
+              displayValue={formatSignedDim(outline.widePointOffset, system)}
+              value={offset.value}
+              min={offset.min}
+              max={offset.max}
+              step={offset.step}
+              onValueChange={(v) => onChange({ widePointOffset: offset.toMm(v) })}
+              leftHint="Tail"
+              rightHint="Nose"
+            />
+          );
+        })()}
       </div>
       <div className="flex gap-4">
         <SliderRow
@@ -295,51 +304,59 @@ export function OutlineControls({
       </div>
 
       <div className="flex gap-4">
-        <SliderRow
-          className="flex-1"
-          label="Tail Block"
-          displayValue={formatInchesFraction(
-            tailBlockPinned ? mm(0) : inchesToMm(tailEndWidthIn(outline.tail)),
-          )}
-          value={tailBlockPinned ? 0 : tailEndWidthIn(outline.tail)}
-          min={0}
-          max={16}
-          step={0.125}
-          disabled={tailBlockPinned}
-          onValueChange={(v) => onChange({ tail: withEndWidth(outline.tail, clampFinite(v, 0, 16)) })}
-        />
-        <SliderRow
-          className="flex-1"
-          label="Depth"
-          displayValue={
-            isDiamond
-              ? formatInchesFraction(geometry.effectiveDiamondDepth)
-              : isSwallow && outline.tail.kind === "swallow"
-                ? formatInchesFraction(outline.tail.crotchDepth)
-                : "—"
-          }
-          value={
+        {(() => {
+          const tailBlockMm = tailBlockPinned ? mm(0) : inchesToMm(tailEndWidthIn(outline.tail));
+          const tailBlock = measureSlider(tailBlockMm, { min: 0, max: 16 }, 0.125, 1, system);
+          return (
+            <SliderRow
+              className="flex-1"
+              label="Tail Block"
+              displayValue={formatDim(tailBlockMm, system)}
+              value={tailBlock.value}
+              min={tailBlock.min}
+              max={tailBlock.max}
+              step={tailBlock.step}
+              disabled={tailBlockPinned}
+              onValueChange={(v) => onChange({ tail: withEndWidth(outline.tail, tailBlock.toMm(v)) })}
+            />
+          );
+        })()}
+        {(() => {
+          const depthRangeIn = { min: isDiamond ? 1 : 1, max: isDiamond ? 5 : 8 };
+          const depthCurrentMm =
             isDiamond && outline.tail.kind === "diamond"
-              ? mmToInches(outline.tail.depth)
+              ? outline.tail.depth
               : isSwallow && outline.tail.kind === "swallow"
-                ? mmToInches(outline.tail.crotchDepth)
-                : 1
-          }
-          min={isDiamond ? 1 : 1}
-          max={isDiamond ? 5 : 8}
-          step={0.0625}
-          disabled={!isDiamond && !isSwallow}
-          onValueChange={(v) => {
-            if (isDiamond && outline.tail.kind === "diamond") {
-              onChange({ tail: { ...outline.tail, depth: inchesToMm(clampFinite(v, 1, 5)) } });
-            } else if (isSwallow && outline.tail.kind === "swallow") {
-              onChange({
-                tail: { ...outline.tail, crotchDepth: inchesToMm(clampFinite(v, 1, 8)) },
-              });
-            }
-          }}
-          note={diamondDepthClamped ? 'Clamped to 2" less than Tail Block' : undefined}
-        />
+                ? outline.tail.crotchDepth
+                : inchesToMm(1);
+          const depth = measureSlider(depthCurrentMm, depthRangeIn, 0.0625, 1, system);
+          return (
+            <SliderRow
+              className="flex-1"
+              label="Depth"
+              displayValue={
+                isDiamond
+                  ? formatMark(geometry.effectiveDiamondDepth, system)
+                  : isSwallow && outline.tail.kind === "swallow"
+                    ? formatMark(outline.tail.crotchDepth, system)
+                    : "—"
+              }
+              value={depth.value}
+              min={depth.min}
+              max={depth.max}
+              step={depth.step}
+              disabled={!isDiamond && !isSwallow}
+              onValueChange={(v) => {
+                if (isDiamond && outline.tail.kind === "diamond") {
+                  onChange({ tail: { ...outline.tail, depth: depth.toMm(v) } });
+                } else if (isSwallow && outline.tail.kind === "swallow") {
+                  onChange({ tail: { ...outline.tail, crotchDepth: depth.toMm(v) } });
+                }
+              }}
+              note={diamondDepthClamped ? 'Clamped to 2" less than Tail Block' : undefined}
+            />
+          );
+        })()}
       </div>
 
       <div className="flex gap-4">

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Live SVG outline viewer, ported from the prototype's render math
  * (reference/project/Template.dc.html lines 651-728) but computed in
@@ -14,6 +16,12 @@
  * out to the shared right-hand rail, and every input a named chip in the left gutter. All labels
  * are SVG `<text>` — there is no absolutely-positioned HTML overlay. Rails/gutters are canonical
  * constants imported from `components/viewer/callout-primitives.tsx`, never invented per call.
+ *
+ * Every measurement string drawn here reads through `lib/geometry/measure-display.ts` with the
+ * shaper's chosen system (Phase 6, D-09) — this file never formats a value on its own. `system`
+ * is read once via `useUnits()` and threaded as a plain argument into this file's own local
+ * helpers, never added to `OutlineViewer`'s own props (which would ripple into `order-form.tsx`
+ * and Phase 7's printed paths before they are ready for it).
  */
 
 import { type PointerEvent as ReactPointerEvent, useRef } from "react";
@@ -27,7 +35,9 @@ import type { OutlineDragPoint, OutlineDragTarget } from "@/lib/geometry/outline
 import { outlineDragPoints, solveOutlineDrag } from "@/lib/geometry/outline-drag";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import { sampleOutline } from "@/lib/geometry/outline";
-import { formatFeetInches, formatInchesFraction, inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
+import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
+import { formatDim, formatLength, stationLabel } from "@/lib/geometry/measure-display";
+import { useUnits } from "@/components/units-provider";
 import {
   CalloutChip,
   MIN_PINNED_FIT_SCALE,
@@ -255,6 +265,7 @@ export function OutlineViewer({
   pinCalloutText = false,
   orientation = "vertical",
 }: OutlineViewerProps) {
+  const { system } = useUnits();
   const horizontal = orientation === "horizontal";
   const svgRef = useRef<SVGSVGElement>(null);
   /** The content group carrying the rotation, in horizontal — see `toBoardPoint` below for why
@@ -300,7 +311,7 @@ export function OutlineViewer({
   const wpOffsetText =
     Math.abs(wpFromCenterIn) < 1e-9
       ? "At center"
-      : `${formatInchesFraction(inchesToMm(Math.abs(wpFromCenterIn)))} ${
+      : `${formatDim(inchesToMm(Math.abs(wpFromCenterIn)), system)} ${
           wpFromCenterIn > 0 ? "forward" : "back"
         }`;
 
@@ -313,7 +324,15 @@ export function OutlineViewer({
     y2: lenToY(mmToInches(m.leadingOffTail)),
   }));
 
-  const lengthCalloutText = `${formatFeetInches(geometry.length)} (${formatInchesFraction(geometry.length)})`;
+  // Imperial keeps the dual feet-and-inches / total-inches form; Metric has no equivalent
+  // duality, so it reads a single centimetre figure. Composed from formatLength/formatDim
+  // rather than calling formatFeetInches/formatInchesFraction directly — both still produce
+  // exactly the same imperial strings internally, but routing through the display boundary
+  // keeps this file out of the banned-formatter list the units-isolation ledger checks.
+  const lengthCalloutText =
+    system === "metric"
+      ? formatLength(geometry.length, system)
+      : `${formatLength(geometry.length, "imperial")} (${formatDim(geometry.length, "imperial")})`;
 
   // The construction overlay draws on the INPUT side only — the left rail, where the input chips
   // already live (outputs read out to the right rail). The board is symmetric, so a mirrored copy
@@ -408,7 +427,7 @@ export function OutlineViewer({
   const tailPodStationIn = mmToInches(geometry.tailPodStation);
   const tailBlockChipY = lenToY(tailPodStationIn);
   const halfTailBlockWidthIn = mmToInches(geometry.halfTailBlockWidth);
-  const tailBlockValue = `${formatInchesFraction(mm(geometry.halfTailBlockWidth * 2))} wide`;
+  const tailBlockValue = `${formatDim(mm(geometry.halfTailBlockWidth * 2), system)} wide`;
 
   // The fixed frame, centred on the stringer. Constant for every board, by construction.
   const fixedMinX = centerlineX - FIXED_FRAME_HALF_W;
@@ -659,22 +678,22 @@ export function OutlineViewer({
             valueX={frame.outputValueX}
             edgeX={pxX(noseHalfWidthIn)}
             y={lenToY(noseStationIn)}
-            value={formatInchesFraction(geometry.noseWidthAt12in)}
-            station={'Nose @ 12"'}
+            value={formatDim(geometry.noseWidthAt12in, system)}
+            station={`Nose @ ${stationLabel(system)}`}
           />
           <OutputRail
             valueX={frame.outputValueX}
             edgeX={pxX(midHalfWidthIn)}
             y={lenToY(lengthIn / 2)}
-            value={formatInchesFraction(mm(inchesToMm(centerWidthAtStationIn)))}
+            value={formatDim(mm(inchesToMm(centerWidthAtStationIn)), system)}
             station="Center"
           />
           <OutputRail
             valueX={frame.outputValueX}
             edgeX={pxX(tailHalfWidthIn)}
             y={lenToY(tailStationIn)}
-            value={formatInchesFraction(geometry.tailWidthAt12in)}
-            station={'Tail @ 12"'}
+            value={formatDim(geometry.tailWidthAt12in, system)}
+            station={`Tail @ ${stationLabel(system)}`}
           />
 
           {/* Inputs: left gutter chips, each naming its own value (sketch 004). Shown in compact
@@ -692,7 +711,7 @@ export function OutlineViewer({
                 x={frame.chipRightX}
                 y={widepointChipY}
                 name="WIDEPOINT"
-                value={formatInchesFraction(outline.widePointWidth)}
+                value={formatDim(outline.widePointWidth, system)}
                 nameColor="var(--outline-widepoint-knot)"
                 leaderToX={pxX(-wpHalfWidthIn)}
               />

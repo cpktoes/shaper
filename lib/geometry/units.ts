@@ -116,6 +116,62 @@ export function roundToWholeMm(value: Mm): Mm {
 }
 
 /**
+ * Which family a design number belongs to (D-01, extending Phase 5 D-02): **dims** — a board's
+ * length, widths and headline thickness, the numbers a shaper quotes as a size — read in
+ * centimetres to one decimal; **marks** — rail band marks, rocker heights, the five foil station
+ * thicknesses, the small stuff a shaper reads off with a rule against the board — read in whole
+ * millimetres. This lives here beside `UnitsSystem` because which family a number belongs to is a
+ * fact about the number itself, not about how `lib/geometry/measure-display.ts` happens to print
+ * it (`lib/geometry/fins.ts` tags a placement row with it directly, without depending on the
+ * display module).
+ */
+export type MeasureFamily = "dim" | "mark";
+
+/** A metric slider's millimetre-domain bounds and step — `metricSliderRange`'s return shape. */
+export interface MetricSliderRange {
+  min: number;
+  max: number;
+  step: number;
+}
+
+/**
+ * Derives a metric slider's millimetre-domain bounds from the app's existing inch-domain range
+ * (D-05, D-06). A metric slider runs entirely in the millimetre domain with an integer step — 10mm
+ * for board length, 1mm for everything else — so a drag can only land on a whole millimetre and
+ * the stored number and its on-screen label can never disagree; the centimetre reading is the
+ * label's job (`formatCentimetres`), not the track's.
+ *
+ * The inch minimum is converted to millimetres and rounded UP onto the `stepMm` grid; the inch
+ * maximum is converted and rounded DOWN. Both ends round INWARD, never outward, because nothing a
+ * metric shaper sets should ever be able to sit outside Imperial's own range — if it did, a later
+ * imperial drag or typed clamp could silently move a board a metric shaper never touched (D-07,
+ * UNIT-05). Rounding inward is what guarantees that can never happen.
+ *
+ * A signed `1e-9` nudge is applied against the rounding direction before `Math.ceil` / `Math.floor`
+ * — subtracted before ceiling the minimum, added before flooring the maximum — the same idiom
+ * `formatInchesFraction`, `formatCentimetres` and `formatWholeMm` already document. Without it, a
+ * bound that is mathematically exactly on the grid can still land a few ULPs on the wrong side of
+ * it in IEEE double arithmetic: `25 * 25.4` computes to `634.99999999999996`, not `635`, and
+ * without the nudge the widepoint width slider's Metric maximum would silently stop at 634mm
+ * instead of the 635mm a shaper's inch range actually allows.
+ */
+export function metricSliderRange(
+  rangeIn: { min: number; max: number },
+  stepMm: number,
+): MetricSliderRange {
+  const minMm = rangeIn.min * MM_PER_INCH;
+  const maxMm = rangeIn.max * MM_PER_INCH;
+  const rawMin = Math.ceil((minMm - 1e-9) / stepMm) * stepMm;
+  const rawMax = Math.floor((maxMm + 1e-9) / stepMm) * stepMm;
+  // A zero bound can come back as -0 (Math.ceil(-1e-9) is -0), which is === 0 but prints and
+  // JSON-serialises as "-0" — normalise it to a plain positive zero rather than let a slider's
+  // minimum silently carry a sign nobody meant.
+  const min = rawMin === 0 ? 0 : rawMin;
+  const max = rawMax === 0 ? 0 : rawMax;
+  return { min, max, step: stepMm };
+}
+
+/**
  * Parses a free-form metric length string into millimetres (D-04). A bare number is read as
  * `fieldUnit` — a centimetre field reads `"51.4"` as 51.4cm, a millimetre field reads `"67"` as
  * 67mm — and an explicit `cm` or `mm` suffix (either case, with or without a preceding space)
