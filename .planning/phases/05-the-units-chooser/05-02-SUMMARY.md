@@ -219,7 +219,7 @@ for `userPreferences`.
 
 None — plan executed exactly as written. The migration filename
 (`drizzle/0002_tearful_vanisher.sql`) differs from the plan's placeholder name
-(`drizzle/0002_units_preference.sql`), but the plan itself says this is expected ("the executor
+(`drizzle/0002_tearful_vanisher.sql`), but the plan itself says this is expected ("the executor
 does not hand-write it, and the generated name may differ").
 
 ## Issues Encountered
