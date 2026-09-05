@@ -126,10 +126,41 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
   4. Volume reads in litres in both systems, and the same litres figure is quoted on every screen as it is now
   5. A shaper can flip between systems mid-design and the board itself never moves — the outline, rocker and foil are exactly where they left them
 
-**Plans**: TBD
+**Plans**: 7 plans
+**Wave 1**
+
+  - [ ] 06-01-PLAN.md — Tracer: one shared display layer and one metric-bounds helper, proven end to end on the Template Builder's widepoint width, then the rest of that screen
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+  - [ ] 06-02-PLAN.md — One typed measurement box, and a typed board length in centimetres on all three screens that ask for one
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+  - [ ] 06-03-PLAN.md — The ROCKER screen: sliders, the datasheet's headers, labels and typed cells, and the side-profile callouts
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+  - [ ] 06-04-PLAN.md — The RAILS screen: the sidebar's marks, the data table's unit-headed columns, and a ten-millimetre grid on the cross-section plot
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+  - [ ] 06-05-PLAN.md — The fin model learns which of its numbers are lengths and which are marks; the DATA tab and the toe-aim tables convert
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+  - [ ] 06-06-PLAN.md — The FINS sidebar and drawing: tail width, fin base length, positions, toe-in, off-rail and every callout
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+  - [ ] 06-07-PLAN.md — The VOLUME screen and the volume card's area and cubic lines, then close the ledger and check what the Summary inherited
+
 **Phase notes**:
 
   - This is the bulk of the roughly 300 display sites across about 25 component files. No component gets its own conversion: each reads the chosen system from the Phase 5 hook and calls `lib/geometry/units.ts`.
+  - Planned as one screen per wave, in the founder's own review cadence: every wave leaves a shippable, part-converted app that can be looked at in the browser before the next one starts.
+  - Two shared pieces land before the screens: a pure display layer (`lib/geometry/measure-display.ts`) every call site formats through, and one `MeasureField` replacing `ImperialField` — the chosen units system is the primary noun, so neither system is the default.
+  - A conversion ledger in `lib/units-isolation.test.ts` grows through the phase and closes in Plan 07, failing the suite if any design-screen file formats a measurement on its own.
   - Typed entry today goes through the imperial parser (`components/rocker/imperial-field.tsx` and the controls that use `parseImperial`); the metric parser is its counterpart, not a second code path inside components.
 
 **UI hint**: yes
@@ -165,5 +196,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 3. Volume, Templates & Verified Math | 7/7 | Complete    | 2026-08-28 |
 | 4. Rocker & Foil Editors | 5/5 | Complete    | 2026-08-29 |
 | 5. The Units Chooser | 7/7 | Complete    | 2026-09-05 |
-| 6. The Design Screens in Metric | 0/? | Not started | - |
+| 6. The Design Screens in Metric | 0/7 | Not started | - |
 | 7. Metric on Paper | 0/? | Not started | - |
