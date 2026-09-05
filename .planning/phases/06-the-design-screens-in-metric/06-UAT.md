@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 06-the-design-screens-in-metric
 source: [06-VERIFICATION.md]
 started: 2026-09-05T20:43:11.570Z
-updated: 2026-09-05T21:32:59.474Z
+updated: 2026-09-05T21:45:59.251Z
 ---
 
 ## Current Test
@@ -118,8 +118,17 @@ blocked: 0
   reason: "User reported: the box is not big enough for the text."
   severity: minor
   test: 4
-  artifacts: []
-  missing: []
+  root_cause: "components/design/measure-field.tsx pins the typed box at 64px (w-16 min-w-16 max-w-16, 50px of text room) for every family/system/mode, copied from the retired ImperialField which only ever showed short bare datasheet fractions. A Metric board length is always 8 characters (122.0 cm to 365.8 cm) and measures 59-63px in Inter 14px, so 9-13px of it is clipped on the Template, Volume and Fins sidebars. Character count was used as a proxy for pixel width."
+  artifacts:
+    - path: "components/design/measure-field.tsx"
+      issue: "single fixed width class string for both standalone and bare modes; comment justifies fit by character count"
+    - path: ".planning/phases/06-the-design-screens-in-metric/06-UI-SPEC.md"
+      issue: "lines ~158 and ~234-236 record the 64px reuse as the contract; must be amended with measured widths"
+  missing:
+    - "Standalone mode (Board Length sites) uses w-24 min-w-24 max-w-24 (96px; lines up with the error line's existing w-24) or at minimum w-20; bare mode (rocker datasheet cells) keeps w-16 so the min-w-[540px] table stays byte-identical"
+    - "Rewrite the class comment and the UI-SPEC/06-02 plan wording to state measured widths (Inter 14px: 365.8 cm is about 63px vs a 50px content box) instead of a character count"
+    - "Imperial never renders the field (it renders the two Selects), so no Imperial change; the rocker datasheet's bare cells must not change width"
+  debug_session: .planning/debug/typed-length-box-too-narrow.md
 - gap_id: G-06-12
   truth: "Fin DATA tab and toe-aim modal correct family-by-family"
   status: failed
@@ -127,8 +136,23 @@ blocked: 0
   severity: major
   decision: "User decision 2026-09-05: every fin PLACEMENT number (distance up from the tail, off-rail, toe-in) reads in whole millimetres on the DATA tab, the sidebar sliders and the drawing callouts; board length and tail width (summary line, Tail Width slider, toe-aim table headings) stay in centimetres."
   test: 12
-  artifacts: []
-  missing: []
+  root_cause: "Design decision reversal, not a defect: Phase 6's D-01 table (06-CONTEXT.md line ~75) classified fin off-tail positions as the cm 'dim' family, and plans 06-05/06-06 implemented it at nine sites: family: 'dim' on the three Off-Tail rows in lib/geometry/fins.ts (lines ~905, 934, 959), four formatDim calls on off-tail values in components/fins/fin-controls.tsx (~556, 594-597, 684, 707) and one formatDim on the off-tail callout in components/fins/fin-viewer.tsx (~224). Toe-in, off-rail, off-stringer, full spread and base length were already 'mark'. Slider domains already step 1 mm; Imperial output is structurally identical for both formatters."
+  artifacts:
+    - path: "lib/geometry/fins.ts"
+      issue: "Off-Tail rows tagged family: 'dim' at ~905/934/959; doc comment ~137-142 and toeAimTableFor comment ~1171-1174 cite the old D-01 rationale"
+    - path: "components/fins/fin-controls.tsx"
+      issue: "formatDim on placement numbers at ~556, ~594-597, ~684, ~707; comment ~270-273"
+    - path: "components/fins/fin-viewer.tsx"
+      issue: "formatDim(mark.offTail) at ~224; comment ~220-221"
+    - path: "lib/geometry/fins.test.ts"
+      issue: "lines ~454/479/494 pin toBe('dim') for the off-tail rows; describe/it titles ~444-484 describe the old split"
+  missing:
+    - "Flip the three Off-Tail family tags to 'mark' and the five formatDim placement calls to formatMark; no arithmetic, slider bound or storage change"
+    - "Keep board dims in cm: fin-controls Tail Width (~385) and Board Length (~321), fin-data-panel summary line (~43-45), fin-viewer compact heading (~563), toe-aim modal title (~42-43), fins.ts toe-aim columns/rowLabel/identicalFromLabel (~1187-1192)"
+    - "Update fins.test.ts expectations (derive strings via inchesToMm -> formatMark, never hand-typed); golden-parity blocks and fullSpreadFamily tests stay untouched and green"
+    - "Record the superseding decision in 06-CONTEXT.md D-01 (~75, ~342) and 06-UI-SPEC.md (~152, ~328-330); consider adding fin placement numbers to CLAUDE.md Rule 2's Marks list"
+    - "Toe-aim table CELL values (aim distances off the stringer): pending shaper decision, see G-06-12 decision field"
+  debug_session: .planning/debug/fin-placement-numbers-in-cm.md
 - gap_id: G-06-15
   truth: "Fin viewer callouts correct, board unmoved, both themes"
   status: failed
@@ -137,5 +161,10 @@ blocked: 0
   decision: "Same root as G-06-12 — fix together; fin drawing off-tail callouts, summary line's off-tail figures and base-length legend read in mm; board dims stay cm."
   related: G-06-12
   test: 15
-  artifacts: []
-  missing: []
+  root_cause: "Same root cause as G-06-12: components/fins/fin-viewer.tsx formats the off-tail callout with formatDim (~224) because the model tags off-tail as 'dim'. Fix together with G-06-12."
+  artifacts:
+    - path: "components/fins/fin-viewer.tsx"
+      issue: "formatDim(mark.offTail, system) at ~224 renders the off-tail callout in cm"
+  missing:
+    - "Switch the off-tail callout to formatMark; the compact heading (~563, board length + tail width) stays cm and the base-length legend (~598) is already mm"
+  debug_session: .planning/debug/fin-placement-numbers-in-cm.md
