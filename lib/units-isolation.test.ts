@@ -69,13 +69,12 @@ describe("units isolation (UNIT-05, D-16)", () => {
   });
 
   it("every display site that already shows a design summary gets its numbers from the boundary", () => {
-    // card-metadata-line.tsx doesn't exist as its own module in this worktree yet, and
-    // preset-card.tsx hasn't gained its dims line yet either — both land via the sibling 05-03
-    // plan, which runs concurrently in its own worktree and isn't merged into this one. Rather
-    // than hard-code an expectation this worktree cannot satisfy, each candidate is checked only
-    // if it exists AND already renders a DesignSummary — a marker that is true for board-rack-
-    // card.tsx and settings-menu.tsx today, and becomes true for the other two the moment 05-03
-    // lands, tightening this guard automatically with no edit required here.
+    // A display site may read the boundary directly (settings-menu.tsx, preset-card.tsx) or
+    // through the shared CardMetadataLine component (board-rack-card.tsx since 05-03). That
+    // component is itself a candidate below and must import the boundary, so the chain from every
+    // card line back to lib/geometry stays pinned either way. Each candidate is checked only if
+    // it exists AND already renders a DesignSummary, so a site that gains a summary later is
+    // caught automatically with no edit required here.
     const candidates = [
       "components/setup/card-metadata-line.tsx",
       "components/setup/board-rack-card.tsx",
@@ -92,8 +91,8 @@ describe("units isolation (UNIT-05, D-16)", () => {
       checked += 1;
       expect(
         source,
-        `${relative} shows a design summary but does not import from the units boundary`,
-      ).toMatch(/@\/lib\/geometry\/(summary-line|units)/);
+        `${relative} shows a design summary but does not import from the units boundary or the shared CardMetadataLine`,
+      ).toMatch(/@\/lib\/geometry\/(summary-line|units)|@\/components\/setup\/card-metadata-line/);
     }
     // Must find at least the two sites this phase already converted (board-rack-card.tsx,
     // settings-menu.tsx) — an empty candidate list would otherwise pass this test vacuously.
