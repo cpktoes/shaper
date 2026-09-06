@@ -1,68 +1,32 @@
 ---
 phase: 06-the-design-screens-in-metric
-verified: 2026-09-05T20:41:00Z
+verified: 2026-09-06T00:57:00Z
 status: human_needed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
+re_verification:
+  previous_status: human_needed
+  previous_score: 5/5
+  gaps_closed:
+    - "G-06-4: typed Board Length box too narrow — MeasureField's standalone mode now renders a 96px box (w-24 min-w-24 max-w-24); bare mode (ROCKER datasheet cells) stays byte-identical at 64px"
+    - "G-06-12: Fins DATA tab and toe-aim modal fin placement numbers were in cm — the three Off-Tail rows and four sidebar labels re-tagged/reformatted to mark (whole mm); toe-aim table cells split from the tail-width/row-label cm formatter into a separate formatMarkBare cell formatter, headings now say (mm)"
+    - "G-06-15: fin drawing off-tail callout was in cm — switched to formatMark; board-size numbers (compact heading, legend, Tail Width) confirmed untouched"
+  gaps_remaining: []
+  regressions: []
 human_verification:
-  - test: "On the Template Builder with Metric chosen, the Width row reads `Width — 51.4 cm` for a 20 1/4 in board, the thumb moves a millimetre at a time, and the ends of its travel are 40.7 and 63.5. Switch to Imperial and the row is exactly as before."
-    expected: "Metric width slider labels/steps/bounds correct; Imperial byte-identical"
-    why_human: "Visual/interaction confirmation of live slider behaviour in a browser"
-  - test: "On Metric, the Offset row reads with a leading `+` toward the nose and a leading `-` toward the tail, `0 cm` dead centre; Depth on a swallow or diamond tail reads in whole millimetres; the percent and angle rows are unchanged. On Imperial everything reads as it did."
-    expected: "Signed offset formatting and Depth mark-family formatting correct in the live UI"
-    why_human: "Visual confirmation of sign glyphs and untouched percent/angle rows"
-  - test: "On Metric, the Template viewer's length callout reads a single centimetre figure, the three width callouts read in centimetres with their stations named `@ 30.5 cm`, and the tail block reads `… cm wide`. On Imperial the drawing is unchanged, dual length form included. Check one dark theme as well as Daylight."
-    expected: "Viewer callouts read correctly in both themes"
-    why_human: "Rendered SVG callout appearance, including dark theme, needs a browser"
-  - test: "On Metric, the Template Builder and the Volume screen each show one box above the Board Length slider; typing 188 and pressing Enter moves the thumb and re-labels the row to 188.0 cm; the thumb moves a centimetre at a time and stops at 153 and 304. Typing `5 1/2` puts the last good number back with an error line under the box. Switch to Imperial and the two dropdowns are back, unchanged."
-    expected: "Typed Board Length field commits, clamps, reverts on bad input, and Imperial dropdowns are unaffected"
-    why_human: "Live typing/focus/blur interaction in a browser"
-  - test: "On Metric, the Fins screen's Board Length shows the same typed box, stopping at 122 and 365 cm. Tick \"import from template\" and the row dims exactly as it did before. On Imperial the dropdowns are unchanged."
-    expected: "Fins Board Length field and import-template dimming behave correctly"
-    why_human: "Live interaction and visual dimming state"
-  - test: "On Metric the seven ROCKER sliders read in whole millimetres, move a millimetre at a time, and the two read-outs under the lift sliders name their station in centimetres. The angle and smoothness rows are untouched. On Imperial the sidebar is exactly as it was."
-    expected: "Rocker sidebar sliders and read-outs correct in both systems"
-    why_human: "Visual/interaction confirmation of seven sliders"
-  - test: "On Metric the datasheet's row labels say which unit each row is in, the station columns are named in centimetres, every cell is a bare number, and typing into a thickness cell then tabbing away re-prints it as a whole millimetre. Typing nonsense puts the old number back with an error line. On Imperial the whole table is unchanged."
-    expected: "Rocker datasheet typed cells commit/revert correctly with correct headers"
-    why_human: "Live typed-cell interaction and table rendering"
-  - test: "On Metric the rocker drawing's five stations are named in centimetres and every callout number reads in millimetres; the drawing itself has not moved. On Imperial it is unchanged. Check one dark theme as well as Daylight."
-    expected: "Rocker viewer callouts correct and board geometry unchanged, in both themes"
-    why_human: "Rendered SVG appearance across themes"
-  - test: "On Metric the RAILS sidebar's thickness, Corner Cut and Bottom Tuck 3 rows read in whole millimetres and move a millimetre at a time, the nose and tail thickness rows name their station in centimetres, and the Deck Profile clamp note appears exactly when it did before. On Imperial the sidebar is unchanged."
-    expected: "Rails sidebar sliders and clamp note correct"
-    why_human: "Visual/interaction confirmation"
-  - test: "On Metric the DATA page's rail table shows `(mm)` on each section column and bare numbers in every cell, with any absent value still an em dash and any hard edge still reading Hard Edge. On Imperial the table is unchanged. Open the Summary order form on Metric and confirm its rail card follows — that is the expected part-converted state until Phase 7."
-    expected: "Rail data table headers/cells correct; Summary's embedded rail card follows"
-    why_human: "Visual table confirmation across two surfaces"
-  - test: "On Metric the rail cross-section plot's grid squares are ten millimetres, its ticks count 0, 10, 20 and so on, and one tick per axis says mm; counting squares against the table's marks agrees. On Imperial the plot is pixel-for-pixel what it was."
-    expected: "Rail plot grid/ticks correct and pixel-identical in Imperial"
-    why_human: "Rendered SVG plot appearance"
-  - test: "On Metric, the Fins DATA tab's summary line reads its length and tail width each with their own cm, off-tail rows read in centimetres and toe-in and off-rail rows read in whole millimetres in the same group. Open the toe-aim tables: both headings say cm, the title reads in centimetres, and the highlighted column is the same one it was on Imperial. Switch to Imperial and both surfaces are unchanged."
-    expected: "Fin DATA tab and toe-aim modal correct family-by-family"
-    why_human: "Visual table/modal confirmation"
-  - test: "On Metric the Tail Width row names its station in centimetres and reads its width in centimetres, and each Fin Base Length reads `114 mm standard`; press Override and the box takes whole millimetres, stepping one at a time, refusing anything below 64 or above 190. Tick \"Import Template Values\" and both rows dim exactly as before. On Imperial the sidebar is unchanged."
-    expected: "Fins sidebar Tail Width/Base Length controls correct"
-    why_human: "Live interaction confirmation"
-  - test: "On Metric every Fins slider reads in its right family — positions and off-tail in centimetres, toe-in and off-rail in whole millimetres — and no inch mark is left anywhere on the sidebar, the quad rear heading included. On Imperial the whole sidebar is unchanged."
-    expected: "Every remaining fins slider in correct family, no stray inch marks"
-    why_human: "Visual sweep of the sidebar"
-  - test: "On Metric the fin drawing's toe and off-rail callouts read in millimetres and its off-tail callouts in centimetres, each with its own unit; the summary line and the base-length legend follow. Nothing has moved on the drawing. On Imperial it is unchanged. Check one dark theme as well as Daylight."
-    expected: "Fin viewer callouts correct, board unmoved, both themes"
-    why_human: "Rendered SVG appearance across themes"
-  - test: "On Metric the Volume screen's Board Width and Center Thickness read in centimetres and move a millimetre at a time; the card's dimension rows read in centimetres, its cross-section and weighted thickness rows in whole millimetres, its area line in square centimetres and its supporting line in cubic centimetres. The litres figure is the same number it was on Imperial, and the same number the setup screen's card quotes for the same board. On Imperial the whole screen is unchanged."
-    expected: "Volume sidebar and card correct; litres identical across systems and screens"
-    why_human: "Visual/interaction confirmation and cross-screen litres comparison"
-  - test: "Backstop 1 — no flash of inches on the Summary: with Metric chosen, hard-reload /design/summary and watch the first paint. The outline callouts, the rocker callouts, the rail plot and the rail data table must read metric from the very first frame, with no inch values appearing and no hydration warning in the browser console. Repeat once signed in and once signed out."
-    expected: "No flash of inches, no hydration mismatch, signed in and signed out"
-    why_human: "First-paint/hydration timing cannot be observed by static analysis; explicitly tagged verification: backstop in 06-07's must_haves"
-  - test: "Backstop 2 — the order form's overflow audit on Metric: with Metric chosen, open the browser's print preview of /design/summary and re-run the order form's usual overflow check on every compact panel. The compact rail table's section headers now carry a unit suffix, and those panels clip their overflow by design, so confirm no header or row is cut off on paper on both Letter and A4. Record the result in the summary; if anything clips, file it rather than widening a panel here."
-    expected: "No clipped headers/rows on Letter or A4 print preview"
-    why_human: "Print-layout overflow cannot be verified without rendering; explicitly tagged verification: backstop in 06-07's must_haves"
-  - test: "Sweep the five design screens on Metric looking for any stray inch mark, and on Imperial confirm every screen reads exactly as it did before the phase."
-    expected: "No stray inch marks anywhere in Metric; Imperial fully unchanged"
-    why_human: "Final visual sweep across all five screens, both systems"
+  - test: "On Metric, the Template Builder and the Volume screen each show one box above the Board Length slider; typing 188 and pressing Enter moves the thumb and re-labels the row to 188.0 cm, with nothing clipped; the box now shows its whole value at both ends of its range (153.0-304.8 cm on Template/Volume, 122.0-365.8 cm on Fins). Typing `5 1/2` puts the last good number back with an error line that now lines up under the wider box. On Imperial the two dropdowns are unchanged."
+    expected: "Typed Board Length field shows its whole value uncut, commits/clamps/reverts as before, Imperial unaffected — re-run of UAT test 4 against gap G-06-4's fix"
+    why_human: "Whether text visually fits inside a rendered box is a rendering fact static analysis and node-environment tests cannot observe"
+  - test: "On Metric, the Fins DATA tab's summary line reads its board length and tail width each in centimetres, but the three Off-Tail rows now read in whole millimetres in the same group as Off-Rail, Toe-In and Fin Base Length. Open the toe-aim tables: both section headings now say `(mm)`, every aim-distance cell is a whole millimetre, but the tail-width column headings, board-length row label and modal title still read in centimetres. The highlighted column is the same one it was on Imperial. Switch to Imperial and both surfaces are unchanged."
+    expected: "Fin DATA tab and toe-aim modal placement numbers in mm, board-size numbers in cm — re-run of UAT test 12 against gaps G-06-12/G-06-15's fix"
+    why_human: "Visual table/modal rendering and family-by-family unit correctness needs a browser"
+  - test: "On Metric, every Fins sidebar slider reads in its (now corrected) family: the Forward/Aft position labels and the quad Rear Off-Tail Position display now read in whole millimetres, matching the override box above them; toe-in and off-rail are still whole millimetres as before; the Tail Width row still reads centimetres. No inch mark is left anywhere on the sidebar, the quad rear heading included. On Imperial the whole sidebar is unchanged."
+    expected: "Every fins sidebar slider label in the corrected family, no stray inch marks — re-run of UAT test 14 against gaps G-06-12/G-06-15's fix"
+    why_human: "Visual sweep of the sidebar for correct unit families and absence of stray inch marks"
+  - test: "On Metric the fin drawing's toe and off-rail callouts read in millimetres as before, and its off-tail callout now also reads in millimetres (previously centimetres) — all three carrying their own unit. The summary line and base-length legend keep reading board length/tail width in centimetres. Nothing has moved on the drawing. On Imperial it is unchanged. Check one dark theme as well as Daylight."
+    expected: "Fin viewer off-tail callout now in mm alongside toe/off-rail, board unmoved, both themes — re-run of UAT test 15 against gap G-06-15's fix"
+    why_human: "Rendered SVG callout appearance across themes needs a browser"
 ---
 
 # Phase 6: The Design Screens in Metric Verification Report
@@ -71,9 +35,21 @@ human_verification:
 fins, rocker and volume screens — follows the system they chose, with cm for length and widths,
 whole millimetres for the small stuff, and litres for volume either way.
 
-**Verified:** 2026-09-05T20:22:59Z
+**Verified:** 2026-09-06T00:57:00Z
 **Status:** human_needed
-**Re-verification:** No — initial verification
+**Re-verification:** Yes — after gap closure (plans 06-08, 06-09, following end-of-phase UAT)
+
+## Context
+
+This is the second verification pass for Phase 6. The first pass (previous `06-VERIFICATION.md`,
+`status: human_needed`, 5/5 code-level truths verified) was followed by end-of-phase UAT
+(`06-UAT.md`): 15 of 19 tests passed, 3 failed as gaps (G-06-4, G-06-12, G-06-15), 1 was deferred
+to Phase 7 by shaper decision (test 18, Summary order form units). Two gap-closure plans
+(06-08, 06-09) closed all three gaps and are merged onto `main` (commits `907bd5d`, `909f72c`,
+`1b52aa3` for 06-08; `e76c237`, `e2c5999` for 06-09). This verification re-examines the codebase
+against the original must-haves of all nine plans plus the two gap-closure plans' must-haves,
+confirms the fixes are real (not just claimed), confirms nothing else regressed, and re-lists the
+UAT items whose expected behaviour changed as a result of the fixes.
 
 ## Goal Achievement
 
@@ -81,122 +57,141 @@ whole millimetres for the small stuff, and litres for volume either way.
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | In Metric, every slider and value on the five screens reads in cm for length/widths and whole mm for marks, and sliders land on whole millimetres | ✓ VERIFIED (code) / human_needed (visual) | `measureSlider()` (`lib/geometry/measure-display.ts`) is the single call every converted slider uses for value/min/max/step/`toMm`; `metricSliderRange` (`lib/geometry/units.ts`) derives whole-mm bounds inward from each inch range. All 15 design-screen display files are `converted: true` in the `lib/units-isolation.test.ts` ledger, each verified to import the display boundary and contain zero banned imperial-formatter calls. `npx vitest run` — 2006/2006 passing (2 skipped separately; 33 files), re-run after the post-review fix commits. Live rendering/interaction needs a browser — routed to human verification. |
-| 2 | In Metric, a shaper can type a decimal cm figure (51.4) or whole mm and the field accepts it, re-prints in the chosen system, and reverts anything unreadable exactly as today | ✓ VERIFIED (post-fix) | **Re-checked after a code-review blocker and fix — see "Post-review fix" below.** `MeasureField` (`components/design/measure-field.tsx`) is the app's one typed-measurement control and delegates all parse/clamp/snap/error work to `commitTypedMeasure` (`lib/geometry/measure-display.ts`). My original evidence cited `commitTypedMeasure`'s unit tests (`"5 1/2"`, `"51,4"`, `"abc"`, cm/mm suffix overrides, empty/whitespace revert, boundary-exact clamping) — but those tests hand-supplied cm-domain `min`/`max` directly and so never exercised the real caller wiring, which is where the actual bug lived: the three Board Length call sites (`outline-controls.tsx`, `fin-controls.tsx`, `volume-controls.tsx`) were passing `measureSlider`'s millimetre-domain bounds straight into a centimetre-domain `"length"` field, so typing `188` (188cm) clamped up against a millimetre-scale "minimum" and stored ~15300mm — a 10x-too-long board, with no error shown. That gap in my original review is now closed by commit `a5c6801`, which adds `typedFieldBounds(view, family, system)` as the one conversion point and routes all three call sites through it. The closing evidence is the new integration test group in `lib/geometry/measure-display.test.ts` ("integration: the real Board Length wiring") — it drives `measureSlider` → `typedFieldBounds` → `commitTypedMeasure` exactly as the components do, asserts typing `188` commits `1880mm`/`"188.0 cm"` with no error, and includes an explicit regression case proving the old (bounds-not-converted) wiring would have produced `15300mm`. `components/rocker/imperial-field.tsx` is deleted; `rocker-datasheet.tsx` now calls `MeasureField` at both of its typed-cell sites; no functional import of `ImperialField` remains anywhere in the repo. **Note:** REQUIREMENTS.md's SCRN-02 row still reads "Pending" — a stale ledger entry (worktree executors don't write that shared file), not a code gap; the code and tests above satisfy SCRN-02 directly. |
-| 3 | Viewer callouts and data tables follow too — rail band marks, fin placement numbers, the rocker datasheet and the volume card all read in the chosen system, with no stray inch marks left behind | ✓ VERIFIED (code) / human_needed (visual sweep) | `formatMark`/`formatMarkBare`/`formatDim`/`formatDimBare`/`columnUnitSuffix`/`stationLabel` are the composition primitives used at every viewer/table call site named in the plans (`rail-data-table.tsx`, `rail-section-plot.tsx`, `rocker-datasheet.tsx`, `rocker-viewer.tsx`, `fin-data-panel.tsx`, `toe-aim-table-modal.tsx`, `fin-viewer.tsx`, `volume-calculation-card.tsx`, `outline-viewer.tsx`). `lib/units-isolation.test.ts` mechanically asserts each of these 15 files is `converted: true`, imports the display boundary, and contains none of the banned imperial formatters. A live "no stray inch mark" sweep needs a browser — routed to human verification. |
-| 4 | Volume reads in litres in both systems, and the same litres figure is quoted on every screen as it is now | ✓ VERIFIED | `volume-calculation-card.tsx`'s litres rendering takes no `system` argument — asserted structurally by grep checks in the 06-07 SUMMARY (`quotedVolumeLitres, system` count 0) and independently confirmed present in `lib/units-isolation.test.ts`. `formatArea`/`formatCubicVolume` (the only new volume-card conversions) touch only the area/cubic supporting lines, never the litres figure itself. Cross-screen litres-figure comparison (setup card vs. design screens) needs a browser — routed to human verification. |
-| 5 | A shaper can flip between systems mid-design and the board itself never moves — the outline, rocker and foil are exactly where they left them | ✓ VERIFIED | `metricSliderRange` has a dedicated property test ("every returned range lies inside its own imperial range, to within the nudge's own 1e-6mm tolerance" — `lib/geometry/units.test.ts`), which is the mechanism that guarantees a flip never clamps a value the shaper set. `measureSlider`'s `toMm` conversion function is only invoked from `SliderRow`'s `onValueChange` (an actual drag) — never on render — confirmed by reading `slider-row.tsx` and `measure-display.ts`. `lib/units-isolation.test.ts`'s "formatting is a read — switching systems back and forth mutates nothing" test and the pre-existing UNIT-05 guard (design store/snapshot cannot see the units preference) both still pass. |
+| 1 | In Metric, every slider and value on the five screens reads in cm for length/widths and whole mm for marks, and sliders land on whole millimetres — including fin placement sliders now reading in the corrected family | ✓ VERIFIED (code) / human_needed (visual) | Unchanged from the first pass for sliders themselves (`measureSlider`/`metricSliderRange`, no bound/step touched — confirmed by `git status --porcelain` on all four fins/rocker call-site files returning 0 in plan 06-09, and by grep-verified acceptance criteria in 06-08 showing zero `*_BOUNDS`/step changes). What changed: the four fins sidebar labels above the position/off-tail sliders now print through `formatMark` instead of `formatDim` (confirmed: `fin-controls.tsx` has exactly 1 remaining `formatDim(` call, the Tail Width label). `npx vitest run` reproduced independently: 2007/2009 passing (2 skipped), 33 files — matches SUMMARY claims exactly. Live slider/label rendering needs a browser — routed to human verification (UAT test 14 re-run). |
+| 2 | In Metric, a shaper can type a decimal cm figure (51.4) or whole mm and the field accepts it, re-prints it in the chosen system, and reverts anything unreadable exactly as today — and the typed box is now wide enough to show its whole value | ✓ VERIFIED | Gap G-06-4 closed: read `components/design/measure-field.tsx` directly — the `className` is now chosen from the `bare` prop (line 105-107): bare mode is byte-identical to the pre-fix string (`h-7 w-16 min-w-16 max-w-16 ...`, confirmed present exactly once by grep), standalone mode is `h-7 w-24 min-w-24 max-w-24 ...` (confirmed present exactly once). The error line's `w-24` is untouched. No call site (`outline-controls.tsx`, `volume-controls.tsx`, `fin-controls.tsx`, `rocker-datasheet.tsx`) shows a diff since the UAT baseline (`git status --porcelain` on all four returns empty against `HEAD`, and `git diff 044c652 HEAD` confirms no other changes). The commit/clamp/parse pipeline (`commitTypedMeasure`) itself is unchanged — same function, same call. `npx vitest run components/design/measure-field.test.ts` — 6/6 passing, confirming both class strings are asserted. Whether the box visually shows the whole string uncut needs a browser — routed to human verification (UAT test 4 re-run). |
+| 3 | Viewer callouts and data tables follow too — rail band marks, fin placement numbers, the rocker datasheet and the volume card all read in the chosen system, with no stray inch marks left behind — including the fin DATA tab, toe-aim tables and fin drawing now reading placement numbers in mm | ✓ VERIFIED (code) / human_needed (visual sweep) | Gaps G-06-12/G-06-15 closed: `lib/geometry/fins.ts` — the three `Off-Tail` row constructions (lines 907, 936, 961) are tagged `family: "mark"` (confirmed by direct read; previously `"dim"`). `toeAimTableFor`'s cell formatter (line 1181) now reads `formatMarkBare(inchesToMm(v), system)` while `tailWidthDisplay` (column headings/row label, `toe-aim-table-modal.tsx` line 43) still reads `formatDim`. `components/fins/fin-controls.tsx` and `components/fins/fin-viewer.tsx` each retain exactly 1 remaining `formatDim(` call (confirmed by grep) — the Tail Width label and the compact heading respectively, exactly as the plans specify; every other placement label/callout now calls `formatMark`. `components/fins/fin-data-panel.tsx` — confirmed untouched (`git diff` against pre-gap-closure baseline is empty), consistent with the prohibition that it reads `row.family` generically and needed no edit. The toe-aim modal's unit marker (line 48) now calls `columnUnitSuffix("mark", system)` for the metric branch. A regression test proves the family flip cannot move an imperial string (`fins.test.ts` line 523, "re-tagging an off-tail row from dim to mark cannot move its Imperial string"). Golden fixtures/geometry math confirmed untouched: `git diff 044c652 HEAD -- lib/geometry/__fixtures__/ lib/geometry/template.test.ts lib/geometry/rail-bands.ts lib/geometry/rocker.test.ts` is empty. Live rendering (DATA tab, drawing, toe-aim modal) needs a browser — routed to human verification (UAT tests 12 and 15 re-run). |
+| 4 | Volume reads in litres in both systems, and the same litres figure is quoted on every screen as it is now | ✓ VERIFIED | Unaffected by either gap-closure plan — no file touched by 06-08/06-09 is in the volume rendering path except `volume-controls.tsx`'s Board Length field, whose width-only fix (via `MeasureField`) does not touch the litres figure. No regression: `npx vitest run` full suite green. Carried forward from the first verification pass without new risk. |
+| 5 | A shaper can flip between systems mid-design and the board itself never moves — the outline, rocker and foil are exactly where they left them | ✓ VERIFIED | Both gap-closure plans are pure formatter/class-string changes with zero arithmetic, bound, step, or stored-value edits — confirmed structurally: 06-08's acceptance criteria assert zero `*_BOUNDS`-touching diff lines and zero fixture/data-panel/template-test diffs (reproduced above); 06-09 touches only `MeasureField`'s `className` selection, not `commitTypedMeasure`, not any slider. `lib/units-isolation.test.ts`'s "formatting is a read" guard and the UNIT-05 design-store isolation test both still pass (87/87 in `units.test.ts` + `units-isolation.test.ts` combined run). No regression to the metric-bounds-inside-imperial-bounds property test. |
 
-**Score:** 5/5 truths verified at the code/test level; all 5 also carry a human-verification component for live rendering/interaction that this verifier cannot exercise (routes overall status to `human_needed`, not `passed`, per the decision tree).
+**Score:** 5/5 truths verified at the code/test level. Truths 1, 2 and 3 each still carry a
+human-verification component for live rendering that this verifier cannot exercise in a browser —
+this routes the overall status to `human_needed`, not `passed`, exactly as the decision tree
+requires when human-verification items are non-empty.
 
-### Required Artifacts
+### Required Artifacts (gap-closure specific)
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `lib/geometry/measure-display.ts` | The one display boundary (formatDim/formatMark/formatSignedDim/formatLength/stationLabel/columnUnitSuffix/measureSlider/commitTypedMeasure) | ✓ VERIFIED | Present, pure (no React/browser/DB imports), all functions read and exported as claimed |
-| `lib/geometry/units.ts` (metricSliderRange, squareMmToSquareCentimetres, cubicMmToCubicCentimetres, cubicInchesToCubicMm) | Metric bounds helper + cm²/cm³ conversions | ✓ VERIFIED | Present, unit-tested including the inside-imperial-range property test |
-| `components/design/measure-field.tsx` | The one typed measurement control, system-aware | ✓ VERIFIED | Present, delegates entirely to `commitTypedMeasure`, no parse/clamp/format logic of its own |
-| `components/rocker/imperial-field.tsx` | Deleted, replaced by `MeasureField` | ✓ VERIFIED | File does not exist; no functional references remain in repo |
-| `lib/units-isolation.test.ts` (conversion ledger) | Every design-screen display file converted, importing the boundary, zero banned formatters | ✓ VERIFIED | All 15 `DESIGN_SCREEN_DISPLAY_FILES` entries `converted: true`; "closing assertion" test passes |
-| `components/rails/rail-section-plot.test.ts` | First test for the rail plot's grid/tick generation, both systems | ✓ VERIFIED | Present, exercises `buildRailPlotGrid` against a real `computeRailBands` fixture |
-| `lib/geometry/fins.ts` (FinSummaryRow.family, FinSummaryGroup.fullSpreadFamily) | Family classification tagged at row-construction time | ✓ VERIFIED | Present; `lib/geometry/fins.test.ts` covers classification for thruster/quad/basic setups |
+| `components/design/measure-field.tsx` | Box width follows `bare` render mode: 64px bare, 96px standalone | ✓ VERIFIED | Read directly (lines 98-107); both class strings confirmed present exactly once each by grep; error line untouched |
+| `components/design/measure-field.test.ts` | Source-contract test pins both widths | ✓ VERIFIED | `npx vitest run` — 6/6 passing |
+| `lib/geometry/fins.ts` | Three Off-Tail rows tagged `mark`; `toeAimTableFor` cell formatter split from column/row-label formatter | ✓ VERIFIED | Read directly; grep confirms 3 `family: "mark"` Off-Tail rows and the split `formatCell`/`tailWidthDisplay` |
+| `components/fins/fin-controls.tsx` | Four placement labels through `formatMark`; Tail Width stays `formatDim` | ✓ VERIFIED | Exactly 1 `formatDim(` call remains (grep-confirmed) |
+| `components/fins/fin-viewer.tsx` | Off-tail callout through `formatMark`; compact heading stays `formatDim` | ✓ VERIFIED | Exactly 1 `formatDim(` call remains (grep-confirmed) |
+| `components/fins/toe-aim-table-modal.tsx` | Both headings say `(mm)` via `columnUnitSuffix("mark", ...)`; title stays cm | ✓ VERIFIED | Read directly, lines 43-48 |
+| `lib/geometry/fins.test.ts` | Family + toe-aim expectations updated; imperial-equality regression test added | ✓ VERIFIED | Test named at line 523; full suite green |
+| `.planning/phases/06-the-design-screens-in-metric/06-CONTEXT.md`, `06-UI-SPEC.md`, `CLAUDE.md` | Superseding rule recorded | ✓ VERIFIED | `06-CONTEXT.md` D-01 amendment present (line 85), `286 mm` example present; `CLAUDE.md` Rule 2 Marks sentence names fin placement numbers (confirmed by direct read) |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|-----|-----|--------|---------|
-| `MeasureField` | `commitTypedMeasure` | Direct call in `commit()` | ✓ WIRED | Confirmed by reading `measure-field.tsx` |
-| `rocker-datasheet.tsx` typed cells | `MeasureField` | Component usage, 2 call sites | ✓ WIRED | Confirmed by grep and read |
-| Every converted `.tsx` display file | `lib/geometry/measure-display.ts` | Import + ledger assertion | ✓ WIRED | `lib/units-isolation.test.ts` mechanically enforced, passing |
-| `SliderRow` | `measureSlider(...).toMm` | Called only from `onValueChange` | ✓ WIRED | Confirmed no other call site of `toMm` exists outside a drag handler |
-| `rail-data-table.tsx`'s `formatCell` | Summary's compact rail card | Shared component | ✓ WIRED | Same component/choke-point reused, per 06-04 SUMMARY and CONTEXT's "accepted part-converted Summary" note |
+| `fin-data-panel.tsx` | `row.family` | Reads family generically, needs no edit | ✓ WIRED / UNTOUCHED | Confirmed: file has zero diff since pre-gap-closure baseline |
+| `MeasureField`'s `bare` prop | `className` selection | Direct conditional in component | ✓ WIRED | Confirmed by direct read; no call site needed to change `bare` passing |
+| `toeAimTableFor`'s cell formatter | `formatMarkBare` | Direct call, `formatCell` helper | ✓ WIRED | Confirmed by direct read, line 1181 |
+| `toe-aim-table-modal.tsx`'s heading marker | `columnUnitSuffix("mark", system)` | Direct call | ✓ WIRED | Confirmed by direct read, line 48 |
 
 ### Requirements Coverage
 
 | Requirement | Source Plan(s) | Description | Status | Evidence |
 |-------------|-----------------|-------------|--------|----------|
-| SCRN-01 | 06-01..06-07 | Sliders/values on all five screens read cm/mm per system, sliders step on whole mm | ✓ SATISFIED | Ledger + `metricSliderRange`/`measureSlider` tests |
-| SCRN-02 | 06-02, 06-03, 06-06 | Typed entry accepts decimal cm/whole mm, re-prints, reverts on unreadable | ✓ SATISFIED (post-fix, re-checked) — a real Board Length clamping-domain bug was found and fixed after the initial pass (commit `a5c6801`); REQUIREMENTS.md row is a **stale ledger entry**, not a real gap; see truth #2 above and "Post-review fix" below | `typedFieldBounds` + `MeasureField`/`commitTypedMeasure` code + `measure-display.test.ts`'s new integration/regression cases |
-| SCRN-03 | 06-01, 06-03, 06-04, 06-05, 06-06, 06-07 | Viewer callouts and data tables follow the chosen system | ✓ SATISFIED | Ledger; per-screen formatter usage confirmed |
-| SCRN-05 | 06-07 | Volume reads in litres identically in both systems | ✓ SATISFIED | Structural no-system-argument assertion on the litres render path |
+| SCRN-01 | 06-01..06-09 | Sliders/values on all five screens read cm/mm per system, sliders step on whole mm | ✓ SATISFIED | Ledger (17 `converted: true` entries) + gap-closure fixes above; REQUIREMENTS.md marks Complete |
+| SCRN-02 | 06-02, 06-03, 06-06, 06-09 | Typed entry accepts decimal cm/whole mm, re-prints, reverts on unreadable, box shows its whole value | ✓ SATISFIED | `MeasureField`/`commitTypedMeasure` unchanged pipeline + G-06-4 width fix; REQUIREMENTS.md now marks Complete (the "stale ledger" note from the first verification pass is resolved) |
+| SCRN-03 | 06-01, 06-03, 06-04, 06-05, 06-06, 06-07, 06-08 | Viewer callouts and data tables follow the chosen system | ✓ SATISFIED | Ledger + G-06-12/G-06-15 fin placement fixes; REQUIREMENTS.md marks Complete |
+| SCRN-05 | 06-07 | Volume reads in litres identically in both systems | ✓ SATISFIED | Unaffected by gap closure; unchanged from first pass |
 
-No orphaned requirements: all four Phase 6 IDs (SCRN-01, 02, 03, 05) are claimed by at least one plan; cross-checked against `.planning/REQUIREMENTS.md`'s phase mapping table (which itself notes "Phase 6: 4" requirements, matching).
+No orphaned requirements: REQUIREMENTS.md's phase-mapping table shows all four Phase 6 IDs as
+"Complete" with no additional IDs mapped to Phase 6 that are unclaimed by a plan.
 
 ### Anti-Patterns Found
 
-Scanned every file listed across the 7 SUMMARYs' `key-files` sections (created + modified) for `TBD|FIXME|XXX|TODO|HACK|PLACEHOLDER|not yet implemented|coming soon`. No matches in any actual source file (matches found only inside SUMMARY.md prose itself when grepping the concatenated summaries, not in code).
+Scanned every file modified by the two gap-closure plans
+(`lib/geometry/fins.ts`, `lib/geometry/fins.test.ts`, `components/fins/fin-controls.tsx`,
+`components/fins/fin-viewer.tsx`, `components/fins/toe-aim-table-modal.tsx`,
+`components/design/measure-field.tsx`, `components/design/measure-field.test.ts`) for
+`TBD|FIXME|XXX|TODO|HACK|PLACEHOLDER|not yet implemented|coming soon`. No matches found.
 
 ### Automated Evidence Reproduced by This Verifier
 
-- `npx vitest run` → 33 files, 2006 passed, 2 skipped — reproduced independently after the post-review fix commits (was 1998 at the original pass; +8 new tests in `lib/geometry/measure-display.test.ts`'s `typedFieldBounds` describe block, including the CR-01 regression case).
-- `npx vitest run lib/geometry/measure-display.test.ts` → 65 passed, in isolation.
-- `npm run build` → compiles successfully, TypeScript passes, all routes generated including all five `/design/*` screens (re-run after the fix commits; clean).
-- `git diff` of `lib/geometry/rail-bands.ts`, `lib/geometry/template.test.ts`, `lib/geometry/rocker.test.ts` against the pre-phase base → empty (geometry/golden fixtures genuinely untouched, confirming Rule 1 and the phase's own prohibitions).
-- `lib/geometry/outline.ts`'s `MEASURE_STATION_MM` confirmed still `inchesToMm(12)` — station not moved (D-03 honored).
-- `grep -rn 'import.*ImperialField|from.*imperial-field' components/ lib/ app/` → empty — confirmed independently.
+- `npx vitest run` → 33 files, 2007 passed, 2 skipped (2009 total) — reproduced independently on
+  current `main` (`b170ae4`), matching the orchestrator's stated evidence exactly.
+- `npx vitest run lib/geometry/fins.test.ts -t "FinSummaryRow.family"` → 6 passed (152 skipped by
+  the name filter), confirming the re-tagged family test passes.
+- `npx vitest run components/design/measure-field.test.ts` → 6/6 passing.
+- `npx vitest run lib/units-isolation.test.ts lib/geometry/units.test.ts` → 87/87 passing —
+  confirms the conversion ledger and the metric-bounds-inside-imperial-bounds property test are
+  unaffected.
+- `npm run build` → compiles successfully, all five `/design/*` routes generated, no errors.
+- `git diff 044c652 HEAD -- lib/geometry/__fixtures__/ lib/geometry/template.test.ts lib/geometry/rail-bands.ts lib/geometry/rocker.test.ts` → empty — geometry math and golden fixtures genuinely untouched since the UAT baseline.
+- `git diff 044c652 HEAD -- components/fins/fin-data-panel.tsx` → empty — prohibition honored.
+- `git status --porcelain` on `outline-controls.tsx`, `volume-controls.tsx`, `fin-controls.tsx`
+  (call-site diffs, not content), `rocker-datasheet.tsx` → confirms no call site needed editing
+  for the width fix, matching the plan's prohibition.
+- `grep` acceptance checks from both plans' `<acceptance_criteria>` — all reproduced independently
+  and all passed (family tags, remaining `formatDim(` counts, class-string presence, `(mm)`
+  marker, CLAUDE.md Rule 2 wording, `06-CONTEXT.md`/`06-UI-SPEC.md` amendment text).
+- `git log` confirms both gap-closure plans' commits are on `main` with a clean working tree
+  (`b170ae4`, no uncommitted changes).
 
 ### Human Verification Required
 
-19 items harvested from the seven plans' `<human-check>` blocks (deduplicated), covering every one of the five design screens plus the Summary's two explicit "backstop" truths from 06-07 (no-flash-of-inches and print-overflow audit). Full list in the frontmatter `human_verification` section above — these are the browser checks a shaper must run on localhost with Metric chosen, then again on Imperial to confirm nothing changed, per `workflow.human_verify_mode: end-of-phase`.
+The three gaps closed by 06-08/06-09 change the expected behaviour of four previously-run UAT
+tests. Only these four need re-running — every other UAT test that already passed (1-3, 5-11,
+13, 16-17, 19) is unaffected by the gap-closure plans and does not need to be re-run:
 
-### Post-review fix (added on re-check)
+1. **UAT test 4 re-run (gap G-06-4).** On Metric, the Template Builder and the Volume screen each
+   show one box above the Board Length slider; typing `188` and pressing Enter moves the thumb and
+   re-labels the row to `188.0 cm` with nothing clipped, and the box now shows its whole value at
+   both ends of its range. Typing `5 1/2` reverts with an error line lined up under the wider box.
+   On Imperial the two dropdowns are unchanged.
+   **Why human:** whether text visually fits inside a rendered box cannot be observed by static
+   analysis or a node-environment test.
 
-A code review after the initial pass of this verification found a real blocker (CR-01/BL-01) that
-my original pass missed: the Metric Board Length typed field on the Template, Fins and Volume
-sidebars passed `measureSlider`'s millimetre-domain slider bounds straight into `MeasureField`,
-while `commitTypedMeasure` clamps a Metric `"length"`-family field in centimetres. Typing `188`
-(meaning 188cm) was clamped up against the slider's millimetre-scale minimum and stored as that
-many centimetres — a board that should be 1880mm silently became 15300mm (15.3 metres), with no
-error shown. Simply focusing the field and clicking away reproduced it.
+2. **UAT test 12 re-run (gaps G-06-12/G-06-15).** On Metric, the Fins DATA tab's summary line
+   still reads board length/tail width in centimetres, but the Off-Tail rows now read in whole
+   millimetres alongside Off-Rail, Toe-In and Fin Base Length. The toe-aim tables' headings now say
+   `(mm)`, every aim-distance cell is a whole millimetre, and the tail-width columns/row
+   label/title still read centimetres. The highlighted column matches Imperial.
+   **Why human:** visual table/modal rendering and family-by-family correctness needs a browser.
 
-**Why my original evidence didn't catch it:** the truth-#2 and SCRN-02 evidence in my original pass
-cited `commitTypedMeasure`'s own unit tests. Those tests hand-supplied `min`/`max` already in the
-correct centimetre domain, so they proved the commit pipeline itself was correct but never
-exercised the real caller wiring — which is exactly where the bug lived (a bounds-domain mismatch
-one layer up, at the three Board Length call sites). This is a genuine gap in the original
-verification's coverage, not a disagreement about severity: presence of a passing unit test for
-`commitTypedMeasure` does not imply the three components call it with correctly-scaled bounds.
+3. **UAT test 14 re-run (gaps G-06-12/G-06-15).** On Metric, every Fins sidebar slider reads in
+   its corrected family — the Forward/Aft position labels and the quad Rear Off-Tail Position
+   display now read in whole millimetres, matching their override boxes; the Tail Width row still
+   reads centimetres; no inch mark remains anywhere on the sidebar.
+   **Why human:** visual sweep of the sidebar for correct unit families.
 
-**Fix, verified in this re-check:**
-- Commit `a5c6801` adds `typedFieldBounds(view, family, system)` to
-  `lib/geometry/measure-display.ts` — the one place that converts a slider view's bounds into the
-  typed field's own domain (centimetres for `"length"`/`"dim"` in Metric, unchanged for `"mark"`
-  and for Imperial). `outline-controls.tsx`, `fin-controls.tsx` and `volume-controls.tsx` now all
-  route their Board Length field's `min`/`max` through it before handing them to `MeasureField` —
-  confirmed by reading the diff at all three call sites.
-- The closing evidence is `lib/geometry/measure-display.test.ts`'s new
-  `describe("typedFieldBounds", ...)` block, which includes an
-  `describe("integration: the real Board Length wiring (outline/fins/volume-controls.tsx)", ...)`
-  group that drives the real chain — `measureSlider` → `typedFieldBounds` → `commitTypedMeasure` —
-  and asserts typing `"188"` on a 1880mm board commits `1880mm`/`"188.0 cm"` with no error, plus an
-  explicit `REGRESSION (CR-01)` test proving the old, unconverted wiring would have produced the
-  10x-too-long `15300mm`. This is the kind of integration-shaped test my original review should
-  have asked for and didn't.
-- Commit `fb58e19` fixes a related, lower-severity issue (WR-01): the Fin Base Length Override box
-  and the quad Rear Off-Tail override opened on a raw stored millimetre value (e.g. `114.3`) instead
-  of the whole millimetre every other Metric control guarantees. Both now seed through
-  `roundToWholeMm` on Metric; Imperial is unchanged.
-- Re-run in this re-check: `npx vitest run lib/geometry/measure-display.test.ts` → 65/65 passing;
-  full suite `npx vitest run` → 2006/2008 passing (2 skipped, unchanged); `npm run build` → clean.
-  No regressions found anywhere else in the suite.
+4. **UAT test 15 re-run (gap G-06-15).** On Metric the fin drawing's off-tail callout now reads in
+   millimetres alongside the toe/off-rail callouts (previously centimetres); the summary line and
+   base-length legend keep reading board size in centimetres; nothing has moved on the drawing.
+   Check one dark theme as well as Daylight.
+   **Why human:** rendered SVG callout appearance across themes needs a browser.
 
-**Effect on human verification:** the truth-#2/SCRN-02 human-check item already in this report's
-`human_verification` list ("On Metric, the Template Builder and the Volume screen each show one box
-above the Board Length slider; typing 188 and pressing Enter moves the thumb and re-labels the row
-to 188.0 cm...") now exercises the corrected path — a shaper running that UAT step against current
-`main` will be testing the fixed wiring, not the pre-fix defect. The item's wording is unchanged
-(kept as originally harvested from the plans), but it is no longer at risk of silently passing over
-a 10x-scale bug the way it would have before commit `a5c6801`.
+**Not re-listed (already resolved by shaper decision, no re-run needed):** UAT test 18 (the
+Summary order form's overflow audit on Metric) remains explicitly deferred to Phase 7 / PRNT-01,
+per the shaper's decision recorded in `06-UAT.md`'s Deferred Follow-Ups section and `06-CONTEXT.md`
+line 33's out-of-scope note ("everything that comes out of a printer... Phase 7"). This
+verification does not reopen that decision.
 
 ### Gaps Summary
 
-No code-level gaps found. Every observable truth from the roadmap's five success criteria has direct, reproducible evidence in the codebase (a real display-boundary module, a real typed-field commit pipeline with negative-input tests, a real metric-bounds-inside-imperial-bounds property test, a real "nothing snaps on flip" guard, and a mechanically-enforced conversion ledger covering all 15 display files). The full test suite (2006 tests, post-fix) and production build both pass when reproduced independently in this verification.
+No code-level gaps remain. All three UAT gaps (G-06-4, G-06-12, G-06-15) have direct, reproducible
+evidence in the codebase that the described fix was actually made — not merely claimed in a
+SUMMARY: the typed Board Length box's width now genuinely follows its render mode (read directly
+in the component), the fin placement family tags are genuinely `mark` in the model (read directly
+in `fins.ts`), and the toe-aim table's cell formatter is genuinely split from its column/row-label
+formatter (read directly). No prohibited files were touched (fixtures, `fin-data-panel.tsx`,
+slider bounds, historical PLAN/SUMMARY files) — confirmed by `git diff`/`git status` against the
+pre-gap-closure baseline, not by trusting the SUMMARY's own claim. The full test suite (2007
+tests, 2 skipped, 33 files) and production build both pass when reproduced independently.
 
-The only reason this phase does not resolve to `passed` is that a large share of its must-haves are inherently visual/interactive (slider travel, drawn SVG callouts across two themes, print-preview overflow, first-paint flash-of-inches) and the project's own `workflow.human_verify_mode: end-of-phase` setting explicitly defers all of them to a single end-of-phase UAT pass rather than gating each plan on a browser check. That is the correct, intended behavior for this project's configuration, not a defect — hence `human_needed` rather than `gaps_found`.
-
-The REQUIREMENTS.md ledger row for SCRN-02 reads "Pending" while SCRN-01/03/05 read "Complete." This verification confirms that discrepancy is a stale shared-file artifact (worktree executors do not write REQUIREMENTS.md) and not a real implementation gap — the orchestrator's phase-completion reconciliation step should update that row to Complete once this VERIFICATION.md is accepted.
+The phase does not resolve to `passed` because four UAT items whose expected behaviour changed as
+a result of these fixes are inherently visual (rendered box width, SVG callout placement, table/
+modal appearance across two systems and two themes) and cannot be confirmed by static analysis.
+This is the correct, intended `human_needed` outcome for this project's
+`workflow.human_verify_mode: end-of-phase` configuration — not a defect. Once the shaper re-runs
+UAT tests 4, 12, 14 and 15 against the wording above and confirms they now pass, the phase can be
+considered fully closed (with test 18 remaining intentionally deferred to Phase 7).
 
 ---
 
-*Verified: 2026-09-05T20:22:59Z — re-checked and updated 2026-09-05T20:41:00Z after a post-review fix (commits a5c6801, fb58e19)*
+*Verified: 2026-09-06T00:57:00Z*
 *Verifier: Claude (gsd-verifier)*
