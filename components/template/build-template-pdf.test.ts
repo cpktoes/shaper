@@ -227,7 +227,7 @@ describe("templateHowToLines", () => {
     const layout = computeTemplateLayout(geometry, "letter");
     expect(layout.columns).toBe(1);
 
-    const lines = templateHowToLines(layout);
+    const lines = templateHowToLines(layout, "imperial");
     expect(lines).toHaveLength(3);
     expect(lines[0]).toContain("Print at 100%");
   });
@@ -238,7 +238,7 @@ describe("templateHowToLines", () => {
       const preset = BOARD_PRESETS[0];
       const geometry = buildOutline({ ...preset.outline, widePointWidth: inchesToMm(10) });
       const layout = computeTemplateLayout(geometry, "letter");
-      const lines = templateHowToLines(layout);
+      const lines = templateHowToLines(layout, "imperial");
 
       expect(lines[2].toLowerCase()).toContain("border line");
       expect(lines[2].toLowerCase()).toContain("overlap");
@@ -256,7 +256,7 @@ describe("templateHowToLines", () => {
     const layout = computeTemplateLayout(geometry, "letter");
     expect(layout.columns).toBeGreaterThan(1);
 
-    const lines = templateHowToLines(layout);
+    const lines = templateHowToLines(layout, "imperial");
     expect(lines).toHaveLength(4);
     expect(lines[3].toLowerCase()).toContain("left to right");
   });
@@ -267,7 +267,7 @@ describe("templateHowToLines", () => {
       const preset = BOARD_PRESETS[0];
       const geometry = buildOutline(preset.outline);
       const layout = computeTemplateLayout(geometry, "letter");
-      const lines = templateHowToLines(layout);
+      const lines = templateHowToLines(layout, "imperial");
 
       expect(lines[1]).toContain('2" x 2"');
       expect(lines[1].toLowerCase()).not.toContain("above");
@@ -285,7 +285,7 @@ describe("templateHowToLines", () => {
           doc.setFont("helvetica", "normal");
           doc.setFontSize(9);
 
-          const lines = templateHowToLines(layout);
+          const lines = templateHowToLines(layout, "imperial");
           const rows = wrapTextToWidth(`2. ${lines[1]}`, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM, doc);
           expect(rows.length).toBeLessThanOrEqual(2);
         }
@@ -304,11 +304,13 @@ describe("templateHowToLines", () => {
     expect(lines[1]).toBe(`Measure the ${mark} square. It should be exactly ${mark}.`);
   });
 
-  it("Imperial line 2 is byte-identical to today's sentence when system is passed explicitly", () => {
+  it("Imperial line 2 is byte-identical to today's sentence", () => {
     const preset = BOARD_PRESETS[0];
     const geometry = buildOutline(preset.outline);
     const layout = computeTemplateLayout(geometry, "letter");
-    expect(templateHowToLines(layout, "imperial")).toEqual(templateHowToLines(layout));
+    expect(templateHowToLines(layout, "imperial")[1]).toBe(
+      'Measure the 2" x 2" square. It should be exactly 2" x 2".',
+    );
   });
 
   it("line count (3 single-column / 4 multi-column) is unaffected by system, in both systems", () => {
@@ -371,9 +373,9 @@ describe("templateHowToWrappedLines (post-checkpoint fix, defect 1: \"the instru
       for (const paper of ["letter", "a4"] as const) {
         const layout = computeTemplateLayout(geometry, paper);
         const doc = new jsPDF({ unit: "mm" });
-        const lines = templateHowToWrappedLines(layout, doc, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM);
+        const lines = templateHowToWrappedLines(layout, doc, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM, "imperial");
 
-        expect(lines.length).toBeGreaterThanOrEqual(templateHowToLines(layout).length);
+        expect(lines.length).toBeGreaterThanOrEqual(templateHowToLines(layout, "imperial").length);
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(9);
@@ -392,7 +394,7 @@ describe("templateHowToWrappedLines (post-checkpoint fix, defect 1: \"the instru
     });
     const layout = computeTemplateLayout(geometry, "letter");
     const doc = new jsPDF({ unit: "mm" });
-    const lines = templateHowToWrappedLines(layout, doc, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM);
+    const lines = templateHowToWrappedLines(layout, doc, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM, "imperial");
 
     expect(lines[0].startsWith("1.")).toBe(true);
     expect(lines.join(" ").toLowerCase()).toContain("left to right");
@@ -608,8 +610,8 @@ describe("templateNameBlockDimsText / nameBlockContent (post-checkpoint fix, def
     volumeLitres: litres(27.4),
   };
 
-  it("carries every value the order form's own dimensions row carries", () => {
-    const text = templateNameBlockDimsText(dims);
+  it("carries every value the order form's own dimensions row carries (Imperial)", () => {
+    const text = templateNameBlockDimsText(dims, "imperial");
     expect(text).toContain("Length");
     expect(text).toContain("Nose");
     expect(text).toContain("Widepoint");
@@ -620,9 +622,49 @@ describe("templateNameBlockDimsText / nameBlockContent (post-checkpoint fix, def
     expect(text).toContain("27.4 L");
   });
 
-  it("wraps the dims row to the box's own inner width and grows the box height to fit every line", () => {
+  it("Imperial is byte-identical to the string this row printed before this task", () => {
+    const text = templateNameBlockDimsText(dims, "imperial");
+    expect(text).toBe(
+      [
+        "Length 6'2\"",
+        'Nose 11 1/4"',
+        'Widepoint 18 3/4"',
+        'Offset -1"',
+        'Tail 14 3/16"',
+        'Thickness 2 3/8"',
+        "Volume 27.4 L",
+      ].join("  ·  "),
+    );
+  });
+
+  it("Metric row carries exactly one cm (on Thickness) and one L (on Volume) — D-06's worked example", () => {
+    const metricDims = {
+      length: mm(1880),
+      widePointWidth: mm(514),
+      centerThickness: mm(67),
+      noseWidth12in: mm(400),
+      tailWidth12in: mm(368),
+      widePointOffset: mm(25),
+      volumeLitres: litres(34.0),
+    };
+    const text = templateNameBlockDimsText(metricDims, "metric");
+
+    expect(text).toBe(
+      "Length 188.0  ·  Nose 40.0  ·  Widepoint 51.4  ·  Offset +2.5  ·  Tail 36.8  ·  Thickness 6.7 cm  ·  Volume 34.0 L",
+    );
+    expect((text.match(/\bcm\b/g) ?? []).length).toBe(1);
+    expect((text.match(/\bL\b/g) ?? []).length).toBe(1);
+  });
+
+  it("Metric Offset keeps its sign (D-06 contrasted with D-07)", () => {
+    const negativeOffsetDims = { ...dims, widePointOffset: mm(-25) };
+    const text = templateNameBlockDimsText(negativeOffsetDims, "metric");
+    expect(text).toContain("Offset -2.5");
+  });
+
+  it("wraps the dims row to the box's own inner width and grows the box height to fit every line (Imperial)", () => {
     const doc = new jsPDF({ unit: "mm" });
-    const { dimsLines, height } = nameBlockContent(doc, dims);
+    const { dimsLines, height } = nameBlockContent(doc, dims, "imperial");
 
     expect(dimsLines.length).toBeGreaterThan(0);
     doc.setFont("helvetica", "normal");
@@ -632,6 +674,28 @@ describe("templateNameBlockDimsText / nameBlockContent (post-checkpoint fix, def
     }
     // The box is tall enough to hold the name line plus every dims line.
     expect(height).toBeGreaterThan(8);
+  });
+
+  it("wraps the Metric dims row to the same inner width and reports a height consistent with the number of wrapped lines", () => {
+    const doc = new jsPDF({ unit: "mm" });
+    const { dimsLines, height } = nameBlockContent(doc, dims, "metric");
+
+    expect(dimsLines.length).toBeGreaterThan(0);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    for (const line of dimsLines) {
+      expect(doc.getTextWidth(line)).toBeLessThanOrEqual(NAME_BOX_WIDTH_MM - 6);
+    }
+    expect(height).toBeGreaterThan(8);
+  });
+
+  it("a board with an empty name still produces a full dims row and the untitled-board fallback name (PRNT-03, edge: empty)", () => {
+    const doc = new jsPDF({ unit: "mm" });
+    const text = templateNameBlockDimsText(dims, "metric");
+    expect(text.length).toBeGreaterThan(0);
+    const { dimsLines } = nameBlockContent(doc, dims, "metric");
+    expect(dimsLines.length).toBeGreaterThan(0);
+    expect(templateNameBlockText("", 68, doc)).toBe("Untitled Board");
   });
 });
 
@@ -651,7 +715,7 @@ describe("name block containment (post-checkpoint fix, defect 3: box fully insid
           widePointOffset: preset.outline.widePointOffset,
           volumeLitres: litres(27.4),
         };
-        const { height } = nameBlockContent(doc, dims);
+        const { height } = nameBlockContent(doc, dims, "imperial");
         const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, height, NAME_BOX_CLEARANCE_MM);
 
         // Quick task 260903-18d: the required half-width now reserves NAME_BOX_CLEARANCE_MM on
@@ -688,7 +752,7 @@ describe("name block containment (post-checkpoint fix, defect 3: box fully insid
             widePointOffset: preset.outline.widePointOffset,
             volumeLitres: litres(27.4),
           };
-          const { height } = nameBlockContent(doc, dims);
+          const { height } = nameBlockContent(doc, dims, "imperial");
           const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, height, NAME_BOX_CLEARANCE_MM);
           const bottomStation = placement.topStation - height;
           const blockRightEdge = placement.halfWidthStart + NAME_BOX_WIDTH_MM;
@@ -919,7 +983,7 @@ describe("templateHowToBoxPlacement / howToBoxRect", () => {
       expect(rectsOverlap(howTo, nameBlockRect)).toBe(false);
 
       const doc = new jsPDF({ unit: "mm" });
-      const nameBlockHeight = nameBlockContent(doc, options.dims).height;
+      const nameBlockHeight = nameBlockContent(doc, options.dims, options.system).height;
       const nameBlock = nameBlockPlacement(
         options.layout,
         options.geometry,
