@@ -186,7 +186,7 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
   4. In Metric, the printed scale-check square is captioned in millimetres, so a metric ruler alone can confirm the print came out at true 1:1
   5. Nothing on paper moved: a template printed after this phase measures the same on the bench as one printed before it, and the frozen characterisation pins in `lib/geometry/template.test.ts` are still green
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans executed
 **Wave 1**
 
   - [x] 07-01-PLAN.md — Tracer: the gear-menu chooser through the export dialog and into the Full Sized Template's marks, calibration caption and name block, with the frozen pins still green
@@ -199,7 +199,7 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-  - [ ] 07-05-PLAN.md — Close the conversion ledger over all four print surfaces, prove no call site is silently imperial, and rewrite CLAUDE.md's units rule
+  - [x] 07-05-PLAN.md — Close the conversion ledger over all four print surfaces, prove no call site is silently imperial, and rewrite CLAUDE.md's units rule
 
 **Phase notes**:
 
@@ -219,4 +219,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 4. Rocker & Foil Editors | 5/5 | Complete    | 2026-08-29 |
 | 5. The Units Chooser | 7/7 | Complete    | 2026-09-05 |
 | 6. The Design Screens in Metric | 9/9 | Complete    | 2026-09-05 |
-| 7. Metric on Paper | 4/5 | In Progress|  |
+| 7. Metric on Paper | 5/5 | In Progress|  |
