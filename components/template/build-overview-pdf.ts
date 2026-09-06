@@ -21,10 +21,10 @@ import type { OutlineSpec } from "@/lib/geometry/board";
 import { MEASURE_STATION_MM, type OutlineGeometry, sampleOutline } from "@/lib/geometry/outline";
 import { computeOverviewDrawingBox, computeOverviewOutlineScale } from "@/lib/geometry/overview-layout";
 import { PAPER_MM, TEMPLATE_MARGIN_MM, type PaperSize } from "@/lib/geometry/template";
+import { formatArea, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
 import {
   formatFeetInches,
   formatInchesFraction,
-  formatSignedInchesFraction,
   mm,
   squareMmToSquareInches,
   type Mm,
@@ -109,29 +109,38 @@ function tailShapeLabel(kind: OutlineSpec["tail"]["kind"]): string {
  *   `g.diamondDepthEff` — so this sheet never claims a depth the drawn outline doesn't have.
  *
  * Exported for testability without rendering the page (matches `templateHowToLines` /
- * `templateNameBlockDimsText`'s own pattern in `build-template-pdf.ts`).
+ * `templateNameBlockDimsText`'s own pattern in `build-template-pdf.ts`). Every line reads in
+ * `system` (07-03): sizes through `formatDim`/`formatLength` (cm), depths through `formatMark`
+ * (whole mm), the widepoint offset through `formatSignedDim`, and the two `@12"` station names
+ * through `stationLabel`. Angles, percentages and the tail-shape name never take a formatter and
+ * so are identical in both systems.
  */
-export function overviewSpecLines(outline: OutlineSpec, geometry: OutlineGeometry): string[] {
+export function overviewSpecLines(outline: OutlineSpec, geometry: OutlineGeometry, system: UnitsSystem): string[] {
+  const stationText = stationLabel(system);
   const lines = [
-    `Length: ${formatFeetInches(outline.length)}`,
+    `Length: ${formatLength(outline.length, system)}`,
     `Nose Angle: ${outline.noseAngle}°  ·  Fullness: ${outline.noseFullness}%`,
-    `Nose Width @12" (calculated): ${formatInchesFraction(geometry.noseWidthAt12in)}`,
-    `Widepoint Width: ${formatInchesFraction(outline.widePointWidth)}`,
-    `WP Offset: ${formatSignedInchesFraction(outline.widePointOffset)}`,
+    `Nose Width @${stationText} (calculated): ${formatDim(geometry.noseWidthAt12in, system)}`,
+    `Widepoint Width: ${formatDim(outline.widePointWidth, system)}`,
+    `WP Offset: ${formatSignedDim(outline.widePointOffset, system)}`,
     `Rail Length: Tail ${outline.tailRailLength}%  ·  Nose ${outline.noseRailLength}%`,
     `Tail Shape: ${tailShapeLabel(outline.tail.kind)}`,
-    `Tail Block: ${formatInchesFraction(mm(geometry.halfTailBlockWidth * 2))}`,
+    `Tail Block: ${formatDim(mm(geometry.halfTailBlockWidth * 2), system)}`,
   ];
   if (outline.tail.kind === "swallow") {
-    lines.push(`Swallow Depth: ${formatInchesFraction(outline.tail.crotchDepth)}`);
+    lines.push(`Swallow Depth: ${formatMark(outline.tail.crotchDepth, system)}`);
   }
   if (outline.tail.kind === "diamond") {
-    lines.push(`Diamond Depth: ${formatInchesFraction(geometry.effectiveDiamondDepth)}`);
+    lines.push(`Diamond Depth: ${formatMark(geometry.effectiveDiamondDepth, system)}`);
   }
   lines.push(`Tail Angle: ${outline.tailAngle}°  ·  Fullness: ${outline.tailFullness}%`);
-  lines.push(`Tail Width @12" (calculated): ${formatInchesFraction(geometry.tailWidthAt12in)}`);
-  const areaSqIn = squareMmToSquareInches(geometry.area);
-  lines.push(`Template Area: ${areaSqIn.toFixed(1)} sq in (${(areaSqIn / 144).toFixed(2)} sq ft)`);
+  lines.push(`Tail Width @${stationText} (calculated): ${formatDim(geometry.tailWidthAt12in, system)}`);
+  const areaFigure = formatArea(geometry.area, system);
+  const areaLine =
+    system === "metric"
+      ? `Template Area: ${areaFigure}`
+      : `Template Area: ${areaFigure} (${(squareMmToSquareInches(geometry.area) / 144).toFixed(2)} sq ft)`;
+  lines.push(areaLine);
   return lines;
 }
 
@@ -269,7 +278,7 @@ function drawClosedOutline(
  * outline geometry of its own, matching `buildTemplatePdf`'s own contract.
  */
 export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
-  const { geometry, outline, paper, boardName } = options;
+  const { geometry, outline, paper, boardName, system } = options;
   const paperDims = PAPER_MM[paper];
   const margin = TEMPLATE_MARGIN_MM;
 
@@ -295,7 +304,7 @@ export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
   // label and value stay column-aligned the way a shaper reads a spec sheet.
   doc.setFont("courier", "normal");
   doc.setFontSize(SPEC_FONT_SIZE_PT);
-  const wrappedSpecLines = overviewSpecLines(outline, geometry).flatMap((line) =>
+  const wrappedSpecLines = overviewSpecLines(outline, geometry, system).flatMap((line) =>
     wrapTextToWidth(line, SPEC_COLUMN_WIDTH_MM, doc),
   );
   doc.setFont("courier", "normal");
