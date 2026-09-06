@@ -1,9 +1,9 @@
 ---
 phase: 06
 slug: the-design-screens-in-metric
-status: draft
+status: verified
 # threats_open = count of OPEN threats at or above workflow.security_block_on severity (the blocking gate)
-threats_open: 1
+threats_open: 0
 asvs_level: 1
 created: 2026-09-05
 ---
@@ -52,7 +52,7 @@ Threat IDs repeat across plans, so each row is qualified by its plan.
 | 06-06 / T-06-06 | Tampering | every FINS label and callout | high | mitigate | Family classification is explicit per control (`formatDim` for distances up the board, `formatMark` for toe and off-rail) and follows… | closed |
 | 06-06 / T-06-02 | Tampering | `fin-controls.tsx`, `fin-viewer.tsx` | high | mitigate | The placement math is untouched (`lib/geometry/fins.test.ts` green unedited) and the ledger fails the suite if either file formats a… | closed |
 | 06-06 / T-06-SC | Tampering | npm/pip/cargo installs | low | accept | No package is installed by this plan. | closed |
-| 06-07 / T-06-02 | Tampering | `volume-calculation-card.tsx`, `volume-estimator.tsx`, `volume-controls.tsx` | high | mitigate | The volume math is untouched — `lib/geometry/volume.test.ts` stays green unedited — and the litres rendering takes no system argument at… | open |
+| 06-07 / T-06-02 | Tampering | `volume-calculation-card.tsx`, `volume-estimator.tsx`, `volume-controls.tsx` | high | mitigate | The volume math is untouched — `lib/geometry/volume.test.ts` stays green unedited — and the litres rendering takes no system argument at… | closed |
 | 06-07 / T-06-07 | Tampering | `formatArea`, `formatCubicVolume` | medium | mitigate | An area or volume converted with a restated factor could disagree with the `area` field the outline model computes. Both conversions… | closed |
 | 06-07 / T-06-08 | Information disclosure | the Summary order form | low | accept | The part-converted Summary shows metric in the shared components and inches elsewhere until Phase 7. This is a legibility inconsistency… | closed |
 | 06-07 / T-06-SC | Tampering | npm/pip/cargo installs | low | accept | No package is installed by this phase — zero new dependencies and zero new `components/ui/*` files, confirmed by RESEARCH.md and the… | closed |
@@ -70,9 +70,9 @@ Threat IDs repeat across plans, so each row is qualified by its plan.
 *Severity: critical > high > medium > low — only open threats at or above workflow.security_block_on count toward threats_open*
 *Disposition: mitigate (implementation required) · accept (documented risk) · transfer (third-party)*
 
-### Open threat detail
+### Closure note for 06-07 / T-06-02
 
-**06-07 / T-06-02 (Tampering, high)** — the plan promised that the litres rendering "takes no system argument at all, asserted structurally so SCRN-05 cannot regress silently". The code is correct today: components/volume/volume-calculation-card.tsx renders `quotedVolumeLitres.toFixed(2)` L with no system argument, and lib/geometry/volume.ts / volume.test.ts are untouched by the phase. But the promised durable assertion was discharged only by one-shot acceptance greps in the plan; no persisted test pins it. A future edit that branched the litres figure on the system would pass the whole suite. Remedy: one source-contract assertion on volume-calculation-card.tsx in lib/units-isolation.test.ts's existing idiom. Audit note: code-review finding CR-01 (typed Board Length bounds passed in the slider's millimetre domain where the field expected centimetres — fixed in a5c6801 with typedFieldBounds and an integration test) was a failure class the register did not anticipate; it is closed on stronger evidence than planned.
+**Closed 2026-09-05 by quick task 260905-pne (commit 82e23f2).** `lib/units-isolation.test.ts` now carries a five-assertion source-contract block pinning the Volume card's litres figure as a plain two-decimal number that never takes the units system on any line it lives on, that the estimator passes it through unconverted, and that the display boundary offers no Litres-with-system signature; the executor ran a mutation proof (appending `{system}` to a litres line turned the suite red, then the card was restored byte-identical). Full suite 2012 passed. Original finding: the plan promised that the litres rendering "takes no system argument at all, asserted structurally so SCRN-05 cannot regress silently". The code is correct today: components/volume/volume-calculation-card.tsx renders `quotedVolumeLitres.toFixed(2)` L with no system argument, and lib/geometry/volume.ts / volume.test.ts are untouched by the phase. But the promised durable assertion was discharged only by one-shot acceptance greps in the plan; no persisted test pins it. A future edit that branched the litres figure on the system would pass the whole suite. Remedy: one source-contract assertion on volume-calculation-card.tsx in lib/units-isolation.test.ts's existing idiom. Audit note: code-review finding CR-01 (typed Board Length bounds passed in the slider's millimetre domain where the field expected centimetres — fixed in a5c6801 with typedFieldBounds and an integration test) was a failure class the register did not anticipate; it is closed on stronger evidence than planned.
 
 ---
 
@@ -100,6 +100,7 @@ Threat IDs repeat across plans, so each row is qualified by its plan.
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
 | 2026-09-05 | 34 | 33 | 1 | gsd-security-auditor (opus), ASVS L1, block_on high; full suite 2007 passed |
+| 2026-09-05 | 34 | 34 | 0 | orchestrator re-check after quick task 260905-pne added the litres guard (lib/units-isolation.test.ts); full suite 2012 passed |
 
 ### Audit evidence (2026-09-05)
 
@@ -118,7 +119,7 @@ Threat IDs repeat across plans, so each row is qualified by its plan.
 
 - [x] All threats have a disposition (mitigate / accept / transfer)
 - [x] Accepted risks documented in Accepted Risks Log
-- [ ] `threats_open: 0` confirmed
-- [ ] `status: verified` set in frontmatter
+- [x] `threats_open: 0` confirmed
+- [x] `status: verified` set in frontmatter
 
-**Approval:** pending
+**Approval:** verified 2026-09-05
