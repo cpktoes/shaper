@@ -126,7 +126,7 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
   4. Volume reads in litres in both systems, and the same litres figure is quoted on every screen as it is now
   5. A shaper can flip between systems mid-design and the board itself never moves — the outline, rocker and foil are exactly where they left them
 
-**Plans**: 7/9 plans executed — two gap-closure plans open from UAT
+**Plans**: 8/9 plans executed — two gap-closure plans open from UAT
 **Wave 1**
 
   - [x] 06-01-PLAN.md — Tracer: one shared display layer and one metric-bounds helper, proven end to end on the Template Builder's widepoint width, then the rest of that screen
@@ -157,7 +157,7 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
 
 **Wave 8 (gap closure)** *(from UAT gaps G-06-12 and G-06-15 — fin placement numbers read in centimetres)*
 
-  - [ ] 06-08-PLAN.md — Every fin placement number reads in whole millimetres — the DATA tab, the sidebar, the drawing and the toe-aim tables — while board length and tail width stay in centimetres
+  - [x] 06-08-PLAN.md — Every fin placement number reads in whole millimetres — the DATA tab, the sidebar, the drawing and the toe-aim tables — while board length and tail width stay in centimetres
 
 **Wave 9 (gap closure)** *(blocked on Wave 8 completion; from UAT gap G-06-4 — the typed box clips its own text)*
 
@@ -204,5 +204,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 3. Volume, Templates & Verified Math | 7/7 | Complete    | 2026-08-28 |
 | 4. Rocker & Foil Editors | 5/5 | Complete    | 2026-08-29 |
 | 5. The Units Chooser | 7/7 | Complete    | 2026-09-05 |
-| 6. The Design Screens in Metric | 7/7 | In Progress|  |
+| 6. The Design Screens in Metric | 8/9 | In Progress|  |
 | 7. Metric on Paper | 0/? | Not started | - |
