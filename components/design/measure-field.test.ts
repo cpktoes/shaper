@@ -31,11 +31,16 @@ describe("MeasureField (the one typed measurement box, D-08/D-12)", () => {
     expect(source).toMatch(/export interface MeasureFieldProps/);
   });
 
-  it("renders exactly one Input and at most one error div, reusing ImperialField's classes byte-for-byte", () => {
+  it("renders exactly one Input and at most one error div, with a box width that follows the render mode", () => {
     expect(source.match(/<Input\b/g)?.length).toBe(1);
     expect(source.match(/<div\s+id=\{errorId\}/g)?.length).toBe(1);
+    // Bare mode (the ROCKER datasheet's in-table cells) — unchanged, byte-identical 64px box.
     expect(source).toContain(
       "h-7 w-16 min-w-16 max-w-16 rounded-md border border-surf-line bg-surf-ground px-1.5 text-right text-sm text-surf-ink",
+    );
+    // Standalone mode (the three Board Length sites) — widened to a 96px box so the whole value fits.
+    expect(source).toContain(
+      "h-7 w-24 min-w-24 max-w-24 rounded-md border border-surf-line bg-surf-ground px-1.5 text-right text-sm text-surf-ink",
     );
     expect(source).toContain("mt-0.5 w-24 text-right text-[10px] text-surf-warning-ink");
   });

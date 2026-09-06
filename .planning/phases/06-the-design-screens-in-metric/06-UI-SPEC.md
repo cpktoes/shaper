@@ -155,7 +155,7 @@ Post-verification state-coverage probe (ui-consideration-probe, 8-category close
 | loading | metric-typed-field (form · interactive-control · static-content) | ✅ covered | Commit is synchronous — parse, clamp, snap and onCommit run on blur or Enter and the reformatted value is on screen in the same render; there is no pending or disabled state. |
 | error | metric-typed-field (form · interactive-control · static-content) | 🧪 backstop | The field must never accept and store an unreadable typed value (T-05-15 extended to Metric): needs a wired unit test asserting that parseMetric-null input (e.g. '5 1/2', '51,4', 'abc') leaves the displayed value and the design store unchanged and shows the Copywriting Contract's exact metric error line — not a code-reading inference; same idiom as the imperial field's own test. |
 | partial | metric-typed-field (form · interactive-control · static-content) | ✅ covered | A commit is all-or-nothing: either parseMetric succeeds and the value is clamped, snapped to whole mm and committed, or the field reverts; the raw string while focused is local component state only, so no half-committed value can reach the store. |
-| overflow | metric-typed-field (form · interactive-control · static-content) | ✅ covered | The longest standalone string, 365.0 cm (8 characters), is shorter than ImperialField's longest, 23 15/16" (9 characters), so the existing fixed ~64px box (w-16) needs no resize; the error line keeps its w-24 right-aligned wrap. |
+| overflow | metric-typed-field (form · interactive-control · static-content) | ✅ covered | UAT gap G-06-4 found that the original ~64px box (w-16) clipped every standalone value — measured in the browser with the app's own Inter at 14px (`.planning/debug/typed-length-box-too-narrow.md`), the longest standalone string (365.8 cm) renders about 63px while a 64px box leaves only 50px of text room (1px border and 6px padding each side), so counting characters (8 vs. ImperialField's 9) did not predict that overflow. Standalone mode now uses w-24 (96px), lining up with the error line's existing w-24; the bare in-table cells stay at w-16 (64px) because the ROCKER datasheet's station columns are only about 82px at the table's 540px floor. Lesson: a character count does not predict rendered width — measure the actual string in the actual font before trusting a fixed box. |
 | long-text | metric-typed-field (form · interactive-control · static-content) | ✅ covered | Blurred, only formatter output plus a literal cm/mm suffix renders; focused, the raw string is whatever the shaper types inside a native text input, which scrolls horizontally within the box rather than overflowing it, and is replaced on commit by the bounded reformatted value. |
 | empty | board-length-control (form · interactive-control · static-content) | ✅ covered | The typed cm field is seeded from the stored length (outline.length, spec.boardLength or effectiveVolume.length), which always holds a value; an empty commit reverts. The feet/inches Selects are Imperial-only and unchanged. |
 | loading | board-length-control (form · interactive-control · static-content) | ✅ covered | The middle row swaps between the two Selects and the typed field on the same render as the system changes, and the server paint already renders the right variant (Phase 5 D-12); there is no transition state. |
@@ -231,15 +231,20 @@ name:
 
 - **Two render modes**, chosen by the caller, not by the field itself:
   - **Standalone** (D-08's three Board Length sites): blurred display reads the full string with
-    unit — `188.0 cm` — reusing `ImperialField`'s exact `Input` classes (`h-7 w-16 min-w-16 max-w-16
-    rounded-md border border-surf-line bg-surf-ground px-1.5 text-right text-sm text-surf-ink`). On
-    focus, raw is seeded from that same suffixed string (`"188.0 cm"`), matching `ImperialField`'s
-    own focus behaviour — `parseMetric`'s suffix-override already accepts a trailing `cm`/`mm` on
-    the raw text, so nothing new is needed in the parser.
+    unit — `188.0 cm` — reusing `ImperialField`'s `Input` classes except its width, which is
+    `w-24 min-w-24 max-w-24` (96px, widened from the retired field's 64px by gap G-06-4: measured in
+    the browser, the longest standalone string renders about 63px in Inter at 14px, more than the
+    50px of text room a 64px box leaves) — `h-7 w-24 min-w-24 max-w-24 rounded-md border
+    border-surf-line bg-surf-ground px-1.5 text-right text-sm text-surf-ink`. On focus, raw is seeded
+    from that same suffixed string (`"188.0 cm"`), matching `ImperialField`'s own focus behaviour —
+    `parseMetric`'s suffix-override already accepts a trailing `cm`/`mm` on the raw text, so nothing
+    new is needed in the parser.
   - **Bare / in-table** (ROCKER datasheet Thickness/Rocker typed cells): blurred display reads the
     bare number only — `67` — because the table's own column header already carries the unit
-    (`Thickness (mm)`). Add a boolean prop (e.g. `bare`) rather than a second component; the error
-    line's copy is unaffected by which mode is active — it always names the unit in prose.
+    (`Thickness (mm)`). Classes are unchanged from `ImperialField`'s original, at `w-16 min-w-16
+    max-w-16` (64px) — the datasheet's 540px floor leaves each station column only about 82px wide,
+    so this box stays narrow. Add a boolean prop (e.g. `bare`) rather than a second component; the
+    error line's copy is unaffected by which mode is active — it always names the unit in prose.
 - **Snap and clamp**: every commit runs `parseMetric` → clamp to the caller's D-06 metric bounds →
   `roundToWholeMm` (mm fields) or the cm field's own whole-mm snap-then-cm-format (D-08: "snapped to
   whole mm") → `onCommit` → reformat. Exactly `ImperialField`'s commit pipeline, metric functions
