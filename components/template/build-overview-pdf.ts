@@ -21,10 +21,10 @@ import type { OutlineSpec } from "@/lib/geometry/board";
 import { MEASURE_STATION_MM, type OutlineGeometry, sampleOutline } from "@/lib/geometry/outline";
 import { computeOverviewDrawingBox, computeOverviewOutlineScale } from "@/lib/geometry/overview-layout";
 import { PAPER_MM, TEMPLATE_MARGIN_MM, type PaperSize } from "@/lib/geometry/template";
+import { formatArea, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
 import {
   formatFeetInches,
   formatInchesFraction,
-  formatSignedInchesFraction,
   mm,
   squareMmToSquareInches,
   type Mm,
@@ -109,37 +109,60 @@ function tailShapeLabel(kind: OutlineSpec["tail"]["kind"]): string {
  *   `g.diamondDepthEff` — so this sheet never claims a depth the drawn outline doesn't have.
  *
  * Exported for testability without rendering the page (matches `templateHowToLines` /
- * `templateNameBlockDimsText`'s own pattern in `build-template-pdf.ts`).
+ * `templateNameBlockDimsText`'s own pattern in `build-template-pdf.ts`). Every line reads in
+ * `system` (07-03): sizes through `formatDim`/`formatLength` (cm), depths through `formatMark`
+ * (whole mm), the widepoint offset through `formatSignedDim`, and the two `@12"` station names
+ * through `stationLabel`. Angles, percentages and the tail-shape name never take a formatter and
+ * so are identical in both systems.
  */
-export function overviewSpecLines(outline: OutlineSpec, geometry: OutlineGeometry): string[] {
+export function overviewSpecLines(outline: OutlineSpec, geometry: OutlineGeometry, system: UnitsSystem): string[] {
+  const stationText = stationLabel(system);
   const lines = [
-    `Length: ${formatFeetInches(outline.length)}`,
+    `Length: ${formatLength(outline.length, system)}`,
     `Nose Angle: ${outline.noseAngle}°  ·  Fullness: ${outline.noseFullness}%`,
-    `Nose Width @12" (calculated): ${formatInchesFraction(geometry.noseWidthAt12in)}`,
-    `Widepoint Width: ${formatInchesFraction(outline.widePointWidth)}`,
-    `WP Offset: ${formatSignedInchesFraction(outline.widePointOffset)}`,
+    `Nose Width @${stationText} (calculated): ${formatDim(geometry.noseWidthAt12in, system)}`,
+    `Widepoint Width: ${formatDim(outline.widePointWidth, system)}`,
+    `WP Offset: ${formatSignedDim(outline.widePointOffset, system)}`,
     `Rail Length: Tail ${outline.tailRailLength}%  ·  Nose ${outline.noseRailLength}%`,
     `Tail Shape: ${tailShapeLabel(outline.tail.kind)}`,
-    `Tail Block: ${formatInchesFraction(mm(geometry.halfTailBlockWidth * 2))}`,
+    `Tail Block: ${formatDim(mm(geometry.halfTailBlockWidth * 2), system)}`,
   ];
   if (outline.tail.kind === "swallow") {
-    lines.push(`Swallow Depth: ${formatInchesFraction(outline.tail.crotchDepth)}`);
+    lines.push(`Swallow Depth: ${formatMark(outline.tail.crotchDepth, system)}`);
   }
   if (outline.tail.kind === "diamond") {
-    lines.push(`Diamond Depth: ${formatInchesFraction(geometry.effectiveDiamondDepth)}`);
+    lines.push(`Diamond Depth: ${formatMark(geometry.effectiveDiamondDepth, system)}`);
   }
   lines.push(`Tail Angle: ${outline.tailAngle}°  ·  Fullness: ${outline.tailFullness}%`);
-  lines.push(`Tail Width @12" (calculated): ${formatInchesFraction(geometry.tailWidthAt12in)}`);
-  const areaSqIn = squareMmToSquareInches(geometry.area);
-  lines.push(`Template Area: ${areaSqIn.toFixed(1)} sq in (${(areaSqIn / 144).toFixed(2)} sq ft)`);
+  lines.push(`Tail Width @${stationText} (calculated): ${formatDim(geometry.tailWidthAt12in, system)}`);
+  const areaFigure = formatArea(geometry.area, system);
+  const areaLine =
+    system === "metric"
+      ? `Template Area: ${areaFigure}`
+      : `Template Area: ${areaFigure} (${(squareMmToSquareInches(geometry.area) / 144).toFixed(2)} sq ft)`;
+  lines.push(areaLine);
   return lines;
 }
 
-/** The length callout printed above the drawn outline, e.g. `6'0" - 72"` — feet-and-inches plus
- * the same total in a plain inch fraction, matching the prototype's own `printLengthText`
- * (`${lengthFeet}'${lengthInches}" - ${this.disp(L)}`). Exported for testability. */
-export function overviewLengthLabelText(length: Mm): string {
+/** The length callout printed above the drawn outline, e.g. `6'0" - 72"` on Imperial —
+ * feet-and-inches plus the same total in a plain inch fraction, matching the prototype's own
+ * `printLengthText` (`${lengthFeet}'${lengthInches}" - ${this.disp(L)}`), byte-identical to
+ * before this phase. Metric has no counterpart to that dual form — feet-and-inches is an
+ * imperial idea, and printing a centimetre figure twice would be noise — so it returns the
+ * single centimetre figure through `formatDim`, matching the discretion note Phase 6 already
+ * applied to `outline-viewer.tsx`'s own on-screen length callout. Exported for testability. */
+export function overviewLengthLabelText(length: Mm, system: UnitsSystem): string {
+  if (system === "metric") return formatDim(length, system);
   return `${formatFeetInches(length)} - ${formatInchesFraction(length)}`;
+}
+
+/** The board's own full width at a dashed reference station — the figure printed to the left of
+ * each line in the drawing loop. A dim, per D-04 — routed through `formatDim`, never `formatMark`
+ * (a Metric sheet printing `400 mm` beside a station named `30.5 cm` would mix two metric
+ * families on one line). Extracted so this value is testable without rendering the page, matching
+ * this file's own `overviewSpecLines`/`overviewLengthLabelText` idiom. */
+export function overviewStationWidthText(halfWidth: number, system: UnitsSystem): string {
+  return formatDim(mm(halfWidth * 2), system);
 }
 
 interface OverviewStationLine {
@@ -174,50 +197,70 @@ function widePointOffsetFromCenter(geometry: OutlineGeometry): Mm {
  * when the offset is non-zero; a widepoint dead on centre merges into one "WIDEPOINT / CENTER"
  * line instead (`overviewStationLines`), the same way the on-screen viewer's own chip prints "At
  * center" rather than a directional distance. Exported for testability. */
-export function overviewWpOffsetLabelText(offset: Mm): string {
+export function overviewWpOffsetLabelText(offset: Mm, system: UnitsSystem): string {
   // Decide the direction word from what will actually be PRINTED, not the raw float — the same
   // fix `formatSignedInchesFraction` (`lib/geometry/units.ts`) already needed once in this
-  // codebase. An offset small enough to round to `0"` at print precision has no printable
+  // codebase. An offset small enough to round to this system's own zero form (`0"` imperial,
+  // `0.0 cm` metric — genuinely different precisions, per D-01/formatDim) has no printable
   // direction to report, so it prints unsigned rather than as "0\" forward".
-  const magnitude = formatInchesFraction(mm(Math.abs(offset)));
-  if (magnitude === '0"') return 'WP OFFSET — 0"';
+  const magnitude = formatDim(mm(Math.abs(offset)), system);
+  const zeroForm = system === "metric" ? "0.0 cm" : '0"';
+  if (magnitude === zeroForm) return `WP OFFSET — ${magnitude}`;
   const direction = offset > 0 ? "forward" : "back";
   return `WP OFFSET — ${magnitude} ${direction}`;
 }
 
 /**
- * The dashed reference stations drawn across the outline — nose @ 12", tail @ 12", and the
- * board's centre and widepoint. Round 3 post-checkpoint fix, defect 3: "the center, widepoint,
- * and offset all should be explicitly labeled" — centre and widepoint are now two DISTINCT lines,
- * each with its own small-caps label and printed dimension, plus an explicit "WP OFFSET — ..."
- * label stacked beneath the widepoint's own name, EXCEPT when the offset is zero: the two
- * stations coincide, so drawing two dashed lines and two labels on top of each other would be
- * illegible rather than informative — that case merges back into one "WIDEPOINT / CENTER" line,
- * same as before this fix. Exported for testability. `sampleOutline` (not a fixed half-width) is
- * used for every station's drawn width, exactly as `lib/geometry/template.ts`'s own
- * `markPlacements` samples the widepoint the same way rather than trusting `halfWidePointWidth`
- * to always be exactly at that station.
+ * The dashed reference stations drawn across the outline — nose @ 12" (`@ 30.5 cm` on Metric),
+ * tail @ 12", and the board's centre and widepoint. Round 3 post-checkpoint fix, defect 3: "the
+ * center, widepoint, and offset all should be explicitly labeled" — centre and widepoint are now
+ * two DISTINCT lines, each with its own small-caps label and printed dimension, plus an explicit
+ * "WP OFFSET — ..." label stacked beneath the widepoint's own name, EXCEPT when the offset is
+ * zero: the two stations coincide, so drawing two dashed lines and two labels on top of each
+ * other would be illegible rather than informative — that case merges back into one "WIDEPOINT /
+ * CENTER" line, same as before this fix. Exported for testability. `sampleOutline` (not a fixed
+ * half-width) is used for every station's drawn width, exactly as `lib/geometry/template.ts`'s
+ * own `markPlacements` samples the widepoint the same way rather than trusting
+ * `halfWidePointWidth` to always be exactly at that station.
+ *
+ * The station itself never moves — every returned `station` value is identical between the two
+ * systems (07-03) — only the label text and the merge decision below read `system`. `CENTER`,
+ * `WIDEPOINT` and the merged `WIDEPOINT / CENTER` are plain English with no unit and are returned
+ * unchanged in both systems.
  */
-export function overviewStationLines(geometry: OutlineGeometry): OverviewStationLine[] {
-  const noseTwelve: OverviewStationLine = { label: 'NOSE @ 12"', station: mm(geometry.length - MEASURE_STATION_MM) };
-  const tailTwelve: OverviewStationLine = { label: 'TAIL @ 12"', station: MEASURE_STATION_MM };
+export function overviewStationLines(geometry: OutlineGeometry, system: UnitsSystem): OverviewStationLine[] {
+  const noseTwelve: OverviewStationLine = {
+    label: `NOSE @ ${stationLabel(system)}`,
+    station: mm(geometry.length - MEASURE_STATION_MM),
+  };
+  const tailTwelve: OverviewStationLine = { label: `TAIL @ ${stationLabel(system)}`, station: MEASURE_STATION_MM };
   const center = centerStation(geometry);
   const offset = widePointOffsetFromCenter(geometry);
 
-  // Merge onto one "WIDEPOINT / CENTER" line whenever the offset rounds to `0"` at the sheet's
-  // own print precision — matching the printed magnitude `overviewWpOffsetLabelText` uses, not a
-  // raw-float epsilon. `1e-6` mm was a tolerance for numerical noise, not for "this offset prints
-  // as zero": an offset below ~0.4mm (1/32in) is real but rounds away in `formatInchesFraction`,
-  // so deciding the merge from the raw float printed a separate WIDEPOINT line with a directional
-  // "WP OFFSET — 0\" forward/back" label.
-  if (formatInchesFraction(mm(Math.abs(offset))) === '0"') {
+  // Merge onto one "WIDEPOINT / CENTER" line whenever the offset rounds to the ACTIVE system's
+  // own zero form at the sheet's own print precision — matching the printed magnitude
+  // `overviewWpOffsetLabelText` uses for this same system, not a raw-float epsilon and not a
+  // threshold pinned to one system. Metric prints to 0.1cm (a 0.5mm zero range) where Imperial
+  // prints to 1/16in (a ~0.79mm zero range), so an offset around a millimetre genuinely merges on
+  // an Imperial sheet and does not merge on a Metric one — that is the honest outcome of "decide
+  // from what is actually printed, in the active system" rather than pinning the threshold to one
+  // system, which would make one of the two sheets draw a directional label for an offset it
+  // itself prints as zero. Nothing a shaper measures moves either way; only how many dashed lines
+  // get drawn.
+  const magnitude = formatDim(mm(Math.abs(offset)), system);
+  const zeroForm = system === "metric" ? "0.0 cm" : '0"';
+  if (magnitude === zeroForm) {
     return [noseTwelve, { label: "WIDEPOINT / CENTER", station: geometry.widePointStation }, tailTwelve];
   }
 
   return [
     noseTwelve,
     { label: "CENTER", station: center },
-    { label: "WIDEPOINT", station: geometry.widePointStation, secondaryLabel: overviewWpOffsetLabelText(offset) },
+    {
+      label: "WIDEPOINT",
+      station: geometry.widePointStation,
+      secondaryLabel: overviewWpOffsetLabelText(offset, system),
+    },
     tailTwelve,
   ];
 }
@@ -269,7 +312,7 @@ function drawClosedOutline(
  * outline geometry of its own, matching `buildTemplatePdf`'s own contract.
  */
 export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
-  const { geometry, outline, paper, boardName } = options;
+  const { geometry, outline, paper, boardName, system } = options;
   const paperDims = PAPER_MM[paper];
   const margin = TEMPLATE_MARGIN_MM;
 
@@ -295,7 +338,7 @@ export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
   // label and value stay column-aligned the way a shaper reads a spec sheet.
   doc.setFont("courier", "normal");
   doc.setFontSize(SPEC_FONT_SIZE_PT);
-  const wrappedSpecLines = overviewSpecLines(outline, geometry).flatMap((line) =>
+  const wrappedSpecLines = overviewSpecLines(outline, geometry, system).flatMap((line) =>
     wrapTextToWidth(line, SPEC_COLUMN_WIDTH_MM, doc),
   );
   doc.setFont("courier", "normal");
@@ -335,7 +378,7 @@ export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(LENGTH_LABEL_FONT_SIZE_PT);
-  doc.text(overviewLengthLabelText(geometry.length), centerX, outlineTop - 3, { align: "center" });
+  doc.text(overviewLengthLabelText(geometry.length, system), centerX, outlineTop - 3, { align: "center" });
 
   drawClosedOutline(doc, geometry, stationToY, halfWidthToX);
 
@@ -350,7 +393,7 @@ export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
   // (post-checkpoint addition, per the user's own iShaper reference), plus a second, smaller
   // "WP OFFSET — ..." line stacked beneath the widepoint's own name when centre and widepoint are
   // two distinct lines (round 3 post-checkpoint fix, defect 3).
-  for (const line of overviewStationLines(geometry)) {
+  for (const line of overviewStationLines(geometry, system)) {
     const halfWidth = sampleOutline(geometry, line.station);
     const y = stationToY(line.station);
     const xLeft = halfWidthToX(halfWidth, -1);
@@ -364,7 +407,7 @@ export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(STATION_VALUE_FONT_SIZE_PT);
-    doc.text(formatInchesFraction(mm(halfWidth * 2)), xLeft - STATION_TEXT_GAP_MM, y, {
+    doc.text(overviewStationWidthText(halfWidth, system), xLeft - STATION_TEXT_GAP_MM, y, {
       align: "right",
       baseline: "middle",
     });

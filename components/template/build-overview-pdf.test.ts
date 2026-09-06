@@ -1,20 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { buildOutline } from "@/lib/geometry/outline";
+import { formatArea, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
-import { inchesToMm } from "@/lib/geometry/units";
+import { formatInchesFraction, inchesToMm, mm, squareMmToSquareInches, type UnitsSystem } from "@/lib/geometry/units";
 import {
   buildOverviewPdf,
   overviewFileName,
   overviewLengthLabelText,
   overviewSpecLines,
   overviewStationLines,
+  overviewStationWidthText,
   overviewWpOffsetLabelText,
 } from "./build-overview-pdf";
 
-function buildOptions(paper: "letter" | "a4" = "letter", presetIndex = 0) {
+function buildOptions(paper: "letter" | "a4" = "letter", presetIndex = 0, system: UnitsSystem = "imperial") {
   const preset = BOARD_PRESETS[presetIndex];
   const geometry = buildOutline(preset.outline);
-  return { geometry, outline: preset.outline, paper, boardName: preset.name, system: "imperial" as const };
+  return { geometry, outline: preset.outline, paper, boardName: preset.name, system };
 }
 
 describe("buildOverviewPdf", () => {
@@ -84,7 +86,7 @@ describe("buildOverviewPdf", () => {
 describe("overviewSpecLines", () => {
   it("carries every prototype spec line the design state supports", () => {
     const options = buildOptions();
-    const lines = overviewSpecLines(options.outline, options.geometry);
+    const lines = overviewSpecLines(options.outline, options.geometry, "imperial");
     const joined = lines.join(" ");
 
     expect(joined).toContain("Length:");
@@ -103,51 +105,134 @@ describe("overviewSpecLines", () => {
     expect(joined).toContain("sq ft");
   });
 
-  it("includes a Swallow Depth line only for a swallow tail", () => {
+  it("is byte-identical to the pre-Phase-7 Imperial output for every board preset", () => {
+    for (const preset of BOARD_PRESETS) {
+      const geometry = buildOutline(preset.outline);
+      const lines = overviewSpecLines(preset.outline, geometry, "imperial");
+      expect(lines[0]).toBe(`Length: ${formatLength(preset.outline.length, "imperial")}`);
+      expect(lines[0]).toContain("'");
+      expect(lines[2]).toBe(`Nose Width @12" (calculated): ${formatDim(geometry.noseWidthAt12in, "imperial")}`);
+      expect(lines[3]).toBe(`Widepoint Width: ${formatDim(preset.outline.widePointWidth, "imperial")}`);
+      expect(lines[4]).toBe(`WP Offset: ${formatSignedDim(preset.outline.widePointOffset, "imperial")}`);
+      expect(lines[7]).toBe(`Tail Block: ${formatDim(mm(geometry.halfTailBlockWidth * 2), "imperial")}`);
+      const areaLine = lines.find((l) => l.startsWith("Template Area:"));
+      const areaSqIn = squareMmToSquareInches(geometry.area);
+      expect(areaLine).toBe(
+        `Template Area: ${formatArea(geometry.area, "imperial")} (${(areaSqIn / 144).toFixed(2)} sq ft)`,
+      );
+    }
+  });
+
+  it("in Metric, reads sizes in centimetres, depths in whole millimetres, and one area figure in square centimetres", () => {
+    const preset = BOARD_PRESETS[0];
+    const geometry = buildOutline(preset.outline);
+    const lines = overviewSpecLines(preset.outline, geometry, "metric");
+    const joined = lines.join(" ");
+
+    expect(lines[0]).toBe(`Length: ${formatLength(preset.outline.length, "metric")}`);
+    expect(lines[0]).toContain("cm");
+    expect(lines[3]).toBe(`Widepoint Width: ${formatDim(preset.outline.widePointWidth, "metric")}`);
+    expect(lines[4]).toBe(`WP Offset: ${formatSignedDim(preset.outline.widePointOffset, "metric")}`);
+    expect(lines[7]).toBe(`Tail Block: ${formatDim(mm(geometry.halfTailBlockWidth * 2), "metric")}`);
+
+    const areaLine = lines.find((l) => l.startsWith("Template Area:"));
+    expect(areaLine).toBe(`Template Area: ${formatArea(geometry.area, "metric")}`);
+    expect(areaLine).not.toContain("sq ft");
+    expect(joined).not.toContain("sq in");
+  });
+
+  it("includes a Swallow Depth line, in whole millimetres on Metric, only for a swallow tail", () => {
     const swallowOutline = {
       ...BOARD_PRESETS[0].outline,
       tail: { kind: "swallow" as const, endWidth: inchesToMm(8), crotchDepth: inchesToMm(3) },
     };
-    const geometry = buildOutline(swallowOutline);
-    const lines = overviewSpecLines(swallowOutline, geometry);
-    expect(lines.some((l) => l.startsWith("Swallow Depth:"))).toBe(true);
-    expect(lines.some((l) => l.startsWith("Diamond Depth:"))).toBe(false);
+    const imperialGeometry = buildOutline(swallowOutline);
+    const imperialLines = overviewSpecLines(swallowOutline, imperialGeometry, "imperial");
+    expect(imperialLines.some((l) => l.startsWith("Swallow Depth:"))).toBe(true);
+    expect(imperialLines.some((l) => l.startsWith("Diamond Depth:"))).toBe(false);
+
+    const metricGeometry = buildOutline(swallowOutline);
+    const metricLines = overviewSpecLines(swallowOutline, metricGeometry, "metric");
+    const swallowLine = metricLines.find((l) => l.startsWith("Swallow Depth:"));
+    expect(swallowLine).toBe(`Swallow Depth: ${formatMark(swallowOutline.tail.crotchDepth, "metric")}`);
+    expect(swallowLine).toContain("mm");
+    expect(metricLines.some((l) => l.startsWith("Diamond Depth:"))).toBe(false);
   });
 
-  it("includes a Diamond Depth line (the geometry's effective, capped depth) only for a diamond tail", () => {
+  it("includes a Diamond Depth line (the geometry's effective, capped depth), in whole millimetres on Metric, only for a diamond tail", () => {
     const diamondOutline = {
       ...BOARD_PRESETS[0].outline,
       tail: { kind: "diamond" as const, endWidth: inchesToMm(10), depth: inchesToMm(3) },
     };
     const geometry = buildOutline(diamondOutline);
-    const lines = overviewSpecLines(diamondOutline, geometry);
-    expect(lines.some((l) => l.startsWith("Diamond Depth:"))).toBe(true);
-    expect(lines.some((l) => l.startsWith("Swallow Depth:"))).toBe(false);
+    const imperialLines = overviewSpecLines(diamondOutline, geometry, "imperial");
+    expect(imperialLines.some((l) => l.startsWith("Diamond Depth:"))).toBe(true);
+    expect(imperialLines.some((l) => l.startsWith("Swallow Depth:"))).toBe(false);
+
+    const metricLines = overviewSpecLines(diamondOutline, geometry, "metric");
+    const diamondLine = metricLines.find((l) => l.startsWith("Diamond Depth:"));
+    expect(diamondLine).toBe(`Diamond Depth: ${formatMark(geometry.effectiveDiamondDepth, "metric")}`);
+    expect(diamondLine).toContain("mm");
+    expect(metricLines.some((l) => l.startsWith("Swallow Depth:"))).toBe(false);
   });
 
-  it("omits both depth lines for pin/round/squash tails", () => {
+  it("omits both depth lines for pin/round/squash tails, in both systems", () => {
     const squashOutline = {
       ...BOARD_PRESETS[0].outline,
       tail: { kind: "squash" as const, endWidth: inchesToMm(5) },
     };
     const geometry = buildOutline(squashOutline);
-    const lines = overviewSpecLines(squashOutline, geometry);
-    expect(lines.some((l) => l.startsWith("Swallow Depth:"))).toBe(false);
-    expect(lines.some((l) => l.startsWith("Diamond Depth:"))).toBe(false);
+    for (const system of ["imperial", "metric"] as const) {
+      const lines = overviewSpecLines(squashOutline, geometry, system);
+      expect(lines.some((l) => l.startsWith("Swallow Depth:"))).toBe(false);
+      expect(lines.some((l) => l.startsWith("Diamond Depth:"))).toBe(false);
+    }
   });
 
   it("prints both independent rail-length values, not the prototype's single control", () => {
     const options = buildOptions();
-    const lines = overviewSpecLines(options.outline, options.geometry);
+    const lines = overviewSpecLines(options.outline, options.geometry, "imperial");
     const railLine = lines.find((l) => l.startsWith("Rail Length:"));
     expect(railLine).toContain(`Tail ${options.outline.tailRailLength}%`);
     expect(railLine).toContain(`Nose ${options.outline.noseRailLength}%`);
   });
+
+  it("the Metric nose-width and tail-width line labels name the station in centimetres and contain no inch mark", () => {
+    const options = buildOptions();
+    const lines = overviewSpecLines(options.outline, options.geometry, "metric");
+    const noseLine = lines.find((l) => l.startsWith("Nose Width @"));
+    const tailLine = lines.find((l) => l.startsWith("Tail Width @"));
+    expect(noseLine).toBe(`Nose Width @${stationLabel("metric")} (calculated): ${formatDim(options.geometry.noseWidthAt12in, "metric")}`);
+    expect(tailLine).toBe(`Tail Width @${stationLabel("metric")} (calculated): ${formatDim(options.geometry.tailWidthAt12in, "metric")}`);
+    expect(noseLine).toContain("cm");
+    expect(noseLine).not.toContain('"');
+    expect(tailLine).toContain("cm");
+    expect(tailLine).not.toContain('"');
+  });
+
+  it("angle, fullness, rail-length and tail-shape lines are identical strings in both systems", () => {
+    const options = buildOptions();
+    const imperialLines = overviewSpecLines(options.outline, options.geometry, "imperial");
+    const metricLines = overviewSpecLines(options.outline, options.geometry, "metric");
+    for (const prefix of ["Nose Angle:", "Rail Length:", "Tail Shape:", "Tail Angle:"]) {
+      const imperialLine = imperialLines.find((l) => l.startsWith(prefix));
+      const metricLine = metricLines.find((l) => l.startsWith(prefix));
+      expect(metricLine).toBe(imperialLine);
+    }
+  });
 });
 
 describe("overviewLengthLabelText", () => {
-  it("formats feet-and-inches plus the plain inch total, e.g. 6'0\" - 72\"", () => {
-    expect(overviewLengthLabelText(inchesToMm(72))).toBe(`6'0" - 72"`);
+  it("on Imperial, formats feet-and-inches plus the plain inch total, e.g. 6'0\" - 72\" — byte-identical to before this phase", () => {
+    expect(overviewLengthLabelText(inchesToMm(72), "imperial")).toBe(`6'0" - 72"`);
+  });
+
+  it("on Metric, returns the single centimetre figure with no separator and no second figure", () => {
+    const length = inchesToMm(72);
+    const text = overviewLengthLabelText(length, "metric");
+    expect(text).toBe(formatDim(length, "metric"));
+    expect(text).not.toContain(" - ");
+    expect(text.match(/\d+(\.\d+)?/g)?.length).toBe(1);
   });
 });
 
@@ -156,7 +241,7 @@ describe(
   () => {
     it("returns four stations — nose @12, CENTER, WIDEPOINT, tail @12 — when the widepoint is offset from centre", () => {
       const options = buildOptions(); // shortboard preset: widePointOffset -1in, non-zero
-      const lines = overviewStationLines(options.geometry);
+      const lines = overviewStationLines(options.geometry, "imperial");
       expect(lines.map((l) => l.label)).toEqual(['NOSE @ 12"', "CENTER", "WIDEPOINT", 'TAIL @ 12"']);
       expect(lines[1].station).toBeCloseTo(options.geometry.length / 2, 6);
       expect(lines[2].station).toBe(options.geometry.widePointStation);
@@ -164,7 +249,7 @@ describe(
 
     it("the WIDEPOINT line carries a secondaryLabel; CENTER, NOSE, TAIL do not", () => {
       const options = buildOptions();
-      const lines = overviewStationLines(options.geometry);
+      const lines = overviewStationLines(options.geometry, "imperial");
       const byLabel = Object.fromEntries(lines.map((l) => [l.label, l]));
       expect(byLabel["WIDEPOINT"].secondaryLabel).toBeDefined();
       expect(byLabel["CENTER"].secondaryLabel).toBeUndefined();
@@ -175,7 +260,7 @@ describe(
     it("merges into one WIDEPOINT / CENTER line when the offset is zero (fish preset)", () => {
       const options = buildOptions("letter", 1); // fish preset: widePointOffset 0
       expect(options.outline.widePointOffset).toBe(0);
-      const lines = overviewStationLines(options.geometry);
+      const lines = overviewStationLines(options.geometry, "imperial");
       expect(lines.map((l) => l.label)).toEqual(['NOSE @ 12"', "WIDEPOINT / CENTER", 'TAIL @ 12"']);
       expect(lines[1].station).toBe(options.geometry.widePointStation);
       expect(lines[1].secondaryLabel).toBeUndefined();
@@ -188,14 +273,14 @@ describe(
       // "WP OFFSET — 0\" forward" secondary label.
       const preset = BOARD_PRESETS[1]; // fish preset: widePointOffset 0
       const geometry = buildOutline({ ...preset.outline, widePointOffset: inchesToMm(0.015625) });
-      const lines = overviewStationLines(geometry);
+      const lines = overviewStationLines(geometry, "imperial");
       expect(lines.map((l) => l.label)).toEqual(['NOSE @ 12"', "WIDEPOINT / CENTER", 'TAIL @ 12"']);
       expect(lines[1].secondaryLabel).toBeUndefined();
     });
 
-    it.each(BOARD_PRESETS)("$id: CENTER + TAIL@12 + NOSE@12 always present, WIDEPOINT present standalone or merged", (preset) => {
+    it.each(BOARD_PRESETS)("$id: CENTER + TAIL@12 + NOSE@12 always present, WIDEPOINT present standalone or merged (imperial)", (preset) => {
       const geometry = buildOutline(preset.outline);
-      const lines = overviewStationLines(geometry);
+      const lines = overviewStationLines(geometry, "imperial");
       const labels = lines.map((l) => l.label);
       expect(labels).toContain('NOSE @ 12"');
       expect(labels).toContain('TAIL @ 12"');
@@ -204,28 +289,142 @@ describe(
       expect(hasSplit || hasMerged).toBe(true);
       expect(hasSplit && hasMerged).toBe(false);
     });
+
+    it("on Metric, the two twelve-inch dashed lines are named NOSE @ 30.5 cm and TAIL @ 30.5 cm", () => {
+      const options = buildOptions();
+      const lines = overviewStationLines(options.geometry, "metric");
+      const byLabel = lines.map((l) => l.label);
+      expect(byLabel).toContain(`NOSE @ ${stationLabel("metric")}`);
+      expect(byLabel).toContain(`TAIL @ ${stationLabel("metric")}`);
+      expect(byLabel.some((l) => l.includes('"'))).toBe(false);
+    });
+
+    it.each(BOARD_PRESETS)("$id: every returned line's station value is identical for imperial and metric", (preset) => {
+      const geometry = buildOutline(preset.outline);
+      const imperialLines = overviewStationLines(geometry, "imperial");
+      const metricLines = overviewStationLines(geometry, "metric");
+      expect(metricLines.map((l) => l.station)).toEqual(imperialLines.map((l) => l.station));
+    });
+
+    it("merges into one WIDEPOINT / CENTER line on Metric when the offset is zero (fish preset)", () => {
+      const options = buildOptions("letter", 1, "metric"); // fish preset: widePointOffset 0
+      const lines = overviewStationLines(options.geometry, "metric");
+      expect(lines.map((l) => l.label)).toEqual([`NOSE @ ${stationLabel("metric")}`, "WIDEPOINT / CENTER", `TAIL @ ${stationLabel("metric")}`]);
+      expect(lines[1].secondaryLabel).toBeUndefined();
+    });
+
+    it("on Metric, keeps CENTER and WIDEPOINT as two separate lines for an offset large enough to print in both systems", () => {
+      const options = buildOptions("letter", 0, "metric"); // shortboard preset: widePointOffset -1in
+      const lines = overviewStationLines(options.geometry, "metric");
+      expect(lines.map((l) => l.label)).toEqual([`NOSE @ ${stationLabel("metric")}`, "CENTER", "WIDEPOINT", `TAIL @ ${stationLabel("metric")}`]);
+      expect(lines.find((l) => l.label === "WIDEPOINT")?.secondaryLabel).toBeDefined();
+    });
+
+    it("an offset that rounds away in Imperial (1/32in zero range) but not in Metric (0.5mm zero range) merges on Imperial and splits on Metric", () => {
+      // Derive the boundary offset from the two systems' own printed zero forms — never a
+      // hand-picked millimetre figure — since Metric prints to 0.1cm (0.5mm zero range) where
+      // Imperial prints to 1/16in (~0.79mm zero range), and Metric's zero range sits strictly
+      // inside Imperial's.
+      let boundaryOffsetMm: number | null = null;
+      for (let candidate = 0.1; candidate < 2; candidate += 0.02) {
+        const impZero = formatDim(mm(candidate), "imperial") === '0"';
+        const metZero = formatDim(mm(candidate), "metric") === "0.0 cm";
+        if (impZero && !metZero) {
+          boundaryOffsetMm = candidate;
+          break;
+        }
+      }
+      expect(boundaryOffsetMm).not.toBeNull();
+
+      const preset = BOARD_PRESETS[1]; // fish preset: widePointOffset 0, so the boundary offset is the whole story
+      const geometry = buildOutline({ ...preset.outline, widePointOffset: mm(boundaryOffsetMm as number) });
+
+      const imperialLines = overviewStationLines(geometry, "imperial");
+      expect(imperialLines.map((l) => l.label)).toEqual(['NOSE @ 12"', "WIDEPOINT / CENTER", 'TAIL @ 12"']);
+
+      const metricLines = overviewStationLines(geometry, "metric");
+      expect(metricLines.map((l) => l.label)).toEqual([
+        `NOSE @ ${stationLabel("metric")}`,
+        "CENTER",
+        "WIDEPOINT",
+        `TAIL @ ${stationLabel("metric")}`,
+      ]);
+    });
+
+    it("every Imperial-mode return value is identical to the pre-change output", () => {
+      for (const preset of BOARD_PRESETS) {
+        const geometry = buildOutline(preset.outline);
+        const lines = overviewStationLines(geometry, "imperial");
+        for (const line of lines) {
+          expect(line.label).not.toContain("cm");
+          if (line.secondaryLabel) {
+            expect(line.secondaryLabel).not.toContain("cm");
+          }
+        }
+      }
+    });
   },
 );
 
 describe(
   'overviewWpOffsetLabelText (round 3 post-checkpoint fix, defect 3: "WP OFFSET explicitly labeled... matching how the app\'s viewer words it")',
   () => {
-    it('prints "WP OFFSET — 1/2" back" for a negative (tail-ward) offset', () => {
-      expect(overviewWpOffsetLabelText(inchesToMm(-0.5))).toBe('WP OFFSET — 1/2" back');
+    it('on Imperial, prints "WP OFFSET — 1/2" back" for a negative (tail-ward) offset — byte-identical to before this phase', () => {
+      expect(overviewWpOffsetLabelText(inchesToMm(-0.5), "imperial")).toBe('WP OFFSET — 1/2" back');
     });
 
-    it('prints "WP OFFSET — 1/2" forward" for a positive (nose-ward) offset', () => {
-      expect(overviewWpOffsetLabelText(inchesToMm(0.5))).toBe('WP OFFSET — 1/2" forward');
+    it('on Imperial, prints "WP OFFSET — 1/2" forward" for a positive (nose-ward) offset', () => {
+      expect(overviewWpOffsetLabelText(inchesToMm(0.5), "imperial")).toBe('WP OFFSET — 1/2" forward');
     });
 
-    it('prints a bare "WP OFFSET — 0"" — no direction word — for an offset that rounds to zero at print precision (WR-01)', () => {
+    it('on Imperial, prints a bare "WP OFFSET — 0"" — no direction word — for an offset that rounds to zero at print precision (WR-01)', () => {
       // 1/64" rounds to 0" at the default sixteenths; a direction word here would read as
       // "WP OFFSET — 0\" forward", which is nonsensical on a sheet a shaper is meant to trust.
-      expect(overviewWpOffsetLabelText(inchesToMm(0.015625))).toBe('WP OFFSET — 0"');
-      expect(overviewWpOffsetLabelText(inchesToMm(-0.015625))).toBe('WP OFFSET — 0"');
+      expect(overviewWpOffsetLabelText(inchesToMm(0.015625), "imperial")).toBe('WP OFFSET — 0"');
+      expect(overviewWpOffsetLabelText(inchesToMm(-0.015625), "imperial")).toBe('WP OFFSET — 0"');
+    });
+
+    it("on Metric, prints the same wording with a centimetre magnitude for a back (tail-ward) offset", () => {
+      const offset = mm(-51);
+      const text = overviewWpOffsetLabelText(offset, "metric");
+      expect(text).toBe(`WP OFFSET — ${formatDim(mm(51), "metric")} back`);
+      expect(text).toContain("cm");
+    });
+
+    it("on Metric, prints the same wording with a centimetre magnitude for a forward (nose-ward) offset", () => {
+      const offset = mm(51);
+      const text = overviewWpOffsetLabelText(offset, "metric");
+      expect(text).toBe(`WP OFFSET — ${formatDim(mm(51), "metric")} forward`);
+      expect(text).toContain("cm");
+    });
+
+    it("on Metric, prints a bare offset with no direction word for an offset that rounds away at centimetre precision", () => {
+      // Below 0.5mm rounds to 0.0cm — genuinely a different threshold from Imperial's 1/32in.
+      const roundsAway = mm(0.2);
+      expect(formatDim(roundsAway, "metric")).toBe("0.0 cm");
+      expect(overviewWpOffsetLabelText(roundsAway, "metric")).toBe(`WP OFFSET — ${formatDim(roundsAway, "metric")}`);
+      expect(overviewWpOffsetLabelText(mm(-0.2), "metric")).toBe(`WP OFFSET — ${formatDim(roundsAway, "metric")}`);
     });
   },
 );
+
+describe("the Overview Sheet's station width figures on the drawing (07-03)", () => {
+  it("on Metric, reads the board's own full width there in centimetres, via the same formatDim the spec block uses", () => {
+    const options = buildOptions();
+    const halfWidth = options.geometry.halfWidePointWidth;
+    const text = overviewStationWidthText(halfWidth, "metric");
+    expect(text).toBe(formatDim(mm(halfWidth * 2), "metric"));
+    expect(text).toContain("cm");
+    expect(text).not.toContain("mm");
+  });
+
+  it("on Imperial, is byte-identical to the pre-Phase-7 inch fraction", () => {
+    const options = buildOptions();
+    const halfWidth = options.geometry.halfWidePointWidth;
+    const text = overviewStationWidthText(halfWidth, "imperial");
+    expect(text).toBe(formatInchesFraction(mm(halfWidth * 2)));
+  });
+});
 
 describe("overviewFileName", () => {
   it("slugifies a board name", () => {
