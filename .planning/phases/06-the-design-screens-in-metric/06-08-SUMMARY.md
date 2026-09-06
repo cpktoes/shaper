@@ -169,6 +169,10 @@ Fin placement numbers on the Fins screen are fully consistent with the whole-mil
 
 This plan closes UAT gaps G-06-12 and G-06-15. The shaper's end-of-phase UAT re-run of tests 12, 14 and 15 is the remaining verification step before the phase can be considered fully closed.
 
+## Self-Check: PASSED
+
+All 8 modified source/planning files confirmed present on disk; all 4 commits (907bd5d, 909f72c, 1b52aa3, 0c00776) confirmed in `git log`.
+
 ---
 *Phase: 06-the-design-screens-in-metric*
 *Completed: 2026-09-05*
