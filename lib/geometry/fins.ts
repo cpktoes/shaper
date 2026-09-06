@@ -43,7 +43,7 @@
  */
 
 import type { Point2D } from "./board";
-import { formatDim, formatDimBare } from "./measure-display";
+import { formatDim, formatDimBare, formatMarkBare } from "./measure-display";
 import { type Mm, inchesToMm, mm, mmToInches, type MeasureFamily, type UnitsSystem } from "./units";
 import { TOE_AIM_TABLE, TOE_AIM_TABLE_COLUMNS, type ToeAimTableRowKey } from "./toe-aim-tables";
 
@@ -1170,11 +1170,15 @@ export function toeAimTableFor(boardLength: Mm, tailWidth12: Mm, system: UnitsSy
   const frontRaw = TOE_AIM_TABLE.front[rowKey] ?? TOE_AIM_TABLE.front["72+"];
   const rearRaw = TOE_AIM_TABLE.rear[rowKey] ?? TOE_AIM_TABLE.rear["72+"];
 
-  // Toe-aim distances are dims-family (D-01: the same family a fin's tail width @12" reads in),
-  // so a table value converts through formatDimBare — bare because the modal's own column header
-  // already carries the unit (D-10). Imperial reproduces exactly what the modal prints today: the
-  // raw inch number stringified, no formatting applied.
-  const formatValue = (v: number): string => (system === "imperial" ? String(v) : formatDimBare(inchesToMm(v), system));
+  // An aim distance is a mark a shaper measures off the stringer, so a CELL reads in whole
+  // millimetres (superseded 2026-09-05, UAT gap G-06-12: aim distances were briefly the same
+  // cm family as a tail-width column under D-01). A tail-width COLUMN and a board-length row
+  // label are board dims, so they stay in one-decimal centimetres — the two formatters below
+  // split accordingly. Both are bare because the modal's own headers already carry the unit
+  // (D-10). Imperial reproduces exactly what the modal prints today for both: the raw inch
+  // number stringified, no formatting applied.
+  const formatColumn = (v: number): string => (system === "imperial" ? String(v) : formatDimBare(inchesToMm(v), system));
+  const formatCell = (v: number): string => (system === "imperial" ? String(v) : formatMarkBare(inchesToMm(v), system));
 
   // The row key's open-ended form ("72+") keeps its trailing "+" marker in Metric; the numeric
   // part converts the same way every other cell does.
@@ -1186,10 +1190,10 @@ export function toeAimTableFor(boardLength: Mm, tailWidth12: Mm, system: UnitsSy
   };
 
   return {
-    columns: TOE_AIM_TABLE_COLUMNS.map(formatValue),
+    columns: TOE_AIM_TABLE_COLUMNS.map(formatColumn),
     rowLabel: formatRowLabel(rowKey),
-    front: frontRaw.map(formatValue),
-    rear: rearRaw.map(formatValue),
+    front: frontRaw.map(formatCell),
+    rear: rearRaw.map(formatCell),
     highlightIndex,
     identicalFromLabel: formatDim(inchesToMm(72), system),
   };

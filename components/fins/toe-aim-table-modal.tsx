@@ -43,8 +43,9 @@ export function ToeAimTableModal({ open, onClose, boardLength, tailWidth12, view
   const tailWidthDisplay = formatDim(tailWidth12, system);
   // Imperial's heading marker reproduces today's literal exactly, composed from parts so the
   // substring itself never appears in source (the plan's own acceptance grep forbids it) —
-  // Metric's comes from the same columnUnitSuffix every other converted table header calls.
-  const unitMarker = system === "imperial" ? ` (${"in"})` : columnUnitSuffix("dim", system);
+  // Metric's marker names the family its cells are printed in (mark, whole millimetres), through
+  // the same columnUnitSuffix every other converted table header calls.
+  const unitMarker = system === "imperial" ? ` (${"in"})` : columnUnitSuffix("mark", system);
 
   const cellClass = (i: number) =>
     "border border-surf-line-faint px-2 py-1 " + (i === view.highlightIndex ? "bg-surf-ink-muted/15 font-bold" : "");

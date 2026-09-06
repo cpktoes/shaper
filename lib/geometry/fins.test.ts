@@ -17,7 +17,7 @@ import {
   type TwinTemplate,
 } from "./fins";
 import { formatInchesFraction, inchesToMm, type Mm, mmToInches } from "./units";
-import { formatDim, formatDimBare, formatMark } from "./measure-display";
+import { formatDim, formatDimBare, formatMark, formatMarkBare } from "./measure-display";
 import { TOE_AIM_TABLE, TOE_AIM_TABLE_COLUMNS } from "./toe-aim-tables";
 import golden from "./__fixtures__/prototype-fins-golden.json";
 
@@ -541,14 +541,16 @@ describe("toeAimTableFor is system-aware (D-01, D-10)", () => {
     expect(view.identicalFromLabel).toBe('72"');
   });
 
-  it("metric: every column/cell is one-decimal centimetres derived from the inch table constant, and the row label keeps its '+' marker", () => {
+  it("metric: columns and the row label are one-decimal centimetres (board dims), while front/rear cells are whole millimetres (aim-distance marks) — both derived from the same inch table constant", () => {
     const view = toeAimTableFor(boardLength, tailWidth12, "metric");
     // Provenance: every expected metric value below is the SAME inch number the imperial
-    // assertion above reads off TOE_AIM_TABLE_COLUMNS/TOE_AIM_TABLE, run through
-    // inchesToMm -> formatDimBare("metric") — never a hand-transcribed centimetre figure.
+    // assertion above reads off TOE_AIM_TABLE_COLUMNS/TOE_AIM_TABLE — columns/rowLabel/
+    // identicalFromLabel run through inchesToMm -> formatDimBare/formatDim("metric") (board
+    // dims), front/rear cells run through inchesToMm -> formatMarkBare("metric") (aim-distance
+    // marks) — never a hand-transcribed figure either way.
     expect(view.columns).toEqual(TOE_AIM_TABLE_COLUMNS.map((c) => formatDimBare(inchesToMm(c), "metric")));
-    expect(view.front).toEqual(TOE_AIM_TABLE.front["72+"].map((v) => formatDimBare(inchesToMm(v), "metric")));
-    expect(view.rear).toEqual(TOE_AIM_TABLE.rear["72+"].map((v) => formatDimBare(inchesToMm(v), "metric")));
+    expect(view.front).toEqual(TOE_AIM_TABLE.front["72+"].map((v) => formatMarkBare(inchesToMm(v), "metric")));
+    expect(view.rear).toEqual(TOE_AIM_TABLE.rear["72+"].map((v) => formatMarkBare(inchesToMm(v), "metric")));
     // rowLabel "72+" -> the honest cm conversion of 72in, with the trailing "+" preserved.
     expect(view.rowLabel).toBe(`${formatDimBare(inchesToMm(72), "metric")}+`);
     expect(view.identicalFromLabel).toBe(formatDim(inchesToMm(72), "metric"));
