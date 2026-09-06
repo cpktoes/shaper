@@ -7,6 +7,7 @@ import {
   PAPER_MM,
   computeStripLayout,
   computeTemplateMarks,
+  markLabels,
   stripLabelRows,
   stripMarkSegments,
   stripRegistrationLines,
@@ -262,7 +263,75 @@ describe("label row placement", () => {
         }
       },
     );
+
+    it.each(BOARD_PRESETS)(
+      `$id (${paper}): Metric mark labels read <name> <cm> cm — <cm> cm, derived from markLabels/formatDim, never a hand-typed number (07-02 D-04)`,
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const segments = stripMarkSegments(layout, marks, geometry, "metric");
+        expect(segments.length).toBeGreaterThan(0);
+        const labels = markLabels("metric");
+        for (const segment of segments) {
+          const expected = `${labels[segment.mark]} — ${formatDim(mm(segment.halfWidthExtent * 2), "metric")}`;
+          expect(segment.label).toBe(expected);
+          // The trailing width figure is dims-family (centimetres), never marks-family millimetres.
+          expect(segment.label).not.toMatch(/\d+ mm\b/);
+        }
+      },
+    );
+
+    it.each(BOARD_PRESETS)(
+      `$id (${paper}): Imperial mark labels are byte-identical to the string printed before this phase`,
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const segments = stripMarkSegments(layout, marks, geometry, "imperial");
+        expect(segments.length).toBeGreaterThan(0);
+        const labels = markLabels("imperial");
+        for (const segment of segments) {
+          const expected = `${labels[segment.mark]} — ${formatDim(mm(segment.halfWidthExtent * 2), "imperial")}`;
+          expect(segment.label).toBe(expected);
+        }
+      },
+    );
+
+    it.each(BOARD_PRESETS)(
+      `$id (${paper}): stripLabelRows' baselineStation sequence is identical for "imperial" and "metric" — only the text differs`,
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const imperial = stripLabelRows(layout, marks, geometry, "imperial");
+        const metric = stripLabelRows(layout, marks, geometry, "metric");
+        expect(metric.map((r) => r.baselineStation)).toEqual(imperial.map((r) => r.baselineStation));
+        expect(metric.map((r) => r.pageIndex)).toEqual(imperial.map((r) => r.pageIndex));
+        expect(metric.map((r) => r.kind)).toEqual(imperial.map((r) => r.kind));
+      },
+    );
   }
+
+  it('a pin/round-tailed preset (midlength) prints no Tail Block label in either system, and no label ends in a bare unit', () => {
+    const preset = BOARD_PRESETS.find((p) => p.id === "midlength")!;
+    const geometry = buildOutline(preset.outline);
+    const marks = computeTemplateMarks(geometry);
+    expect(marks.tailBlock).toBeUndefined();
+
+    for (const paper of PAPERS) {
+      const layout = computeStripLayout(geometry, paper);
+      for (const system of ["imperial", "metric"] as const) {
+        const segments = stripMarkSegments(layout, marks, geometry, system);
+        expect(segments.some((s) => s.mark === "tailBlock")).toBe(false);
+        for (const segment of segments) {
+          // Every label carries a digit before its unit — never a label ending in a bare unit
+          // with no number (a mark that is simply absent produces no segment at all, above).
+          expect(segment.label).toMatch(/\d/);
+        }
+      }
+    }
+  });
 });
 
 describe("the name block's printed text comes from the shared build-template-pdf.ts helpers, never new formatting", () => {
