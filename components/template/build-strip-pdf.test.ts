@@ -8,10 +8,13 @@ import {
   computeStripLayout,
   computeTemplateMarks,
   stripLabelRows,
+  stripMarkSegments,
+  stripRegistrationLines,
   type PaperSize,
   type StripLayout,
 } from "@/lib/geometry/template";
-import { litres } from "@/lib/geometry/units";
+import { formatDim, formatMark } from "@/lib/geometry/measure-display";
+import { formatInchesFraction, litres, mm } from "@/lib/geometry/units";
 import { nameBlockContent, templateNameBlockDimsText, templateNameBlockText } from "./build-template-pdf";
 import {
   STRIP_PAGE_NUMBER_COLUMN_MM,
@@ -112,6 +115,41 @@ describe("buildStripPdf", () => {
 
     expect(doc.getNumberOfPages()).toBe(options.layout.pages.length);
   });
+});
+
+describe("the registration line's printed text follows the chosen units system (07-02 D-03)", () => {
+  for (const paper of PAPERS) {
+    it.each(BOARD_PRESETS)(
+      `$id (${paper}): Metric reads <whole mm> mm from tail — rail <whole mm> mm, both derived from formatMark`,
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+        const lines = stripRegistrationLines(layout, geometry, "metric");
+        expect(lines.length).toBeGreaterThan(0);
+        for (const line of lines) {
+          expect(line.label).toBe(
+            `${formatMark(line.station, "metric")} from tail — rail ${formatMark(line.halfWidth, "metric")}`,
+          );
+          expect(line.label).toMatch(/^\d+ mm from tail — rail \d+ mm$/);
+        }
+      },
+    );
+
+    it.each(BOARD_PRESETS)(
+      `$id (${paper}): Imperial is byte-identical to the string printed before this phase`,
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+        const lines = stripRegistrationLines(layout, geometry, "imperial");
+        expect(lines.length).toBeGreaterThan(0);
+        for (const line of lines) {
+          expect(line.label).toBe(
+            `${formatInchesFraction(line.station)} from tail — rail ${formatInchesFraction(line.halfWidth)}`,
+          );
+        }
+      },
+    );
+  }
 });
 
 describe("stripFileName", () => {

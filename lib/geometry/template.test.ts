@@ -42,7 +42,7 @@ import {
   type TemplateMarks,
   templatePageBoxes,
 } from "./template";
-import { stationLabel } from "./measure-display";
+import { formatMark, stationLabel } from "./measure-display";
 import { degrees, formatInchesFraction, inchesToMm, mm } from "./units";
 
 const PAPERS: PaperSize[] = ["letter", "a4"];
@@ -1349,6 +1349,80 @@ describe("stripLabelRows", () => {
       STRIP_LABEL_MIN_SEPARATION_MM - TOLERANCE_MM,
     );
   });
+});
+
+/**
+ * 07-02 Task 1: proves the units channel reaches the Paper Saver's own registration lines without
+ * disturbing the frozen pins above. A call with no third/fourth argument (or an explicit
+ * `"imperial"` one) must reproduce today's byte-identical label; a `"metric"` call must differ
+ * ONLY in the `label`/`text` fields — every station, half-width, page index, edge and (for
+ * `stripLabelRows`) `baselineStation` is identical between the two systems.
+ */
+describe("stripRegistrationLines / stripLabelRows read the chosen units system (07-02 D-03)", () => {
+  it.each(BOARD_PRESETS)(
+    '$id: stripRegistrationLines called with no third argument produces the same labels as calling it with "imperial" explicitly',
+    (preset) => {
+      const geometry = buildOutline(preset.outline);
+      for (const paper of PAPERS) {
+        const layout = computeStripLayout(geometry, paper);
+        const defaulted = stripRegistrationLines(layout, geometry);
+        const explicit = stripRegistrationLines(layout, geometry, "imperial");
+        expect(defaulted.map((l) => l.label)).toEqual(explicit.map((l) => l.label));
+      }
+    },
+  );
+
+  it.each(BOARD_PRESETS)(
+    '$id: stripRegistrationLines("metric") and stripRegistrationLines("imperial") agree on every field except label',
+    (preset) => {
+      const geometry = buildOutline(preset.outline);
+      for (const paper of PAPERS) {
+        const layout = computeStripLayout(geometry, paper);
+        const metric = stripRegistrationLines(layout, geometry, "metric");
+        const imperial = stripRegistrationLines(layout, geometry, "imperial");
+        expect(metric.length).toBe(imperial.length);
+        for (let i = 0; i < metric.length; i++) {
+          expect(metric[i].pageIndex).toBe(imperial[i].pageIndex);
+          expect(metric[i].station).toBe(imperial[i].station);
+          expect(metric[i].edge).toBe(imperial[i].edge);
+          expect(metric[i].halfWidth).toBe(imperial[i].halfWidth);
+        }
+      }
+    },
+  );
+
+  it.each(BOARD_PRESETS)(
+    "$id: a metric registration label reads whole millimetres on both sides, built from formatMark (D-03), never a hand-typed number",
+    (preset) => {
+      const geometry = buildOutline(preset.outline);
+      for (const paper of PAPERS) {
+        const layout = computeStripLayout(geometry, paper);
+        const lines = stripRegistrationLines(layout, geometry, "metric");
+        expect(lines.length).toBeGreaterThan(0);
+        for (const line of lines) {
+          expect(line.label).toBe(
+            `${formatMark(line.station, "metric")} from tail — rail ${formatMark(line.halfWidth, "metric")}`,
+          );
+        }
+      }
+    },
+  );
+
+  it.each(BOARD_PRESETS)(
+    '$id: stripLabelRows\' baselineStation, pageIndex and kind sequences are identical between "imperial" and "metric" — only text differs',
+    (preset) => {
+      const geometry = buildOutline(preset.outline);
+      const marks = computeTemplateMarks(geometry);
+      for (const paper of PAPERS) {
+        const layout = computeStripLayout(geometry, paper);
+        const imperial = stripLabelRows(layout, marks, geometry, "imperial");
+        const metric = stripLabelRows(layout, marks, geometry, "metric");
+        expect(metric.map((r) => r.baselineStation)).toEqual(imperial.map((r) => r.baselineStation));
+        expect(metric.map((r) => r.pageIndex)).toEqual(imperial.map((r) => r.pageIndex));
+        expect(metric.map((r) => r.kind)).toEqual(imperial.map((r) => r.kind));
+      }
+    },
+  );
 });
 
 /** Every strip furniture rectangle is checked against ITS OWN page — a page-aware replacement for

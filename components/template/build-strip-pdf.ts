@@ -307,7 +307,7 @@ function computeStripFurniture(
   system: UnitsSystem,
 ): { scaleSquare: StripFurniturePlacement; nameBlock: StripFurniturePlacement; nameBoxHeight: number } {
   const { height: nameBoxHeight } = nameBlockContent(doc, dims, system);
-  const labelRows = stripLabelRows(layout, marks, geometry);
+  const labelRows = stripLabelRows(layout, marks, geometry, system);
   const furniture = stripFurniture(layout, geometry, labelRows, {
     scaleSquareMm: SCALE_SQUARE_MM,
     nameBoxWidthMm: NAME_BOX_WIDTH_MM,
@@ -330,11 +330,9 @@ export function buildStripPdf(options: BuildStripPdfOptions): jsPDF {
   doc.setDrawColor(0);
   doc.setTextColor(0);
 
-  // Still on their imperial default here (Plan 02 flips these two call sites) — only the name
-  // block's dims row reads the chosen system in this plan.
-  const lines = stripRegistrationLines(layout, geometry);
-  const segments = stripMarkSegments(layout, marks, geometry);
-  const rows = stripLabelRows(layout, marks, geometry);
+  const lines = stripRegistrationLines(layout, geometry, system);
+  const segments = stripMarkSegments(layout, marks, geometry, system);
+  const rows = stripLabelRows(layout, marks, geometry, system);
   const { scaleSquare, nameBlock } = computeStripFurniture(doc, layout, marks, geometry, dims, system);
 
   layout.pages.forEach((page, i) => {
