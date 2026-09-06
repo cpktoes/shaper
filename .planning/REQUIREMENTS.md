@@ -87,10 +87,10 @@ UNIT-01 (inches only) is superseded by this milestone.
 
 ### Printed Outputs
 
-- [ ] **PRNT-01**: The Summary order form prints every measurement in the chosen system
+- [x] **PRNT-01**: The Summary order form prints every measurement in the chosen system
 - [x] **PRNT-02**: The Overview Sheet PDF prints in the chosen system
-- [ ] **PRNT-03**: The Full Sized Template and Paper Saver print their marks, labels and name/dims block in the chosen system
-- [ ] **PRNT-04**: In Metric, the printed scale-check square is captioned in millimetres so a metric ruler can verify print scale (whether it stays 2in or becomes 50 mm is settled in the phase discussion)
+- [x] **PRNT-03**: The Full Sized Template and Paper Saver print their marks, labels and name/dims block in the chosen system
+- [x] **PRNT-04**: In Metric, the printed scale-check square is captioned in millimetres so a metric ruler can verify print scale (whether it stays 2in or becomes 50 mm is settled in the phase discussion)
 
 ### Rack
 
@@ -162,10 +162,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SCRN-03 | Phase 6 | Complete |
 | SCRN-04 | Phase 5 | Complete |
 | SCRN-05 | Phase 6 | Complete |
-| PRNT-01 | Phase 7 | Pending |
+| PRNT-01 | Phase 7 | Complete |
 | PRNT-02 | Phase 7 | Complete |
-| PRNT-03 | Phase 7 | Pending |
-| PRNT-04 | Phase 7 | Pending |
+| PRNT-03 | Phase 7 | Complete |
+| PRNT-04 | Phase 7 | Complete |
 | RACK-01 | Phase 5 | Complete |
 
 **Coverage:**
