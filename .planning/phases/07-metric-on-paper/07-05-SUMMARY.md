@@ -178,6 +178,12 @@ None — no external service configuration required.
 - CLAUDE.md's Rule 2 is now an accurate description of the shipped boundary; a future agent or shaper reading it will not be told the design screens or printed output still read in inches.
 - No blockers. This is the last plan named in `07-CONTEXT.md`'s Phase Boundary — Phase 7's own end-of-phase UAT pass is what remains, covering the deferred `<human-check>` items Plans 01-04 each recorded.
 
+## Self-Check: PASSED
+
+All key files confirmed present on disk (`lib/units-isolation.test.ts`, `components/template/build-template-pdf.ts`,
+`components/template/build-overview-pdf.ts`, `CLAUDE.md`, this SUMMARY.md) and all four commit hashes
+(`bb51aec`, `01084e8`, `088b55b`, `0fd0d79`) confirmed present in `git log`.
+
 ---
 *Phase: 07-metric-on-paper*
 *Completed: 2026-09-06*
