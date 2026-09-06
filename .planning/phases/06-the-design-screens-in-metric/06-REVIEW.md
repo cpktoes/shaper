@@ -1,237 +1,169 @@
 ---
 phase: 06-the-design-screens-in-metric
-reviewed: 2026-09-05T20:29:41Z
+reviewed: 2026-09-05T00:00:00Z
 depth: standard
-files_reviewed: 26
+files_reviewed: 9
 files_reviewed_list:
-  - components/design/measure-field.test.ts
   - components/design/measure-field.tsx
-  - components/design/slider-row.test.ts
+  - components/design/measure-field.test.ts
   - components/fins/fin-controls.tsx
-  - components/fins/fin-data-panel.tsx
-  - components/fins/fin-placement-editor.tsx
   - components/fins/fin-viewer.tsx
   - components/fins/toe-aim-table-modal.tsx
-  - components/outline/outline-controls.tsx
-  - components/outline/outline-viewer.tsx
-  - components/rails/rail-controls.tsx
-  - components/rails/rail-data-table.tsx
-  - components/rails/rail-section-plot.test.ts
-  - components/rails/rail-section-plot.tsx
-  - components/rocker/rocker-controls.tsx
-  - components/rocker/rocker-datasheet.tsx
-  - components/rocker/rocker-viewer.tsx
-  - components/volume/volume-calculation-card.tsx
-  - components/volume/volume-controls.tsx
-  - components/volume/volume-estimator.tsx
-  - lib/geometry/fins.test.ts
+  - components/fins/fin-data-panel.tsx
   - lib/geometry/fins.ts
-  - lib/geometry/measure-display.test.ts
+  - lib/geometry/fins.test.ts
   - lib/geometry/measure-display.ts
-  - lib/geometry/units.test.ts
-  - lib/geometry/units.ts
-  - lib/units-isolation.test.ts
 findings:
-  critical: 1
-  warning: 2
-  info: 2
-  total: 5
+  critical: 0
+  warning: 0
+  info: 3
+  total: 3
 status: issues_found
 ---
 
-# Phase 06: Code Review Report
+# Phase 06: Code Review Report (re-review after gap closure)
 
-**Reviewed:** 2026-09-05T20:29:41Z
+**Reviewed:** 2026-09-05T00:00:00Z
 **Depth:** standard
-**Files Reviewed:** 26
-**Status:** issues_found
+**Files Reviewed:** 9
+**Status:** issues_found (info only)
 
 ## Summary
 
-The phase's core abstraction (`lib/geometry/measure-display.ts` / `units.ts`) is careful, well
-tested, and its documented invariants (signed-epsilon rounding, inward slider-bound rounding,
-never-write-on-flip) all check out against `units.test.ts` and `measure-display.test.ts`. The
-`fins.ts` dim/mark family tagging is consistent and matches the tests in `fins.test.ts`.
+This is a re-review scoped to the diff since `02ec30be534f020184b87f7d6525755a9b0d45bf` — Plan
+06-08's re-tagging of the three fin Off-Tail rows from `dim` to `mark` (five call sites:
+`fin-controls.tsx` ×4, `fin-viewer.tsx` ×1), the matching split in `toeAimTableFor` (tail-width
+columns/board-length row label stay cm via `formatDimBare`/`formatDim`, front/rear aim-distance
+cells switch to whole-mm via `formatMarkBare`, heading marker switches to
+`columnUnitSuffix("mark", system)`), and Plan 06-09's `MeasureField` width split (standalone 96px
+`w-24` vs. bare 64px `w-16`, unchanged).
 
-However, tracing the one typed measurement control (`MeasureField`) all the way from its callers
-into `commitTypedMeasure` surfaces a severe, easily-reproduced defect: **the Metric "Board Length"
-typed field on the Template, Fins, and Volume screens commits a board length roughly 10x too
-long, on every single successful parse — including simply focusing and blurring the field without
-typing anything.** This is a scale-domain mismatch (millimetres vs. centimetres) between what
-`measureSlider` hands back and what `commitTypedMeasure` expects for the `"length"` family in
-Metric. No existing test exercises this integration path (the unit tests for `commitTypedMeasure`
-hand-supply already-correct centimetre bounds, and `measure-field.test.ts` is a source-contract
-test with no runtime assertions), so it ships silently. See CR-01.
+**Traced and confirmed correct:**
 
-Two smaller issues (WR-01, WR-02) and two cosmetic/dead-code notes (IN-01, IN-02) round out the
-findings. Everything else traced cleanly: the dim/mark family classification, the ten-millimetre
-rail-plot grid math, the `1e-9` nudge idiom at slider bounds, and the "never write on a units
-flip" contract in `measureSlider` all hold up under inspection and match their tests.
+- Every fin placement row (`Off-Tail`, `Off-Rail`/`Off-Stringer`, `Toe-In`, `Fin Base Length`) in
+  `lib/geometry/fins.ts` is now tagged `"mark"` — no `"dim"` literal remains anywhere in that file.
+  `fin-controls.tsx` and `fin-viewer.tsx`'s five re-tagged call sites now call `formatMark`
+  consistently with `FinSummaryRow.family`, and `fin-data-panel.tsx`'s
+  `row.family === "dim" ? formatDim(...) : formatMark(...)` render path is unaffected because it
+  branches on the same `family` tag (see IN-01 below for the consequence of this).
+- `toeAimTableFor`'s split is internally consistent: `formatColumn` (tail-width columns, board
+  dims) still routes through `formatDimBare`/`formatDim`, `formatCell` (front/rear aim-distance
+  cells, marks) now routes through `formatMarkBare`, and `toe-aim-table-modal.tsx`'s heading
+  marker (`columnUnitSuffix("mark", system)`) agrees with what the cells beneath it now print —
+  headings and cells no longer disagree about which family the numbers below them belong to.
+  Imperial's `formatColumn`/`formatCell` are both still `String(v)` verbatim, so Imperial's
+  literal table output (columns, cells, row label) is untouched by this split.
+- No placement arithmetic or slider bounds changed in this diff — every edit under review is a
+  formatter-call substitution (`formatDim` → `formatMark`) or a `family:` string literal change;
+  `computeFinPlacement`'s inch-domain core, `measureSlider` call sites, and `POS_BOUNDS`/
+  `TOE_BOUNDS`/`OFF_RAIL_BOUNDS`/`OFF_TAIL_OVERRIDE_BOUNDS` are all unchanged.
+- Imperial byte-identity holds for every re-tagged site: `formatDim` and `formatMark`
+  (`lib/geometry/measure-display.ts:62-64, 80-82`) both reduce to `formatInchesFraction(value)` on
+  the imperial branch with no other branching, so swapping one call for the other cannot change
+  the Imperial string at any of the five re-tagged call sites, `fin-data-panel.tsx`'s render path,
+  or `toeAimTableFor`'s `identicalFromLabel`. (See IN-02 for a note on how thin the new regression
+  test for this actually is.)
+- `MeasureField`'s width split correctly follows render mode: the three standalone Board Length
+  sites (`outline-controls.tsx`, `fin-controls.tsx`, `volume-controls.tsx`) call `MeasureField`
+  without `bare`, so they get the new 96px (`w-24 min-w-24 max-w-24`) box; the ROCKER datasheet's
+  two calls (`rocker-datasheet.tsx:135, 178`) pass `bare`, so they keep the original 64px
+  (`w-16 min-w-16 max-w-16`) box byte-for-byte. The error line's `w-24` was already 96px before
+  this change, so it now matches the standalone input's own width rather than being coincidentally
+  wider than it.
+- CR-01 (typed-bounds domain mismatch — Metric Board Length committing ~10x too long) is
+  confirmed fixed: `fin-controls.tsx:237` computes `boardLengthFieldBounds` via
+  `typedFieldBounds(boardLength, "length", system)` and passes that (not the raw
+  `measureSlider` millimetre bounds) to `MeasureField`'s `min`/`max` at line 366-367.
+- WR-01 (un-snapped Metric override display) is confirmed fixed per `06-REVIEW-FIX.md`; not
+  re-verified in depth here since none of its files are in this diff's scope, but nothing in this
+  diff touches `BaseLengthField`.
+- WR-02 (Volume screen's `4'` feet option below the enforced range) remains open by design — the
+  fix report records it as intentionally skipped, pre-existing Imperial behaviour out of Phase 6
+  scope, not something this diff touched.
+- `npx vitest run` (2007 passed, 2 pre-existing skips), `npx tsc --noEmit` (clean) both pass
+  against the current tree.
 
-## Critical Issues
-
-### CR-01: Metric Board Length typed field commits a length ~10x too long (Template, Fins, Volume)
-
-**File:** `components/outline/outline-controls.tsx:167-176`, `components/fins/fin-controls.tsx:347-357`, `components/volume/volume-controls.tsx:159-168`
-
-**Issue:**
-
-All three "Board Length" typed fields pass `measureSlider(...).min` / `.max` straight through as
-`MeasureField`'s `min`/`max` props:
-
-```tsx
-// outline-controls.tsx (boardLength = measureSlider(outline.length, BOARD_LENGTH_RANGE_IN, 1, 10, system))
-<MeasureField
-  value={outline.length}
-  onCommit={(next) => onChange({ length: next })}
-  label="Board Length"
-  family="length"
-  min={boardLength.min}
-  max={boardLength.max}
-  system={system}
-/>
-```
-
-For `system: "metric"`, `measureSlider`'s `min`/`max` come from `metricSliderRange`, which is
-**millimetre**-domain by construction and by its own tests (`units.test.ts`: `BOARD_LENGTH_RANGE_IN`
-(60-120in) at a 10mm step → `{ min: 1530, max: 3040 }`, i.e. millimetres).
-
-But `commitTypedMeasure`'s own doc comment and its unit tests are explicit that for the `"length"`
-(and `"dim"`) family in Metric, `min`/`max` must be in **centimetres** — the field's own typed
-unit (D-08) — not millimetres:
-
-```ts
-// measure-display.ts
-* `min`/`max` are in the DISPLAY domain the parse will land in: ... centimetres for
-* a `"dim"` or `"length"` family field in Metric (the field's own unit is cm, D-08).
-...
-const clampedCm = clampFinite(mmToCentimetres(parsed), min, max);
-const snapped = roundToWholeMm(centimetresToMm(clampedCm));
-```
-
-Because `boardLength.min`/`max` are still millimetre-scale numbers (e.g. `1530`/`3040` for the
-Template/Volume screens, `1220`/`3650` for Fins) being compared against a **centimetre**-scale
-parsed value (`mmToCentimetres(parsed)`, e.g. `188` for a 1880mm board), `clampFinite` almost
-always clamps the result *up* to `min` — because every realistic centimetre value (121-365ish) is
-smaller than the millimetre-scale `min` (1220-1530) being used as if it were centimetres.
-
-**Concretely:** a shaper on the Template screen in Metric who types `188` (meaning 188cm) into the
-Board Length field gets `clampFinite(188, 1530, 3040) → 1530`, then `centimetresToMm(1530) =
-15300`. The stored board length silently becomes **15300mm (15.3 metres)** instead of 1880mm — and
-`result.error` is `null`, so no validation message is ever shown.
-
-**Worse: this doesn't require typing anything.** `MeasureField` commits unconditionally on blur
-(`onBlur={() => { commit(raw); setFocused(false); }}`), and `onFocus` seeds `raw` with the current
-formatted display (`"188.0 cm"`). Simply clicking into the Metric Board Length field on the
-Template, Fins, or Volume screen and clicking away corrupts the stored board length to the
-(wrongly-scaled) minimum every time, with no error surfaced. This reproduces identically on all
-three screens (Template: `1530mm`, Volume: `1530mm`, Fins: `1220mm`, per each screen's own
-`measureSlider` range).
-
-No existing test catches this: `measure-display.test.ts`'s `commitTypedMeasure` tests for the
-`"length"` family hand-supply already-correct centimetre bounds (`min: 153, max: 304`) rather than
-deriving them from `measureSlider`, and `measure-field.test.ts` is a source-contract (regex) test
-with no runtime assertions.
-
-**Fix:** convert the slider's millimetre bounds to centimetres before handing them to
-`MeasureField` for the `"length"`/`"dim"` family in Metric, e.g.:
-
-```tsx
-const boardLength = measureSlider(outline.length, BOARD_LENGTH_RANGE_IN, 1, 10, system);
-const boardLengthFieldBounds =
-  system === "metric"
-    ? { min: mmToCentimetres(boardLength.min), max: mmToCentimetres(boardLength.max) }
-    : { min: boardLength.min, max: boardLength.max };
-// ...
-<MeasureField
-  ...
-  min={boardLengthFieldBounds.min}
-  max={boardLengthFieldBounds.max}
-/>
-```
-
-Apply the same fix in `fin-controls.tsx` and `volume-controls.tsx`. (The Imperial branch is
-unaffected — `measureSlider`'s imperial bounds are already inches, which is what
-`commitTypedMeasure`'s imperial branch expects, so `boardLength.min`/`max` can stay as-is there.)
-
-## Warnings
-
-### WR-01: Fin Base Length "Override" number input shows an un-snapped value in Metric
-
-**File:** `components/fins/fin-controls.tsx:125-181` (`BaseLengthField`), instantiated at lines 524-539, 561-576, 623-638
-
-**Issue:** `BaseLengthField`'s raw `<input type="number">` (used for the Center/Forward/Rear "Fin
-Base Length" override, and the "Rear Off-Tail Position" override at lines 645-659) reads
-`displayValue = system === "metric" ? value : mmToInches(value)`. In Metric, `value` is the raw
-stored `Mm` number — e.g. the default `baseLenForward` is `inchesToMm(4.5) = 114.3`, not a whole
-millimetre. Pressing "Override" without ever dragging the slider or typing shows `114.3` in a
-number input whose `step` is `1`, which is inconsistent with:
-  - `roundToWholeMm`'s own documented invariant ("the stored value and the label always agree
-    without either one silently drifting a fraction of a millimetre from the other"),
-  - the read-only display shown before clicking "Override", which uses `formatMark(value, system)`
-    and would round the same value to `"114 mm"`.
-
-Every subsequent keystroke does immediately snap (via `toMm`'s `roundToWholeMm`), so this is only
-visible for the brief window between clicking "Override" and the first edit, but it does mean a
-shaper who clicks Override and immediately clicks away without changing anything leaves the
-underlying spec value at a non-integer millimetre count while every other Metric numeric control in
-the app guarantees whole millimetres.
-
-**Fix:** seed the override input's initial value through the same snap used everywhere else, e.g.
-`displayValue = system === "metric" ? mmToInches ? ... : Math.round(value) : mmToInches(value)`, or
-simply call `toMm(value)`-equivalent (`roundToWholeMm`) when first entering edit mode so the
-displayed number always starts on the metric grid.
-
-### WR-02: Volume screen's Board Length feet options include a value below the enforced range
-
-**File:** `components/volume/volume-controls.tsx:23, 62`
-
-**Issue:** `FEET_OPTIONS = [4, 5, 6, 7, 8, 9, 10]` offers "4'" as a selectable feet value, but
-`BOARD_LENGTH_RANGE_IN` (imported from `lib/geometry/board.ts`) is `{ min: 60, max: 120 }` — i.e.
-5' minimum. `setLengthIn` clamps any total below 60in up to 60in via `clampFinite`, so selecting
-"4'" (with any inches value < 12) silently snaps the stored length to 5'0" on the very next
-render, and the Select immediately re-derives `lengthFeet` back to `5` — the "4'" option is
-offered but can never actually be set. `outline-controls.tsx`'s own `FEET_OPTIONS` (`[5,6,7,8,9,10]`)
-and `fin-controls.tsx`'s (`[4..12]`, matching its own `{min:48,max:144}` spec) don't have this
-mismatch — only Volume's list is inconsistent with the range it actually clamps against.
-
-**Fix:** either drop `4` from `FEET_OPTIONS` (matching `outline-controls.tsx`'s list) or use a
-`BOARD_LENGTH_RANGE_IN`-derived feet list so the two can never drift apart again.
+Three Info-tier items follow: one carried forward unchanged from the previous review (IN-02 there
+→ IN-03 here), one new observation about a now-dead code branch created by the retag, and one
+about the strength of the new Imperial-equality regression test.
 
 ## Info
 
-### IN-01: `formatSignedDim`'s "-0.0" branch is unreachable dead code
+### IN-01: `FinDataPanel`'s `row.family === "dim"` branch is now unreachable dead code
 
-**File:** `lib/geometry/units.ts:298-301` (`formatSignedInchesFraction` has the imperial
-counterpart at lines 298-300); metric branch in `lib/geometry/measure-display.ts:97-104`
+**File:** `components/fins/fin-data-panel.tsx:68`
 
-**Issue:** `formatSignedDim`'s metric branch checks `if (printed === "0.0" || printed ===
-"-0.0") return "0 cm";`. `formatCentimetres`'s internal `Math.round` can produce a `-0` numeric
-result, but `(-0).toFixed(1)` evaluates to `"0.0"` in JavaScript (per the ECMAScript spec,
-`toFixed` only prepends `-` when the value is strictly less than zero, and `-0 < 0` is `false`), so
-`formatCentimetres` can never actually return the literal string `"-0.0"`. The `"-0.0"` arm is
-therefore dead code — harmless (the `"0.0"` arm alone already covers every case reaching this
-check, confirmed by `measure-display.test.ts`'s own `mm(-0.04)` case), but worth removing so a
-future reader doesn't assume it's load-bearing.
+**Issue:** Since Plan 06-08 re-tagged every `FinSummaryRow`/`fullSpreadFamily` in
+`lib/geometry/fins.ts` to `"mark"` (confirmed by `grep -n '"dim"' lib/geometry/fins.ts` returning
+nothing), the `formatDim` arm of `row.family === "dim" ? formatDim(row.value, system) :
+formatMark(row.value, system)` (and the identical `grp.fullSpreadFamily === "dim" ? formatDim(...)
+: formatMark(...)` a few lines below) can never execute given any value `computeFinPlacement`
+actually produces today. The `MeasureFamily` type still declares `"dim" | "mark"`, so this isn't a
+type error, but it is a branch with no live producer — a future reader has no way to tell, without
+re-deriving this fact from `fins.ts`, whether the branch is reachable or leftover from before the
+retag.
 
-**Fix:** drop the `|| printed === "-0.0"` disjunct, or add a short comment noting it is
-defensive/unreachable.
+**Fix:** Either leave a short comment at the ternary noting that no current `FinSummaryRow`
+producer emits `"dim"` (so a future re-introduction of a dim-family DATA-tab row is the only way
+this branch fires), or — if `FinSummaryRow.family` is now permanently `"mark"`-only for the DATA
+tab — consider narrowing `FinSummaryRow.family`'s type to the literal `"mark"` and dropping the
+ternary/`formatDim` import from this component entirely. Not urgent; flagging so it doesn't get
+mistaken for exercised code during a future edit.
 
-### IN-02: Redundant always-truthy `toeDisplay` guard in `dimsForMark`
+### IN-02: The new Imperial-equality test proves the general case, not just the specific one it exercises — but the title reads as validating "an" instance rather than the invariant itself
 
-**File:** `components/fins/fin-viewer.tsx:269, 290, 315`
+**File:** `lib/geometry/fins.test.ts:522-525`
 
-**Issue:** Three branches guard on `mark.lateralKind === "..." && mark.side === ... && toeDisplay`.
-`toeDisplay` is `formatMark(mark.toe, system)`, which always returns a non-empty string (even for a
-zero toe, e.g. `'0"'` or `"0 mm"`), so the `&& toeDisplay` clause can never be falsy and is
-effectively dead weight left over from before formatting was routed through the display boundary
-(when the pre-formatted value might plausibly have been an empty string).
+**Issue:** The new test
+```ts
+it("re-tagging an off-tail row from dim to mark cannot move its Imperial string, because formatMark and formatDim both call formatInchesFraction on the imperial branch", () => {
+  const result = computeFinPlacement({ ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "thruster" });
+  expect(formatMark(result.resolved.frontOffTail, "imperial")).toBe(formatDim(result.resolved.frontOffTail, "imperial"));
+});
+```
+only checks one value (`frontOffTail` under the default thruster spec). Reading
+`measure-display.ts:62-64` and `80-82` confirms the equality actually holds for *every* `Mm` input
+on the imperial branch (both functions reduce to `formatInchesFraction(value)` unconditionally, no
+other branching), so the test's conclusion is sound and its own title is accurate about *why* — but
+the test itself only samples one input, and would not have caught a regression where a future edit
+special-cased `formatMark`'s imperial branch for a particular value range (e.g. a toe-in-specific
+rounding rule) that happened not to touch `frontOffTail`. This isn't a bug in what shipped — the
+current implementation genuinely has no such special-casing — but the test's proof value is
+narrower than its docstring implies; it's closer to a canary than a full byte-identity guarantee
+across all five re-tagged sites and both quad-rear branches.
 
-**Fix:** drop the `&& toeDisplay` conjunct from all three conditions, or replace it with an
-explicit intent-revealing check if a future toe-zero suppression is actually wanted.
+**Fix:** Optional strengthening — parameterize over the five re-tagged values (`frontOffTail`,
+`centerOffTail`, `sideOffTail`/`twinOffTail`, `quadRearOffTailBase`, `pairOffTail`) across a couple
+of specs (thruster, quad with `mckeeSB` and with `basicOffRail`), or add a direct
+`formatMark`/`formatDim` property-style check over a small sampled range of `Mm` values in
+`measure-display.test.ts` instead of relying on one instance derived from placement geometry. Not
+blocking — the current single-instance test plus the source-level argument in its own name is
+adequate evidence for this diff's Imperial byte-identity claim.
+
+### IN-03: Carried forward — `formatSignedDim`'s unreachable `"-0.0"` branch and `dimsForMark`'s always-truthy `&& toeDisplay` guard remain open
+
+**Files:** `lib/geometry/units.ts` (formatWholeMm/formatCentimetres path referenced by
+`lib/geometry/measure-display.ts:97-104`'s `formatSignedDim`); `components/fins/fin-viewer.tsx:269,
+290, 315`
+
+**Issue:** Neither of these files/lines is touched by this diff, and both prior findings (IN-01 /
+IN-02 in the original `06-REVIEW.md`, renumbered here as one combined carry-forward) still apply
+verbatim:
+- `formatSignedDim`'s `printed === "-0.0"` disjunct is still dead code — `(-0).toFixed(1)` is
+  `"0.0"` in JavaScript, so `formatCentimetres` can never return the literal `"-0.0"` this branch
+  guards against.
+- `dimsForMark`'s three `&& toeDisplay` guards (`fin-viewer.tsx:269, 290, 315`) are still
+  effectively dead weight — `toeDisplay = formatMark(mark.toe, system)` always returns a non-empty
+  string (even for a zero toe, e.g. `'0"'` / `"0 mm"`), so the conjunct can never be falsy.
+
+**Fix:** Unchanged from the original review — drop the `"-0.0"` disjunct (or comment it as
+defensive/unreachable), and drop the `&& toeDisplay` conjuncts (or replace with an explicit
+intent-revealing check). Neither was in scope for the `critical_warning` fix pass per
+`06-REVIEW-FIX.md`, and neither is touched by this re-review's diff, so they remain open at
+Info tier.
 
 ---
 
-_Reviewed: 2026-09-05T20:29:41Z_
+_Reviewed: 2026-09-05T00:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
