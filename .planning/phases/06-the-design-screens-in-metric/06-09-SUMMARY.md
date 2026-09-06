@@ -137,6 +137,16 @@ None - no external service configuration required.
 
 `MeasureField` now carries the corrected, measured contract for both its render modes, and the UI-SPEC no longer repeats the character-count reasoning that produced gap G-06-4. Once the shaper re-runs UAT test 4 and confirms the box, gap G-06-4 can be marked closed. No blockers for merging this plan's changes.
 
+## Self-Check: PASSED
+
+- FOUND: components/design/measure-field.tsx
+- FOUND: components/design/measure-field.test.ts
+- FOUND: .planning/phases/06-the-design-screens-in-metric/06-UI-SPEC.md
+- FOUND: .planning/phases/06-the-design-screens-in-metric/06-09-SUMMARY.md
+- FOUND commit: e76c237
+- FOUND commit: e2c5999
+- FOUND commit: 0524730
+
 ---
 *Phase: 06-the-design-screens-in-metric*
 *Completed: 2026-09-06*
