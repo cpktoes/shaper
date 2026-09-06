@@ -152,6 +152,10 @@ None — no external service configuration required.
 - The three frozen characterisation pins remain the working proof mechanism for "nothing on paper moved" — confirmed green on their original digests throughout this plan; any future plan touching `lib/geometry/template.ts` should run `npx vitest run lib/geometry/template.test.ts` and treat a changed digest as a hard stop, never a re-capture.
 - No blockers. `lib/units-isolation.test.ts`'s conversion ledger has not yet been extended to the print surfaces (Plan 05's named task) — this plan did not touch that file, per its own `files_modified` scope and the orchestrator's ruling that it belongs to Plans 04/05.
 
+## Self-Check: PASSED
+
+All files created/modified verified present on disk; all task commits (`615d3c5`, `b5dc968`, `6046829`) and this SUMMARY's own commit verified present in `git log`.
+
 ---
 *Phase: 07-metric-on-paper*
 *Completed: 2026-09-06*
