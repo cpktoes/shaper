@@ -14,7 +14,7 @@ import {
   nameBlockPlacement,
   type PaperSize,
 } from "@/lib/geometry/template";
-import { formatDim, stationLabel } from "@/lib/geometry/measure-display";
+import { formatCalibrationMark, formatDim, stationLabel } from "@/lib/geometry/measure-display";
 import { inchesToMm, litres, mm } from "@/lib/geometry/units";
 import {
   HOWTO_BOX_TEXT_WIDTH_LIMIT_MM,
@@ -23,6 +23,7 @@ import {
   nameBlockContent,
   rectContains,
   rectsOverlap,
+  scaleSquareCaptionText,
   templateHowToBoxPlacement,
   templateHowToLines,
   templateHowToWrappedLines,
@@ -291,6 +292,50 @@ describe("templateHowToLines", () => {
       }
     },
   );
+
+  it("Metric line 2 reads D-02's exact sentence, derived from formatCalibrationMark, never hand-typed", () => {
+    const preset = BOARD_PRESETS[0];
+    const geometry = buildOutline(preset.outline);
+    const layout = computeTemplateLayout(geometry, "letter");
+    const lines = templateHowToLines(layout, "metric");
+
+    const mark = formatCalibrationMark(inchesToMm(2), "metric");
+    expect(mark).toBe("50.8 mm");
+    expect(lines[1]).toBe(`Measure the ${mark} square. It should be exactly ${mark}.`);
+  });
+
+  it("Imperial line 2 is byte-identical to today's sentence when system is passed explicitly", () => {
+    const preset = BOARD_PRESETS[0];
+    const geometry = buildOutline(preset.outline);
+    const layout = computeTemplateLayout(geometry, "letter");
+    expect(templateHowToLines(layout, "imperial")).toEqual(templateHowToLines(layout));
+  });
+
+  it("line count (3 single-column / 4 multi-column) is unaffected by system, in both systems", () => {
+    const preset = BOARD_PRESETS[0];
+    const singleColumnGeometry = buildOutline({ ...preset.outline, widePointWidth: inchesToMm(10) });
+    const singleColumnLayout = computeTemplateLayout(singleColumnGeometry, "letter");
+    expect(templateHowToLines(singleColumnLayout, "imperial")).toHaveLength(3);
+    expect(templateHowToLines(singleColumnLayout, "metric")).toHaveLength(3);
+
+    const multiColumnGeometry = buildOutline({
+      ...preset.outline,
+      widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max),
+    });
+    const multiColumnLayout = computeTemplateLayout(multiColumnGeometry, "letter");
+    expect(templateHowToLines(multiColumnLayout, "imperial")).toHaveLength(4);
+    expect(templateHowToLines(multiColumnLayout, "metric")).toHaveLength(4);
+  });
+});
+
+describe("scaleSquareCaptionText (07-01 D-01/D-02)", () => {
+  it('Metric reads "50.8 mm x 50.8 mm — measure before taping", derived from formatCalibrationMark', () => {
+    expect(scaleSquareCaptionText("metric")).toBe("50.8 mm x 50.8 mm — measure before taping");
+  });
+
+  it('Imperial is byte-identical to the string the file printed before this task: "2" x 2" — measure before taping"', () => {
+    expect(scaleSquareCaptionText("imperial")).toBe('2" x 2" — measure before taping');
+  });
 });
 
 describe("wrapTextToWidth (post-checkpoint fix, defect 1)", () => {
