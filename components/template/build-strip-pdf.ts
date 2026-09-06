@@ -30,6 +30,7 @@ import {
   stripMarkSegments,
   stripRegistrationLines,
 } from "@/lib/geometry/template";
+import { formatCalibrationMark } from "@/lib/geometry/measure-display";
 import { inchesToMm, type UnitsSystem } from "@/lib/geometry/units";
 import {
   nameBlockContent,
@@ -79,7 +80,19 @@ const SCALE_SQUARE_MM = inchesToMm(2);
 const SCALE_SQUARE_LINE_WEIGHT_MM = 0.35;
 const SCALE_SQUARE_CAPTION_GAP_MM = 5;
 const SCALE_SQUARE_CAPTION_HEIGHT_MM = 3;
-const SCALE_SQUARE_CAPTION_TEXT = '2" x 2" — measure before taping';
+
+/** The Paper Saver's own scale-check square caption (07-02 D-01/D-02) — the sibling half of the
+ * edit Plan 01 made to `build-template-pdf.ts`'s own `scaleSquareCaptionText`. These two files
+ * deliberately do not import from each other (this file's own header comment), so this is an
+ * independent composition that happens to produce the identical string for a given `system`:
+ * Metric reads `50.8 mm x 50.8 mm — measure before taping`, Imperial reads exactly the constant
+ * this caption replaced, `2" x 2" — measure before taping`, because `formatCalibrationMark`'s
+ * imperial branch is `formatInchesFraction`. Exported for testability, mirroring
+ * `build-template-pdf.ts`'s own pattern. */
+export function scaleSquareCaptionText(system: UnitsSystem): string {
+  const mark = formatCalibrationMark(SCALE_SQUARE_MM, system);
+  return `${mark} x ${mark} — measure before taping`;
+}
 
 const NAME_BOX_LINE_WEIGHT_MM = 0.25;
 const NAME_BOX_PADDING_MM = 3;
@@ -245,7 +258,13 @@ function drawPageNumber(doc: jsPDF, page: StripPage, margin: number): void {
   doc.text(page.pageNumber, x, y, { baseline: "middle" });
 }
 
-function drawScaleSquare(doc: jsPDF, page: StripPage, margin: number, placement: StripFurniturePlacement): void {
+function drawScaleSquare(
+  doc: jsPDF,
+  page: StripPage,
+  margin: number,
+  placement: StripFurniturePlacement,
+  system: UnitsSystem,
+): void {
   const x = halfWidthToX(placement.halfWidthStart, page, margin);
   const y = stationToY(placement.topStation, page, margin);
 
@@ -256,9 +275,12 @@ function drawScaleSquare(doc: jsPDF, page: StripPage, margin: number, placement:
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(0);
-  doc.text(SCALE_SQUARE_CAPTION_TEXT, x + SCALE_SQUARE_MM / 2, y + SCALE_SQUARE_MM + SCALE_SQUARE_CAPTION_GAP_MM, {
-    align: "center",
-  });
+  doc.text(
+    scaleSquareCaptionText(system),
+    x + SCALE_SQUARE_MM / 2,
+    y + SCALE_SQUARE_MM + SCALE_SQUARE_CAPTION_GAP_MM,
+    { align: "center" },
+  );
 }
 
 function drawNameBlock(
@@ -307,7 +329,7 @@ function computeStripFurniture(
   system: UnitsSystem,
 ): { scaleSquare: StripFurniturePlacement; nameBlock: StripFurniturePlacement; nameBoxHeight: number } {
   const { height: nameBoxHeight } = nameBlockContent(doc, dims, system);
-  const labelRows = stripLabelRows(layout, marks, geometry);
+  const labelRows = stripLabelRows(layout, marks, geometry, system);
   const furniture = stripFurniture(layout, geometry, labelRows, {
     scaleSquareMm: SCALE_SQUARE_MM,
     nameBoxWidthMm: NAME_BOX_WIDTH_MM,
@@ -330,11 +352,9 @@ export function buildStripPdf(options: BuildStripPdfOptions): jsPDF {
   doc.setDrawColor(0);
   doc.setTextColor(0);
 
-  // Still on their imperial default here (Plan 02 flips these two call sites) — only the name
-  // block's dims row reads the chosen system in this plan.
-  const lines = stripRegistrationLines(layout, geometry);
-  const segments = stripMarkSegments(layout, marks, geometry);
-  const rows = stripLabelRows(layout, marks, geometry);
+  const lines = stripRegistrationLines(layout, geometry, system);
+  const segments = stripMarkSegments(layout, marks, geometry, system);
+  const rows = stripLabelRows(layout, marks, geometry, system);
   const { scaleSquare, nameBlock } = computeStripFurniture(doc, layout, marks, geometry, dims, system);
 
   layout.pages.forEach((page, i) => {
@@ -348,7 +368,7 @@ export function buildStripPdf(options: BuildStripPdfOptions): jsPDF {
     drawPageNumber(doc, page, margin);
 
     if (page.index === scaleSquare.pageIndex) {
-      drawScaleSquare(doc, page, margin, scaleSquare);
+      drawScaleSquare(doc, page, margin, scaleSquare, system);
     }
     if (page.index === nameBlock.pageIndex) {
       drawNameBlock(doc, page, margin, nameBlock, boardName, dims, system);

@@ -7,17 +7,27 @@ import {
   PAPER_MM,
   computeStripLayout,
   computeTemplateMarks,
+  markLabels,
   stripLabelRows,
+  stripMarkSegments,
+  stripRegistrationLines,
   type PaperSize,
   type StripLayout,
 } from "@/lib/geometry/template";
-import { litres } from "@/lib/geometry/units";
-import { nameBlockContent, templateNameBlockDimsText, templateNameBlockText } from "./build-template-pdf";
+import { formatCalibrationMark, formatDim, formatMark } from "@/lib/geometry/measure-display";
+import { formatInchesFraction, inchesToMm, litres, mm } from "@/lib/geometry/units";
+import {
+  nameBlockContent,
+  scaleSquareCaptionText as templateScaleSquareCaptionText,
+  templateNameBlockDimsText,
+  templateNameBlockText,
+} from "./build-template-pdf";
 import {
   STRIP_PAGE_NUMBER_COLUMN_MM,
   buildStripPdf,
   rectContains,
   rectsOverlap,
+  scaleSquareCaptionText,
   stripFileName,
   stripFurnitureRects,
   stripPrintableRect,
@@ -114,6 +124,41 @@ describe("buildStripPdf", () => {
   });
 });
 
+describe("the registration line's printed text follows the chosen units system (07-02 D-03)", () => {
+  for (const paper of PAPERS) {
+    it.each(BOARD_PRESETS)(
+      `$id (${paper}): Metric reads <whole mm> mm from tail — rail <whole mm> mm, both derived from formatMark`,
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+        const lines = stripRegistrationLines(layout, geometry, "metric");
+        expect(lines.length).toBeGreaterThan(0);
+        for (const line of lines) {
+          expect(line.label).toBe(
+            `${formatMark(line.station, "metric")} from tail — rail ${formatMark(line.halfWidth, "metric")}`,
+          );
+          expect(line.label).toMatch(/^\d+ mm from tail — rail \d+ mm$/);
+        }
+      },
+    );
+
+    it.each(BOARD_PRESETS)(
+      `$id (${paper}): Imperial is byte-identical to the string printed before this phase`,
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+        const lines = stripRegistrationLines(layout, geometry, "imperial");
+        expect(lines.length).toBeGreaterThan(0);
+        for (const line of lines) {
+          expect(line.label).toBe(
+            `${formatInchesFraction(line.station)} from tail — rail ${formatInchesFraction(line.halfWidth)}`,
+          );
+        }
+      },
+    );
+  }
+});
+
 describe("stripFileName", () => {
   it("slugifies a plain name", () => {
     expect(stripFileName("Shortboard")).toBe("shortboard-paper-saver.pdf");
@@ -171,6 +216,39 @@ describe("stripFurnitureRects", () => {
   }
 });
 
+describe("the Paper Saver's own scale-check caption (07-02 D-01/D-02)", () => {
+  it("Metric caption reads exactly 50.8 mm x 50.8 mm — measure before taping, derived from formatCalibrationMark(inchesToMm(2))", () => {
+    const expectedMark = formatCalibrationMark(mm(inchesToMm(2)), "metric");
+    expect(expectedMark).toBe("50.8 mm");
+    expect(scaleSquareCaptionText("metric")).toBe(`${expectedMark} x ${expectedMark} — measure before taping`);
+  });
+
+  it("Imperial caption is byte-identical to the string the file printed before this task", () => {
+    expect(scaleSquareCaptionText("imperial")).toBe('2" x 2" — measure before taping');
+  });
+
+  it("the Paper Saver's caption text equals the Full Sized Template's caption text for each system — the guard that catches one file converted without the other", () => {
+    expect(scaleSquareCaptionText("imperial")).toBe(templateScaleSquareCaptionText("imperial"));
+    expect(scaleSquareCaptionText("metric")).toBe(templateScaleSquareCaptionText("metric"));
+  });
+
+  it("the scale-square furniture rect has identical x, y, width and height on Metric and Imperial — only the caption text changes", () => {
+    for (const preset of BOARD_PRESETS) {
+      for (const paper of PAPERS) {
+        const imperialOptions = buildOptionsFor(preset, paper);
+        const metricOptions = { ...imperialOptions, system: "metric" as const };
+        const imperialRect = stripFurnitureRects(imperialOptions).find((r) => r.name === "scale-square")!;
+        const metricRect = stripFurnitureRects(metricOptions).find((r) => r.name === "scale-square")!;
+        expect(metricRect.pageIndex).toBe(imperialRect.pageIndex);
+        expect(metricRect.x).toBe(imperialRect.x);
+        expect(metricRect.y).toBe(imperialRect.y);
+        expect(metricRect.width).toBe(imperialRect.width);
+        expect(metricRect.height).toBe(imperialRect.height);
+      }
+    }
+  });
+});
+
 /** Mirrors `halfWidthToX` in `build-strip-pdf.ts` (not exported — it's the drawing module's own
  * page-local projection), so the test can check where the numeral column actually lands on a
  * given page without re-implementing the whole drawing module. */
@@ -224,7 +302,75 @@ describe("label row placement", () => {
         }
       },
     );
+
+    it.each(BOARD_PRESETS)(
+      `$id (${paper}): Metric mark labels read <name> <cm> cm — <cm> cm, derived from markLabels/formatDim, never a hand-typed number (07-02 D-04)`,
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const segments = stripMarkSegments(layout, marks, geometry, "metric");
+        expect(segments.length).toBeGreaterThan(0);
+        const labels = markLabels("metric");
+        for (const segment of segments) {
+          const expected = `${labels[segment.mark]} — ${formatDim(mm(segment.halfWidthExtent * 2), "metric")}`;
+          expect(segment.label).toBe(expected);
+          // The trailing width figure is dims-family (centimetres), never marks-family millimetres.
+          expect(segment.label).not.toMatch(/\d+ mm\b/);
+        }
+      },
+    );
+
+    it.each(BOARD_PRESETS)(
+      `$id (${paper}): Imperial mark labels are byte-identical to the string printed before this phase`,
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const segments = stripMarkSegments(layout, marks, geometry, "imperial");
+        expect(segments.length).toBeGreaterThan(0);
+        const labels = markLabels("imperial");
+        for (const segment of segments) {
+          const expected = `${labels[segment.mark]} — ${formatDim(mm(segment.halfWidthExtent * 2), "imperial")}`;
+          expect(segment.label).toBe(expected);
+        }
+      },
+    );
+
+    it.each(BOARD_PRESETS)(
+      `$id (${paper}): stripLabelRows' baselineStation sequence is identical for "imperial" and "metric" — only the text differs`,
+      (preset) => {
+        const geometry = buildOutline(preset.outline);
+        const layout = computeStripLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const imperial = stripLabelRows(layout, marks, geometry, "imperial");
+        const metric = stripLabelRows(layout, marks, geometry, "metric");
+        expect(metric.map((r) => r.baselineStation)).toEqual(imperial.map((r) => r.baselineStation));
+        expect(metric.map((r) => r.pageIndex)).toEqual(imperial.map((r) => r.pageIndex));
+        expect(metric.map((r) => r.kind)).toEqual(imperial.map((r) => r.kind));
+      },
+    );
   }
+
+  it('a pin/round-tailed preset (midlength) prints no Tail Block label in either system, and no label ends in a bare unit', () => {
+    const preset = BOARD_PRESETS.find((p) => p.id === "midlength")!;
+    const geometry = buildOutline(preset.outline);
+    const marks = computeTemplateMarks(geometry);
+    expect(marks.tailBlock).toBeUndefined();
+
+    for (const paper of PAPERS) {
+      const layout = computeStripLayout(geometry, paper);
+      for (const system of ["imperial", "metric"] as const) {
+        const segments = stripMarkSegments(layout, marks, geometry, system);
+        expect(segments.some((s) => s.mark === "tailBlock")).toBe(false);
+        for (const segment of segments) {
+          // Every label carries a digit before its unit — never a label ending in a bare unit
+          // with no number (a mark that is simply absent produces no segment at all, above).
+          expect(segment.label).toMatch(/\d/);
+        }
+      }
+    }
+  });
 });
 
 describe("the name block's printed text comes from the shared build-template-pdf.ts helpers, never new formatting", () => {

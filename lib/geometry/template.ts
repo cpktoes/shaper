@@ -11,9 +11,9 @@
  * actual PDF is `components/template/build-template-pdf.ts`; this file only produces the numbers.
  */
 
-import { formatDim, stationLabel } from "./measure-display";
+import { formatDim, formatMark, stationLabel } from "./measure-display";
 import { MEASURE_STATION_MM, type OutlineGeometry, sampleOutline } from "./outline";
-import { type Mm, type UnitsSystem, formatInchesFraction, inchesToMm, mm } from "./units";
+import { type Mm, type UnitsSystem, inchesToMm, mm } from "./units";
 
 /** The board name + dims block's fixed width (D-08) — kept here, next to
  * `nameBlockPlacement`, rather than in the drawing module, so the geometry that decides WHERE the
@@ -1207,11 +1207,17 @@ export interface StripRegistrationLine {
   label: string;
 }
 
-/** The registration line's own printed text — station and rail half-width, both through
- * `formatInchesFraction` (CLAUDE.md Rule 2), e.g. `36" from tail — rail 10 3/4"` (locked
- * decision). */
-function stripRegistrationLabel(station: Mm, halfWidth: Mm): string {
-  return `${formatInchesFraction(station)} from tail — rail ${formatInchesFraction(halfWidth)}`;
+/** The registration line's own printed text — station and rail half-width, both **marks**-family
+ * per D-03 (07-02): a shaper reading two numbers on one line off a metric tape wants one unit,
+ * not a decimal point to shift in their head, exactly the call made for fin placement at Phase 6
+ * UAT. Imperial routes through `formatMark`'s own imperial branch (`formatInchesFraction`), which
+ * reproduces today's string byte-for-byte, e.g. `36" from tail — rail 10 3/4"`; Metric reads whole
+ * millimetres on both sides, e.g. `914 mm from tail — rail 273 mm`. `system` (07-02) defaults to
+ * `"imperial"` for the same load-bearing reason every other defaulted `system` parameter in this
+ * file does — every existing zero-argument call site, including the frozen characterisation pins,
+ * must keep producing a byte-identical result. */
+function stripRegistrationLabel(station: Mm, halfWidth: Mm, system: UnitsSystem = "imperial"): string {
+  return `${formatMark(station, system)} from tail — rail ${formatMark(halfWidth, system)}`;
 }
 
 /**
@@ -1222,8 +1228,18 @@ function stripRegistrationLabel(station: Mm, halfWidth: Mm): string {
  * computations that happen to agree. Page 0 gets no `"nose"` line (nothing borders it toward the
  * nose) and the final page gets no `"tail"` line (nothing borders it toward the tail) — a
  * registration line's only job is to align against a neighbouring sheet.
+ *
+ * `system` (07-02) defaults to `"imperial"` and is passed straight through to
+ * `stripRegistrationLabel` — same load-bearing reason as every other defaulted `system` parameter
+ * in this file: the frozen characterisation pins call this with no third argument and must keep
+ * getting back a byte-identical result. Only each row's `label` differs between systems — every
+ * station, half-width, page index and edge is identical.
  */
-export function stripRegistrationLines(layout: StripLayout, geometry: OutlineGeometry): StripRegistrationLine[] {
+export function stripRegistrationLines(
+  layout: StripLayout,
+  geometry: OutlineGeometry,
+  system: UnitsSystem = "imperial",
+): StripRegistrationLine[] {
   const { pages, overlap } = layout;
   const halfOverlap = overlap / 2;
   const lines: StripRegistrationLine[] = [];
@@ -1233,7 +1249,7 @@ export function stripRegistrationLines(layout: StripLayout, geometry: OutlineGeo
     const tailward = pages[i + 1];
     const station = mm(noseward.stationRange[0] + halfOverlap);
     const halfWidth = sampleOutline(geometry, station);
-    const label = stripRegistrationLabel(station, halfWidth);
+    const label = stripRegistrationLabel(station, halfWidth, system);
 
     lines.push({ pageIndex: noseward.index, station, edge: "tail", halfWidth, label });
     lines.push({ pageIndex: tailward.index, station, edge: "nose", halfWidth, label });
@@ -1327,10 +1343,10 @@ export interface StripLabelRow {
  * + STRIP_LABEL_INTERIOR_GAP_MM`) and is nudged to the opposite side only when that default would
  * sit closer than `STRIP_LABEL_MIN_SEPARATION_MM` to an already-placed row on the same page.
  *
- * `system` (07-01) defaults to `"imperial"` and is passed straight through to `stripMarkSegments`
- * — same load-bearing reason as every other defaulted `system` parameter in this file: the frozen
- * characterisation pins call this with no fourth argument and must keep getting back a
- * byte-identical result.
+ * `system` (07-01, extended 07-02) defaults to `"imperial"` and is passed straight through to both
+ * `stripRegistrationLines` and `stripMarkSegments` — same load-bearing reason as every other
+ * defaulted `system` parameter in this file: the frozen characterisation pins call this with no
+ * fourth argument and must keep getting back a byte-identical result.
  */
 export function stripLabelRows(
   layout: StripLayout,
@@ -1338,7 +1354,7 @@ export function stripLabelRows(
   geometry: OutlineGeometry,
   system: UnitsSystem = "imperial",
 ): StripLabelRow[] {
-  const lines = stripRegistrationLines(layout, geometry);
+  const lines = stripRegistrationLines(layout, geometry, system);
   const segments = stripMarkSegments(layout, marks, geometry, system);
   const gap = STRIP_LABEL_INTERIOR_GAP_MM;
 
