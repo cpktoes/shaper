@@ -144,11 +144,25 @@ export function overviewSpecLines(outline: OutlineSpec, geometry: OutlineGeometr
   return lines;
 }
 
-/** The length callout printed above the drawn outline, e.g. `6'0" - 72"` — feet-and-inches plus
- * the same total in a plain inch fraction, matching the prototype's own `printLengthText`
- * (`${lengthFeet}'${lengthInches}" - ${this.disp(L)}`). Exported for testability. */
-export function overviewLengthLabelText(length: Mm): string {
+/** The length callout printed above the drawn outline, e.g. `6'0" - 72"` on Imperial —
+ * feet-and-inches plus the same total in a plain inch fraction, matching the prototype's own
+ * `printLengthText` (`${lengthFeet}'${lengthInches}" - ${this.disp(L)}`), byte-identical to
+ * before this phase. Metric has no counterpart to that dual form — feet-and-inches is an
+ * imperial idea, and printing a centimetre figure twice would be noise — so it returns the
+ * single centimetre figure through `formatDim`, matching the discretion note Phase 6 already
+ * applied to `outline-viewer.tsx`'s own on-screen length callout. Exported for testability. */
+export function overviewLengthLabelText(length: Mm, system: UnitsSystem): string {
+  if (system === "metric") return formatDim(length, system);
   return `${formatFeetInches(length)} - ${formatInchesFraction(length)}`;
+}
+
+/** The board's own full width at a dashed reference station — the figure printed to the left of
+ * each line in the drawing loop. A dim, per D-04 — routed through `formatDim`, never `formatMark`
+ * (a Metric sheet printing `400 mm` beside a station named `30.5 cm` would mix two metric
+ * families on one line). Extracted so this value is testable without rendering the page, matching
+ * this file's own `overviewSpecLines`/`overviewLengthLabelText` idiom. */
+export function overviewStationWidthText(halfWidth: number, system: UnitsSystem): string {
+  return formatDim(mm(halfWidth * 2), system);
 }
 
 interface OverviewStationLine {
@@ -183,13 +197,15 @@ function widePointOffsetFromCenter(geometry: OutlineGeometry): Mm {
  * when the offset is non-zero; a widepoint dead on centre merges into one "WIDEPOINT / CENTER"
  * line instead (`overviewStationLines`), the same way the on-screen viewer's own chip prints "At
  * center" rather than a directional distance. Exported for testability. */
-export function overviewWpOffsetLabelText(offset: Mm): string {
+export function overviewWpOffsetLabelText(offset: Mm, system: UnitsSystem): string {
   // Decide the direction word from what will actually be PRINTED, not the raw float — the same
   // fix `formatSignedInchesFraction` (`lib/geometry/units.ts`) already needed once in this
-  // codebase. An offset small enough to round to `0"` at print precision has no printable
+  // codebase. An offset small enough to round to this system's own zero form (`0"` imperial,
+  // `0.0 cm` metric — genuinely different precisions, per D-01/formatDim) has no printable
   // direction to report, so it prints unsigned rather than as "0\" forward".
-  const magnitude = formatInchesFraction(mm(Math.abs(offset)));
-  if (magnitude === '0"') return 'WP OFFSET — 0"';
+  const magnitude = formatDim(mm(Math.abs(offset)), system);
+  const zeroForm = system === "metric" ? "0.0 cm" : '0"';
+  if (magnitude === zeroForm) return `WP OFFSET — ${magnitude}`;
   const direction = offset > 0 ? "forward" : "back";
   return `WP OFFSET — ${magnitude} ${direction}`;
 }
@@ -226,7 +242,12 @@ export function overviewStationLines(geometry: OutlineGeometry): OverviewStation
   return [
     noseTwelve,
     { label: "CENTER", station: center },
-    { label: "WIDEPOINT", station: geometry.widePointStation, secondaryLabel: overviewWpOffsetLabelText(offset) },
+    {
+      label: "WIDEPOINT",
+      station: geometry.widePointStation,
+      // TODO(07-03 Task 3): this call site is converted to the caller's own system next.
+      secondaryLabel: overviewWpOffsetLabelText(offset, "imperial"),
+    },
     tailTwelve,
   ];
 }
@@ -344,7 +365,7 @@ export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(LENGTH_LABEL_FONT_SIZE_PT);
-  doc.text(overviewLengthLabelText(geometry.length), centerX, outlineTop - 3, { align: "center" });
+  doc.text(overviewLengthLabelText(geometry.length, system), centerX, outlineTop - 3, { align: "center" });
 
   drawClosedOutline(doc, geometry, stationToY, halfWidthToX);
 
@@ -373,7 +394,7 @@ export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(STATION_VALUE_FONT_SIZE_PT);
-    doc.text(formatInchesFraction(mm(halfWidth * 2)), xLeft - STATION_TEXT_GAP_MM, y, {
+    doc.text(overviewStationWidthText(halfWidth, system), xLeft - STATION_TEXT_GAP_MM, y, {
       align: "right",
       baseline: "middle",
     });
