@@ -154,12 +154,14 @@ describe("units isolation (UNIT-05, D-16)", () => {
  * As of Plan 07, every entry in `DESIGN_SCREEN_DISPLAY_FILES` reads `converted: true` and the
  * closing assertion below fails the suite the moment a new one does not: every number a shaper
  * reads on the five design screens — outline, rocker, rails, fins, volume — now comes from this
- * one boundary, in the system they chose. The Summary order form is a different story: it reuses
- * four of these now-converted components (`OutlineViewer`, `RockerViewer`'s compact callouts,
- * `RailSectionPlot`, `RailDataTable`'s compact mode) and so reads Metric wherever it reuses one of
- * them, while the rest of the order form — the panels that compose their own imperial strings
- * rather than reusing a converted component — stays in inches until Phase 7. That is
- * CONTEXT.md's Phase Boundary working as designed, not a gap in this ledger.
+ * one boundary, in the system they chose. The Summary order form reuses four of these
+ * now-converted components (`OutlineViewer`, `RockerViewer`'s compact callouts, `RailSectionPlot`,
+ * `RailDataTable`'s compact mode) and so already read Metric wherever it reused one of them; its
+ * own dimension cells, identification strip, rail-band thickness figure and fin placement panel
+ * — the panels that composed their own imperial strings rather than reusing a converted component
+ * — are what `PRINT_SURFACE_DISPLAY_FILES` below tracks, alongside the three jsPDF builders and
+ * the one pure geometry file that also compose printed label text. That is CONTEXT.md's Phase
+ * Boundary working as designed, not a gap in this ledger.
  */
 describe("the design screens read every measurement through the display boundary", () => {
   // Built from parts so this test file — which necessarily names every one of these identifiers
@@ -188,6 +190,25 @@ describe("the design screens read every measurement through the display boundary
     { file: "components/volume/volume-controls.tsx", converted: true },
     { file: "components/volume/volume-calculation-card.tsx", converted: true },
     { file: "components/volume/volume-estimator.tsx", converted: true },
+  ];
+
+  /**
+   * The four print surfaces Phase 7 converts (CONTEXT.md's Phase Boundary): the Summary order
+   * form, the three jsPDF builders, and the one pure geometry file composing printed label text.
+   * Same idiom as `DESIGN_SCREEN_DISPLAY_FILES` above — a `converted` flag per file, grown here
+   * rather than a second mechanism, per CONTEXT.md's own instruction. Plan 07-01 already reaches
+   * every one of these files' *options interfaces* with a `system` field, but this ledger tracks
+   * whether the file's own display strings route through the boundary and ban the imperial
+   * formatters — Plan 07-04 (this plan) is `components/summary/order-form.tsx`'s own conversion;
+   * Plan 07-05 flips the remaining four and closes this ledger the way the design-screen one
+   * closed above.
+   */
+  const PRINT_SURFACE_DISPLAY_FILES: { file: string; converted: boolean }[] = [
+    { file: "components/summary/order-form.tsx", converted: true },
+    { file: "components/template/build-template-pdf.ts", converted: false },
+    { file: "components/template/build-strip-pdf.ts", converted: false },
+    { file: "components/template/build-overview-pdf.ts", converted: false },
+    { file: "lib/geometry/template.ts", converted: false },
   ];
 
   const OUT_OF_SCOPE_UNITS_FILES: { file: string; reason: string }[] = [
@@ -243,7 +264,7 @@ describe("the design screens read every measurement through the display boundary
   });
 
   it("every converted:true entry imports from the display boundary", () => {
-    for (const { file, converted } of DESIGN_SCREEN_DISPLAY_FILES) {
+    for (const { file, converted } of [...DESIGN_SCREEN_DISPLAY_FILES, ...PRINT_SURFACE_DISPLAY_FILES]) {
       if (!converted) continue;
       const source = readStripped(file);
       expect(source, `${file} is marked converted but does not import @/lib/geometry/measure-display`).toMatch(
@@ -253,7 +274,7 @@ describe("the design screens read every measurement through the display boundary
   });
 
   it("every converted:true entry's stripped source contains none of the banned formatters", () => {
-    for (const { file, converted } of DESIGN_SCREEN_DISPLAY_FILES) {
+    for (const { file, converted } of [...DESIGN_SCREEN_DISPLAY_FILES, ...PRINT_SURFACE_DISPLAY_FILES]) {
       if (!converted) continue;
       const source = readStripped(file);
       for (const banned of BANNED_DISPLAY_FORMATTERS) {
