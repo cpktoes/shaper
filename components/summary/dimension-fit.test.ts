@@ -3,7 +3,8 @@ import { DIMENSION_FIT_STEPS, dimensionValueFitClass } from "./dimension-fit";
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, WIDEPOINT_WIDTH_RANGE_IN } from "@/lib/geometry/board";
 import { buildOutline } from "@/lib/geometry/outline";
 import { formatDim, formatLength, formatSignedDim } from "@/lib/geometry/measure-display";
-import { inchesToMm, mm, type UnitsSystem } from "@/lib/geometry/units";
+import { inchesToMm, mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
+import { AREA_FACTORS, computeVolume } from "@/lib/geometry/volume";
 
 /**
  * Every worst-case string below is DERIVED — from the app's own board-dimension ranges
@@ -147,4 +148,77 @@ describe("dimensionValueFitClass", () => {
       ).toBe("order-form-dim");
     }
   });
+});
+
+/**
+ * The Metric print audit's automatable half (D-10, Task 3). Phase 6's UAT deferred the print
+ * audit into this phase by name; the part a test can hold is the two extremes of the app's own
+ * dimension ranges — the longest board and the widest board the outline editor allows — proving
+ * every one of the seven dimension cells' values still selects a class that keeps it inside its
+ * cell, in both systems. The part that genuinely needs eyes on a print preview (the compact rail
+ * table's section headers, the fin placement panel's fixed-height box) is recorded below as a
+ * `<human-check>`, harvested into the SUMMARY per `workflow.human_verify_mode: end-of-phase`.
+ */
+describe("the Metric print audit's automatable half — extremes of the app's own dimension ranges", () => {
+  /** Every value's own extreme is pushed to its own range's edge simultaneously — the longest
+   * board is also given the widest offset and thickest rail band, so this is a genuine worst case
+   * rather than one dimension at a time. */
+  const DEFAULT_LENGTH_IN = mmToInches(DEFAULT_BOARD_SPEC.outline.length);
+  const DEFAULT_WIDEPOINT_WIDTH_IN = mmToInches(DEFAULT_BOARD_SPEC.outline.widePointWidth);
+  const EXTREME_PRESETS: { name: string; lengthIn: number; widePointWidthIn: number }[] = [
+    { name: "the longest board", lengthIn: BOARD_LENGTH_RANGE_IN.max, widePointWidthIn: DEFAULT_WIDEPOINT_WIDTH_IN },
+    { name: "the widest board", lengthIn: DEFAULT_LENGTH_IN, widePointWidthIn: WIDEPOINT_WIDTH_RANGE_IN.max },
+  ];
+
+  it.each(EXTREME_PRESETS)(
+    "every dimension cell fits its cell for $name, in both systems",
+    ({ lengthIn, widePointWidthIn }) => {
+      const length = mm(inchesToMm(lengthIn));
+      const widePointWidth = mm(inchesToMm(widePointWidthIn));
+      const widePointOffset = mm(inchesToMm(12)); // the offset slider's own extreme (outline-controls.tsx)
+      const boardThickness = mm(inchesToMm(3.5)); // CENTER_THICKNESS_BOUNDS's own max (rail-controls.tsx)
+
+      const geometry = buildOutline({
+        ...DEFAULT_BOARD_SPEC.outline,
+        length,
+        widePointWidth,
+        widePointOffset,
+      });
+
+      const maxAreaFactorIndex = AREA_FACTORS.indexOf(Math.max(...AREA_FACTORS) as (typeof AREA_FACTORS)[number]);
+      const volume = computeVolume(
+        {
+          length,
+          width: widePointWidth,
+          centerThickness: boardThickness,
+          boardTypeIndex: maxAreaFactorIndex,
+          importTemplateDimensions: false,
+          importRailThickness: false,
+        },
+        null,
+        null,
+      );
+
+      for (const system of SYSTEMS) {
+        const cellValues = [
+          formatLength(length, system),
+          formatDim(geometry.noseWidthAt12in, system),
+          formatDim(widePointWidth, system),
+          formatSignedDim(widePointOffset, system),
+          formatDim(geometry.tailWidthAt12in, system),
+          formatDim(boardThickness, system),
+          `${volume.volumeLitres.toFixed(1)} L`,
+        ];
+        for (const value of cellValues) {
+          const cls = dimensionValueFitClass(value);
+          const step = DIMENSION_FIT_STEPS.find((s) => s.className === cls);
+          expect(step, `dimensionValueFitClass returned an unrecognised class "${cls}" for "${value}"`).toBeDefined();
+          expect(
+            value.length,
+            `"${value}" (${value.length} chars, ${system}) overruns "${cls}"'s ${step!.maxLength}-character ceiling`,
+          ).toBeLessThanOrEqual(step!.maxLength);
+        }
+      }
+    },
+  );
 });
