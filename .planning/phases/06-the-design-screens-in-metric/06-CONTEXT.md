@@ -72,8 +72,8 @@ the volume card) and are unchanged by this phase.
   | Widepoint width; nose / centre / tail widths at the stations; the VOLUME screen's Board Width | Tapered rail thickness (the Deck Profile label) and the RAILS per-section thickness sliders (they are the foil's station thicknesses) |
   | Tail block width | Rocker heights — Nose/Tail Rocker sliders, the two `@ 12"` read-outs, datasheet rocker column, viewer rocker callouts |
   | Widepoint offset, signed (`+5.1 cm`, `−2.5 cm`, `0 cm`) | Foil thicknesses — the five ROCKER sliders, datasheet thickness column, viewer thickness callouts |
-  | Fin positions off the tail (front, rear, centre; the Forward/Aft position sliders; quad rear off-tail); fins tail width `@ 30.5 cm` | Toe-in; Off-Rail |
-  | Toe-aim distances (the toe-aim table) | Fin base length (D-02) |
+  | Fins tail width `@ 30.5 cm` | Toe-in; Off-Rail; Fin positions off the tail (front, rear, centre; the Forward/Aft position sliders; quad rear off-tail) |
+  | The toe-aim tables' tail-width column headings and board-length row label | Fin base length (D-02); toe-aim distances (the toe-aim tables' aim-distance cells) |
   | The VOLUME screen's Board Length / Board Width / Center Thickness sliders — the three headline dims, so centre thickness reads `6.7 cm` here | Swallow / diamond tail Depth and crotch depth |
   | The station labels themselves (D-03) | The volume card's tail / centre / nose cross-section thicknesses and the weighted thickness (foil-derived marks: `67 mm` on the same screen whose slider reads `6.7 cm`) |
 
@@ -81,6 +81,14 @@ the volume card) and are unchanged by this phase.
   rail length, deck profile, smoothness, flatness, board type), litres, and every label that is a
   name rather than a measurement. — **Reversibility:** costly — the cm/mm split is baked into which
   formatter each of the ~300 sites calls, and Phase 7 prints the same numbers.
+
+  **Amendment, 2026-09-05 (UAT gaps G-06-12, G-06-15):** after end-of-phase UAT, the shaper
+  reversed this table's classification for fin placement numbers only. Every distance up from the
+  tail, off-rail figure, toe-in and toe-aim aim distance now reads in whole millimetres, so a
+  shaper never shifts a decimal point between two numbers in the same group; board length and
+  tail width stay in centimetres. The table above already reflects the amended rule — this note
+  records that the rule changed and why, rather than leaving a reader to assume it was always
+  this way.
 - **D-02:** **Fin base length reads whole mm** (`114 mm`), the way FCS and Futures quote it, so a
   shaper can match a real fin straight off the packet. The Override number box steps 1 mm.
 - **D-03:** **Stations stay at exactly 12 inches; their labels read the honest conversion,
@@ -339,7 +347,7 @@ the volume card) and are unchanged by this phase.
 <specifics>
 ## Specific Ideas
 
-- The whole discussion read like a metric shaping sheet: a fin `28.6 cm` off the tail with `3 mm`
+- The whole discussion read like a metric shaping sheet: a fin `286 mm` off the tail with `3 mm`
   of toe-in and a `114 mm` base, widepoint `+5.1 cm`, stations at `30.5 cm`, a `188.0 cm` board on
   a slider running `153–304 cm` in 1 cm steps. Those are the shapes every metric string takes.
 - Two picks went against the recommendation, on purpose: the volume card keeps a cm³ line under

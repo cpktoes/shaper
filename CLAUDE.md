@@ -76,10 +76,11 @@ the app has always shown it.
 by what the number *is*, not by which screen it's on. **Dims** — a board's length, widths and
 headline thickness, the numbers a shaper quotes as a size — read in centimetres to one decimal
 (`188.0 × 51.4 × 6.7 cm`). **Marks** — rail band marks, rocker heights, the five foil station
-thicknesses — read in whole millimetres, because that's what a metric tape actually reads for
-the small stuff. So a foil's centre thickness reads `6.7` on a card's dimensions line and `67`
-in a datasheet column, and both are correct for what they show. Litres read the same in both
-systems.
+thicknesses, and every fin placement number (a fin's distance off the tail, its distance in from
+the rail, its toe-in and its base length) — read in whole millimetres, because that's what a
+metric tape actually reads for the small stuff. So a foil's centre thickness reads `6.7` on a
+card's dimensions line and `67` in a datasheet column, and both are correct for what they show.
+Litres read the same in both systems.
 
 **Storage never changes.** Everything stored or computed is metric, using the branded `Mm` /
 `Degrees` / `Litres` types, no matter which system a shaper has chosen to look at.
