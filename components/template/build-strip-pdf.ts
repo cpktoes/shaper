@@ -268,8 +268,9 @@ function drawNameBlock(
   placement: StripFurniturePlacement,
   boardName: string,
   dims: BuildStripPdfOptions["dims"],
+  system: UnitsSystem,
 ): void {
-  const { dimsLines, height } = nameBlockContent(doc, dims);
+  const { dimsLines, height } = nameBlockContent(doc, dims, system);
   const x = halfWidthToX(placement.halfWidthStart, page, margin);
   const y = stationToY(placement.topStation, page, margin);
 
@@ -303,8 +304,9 @@ function computeStripFurniture(
   marks: TemplateMarks,
   geometry: OutlineGeometry,
   dims: BuildStripPdfOptions["dims"],
+  system: UnitsSystem,
 ): { scaleSquare: StripFurniturePlacement; nameBlock: StripFurniturePlacement; nameBoxHeight: number } {
-  const { height: nameBoxHeight } = nameBlockContent(doc, dims);
+  const { height: nameBoxHeight } = nameBlockContent(doc, dims, system);
   const labelRows = stripLabelRows(layout, marks, geometry);
   const furniture = stripFurniture(layout, geometry, labelRows, {
     scaleSquareMm: SCALE_SQUARE_MM,
@@ -321,17 +323,19 @@ function computeStripFurniture(
  * board's name block can land on a later page (`stripFurniture`), so the two are checked
  * independently rather than both being gated on `page.index === 0`. */
 export function buildStripPdf(options: BuildStripPdfOptions): jsPDF {
-  const { layout, marks, geometry, paper, boardName, dims } = options;
+  const { layout, marks, geometry, paper, boardName, dims, system } = options;
   const margin = layout.margin;
 
   const doc = new jsPDF({ unit: "mm", format: paper, orientation: "landscape" });
   doc.setDrawColor(0);
   doc.setTextColor(0);
 
+  // Still on their imperial default here (Plan 02 flips these two call sites) — only the name
+  // block's dims row reads the chosen system in this plan.
   const lines = stripRegistrationLines(layout, geometry);
   const segments = stripMarkSegments(layout, marks, geometry);
   const rows = stripLabelRows(layout, marks, geometry);
-  const { scaleSquare, nameBlock } = computeStripFurniture(doc, layout, marks, geometry, dims);
+  const { scaleSquare, nameBlock } = computeStripFurniture(doc, layout, marks, geometry, dims, system);
 
   layout.pages.forEach((page, i) => {
     if (i > 0) doc.addPage(paper, "landscape");
@@ -347,7 +351,7 @@ export function buildStripPdf(options: BuildStripPdfOptions): jsPDF {
       drawScaleSquare(doc, page, margin, scaleSquare);
     }
     if (page.index === nameBlock.pageIndex) {
-      drawNameBlock(doc, page, margin, nameBlock, boardName, dims);
+      drawNameBlock(doc, page, margin, nameBlock, boardName, dims, system);
     }
   });
 
@@ -367,11 +371,11 @@ export interface StripFurnitureRect extends TemplateFurnitureRect {
  * overlap when they share one," mirroring `templatePageZeroFurnitureRects`'s own contract for the
  * tiled template. */
 export function stripFurnitureRects(options: BuildStripPdfOptions): StripFurnitureRect[] {
-  const { layout, marks, geometry, dims, paper } = options;
+  const { layout, marks, geometry, dims, paper, system } = options;
   const margin = layout.margin;
   const doc = new jsPDF({ unit: "mm", format: paper, orientation: "landscape" });
 
-  const { scaleSquare, nameBlock, nameBoxHeight } = computeStripFurniture(doc, layout, marks, geometry, dims);
+  const { scaleSquare, nameBlock, nameBoxHeight } = computeStripFurniture(doc, layout, marks, geometry, dims, system);
 
   const toRect = (
     name: string,

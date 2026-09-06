@@ -228,11 +228,19 @@ describe("label row placement", () => {
 });
 
 describe("the name block's printed text comes from the shared build-template-pdf.ts helpers, never new formatting", () => {
-  it("the dims row equals templateNameBlockDimsText(dims) wrapped by nameBlockContent", () => {
+  it("the dims row equals templateNameBlockDimsText(dims, system) wrapped by nameBlockContent (Imperial, system passed explicitly)", () => {
     const options = buildOptionsFor(BOARD_PRESETS[0]);
     const doc = new jsPDF({ unit: "mm" });
-    const { dimsLines } = nameBlockContent(doc, options.dims);
-    expect(dimsLines.join(" ")).toBe(templateNameBlockDimsText(options.dims));
+    const { dimsLines } = nameBlockContent(doc, options.dims, options.system);
+    expect(dimsLines.join(" ")).toBe(templateNameBlockDimsText(options.dims, options.system));
+  });
+
+  it("reads through the same shared helper on Metric, as a side effect of the Full Sized Template and Paper Saver sharing one name-block helper (07-01)", () => {
+    const options = { ...buildOptionsFor(BOARD_PRESETS[0]), system: "metric" as const };
+    const doc = new jsPDF({ unit: "mm" });
+    const { dimsLines } = nameBlockContent(doc, options.dims, options.system);
+    expect(dimsLines.join(" ")).toBe(templateNameBlockDimsText(options.dims, options.system));
+    expect(dimsLines.join(" ")).toContain("cm");
   });
 
   it("a name too long for the box comes back ellipsis-truncated from templateNameBlockText", () => {

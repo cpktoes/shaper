@@ -38,15 +38,13 @@ import {
 } from "@/lib/geometry/template";
 import {
   formatFeetInches,
-  formatInchesFraction,
-  formatSignedInchesFraction,
   inchesToMm,
   mm,
   type Litres,
   type Mm,
   type UnitsSystem,
 } from "@/lib/geometry/units";
-import { formatCalibrationMark, formatDim } from "@/lib/geometry/measure-display";
+import { formatCalibrationMark, formatDim, formatDimBare, formatSignedDim } from "@/lib/geometry/measure-display";
 
 /** Every input `buildTemplatePdf` needs, fixed complete now, so later plans (the preview dialog)
  * extend the drawing without touching a call site. */
@@ -693,17 +691,32 @@ export function templateNameBlockText(
 
 /** The full dims row text, before wrapping — every value the order form's own dimensions row
  * carries (`components/summary/order-form.tsx`'s `DimensionCell` strip: Length, Nose, Widepoint,
- * Offset, Tail, Thickness, Volume), formatted with the same `lib/geometry/units.ts` functions the
- * order form uses. Exported for testability without reading the rendered page (post-checkpoint
- * fix, defect 3 refinement: "add all the station mark dims with the board name"). */
-export function templateNameBlockDimsText(dims: BuildTemplatePdfOptions["dims"]): string {
+ * Offset, Tail, Thickness, Volume), formatted with the same `lib/geometry/measure-display.ts`
+ * functions the order form uses. Exported for testability without reading the rendered page
+ * (post-checkpoint fix, defect 3 refinement: "add all the station mark dims with the board name").
+ *
+ * On Imperial every value is byte-identical to what this row printed before this phase. On Metric
+ * (07-01 D-06) the row carries `cm` exactly once — on Thickness, the row's own last centimetre
+ * value — because this is one line of running text wrapped inside a fixed-width box, and a unit
+ * per value would be seven repetitions that could push the block a line taller. Length, Nose,
+ * Widepoint and Tail take `formatDimBare`'s bare figure; Offset takes `formatSignedDim` so its
+ * sign survives, with Metric's own trailing ` cm` stripped to keep it bare like its neighbours;
+ * Length's Imperial branch stays `formatFeetInches` (not `formatDimBare`'s inches-fraction) to
+ * match what this row has always printed, while its Metric branch is the same bare centimetre
+ * figure every other bare value uses. Volume takes no units argument — litres read the same in
+ * both systems (CLAUDE.md Rule 2) and this is the one number in the row it would be easy to sweep
+ * a `system` branch into by habit. */
+export function templateNameBlockDimsText(dims: BuildTemplatePdfOptions["dims"], system: UnitsSystem): string {
+  const lengthText = system === "metric" ? formatDimBare(dims.length, system) : formatFeetInches(dims.length);
+  const signedOffset = formatSignedDim(dims.widePointOffset, system);
+  const offsetText = system === "metric" ? signedOffset.replace(/ cm$/, "") : signedOffset;
   return [
-    `Length ${formatFeetInches(dims.length)}`,
-    `Nose ${formatInchesFraction(dims.noseWidth12in)}`,
-    `Widepoint ${formatInchesFraction(dims.widePointWidth)}`,
-    `Offset ${formatSignedInchesFraction(dims.widePointOffset)}`,
-    `Tail ${formatInchesFraction(dims.tailWidth12in)}`,
-    `Thickness ${formatInchesFraction(dims.centerThickness)}`,
+    `Length ${lengthText}`,
+    `Nose ${formatDimBare(dims.noseWidth12in, system)}`,
+    `Widepoint ${formatDimBare(dims.widePointWidth, system)}`,
+    `Offset ${offsetText}`,
+    `Tail ${formatDimBare(dims.tailWidth12in, system)}`,
+    `Thickness ${formatDim(dims.centerThickness, system)}`,
     `Volume ${dims.volumeLitres.toFixed(1)} L`,
   ].join("  ·  ");
 }
@@ -715,10 +728,11 @@ export function templateNameBlockDimsText(dims: BuildTemplatePdfOptions["dims"])
 export function nameBlockContent(
   doc: jsPDF,
   dims: BuildTemplatePdfOptions["dims"],
+  system: UnitsSystem,
 ): { dimsLines: string[]; height: number } {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(NAME_BOX_DIMS_FONT_SIZE_PT);
-  const dimsLines = wrapTextToWidth(templateNameBlockDimsText(dims), NAME_BOX_DIMS_WIDTH_LIMIT_MM, doc);
+  const dimsLines = wrapTextToWidth(templateNameBlockDimsText(dims, system), NAME_BOX_DIMS_WIDTH_LIMIT_MM, doc);
   const height =
     NAME_BOX_NAME_LINE_HEIGHT_MM +
     NAME_BOX_DIMS_TOP_GAP_MM +
@@ -748,8 +762,9 @@ function resolvePageZeroNameBlock(
   layout: TemplateLayout,
   geometry: OutlineGeometry,
   dims: BuildTemplatePdfOptions["dims"],
+  system: UnitsSystem,
 ): ResolvedNameBlock {
-  const content = nameBlockContent(doc, dims);
+  const content = nameBlockContent(doc, dims, system);
   const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, content.height, NAME_BOX_CLEARANCE_MM);
   return { placement, content };
 }
@@ -825,7 +840,7 @@ function resolvePageZeroFurniture(
   dims: BuildTemplatePdfOptions["dims"],
   system: UnitsSystem,
 ): ResolvedPageZeroFurniture {
-  const nameBlock = resolvePageZeroNameBlock(doc, layout, geometry, dims);
+  const nameBlock = resolvePageZeroNameBlock(doc, layout, geometry, dims, system);
   const howToBox = computeHowToBoxPlacement(doc, layout, geometry, box, nameBlock, system);
   const scaleSquare = computeScaleSquarePlacement(layout, geometry, box, howToBox, nameBlock);
   return { nameBlock, howToBox, scaleSquare };
