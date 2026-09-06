@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 06-the-design-screens-in-metric
 source: [06-VERIFICATION.md]
 started: 2026-09-05T20:43:11.570Z
-updated: 2026-09-06T00:59:36.896Z
+updated: 2026-09-06T01:10:31.865Z
 ---
 
 ## Current Test
 
-number: 4
-name: On Metric, the Template Builder and the Volume screen each show one box above the Board Length slider; typing 188 and pressing Enter moves the thumb and re-labels the row to 188.0 cm, with nothing clipped; the box now shows its whole value at both ends of its range (153.0-304.8 cm on Template/Volume, 122.0-365.8 cm on Fins). Typing `5 1/2` puts the last good number back with an error line that now lines up under the wider box. On Imperial the two dropdowns are unchanged.
-expected: |
-  Typed Board Length field shows its whole value uncut, commits/clamps/reverts as before, Imperial unaffected — re-run of UAT test 4 against gap G-06-4's fix
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -30,7 +26,7 @@ result: pass
 
 ### 4. On Metric, the Template Builder and the Volume screen each show one box above the Board Length slider; typing 188 and pressing Enter moves the thumb and re-labels the row to 188.0 cm, with nothing clipped; the box now shows its whole value at both ends of its range (153.0-304.8 cm on Template/Volume, 122.0-365.8 cm on Fins). Typing `5 1/2` puts the last good number back with an error line that now lines up under the wider box. On Imperial the two dropdowns are unchanged.
 expected: Typed Board Length field shows its whole value uncut, commits/clamps/reverts as before, Imperial unaffected — re-run of UAT test 4 against gap G-06-4's fix
-result: [pending]
+result: pass
 
 ### 5. On Metric, the Fins screen's Board Length shows the same typed box, stopping at 122 and 365 cm. Tick "import from template" and the row dims exactly as it did before. On Imperial the dropdowns are unchanged.
 expected: Fins Board Length field and import-template dimming behave correctly
@@ -62,7 +58,7 @@ result: pass
 
 ### 12. On Metric, the Fins DATA tab's summary line reads its board length and tail width each in centimetres, but the three Off-Tail rows now read in whole millimetres in the same group as Off-Rail, Toe-In and Fin Base Length. Open the toe-aim tables: both section headings now say `(mm)`, every aim-distance cell is a whole millimetre, but the tail-width column headings, board-length row label and modal title still read in centimetres. The highlighted column is the same one it was on Imperial. Switch to Imperial and both surfaces are unchanged.
 expected: Fin DATA tab and toe-aim modal placement numbers in mm, board-size numbers in cm — re-run of UAT test 12 against gaps G-06-12/G-06-15's fix
-result: [pending]
+result: pass
 
 ### 13. On Metric the Tail Width row names its station in centimetres and reads its width in centimetres, and each Fin Base Length reads `114 mm standard`; press Override and the box takes whole millimetres, stepping one at a time, refusing anything below 64 or above 190. Tick "Import Template Values" and both rows dim exactly as before. On Imperial the sidebar is unchanged.
 expected: Fins sidebar Tail Width/Base Length controls correct
@@ -70,11 +66,11 @@ result: pass
 
 ### 14. On Metric, every Fins sidebar slider reads in its (now corrected) family: the Forward/Aft position labels and the quad Rear Off-Tail Position display now read in whole millimetres, matching the override box above them; toe-in and off-rail are still whole millimetres as before; the Tail Width row still reads centimetres. No inch mark is left anywhere on the sidebar, the quad rear heading included. On Imperial the whole sidebar is unchanged.
 expected: Every fins sidebar slider label in the corrected family, no stray inch marks — re-run of UAT test 14 against gaps G-06-12/G-06-15's fix
-result: [pending]
+result: pass
 
 ### 15. On Metric the fin drawing's toe and off-rail callouts read in millimetres as before, and its off-tail callout now also reads in millimetres (previously centimetres) — all three carrying their own unit. The summary line and base-length legend keep reading board length/tail width in centimetres. Nothing has moved on the drawing. On Imperial it is unchanged. Check one dark theme as well as Daylight.
 expected: Fin viewer off-tail callout now in mm alongside toe/off-rail, board unmoved, both themes — re-run of UAT test 15 against gap G-06-15's fix
-result: [pending]
+result: pass
 
 ### 16. On Metric the Volume screen's Board Width and Center Thickness read in centimetres and move a millimetre at a time; the card's dimension rows read in centimetres, its cross-section and weighted thickness rows in whole millimetres, its area line in square centimetres and its supporting line in cubic centimetres. The litres figure is the same number it was on Imperial, and the same number the setup screen's card quotes for the same board. On Imperial the whole screen is unchanged.
 expected: Volume sidebar and card correct; litres identical across systems and screens
@@ -97,17 +93,11 @@ result: pass
 ## Summary
 
 total: 19
-passed: 11
+passed: 18
 issues: 0
-pending: 4
+pending: 0
 skipped: 1
 blocked: 0
-
-## Deferred Follow-Ups
-
-- test: 18
-  idea: "Primary dims show in inches.  Fin data also shows in inches. (Summary order form on Metric) — deferred to Phase 7 / PRNT-01 by user decision"
-  deferred_at: 2026-09-05
 
 ## Gaps
 - gap_id: G-06-4
