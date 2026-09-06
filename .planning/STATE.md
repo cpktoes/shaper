@@ -2,49 +2,49 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Imperial vs Metric
-current_phase: 06
-current_phase_name: the-design-screens-in-metric
-status: executing
-stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-09-06T00:37:31.311Z"
+current_phase: 7
+current_phase_name: Metric on Paper
+status: planning
+stopped_at: Phase 6 complete, ready to plan Phase 7
+last_updated: "2026-09-06T01:45:34.719Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 05 Wave 3 closed out — 05-05 (shared slider row) and 05-06 (shared viewer toolbar button) both complete
+last_activity_desc: Phase 06 complete — 9/9 plans, UAT 18/18, verification passed, security 34/34; transitioned to Phase 7
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 16
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-28)
+See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 06 — the-design-screens-in-metric
+**Current focus:** Phase 7 — Metric on Paper
 
 ## Current Position
 
-Phase: 06 (the-design-screens-in-metric) — EXECUTING
-Plan: 1 of 7
-Status: Executing Phase 06
-Last activity: 2026-09-05 - Completed quick task 260905-pne: Pin the volume card's litres rendering to no units-system argument in the units-isolation ledger
+Phase: 7 — Metric on Paper
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-05 — Phase 06 complete, transitioned to Phase 7
 
 **Milestone v1.1 phases:**
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 5 | The Units Chooser | UNIT-02, UNIT-03, UNIT-04, UNIT-05, SCRN-04, RACK-01 | In Progress (7/7 plans, awaiting verification) |
-| 6 | The Design Screens in Metric | SCRN-01, SCRN-02, SCRN-03, SCRN-05 | Not started |
-| 7 | Metric on Paper | PRNT-01, PRNT-02, PRNT-03, PRNT-04 | Not started |
+| 5 | The Units Chooser | UNIT-02, UNIT-03, UNIT-04, UNIT-05, SCRN-04, RACK-01 | Complete (7/7 plans) |
+| 6 | The Design Screens in Metric | SCRN-01, SCRN-02, SCRN-03, SCRN-05 | Complete (9/9 plans incl. 2 gap-closure; UAT 18/18; security 34/34; verified 2026-09-05) |
+| 7 | Metric on Paper | PRNT-01, PRNT-02, PRNT-03, PRNT-04 | Ready to plan |
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 29
+- Total plans completed: 38
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -57,6 +57,7 @@ Last activity: 2026-09-05 - Completed quick task 260905-pne: Pin the volume card
 | 03 | 7 | - | - |
 | 04 | 5 | - | - |
 | 05 | 7 | - | - |
+| 06 | 9 | - | - |
 
 **Recent Trend:**
 
@@ -90,6 +91,10 @@ Last activity: 2026-09-05 - Completed quick task 260905-pne: Pin the volume card
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- [Phase 6]: every design-screen measurement string comes from one display boundary (lib/geometry/measure-display.ts); lib/units-isolation.test.ts mechanically pins all 15 design-screen files as converted and bans raw imperial formatters in them
+- [Phase 6]: fin placement numbers (off-tail, off-rail, toe-in, base length, toe-aim distances) are whole-millimetre marks; board length and tail width stay centimetre dims — shaper decision during UAT, supersedes Phase 6 D-01 (recorded in CLAUDE.md Rule 2)
+- [Phase 6]: a typed field's bounds are converted from the slider's domain with typedFieldBounds before commitTypedMeasure — the code-review blocker (Metric Board Length stored 10x) is pinned by an integration test
+- [Phase 6]: human verification runs end-of-phase (workflow.human_verify_mode) — executors record <human-check> items in SUMMARY, the verifier harvests them into UAT; the Summary order form's own inch strings are a deferred follow-up for Phase 7 (PRNT-01)
 - [Roadmap]: Existing Claude Design prototype (rail-band + fin-placement calculators) is ported into `reference/` and rebuilt as the real app in Phase 1, not rebuilt from scratch
 - [Roadmap]: ROCK-01 and FOIL-01 (rocker/foil editors) deferred to Phase 4 — Phase 1's port carries the rail-band/fin-placement calculators forward; volume (Phase 3) initially computes off outline+rocker before foil becomes user-editable in Phase 4
 - [Roadmap]: This roadmap covers build-guide milestones M1-M3 only; M4 (invite shapers), M5 (billing/Pro), M6 (exports/sharing/gallery) are future milestones, not in v1 requirements
@@ -282,7 +287,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-05T08:07:04.505Z
-Stopped at: Phase 6 UI-SPEC approved
-Resume file: .planning/phases/06-the-design-screens-in-metric/06-UI-SPEC.md
+Last session: 2026-09-06T01:46:52.555Z
+Stopped at: Phase 6 complete, ready to plan Phase 7
+Resume file: None
 Next action: `/gsd-execute-phase 5` (only 05-07 — ship it — remains)

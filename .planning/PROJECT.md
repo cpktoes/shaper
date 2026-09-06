@@ -44,11 +44,11 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 - [x] User can export/print a full-size template of the board design, tiled across pages — Validated in Phase 3: Volume, Templates & Verified Math (ruler-verified 1:1 scale, alignment-box tiling, shaper marks, plus a one-page Overview Sheet; geometry suites gate every push via GitHub Actions)
 - [x] User can define a rocker curve (nose/tail rocker profile) — Validated in Phase 4: Rocker & Foil Editors (five-station rocker on a fold-back-proof monotone spline; adjustable by slider, typed imperial fractions, or dragging the curve; per-preset rocker character; survives save/reopen)
 - [x] User can define a foil (thickness distribution along the board) — Validated in Phase 4: Rocker & Foil Editors (five-station foil drives the rail-band thickness through a default-on link and feeds a Simpson-integrated cross-section volume validated within 1.01% of a published blank; one litres figure quoted on every screen)
+- [x] User can choose Imperial or Metric from the settings menu; the choice is saved on their account and remembered per browser when signed out — Validated in Phase 5: The Units Chooser (gear-menu chooser, account column with per-browser fallback, setup screen's preset and rack cards follow)
+- [x] Every measurement on the five design screens (sliders, typed entry, callouts, tables) reads in the chosen system — cm for length and widths, mm for rail band, rocker and foil values, litres for volume either way — Validated in Phase 6: The Design Screens in Metric (one display boundary in lib/geometry/measure-display.ts; every design-screen file pinned converted by the units-isolation ledger; fin placement numbers read as whole-millimetre marks after the shaper's UAT decision; UAT 18/18, security 34/34)
 
 ### Active
 
-- [ ] User can choose Imperial or Metric from the settings menu; the choice is saved on their account and remembered per browser when signed out
-- [ ] Every measurement on the five design screens (sliders, typed entry, callouts, tables) reads in the chosen system — cm for length and widths, mm for rail band, rocker and foil values, litres for volume either way
 - [ ] The Summary order form and Overview Sheet print in the chosen system
 - [ ] The Full Sized Template and Paper Saver print their labels, dims block and scale-check caption in the chosen system
 - [ ] Rack cards and board names show dimensions in the chosen system
@@ -104,9 +104,11 @@ templates ("the math is right").
 | Autosave (debounced, with failure backoff) instead of manual-save-first | A shaper mid-design shouldn't lose work to a forgotten button; save state shown in the nav, dirty only clears when the server confirms the latest snapshot | Working (Phase 2) |
 | Delete has no trash/undo — a typed-name confirm is the safety (D-13) | Keeps v1 simple; recorded as an accepted risk (AR-02-02) so a later phase revisits it deliberately | Accepted (Phase 2) |
 | Two Neon branches: production + copy-on-write development; code deploys before production migrates | Local work can never touch a real shaper's boards, and the live site always understands the schema it reads | Working (Phase 2) |
-| Units chooser reads Imperial vs Metric, not inches vs cm | The choice is a measuring system, not a pair of units: feet-inches and fractions on one side, cm and mm on the other (founder, v1.1 kickoff) | — Pending (v1.1) |
-| Metric is all-metric, length included: cm for length and widths, whole mm for rail band, rocker and foil values | One rule, the way Shape3d and BoardCAD switch; mm is what a metric tape measure reads at small sizes | — Pending (v1.1) |
-| Units preference lives on the account, with a per-browser fallback when signed out | Follows the shaper across devices; sign-in stays a nudge, never a gate | — Pending (v1.1) |
+| Units chooser reads Imperial vs Metric, not inches vs cm | The choice is a measuring system, not a pair of units: feet-inches and fractions on one side, cm and mm on the other (founder, v1.1 kickoff) | Validated (Phase 5) |
+| Metric is all-metric, length included: cm for length and widths, whole mm for rail band, rocker and foil values | One rule, the way Shape3d and BoardCAD switch; mm is what a metric tape measure reads at small sizes | Validated (Phase 6) — amended: fin placement numbers (off-tail, off-rail, toe-in, base length, toe-aim distances) are whole-mm marks too |
+| Units preference lives on the account, with a per-browser fallback when signed out | Follows the shaper across devices; sign-in stays a nudge, never a gate | Validated (Phase 5) |
+| Fin placement numbers are millimetre marks, board dims stay centimetres | Shaper decision during Phase 6 UAT: a fin's distance off the tail, off the rail, its toe-in and base length are read off a rule on the blank, so they read in whole mm like every other mark; board length and tail width stay the cm dims they are everywhere else (supersedes Phase 6 D-01) | Validated (Phase 6, plan 06-08) |
+| The Summary order form stays part-metric until Phase 7 | Its own dims block, thickness, size line and fin rows are the same component on screen and on paper; Phase 7 (PRNT-01) converts every printed output together rather than splitting the order form across two phases | Accepted (Phase 6 UAT, deferred follow-up) |
 
 ## Evolution
 
@@ -126,4 +128,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-04 after starting milestone v1.1 Imperial vs Metric*
+*Last updated: 2026-09-05 after Phase 6: The Design Screens in Metric*
