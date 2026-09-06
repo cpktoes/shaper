@@ -30,7 +30,7 @@ import {
   stripMarkSegments,
   stripRegistrationLines,
 } from "@/lib/geometry/template";
-import { inchesToMm } from "@/lib/geometry/units";
+import { inchesToMm, type UnitsSystem } from "@/lib/geometry/units";
 import {
   nameBlockContent,
   rectContains,
@@ -50,6 +50,11 @@ export interface BuildStripPdfOptions {
   paper: PaperSize;
   boardName: string;
   dims: BuildTemplatePdfOptions["dims"];
+  /** Which units system every printed label on this strip reads in (07-01) — required, never
+   * defaulted, mirroring `BuildTemplatePdfOptions.system`. This plan wires the field through; the
+   * strip's own call sites (`stripMarkSegments`/`stripLabelRows`, still on their imperial default
+   * here) flip to it in Plan 02. */
+  system: UnitsSystem;
 }
 
 const OUTLINE_LINE_WEIGHT_MM = 0.5;

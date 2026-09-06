@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
+import { useUnits } from "@/components/units-provider";
 import { downloadOverviewPdf } from "@/components/template/build-overview-pdf";
 import { downloadTemplatePdf } from "@/components/template/build-template-pdf";
 import { downloadStripPdf } from "@/components/template/build-strip-pdf";
@@ -132,6 +133,7 @@ function computeDiagramSizing(layout: TemplateLayout): DiagramSizing {
 
 export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
   const { outline, outlineGeometry, boardName, templateValues, railValues, quotedVolumeLitres } = useDesign();
+  const { system } = useUnits();
   const [open, setOpen] = useState(false);
   const [artifact, setArtifact] = useState<ExportArtifact>("full");
   const [paperSize, setPaperSize] = useState<PaperSize>("letter");
@@ -189,6 +191,7 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
             outline,
             paper: paperSize,
             boardName,
+            system,
           });
         } else if (artifact === "strip") {
           downloadStripPdf({
@@ -198,6 +201,7 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
             paper: paperSize,
             boardName,
             dims,
+            system,
           });
         } else {
           downloadTemplatePdf({
@@ -207,6 +211,7 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
             paper: paperSize,
             boardName,
             dims,
+            system,
           });
         }
         generatingRef.current = false;

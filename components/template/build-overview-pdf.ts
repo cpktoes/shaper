@@ -28,6 +28,7 @@ import {
   mm,
   squareMmToSquareInches,
   type Mm,
+  type UnitsSystem,
 } from "@/lib/geometry/units";
 import { wrapTextToWidth } from "@/components/template/build-template-pdf";
 
@@ -36,6 +37,10 @@ export interface BuildOverviewPdfOptions {
   outline: OutlineSpec;
   paper: PaperSize;
   boardName: string;
+  /** Which units system this sheet's labels read in (07-01) — required, never defaulted, mirroring
+   * `BuildTemplatePdfOptions.system`. This plan wires the field through; `buildOverviewPdf` does
+   * not yet read it — Plan 03 is its consumer and converts the Overview Sheet's own text. */
+  system: UnitsSystem;
 }
 
 const TITLE_FONT_SIZE_PT = 18;

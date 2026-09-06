@@ -14,6 +14,7 @@ import {
   nameBlockPlacement,
   type PaperSize,
 } from "@/lib/geometry/template";
+import { formatDim, stationLabel } from "@/lib/geometry/measure-display";
 import { inchesToMm, litres, mm } from "@/lib/geometry/units";
 import {
   HOWTO_BOX_TEXT_WIDTH_LIMIT_MM,
@@ -63,6 +64,7 @@ function buildOptionsForOutline(
     geometry,
     paper,
     boardName,
+    system: "imperial" as const,
     dims: {
       length: geometry.length,
       widePointWidth: geometry.halfWidePointWidth,
@@ -139,6 +141,7 @@ describe("buildTemplatePdf", () => {
           geometry,
           paper,
           boardName: "",
+          system: "imperial",
           dims: {
             length: geometry.length,
             widePointWidth: geometry.halfWidePointWidth,
@@ -352,7 +355,7 @@ describe("templateHowToWrappedLines (post-checkpoint fix, defect 1: \"the instru
 });
 
 describe("templateMarkLabelText / templateMarkDimensionText (post-checkpoint fix, defect 2: \"the station lines don't have a printed dimension\")", () => {
-  it("prints the board's own full width at every mark's station, for every preset and paper size", () => {
+  it("prints the board's own full width at every mark's station, for every preset and paper size (Imperial)", () => {
     for (const preset of BOARD_PRESETS) {
       const geometry = buildOutline(preset.outline);
       for (const paper of ["letter", "a4"] as const) {
@@ -361,8 +364,8 @@ describe("templateMarkLabelText / templateMarkDimensionText (post-checkpoint fix
         const placements = markPlacements(layout, marks, geometry);
 
         for (const placement of placements) {
-          const dim = templateMarkDimensionText(placement);
-          const label = templateMarkLabelText(placement);
+          const dim = templateMarkDimensionText(placement, "imperial");
+          const label = templateMarkLabelText(placement, "imperial");
 
           expect(dim.endsWith('"')).toBe(true);
           expect(label).toContain(placement.label);
@@ -370,6 +373,40 @@ describe("templateMarkLabelText / templateMarkDimensionText (post-checkpoint fix
         }
       }
     }
+  });
+
+  it("reads a centimetre station name and a centimetre width on Metric, for every preset and paper size (07-01 D-04)", () => {
+    for (const preset of BOARD_PRESETS) {
+      const geometry = buildOutline(preset.outline);
+      for (const paper of ["letter", "a4"] as const) {
+        const layout = computeTemplateLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+        const placements = markPlacements(layout, marks, geometry, "metric");
+
+        for (const placement of placements) {
+          const dim = templateMarkDimensionText(placement, "metric");
+          const label = templateMarkLabelText(placement, "metric");
+          const expectedDim = formatDim(mm(placement.halfWidthExtent * 2), "metric");
+
+          expect(dim).toBe(expectedDim);
+          expect(dim.endsWith(" cm")).toBe(true);
+          expect(label).toBe(`${placement.label} — ${expectedDim}`);
+        }
+      }
+    }
+  });
+
+  it('Metric nose/tail station names read the display boundary\'s own station label — "Nose 30.5 cm", never a hand-typed centimetre figure', () => {
+    const preset = BOARD_PRESETS[0];
+    const geometry = buildOutline(preset.outline);
+    const layout = computeTemplateLayout(geometry, "letter");
+    const marks = computeTemplateMarks(geometry);
+    const placements = markPlacements(layout, marks, geometry, "metric");
+
+    const noseTwelve = placements.find((p) => p.mark === "noseTwelve")!;
+    const tailTwelve = placements.find((p) => p.mark === "tailTwelve")!;
+    expect(noseTwelve.label).toBe(`Nose ${stationLabel("metric")}`);
+    expect(tailTwelve.label).toBe(`Tail ${stationLabel("metric")}`);
   });
 });
 
@@ -385,8 +422,8 @@ describe(
 
       const tailBlock = placements.find((p) => p.mark === "tailBlock");
       expect(tailBlock).toBeDefined();
-      expect(templateMarkDimensionText(tailBlock!)).toBe('4"');
-      expect(templateMarkLabelText(tailBlock!)).toBe('Tail Block — 4"');
+      expect(templateMarkDimensionText(tailBlock!, "imperial")).toBe('4"');
+      expect(templateMarkLabelText(tailBlock!, "imperial")).toBe('Tail Block — 4"');
     });
 
     it("is never emitted for a round-tail preset — no separate block edge to label", () => {
@@ -414,8 +451,14 @@ describe(
 
       const center = placements.find((p) => p.mark === "center")!;
       const widepoint = placements.find((p) => p.mark === "widepoint")!;
-      const centerRect = markLabelRect(doc, layout.pages[center.pageIndex], layout.margin, center);
-      const widepointRect = markLabelRect(doc, layout.pages[widepoint.pageIndex], layout.margin, widepoint);
+      const centerRect = markLabelRect(doc, layout.pages[center.pageIndex], layout.margin, center, "imperial");
+      const widepointRect = markLabelRect(
+        doc,
+        layout.pages[widepoint.pageIndex],
+        layout.margin,
+        widepoint,
+        "imperial",
+      );
 
       expect(rectsOverlap(centerRect, widepointRect)).toBe(false);
     });
@@ -433,8 +476,14 @@ describe(
       expect(center.labelOffsetMm).not.toBe(0);
       expect(widepoint.labelOffsetMm).not.toBe(0);
 
-      const centerRect = markLabelRect(doc, layout.pages[center.pageIndex], layout.margin, center);
-      const widepointRect = markLabelRect(doc, layout.pages[widepoint.pageIndex], layout.margin, widepoint);
+      const centerRect = markLabelRect(doc, layout.pages[center.pageIndex], layout.margin, center, "imperial");
+      const widepointRect = markLabelRect(
+        doc,
+        layout.pages[widepoint.pageIndex],
+        layout.margin,
+        widepoint,
+        "imperial",
+      );
 
       expect(rectsOverlap(centerRect, widepointRect)).toBe(false);
     });
@@ -448,7 +497,7 @@ describe(
 
       expect(placements.filter((p) => p.mark === "center" || p.mark === "widepoint")).toHaveLength(1);
       const merged = placements.find((p) => p.mark === "center")!;
-      expect(templateMarkLabelText(merged)).toMatch(/^Widepoint \/ Center — /);
+      expect(templateMarkLabelText(merged, "imperial")).toMatch(/^Widepoint \/ Center — /);
     });
   },
 );
@@ -470,6 +519,7 @@ describe(
           geometry,
           paper,
           boardName: "Diamond Test",
+          system: "imperial",
           dims: {
             length: geometry.length,
             widePointWidth: geometry.halfWidePointWidth,
@@ -657,6 +707,7 @@ describe("page-0 furniture never overlaps (post-checkpoint fix, defect 4: scale 
       geometry,
       paper: "letter" as const,
       boardName: preset.name,
+      system: "imperial" as const,
       dims: {
         length: geometry.length,
         widePointWidth: geometry.halfWidePointWidth,
@@ -712,6 +763,7 @@ describe(
         geometry,
         paper: "letter" as const,
         boardName: preset.name,
+        system: "imperial" as const,
         dims: {
           length: geometry.length,
           widePointWidth: geometry.halfWidePointWidth,

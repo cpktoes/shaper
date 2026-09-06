@@ -44,7 +44,9 @@ import {
   mm,
   type Litres,
   type Mm,
+  type UnitsSystem,
 } from "@/lib/geometry/units";
+import { formatDim } from "@/lib/geometry/measure-display";
 
 /** Every input `buildTemplatePdf` needs, fixed complete now, so later plans (the preview dialog)
  * extend the drawing without touching a call site. */
@@ -57,6 +59,12 @@ export interface BuildTemplatePdfOptions {
   geometry: OutlineGeometry;
   paper: PaperSize;
   boardName: string;
+  /** Which units system every printed label on this template reads in (07-01) — required, never
+   * defaulted, so a caller that forgets it fails to compile rather than silently printing
+   * imperial. Reaches the printer through exactly one path: `useUnits()` in
+   * `export-preview-dialog.tsx` -> this field -> `markPlacements`/`markLineSegments` and every
+   * `templateMarkLabelText`/`templateMarkDimensionText` call site below. */
+  system: UnitsSystem;
   /** The page 1 name block's own dims row — every value the Summary order form's core dimensions
    * row carries (`components/summary/order-form.tsx`'s `DimensionCell` strip), read from the same
    * design state and formatted with the same `lib/geometry/units.ts` functions, so the printed
@@ -327,16 +335,19 @@ function drawScaleSquare(
 
 /** The dimension text drawn beside each working mark — the board's own full width (both rails,
  * not just the tick's own half-width extent) at that mark's station, formatted the way a shaper
- * reads a tape measure. Exported for testability without reading the rendered page
- * (post-checkpoint fix, defect 2: "the station lines don't have a printed dimension"). */
-export function templateMarkDimensionText(placement: TemplateMarkPlacement): string {
-  return formatInchesFraction(mm(placement.halfWidthExtent * 2));
+ * reads a tape measure. A **dims**-family value per D-04 (`Nose 30.5 cm — 40.0 cm`'s trailing
+ * figure) — routed through `formatDim`, never `formatMark`. `system` is required, not defaulted:
+ * this is the builder side of the channel, where the compiler is the guarantee every call site
+ * states which system it is printing for. Exported for testability without reading the rendered
+ * page (post-checkpoint fix, defect 2: "the station lines don't have a printed dimension"). */
+export function templateMarkDimensionText(placement: TemplateMarkPlacement, system: UnitsSystem): string {
+  return formatDim(mm(placement.halfWidthExtent * 2), system);
 }
 
-/** The mark's name plus its dimension, e.g. `Nose 12" — 15 3/4"` — the combined text drawn on one
- * line when there's room. */
-export function templateMarkLabelText(placement: TemplateMarkPlacement): string {
-  return `${placement.label} — ${templateMarkDimensionText(placement)}`;
+/** The mark's name plus its dimension, e.g. `Nose 12" — 15 3/4"` (Imperial) or
+ * `Nose 30.5 cm — 40.0 cm` (Metric) — the combined text drawn on one line when there's room. */
+export function templateMarkLabelText(placement: TemplateMarkPlacement, system: UnitsSystem): string {
+  return `${placement.label} — ${templateMarkDimensionText(placement, system)}`;
 }
 
 /** Draws the working marks that fall on this page (D-06 — nose 12in, tail 12in, centre,
@@ -362,6 +373,7 @@ function drawMarks(
   margin: number,
   placements: TemplateMarkPlacement[],
   segments: TemplateMarkLineSegment[],
+  system: UnitsSystem,
 ): void {
   const pageSegments = segments.filter((segment) => segment.pageIndex === page.index);
   const pagePlacements = placements.filter((placement) => placement.pageIndex === page.index);
@@ -392,14 +404,14 @@ function drawMarks(
     doc.setFontSize(9);
     doc.setTextColor(0);
 
-    const combined = templateMarkLabelText(placement);
+    const combined = templateMarkLabelText(placement, system);
     const availableWidth = Math.max(0, xOuter - xStringer - MARK_LABEL_OFFSET_MM - MARK_LABEL_SAFETY_MM);
     if (doc.getTextWidth(combined) <= availableWidth) {
       doc.text(combined, xStringer + MARK_LABEL_OFFSET_MM, y - MARK_LABEL_OFFSET_MM);
     } else {
       doc.text(placement.label, xStringer + MARK_LABEL_OFFSET_MM, y - MARK_LABEL_OFFSET_MM - MARK_LABEL_LINE_GAP_MM);
       doc.text(
-        templateMarkDimensionText(placement),
+        templateMarkDimensionText(placement, system),
         xStringer + MARK_LABEL_OFFSET_MM,
         y - MARK_LABEL_OFFSET_MM,
       );
@@ -419,13 +431,14 @@ export function markLabelRect(
   page: TemplatePage,
   margin: number,
   placement: TemplateMarkPlacement,
+  system: UnitsSystem,
 ): TemplateFurnitureRect {
   const y = stationToY(placement.station, page, margin) + placement.labelOffsetMm;
   const xStringer = halfWidthToX(0, page, margin);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  const width = doc.getTextWidth(templateMarkLabelText(placement));
+  const width = doc.getTextWidth(templateMarkLabelText(placement, system));
 
   return {
     name: `${placement.mark}-label`,
@@ -838,7 +851,7 @@ function drawNameBlock(
  * every number drawn here comes from `layout`, `geometry` or a fixed drawing constant above;
  * nothing in this function computes tile geometry. */
 export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
-  const { layout, marks, geometry, paper, boardName, dims } = options;
+  const { layout, marks, geometry, paper, boardName, dims, system } = options;
   const paperDims = PAPER_MM[paper];
   const margin = layout.margin;
 
@@ -846,8 +859,8 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
   doc.setDrawColor(0);
   doc.setTextColor(0);
 
-  const placements = markPlacements(layout, marks, geometry);
-  const segments = markLineSegments(layout, marks, geometry);
+  const placements = markPlacements(layout, marks, geometry, system);
+  const segments = markLineSegments(layout, marks, geometry, system);
   const tailClosure = computeTailClosure(geometry);
   const tailClosureSeg = tailClosure ? tailClosureSegments(layout, tailClosure) : [];
   const boxes = templatePageBoxes(layout);
@@ -865,7 +878,7 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
 
     drawOutlineCurve(doc, geometry, page, margin);
     drawPageBox(doc, page, boxes[i], margin);
-    drawMarks(doc, page, margin, placements, segments);
+    drawMarks(doc, page, margin, placements, segments, system);
     drawTailClosure(doc, page, margin, tailClosureSeg);
     drawScaleSquare(doc, page, margin, furniture.scaleSquare);
     drawHowToBox(doc, page, margin, furniture.howToBox);

@@ -36,6 +36,7 @@ function buildOptionsFor(preset: (typeof BOARD_PRESETS)[number], paper: PaperSiz
     geometry,
     paper,
     boardName: preset.name,
+    system: "imperial",
     dims: {
       length: geometry.length,
       widePointWidth: geometry.halfWidePointWidth,
