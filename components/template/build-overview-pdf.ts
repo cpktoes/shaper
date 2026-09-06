@@ -211,31 +211,45 @@ export function overviewWpOffsetLabelText(offset: Mm, system: UnitsSystem): stri
 }
 
 /**
- * The dashed reference stations drawn across the outline — nose @ 12", tail @ 12", and the
- * board's centre and widepoint. Round 3 post-checkpoint fix, defect 3: "the center, widepoint,
- * and offset all should be explicitly labeled" — centre and widepoint are now two DISTINCT lines,
- * each with its own small-caps label and printed dimension, plus an explicit "WP OFFSET — ..."
- * label stacked beneath the widepoint's own name, EXCEPT when the offset is zero: the two
- * stations coincide, so drawing two dashed lines and two labels on top of each other would be
- * illegible rather than informative — that case merges back into one "WIDEPOINT / CENTER" line,
- * same as before this fix. Exported for testability. `sampleOutline` (not a fixed half-width) is
- * used for every station's drawn width, exactly as `lib/geometry/template.ts`'s own
- * `markPlacements` samples the widepoint the same way rather than trusting `halfWidePointWidth`
- * to always be exactly at that station.
+ * The dashed reference stations drawn across the outline — nose @ 12" (`@ 30.5 cm` on Metric),
+ * tail @ 12", and the board's centre and widepoint. Round 3 post-checkpoint fix, defect 3: "the
+ * center, widepoint, and offset all should be explicitly labeled" — centre and widepoint are now
+ * two DISTINCT lines, each with its own small-caps label and printed dimension, plus an explicit
+ * "WP OFFSET — ..." label stacked beneath the widepoint's own name, EXCEPT when the offset is
+ * zero: the two stations coincide, so drawing two dashed lines and two labels on top of each
+ * other would be illegible rather than informative — that case merges back into one "WIDEPOINT /
+ * CENTER" line, same as before this fix. Exported for testability. `sampleOutline` (not a fixed
+ * half-width) is used for every station's drawn width, exactly as `lib/geometry/template.ts`'s
+ * own `markPlacements` samples the widepoint the same way rather than trusting
+ * `halfWidePointWidth` to always be exactly at that station.
+ *
+ * The station itself never moves — every returned `station` value is identical between the two
+ * systems (07-03) — only the label text and the merge decision below read `system`. `CENTER`,
+ * `WIDEPOINT` and the merged `WIDEPOINT / CENTER` are plain English with no unit and are returned
+ * unchanged in both systems.
  */
-export function overviewStationLines(geometry: OutlineGeometry): OverviewStationLine[] {
-  const noseTwelve: OverviewStationLine = { label: 'NOSE @ 12"', station: mm(geometry.length - MEASURE_STATION_MM) };
-  const tailTwelve: OverviewStationLine = { label: 'TAIL @ 12"', station: MEASURE_STATION_MM };
+export function overviewStationLines(geometry: OutlineGeometry, system: UnitsSystem): OverviewStationLine[] {
+  const noseTwelve: OverviewStationLine = {
+    label: `NOSE @ ${stationLabel(system)}`,
+    station: mm(geometry.length - MEASURE_STATION_MM),
+  };
+  const tailTwelve: OverviewStationLine = { label: `TAIL @ ${stationLabel(system)}`, station: MEASURE_STATION_MM };
   const center = centerStation(geometry);
   const offset = widePointOffsetFromCenter(geometry);
 
-  // Merge onto one "WIDEPOINT / CENTER" line whenever the offset rounds to `0"` at the sheet's
-  // own print precision — matching the printed magnitude `overviewWpOffsetLabelText` uses, not a
-  // raw-float epsilon. `1e-6` mm was a tolerance for numerical noise, not for "this offset prints
-  // as zero": an offset below ~0.4mm (1/32in) is real but rounds away in `formatInchesFraction`,
-  // so deciding the merge from the raw float printed a separate WIDEPOINT line with a directional
-  // "WP OFFSET — 0\" forward/back" label.
-  if (formatInchesFraction(mm(Math.abs(offset))) === '0"') {
+  // Merge onto one "WIDEPOINT / CENTER" line whenever the offset rounds to the ACTIVE system's
+  // own zero form at the sheet's own print precision — matching the printed magnitude
+  // `overviewWpOffsetLabelText` uses for this same system, not a raw-float epsilon and not a
+  // threshold pinned to one system. Metric prints to 0.1cm (a 0.5mm zero range) where Imperial
+  // prints to 1/16in (a ~0.79mm zero range), so an offset around a millimetre genuinely merges on
+  // an Imperial sheet and does not merge on a Metric one — that is the honest outcome of "decide
+  // from what is actually printed, in the active system" rather than pinning the threshold to one
+  // system, which would make one of the two sheets draw a directional label for an offset it
+  // itself prints as zero. Nothing a shaper measures moves either way; only how many dashed lines
+  // get drawn.
+  const magnitude = formatDim(mm(Math.abs(offset)), system);
+  const zeroForm = system === "metric" ? "0.0 cm" : '0"';
+  if (magnitude === zeroForm) {
     return [noseTwelve, { label: "WIDEPOINT / CENTER", station: geometry.widePointStation }, tailTwelve];
   }
 
@@ -245,8 +259,7 @@ export function overviewStationLines(geometry: OutlineGeometry): OverviewStation
     {
       label: "WIDEPOINT",
       station: geometry.widePointStation,
-      // TODO(07-03 Task 3): this call site is converted to the caller's own system next.
-      secondaryLabel: overviewWpOffsetLabelText(offset, "imperial"),
+      secondaryLabel: overviewWpOffsetLabelText(offset, system),
     },
     tailTwelve,
   ];
@@ -380,7 +393,7 @@ export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
   // (post-checkpoint addition, per the user's own iShaper reference), plus a second, smaller
   // "WP OFFSET — ..." line stacked beneath the widepoint's own name when centre and widepoint are
   // two distinct lines (round 3 post-checkpoint fix, defect 3).
-  for (const line of overviewStationLines(geometry)) {
+  for (const line of overviewStationLines(geometry, system)) {
     const halfWidth = sampleOutline(geometry, line.station);
     const y = stationToY(line.station);
     const xLeft = halfWidthToX(halfWidth, -1);
