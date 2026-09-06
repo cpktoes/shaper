@@ -103,6 +103,28 @@ export function formatWholeMm(value: Mm): string {
 }
 
 /**
+ * Formats a millimetre value as a bare millimetre number with exactly one decimal place —
+ * `"50.8"`, never `"51"` and never with a unit suffix. This is the app's one millimetre value that
+ * carries a decimal, and it exists for exactly one reason: the printed template's scale-check
+ * square is a calibration reference, not a shaping mark, so its caption has to agree with what is
+ * actually drawn rather than follow the whole-millimetre house rule `formatWholeMm` applies to
+ * every other mark. Rounding `50.8` to a whole `51` would put the printed caption 0.2mm out from
+ * the square a shaper is measuring against — the one place that 0.2mm of "tidiness" would defeat
+ * the square's entire purpose.
+ *
+ * Applies the same signed epsilon nudge (`1e-9`, negated for negative values) that
+ * `formatCentimetres` and `formatWholeMm` both document, before `toFixed(1)`, so this formatter's
+ * tie-break agrees with theirs: a value that round-tripped through inches (or picked up float
+ * noise any other way) can land a few ULPs on the wrong side of a tenths-of-a-millimetre rounding
+ * boundary, and the nudge pushes it back onto the correct side.
+ */
+export function formatTenthMm(value: Mm): string {
+  const nudge = value < 0 ? -1e-9 : 1e-9;
+  const rounded = Math.round((value + nudge) * 10) / 10;
+  return rounded.toFixed(1);
+}
+
+/**
  * Snaps a millimetre value to the nearest whole millimetre — the metric counterpart of
  * `roundToSixteenthInch`. A snap on the model, not a display nicety: this is what Phase 6's
  * sliders step by when reading in Metric, so the stored value and the label always agree without
