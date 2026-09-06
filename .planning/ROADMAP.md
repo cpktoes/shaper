@@ -186,16 +186,16 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
   4. In Metric, the printed scale-check square is captioned in millimetres, so a metric ruler alone can confirm the print came out at true 1:1
   5. Nothing on paper moved: a template printed after this phase measures the same on the bench as one printed before it, and the frozen characterisation pins in `lib/geometry/template.test.ts` are still green
 
-**Plans**: 1/5 plans executed
+**Plans**: 4/5 plans executed
 **Wave 1**
 
   - [x] 07-01-PLAN.md — Tracer: the gear-menu chooser through the export dialog and into the Full Sized Template's marks, calibration caption and name block, with the frozen pins still green
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-  - [ ] 07-02-PLAN.md — The Paper Saver: registration lines in whole millimetres, mark labels in centimetres, and its own calibration caption
-  - [ ] 07-03-PLAN.md — The Overview Sheet: spec block, length callout, offset label, dashed station names and the widepoint merge at each system's own precision
-  - [ ] 07-04-PLAN.md — The Summary order form: seven dimension cells, the identification strip, fin placement in millimetres, shrink-rather-than-clip, and the Metric print audit
+  - [x] 07-02-PLAN.md — The Paper Saver: registration lines in whole millimetres, mark labels in centimetres, and its own calibration caption
+  - [x] 07-03-PLAN.md — The Overview Sheet: spec block, length callout, offset label, dashed station names and the widepoint merge at each system's own precision
+  - [x] 07-04-PLAN.md — The Summary order form: seven dimension cells, the identification strip, fin placement in millimetres, shrink-rather-than-clip, and the Metric print audit
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -219,4 +219,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 4. Rocker & Foil Editors | 5/5 | Complete    | 2026-08-29 |
 | 5. The Units Chooser | 7/7 | Complete    | 2026-09-05 |
 | 6. The Design Screens in Metric | 9/9 | Complete    | 2026-09-05 |
-| 7. Metric on Paper | 1/5 | In Progress|  |
+| 7. Metric on Paper | 4/5 | In Progress|  |
