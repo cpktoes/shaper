@@ -14,14 +14,20 @@ import {
   type PaperSize,
   type StripLayout,
 } from "@/lib/geometry/template";
-import { formatDim, formatMark } from "@/lib/geometry/measure-display";
-import { formatInchesFraction, litres, mm } from "@/lib/geometry/units";
-import { nameBlockContent, templateNameBlockDimsText, templateNameBlockText } from "./build-template-pdf";
+import { formatCalibrationMark, formatDim, formatMark } from "@/lib/geometry/measure-display";
+import { formatInchesFraction, inchesToMm, litres, mm } from "@/lib/geometry/units";
+import {
+  nameBlockContent,
+  scaleSquareCaptionText as templateScaleSquareCaptionText,
+  templateNameBlockDimsText,
+  templateNameBlockText,
+} from "./build-template-pdf";
 import {
   STRIP_PAGE_NUMBER_COLUMN_MM,
   buildStripPdf,
   rectContains,
   rectsOverlap,
+  scaleSquareCaptionText,
   stripFileName,
   stripFurnitureRects,
   stripPrintableRect,
@@ -208,6 +214,39 @@ describe("stripFurnitureRects", () => {
       );
     });
   }
+});
+
+describe("the Paper Saver's own scale-check caption (07-02 D-01/D-02)", () => {
+  it("Metric caption reads exactly 50.8 mm x 50.8 mm — measure before taping, derived from formatCalibrationMark(inchesToMm(2))", () => {
+    const expectedMark = formatCalibrationMark(mm(inchesToMm(2)), "metric");
+    expect(expectedMark).toBe("50.8 mm");
+    expect(scaleSquareCaptionText("metric")).toBe(`${expectedMark} x ${expectedMark} — measure before taping`);
+  });
+
+  it("Imperial caption is byte-identical to the string the file printed before this task", () => {
+    expect(scaleSquareCaptionText("imperial")).toBe('2" x 2" — measure before taping');
+  });
+
+  it("the Paper Saver's caption text equals the Full Sized Template's caption text for each system — the guard that catches one file converted without the other", () => {
+    expect(scaleSquareCaptionText("imperial")).toBe(templateScaleSquareCaptionText("imperial"));
+    expect(scaleSquareCaptionText("metric")).toBe(templateScaleSquareCaptionText("metric"));
+  });
+
+  it("the scale-square furniture rect has identical x, y, width and height on Metric and Imperial — only the caption text changes", () => {
+    for (const preset of BOARD_PRESETS) {
+      for (const paper of PAPERS) {
+        const imperialOptions = buildOptionsFor(preset, paper);
+        const metricOptions = { ...imperialOptions, system: "metric" as const };
+        const imperialRect = stripFurnitureRects(imperialOptions).find((r) => r.name === "scale-square")!;
+        const metricRect = stripFurnitureRects(metricOptions).find((r) => r.name === "scale-square")!;
+        expect(metricRect.pageIndex).toBe(imperialRect.pageIndex);
+        expect(metricRect.x).toBe(imperialRect.x);
+        expect(metricRect.y).toBe(imperialRect.y);
+        expect(metricRect.width).toBe(imperialRect.width);
+        expect(metricRect.height).toBe(imperialRect.height);
+      }
+    }
+  });
 });
 
 /** Mirrors `halfWidthToX` in `build-strip-pdf.ts` (not exported — it's the drawing module's own
