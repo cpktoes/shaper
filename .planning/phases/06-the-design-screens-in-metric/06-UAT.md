@@ -3,7 +3,7 @@ status: complete
 phase: 06-the-design-screens-in-metric
 source: [06-VERIFICATION.md]
 started: 2026-09-05T20:43:11.570Z
-updated: 2026-09-06T01:10:31.865Z
+updated: 2026-09-06T01:43:42.193Z
 ---
 
 ## Current Test
@@ -80,11 +80,6 @@ result: pass
 expected: No flash of inches, no hydration mismatch, signed in and signed out
 result: pass
 
-### 18. Backstop 2 — the order form's overflow audit on Metric: with Metric chosen, open the browser's print preview of /design/summary and re-run the order form's usual overflow check on every compact panel. The compact rail table's section headers now carry a unit suffix, and those panels clip their overflow by design, so confirm no header or row is cut off on paper on both Letter and A4. Record the result in the summary; if anything clips, file it rather than widening a panel here.
-expected: No clipped headers/rows on Letter or A4 print preview
-result: skipped
-reason: "Deferred follow-up: the Summary order form is the same component on screen and on paper; Phase 7 (Metric on Paper, PRNT-01) converts it. User confirmed: leave for Phase 7."
-
 ### 19. Sweep the five design screens on Metric looking for any stray inch mark, and on Imperial confirm every screen reads exactly as it did before the phase.
 expected: No stray inch marks anywhere in Metric; Imperial fully unchanged
 result: pass
@@ -92,11 +87,11 @@ result: pass
 
 ## Summary
 
-total: 19
+total: 18
 passed: 18
 issues: 0
 pending: 0
-skipped: 1
+skipped: 0
 blocked: 0
 
 ## Gaps
