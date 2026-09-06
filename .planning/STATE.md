@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 Phase: 06 (the-design-screens-in-metric) — EXECUTING
 Plan: 1 of 7
 Status: Executing Phase 06
-Last activity: 2026-09-05 — Phase 06 execution resumed (wave continue)
+Last activity: 2026-09-05 - Completed quick task 260905-pne: Pin the volume card's litres rendering to no units-system argument in the units-isolation ledger
 
 **Milestone v1.1 phases:**
 
@@ -235,6 +235,7 @@ Recent decisions affecting current work:
 | 260902-fast | Export dialog's middle card renamed "Full Sized Template" with caption "True-size, full-length half board template" (was "Full Template" / "True-size outline tiled across pages you tape together."); the file's comment mentions renamed to match, no behaviour change | 2026-09-02 | aa9a615 | (fast task — no plan dir) |
 | 260902-fast2 | Export dialog's third card retitled "Full Sized Template - Paper Saver" with caption "True-size, full-length landscape print. Great for boards ≤20.5\" Wide." (was "Paper Saver" / "Just the rail curve, one page at a time."); copy only, comments keep the short name Paper Saver since the title still carries it | 2026-09-02 | e5e707a | (fast task — no plan dir) |
 | 260902-fast4 | Full Sized Template caption ends with a period, matching the Paper Saver card | 2026-09-03 | 3113da7 | (fast task — no plan dir) |
+| 260905-pne | Pin the volume card's litres rendering to no units-system argument in the units-isolation ledger (closes Phase 6 security threat 06-07/T-06-02) | 2026-09-05 | 82e23f2 | [260905-pne-pin-the-volume-card-s-litres-rendering-t](./quick/260905-pne-pin-the-volume-card-s-litres-rendering-t/) |
 
 ## Deferred Items
 
