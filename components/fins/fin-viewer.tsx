@@ -217,11 +217,11 @@ function dimsForMark(
   const dims: FinDim[] = [];
   const offTailIn = mmToInches(mark.offTail);
   const w12In = mmToInches(tailWidth12);
-  // Toe-in and the lateral value (an off-rail distance or a half spread) are mark-family; the
-  // off-tail value is a distance up the board, dim-family — each carries its own unit per D-09.
+  // Toe-in, the lateral value (an off-rail distance or a half spread) and the off-tail value are
+  // all mark-family — each carries its own unit per D-09.
   const toeDisplay = formatMark(mark.toe, system);
   const lateralValueDisplay = mark.lateralValue !== null ? formatMark(mark.lateralValue, system) : "";
-  const offTailDisplay = formatDim(mark.offTail, system);
+  const offTailDisplay = formatMark(mark.offTail, system);
   const dimsSide: -1 | 1 = mark.role === "rear" ? 1 : -1;
 
   if (mark.side === dimsSide || mark.side === 0) {

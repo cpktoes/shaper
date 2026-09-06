@@ -134,12 +134,14 @@ export interface FinMark {
 export interface FinSummaryRow {
   label: string;
   value: Mm;
-  /** Which unit family this row's number reads in (D-01): a distance up from the tail is a
-   * length along the board, the way a shaper quotes a board's own length — `dim`. Everything
-   * else on the DATA tab — toe-in, the distance in from the rail, a fin's base length — is a
-   * mark measured with a rule against the board, the way a shaper reads a rocker height or a
-   * foil thickness — `mark`. Tagged here, where the number is worked out, so a later relabel of
-   * a row can never silently change which unit it reads in. */
+  /** Which unit family this row's number reads in. Every number on the DATA tab is a mark a
+   * shaper reads off a rule against the board — the distance up from the tail included — so
+   * every row here is `mark`: toe-in, the distance in from the rail, a fin's base length, and
+   * the distance up from the tail. (Superseded 2026-09-05, UAT gaps G-06-12 / G-06-15: fin
+   * placement numbers were briefly the `dim` family under D-01; the shaper reversed that
+   * classification because a shaper reading two numbers in the same group wants one unit, not a
+   * decimal point to shift in their head.) Tagged here, where the number is worked out, so a
+   * later relabel of a row can never silently change which unit it reads in. */
   family: MeasureFamily;
 }
 
@@ -902,7 +904,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
       groups: [
         {
           heading: "Trailing Edge",
-          rows: [{ label: "Off-Tail", value: centerFinal, family: "dim" }],
+          rows: [{ label: "Off-Tail", value: centerFinal, family: "mark" }],
           fullSpread: null,
           fullSpreadFamily: null,
         },
@@ -931,7 +933,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
         {
           heading: "Trailing Edge",
           rows: [
-            { label: "Off-Tail", value: offTail, family: "dim" },
+            { label: "Off-Tail", value: offTail, family: "mark" },
             { label: "Off-Rail", value: offRail, family: "mark" },
           ],
           fullSpread: null,
@@ -956,7 +958,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
         {
           heading: "Trailing Edge",
           rows: [
-            { label: "Off-Tail", value: rearFinal, family: "dim" },
+            { label: "Off-Tail", value: rearFinal, family: "mark" },
             {
               label: isBasicOffRail ? "Off-Rail" : "Off-Stringer (1/2 Spread)",
               value: isBasicOffRail ? quadRearOffRailValue : spread,

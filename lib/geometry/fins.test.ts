@@ -17,7 +17,7 @@ import {
   type TwinTemplate,
 } from "./fins";
 import { formatInchesFraction, inchesToMm, type Mm, mmToInches } from "./units";
-import { formatDim, formatDimBare } from "./measure-display";
+import { formatDim, formatDimBare, formatMark } from "./measure-display";
 import { TOE_AIM_TABLE, TOE_AIM_TABLE_COLUMNS } from "./toe-aim-tables";
 import golden from "./__fixtures__/prototype-fins-golden.json";
 
@@ -441,29 +441,22 @@ describe("McKee Longboard quad model needs an eight-foot board", () => {
   });
 });
 
-describe("FinSummaryRow.family and FinSummaryGroup.fullSpreadFamily (D-01)", () => {
-  it("thruster: every Off-Tail row is dim; every other row (Off-Rail, Toe-In, Fin Base/Box Length) is mark", () => {
+describe("FinSummaryRow.family and FinSummaryGroup.fullSpreadFamily (every DATA-tab row is mark, superseding D-01 for fin placement per 2026-09-05 UAT gaps G-06-12/G-06-15)", () => {
+  it("thruster: every row (Off-Tail included, alongside Off-Rail, Toe-In, Fin Base/Box Length) is mark", () => {
     const result = computeFinPlacement({ ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "thruster" });
     let sawOffTail = false;
-    let sawMark = false;
     for (const section of result.sections) {
       for (const group of section.groups) {
         for (const row of group.rows) {
-          if (row.label === "Off-Tail") {
-            sawOffTail = true;
-            expect(row.family).toBe("dim");
-          } else {
-            sawMark = true;
-            expect(row.family).toBe("mark");
-          }
+          if (row.label === "Off-Tail") sawOffTail = true;
+          expect(row.family).toBe("mark");
         }
       }
     }
     expect(sawOffTail).toBe(true);
-    expect(sawMark).toBe(true);
   });
 
-  it("quad (McKee SB/Gun rear): the rear pair's Off-Tail is dim, and its Off-Stringer/Toe-In rows are mark", () => {
+  it("quad (McKee SB/Gun rear): the rear pair's Off-Tail, Off-Stringer and Toe-In rows are all mark", () => {
     const result = computeFinPlacement({
       ...DEFAULT_FIN_PLACEMENT_SPEC,
       finSetup: "quad",
@@ -476,12 +469,12 @@ describe("FinSummaryRow.family and FinSummaryGroup.fullSpreadFamily (D-01)", () 
     const offTailRow = trailing.rows.find((r) => r.label === "Off-Tail")!;
     const offStringerRow = trailing.rows.find((r) => r.label === "Off-Stringer (1/2 Spread)")!;
     const toeRow = leading.rows.find((r) => r.label === "Toe-In")!;
-    expect(offTailRow.family).toBe("dim");
+    expect(offTailRow.family).toBe("mark");
     expect(offStringerRow.family).toBe("mark");
     expect(toeRow.family).toBe("mark");
   });
 
-  it("quad rear's Off-Tail stays dim even under the Basic-Off-Rail model, whose row label switches to Off-Rail", () => {
+  it("quad rear's Off-Tail stays mark even under the Basic-Off-Rail model, whose row label switches to Off-Rail", () => {
     const result = computeFinPlacement({
       ...DEFAULT_FIN_PLACEMENT_SPEC,
       finSetup: "quad",
@@ -491,7 +484,7 @@ describe("FinSummaryRow.family and FinSummaryGroup.fullSpreadFamily (D-01)", () 
     const trailing = rearSection.groups.find((g) => g.heading === "Trailing Edge")!;
     const offTailRow = trailing.rows.find((r) => r.label === "Off-Tail")!;
     const offRailRow = trailing.rows.find((r) => r.label === "Off-Rail")!;
-    expect(offTailRow.family).toBe("dim");
+    expect(offTailRow.family).toBe("mark");
     expect(offRailRow.family).toBe("mark");
   });
 
@@ -525,6 +518,11 @@ describe("FinSummaryRow.family and FinSummaryGroup.fullSpreadFamily (D-01)", () 
     const trailing = rearSection.groups.find((g) => g.heading === "Trailing Edge")!;
     expect(trailing.fullSpread).toBeNull();
     expect(trailing.fullSpreadFamily).toBeNull();
+  });
+
+  it("re-tagging an off-tail row from dim to mark cannot move its Imperial string, because formatMark and formatDim both call formatInchesFraction on the imperial branch", () => {
+    const result = computeFinPlacement({ ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "thruster" });
+    expect(formatMark(result.resolved.frontOffTail, "imperial")).toBe(formatDim(result.resolved.frontOffTail, "imperial"));
   });
 });
 
