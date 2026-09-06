@@ -241,7 +241,7 @@ describe(
   () => {
     it("returns four stations — nose @12, CENTER, WIDEPOINT, tail @12 — when the widepoint is offset from centre", () => {
       const options = buildOptions(); // shortboard preset: widePointOffset -1in, non-zero
-      const lines = overviewStationLines(options.geometry);
+      const lines = overviewStationLines(options.geometry, "imperial");
       expect(lines.map((l) => l.label)).toEqual(['NOSE @ 12"', "CENTER", "WIDEPOINT", 'TAIL @ 12"']);
       expect(lines[1].station).toBeCloseTo(options.geometry.length / 2, 6);
       expect(lines[2].station).toBe(options.geometry.widePointStation);
@@ -249,7 +249,7 @@ describe(
 
     it("the WIDEPOINT line carries a secondaryLabel; CENTER, NOSE, TAIL do not", () => {
       const options = buildOptions();
-      const lines = overviewStationLines(options.geometry);
+      const lines = overviewStationLines(options.geometry, "imperial");
       const byLabel = Object.fromEntries(lines.map((l) => [l.label, l]));
       expect(byLabel["WIDEPOINT"].secondaryLabel).toBeDefined();
       expect(byLabel["CENTER"].secondaryLabel).toBeUndefined();
@@ -260,7 +260,7 @@ describe(
     it("merges into one WIDEPOINT / CENTER line when the offset is zero (fish preset)", () => {
       const options = buildOptions("letter", 1); // fish preset: widePointOffset 0
       expect(options.outline.widePointOffset).toBe(0);
-      const lines = overviewStationLines(options.geometry);
+      const lines = overviewStationLines(options.geometry, "imperial");
       expect(lines.map((l) => l.label)).toEqual(['NOSE @ 12"', "WIDEPOINT / CENTER", 'TAIL @ 12"']);
       expect(lines[1].station).toBe(options.geometry.widePointStation);
       expect(lines[1].secondaryLabel).toBeUndefined();
@@ -273,14 +273,14 @@ describe(
       // "WP OFFSET — 0\" forward" secondary label.
       const preset = BOARD_PRESETS[1]; // fish preset: widePointOffset 0
       const geometry = buildOutline({ ...preset.outline, widePointOffset: inchesToMm(0.015625) });
-      const lines = overviewStationLines(geometry);
+      const lines = overviewStationLines(geometry, "imperial");
       expect(lines.map((l) => l.label)).toEqual(['NOSE @ 12"', "WIDEPOINT / CENTER", 'TAIL @ 12"']);
       expect(lines[1].secondaryLabel).toBeUndefined();
     });
 
-    it.each(BOARD_PRESETS)("$id: CENTER + TAIL@12 + NOSE@12 always present, WIDEPOINT present standalone or merged", (preset) => {
+    it.each(BOARD_PRESETS)("$id: CENTER + TAIL@12 + NOSE@12 always present, WIDEPOINT present standalone or merged (imperial)", (preset) => {
       const geometry = buildOutline(preset.outline);
-      const lines = overviewStationLines(geometry);
+      const lines = overviewStationLines(geometry, "imperial");
       const labels = lines.map((l) => l.label);
       expect(labels).toContain('NOSE @ 12"');
       expect(labels).toContain('TAIL @ 12"');
@@ -288,6 +288,80 @@ describe(
       const hasMerged = labels.includes("WIDEPOINT / CENTER");
       expect(hasSplit || hasMerged).toBe(true);
       expect(hasSplit && hasMerged).toBe(false);
+    });
+
+    it("on Metric, the two twelve-inch dashed lines are named NOSE @ 30.5 cm and TAIL @ 30.5 cm", () => {
+      const options = buildOptions();
+      const lines = overviewStationLines(options.geometry, "metric");
+      const byLabel = lines.map((l) => l.label);
+      expect(byLabel).toContain(`NOSE @ ${stationLabel("metric")}`);
+      expect(byLabel).toContain(`TAIL @ ${stationLabel("metric")}`);
+      expect(byLabel.some((l) => l.includes('"'))).toBe(false);
+    });
+
+    it.each(BOARD_PRESETS)("$id: every returned line's station value is identical for imperial and metric", (preset) => {
+      const geometry = buildOutline(preset.outline);
+      const imperialLines = overviewStationLines(geometry, "imperial");
+      const metricLines = overviewStationLines(geometry, "metric");
+      expect(metricLines.map((l) => l.station)).toEqual(imperialLines.map((l) => l.station));
+    });
+
+    it("merges into one WIDEPOINT / CENTER line on Metric when the offset is zero (fish preset)", () => {
+      const options = buildOptions("letter", 1, "metric"); // fish preset: widePointOffset 0
+      const lines = overviewStationLines(options.geometry, "metric");
+      expect(lines.map((l) => l.label)).toEqual([`NOSE @ ${stationLabel("metric")}`, "WIDEPOINT / CENTER", `TAIL @ ${stationLabel("metric")}`]);
+      expect(lines[1].secondaryLabel).toBeUndefined();
+    });
+
+    it("on Metric, keeps CENTER and WIDEPOINT as two separate lines for an offset large enough to print in both systems", () => {
+      const options = buildOptions("letter", 0, "metric"); // shortboard preset: widePointOffset -1in
+      const lines = overviewStationLines(options.geometry, "metric");
+      expect(lines.map((l) => l.label)).toEqual([`NOSE @ ${stationLabel("metric")}`, "CENTER", "WIDEPOINT", `TAIL @ ${stationLabel("metric")}`]);
+      expect(lines.find((l) => l.label === "WIDEPOINT")?.secondaryLabel).toBeDefined();
+    });
+
+    it("an offset that rounds away in Imperial (1/32in zero range) but not in Metric (0.5mm zero range) merges on Imperial and splits on Metric", () => {
+      // Derive the boundary offset from the two systems' own printed zero forms — never a
+      // hand-picked millimetre figure — since Metric prints to 0.1cm (0.5mm zero range) where
+      // Imperial prints to 1/16in (~0.79mm zero range), and Metric's zero range sits strictly
+      // inside Imperial's.
+      let boundaryOffsetMm: number | null = null;
+      for (let candidate = 0.1; candidate < 2; candidate += 0.02) {
+        const impZero = formatDim(mm(candidate), "imperial") === '0"';
+        const metZero = formatDim(mm(candidate), "metric") === "0.0 cm";
+        if (impZero && !metZero) {
+          boundaryOffsetMm = candidate;
+          break;
+        }
+      }
+      expect(boundaryOffsetMm).not.toBeNull();
+
+      const preset = BOARD_PRESETS[1]; // fish preset: widePointOffset 0, so the boundary offset is the whole story
+      const geometry = buildOutline({ ...preset.outline, widePointOffset: mm(boundaryOffsetMm as number) });
+
+      const imperialLines = overviewStationLines(geometry, "imperial");
+      expect(imperialLines.map((l) => l.label)).toEqual(['NOSE @ 12"', "WIDEPOINT / CENTER", 'TAIL @ 12"']);
+
+      const metricLines = overviewStationLines(geometry, "metric");
+      expect(metricLines.map((l) => l.label)).toEqual([
+        `NOSE @ ${stationLabel("metric")}`,
+        "CENTER",
+        "WIDEPOINT",
+        `TAIL @ ${stationLabel("metric")}`,
+      ]);
+    });
+
+    it("every Imperial-mode return value is identical to the pre-change output", () => {
+      for (const preset of BOARD_PRESETS) {
+        const geometry = buildOutline(preset.outline);
+        const lines = overviewStationLines(geometry, "imperial");
+        for (const line of lines) {
+          expect(line.label).not.toContain("cm");
+          if (line.secondaryLabel) {
+            expect(line.secondaryLabel).not.toContain("cm");
+          }
+        }
+      }
     });
   },
 );
