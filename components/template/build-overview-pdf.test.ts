@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 import { buildOutline } from "@/lib/geometry/outline";
 import { formatArea, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
-import { inchesToMm, mm, squareMmToSquareInches, type UnitsSystem } from "@/lib/geometry/units";
+import { formatInchesFraction, inchesToMm, mm, squareMmToSquareInches, type UnitsSystem } from "@/lib/geometry/units";
 import {
   buildOverviewPdf,
   overviewFileName,
   overviewLengthLabelText,
   overviewSpecLines,
   overviewStationLines,
+  overviewStationWidthText,
   overviewWpOffsetLabelText,
 } from "./build-overview-pdf";
 
@@ -222,8 +223,16 @@ describe("overviewSpecLines", () => {
 });
 
 describe("overviewLengthLabelText", () => {
-  it("formats feet-and-inches plus the plain inch total, e.g. 6'0\" - 72\"", () => {
-    expect(overviewLengthLabelText(inchesToMm(72))).toBe(`6'0" - 72"`);
+  it("on Imperial, formats feet-and-inches plus the plain inch total, e.g. 6'0\" - 72\" — byte-identical to before this phase", () => {
+    expect(overviewLengthLabelText(inchesToMm(72), "imperial")).toBe(`6'0" - 72"`);
+  });
+
+  it("on Metric, returns the single centimetre figure with no separator and no second figure", () => {
+    const length = inchesToMm(72);
+    const text = overviewLengthLabelText(length, "metric");
+    expect(text).toBe(formatDim(length, "metric"));
+    expect(text).not.toContain(" - ");
+    expect(text.match(/\d+(\.\d+)?/g)?.length).toBe(1);
   });
 });
 
@@ -286,22 +295,62 @@ describe(
 describe(
   'overviewWpOffsetLabelText (round 3 post-checkpoint fix, defect 3: "WP OFFSET explicitly labeled... matching how the app\'s viewer words it")',
   () => {
-    it('prints "WP OFFSET — 1/2" back" for a negative (tail-ward) offset', () => {
-      expect(overviewWpOffsetLabelText(inchesToMm(-0.5))).toBe('WP OFFSET — 1/2" back');
+    it('on Imperial, prints "WP OFFSET — 1/2" back" for a negative (tail-ward) offset — byte-identical to before this phase', () => {
+      expect(overviewWpOffsetLabelText(inchesToMm(-0.5), "imperial")).toBe('WP OFFSET — 1/2" back');
     });
 
-    it('prints "WP OFFSET — 1/2" forward" for a positive (nose-ward) offset', () => {
-      expect(overviewWpOffsetLabelText(inchesToMm(0.5))).toBe('WP OFFSET — 1/2" forward');
+    it('on Imperial, prints "WP OFFSET — 1/2" forward" for a positive (nose-ward) offset', () => {
+      expect(overviewWpOffsetLabelText(inchesToMm(0.5), "imperial")).toBe('WP OFFSET — 1/2" forward');
     });
 
-    it('prints a bare "WP OFFSET — 0"" — no direction word — for an offset that rounds to zero at print precision (WR-01)', () => {
+    it('on Imperial, prints a bare "WP OFFSET — 0"" — no direction word — for an offset that rounds to zero at print precision (WR-01)', () => {
       // 1/64" rounds to 0" at the default sixteenths; a direction word here would read as
       // "WP OFFSET — 0\" forward", which is nonsensical on a sheet a shaper is meant to trust.
-      expect(overviewWpOffsetLabelText(inchesToMm(0.015625))).toBe('WP OFFSET — 0"');
-      expect(overviewWpOffsetLabelText(inchesToMm(-0.015625))).toBe('WP OFFSET — 0"');
+      expect(overviewWpOffsetLabelText(inchesToMm(0.015625), "imperial")).toBe('WP OFFSET — 0"');
+      expect(overviewWpOffsetLabelText(inchesToMm(-0.015625), "imperial")).toBe('WP OFFSET — 0"');
+    });
+
+    it("on Metric, prints the same wording with a centimetre magnitude for a back (tail-ward) offset", () => {
+      const offset = mm(-51);
+      const text = overviewWpOffsetLabelText(offset, "metric");
+      expect(text).toBe(`WP OFFSET — ${formatDim(mm(51), "metric")} back`);
+      expect(text).toContain("cm");
+    });
+
+    it("on Metric, prints the same wording with a centimetre magnitude for a forward (nose-ward) offset", () => {
+      const offset = mm(51);
+      const text = overviewWpOffsetLabelText(offset, "metric");
+      expect(text).toBe(`WP OFFSET — ${formatDim(mm(51), "metric")} forward`);
+      expect(text).toContain("cm");
+    });
+
+    it("on Metric, prints a bare offset with no direction word for an offset that rounds away at centimetre precision", () => {
+      // Below 0.5mm rounds to 0.0cm — genuinely a different threshold from Imperial's 1/32in.
+      const roundsAway = mm(0.2);
+      expect(formatDim(roundsAway, "metric")).toBe("0.0 cm");
+      expect(overviewWpOffsetLabelText(roundsAway, "metric")).toBe(`WP OFFSET — ${formatDim(roundsAway, "metric")}`);
+      expect(overviewWpOffsetLabelText(mm(-0.2), "metric")).toBe(`WP OFFSET — ${formatDim(roundsAway, "metric")}`);
     });
   },
 );
+
+describe("the Overview Sheet's station width figures on the drawing (07-03)", () => {
+  it("on Metric, reads the board's own full width there in centimetres, via the same formatDim the spec block uses", () => {
+    const options = buildOptions();
+    const halfWidth = options.geometry.halfWidePointWidth;
+    const text = overviewStationWidthText(halfWidth, "metric");
+    expect(text).toBe(formatDim(mm(halfWidth * 2), "metric"));
+    expect(text).toContain("cm");
+    expect(text).not.toContain("mm");
+  });
+
+  it("on Imperial, is byte-identical to the pre-Phase-7 inch fraction", () => {
+    const options = buildOptions();
+    const halfWidth = options.geometry.halfWidePointWidth;
+    const text = overviewStationWidthText(halfWidth, "imperial");
+    expect(text).toBe(formatInchesFraction(mm(halfWidth * 2)));
+  });
+});
 
 describe("overviewFileName", () => {
   it("slugifies a board name", () => {
