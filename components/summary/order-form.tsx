@@ -67,6 +67,7 @@ import {
   RailLabel,
 } from "./order-form-primitives";
 import { useOrderFormPrintFit } from "./use-print-fit";
+import { dimensionValueFitClass } from "./dimension-fit";
 import { cn } from "@/lib/utils";
 import { FIN_SETUPS, FIN_SYSTEMS, type FinSystem } from "@/lib/geometry/fins";
 import type { RailSectionKey } from "@/lib/geometry/rail-bands";
@@ -76,6 +77,7 @@ import {
   formatLength,
   formatMark,
   formatSignedDim,
+  type MeasureFamily,
 } from "@/lib/geometry/measure-display";
 import { inchesToMm, mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 
@@ -91,6 +93,16 @@ import { inchesToMm, mm, type Mm, type UnitsSystem } from "@/lib/geometry/units"
  */
 function identificationLengthText(length: Mm, system: UnitsSystem): string {
   return system === "metric" ? formatDimBare(length, system) : formatLength(length, system);
+}
+
+/** Dispatches a fin placement row's value through the formatter its own `family` field names,
+ * rather than deciding the family here — so a later reclassification of a row (as already
+ * happened once, UAT gaps G-06-12 / G-06-15) follows automatically instead of silently printing
+ * in the wrong unit. Every row is the `mark` family today, so this reproduces Task 1's
+ * unconditional `formatMark` call exactly; the dispatch is what makes a future reclassification
+ * safe. */
+function formatFinValue(value: Mm, family: MeasureFamily, system: UnitsSystem): string {
+  return family === "mark" ? formatMark(value, system) : formatDim(value, system);
 }
 
 const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
@@ -147,10 +159,13 @@ function DimensionCell({ label, value }: { label: string; value: string }) {
       <span className="font-display font-extrabold tracking-architectural text-surf-ink-muted uppercase leading-none order-form-caption">
         {label}
       </span>
-      {/* `leading-none` would make the line box shorter than the glyphs it holds, so the span's own
-          `overflow: hidden` (from `truncate`) clipped the measurements by ~2px. Tight, but tall
-          enough to contain its own ink. */}
-      <span className="truncate font-extrabold text-surf-ink leading-[1.15] order-form-dim">{value}</span>
+      {/* No truncation here (D-09): a shaper cuts foam to this number, so a value that would
+          overrun the cell steps its own type size down instead of losing a digit to an ellipsis.
+          `dimensionValueFitClass` (components/summary/dimension-fit.ts) is a pure function of the
+          string's own length, floored at the sheet's 12px print-legibility minimum. */}
+      <span className={cn("font-extrabold text-surf-ink leading-[1.15]", dimensionValueFitClass(value))}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -612,7 +627,7 @@ export function OrderForm() {
                           >
                             <span className="truncate text-surf-ink-muted">{row.label}</span>
                             <span className="flex-none font-bold text-surf-ink">
-                              {formatMark(row.value, system)}
+                              {formatFinValue(row.value, row.family, system)}
                             </span>
                           </div>
                         ))}
@@ -620,7 +635,10 @@ export function OrderForm() {
                           <div className="flex justify-between gap-1 border-b border-surf-line-faint leading-tight order-form-row">
                             <span className="truncate text-surf-ink-muted">Full Spread</span>
                             <span className="flex-none font-bold text-surf-ink">
-                              {formatMark(grp.fullSpread, system)}
+                              {/* `fullSpreadFamily` is non-null exactly when `fullSpread` is
+                                  non-null (lib/geometry/fins.ts's own guarantee), so the fallback
+                                  below is never actually exercised. */}
+                              {formatFinValue(grp.fullSpread, grp.fullSpreadFamily ?? "mark", system)}
                             </span>
                           </div>
                         )}

@@ -160,6 +160,26 @@
 [data-order-form-root] .order-form-dim {
   font-size: var(--order-form-dim);
 }
+
+/*
+ * The dimension-cell step-down sizes `dimensionValueFitClass` (components/summary/dimension-fit.ts)
+ * chooses between, per D-09: a value long enough to overrun its cell at `--order-form-dim` prints
+ * one size down instead of clipping, and a value longer still steps down once more. Both are
+ * derived from `--order-form-dim` itself — `clamp(14px, 2.3cqw, 28px)` — at 85% and 70% of its own
+ * `cqw` and max figures, so they track the sheet's own type scale rather than hardcoding pixel
+ * sizes, each floored at the sheet's 12px print-legibility minimum (below `--order-form-dim`'s own
+ * 14px floor, since a stepped-down value has already conceded some size to fit).
+ */
+[data-order-form-root] {
+  --order-form-dim-step-1: clamp(12px, 1.955cqw, 23.8px); /* 17.2px screen / 14.4px print */
+  --order-form-dim-step-2: clamp(12px, 1.61cqw, 19.6px); /* 14.1px / 11.8px, floored to 12px print */
+}
+[data-order-form-root] .order-form-dim-step-1 {
+  font-size: var(--order-form-dim-step-1);
+}
+[data-order-form-root] .order-form-dim-step-2 {
+  font-size: var(--order-form-dim-step-2);
+}
 [data-order-form-root] .order-form-wordmark {
   font-size: var(--order-form-wordmark);
 }
