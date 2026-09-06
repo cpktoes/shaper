@@ -1,7 +1,7 @@
 ---
 phase: 06-the-design-screens-in-metric
 verified: 2026-09-06T00:57:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -9,21 +9,26 @@ re_verification:
   previous_status: human_needed
   previous_score: 5/5
   gaps_closed:
+
     - "G-06-4: typed Board Length box too narrow — MeasureField's standalone mode now renders a 96px box (w-24 min-w-24 max-w-24); bare mode (ROCKER datasheet cells) stays byte-identical at 64px"
     - "G-06-12: Fins DATA tab and toe-aim modal fin placement numbers were in cm — the three Off-Tail rows and four sidebar labels re-tagged/reformatted to mark (whole mm); toe-aim table cells split from the tail-width/row-label cm formatter into a separate formatMarkBare cell formatter, headings now say (mm)"
     - "G-06-15: fin drawing off-tail callout was in cm — switched to formatMark; board-size numbers (compact heading, legend, Tail Width) confirmed untouched"
   gaps_remaining: []
   regressions: []
 human_verification:
+
   - test: "On Metric, the Template Builder and the Volume screen each show one box above the Board Length slider; typing 188 and pressing Enter moves the thumb and re-labels the row to 188.0 cm, with nothing clipped; the box now shows its whole value at both ends of its range (153.0-304.8 cm on Template/Volume, 122.0-365.8 cm on Fins). Typing `5 1/2` puts the last good number back with an error line that now lines up under the wider box. On Imperial the two dropdowns are unchanged."
     expected: "Typed Board Length field shows its whole value uncut, commits/clamps/reverts as before, Imperial unaffected — re-run of UAT test 4 against gap G-06-4's fix"
     why_human: "Whether text visually fits inside a rendered box is a rendering fact static analysis and node-environment tests cannot observe"
+
   - test: "On Metric, the Fins DATA tab's summary line reads its board length and tail width each in centimetres, but the three Off-Tail rows now read in whole millimetres in the same group as Off-Rail, Toe-In and Fin Base Length. Open the toe-aim tables: both section headings now say `(mm)`, every aim-distance cell is a whole millimetre, but the tail-width column headings, board-length row label and modal title still read in centimetres. The highlighted column is the same one it was on Imperial. Switch to Imperial and both surfaces are unchanged."
     expected: "Fin DATA tab and toe-aim modal placement numbers in mm, board-size numbers in cm — re-run of UAT test 12 against gaps G-06-12/G-06-15's fix"
     why_human: "Visual table/modal rendering and family-by-family unit correctness needs a browser"
+
   - test: "On Metric, every Fins sidebar slider reads in its (now corrected) family: the Forward/Aft position labels and the quad Rear Off-Tail Position display now read in whole millimetres, matching the override box above them; toe-in and off-rail are still whole millimetres as before; the Tail Width row still reads centimetres. No inch mark is left anywhere on the sidebar, the quad rear heading included. On Imperial the whole sidebar is unchanged."
     expected: "Every fins sidebar slider label in the corrected family, no stray inch marks — re-run of UAT test 14 against gaps G-06-12/G-06-15's fix"
     why_human: "Visual sweep of the sidebar for correct unit families and absence of stray inch marks"
+
   - test: "On Metric the fin drawing's toe and off-rail callouts read in millimetres as before, and its off-tail callout now also reads in millimetres (previously centimetres) — all three carrying their own unit. The summary line and base-length legend keep reading board length/tail width in centimetres. Nothing has moved on the drawing. On Imperial it is unchanged. Check one dark theme as well as Daylight."
     expected: "Fin viewer off-tail callout now in mm alongside toe/off-rail, board unmoved, both themes — re-run of UAT test 15 against gap G-06-15's fix"
     why_human: "Rendered SVG callout appearance across themes needs a browser"
@@ -114,21 +119,26 @@ Scanned every file modified by the two gap-closure plans
 
 - `npx vitest run` → 33 files, 2007 passed, 2 skipped (2009 total) — reproduced independently on
   current `main` (`b170ae4`), matching the orchestrator's stated evidence exactly.
+
 - `npx vitest run lib/geometry/fins.test.ts -t "FinSummaryRow.family"` → 6 passed (152 skipped by
   the name filter), confirming the re-tagged family test passes.
+
 - `npx vitest run components/design/measure-field.test.ts` → 6/6 passing.
 - `npx vitest run lib/units-isolation.test.ts lib/geometry/units.test.ts` → 87/87 passing —
   confirms the conversion ledger and the metric-bounds-inside-imperial-bounds property test are
   unaffected.
+
 - `npm run build` → compiles successfully, all five `/design/*` routes generated, no errors.
 - `git diff 044c652 HEAD -- lib/geometry/__fixtures__/ lib/geometry/template.test.ts lib/geometry/rail-bands.ts lib/geometry/rocker.test.ts` → empty — geometry math and golden fixtures genuinely untouched since the UAT baseline.
 - `git diff 044c652 HEAD -- components/fins/fin-data-panel.tsx` → empty — prohibition honored.
 - `git status --porcelain` on `outline-controls.tsx`, `volume-controls.tsx`, `fin-controls.tsx`
   (call-site diffs, not content), `rocker-datasheet.tsx` → confirms no call site needed editing
   for the width fix, matching the plan's prohibition.
+
 - `grep` acceptance checks from both plans' `<acceptance_criteria>` — all reproduced independently
   and all passed (family tags, remaining `formatDim(` counts, class-string presence, `(mm)`
   marker, CLAUDE.md Rule 2 wording, `06-CONTEXT.md`/`06-UI-SPEC.md` amendment text).
+
 - `git log` confirms both gap-closure plans' commits are on `main` with a clean working tree
   (`b170ae4`, no uncommitted changes).
 
