@@ -95,6 +95,17 @@ export function MeasureField({
     if (result.error === null) onCommit(result.value);
   }
 
+  // The box's width follows the render mode (measured in the browser against the app's own Inter
+  // file, .planning/debug/typed-length-box-too-narrow.md): the standalone suffixed string
+  // ("365.8 cm") renders about 63px in Inter at 14px, which does not fit the 50px of text room a
+  // 64px box leaves once its 1px border and 6px side padding are taken out, so standalone mode
+  // gets a 96px box (w-24), matching the error line's own w-24 below. The bare in-table cells keep
+  // the 64px box because at the ROCKER datasheet's 540px floor each station column is only about
+  // 82px wide, and a wider cell would push the table past its floor.
+  const inputClassName = bare
+    ? "h-7 w-16 min-w-16 max-w-16 rounded-md border border-surf-line bg-surf-ground px-1.5 text-right text-sm text-surf-ink"
+    : "h-7 w-24 min-w-24 max-w-24 rounded-md border border-surf-line bg-surf-ground px-1.5 text-right text-sm text-surf-ink";
+
   return (
     <div className="inline-flex flex-col items-end">
       <Input
@@ -121,10 +132,7 @@ export function MeasureField({
             commit(raw);
           }
         }}
-        // Same ~64px fixed width as ImperialField, sized for the longest formattable value
-        // (metric's longest is "365.0 cm" at 8 characters, still shorter than ImperialField's own
-        // "23 15/16\"" at 9) — right-aligned numeric text, matching every measurement column.
-        className="h-7 w-16 min-w-16 max-w-16 rounded-md border border-surf-line bg-surf-ground px-1.5 text-right text-sm text-surf-ink"
+        className={inputClassName}
       />
       {error && (
         <div id={errorId} className="mt-0.5 w-24 text-right text-[10px] text-surf-warning-ink">
