@@ -342,3 +342,128 @@ describe("the Summary's flash-free path is structural (D-12 backstop)", () => {
     ).toBe(true);
   });
 });
+
+/**
+ * Phase 6 security register 06-07 / T-06-02 — the durable guard the plan promised.
+ *
+ * Litres is the one number a shaper quotes to a customer, and it is the one measurement CLAUDE.md
+ * Rule 2 says reads identically whether the shaper is looking at Imperial or Metric. Plan 06-07
+ * asserted exactly that, but only with two one-shot greps that ran once at planning time and left
+ * nothing behind in the suite — nothing here would have noticed if a later edit had converted,
+ * re-rounded, or units-system-branched the litres figure. These five assertions are that durable
+ * guard, added in its place.
+ *
+ * The negative assertions below are scoped to the LINES the litres figure itself lives on, never
+ * to the whole file. `VolumeCalculationCard` correctly hands the chosen `system` to `formatArea`,
+ * `formatCubicVolume` and `formatMark` for its area row, its cubic supporting line and its three
+ * cross-section/weighted-thickness rows — those rows are SUPPOSED to change with the chosen
+ * system. A file-wide "this file never mentions the units system" assertion would be false today
+ * and could only be made to pass by breaking six correct rows, so every negative claim here is
+ * evaluated per line, on the lines that mention `quotedVolumeLitres` and nowhere else.
+ *
+ * There is no DOM in this vitest config (`environment: "node"`, per
+ * `components/design/measure-field.test.ts`'s own note), so the card cannot be rendered and
+ * compared across the two systems. The guarantee is asserted the way `lib/theme.test.ts`,
+ * `lib/auth/open-access.test.ts`, `lib/db/ownership.test.ts` and this file's own D-12 backstop
+ * already do: read the real source, strip comments, assert a structural property (SCRN-05).
+ */
+describe("the Volume card's litres figure reads the same in both systems (SCRN-05, 06-07 / T-06-02)", () => {
+  it("the litres figure renders as a plain two-decimal number with a literal L", () => {
+    const source = readStripped("components/volume/volume-calculation-card.tsx");
+    // Allows incidental whitespace around the call and the closing brace so harmless
+    // reformatting can't trip this — the shape being pinned is the value and the literal L, not
+    // the exact bytes.
+    const matches = source.match(/quotedVolumeLitres\s*\.\s*toFixed\(2\)\s*\}\s*\bL\b/g) ?? [];
+    expect(
+      matches.length,
+      "the litres figure no longer renders as `{quotedVolumeLitres.toFixed(2)} L` anywhere in " +
+        "volume-calculation-card.tsx — both the full card and the Summary's compact card render " +
+        "it this way today (two matches at planning time). If this figure has been converted or " +
+        "re-rounded, that breaks the one number a shaper quotes to a customer.",
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("no line the litres figure lives on takes the units system or a display formatter", () => {
+    const source = readStripped("components/volume/volume-calculation-card.tsx");
+    const litresLines = source.split("\n").filter((line) => line.includes("quotedVolumeLitres"));
+    // A minimum count so this loop can never pass vacuously if the prop were ever renamed out
+    // from under it — four lines at planning time: the prop type, the destructure, and the two
+    // render sites (full card, compact card).
+    expect(
+      litresLines.length,
+      "expected at least two lines mentioning quotedVolumeLitres (the prop and its render sites) " +
+        "in volume-calculation-card.tsx — found none, which means this guard is no longer checking " +
+        "anything",
+    ).toBeGreaterThanOrEqual(2);
+    for (const line of litresLines) {
+      expect(
+        line,
+        `this quotedVolumeLitres line mentions the units system — litres must read the same in ` +
+          `both systems, so it may never be branched on the chosen system: "${line.trim()}"`,
+      ).not.toMatch(/\bsystem\b/);
+      expect(
+        line,
+        `this quotedVolumeLitres line calls a display formatter — litres must read the same in ` +
+          `both systems, so it may never be routed through a measure formatter: "${line.trim()}"`,
+      ).not.toMatch(/\bformat[A-Z]/);
+    }
+  });
+
+  it("the litres figure is the only hand-rolled number on the card", () => {
+    const source = readStripped("components/volume/volume-calculation-card.tsx");
+    const toFixedLines = source.split("\n").filter((line) => line.includes(".toFixed("));
+    expect(
+      toFixedLines.length,
+      "expected at least one .toFixed( call in volume-calculation-card.tsx (the litres figure) — " +
+        "found none",
+    ).toBeGreaterThanOrEqual(1);
+    for (const line of toFixedLines) {
+      expect(
+        line,
+        `this .toFixed( call is not on the litres figure — any other number on this card should ` +
+          `come from @/lib/geometry/measure-display, not be hand-rolled: "${line.trim()}"`,
+      ).toContain("quotedVolumeLitres");
+    }
+  });
+
+  it("the estimator hands the litres figure to the card untouched", () => {
+    const source = readStripped("components/volume/volume-estimator.tsx");
+    const litresLines = source.split("\n").filter((line) => line.includes("quotedVolumeLitres"));
+    expect(
+      litresLines.length,
+      "expected at least two lines mentioning quotedVolumeLitres (the destructure and the prop) " +
+        "in volume-estimator.tsx — found none, which means this guard is no longer checking " +
+        "anything",
+    ).toBeGreaterThanOrEqual(2);
+    for (const line of litresLines) {
+      expect(
+        line,
+        `the estimator hands the quoted litres figure straight to the card and must not convert ` +
+          `it on the way — this line mentions the units system: "${line.trim()}"`,
+      ).not.toMatch(/\bsystem\b/);
+      expect(
+        line,
+        `the estimator hands the quoted litres figure straight to the card and must not convert ` +
+          `it on the way — this line calls a display formatter: "${line.trim()}"`,
+      ).not.toMatch(/\bformat[A-Z]/);
+    }
+  });
+
+  it("the display boundary offers no units-system-dependent litres formatter", () => {
+    // Forward guard: lib/geometry/measure-display.ts names `Litres` zero times today (verified
+    // at planning time), so this assertion passes vacuously right now rather than describing
+    // code that exists. It is kept anyway to guard the one place a litres converter would
+    // plausibly be added, and it deliberately still permits a future litres formatter that takes
+    // no units system, since that would be a legitimate thing to add.
+    const source = readStripped("lib/geometry/measure-display.ts");
+    const litresAndSystemLines = source
+      .split("\n")
+      .filter((line) => /\bLitres\b/.test(line) && /\bUnitsSystem\b/.test(line));
+    expect(
+      litresAndSystemLines,
+      `lib/geometry/measure-display.ts now names both Litres and UnitsSystem on the same line — ` +
+        `litres must read the same in both systems, so no signature here may take both a Litres ` +
+        `value and a UnitsSystem: ${litresAndSystemLines.join(" | ")}`,
+    ).toEqual([]);
+  });
+});
