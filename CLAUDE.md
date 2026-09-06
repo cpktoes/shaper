@@ -95,9 +95,23 @@ and nothing else — no saved board is ever rewritten, and switching back reprod
 exactly. The preference lives outside the design state and outside a saved board's own data, so
 there's no such thing as "per-board units."
 
-**Where this applies today:** the setup screen's preset cards and rack cards follow the chosen
-system now. The five design screens, and anything that comes out of a printer, still read in
-inches — converting those is later work, not a gap in this rule.
+**Where this applies today:** everywhere. The setup screen's preset and rack cards, the five
+design screens, and everything that comes out of a printer — the Summary order form, the Overview
+Sheet, the Full Sized Template and the Paper Saver — all read in the system the shaper picked.
+
+Two printed-page specifics are worth recording here, because both look like mistakes until you
+know why:
+
+- The printed scale-check square stays exactly two inches in both systems, and only its caption
+  changes. In Metric it's captioned `50.8 mm` — the app's one millimetre value that carries a
+  decimal — because it's a calibration reference a shaper measures with a ruler, not a shaping
+  mark, and it has to agree with what's actually drawn rather than round to the whole-millimetre
+  house rule above.
+- A unit is carried once per line of running text, and a value standing alone in its own box
+  carries its own. That's why the Full Sized Template's wrapped dims row takes `cm` once at the
+  end (`Length 188.0 · Nose 40.0 · ... Thickness 6.7 cm · Volume 34.0 L`), while the order form's
+  seven bordered cells each take their own (`188.0 cm`, `40.0 cm`, ...) — the same list of numbers,
+  formatted two different ways, on purpose.
 
 ## Layout
 
