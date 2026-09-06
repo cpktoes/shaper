@@ -192,3 +192,10 @@ None — no external service configuration required.
 ---
 *Phase: 07-metric-on-paper*
 *Completed: 2026-09-06*
+
+## Self-Check: PASSED
+
+All key files confirmed present on disk (`components/summary/dimension-fit.ts`,
+`components/summary/dimension-fit.test.ts`, `components/summary/order-form.tsx`,
+`app/design/summary/order-form.css`, `lib/units-isolation.test.ts`, this SUMMARY.md) and all five
+commit hashes (`c69b59e`, `8195f92`, `5f3dc58`, `ee04f0f`, `891a1d4`) confirmed present in `git log`.
