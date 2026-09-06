@@ -268,9 +268,10 @@ export function FinControls({
   const { flags, resolved } = result;
 
   // Each remaining measurement control's own display-domain bounds/step/toMm — one measureSlider
-  // call per control, feeding both its onValueChange and (for the two dim-family labels below) the
-  // resolved distance the label prints, which is a different value from the one the track holds
-  // and must not be conflated with it.
+  // call per control, feeding both its onValueChange and (for the placement labels below) the
+  // resolved distance the label prints. A position slider's own domain is a signed offset from a
+  // model default, while its label prints the resulting distance up from the tail — a different
+  // value from the one the track holds, and the two must not be conflated.
   const centerPositionSlider = measureSlider(spec.advanced.centerPositionOffset, POS_BOUNDS, POS_BOUNDS.step, 1, system);
   const forwardPositionSlider = measureSlider(spec.advanced.forwardPositionOffset, POS_BOUNDS, POS_BOUNDS.step, 1, system);
   const rearPositionSlider = measureSlider(spec.advanced.rearPositionOffset, POS_BOUNDS, POS_BOUNDS.step, 1, system);
@@ -553,7 +554,7 @@ export function FinControls({
                 </div>
                 <SliderRow
                   density="tight"
-                  label={`Forward/Aft position — ${formatDim(resolved.centerOffTail, system)}`}
+                  label={`Forward/Aft position — ${formatMark(resolved.centerOffTail, system)}`}
                   value={centerPositionSlider.value}
                   min={centerPositionSlider.min}
                   max={centerPositionSlider.max}
@@ -591,7 +592,7 @@ export function FinControls({
                 <div className="mb-2.5">
                   <SliderRow
                     density="tight"
-                    label={`Forward/Aft position — ${formatDim(
+                    label={`Forward/Aft position — ${formatMark(
                       spec.finSetup === "2plus1" ? resolved.sideOffTail : spec.finSetup === "twin" ? resolved.twinOffTail : resolved.frontOffTail,
                       system,
                     )} (off-rail unchanged)`}
@@ -681,7 +682,7 @@ export function FinControls({
                     ) : (
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-bold">
-                          {formatDim(resolved.quadRearOffTailBase, system)}
+                          {formatMark(resolved.quadRearOffTailBase, system)}
                           {spec.advanced.quadRearOffTailOverridden ? " override" : ` auto (½ front off-tail + ${quarterInchRuleText})`}
                         </span>
                         <button
@@ -704,7 +705,7 @@ export function FinControls({
                 <div className="mb-2.5">
                   <SliderRow
                     density="tight"
-                    label={`Forward/Aft position — ${formatDim(resolved.pairOffTail, system)} (off-rail unchanged)`}
+                    label={`Forward/Aft position — ${formatMark(resolved.pairOffTail, system)} (off-rail unchanged)`}
                     value={rearPositionSlider.value}
                     min={rearPositionSlider.min}
                     max={rearPositionSlider.max}

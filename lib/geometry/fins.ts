@@ -43,7 +43,7 @@
  */
 
 import type { Point2D } from "./board";
-import { formatDim, formatDimBare } from "./measure-display";
+import { formatDim, formatDimBare, formatMarkBare } from "./measure-display";
 import { type Mm, inchesToMm, mm, mmToInches, type MeasureFamily, type UnitsSystem } from "./units";
 import { TOE_AIM_TABLE, TOE_AIM_TABLE_COLUMNS, type ToeAimTableRowKey } from "./toe-aim-tables";
 
@@ -134,12 +134,14 @@ export interface FinMark {
 export interface FinSummaryRow {
   label: string;
   value: Mm;
-  /** Which unit family this row's number reads in (D-01): a distance up from the tail is a
-   * length along the board, the way a shaper quotes a board's own length — `dim`. Everything
-   * else on the DATA tab — toe-in, the distance in from the rail, a fin's base length — is a
-   * mark measured with a rule against the board, the way a shaper reads a rocker height or a
-   * foil thickness — `mark`. Tagged here, where the number is worked out, so a later relabel of
-   * a row can never silently change which unit it reads in. */
+  /** Which unit family this row's number reads in. Every number on the DATA tab is a mark a
+   * shaper reads off a rule against the board — the distance up from the tail included — so
+   * every row here is `mark`: toe-in, the distance in from the rail, a fin's base length, and
+   * the distance up from the tail. (Superseded 2026-09-05, UAT gaps G-06-12 / G-06-15: fin
+   * placement numbers were briefly the `dim` family under D-01; the shaper reversed that
+   * classification because a shaper reading two numbers in the same group wants one unit, not a
+   * decimal point to shift in their head.) Tagged here, where the number is worked out, so a
+   * later relabel of a row can never silently change which unit it reads in. */
   family: MeasureFamily;
 }
 
@@ -902,7 +904,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
       groups: [
         {
           heading: "Trailing Edge",
-          rows: [{ label: "Off-Tail", value: centerFinal, family: "dim" }],
+          rows: [{ label: "Off-Tail", value: centerFinal, family: "mark" }],
           fullSpread: null,
           fullSpreadFamily: null,
         },
@@ -931,7 +933,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
         {
           heading: "Trailing Edge",
           rows: [
-            { label: "Off-Tail", value: offTail, family: "dim" },
+            { label: "Off-Tail", value: offTail, family: "mark" },
             { label: "Off-Rail", value: offRail, family: "mark" },
           ],
           fullSpread: null,
@@ -956,7 +958,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
         {
           heading: "Trailing Edge",
           rows: [
-            { label: "Off-Tail", value: rearFinal, family: "dim" },
+            { label: "Off-Tail", value: rearFinal, family: "mark" },
             {
               label: isBasicOffRail ? "Off-Rail" : "Off-Stringer (1/2 Spread)",
               value: isBasicOffRail ? quadRearOffRailValue : spread,
@@ -1168,11 +1170,15 @@ export function toeAimTableFor(boardLength: Mm, tailWidth12: Mm, system: UnitsSy
   const frontRaw = TOE_AIM_TABLE.front[rowKey] ?? TOE_AIM_TABLE.front["72+"];
   const rearRaw = TOE_AIM_TABLE.rear[rowKey] ?? TOE_AIM_TABLE.rear["72+"];
 
-  // Toe-aim distances are dims-family (D-01: the same family a fin's tail width @12" reads in),
-  // so a table value converts through formatDimBare — bare because the modal's own column header
-  // already carries the unit (D-10). Imperial reproduces exactly what the modal prints today: the
-  // raw inch number stringified, no formatting applied.
-  const formatValue = (v: number): string => (system === "imperial" ? String(v) : formatDimBare(inchesToMm(v), system));
+  // An aim distance is a mark a shaper measures off the stringer, so a CELL reads in whole
+  // millimetres (superseded 2026-09-05, UAT gap G-06-12: aim distances were briefly the same
+  // cm family as a tail-width column under D-01). A tail-width COLUMN and a board-length row
+  // label are board dims, so they stay in one-decimal centimetres — the two formatters below
+  // split accordingly. Both are bare because the modal's own headers already carry the unit
+  // (D-10). Imperial reproduces exactly what the modal prints today for both: the raw inch
+  // number stringified, no formatting applied.
+  const formatColumn = (v: number): string => (system === "imperial" ? String(v) : formatDimBare(inchesToMm(v), system));
+  const formatCell = (v: number): string => (system === "imperial" ? String(v) : formatMarkBare(inchesToMm(v), system));
 
   // The row key's open-ended form ("72+") keeps its trailing "+" marker in Metric; the numeric
   // part converts the same way every other cell does.
@@ -1184,10 +1190,10 @@ export function toeAimTableFor(boardLength: Mm, tailWidth12: Mm, system: UnitsSy
   };
 
   return {
-    columns: TOE_AIM_TABLE_COLUMNS.map(formatValue),
+    columns: TOE_AIM_TABLE_COLUMNS.map(formatColumn),
     rowLabel: formatRowLabel(rowKey),
-    front: frontRaw.map(formatValue),
-    rear: rearRaw.map(formatValue),
+    front: frontRaw.map(formatCell),
+    rear: rearRaw.map(formatCell),
     highlightIndex,
     identicalFromLabel: formatDim(inchesToMm(72), system),
   };

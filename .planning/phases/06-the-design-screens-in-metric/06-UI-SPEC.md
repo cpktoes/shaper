@@ -127,7 +127,7 @@ hand-typed inline, always run through `lib/geometry/units.ts`:
 | FINS summary line (`fin-data-panel.tsx`) | `6'2" · 20 1/4" tail @12" · Thruster · Round tail` | `188.0 cm · 51.4 cm tail @ 30.5 cm · Thruster · Round tail` |
 | FINS sidebar Tail Width label | `Tail Width @ 12" — 14 1/2"` | `Tail Width @ 30.5 cm — 36.8 cm` |
 | Toe-aim modal title (`toe-aim-table-modal.tsx`) | `nearest to 6'2" · 14 1/2" tail` | `nearest to 188.0 cm · 36.8 cm tail` |
-| Toe-aim table headings | `Front-fin aim distance (in)` / `Rear-fin aim distance (in)` | `Front-fin aim distance (cm)` / `Rear-fin aim distance (cm)` |
+| Toe-aim table headings | `Front-fin aim distance (in)` / `Rear-fin aim distance (in)` | `Front-fin aim distance (mm)` / `Rear-fin aim distance (mm)` |
 | Fin base length (D-02, standard) | `4 1/2" standard` | `114 mm standard` |
 | Volume card area line | `Board Area (estimated) — 1234.5 sq in` | `Board Area (estimated) — 7964 cm²` |
 | Volume card area line (imported) | `Template Area — 1234.5 sq in (imported)` | `Template Area — 7964 cm² (imported)` |
@@ -149,7 +149,7 @@ Post-verification state-coverage probe (ui-consideration-probe, 8-category close
 |----------|---------|--------|---------------------|
 | loading | slider-rows (interactive-control · static-content) | ✅ covered | useUnits() is a synchronous useSyncExternalStore read (Phase 5), so a slider's min, max, step and label switch on the same render as the pick with no interim state, and the server-rendered first paint already carries the chosen system (Phase 5 D-12) — there is nothing to load. |
 | error | slider-rows (interactive-control · static-content) | ✅ covered | A slider cannot receive unreadable input: every drag value is clamped at its call site against the active system's bounds and snapped (roundToWholeMm in Metric, 1/16" in Imperial) before it reaches the store, so no error state exists; the Deck Profile clamp note (SliderRow's warning-coloured note) keeps its existing behaviour and copy in both systems. |
-| overflow | slider-rows (interactive-control · static-content) | ✅ covered | The label line is a full-width block div (text-sm) that wraps as ordinary text and never clips; the longest metric label (Tail Width @ 30.5 cm — 36.8 cm, or Forward/Aft position — 28.6 cm (off-rail unchanged)) is within a few characters of its imperial counterpart and stays single-line at the sidebar's existing width. |
+| overflow | slider-rows (interactive-control · static-content) | ✅ covered | The label line is a full-width block div (text-sm) that wraps as ordinary text and never clips; the longest metric label (Tail Width @ 30.5 cm — 36.8 cm, or Forward/Aft position — 286 mm (off-rail unchanged)) is within a few characters of its imperial counterpart and stays single-line at the sidebar's existing width. |
 | long-text | slider-rows (interactive-control · static-content) | ✅ covered | Labels are a fixed name plus bounded formatter output (never longer than 365.0 cm or 228 mm) joined by a fixed ' — '; no user text flows through a slider label, so no truncation or ellipsis rule is needed. |
 | empty | metric-typed-field (form · interactive-control · static-content) | ✅ covered | The field is never blank when blurred: it is seeded from the stored millimetre value, and an empty or whitespace-only commit parses to null and reverts to the last good value (parseMetric returns null, the ImperialField contract), so an empty committed value cannot exist. |
 | loading | metric-typed-field (form · interactive-control · static-content) | ✅ covered | Commit is synchronous — parse, clamp, snap and onCommit run on blur or Enter and the reformatted value is on screen in the same render; there is no pending or disabled state. |
@@ -166,7 +166,7 @@ Post-verification state-coverage probe (ui-consideration-probe, 8-category close
 | empty | unit-headed-tables (list-collection · static-content) | ✅ covered | Every row is driven by a computed result that exists once a board exists — RailDataGroup[] from computeRailBands, the fin summary sections from computeFinPlacement, the fixed ToeAimTableView rows — so no zero-row state exists in either system; Metric changes strings only. |
 | loading | unit-headed-tables (list-collection · static-content) | ✅ covered | Cells and headers reformat on the same render useUnits() changes; there is no fetch and no interim state. |
 | error | unit-headed-tables (list-collection · static-content) | ✅ covered | No failable operation feeds these tables: cells are pure formatter output; a null rail value already renders '—' and a hard edge renders 'Hard Edge' today, unchanged in Metric. |
-| populated | unit-headed-tables (list-collection · static-content) | ✅ covered | Imperial rows are byte-identical to today; in Metric the headers carry the unit — Deck (mm), Bottom (mm), Rail (mm), Front-fin aim distance (cm) — over bare cells such as 67 and 28.6, per D-10 and the Fixed Strings table. |
+| populated | unit-headed-tables (list-collection · static-content) | ✅ covered | Imperial rows are byte-identical to today; in Metric the headers carry the unit — Deck (mm), Bottom (mm), Rail (mm), Front-fin aim distance (mm) — over bare cells such as 67 and 76, per D-10 and the Fixed Strings table. |
 | partial | unit-headed-tables (list-collection · static-content) | ✅ covered | A section can be absent (the rail table shows only open sections and mergeRailDataTable already fills missing keys with '—'); a fin role can be absent for a setup; both are today's behaviour and Metric touches only the strings inside them. |
 | overflow | unit-headed-tables (list-collection · static-content) | ✅ covered | A header grows by at most five characters (' (mm)' / ' (cm)'). The DATA-page rail table and the toe-aim tables sit in overflow-x-auto containers with min-width floors (480px for the rail table), so a wider header scrolls within the same container rule the imperial header already uses rather than clipping; value cells are whitespace-nowrap but hold only bare numbers no longer than today's. The compact order-form variant clips by design and is covered by summary-carry-through · overflow. |
 | zero-one-many | unit-headed-tables (list-collection · static-content) | ✅ covered | The rail table shows one column per open section (one to three), the fin data panel one group per fin role present, the toe-aim table a fixed row set — all pre-existing counts with no plural copy; Metric changes no count and no copy beyond the unit headers. |
@@ -321,13 +321,15 @@ Board Type, cant angles) are **untouched** — same label, same bounds, same ste
 - `fin-data-panel.tsx` summary line and `toe-aim-table-modal.tsx` title: composed strings per the
   Copywriting Contract's Fixed Strings table above — both follow the D-09 own-unit-per-value rule
   (`188.0 cm · 36.8 cm tail`, never a single trailing unit for two different numbers).
-- `toe-aim-table-modal.tsx` headings: literal `(in)` → `(cm)` in Metric (D-10); the table's own
-  numeric cells come from `lib/geometry/fins.ts`'s `toeAimTableFor` — the planner should make that
-  view system-aware (still returning pre-formatted display strings) rather than reformatting in the
-  component, per Rule 1 and Rule 2's "no component converts on its own."
-- Fin placement callouts (`fin-viewer.tsx`): toe-in and off-rail read mm-family (D-01); lateral
-  fin-off-tail positions read cm-family — composed the same way `outline-viewer.tsx`'s callouts are
-  (D-09).
+- `toe-aim-table-modal.tsx` headings: literal `(in)` → `(mm)` in Metric — the cells under each
+  heading are aim distances in the mark family (D-10); the table's own numeric cells come from
+  `lib/geometry/fins.ts`'s `toeAimTableFor` — the planner should make that view system-aware
+  (still returning pre-formatted display strings) rather than reformatting in the component, per
+  Rule 1 and Rule 2's "no component converts on its own."
+- Fin placement callouts (`fin-viewer.tsx`): toe-in, off-rail AND the off-tail positions all read
+  mark-family, each carrying its own unit — composed the same way `outline-viewer.tsx`'s callouts
+  are (D-09). This supersedes D-01's original cm classification of fin off-tail positions, per the
+  2026-09-05 amendment following UAT gaps G-06-12 / G-06-15.
 
 ### VOLUME (`volume-controls.tsx`, `volume-calculation-card.tsx`) — D-01, D-04
 
