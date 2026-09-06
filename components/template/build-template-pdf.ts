@@ -36,15 +36,14 @@ import {
   type TemplatePageBox,
   templatePageBoxes,
 } from "@/lib/geometry/template";
+import { inchesToMm, mm, type Litres, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import {
-  formatFeetInches,
-  inchesToMm,
-  mm,
-  type Litres,
-  type Mm,
-  type UnitsSystem,
-} from "@/lib/geometry/units";
-import { formatCalibrationMark, formatDim, formatDimBare, formatSignedDim } from "@/lib/geometry/measure-display";
+  formatCalibrationMark,
+  formatDim,
+  formatDimBare,
+  formatLength,
+  formatSignedDim,
+} from "@/lib/geometry/measure-display";
 
 /** Every input `buildTemplatePdf` needs, fixed complete now, so later plans (the preview dialog)
  * extend the drawing without touching a call site. */
@@ -701,13 +700,16 @@ export function templateNameBlockText(
  * per value would be seven repetitions that could push the block a line taller. Length, Nose,
  * Widepoint and Tail take `formatDimBare`'s bare figure; Offset takes `formatSignedDim` so its
  * sign survives, with Metric's own trailing ` cm` stripped to keep it bare like its neighbours;
- * Length's Imperial branch stays `formatFeetInches` (not `formatDimBare`'s inches-fraction) to
- * match what this row has always printed, while its Metric branch is the same bare centimetre
+ * Length's Imperial branch calls `formatLength(dims.length, system)` rather than reaching for
+ * `formatFeetInches` directly (07-05: `formatLength`'s own imperial branch IS `formatFeetInches`,
+ * so the printed byte is unchanged) — the same trick `order-form.tsx`'s own identification strip
+ * uses, so this file's own source never names a banned formatter directly, per
+ * `lib/units-isolation.test.ts`'s conversion ledger. Its Metric branch is the same bare centimetre
  * figure every other bare value uses. Volume takes no units argument — litres read the same in
  * both systems (CLAUDE.md Rule 2) and this is the one number in the row it would be easy to sweep
  * a `system` branch into by habit. */
 export function templateNameBlockDimsText(dims: BuildTemplatePdfOptions["dims"], system: UnitsSystem): string {
-  const lengthText = system === "metric" ? formatDimBare(dims.length, system) : formatFeetInches(dims.length);
+  const lengthText = system === "metric" ? formatDimBare(dims.length, system) : formatLength(dims.length, system);
   const signedOffset = formatSignedDim(dims.widePointOffset, system);
   const offsetText = system === "metric" ? signedOffset.replace(/ cm$/, "") : signedOffset;
   return [

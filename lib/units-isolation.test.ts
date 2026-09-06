@@ -154,14 +154,23 @@ describe("units isolation (UNIT-05, D-16)", () => {
  * As of Plan 07, every entry in `DESIGN_SCREEN_DISPLAY_FILES` reads `converted: true` and the
  * closing assertion below fails the suite the moment a new one does not: every number a shaper
  * reads on the five design screens — outline, rocker, rails, fins, volume — now comes from this
- * one boundary, in the system they chose. The Summary order form reuses four of these
+ * one boundary, in the system they chose.
+ *
+ * Phase 7 grew the exact same mechanism one layer further out, over the four things a shaper
+ * prints rather than reads on screen. The Summary order form reused four of Phase 6's own
  * now-converted components (`OutlineViewer`, `RockerViewer`'s compact callouts, `RailSectionPlot`,
  * `RailDataTable`'s compact mode) and so already read Metric wherever it reused one of them; its
- * own dimension cells, identification strip, rail-band thickness figure and fin placement panel
- * — the panels that composed their own imperial strings rather than reusing a converted component
- * — are what `PRINT_SURFACE_DISPLAY_FILES` below tracks, alongside the three jsPDF builders and
- * the one pure geometry file that also compose printed label text. That is CONTEXT.md's Phase
- * Boundary working as designed, not a gap in this ledger.
+ * own dimension cells, identification strip, rail-band thickness figure and fin placement panel —
+ * the panels that composed their own imperial strings rather than reusing a converted component —
+ * were Plan 04's own conversion. `PRINT_SURFACE_DISPLAY_FILES` below is that same ledger idiom
+ * grown to cover all four print surfaces (the order form plus the three jsPDF builders and the one
+ * pure geometry file that also composes printed label text), with its own completeness walk and
+ * its own closing assertion, mirroring the design-screen mechanism above rather than starting a
+ * second one. As of Plan 05, every entry in it reads `converted: true` too: every number a shaper
+ * reads on a screen *and* every number that comes out of a printer now comes from the one display
+ * boundary, in the system they chose. From here, a new print surface — or a new measurement added
+ * to an existing one — that forgets to route through it starts life `converted: false` and fails
+ * the suite, exactly like a new design-screen file would.
  */
 describe("the design screens read every measurement through the display boundary", () => {
   // Built from parts so this test file — which necessarily names every one of these identifiers
@@ -196,20 +205,82 @@ describe("the design screens read every measurement through the display boundary
    * The four print surfaces Phase 7 converts (CONTEXT.md's Phase Boundary): the Summary order
    * form, the three jsPDF builders, and the one pure geometry file composing printed label text.
    * Same idiom as `DESIGN_SCREEN_DISPLAY_FILES` above — a `converted` flag per file, grown here
-   * rather than a second mechanism, per CONTEXT.md's own instruction. Plan 07-01 already reaches
-   * every one of these files' *options interfaces* with a `system` field, but this ledger tracks
+   * rather than a second mechanism, per CONTEXT.md's own instruction. Every one of these files'
+   * *options interfaces* carries a required `system` field (Plan 01), but this ledger tracks
    * whether the file's own display strings route through the boundary and ban the imperial
-   * formatters — Plan 07-04 (this plan) is `components/summary/order-form.tsx`'s own conversion;
-   * Plan 07-05 flips the remaining four and closes this ledger the way the design-screen one
-   * closed above.
+   * formatters. Plan 04 converted `components/summary/order-form.tsx`; Plan 05 closed the ledger
+   * on the remaining four — including two small fixes it made along the way to keep this list
+   * honest: `build-template-pdf.ts`'s name block and `build-overview-pdf.ts`'s length callout each
+   * named `formatFeetInches`/`formatInchesFraction` directly for an Imperial-only string with no
+   * bare display-boundary counterpart (the feet-inches figure, and the `6'0" - 72"` dual form).
+   * Both now call `formatLength`/`formatDim` with an explicit `"imperial"` argument instead — the
+   * same trick `order-form.tsx`'s own identification strip already uses — so the banned-formatter
+   * check below has nothing to catch and the printed byte stays identical.
    */
   const PRINT_SURFACE_DISPLAY_FILES: { file: string; converted: boolean }[] = [
     { file: "components/summary/order-form.tsx", converted: true },
-    { file: "components/template/build-template-pdf.ts", converted: false },
-    { file: "components/template/build-strip-pdf.ts", converted: false },
-    { file: "components/template/build-overview-pdf.ts", converted: false },
-    { file: "lib/geometry/template.ts", converted: false },
+    { file: "components/template/build-template-pdf.ts", converted: true },
+    { file: "components/template/build-strip-pdf.ts", converted: true },
+    { file: "components/template/build-overview-pdf.ts", converted: true },
+    { file: "lib/geometry/template.ts", converted: true },
   ];
+
+  /**
+   * The one file under the print-surface folders that legitimately reads a raw conversion factor
+   * without ever becoming a display site this phase converts — the print-surface sibling of
+   * `OUT_OF_SCOPE_UNITS_FILES` above. `use-print-fit.ts` scales the printed PAGE to fit paper
+   * (Letter/A4) rather than a BOARD dimension, so it is not a units-system display site at all,
+   * and CLAUDE.md Rule 2 names it as the one sanctioned exception to "every conversion goes
+   * through lib/geometry/units.ts." It does not even import `lib/geometry/units` (it carries its
+   * own `MM_PER_INCH` constant), so the completeness walk below would never flag it on its own —
+   * it is named here anyway, per this plan's own instruction, so a human reading this ledger sees
+   * the one deliberate exception spelled out rather than having to already know about it.
+   */
+  const PRINT_SURFACE_OUT_OF_SCOPE_FILES: { file: string; reason: string }[] = [
+    {
+      file: "components/summary/use-print-fit.ts",
+      reason:
+        "Scales the printed PAGE to fit paper (Letter/A4), not a board dimension — CLAUDE.md's " +
+        "one named exception to the display boundary.",
+    },
+  ];
+
+  /** The two print-surface folders every print display file lives under — the sibling of
+   * `SCREEN_FOLDERS`/`findScreenTsxFiles` above, but walking `.ts` as well as `.tsx` (the three
+   * jsPDF builders are plain `.ts`) and explicitly skipping `*.test.ts(x)` files, which import
+   * `lib/geometry/units` freely to build test fixtures without being display sites themselves.
+   * `lib/geometry/template.ts` lives outside both folders and is appended separately. */
+  const PRINT_SURFACE_FOLDERS = ["components/summary", "components/template"];
+
+  /** Every non-test `.ts`/`.tsx` file under the print-surface folders, plus
+   * `lib/geometry/template.ts` — walked fresh each run so a new print-surface file is caught the
+   * moment it appears, mirroring `findScreenTsxFiles`'s own freshness guarantee. */
+  function findPrintSurfaceFiles(): string[] {
+    const found: string[] = [];
+    for (const folder of PRINT_SURFACE_FOLDERS) {
+      const dir = join(REPO_ROOT, folder);
+      if (!existsSync(dir)) continue;
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        if (!statSync(full).isFile()) continue;
+        if (!/\.tsx?$/.test(entry)) continue;
+        if (/\.test\.tsx?$/.test(entry)) continue;
+        found.push(`${folder}/${entry}`);
+      }
+    }
+    return [...found, "lib/geometry/template.ts"];
+  }
+
+  /** `lib/geometry/template.ts` is a pure file under `lib/geometry/`, so it imports its sibling
+   * modules with a relative `./units` / `./measure-display` specifier rather than the `@/lib/...`
+   * alias every component uses — these two helpers accept either form so the same assertions work
+   * whether a file lives inside `lib/geometry/` or outside it. */
+  function importsUnitsModule(source: string): boolean {
+    return /@\/lib\/geometry\/units\b/.test(source) || /from\s+["']\.\/units["']/.test(source);
+  }
+  function importsDisplayBoundary(source: string): boolean {
+    return /@\/lib\/geometry\/measure-display/.test(source) || /from\s+["']\.\/measure-display["']/.test(source);
+  }
 
   const OUT_OF_SCOPE_UNITS_FILES: { file: string; reason: string }[] = [
     {
@@ -255,11 +326,11 @@ describe("the design screens read every measurement through the display boundary
   }
 
   it("every file named in either list exists on disk", () => {
-    for (const { file } of DESIGN_SCREEN_DISPLAY_FILES) {
-      expect(existsSync(join(REPO_ROOT, file)), `${file} (DESIGN_SCREEN_DISPLAY_FILES) does not exist`).toBe(true);
+    for (const { file } of [...DESIGN_SCREEN_DISPLAY_FILES, ...PRINT_SURFACE_DISPLAY_FILES]) {
+      expect(existsSync(join(REPO_ROOT, file)), `${file} (a display-files ledger) does not exist`).toBe(true);
     }
-    for (const { file } of OUT_OF_SCOPE_UNITS_FILES) {
-      expect(existsSync(join(REPO_ROOT, file)), `${file} (OUT_OF_SCOPE_UNITS_FILES) does not exist`).toBe(true);
+    for (const { file } of [...OUT_OF_SCOPE_UNITS_FILES, ...PRINT_SURFACE_OUT_OF_SCOPE_FILES]) {
+      expect(existsSync(join(REPO_ROOT, file)), `${file} (an out-of-scope ledger) does not exist`).toBe(true);
     }
   });
 
@@ -267,9 +338,10 @@ describe("the design screens read every measurement through the display boundary
     for (const { file, converted } of [...DESIGN_SCREEN_DISPLAY_FILES, ...PRINT_SURFACE_DISPLAY_FILES]) {
       if (!converted) continue;
       const source = readStripped(file);
-      expect(source, `${file} is marked converted but does not import @/lib/geometry/measure-display`).toMatch(
-        /@\/lib\/geometry\/measure-display/,
-      );
+      expect(
+        importsDisplayBoundary(source),
+        `${file} is marked converted but does not import lib/geometry/measure-display`,
+      ).toBe(true);
     }
   });
 
@@ -301,9 +373,33 @@ describe("the design screens read every measurement through the display boundary
   });
 
   it("every out-of-scope entry carries a reason and points at a real file", () => {
-    for (const entry of OUT_OF_SCOPE_UNITS_FILES) {
+    for (const entry of [...OUT_OF_SCOPE_UNITS_FILES, ...PRINT_SURFACE_OUT_OF_SCOPE_FILES]) {
       expect(entry.reason.length, `${entry.file} has no reason`).toBeGreaterThan(0);
     }
+  });
+
+  /**
+   * The print-surface sibling of "every screen .tsx that imports lib/geometry/units is named in
+   * one of the two lists" above — same idea, walked over `findPrintSurfaceFiles()` instead of
+   * `findScreenTsxFiles()`, so a brand-new print-surface file that reads `lib/geometry/units`
+   * (aliased or, for a file inside `lib/geometry/` itself, relative) but is named in neither list
+   * fails the suite the moment it appears, rather than silently shipping unconverted.
+   */
+  it("every print-surface file that imports lib/geometry/units is named in one of the two lists", () => {
+    const named = new Set([
+      ...PRINT_SURFACE_DISPLAY_FILES.map((entry) => entry.file),
+      ...PRINT_SURFACE_OUT_OF_SCOPE_FILES.map((entry) => entry.file),
+    ]);
+    const unnamedImporters: string[] = [];
+    for (const file of findPrintSurfaceFiles()) {
+      const source = readStripped(file);
+      if (!importsUnitsModule(source)) continue;
+      if (!named.has(file)) unnamedImporters.push(file);
+    }
+    expect(
+      unnamedImporters,
+      `these files import lib/geometry/units but are named in neither PRINT_SURFACE_DISPLAY_FILES nor PRINT_SURFACE_OUT_OF_SCOPE_FILES: ${unnamedImporters.join(", ")}`,
+    ).toEqual([]);
   });
 
   /**
@@ -315,6 +411,18 @@ describe("the design screens read every measurement through the display boundary
    */
   it("every design-screen display file is converted — the phase's closing assertion", () => {
     const unconverted = DESIGN_SCREEN_DISPLAY_FILES.filter((entry) => !entry.converted).map((entry) => entry.file);
+    expect(unconverted, `these ledger entries are not yet converted: ${unconverted.join(", ")}`).toEqual([]);
+  });
+
+  /**
+   * The print surfaces' own closing assertion, mirroring the design-screen one directly above.
+   * Every entry in `PRINT_SURFACE_DISPLAY_FILES` flipped `converted: true` across Plans 01-05 —
+   * from this point a new print surface, or a new measurement added to an existing one, starts
+   * life `converted: false` and fails this test, so a shaper's Metric switch can never silently
+   * stop reaching a new printed number the way it could if this were left to a reviewer's memory.
+   */
+  it("every print surface is converted — the phase's closing assertion", () => {
+    const unconverted = PRINT_SURFACE_DISPLAY_FILES.filter((entry) => !entry.converted).map((entry) => entry.file);
     expect(unconverted, `these ledger entries are not yet converted: ${unconverted.join(", ")}`).toEqual([]);
   });
 });

@@ -22,14 +22,7 @@ import { MEASURE_STATION_MM, type OutlineGeometry, sampleOutline } from "@/lib/g
 import { computeOverviewDrawingBox, computeOverviewOutlineScale } from "@/lib/geometry/overview-layout";
 import { PAPER_MM, TEMPLATE_MARGIN_MM, type PaperSize } from "@/lib/geometry/template";
 import { formatArea, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
-import {
-  formatFeetInches,
-  formatInchesFraction,
-  mm,
-  squareMmToSquareInches,
-  type Mm,
-  type UnitsSystem,
-} from "@/lib/geometry/units";
+import { mm, squareMmToSquareInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { wrapTextToWidth } from "@/components/template/build-template-pdf";
 
 export interface BuildOverviewPdfOptions {
@@ -150,10 +143,16 @@ export function overviewSpecLines(outline: OutlineSpec, geometry: OutlineGeometr
  * before this phase. Metric has no counterpart to that dual form — feet-and-inches is an
  * imperial idea, and printing a centimetre figure twice would be noise — so it returns the
  * single centimetre figure through `formatDim`, matching the discretion note Phase 6 already
- * applied to `outline-viewer.tsx`'s own on-screen length callout. Exported for testability. */
+ * applied to `outline-viewer.tsx`'s own on-screen length callout. The Imperial dual form is
+ * composed from `formatLength`/`formatDim` called with an explicit `"imperial"` argument (07-05)
+ * rather than `formatFeetInches`/`formatInchesFraction` directly — both underlying functions are
+ * exactly what those two branches call, so the printed bytes are unchanged, but this file's own
+ * source never names a banned formatter, matching `outline-viewer.tsx`'s own length-callout
+ * pattern (`${formatLength(length, "imperial")} (${formatDim(length, "imperial")})`) and
+ * `lib/units-isolation.test.ts`'s conversion ledger. Exported for testability. */
 export function overviewLengthLabelText(length: Mm, system: UnitsSystem): string {
   if (system === "metric") return formatDim(length, system);
-  return `${formatFeetInches(length)} - ${formatInchesFraction(length)}`;
+  return `${formatLength(length, "imperial")} - ${formatDim(length, "imperial")}`;
 }
 
 /** The board's own full width at a dashed reference station — the figure printed to the left of
