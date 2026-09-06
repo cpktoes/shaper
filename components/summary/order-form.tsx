@@ -52,6 +52,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { useDesign } from "@/components/design/design-store";
+import { useUnits } from "@/components/units-provider";
 import { OutlineViewer } from "@/components/outline/outline-viewer";
 import { RailDataTable } from "@/components/rails/rail-data-table";
 import { RailSectionPlot } from "@/components/rails/rail-section-plot";
@@ -66,16 +67,43 @@ import {
   RailLabel,
 } from "./order-form-primitives";
 import { useOrderFormPrintFit } from "./use-print-fit";
+import { dimensionValueFitClass } from "./dimension-fit";
 import { cn } from "@/lib/utils";
 import { FIN_SETUPS, FIN_SYSTEMS, type FinSystem } from "@/lib/geometry/fins";
 import type { RailSectionKey } from "@/lib/geometry/rail-bands";
 import {
-  formatFeetInches,
-  formatInchesFraction,
-  formatSignedInchesFraction,
-  inchesToMm,
-  mm,
-} from "@/lib/geometry/units";
+  formatDim,
+  formatDimBare,
+  formatLength,
+  formatMark,
+  formatSignedDim,
+  type MeasureFamily,
+} from "@/lib/geometry/measure-display";
+import { inchesToMm, mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
+
+/**
+ * The page-2 identification strip's own length figure (D-06's rule): a bare centimetre number on
+ * Metric — this line carries its unit once, at the end, on the thickness figure — but the existing
+ * feet-and-inches form on Imperial, byte-identical to what this line printed before this phase
+ * (`formatLength`'s own imperial branch is exactly `formatFeetInches`, so this reproduces the old
+ * string without this file naming that formatter itself). No single boundary formatter does both
+ * bare-metric and feet-and-inches, so this composition lives here rather than in
+ * `lib/geometry/measure-display.ts` — it restates no factor and adds no formatter, calling only
+ * boundary formatters (CLAUDE.md Rule 2).
+ */
+function identificationLengthText(length: Mm, system: UnitsSystem): string {
+  return system === "metric" ? formatDimBare(length, system) : formatLength(length, system);
+}
+
+/** Dispatches a fin placement row's value through the formatter its own `family` field names,
+ * rather than deciding the family here — so a later reclassification of a row (as already
+ * happened once, UAT gaps G-06-12 / G-06-15) follows automatically instead of silently printing
+ * in the wrong unit. Every row is the `mark` family today, so this reproduces Task 1's
+ * unconditional `formatMark` call exactly; the dispatch is what makes a future reclassification
+ * safe. */
+function formatFinValue(value: Mm, family: MeasureFamily, system: UnitsSystem): string {
+  return family === "mark" ? formatMark(value, system) : formatDim(value, system);
+}
 
 const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
 const SECTION_TITLE: Record<RailSectionKey, string> = {
@@ -131,10 +159,13 @@ function DimensionCell({ label, value }: { label: string; value: string }) {
       <span className="font-display font-extrabold tracking-architectural text-surf-ink-muted uppercase leading-none order-form-caption">
         {label}
       </span>
-      {/* `leading-none` would make the line box shorter than the glyphs it holds, so the span's own
-          `overflow: hidden` (from `truncate`) clipped the measurements by ~2px. Tight, but tall
-          enough to contain its own ink. */}
-      <span className="truncate font-extrabold text-surf-ink leading-[1.15] order-form-dim">{value}</span>
+      {/* No truncation here (D-09): a shaper cuts foam to this number, so a value that would
+          overrun the cell steps its own type size down instead of losing a digit to an ellipsis.
+          `dimensionValueFitClass` (components/summary/dimension-fit.ts) is a pure function of the
+          string's own length, floored at the sheet's 12px print-legibility minimum. */}
+      <span className={cn("font-extrabold text-surf-ink leading-[1.15]", dimensionValueFitClass(value))}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -173,6 +204,7 @@ export function OrderForm() {
     finSystem,
     setFinSystem,
   } = useDesign();
+  const { system } = useUnits();
   const { rootRef, printOrderForm } = useOrderFormPrintFit();
 
   const sections = SECTION_KEYS.map((key) => ({
@@ -190,7 +222,7 @@ export function OrderForm() {
   const finSetupLabel =
     FIN_SETUPS.find((s) => s.value === effectiveFins.finSetup)?.label ?? effectiveFins.finSetup;
 
-  const thicknessDisplay = formatInchesFraction(railBands.center.boardThickness);
+  const thicknessDisplay = formatDim(railBands.center.boardThickness, system);
 
   return (
     <div
@@ -255,10 +287,10 @@ export function OrderForm() {
                   calculated number and a shaper reads it in exactly the same breath as the
                   thickness, even though the paper muse has no cell for it. */}
               <div className="flex flex-none rounded-[3px] border border-surf-ink order-form-band-dims">
-                <DimensionCell label="Length" value={formatFeetInches(outline.length)} />
+                <DimensionCell label="Length" value={formatLength(outline.length, system)} />
                 <DimensionCell
                   label="Nose"
-                  value={formatInchesFraction(outlineGeometry.noseWidthAt12in)}
+                  value={formatDim(outlineGeometry.noseWidthAt12in, system)}
                 />
                 {/* Widepoint and its offset, not a "center width". The muse's `CENTER` cell assumes
                     the widest point IS the middle of the board, which is only true of a board whose
@@ -268,15 +300,15 @@ export function OrderForm() {
                     outline spec, in the same signed form the outline editor's Offset slider shows. */}
                 <DimensionCell
                   label="Widepoint"
-                  value={formatInchesFraction(outline.widePointWidth)}
+                  value={formatDim(outline.widePointWidth, system)}
                 />
                 <DimensionCell
                   label="Offset"
-                  value={formatSignedInchesFraction(outline.widePointOffset)}
+                  value={formatSignedDim(outline.widePointOffset, system)}
                 />
                 <DimensionCell
                   label="Tail"
-                  value={formatInchesFraction(outlineGeometry.tailWidthAt12in)}
+                  value={formatDim(outlineGeometry.tailWidthAt12in, system)}
                 />
                 <DimensionCell label="Thickness" value={thicknessDisplay} />
                 <DimensionCell
@@ -518,8 +550,9 @@ export function OrderForm() {
               </span>
             </div>
             <span className="flex-none font-bold text-surf-ink-muted order-form-value">
-              {formatFeetInches(outline.length)} · {formatInchesFraction(outline.widePointWidth)} ·{" "}
-              {thicknessDisplay} · {quotedVolumeLitres.toFixed(1)} L
+              {identificationLengthText(outline.length, system)} ·{" "}
+              {formatDimBare(outline.widePointWidth, system)} · {thicknessDisplay} ·{" "}
+              {quotedVolumeLitres.toFixed(1)} L
             </span>
           </div>
 
@@ -594,7 +627,7 @@ export function OrderForm() {
                           >
                             <span className="truncate text-surf-ink-muted">{row.label}</span>
                             <span className="flex-none font-bold text-surf-ink">
-                              {formatInchesFraction(row.value, 16)}
+                              {formatFinValue(row.value, row.family, system)}
                             </span>
                           </div>
                         ))}
@@ -602,7 +635,10 @@ export function OrderForm() {
                           <div className="flex justify-between gap-1 border-b border-surf-line-faint leading-tight order-form-row">
                             <span className="truncate text-surf-ink-muted">Full Spread</span>
                             <span className="flex-none font-bold text-surf-ink">
-                              {formatInchesFraction(grp.fullSpread, 16)}
+                              {/* `fullSpreadFamily` is non-null exactly when `fullSpread` is
+                                  non-null (lib/geometry/fins.ts's own guarantee), so the fallback
+                                  below is never actually exercised. */}
+                              {formatFinValue(grp.fullSpread, grp.fullSpreadFamily ?? "mark", system)}
                             </span>
                           </div>
                         )}
