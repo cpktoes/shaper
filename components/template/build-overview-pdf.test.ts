@@ -14,7 +14,7 @@ import {
 function buildOptions(paper: "letter" | "a4" = "letter", presetIndex = 0) {
   const preset = BOARD_PRESETS[presetIndex];
   const geometry = buildOutline(preset.outline);
-  return { geometry, outline: preset.outline, paper, boardName: preset.name };
+  return { geometry, outline: preset.outline, paper, boardName: preset.name, system: "imperial" as const };
 }
 
 describe("buildOverviewPdf", () => {
@@ -35,7 +35,7 @@ describe("buildOverviewPdf", () => {
     for (const preset of BOARD_PRESETS) {
       const geometry = buildOutline(preset.outline);
       for (const paper of ["letter", "a4"] as const) {
-        const doc = buildOverviewPdf({ geometry, outline: preset.outline, paper, boardName: "" });
+        const doc = buildOverviewPdf({ geometry, outline: preset.outline, paper, boardName: "", system: "imperial" });
         expect(doc.getNumberOfPages()).toBe(1);
       }
     }
@@ -45,7 +45,7 @@ describe("buildOverviewPdf", () => {
     const preset = BOARD_PRESETS[0];
     const outline = { ...preset.outline, widePointWidth: inchesToMm(25) };
     const geometry = buildOutline(outline);
-    const doc = buildOverviewPdf({ geometry, outline, paper: "letter", boardName: preset.name });
+    const doc = buildOverviewPdf({ geometry, outline, paper: "letter", boardName: preset.name, system: "imperial" });
     expect(doc.getNumberOfPages()).toBe(1);
   });
 
@@ -65,6 +65,7 @@ describe("buildOverviewPdf", () => {
       outline: diamondOutline,
       paper: "letter",
       boardName: "Diamond Test",
+      system: "imperial",
     });
     expect(diamondDoc.getNumberOfPages()).toBe(1);
 
@@ -74,6 +75,7 @@ describe("buildOverviewPdf", () => {
       outline: swallowOutline,
       paper: "a4",
       boardName: "",
+      system: "imperial",
     });
     expect(swallowDoc.getNumberOfPages()).toBe(1);
   });

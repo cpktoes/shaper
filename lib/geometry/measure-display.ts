@@ -28,6 +28,7 @@ import {
   formatFeetInches,
   formatInchesFraction,
   formatSignedInchesFraction,
+  formatTenthMm,
   formatWholeMm,
   inchesToMm,
   metricSliderRange,
@@ -154,6 +155,19 @@ export function formatCubicVolume(volumeCubicInches: number, system: UnitsSystem
  */
 export function stationLabel(system: UnitsSystem): string {
   return system === "metric" ? `${formatCentimetres(MEASURE_STATION_MM)} cm` : `12"`;
+}
+
+/**
+ * The printed template's scale-check square caption figure (07-01 D-01/D-02) — imperial
+ * `formatInchesFraction` (`2"`, exactly what the caption prints today), metric `formatTenthMm`
+ * plus its own `mm` unit (`50.8 mm`). Not a `formatDim`/`formatMark` family value: the square is a
+ * calibration reference, not a shaping mark or a board dimension, so it carries the one
+ * millimetre figure in the app with a decimal rather than following D-01's whole-millimetre rule —
+ * the caption has to agree with what is actually drawn, and `formatMark`'s whole-millimetre
+ * rounding would put it 0.2mm out from the square a shaper is measuring against.
+ */
+export function formatCalibrationMark(value: Mm, system: UnitsSystem): string {
+  return system === "metric" ? `${formatTenthMm(value)} mm` : formatInchesFraction(value);
 }
 
 /**

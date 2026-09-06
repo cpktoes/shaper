@@ -23,6 +23,7 @@ import {
   computeTemplateLayout,
   computeTemplateMarks,
   howToBoxPlacement,
+  markLabels,
   markLineSegments,
   markPlacements,
   nameBlockPlacement,
@@ -41,6 +42,7 @@ import {
   type TemplateMarks,
   templatePageBoxes,
 } from "./template";
+import { stationLabel } from "./measure-display";
 import { degrees, formatInchesFraction, inchesToMm, mm } from "./units";
 
 const PAPERS: PaperSize[] = ["letter", "a4"];
@@ -287,6 +289,49 @@ describe("Paper Saver strip output is unchanged by the name-block move (characte
       },
     );
   }
+});
+
+/**
+ * 07-01 Task 1: proves the units channel reaches `markLabels`/`markPlacements` without disturbing
+ * the frozen pins above. `markLabels("imperial")` must reproduce the exact strings the old
+ * `MARK_LABELS` constant held (what the pins hash), and `markPlacements` called with no fourth
+ * argument must produce the same `label` values as calling it with `"imperial"` explicitly — the
+ * defaulted-parameter mechanism the plan's `<discretion_decisions>` describes as load-bearing.
+ */
+describe("markLabels / markPlacements read the chosen units system (07-01 D-04)", () => {
+  it('markLabels("imperial") reproduces the exact strings the frozen pins hash', () => {
+    expect(markLabels("imperial")).toEqual({
+      noseTwelve: 'Nose 12"',
+      tailTwelve: 'Tail 12"',
+      center: "Centre",
+      widepoint: "Wide point",
+      tailBlock: "Tail Block",
+    });
+  });
+
+  it('markLabels("metric") reads the station label from the display boundary, never a hand-typed centimetre figure', () => {
+    const labels = markLabels("metric");
+    expect(labels.noseTwelve).toBe(`Nose ${stationLabel("metric")}`);
+    expect(labels.tailTwelve).toBe(`Tail ${stationLabel("metric")}`);
+    expect(labels.center).toBe("Centre");
+    expect(labels.widepoint).toBe("Wide point");
+    expect(labels.tailBlock).toBe("Tail Block");
+  });
+
+  it("markPlacements called with no fourth argument produces the same label values as calling it with \"imperial\" explicitly", () => {
+    for (const preset of BOARD_PRESETS) {
+      const geometry = buildOutline(preset.outline);
+      for (const paper of PAPERS) {
+        const layout = computeTemplateLayout(geometry, paper);
+        const marks = computeTemplateMarks(geometry);
+
+        const defaulted = markPlacements(layout, marks, geometry);
+        const explicit = markPlacements(layout, marks, geometry, "imperial");
+
+        expect(defaulted.map((p) => p.label)).toEqual(explicit.map((p) => p.label));
+      }
+    }
+  });
 });
 
 describe("computeTemplateLayout", () => {

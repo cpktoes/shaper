@@ -38,13 +38,13 @@ import {
 } from "@/lib/geometry/template";
 import {
   formatFeetInches,
-  formatInchesFraction,
-  formatSignedInchesFraction,
   inchesToMm,
   mm,
   type Litres,
   type Mm,
+  type UnitsSystem,
 } from "@/lib/geometry/units";
+import { formatCalibrationMark, formatDim, formatDimBare, formatSignedDim } from "@/lib/geometry/measure-display";
 
 /** Every input `buildTemplatePdf` needs, fixed complete now, so later plans (the preview dialog)
  * extend the drawing without touching a call site. */
@@ -57,6 +57,12 @@ export interface BuildTemplatePdfOptions {
   geometry: OutlineGeometry;
   paper: PaperSize;
   boardName: string;
+  /** Which units system every printed label on this template reads in (07-01) — required, never
+   * defaulted, so a caller that forgets it fails to compile rather than silently printing
+   * imperial. Reaches the printer through exactly one path: `useUnits()` in
+   * `export-preview-dialog.tsx` -> this field -> `markPlacements`/`markLineSegments` and every
+   * `templateMarkLabelText`/`templateMarkDimensionText` call site below. */
+  system: UnitsSystem;
   /** The page 1 name block's own dims row — every value the Summary order form's core dimensions
    * row carries (`components/summary/order-form.tsx`'s `DimensionCell` strip), read from the same
    * design state and formatted with the same `lib/geometry/units.ts` functions, so the printed
@@ -305,11 +311,23 @@ function scaleSquareRect(
  * both paper sizes). The DECISION of which lives in `lib/geometry/template.ts`'s
  * `scaleSquarePlacement` — this function only draws on whichever page the resolved placement's own
  * `pageIndex` names (always page 0 today), never a hard-coded page check. */
+/** The scale-check square's own caption text (07-01 D-01/D-02) — composed from
+ * `formatCalibrationMark` so the printed figure can never disagree with the square it measures.
+ * Metric reads `50.8 mm x 50.8 mm — measure before taping`; Imperial reads exactly the string this
+ * caption printed before this phase, `2" x 2" — measure before taping`, because
+ * `formatCalibrationMark`'s imperial branch is `formatInchesFraction`. Exported for testability
+ * without reading the rendered page, mirroring `templateMarkLabelText`'s own pattern. */
+export function scaleSquareCaptionText(system: UnitsSystem): string {
+  const mark = formatCalibrationMark(SCALE_SQUARE_MM, system);
+  return `${mark} x ${mark} — measure before taping`;
+}
+
 function drawScaleSquare(
   doc: jsPDF,
   page: TemplatePage,
   margin: number,
   scaleSquare: { placement: ScaleSquarePlacement; squareMm: number; footprintHeightMm: number },
+  system: UnitsSystem,
 ): void {
   if (page.index !== scaleSquare.placement.pageIndex) return;
   const { x, y } = scaleSquareRect(scaleSquare, page, margin);
@@ -320,23 +338,26 @@ function drawScaleSquare(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(0);
-  doc.text('2" x 2" — measure before taping', x + squareMm / 2, y + squareMm + SCALE_SQUARE_CAPTION_GAP_MM, {
+  doc.text(scaleSquareCaptionText(system), x + squareMm / 2, y + squareMm + SCALE_SQUARE_CAPTION_GAP_MM, {
     align: "center",
   });
 }
 
 /** The dimension text drawn beside each working mark — the board's own full width (both rails,
  * not just the tick's own half-width extent) at that mark's station, formatted the way a shaper
- * reads a tape measure. Exported for testability without reading the rendered page
- * (post-checkpoint fix, defect 2: "the station lines don't have a printed dimension"). */
-export function templateMarkDimensionText(placement: TemplateMarkPlacement): string {
-  return formatInchesFraction(mm(placement.halfWidthExtent * 2));
+ * reads a tape measure. A **dims**-family value per D-04 (`Nose 30.5 cm — 40.0 cm`'s trailing
+ * figure) — routed through `formatDim`, never `formatMark`. `system` is required, not defaulted:
+ * this is the builder side of the channel, where the compiler is the guarantee every call site
+ * states which system it is printing for. Exported for testability without reading the rendered
+ * page (post-checkpoint fix, defect 2: "the station lines don't have a printed dimension"). */
+export function templateMarkDimensionText(placement: TemplateMarkPlacement, system: UnitsSystem): string {
+  return formatDim(mm(placement.halfWidthExtent * 2), system);
 }
 
-/** The mark's name plus its dimension, e.g. `Nose 12" — 15 3/4"` — the combined text drawn on one
- * line when there's room. */
-export function templateMarkLabelText(placement: TemplateMarkPlacement): string {
-  return `${placement.label} — ${templateMarkDimensionText(placement)}`;
+/** The mark's name plus its dimension, e.g. `Nose 12" — 15 3/4"` (Imperial) or
+ * `Nose 30.5 cm — 40.0 cm` (Metric) — the combined text drawn on one line when there's room. */
+export function templateMarkLabelText(placement: TemplateMarkPlacement, system: UnitsSystem): string {
+  return `${placement.label} — ${templateMarkDimensionText(placement, system)}`;
 }
 
 /** Draws the working marks that fall on this page (D-06 — nose 12in, tail 12in, centre,
@@ -362,6 +383,7 @@ function drawMarks(
   margin: number,
   placements: TemplateMarkPlacement[],
   segments: TemplateMarkLineSegment[],
+  system: UnitsSystem,
 ): void {
   const pageSegments = segments.filter((segment) => segment.pageIndex === page.index);
   const pagePlacements = placements.filter((placement) => placement.pageIndex === page.index);
@@ -392,14 +414,14 @@ function drawMarks(
     doc.setFontSize(9);
     doc.setTextColor(0);
 
-    const combined = templateMarkLabelText(placement);
+    const combined = templateMarkLabelText(placement, system);
     const availableWidth = Math.max(0, xOuter - xStringer - MARK_LABEL_OFFSET_MM - MARK_LABEL_SAFETY_MM);
     if (doc.getTextWidth(combined) <= availableWidth) {
       doc.text(combined, xStringer + MARK_LABEL_OFFSET_MM, y - MARK_LABEL_OFFSET_MM);
     } else {
       doc.text(placement.label, xStringer + MARK_LABEL_OFFSET_MM, y - MARK_LABEL_OFFSET_MM - MARK_LABEL_LINE_GAP_MM);
       doc.text(
-        templateMarkDimensionText(placement),
+        templateMarkDimensionText(placement, system),
         xStringer + MARK_LABEL_OFFSET_MM,
         y - MARK_LABEL_OFFSET_MM,
       );
@@ -419,13 +441,14 @@ export function markLabelRect(
   page: TemplatePage,
   margin: number,
   placement: TemplateMarkPlacement,
+  system: UnitsSystem,
 ): TemplateFurnitureRect {
   const y = stationToY(placement.station, page, margin) + placement.labelOffsetMm;
   const xStringer = halfWidthToX(0, page, margin);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  const width = doc.getTextWidth(templateMarkLabelText(placement));
+  const width = doc.getTextWidth(templateMarkLabelText(placement, system));
 
   return {
     name: `${placement.mark}-label`,
@@ -467,11 +490,20 @@ function drawTailClosure(doc: jsPDF, page: TemplatePage, margin: number, segment
  * Line 2 names the 2in x 2in square by its own size, not by where it sits on the page (quick task
  * 260903-h7t) — on the widest longboard and a 100%-nose-fullness longboard the square now prints
  * BELOW the how-to box rather than above it, so "the square above" would be false on exactly the
- * two boards this task moves it on. */
-export function templateHowToLines(layout: TemplateLayout): string[] {
+ * two boards this task moves it on. On Metric (07-01 D-02), line 2 reads a single calibration
+ * figure rather than the imperial `x` form — `Measure the 50.8 mm square. It should be exactly
+ * 50.8 mm.` — with the number coming from `formatCalibrationMark(SCALE_SQUARE_MM, system)`, never
+ * hand-typed. Every other line, and the conditional multi-column line, is unchanged in both
+ * systems. `system` is required, not defaulted: this is the builder side of the channel. */
+export function templateHowToLines(layout: TemplateLayout, system: UnitsSystem): string[] {
+  const mark = formatCalibrationMark(SCALE_SQUARE_MM, system);
+  const line2 =
+    system === "metric"
+      ? `Measure the ${mark} square. It should be exactly ${mark}.`
+      : 'Measure the 2" x 2" square. It should be exactly 2" x 2".';
   const lines = [
     'Print at 100% — turn off "Fit to page."',
-    'Measure the 2" x 2" square. It should be exactly 2" x 2".',
+    line2,
     "Lay each page so its edge lines up on the next page's border line — the curve should match where they overlap — then tape.",
   ];
   if (layout.columns > 1) {
@@ -504,10 +536,15 @@ export function wrapTextToWidth(text: string, maxWidthMm: number, doc: jsPDF): s
  * page 1 overrun the text box." A line too wide for one row wraps onto the next rather than
  * running past the box's printed border; continuation lines carry no number. Exported for
  * testability: every returned line's `getTextWidth` is asserted no wider than `innerWidthMm`. */
-export function templateHowToWrappedLines(layout: TemplateLayout, doc: jsPDF, innerWidthMm: number): string[] {
+export function templateHowToWrappedLines(
+  layout: TemplateLayout,
+  doc: jsPDF,
+  innerWidthMm: number,
+  system: UnitsSystem,
+): string[] {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  const lines = templateHowToLines(layout);
+  const lines = templateHowToLines(layout, system);
   const wrapped: string[] = [];
   lines.forEach((line, i) => {
     wrapped.push(...wrapTextToWidth(`${i + 1}. ${line}`, innerWidthMm, doc));
@@ -529,8 +566,9 @@ function computeHowToBoxPlacement(
   geometry: OutlineGeometry,
   box: TemplatePageBox,
   nameBlock: ResolvedNameBlock,
+  system: UnitsSystem,
 ): { placement: HowToBoxPlacement; boxWidthMm: number; boxHeightMm: number; lines: string[] } {
-  const lines = templateHowToWrappedLines(layout, doc, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM);
+  const lines = templateHowToWrappedLines(layout, doc, HOWTO_BOX_TEXT_WIDTH_LIMIT_MM, system);
   const boxHeightMm = HOWTO_BOX_PADDING_MM * 2 + lines.length * HOWTO_BOX_LINE_HEIGHT_MM;
 
   // Today's outboard rect, in the board's own station/half-width frame rather than page-local mm
@@ -653,17 +691,32 @@ export function templateNameBlockText(
 
 /** The full dims row text, before wrapping — every value the order form's own dimensions row
  * carries (`components/summary/order-form.tsx`'s `DimensionCell` strip: Length, Nose, Widepoint,
- * Offset, Tail, Thickness, Volume), formatted with the same `lib/geometry/units.ts` functions the
- * order form uses. Exported for testability without reading the rendered page (post-checkpoint
- * fix, defect 3 refinement: "add all the station mark dims with the board name"). */
-export function templateNameBlockDimsText(dims: BuildTemplatePdfOptions["dims"]): string {
+ * Offset, Tail, Thickness, Volume), formatted with the same `lib/geometry/measure-display.ts`
+ * functions the order form uses. Exported for testability without reading the rendered page
+ * (post-checkpoint fix, defect 3 refinement: "add all the station mark dims with the board name").
+ *
+ * On Imperial every value is byte-identical to what this row printed before this phase. On Metric
+ * (07-01 D-06) the row carries `cm` exactly once — on Thickness, the row's own last centimetre
+ * value — because this is one line of running text wrapped inside a fixed-width box, and a unit
+ * per value would be seven repetitions that could push the block a line taller. Length, Nose,
+ * Widepoint and Tail take `formatDimBare`'s bare figure; Offset takes `formatSignedDim` so its
+ * sign survives, with Metric's own trailing ` cm` stripped to keep it bare like its neighbours;
+ * Length's Imperial branch stays `formatFeetInches` (not `formatDimBare`'s inches-fraction) to
+ * match what this row has always printed, while its Metric branch is the same bare centimetre
+ * figure every other bare value uses. Volume takes no units argument — litres read the same in
+ * both systems (CLAUDE.md Rule 2) and this is the one number in the row it would be easy to sweep
+ * a `system` branch into by habit. */
+export function templateNameBlockDimsText(dims: BuildTemplatePdfOptions["dims"], system: UnitsSystem): string {
+  const lengthText = system === "metric" ? formatDimBare(dims.length, system) : formatFeetInches(dims.length);
+  const signedOffset = formatSignedDim(dims.widePointOffset, system);
+  const offsetText = system === "metric" ? signedOffset.replace(/ cm$/, "") : signedOffset;
   return [
-    `Length ${formatFeetInches(dims.length)}`,
-    `Nose ${formatInchesFraction(dims.noseWidth12in)}`,
-    `Widepoint ${formatInchesFraction(dims.widePointWidth)}`,
-    `Offset ${formatSignedInchesFraction(dims.widePointOffset)}`,
-    `Tail ${formatInchesFraction(dims.tailWidth12in)}`,
-    `Thickness ${formatInchesFraction(dims.centerThickness)}`,
+    `Length ${lengthText}`,
+    `Nose ${formatDimBare(dims.noseWidth12in, system)}`,
+    `Widepoint ${formatDimBare(dims.widePointWidth, system)}`,
+    `Offset ${offsetText}`,
+    `Tail ${formatDimBare(dims.tailWidth12in, system)}`,
+    `Thickness ${formatDim(dims.centerThickness, system)}`,
     `Volume ${dims.volumeLitres.toFixed(1)} L`,
   ].join("  ·  ");
 }
@@ -675,10 +728,11 @@ export function templateNameBlockDimsText(dims: BuildTemplatePdfOptions["dims"])
 export function nameBlockContent(
   doc: jsPDF,
   dims: BuildTemplatePdfOptions["dims"],
+  system: UnitsSystem,
 ): { dimsLines: string[]; height: number } {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(NAME_BOX_DIMS_FONT_SIZE_PT);
-  const dimsLines = wrapTextToWidth(templateNameBlockDimsText(dims), NAME_BOX_DIMS_WIDTH_LIMIT_MM, doc);
+  const dimsLines = wrapTextToWidth(templateNameBlockDimsText(dims, system), NAME_BOX_DIMS_WIDTH_LIMIT_MM, doc);
   const height =
     NAME_BOX_NAME_LINE_HEIGHT_MM +
     NAME_BOX_DIMS_TOP_GAP_MM +
@@ -708,8 +762,9 @@ function resolvePageZeroNameBlock(
   layout: TemplateLayout,
   geometry: OutlineGeometry,
   dims: BuildTemplatePdfOptions["dims"],
+  system: UnitsSystem,
 ): ResolvedNameBlock {
-  const content = nameBlockContent(doc, dims);
+  const content = nameBlockContent(doc, dims, system);
   const placement = nameBlockPlacement(layout, geometry, NAME_BOX_WIDTH_MM, content.height, NAME_BOX_CLEARANCE_MM);
   return { placement, content };
 }
@@ -783,9 +838,10 @@ function resolvePageZeroFurniture(
   geometry: OutlineGeometry,
   box: TemplatePageBox,
   dims: BuildTemplatePdfOptions["dims"],
+  system: UnitsSystem,
 ): ResolvedPageZeroFurniture {
-  const nameBlock = resolvePageZeroNameBlock(doc, layout, geometry, dims);
-  const howToBox = computeHowToBoxPlacement(doc, layout, geometry, box, nameBlock);
+  const nameBlock = resolvePageZeroNameBlock(doc, layout, geometry, dims, system);
+  const howToBox = computeHowToBoxPlacement(doc, layout, geometry, box, nameBlock, system);
   const scaleSquare = computeScaleSquarePlacement(layout, geometry, box, howToBox, nameBlock);
   return { nameBlock, howToBox, scaleSquare };
 }
@@ -838,7 +894,7 @@ function drawNameBlock(
  * every number drawn here comes from `layout`, `geometry` or a fixed drawing constant above;
  * nothing in this function computes tile geometry. */
 export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
-  const { layout, marks, geometry, paper, boardName, dims } = options;
+  const { layout, marks, geometry, paper, boardName, dims, system } = options;
   const paperDims = PAPER_MM[paper];
   const margin = layout.margin;
 
@@ -846,8 +902,8 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
   doc.setDrawColor(0);
   doc.setTextColor(0);
 
-  const placements = markPlacements(layout, marks, geometry);
-  const segments = markLineSegments(layout, marks, geometry);
+  const placements = markPlacements(layout, marks, geometry, system);
+  const segments = markLineSegments(layout, marks, geometry, system);
   const tailClosure = computeTailClosure(geometry);
   const tailClosureSeg = tailClosure ? tailClosureSegments(layout, tailClosure) : [];
   const boxes = templatePageBoxes(layout);
@@ -858,16 +914,16 @@ export function buildTemplatePdf(options: BuildTemplatePdfOptions): jsPDF {
   // (T-fqv-02). Safe to hoist ahead of the how-to box's own font measurements —
   // templateHowToWrappedLines and nameBlockContent each set their own font family and size before
   // measuring, so neither depends on the other's leftover font state.
-  const furniture = resolvePageZeroFurniture(doc, layout, geometry, boxes[0], dims);
+  const furniture = resolvePageZeroFurniture(doc, layout, geometry, boxes[0], dims, system);
 
   layout.pages.forEach((page, i) => {
     if (i > 0) doc.addPage(paper, "portrait");
 
     drawOutlineCurve(doc, geometry, page, margin);
     drawPageBox(doc, page, boxes[i], margin);
-    drawMarks(doc, page, margin, placements, segments);
+    drawMarks(doc, page, margin, placements, segments, system);
     drawTailClosure(doc, page, margin, tailClosureSeg);
-    drawScaleSquare(doc, page, margin, furniture.scaleSquare);
+    drawScaleSquare(doc, page, margin, furniture.scaleSquare, system);
     drawHowToBox(doc, page, margin, furniture.howToBox);
     drawPageLabel(doc, page, margin, paperDims.width, paperDims.height);
     if (page.index === 0) {
@@ -895,7 +951,7 @@ export interface TemplateFurnitureRect {
  * (round 2 post-checkpoint fix, defect 2: replaced by the per-page alignment box), so this list is
  * shorter than it once was. */
 export function templatePageZeroFurnitureRects(options: BuildTemplatePdfOptions): TemplateFurnitureRect[] {
-  const { layout, geometry, dims, paper } = options;
+  const { layout, geometry, dims, paper, system } = options;
   const margin = layout.margin;
   const page = layout.pages[0];
   const box = templatePageBoxes(layout)[0];
@@ -904,7 +960,7 @@ export function templatePageZeroFurnitureRects(options: BuildTemplatePdfOptions)
   // The same single resolved bundle buildTemplatePdf uses, so the scale square, the how-to box and
   // the name block this function reports are exactly the ones actually drawn (quick task
   // 260903-fqv, T-fqv-02; widened to all three pieces by 260903-h7t).
-  const furniture = resolvePageZeroFurniture(doc, layout, geometry, box, dims);
+  const furniture = resolvePageZeroFurniture(doc, layout, geometry, box, dims, system);
 
   const rects: TemplateFurnitureRect[] = [];
 
@@ -933,10 +989,10 @@ export function templatePageZeroFurnitureRects(options: BuildTemplatePdfOptions)
 export function templateHowToBoxPlacement(
   options: BuildTemplatePdfOptions,
 ): { placement: HowToBoxPlacement; boxWidthMm: number; boxHeightMm: number; lines: string[] } {
-  const { layout, geometry, dims, paper } = options;
+  const { layout, geometry, dims, paper, system } = options;
   const box = templatePageBoxes(layout)[0];
   const doc = new jsPDF({ unit: "mm", format: paper, orientation: "portrait" });
-  const furniture = resolvePageZeroFurniture(doc, layout, geometry, box, dims);
+  const furniture = resolvePageZeroFurniture(doc, layout, geometry, box, dims, system);
   return furniture.howToBox;
 }
 
@@ -949,10 +1005,10 @@ export function templateHowToBoxPlacement(
 export function templateScaleSquarePlacement(
   options: BuildTemplatePdfOptions,
 ): { placement: ScaleSquarePlacement; squareMm: number; footprintHeightMm: number } {
-  const { layout, geometry, dims, paper } = options;
+  const { layout, geometry, dims, paper, system } = options;
   const box = templatePageBoxes(layout)[0];
   const doc = new jsPDF({ unit: "mm", format: paper, orientation: "portrait" });
-  const furniture = resolvePageZeroFurniture(doc, layout, geometry, box, dims);
+  const furniture = resolvePageZeroFurniture(doc, layout, geometry, box, dims, system);
   return furniture.scaleSquare;
 }
 

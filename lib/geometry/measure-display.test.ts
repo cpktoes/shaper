@@ -4,6 +4,7 @@ import { MEASURE_STATION_MM } from "./outline";
 import {
   commitTypedMeasure,
   formatArea,
+  formatCalibrationMark,
   formatCubicVolume,
   formatDim,
   formatDimBare,
@@ -27,6 +28,7 @@ import {
   formatFeetInches,
   formatInchesFraction,
   formatSignedInchesFraction,
+  formatTenthMm,
   inchesToMm,
   mm,
   mmToCentimetres,
@@ -175,6 +177,23 @@ describe("columnUnitSuffix", () => {
 
   it("metric mark family suffixes ' (mm)', with its own leading space", () => {
     expect(columnUnitSuffix("mark", "metric")).toBe(" (mm)");
+  });
+});
+
+// 07-01 D-01/D-02: the printed scale-check square's own caption figure — the one calibration
+// reference on the page, which has to agree with the drawn square rather than follow D-01's
+// whole-millimetre house rule. Both branches must reproduce exactly what the caption prints today
+// (Imperial) or what D-02 specifies (Metric), derived from the same value the square itself is
+// drawn from, never hand-typed.
+describe("formatCalibrationMark", () => {
+  it("metric branch is formatTenthMm plus its own mm unit — 50.8 mm for a two-inch calibration figure", () => {
+    expect(formatCalibrationMark(inchesToMm(2), "metric")).toBe(`${formatTenthMm(inchesToMm(2))} mm`);
+    expect(formatCalibrationMark(inchesToMm(2), "metric")).toBe("50.8 mm");
+  });
+
+  it('imperial branch is formatInchesFraction, exactly today\'s "2\\"" caption', () => {
+    expect(formatCalibrationMark(inchesToMm(2), "imperial")).toBe(formatInchesFraction(inchesToMm(2)));
+    expect(formatCalibrationMark(inchesToMm(2), "imperial")).toBe('2"');
   });
 });
 

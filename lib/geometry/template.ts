@@ -11,8 +11,9 @@
  * actual PDF is `components/template/build-template-pdf.ts`; this file only produces the numbers.
  */
 
+import { formatDim, stationLabel } from "./measure-display";
 import { MEASURE_STATION_MM, type OutlineGeometry, sampleOutline } from "./outline";
-import { type Mm, formatInchesFraction, inchesToMm, mm } from "./units";
+import { type Mm, type UnitsSystem, formatInchesFraction, inchesToMm, mm } from "./units";
 
 /** The board name + dims block's fixed width (D-08) — kept here, next to
  * `nameBlockPlacement`, rather than in the drawing module, so the geometry that decides WHERE the
@@ -192,14 +193,23 @@ export function computeTemplateMarks(geometry: OutlineGeometry): TemplateMarks {
 }
 
 /** The label text printed beside each working mark's tick (D-06 — the four station marks, no
- * every-12in ladder — plus "Tail Block" for tails that have a squared end to close off). */
-const MARK_LABELS: Record<keyof TemplateMarks, string> = {
-  noseTwelve: 'Nose 12"',
-  tailTwelve: 'Tail 12"',
-  center: "Centre",
-  widepoint: "Wide point",
-  tailBlock: "Tail Block",
-};
+ * every-12in ladder — plus "Tail Block" for tails that have a squared end to close off), for the
+ * given `system` (07-01 D-04). Replaces the old fixed `MARK_LABELS` constant: `noseTwelve` and
+ * `tailTwelve` are the only two that carry a unit at all, and that unit is the display boundary's
+ * own station label (`stationLabel`) rather than a hardcoded `12"` — Metric reads `Nose 30.5 cm`,
+ * Imperial reads exactly today's `Nose 12"`. `center`, `widepoint` and `tailBlock` are plain
+ * English words with no unit inside them and are unaffected by `system`. Exported for testability
+ * — the new describe block below the frozen pins in `template.test.ts` asserts
+ * `markLabels("imperial")` reproduces the exact strings those pins hash. */
+export function markLabels(system: UnitsSystem): Record<keyof TemplateMarks, string> {
+  return {
+    noseTwelve: `Nose ${stationLabel(system)}`,
+    tailTwelve: `Tail ${stationLabel(system)}`,
+    center: "Centre",
+    widepoint: "Wide point",
+    tailBlock: "Tail Block",
+  };
+}
 
 /** Where one working mark's tick is drawn, in the drawing module's own coordinate inputs — a page
  * index plus the same absolute-station/half-width values `stationToY`/`halfWidthToX` already
@@ -248,14 +258,21 @@ const MARK_LABEL_COINCIDENT_EPSILON_MM = 1e-6;
  *
  * CENTER and WIDEPOINT run through `resolveCenterWidepointLabelCollision` before returning (round
  * 4 post-checkpoint fix, defect 1) — every other mark's placement is unaffected.
+ *
+ * `system` (07-01) defaults to `"imperial"` — deliberately, so every existing zero-argument call
+ * site, including the frozen characterisation pins in `template.test.ts`, keeps producing a
+ * byte-identical result. That default is load-bearing, not a convenience: see the
+ * `<discretion_decisions>` note in this phase's plan for why it must never be dropped.
  */
 export function markPlacements(
   layout: TemplateLayout,
   marks: TemplateMarks,
   geometry: OutlineGeometry,
+  system: UnitsSystem = "imperial",
 ): TemplateMarkPlacement[] {
   const placements: TemplateMarkPlacement[] = [];
   const markNames = Object.keys(marks) as (keyof TemplateMarks)[];
+  const labels = markLabels(system);
 
   for (const markName of markNames) {
     const station = marks[markName];
@@ -270,7 +287,7 @@ export function markPlacements(
         pageIndex: page.index,
         station,
         halfWidthExtent,
-        label: MARK_LABELS[markName],
+        label: labels[markName],
         labelOffsetMm: mm(0),
       });
     }
@@ -396,14 +413,20 @@ export interface TemplateMarkLineSegment {
  * only correct for a squash tail; diamond and swallow need the genuinely diagonal cut
  * `computeTailClosure` / `tailClosureSegments` produce instead. The tailBlock mark's LABEL still
  * comes from `markPlacements`, unaffected — only this line-drawing function skips it.
+ *
+ * `system` (07-01) defaults to `"imperial"` for the same reason `markPlacements`' own default
+ * does — every existing zero-argument call site, including the frozen characterisation pins,
+ * must keep producing a byte-identical result.
  */
 export function markLineSegments(
   layout: TemplateLayout,
   marks: TemplateMarks,
   geometry: OutlineGeometry,
+  system: UnitsSystem = "imperial",
 ): TemplateMarkLineSegment[] {
   const segments: TemplateMarkLineSegment[] = [];
   const markNames = Object.keys(marks) as (keyof TemplateMarks)[];
+  const labels = markLabels(system);
 
   for (const markName of markNames) {
     if (markName === "tailBlock") continue; // drawn separately by tailClosureSegments
@@ -432,7 +455,7 @@ export function markLineSegments(
           halfWidthRange: [mm(start), mm(end)],
           hasLabel: page.col === 0,
           halfWidthExtent,
-          label: MARK_LABELS[markName],
+          label: labels[markName],
         });
       }
     }
@@ -1241,20 +1264,28 @@ export interface StripMarkSegment {
  * tail), clipped to whichever page's own station band and slid half-width window they fall on —
  * a mark inside a shared overlap band appears once per page, matching `markPlacements`'s own
  * behaviour for the tiled template.
+ *
+ * `system` (07-01) defaults to `"imperial"` for the same reason `markPlacements`' own default
+ * does — every existing zero-argument call site, including the frozen characterisation pins,
+ * must keep producing a byte-identical result. The trailing width figure is the board's own full
+ * width at that station, a **dims**-family value per D-04 — routed through `formatDim`, never
+ * `formatMark`, so Metric reads `40.0 cm` and not `400 mm`.
  */
 export function stripMarkSegments(
   layout: StripLayout,
   marks: TemplateMarks,
   geometry: OutlineGeometry,
+  system: UnitsSystem = "imperial",
 ): StripMarkSegment[] {
   const segments: StripMarkSegment[] = [];
   const markNames = Object.keys(marks) as (keyof TemplateMarks)[];
+  const labels = markLabels(system);
 
   for (const markName of markNames) {
     const station = marks[markName];
     if (station === undefined) continue; // tailBlock is absent for a pin/round tail
     const halfWidthExtent = sampleOutline(geometry, station);
-    const label = `${MARK_LABELS[markName]} — ${formatInchesFraction(mm(halfWidthExtent * 2))}`;
+    const label = `${labels[markName]} — ${formatDim(mm(halfWidthExtent * 2), system)}`;
 
     for (const page of layout.pages) {
       if (station < page.stationRange[0] || station > page.stationRange[1]) continue;
@@ -1295,14 +1326,20 @@ export interface StripLabelRow {
  * from its own line. A mark row starts at its own default position (just above its tick, `station
  * + STRIP_LABEL_INTERIOR_GAP_MM`) and is nudged to the opposite side only when that default would
  * sit closer than `STRIP_LABEL_MIN_SEPARATION_MM` to an already-placed row on the same page.
+ *
+ * `system` (07-01) defaults to `"imperial"` and is passed straight through to `stripMarkSegments`
+ * — same load-bearing reason as every other defaulted `system` parameter in this file: the frozen
+ * characterisation pins call this with no fourth argument and must keep getting back a
+ * byte-identical result.
  */
 export function stripLabelRows(
   layout: StripLayout,
   marks: TemplateMarks,
   geometry: OutlineGeometry,
+  system: UnitsSystem = "imperial",
 ): StripLabelRow[] {
   const lines = stripRegistrationLines(layout, geometry);
-  const segments = stripMarkSegments(layout, marks, geometry);
+  const segments = stripMarkSegments(layout, marks, geometry, system);
   const gap = STRIP_LABEL_INTERIOR_GAP_MM;
 
   const rows: StripLabelRow[] = [];

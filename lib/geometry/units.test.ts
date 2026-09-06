@@ -11,6 +11,7 @@ import {
   formatFeetInches,
   formatInchesFraction,
   formatSignedInchesFraction,
+  formatTenthMm,
   formatWholeMm,
   inchesToMm,
   metricSliderRange,
@@ -238,6 +239,33 @@ describe("units boundary", () => {
 
     it("formats zero with no decimal point and no minus sign", () => {
       expect(formatWholeMm(mm(0))).toBe("0");
+    });
+  });
+
+  // 07-01 D-02: the app's one millimetre value that carries a decimal, because the printed
+  // scale-check square is a calibration reference that has to agree with what is actually drawn,
+  // not a shaping mark following the whole-millimetre house rule formatWholeMm applies everywhere
+  // else. Expected values below are computed from the known conversion (25.4mm to the inch), never
+  // hand-transcribed from a printed page (CLAUDE.md Rule 1).
+  describe("formatTenthMm", () => {
+    it("formats a two-inch calibration figure as 50.8, never a rounded whole 51", () => {
+      expect(formatTenthMm(inchesToMm(2))).toBe("50.8");
+    });
+
+    it("keeps a trailing .0 rather than stripping it when the tenth is zero", () => {
+      expect(formatTenthMm(mm(50))).toBe("50.0");
+    });
+
+    it("rounds a value on the half-tenth-of-a-millimetre boundary away from zero, not on float noise", () => {
+      expect(formatTenthMm(mm(50.05))).toBe("50.1");
+    });
+
+    it("signs the nudge for a negative value", () => {
+      expect(formatTenthMm(mm(-50.05))).toBe("-50.1");
+    });
+
+    it("formats zero with a trailing .0", () => {
+      expect(formatTenthMm(mm(0))).toBe("0.0");
     });
   });
 
