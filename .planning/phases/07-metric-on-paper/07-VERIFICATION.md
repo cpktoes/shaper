@@ -1,7 +1,8 @@
 ---
 phase: 07-metric-on-paper
 verified: 2026-09-06T23:45:00Z
-status: human_needed
+human_verification_completed: 2026-09-07T00:15:00Z
+status: passed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -172,3 +173,28 @@ be marked `passed` on re-verification with no code changes needed.
 
 _Verified: 2026-09-06T23:45:00Z_
 _Verifier: Claude (gsd-verifier)_
+
+
+## Human Verification Outcome (2026-09-06)
+
+All nine deferred items were resolved through `/gsd-verify-work 7`, and the shaper accepted the
+automated evidence rather than repeating the exports by hand. Every item was settled by
+measurement, not by eye:
+
+| # | Item | How it was settled |
+|---|------|--------------------|
+| 1 | Metric print audit of the order form (D-10) | Fired the real `beforeprint` handler in both systems: both sheets land at zoom 1 (988px in a 991px box) with **zero** clipped elements across 719 nodes. `useOrderFormPrintFit` targets the narrower of Letter/A4 and the shorter of the two, so the one measured box is the Letter/A4 intersection — a single pass covers both papers. |
+| 2, 4, 6 | Metric template / Paper Saver / Overview Sheet | Rendered real PDFs and compared content streams against Imperial. Template: **1 of 152** drawing operators differs — the name-block box height (25.6 → 21.4 mm, one fewer wrapped line). Paper Saver: 1 of 126, the same box. Overview Sheet: **zero** geometry differences. |
+| 3, 5, 7 | Imperial unchanged | Rebuilt every Imperial PDF from pre-phase commit `625322d`. All **68 pages** across the three surfaces are byte-identical — text and drawing operators alike. |
+| 8 | WIDEPOINT/CENTER merge threshold | Scanned offsets 0.0–3.0 mm in 0.1 mm steps: the systems disagree only in a **0.5–0.7 mm** window. At 0.6 mm Imperial prints `0"` and merges; Metric prints `+0.1 cm` and splits. Each sheet agrees with its own printed figure. |
+| 9 | Edge-case containment (code review WR-01) | Ran page-0 containment and overlap checks in **both** systems over 9 boards (4 presets, 3 wide variants, an empty name, a 40-character name) × Letter and A4: **38/38** contained, no overlaps. WR-01 does not reproduce. |
+
+### Observation logged, not fixed
+
+Page 2 of the order form closes with `All measurements round to the nearest 1/16" (0.1 cm in cm
+units) — expect a hair of play when routing to these numbers.` in both systems. On a Metric sheet
+that leads with inches and claims 0.1 cm precision directly beneath whole-millimetre fin numbers.
+The string is a Phase 1 literal in `lib/geometry/fins.ts`, a geometry file deliberately outside the
+display boundary, so no Phase 7 plan touched it and the units-isolation ledger cannot see it. Out
+of this phase's declared scope; recorded under Deferred Follow-Ups in `07-UAT.md` at the shaper's
+direction rather than fixed here.
