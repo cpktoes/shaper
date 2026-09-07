@@ -4,7 +4,7 @@
 
 Shaper started from a working prototype (built in Claude Design) that already proved out the two "secret sauce" calculators — rail band and fin placement — but lived outside the codebase as a single self-contained page. **Milestone v1.0 (Phases 1–4, complete 2026-08-29)** ported that prototype into a real Next.js app and got it live with accounts and saving, proved the geometry math trustworthy and extended it to volume and printable templates, then built the rocker and foil editors as first-class interactive tools. A shaper can now log in, shape a full board design (outline, rocker, rail, foil, fins), see live-calculated rail band dimensions, fin placement and volume, save it as a named model, and print a full-size template to cut foam from — all of it in inches and litres.
 
-**Milestone v1.1 (Phases 5–7, current)** gives the shaper a choice. Every board is already stored in millimetres, so this is presentation work: a units chooser in the settings menu, one set of metric formatters and parsers beside the imperial ones in `lib/geometry/units.ts`, and then every place a number is shown — roughly 300 of them across about 25 files — reading the shaper's chosen system instead of assuming inches. It lands in three passes a shaper can see and try one at a time: the chooser itself proving out on the setup screen, then the five design screens, then everything that comes out of a printer.
+**Milestone v1.1 (Phases 5–7, complete 2026-09-06)** gives the shaper a choice. Every board is already stored in millimetres, so this is presentation work: a units chooser in the settings menu, one set of metric formatters and parsers beside the imperial ones in `lib/geometry/units.ts`, and then every place a number is shown — roughly 300 of them across about 25 files — reading the shaper's chosen system instead of assuming inches. It lands in three passes a shaper can see and try one at a time: the chooser itself proving out on the setup screen, then the five design screens, then everything that comes out of a printer.
 
 ## Phases
 
@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Volume, Templates & Verified Math** - Live volume calculation, printable full-size templates, and automated tests proving the geometry math correct (completed 2026-08-28)
 - [x] **Phase 4: Rocker & Foil Editors** - Interactive rocker and foil editors complete the design surface, feeding rail band and volume live (completed 2026-08-29)
 
-**Milestone v1.1 — Imperial vs Metric (current)**
+**Milestone v1.1 — Imperial vs Metric (complete)**
 
 - [x] **Phase 5: The Units Chooser** - Imperial/Metric picker in the settings menu, saved on the account and remembered per browser, proving itself on the setup screen's preset and rack cards (completed 2026-09-05)
 - [x] **Phase 6: The Design Screens in Metric** - Every slider, typed field, viewer callout and data table on the five design screens reads and accepts the chosen system (completed 2026-09-05)
@@ -70,141 +70,14 @@ Phases 1–4 below are the completed v1.0 record — goals, requirement IDs and 
 
 ---
 
-**Milestone v1.1 — Imperial vs Metric** starts here.
+### Milestone v1.1: Imperial vs Metric (Phases 5–7, complete 2026-09-06)
 
-### Phase 5: The Units Chooser
+Shipped — 21 plans across 3 phases. A shaper picks Imperial or Metric from the gear menu and every
+number in the app follows: the setup screen, all five design screens, and everything that comes out
+of a printer. Full phase detail archived in
+[`.planning/milestones/v1.1-ROADMAP.md`](milestones/v1.1-ROADMAP.md); audit in
+[`.planning/v1.1-MILESTONE-AUDIT.md`](v1.1-MILESTONE-AUDIT.md).
 
-**Goal**: A shaper picks Imperial or Metric from the settings menu, that choice follows them across devices when signed in and sticks to the browser when signed out, and the setup screen's preset cards and rack cards immediately read in the system they picked — proving the whole chain from the chooser, through one shared preference, into `lib/geometry/units.ts` and out to a label.
-**Depends on**: Nothing new (builds on the shipped v1.0 app)
-**Requirements**: UNIT-02, UNIT-03, UNIT-04, UNIT-05, SCRN-04, RACK-01
-**Success Criteria** (what must be TRUE):
-
-  1. A shaper opens the gear menu in the top bar and finds an Imperial / Metric chooser sitting beside the theme chooser; until they touch it, everyone sees Imperial exactly as they do today
-  2. Choosing Metric immediately re-labels every preset card and every board on the rack — a 6'2" × 20 1/4" board reads 188 × 51.4 cm — and choosing Imperial puts them straight back
-  3. Signed in, the choice is waiting on any other browser or device the shaper signs in from; signed out, that browser remembers it on its own, and signing in either adopts the account's saved choice or promotes the browser's when the account has none
-  4. Switching to Metric and back leaves every saved board untouched — the same dimensions, down to the same sixteenth — and nothing in the rack has been rewritten
-
-**Plans**: 7/7 plans executed
-**Wave 1**
-
-  - [x] 05-01-PLAN.md — Tracer: the gear-menu chooser through one shared preference into `units.ts` and out to a rack card label, server-rendered from the first paint
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-  - [x] 05-02-PLAN.md — The account home: a nullable per-user units column, its migration, the auth-first write, and the sign-in handoff
-  - [x] 05-03-PLAN.md — One shared card line, and preset cards gain their dimensions line
-  - [x] 05-04-PLAN.md — The whole-millimetre family and the metric parser, the UNIT-05 isolation guard, and the CLAUDE.md Rule 2 rewrite
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-  - [x] 05-05-PLAN.md — Folded todo: one shared slider row across all five control sidebars
-  - [x] 05-06-PLAN.md — Folded todo: one shared viewer toolbar button across the TEMPLATE and ROCKER screens
-
-**Wave 4** *(blocked on Wave 3 completion)*
-
-  - [x] 05-07-PLAN.md — Ship it: push, let Vercel deploy, then migrate production, and check the whole chain live
-
-**Phase notes**:
-
-  - Rule 1 applies: the metric side of the number rules (cm and whole-mm formatting, decimal-cm and whole-mm parsing, rounding, and the round-trip guarantee behind UNIT-05) is added to `lib/geometry/units.ts` beside the existing imperial functions, pure and unit-tested. Components read the chosen system through one hook/context rather than each converting on its own.
-  - UNIT-03 needs a new account-level column via Drizzle. CLAUDE.md's database rule applies without exception: push to `main`, let Vercel finish deploying, and only then run `npm run db:migrate:prod`.
-  - UNIT-04's per-browser fallback mirrors how the theme preference already works (`lib/theme.ts` + localStorage), including the pre-hydration read.
-  - This is the first phase to ship a Metric display, so CLAUDE.md Rule 2 ("inches and litres on screen") is rewritten here — the project rules must never claim the app is inches-only once it isn't.
-
-**UI hint**: yes
-
-### Phase 6: The Design Screens in Metric
-
-**Goal**: Every measurement a shaper reads or types while shaping — on the outline, rails, fins, rocker and volume screens — follows the system they chose, with cm for length and widths, whole millimetres for the small stuff, and litres for volume either way.
-**Depends on**: Phase 5
-**Requirements**: SCRN-01, SCRN-02, SCRN-03, SCRN-05
-**Success Criteria** (what must be TRUE):
-
-  1. In Metric, every slider and value on the outline, rails, fins, rocker and volume screens reads in cm for length and widths and whole millimetres for rail band marks, rocker heights and foil thickness — and the sliders land on whole millimetres rather than between them
-  2. In Metric, a shaper can type a decimal centimetre figure (51.4) or whole millimetres and the field accepts it, re-prints it in the chosen system, and reverts anything unreadable exactly as it does today
-  3. Viewer callouts and data tables follow too — rail band marks, fin placement numbers, the rocker datasheet and the volume card all read in the chosen system, with no stray inch marks left behind
-  4. Volume reads in litres in both systems, and the same litres figure is quoted on every screen as it is now
-  5. A shaper can flip between systems mid-design and the board itself never moves — the outline, rocker and foil are exactly where they left them
-
-**Plans**: 9/9 plans executed — two gap-closure plans open from UAT
-**Wave 1**
-
-  - [x] 06-01-PLAN.md — Tracer: one shared display layer and one metric-bounds helper, proven end to end on the Template Builder's widepoint width, then the rest of that screen
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-  - [x] 06-02-PLAN.md — One typed measurement box, and a typed board length in centimetres on all three screens that ask for one
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-  - [x] 06-03-PLAN.md — The ROCKER screen: sliders, the datasheet's headers, labels and typed cells, and the side-profile callouts
-
-**Wave 4** *(blocked on Wave 3 completion)*
-
-  - [x] 06-04-PLAN.md — The RAILS screen: the sidebar's marks, the data table's unit-headed columns, and a ten-millimetre grid on the cross-section plot
-
-**Wave 5** *(blocked on Wave 4 completion)*
-
-  - [x] 06-05-PLAN.md — The fin model learns which of its numbers are lengths and which are marks; the DATA tab and the toe-aim tables convert
-
-**Wave 6** *(blocked on Wave 5 completion)*
-
-  - [x] 06-06-PLAN.md — The FINS sidebar and drawing: tail width, fin base length, positions, toe-in, off-rail and every callout
-
-**Wave 7** *(blocked on Wave 6 completion)*
-
-  - [x] 06-07-PLAN.md — The VOLUME screen and the volume card's area and cubic lines, then close the ledger and check what the Summary inherited
-
-**Wave 8 (gap closure)** *(from UAT gaps G-06-12 and G-06-15 — fin placement numbers read in centimetres)*
-
-  - [x] 06-08-PLAN.md — Every fin placement number reads in whole millimetres — the DATA tab, the sidebar, the drawing and the toe-aim tables — while board length and tail width stay in centimetres
-
-**Wave 9 (gap closure)** *(blocked on Wave 8 completion; from UAT gap G-06-4 — the typed box clips its own text)*
-
-  - [x] 06-09-PLAN.md — The typed board length box widens to show its whole value, and the rocker datasheet's cells stay exactly as they are
-
-**Phase notes**:
-
-  - This is the bulk of the roughly 300 display sites across about 25 component files. No component gets its own conversion: each reads the chosen system from the Phase 5 hook and calls `lib/geometry/units.ts`.
-  - Planned as one screen per wave, in the founder's own review cadence: every wave leaves a shippable, part-converted app that can be looked at in the browser before the next one starts.
-  - Two shared pieces land before the screens: a pure display layer (`lib/geometry/measure-display.ts`) every call site formats through, and one `MeasureField` replacing `ImperialField` — the chosen units system is the primary noun, so neither system is the default.
-  - A conversion ledger in `lib/units-isolation.test.ts` grows through the phase and closes in Plan 07, failing the suite if any design-screen file formats a measurement on its own.
-  - Typed entry today goes through the imperial parser (`components/rocker/imperial-field.tsx` and the controls that use `parseImperial`); the metric parser is its counterpart, not a second code path inside components.
-
-**UI hint**: yes
-
-### Phase 7: Metric on Paper
-
-**Goal**: Everything a shaper prints comes out in the system they chose — the Summary order form, the Overview Sheet, the Full Sized Template and the Paper Saver — while the 1:1 templates still measure dead true against a ruler.
-**Depends on**: Phase 5 (executes after Phase 6)
-**Requirements**: PRNT-01, PRNT-02, PRNT-03, PRNT-04
-**Success Criteria** (what must be TRUE):
-
-  1. The Summary order form prints every measurement in the chosen system, so a shaper handing it over reads the same numbers they designed with
-  2. The Overview Sheet PDF prints in the chosen system, dims block and all
-  3. The Full Sized Template and Paper Saver print their marks, labels and name/dims block in the chosen system
-  4. In Metric, the printed scale-check square is captioned in millimetres, so a metric ruler alone can confirm the print came out at true 1:1
-  5. Nothing on paper moved: a template printed after this phase measures the same on the bench as one printed before it, and the frozen characterisation pins in `lib/geometry/template.test.ts` are still green
-
-**Plans**: 5/5 plans executed
-**Wave 1**
-
-  - [x] 07-01-PLAN.md — Tracer: the gear-menu chooser through the export dialog and into the Full Sized Template's marks, calibration caption and name block, with the frozen pins still green
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-  - [x] 07-02-PLAN.md — The Paper Saver: registration lines in whole millimetres, mark labels in centimetres, and its own calibration caption
-  - [x] 07-03-PLAN.md — The Overview Sheet: spec block, length callout, offset label, dashed station names and the widepoint merge at each system's own precision
-  - [x] 07-04-PLAN.md — The Summary order form: seven dimension cells, the identification strip, fin placement in millimetres, shrink-rather-than-clip, and the Metric print audit
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-  - [x] 07-05-PLAN.md — Close the conversion ledger over all four print surfaces, prove no call site is silently imperial, and rewrite CLAUDE.md's units rule
-
-**Phase notes**:
-
-  - PRNT-04 carries one open question — whether the scale-check square stays a 2in square with a millimetre caption or becomes a 50 mm square in Metric. That is settled in this phase's discussion step, not in the roadmap, because it decides whether any printed geometry changes at all.
-  - Three separate jsPDF builders are in scope (`components/template/build-template-pdf.ts`, `build-strip-pdf.ts`, `build-overview-pdf.ts`) plus the Summary order form. A units change is a change to what the labels *say*; if the frozen template pins go red, the change went further than it should have.
 
 ## Progress
 

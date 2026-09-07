@@ -15,7 +15,46 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 - **Success metric**: Not yet defined — revisit once free/paid split is scoped
 - **Strategy notes**: See `M1`–`M6` build order in Context below
 
-## Current Milestone: v1.1 Imperial vs Metric
+## Current State
+
+**Shipped: v1.1 — Imperial vs Metric** (2026-09-06, Phases 5–7, 21 plans)
+
+A shaper picks Imperial or Metric from the gear menu and the whole app follows: the setup screen's
+preset and rack cards, all five design screens, and everything that comes out of a printer — the
+Summary order form, the Overview Sheet, the Full Sized Template and the Paper Saver. Metric is
+all-metric, split into two families of number: dims (length, widths, headline thickness) in
+centimetres to one decimal, and marks (rail bands, rocker heights, foil stations, every fin
+placement figure) in whole millimetres. Litres are litres in both. The choice is saved on the
+shaper's account and follows them across devices; signed out, the browser remembers it alone.
+
+Underneath, nothing changed: every board is still stored in metric millimetres, and the preference
+lives outside a saved board's own data, so switching systems can never rewrite a design. A shaper
+who never opens the chooser gets byte-for-byte the app they had before — proven by rebuilding every
+Imperial PDF from the pre-milestone commit and finding all 68 pages identical.
+
+Before that, **v1.0 — the design tool, in inches** (2026-08-29, Phases 1–4): the Claude Design
+prototype ported into a real Next.js app and live on Vercel, with accounts and saved designs,
+verified geometry math, live volume, printable full-size templates, and the rocker and foil editors.
+
+Archives: [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-phases/)
+
+## Next Milestone Goals
+
+Not yet scoped. Run `/gsd-new-milestone` to define v1.2 — that step gathers the goal, researches
+the domain, writes a fresh REQUIREMENTS.md and produces the roadmap.
+
+Candidates carried in from the build guide and this milestone's debt:
+
+- **Free/paid tier gating** (Clerk Billing) — build-guide milestones M4–M5, waiting on real shapers
+  using the free version so it's clear what's worth paying for
+- **Public sharing / model gallery** — build-guide milestone M6
+- **Retroactive coverage on v1.1** — a security pass for Phase 5 (it added a database table and a
+  server action) and Nyquist validation for Phases 5–7, none of which was run
+
+<details>
+<summary>Previous milestone goals (v1.1, now shipped)</summary>
+
+### v1.1 Imperial vs Metric
 
 **Goal:** A shaper can switch the whole app between Imperial and Metric, and every number they read on screen or on paper follows.
 
@@ -27,6 +66,8 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 - Rack cards and board names show dimensions in the chosen system
 
 **Key context:** Data is already stored in millimetres, so this is presentation work plus one new account column (code deploys before the production migration runs). Every conversion stays in `lib/geometry/units.ts` (Rule 1); typed entry in Metric accepts decimal centimetres and whole millimetres. Deferred twice by the founder (Phase 1 UAT, then the settings-menu task 260824-m6k); roughly 300 display sites across about 25 files.
+
+</details>
 
 ## Requirements
 
@@ -46,12 +87,11 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 - [x] User can define a foil (thickness distribution along the board) — Validated in Phase 4: Rocker & Foil Editors (five-station foil drives the rail-band thickness through a default-on link and feeds a Simpson-integrated cross-section volume validated within 1.01% of a published blank; one litres figure quoted on every screen)
 - [x] User can choose Imperial or Metric from the settings menu; the choice is saved on their account and remembered per browser when signed out — Validated in Phase 5: The Units Chooser (gear-menu chooser, account column with per-browser fallback, setup screen's preset and rack cards follow)
 - [x] Every measurement on the five design screens (sliders, typed entry, callouts, tables) reads in the chosen system — cm for length and widths, mm for rail band, rocker and foil values, litres for volume either way — Validated in Phase 6: The Design Screens in Metric (one display boundary in lib/geometry/measure-display.ts; every design-screen file pinned converted by the units-isolation ledger; fin placement numbers read as whole-millimetre marks after the shaper's UAT decision; UAT 18/18, security 34/34)
+- [x] Everything a shaper prints — the Summary order form, the Overview Sheet, the Full Sized Template and the Paper Saver — reads in the chosen system, with 1:1 templates still measuring dead true against a ruler — Validated in Phase 7: Metric on Paper (all four print surfaces pinned converted by the units-isolation ledger; the scale-check square stays exactly two inches in both systems but is captioned 50.8 mm in Metric; every Imperial page byte-identical to the pre-milestone build; UAT 9/9)
 
 ### Active
 
-- [ ] The Summary order form and Overview Sheet print in the chosen system
-- [ ] The Full Sized Template and Paper Saver print their labels, dims block and scale-check caption in the chosen system
-- [ ] Rack cards and board names show dimensions in the chosen system
+None — v1.1 is complete and v1.2 is not yet scoped. `/gsd-new-milestone` writes the next set.
 
 ### Out of Scope
 
@@ -109,6 +149,8 @@ templates ("the math is right").
 | Units preference lives on the account, with a per-browser fallback when signed out | Follows the shaper across devices; sign-in stays a nudge, never a gate | Validated (Phase 5) |
 | Fin placement numbers are millimetre marks, board dims stay centimetres | Shaper decision during Phase 6 UAT: a fin's distance off the tail, off the rail, its toe-in and base length are read off a rule on the blank, so they read in whole mm like every other mark; board length and tail width stay the cm dims they are everywhere else (supersedes Phase 6 D-01) | Validated (Phase 6, plan 06-08) |
 | The Summary order form stays part-metric until Phase 7 | Its own dims block, thickness, size line and fin rows are the same component on screen and on paper; Phase 7 (PRNT-01) converts every printed output together rather than splitting the order form across two phases | Accepted (Phase 6 UAT, deferred follow-up) |
+| The printed scale-check square stays two inches in both systems | It is a calibration reference measured with a ruler, so it must agree with what is actually drawn; only its caption changes, making `50.8 mm` the app's one millimetre value that carries a decimal | Validated (Phase 7, plan 07-01) |
+| A unit is carried once per line of running text; a value alone in its own box carries its own | The Full Sized Template's wrapped dims row takes `cm` once at the end while the order form's seven bordered cells each take their own — the same numbers, formatted two ways, on purpose | Validated (Phase 7, plans 07-01 and 07-04) |
 
 ## Evolution
 
@@ -128,4 +170,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-05 after Phase 6: The Design Screens in Metric*
+*Last updated: 2026-09-06 at milestone v1.1 completion (Imperial vs Metric, Phases 5-7)*
