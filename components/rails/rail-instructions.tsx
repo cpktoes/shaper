@@ -8,9 +8,10 @@
  * (`computeRailSection` -> `buildRailSegments`/`buildRailProfile`/`railPlotBounds`) against the
  * prototype's own fixed literal inputs (D-20), never `lib/geometry/rail-bands.ts` itself — that
  * module is untouched by this phase. `RailInstructions` is the tab body: card 1 ("Understanding
- * Rail Markings"), card 2 ("Turning Marks Into Rail Bands" — the three steps, the nine-item
- * legend and the plan/side figure) and card 3 (the closing note), matching the prototype's own
- * three-card page (D-02).
+ * Rail Markings" — fixed at the prototype's own 350px height, ported from Rails.dc.html line 359,
+ * so the example rail always has a real box to draw in), card 2 ("Turning Marks Into Rail Bands"
+ * — the three steps, the nine-item legend and the plan/side figure) and card 3 (the closing note),
+ * matching the prototype's own three-card page (D-02).
  */
 
 import { useMemo, useState } from "react";
@@ -132,7 +133,12 @@ export function RailInstructions() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
-      <div className="flex min-h-0 flex-1 flex-col gap-3 rounded-lg border border-surf-line-faint p-5">
+      {/* Fixed at the prototype's own 350px height (Rails.dc.html line 359), not a proportional
+          share of the column: a percentage/flex-1 height has nothing definite to resolve against
+          in a column that already overflows (card 2 alone runs 1644px), so it would collapse to
+          its heading's own height and leave the example rail with no box to draw in — which is
+          exactly what was happening before this fix. `flex-none` stops it shrinking back down. */}
+      <div className="flex h-[350px] flex-none flex-col gap-3 rounded-lg border border-surf-line-faint p-5">
         <div>
           <div className="flex items-center justify-between gap-3">
             <div className={CARD_HEADING_CLASS}>Understanding Rail Markings</div>
