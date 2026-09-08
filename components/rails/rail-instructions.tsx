@@ -45,7 +45,7 @@ const EXAMPLE_RAIL_DOMED_BAND_BASE_IN = 6;
 /** The example rail's own thickness for the given state (D-19's "stated example thickness") —
  * board thickness (3 1/2") when Flat, rail thickness (3") when Domed. Read through `formatMark`
  * wherever it is shown; never composed as a raw string. */
-function exampleRailThickness(domed: boolean): Mm {
+export function exampleRailThickness(domed: boolean): Mm {
   return inchesToMm(domed ? EXAMPLE_RAIL_RAIL_THICKNESS_IN : EXAMPLE_RAIL_BOARD_THICKNESS_IN);
 }
 

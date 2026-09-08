@@ -15,21 +15,16 @@
  */
 
 import { useUnits } from "@/components/units-provider";
-import { ExampleRailFigure } from "@/components/rails/rail-instructions";
+import { ExampleRailFigure, exampleRailThickness } from "@/components/rails/rail-instructions";
 import {
   ALL_RAIL_REFERENCE_GROUPS,
   RailPlanSideFigure,
 } from "@/components/rails/rail-plan-side-figure";
 import { formatMark } from "@/lib/geometry/measure-display";
-import { inchesToMm } from "@/lib/geometry/units";
 
-// D-08: the sheet is always the Flat rail, so its own stated example thickness (D-19) is always
-// the board's own 3 1/2" — the same literal `rail-instructions.tsx`'s own
-// EXAMPLE_RAIL_BOARD_THICKNESS_IN encodes for the Flat case. Duplicated here deliberately rather
-// than imported: this component's own contract (rail-instructions-sheet.test.ts) is that it never
-// reaches back into rail-instructions.tsx for anything beyond ExampleRailFigure itself — the sheet
-// is fixed and self-contained, not a mirror of the tab's own state.
-const EXAMPLE_RAIL_FLAT_THICKNESS_IN = 3.5;
+// D-08: the sheet is always the Flat rail, so its own stated example thickness (D-19) reads
+// through the same pure `exampleRailThickness(false)` the drawing below is built from — the
+// caption and the drawing now come from one number, so they can never drift apart.
 
 export function RailInstructionsSheet() {
   const { system } = useUnits();
@@ -42,7 +37,7 @@ export function RailInstructionsSheet() {
         </div>
         <div className="mt-1 flex items-baseline justify-between gap-2 text-sm text-surf-ink-muted">
           <span>Example rail with mark definitions</span>
-          <span>{formatMark(inchesToMm(EXAMPLE_RAIL_FLAT_THICKNESS_IN), system)}</span>
+          <span>{formatMark(exampleRailThickness(false), system)}</span>
         </div>
       </div>
       <div className="flex min-h-0 flex-1 items-center justify-center">

@@ -47,7 +47,7 @@ describe("RailInstructionsSheet — a fixed reference sheet, never a partial one
     expect(sheetSource).toMatch(/<ExampleRailFigure\s+domed=\{false\}\s*\/>/);
   });
 
-  it("imports only ExampleRailFigure from rail-instructions — never the tab's own toggle or legend state", () => {
+  it("imports only the figure and the pure thickness function from rail-instructions — never the tab's own toggle or legend state", () => {
     const importMatch = sheetSource.match(
       /import\s*\{([^}]*)\}\s*from\s*["']@\/components\/rails\/rail-instructions["']/,
     );
@@ -55,8 +55,14 @@ describe("RailInstructionsSheet — a fixed reference sheet, never a partial one
     const names = importMatch![1]
       .split(",")
       .map((name) => name.trim())
-      .filter(Boolean);
-    expect(names).toEqual(["ExampleRailFigure"]);
+      .filter(Boolean)
+      .sort();
+    expect(names).toEqual(["ExampleRailFigure", "exampleRailThickness"]);
+  });
+
+  it("reads its stated example thickness from the same pure function that draws the rail (WR-02)", () => {
+    expect(sheetSource).toContain("exampleRailThickness(false)");
+    expect(sheetSource).not.toMatch(/3\.5/);
   });
 
   it("carries the sheet's own heading string from the Copywriting Contract, verbatim", () => {
