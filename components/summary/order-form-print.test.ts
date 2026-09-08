@@ -66,6 +66,25 @@ function readPortraitPapersIn(source: string): { width: number; height: number }
   return entries;
 }
 
+/** CSS's own reference pixel for a stylesheet length (96px = 1in) — not a board-dimension
+ * conversion. CLAUDE.md Rule 2 governs design values (in/mm for what a shaper sees), and
+ * use-print-fit.ts measures the real px-per-inch at runtime on purpose; this constant exists only
+ * to interpret a raw CSS `px` length read straight out of the stylesheet's own print rule below. */
+const CSS_REFERENCE_PX_PER_INCH = 96;
+
+/** Converts a padding value + CSS unit (as matched out of the stylesheet) into inches. No unit is
+ * only ever valid for a value of 0 — the print rule this feeds is expected to declare
+ * `padding: 0 !important` with no unit, and any other unitless length would be ambiguous. */
+function paddingToInches(value: number, unit: string | undefined, mmPerInch: number): number {
+  if (!unit) {
+    expect(value, "a unitless CSS length must be 0").toBe(0);
+    return 0;
+  }
+  if (unit === "in") return value;
+  if (unit === "mm") return value / mmPerInch;
+  return value / CSS_REFERENCE_PX_PER_INCH;
+}
+
 describe("order form print path (G-08-10, PRNT-06)", () => {
   it("zeroes the page wrapper's screen padding in print, so a future tidy-up cannot quietly put the blank pages back", () => {
     const css = readStripped(ORDER_FORM_CSS_PATH);
@@ -92,7 +111,7 @@ describe("order form print path (G-08-10, PRNT-06)", () => {
     ).toBe(stylesheetMarginMm);
   });
 
-  it("the fitted sheet, plus the wrapper's now-zero padding, fits inside the shortest portrait paper's printable height", () => {
+  it("the fitted sheet, plus the wrapper's print padding as the stylesheet declares it, fits inside the shortest portrait paper's printable height", () => {
     const css = readStripped(ORDER_FORM_CSS_PATH);
     const pageBlockMatch = css.match(/@page\s*\{([\s\S]*?)\}/);
     const marginMm = Number(pageBlockMatch![1].match(/margin:\s*([\d.]+)mm/)![1]);
@@ -110,9 +129,14 @@ describe("order form print path (G-08-10, PRNT-06)", () => {
     const printableHeightIn = shortestHeightIn - 2 * marginIn;
     const fittedSheetHeightIn = printableHeightIn * fitSafety;
 
-    // The wrapper's screen padding no longer reaches print (pinned by the first test above), so
-    // it contributes 0 to the printed flow.
-    const wrapperPrintPaddingIn = 0;
+    // The wrapper's print padding is read from the [data-order-form-page] print rule itself
+    // (G-08-10), not assumed to be zero — so a future regression in the padding reset fails this
+    // test too. 32px of wrapper padding is about 0.33in against roughly 0.05in of Letter's own
+    // slack, which is exactly the bug this plan fixed.
+    const body = firstOrderFormPageRuleBody(css);
+    const paddingMatch = body.match(/padding:\s*([\d.]+)\s*(px|mm|in)?\s*!important/);
+    expect(paddingMatch, "the [data-order-form-page] print rule declares no numeric padding").not.toBeNull();
+    const wrapperPrintPaddingIn = paddingToInches(Number(paddingMatch![1]), paddingMatch![2], mmPerInch);
 
     expect(
       fittedSheetHeightIn + wrapperPrintPaddingIn,
