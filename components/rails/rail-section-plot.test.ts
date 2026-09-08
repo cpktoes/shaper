@@ -19,6 +19,7 @@ import {
   buildRailPlotGrid,
   railPlotProjection,
   railPlotTicksFit,
+  railPlotLeftLabelsFit,
 } from "./rail-section-plot";
 
 /**
@@ -267,5 +268,60 @@ describe("railPlotTicksFit", () => {
   it("the default 10mm-labelled bottom axis fits at 1.8 and 2.3 (the printed third sheet's own bracket)", () => {
     expect(railPlotTicksFit(everyTick.xTicks, 1.8)).toBe(true);
     expect(railPlotTicksFit(everyTick.xTicks, 2.3)).toBe(true);
+  });
+});
+
+/**
+ * `buildRailPlotGrid`'s `leftAxisUnit` option (08-08, gap G-08-9): turns the left axis's own
+ * millimetre-mark suffix off without touching the bottom axis's own copy — the plot always names
+ * its unit at least once, per CLAUDE.md's "carried once" rule.
+ */
+describe("buildRailPlotGrid leftAxisUnit option", () => {
+  const bands = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
+  const bounds = computeRailPlotBounds(bands.center, bands.center.bounds.xAxisMin);
+
+  it("turning the left-axis unit mark off leaves every left-hand label a bare number and does not touch the bottom axis's own mark", () => {
+    const withUnit = buildRailPlotGrid(bounds, "metric");
+    const withoutUnit = buildRailPlotGrid(bounds, "metric", { leftAxisUnit: false });
+
+    expect(withoutUnit.yTicks.some((t) => t.label.endsWith(" mm"))).toBe(false);
+    // Every y label is otherwise identical (same bare digits), just missing the suffix.
+    withoutUnit.yTicks.forEach((tick, idx) => {
+      expect(tick.value).toBe(withUnit.yTicks[idx].value);
+      expect(tick.label).toBe(withUnit.yTicks[idx].label.replace(" mm", ""));
+    });
+    // The bottom axis is untouched by this option — still exactly one " mm" mark, unmoved.
+    expect(withoutUnit.xTicks).toEqual(withUnit.xTicks);
+  });
+
+  it("the Imperial branch never reads leftAxisUnit — output is identical with and without it", () => {
+    const noOption = buildRailPlotGrid(bounds, "imperial");
+    const withOption = buildRailPlotGrid(bounds, "imperial", { leftAxisUnit: false });
+    expect(withOption).toEqual(noOption);
+  });
+});
+
+/**
+ * `railPlotLeftLabelsFit` (08-08, gap G-08-9): the pure fit test behind Task 2's two-step fix.
+ * Scales per `.planning/debug/metric-axis-labels-instructions-card.md`, the same three D-13 pins
+ * `railPlotTicksFit` above uses: 0.785 is the INSTRUCTIONS card, 1.2 is the VIEWER plots, 2.3 is
+ * the printed third sheet's own upper bracket.
+ */
+describe("railPlotLeftLabelsFit", () => {
+  const bands = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
+  const bounds = computeRailPlotBounds(bands.center, bands.center.bounds.xAxisMin);
+  const suffixed = buildRailPlotGrid(bounds, "metric").yTicks;
+  const bare = buildRailPlotGrid(bounds, "metric", { leftAxisUnit: false }).yTicks;
+
+  it("the suffixed left-hand labels ('10 mm') fit at none of the three measured scales", () => {
+    expect(railPlotLeftLabelsFit(suffixed, 0.785)).toBe(false);
+    expect(railPlotLeftLabelsFit(suffixed, 1.2)).toBe(false);
+    expect(railPlotLeftLabelsFit(suffixed, 2.3)).toBe(false);
+  });
+
+  it("the bare left-hand labels fit at 1.2 (the VIEWER) and 2.3 (the printed sheet) but not at 0.785 (the card)", () => {
+    expect(railPlotLeftLabelsFit(bare, 0.785)).toBe(false);
+    expect(railPlotLeftLabelsFit(bare, 1.2)).toBe(true);
+    expect(railPlotLeftLabelsFit(bare, 2.3)).toBe(true);
   });
 });
