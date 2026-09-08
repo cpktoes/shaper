@@ -478,7 +478,7 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width", callouts }: R
   // little right of the axis line, clear of the tick mark's own inboard arm, under the same
   // `textShadow` halo the mark-name callouts already wear so it reads over the faint grid. The
   // tick mark itself (`x1`/`x2`) never moves either way — no drawn coordinate outside the label
-  // text changes, so `computeRailPlotBounds`/`railPlotProjection` stay untouched (D-13).
+  // text changes, so the plot's own box-and-projection math stays untouched (D-13).
   const yTicks: {
     x1: number;
     y1: number;
