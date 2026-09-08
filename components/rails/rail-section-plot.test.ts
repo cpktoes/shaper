@@ -11,7 +11,16 @@ vi.mock("@/app/actions/units", () => ({ saveUnitsPreference: async () => {} }));
 
 import { DEFAULT_RAIL_BAND_SPEC, computeRailBands } from "@/lib/geometry/rail-bands";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
-import { CALLOUT_BOTTOM_PAD, CALLOUT_RIGHT_PAD, SCALE, computeRailPlotBounds, buildRailPlotGrid, railPlotProjection } from "./rail-section-plot";
+import {
+  CALLOUT_BOTTOM_PAD,
+  CALLOUT_RIGHT_PAD,
+  SCALE,
+  computeRailPlotBounds,
+  buildRailPlotGrid,
+  railPlotProjection,
+  railPlotTicksFit,
+  railPlotLeftLabelsFit,
+} from "./rail-section-plot";
 
 /**
  * The rail plot's grid-tick generation (T-06-05) had no test at all before this plan — a wrong
@@ -175,5 +184,144 @@ describe("computeRailPlotBounds calloutRoom option", () => {
     // The room the below-axis names live in: the distance from the axis to the floor of the box
     // grows by exactly CALLOUT_BOTTOM_PAD when the room is asked for.
     expect(padded.height - py(0)).toBeCloseTo(plain.height - py(0) + CALLOUT_BOTTOM_PAD, 9);
+  });
+});
+
+/**
+ * `buildRailPlotGrid`'s `labelEvery` option (08-08, gap G-08-9): a shaper counts squares on the
+ * GRID, so every 10mm step keeps its own grid line and tick mark regardless of `labelEvery` — only
+ * the printed NUMBER thins, and the millimetre mark always follows the first labelled non-zero
+ * tick. Built from the same default centre section every other test in this file uses.
+ */
+describe("buildRailPlotGrid labelEvery option", () => {
+  const bands = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
+  const bounds = computeRailPlotBounds(bands.center, bands.center.bounds.xAxisMin);
+
+  it("asking for a number every second tick blanks the others, leaves every grid position in place, and puts the mm mark on the first labelled non-zero tick", () => {
+    const everyTick = buildRailPlotGrid(bounds, "metric");
+    const everySecond = buildRailPlotGrid(bounds, "metric", { labelEvery: 2 });
+
+    // Every 10mm grid position (the lines and tick marks a shaper counts squares on) survives
+    // unchanged — labelEvery only ever touches the printed labels.
+    expect(everySecond.xGridPositions).toEqual(everyTick.xGridPositions);
+    expect(everySecond.yGridPositions).toEqual(everyTick.yGridPositions);
+    expect(everySecond.xGridMin).toBe(everyTick.xGridMin);
+    expect(everySecond.xTicks.map((t) => t.value)).toEqual(everyTick.xTicks.map((t) => t.value));
+    expect(everySecond.yTicks.map((t) => t.value)).toEqual(everyTick.yTicks.map((t) => t.value));
+
+    // Every odd-indexed tick (10mm, 30mm, ... outward from the origin) lost its number. Every
+    // even-indexed tick past the origin (20mm, 40mm, ...) keeps its bare number unchanged, EXCEPT
+    // index 2 (20mm): that tick is now the first LABELLED non-zero tick, so the " mm" mark moves
+    // onto it from index 1 (10mm, blanked) — asserted explicitly below.
+    everySecond.xTicks.forEach((tick, idx) => {
+      if (idx % 2 !== 0) expect(tick.label).toBe("");
+      else if (idx !== 2) expect(tick.label).toBe(everyTick.xTicks[idx].label);
+    });
+    everySecond.yTicks.forEach((tick, idx) => {
+      if (idx % 2 !== 0) expect(tick.label).toBe("");
+      else if (idx !== 2) expect(tick.label).toBe(everyTick.yTicks[idx].label);
+    });
+
+    // Still exactly one " mm" mark per axis, now on the first LABELLED non-zero tick (20mm, index
+    // 2) rather than 10mm (index 1, which lost its number).
+    const xSuffixed = everySecond.xTicks.filter((t) => t.label.endsWith(" mm"));
+    const ySuffixed = everySecond.yTicks.filter((t) => t.label.endsWith(" mm"));
+    expect(xSuffixed.length).toBe(1);
+    expect(ySuffixed.length).toBe(1);
+    expect(everySecond.xTicks[2].label).toBe("20 mm");
+    expect(everySecond.yTicks[2].label).toBe("20 mm");
+  });
+
+  it("the Imperial branch never reads labelEvery — output is identical with and without it", () => {
+    const noOption = buildRailPlotGrid(bounds, "imperial");
+    const withOption = buildRailPlotGrid(bounds, "imperial", { labelEvery: 5 });
+    expect(withOption).toEqual(noOption);
+  });
+});
+
+/**
+ * `railPlotTicksFit` (08-08, gap G-08-9): the pure fit test the executor's read of D-13's three
+ * measured render scales pins directly, so a future change to `SCALE`, `CALLOUT_CHAR_PX` or the
+ * Metric tick pitch fails a test here instead of silently reintroducing the collision the UAT
+ * found. Scales per `.planning/debug/metric-axis-labels-instructions-card.md`: 0.785 is the
+ * INSTRUCTIONS card (the broken one), 1.2 is the VIEWER plots, 1.8 and 2.3 bracket the printed
+ * third sheet.
+ */
+describe("railPlotTicksFit", () => {
+  const bands = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
+  const bounds = computeRailPlotBounds(bands.center, bands.center.bounds.xAxisMin);
+  const everyTick = buildRailPlotGrid(bounds, "metric");
+  const everySecond = buildRailPlotGrid(bounds, "metric", { labelEvery: 2 });
+
+  it("the default 10mm-labelled bottom axis does not fit at the INSTRUCTIONS card's own 0.785 scale", () => {
+    expect(railPlotTicksFit(everyTick.xTicks, 0.785)).toBe(false);
+  });
+
+  it("a number every 20mm fits at 0.785, where the default does not", () => {
+    expect(railPlotTicksFit(everySecond.xTicks, 0.785)).toBe(true);
+  });
+
+  it("the default 10mm-labelled bottom axis fits at 1.2 (the VIEWER plots)", () => {
+    expect(railPlotTicksFit(everyTick.xTicks, 1.2)).toBe(true);
+  });
+
+  it("the default 10mm-labelled bottom axis fits at 1.8 and 2.3 (the printed third sheet's own bracket)", () => {
+    expect(railPlotTicksFit(everyTick.xTicks, 1.8)).toBe(true);
+    expect(railPlotTicksFit(everyTick.xTicks, 2.3)).toBe(true);
+  });
+});
+
+/**
+ * `buildRailPlotGrid`'s `leftAxisUnit` option (08-08, gap G-08-9): turns the left axis's own
+ * millimetre-mark suffix off without touching the bottom axis's own copy — the plot always names
+ * its unit at least once, per CLAUDE.md's "carried once" rule.
+ */
+describe("buildRailPlotGrid leftAxisUnit option", () => {
+  const bands = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
+  const bounds = computeRailPlotBounds(bands.center, bands.center.bounds.xAxisMin);
+
+  it("turning the left-axis unit mark off leaves every left-hand label a bare number and does not touch the bottom axis's own mark", () => {
+    const withUnit = buildRailPlotGrid(bounds, "metric");
+    const withoutUnit = buildRailPlotGrid(bounds, "metric", { leftAxisUnit: false });
+
+    expect(withoutUnit.yTicks.some((t) => t.label.endsWith(" mm"))).toBe(false);
+    // Every y label is otherwise identical (same bare digits), just missing the suffix.
+    withoutUnit.yTicks.forEach((tick, idx) => {
+      expect(tick.value).toBe(withUnit.yTicks[idx].value);
+      expect(tick.label).toBe(withUnit.yTicks[idx].label.replace(" mm", ""));
+    });
+    // The bottom axis is untouched by this option — still exactly one " mm" mark, unmoved.
+    expect(withoutUnit.xTicks).toEqual(withUnit.xTicks);
+  });
+
+  it("the Imperial branch never reads leftAxisUnit — output is identical with and without it", () => {
+    const noOption = buildRailPlotGrid(bounds, "imperial");
+    const withOption = buildRailPlotGrid(bounds, "imperial", { leftAxisUnit: false });
+    expect(withOption).toEqual(noOption);
+  });
+});
+
+/**
+ * `railPlotLeftLabelsFit` (08-08, gap G-08-9): the pure fit test behind Task 2's two-step fix.
+ * Scales per `.planning/debug/metric-axis-labels-instructions-card.md`, the same three D-13 pins
+ * `railPlotTicksFit` above uses: 0.785 is the INSTRUCTIONS card, 1.2 is the VIEWER plots, 2.3 is
+ * the printed third sheet's own upper bracket.
+ */
+describe("railPlotLeftLabelsFit", () => {
+  const bands = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
+  const bounds = computeRailPlotBounds(bands.center, bands.center.bounds.xAxisMin);
+  const suffixed = buildRailPlotGrid(bounds, "metric").yTicks;
+  const bare = buildRailPlotGrid(bounds, "metric", { leftAxisUnit: false }).yTicks;
+
+  it("the suffixed left-hand labels ('10 mm') fit at none of the three measured scales", () => {
+    expect(railPlotLeftLabelsFit(suffixed, 0.785)).toBe(false);
+    expect(railPlotLeftLabelsFit(suffixed, 1.2)).toBe(false);
+    expect(railPlotLeftLabelsFit(suffixed, 2.3)).toBe(false);
+  });
+
+  it("the bare left-hand labels fit at 1.2 (the VIEWER) and 2.3 (the printed sheet) but not at 0.785 (the card)", () => {
+    expect(railPlotLeftLabelsFit(bare, 0.785)).toBe(false);
+    expect(railPlotLeftLabelsFit(bare, 1.2)).toBe(true);
+    expect(railPlotLeftLabelsFit(bare, 2.3)).toBe(true);
   });
 });

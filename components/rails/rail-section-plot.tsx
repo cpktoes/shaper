@@ -11,7 +11,7 @@
 
 import { useRef } from "react";
 import type { RailCallout } from "./rail-callouts";
-import { CALLOUT_PX, DimensionTick, pinnedCalloutSizes, useSvgFitScale } from "@/components/viewer/callout-primitives";
+import { CALLOUT_CHAR_PX, CALLOUT_PX, DimensionTick, pinnedCalloutSizes, useSvgFitScale } from "@/components/viewer/callout-primitives";
 import { useUnits } from "@/components/units-provider";
 import { formatMarkBare } from "@/lib/geometry/measure-display";
 import type { RailSectionKey, RailSectionOutput, RailSegmentKey } from "@/lib/geometry/rail-bands";
@@ -29,6 +29,12 @@ import { inchesToMm, mm, type Mm, mmToInches, type UnitsSystem } from "@/lib/geo
 export const SCALE = 56;
 const LEFT_PAD = 22;
 const AXIS_LABEL_PAD = 20; // room for the x-axis tick labels below the plot
+
+// Where a left-axis (y) tick's label text begins, back from the axis line at `px(minX)` — the
+// component's own `lx: px(minX) - Y_TICK_LABEL_GAP` (outside placement) and
+// `lx: px(minX) + 4 + Y_TICK_LABEL_GAP` (inside placement, clearing the tick's own inboard arm)
+// both read from this one value (08-08, gap G-08-9).
+const Y_TICK_LABEL_GAP = 8;
 
 // Room reserved to the right of the apex column for the mark names that read rightward from it
 // (D-17), so the widest of them (Domed Taper) sits inside the box instead of being clipped by the
@@ -190,6 +196,26 @@ export interface RailPlotGrid {
 const MAX_GRID_EXTENT_IN = 40;
 
 /**
+ * Metric-only label options for `buildRailPlotGrid` (08-08, gap G-08-9). Both fields default to
+ * today's exact behaviour, and the Imperial branch reads neither — an Imperial label is a single
+ * digit that has always fitted, and an Imperial plot must be unable to change.
+ */
+export interface RailPlotGridOptions {
+  /** How many 10 mm-pitch ticks apart a NUMBER appears: 1 (default) is today's exact behaviour —
+   * a number every 10 mm; 2 is a number every 20 mm; 5 is every 50 mm. Every tick still gets its
+   * own grid line and small tick mark regardless of this value — the grid is what a shaper counts
+   * squares on — only the printed number thins. The millimetre-mark suffix always lands on the
+   * first LABELLED non-zero tick outward from the origin on each axis, so an axis still says what
+   * unit it is in exactly once even when most of its numbers are gone. */
+  labelEvery?: 1 | 2 | 5 | 10;
+  /** Whether the left (y) axis's first labelled non-zero tick carries the `" mm"` suffix. Defaults
+   * to true — today's exact behaviour. The bottom (x) axis's own suffix is untouched by this field:
+   * a plot always names its unit at least once, on the bottom axis, per CLAUDE.md's "carried once"
+   * rule, even when the left axis's own copy is turned off because it does not fit. */
+  leftAxisUnit?: boolean;
+}
+
+/**
  * The rail plot's grid pitch and tick labels (D-11) — the one place in this phase where Metric is
  * a real algorithm change, not a formatter swap. Extracted so it is callable from a test without
  * rendering React; works entirely in the DISPLAY domain (inches) `px()`/`py()` already expect, so
@@ -198,19 +224,21 @@ const MAX_GRID_EXTENT_IN = 40;
  *
  * Imperial reproduces today's exact loop and clamp: one grid line and tick per whole inch inside
  * the same `[-40, 40]` sanity ceiling, labelled with today's bare absolute number, no unit shown.
+ * `options` is read nowhere in this branch.
  *
  * Metric iterates on a 10mm pitch across the SAME physical bounds — converted with
  * `mmToInches`/`inchesToMm` rather than restating a factor (CLAUDE.md Rule 2), never touching the
  * bounds themselves — labelling each tick with its absolute millimetre value through
  * `formatMarkBare` (a tick's position is a real physical length, the same "mark" family every rail
  * band mark reads in, so it flows through the same display boundary rather than a hand-rolled
- * `String(v)`), and appending `" mm"` to the first non-zero tick outward from the origin on each
- * axis (the UI-SPEC's own assumption for where a shaper's eye starts reading outward from the
- * board's corner).
+ * `String(v)`), and appending `" mm"` to the first labelled non-zero tick outward from the origin
+ * on each axis (the UI-SPEC's own assumption for where a shaper's eye starts reading outward from
+ * the board's corner) — unless `leftAxisUnit` turns the left axis's own copy off.
  */
 export function buildRailPlotGrid(
   bounds: { minX: number; minY: number; maxY: number },
   system: UnitsSystem,
+  options?: RailPlotGridOptions,
 ): RailPlotGrid {
   const xAxisMinIn = bounds.minX + 0.15;
   const yAxisMaxIn = bounds.maxY - 0.15;
@@ -231,6 +259,9 @@ export function buildRailPlotGrid(
     };
   }
 
+  const labelEvery = options?.labelEvery ?? 1;
+  const leftAxisUnit = options?.leftAxisUnit ?? true;
+
   const xAxisMinMm = inchesToMm(xAxisMinIn);
   const yAxisMaxMm = inchesToMm(yAxisMaxIn);
   const maxExtentMm = inchesToMm(MAX_GRID_EXTENT_IN);
@@ -246,12 +277,19 @@ export function buildRailPlotGrid(
   const yPositionsMm: number[] = [];
   for (let j = 0; j <= yGridMaxMm; j += 10) yPositionsMm.push(j);
 
-  // The first non-zero tick outward from the origin on each axis — [ASSUMPTION] per the UI-SPEC,
-  // chosen because it's the tick nearest where a shaper's eye starts reading outward from the
-  // board's corner. Both arrays are ordered from 0 outward, so this is simply the first non-zero
-  // element.
-  const firstNonZeroX = xPositionsMm.find((v) => v !== 0);
-  const firstNonZeroY = yPositionsMm.find((v) => v !== 0);
+  // Each array is built one 10mm step at a time from the origin outward, so an element's own index
+  // doubles as "how many 10mm steps from the origin" — `labelEvery` keeps a NUMBER only on the
+  // steps whose index divides evenly by it (index 0, the origin, always divides evenly, so "0" is
+  // always labelled). The grid line and tick mark for every step are unaffected — see
+  // `xGridPositions`/`yGridPositions` below, built from the full array regardless of this.
+  const isLabelledStep = (indexFromOrigin: number) => indexFromOrigin % labelEvery === 0;
+
+  // The first LABELLED non-zero tick outward from the origin on each axis — [ASSUMPTION] per the
+  // UI-SPEC, chosen because it's the tick nearest where a shaper's eye starts reading outward from
+  // the board's corner. Both arrays are ordered from 0 outward, so this is simply the first
+  // non-zero, labelled element.
+  const firstNonZeroX = xPositionsMm.find((v, idx) => v !== 0 && isLabelledStep(idx));
+  const firstNonZeroY = yPositionsMm.find((v, idx) => v !== 0 && isLabelledStep(idx));
 
   // Bare mm labels route through the display boundary's own `formatMarkBare` — a tick's absolute
   // position is a real physical length on the board, the same "mark" family every rail band mark
@@ -261,15 +299,90 @@ export function buildRailPlotGrid(
     xGridPositions: xPositionsMm.map((v) => mmToInches(mm(v))),
     yGridPositions: yPositionsMm.map((v) => mmToInches(mm(v))),
     xGridMin: mmToInches(mm(xGridMinMm)),
-    xTicks: xPositionsMm.map((v) => {
+    xTicks: xPositionsMm.map((v, idx) => {
+      if (!isLabelledStep(idx)) return { value: mmToInches(mm(v)), label: "" };
       const bare = formatMarkBare(mm(Math.abs(v)), "metric");
       return { value: mmToInches(mm(v)), label: v === firstNonZeroX ? `${bare} mm` : bare };
     }),
-    yTicks: yPositionsMm.map((v) => {
+    yTicks: yPositionsMm.map((v, idx) => {
+      if (!isLabelledStep(idx)) return { value: mmToInches(mm(v)), label: "" };
       const bare = formatMarkBare(mm(Math.abs(v)), "metric");
-      return { value: mmToInches(mm(v)), label: v === firstNonZeroY ? `${bare} mm` : bare };
+      const suffixed = v === firstNonZeroY ? `${bare} mm` : bare;
+      return { value: mmToInches(mm(v)), label: leftAxisUnit ? suffixed : bare };
     }),
   };
+}
+
+/** Slack folded into the two fit tests below, to cover the fact that `CALLOUT_CHAR_PX` is an
+ * estimate, not a measured width — a gap that merely touches the labels' combined extent within
+ * this margin is treated as not fitting. This is the same slack, for the same reason,
+ * `RAIL_CALLOUT_OVERLAP_MARGIN` folds into the mark-name overlap test in `rail-callouts.ts`. */
+const AXIS_LABEL_FIT_MARGIN_PX = 2;
+
+/**
+ * True when every pair of adjacent LABELLED ticks in `ticks` (an empty-label tick, already thinned
+ * by `labelEvery`, has no text to collide with and is skipped) would draw without their text
+ * overlapping at the given render scale — the plot's own measured fit scale (`useSvgFitScale`),
+ * not the fixed `SCALE` (viewBox px per inch) constant.
+ *
+ * Two neighbours are measured on-screen apart (their spacing in inches, times `SCALE`, times
+ * `renderScale`) against the on-screen width their two labels would draw at (character count times
+ * `CALLOUT_CHAR_PX`, which does not change with render scale — the label face is pinned in screen
+ * pixels, so a wider or narrower render never changes how many screen pixels a character occupies).
+ * They fit when the gap is at least the mean of the two widths plus `AXIS_LABEL_FIT_MARGIN_PX` —
+ * the same pair-wise text-extent idiom `calloutTextExtent`/`calloutsCompete` in `rail-callouts.ts`
+ * already use for the mark names, not a bucket or a threshold on the render scale itself.
+ */
+export function railPlotTicksFit(ticks: RailPlotTick[], renderScale: number): boolean {
+  const labelled = ticks.filter((t) => t.label.length > 0);
+  for (let i = 1; i < labelled.length; i++) {
+    const prev = labelled[i - 1];
+    const cur = labelled[i];
+    const spacingIn = Math.abs(cur.value - prev.value);
+    const gapPx = spacingIn * SCALE * renderScale;
+    const prevWidthPx = prev.label.length * CALLOUT_CHAR_PX;
+    const curWidthPx = cur.label.length * CALLOUT_CHAR_PX;
+    const meanWidthPx = (prevWidthPx + curWidthPx) / 2;
+    if (gapPx < meanWidthPx + AXIS_LABEL_FIT_MARGIN_PX) return false;
+  }
+  return true;
+}
+
+/**
+ * True when the WIDEST labelled tick in `ticks` (an empty-label tick, already thinned by
+ * `labelEvery`, has no text to fit and is skipped) would fit inside the left-hand strip reserved
+ * for it: `LEFT_PAD` less the gap between the axis line and where a left-axis label's text begins
+ * (`Y_TICK_LABEL_GAP`, the same offset `RailSectionPlot`'s own y-tick render uses), in viewBox
+ * units — converted to on-screen pixels by the render scale, the same way the strip itself grows
+ * or shrinks on screen as the plot renders larger or smaller.
+ *
+ * The label's own on-screen width, exactly as `railPlotTicksFit` computes it, does not change with
+ * render scale for the same reason: the face is pinned in screen pixels.
+ */
+export function railPlotLeftLabelsFit(ticks: RailPlotTick[], renderScale: number): boolean {
+  const widestChars = ticks.reduce((max, t) => Math.max(max, t.label.length), 0);
+  if (widestChars === 0) return true;
+  const widthPx = widestChars * CALLOUT_CHAR_PX;
+  const stripPx = (LEFT_PAD - Y_TICK_LABEL_GAP) * renderScale;
+  return widthPx + AXIS_LABEL_FIT_MARGIN_PX <= stripPx;
+}
+
+// The bottom-axis label spacings tried, widest (thinnest labels) last, per Task 1's "try 1, then
+// 2, then 5, then 10 labelled ticks' worth of spacing and take the first the fit test accepts".
+const METRIC_LABEL_EVERY_CANDIDATES = [1, 2, 5, 10] as const;
+
+/** Picks the least-thinned bottom-axis label spacing `railPlotTicksFit` accepts at the given
+ * render scale, defaulting to the most-thinned candidate if none of them do. Private wiring — only
+ * `RailSectionPlot`'s Metric branch calls this; Imperial never does. */
+function chooseMetricLabelEvery(
+  bounds: { minX: number; minY: number; maxY: number },
+  renderScale: number,
+): (typeof METRIC_LABEL_EVERY_CANDIDATES)[number] {
+  for (const labelEvery of METRIC_LABEL_EVERY_CANDIDATES) {
+    const candidate = buildRailPlotGrid(bounds, "metric", { labelEvery });
+    if (railPlotTicksFit(candidate.xTicks, renderScale)) return labelEvery;
+  }
+  return METRIC_LABEL_EVERY_CANDIDATES[METRIC_LABEL_EVERY_CANDIDATES.length - 1];
 }
 
 export function RailSectionPlot({ output, xAxisMin, fit = "width", callouts }: RailSectionPlotProps) {
@@ -284,7 +397,32 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width", callouts }: R
   const px = (x: number) => (x - minX) * SCALE + LEFT_PAD;
   const py = (y: number) => (maxY - y) * SCALE;
 
-  const grid = buildRailPlotGrid({ minX, minY, maxY }, system);
+  // Axis tick labels counter the plot's fit so they read at the same on-screen size as every
+  // other callout in the app, rather than tracking however wide the plot happens to render. Moved
+  // ahead of grid selection (08-08) so the Metric branch below can ask the fit tests about the SAME
+  // render scale the labels will actually draw at.
+  const fitScale = useSvgFitScale(svgRef, width, height);
+
+  // Metric-only (Imperial's single-digit labels have always fitted and must stay unable to
+  // change, D-13): thin the bottom axis's numbers until they stop colliding, then drop the left
+  // axis's own millimetre mark if the (possibly still-suffixed) numbers do not fit its strip, and
+  // fall back to drawing the left-axis numbers just inside the plot when even the bare numbers
+  // still do not — all at the plot's own measured render scale (gap G-08-9).
+  let grid: RailPlotGrid;
+  let leftLabelsInside = false;
+  if (system === "metric") {
+    const labelEvery = chooseMetricLabelEvery({ minX, minY, maxY }, fitScale);
+    const suffixedGrid = buildRailPlotGrid({ minX, minY, maxY }, "metric", { labelEvery });
+    if (railPlotLeftLabelsFit(suffixedGrid.yTicks, fitScale)) {
+      grid = suffixedGrid;
+    } else {
+      const bareGrid = buildRailPlotGrid({ minX, minY, maxY }, "metric", { labelEvery, leftAxisUnit: false });
+      grid = bareGrid;
+      leftLabelsInside = !railPlotLeftLabelsFit(bareGrid.yTicks, fitScale);
+    }
+  } else {
+    grid = buildRailPlotGrid({ minX, minY, maxY }, system);
+  }
 
   const gridLines: { x1: number; y1: number; x2: number; y2: number }[] = [];
   for (const i of grid.xGridPositions) gridLines.push({ x1: px(i), y1: py(minY), x2: px(i), y2: py(maxY) });
@@ -320,6 +458,11 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width", callouts }: R
     if (domedBandSeg) dots.push({ cx: px(0), cy: py(mmToInches(domedBandSeg.p1.y)), color: "#6b8e4e" });
   }
 
+  // A tick's own little mark (the short perpendicular line below/beside the axis, distinct from
+  // the long `gridLines` spanning the whole plot) is drawn for every 10mm step regardless of
+  // `labelEvery` — the grid is what a shaper counts squares on. Only the render below skips the
+  // `<text>` for a tick whose `label` came back empty (thinned): the mark stays, only the number
+  // that would have sat beside it is gone.
   const xTicks: { x1: number; y1: number; x2: number; y2: number; label: string; lx: number; ly: number }[] =
     grid.xTicks.map((tick) => ({
       x1: px(tick.value),
@@ -330,20 +473,34 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width", callouts }: R
       lx: px(tick.value),
       ly: py(0) + 16,
     }));
-  const yTicks: { x1: number; y1: number; x2: number; y2: number; label: string; lx: number; ly: number }[] =
-    grid.yTicks.map((tick) => ({
-      x1: px(minX) - 4,
-      y1: py(tick.value),
-      x2: px(minX) + 4,
-      y2: py(tick.value),
-      label: tick.label,
-      lx: px(minX) - 8,
-      ly: py(tick.value) + 3,
-    }));
+  // `leftLabelsInside` (Metric-only, set above): when even the bare numbers do not fit the
+  // left-hand strip, a label reads from just inside the plot instead of outside it — anchored a
+  // little right of the axis line, clear of the tick mark's own inboard arm, under the same
+  // `textShadow` halo the mark-name callouts already wear so it reads over the faint grid. The
+  // tick mark itself (`x1`/`x2`) never moves either way — no drawn coordinate outside the label
+  // text changes, so the plot's own box-and-projection math stays untouched (D-13).
+  const yTicks: {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    label: string;
+    lx: number;
+    ly: number;
+    textAnchor: "start" | "end";
+    halo: boolean;
+  }[] = grid.yTicks.map((tick) => ({
+    x1: px(minX) - 4,
+    y1: py(tick.value),
+    x2: px(minX) + 4,
+    y2: py(tick.value),
+    label: tick.label,
+    lx: leftLabelsInside ? px(minX) + 4 + Y_TICK_LABEL_GAP : px(minX) - Y_TICK_LABEL_GAP,
+    ly: py(tick.value) + 3,
+    textAnchor: leftLabelsInside ? "start" : "end",
+    halo: leftLabelsInside,
+  }));
 
-  // Axis tick labels counter the plot's fit so they read at the same on-screen size as every
-  // other callout in the app, rather than tracking however wide the plot happens to render.
-  const fitScale = useSvgFitScale(svgRef, width, height);
   const axisFontSize = fitScale > 0 ? CALLOUT_PX.name / fitScale : 10;
   // Mark-name callouts (D-17) pin to the same Label-role size the plot's own axis ticks already
   // use, via the shared primitive rather than a second ad-hoc ternary.
@@ -377,17 +534,35 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width", callouts }: R
       {xTicks.map((tk, i) => (
         <g key={`xt${i}`}>
           <line x1={tk.x1} y1={tk.y1} x2={tk.x2} y2={tk.y2} stroke="var(--color-surf-ink-muted)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          <text x={tk.lx} y={tk.ly} fontSize={axisFontSize} fill="var(--color-surf-ink-muted)" textAnchor="middle">
-            {tk.label}
-          </text>
+          {tk.label && (
+            <text x={tk.lx} y={tk.ly} fontSize={axisFontSize} fill="var(--color-surf-ink-muted)" textAnchor="middle">
+              {tk.label}
+            </text>
+          )}
         </g>
       ))}
       {yTicks.map((tk, i) => (
         <g key={`yt${i}`}>
           <line x1={tk.x1} y1={tk.y1} x2={tk.x2} y2={tk.y2} stroke="var(--color-surf-ink-muted)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          <text x={tk.lx} y={tk.ly} fontSize={axisFontSize} fill="var(--color-surf-ink-muted)" textAnchor="end">
-            {tk.label}
-          </text>
+          {tk.label && (
+            <text
+              x={tk.lx}
+              y={tk.ly}
+              fontSize={axisFontSize}
+              fill="var(--color-surf-ink-muted)"
+              textAnchor={tk.textAnchor}
+              style={
+                tk.halo
+                  ? {
+                      textShadow:
+                        "0 0 3px var(--outline-page-bg), 0 0 3px var(--outline-page-bg), 0 0 5px var(--outline-page-bg)",
+                    }
+                  : undefined
+              }
+            >
+              {tk.label}
+            </text>
+          )}
         </g>
       ))}
       {callouts?.map((c) => {
