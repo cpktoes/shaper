@@ -17,6 +17,7 @@ import { describe, expect, it } from "vitest";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const DIALOG_PATH = "components/rails/view-full-sized-dialog.tsx";
+const ACTUAL_SIZE_CSS_PATH = "app/design/rails/actual-size.css";
 
 /** Strips `//` line comments and `/* *\/` block comments — the same helper
  * `lib/units-isolation.test.ts` already copies from `lib/theme.test.ts`. */
@@ -80,5 +81,19 @@ describe("view-full-sized-dialog.tsx (RAIL-04, D-12–D-16)", () => {
     // match this file's own legitimate `formatCalibrationMark` import/call above.
     expect(source, "names a calibration instruction").not.toMatch(/calibrate/i);
     expect(source, "tells a shaper to adjust their zoom").not.toMatch(/adjust (your |the )?(browser )?zoom/i);
+  });
+
+  it("hides the rails screen from print only while the dialog is open (WR-01)", () => {
+    const css = readStripped(ACTUAL_SIZE_CSS_PATH);
+    expect(css, "does not scope [data-print-hide] to the dialog being present").toContain(
+      'body:has([data-view-full-sized-dialog]) [data-print-hide]',
+    );
+    const printHideLines = css.split("\n").filter((line) => line.includes("[data-print-hide]"));
+    expect(printHideLines.length, "no line names [data-print-hide]").toBeGreaterThanOrEqual(1);
+    for (const line of printHideLines) {
+      expect(line, `[data-print-hide] rule is not guarded on the dialog being open: "${line.trim()}"`).toContain(
+        ":has([data-view-full-sized-dialog])",
+      );
+    }
   });
 });
