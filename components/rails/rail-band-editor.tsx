@@ -200,7 +200,12 @@ export function RailBandEditor() {
   }, [openSectionsKey, vbW, sumOfVbH, activePage]);
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-nowrap">
+    // data-print-hide (D-15): when the View Full Sized dialog prints, only its own content
+    // reaches paper (app/design/rails/actual-size.css's @media print rules) -- the sidebar, the
+    // tab strip and the VIEWER/DATA/INSTRUCTIONS content below are marked here so none of them
+    // print alongside it. The dialog's own content is unaffected: Base UI's Dialog portals it
+    // outside this subtree, so it is never a descendant of this attribute.
+    <div data-print-hide className="flex min-h-0 w-full flex-1 flex-nowrap">
       {/* A flex column, not one scrolling box: the controls scroll in the region below and the dev
           preset button sits in a footer that does not. As a plain last child of a scrolling aside it
           was only ever pinned by luck — outline and rails happened to fit, so it looked right there,

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { RailBandEditor } from "@/components/rails/rail-band-editor";
+import "./actual-size.css";
 
 export const metadata: Metadata = {
   title: "Rail Band Calculator — Shaper",

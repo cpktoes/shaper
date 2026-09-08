@@ -62,6 +62,13 @@ const PRINT_SURFACE_DISPLAY_FILES: { file: string; converted: boolean }[] = [
   { file: "components/template/build-strip-pdf.ts", converted: true },
   { file: "components/template/build-overview-pdf.ts", converted: true },
   { file: "lib/geometry/template.ts", converted: true },
+  // 08-04 (RAIL-04, D-15): the "View Full Sized" dialog's own @media print rules put the same
+  // true-size rail and its check bar on paper, a second print pipeline this file also happens to
+  // sit in as a design-screen file (it lives under components/rails/, one of
+  // DESIGN_SCREEN_DISPLAY_FILES' own folders) -- named here too so the print-specific checks below
+  // (no conversion factor of its own, no litres figure branched on the units system) also run over
+  // it, per RESEARCH.md Pitfall 2.
+  { file: "components/rails/view-full-sized-dialog.tsx", converted: true },
 ];
 
 /**
@@ -107,7 +114,7 @@ function findPrintSurfaceFiles(): string[] {
       found.push(`${folder}/${entry}`);
     }
   }
-  return [...found, "lib/geometry/template.ts"];
+  return [...found, "lib/geometry/template.ts", "components/rails/view-full-sized-dialog.tsx"];
 }
 
 /** `lib/geometry/template.ts` is a pure file under `lib/geometry/`, so it imports its sibling

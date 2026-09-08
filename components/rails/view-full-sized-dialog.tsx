@@ -127,7 +127,7 @@ export function ViewFullSizedDialog({
         data-view-full-sized-dialog
         className="max-w-[95vw] sm:max-w-3xl max-h-[90dvh] overflow-y-auto border-surf-line-faint bg-surf-panel text-surf-ink"
       >
-        <DialogHeader>
+        <DialogHeader data-print-hide>
           <DialogTitle className="text-surf-ink">{SECTION_TITLE[activeSection]} Rail — Actual Size</DialogTitle>
         </DialogHeader>
 
@@ -182,7 +182,7 @@ export function ViewFullSizedDialog({
           </div>
         </TabbedPanel>
 
-        <DialogFooter className="sm:justify-between">
+        <DialogFooter data-print-hide className="sm:justify-between">
           <p className="text-sm text-surf-ink-muted">
             {"In your print dialog, turn off 'Fit to page' — scaling to fit would break the true size."}
           </p>

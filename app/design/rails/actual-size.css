@@ -1,0 +1,68 @@
+/**
+ * Print path for the "View Full Sized" dialog (RAIL-04, D-15). Route-scoped — imported only by
+ * app/design/rails/page.tsx — so nothing declared here can reach any other screen, the same
+ * discipline app/design/summary/order-form.css already documents for itself.
+ *
+ * Base UI's Dialog portals its popup and backdrop outside `RailBandEditor`'s own DOM subtree
+ * (typically to the end of `<body>`), so printing only the dialog's own content is two separate
+ * jobs: hiding the rest of the rails screen (marked `data-print-hide` in
+ * `components/rails/rail-band-editor.tsx`) and hiding the dialog's own non-printable chrome — its
+ * title, its Nose/Center/Tail tab strip, its default close button and its footer (the print note
+ * and the Print button, neither of which belongs on the page it prints).
+ */
+
+@media print {
+  /* Released the same way app/design/summary/order-form.css releases them: the root layout
+     clamps html/body to the viewport height with overflow hidden for on-screen scrolling, which
+     must not clip a printed page that paginates past one screen's worth of content. */
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* The rest of the rails screen (rail-band-editor.tsx's own root), the site nav
+     (components/site-nav.tsx already carries this attribute) and this dialog's own header and
+     footer all share the one idiom order-form.css already established for "chrome, not content". */
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* The dialog's backdrop would otherwise print as a translucent wash over the whole page. */
+  [data-slot="dialog-overlay"] {
+    display: none !important;
+  }
+
+  /* The dialog's own default close button (rendered by DialogContent itself, not by this
+     dialog's own children, so it carries no data-print-hide of its own) and its Nose/Center/Tail
+     tab strip (TabbedPanel's own role="tablist" row) — neither reaches the printed page. */
+  [data-view-full-sized-dialog] [data-slot="dialog-close"],
+  [data-view-full-sized-dialog] [role="tablist"] {
+    display: none !important;
+  }
+
+  /* Lets the dialog's popup flow as ordinary page content instead of staying pinned to the
+     viewport at a capped height, so a true-size rail taller than one printed page paginates
+     instead of clipping. */
+  [data-view-full-sized-dialog] {
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    max-height: none !important;
+    max-width: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
+  /* The true-size plot and the check bar (components/rails/view-full-sized-dialog.tsx): a
+     printed page has no screen-DPI ambiguity to correct for, so print reads the physical inches
+     directly as a CSS absolute unit rather than the measured-probe pixel value the screen uses —
+     `--vfs-w-in`/`--vfs-h-in` carry the plain inch numbers the component already computed. */
+  [data-actual-size-box] {
+    width: calc(var(--vfs-w-in) * 1in) !important;
+  }
+  [data-actual-size-box="plot"] {
+    height: calc(var(--vfs-h-in) * 1in) !important;
+  }
+}
