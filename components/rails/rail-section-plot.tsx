@@ -17,7 +17,16 @@ import { formatMarkBare } from "@/lib/geometry/measure-display";
 import type { RailSectionKey, RailSectionOutput, RailSegmentKey } from "@/lib/geometry/rail-bands";
 import { inchesToMm, mm, type Mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
 
-const SCALE = 56; // px per inch, matches buildPlot's default scale for all output-card plots
+// px per inch, matches buildPlot's default scale for all output-card plots. Exported so a caller
+// that needs the plot's TRUE physical size (the "View Full Sized" dialog, 08-04) can convert this
+// component's own viewBox units back to real inches — `computeRailPlotBounds`'s returned
+// width/height are expressed in this same unit, and multiplying that by a measured px-per-inch
+// without knowing this constant would either invent a second, possibly-drifting copy of it or
+// guess. `LEFT_PAD`/`AXIS_LABEL_PAD` stay module-private: they are chrome padding for the axis
+// tick labels, already folded into the same unit space as SCALE, so scaling the whole viewBox
+// (width and height together, as the dialog does) reproduces them at the correct physical size
+// without a caller ever needing their individual values.
+export const SCALE = 56;
 const LEFT_PAD = 22;
 const AXIS_LABEL_PAD = 20; // room for the x-axis tick labels below the plot
 

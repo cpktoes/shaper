@@ -1,7 +1,9 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
+import { Maximize2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { useDesign } from "@/components/design/design-store";
 import { type RailBandSpec, type RailSectionKey, type RailSectionSpec } from "@/lib/geometry/rail-bands";
 import { mm, mmToInches, type Mm } from "@/lib/geometry/units";
@@ -10,6 +12,7 @@ import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { RailDataTable } from "./rail-data-table";
 import { RailInstructions } from "./rail-instructions";
 import { RailSectionPlot, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
+import { ViewFullSizedDialog } from "./view-full-sized-dialog";
 
 type RailPage = "viewer" | "data" | "instructions";
 
@@ -113,6 +116,10 @@ export function RailBandEditor() {
     tail: false,
   });
   const [activePage, setActivePage] = useState<RailPage>("viewer");
+  // Holds the "View Full Sized" dialog's open state locally, the same way outline-editor.tsx's
+  // Export Template dialog is opened from this screen's own toolbar rather than the dialog owning
+  // its own trigger (RAIL-04, D-12).
+  const [viewFullSizedOpen, setViewFullSizedOpen] = useState(false);
 
   const updateSection = updateRailSection;
   const toggleHardEdge = toggleTailHardEdge;
@@ -193,7 +200,12 @@ export function RailBandEditor() {
   }, [openSectionsKey, vbW, sumOfVbH, activePage]);
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-nowrap">
+    // data-print-hide (D-15): when the View Full Sized dialog prints, only its own content
+    // reaches paper (app/design/rails/actual-size.css's @media print rules) -- the sidebar, the
+    // tab strip and the VIEWER/DATA/INSTRUCTIONS content below are marked here so none of them
+    // print alongside it. The dialog's own content is unaffected: Base UI's Dialog portals it
+    // outside this subtree, so it is never a descendant of this attribute.
+    <div data-print-hide className="flex min-h-0 w-full flex-1 flex-nowrap">
       {/* A flex column, not one scrolling box: the controls scroll in the region below and the dev
           preset button sits in a footer that does not. As a plain last child of a scrolling aside it
           was only ever pinned by luck — outline and rails happened to fit, so it looked right there,
@@ -238,7 +250,21 @@ export function RailBandEditor() {
           onSelect={setActivePage}
         >
         {activePage === "viewer" && (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <ViewerToolbarButton
+              label="View Full Sized"
+              slot={0}
+              onClick={() => setViewFullSizedOpen(true)}
+            >
+              <Maximize2Icon className="size-6" />
+            </ViewerToolbarButton>
+            <ViewFullSizedDialog
+              open={viewFullSizedOpen}
+              onOpenChange={setViewFullSizedOpen}
+              bands={bands}
+              sharedXAxisMin={sharedXAxisMin}
+              sectionOpen={sectionOpen}
+            />
             <div ref={plotsContainerRef} className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
               {openSections.map((key) => (
                 <div key={key} className="flex flex-none flex-col items-center" style={{ width: plotWidth }}>
