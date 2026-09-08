@@ -1,11 +1,7 @@
 /**
  * Rail mark callout layout — pure diagram math, no React (D-17). This is *layout*, not shaping
  * geometry, so it lives under `components/`, not `lib/geometry/`, which CLAUDE.md Rule 1 reserves
- * for real shaping formulas. The ten anchor positions are ported from the prototype's own
- * `buildPlot` (reference/project/Rails.dc.html lines 1093-1132), copied character-for-character
- * rather than re-derived from `RailSegment` endpoints by inspection — Corner Cut's own `y` is
- * deliberately `railMark1`, not its segment's own p2 (RESEARCH.md Pitfall 1: that is the
- * prototype's design, not a bug to correct).
+ * for real shaping formulas.
  *
  * The de-overlap pass below is a deliberate DEPARTURE from the prototype's own code (quick task
  * 260908-bk1). The prototype's comment at Rails.dc.html line 1106 says the true intent plainly:
@@ -20,6 +16,26 @@
  * overlap, and lifts only the competing pair that overflowed the ceiling — never the whole side.
  * Do not "restore parity" with the prototype's anchor-x chaining; that is what reintroduces this
  * bug.
+ *
+ * This file otherwise ports the prototype's own `buildPlot` anchor list (Rails.dc.html lines
+ * 1093-1132), with four deliberate departures from it (quick task 260908-cme):
+ *
+ * (a) Corner Cut's anchor moved from the prototype's `(-cornerCutDeck, railMark1)` to its own
+ * segment's apex end `(0, cornerCutRail)`, and its side from −1 to 1. At the prototype's anchor,
+ * "Corner Cut" and "Rail Mk1" printed on one line about 20px apart either side of the apex and
+ * read as one run of text — the shaper's own report. Corner Cut's apex end is 3.5px below Rail
+ * Mk1 on the real example rail, so it genuinely IS an apex-column mark, and its name now stacks
+ * in that column under Rail Mk1, in the marks' own top-to-bottom order. This is a layout change
+ * only: `buildSegmentDefsInches` still draws the cornerCut segment between exactly the same two
+ * endpoints it always has.
+ *
+ * (b) Bottom Tuck 2 is a name the prototype's list never had, although the point and its own
+ * coloured `tuck2` line have always been drawn — added here so no drawn mark on the teaching
+ * figure is left unnamed.
+ *
+ * (c) Bottom Tuck 1 and Bottom Tuck 3 are marks ON the bottom axis, so their names now hang below
+ * it, centred under their own mark with a leader line up, rather than being lifted above it where
+ * they land beside marks that are not theirs.
  */
 
 import { RAIL_SEGMENT_COLORS } from "./rail-section-plot";
@@ -56,8 +72,23 @@ export const RAIL_CALLOUT_CHAR_PX = 6.7;
  * which is not exported — the two must stay equal, or the estimated text extents below stop
  * matching what is actually drawn. */
 export const RAIL_CALLOUT_TEXT_GAP = 4;
+/** How far Bottom Tuck 2's name is lifted off its own point, because that point is where the Rail
+ * Tuck 1 and Rail Tuck 2 lines meet — a name centred on it would print across both. The plot's y
+ * grows downward, so the lift is applied as a negative `dy` on the anchor, the same way
+ * `RAIL_CALLOUT_EDGE_LIFT` is. */
+export const RAIL_CALLOUT_TUCK2_LIFT = 6;
+/** How far below the bottom axis the first row of below-axis names (Bottom Tuck 1, Bottom Tuck 3)
+ * sits: the plot's own module-private `AXIS_LABEL_PAD` (20 — the band the row of axis numbers
+ * occupies) plus 8 of clearance, so a name below the axis clears those numbers rather than landing
+ * among them, which is the fault quick task 260908-b35 fixed. Unlike `RAIL_CALLOUT_EDGE_LIFT`, this
+ * is applied as a POSITIVE `dy` — the plot's y grows downward, so pushing a name further down the
+ * page adds to it rather than subtracting. */
+export const RAIL_CALLOUT_BELOW_AXIS_OFFSET = 28;
 
-export type RailCalloutSide = 1 | -1;
+/** `1` reads rightward from its own point (the apex column); `-1` reads leftward back toward the
+ * plot's own left margin; `0` reads centred BELOW the x-axis, with a thin leader line running up
+ * to the mark it names. */
+export type RailCalloutSide = 1 | 0 | -1;
 
 /** One named mark on the example rail. Carries a name only — never a numeric value (D-19); the
  * DATA tab is where a shaper reads the actual measurements. */
@@ -68,27 +99,40 @@ export interface RailCallout {
   y: number;
   side: RailCalloutSide;
   color: string;
+  /** The mark's own projected position — where the mark actually IS, as opposed to `x`/`y`, which
+   * is where its NAME ends up after the de-overlap pass has moved it. Optional because
+   * `deOverlapCallouts` accepts any `RailCallout[]`, including the synthetic ones built by hand in
+   * this file's own tests; `buildRailCallouts` always sets both. */
+  anchorX?: number;
+  anchorY?: number;
 }
 
-/** The ten marks' fixed identity — key, name and side never change with geometry, only their
- * `x`/`y` position does. Exported so a name/side/order assertion never needs a full geometry
- * fixture to check against (the prototype's own `raw` array order, lines 1093-1103).
+/** The eleven marks' fixed identity — key, name and side never change with geometry, only their
+ * `x`/`y` position does (ten on a rail with no second tuck line — Bottom Tuck 2 is filtered out
+ * by `buildRailCallouts` when `hasTuck2` is false). Exported so a name/side/order assertion never
+ * needs a full geometry fixture to check against.
  *
- * `dy` (viewBox units, optional) is set only on the four marks anchored exactly on a drawn line —
- * Deck 3 and Deck 1 on the top deck line, Bottom Tuck 1 and Bottom Tuck 3 on the bottom axis — as
- * the negated `RAIL_CALLOUT_EDGE_LIFT`, so the name reads just above the line instead of straddling
- * it and its own dot. Every other entry carries no `dy` at all. */
+ * Corner Cut must come immediately after Rail Mk1: the two anchors start 3.5px apart on the real
+ * example rail, and the de-overlap pass's stable sort falls back to input order, so this array
+ * position is what fixes Corner Cut under Rail Mk1 rather than over it.
+ *
+ * `dy` (viewBox units, optional) now has three jobs, not one: a negative lift off a drawn line
+ * (Deck 3, Deck 1, `-RAIL_CALLOUT_EDGE_LIFT`), a negative lift off the two tuck lines that cross at
+ * a point (Bottom Tuck 2, `-RAIL_CALLOUT_TUCK2_LIFT`), and a positive push below the axis for the
+ * two side-0 names (Bottom Tuck 1, Bottom Tuck 3, `+RAIL_CALLOUT_BELOW_AXIS_OFFSET`). Every other
+ * entry carries no `dy` at all. */
 export const RAIL_CALLOUT_ANCHORS: readonly { key: string; name: string; side: RailCalloutSide; dy?: number }[] = [
   { key: "apex", name: "Apex", side: 1 },
   { key: "domedTaper", name: "Domed Taper", side: 1 },
   { key: "railMk1", name: "Rail Mk1", side: 1 },
-  { key: "cornerCut", name: "Corner Cut", side: -1 },
+  { key: "cornerCut", name: "Corner Cut", side: 1 },
   { key: "deck3", name: "Deck 3", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
   { key: "deck2", name: "Deck 2", side: -1 },
   { key: "deck1", name: "Deck 1", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
   { key: "tuck1", name: "Tuck 1", side: 1 },
-  { key: "bottomTuck1", name: "Bottom Tuck 1", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
-  { key: "bottomTuck3", name: "Bottom Tuck 3", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
+  { key: "bottomTuck1", name: "Bottom Tuck 1", side: 0, dy: RAIL_CALLOUT_BELOW_AXIS_OFFSET },
+  { key: "bottomTuck2", name: "Bottom Tuck 2", side: -1, dy: -RAIL_CALLOUT_TUCK2_LIFT },
+  { key: "bottomTuck3", name: "Bottom Tuck 3", side: 0, dy: RAIL_CALLOUT_BELOW_AXIS_OFFSET },
 ] as const;
 
 export interface RailCalloutProjection {
@@ -100,14 +144,15 @@ export interface RailCalloutProjection {
 }
 
 /**
- * Builds the ten mark callouts for one rail section's output, in the prototype's own fixed order.
+ * Builds the eleven mark callouts for one rail section's output (ten on a rail with no second
+ * tuck line — a single-tuck or hard-edged section has no Bottom Tuck 2 point to name).
  * `thickness` is the section's own effective thickness (`output.thicknessEff`) — the same value
  * `buildRailSegments` was called with — because Deck 1 and Deck 3 sit at that height, not at the
  * domed-aware "blank thickness" the plot's reference lines use.
  *
- * The four line-anchored marks' `dy` lift (`RAIL_CALLOUT_EDGE_LIFT`) is applied here, before any
- * de-overlap pass runs, so the axis ceiling `deOverlapCallouts` restores still has the final say
- * on where the two bottom-edge names end up once clustering is done.
+ * Every anchor's `dy` — the edge lift, the tuck-2 lift, or the below-axis push — is applied here,
+ * before any de-overlap pass runs, so the axis ceiling `deOverlapCallouts` restores still has the
+ * final say on where the moved names end up once clustering is done.
  */
 export function buildRailCallouts(
   output: RailSectionOutput,
@@ -135,21 +180,29 @@ export function buildRailCallouts(
   const domedTaperYIn = domedBand ? mmToInches(domedBand.p1.y) : mmToInches(r.apexCenter);
   // A second bottom tuck line (Rail Tuck 2, key "tuck2") exists whenever the rail isn't hard-edged
   // or single-tucked — the same condition buildSegmentDefsInches uses to decide whether it draws
-  // "tuck2" at all (rail-bands.ts). Bottom Tuck 3 reads that segment's own colour when present.
+  // "tuck2" at all (rail-bands.ts). This decides both Bottom Tuck 3's colour and, now, whether
+  // Bottom Tuck 2 is emitted at all — a rail with no tuck2 line has no such point to name.
   const hasTuck2 = !r.hardEdge && !r.singleTuck;
 
   const positionsIn: Record<string, { x: number; y: number }> = {
     apex: { x: 0, y: mmToInches(r.apexCenter) },
     domedTaper: { x: 0, y: domedTaperYIn },
     railMk1: { x: 0, y: mmToInches(r.railMark1) },
-    // Corner Cut's y is railMark1, not the cornerCut segment's own p2 (Pitfall 1) — the prototype's
-    // own raw[3] entry reads `py(r.railMark1)`, not `py(band1Y(-r.cornerCutDeck))`.
-    cornerCut: { x: -mmToInches(r.cornerCutDeck ?? (0 as Mm)), y: mmToInches(r.railMark1) },
+    // Corner Cut's anchor is its own segment's apex end (0, cornerCutRail) — the `cornerCut`
+    // segment's own p1 in buildSegmentDefsInches (rail-bands.ts) — not the deck end and not
+    // Rail Mk1's height. `?? r.railMark1` covers the `removeCornerCut` case where `cornerCutRail`
+    // is null and no cornerCut segment is drawn at all, reproducing exactly where the name sat
+    // before this anchor moved.
+    cornerCut: { x: 0, y: mmToInches(r.cornerCutRail ?? r.railMark1) },
     deck3: { x: -mmToInches(r.deckMark3), y: thicknessIn },
     deck2: { x: -deckMark2In, y: deck2YIn },
     deck1: { x: -deckMark1In, y: thicknessIn },
     tuck1: { x: 0, y: mmToInches(r.railTuck1) },
     bottomTuck1: { x: -mmToInches(r.bottomTuck1), y: 0 },
+    // The `tuck2` segment's own p1 in buildSegmentDefsInches — read from that same expression
+    // rather than inventing a second way to locate the point, so the name and the line it labels
+    // can never drift apart.
+    bottomTuck2: { x: -mmToInches(r.bottomTuck2), y: mmToInches(r.railTuck1) / 2 },
     bottomTuck3: { x: -mmToInches(r.bottomTuck3), y: 0 },
   };
 
@@ -163,10 +216,15 @@ export function buildRailCallouts(
     deck1: RAIL_SEGMENT_COLORS.band1,
     tuck1: RAIL_SEGMENT_COLORS.tuck1,
     bottomTuck1: RAIL_SEGMENT_COLORS.hardEdge,
+    bottomTuck2: RAIL_SEGMENT_COLORS.tuck2,
     bottomTuck3: hasTuck2 ? RAIL_SEGMENT_COLORS.tuck2 : RAIL_SEGMENT_COLORS.hardEdge,
   };
 
-  return RAIL_CALLOUT_ANCHORS.map((anchor) => {
+  // Bottom Tuck 2 is emitted only when its own line is drawn (hasTuck2) — a single-tuck or
+  // hard-edged section simply produces no such callout, ten instead of eleven.
+  const anchors = RAIL_CALLOUT_ANCHORS.filter((a) => a.key !== "bottomTuck2" || hasTuck2);
+
+  return anchors.map((anchor) => {
     const pos = positionsIn[anchor.key];
     return {
       key: anchor.key,
@@ -174,10 +232,15 @@ export function buildRailCallouts(
       side: anchor.side,
       color: colors[anchor.key],
       x: px(pos.x),
-      // The tick and the name are drawn at this same position (rail-section-plot.tsx), so the
-      // lift moves both together — intended, since the mark's own real position is already drawn
-      // as the coloured dot the plot puts at every segment endpoint, and no leader line is added.
+      // The tick (or leader-line target) and the name are drawn from this same position
+      // (rail-section-plot.tsx), so the lift moves both together — intended, since the mark's own
+      // real position is already drawn as the coloured dot the plot puts at every segment
+      // endpoint, and no leader line points at a name's own resting spot.
       y: py(pos.y) + (anchor.dy ?? 0),
+      // The mark's own position with no `dy` folded in, so a below-axis leader line points at the
+      // mark rather than at wherever the name ended up.
+      anchorX: px(pos.x),
+      anchorY: py(pos.y),
     };
   });
 }
@@ -190,10 +253,14 @@ const RAIL_CALLOUT_OVERLAP_MARGIN = 2;
 
 /** Estimates one label's horizontal text extent in viewBox px, mirroring how `RailSectionPlot`
  * actually draws it: `textAnchor="start"` growing rightward from `x + gap` on side 1, `"end"`
- * growing leftward from `x - gap` on side −1. */
-function calloutTextExtent(c: Pick<RailCallout, "x" | "side" | "name">): readonly [number, number] {
+ * growing leftward from `x - gap` on side −1, and `"middle"` centred on `x` with no gap on side 0
+ * — a centred label has no anchor to stand off from. Exported so a test can check a label's real
+ * estimated box against the plot's real bounds using this same estimate, rather than a second copy
+ * that can drift. */
+export function calloutTextExtent(c: Pick<RailCallout, "x" | "side" | "name">): readonly [number, number] {
   const width = c.name.length * RAIL_CALLOUT_CHAR_PX;
-  return c.side >= 0
+  if (c.side === 0) return [c.x - width / 2, c.x + width / 2];
+  return c.side > 0
     ? [c.x + RAIL_CALLOUT_TEXT_GAP, c.x + RAIL_CALLOUT_TEXT_GAP + width]
     : [c.x - RAIL_CALLOUT_TEXT_GAP - width, c.x - RAIL_CALLOUT_TEXT_GAP];
 }
@@ -221,17 +288,20 @@ function calloutsCompete(a: RailCallout, b: RailCallout): boolean {
  *
  * **Ceiling pass (bottom-up, only when `maxY` is supplied):** restores the prototype's own axis
  * ceiling (Rails.dc.html line 1113, `maxAllowedY = py(0) - 10`) without its "shift the whole
- * cluster" side effect. Each side's labels (in the same ascending-y order the stacking pass used)
- * are visited from the bottom up. A label past `maxY` is clamped to it; then any *competing* label
- * that sat earlier in the order and now sits less than `minGap` above the clamped label is pulled
- * up to `(y - minGap)`. This only ever touches the specific pair that overflowed — a label with no
+ * cluster" side effect. Runs for sides 1 and −1 only — this ceiling means "stay clear of the row
+ * of numbers under the plot", and a side-0 name that lives below those numbers by design has
+ * nothing to clear; applying it there would yank the two below-axis names straight back above the
+ * axis. Each side's labels (in the same ascending-y order the stacking pass used) are visited from
+ * the bottom up. A label past `maxY` is clamped to it; then any *competing* label that sat earlier
+ * in the order and now sits less than `minGap` above the clamped label is pulled up to
+ * `(y - minGap)`. This only ever touches the specific pair that overflowed — a label with no
  * competitor at the ceiling never moves, which is what keeps "Deck 3" on the plot even when
  * "Bottom Tuck 1"/"Bottom Tuck 3" overflow the axis rule two columns away.
  */
 export function deOverlapCallouts(callouts: RailCallout[], minGap: number, maxY?: number): RailCallout[] {
   const working = callouts.map((c) => ({ ...c }));
 
-  for (const sideVal of [1, -1] as const) {
+  for (const sideVal of [1, -1, 0] as const) {
     const bySide = working
       .map((c, originalIndex) => ({ c, originalIndex }))
       .filter((entry) => entry.c.side === sideVal)
@@ -250,6 +320,10 @@ export function deOverlapCallouts(callouts: RailCallout[], minGap: number, maxY?
       }
       cur.y = target;
     }
+
+    // Ceiling pass is for sides 1 and −1 only (see the doc comment above); side 0 skips straight
+    // past it.
+    if (sideVal === 0) continue;
 
     // Ceiling pass, bottom-up — only when a ceiling is supplied.
     if (maxY !== undefined) {
