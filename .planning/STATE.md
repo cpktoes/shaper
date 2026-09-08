@@ -5,10 +5,10 @@ milestone_name: Rails Finished, Phone Ready
 current_phase: 9
 current_phase_name: The Design Screens on a Phone
 status: planning
-stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-09-08T22:36:46.486Z"
+stopped_at: Phase 8 complete — gap closure executed, verified and closed; Phase 9 not yet discussed
+last_updated: "2026-09-08T22:38:04.676Z"
 last_activity: 2026-09-08
-last_activity_desc: Phase 8 plan 08-06 resumed after the shaper deployed and migrated; SUMMARY recorded, verifier running
+last_activity_desc: Phase 8 gap closure (08-07, 08-08, 08-09) executed, code-reviewed, verified (passed) and the phase marked complete; UAT gaps reconciled as resolved
 progress:
   total_phases: 3
   completed_phases: 1
