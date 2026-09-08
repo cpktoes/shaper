@@ -8084,5 +8084,285 @@
         }
       }
     }
+  },
+  "exampleRail": {
+    "flat": {
+      "computeArgs": {
+        "thickness": 3.5,
+        "ratioTopPct": 60,
+        "family": 3,
+        "domed": false,
+        "domedBandBase": 6,
+        "scale": 1
+      },
+      "result": {
+        "thickness": 3.5,
+        "apexLenRange": 0.75,
+        "apexCenter": 1.4000000000000001,
+        "railMark1": 1.7750000000000001,
+        "railTuck1": 1.0250000000000001,
+        "cornerCutRail": 1.7125000000000001,
+        "cornerCutOffset": 0.0625,
+        "domedDeckBand": 6,
+        "deckMark1": 2.5,
+        "deckMark2": 1.25,
+        "deckMark3": 4,
+        "cornerCutDeck": 0.0625,
+        "bottomTuck1": 0.5125000000000001,
+        "bottomTuck2": 0.25625000000000003,
+        "bottomTuck3": 1.0250000000000001,
+        "removeCornerCut": false,
+        "singleTuck": false
+      },
+      "segments": [
+        {
+          "key": "domedBand",
+          "label": "Domed Deck Band",
+          "p1": [
+            0,
+            3.5
+          ],
+          "p2": [
+            -6,
+            3.5
+          ]
+        },
+        {
+          "key": "band1",
+          "label": "Rail Band 1",
+          "p1": [
+            0,
+            1.7750000000000001
+          ],
+          "p2": [
+            -2.5,
+            3.5
+          ]
+        },
+        {
+          "key": "band2",
+          "label": "Rail Band 2",
+          "p1": [
+            -1.25,
+            2.6375
+          ],
+          "p2": [
+            -4,
+            3.5
+          ]
+        },
+        {
+          "key": "cornerCut",
+          "label": "Corner Cut",
+          "p1": [
+            0,
+            1.7125000000000001
+          ],
+          "p2": [
+            -0.0625,
+            1.8181250000000002
+          ]
+        },
+        {
+          "key": "tuck1",
+          "label": "Rail Tuck 1",
+          "p1": [
+            0,
+            1.0250000000000001
+          ],
+          "p2": [
+            -0.5125000000000001,
+            0
+          ]
+        },
+        {
+          "key": "tuck2",
+          "label": "Rail Tuck 2",
+          "p1": [
+            -0.25625000000000003,
+            0.5125000000000001
+          ],
+          "p2": [
+            -1.0250000000000001,
+            0
+          ]
+        },
+        {
+          "key": "boardConn",
+          "label": "Board Thickness",
+          "p1": [
+            -8,
+            3.5
+          ],
+          "p2": [
+            -6,
+            3.5
+          ]
+        },
+        {
+          "key": "bottomConn",
+          "label": "Left Edge → Bottom Tuck 3",
+          "p1": [
+            -8,
+            0
+          ],
+          "p2": [
+            -1.0250000000000001,
+            0
+          ]
+        },
+        {
+          "key": "railConn",
+          "label": "Rail Mark 1 → Tuck 1",
+          "p1": [
+            0,
+            1.7750000000000001
+          ],
+          "p2": [
+            0,
+            1.0250000000000001
+          ]
+        }
+      ]
+    },
+    "domed": {
+      "computeArgs": {
+        "thickness": 3,
+        "ratioTopPct": 60,
+        "family": 3,
+        "domed": true,
+        "domedBandBase": 6,
+        "scale": 1
+      },
+      "result": {
+        "thickness": 3,
+        "apexLenRange": 0.75,
+        "apexCenter": 1.2000000000000002,
+        "railMark1": 1.5750000000000002,
+        "railTuck1": 0.8250000000000002,
+        "cornerCutRail": 1.5125000000000002,
+        "cornerCutOffset": 0.0625,
+        "domedDeckBand": 6,
+        "deckMark1": 2.5,
+        "deckMark2": 1.25,
+        "deckMark3": 4,
+        "cornerCutDeck": 0.0625,
+        "bottomTuck1": 0.4125000000000001,
+        "bottomTuck2": 0.20625000000000004,
+        "bottomTuck3": 0.8250000000000002,
+        "removeCornerCut": false,
+        "singleTuck": false
+      },
+      "segments": [
+        {
+          "key": "domedBand",
+          "label": "Domed Deck Band",
+          "p1": [
+            0,
+            3
+          ],
+          "p2": [
+            -6,
+            3.5
+          ]
+        },
+        {
+          "key": "band1",
+          "label": "Rail Band 1",
+          "p1": [
+            0,
+            1.5750000000000002
+          ],
+          "p2": [
+            -2.5,
+            3.2083333333333335
+          ]
+        },
+        {
+          "key": "band2",
+          "label": "Rail Band 2",
+          "p1": [
+            -1.25,
+            2.3916666666666666
+          ],
+          "p2": [
+            -4,
+            3.3333333333333335
+          ]
+        },
+        {
+          "key": "cornerCut",
+          "label": "Corner Cut",
+          "p1": [
+            0,
+            1.5125000000000002
+          ],
+          "p2": [
+            -0.0625,
+            1.6158333333333335
+          ]
+        },
+        {
+          "key": "tuck1",
+          "label": "Rail Tuck 1",
+          "p1": [
+            0,
+            0.8250000000000002
+          ],
+          "p2": [
+            -0.4125000000000001,
+            0
+          ]
+        },
+        {
+          "key": "tuck2",
+          "label": "Rail Tuck 2",
+          "p1": [
+            -0.20625000000000004,
+            0.4125000000000001
+          ],
+          "p2": [
+            -0.8250000000000002,
+            0
+          ]
+        },
+        {
+          "key": "boardConn",
+          "label": "Board Thickness",
+          "p1": [
+            -8,
+            3.5
+          ],
+          "p2": [
+            -6,
+            3.5
+          ]
+        },
+        {
+          "key": "bottomConn",
+          "label": "Left Edge → Bottom Tuck 3",
+          "p1": [
+            -8,
+            0
+          ],
+          "p2": [
+            -0.8250000000000002,
+            0
+          ]
+        },
+        {
+          "key": "railConn",
+          "label": "Rail Mark 1 → Tuck 1",
+          "p1": [
+            0,
+            1.5750000000000002
+          ],
+          "p2": [
+            0,
+            0.8250000000000002
+          ]
+        }
+      ]
+    }
   }
 }

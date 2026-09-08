@@ -3,14 +3,15 @@
 /**
  * Live SVG cross-section plot for one rail section, ported from the prototype's `buildPlot`
  * pixel math (reference/project/Rails.dc.html lines 1027-1147) restricted to a single, always-
- * expanded plot: no `cropXMin`/actual-size handling, no callouts (those belong to the
- * out-of-scope Instructions page). Colours and dot/legend visibility rules live here, since
- * lib/geometry/rail-bands.ts's segments are colour-free (see that module's port-header
- * deviation 4).
+ * expanded plot: no `cropXMin`/actual-size handling. Colours and dot/legend visibility rules live
+ * here, since lib/geometry/rail-bands.ts's segments are colour-free (see that module's port-header
+ * deviation 4). Callouts (the INSTRUCTIONS tab's named marks, D-17) render through the optional
+ * `callouts` prop below — the plot itself stays the single component every rail drawing shares.
  */
 
 import { useRef } from "react";
-import { CALLOUT_PX, useSvgFitScale } from "@/components/viewer/callout-primitives";
+import type { RailCallout } from "./rail-callouts";
+import { CALLOUT_PX, DimensionTick, pinnedCalloutSizes, useSvgFitScale } from "@/components/viewer/callout-primitives";
 import { useUnits } from "@/components/units-provider";
 import { formatMarkBare } from "@/lib/geometry/measure-display";
 import type { RailSectionKey, RailSectionOutput, RailSegmentKey } from "@/lib/geometry/rail-bands";
@@ -77,6 +78,10 @@ interface RailSectionPlotProps {
    * a width-driven plot there wants about twice that height and would overflow the row, so the
    * three compact plots there fit to height instead. */
   fit?: "width" | "height";
+  /** Named mark labels (D-17), built by `buildRailCallouts`/`deOverlapCallouts` in
+   * `./rail-callouts`. Absent (the default): the plot renders exactly as it always has — the
+   * VIEWER tab's three plots are pixel-identical with no callouts. */
+  callouts?: RailCallout[];
 }
 
 /**
@@ -94,6 +99,20 @@ export function computeRailPlotBounds(output: RailSectionOutput, xAxisMin: Mm) {
   const width = (0.15 - minX) * SCALE + LEFT_PAD;
   const height = (maxY - minY) * SCALE + AXIS_LABEL_PAD;
   return { minX, minY, maxY, width, height };
+}
+
+/**
+ * The exact inches-to-pixel projection the component's own `px()`/`py()` closures use, exported
+ * so a caller building callouts (`rail-instructions.tsx` via `buildRailCallouts`) computes anchor
+ * positions in the SAME pixel space the plot itself draws in, rather than a second projection that
+ * could drift from this one.
+ */
+export function railPlotProjection(output: RailSectionOutput, xAxisMin: Mm): { px: (xIn: number) => number; py: (yIn: number) => number } {
+  const { minX, maxY } = computeRailPlotBounds(output, xAxisMin);
+  return {
+    px: (x: number) => (x - minX) * SCALE + LEFT_PAD,
+    py: (y: number) => (maxY - y) * SCALE,
+  };
 }
 
 /** A grid/axis tick, expressed in the same display domain (inches) the component's own `px()`/
@@ -205,7 +224,7 @@ export function buildRailPlotGrid(
   };
 }
 
-export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSectionPlotProps) {
+export function RailSectionPlot({ output, xAxisMin, fit = "width", callouts }: RailSectionPlotProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const { system } = useUnits();
   const { result, segments, domed, boardThickness, thicknessEff } = output;
@@ -276,6 +295,10 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSection
   // other callout in the app, rather than tracking however wide the plot happens to render.
   const fitScale = useSvgFitScale(svgRef, width, height);
   const axisFontSize = fitScale > 0 ? CALLOUT_PX.name / fitScale : 10;
+  // Mark-name callouts (D-17) pin to the same Label-role size the plot's own axis ticks already
+  // use, via the shared primitive rather than a second ad-hoc ternary.
+  const calloutFontSize = pinnedCalloutSizes(fitScale).name;
+  const CALLOUT_TEXT_GAP = 4;
 
   return (
     <svg
@@ -317,6 +340,35 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width" }: RailSection
           </text>
         </g>
       ))}
+      {callouts?.map((c) => {
+        // side 1 (Apex, Domed Taper, Rail Mk1, Tuck 1) sits near the apex (x=0, the drawing's
+        // rightmost structure) and reads rightward from its own point; side -1 (every deck/bottom
+        // mark, further left) reads leftward, back toward the plot's own left margin.
+        const textAnchor = c.side >= 0 ? "start" : "end";
+        const textX = c.side >= 0 ? c.x + CALLOUT_TEXT_GAP : c.x - CALLOUT_TEXT_GAP;
+        return (
+          <g key={c.key}>
+            <DimensionTick x={c.x} y={c.y} color={c.color} />
+            <text
+              x={textX}
+              y={c.y}
+              textAnchor={textAnchor}
+              dominantBaseline="middle"
+              fill={c.color}
+              style={{
+                fontSize: calloutFontSize,
+                fontWeight: 700,
+                fontFamily: "var(--font-body)",
+                letterSpacing: "0.02em",
+                textShadow:
+                  "0 0 3px var(--outline-page-bg), 0 0 3px var(--outline-page-bg), 0 0 5px var(--outline-page-bg)",
+              }}
+            >
+              {c.name}
+            </text>
+          </g>
+        );
+      })}
     </svg>
   );
 }
