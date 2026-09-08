@@ -24,7 +24,8 @@ import {
   type RailSectionOutput,
 } from "@/lib/geometry/rail-bands";
 import { inchesToMm, type Mm } from "@/lib/geometry/units";
-import { RailSectionPlot } from "./rail-section-plot";
+import { buildRailCallouts, deOverlapCallouts, RAIL_CALLOUT_MIN_GAP } from "./rail-callouts";
+import { RailSectionPlot, railPlotProjection } from "./rail-section-plot";
 
 type FlatDomed = "flat" | "domed";
 
@@ -84,7 +85,17 @@ export function ExampleRailFigure({ domed }: { domed: boolean }) {
     };
   }, [domed]);
 
-  return <RailSectionPlot sectionKey="center" output={output} xAxisMin={output.bounds.xAxisMin} fit="height" />;
+  // Names only, never a value (D-19) — built from this example rail's own output, in the same
+  // pixel space RailSectionPlot itself draws in, then pushed apart so no two labels overlap.
+  const callouts = useMemo(() => {
+    const projection = railPlotProjection(output, output.bounds.xAxisMin);
+    const raw = buildRailCallouts(output, output.thicknessEff, projection);
+    return deOverlapCallouts(raw, RAIL_CALLOUT_MIN_GAP);
+  }, [output]);
+
+  return (
+    <RailSectionPlot sectionKey="center" output={output} xAxisMin={output.bounds.xAxisMin} fit="height" callouts={callouts} />
+  );
 }
 
 export function RailInstructions() {

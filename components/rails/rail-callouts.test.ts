@@ -1,4 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// `rail-callouts.ts` imports `RAIL_SEGMENT_COLORS` from `./rail-section-plot`, which reads
+// `useUnits()` (components/units-provider.tsx) -> the real "use server" units-preference action
+// -> the database client at import time. Stubbed the same way rail-section-plot.test.ts already
+// does, since this file only needs the pure colour map and layout functions, never a render.
+vi.mock("@/app/actions/units", () => ({ saveUnitsPreference: async () => {} }));
+
 import { buildRailSegments, computeRailSection, type RailSectionOutput } from "@/lib/geometry/rail-bands";
 import { inchesToMm } from "@/lib/geometry/units";
 import { buildRailCallouts, deOverlapCallouts, RAIL_CALLOUT_ANCHORS, type RailCallout } from "./rail-callouts";
