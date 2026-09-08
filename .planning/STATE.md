@@ -5,8 +5,8 @@ milestone_name: Rails Finished, Phone Ready
 current_phase: 8
 current_phase_name: The Rails Screen, Finished
 status: planning
-stopped_at: Phase 8 context gathered
-last_updated: "2026-09-08T05:03:49.749Z"
+stopped_at: Phase 8 UI-SPEC approved
+last_updated: "2026-09-08T05:22:14.487Z"
 last_activity: 2026-09-07
 progress:
   total_phases: 3
@@ -291,9 +291,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-08T05:03:49.725Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-the-rails-screen-finished/08-CONTEXT.md
+Last session: 2026-09-08T05:22:14.465Z
+Stopped at: Phase 8 UI-SPEC approved
+Resume file: /Users/kontoes/Code/shaper/.planning/phases/08-the-rails-screen-finished/08-UI-SPEC.md
 Next action: `/gsd-discuss-phase 8` — Phase 8 has two open product decisions (whether the
 "Include Rail Band Instructions in Print" box starts ticked, and whether it saves with the board
 or stays a session preference) that research flagged for the discussion, not for a plan.
