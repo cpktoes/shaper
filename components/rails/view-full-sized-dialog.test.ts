@@ -18,6 +18,7 @@ import { describe, expect, it } from "vitest";
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const DIALOG_PATH = "components/rails/view-full-sized-dialog.tsx";
 const ACTUAL_SIZE_CSS_PATH = "app/design/rails/actual-size.css";
+const SIGN_IN_BANNER_PATH = "components/auth/sign-in-banner.tsx";
 
 /** Strips `//` line comments and `/* *\/` block comments — the same helper
  * `lib/units-isolation.test.ts` already copies from `lib/theme.test.ts`. */
@@ -117,5 +118,30 @@ describe("view-full-sized-dialog.tsx (RAIL-04, D-12–D-16)", () => {
         ":has([data-view-full-sized-dialog])",
       );
     }
+  });
+
+  it("resets the CSS translate property inside its print block (G-08-5)", () => {
+    const css = readStripped(ACTUAL_SIZE_CSS_PATH);
+    // Tailwind v4 compiles the dialog's centring classes to `translate`, not `transform` — a
+    // future edit that keeps only `transform: none` silently reintroduces the off-page offset.
+    expect(css, "does not reset the translate property in print").toMatch(/translate:\s*none/);
+  });
+
+  it("names an @page rule asking for landscape, so the true-size rail prints unshrunk (G-08-5)", () => {
+    const source = readStripped(DIALOG_PATH);
+    expect(source, "does not declare an @page rule").toMatch(/@page/);
+    expect(source, "does not ask for a landscape page").toMatch(/landscape/);
+  });
+
+  it("declares no @page rule of its own, so the landscape page can never leak to a plain rails print (WR-01)", () => {
+    const css = readStripped(ACTUAL_SIZE_CSS_PATH);
+    expect(css, "declares an @page rule in the route-wide stylesheet — this would leak landscape to every rails print").not.toMatch(
+      /@page/,
+    );
+  });
+
+  it("the sign-in banner carries data-print-hide, so a signed-out print carries no account nudge (G-08-5, D-15)", () => {
+    const source = readStripped(SIGN_IN_BANNER_PATH);
+    expect(source, "does not carry data-print-hide on the banner").toMatch(/data-print-hide/);
   });
 });

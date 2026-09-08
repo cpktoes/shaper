@@ -25,6 +25,16 @@
  * Always in document flow, never an overlay: this sits above the design screen's own content
  * inside `app/design/layout.tsx`'s existing flex column, and dismissing it is always one click
  * away. A nudge a shaper cannot get past would be a gate (D-01) — this is not that.
+ *
+ * The outer div carries `data-print-hide` (G-08-5, D-15): signed out, this banner sits above
+ * every design screen, so without it a printed actual-size rail would carry an invitation to
+ * make an account at the top of a shop drawing. One attribute is the whole fix — both print
+ * stylesheets that already hide chrome (app/design/rails/actual-size.css and
+ * app/design/summary/order-form.css) pick it up on their own. A deliberate knock-on: order-
+ * form.css hides `[data-print-hide]` unconditionally in print, so this same attribute also
+ * takes the banner off the printed order form — wanted, and plan 08-09 depends on it to get
+ * Letter down to two pages, but worth naming since it means one attribute changes two printed
+ * surfaces.
  */
 
 import { useState, useSyncExternalStore } from "react";
@@ -67,7 +77,10 @@ export function SignInBanner() {
 
   return (
     <>
-      <div className="flex flex-none items-center justify-center gap-4 bg-surf-canvas px-6 py-2 text-center">
+      <div
+        data-print-hide
+        className="flex flex-none items-center justify-center gap-4 bg-surf-canvas px-6 py-2 text-center"
+      >
         <p className="text-balance text-sm text-surf-ink">
           Sign in and your boards are saved.{" "}
           <button
