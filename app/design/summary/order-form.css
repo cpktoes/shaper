@@ -338,9 +338,22 @@
      wrapper is neither `html` nor `body`, the only two elements pinned white above. A literal is
      correct and necessary here, the same as it is for `html`/`body`: this rule only ever runs
      against paper, which really is white, and it is the one place a future change to the theme
-     contract cannot quietly put a background back on the printed sheet. */
+     contract cannot quietly put a background back on the printed sheet.
+
+     The same rule also zeroes this wrapper's `px-6 py-8` padding (G-08-10). That padding is the
+     air around the paper on the shaper's screen — the grey desk the sheet sits on. On paper the
+     sheet IS the page, so the desk has nothing to sit on: left in, its 32px above pushes sheet 1
+     off page 1 (Letter's printable box has only about five pixels to spare once the sheets are
+     fitted to it — see use-print-fit.ts's head comment) and its 32px below spills a blank page
+     after the last sheet. A4 has 66px more height and absorbed both, which is why only Letter
+     ever showed the blank pages, and why printing at 97% "fixed" it — that bought back exactly
+     those pixels by shrinking everything else instead. The side padding goes with it too: at
+     print width the pinned sheet is slightly wider than the wrapper's inner box, so removing the
+     side padding also gives the sheet its full width back rather than letting the wrapper crop
+     it. Screen is untouched — this whole rule lives inside `@media print`. */
   [data-order-form-page] {
     background: #fff !important;
+    padding: 0 !important;
   }
 
   /* The station and widepoint reference lines are deliberately faint on screen — 36% / 45%
