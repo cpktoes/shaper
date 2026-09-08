@@ -11,6 +11,7 @@ vi.mock("@/app/actions/units", () => ({ saveUnitsPreference: async () => {} }));
 
 import { DEFAULT_RAIL_BAND_SPEC, computeRailBands } from "@/lib/geometry/rail-bands";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
+import { MIN_PINNED_FIT_SCALE } from "@/components/viewer/callout-primitives";
 import {
   CALLOUT_BOTTOM_PAD,
   CALLOUT_RIGHT_PAD,
@@ -20,6 +21,7 @@ import {
   railPlotProjection,
   railPlotTicksFit,
   railPlotLeftLabelsFit,
+  railPlotStackedLabelsFit,
 } from "./rail-section-plot";
 
 /**
@@ -268,6 +270,46 @@ describe("railPlotTicksFit", () => {
   it("the default 10mm-labelled bottom axis fits at 1.8 and 2.3 (the printed third sheet's own bracket)", () => {
     expect(railPlotTicksFit(everyTick.xTicks, 1.8)).toBe(true);
     expect(railPlotTicksFit(everyTick.xTicks, 2.3)).toBe(true);
+  });
+});
+
+/**
+ * `railPlotStackedLabelsFit` (phase 08 code review WR-02): the left axis's own vertical-spacing
+ * twin of `railPlotTicksFit` above, checked so the left axis's own adjacent-label spacing is
+ * verified directly rather than assumed to follow the bottom axis's own check by coincidence.
+ * Scales per `.planning/debug/metric-axis-labels-instructions-card.md`, the same four D-13 pins
+ * `railPlotTicksFit` above uses, plus `MIN_PINNED_FIT_SCALE` (the callout system's own pinning
+ * floor, `components/viewer/callout-primitives.tsx`) since that is the smallest render scale a
+ * rail plot's axis text can ever be asked to draw at.
+ */
+describe("railPlotStackedLabelsFit", () => {
+  const bands = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
+  const bounds = computeRailPlotBounds(bands.center, bands.center.bounds.xAxisMin);
+  const everyTick = buildRailPlotGrid(bounds, "metric");
+  const everySecond = buildRailPlotGrid(bounds, "metric", { labelEvery: 2 });
+
+  it("the default 10mm-labelled left axis fits at all four measured scales and at MIN_PINNED_FIT_SCALE", () => {
+    expect(railPlotStackedLabelsFit(everyTick.yTicks, 0.785)).toBe(true);
+    expect(railPlotStackedLabelsFit(everyTick.yTicks, 1.2)).toBe(true);
+    expect(railPlotStackedLabelsFit(everyTick.yTicks, 1.8)).toBe(true);
+    expect(railPlotStackedLabelsFit(everyTick.yTicks, 2.3)).toBe(true);
+    expect(railPlotStackedLabelsFit(everyTick.yTicks, MIN_PINNED_FIT_SCALE)).toBe(true);
+  });
+
+  it("a contrived small scale (0.5, about 11.0px against a 13px threshold) does not fit, proving the function can fail", () => {
+    expect(railPlotStackedLabelsFit(everyTick.yTicks, 0.5)).toBe(false);
+  });
+
+  it("at the default board's own 0.785 scale, the left axis already fits at every candidate — the bottom axis is what forces the thinning to labelEvery 2", () => {
+    // Left axis: fits at labelEvery 1 (the least-thinned candidate `chooseMetricLabelEvery` tries
+    // first) and stays fitting at labelEvery 2 — never the deciding vote at this scale.
+    expect(railPlotStackedLabelsFit(everyTick.yTicks, 0.785)).toBe(true);
+    expect(railPlotStackedLabelsFit(everySecond.yTicks, 0.785)).toBe(true);
+    // Bottom axis: does NOT fit at labelEvery 1 (pinned by the railPlotTicksFit describe block
+    // above) but does at labelEvery 2 — so `chooseMetricLabelEvery`'s own scan (labelEvery 1, then
+    // 2, ...) lands on 2 for a reason the bottom axis's own check supplies.
+    expect(railPlotTicksFit(everyTick.xTicks, 0.785)).toBe(false);
+    expect(railPlotTicksFit(everySecond.xTicks, 0.785)).toBe(true);
   });
 });
 

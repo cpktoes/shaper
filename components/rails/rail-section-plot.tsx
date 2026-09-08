@@ -349,6 +349,41 @@ export function railPlotTicksFit(ticks: RailPlotTick[], renderScale: number): bo
 }
 
 /**
+ * True when every pair of adjacent LABELLED ticks in `ticks` (an empty-label tick, already thinned
+ * by `labelEvery`, has no text to collide with and is skipped) would draw without their text
+ * overlapping VERTICALLY at the given render scale — the left (y) axis's own twin of
+ * `railPlotTicksFit` above, for labels that stack one above the other instead of reading side by
+ * side along the bottom axis.
+ *
+ * Left-axis labels stack vertically, so the extent that matters is the label FACE height
+ * (`CALLOUT_PX.name`, the same pinned screen-pixel size the render's own `axisFontSize =
+ * CALLOUT_PX.name / fitScale` draws at in viewBox units), not the character count
+ * `railPlotTicksFit` measures for the horizontally-read bottom axis. The gap between two
+ * neighbours' values, converted to on-screen pixels the same way `railPlotTicksFit` converts
+ * spacing (times `SCALE`, times `renderScale`), must be at least the face height plus
+ * `AXIS_LABEL_FIT_MARGIN_PX`.
+ *
+ * Today this never thins the axis further than the bottom axis's own check already does — a
+ * 10 mm step at the smallest measured render scale (0.785, the INSTRUCTIONS card) is about
+ * 17.3 screen px against a 13px threshold — but that held by the coincidence that a label's text
+ * WIDTH (what the bottom axis's check measures) exceeds its own text HEIGHT for the mm ranges this
+ * plot draws, not by construction. This function exists so the left axis's own vertical spacing is
+ * checked directly, alongside the bottom axis's check, in `chooseMetricLabelEvery` below, so that
+ * relationship holds because it is verified rather than because it happens to today.
+ */
+export function railPlotStackedLabelsFit(ticks: RailPlotTick[], renderScale: number): boolean {
+  const labelled = ticks.filter((t) => t.label.length > 0);
+  for (let i = 1; i < labelled.length; i++) {
+    const prev = labelled[i - 1];
+    const cur = labelled[i];
+    const spacingIn = Math.abs(cur.value - prev.value);
+    const gapPx = spacingIn * SCALE * renderScale;
+    if (gapPx < CALLOUT_PX.name + AXIS_LABEL_FIT_MARGIN_PX) return false;
+  }
+  return true;
+}
+
+/**
  * True when the WIDEST labelled tick in `ticks` (an empty-label tick, already thinned by
  * `labelEvery`, has no text to fit and is skipped) would fit inside the left-hand strip reserved
  * for it: `LEFT_PAD` less the gap between the axis line and where a left-axis label's text begins
@@ -371,16 +406,19 @@ export function railPlotLeftLabelsFit(ticks: RailPlotTick[], renderScale: number
 // 2, then 5, then 10 labelled ticks' worth of spacing and take the first the fit test accepts".
 const METRIC_LABEL_EVERY_CANDIDATES = [1, 2, 5, 10] as const;
 
-/** Picks the least-thinned bottom-axis label spacing `railPlotTicksFit` accepts at the given
- * render scale, defaulting to the most-thinned candidate if none of them do. Private wiring — only
- * `RailSectionPlot`'s Metric branch calls this; Imperial never does. */
+/** Picks the least-thinned label spacing both axes' fit tests accept at the given render scale —
+ * `railPlotTicksFit` for the bottom axis's horizontal spacing, `railPlotStackedLabelsFit` for the
+ * left axis's own vertical spacing — defaulting to the most-thinned candidate if none of them do.
+ * Private wiring — only `RailSectionPlot`'s Metric branch calls this; Imperial never does. */
 function chooseMetricLabelEvery(
   bounds: { minX: number; minY: number; maxY: number },
   renderScale: number,
 ): (typeof METRIC_LABEL_EVERY_CANDIDATES)[number] {
   for (const labelEvery of METRIC_LABEL_EVERY_CANDIDATES) {
     const candidate = buildRailPlotGrid(bounds, "metric", { labelEvery });
-    if (railPlotTicksFit(candidate.xTicks, renderScale)) return labelEvery;
+    if (railPlotTicksFit(candidate.xTicks, renderScale) && railPlotStackedLabelsFit(candidate.yTicks, renderScale)) {
+      return labelEvery;
+    }
   }
   return METRIC_LABEL_EVERY_CANDIDATES[METRIC_LABEL_EVERY_CANDIDATES.length - 1];
 }
