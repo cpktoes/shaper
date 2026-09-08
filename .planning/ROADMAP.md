@@ -100,24 +100,41 @@ Phases 8–10 below are the active v1.2 record. Requirements are defined in
 **Depends on**: Phase 7 (the v1.1 units rules every new number obeys)
 **Requirements**: RAIL-02, RAIL-03, RAIL-04, RAIL-05, RAIL-06, PRNT-05, PRNT-06
 **Success Criteria** (what must be TRUE):
+
   1. On the rails screen a shaper can open a third tab, INSTRUCTIONS, beside VIEWER and DATA, and see a live example rail with every mark named beside it — and flip that rail between Flat and Domed and watch it reshape.
   2. A shaper can open "View Full Sized" and hold a ruler or a piece of foam against the rail cross-section on screen and find it actual size, with one plain line saying it assumes a standard screen at 100% zoom and no calibration step to work through.
   3. A shaper can see plan and side views of the whole board on the rails screen showing where the nose, centre and tail sections sit, and tick each reference on or off from a legend.
   4. Ticking "Include Rail Band Instructions in Print" puts that instructions sheet on the order form's printed reference page in whichever system the shaper reads in; with the box unticked, every printed output is exactly what it was before this milestone.
   5. Every new number on the screen reads in the shaper's chosen system — whole millimetres in Metric, inches and fractions in Imperial.
+
 **Plans**: 6 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 08-01-PLAN.md — The INSTRUCTIONS tab: a named example rail a shaper can flip between Flat and Domed (wave 1)
 - [ ] 08-02-PLAN.md — The print preference, built on the units machinery, plus the rails sidebar tick-box (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 08-03-PLAN.md — The plan and side reference figure, its nine-item legend and the instructional copy (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 08-04-PLAN.md — View Full Sized: the rail at actual size on screen and on paper, with its check bar (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 08-05-PLAN.md — The summary mirror tick-box and the third printed sheet (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 08-06-PLAN.md — Proving every printed output unchanged, then migrating production after deploy (wave 5)
 
 **UI hint**: yes
 
 **Settled findings that constrain this phase:**
+
 - **No new geometry math.** The prototype's `halveDeckMark1` flag is dead code — it appears once, at the call site on `reference/project/Rails.dc.html` line 1359, and never in `computeSection`'s parameter list on line 704 (verified 2026-09-07). The existing `computeRailSection` already draws the example rail as the prototype drew it, and `lib/geometry/rail-bands.ts` is not modified. Rule 1 still applies: a new golden-fixture entry for the example rail, extracted by `scripts/extract-prototype-rails-golden.mjs` executing the prototype's own code, plus a test pinning it. Never hand-transcribe those numbers.
 - **The instructions sheet attaches to the order form's printed reference page** (`components/summary/order-form.tsx`, live React under `@media print`), reusing the same component built for the tab — not to the jsPDF builders under `components/template/`, which stay exactly as v1.1 proved them. PRNT-06 is proven the way Phase 7 proved it: regenerate and diff against the pre-milestone build.
 - **Two product decisions belong in discuss-phase, not in a plan:** whether the print toggle starts ticked, and whether it saves with the board or stays a session preference. The toggle is set on the rails screen and read on the summary screen, so it is cross-screen state and lives on the shared design store either way.
@@ -130,15 +147,18 @@ Plans:
 **Depends on**: Phase 8
 **Requirements**: PHON-01, PHON-02, PHON-03, PHON-04, PHON-05, PHON-06, TEST-01
 **Success Criteria** (what must be TRUE):
+
   1. On a phone, each of the five design screens stacks its controls and its drawing so nothing overlaps and nothing is hidden — every control a shaper can reach on a desktop is reachable on the phone.
   2. The page fits the phone's visible area as Safari's toolbar comes and goes — nothing clipped, no trapped scrolling — and the board drawings use the full width of the screen, so they are big enough to read.
   3. Sliders, buttons, tabs and typed fields are big enough to hit with a finger, and tapping a number field does not zoom the page.
   4. A shaper can drag outline, rocker and foil points with a thumb: hit zones sized for a finger, not overlapping their neighbours, and no long-press text popup interrupting a drag.
   5. On a desktop, mouse dragging and keyboard operation behave exactly as they do today on every viewer touched, and automated tests on iPhone and Android viewports prove the stacked layout and touch drag on at least the outline viewer, so later phone changes can't quietly break them.
+
 **Plans**: TBD
 **UI hint**: yes
 
 **Settled findings that constrain this phase:**
+
 - **Extract one shared `components/design/design-screen-shell.tsx` first**, desktop-pixel-identical, and add the phone breakpoint there once. The sidebar-and-canvas layout is duplicated with zero breakpoints across `outline-editor.tsx`, `rocker-editor.tsx`, `rail-band-editor.tsx`, `fin-placement-editor.tsx` and `volume-estimator.tsx`; fixing the layout five times is the phase's main risk.
 - **The `dvh` root and Next 16's `viewport` export land early** (`app/layout.tsx`), before any per-screen work — every other phone change depends on them.
 - **Playwright is installed in this phase** (`@playwright/test`, dev dependency only) with iPhone and Android device profiles. It is the milestone's only new dependency, and until it lands, desktop-regression protection is a disciplined manual mouse-and-keyboard pass that each plan's verification must state explicitly.
@@ -152,19 +172,21 @@ Plans:
 **Depends on**: Phase 9
 **Requirements**: PHON-07, PHON-08, PHON-09, PHON-10
 **Success Criteria** (what must be TRUE):
+
   1. A shaper can sign in, sign up and use the account menu on a phone.
   2. A shaper can pick a preset and open, rename, duplicate or delete a saved board from the rack, on a phone.
   3. A shaper can read the summary and the on-screen order form on a phone; printing stays a desktop job.
   4. The whole trip — sign in, pick a preset, open from the rack, work through all five design screens, save, read the summary — runs end to end on a real iPhone and a real Android phone, with desktop mouse and keyboard behaviour unchanged.
+
 **Plans**: TBD
 **UI hint**: yes
 
 **Settled findings that constrain this phase:**
+
 - **End-to-end verification is on real devices, in hand.** DevTools emulation misses the iOS long-press callout, sticky hover and the toolbar coming and going, which are exactly the failures this phase exists to catch.
 - The sweep sits last on purpose, so it exercises Phase 8's new rails surfaces on a phone as well as the screens retrofitted in Phase 9.
 - Safe-area handling is needed wherever a control ends up bottom-anchored; which screens those are gets enumerated during planning, once phone control placement is known.
 - The work is breadth on well-trodden patterns — Clerk's prebuilt sign-in UI, shadcn cards, Tailwind breakpoints — so a research-phase can be skipped.
-
 
 ## Progress
 
