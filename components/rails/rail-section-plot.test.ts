@@ -11,7 +11,7 @@ vi.mock("@/app/actions/units", () => ({ saveUnitsPreference: async () => {} }));
 
 import { DEFAULT_RAIL_BAND_SPEC, computeRailBands } from "@/lib/geometry/rail-bands";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
-import { buildRailPlotGrid, computeRailPlotBounds } from "./rail-section-plot";
+import { CALLOUT_RIGHT_PAD, SCALE, computeRailPlotBounds, buildRailPlotGrid, railPlotProjection } from "./rail-section-plot";
 
 /**
  * The rail plot's grid-tick generation (T-06-05) had no test at all before this plan — a wrong
@@ -121,5 +121,48 @@ describe("buildRailPlotGrid", () => {
     // computeRailPlotBounds output, not a value this file invented.
     expect(bounds.minY).toBe(-0.15);
     expect(bounds.maxY).toBeCloseTo(mmToInches(bands.center.bounds.yAxisMax) + 0.15, 9);
+  });
+});
+
+/**
+ * `computeRailPlotBounds`'s optional `calloutRoom` flag (quick task 260908-b35): the pixel-identity
+ * contract from plan 08-01 says the VIEWER tab, the order form's first sheet and the View Full
+ * Sized dialog — none of which ever passes this option — must see today's exact box, unchanged.
+ * These assertions pin that no-option/false-option box byte for byte, and pin that asking for the
+ * room changes `width` and nothing else.
+ */
+describe("computeRailPlotBounds calloutRoom option", () => {
+  const bands = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
+  const output = bands.center;
+  const xAxisMin = output.bounds.xAxisMin;
+
+  it("returns an identical box with no third argument and with calloutRoom explicitly false", () => {
+    const noArg = computeRailPlotBounds(output, xAxisMin);
+    const explicitFalse = computeRailPlotBounds(output, xAxisMin, { calloutRoom: false });
+    expect(explicitFalse).toEqual(noArg);
+  });
+
+  it("with no third argument, width is the frozen chrome value the VIEWER tab and the full-sized dialog depend on", () => {
+    // This is the pixel-identity contract from plan 08-01: a change here means the VIEWER stack
+    // and the printed full-sized rail both moved.
+    const bounds = computeRailPlotBounds(output, xAxisMin);
+    expect(bounds.width).toBeCloseTo((0.15 - bounds.minX) * SCALE + 22, 9);
+  });
+
+  it("asking for callout room adds exactly CALLOUT_RIGHT_PAD to width and changes nothing else", () => {
+    const plain = computeRailPlotBounds(output, xAxisMin);
+    const padded = computeRailPlotBounds(output, xAxisMin, { calloutRoom: true });
+    expect(padded.width).toBeCloseTo(plain.width + CALLOUT_RIGHT_PAD, 9);
+    expect(padded.height).toBe(plain.height);
+    expect(padded.minX).toBe(plain.minX);
+    expect(padded.minY).toBe(plain.minY);
+    expect(padded.maxY).toBe(plain.maxY);
+  });
+
+  it("railPlotProjection is unmoved by the option", () => {
+    const padded = computeRailPlotBounds(output, xAxisMin, { calloutRoom: true });
+    const { px, py } = railPlotProjection(output, xAxisMin);
+    expect(px(0)).toBeCloseTo((0 - padded.minX) * SCALE + 22, 9);
+    expect(py(0)).toBeCloseTo(padded.maxY * SCALE, 9);
   });
 });

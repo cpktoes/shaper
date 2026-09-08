@@ -22,6 +22,16 @@ export const RAIL_CALLOUT_MIN_GAP = 17;
 /** The prototype's own x-proximity threshold for clustering labels into one stack before applying
  * the minimum gap (Rails.dc.html line 1112, `BUCKET_PX`). */
 export const RAIL_CALLOUT_BUCKET_PX = 95;
+/** The prototype's own gap between the lowest a label may sit and the x-axis (Rails.dc.html line
+ * 1113, `py(0) - 10`). This is what keeps the row of axis numbers under the plot a row of numbers
+ * — with it, no mark name gets pushed down into the axis tick labels. */
+export const RAIL_CALLOUT_AXIS_CLEARANCE = 10;
+/** How far a mark name that's anchored exactly on a drawn line (Deck 3 and Deck 1 on the top deck
+ * line, Bottom Tuck 1 and Bottom Tuck 3 on the bottom axis) is lifted off it, in viewBox units.
+ * Without this, those four names used to print straight through both the line and their own
+ * coloured dot; now they read just above the line instead. The plot's y grows downward, so the
+ * lift is applied as a negative `dy` on the anchor. */
+export const RAIL_CALLOUT_EDGE_LIFT = 8;
 
 export type RailCalloutSide = 1 | -1;
 
@@ -38,18 +48,23 @@ export interface RailCallout {
 
 /** The ten marks' fixed identity — key, name and side never change with geometry, only their
  * `x`/`y` position does. Exported so a name/side/order assertion never needs a full geometry
- * fixture to check against (the prototype's own `raw` array order, lines 1093-1103). */
-export const RAIL_CALLOUT_ANCHORS: readonly { key: string; name: string; side: RailCalloutSide }[] = [
+ * fixture to check against (the prototype's own `raw` array order, lines 1093-1103).
+ *
+ * `dy` (viewBox units, optional) is set only on the four marks anchored exactly on a drawn line —
+ * Deck 3 and Deck 1 on the top deck line, Bottom Tuck 1 and Bottom Tuck 3 on the bottom axis — as
+ * the negated `RAIL_CALLOUT_EDGE_LIFT`, so the name reads just above the line instead of straddling
+ * it and its own dot. Every other entry carries no `dy` at all. */
+export const RAIL_CALLOUT_ANCHORS: readonly { key: string; name: string; side: RailCalloutSide; dy?: number }[] = [
   { key: "apex", name: "Apex", side: 1 },
   { key: "domedTaper", name: "Domed Taper", side: 1 },
   { key: "railMk1", name: "Rail Mk1", side: 1 },
   { key: "cornerCut", name: "Corner Cut", side: -1 },
-  { key: "deck3", name: "Deck 3", side: -1 },
+  { key: "deck3", name: "Deck 3", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
   { key: "deck2", name: "Deck 2", side: -1 },
-  { key: "deck1", name: "Deck 1", side: -1 },
+  { key: "deck1", name: "Deck 1", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
   { key: "tuck1", name: "Tuck 1", side: 1 },
-  { key: "bottomTuck1", name: "Bottom Tuck 1", side: -1 },
-  { key: "bottomTuck3", name: "Bottom Tuck 3", side: -1 },
+  { key: "bottomTuck1", name: "Bottom Tuck 1", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
+  { key: "bottomTuck3", name: "Bottom Tuck 3", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
 ] as const;
 
 export interface RailCalloutProjection {
@@ -65,6 +80,10 @@ export interface RailCalloutProjection {
  * `thickness` is the section's own effective thickness (`output.thicknessEff`) — the same value
  * `buildRailSegments` was called with — because Deck 1 and Deck 3 sit at that height, not at the
  * domed-aware "blank thickness" the plot's reference lines use.
+ *
+ * The four line-anchored marks' `dy` lift (`RAIL_CALLOUT_EDGE_LIFT`) is applied here, before any
+ * de-overlap pass runs, so the axis ceiling `deOverlapCallouts` restores still has the final say
+ * on where the two bottom-edge names end up once clustering is done.
  */
 export function buildRailCallouts(
   output: RailSectionOutput,
@@ -131,7 +150,10 @@ export function buildRailCallouts(
       side: anchor.side,
       color: colors[anchor.key],
       x: px(pos.x),
-      y: py(pos.y),
+      // The tick and the name are drawn at this same position (rail-section-plot.tsx), so the
+      // lift moves both together — intended, since the mark's own real position is already drawn
+      // as the coloured dot the plot puts at every segment endpoint, and no leader line is added.
+      y: py(pos.y) + (anchor.dy ?? 0),
     };
   });
 }
@@ -145,8 +167,17 @@ export function buildRailCallouts(
  * temporary per-side arrays, never the returned array itself (matching the prototype's own
  * `raw.map(...)` at the end, which reads the original array order after the pass has mutated each
  * entry's `y` in place).
+ *
+ * The optional third parameter `maxY` restores the one step the port had dropped: the prototype's
+ * own axis ceiling (Rails.dc.html line 1113, `maxAllowedY = py(0) - 10`). After a cluster has been
+ * stacked, if its lowest (largest-y) entry falls past `maxY`, the WHOLE cluster is shifted up by
+ * that same overflow — never an individual label, which would re-collapse the gaps the stacking
+ * loop just created (Rails.dc.html lines 1122-1124). Without it, two bottom-edge marks whose
+ * anchors are close enough to cluster get pushed down into the axis tick labels. Absent `maxY`
+ * there is no ceiling and the pass behaves exactly as it always has, which is what keeps the
+ * existing callers and tests passing unedited.
  */
-export function deOverlapCallouts(callouts: RailCallout[], minGap: number): RailCallout[] {
+export function deOverlapCallouts(callouts: RailCallout[], minGap: number, maxY?: number): RailCallout[] {
   const working = callouts.map((c) => ({ ...c }));
 
   for (const sideVal of [1, -1] as const) {
@@ -158,6 +189,12 @@ export function deOverlapCallouts(callouts: RailCallout[], minGap: number): Rail
       for (let i = 1; i < cluster.length; i++) {
         if (cluster[i].y - cluster[i - 1].y < minGap) {
           cluster[i].y = cluster[i - 1].y + minGap;
+        }
+      }
+      if (maxY !== undefined) {
+        const overflow = cluster[cluster.length - 1].y - maxY;
+        if (overflow > 0) {
+          for (const c of cluster) c.y -= overflow;
         }
       }
       cluster = [];

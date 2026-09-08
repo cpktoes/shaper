@@ -30,6 +30,25 @@ export const SCALE = 56;
 const LEFT_PAD = 22;
 const AXIS_LABEL_PAD = 20; // room for the x-axis tick labels below the plot
 
+// Room reserved to the right of the apex column for the mark names that read rightward from it
+// (D-17), so the widest of them (Domed Taper) sits inside the box instead of being clipped by the
+// SVG's own overflow. 96 viewBox units comes from a real measurement, not a guess: on the
+// INSTRUCTIONS card the widest right-hand name ended 79 units past the box's 486.8-unit right
+// edge, so 96 clears that worst measured case with about 17 units to spare — in the same range as
+// the prototype's own comparable allowance (120px of label extent budgeted to the right of the
+// apex column when centring the scroll view, Rails.dc.html line 1141).
+//
+// The caveat worth keeping in mind: the callout font is pinned to a screen-pixel size
+// (`pinnedCalloutSizes`), so it grows in viewBox units as the drawing's own fit scale shrinks. 96
+// units covers the widest name down to a fit scale of roughly 0.78; the INSTRUCTIONS card sits at
+// about 0.89 today.
+//
+// Exported — unlike its two neighbours above, which stay module-private — so a test can assert
+// the exact difference asking for the room makes, instead of restating 96 in a second place. The
+// View Full Sized dialog's true-physical-size math is unaffected: that dialog draws no callouts,
+// so it never asks for this room (see `computeRailPlotBounds`'s `calloutRoom` option below).
+export const CALLOUT_RIGHT_PAD = 96;
+
 /**
  * Categorical colours for the rail-band plot. These are signal/data colours held
  * deliberately outside the brand palette — a band's colour identifies *which band it is*,
@@ -98,14 +117,20 @@ interface RailSectionPlotProps {
  * uses. Exported so callers (rail-band-editor.tsx) can learn a section's natural height — driven
  * by its thickness, same as the rendered plot — without duplicating this geometry-free layout
  * math or reaching into `lib/` for it (this is diagram sizing, not shaping geometry).
+ *
+ * The optional `calloutRoom` flag exists for the one caller that draws mark names
+ * (`RailSectionPlot`, when it has callouts to render): asking for it adds `CALLOUT_RIGHT_PAD` to
+ * the returned `width` only — `minX`, `minY` and `maxY` never move, so not one drawn coordinate
+ * shifts. Every other caller (the VIEWER tab's `rail-band-editor.tsx`, the View Full Sized
+ * dialog) omits the option and gets today's exact box, unchanged.
  */
-export function computeRailPlotBounds(output: RailSectionOutput, xAxisMin: Mm) {
+export function computeRailPlotBounds(output: RailSectionOutput, xAxisMin: Mm, options?: { calloutRoom?: boolean }) {
   const xAxisMinIn = mmToInches(xAxisMin);
   const yAxisMaxIn = mmToInches(output.bounds.yAxisMax);
   const minX = xAxisMinIn - 0.15;
   const minY = -0.15;
   const maxY = yAxisMaxIn + 0.15;
-  const width = (0.15 - minX) * SCALE + LEFT_PAD;
+  const width = (0.15 - minX) * SCALE + LEFT_PAD + (options?.calloutRoom ? CALLOUT_RIGHT_PAD : 0);
   const height = (maxY - minY) * SCALE + AXIS_LABEL_PAD;
   return { minX, minY, maxY, width, height };
 }
@@ -239,7 +264,9 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width", callouts }: R
   const { result, segments, domed, boardThickness, thicknessEff } = output;
   const blankThicknessIn = domed ? mmToInches(boardThickness) : mmToInches(thicknessEff);
 
-  const { minX, minY, maxY, width, height } = computeRailPlotBounds(output, xAxisMin);
+  const { minX, minY, maxY, width, height } = computeRailPlotBounds(output, xAxisMin, {
+    calloutRoom: !!callouts && callouts.length > 0,
+  });
   const px = (x: number) => (x - minX) * SCALE + LEFT_PAD;
   const py = (y: number) => (maxY - y) * SCALE;
 
