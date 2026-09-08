@@ -26,6 +26,12 @@ export const RAIL_CALLOUT_BUCKET_PX = 95;
  * 1113, `py(0) - 10`). This is what keeps the row of axis numbers under the plot a row of numbers
  * — with it, no mark name gets pushed down into the axis tick labels. */
 export const RAIL_CALLOUT_AXIS_CLEARANCE = 10;
+/** How far a mark name that's anchored exactly on a drawn line (Deck 3 and Deck 1 on the top deck
+ * line, Bottom Tuck 1 and Bottom Tuck 3 on the bottom axis) is lifted off it, in viewBox units.
+ * Without this, those four names used to print straight through both the line and their own
+ * coloured dot; now they read just above the line instead. The plot's y grows downward, so the
+ * lift is applied as a negative `dy` on the anchor. */
+export const RAIL_CALLOUT_EDGE_LIFT = 8;
 
 export type RailCalloutSide = 1 | -1;
 
@@ -42,18 +48,23 @@ export interface RailCallout {
 
 /** The ten marks' fixed identity — key, name and side never change with geometry, only their
  * `x`/`y` position does. Exported so a name/side/order assertion never needs a full geometry
- * fixture to check against (the prototype's own `raw` array order, lines 1093-1103). */
-export const RAIL_CALLOUT_ANCHORS: readonly { key: string; name: string; side: RailCalloutSide }[] = [
+ * fixture to check against (the prototype's own `raw` array order, lines 1093-1103).
+ *
+ * `dy` (viewBox units, optional) is set only on the four marks anchored exactly on a drawn line —
+ * Deck 3 and Deck 1 on the top deck line, Bottom Tuck 1 and Bottom Tuck 3 on the bottom axis — as
+ * the negated `RAIL_CALLOUT_EDGE_LIFT`, so the name reads just above the line instead of straddling
+ * it and its own dot. Every other entry carries no `dy` at all. */
+export const RAIL_CALLOUT_ANCHORS: readonly { key: string; name: string; side: RailCalloutSide; dy?: number }[] = [
   { key: "apex", name: "Apex", side: 1 },
   { key: "domedTaper", name: "Domed Taper", side: 1 },
   { key: "railMk1", name: "Rail Mk1", side: 1 },
   { key: "cornerCut", name: "Corner Cut", side: -1 },
-  { key: "deck3", name: "Deck 3", side: -1 },
+  { key: "deck3", name: "Deck 3", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
   { key: "deck2", name: "Deck 2", side: -1 },
-  { key: "deck1", name: "Deck 1", side: -1 },
+  { key: "deck1", name: "Deck 1", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
   { key: "tuck1", name: "Tuck 1", side: 1 },
-  { key: "bottomTuck1", name: "Bottom Tuck 1", side: -1 },
-  { key: "bottomTuck3", name: "Bottom Tuck 3", side: -1 },
+  { key: "bottomTuck1", name: "Bottom Tuck 1", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
+  { key: "bottomTuck3", name: "Bottom Tuck 3", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
 ] as const;
 
 export interface RailCalloutProjection {
@@ -69,6 +80,10 @@ export interface RailCalloutProjection {
  * `thickness` is the section's own effective thickness (`output.thicknessEff`) — the same value
  * `buildRailSegments` was called with — because Deck 1 and Deck 3 sit at that height, not at the
  * domed-aware "blank thickness" the plot's reference lines use.
+ *
+ * The four line-anchored marks' `dy` lift (`RAIL_CALLOUT_EDGE_LIFT`) is applied here, before any
+ * de-overlap pass runs, so the axis ceiling `deOverlapCallouts` restores still has the final say
+ * on where the two bottom-edge names end up once clustering is done.
  */
 export function buildRailCallouts(
   output: RailSectionOutput,
@@ -135,7 +150,10 @@ export function buildRailCallouts(
       side: anchor.side,
       color: colors[anchor.key],
       x: px(pos.x),
-      y: py(pos.y),
+      // The tick and the name are drawn at this same position (rail-section-plot.tsx), so the
+      // lift moves both together — intended, since the mark's own real position is already drawn
+      // as the coloured dot the plot puts at every segment endpoint, and no leader line is added.
+      y: py(pos.y) + (anchor.dy ?? 0),
     };
   });
 }

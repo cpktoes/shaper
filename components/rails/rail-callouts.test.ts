@@ -7,12 +7,13 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/app/actions/units", () => ({ saveUnitsPreference: async () => {} }));
 
 import { buildRailSegments, computeRailSection, type RailSectionOutput } from "@/lib/geometry/rail-bands";
-import { inchesToMm } from "@/lib/geometry/units";
+import { inchesToMm, mmToInches } from "@/lib/geometry/units";
 import {
   buildRailCallouts,
   deOverlapCallouts,
   RAIL_CALLOUT_ANCHORS,
   RAIL_CALLOUT_AXIS_CLEARANCE,
+  RAIL_CALLOUT_EDGE_LIFT,
   RAIL_CALLOUT_MIN_GAP,
   type RailCallout,
 } from "./rail-callouts";
@@ -70,6 +71,17 @@ describe("RAIL_CALLOUT_ANCHORS", () => {
       "Bottom Tuck 3",
     ]);
   });
+
+  it("carries the negated edge lift on exactly Deck 3, Deck 1, Bottom Tuck 1 and Bottom Tuck 3, and none on the other six", () => {
+    const liftedNames = new Set(["Deck 3", "Deck 1", "Bottom Tuck 1", "Bottom Tuck 3"]);
+    for (const anchor of RAIL_CALLOUT_ANCHORS) {
+      if (liftedNames.has(anchor.name)) {
+        expect(anchor.dy).toBe(-RAIL_CALLOUT_EDGE_LIFT);
+      } else {
+        expect(anchor.dy).toBeUndefined();
+      }
+    }
+  });
 });
 
 describe("buildRailCallouts", () => {
@@ -110,6 +122,34 @@ describe("buildRailCallouts", () => {
     const domedOutput = buildExampleOutput(true);
     const domedCallouts = buildRailCallouts(domedOutput, domedOutput.thicknessEff, identityProjection);
     expect(domedCallouts).toHaveLength(10);
+  });
+
+  it("lifts Deck 3 and Deck 1 one lift above the section's own thickness, and Bottom Tuck 1/3 one lift above zero", () => {
+    const thicknessIn = mmToInches(output.thicknessEff);
+    const deck3 = callouts.find((c) => c.name === "Deck 3")!;
+    const deck1 = callouts.find((c) => c.name === "Deck 1")!;
+    const bottomTuck1 = callouts.find((c) => c.name === "Bottom Tuck 1")!;
+    const bottomTuck3 = callouts.find((c) => c.name === "Bottom Tuck 3")!;
+
+    // Identity projection: py(y) = y, so the callout's y should equal the geometry's own y minus
+    // the lift (the plot's y grows downward, so lifting off the line subtracts).
+    expect(deck3.y).toBeCloseTo(thicknessIn - RAIL_CALLOUT_EDGE_LIFT, 9);
+    expect(deck1.y).toBeCloseTo(thicknessIn - RAIL_CALLOUT_EDGE_LIFT, 9);
+    expect(bottomTuck1.y).toBeCloseTo(0 - RAIL_CALLOUT_EDGE_LIFT, 9);
+    expect(bottomTuck3.y).toBeCloseTo(0 - RAIL_CALLOUT_EDGE_LIFT, 9);
+  });
+
+  it("leaves the four unmoved marks exactly on their own geometry with no lift applied", () => {
+    const r = output.result;
+    const apex = callouts.find((c) => c.name === "Apex")!;
+    const railMk1 = callouts.find((c) => c.name === "Rail Mk1")!;
+    const cornerCut = callouts.find((c) => c.name === "Corner Cut")!;
+    const tuck1 = callouts.find((c) => c.name === "Tuck 1")!;
+
+    expect(apex.y).toBeCloseTo(mmToInches(r.apexCenter), 9);
+    expect(railMk1.y).toBeCloseTo(mmToInches(r.railMark1), 9);
+    expect(cornerCut.y).toBeCloseTo(mmToInches(r.railMark1), 9);
+    expect(tuck1.y).toBeCloseTo(mmToInches(r.railTuck1), 9);
   });
 });
 
