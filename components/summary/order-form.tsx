@@ -52,13 +52,16 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { useDesign } from "@/components/design/design-store";
+import { usePrintRailInstructions } from "@/components/print-instructions-provider";
 import { useUnits } from "@/components/units-provider";
 import { OutlineViewer } from "@/components/outline/outline-viewer";
 import { RailDataTable } from "@/components/rails/rail-data-table";
 import { RailSectionPlot } from "@/components/rails/rail-section-plot";
 import { RockerViewer } from "@/components/rocker/rocker-viewer";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ExportPreviewDialog } from "@/components/template/export-preview-dialog";
+import { RailInstructionsSheet } from "./rail-instructions-sheet";
 import {
   FormBox,
   LogoBlock,
@@ -122,8 +125,9 @@ function Sheet({
 }: {
   /** "reference" is page 2, which carries only two tables and can therefore afford much larger
    * type than the densely packed order form — see `order-form.css`, where the variant redeclares
-   * the whole type scale. */
-  variant?: "form" | "reference";
+   * the whole type scale. "instructions" is the third sheet (PRNT-05, D-09) — the fixed Rail Band
+   * Instructions reference page, present only when the shaper has ticked the print preference. */
+  variant?: "form" | "reference" | "instructions";
   children: ReactNode;
 }) {
   return (
@@ -132,6 +136,7 @@ function Sheet({
       className={cn(
         "flex flex-col gap-1 border-[1.5px] border-surf-ink bg-surf-panel p-1.5",
         variant === "reference" && "order-form-sheet-reference",
+        variant === "instructions" && "order-form-sheet-instructions",
       )}
     >
       {children}
@@ -139,12 +144,15 @@ function Sheet({
   );
 }
 
-/** The `PAGE 1 OF 2` / `PAGE 2 OF 2` marker, so the pair reads as a pair when it comes off the printer. */
-function PageMark({ page, title }: { page: number; title: string }) {
+/** The `PAGE 1 OF N` / `PAGE 2 OF N` / `PAGE 3 OF N` marker, so the stack reads as a stack when it
+ * comes off the printer — `of` is the sheet count actually about to print (D-09), not a hardcoded
+ * total, so ticking "Include Rail Band Instructions in Print" updates every mark on the form at
+ * once rather than leaving the first two pages quoting a total that's no longer true. */
+function PageMark({ page, of, title }: { page: number; of: number; title: string }) {
   return (
     <div className="flex flex-none items-baseline justify-between gap-2 pt-0.5 text-surf-ink-muted order-form-micro">
       <span className="font-display font-extrabold tracking-architectural uppercase">{title}</span>
-      <span>Page {page} of 2</span>
+      <span>Page {page} of {of}</span>
     </div>
   );
 }
@@ -206,6 +214,11 @@ export function OrderForm() {
   } = useDesign();
   const { system } = useUnits();
   const { rootRef, printOrderForm } = useOrderFormPrintFit();
+  // One value both the page marks and the sheet stack itself follow (D-09) — two sheets unticked,
+  // matching this form's pre-milestone output byte-for-byte (PRNT-06), three ticked.
+  const { included: printRailInstructions, setIncluded: setPrintRailInstructions } =
+    usePrintRailInstructions();
+  const sheetCount = printRailInstructions ? 3 : 2;
 
   const sections = SECTION_KEYS.map((key) => ({
     key,
@@ -529,7 +542,7 @@ export function OrderForm() {
             </div>
           </div>
 
-          <PageMark page={1} title="Custom Surfboard Order" />
+          <PageMark page={1} of={sheetCount} title="Custom Surfboard Order" />
         </Sheet>
 
         {/* ══════════ PAGE 2 — the shaper's reference ══════════════════════════════════════ */}
@@ -691,8 +704,20 @@ export function OrderForm() {
             </div>
           </div>
 
-          <PageMark page={2} title="Shaper Reference" />
+          <PageMark page={2} of={sheetCount} title="Shaper Reference" />
         </Sheet>
+
+        {/* ══════════ PAGE 3 — Rail Band Instructions ═══════════════════════════════════════ */}
+        {/* Present the moment the box is ticked — this form is measured on screen and printed as
+            measured, so a sheet that prints must be a sheet that shows (D-09). Always the Flat
+            example rail and every legend line, whatever the INSTRUCTIONS tab's own switch and
+            ticks are set to on screen (D-08): two prints of the same board are the same sheet. */}
+        {printRailInstructions && (
+          <Sheet variant="instructions">
+            <RailInstructionsSheet />
+            <PageMark page={3} of={sheetCount} title="Rail Band Reference" />
+          </Sheet>
+        )}
       </div>
 
       {/* Below the paper, and never on it. */}
@@ -715,8 +740,20 @@ export function OrderForm() {
             </Button>
           }
         />
+        {/* The mirror (D-10): identical label, same preference, beside the button that decides
+            what actually comes off the printer — ticking either box updates the other on its next
+            render, since both read/write usePrintRailInstructions() alone. */}
+        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-surf-ink-muted">
+          <Checkbox
+            checked={printRailInstructions}
+            onCheckedChange={() => setPrintRailInstructions(!printRailInstructions)}
+          />
+          Include Rail Band Instructions in Print
+        </label>
         <span className="text-xs text-surf-ink-muted">
-          Two portrait pages — print double-sided for a front-and-back form.
+          {printRailInstructions
+            ? "Two portrait pages, printed double-sided — plus a single-sided Rail Band Instructions page."
+            : "Two portrait pages — print double-sided for a front-and-back form."}
         </span>
       </div>
     </div>

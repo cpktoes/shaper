@@ -224,6 +224,25 @@
 }
 
 /*
+ * The third sheet — Rail Band Instructions (PRNT-05, D-09). Same type scale as page 2's own
+ * `.order-form-sheet-reference` variant: this sheet carries one heading, a figure and a diagram,
+ * the same "few big elements, not a dense table" shape page 2's own reference sheet was sized for,
+ * so it reuses that variant's numbers directly rather than declaring a third, near-identical set.
+ */
+[data-order-form-root] .order-form-sheet-instructions {
+  --order-form-caption: clamp(12px, 1.9cqw, 24px);
+  --order-form-micro: clamp(12px, 1.75cqw, 22px);
+  --order-form-value: clamp(12px, 2.15cqw, 26px);
+  --order-form-row: clamp(12px, 1.75cqw, 21px);
+  --order-form-group: clamp(12px, 1.9cqw, 24px);
+
+  --summary-font-callout: clamp(12px, 2.15cqw, 26px);
+  --summary-font-group: clamp(12px, 1.9cqw, 24px);
+  --summary-font-row: clamp(12px, 1.75cqw, 21px);
+  --summary-font-label: clamp(12px, 1.9cqw, 24px);
+}
+
+/*
  * The paper.
  *
  * A fixed portrait aspect box rather than a height in pixels: `aspect-ratio` ties the sheet's
