@@ -22,6 +22,10 @@ export const RAIL_CALLOUT_MIN_GAP = 17;
 /** The prototype's own x-proximity threshold for clustering labels into one stack before applying
  * the minimum gap (Rails.dc.html line 1112, `BUCKET_PX`). */
 export const RAIL_CALLOUT_BUCKET_PX = 95;
+/** The prototype's own gap between the lowest a label may sit and the x-axis (Rails.dc.html line
+ * 1113, `py(0) - 10`). This is what keeps the row of axis numbers under the plot a row of numbers
+ * — with it, no mark name gets pushed down into the axis tick labels. */
+export const RAIL_CALLOUT_AXIS_CLEARANCE = 10;
 
 export type RailCalloutSide = 1 | -1;
 
@@ -145,8 +149,17 @@ export function buildRailCallouts(
  * temporary per-side arrays, never the returned array itself (matching the prototype's own
  * `raw.map(...)` at the end, which reads the original array order after the pass has mutated each
  * entry's `y` in place).
+ *
+ * The optional third parameter `maxY` restores the one step the port had dropped: the prototype's
+ * own axis ceiling (Rails.dc.html line 1113, `maxAllowedY = py(0) - 10`). After a cluster has been
+ * stacked, if its lowest (largest-y) entry falls past `maxY`, the WHOLE cluster is shifted up by
+ * that same overflow — never an individual label, which would re-collapse the gaps the stacking
+ * loop just created (Rails.dc.html lines 1122-1124). Without it, two bottom-edge marks whose
+ * anchors are close enough to cluster get pushed down into the axis tick labels. Absent `maxY`
+ * there is no ceiling and the pass behaves exactly as it always has, which is what keeps the
+ * existing callers and tests passing unedited.
  */
-export function deOverlapCallouts(callouts: RailCallout[], minGap: number): RailCallout[] {
+export function deOverlapCallouts(callouts: RailCallout[], minGap: number, maxY?: number): RailCallout[] {
   const working = callouts.map((c) => ({ ...c }));
 
   for (const sideVal of [1, -1] as const) {
@@ -158,6 +171,12 @@ export function deOverlapCallouts(callouts: RailCallout[], minGap: number): Rail
       for (let i = 1; i < cluster.length; i++) {
         if (cluster[i].y - cluster[i - 1].y < minGap) {
           cluster[i].y = cluster[i - 1].y + minGap;
+        }
+      }
+      if (maxY !== undefined) {
+        const overflow = cluster[cluster.length - 1].y - maxY;
+        if (overflow > 0) {
+          for (const c of cluster) c.y -= overflow;
         }
       }
       cluster = [];

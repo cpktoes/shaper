@@ -27,7 +27,7 @@ import {
   type RailSectionOutput,
 } from "@/lib/geometry/rail-bands";
 import { inchesToMm, type Mm } from "@/lib/geometry/units";
-import { buildRailCallouts, deOverlapCallouts, RAIL_CALLOUT_MIN_GAP } from "./rail-callouts";
+import { buildRailCallouts, deOverlapCallouts, RAIL_CALLOUT_AXIS_CLEARANCE, RAIL_CALLOUT_MIN_GAP } from "./rail-callouts";
 import { RAIL_REFERENCE_LEGEND, RailPlanSideFigure, formatTaperTuckRange } from "./rail-plan-side-figure";
 import type { RailReferenceGroup } from "./rail-reference-paths";
 import { RailSectionPlot, railPlotProjection } from "./rail-section-plot";
@@ -95,7 +95,7 @@ export function ExampleRailFigure({ domed }: { domed: boolean }) {
   const callouts = useMemo(() => {
     const projection = railPlotProjection(output, output.bounds.xAxisMin);
     const raw = buildRailCallouts(output, output.thicknessEff, projection);
-    return deOverlapCallouts(raw, RAIL_CALLOUT_MIN_GAP);
+    return deOverlapCallouts(raw, RAIL_CALLOUT_MIN_GAP, projection.py(0) - RAIL_CALLOUT_AXIS_CLEARANCE);
   }, [output]);
 
   return (

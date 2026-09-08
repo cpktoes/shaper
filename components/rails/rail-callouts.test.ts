@@ -8,7 +8,15 @@ vi.mock("@/app/actions/units", () => ({ saveUnitsPreference: async () => {} }));
 
 import { buildRailSegments, computeRailSection, type RailSectionOutput } from "@/lib/geometry/rail-bands";
 import { inchesToMm } from "@/lib/geometry/units";
-import { buildRailCallouts, deOverlapCallouts, RAIL_CALLOUT_ANCHORS, type RailCallout } from "./rail-callouts";
+import {
+  buildRailCallouts,
+  deOverlapCallouts,
+  RAIL_CALLOUT_ANCHORS,
+  RAIL_CALLOUT_AXIS_CLEARANCE,
+  RAIL_CALLOUT_MIN_GAP,
+  type RailCallout,
+} from "./rail-callouts";
+import { CALLOUT_RIGHT_PAD, computeRailPlotBounds, railPlotProjection } from "./rail-section-plot";
 
 /** The same fixed example-rail inputs rail-instructions.tsx's ExampleRailFigure uses (D-20),
  * Flat state — real geometry so Deck 2's band1-interpolated y and Corner Cut's non-obvious
@@ -136,5 +144,57 @@ describe("deOverlapCallouts", () => {
     const result = deOverlapCallouts(input, 17);
     expect(result.find((c) => c.key === "a")!.y).toBe(0);
     expect(result.find((c) => c.key === "b")!.y).toBe(100);
+  });
+
+  it("shifts a whole cluster up when its stacked lowest entry would fall past the ceiling", () => {
+    const input = [callout({ key: "a", x: 0, y: 0 }), callout({ key: "b", x: 5, y: 5 })];
+    const maxY = 10;
+    const result = deOverlapCallouts(input, 17, maxY);
+    const a = result.find((c) => c.key === "a")!;
+    const b = result.find((c) => c.key === "b")!;
+    // Stacked first: a=0, b=17 (17 gap). b is the lowest and falls 7 past maxY=10, so both are
+    // shifted up by 7: a=-7, b=10.
+    expect(b.y).toBe(maxY);
+    expect(b.y - a.y).toBeCloseTo(17, 9);
+  });
+
+  it("leaves a cluster that already sits above the ceiling untouched", () => {
+    const input = [callout({ key: "a", x: 0, y: 0 }), callout({ key: "b", x: 5, y: 5 })];
+    const result = deOverlapCallouts(input, 17, 1000);
+    expect(result.find((c) => c.key === "a")!.y).toBe(0);
+    expect(result.find((c) => c.key === "b")!.y).toBe(17);
+  });
+
+  it("with no ceiling supplied, stacking still pushes the lower entry past where a ceiling would have held it", () => {
+    const input = [callout({ key: "a", x: 0, y: 0 }), callout({ key: "b", x: 5, y: 5 })];
+    const result = deOverlapCallouts(input, 17);
+    const b = result.find((c) => c.key === "b")!;
+    expect(b.y).toBe(17);
+    expect(b.y).toBeGreaterThan(10); // past where the maxY=10 case above held it
+  });
+
+  it("the real example rail: no callout ends up below the axis ceiling, and none runs off the right edge", () => {
+    const output = buildExampleOutput(false);
+    const paddedBounds = computeRailPlotBounds(output, output.bounds.xAxisMin, { calloutRoom: true });
+    const projection = railPlotProjection(output, output.bounds.xAxisMin);
+    const raw = buildRailCallouts(output, output.thicknessEff, projection);
+    const maxY = projection.py(0) - RAIL_CALLOUT_AXIS_CLEARANCE;
+    const result = deOverlapCallouts(raw, RAIL_CALLOUT_MIN_GAP, maxY);
+
+    expect(result).toHaveLength(10);
+    for (const c of result) {
+      expect(c.y).toBeLessThanOrEqual(maxY + 1e-9);
+    }
+
+    // The pure-function half of "nothing runs off the right edge": every callout's x sits inside
+    // the plot's own drawn box (pixel space runs from 0 to the box's own width), and the box built
+    // with callout room leaves at least CALLOUT_RIGHT_PAD of space beyond the rightmost anchor. The
+    // drawn text width itself is left to the browser check.
+    const rightmostAnchorX = Math.max(...result.map((c) => c.x));
+    for (const c of result) {
+      expect(c.x).toBeGreaterThanOrEqual(0);
+      expect(c.x).toBeLessThanOrEqual(paddedBounds.width);
+    }
+    expect(paddedBounds.width - rightmostAnchorX).toBeGreaterThanOrEqual(CALLOUT_RIGHT_PAD);
   });
 });
