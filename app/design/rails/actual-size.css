@@ -56,15 +56,33 @@
 
   /* Lets the dialog's popup flow as ordinary page content instead of staying pinned to the
      viewport at a capped height, so a true-size rail taller than one printed page paginates
-     instead of clipping. */
+     instead of clipping.
+
+     `translate: none` is a second, separate reset from `transform: none` above it, not a
+     duplicate of it: components/ui/dialog.tsx centres the popup with Tailwind's
+     `-translate-x-1/2 -translate-y-1/2`, and Tailwind v4 compiles that utility to the CSS
+     `translate` property, not to `transform`. `transform: none` alone leaves the popup at
+     `position: static` (from the reset above) but still shifted left and up by half its own
+     width and height — measured on the as-shipped print at x −417px / y −124px, off the page
+     entirely. Both resets are needed; dropping either one reintroduces the offset.
+
+     The padding, ring, shadow, corner radius and background below are the popup's screen-only
+     card styling — on paper the printable width is the scarce resource an 8.69in-wide rail
+     needs every millimetre of, not a rounded card border, and a shaper's shop drawing doesn't
+     want a coloured background eating printer ink. `box-shadow: none` also clears the popup's
+     `ring-1` (Tailwind implements `ring` as a box-shadow), so there is no separate ring reset. */
   [data-view-full-sized-dialog] {
     position: static !important;
     inset: auto !important;
     transform: none !important;
+    translate: none !important;
     max-height: none !important;
     max-width: none !important;
     overflow: visible !important;
     box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
   }
 
   /* The true-size plot and the check bar (components/rails/view-full-sized-dialog.tsx): a
