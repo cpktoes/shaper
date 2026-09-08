@@ -38,6 +38,7 @@
  * they land beside marks that are not theirs.
  */
 
+import { CALLOUT_CHAR_PX } from "@/components/viewer/callout-primitives";
 import { RAIL_SEGMENT_COLORS } from "./rail-section-plot";
 import type { RailSectionOutput } from "@/lib/geometry/rail-bands";
 import { mmToInches, type Mm } from "@/lib/geometry/units";
@@ -59,14 +60,10 @@ export const RAIL_CALLOUT_AXIS_CLEARANCE = 10;
  * coloured dot; now they read just above the line instead. The plot's y grows downward, so the
  * lift is applied as a negative `dy` on the anchor. */
 export const RAIL_CALLOUT_EDGE_LIFT = 8;
-/** Estimated viewBox width of one character at the pinned 11px bold callout face, measured
- * against "Domed Taper" (11 characters, 83 viewBox px at render scale 0.893, i.e. about 74 px at
- * scale 1) — roughly 6.7 viewBox px per character. Safe to use as an estimate at any render scale:
- * the face is pinned in *screen* px (components/viewer/callout-primitives.tsx's pinnedCalloutSizes),
- * so a label's viewBox width shrinks as the plot renders larger, making this scale-1 calibration
- * conservative (over-wide, never under-wide) on bigger renders, such as the order form's third
- * sheet at roughly scale 2.3. */
-export const RAIL_CALLOUT_CHAR_PX = 6.7;
+/** The per-character text-width estimate for the pinned callout face now lives in
+ * `components/viewer/callout-primitives.tsx` as `CALLOUT_CHAR_PX`, beside the pinned face it was
+ * measured against — the rail plot's own axis-tick labels (08-08) read from that same shared
+ * estimate, so it moved rather than staying a second private copy in this file. */
 /** The gap between an anchor and the start of its drawn text. This mirrors the function-local
  * `CALLOUT_TEXT_GAP` inside `RailSectionPlot`'s own render (components/rails/rail-section-plot.tsx),
  * which is not exported — the two must stay equal, or the estimated text extents below stop
@@ -245,9 +242,9 @@ export function buildRailCallouts(
   });
 }
 
-/** Slack folded into the text-overlap test below, to cover the fact that `RAIL_CALLOUT_CHAR_PX` is
- * an estimate, not a measured width — two extents that merely touch within this margin are treated
- * as competing. This is slack for the estimate, not a design gap; it has no effect on how far apart
+/** Slack folded into the text-overlap test below, to cover the fact that `CALLOUT_CHAR_PX` is an
+ * estimate, not a measured width — two extents that merely touch within this margin are treated as
+ * competing. This is slack for the estimate, not a design gap; it has no effect on how far apart
  * two competing labels are stacked (that is `minGap`, below). */
 const RAIL_CALLOUT_OVERLAP_MARGIN = 2;
 
@@ -258,7 +255,7 @@ const RAIL_CALLOUT_OVERLAP_MARGIN = 2;
  * estimated box against the plot's real bounds using this same estimate, rather than a second copy
  * that can drift. */
 export function calloutTextExtent(c: Pick<RailCallout, "x" | "side" | "name">): readonly [number, number] {
-  const width = c.name.length * RAIL_CALLOUT_CHAR_PX;
+  const width = c.name.length * CALLOUT_CHAR_PX;
   if (c.side === 0) return [c.x - width / 2, c.x + width / 2];
   return c.side > 0
     ? [c.x + RAIL_CALLOUT_TEXT_GAP, c.x + RAIL_CALLOUT_TEXT_GAP + width]

@@ -58,6 +58,23 @@ export const CALLOUT_STACK_VALUE_DY = CALLOUT_FONT_VALUE * 0.76;
  */
 export const CALLOUT_PX = { value: 14, name: 11, dim: 14, chipW: 104, chipH: 32 } as const;
 
+/**
+ * Estimated viewBox width of one character at the pinned 11px bold callout face (`CALLOUT_PX.name`
+ * above), measured against "Domed Taper" (11 characters, 83 viewBox px at render scale 0.893, i.e.
+ * about 74 px at scale 1) — roughly 6.7 viewBox px per character. Safe to use as an estimate at any
+ * render scale: the face is pinned in *screen* px (`pinnedCalloutSizes`, below), so a label's
+ * viewBox width shrinks as the plot renders larger, making this scale-1 calibration conservative
+ * (over-wide, never under-wide) on bigger renders, such as the order form's third sheet at roughly
+ * scale 2.3 — and conservative again for the rail plot's non-bold axis-tick face, which is narrower
+ * than the bold callout face this was measured against.
+ *
+ * Lives here, not with any one caller, because both the rail plot's own axis-tick labels
+ * (`components/rails/rail-section-plot.tsx`) and the mark-name callouts
+ * (`components/rails/rail-callouts.ts`) draw the same pinned face and need the same estimate — one
+ * shared constant, not a second copy that could drift (08-08).
+ */
+export const CALLOUT_CHAR_PX = 6.7;
+
 /** Callout metrics in SVG user units, resolved for one viewer's current fit. */
 export interface CalloutSizes {
   value: number;
