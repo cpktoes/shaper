@@ -38,34 +38,26 @@ verified geometry math, live volume, printable full-size templates, and the rock
 
 Archives: [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-phases/)
 
-## Next Milestone Goals
+## Current Milestone: v1.2 Rails Finished, Phone Ready
 
-Not yet scoped. Run `/gsd-new-milestone` to define v1.2 — that step gathers the goal, researches
-the domain, writes a fresh REQUIREMENTS.md and produces the roadmap.
-
-Candidates carried in from the build guide and this milestone's debt:
-
-- **Free/paid tier gating** (Clerk Billing) — build-guide milestones M4–M5, waiting on real shapers
-  using the free version so it's clear what's worth paying for
-- **Public sharing / model gallery** — build-guide milestone M6
-- **Retroactive coverage on v1.1** — a security pass for Phase 5 (it added a database table and a
-  server action) and Nyquist validation for Phases 5–7, none of which was run
-
-<details>
-<summary>Previous milestone goals (v1.1, now shipped)</summary>
-
-### v1.1 Imperial vs Metric
-
-**Goal:** A shaper can switch the whole app between Imperial and Metric, and every number they read on screen or on paper follows.
+**Goal:** Finish the rails screen the prototype always had, and make the whole app something a shaper can actually use on a phone.
 
 **Target features:**
-- A units chooser in the settings menu beside the theme chooser, reading Imperial / Metric, saved on the shaper's account and remembered per browser when signed out (sign-in stays a nudge, never a gate)
-- All five design screens switch: sliders, typed entry, viewer callouts and data tables. Metric is all-metric, length included: cm for length and widths, whole millimetres for rail band marks, rocker heights and foil thickness; volume stays litres in both systems
-- The Summary order form and the Overview Sheet print in the chosen system
-- The Full Sized Template and Paper Saver print their labels, name/dims block and scale-check caption in the chosen system (whether the scale square becomes a 50 mm square in Metric is decided in the phase)
-- Rack cards and board names show dimensions in the chosen system
+- The rails screen's third tab, INSTRUCTIONS ("Understanding Rail Markings") — a live example rail with every mark named by a callout, and a Flat / Domed toggle, ported from the prototype
+- An "Include Rail Band Instructions in Print" option that folds that sheet into printed output, in the shaper's chosen system
+- "View Full Sized" — the rail cross-section at 1:1 on screen, to hold against the foam; standard-screen assumption, same as the prototype, with no calibration step
+- A board-outline plan and side reference view on the rails screen, with legend checkboxes, showing where each rail section sits along the board
+- Every screen works on a phone, end to end: sign in, pick a preset, open a saved board from the rack, shape it across all five design screens, save it, read the summary
+- Touch-first, not merely unbroken: finger-sized sliders and buttons, viewers that fill the screen, and drag handles that work under a thumb
 
-**Key context:** Data is already stored in millimetres, so this is presentation work plus one new account column (code deploys before the production migration runs). Every conversion stays in `lib/geometry/units.ts` (Rule 1); typed entry in Metric accepts decimal centimetres and whole millimetres. Deferred twice by the founder (Phase 1 UAT, then the settings-menu task 260824-m6k); roughly 300 display sites across about 25 files.
+**Key context:** The INSTRUCTIONS example rail uses a `halveDeckMark1` variant that `lib/geometry/rail-bands.ts` does not have yet, so this milestone touches the geometry math — pure function, unit tests, regenerated golden fixture (Rule 1), never a number inlined in a component. Its background artwork moves from `reference/project/assets/rail-bands-plan-bg.png` into `public/`. The design screens have zero responsive breakpoints today, so phone layout is built from scratch across effectively every screen, including touch drag on the outline, rocker and foil editors. Everything new reads the shaper's chosen units under the v1.1 dims-in-cm / marks-in-mm split. The board-outline plan view was originally blocked by the rails screen owning its own state; the shared design store from Phase 1 removed that blocker.
+
+<details>
+<summary>Carried forward — not in v1.2</summary>
+
+- **Free/paid tier gating** (Clerk Billing) — build-guide milestones M4–M5, waiting on real shapers using the free version so it's clear what's worth paying for. The first candidate feature is branding the order form with a shaper's own logo and contact details (todo, 2026-09-06)
+- **Public sharing / model gallery** — build-guide milestone M6
+- **Retroactive coverage on v1.1** — a security pass for Phase 5 (it added a database table and a server action) and Nyquist validation for Phases 5–7, none of which was run
 
 </details>
 
@@ -91,7 +83,9 @@ Candidates carried in from the build guide and this milestone's debt:
 
 ### Active
 
-None — v1.1 is complete and v1.2 is not yet scoped. `/gsd-new-milestone` writes the next set.
+- [ ] User can read the rails screen's INSTRUCTIONS page — a live example rail with every mark named — and fold that sheet into what they print
+- [ ] User can view the rail cross-section at actual size on screen, and see where each rail section sits along the board outline
+- [ ] User can do everything the app does from a phone, with controls sized for a thumb
 
 ### Out of Scope
 
@@ -170,4 +164,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-06 at milestone v1.1 completion (Imperial vs Metric, Phases 5-7)*
+*Last updated: 2026-09-07 at milestone v1.2 start (Rails Finished, Phone Ready)*

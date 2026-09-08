@@ -1,19 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Imperial vs Metric
-current_phase: 07
-status: milestone_complete
-stopped_at: Milestone v1.1 archived — next milestone not yet scoped
-last_updated: "2026-09-07T01:41:45.796Z"
-last_activity: 2026-09-06
-last_activity_desc: Milestone v1.1 (Imperial vs Metric) archived and tagged
+milestone: v1.2
+milestone_name: Rails Finished, Phone Ready
+status: planning
+last_updated: "2026-09-08T01:01:10.824Z"
+last_activity: 2026-09-07
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 21
-  completed_plans: 21
-current_phase_name: metric-on-paper
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -27,18 +24,10 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 ## Current Position
 
-Phase: 07
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-09-06 — Phase 07 complete
-
-**Milestone v1.1 phases:**
-
-| Phase | Name | Requirements | Status |
-|-------|------|--------------|--------|
-| 5 | The Units Chooser | UNIT-02, UNIT-03, UNIT-04, UNIT-05, SCRN-04, RACK-01 | Complete (7/7 plans) |
-| 6 | The Design Screens in Metric | SCRN-01, SCRN-02, SCRN-03, SCRN-05 | Complete (9/9 plans incl. 2 gap-closure; UAT 18/18; security 34/34; verified 2026-09-05) |
-| 7 | Metric on Paper | PRNT-01, PRNT-02, PRNT-03, PRNT-04 | Ready to plan |
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-09-07 — Milestone v1.2 started
 
 ## Performance Metrics
 
