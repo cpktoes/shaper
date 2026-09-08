@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 08-the-rails-screen-finished
 source: [08-VERIFICATION.md]
 started: 2026-09-08T14:57:02Z
-updated: 2026-09-08T21:02:28Z
+updated: 2026-09-08T22:50:00Z
 automated_pass: "2026-09-08 — headless Chrome 152 over the DevTools protocol plus the app's browser pane, against localhost:3005 at commit 737fbbc, signed out; evidence in the session scratchpad (findings.md, shots/, pdfpng/)"
 ---
 
@@ -79,7 +79,9 @@ blocked: 0
 
 - gap_id: G-08-5
   truth: "Printing the View Full Sized dialog gives a page with the check bar and the rail at true physical size and nothing but the dialog's own content on it"
-  status: failed
+  status: resolved        # was: failed
+  resolved_by: 08-07-PLAN.md
+  resolved_at: 2026-09-08
   reason: "User reported: the print button here results in a very poorly laid out print screen though. Automated print-to-PDF (Chrome 152, Letter and A4, both systems) shows why: the page is shifted half a dialog up and left — the check bar, the caveat line and the left ~3 in of the rail fall off the page; only the right part of the plot and the legend print. Fixing the shift alone makes Chrome shrink the page to 82%, so the check bar would print at about 1.6 in."
   severity: major
   test: 5
@@ -98,7 +100,9 @@ blocked: 0
   debug_session: ".planning/debug/view-full-sized-print-offset.md"
 - gap_id: G-08-9
   truth: "In Metric, every number on the INSTRUCTIONS example rail reads clearly"
-  status: failed
+  status: resolved        # was: failed
+  resolved_by: 08-08-PLAN.md
+  resolved_at: 2026-09-08
   reason: "Automated DOM + screenshot check: in Metric the example rail's bottom-axis numbers (210 … 20, 10 mm, 0) collide into one unreadable run and the left-axis numbers (90 … 20, '10 mm') are clipped at the plot's left edge ('80' reads '30', '10 mm' reads 'm'); Imperial is clean."
   severity: minor
   test: 9
@@ -113,7 +117,9 @@ blocked: 0
   debug_session: ".planning/debug/metric-axis-labels-instructions-card.md"
 - gap_id: G-08-10
   truth: "Printing the summary order form at 100% on Letter gives exactly the sheets — two pages unticked, three ticked — with no blank leading or trailing page"
-  status: failed
+  status: resolved        # was: failed
+  resolved_by: 08-09-PLAN.md
+  resolved_at: 2026-09-08
   reason: "User reported: Pass, but the print has to be 97% or smaller to avoid a blank 1st and 5th page. — and with the instructions page off: without the instructions page, I still get the blank first and last pages (1 and 4). Automated print-to-PDF (Chrome 152) reproduces it: Letter unticked = [blank][sheet 1][sheet 2][blank], ticked = [blank][1][2][3][blank]; A4 = 2 / 3 pages."
   severity: minor
   test: 10
@@ -128,3 +134,12 @@ blocked: 0
   missing:
     - "zero the wrapper's padding in the print block (`[data-order-form-page] { padding: 0 !important }`) or fold it into the fit, then re-count pages on Letter at 100% (unticked 2, ticked 3) in both systems and confirm A4 is unchanged"
   debug_session: ".planning/debug/order-form-letter-blank-pages.md"
+
+## Gap Closure
+
+Reconciled 2026-09-08 after `/gsd-execute-phase 8 --gaps-only`: 3 gap(s) resolved by executed plans
+(08-07, 08-08, 08-09), 0 still open. Each closed gap was re-measured on main with headless Chrome
+after the merge — see the "Post-Merge Verification" section of each plan's SUMMARY.md and the
+re-run 08-VERIFICATION.md (status: passed). One follow-up fix landed on main for each of two gaps
+(`2fd8941`: the View Full Sized translate reset had to move into the dialog's own style element;
+`d46307f`: inside-drawn left-axis numbers lifted clear of the board's bottom line).
