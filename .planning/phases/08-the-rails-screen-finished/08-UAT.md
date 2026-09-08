@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 08-the-rails-screen-finished
 source: [08-VERIFICATION.md]
 started: 2026-09-08T14:57:02Z
-updated: 2026-09-08T20:57:27Z
+updated: 2026-09-08T21:02:28Z
 automated_pass: "2026-09-08 — headless Chrome 152 over the DevTools protocol plus the app's browser pane, against localhost:3005 at commit 737fbbc, signed out; evidence in the session scratchpad (findings.md, shots/, pdfpng/)"
 ---
 
@@ -95,7 +95,7 @@ blocked: 0
     - "translate: none !important on [data-view-full-sized-dialog] inside the print block"
     - "a page the true-size drawing fits without Chrome's automatic shrink — e.g. a landscape @page (11 in wide) emitted only while the dialog is open, with the dialog's own padding/border dropped in print — then re-measure: the PDF transform must stay 0.75 and the check bar 144pt"
     - "data-print-hide on the sign-in banner"
-  debug_session: ""
+  debug_session: ".planning/debug/view-full-sized-print-offset.md"
 - gap_id: G-08-9
   truth: "In Metric, every number on the INSTRUCTIONS example rail reads clearly"
   status: failed
@@ -110,7 +110,7 @@ blocked: 0
       issue: "renders the plot small enough (fit=\"height\" in a 350px card) that the Metric labels no longer fit"
   missing:
     - "thin the Metric x-axis labels when the plot renders small (e.g. every 20 or 50 mm, or by available px per label) and give the y-axis labels room (wider LEFT_PAD in Metric or svg overflow visible), keeping the VIEWER and printed sheets pixel-identical in Imperial"
-  debug_session: ""
+  debug_session: ".planning/debug/metric-axis-labels-instructions-card.md"
 - gap_id: G-08-10
   truth: "Printing the summary order form at 100% on Letter gives exactly the sheets — two pages unticked, three ticked — with no blank leading or trailing page"
   status: failed
@@ -127,4 +127,4 @@ blocked: 0
       issue: "printable box assumes the sheet is the only thing on the page; nothing accounts for wrapper padding"
   missing:
     - "zero the wrapper's padding in the print block (`[data-order-form-page] { padding: 0 !important }`) or fold it into the fit, then re-count pages on Letter at 100% (unticked 2, ticked 3) in both systems and confirm A4 is unchanged"
-  debug_session: ""
+  debug_session: ".planning/debug/order-form-letter-blank-pages.md"
