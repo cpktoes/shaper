@@ -237,4 +237,74 @@ describe("deOverlapCallouts", () => {
     }
     expect(paddedBounds.width - rightmostAnchorX).toBeGreaterThanOrEqual(CALLOUT_RIGHT_PAD);
   });
+
+  // Quick task 260908-bk1: the six left-hand names on the example rail used to chain into one
+  // column because the old rule grouped by anchor-x proximity (95px), not by whether the drawn
+  // *text* could ever touch. These five cases pin the replacement text-collision rule.
+
+  it("(a) far-apart short names are both left alone: their anchors are 84px apart (inside the old 95px bucket) but their text can never touch", () => {
+    const input = [
+      callout({ key: "deck3", name: "Deck 3", x: 250, y: 100, side: -1 }),
+      callout({ key: "deck1", name: "Deck 1", x: 334, y: 100, side: -1 }),
+    ];
+    const result = deOverlapCallouts(input, RAIL_CALLOUT_MIN_GAP);
+    expect(result.find((c) => c.key === "deck3")!.y).toBe(100);
+    expect(result.find((c) => c.key === "deck1")!.y).toBe(100);
+  });
+
+  it("(b) the same two anchors with long names ARE stacked, since their estimated text really does overlap", () => {
+    const input = [
+      callout({ key: "a", name: "Bottom Tuck 3", x: 250, y: 100, side: -1 }),
+      callout({ key: "b", name: "Bottom Tuck 1", x: 334, y: 100, side: -1 }),
+    ];
+    const result = deOverlapCallouts(input, RAIL_CALLOUT_MIN_GAP);
+    const a = result.find((c) => c.key === "a")!;
+    const b = result.find((c) => c.key === "b")!;
+    expect(Math.abs(b.y - a.y)).toBeGreaterThanOrEqual(RAIL_CALLOUT_MIN_GAP);
+  });
+
+  it("(c) the ceiling moves only the competing pair, not a name that doesn't compete with either", () => {
+    const input = [
+      callout({ key: "deck3", name: "Deck 3", x: 250, y: 11.6, side: -1 }),
+      callout({ key: "bt3", name: "Bottom Tuck 3", x: 421, y: 213, side: -1 }),
+      callout({ key: "bt1", name: "Bottom Tuck 1", x: 450, y: 213, side: -1 }),
+    ];
+    const result = deOverlapCallouts(input, 17, 211);
+    expect(result.find((c) => c.key === "deck3")!.y).toBe(11.6);
+    expect(result.find((c) => c.key === "bt1")!.y).toBe(211);
+    expect(result.find((c) => c.key === "bt3")!.y).toBe(194);
+  });
+
+  it("(d) the real example rail, Flat and Domed: every callout stays on the plot, and Deck 3/Deck 1 are unshifted by the pass", () => {
+    for (const domed of [false, true]) {
+      const output = buildExampleOutput(domed);
+      const projection = railPlotProjection(output, output.bounds.xAxisMin);
+      const raw = buildRailCallouts(output, output.thicknessEff, projection);
+      const maxY = projection.py(0) - RAIL_CALLOUT_AXIS_CLEARANCE;
+      const result = deOverlapCallouts(raw, RAIL_CALLOUT_MIN_GAP, maxY);
+
+      for (const c of result) {
+        expect(c.y).toBeGreaterThan(0);
+        expect(c.y).toBeLessThanOrEqual(maxY + 1e-9);
+      }
+
+      const expectedDeckY = projection.py(mmToInches(output.thicknessEff)) - RAIL_CALLOUT_EDGE_LIFT;
+      expect(result.find((c) => c.name === "Deck 3")!.y).toBeCloseTo(expectedDeckY, 9);
+      expect(result.find((c) => c.name === "Deck 1")!.y).toBeCloseTo(expectedDeckY, 9);
+    }
+  });
+
+  it("(e) the apex column still stacks: the four side-1 callouts (all anchored at the same x) end up at least RAIL_CALLOUT_MIN_GAP apart from their nearest neighbour", () => {
+    const output = buildExampleOutput(false);
+    const projection = railPlotProjection(output, output.bounds.xAxisMin);
+    const raw = buildRailCallouts(output, output.thicknessEff, projection);
+    const maxY = projection.py(0) - RAIL_CALLOUT_AXIS_CLEARANCE;
+    const result = deOverlapCallouts(raw, RAIL_CALLOUT_MIN_GAP, maxY);
+
+    const sideOne = result.filter((c) => c.side === 1).sort((a, b) => a.y - b.y);
+    expect(sideOne).toHaveLength(4);
+    for (let i = 1; i < sideOne.length; i++) {
+      expect(sideOne[i].y - sideOne[i - 1].y).toBeGreaterThanOrEqual(RAIL_CALLOUT_MIN_GAP - 1e-9);
+    }
+  });
 });
