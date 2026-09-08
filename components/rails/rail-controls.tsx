@@ -15,6 +15,7 @@ import { formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-
 import { mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { useUnits } from "@/components/units-provider";
+import { usePrintRailInstructions } from "@/components/print-instructions-provider";
 
 interface RailControlsProps {
   /** The effective spec (D-09) — `boardThickness` on each section already reflects the foil's
@@ -360,6 +361,7 @@ export function RailControls({
   onToggleRailsImportFoilThickness,
 }: RailControlsProps) {
   const { system } = useUnits();
+  const { included: printRailInstructions, setIncluded: setPrintRailInstructions } = usePrintRailInstructions();
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -424,6 +426,20 @@ export function RailControls({
         thicknessDisabled={railsImportFoilThickness}
         system={system}
       />
+
+      <div>
+        <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
+          <Checkbox
+            checked={printRailInstructions}
+            onCheckedChange={() => setPrintRailInstructions(!printRailInstructions)}
+          />
+          Include Rail Band Instructions in Print
+        </label>
+        <div className="mt-1 text-xs text-surf-ink-muted font-normal">
+          Adds a third reference page to the printed order form, explaining what each rail band
+          mark means.
+        </div>
+      </div>
     </div>
   );
 }

@@ -6,8 +6,10 @@ import { SiteNav } from "@/components/site-nav";
 import { DesignProvider as Provider } from "@/components/design/design-store";
 import { ThemeProvider } from "@/components/theme-provider";
 import { UnitsProvider } from "@/components/units-provider";
+import { PrintInstructionsProvider } from "@/components/print-instructions-provider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { resolveUnitsHandoff } from "@/lib/units-server";
+import { resolvePrintRailInstructionsHandoff } from "@/lib/print-instructions-server";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -54,6 +56,7 @@ export const metadata: Metadata = {
  */
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const unitsHandoff = await resolveUnitsHandoff();
+  const printInstructionsHandoff = await resolvePrintRailInstructionsHandoff();
   return (
     // ClerkProvider is the outermost app-level provider — it owns nothing about the theme or
     // the board, only the signed-in/signed-out session every screen can read via `useUser()`.
@@ -100,14 +103,16 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               keeps that disagreement from ever reaching the screen as a flash; see its own
               doc comment (WR-02). */}
           <UnitsProvider handoff={unitsHandoff}>
-            <ThemeProvider>
-              <Provider>
-                <div className="flex min-h-0 flex-1 flex-col">
-                  <SiteNav />
-                  {children}
-                </div>
-              </Provider>
-            </ThemeProvider>
+            <PrintInstructionsProvider handoff={printInstructionsHandoff}>
+              <ThemeProvider>
+                <Provider>
+                  <div className="flex min-h-0 flex-1 flex-col">
+                    <SiteNav />
+                    {children}
+                  </div>
+                </Provider>
+              </ThemeProvider>
+            </PrintInstructionsProvider>
           </UnitsProvider>
         </body>
       </html>

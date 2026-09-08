@@ -13,6 +13,12 @@
  */
 
 import { UNITS_SYSTEMS, type UnitsSystem } from "./geometry/units";
+import {
+  PREFERENCE_WRITE_RETRY_DELAYS_MS,
+  createPreferenceWriteQueue,
+  decidePreferenceHandoff,
+  nextPreferenceWriteRetryDelayMs,
+} from "./preference-handoff";
 
 export const UNITS_STORAGE_KEY = "shaper-units";
 export const UNITS_COOKIE_NAME = "shaper-units";
@@ -109,18 +115,12 @@ export function decideUnitsHandoff(input: {
   account: UnitsSystem | null;
   browser: UnitsSystem | null;
 }): UnitsHandoff {
-  const { signedIn, account, browser } = input;
-
-  if (signedIn && account !== null) {
-    return { system: account, adoptIntoBrowser: account, promoteToAccount: null };
-  }
-  if (signedIn && browser !== null) {
-    return { system: browser, adoptIntoBrowser: null, promoteToAccount: browser };
-  }
-  if (!signedIn && browser !== null) {
-    return { system: browser, adoptIntoBrowser: null, promoteToAccount: null };
-  }
-  return { system: DEFAULT_UNITS_SYSTEM, adoptIntoBrowser: null, promoteToAccount: null };
+  const result = decidePreferenceHandoff<UnitsSystem>({ ...input, fallback: DEFAULT_UNITS_SYSTEM });
+  return {
+    system: result.value,
+    adoptIntoBrowser: result.adoptIntoBrowser,
+    promoteToAccount: result.promoteToAccount,
+  };
 }
 
 /**
@@ -132,17 +132,18 @@ export function decideUnitsHandoff(input: {
  * chooser during that window. Once the ladder is exhausted the write gives up quietly — no
  * toast, no banner, nothing the shaper ever sees (D-11).
  */
-export const UNITS_WRITE_RETRY_DELAYS_MS: readonly number[] = [1_000, 4_000, 15_000];
+export const UNITS_WRITE_RETRY_DELAYS_MS: readonly number[] = PREFERENCE_WRITE_RETRY_DELAYS_MS;
 
 /**
  * The delay before the next retry attempt, or `null` once the ladder is exhausted. `attempt` is
  * the zero-based count of retries already made (0 before the first retry, 1 before the second,
  * and so on) — a negative attempt floors to the first rung rather than throwing, the same
- * defensive-floor discipline the rest of this module uses for untrusted input.
+ * defensive-floor discipline the rest of this module uses for untrusted input. Re-exports the
+ * generic ladder from `lib/preference-handoff.ts` (Task 3) — this module's own copy was the
+ * source of that generalization, so the values are identical.
  */
 export function nextUnitsWriteRetryDelayMs(attempt: number): number | null {
-  const index = Math.max(attempt, 0);
-  return index < UNITS_WRITE_RETRY_DELAYS_MS.length ? UNITS_WRITE_RETRY_DELAYS_MS[index] : null;
+  return nextPreferenceWriteRetryDelayMs(attempt);
 }
 
 /**
@@ -192,69 +193,5 @@ export interface UnitsWriteQueue {
 }
 
 export function createUnitsWriteQueue(deps: UnitsWriteQueueDeps): UnitsWriteQueue {
-  const { save, setTimer, clearTimer } = deps;
-
-  let desired: UnitsSystem | null = null;
-  let inFlight = false;
-  let attempt = 0;
-  let pendingTimer: unknown = null;
-
-  function clearPendingTimer() {
-    if (pendingTimer !== null) {
-      clearTimer(pendingTimer);
-      pendingTimer = null;
-    }
-  }
-
-  function startAttempt(system: UnitsSystem) {
-    inFlight = true;
-    save(system).then(
-      () => {
-        inFlight = false;
-        // Success settles `system`, not necessarily `desired` — a pick made while this write was
-        // in flight only recorded itself in `desired`; it never fired its own overlapping call.
-        if (desired !== null && desired !== system) {
-          attempt = 0;
-          startAttempt(desired);
-        }
-      },
-      (error: unknown) => {
-        inFlight = false;
-        if (desired !== system) {
-          // Superseded while in flight — the failed value is no longer wanted, so the ladder
-          // for it is irrelevant. Start fresh for whatever is actually desired now.
-          attempt = 0;
-          if (desired !== null) startAttempt(desired);
-          return;
-        }
-        const delay = nextUnitsWriteRetryDelayMs(attempt);
-        attempt += 1;
-        if (delay === null) {
-          // Ladder exhausted for a value still desired — shaper-facing silence stays intact
-          // (D-11: no toast, no banner), but an operator needs something to grep for if this
-          // keeps happening outside the expected pre-migration window (mirrors the read-side
-          // logging in lib/units-server.ts).
-          console.error("Shaper: failed to save units preference after exhausting retries", error);
-          return;
-        }
-        pendingTimer = setTimer(() => {
-          pendingTimer = null;
-          startAttempt(system);
-        }, delay);
-      },
-    );
-  }
-
-  return {
-    request(system: UnitsSystem) {
-      desired = system;
-      clearPendingTimer();
-      if (inFlight) return; // the in-flight write's completion handler will re-check `desired`
-      attempt = 0;
-      startAttempt(system);
-    },
-    dispose() {
-      clearPendingTimer();
-    },
-  };
+  return createPreferenceWriteQueue<UnitsSystem>(deps);
 }
