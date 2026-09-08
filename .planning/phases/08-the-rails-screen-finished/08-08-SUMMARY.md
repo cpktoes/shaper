@@ -162,6 +162,20 @@ unrelated to any file this plan touches) and the full `npx vitest run` (2245 pas
 unchanged skip count from before this plan). The orchestrator runs the real build on `main` after
 merge, per the standing convention for this repo's worktree executors.
 
+## Post-Merge Verification (orchestrator, 2026-09-08)
+
+Measured on main after the merge with headless Chrome 152 against the dev server, on the
+INSTRUCTIONS card at its own render size (458 × 221 px, fit scale ≈ 0.785), Flat and Domed, by
+reading every axis label's on-screen box out of the DOM: in Metric the bottom axis reads 0, 20 mm,
+40 … 200 (every 20 mm, the unit carried once), the left axis's bare numbers draw inside the plot,
+and there are no label-on-label overlaps and no labels outside the drawing. In Imperial the axes
+read 0–8 and 1–3 exactly as before. One defect found and fixed on main in `d46307f`: an
+inside-drawn left-axis number was centred on its own line, so the 0 sat on the board's heavier
+bottom line and was struck through while crowding the 200 beneath it; inside-drawn numbers now
+ride just above their line. The code review's follow-up `ca8778f` also added
+`railPlotStackedLabelsFit`, so the left axis's stacking room is checked by construction rather
+than assumed from label widths.
+
 ## Self-Check: PASSED
 
 - FOUND: components/viewer/callout-primitives.tsx (CALLOUT_CHAR_PX)
