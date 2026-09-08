@@ -9,10 +9,12 @@
  *
  * The ported data (the path strings, the viewBoxes, the colour/width/dash maps) lives in
  * `rail-reference-paths.ts`, pinned against the prototype's own source by a parity test. This
- * file is presentation only: it lays the four columns out as one box that scales to its
- * container's width (never the prototype's own hard-coded `0.7492` transform, UI-SPEC "The
- * figure's fit"), filters the ported paths by `visibleGroups`, and reads its two literal figures —
- * the station labels and the tail-distance range — through the display boundary (RAIL-06).
+ * file is presentation only: it lays the four columns out as one box that fits its container's
+ * width up to the prototype's own rendered size (never the prototype's own hard-coded `0.7492`
+ * transform, UI-SPEC "The figure's fit") — a shaper needs the whole example board on screen at
+ * once, not stretched wide enough to run off the bottom of the column — filters the ported paths
+ * by `visibleGroups`, and reads its two literal figures — the station labels and the tail-distance
+ * range — through the display boundary (RAIL-06).
  */
 
 import type { ReactNode } from "react";
@@ -90,6 +92,16 @@ const FIGURE_COLUMNS = { plan: 223, label: 19, side: 65, note: 150 } as const;
 const FIGURE_CONTENT_WIDTH =
   FIGURE_COLUMNS.plan + FIGURE_COLUMNS.label + FIGURE_COLUMNS.side + FIGURE_COLUMNS.note + FIGURE_GAP * 3;
 
+// The prototype's own rendered size for this whole figure (Rails.dc.html lines 415-417): its
+// 499x630 layout box sat inside a 500px-tall frame at a hard-coded `scale(0.7492)`, so it actually
+// drew at 630 * 0.7492 = 472px tall. That is the ceiling this figure now scales up to, so the
+// whole example board stays on screen instead of stretching to fill an arbitrarily wide column.
+// The width is derived from the height and the two existing layout constants above, never typed
+// by hand, so it can never drift out of the 499:630 ratio those columns already sum to (it lands
+// on 373.85px, the prototype's own frame width).
+const FIGURE_MAX_RENDERED_HEIGHT = 472;
+const FIGURE_MAX_RENDERED_WIDTH = (FIGURE_MAX_RENDERED_HEIGHT * FIGURE_CONTENT_WIDTH) / FIGURE_HEIGHT;
+
 function widthPercent(column: number): string {
   return `${(column / FIGURE_CONTENT_WIDTH) * 100}%`;
 }
@@ -114,7 +126,11 @@ function refPathElements(paths: RailReferencePath[], visibleGroups: Set<RailRefe
 
 /** A label's font size, tied to the figure's own container width rather than the viewport's — the
  * same `clamp(min, N cqw, max)` idiom `app/design/summary/order-form.css` already establishes for
- * a surface that scales as one box. */
+ * a surface that scales as one box. This needs no change for the new render-size cap above: at the
+ * capped `FIGURE_MAX_RENDERED_WIDTH` (373.85px) this clamp computes to 373.85 * 0.032 = 11.96px,
+ * which is the prototype's own 16px label at its own 0.7492 rendering (16 * 0.7492 = 11.99px). The
+ * container query already tracks the capped box, so the cap brings the labels to the prototype's
+ * size automatically. */
 const LABEL_FONT_SIZE = "clamp(9px, 3.2cqw, 20px)";
 
 /**
@@ -130,7 +146,10 @@ export function RailPlanSideFigure({ visibleGroups }: { visibleGroups: Set<RailR
     // PNG background cannot invert for a dark theme, so this one card stays light on purpose, the
     // same reasoning app/globals.css's @media print block already pins Daylight tokens for print.
     <div className="mx-auto w-full rounded-lg border border-[#e4ddc9] bg-[#fff] p-3.5">
-      <div className="@container relative mx-auto w-full" style={{ aspectRatio: `${FIGURE_CONTENT_WIDTH} / ${FIGURE_HEIGHT}` }}>
+      <div
+        className="@container relative mx-auto w-full"
+        style={{ aspectRatio: `${FIGURE_CONTENT_WIDTH} / ${FIGURE_HEIGHT}`, maxWidth: `${FIGURE_MAX_RENDERED_WIDTH}px` }}
+      >
         <div className="absolute inset-0 flex" style={{ gap: `${(FIGURE_GAP / FIGURE_CONTENT_WIDTH) * 100}%` }}>
           <div className="relative h-full flex-none" style={{ width: widthPercent(FIGURE_COLUMNS.plan) }}>
             <img
