@@ -83,6 +83,28 @@ describe("view-full-sized-dialog.tsx (RAIL-04, D-12–D-16)", () => {
     expect(source, "tells a shaper to adjust their zoom").not.toMatch(/adjust (your |the )?(browser )?zoom/i);
   });
 
+  it("sets its measured px-per-inch from a ref callback, never from an effect", () => {
+    const source = readStripped(DIALOG_PATH);
+    const setterCall = "setPxPerInch(measurePxPerInch())";
+    const setterIndex = source.indexOf(setterCall);
+    expect(setterIndex, `does not call ${setterCall}`).toBeGreaterThanOrEqual(0);
+    const before = source.slice(0, setterIndex);
+    const hookCalls = before.match(/\buse[A-Z]\w*\(/g) ?? [];
+    expect(hookCalls.length, "no React hook call precedes the setter").toBeGreaterThan(0);
+    expect(hookCalls[hookCalls.length - 1], "the setter's nearest enclosing hook is not useCallback(").toBe(
+      "useCallback(",
+    );
+    // Built from parts so this assertion's own text can never match itself.
+    const needle = ["use", "Effect("].join("");
+    expect(source, `still names ${needle}`).not.toContain(needle);
+  });
+
+  it("measures the screen with a live one-inch probe (D-13)", () => {
+    const source = readStripped(DIALOG_PATH);
+    expect(source, "no longer measures a live 1in probe").toMatch(/width:\s*1in/);
+    expect(source, "no longer creates the probe element").toContain("document.createElement(");
+  });
+
   it("hides the rails screen from print only while the dialog is open (WR-01)", () => {
     const css = readStripped(ACTUAL_SIZE_CSS_PATH);
     expect(css, "does not scope [data-print-hide] to the dialog being present").toContain(

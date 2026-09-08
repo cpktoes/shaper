@@ -15,7 +15,7 @@
  * true size exceeds the dialog's available area, the plot's own container scrolls instead.
  */
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useState, type CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
@@ -62,15 +62,21 @@ function measurePxPerInch(): number {
   return px > 0 ? px : 96;
 }
 
-/** Measures the live CSS px-per-inch once the dialog is actually open — measuring while the
- * dialog is closed (`display: none`) would read back zero and always fall back. */
-function useMeasuredPxPerInch(active: boolean): number {
+/** Measures the live CSS px-per-inch when the element this ref is attached to mounts. The probe
+ * itself is appended to `document.body`, not to the dialog, so it would read correctly at any
+ * moment — tying the reading to this element's mount is purely for freshness, so a shaper who
+ * changes browser zoom and reopens the dialog gets a new reading rather than a stale one. The
+ * returned callback is deliberately stable (an empty dependency array): React re-attaches a ref
+ * callback whenever its identity changes, so an inline arrow here would remeasure on every render
+ * while the dialog sits open, not just once per open. */
+function useMeasuredPxPerInch(): [number, (node: HTMLElement | null) => void] {
   const [pxPerInch, setPxPerInch] = useState(96);
-  useEffect(() => {
-    if (!active) return;
-    setPxPerInch(measurePxPerInch());
-  }, [active]);
-  return pxPerInch;
+  const measureRef = useCallback((node: HTMLElement | null) => {
+    if (node) {
+      setPxPerInch(measurePxPerInch());
+    }
+  }, []);
+  return [pxPerInch, measureRef];
 }
 
 export interface ViewFullSizedDialogProps {
@@ -105,7 +111,7 @@ export function ViewFullSizedDialog({
     if (open) setActiveSection(firstOpenSection(sectionOpen));
   }
 
-  const pxPerInch = useMeasuredPxPerInch(open);
+  const [pxPerInch, measureRef] = useMeasuredPxPerInch();
 
   const output = bands[activeSection];
   const bounds = computeRailPlotBounds(output, sharedXAxisMin);
@@ -139,6 +145,7 @@ export function ViewFullSizedDialog({
             <div className="flex flex-none flex-col items-center gap-1">
               <div
                 data-actual-size-box="check-bar"
+                ref={measureRef}
                 className="h-1.5 rounded-full bg-[var(--color-surf-ink)]"
                 style={
                   {
