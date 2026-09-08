@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 Phase: 08 (The Rails Screen, Finished) — EXECUTING
 Plan: 6 of 6 (all complete)
 Status: Verifying Phase 08
-Last activity: 2026-09-08 — Completed quick task 260908-bxs: lint clean again (0 errors); Phase 08 awaiting UAT (/gsd-verify-work 8) and /gsd-secure-phase 8
+Last activity: 2026-09-08 — Completed quick task 260908-cme: every example-rail mark named at its own spot; Phase 08 awaiting UAT (/gsd-verify-work 8) and /gsd-secure-phase 8
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
@@ -249,6 +249,7 @@ Recent decisions affecting current work:
 | 260908-b35 | Rail example callouts never crop or sit on a line: reserve room beside the apex for the right-hand mark names, restore the prototype's keep-clear-of-the-axis rule, and lift the deck-line and bottom-edge labels off their lines | 2026-09-08 | 6ef0790 | [260908-b35-rail-example-callouts-never-crop-or-sit-](./quick/260908-b35-rail-example-callouts-never-crop-or-sit-/) |
 | 260908-bk1 | Example rail mark names stack only when their text actually overlaps, and the axis rule moves only the names that need moving, so Deck 3 stays on the plot | 2026-09-08 | 48b54f8 | [260908-bk1-example-rail-mark-names-stack-only-when-](./quick/260908-bk1-example-rail-mark-names-stack-only-when-/) |
 | 260908-bxs | The View Full Sized dialog measures the screen's pixels per inch when its content mounts instead of setting state inside an effect, clearing the react-hooks/set-state-in-effect lint error in view-full-sized-dialog.tsx | 2026-09-08 | 8ce93cc | [260908-bxs-the-view-full-sized-dialog-measures-the-](./quick/260908-bxs-the-view-full-sized-dialog-measures-the-/) |
+| 260908-cme | Every mark on the example rail gets its own name at its own spot: Corner Cut joins the apex column under Rail Mk1, Bottom Tuck 2 is named at its mid-tuck point, and Bottom Tuck 1 and 3 hang below the axis under their marks | 2026-09-08 | 2123558 | [260908-cme-every-mark-on-the-example-rail-gets-its-](./quick/260908-cme-every-mark-on-the-example-rail-gets-its-/) |
 
 ## Deferred Items
 
