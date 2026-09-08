@@ -133,6 +133,23 @@ export function ViewFullSizedDialog({
         data-view-full-sized-dialog
         className="max-w-[95vw] sm:max-w-3xl max-h-[90dvh] overflow-y-auto border-surf-line-faint bg-surf-panel text-surf-ink"
       >
+        {/* A page shaped to fit the drawing without shrinking it (G-08-5). The true-size rail
+         * can run 8.69in wide for the default board — wider than portrait Letter or A4's
+         * printable width — and an over-wide page makes Chrome auto-shrink the WHOLE page
+         * (measured at 82%), which no print-dialog setting turns off. Landscape gives 10.37in
+         * on Letter and 11.06in on A4 at this 8mm margin, comfortably clear of 8.69in.
+         *
+         * `@page` cannot be scoped by a CSS selector, so it can't live in actual-size.css
+         * without making every rails-screen print landscape (breaking WR-01's closed-dialog
+         * no-op). Rendered here instead: Base UI mounts this popup only while the dialog is
+         * open, so this rule exists in the document exactly as long as the dialog does.
+         *
+         * Deliberately a plain, unadorned style element — no `href`, no stylesheet-precedence
+         * prop. Either one would make React 19 hoist this into the document head and leave it
+         * there after the dialog unmounts, silently turning every LATER rails print landscape
+         * too. An ordinary in-place element unmounts with the dialog, taking the rule with it. */}
+        <style>{"@page { size: landscape; margin: 8mm; }"}</style>
+
         <DialogHeader data-print-hide>
           <DialogTitle className="text-surf-ink">{SECTION_TITLE[activeSection]} Rail — Actual Size</DialogTitle>
         </DialogHeader>
