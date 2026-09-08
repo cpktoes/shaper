@@ -176,6 +176,15 @@ print-to-PDF measurement this worktree could not run:
 - **Task 1:** Do the same on A4 and confirm it is unchanged, then look at the summary screen
   afterwards to confirm the paper still sits with the same air around it as before.
 
+## Post-Merge Verification (orchestrator, 2026-09-08)
+
+Page counts measured on main after the merge (headless Chrome 152, dev server, signed out,
+print-to-PDF honouring the stylesheet's own page size): Letter and A4, Imperial and Metric — box
+unticked prints exactly 2 pages (marked 1 of 2 and 2 of 2), box ticked exactly 3 (1–3 of 3). No
+blank page before or after the sheets on either paper. The on-screen order form and the sheets'
+own content were not re-measured here; the plan's tests pin that nothing outside `@media print`
+changed.
+
 ## Next Phase Readiness
 
 - G-08-10 is closed pending the end-of-phase print-to-PDF measurement and ruler/visual checks

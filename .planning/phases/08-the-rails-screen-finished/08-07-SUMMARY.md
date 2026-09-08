@@ -172,6 +172,23 @@ print-to-PDF measurement this worktree could not run:
 - **Task 2:** Close the dialog and print the rails screen straight from the browser's own print
   command: it still prints the rails screen, portrait, exactly as before.
 
+## Post-Merge Verification (orchestrator, 2026-09-08)
+
+The print-to-PDF measurement this worktree could not run was taken on main after the wave merged,
+with headless Chrome 152 against the dev server, signed out. It found that the plan's
+`translate: none` reset never reached the browser: the CSS pipeline that compiles actual-size.css
+(Lightning CSS) folds it into `transform: translate(0, 0)` — in the dev and the production
+stylesheet alike — so the popup still printed half off the page (content starting at x −351 pt on
+Letter). Fixed on main in `2fd8941`: the reset now rides in the dialog's own verbatim style element
+beside its `@page` rule, the stylesheet comment says why it is not there, and the source-contract
+test pins the reset to the component and forbids a bare `translate` in the stylesheet.
+
+Measured after the fix (Letter and A4, Imperial and Metric, plus the client-side-navigation case):
+one landscape page each; all content inside the 8 mm margins (x from 22.5 pt); check bar
+143.99 pt = 2 in; rail box 625.5 pt = 8.69 in — true size, no shrink; no sign-in banner, nav or
+tab strip on the sheet. Closed-dialog print: portrait, the rails screen as before. The
+ruler-on-paper checks remain for the shaper.
+
 ## Next Phase Readiness
 - G-08-5 is closed pending the end-of-phase ruler/PDF verification above.
 - No blockers for any later phase 08 plan or for 08-06's production migration.
