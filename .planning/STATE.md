@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 Phase: 08 (The Rails Screen, Finished) — EXECUTING
 Plan: 6 of 6 (all complete)
 Status: Verifying Phase 08
-Last activity: 2026-09-08 — Phase 08 all six plans complete; goal verification running
+Last activity: 2026-09-08 — Completed quick task 260908-b35: the example rail's mark names no longer crop; Phase 08 verification human_needed, UAT persisted
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
@@ -246,6 +246,7 @@ Recent decisions affecting current work:
 | 260902-fast4 | Full Sized Template caption ends with a period, matching the Paper Saver card | 2026-09-03 | 3113da7 | (fast task — no plan dir) |
 | 260905-pne | Pin the volume card's litres rendering to no units-system argument in the units-isolation ledger (closes Phase 6 security threat 06-07/T-06-02) | 2026-09-05 | 82e23f2 | [260905-pne-pin-the-volume-card-s-litres-rendering-t](./quick/260905-pne-pin-the-volume-card-s-litres-rendering-t/) |
 | 260908-adg | Size the rails INSTRUCTIONS tab's two figures like the prototype: the example rail card gets a fixed height so its plot renders, and the plan/side figure is capped at the prototype's rendered size so the whole example board is visible at once | 2026-09-08 | 5538dde | [260908-adg-size-the-rails-instructions-tab-s-two-fi](./quick/260908-adg-size-the-rails-instructions-tab-s-two-fi/) |
+| 260908-b35 | Rail example callouts never crop or sit on a line: reserve room beside the apex for the right-hand mark names, restore the prototype's keep-clear-of-the-axis rule, and lift the deck-line and bottom-edge labels off their lines | 2026-09-08 | 6ef0790 | [260908-b35-rail-example-callouts-never-crop-or-sit-](./quick/260908-b35-rail-example-callouts-never-crop-or-sit-/) |
 
 ## Deferred Items
 
