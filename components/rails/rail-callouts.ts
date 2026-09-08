@@ -1,11 +1,25 @@
 /**
  * Rail mark callout layout — pure diagram math, no React (D-17). This is *layout*, not shaping
  * geometry, so it lives under `components/`, not `lib/geometry/`, which CLAUDE.md Rule 1 reserves
- * for real shaping formulas. The ten anchor positions and the cluster-and-push de-overlap pass
- * below are ported from the prototype's own `buildPlot` (reference/project/Rails.dc.html lines
- * 1093-1132), copied character-for-character rather than re-derived from `RailSegment` endpoints
- * by inspection — Corner Cut's own `y` is deliberately `railMark1`, not its segment's own p2
- * (RESEARCH.md Pitfall 1: that is the prototype's design, not a bug to correct).
+ * for real shaping formulas. The ten anchor positions are ported from the prototype's own
+ * `buildPlot` (reference/project/Rails.dc.html lines 1093-1132), copied character-for-character
+ * rather than re-derived from `RailSegment` endpoints by inspection — Corner Cut's own `y` is
+ * deliberately `railMark1`, not its segment's own p2 (RESEARCH.md Pitfall 1: that is the
+ * prototype's design, not a bug to correct).
+ *
+ * The de-overlap pass below is a deliberate DEPARTURE from the prototype's own code (quick task
+ * 260908-bk1). The prototype's comment at Rails.dc.html line 1106 says the true intent plainly:
+ * "Only labels whose text would actually occupy overlapping horizontal space need vertical
+ * separation." But its code never checked the text — it clustered labels by how close their
+ * anchors sat on the x-axis (`BUCKET_PX`, 95px), and its labels were HTML spans that could quietly
+ * overflow their box, hiding the consequence an SVG `<text>` clipped at the viewBox edge makes
+ * obvious. On the real example rail, six same-side names chained into one 95px-bucket column even
+ * though most of their text could never touch; that column overflowed the bottom axis rule, and
+ * lifting the WHOLE column carried "Deck 3" clean off the top of the drawing. `deOverlapCallouts`
+ * now estimates each label's actual text extent and competes labels only when those extents
+ * overlap, and lifts only the competing pair that overflowed the ceiling — never the whole side.
+ * Do not "restore parity" with the prototype's anchor-x chaining; that is what reintroduces this
+ * bug.
  */
 
 import { RAIL_SEGMENT_COLORS } from "./rail-section-plot";
@@ -19,9 +33,6 @@ const APEX_CENTER_COLOR = "#a8425f";
 /** The prototype's own minimum vertical gap between two labels stacked in the same column
  * (Rails.dc.html line 1111, `MIN_GAP`). */
 export const RAIL_CALLOUT_MIN_GAP = 17;
-/** The prototype's own x-proximity threshold for clustering labels into one stack before applying
- * the minimum gap (Rails.dc.html line 1112, `BUCKET_PX`). */
-export const RAIL_CALLOUT_BUCKET_PX = 95;
 /** The prototype's own gap between the lowest a label may sit and the x-axis (Rails.dc.html line
  * 1113, `py(0) - 10`). This is what keeps the row of axis numbers under the plot a row of numbers
  * — with it, no mark name gets pushed down into the axis tick labels. */
@@ -32,6 +43,19 @@ export const RAIL_CALLOUT_AXIS_CLEARANCE = 10;
  * coloured dot; now they read just above the line instead. The plot's y grows downward, so the
  * lift is applied as a negative `dy` on the anchor. */
 export const RAIL_CALLOUT_EDGE_LIFT = 8;
+/** Estimated viewBox width of one character at the pinned 11px bold callout face, measured
+ * against "Domed Taper" (11 characters, 83 viewBox px at render scale 0.893, i.e. about 74 px at
+ * scale 1) — roughly 6.7 viewBox px per character. Safe to use as an estimate at any render scale:
+ * the face is pinned in *screen* px (components/viewer/callout-primitives.tsx's pinnedCalloutSizes),
+ * so a label's viewBox width shrinks as the plot renders larger, making this scale-1 calibration
+ * conservative (over-wide, never under-wide) on bigger renders, such as the order form's third
+ * sheet at roughly scale 2.3. */
+export const RAIL_CALLOUT_CHAR_PX = 6.7;
+/** The gap between an anchor and the start of its drawn text. This mirrors the function-local
+ * `CALLOUT_TEXT_GAP` inside `RailSectionPlot`'s own render (components/rails/rail-section-plot.tsx),
+ * which is not exported — the two must stay equal, or the estimated text extents below stop
+ * matching what is actually drawn. */
+export const RAIL_CALLOUT_TEXT_GAP = 4;
 
 export type RailCalloutSide = 1 | -1;
 
@@ -158,52 +182,88 @@ export function buildRailCallouts(
   });
 }
 
+/** Slack folded into the text-overlap test below, to cover the fact that `RAIL_CALLOUT_CHAR_PX` is
+ * an estimate, not a measured width — two extents that merely touch within this margin are treated
+ * as competing. This is slack for the estimate, not a design gap; it has no effect on how far apart
+ * two competing labels are stacked (that is `minGap`, below). */
+const RAIL_CALLOUT_OVERLAP_MARGIN = 2;
+
+/** Estimates one label's horizontal text extent in viewBox px, mirroring how `RailSectionPlot`
+ * actually draws it: `textAnchor="start"` growing rightward from `x + gap` on side 1, `"end"`
+ * growing leftward from `x - gap` on side −1. */
+function calloutTextExtent(c: Pick<RailCallout, "x" | "side" | "name">): readonly [number, number] {
+  const width = c.name.length * RAIL_CALLOUT_CHAR_PX;
+  return c.side >= 0
+    ? [c.x + RAIL_CALLOUT_TEXT_GAP, c.x + RAIL_CALLOUT_TEXT_GAP + width]
+    : [c.x - RAIL_CALLOUT_TEXT_GAP - width, c.x - RAIL_CALLOUT_TEXT_GAP];
+}
+
+/** Two labels compete for vertical space only when they are on the same `side` AND their estimated
+ * text extents overlap (within `RAIL_CALLOUT_OVERLAP_MARGIN`). Anchor x-proximity plays no part —
+ * this is the whole point of the rewrite (see the file's top comment). */
+function calloutsCompete(a: RailCallout, b: RailCallout): boolean {
+  if (a.side !== b.side) return false;
+  const [aLo, aHi] = calloutTextExtent(a);
+  const [bLo, bHi] = calloutTextExtent(b);
+  return aLo <= bHi + RAIL_CALLOUT_OVERLAP_MARGIN && bLo <= aHi + RAIL_CALLOUT_OVERLAP_MARGIN;
+}
+
 /**
- * The prototype's own cluster-and-push de-overlap pass (Rails.dc.html lines 1104-1132): split by
- * `side`, sort by x and chain into clusters wherever consecutive x values are within `BUCKET_PX`,
- * then within each cluster sort by y and push any entry closer than `minGap` to the previous one
- * down to exactly that gap. The two sides are processed independently. Returns a new array of
- * shallow copies in the SAME order as `callouts` — only `y` changes — because clustering sorts
- * temporary per-side arrays, never the returned array itself (matching the prototype's own
- * `raw.map(...)` at the end, which reads the original array order after the pass has mutated each
- * entry's `y` in place).
+ * De-overlap pass keyed on estimated TEXT collision, not anchor-x proximity (quick task
+ * 260908-bk1 — see the file's top comment for why this departs from the prototype's own code).
+ * The two sides are processed independently; only labels whose estimated text extents actually
+ * overlap ever move because of each other. Returns a new array of shallow copies in the SAME order
+ * as `callouts` — only `y` changes.
  *
- * The optional third parameter `maxY` restores the one step the port had dropped: the prototype's
- * own axis ceiling (Rails.dc.html line 1113, `maxAllowedY = py(0) - 10`). After a cluster has been
- * stacked, if its lowest (largest-y) entry falls past `maxY`, the WHOLE cluster is shifted up by
- * that same overflow — never an individual label, which would re-collapse the gaps the stacking
- * loop just created (Rails.dc.html lines 1122-1124). Without it, two bottom-edge marks whose
- * anchors are close enough to cluster get pushed down into the axis tick labels. Absent `maxY`
- * there is no ceiling and the pass behaves exactly as it always has, which is what keeps the
- * existing callers and tests passing unedited.
+ * **Stacking pass (top-down):** each side's labels are visited in ascending y (stable for ties,
+ * preserving input order). Each label's y becomes the max of its own y and `(y + minGap)` of every
+ * earlier-visited label it competes with. A label with no competitors never moves.
+ *
+ * **Ceiling pass (bottom-up, only when `maxY` is supplied):** restores the prototype's own axis
+ * ceiling (Rails.dc.html line 1113, `maxAllowedY = py(0) - 10`) without its "shift the whole
+ * cluster" side effect. Each side's labels (in the same ascending-y order the stacking pass used)
+ * are visited from the bottom up. A label past `maxY` is clamped to it; then any *competing* label
+ * that sat earlier in the order and now sits less than `minGap` above the clamped label is pulled
+ * up to `(y - minGap)`. This only ever touches the specific pair that overflowed — a label with no
+ * competitor at the ceiling never moves, which is what keeps "Deck 3" on the plot even when
+ * "Bottom Tuck 1"/"Bottom Tuck 3" overflow the axis rule two columns away.
  */
 export function deOverlapCallouts(callouts: RailCallout[], minGap: number, maxY?: number): RailCallout[] {
   const working = callouts.map((c) => ({ ...c }));
 
   for (const sideVal of [1, -1] as const) {
-    const bySide = working.filter((c) => c.side === sideVal).sort((a, b) => a.x - b.x);
-    let cluster: RailCallout[] = [];
-    const flush = () => {
-      if (cluster.length === 0) return;
-      cluster.sort((a, b) => a.y - b.y);
-      for (let i = 1; i < cluster.length; i++) {
-        if (cluster[i].y - cluster[i - 1].y < minGap) {
-          cluster[i].y = cluster[i - 1].y + minGap;
+    const bySide = working
+      .map((c, originalIndex) => ({ c, originalIndex }))
+      .filter((entry) => entry.c.side === sideVal)
+      .sort((p, q) => p.c.y - q.c.y || p.originalIndex - q.originalIndex)
+      .map((entry) => entry.c);
+
+    // Stacking pass, top-down.
+    for (let i = 0; i < bySide.length; i++) {
+      const cur = bySide[i];
+      let target = cur.y;
+      for (let j = 0; j < i; j++) {
+        const earlier = bySide[j];
+        if (calloutsCompete(cur, earlier)) {
+          target = Math.max(target, earlier.y + minGap);
         }
       }
-      if (maxY !== undefined) {
-        const overflow = cluster[cluster.length - 1].y - maxY;
-        if (overflow > 0) {
-          for (const c of cluster) c.y -= overflow;
+      cur.y = target;
+    }
+
+    // Ceiling pass, bottom-up — only when a ceiling is supplied.
+    if (maxY !== undefined) {
+      for (let i = bySide.length - 1; i >= 0; i--) {
+        const cur = bySide[i];
+        if (cur.y > maxY) cur.y = maxY;
+        for (let j = i - 1; j >= 0; j--) {
+          const earlier = bySide[j];
+          if (calloutsCompete(cur, earlier) && cur.y - earlier.y < minGap) {
+            earlier.y = cur.y - minGap;
+          }
         }
       }
-      cluster = [];
-    };
-    bySide.forEach((c, i) => {
-      if (i > 0 && c.x - bySide[i - 1].x > RAIL_CALLOUT_BUCKET_PX) flush();
-      cluster.push(c);
-    });
-    flush();
+    }
   }
 
   return working;
