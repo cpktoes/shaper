@@ -107,13 +107,13 @@ Phases 8–10 below are the active v1.2 record. Requirements are defined in
   4. Ticking "Include Rail Band Instructions in Print" puts that instructions sheet on the order form's printed reference page in whichever system the shaper reads in; with the box unticked, every printed output is exactly what it was before this milestone.
   5. Every new number on the screen reads in the shaper's chosen system — whole millimetres in Metric, inches and fractions in Imperial.
 
-**Plans**: 6 plans
+**Plans**: 2/6 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 08-01-PLAN.md — The INSTRUCTIONS tab: a named example rail a shaper can flip between Flat and Domed (wave 1)
-- [ ] 08-02-PLAN.md — The print preference, built on the units machinery, plus the rails sidebar tick-box (wave 1)
+- [x] 08-01-PLAN.md — The INSTRUCTIONS tab: a named example rail a shaper can flip between Flat and Domed (wave 1)
+- [x] 08-02-PLAN.md — The print preference, built on the units machinery, plus the rails sidebar tick-box (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -202,6 +202,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 5. The Units Chooser | 7/7 | Complete    | 2026-09-05 |
 | 6. The Design Screens in Metric | 9/9 | Complete    | 2026-09-05 |
 | 7. Metric on Paper | 5/5 | Complete    | 2026-09-06 |
-| 8. The Rails Screen, Finished | 0/6 | Planned      | - |
+| 8. The Rails Screen, Finished | 2/6 | In Progress|  |
 | 9. The Design Screens on a Phone | 0/TBD | Not started | - |
 | 10. The Whole App on a Phone | 0/TBD | Not started | - |
