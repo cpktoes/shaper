@@ -55,9 +55,19 @@ function readStripped(relativePath: string): string {
  * Declared at module scope (not inside a single `describe` block) so both the ledger's own
  * assertions and Task 2's "no print surface is silently imperial by omission" assertions can
  * read it without a second, duplicate list.
+ *
+ * 08-05 adds three more: the rails screen is the first place a single component is BOTH a
+ * design-screen surface (already in `DESIGN_SCREEN_DISPLAY_FILES` above) and a print surface —
+ * `rail-instructions.tsx`'s `ExampleRailFigure` and `rail-plan-side-figure.tsx`'s
+ * `RailPlanSideFigure` now also render onto the order form's third sheet
+ * (`components/summary/rail-instructions-sheet.tsx`, already inside a walked print-surface folder
+ * and so needing only its own entry here), so both join the print-specific checks below too, per
+ * RESEARCH.md Pitfall 2 — the same reasoning 08-04 already applied to
+ * `view-full-sized-dialog.tsx`.
  */
 const PRINT_SURFACE_DISPLAY_FILES: { file: string; converted: boolean }[] = [
   { file: "components/summary/order-form.tsx", converted: true },
+  { file: "components/summary/rail-instructions-sheet.tsx", converted: true },
   { file: "components/template/build-template-pdf.ts", converted: true },
   { file: "components/template/build-strip-pdf.ts", converted: true },
   { file: "components/template/build-overview-pdf.ts", converted: true },
@@ -69,6 +79,11 @@ const PRINT_SURFACE_DISPLAY_FILES: { file: string; converted: boolean }[] = [
   // (no conversion factor of its own, no litres figure branched on the units system) also run over
   // it, per RESEARCH.md Pitfall 2.
   { file: "components/rails/view-full-sized-dialog.tsx", converted: true },
+  // 08-05 (PRNT-05, D-08): the order form's third sheet reuses these two INSTRUCTIONS-tab
+  // components verbatim, so they are now print surfaces too, alongside their existing
+  // design-screen entries above.
+  { file: "components/rails/rail-instructions.tsx", converted: true },
+  { file: "components/rails/rail-plan-side-figure.tsx", converted: true },
 ];
 
 /**
@@ -114,7 +129,15 @@ function findPrintSurfaceFiles(): string[] {
       found.push(`${folder}/${entry}`);
     }
   }
-  return [...found, "lib/geometry/template.ts", "components/rails/view-full-sized-dialog.tsx"];
+  return [
+    ...found,
+    "lib/geometry/template.ts",
+    "components/rails/view-full-sized-dialog.tsx",
+    // 08-05 (PRNT-05, D-08): both now also render onto the order form's third sheet — see the
+    // header comment on PRINT_SURFACE_DISPLAY_FILES above.
+    "components/rails/rail-instructions.tsx",
+    "components/rails/rail-plan-side-figure.tsx",
+  ];
 }
 
 /** `lib/geometry/template.ts` is a pure file under `lib/geometry/`, so it imports its sibling
