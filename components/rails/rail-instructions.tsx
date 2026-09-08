@@ -14,6 +14,7 @@
 
 import { useMemo, useState } from "react";
 import { useUnits } from "@/components/units-provider";
+import { TwoOptionToggle } from "@/components/viewer/two-option-toggle";
 import { formatMark } from "@/lib/geometry/measure-display";
 import {
   buildRailProfile,
@@ -24,6 +25,8 @@ import {
 } from "@/lib/geometry/rail-bands";
 import { inchesToMm, type Mm } from "@/lib/geometry/units";
 import { RailSectionPlot } from "./rail-section-plot";
+
+type FlatDomed = "flat" | "domed";
 
 // D-20: the prototype's own "Understanding Rail Markings" example (Rails.dc.html lines 1358-1362)
 // — a fixed literal input, never derived from the board the shaper is designing. The prototype's
@@ -85,16 +88,25 @@ export function ExampleRailFigure({ domed }: { domed: boolean }) {
 }
 
 export function RailInstructions() {
-  // Flat is the prototype's own default (D-18); the Flat/Domed toggle itself arrives in Task 2.
-  const [domed] = useState(false);
+  // Flat is the prototype's own default (D-18).
+  const [flatDomed, setFlatDomed] = useState<FlatDomed>("flat");
+  const domed = flatDomed === "domed";
   const { system } = useUnits();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
       <div className="flex min-h-0 flex-1 flex-col gap-3 rounded-lg border border-surf-line-faint p-5">
         <div>
-          <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">
-            Understanding Rail Markings
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">
+              Understanding Rail Markings
+            </div>
+            <TwoOptionToggle
+              options={["flat", "domed"] as const}
+              labels={["Flat", "Domed"] as const}
+              value={flatDomed}
+              onChange={setFlatDomed}
+            />
           </div>
           <div className="mt-1 flex items-baseline justify-between gap-2 border-b border-surf-line-faint pb-3 text-sm text-surf-ink-muted">
             <span>Example rail with mark definitions</span>
