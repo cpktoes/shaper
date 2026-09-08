@@ -12,15 +12,15 @@ Requirements are written as things a shaper can do or see. IDs continue from the
 
 ### Rails Screen
 
-- [ ] **RAIL-02**: User can open an INSTRUCTIONS tab on the rails screen, beside VIEWER and DATA, showing a live example rail with every mark named by a callout. The rail is drawn by the existing calculator — no new geometry — and its expected numbers are pinned by a golden-fixture entry extracted from the prototype, never hand-typed
-- [ ] **RAIL-03**: User can flip the example rail between Flat and Domed and watch it reshape (3.5" flat / 3" domed, as in the prototype)
-- [ ] **RAIL-04**: User can open "View Full Sized" to see the rail cross-section at 1:1 on screen to hold against the foam, with a one-line note that it assumes a standard screen at 100% zoom; there is no calibration step
+- [x] **RAIL-02**: User can open an INSTRUCTIONS tab on the rails screen, beside VIEWER and DATA, showing a live example rail with every mark named by a callout. The rail is drawn by the existing calculator — no new geometry — and its expected numbers are pinned by a golden-fixture entry extracted from the prototype, never hand-typed
+- [x] **RAIL-03**: User can flip the example rail between Flat and Domed and watch it reshape (3.5" flat / 3" domed, as in the prototype)
+- [x] **RAIL-04**: User can open "View Full Sized" to see the rail cross-section at 1:1 on screen to hold against the foam, with a one-line note that it assumes a standard screen at 100% zoom; there is no calibration step
 - [x] **RAIL-05**: User can see a plan and side view of the board on the rails screen showing where the nose, centre and tail sections sit, with legend checkboxes to show or hide each reference
 - [x] **RAIL-06**: Every new number on the rails screen reads in the shaper's chosen system under the v1.1 rules — rail marks in whole millimetres in Metric, inches and fractions in Imperial
 
 ### Printed Outputs
 
-- [ ] **PRNT-05**: User can tick "Include Rail Band Instructions in Print" on the rails screen and the instructions sheet appears on the order form's printed reference page, in the chosen system (whether the box starts ticked, and whether it saves with the board, is settled in the phase discussion)
+- [x] **PRNT-05**: User can tick "Include Rail Band Instructions in Print" on the rails screen and the instructions sheet appears on the order form's printed reference page, in the chosen system (whether the box starts ticked, and whether it saves with the board, is settled in the phase discussion)
 - [ ] **PRNT-06**: With the box unticked, every printed output — order form, Overview Sheet, Full Sized Template, Paper Saver — is unchanged, proven the way Phase 7 proved it: regenerate and diff against the pre-milestone build
 
 ### Phone: The Design Screens
@@ -63,12 +63,12 @@ Requirements are written as things a shaper can do or see. IDs continue from the
 
 | Requirement | Phase | Status | Outcome |
 |---|---|---|---|
-| RAIL-02 | Phase 8 | Pending | — |
-| RAIL-03 | Phase 8 | Pending | — |
-| RAIL-04 | Phase 8 | Pending | — |
+| RAIL-02 | Phase 8 | Complete | — |
+| RAIL-03 | Phase 8 | Complete | — |
+| RAIL-04 | Phase 8 | Complete | — |
 | RAIL-05 | Phase 8 | Complete | — |
 | RAIL-06 | Phase 8 | Complete | — |
-| PRNT-05 | Phase 8 | Pending | — |
+| PRNT-05 | Phase 8 | Complete | — |
 | PRNT-06 | Phase 8 | Pending | — |
 | PHON-01 | Phase 9 | Pending | — |
 | PHON-02 | Phase 9 | Pending | — |
