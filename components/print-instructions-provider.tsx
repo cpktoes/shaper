@@ -9,26 +9,29 @@
  * store and outside a saved board's own data, so ticking it never marks a board dirty, never
  * triggers an autosave, and never enters the design snapshot.
  *
- * For this task there is no account write — `setIncluded` only writes localStorage and the
- * cookie. Task 3 wires the background account write (a bounded retry queue, mirroring units')
- * and the adoption/promotion effects `UnitsProvider` has.
+ * The background account write (a bounded retry queue) and the adoption/promotion effects below
+ * are built on `lib/preference-handoff.ts`'s generic helpers — the same ones
+ * `components/units-provider.tsx` now calls through `lib/units-preference.ts`'s thin wrappers.
  */
 
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { savePrintRailInstructionsPreference } from "@/app/actions/print-instructions";
 import {
   PRINT_RAIL_INSTRUCTIONS_STORAGE_KEY,
   parsePrintRailInstructionsPreference,
   printRailInstructionsCookieString,
   type PrintRailInstructionsHandoff,
 } from "@/lib/print-instructions-preference";
+import { createPreferenceWriteQueue, type PreferenceWriteQueue } from "@/lib/preference-handoff";
 
 /* -- stored preference, as an external store ------------------------------------------- */
 
@@ -93,6 +96,35 @@ export function PrintInstructionsProvider({
 
   const included = useSyncExternalStore(subscribeToStoredPreference, getSnapshot, getServerSnapshot);
 
+  /* -- the background account write --------------------------------------------------- */
+  // The serialization policy — "at most one save in flight, the last pick always lands last" —
+  // lives in lib/preference-handoff.ts's `createPreferenceWriteQueue`, pure and unit-tested the
+  // same way units' own queue is. This provider only supplies the real Server Action and real
+  // setTimeout/clearTimeout, and forwards every pick to `request`.
+  const writeQueueRef = useRef<PreferenceWriteQueue<boolean> | null>(null);
+  function getWriteQueue(): PreferenceWriteQueue<boolean> {
+    if (writeQueueRef.current === null) {
+      writeQueueRef.current = createPreferenceWriteQueue<boolean>({
+        save: savePrintRailInstructionsPreference,
+        setTimer: (callback, delayMs) => setTimeout(callback, delayMs),
+        clearTimer: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+      });
+    }
+    return writeQueueRef.current;
+  }
+
+  const scheduleAccountWrite = useCallback((next: boolean) => {
+    getWriteQueue().request(next);
+  }, []);
+
+  // Cancels any in-flight retry timer on unmount — nothing should keep firing after the provider
+  // is gone.
+  useEffect(() => {
+    return () => {
+      writeQueueRef.current?.dispose();
+    };
+  }, []);
+
   const setIncluded = useCallback((next: boolean) => {
     try {
       localStorage.setItem(PRINT_RAIL_INSTRUCTIONS_STORAGE_KEY, String(next));
@@ -105,10 +137,50 @@ export function PrintInstructionsProvider({
     // very next read, so this flips before the emit below (mirrors WR-02).
     reconciledRef.current = true;
     // Emitted synchronously, on the click itself — a passive effect would run after paint,
-    // showing one frame of the old value first.
+    // showing one frame of the old value first. The screen has already switched by the time the
+    // account write below even starts — the write can never block, delay or revert it.
     emitPreferenceChange();
-    // Task 3 wires the background account write here.
-  }, []);
+    scheduleAccountWrite(next);
+  }, [scheduleAccountWrite]);
+
+  // Adopts a signed-in shaper's account choice into the browser. Only writes when the browser
+  // doesn't already agree, so it never stomps a value that's already correct. Either way this
+  // effect ends by flipping `reconciledRef` to `true` and emitting — from this point on
+  // `getSnapshot` is safe to read localStorage again, because it now agrees with `handoff`.
+  useEffect(() => {
+    if (handoff.adoptIntoBrowser === null) return; // nothing to reconcile — reconciledRef started true
+    if (getStoredPreference() === handoff.adoptIntoBrowser) {
+      reconciledRef.current = true;
+      emitPreferenceChange();
+      return;
+    }
+    try {
+      localStorage.setItem(PRINT_RAIL_INSTRUCTIONS_STORAGE_KEY, String(handoff.adoptIntoBrowser));
+      document.cookie = printRailInstructionsCookieString(handoff.adoptIntoBrowser);
+    } catch {
+      // Storage blocked — this session still shows the account's choice via `handoff.included`
+      // (the initial snapshot), it just won't be mirrored into the browser for next time.
+    }
+    reconciledRef.current = true;
+    emitPreferenceChange();
+  }, [handoff.adoptIntoBrowser]);
+
+  // Promotes a browser's explicit pick into an account that has none — an account that already
+  // had a value never reaches this branch (`handoff.promoteToAccount` is only ever non-null when
+  // the account was empty; see decidePrintRailInstructionsHandoff). Fires once on mount, guarded
+  // by a ref so a re-render can't fire it twice, through the same write-and-retry helper a click
+  // uses (fire-and-forget). Never fires for a default nobody chose (D-07): `promoteToAccount` is
+  // only ever non-null for an explicit browser value, never for the fallback.
+  const promotedRef = useRef(false);
+  useEffect(() => {
+    if (handoff.promoteToAccount === null) return;
+    if (promotedRef.current) return;
+    promotedRef.current = true;
+    scheduleAccountWrite(handoff.promoteToAccount);
+    // Only ever runs once per mount (guarded above) — deliberately not re-triggered by
+    // `scheduleAccountWrite` identity changes, which never change after mount anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handoff.promoteToAccount]);
 
   const value = useMemo(() => ({ included, setIncluded }), [included, setIncluded]);
 

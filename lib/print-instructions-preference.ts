@@ -8,7 +8,13 @@
  * Every stored value — cookie, localStorage, and the account column — is treated as untrusted
  * input: the parser is an allow-list against the literal strings `"true"`/`"false"` and the two
  * real booleans, nothing else (T-08-04 in this plan's threat register).
+ *
+ * The handoff rule itself lives once in `lib/preference-handoff.ts` (Task 3) — this module only
+ * supplies the boolean-specific parts (storage keys, the allow-list parser, the fallback value)
+ * and calls through to the generic rules, the same way `lib/units-preference.ts` does.
  */
+
+import { decidePreferenceHandoff } from "./preference-handoff";
 
 export const PRINT_RAIL_INSTRUCTIONS_STORAGE_KEY = "shaper-print-rail-instructions";
 export const PRINT_RAIL_INSTRUCTIONS_COOKIE_NAME = "shaper-print-rail-instructions";
@@ -98,16 +104,10 @@ export function decidePrintRailInstructionsHandoff(input: {
   account: boolean | null;
   browser: boolean | null;
 }): PrintRailInstructionsHandoff {
-  const { signedIn, account, browser } = input;
-
-  if (signedIn && account !== null) {
-    return { included: account, adoptIntoBrowser: account, promoteToAccount: null };
-  }
-  if (signedIn && browser !== null) {
-    return { included: browser, adoptIntoBrowser: null, promoteToAccount: browser };
-  }
-  if (!signedIn && browser !== null) {
-    return { included: browser, adoptIntoBrowser: null, promoteToAccount: null };
-  }
-  return { included: DEFAULT_PRINT_RAIL_INSTRUCTIONS, adoptIntoBrowser: null, promoteToAccount: null };
+  const result = decidePreferenceHandoff<boolean>({ ...input, fallback: DEFAULT_PRINT_RAIL_INSTRUCTIONS });
+  return {
+    included: result.value,
+    adoptIntoBrowser: result.adoptIntoBrowser,
+    promoteToAccount: result.promoteToAccount,
+  };
 }
