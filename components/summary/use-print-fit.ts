@@ -17,7 +17,7 @@
  * DOM element and sets no React state, on purpose, even though that looks like a React
  * anti-pattern at a glance.
  *
- * Two things this originally got wrong, both of which put the sheet onto a second page, and both
+ * Three things this originally got wrong, all of which put a sheet onto the wrong page, and all
  * of which the derivation below exists to prevent:
  *
  * 1. **The page box was a magic number**, taller than either paper it had to fit, and the margins
@@ -30,6 +30,18 @@
  *    print, so `scrollHeight` described the sheet at the *window's* width — and from a narrow
  *    window that is nothing like what prints. The handler pins the root to the printable width
  *    before measuring, so the layout it measures is the layout that prints.
+ *
+ * 3. **Letter's own slack was never budgeted.** `printableBoxPx()` above fits every sheet to the
+ *    smaller of Letter and A4 on each axis, and on height that smaller value is Letter's — 11in
+ *    less two 8mm margins, about 995.6px at 96dpi. `FIT_SAFETY` shaves a hair off that for the
+ *    fitted sheet itself, which leaves only about five pixels of slack once a sheet is sized to
+ *    the box. **Anything else in the printed page's own flow, above or below the sheets, costs a
+ *    whole page** — five pixels is nowhere near enough room to absorb it. That is what
+ *    `order-form.css`'s own screen padding on the page wrapper did before G-08-10 fixed it (32px
+ *    of "desk" above and below the paper, invisible on A4's roomier 1061px but enough on Letter
+ *    to push sheet 1 onto its own page and spill a blank page after the last sheet), and it is
+ *    the same reason the sign-in banner had to carry `data-print-hide` off the printed rails
+ *    dialog page in plan 08-07 — neither is a sheet, so neither gets any of this budget.
  */
 
 import { useEffect, useRef } from "react";
