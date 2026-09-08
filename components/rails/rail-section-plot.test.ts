@@ -11,7 +11,7 @@ vi.mock("@/app/actions/units", () => ({ saveUnitsPreference: async () => {} }));
 
 import { DEFAULT_RAIL_BAND_SPEC, computeRailBands } from "@/lib/geometry/rail-bands";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
-import { CALLOUT_RIGHT_PAD, SCALE, computeRailPlotBounds, buildRailPlotGrid, railPlotProjection } from "./rail-section-plot";
+import { CALLOUT_BOTTOM_PAD, CALLOUT_RIGHT_PAD, SCALE, computeRailPlotBounds, buildRailPlotGrid, railPlotProjection } from "./rail-section-plot";
 
 /**
  * The rail plot's grid-tick generation (T-06-05) had no test at all before this plan — a wrong
@@ -149,20 +149,31 @@ describe("computeRailPlotBounds calloutRoom option", () => {
     expect(bounds.width).toBeCloseTo((0.15 - bounds.minX) * SCALE + 22, 9);
   });
 
-  it("asking for callout room adds exactly CALLOUT_RIGHT_PAD to width and changes nothing else", () => {
+  it("with no third argument, height is the frozen chrome value the VIEWER tab and the full-sized dialog depend on", () => {
+    // Sibling of the width case above, same warning: a change here means the VIEWER stack and the
+    // printed full-sized rail both moved.
+    const bounds = computeRailPlotBounds(output, xAxisMin);
+    expect(bounds.height).toBeCloseTo((bounds.maxY - bounds.minY) * SCALE + 20, 9);
+  });
+
+  it("asking for callout room adds exactly CALLOUT_RIGHT_PAD to width and CALLOUT_BOTTOM_PAD to height, and changes nothing else", () => {
     const plain = computeRailPlotBounds(output, xAxisMin);
     const padded = computeRailPlotBounds(output, xAxisMin, { calloutRoom: true });
     expect(padded.width).toBeCloseTo(plain.width + CALLOUT_RIGHT_PAD, 9);
-    expect(padded.height).toBe(plain.height);
+    expect(padded.height).toBeCloseTo(plain.height + CALLOUT_BOTTOM_PAD, 9);
     expect(padded.minX).toBe(plain.minX);
     expect(padded.minY).toBe(plain.minY);
     expect(padded.maxY).toBe(plain.maxY);
   });
 
   it("railPlotProjection is unmoved by the option", () => {
+    const plain = computeRailPlotBounds(output, xAxisMin);
     const padded = computeRailPlotBounds(output, xAxisMin, { calloutRoom: true });
     const { px, py } = railPlotProjection(output, xAxisMin);
     expect(px(0)).toBeCloseTo((0 - padded.minX) * SCALE + 22, 9);
     expect(py(0)).toBeCloseTo(padded.maxY * SCALE, 9);
+    // The room the below-axis names live in: the distance from the axis to the floor of the box
+    // grows by exactly CALLOUT_BOTTOM_PAD when the room is asked for.
+    expect(padded.height - py(0)).toBeCloseTo(plain.height - py(0) + CALLOUT_BOTTOM_PAD, 9);
   });
 });

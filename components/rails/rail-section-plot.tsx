@@ -49,6 +49,19 @@ const AXIS_LABEL_PAD = 20; // room for the x-axis tick labels below the plot
 // so it never asks for this room (see `computeRailPlotBounds`'s `calloutRoom` option below).
 export const CALLOUT_RIGHT_PAD = 96;
 
+// Room reserved BELOW the x-axis tick-label band for the mark names that read below the axis
+// (Bottom Tuck 1 and Bottom Tuck 3, D-17), so they sit inside the box instead of being clipped by
+// the SVG's own overflow. The arithmetic: two label rows one RAIL_CALLOUT_MIN_GAP (17) apart,
+// beneath the existing AXIS_LABEL_PAD (20) band of axis numbers — a first row centred at
+// `py(0) + 28` and a second at `py(0) + 45`. The plain box already extends `0.15 * SCALE + 20` ≈
+// 28.4 units past the axis, so 34 more puts the box floor at about `py(0) + 62`, leaving the lower
+// of the two rows about 11 units of clearance below its own text.
+//
+// Exported, unlike LEFT_PAD and AXIS_LABEL_PAD, for the same stated reason CALLOUT_RIGHT_PAD is
+// exported: so a test can assert the exact difference asking for the room makes, instead of
+// restating 34 in a second place.
+export const CALLOUT_BOTTOM_PAD = 34;
+
 /**
  * Categorical colours for the rail-band plot. These are signal/data colours held
  * deliberately outside the brand palette — a band's colour identifies *which band it is*,
@@ -120,9 +133,10 @@ interface RailSectionPlotProps {
  *
  * The optional `calloutRoom` flag exists for the one caller that draws mark names
  * (`RailSectionPlot`, when it has callouts to render): asking for it adds `CALLOUT_RIGHT_PAD` to
- * the returned `width` only — `minX`, `minY` and `maxY` never move, so not one drawn coordinate
- * shifts. Every other caller (the VIEWER tab's `rail-band-editor.tsx`, the View Full Sized
- * dialog) omits the option and gets today's exact box, unchanged.
+ * the returned `width` and `CALLOUT_BOTTOM_PAD` to the returned `height` — `minX`, `minY` and
+ * `maxY` never move, so not one drawn coordinate shifts and `railPlotProjection` is untouched.
+ * Every other caller (the VIEWER tab's `rail-band-editor.tsx`, the View Full Sized dialog) omits
+ * the option and gets today's exact box, unchanged.
  */
 export function computeRailPlotBounds(output: RailSectionOutput, xAxisMin: Mm, options?: { calloutRoom?: boolean }) {
   const xAxisMinIn = mmToInches(xAxisMin);
@@ -131,7 +145,7 @@ export function computeRailPlotBounds(output: RailSectionOutput, xAxisMin: Mm, o
   const minY = -0.15;
   const maxY = yAxisMaxIn + 0.15;
   const width = (0.15 - minX) * SCALE + LEFT_PAD + (options?.calloutRoom ? CALLOUT_RIGHT_PAD : 0);
-  const height = (maxY - minY) * SCALE + AXIS_LABEL_PAD;
+  const height = (maxY - minY) * SCALE + AXIS_LABEL_PAD + (options?.calloutRoom ? CALLOUT_BOTTOM_PAD : 0);
   return { minX, minY, maxY, width, height };
 }
 
@@ -377,14 +391,35 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width", callouts }: R
         </g>
       ))}
       {callouts?.map((c) => {
-        // side 1 (Apex, Domed Taper, Rail Mk1, Tuck 1) sits near the apex (x=0, the drawing's
-        // rightmost structure) and reads rightward from its own point; side -1 (every deck/bottom
-        // mark, further left) reads leftward, back toward the plot's own left margin.
-        const textAnchor = c.side >= 0 ? "start" : "end";
-        const textX = c.side >= 0 ? c.x + CALLOUT_TEXT_GAP : c.x - CALLOUT_TEXT_GAP;
+        // side 1 (Apex, Domed Taper, Rail Mk1, Corner Cut, Tuck 1) sits near the apex (x=0, the
+        // drawing's rightmost structure) and reads rightward from its own point; side -1 (every
+        // deck/bottom-tuck-2 mark, further left) reads leftward, back toward the plot's own left
+        // margin; side 0 (Bottom Tuck 1, Bottom Tuck 3) reads centred BELOW the x-axis, joined to
+        // its own mark by a thin leader line rather than the drafting-tick either side draws.
+        const isBelow = c.side === 0;
+        const textAnchor = isBelow ? "middle" : c.side > 0 ? "start" : "end";
+        const textX = isBelow ? c.x : c.side > 0 ? c.x + CALLOUT_TEXT_GAP : c.x - CALLOUT_TEXT_GAP;
+        // The start gap clears the mark's own coloured dot; the end gap clears the cap height of a
+        // name whose `y` is its vertical middle. The `?? c.x`/`?? c.y` fallbacks let this render
+        // compile and pass on its own, before `buildRailCallouts` (Task 2) starts populating
+        // `anchorX`/`anchorY` — they are never exercised once that task lands.
+        const CALLOUT_LEADER_START_GAP = 2;
+        const CALLOUT_LEADER_END_GAP = 7;
         return (
           <g key={c.key}>
-            <DimensionTick x={c.x} y={c.y} color={c.color} />
+            {isBelow ? (
+              <line
+                x1={c.anchorX ?? c.x}
+                y1={(c.anchorY ?? c.y) + CALLOUT_LEADER_START_GAP}
+                x2={c.x}
+                y2={c.y - CALLOUT_LEADER_END_GAP}
+                stroke={c.color}
+                strokeWidth={1}
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : (
+              <DimensionTick x={c.x} y={c.y} color={c.color} />
+            )}
             <text
               x={textX}
               y={c.y}

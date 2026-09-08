@@ -57,7 +57,10 @@ export const RAIL_CALLOUT_CHAR_PX = 6.7;
  * matching what is actually drawn. */
 export const RAIL_CALLOUT_TEXT_GAP = 4;
 
-export type RailCalloutSide = 1 | -1;
+/** `1` reads rightward from its own point (the apex column); `-1` reads leftward back toward the
+ * plot's own left margin; `0` reads centred BELOW the x-axis, with a thin leader line running up
+ * to the mark it names. */
+export type RailCalloutSide = 1 | 0 | -1;
 
 /** One named mark on the example rail. Carries a name only — never a numeric value (D-19); the
  * DATA tab is where a shaper reads the actual measurements. */
@@ -68,6 +71,12 @@ export interface RailCallout {
   y: number;
   side: RailCalloutSide;
   color: string;
+  /** The mark's own projected position — where the mark actually IS, as opposed to `x`/`y`, which
+   * is where its NAME ends up after the de-overlap pass has moved it. Optional because
+   * `deOverlapCallouts` accepts any `RailCallout[]`, including the synthetic ones built by hand in
+   * this file's own tests; `buildRailCallouts` always sets both. */
+  anchorX?: number;
+  anchorY?: number;
 }
 
 /** The ten marks' fixed identity — key, name and side never change with geometry, only their
