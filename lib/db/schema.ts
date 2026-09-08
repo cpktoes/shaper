@@ -9,16 +9,19 @@
  * describes storage shape; it never validates or interprets that JSON — that boundary lives
  * entirely in lib/models/design-snapshot.ts.
  *
- * `userPreferences` (05-02) holds one row per shaper for account-level settings — currently
- * just the units system (Imperial/Metric, UNIT-03). Unlike `models`, `clerkUserId` here is the
- * **primary key**, not just an indexed column: a shaper has exactly one preferences row, so a
- * write is a natural upsert rather than an insert-many. `units` is **nullable on purpose** —
- * "this shaper hasn't chosen a system yet" is a real, distinct state from "chose Imperial"
- * (D-10), and the column has to be able to say so. This is not a users table by another name:
- * it holds per-user *preferences*, not identity — Clerk still owns that.
+ * `userPreferences` (05-02, extended 08-02) holds one row per shaper for account-level
+ * settings — the units system (Imperial/Metric, UNIT-03) and, from Phase 8, whether to include
+ * the Rail Band Instructions sheet when printing (PRNT-05). Unlike `models`, `clerkUserId` here
+ * is the **primary key**, not just an indexed column: a shaper has exactly one preferences row,
+ * so a write is a natural upsert rather than an insert-many. Both `units` and
+ * `printRailInstructions` are **nullable on purpose** — "this shaper hasn't chosen yet" is a
+ * real, distinct state from an explicit choice (D-10 for units, D-07/Pitfall 3 for the print
+ * toggle), and each column has to be able to say so; neither carries a `.notNull()` or a
+ * `.default()`. This is not a users table by another name: it holds per-user *preferences*, not
+ * identity — Clerk still owns that.
  */
 
-import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const models = pgTable(
   "models",
@@ -38,6 +41,7 @@ export type ModelRow = typeof models.$inferSelect;
 export const userPreferences = pgTable("user_preferences", {
   clerkUserId: text("clerk_user_id").primaryKey(),
   units: text("units"),
+  printRailInstructions: boolean("print_rail_instructions"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -12,6 +12,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "./client";
 import { models, userPreferences } from "./schema";
 import { parseUnitsPreference } from "@/lib/units-preference";
+import { parsePrintRailInstructionsPreference } from "@/lib/print-instructions-preference";
 import type { UnitsSystem } from "@/lib/geometry/units";
 
 export interface ListedModel {
@@ -58,4 +59,17 @@ export async function readUnitsPreference(clerkId: string): Promise<UnitsSystem 
     .from(userPreferences)
     .where(eq(userPreferences.clerkUserId, clerkId));
   return parseUnitsPreference(row?.units ?? null);
+}
+
+/**
+ * A shaper's saved "Include Rail Band Instructions in Print" preference, or `null` when the row
+ * is missing or its column holds anything outside a real boolean (a hand-edit, table drift).
+ * Follows `readUnitsPreference` exactly — one `select`, run through the allow-list parser,
+ * nothing written.
+ */
+export async function readPrintRailInstructionsPreference(clerkId: string): Promise<boolean | null> {
+  const [row] = await db.select({ printRailInstructions: userPreferences.printRailInstructions })
+    .from(userPreferences)
+    .where(eq(userPreferences.clerkUserId, clerkId));
+  return parsePrintRailInstructionsPreference(row?.printRailInstructions ?? null);
 }

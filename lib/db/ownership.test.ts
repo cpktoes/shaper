@@ -14,6 +14,7 @@ const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const ACTIONS_PATH = join(REPO_ROOT, "app/design/actions.ts");
 const QUERIES_PATH = join(REPO_ROOT, "lib/db/queries.ts");
 const UNITS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/units.ts");
+const PRINT_INSTRUCTIONS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/print-instructions.ts");
 
 /** Strips `//` line comments and `/* *\/` block comments, same helper as lib/auth/open-access.test.ts. */
 function stripComments(source: string): string {
@@ -60,11 +61,13 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
   const actionsSource = stripComments(readFileSync(ACTIONS_PATH, "utf8"));
   const queriesSource = stripComments(readFileSync(QUERIES_PATH, "utf8"));
   const unitsActionsSource = stripComments(readFileSync(UNITS_ACTIONS_PATH, "utf8"));
+  const printInstructionsActionsSource = stripComments(readFileSync(PRINT_INSTRUCTIONS_ACTIONS_PATH, "utf8"));
 
-  it("every exported async function in app/design/actions.ts and app/actions/units.ts awaits auth() before any database call", () => {
+  it("every exported async function in app/design/actions.ts, app/actions/units.ts and app/actions/print-instructions.ts awaits auth() before any database call", () => {
     const fns = [
       ...exportedAsyncFunctions(actionsSource),
       ...exportedAsyncFunctions(unitsActionsSource),
+      ...exportedAsyncFunctions(printInstructionsActionsSource),
     ];
     expect(fns.length).toBeGreaterThan(0);
     for (const fn of fns) {
@@ -85,6 +88,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
       ...exportedFunctionSignatures(actionsSource),
       ...exportedFunctionSignatures(queriesSource),
       ...exportedFunctionSignatures(unitsActionsSource),
+      ...exportedFunctionSignatures(printInstructionsActionsSource),
     ];
     expect(signatures.length).toBeGreaterThan(0);
     const offenders = signatures.filter((fn) => /userId|ownerId|clerkUserId/.test(fn.params));
@@ -106,11 +110,18 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
     expect(fns).toEqual(["saveUnitsPreference"]);
   });
 
+  it("app/actions/print-instructions.ts exports exactly the expected action and no others", () => {
+    // Mirrors the assertion above for app/actions/units.ts.
+    const fns = exportedAsyncFunctions(printInstructionsActionsSource).map((fn) => fn.name).sort();
+    expect(fns).toEqual(["savePrintRailInstructionsPreference"]);
+  });
+
   it("every Drizzle statement touching an owned table constrains on the owning-user column", () => {
     for (const [label, source] of [
       ["app/design/actions.ts", actionsSource],
       ["lib/db/queries.ts", queriesSource],
       ["app/actions/units.ts", unitsActionsSource],
+      ["app/actions/print-instructions.ts", printInstructionsActionsSource],
     ] as const) {
       // Split on each db.<verb>( call so every statement is inspected against the text between
       // it and the NEXT db call (or end of source) — the statement's own where/values clause.
