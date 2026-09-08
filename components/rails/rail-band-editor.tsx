@@ -8,9 +8,10 @@ import { mm, mmToInches, type Mm } from "@/lib/geometry/units";
 import { RailControls } from "./rail-controls";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { RailDataTable } from "./rail-data-table";
+import { RailInstructions } from "./rail-instructions";
 import { RailSectionPlot, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
 
-type RailPage = "viewer" | "data";
+type RailPage = "viewer" | "data" | "instructions";
 
 const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
@@ -228,7 +229,11 @@ export function RailBandEditor() {
       </aside>
       <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3">
         <TabbedPanel
-          tabs={[{ id: "viewer" as const, label: "VIEWER" }, { id: "data" as const, label: "DATA" }]}
+          tabs={[
+            { id: "viewer" as const, label: "VIEWER" },
+            { id: "data" as const, label: "DATA" },
+            { id: "instructions" as const, label: "INSTRUCTIONS" },
+          ]}
           active={activePage}
           onSelect={setActivePage}
         >
@@ -274,6 +279,8 @@ export function RailBandEditor() {
             }))}
           />
         )}
+
+        {activePage === "instructions" && <RailInstructions />}
         </TabbedPanel>
       </main>
     </div>

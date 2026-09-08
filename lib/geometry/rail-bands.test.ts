@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildRailDataGroups,
+  buildRailSegments,
   computeRailBands,
   computeRailSection,
   mergeRailDataTable,
@@ -103,7 +104,12 @@ const NUMERIC_RESULT_FIELDS = [
 ] as const;
 const NULLABLE_RESULT_FIELDS = ["cornerCutRail", "cornerCutOffset", "cornerCutDeck"] as const;
 
-const goldenEntries = Object.entries(golden) as [string, (typeof golden)[keyof typeof golden]][];
+// "exampleRail" is the INSTRUCTIONS tab's own fixture entry (D-20) — a { flat, domed } pair, not
+// a { state, sections } scenario — and is pinned separately below, not iterated as a scenario here.
+const goldenEntries = Object.entries(golden).filter(([name]) => name !== "exampleRail") as [
+  string,
+  (typeof golden)[Exclude<keyof typeof golden, "exampleRail">],
+][];
 
 describe("computeRailBands golden parity", () => {
   for (const [name, fixture] of goldenEntries) {
@@ -188,6 +194,76 @@ describe("computeRailBands golden parity", () => {
           });
         });
       }
+    });
+  }
+});
+
+// The INSTRUCTIONS tab's example rail (D-20): a single section computed twice (Flat/Domed) from
+// the prototype's own fixed literal inputs, pinned against golden.exampleRail rather than one of
+// the eleven { state, sections } scenarios above — see scripts/extract-prototype-rails-golden.mjs.
+describe("computeRailSection example rail golden parity", () => {
+  const exampleRailGolden = golden.exampleRail as unknown as Record<
+    "flat" | "domed",
+    {
+      result: Record<string, number | boolean | null | undefined>;
+      segments: { key: string; label: string; p1: [number, number]; p2: [number, number] }[];
+    }
+  >;
+  const EXAMPLE_RAIL_STATES: { key: "flat" | "domed"; thicknessIn: number; domed: boolean }[] = [
+    { key: "flat", thicknessIn: 3.5, domed: false },
+    { key: "domed", thicknessIn: 3, domed: true },
+  ];
+
+  for (const { key, thicknessIn, domed } of EXAMPLE_RAIL_STATES) {
+    describe(`state: ${key}`, () => {
+      const input: ComputeRailSectionInput = {
+        thickness: inchesToMm(thicknessIn),
+        ratioTopPercent: 60,
+        family: 3,
+        domedBandBase: inchesToMm(6),
+        scale: 1,
+        cornerCutOffsetOverride: null,
+        removeCornerCut: false,
+        singleTuck: false,
+        bottomTuck3Override: null,
+        symmetrical: false,
+        hardEdge: false,
+      };
+      const result = computeRailSection(input);
+      const goldenResult = exampleRailGolden[key].result;
+
+      it("matches computeSection result fields", () => {
+        const r = result as unknown as Record<string, Mm | boolean | null>;
+        for (const field of NUMERIC_RESULT_FIELDS) {
+          expectCloseIn(mmToInches(r[field] as Mm), goldenResult[field] as number);
+        }
+        for (const field of NULLABLE_RESULT_FIELDS) {
+          const expectedNull = goldenResult[field] === null || goldenResult[field] === undefined;
+          if (expectedNull) {
+            expect(r[field]).toBeNull();
+          } else {
+            expect(r[field]).not.toBeNull();
+            expectCloseIn(mmToInches(r[field] as Mm), goldenResult[field] as number);
+          }
+        }
+        expect(result.removeCornerCut).toBe(!!goldenResult.removeCornerCut);
+        expect(result.singleTuck).toBe(!!goldenResult.singleTuck);
+      });
+
+      it("matches buildSegmentDefs segment key sequence and endpoints", () => {
+        const opts = { boardThickness: inchesToMm(3.5), railThicknessVal: inchesToMm(3), domedBandBase: inchesToMm(6) };
+        const segments = buildRailSegments(result, inchesToMm(thicknessIn), domed, opts);
+        const goldenSegments = exampleRailGolden[key].segments;
+        expect(segments.map((s) => s.key)).toEqual(goldenSegments.map((s) => s.key));
+        expect(segments.map((s) => s.label)).toEqual(goldenSegments.map((s) => s.label));
+        segments.forEach((s, i) => {
+          const g = goldenSegments[i];
+          expectCloseIn(mmToInches(s.p1.x), g.p1[0]);
+          expectCloseIn(mmToInches(s.p1.y), g.p1[1]);
+          expectCloseIn(mmToInches(s.p2.x), g.p2[0]);
+          expectCloseIn(mmToInches(s.p2.y), g.p2[1]);
+        });
+      });
     });
   }
 });

@@ -302,6 +302,7 @@ describe("the design screens read every measurement through the display boundary
     { file: "components/rocker/rocker-viewer.tsx", converted: true },
     { file: "components/rails/rail-controls.tsx", converted: true },
     { file: "components/rails/rail-data-table.tsx", converted: true },
+    { file: "components/rails/rail-instructions.tsx", converted: true },
     { file: "components/rails/rail-section-plot.tsx", converted: true },
     { file: "components/fins/fin-controls.tsx", converted: true },
     { file: "components/fins/fin-viewer.tsx", converted: true },

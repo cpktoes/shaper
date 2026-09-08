@@ -263,6 +263,33 @@ for (const [fixtureName, state] of Object.entries(fixtures)) {
   golden[fixtureName] = { state, sections };
 }
 
+// ---- The INSTRUCTIONS tab's example rail (D-20) ------------------------------------------
+// Not one of the eleven { state, sections: { nose, center, tail } } scenarios above — this is
+// the prototype's own "Understanding Rail Markings" example, a single section computed twice
+// (Flat/Domed) from fixed literal inputs (Rails.dc.html line 1358-1362), never derived from a
+// `state` object. halveDeckMark1 is deliberately omitted: computeSection's own parameter list
+// (line 704) has no such key, so passing it would invent behaviour the prototype never executed.
+const EXAMPLE_RAIL_INPUTS = {
+  flat: { thickness: 3.5, domed: false },
+  domed: { thickness: 3, domed: true },
+};
+const exampleRail = {};
+for (const [key, { thickness, domed }] of Object.entries(EXAMPLE_RAIL_INPUTS)) {
+  const computeArgs = { thickness, ratioTopPct: 60, family: 3, domed, domedBandBase: 6, scale: 1 };
+  const result = host.computeSection(computeArgs);
+  const segmentsFull = host.buildSegmentDefs(result, thickness, domed, {
+    boardThickness: 3.5,
+    railThicknessVal: 3,
+    domedBandBase: 6,
+  });
+  exampleRail[key] = {
+    computeArgs,
+    result,
+    segments: segmentsFull.map((sg) => ({ key: sg.key, label: sg.label, p1: sg.p1, p2: sg.p2 })),
+  };
+}
+golden.exampleRail = exampleRail;
+
 mkdirSync(path.dirname(outputPath), { recursive: true });
 writeFileSync(outputPath, `${JSON.stringify(golden, null, 2)}\n`, "utf8");
 console.log(`Wrote ${Object.keys(golden).length} fixtures to ${path.relative(repoRoot, outputPath)}`);
