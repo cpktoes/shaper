@@ -61,6 +61,7 @@ import { RockerViewer } from "@/components/rocker/rocker-viewer";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ExportPreviewDialog } from "@/components/template/export-preview-dialog";
+import { RailInstructionsSheet } from "./rail-instructions-sheet";
 import {
   FormBox,
   LogoBlock,
@@ -705,9 +706,18 @@ export function OrderForm() {
 
           <PageMark page={2} of={sheetCount} title="Shaper Reference" />
         </Sheet>
-        {/* PAGE 3 — Rail Band Instructions (PRNT-05, D-08/D-09) lands in Task 2, once the sheet
-            component that draws it exists — the count and marks above prove the unticked path
-            unchanged first. */}
+
+        {/* ══════════ PAGE 3 — Rail Band Instructions ═══════════════════════════════════════ */}
+        {/* Present the moment the box is ticked — this form is measured on screen and printed as
+            measured, so a sheet that prints must be a sheet that shows (D-09). Always the Flat
+            example rail and every legend line, whatever the INSTRUCTIONS tab's own switch and
+            ticks are set to on screen (D-08): two prints of the same board are the same sheet. */}
+        {printRailInstructions && (
+          <Sheet variant="instructions">
+            <RailInstructionsSheet />
+            <PageMark page={3} of={sheetCount} title="Rail Band Reference" />
+          </Sheet>
+        )}
       </div>
 
       {/* Below the paper, and never on it. */}
