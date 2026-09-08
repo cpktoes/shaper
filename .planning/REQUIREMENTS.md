@@ -1,7 +1,7 @@
 # Milestone v1.2 Requirements: Rails Finished, Phone Ready
 
-**Status:** Defined 2026-09-07 — not yet mapped to phases
-**Phases:** TBD (continue from Phase 8)
+**Status:** Mapped to phases 2026-09-07
+**Phases:** 8–10 (continuing from v1.1, which ended at Phase 7) — see [ROADMAP.md](ROADMAP.md)
 **Research:** [research/SUMMARY.md](research/SUMMARY.md)
 
 **Goal:** Finish the rails screen the prototype always had, and make the whole app something a shaper can actually use on a phone.
@@ -63,23 +63,25 @@ Requirements are written as things a shaper can do or see. IDs continue from the
 
 | Requirement | Phase | Status | Outcome |
 |---|---|---|---|
-| RAIL-02 | — | Pending | — |
-| RAIL-03 | — | Pending | — |
-| RAIL-04 | — | Pending | — |
-| RAIL-05 | — | Pending | — |
-| RAIL-06 | — | Pending | — |
-| PRNT-05 | — | Pending | — |
-| PRNT-06 | — | Pending | — |
-| PHON-01 | — | Pending | — |
-| PHON-02 | — | Pending | — |
-| PHON-03 | — | Pending | — |
-| PHON-04 | — | Pending | — |
-| PHON-05 | — | Pending | — |
-| PHON-06 | — | Pending | — |
-| PHON-07 | — | Pending | — |
-| PHON-08 | — | Pending | — |
-| PHON-09 | — | Pending | — |
-| PHON-10 | — | Pending | — |
-| TEST-01 | — | Pending | — |
+| RAIL-02 | Phase 8 | Pending | — |
+| RAIL-03 | Phase 8 | Pending | — |
+| RAIL-04 | Phase 8 | Pending | — |
+| RAIL-05 | Phase 8 | Pending | — |
+| RAIL-06 | Phase 8 | Pending | — |
+| PRNT-05 | Phase 8 | Pending | — |
+| PRNT-06 | Phase 8 | Pending | — |
+| PHON-01 | Phase 9 | Pending | — |
+| PHON-02 | Phase 9 | Pending | — |
+| PHON-03 | Phase 9 | Pending | — |
+| PHON-04 | Phase 9 | Pending | — |
+| PHON-05 | Phase 9 | Pending | — |
+| PHON-06 | Phase 9 | Pending | — |
+| PHON-07 | Phase 10 | Pending | — |
+| PHON-08 | Phase 10 | Pending | — |
+| PHON-09 | Phase 10 | Pending | — |
+| PHON-10 | Phase 10 | Pending | — |
+| TEST-01 | Phase 9 | Pending | — |
 
-*Filled in by the roadmap.*
+All 18 v1.2 requirements are mapped, each to exactly one phase: Phase 8 owns the seven rails and
+print items, Phase 9 the six design-screen phone items plus the Playwright test harness, and
+Phase 10 the four remaining phone items including the real-device end-to-end pass.

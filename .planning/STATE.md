@@ -2,32 +2,46 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
+current_phase: 8
+current_phase_name: The Rails Screen, Finished
 status: planning
-last_updated: "2026-09-08T01:01:10.824Z"
+stopped_at: v1.2 roadmap created (Phases 8–10)
+last_updated: "2026-09-08T01:50:50.487Z"
 last_activity: 2026-09-07
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
   percent: 0
+last_activity_desc: "v1.2 roadmap created: Phases 8-10, all 18 requirements mapped"
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-05)
+See: .planning/PROJECT.md (updated 2026-09-07)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 07 — metric-on-paper
+**Current focus:** Milestone v1.2 (Phases 8–10) — Phase 8, The Rails Screen, Finished
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-09-07 — Milestone v1.2 started
+Phase: 8 of 10 (The Rails Screen, Finished)
+Plan: — (no plans yet)
+Status: Ready to plan
+Last activity: 2026-09-07
+
+Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
+
+**Milestone v1.2 — Rails Finished, Phone Ready** (Phase 8 is its first phase; Phases 1–7 shipped in v1.0 and v1.1)
+
+| Phase | Name | Requirements | Status |
+|-------|------|--------------|--------|
+| 8 | The Rails Screen, Finished | RAIL-02..06, PRNT-05, PRNT-06 | Not started |
+| 9 | The Design Screens on a Phone | PHON-01..06, TEST-01 | Not started |
+| 10 | The Whole App on a Phone | PHON-07..10 | Not started |
 
 ## Performance Metrics
 
@@ -277,7 +291,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-06T18:37:52.160Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-metric-on-paper/07-CONTEXT.md
-Next action: `/gsd-execute-phase 5` (only 05-07 — ship it — remains)
+Last session: 2026-09-08T01:50:13.858Z
+Stopped at: v1.2 roadmap created (Phases 8–10)
+Resume file: .planning/ROADMAP.md
+Next action: `/gsd-discuss-phase 8` — Phase 8 has two open product decisions (whether the
+"Include Rail Band Instructions in Print" box starts ticked, and whether it saves with the board
+or stays a session preference) that research flagged for the discussion, not for a plan.
