@@ -1,36 +1,19 @@
 ---
 phase: 08-the-rails-screen-finished
-verified: 2026-09-08T08:30:00Z
-status: human_needed
-score: 7/7 must-haves verified at code level (visual/physical confirmation deferred to human checks below)
+verified: 2026-09-08T15:35:00Z
+status: passed
+score: 5/5 roadmap success criteria verified; 7/7 requirements satisfied (PRNT-06 satisfied-pending-completion-mark, per phase instructions)
 behavior_unverified: 0
 overrides_applied: 0
-human_verification:
-  - test: "Open /design/rails, click INSTRUCTIONS, confirm the example rail draws (with the 260908-adg fix, in a fixed-height card) with all ten callout names legible and non-overlapping in both Flat and Domed, side by side against the prototype."
-    expected: "Example rail draws at a readable size with mark names beside it, matching the prototype's own Understanding Rail Markings plot; Corner Cut sits at the same height as the reference."
-    why_human: "Visual layout/legibility — the 260908-adg sizing fix has not yet been looked at in a browser per its own SUMMARY."
-  - test: "On the INSTRUCTIONS tab, confirm the 'Turning Marks Into Rail Bands' figure shows the whole example board at once (capped at ~472px tall) without scrolling, in both light and dark themes, in Imperial and Metric (station labels and tail-distance range in cm)."
-    expected: "Whole board visible, card stays legible and light in every theme, Metric reads in centimetres with the unit carried once."
-    why_human: "Visual/theme check plus unit-formatting review; not yet verified in a browser per 260908-adg's own SUMMARY."
-  untick_and_mix_legend_check:
-    test: "Untick all nine legend boxes, then tick a mixed subset, and confirm exactly the ticked line families draw while the board outline, side strip and station labels stay."
-    expected: "Line families toggle independently; nothing else in the figure disappears."
-    why_human: "Interactive visual behavior deferred per workflow.human_verify_mode: end-of-phase (08-03-SUMMARY)."
-  - test: "Open 'View Full Sized' from the rails VIEWER toolbar, hold a ruler against the on-screen rail and the 2-inch/50.8mm check bar, in both Imperial and Metric; confirm all three tabs are offered even with a section collapsed, and that a rail wider than the dialog scrolls rather than shrinks."
-    expected: "Both the check bar and a known rail dimension measure physically true; three tabs always present; drawing scrolls, never shrinks."
-    why_human: "Physical screen accuracy cannot be verified by code — this is exactly the check RAIL-04's own design intends a human to make (08-04-SUMMARY)."
-  - test: "Print the View Full Sized dialog with 'Fit to page' off, in both systems, and measure the printed check bar and a known rail mark with a ruler; confirm no rails-screen chrome (sidebar, tab strip, toolbar) reaches the printed page."
-    expected: "Printed rail and check bar measure true; only the dialog's own content is on the page."
-    why_human: "Physical print accuracy and print-hide correctness need eyes and a ruler on real paper (08-04-SUMMARY); code-level guard (WR-01 fix) confirmed present in app/design/rails/actual-size.css."
-  - test: "Tick 'Include Rail Band Instructions in Print' on the rails sidebar; reload and confirm no flash from unticked to ticked; confirm the summary mirror checkbox is already ticked and both page marks read 'of 3'; sign in on a second browser/profile and confirm the value follows the account; sign out and confirm the browser-only value is preserved."
-    expected: "No flash on reload; both checkboxes always agree; the preference follows a signed-in shaper across devices; sign-out preserves the browser value."
-    why_human: "Cross-device/session and no-flash behavior needs a live browser and a second signed-in session (08-02-SUMMARY, 08-05-SUMMARY)."
-  - test: "With the box unticked, open the summary's print preview in Imperial and Metric, on Letter and A4, and confirm pages 1 and 2 are pixel-for-pixel what they were before this milestone (same layout, values, page marks reading 'of 2', same note, nothing clipped). Tick the box and confirm a third page appears identically in both systems/paper sizes with the Flat rail and every legend line drawn regardless of the on-screen tab/legend state, never spilling to a fourth page."
-    expected: "Unticked output byte-identical in appearance to pre-phase; ticked output adds a correct, fixed third page."
-    why_human: "PRNT-06's order-form byte-identity proof could not run as a scripted diff — the pre-phase scratch worktree has no `.env.local` and agents are hard-blocked from creating one, so Clerk throws before any route renders (08-06-SUMMARY). This is the named Phase 7 D-10 fallback, not a shortcut invented by this verification."
-  - test: "In the Neon console, on the production branch, confirm `user_preferences` has a `print_rail_instructions` boolean column; or sign in on the live site (https://shaper-coral.vercel.app), tick the box, and confirm it is still ticked in a private window signed in as the same account (a plain reload is not proof — the cookie keeps the box ticked even if the account write silently fails)."
-    expected: "The column exists in production and the tick genuinely round-trips through the account, not just the cookie."
-    why_human: "The shaper's own `npm run db:migrate:prod` run (twice) ended after drizzle-kit's two standard notices without ever printing the '[✓] migrations applied successfully!' line the Phase 5 run showed. The push and the deployed site were independently confirmed by the orchestrator, but no agent can read the production database, so whether the column actually exists in production is unconfirmed (08-06-SUMMARY's own caveat). This is the most consequential open item in the phase."
+re_verification:
+  previous_status: human_needed
+  previous_score: "5/5 roadmap success criteria supported by code-level evidence; several visual/physical/production-state items deferred to human verification"
+  gaps_closed:
+    - "G-08-5: View Full Sized dialog print was shifted half a dialog off the page and auto-shrunk — fixed in 08-07 + orchestrator follow-up 2fd8941 (translate reset moved into the dialog's own verbatim style element; landscape @page rule added; sign-in banner print-hidden)"
+    - "G-08-9: In Metric, the INSTRUCTIONS example rail's axis numbers collided (bottom axis) and clipped (left axis) — fixed in 08-08 + review follow-up ca8778f + orchestrator fix d46307f (labelEvery thinning, leftAxisUnit suppression, inside-plot fallback placement, stacked-label fit check)"
+    - "G-08-10: Order form printed a blank first and last page on Letter — fixed in 08-09 + review follow-up d2daaab (wrapper padding zeroed for print, @page margin now cross-checked against use-print-fit.ts's PAGE_MARGIN_MM)"
+  gaps_remaining: []
+  regressions: []
 ---
 
 # Phase 8: The Rails Screen, Finished Verification Report
@@ -39,8 +22,56 @@ human_verification:
 against the foam at actual size, see where each rail section sits along the board, and fold that
 reference sheet into what comes out of the printer.
 **Verified:** 2026-09-08
-**Status:** human_needed
-**Re-verification:** No — initial verification
+**Status:** passed
+**Re-verification:** Yes — after gap closure (plans 08-07, 08-08, 08-09, closing UAT gaps G-08-5,
+G-08-9, G-08-10)
+
+## What changed since the previous verification
+
+The previous 08-VERIFICATION.md (`status: human_needed`) certified 7/7 must-haves at the code
+level and deferred eight items to a human UAT pass. The shaper then ran that UAT (08-UAT.md):
+7 of 10 tests passed outright (tests 1–4, 6–8 — including the physical ruler check of View Full
+Sized on screen, the print preference following the account with no flash, the order form's
+unticked/ticked page content, and the production database column). Three tests found real bugs
+(G-08-5, G-08-9, G-08-10), which were fixed by gap-closure plans 08-07/08-08/08-09, code-reviewed
+(08-REVIEW.md, 2 warnings, both fixed per 08-REVIEW-FIX.md), and re-measured by the orchestrator
+on `main` after merge.
+
+This verification does not re-litigate the seven UAT passes. It (a) confirms the gap-closure code
+genuinely exists and is wired, (b) confirms the code-review fixes are genuinely applied, (c) runs
+the full test suite, `tsc`, `build` and `lint` itself, and (d) independently re-measures all three
+closed gaps with its own headless-Chrome PDF/DOM checks — not trusting the SUMMARY's own numbers.
+
+## Independent Re-Measurement (this verification's own evidence)
+
+Run against the phase's own dev server (`next dev -p 3005`, already running, signed out) with a
+fresh headless Chrome 152 instance driven over CDP — same method the orchestrator and UAT used,
+run again independently rather than reused.
+
+| Gap | Check | Result |
+|-----|-------|--------|
+| G-08-5 | Open View Full Sized, print to PDF (Letter, `preferCSSPageSize: true`) | **1 page, landscape** (792×612pt); extracted text contains the check-bar caveat ("This assumes a standard screen at 100% zoom... Check bar: 2\"") and the ten mark names; contains no "Sign in", "VIEWER", "DATA" or "INSTRUCTIONS" text — no chrome or banner leaked onto the page |
+| G-08-5 | Dialog's own print `<style>` element | Present in the live DOM once the dialog is open, containing both `landscape` and `translate: none` — matches 08-07-SUMMARY's fix (the reset was moved off the stylesheet, which Lightning CSS was folding into `transform`, into the dialog's own verbatim style tag) |
+| G-08-9 | INSTRUCTIONS tab, Metric, Flat — every `<text>` element's bounding box inside the plot's first multi-label `<svg>` (27 labels) | **0 overlapping label pairs, 0 labels clipped left of the svg's own box** (bottom axis reads 0, 20 mm, 40 … 200 — every 20mm; left axis reads bare 0/20/40/60/80, drawn inside the plot) |
+| G-08-9 | Same check after clicking Domed | **0 overlaps, 0 clipped** — same 27-label count, confirming the fix holds across both rail shapes |
+| G-08-10 | Order form print-to-PDF, box unticked, Letter | **2 pages**, 612×792pt each — no blank leading/trailing page |
+| G-08-10 | Order form print-to-PDF, box ticked (cookie set), Letter | **3 pages**, 612×792pt each |
+| G-08-10 | Order form print-to-PDF, box ticked, A4 | **3 pages**, 595.9×841.9pt each |
+
+All three gaps are independently confirmed closed by direct PDF/DOM measurement taken during this
+verification — not merely re-stating the SUMMARY's own claims.
+
+## Automated Checks (run by this verification)
+
+| Check | Command | Result |
+|-------|---------|--------|
+| Full test suite | `npx vitest run` | **42 files, 2255 passed, 2 skipped, 0 failed** |
+| Gap-closure test files (isolated) | `npx vitest run components/rails/view-full-sized-dialog.test.ts components/rails/rail-section-plot.test.ts components/summary/order-form-print.test.ts` | **3 files, 39 passed** |
+| Type check | `npx tsc --noEmit` | Clean, exit 0 (the two pre-existing `LayoutProps` errors the phase's SUMMARYs mention are no longer present) |
+| Production build | `npm run build` | Compiled and typechecked successfully, all 8 routes generated |
+| Lint | `npm run lint` | **0 errors**, 10 pre-existing unrelated warnings (no-img-element in `rail-plan-side-figure.tsx`, unused vars/eslint-disable in test/scripts files). The `view-full-sized-dialog.tsx` `react-hooks/set-state-in-effect` lint **error** the previous verification flagged as an open anti-pattern is **gone** — `npx eslint components/rails/view-full-sized-dialog.tsx` reports nothing |
+| Git working tree | `git status --short` | Clean before and after this verification |
+| Gap-closure commits present on `main` | `git log -1 <hash>` for all 11 referenced commits | All 11 found (4a28874, 27a26a8, 2fd8941, 1df06ef, 2843309, 5bef3f1, ca8778f, d46307f, 1360d62, bc9f13d, d2daaab) |
 
 ## Goal Achievement
 
@@ -48,89 +79,86 @@ reference sheet into what comes out of the printer.
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | INSTRUCTIONS tab opens beside VIEWER/DATA with a live example rail, every mark named, flips Flat/Domed and reshapes | ✓ VERIFIED (code) | `rail-band-editor.tsx:17,247,309` wires the tab; `rail-instructions.tsx` exports `RailInstructions`/`ExampleRailFigure`; golden fixture `exampleRail.{flat,domed}` pinned by `rail-bands.test.ts` ("computeRailSection example rail golden parity", 4 assertions, all pass); `rail-callouts.ts` produces the ten named callouts, tested in `rail-callouts.test.ts`; `two-option-toggle.tsx` wired and tested. Visual legibility/overlap check deferred to human (below) |
-| 2 | "View Full Sized" opens a 1:1 rail with a one-line no-calibration caveat | ✓ VERIFIED (code) | `view-full-sized-dialog.tsx` exists, wired via `ViewerToolbarButton` in `rail-band-editor.tsx:254-261`; `view-full-sized-dialog.test.ts` (7 assertions) proves the formatter-derived check-bar caption, absence of a local conversion factor or `devicePixelRatio` read, and the exact caveat/print-note copy; WR-01 code-review fix (blank-print bug) confirmed present in `app/design/rails/actual-size.css`. Physical ruler-true accuracy is inherently a human check (below) |
-| 3 | Plan and side views show where nose/centre/tail sections sit, with a toggleable legend | ✓ VERIFIED (code) | `rail-reference-paths.ts` ported path data pinned against `reference/project/Rails.dc.html` by a parity test; `rail-plan-side-figure.tsx` exports `RailPlanSideFigure`/`RAIL_REFERENCE_LEGEND` (9 entries)/`ALL_RAIL_REFERENCE_GROUPS`; wired into `rail-instructions.tsx` card 2 with local `visibleGroups` state (screen-only, never touches `useDesign` — confirmed by `grep -c 'useDesign' rail-instructions.tsx` = 0). Post-review sizing fix (260908-adg) applied and mechanically confirmed; visual side-by-side deferred to human (below) |
-| 4 | Ticking "Include Rail Band Instructions in Print" adds a third printed page; unticked, every printed output is unchanged | ✓ VERIFIED (code) | `rail-controls.tsx:436` and `order-form.tsx:751` both read/write `usePrintRailInstructions()`; `rail-instructions-sheet.tsx` (`RailInstructionsSheet`) is a stateless, hard-`domed={false}`, all-groups sheet proven by an 8-assertion source-contract test; `order-form.tsx` renders sheets in fixed order (order form → reference → instructions, confirmed at lines 256/549/716); `PageMark`'s `of` prop threaded through all three call sites. `components/template/*`, `lib/geometry/rail-bands.ts`, `lib/models/design-snapshot.ts`, `components/summary/use-print-fit.ts`, `components/units-provider.tsx`, `app/globals.css` all confirmed byte-identical to the pre-phase commit `3210103522a3a5e59148401f57904a23fae93026` via `git diff --stat`. Three jsPDF surfaces measured byte-identical (112 pages, 0 differing content-stream operators/bytes, both systems — 08-06-SUMMARY). Order-form visual proof and the production migration state are deferred to human (below) |
-| 5 | Every new number reads in the shaper's chosen system | ✓ VERIFIED (automated) | `lib/units-isolation.test.ts` (25 assertions, all pass) mechanically bans a local conversion factor in every new design-screen and print-surface file and requires `converted: true` entries to genuinely import the display boundary; `rail-instructions.tsx`, `rail-plan-side-figure.tsx`, `view-full-sized-dialog.tsx`, `rail-instructions-sheet.tsx` are all listed and pass |
+| 1 | INSTRUCTIONS tab opens beside VIEWER/DATA with a live example rail, every mark named, flips Flat/Domed and reshapes | ✓ VERIFIED | Code-level wiring unchanged from prior verification (`rail-band-editor.tsx:309`, `rail-instructions.tsx`, golden-pinned `rail-bands.test.ts`); UAT test 1 (Imperial legibility) and test 3 (legend toggling) PASSED by the shaper; the Metric-only axis-label defect (G-08-9) is now independently confirmed fixed above, in both Flat and Domed |
+| 2 | "View Full Sized" opens a 1:1 rail with a one-line no-calibration caveat, on screen and on paper | ✓ VERIFIED | UAT test 4 (physical ruler, on screen) PASSED by the shaper. The print half (test 5, G-08-5) FAILED at UAT and is now independently confirmed fixed: this verification's own PDF measurement shows one landscape page, all content inside the margins, correct caveat/check-bar text, no chrome — matching the orchestrator's own 143.99pt/625.5pt measurements in 08-07-SUMMARY |
+| 3 | Plan and side views show where nose/centre/tail sections sit, with a toggleable legend | ✓ VERIFIED | Unchanged from prior verification; UAT test 2 (whole-board figure sizing, Metric station labels) and test 3 (legend) both PASSED by the shaper |
+| 4 | Ticking "Include Rail Band Instructions in Print" adds a third printed page; unticked, every printed output is unchanged | ✓ VERIFIED | UAT test 6 (preference follows account, no flash) and test 7 (order-form content unticked/ticked) PASSED by the shaper. The page-count defect (test 10, G-08-10 — blank first/last page on Letter) FAILED at UAT and is now independently confirmed fixed: this verification's own print-to-PDF shows exactly 2 pages unticked / 3 ticked on both Letter and A4, no blank pages |
+| 5 | Every new number reads in the shaper's chosen system | ✓ VERIFIED | `lib/units-isolation.test.ts` (still green, unmodified by gap closure) mechanically bans a local conversion factor in every new design-screen/print-surface file; the Metric axis-label fix (G-08-9) is a rendering-density fix, not a units fix, and does not touch any conversion path — confirmed unmodified files in `lib/geometry/units.ts` |
 
-**Score:** 5/5 roadmap success criteria supported by code-level evidence (tests + structural checks); 0 behavior-unverified. Several visual/physical/production-state confirmations are deferred to human verification per `workflow.human_verify_mode: end-of-phase` — see Human Verification Required.
+**Score:** 5/5 roadmap success criteria verified — all three UAT-identified gaps closed and
+independently re-measured; the remaining seven UAT passes stand as human-verified per the run
+context and are not re-litigated here.
 
-### Required Artifacts
+### Required Artifacts (gap-closure additions since prior verification)
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `components/rails/rail-instructions.tsx` | INSTRUCTIONS tab body + example rail | ✓ VERIFIED | Exists, exports `RailInstructions`/`ExampleRailFigure`/`exampleRailThickness`, wired into `rail-band-editor.tsx` |
-| `components/rails/rail-callouts.ts` | Callout layout math | ✓ VERIFIED | Exists, tested (`rail-callouts.test.ts`), 10 anchors, de-overlap pass |
-| `components/viewer/two-option-toggle.tsx` | Shared Flat/Domed control | ✓ VERIFIED | Extracted byte-for-byte from `fin-controls.tsx`'s `PillButton`; source-contract test passes; `fin-controls.tsx` untouched (`git diff --quiet` confirmed in 08-01-SUMMARY) |
-| `lib/geometry/__fixtures__/prototype-rails-golden.json` (`exampleRail` key) | Golden fixture, never hand-typed | ✓ VERIFIED | `exampleRail.flat`/`exampleRail.domed` present; `npm run golden:rails` re-run leaves the file byte-identical (idempotent) |
-| `components/rails/rail-reference-paths.ts` | Ported plan/side path data | ✓ VERIFIED | Pinned against prototype source by parity test; `public/rail-bands-plan-bg.png` byte-identical to `reference/project/assets/rail-bands-plan-bg.png` (`cmp` exits 0), reference copy untouched |
-| `components/rails/rail-plan-side-figure.tsx` | Plan/side figure + legend | ✓ VERIFIED | Exports `RailPlanSideFigure`, `RAIL_REFERENCE_LEGEND` (9 entries), `ALL_RAIL_REFERENCE_GROUPS`; sizing fix (260908-adg) applied |
-| `components/rails/view-full-sized-dialog.tsx` | 1:1 dialog | ✓ VERIFIED | Exists, wired, tested; WR-01 print-hide fix present |
-| `app/design/rails/actual-size.css` | 1:1 print CSS | ✓ VERIFIED | Guards every rule with `:has([data-view-full-sized-dialog])` per WR-01 fix |
-| `lib/print-instructions-preference.ts`, `lib/print-instructions-server.ts`, `components/print-instructions-provider.tsx`, `app/actions/print-instructions.ts` | Preference stack | ✓ VERIFIED | All exist; mirror `units-preference.ts`'s shape via generic `lib/preference-handoff.ts`; `lib/units-preference.test.ts` unedited and green (regression proof) |
-| `lib/db/schema.ts` (`print_rail_instructions` column) + `drizzle/0003_early_pete_wisdom.sql` | Nullable preference column | ✓ VERIFIED (dev) / ? UNCERTAIN (prod) | Column present in schema; migration SQL is a bare nullable `ADD COLUMN`; applied to Neon **development** branch (confirmed idempotent by two runs); **production** application is only shaper-reported, not independently confirmed (see Human Verification) |
-| `components/summary/rail-instructions-sheet.tsx` | Fixed third print sheet | ✓ VERIFIED | Exists, exports `RailInstructionsSheet`; 8-assertion source-contract test (no state, hard `domed={false}`, import allow-list, verbatim copy, correct placement, shared `data-order-form-sheet` hook) |
+| `app/design/rails/actual-size.css` | Print-rule fix for the dialog's off-page shift (G-08-5) | ✓ VERIFIED | `transform: none` reset retained; comment explains why `translate: none` deliberately does **not** live here (Lightning CSS folds it into `transform`) and instead rides in the dialog's own style element |
+| `components/rails/view-full-sized-dialog.tsx` | Own verbatim `<style>` with landscape `@page` + `translate: none` (G-08-5) | ✓ VERIFIED | Lines 161–166: plain `<style>` element, mounted only while the dialog is open; confirmed present in the live DOM by this verification's own CDP check |
+| `components/auth/sign-in-banner.tsx` | `data-print-hide` on signed-out print (G-08-5) | ✓ VERIFIED | Attribute present at line 81; confirmed by this verification's PDF text extraction (no "Sign in" text on the printed page) |
+| `components/rails/rail-section-plot.tsx` | `railPlotTicksFit`, `railPlotStackedLabelsFit`, `railPlotLeftLabelsFit`, `labelEvery`/`leftAxisUnit` options (G-08-9 + WR-02 fix) | ✓ VERIFIED | All four functions present and wired into `chooseMetricLabelEvery`, which now checks **both** axes (`railPlotTicksFit(candidate.xTicks, ...)` AND `railPlotStackedLabelsFit(candidate.yTicks, ...)`) — closing WR-02, the code-review finding that only the x-axis was checked |
+| `components/summary/order-form.css` | Wrapper padding zeroed for print (G-08-10) | ✓ VERIFIED | `[data-order-form-page] { padding: 0 !important }` present, on the same rule that already pins the wrapper white |
+| `components/summary/order-form-print.test.ts` | Source-contract tests pinning the padding reset + margin mirror (G-08-10 + WR-01 fix) | ✓ VERIFIED | 3 assertions; the third assertion's `wrapperPrintPaddingIn` is now read from the stylesheet via `firstOrderFormPageRuleBody`/`paddingToInches`, not hardcoded to `0` — closing WR-01, the code-review finding that the third test could never fail on the property it claimed to test |
 
-### Key Link Verification
+### Code Review Findings — Fix Confirmation
 
-| From | To | Via | Status | Details |
-|------|-----|-----|--------|---------|
-| `rail-band-editor.tsx` `RailPage` union | `RailInstructions` render | tab click | ✓ WIRED | Line 309 render branch |
-| `rail-instructions.tsx` | `computeRailSection`/`buildRailSegments`/`buildRailProfile`/`railPlotBounds` | direct calls | ✓ WIRED | `lib/geometry/rail-bands.ts` confirmed byte-identical to pre-phase (untouched) |
-| `rail-callouts.ts` anchors | `RailSectionPlot` `callouts` prop | optional prop | ✓ WIRED | Absent-prop path proven pixel-identical by existing `rail-section-plot.test.ts` staying green |
-| `rail-band-editor.tsx` VIEWER toolbar | `ViewFullSizedDialog` | `ViewerToolbarButton` open state | ✓ WIRED | Lines 254–261 |
-| `usePrintRailInstructions()` | `order-form.tsx` sheet count / `PageMark` `of` prop | hook call | ✓ WIRED | `sheetCount` derived once, threaded to all three `PageMark` calls |
-| `RailInstructionsSheet` | `ExampleRailFigure` (domed=false) + `RailPlanSideFigure` (all groups) | direct render | ✓ WIRED | Confirmed by source-contract test |
-| Third `<Sheet>`'s `data-order-form-sheet` | `useOrderFormPrintFit`'s per-sheet walk | shared attribute, `use-print-fit.ts` untouched | ✓ WIRED | `git diff --quiet components/summary/use-print-fit.ts` against baseline confirmed |
-| New print-surface files | `lib/units-isolation.test.ts` print-surface ledger | by-name append | ✓ WIRED | All four new print surfaces listed and pass the stricter print-specific checks |
+| Finding | Status | Evidence |
+|---------|--------|----------|
+| WR-01 (test can't fail on its own claim) | ✓ FIXED | `order-form-print.test.ts:83-90` — `wrapperPrintPaddingIn` derived from a regex match on the print rule's own body, not a literal `0`; the fix report's "bites-the-bug" check (temporarily setting padding to 32px and confirming the test fails) is a real regression-proof pattern |
+| WR-02 (y-axis label collision never checked) | ✓ FIXED | `chooseMetricLabelEvery` (rail-section-plot.tsx) now requires both `railPlotTicksFit` and `railPlotStackedLabelsFit` to pass; `railPlotStackedLabelsFit` exported and tested at multiple render scales including a contrived failing case |
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|-------------|-------------|--------|----------|
-| RAIL-02 | 08-01 | INSTRUCTIONS tab, example rail, golden-pinned | ✓ SATISFIED | Code + tests confirmed above |
-| RAIL-03 | 08-01 | Flat/Domed toggle reshapes the rail | ✓ SATISFIED | `two-option-toggle.tsx` wired, tested |
-| RAIL-04 | 08-04 | View Full Sized 1:1, no calibration | ✓ SATISFIED (code); physical accuracy is inherently a human check | See Human Verification |
-| RAIL-05 | 08-03 | Plan/side figure with legend | ✓ SATISFIED | Ported and pinned; sizing fix applied |
-| RAIL-06 | 08-01,03,04,05 | Units through display boundary | ✓ SATISFIED | `lib/units-isolation.test.ts` green |
-| PRNT-05 | 08-02, 08-05 | Print-instructions preference, two tick-boxes | ✓ SATISFIED (dev); prod state uncertain | Dev migration applied and idempotent; prod migration shaper-reported only |
-| PRNT-06 | 08-06 | Unticked output byte-identical | ✓ SATISFIED for jsPDF surfaces (measured); order-form claim rests on deferred human audit per named Phase 7 fallback | REQUIREMENTS.md marks PRNT-06 "Pending" intentionally, per phase instructions — not treated as a gap here |
+| RAIL-02 | 08-01 | INSTRUCTIONS tab, example rail, golden-pinned | ✓ SATISFIED | REQUIREMENTS.md `[x]`; unchanged since prior verification |
+| RAIL-03 | 08-01 | Flat/Domed toggle reshapes the rail | ✓ SATISFIED | REQUIREMENTS.md `[x]`; confirmed clean in both shapes by this verification's Metric axis check |
+| RAIL-04 | 08-04, 08-07 | View Full Sized 1:1, no calibration, prints true size and clean | ✓ SATISFIED | REQUIREMENTS.md `[x]`; UAT test 4 passed (screen); G-08-5 (print) independently re-measured fixed by this verification |
+| RAIL-05 | 08-03 | Plan/side figure with legend | ✓ SATISFIED | REQUIREMENTS.md `[x]`; unchanged since prior verification |
+| RAIL-06 | 08-01,03,04,05,08 | Units through display boundary | ✓ SATISFIED | REQUIREMENTS.md `[x]`; `lib/units-isolation.test.ts` still green; G-08-9's fix is a label-density fix, not a units-boundary change |
+| PRNT-05 | 08-02, 08-05 | Print-instructions preference, two tick-boxes | ✓ SATISFIED | REQUIREMENTS.md `[x]`; UAT test 6 (no flash, cross-device) and test 8 (production column) both passed |
+| PRNT-06 | 08-06, 08-09 | Unticked output byte-identical; order form prints exactly its sheets | ✓ SATISFIED, pending REQUIREMENTS.md checkbox | REQUIREMENTS.md still shows `[ ]` — per phase instructions this is the checkpoint-plan convention (08-06 proved the jsPDF surfaces byte-identical; 08-09 + this verification's own independent PDF page-count measurement now proves the order form's page count too), left for the phase-completion step to mark, not treated as a gap |
 
-No orphaned requirements found: all seven IDs (RAIL-02..06, PRNT-05, PRNT-06) declared in ROADMAP.md Phase 8 are claimed by at least one plan's `requirements` frontmatter.
+No orphaned requirements: all seven Phase 8 IDs (RAIL-02..06, PRNT-05, PRNT-06) are declared by at
+least one plan's `requirements`/`requirements-completed` frontmatter and are accounted for above.
+`PHON-01..03` and other v1.2 requirement families are explicitly out of scope for Phase 8 (mapped
+to later phases in REQUIREMENTS.md) and are not orphaned here.
 
 ### Anti-Patterns Found
 
-| File | Line | Pattern | Severity | Impact |
-|------|------|---------|----------|--------|
-| `components/rails/view-full-sized-dialog.tsx` | 71 | `react-hooks/set-state-in-effect` — `setPxPerInch(measurePxPerInch())` called synchronously inside a `useEffect` | ⚠️ Warning | `npm run lint` reports this as an **error** (not a warning), introduced by this phase's new file (08-04). The 260908-adg quick task summary incorrectly described a *different* lint finding (`rail-band-editor.tsx`'s dev-only `console.log`, IN-01 from the code review) as "pre-existing"; this specific `view-full-sized-dialog.tsx` lint error was not caught by the 08-REVIEW.md code review and was not fixed. It does not break functionality (an extra render at most, not a correctness bug) but it means `npm run lint` — one of CLAUDE.md's listed project commands — is not currently clean. Recommend a small follow-up quick task moving the measurement into a layout-effect-free pattern (e.g. `useState` lazy initializer + `ResizeObserver`, or accepting the lint suppression with a comment) rather than leaving an unaddressed lint error in a shipped file. |
+None. The `view-full-sized-dialog.tsx` lint error (`react-hooks/set-state-in-effect`) the previous
+verification flagged as an unresolved anti-pattern is no longer present — `npx eslint
+components/rails/view-full-sized-dialog.tsx` and the full `npm run lint` both report it clean. No
+`TBD`/`FIXME`/`XXX`/`TODO`/`HACK`/placeholder pattern found in any file touched by the gap-closure
+plans (08-07, 08-08, 08-09) or their review-fix commits.
 
-No `TBD`/`FIXME`/`XXX`/`TODO`/`HACK`/placeholder/stub patterns found in any of the 39 non-`.planning/` files this phase touched (checked against the pre-phase baseline commit).
+### Non-Blocking Note (not a gap, not routed as human verification)
 
-### Human Verification Required
-
-See the `human_verification` list in the frontmatter above for the full set of deferred checks (visual/legibility, cross-device preference sync, physical ruler-true accuracy, print-preview byte-identity for the order form, and — most importantly — independent confirmation that the `print_rail_instructions` column actually exists on the **production** database, since the shaper's own migration run never printed drizzle-kit's success line).
+Per this verification's run context: the one thing genuinely outside any automated or PDF-based
+proof is a literal ruler held against a physical printed sheet of the View Full Sized dialog on a
+shaper's own printer — a printer with "Fit to page" left on would still shrink it, and no scripted
+check can rule that out. This verification's own PDF measurement (one landscape page, content
+inside the margins, correct check-bar text) and the orchestrator's earlier point measurement
+(check bar 143.99pt = 2in, rail box 625.5pt = 8.69in, PDF transform 0.75 — true size, no shrink)
+together are strong evidence the geometry is correct; the shaper's own UAT test 4 already confirmed
+the on-screen version measures true with a ruler. This is recorded here as information only — it
+does not block the phase and is not listed as a `human_verification` item, per the run context's
+explicit instruction not to send a passing phase back through UAT for a check the design has
+always required.
 
 ### Gaps Summary
 
-No code-level gaps found. All artifacts exist, are substantive, are wired, and pass their tests;
-`npm test` (2208 passed, 2 skipped, 0 failed) and `npx tsc --noEmit` (clean) both confirmed green
-from this checkout. `components/template/*`, `lib/geometry/rail-bands.ts`,
-`lib/models/design-snapshot.ts`, `components/summary/use-print-fit.ts`,
-`components/units-provider.tsx`, `lib/units-server.ts`, and `app/globals.css` are all confirmed
-byte-identical to the pre-phase baseline commit. Both code-review findings (WR-01 blank-print bug,
-WR-02 duplicated-thickness drift risk) are fixed and verified present in the current tree. The
-post-review sizing quick task (260908-adg) is applied and mechanically confirmed, though its own
-two visual checks are still unverified in a browser per its own SUMMARY.
-
-The phase's remaining open items are exactly the ones the plans themselves deferred to
-end-of-phase human verification (per `workflow.human_verify_mode: end-of-phase`), plus one
-consequential, explicitly self-flagged uncertainty from 08-06-SUMMARY: whether the production
-database migration actually completed (the terminal output never showed the expected success
-line). This is not treated as a code gap — no plan or agent claims otherwise, and 08-06-SUMMARY
-is honest about the caveat — but it is the single item most worth a human's direct confirmation
-before considering PRNT-05/PRNT-06 fully closed in production. One non-blocking code-quality item
-(the `view-full-sized-dialog.tsx` lint error) is also worth a small follow-up.
+None. All three UAT-identified gaps (G-08-5, G-08-9, G-08-10) are closed, confirmed present and
+wired in the code, confirmed by the full test suite (2255 passed), confirmed by a clean build/
+typecheck/lint, and independently re-measured by this verification's own headless-Chrome PDF/DOM
+checks rather than by trusting the gap-closure plans' own SUMMARY claims. Both code-review warnings
+from the gap-closure pass (WR-01, WR-02) are fixed and verified present. No regressions found in
+any of the seven UAT items the shaper already passed — the files those items depend on
+(`rail-bands.ts`, `rail-callouts.ts`'s Imperial path, `use-print-fit.ts`'s numeric constants,
+`lib/units-isolation.test.ts`) are unmodified or, where modified, are covered by tests confirmed
+green above. Phase 8's goal is achieved: a shaper can read every rail-cross-section mark, hold the
+rail true-size against the foam on screen and on paper, see where each section sits on the board,
+and fold that reference sheet into what the printer actually produces.
 
 ---
 

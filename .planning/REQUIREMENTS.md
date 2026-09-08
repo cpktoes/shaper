@@ -21,7 +21,7 @@ Requirements are written as things a shaper can do or see. IDs continue from the
 ### Printed Outputs
 
 - [x] **PRNT-05**: User can tick "Include Rail Band Instructions in Print" on the rails screen and the instructions sheet appears on the order form's printed reference page, in the chosen system (whether the box starts ticked, and whether it saves with the board, is settled in the phase discussion)
-- [ ] **PRNT-06**: With the box unticked, every printed output — order form, Overview Sheet, Full Sized Template, Paper Saver — is unchanged, proven the way Phase 7 proved it: regenerate and diff against the pre-milestone build
+- [x] **PRNT-06**: With the box unticked, every printed output — order form, Overview Sheet, Full Sized Template, Paper Saver — is unchanged, proven the way Phase 7 proved it: regenerate and diff against the pre-milestone build
 
 ### Phone: The Design Screens
 
@@ -69,7 +69,7 @@ Requirements are written as things a shaper can do or see. IDs continue from the
 | RAIL-05 | Phase 8 | Complete | — |
 | RAIL-06 | Phase 8 | Complete | — |
 | PRNT-05 | Phase 8 | Complete | — |
-| PRNT-06 | Phase 8 | Pending | — |
+| PRNT-06 | Phase 8 | Complete | — |
 | PHON-01 | Phase 9 | Pending | — |
 | PHON-02 | Phase 9 | Pending | — |
 | PHON-03 | Phase 9 | Pending | — |
