@@ -5,15 +5,15 @@ milestone_name: Rails Finished, Phone Ready
 current_phase: 08
 current_phase_name: The Rails Screen, Finished
 status: blocked
-stopped_at: Phase 8 UI-SPEC approved
+stopped_at: Phase 8 plan 08-06 Task 3: human-action checkpoint (push main, wait for Vercel Ready, then npm run db:migrate:prod)
 last_updated: "2026-09-08T08:29:10.181Z"
-last_activity: 2026-09-07
-last_activity_desc: "v1.2 roadmap created: Phases 8-10, all 18 requirements mapped"
+last_activity: 2026-09-08
+last_activity_desc: "Phase 8 waves 1-5 executed and reviewed; 08-06 waiting on the shaper to push, deploy and migrate production"
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 6
-  completed_plans: 0
+  completed_plans: 5
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 Phase: 08 (The Rails Screen, Finished) — EXECUTING
 Plan: 6 of 6 (08-06 at its Task 3 human-action checkpoint)
 Status: blocked
-Last activity: 2026-09-07 — Phase 08 execution started
+Last activity: 2026-09-08 — Phase 08 plans 1-5 merged and reviewed; 08-06 at its deploy checkpoint
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
