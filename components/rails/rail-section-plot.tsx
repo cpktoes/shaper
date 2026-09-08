@@ -514,9 +514,13 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width", callouts }: R
   // `leftLabelsInside` (Metric-only, set above): when even the bare numbers do not fit the
   // left-hand strip, a label reads from just inside the plot instead of outside it — anchored a
   // little right of the axis line, clear of the tick mark's own inboard arm, under the same
-  // `textShadow` halo the mark-name callouts already wear so it reads over the faint grid. The
-  // tick mark itself (`x1`/`x2`) never moves either way — no drawn coordinate outside the label
-  // text changes, so the plot's own box-and-projection math stays untouched (D-13).
+  // `textShadow` halo the mark-name callouts already wear so it reads over the faint grid. An
+  // inside label also rides just ABOVE its own line rather than centred on it: centred, the
+  // bottom-most number (the 0) sits on the board's own bottom line, which is drawn heavier than
+  // the halo can cover and strikes the glyph through, and it crowds the bottom axis's first
+  // number below it (measured on the INSTRUCTIONS card in Metric, 2026-09-08). The tick mark
+  // itself (`x1`/`x2`) never moves either way — no drawn coordinate outside the label text
+  // changes, so the plot's own box-and-projection math stays untouched (D-13).
   const yTicks: {
     x1: number;
     y1: number;
@@ -534,7 +538,7 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width", callouts }: R
     y2: py(tick.value),
     label: tick.label,
     lx: leftLabelsInside ? px(minX) + 4 + Y_TICK_LABEL_GAP : px(minX) - Y_TICK_LABEL_GAP,
-    ly: py(tick.value) + 3,
+    ly: leftLabelsInside ? py(tick.value) - 3 : py(tick.value) + 3,
     textAnchor: leftLabelsInside ? "start" : "end",
     halo: leftLabelsInside,
   }));
