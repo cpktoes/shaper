@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
 current_phase: 08
-current_phase_name: The Rails Screen, Finished
-status: verifying
+current_phase_name: the-rails-screen-finished
+status: executing
 stopped_at: Phase 8 all six plans complete; verification running
-last_updated: "2026-09-08T14:48:57.736Z"
+last_updated: "2026-09-08T21:27:59.432Z"
 last_activity: 2026-09-08
-last_activity_desc: "Phase 8 plan 08-06 resumed after the shaper deployed and migrated; SUMMARY recorded, verifier running"
+last_activity_desc: Phase 8 plan 08-06 resumed after the shaper deployed and migrated; SUMMARY recorded, verifier running
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 6
+  total_plans: 9
   completed_plans: 6
   percent: 0
 ---
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-07)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 08 — The Rails Screen, Finished
+**Current focus:** Phase 08 — the-rails-screen-finished
 
 ## Current Position
 
-Phase: 08 (The Rails Screen, Finished) — EXECUTING
-Plan: 6 of 6 (all complete)
-Status: Verifying Phase 08
-Last activity: 2026-09-08 — Completed quick task 260908-cme: every example-rail mark named at its own spot; Phase 08 awaiting UAT (/gsd-verify-work 8) and /gsd-secure-phase 8
+Phase: 08 (the-rails-screen-finished) — EXECUTING
+Plan: 1 of 9
+Status: Executing Phase 08
+Last activity: 2026-09-08 — Phase 08 execution started
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
