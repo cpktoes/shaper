@@ -1,10 +1,11 @@
 ---
 phase: 8
 slug: the-rails-screen-finished
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova (components.json — baseColor neutral, iconLibrary lucide, no third-party registries)
 created: 2026-09-07
+reviewed_at: 2026-09-07
 ---
 
 # Phase 8 — UI Design Contract
@@ -257,20 +258,83 @@ exactly as `raw`'s `side` values already establish in the prototype.
 
 ## UI Considerations
 
-Applicable state considerations resolved: 7 covered, 2 backstop, 0 unresolved.
+> Populated by the ui-phase UI-consideration probe (Step 9.5) and lifted by plan-phase's
+> `## UI Considerations` lift rule via the identical rule as SPEC `## Edge Coverage`. Shape-rooted UI *state*
+> coverage (empty / loading / error / populated / partial / overflow / zero-one-many / long-text).
+> Empty-state and error-state COPY live in `## Copywriting Contract` above — this section covers
+> state coverage and REFERENCES those rows rather than restating the copy (de-dup).
+
+Probe run 2026-09-07 over eight surfaces with authored element kinds (non-interactive session: kinds
+confirmed and considerations resolved under the workflow's `--auto` convention; nothing was dismissed).
+
+Surfaces probed:
+
+- **INSTRUCTIONS tab (nav)** — INSTRUCTIONS — the third tab in the rails screen's TabbedPanel strip beside VIEWER and DATA; a nav tab whose label is the fixed uppercase word INSTRUCTIONS.
+- **Example rail card (media, control, text)** — 'Understanding Rail Markings' card — the live example rail drawn by RailSectionPlot with ten named SVG callouts (Apex … Bottom Tuck 3), a muted caption, and the Flat/Domed TwoOptionToggle in the card header.
+- **Instructional copy + closing note (text)** — The instructional copy — the three numbered steps under 'Turning Marks Into Rail Bands' and the italic closing-note card, verbatim prototype text with the units rule applied.
+- **Legend, nine tick-boxes (list, control)** — The legend — nine tick-boxes (Checkbox + 9 px colour dot + label) that show or hide each family of lines on the plan/side figure; all start ticked; screen-only state.
+- **Plan/side figure (media, text)** — The plan/side figure — the rail-bands-plan-bg.png raster with SVG deck-mark, rail-mark and tuck overlays, the side strip, the @ 12" / @Center station labels and the 'Taper Tuck to a Sharp Edge' note, scaled as one box to its container.
+- **View Full Sized dialog (control, nav, media, text)** — 'View Full Sized' — the VIEWER toolbar button and the 1:1 dialog it opens: Nose/Center/Tail tabs, the true-size RailSectionPlot in CSS inches/millimetres with legend, the caveat line, the 2 in / 50.8 mm check bar, the print note and the accent Print button.
+- **Print tick-box + mirror (form, control, text)** — 'Include Rail Band Instructions in Print' — the preference tick-box in the rails sidebar with its helper line, and its identical mirror beside Print Order Form on the summary screen; one boolean stored like units (account column + localStorage + cookie).
+- **Third print sheet + sheet stack (media, text, list)** — The printed third sheet 'Rail Band Instructions' — page 3 of 3 of the order form, fixed Flat example rail and figure with every legend line drawn, its page mark, plus the summary's stack of two or three sheets and the page-count note beside Print Order Form.
+
+Applicable state considerations resolved: 46 applicable — 42 covered, 4 backstop, 0 unresolved.
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
-| empty | Plan/side legend (9 tick-boxes, list-collection of toggles) | ✅ covered | Unticking every legend item hides only the drawn marking lines; the PNG board outline and the plan/side frame itself never disappear — RAIL-05's own wording ("show or hide each reference") implies a baseline drawing that persists at zero ticks |
-| empty | 1:1 dialog / example rail (media, always computed) | ✅ covered | Neither surface is ever "no data" — both render from the fixed prototype inputs (D-20) or the shaper's own always-present rail spec; there is no fetch and no user-created collection that could be empty |
-| loading | All new surfaces (interactive-control, media) | ✅ covered | Everything renders synchronously from the already-loaded design store (client-side geometry, no network fetch) — dismissed, no loading state applies |
-| error | 1:1 dialog Print button, print toggle (interactive-control) | ✅ covered | `window.print()` and a client-only checkbox toggle have no failure mode this contract needs to author copy for — dismissed, consistent with the order form's own existing Print Order Form button, which carries no error state either |
-| populated | Example rail card, plan/side figure (media) | ✅ covered | Both are permanently "populated" — the example rail always renders the prototype's fixed Flat/Domed inputs (D-20), the figure always renders the fixed example board; there is no sparse/typical/dense volume axis to design for |
-| overflow | 1:1 dialog content when a rail's true size exceeds the dialog | ✅ covered | Resolved above: the plot's own container scrolls; the drawing is never scaled down (see Interaction & Layout Contract, "Scroll behaviour") |
-| overflow | Third print sheet, if the instructions content is taller than one page at some future content change | ✅ covered | Uses the same per-sheet fit (`useOrderFormPrintFit`) the other two sheets already use (D-09) — not a new mechanism, so no new overflow behaviour to design |
-| zero-one-many | 1:1 dialog's Nose/Center/Tail tab set | ✅ covered | Resolved above: the dialog always shows exactly 3 tabs regardless of sidebar collapse state — never 0, 1 or 2 |
-| long-text | Instructional copy, closing note, dialog caveat (static-content) | 🧪 backstop | Every string is a short, fixed, English sentence at the app's existing card widths — no user input and no dynamic length; held out as a backstop rather than "covered" only because no automated wrap/overflow test exists yet for these specific new strings |
-| long-text | Legend labels ("Deck Mark 3 Center (full board)", the longest of the nine) | 🧪 backstop | The existing legend-dot layout (`RailBandEditor`'s VIEWER legend) already wraps a `flex-wrap` row without truncation; the new 9-item grid inherits the same wrapping behaviour, but is called out as backstop pending a visual check at narrow sidebar/dialog widths |
+| loading | INSTRUCTIONS tab (nav) | ✅ covered | Opening INSTRUCTIONS is local component state (`RailPage`); the tab's content is in the first frame after the click with no spinner or placeholder, because the example rail is computed synchronously from fixed inputs (D-20). |
+| error | INSTRUCTIONS tab (nav) | ✅ covered | Switching tabs cannot fail: it sets a local value and renders; nothing is fetched, so no error state or copy exists. |
+| overflow | INSTRUCTIONS tab (nav) | ✅ covered | The `TabbedPanel` strip is a non-wrapping flex row; three uppercase labels (INSTRUCTIONS is the longest) fit on one row at every desktop width the rails screen supports, so the strip never wraps or pushes the panel. Phone widths are Phase 9's. |
+| long-text | INSTRUCTIONS tab (nav) | ✅ covered | The label is the fixed word INSTRUCTIONS at the Display role, like VIEWER and DATA; it renders on one line and never truncates. |
+| empty | Example rail card (media, control, text) | ✅ covered | The card is never empty: the example rail is drawn from the fixed prototype inputs pinned by the golden fixture (D-20), in both Flat and Domed. |
+| loading | Example rail card (media, control, text) | ✅ covered | The example rail and its ten callouts are present in the tab's first painted frame; `computeRailSection` runs synchronously on constants, so no skeleton, spinner or placeholder exists. |
+| error | Example rail card (media, control, text) | ✅ covered | Flipping Flat/Domed swaps between two fixture-pinned results held in local state; nothing can fail, and no error copy is authored (Copywriting Contract, Empty/loading/error row). |
+| populated | Example rail card (media, control, text) | ✅ covered | The populated state is the only state: the plot with grid, bands and dots exactly as VIEWER draws them, plus all ten callouts (Apex through Bottom Tuck 3) in their legend colours; the grid reads in mm or whole inches and any stated thickness goes through `formatMark` (D-19). |
+| overflow | Example rail card (media, control, text) | 🧪 backstop | The plot scales to its card through `RailSectionPlot`'s `fit` prop, so the drawing itself never clips, and the cluster-and-push pass keeps labels apart within each side. Held-out visual check: at both Flat and Domed, at the narrowest desktop card width, every callout name sits fully inside the SVG with no two labels overlapping. |
+| long-text | Example rail card (media, control, text) | ✅ covered | Every string in the card is fixed and short: ten callout names of at most three short words, the toggle's Flat and Domed, the title and the caption; no user text enters the card, so no truncation rule is needed. |
+| overflow | Instructional copy + closing note (text) | ✅ covered | The copy is ordinary block text inside its card; the INSTRUCTIONS column scrolls vertically (`overflow-y-auto`) and cards grow to their content, so nothing clips at any card width. |
+| long-text | Instructional copy + closing note (text) | 🧪 backstop | All copy is fixed English (D-04); only the tail-distance range and the station labels change between systems, through the display boundary. Held-out check: view the tab in Imperial and Metric and confirm the three steps and the closing note wrap without truncation and the Metric figures read in cm. |
+| empty | Legend, nine tick-boxes (list, control) | ✅ covered | With every box unticked only the drawn marking lines disappear; the PNG outline, side strip and station labels stay, so the figure is never a blank box (RAIL-05: show or hide each reference). |
+| loading | Legend, nine tick-boxes (list, control) | ✅ covered | All nine boxes start ticked on first render (D-03); legend state is local component state with nothing to fetch. |
+| error | Legend, nine tick-boxes (list, control) | ✅ covered | Ticking a box flips a local boolean; there is no failure path and no error copy. |
+| populated | Legend, nine tick-boxes (list, control) | ✅ covered | The legend is always exactly nine rows in the prototype's order, each a `Checkbox`, a 9 px dot in that family's legend colour and its label, all ticked by default. |
+| partial | Legend, nine tick-boxes (list, control) | ✅ covered | Any mix of ticked and unticked boxes draws exactly the ticked line families over the figure and hides the rest; the figure's frame, PNG and labels are unaffected by the mix. |
+| overflow | Legend, nine tick-boxes (list, control) | ✅ covered | The nine rows sit in a wrapping grid (`gap-2`) that grows downward inside the scrolling INSTRUCTIONS column; the grid never clips or scrolls sideways. |
+| zero-one-many | Legend, nine tick-boxes (list, control) | ✅ covered | The set is fixed at nine; there is no zero- or one-item layout and no count-dependent copy. |
+| long-text | Legend, nine tick-boxes (list, control) | 🧪 backstop | Labels are fixed; the longest is 'Deck Mark 3 Center (full board)'. Held-out visual check: at the narrowest desktop card width every label wraps onto a second line beside its dot rather than truncating, matching the VIEWER legend's `flex-wrap` behaviour. |
+| empty | Plan/side figure (media, text) | ✅ covered | The figure always has content: the PNG (`public/rail-bands-plan-bg.png`), the two SVG overlays and the side strip are fixed assets, not data, so there is no data-dependent empty state. |
+| loading | Plan/side figure (media, text) | ✅ covered | The figure box reserves the PNG's full aspect ratio before the raster loads, so the SVG overlays draw at once and nothing shifts when it paints; no spinner or placeholder. |
+| error | Plan/side figure (media, text) | ✅ covered | If the PNG fails to load (offline, missing asset) the SVG overlays, side strip, station labels and note still draw inside the same reserved box; the image carries the alt text 'Plan and side view of an example board showing where the rail sections sit', and no error copy is shown. |
+| populated | Plan/side figure (media, text) | ✅ covered | The only state: the PNG outline with all nine line families in their legend colours, the station labels through `stationLabel` (`@ 30.5 cm` in Metric), the side strip and the 'Taper Tuck to a Sharp Edge' note, laid out as the prototype draws them. |
+| overflow | Plan/side figure (media, text) | ✅ covered | The whole figure scales as one box to its container's width, keeping the prototype's 499:630 proportions, so it never clips or scrolls sideways; the column scrolls vertically if the card is taller than the panel. |
+| long-text | Plan/side figure (media, text) | ✅ covered | The figure's labels are fixed strings inside the scaled drawing; they shrink with the figure and never wrap, clip or reflow. |
+| empty | View Full Sized dialog (control, nav, media, text) | ✅ covered | The dialog always has three rails to draw: the design store always holds a full rail spec, so no section is ever missing and the tab set is never short. |
+| loading | View Full Sized dialog (control, nav, media, text) | ✅ covered | The dialog opens on the first open section (Nose if none is open) with its true-size plot already drawn; the plot is computed synchronously from the store and sized in CSS inches or millimetres, so no spinner exists. |
+| error | View Full Sized dialog (control, nav, media, text) | ✅ covered | Print hands off to the browser's own print dialog; cancelling it returns to the open dialog unchanged. Nothing in the dialog fetches or submits, so no error state or copy exists. |
+| populated | View Full Sized dialog (control, nav, media, text) | ✅ covered | The true-size plot shows grid, axis ticks, coloured bands and dots exactly as VIEWER draws them, the shared legend beneath, the caveat line with the check bar (`2 in` or `50.8 mm`) above the drawing, and the print note beside the accent Print button. |
+| overflow | View Full Sized dialog (control, nav, media, text) | ✅ covered | The drawing is never scaled to fit: when a rail's true size exceeds the dialog's area, the plot's own container scrolls (`overflow-auto`) in both directions while the caveat, check bar and footer stay put; the dialog is capped at 90 dvh (Interaction & Layout Contract, Scroll behaviour). |
+| long-text | View Full Sized dialog (control, nav, media, text) | ✅ covered | Every string is fixed: the title ('Center Rail — Actual Size' is the longest), one caveat sentence and one print-note sentence; each wraps within the dialog width and never truncates. |
+| empty | Print tick-box + mirror (form, control, text) | ✅ covered | Absence means unticked (D-05, D-07): a shaper who never touches the box sees it unticked on every device, and no default is ever written to the account or the browser. |
+| loading | Print tick-box + mirror (form, control, text) | ✅ covered | The box paints in its final state on the first frame, the cookie read on the server the way units is (D-07), so it never flickers from unticked to ticked after hydration and the summary's page count is right from its first frame. |
+| error | Print tick-box + mirror (form, control, text) | ✅ covered | A tick takes effect at once in the browser (localStorage plus cookie) and both boxes and the third sheet follow immediately; the account write goes through the same background write queue units uses (retried, never blocking), so a failed write never reverts the box and shows no message (D-07 parity). |
+| partial | Print tick-box + mirror (form, control, text) | ✅ covered | There is one boolean and two views of it: the sidebar box and the summary mirror read the same preference, so they can never disagree; ticking either updates the other on its next render. |
+| overflow | Print tick-box + mirror (form, control, text) | ✅ covered | Label and helper wrap beside a top-aligned checkbox inside the sidebar's scrolling column, like the foil-link row above; nothing clips. |
+| long-text | Print tick-box + mirror (form, control, text) | ✅ covered | Label and helper are the fixed strings in the Copywriting Contract; the label wraps to a second line at the sidebar's width rather than truncating. |
+| empty | Third print sheet + sheet stack (media, text, list) | ✅ covered | Unticked there is no third sheet: the summary shows two sheets, the page marks read 'of 2', the note is byte-identical to today's, and the printed output is unchanged (PRNT-06). |
+| loading | Third print sheet + sheet stack (media, text, list) | ✅ covered | The third sheet joins the on-screen stack in the same render pass as the tick, fitted per sheet by `useOrderFormPrintFit` like the other two; on a fresh load the cookie decides the count before the first frame, so there is no blink from two sheets to three (D-09). |
+| error | Third print sheet + sheet stack (media, text, list) | ✅ covered | Printing is the browser's own print dialog and nothing fetches. If the figure's PNG fails to load the sheet still prints its SVG overlays inside the reserved box; nothing else on the sheet depends on it. |
+| populated | Third print sheet + sheet stack (media, text, list) | ✅ covered | The sheet always carries the Flat example rail with all ten callouts and the figure with every legend line drawn (D-08), the heading 'Rail Band Instructions', and the page mark 'Page 3 of 3' titled 'Rail Band Reference', in the shaper's chosen system. |
+| partial | Third print sheet + sheet stack (media, text, list) | ✅ covered | The sheet never reflects the tab's Flat/Domed switch or legend ticks: two prints of the same board are the same sheet (D-08), so there is no partial-content state. |
+| overflow | Third print sheet + sheet stack (media, text, list) | ✅ covered | If the sheet's content is taller than one portrait page it shrinks with CSS zoom to fit, per sheet, exactly as the order form's two existing sheets do; it never clips and never spills onto a fourth page. |
+| zero-one-many | Third print sheet + sheet stack (media, text, list) | ✅ covered | The stack is exactly two or three sheets, never fewer or more; page marks read 'of 2' or 'of 3' and the page-count note switches between its two fixed variants (Copywriting Contract). |
+| long-text | Third print sheet + sheet stack (media, text, list) | 🧪 backstop | All sheet copy is fixed, with the Metric figures replacing the Imperial ones through the display boundary. Held-out check: the print-preview audit in both systems on both paper sizes (D-11) confirms no clipped or overflowing text on page 3. |
+
+<!-- Status vocabulary (locked by probe-core projectTruths):
+     ✅ covered   → a plain truth string lifted into must_haves.truths
+     🧪 backstop  → a flat scalar { statement, verification: backstop }; at verify time, no explicit
+                    evidence → insufficient_spec → human_needed (never a silent pass, #1154)
+     ⚠ unresolved → an explicit planner assumption (surfaced, never silently dropped)
+     Rows are REPLACED (not appended) on a probe re-run — idempotent. -->
 
 ---
 
@@ -288,11 +352,11 @@ empty.
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-09-07
