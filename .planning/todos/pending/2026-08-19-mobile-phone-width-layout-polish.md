@@ -2,6 +2,7 @@
 created: 2026-08-19T21:48:58.000Z
 title: Mobile/phone-width layout polish for the design screens
 area: general
+resolves_phase: 9
 severity: minor
 files:
   - components/outline/outline-editor.tsx

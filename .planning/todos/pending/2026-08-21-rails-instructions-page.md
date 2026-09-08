@@ -9,7 +9,7 @@ files:
   - reference/project/Rails.dc.html
   - reference/project/assets/rail-bands-plan-bg.png
 source: user report; deferred in quick task 260818-lm0
-resolves_phase:
+resolves_phase: 8
 ---
 
 # Rails: port the INSTRUCTIONS page (third tab)

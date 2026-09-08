@@ -8,7 +8,7 @@ files:
   - components/rails/rail-section-plot.tsx
   - reference/project/Rails.dc.html
 source: sweep of deferred items in quick task 260818-lm0
-resolves_phase:
+resolves_phase: 8
 ---
 
 # Rails viewer: "View Full Sized" modal and the board-outline plan view
