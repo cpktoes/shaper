@@ -17,6 +17,18 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 
 ## Current State
 
+**In progress: v1.2 — Rails Finished, Phone Ready.** Phase 8 complete (2026-09-08, 9 plans): the
+rails screen is finished. It has the INSTRUCTIONS tab the prototype always had — a live example
+rail a shaper can flip between Flat and Domed, every mark named beside it, and a plan-and-side
+view of the whole board showing where the nose, centre and tail sections sit — plus "View Full
+Sized", the rail cross-section at 1:1 on screen and on a landscape printed page with a 2 in /
+50.8 mm check bar, and an "Include Rail Band Instructions in Print" preference that folds the
+reference sheet into the order form as a third page in either system. The shaper's own UAT passed
+seven of ten tests; the three failures (the full-sized print sat half off the page, Metric axis
+numbers collided on the small example rail, US Letter printed blank pages around the order form)
+were closed by three gap plans and re-measured with headless Chrome. Phase 9, the design screens
+on a phone, is next.
+
 **Shipped: v1.1 — Imperial vs Metric** (2026-09-06, Phases 5–7, 21 plans)
 
 A shaper picks Imperial or Metric from the gear menu and the whole app follows: the setup screen's
@@ -80,11 +92,11 @@ Archives: [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-ph
 - [x] User can choose Imperial or Metric from the settings menu; the choice is saved on their account and remembered per browser when signed out — Validated in Phase 5: The Units Chooser (gear-menu chooser, account column with per-browser fallback, setup screen's preset and rack cards follow)
 - [x] Every measurement on the five design screens (sliders, typed entry, callouts, tables) reads in the chosen system — cm for length and widths, mm for rail band, rocker and foil values, litres for volume either way — Validated in Phase 6: The Design Screens in Metric (one display boundary in lib/geometry/measure-display.ts; every design-screen file pinned converted by the units-isolation ledger; fin placement numbers read as whole-millimetre marks after the shaper's UAT decision; UAT 18/18, security 34/34)
 - [x] Everything a shaper prints — the Summary order form, the Overview Sheet, the Full Sized Template and the Paper Saver — reads in the chosen system, with 1:1 templates still measuring dead true against a ruler — Validated in Phase 7: Metric on Paper (all four print surfaces pinned converted by the units-isolation ledger; the scale-check square stays exactly two inches in both systems but is captioned 50.8 mm in Metric; every Imperial page byte-identical to the pre-milestone build; UAT 9/9)
+- [x] User can read the rails screen's INSTRUCTIONS page — a live example rail with every mark named — and fold that sheet into what they print — Validated in Phase 8: The Rails Screen, Finished (INSTRUCTIONS tab with a Flat/Domed example rail and its callouts; "Include Rail Band Instructions in Print" saved on the account with a per-browser fallback; the sheet prints as the order form's third page in either system, and unticked output is byte-identical; UAT 7/10, the three gaps closed and re-measured)
+- [x] User can view the rail cross-section at actual size on screen, and see where each rail section sits along the board outline — Validated in Phase 8: The Rails Screen, Finished (View Full Sized dialog with a 2 in / 50.8 mm check bar, true size on screen and on a landscape printed page; plan-and-side reference figure with a nine-item legend)
 
 ### Active
 
-- [ ] User can read the rails screen's INSTRUCTIONS page — a live example rail with every mark named — and fold that sheet into what they print
-- [ ] User can view the rail cross-section at actual size on screen, and see where each rail section sits along the board outline
 - [ ] User can do everything the app does from a phone, with controls sized for a thumb
 
 ### Out of Scope
@@ -164,4 +176,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-07 at milestone v1.2 start (Rails Finished, Phone Ready)*
+*Last updated: 2026-09-08 after Phase 8: The Rails Screen, Finished*
