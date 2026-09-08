@@ -58,13 +58,17 @@
      viewport at a capped height, so a true-size rail taller than one printed page paginates
      instead of clipping.
 
-     `translate: none` is a second, separate reset from `transform: none` above it, not a
-     duplicate of it: components/ui/dialog.tsx centres the popup with Tailwind's
-     `-translate-x-1/2 -translate-y-1/2`, and Tailwind v4 compiles that utility to the CSS
-     `translate` property, not to `transform`. `transform: none` alone leaves the popup at
-     `position: static` (from the reset above) but still shifted left and up by half its own
-     width and height — measured on the as-shipped print at x −417px / y −124px, off the page
-     entirely. Both resets are needed; dropping either one reintroduces the offset.
+     `transform: none` is only half of undoing the popup's centring. components/ui/dialog.tsx
+     centres it with Tailwind's `-translate-x-1/2 -translate-y-1/2`, which Tailwind v4 compiles
+     to the CSS `translate` property, not to `transform` — so with only this reset the popup sits
+     at `position: static` but still shifted left and up by half its own width and height
+     (measured on the as-shipped print at x −417px / y −124px, off the page entirely). The
+     matching `translate: none` deliberately does NOT live here: the CSS pipeline that compiles
+     this file (Lightning CSS) folds a `translate` declaration into `transform` — `translate:
+     none` came out as `transform: translate(0, 0)` in both the dev and the production
+     stylesheet — so written here it never reaches the browser. It is rendered verbatim by
+     components/rails/view-full-sized-dialog.tsx's own style element instead, beside the
+     dialog's @page rule; components/rails/view-full-sized-dialog.test.ts pins that.
 
      The padding, ring, shadow, corner radius and background below are the popup's screen-only
      card styling — on paper the printable width is the scarce resource an 8.69in-wide rail
@@ -75,7 +79,6 @@
     position: static !important;
     inset: auto !important;
     transform: none !important;
-    translate: none !important;
     max-height: none !important;
     max-width: none !important;
     overflow: visible !important;

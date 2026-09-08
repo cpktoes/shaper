@@ -147,8 +147,23 @@ export function ViewFullSizedDialog({
          * Deliberately a plain, unadorned style element — no `href`, no stylesheet-precedence
          * prop. Either one would make React 19 hoist this into the document head and leave it
          * there after the dialog unmounts, silently turning every LATER rails print landscape
-         * too. An ordinary in-place element unmounts with the dialog, taking the rule with it. */}
-        <style>{"@page { size: landscape; margin: 8mm; }"}</style>
+         * too. An ordinary in-place element unmounts with the dialog, taking the rule with it.
+         *
+         * The second rule undoes the popup's on-screen centring for print. components/ui/dialog.tsx
+         * centres the popup with Tailwind's `-translate-x-1/2 -translate-y-1/2`, which Tailwind v4
+         * compiles to the CSS `translate` property, not `transform` — so actual-size.css's
+         * `transform: none` alone leaves the popup half its own width and height off the page
+         * (measured on the as-shipped print at x −417px / y −124px). The reset can't live in
+         * actual-size.css either: the CSS pipeline that compiles that stylesheet (Lightning CSS)
+         * folds `translate: none` into `transform: translate(0, 0)` — measured in both the dev and
+         * the production output — so the browser never sees a `translate` declaration and the
+         * offset stays. This string reaches the browser verbatim, untouched by that pipeline. */}
+        <style>
+          {[
+            "@page { size: landscape; margin: 8mm; }",
+            "@media print { [data-view-full-sized-dialog] { translate: none !important; } }",
+          ].join("\n")}
+        </style>
 
         <DialogHeader data-print-hide>
           <DialogTitle className="text-surf-ink">{SECTION_TITLE[activeSection]} Rail — Actual Size</DialogTitle>

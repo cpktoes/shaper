@@ -120,11 +120,23 @@ describe("view-full-sized-dialog.tsx (RAIL-04, D-12–D-16)", () => {
     }
   });
 
-  it("resets the CSS translate property inside its print block (G-08-5)", () => {
-    const css = readStripped(ACTUAL_SIZE_CSS_PATH);
+  it("resets the CSS translate property for print from its own verbatim style element, not the stylesheet (G-08-5)", () => {
     // Tailwind v4 compiles the dialog's centring classes to `translate`, not `transform` — a
     // future edit that keeps only `transform: none` silently reintroduces the off-page offset.
-    expect(css, "does not reset the translate property in print").toMatch(/translate:\s*none/);
+    // And the reset cannot live in actual-size.css: the CSS pipeline that compiles it (Lightning
+    // CSS) folds `translate: none` into `transform: translate(0, 0)`, so the browser never sees
+    // it — measured on both the dev and the production stylesheet. Only a raw style element
+    // rendered by the component reaches the browser untouched.
+    const source = readStripped(DIALOG_PATH);
+    const printReset =
+      /@media print\s*\{\s*\[data-view-full-sized-dialog\]\s*\{\s*translate:\s*none\s*!important;?\s*\}\s*\}/;
+    expect(source, "does not carry the print-scoped translate reset in its own style element").toMatch(
+      printReset,
+    );
+    const css = readStripped(ACTUAL_SIZE_CSS_PATH);
+    expect(css, "declares `translate` in actual-size.css, where the CSS pipeline folds it away").not.toMatch(
+      /^\s*translate\s*:/m,
+    );
   });
 
   it("names an @page rule asking for landscape, so the true-size rail prints unshrunk (G-08-5)", () => {
