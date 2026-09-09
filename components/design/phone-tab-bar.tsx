@@ -34,6 +34,11 @@ export function PhoneTabBar() {
       // anything at all.
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
+      {/* Each tab keeps its label whole (`min-w-fit`), so the row can only fit a 360px phone if
+          the six labels plus their padding stay inside the bar. Measured at 360px: with 4px of
+          padding a side the row ran 4px past the screen edge and the whole page scrolled
+          sideways; at 2px a side it fits with about 12px to spare, and the narrowest tab still
+          clears 44px. Wider phones share the slack out through `flex-1` as before. */}
       {NAV_LINKS.map((link) => {
         const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);
         return (
@@ -41,7 +46,7 @@ export function PhoneTabBar() {
             key={link.href}
             href={link.href}
             className={
-              "flex min-w-fit flex-1 items-center justify-center border-t-2 px-1 text-center text-[11px] font-bold tracking-[0.1em] uppercase transition-colors " +
+              "flex min-w-fit flex-1 items-center justify-center border-t-2 px-0.5 text-center text-[11px] font-bold tracking-[0.1em] uppercase transition-colors " +
               (active
                 ? "border-surf-accent text-surf-ink"
                 : "border-transparent text-surf-ink-muted hover:text-surf-ink")

@@ -105,6 +105,12 @@ test.describe("phone shell — TEMPLATE stacks with the drawing pinned above the
       const tabs = tabBar.getByRole("link");
       await expect(tabs).toHaveCount(6);
 
+      // The bar must fit the screen as well as keep its labels whole: a row of six unshrinkable
+      // tabs that spills past the edge makes the whole page scroll sideways (caught at 360px by
+      // 09-04's held-out ROCKER check after the wave-3 merge).
+      const docScrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);
+      expect(docScrollWidth, `the page scrolled sideways at ${width}px`).toBe(width);
+
       for (const tab of await tabs.all()) {
         const fit = await tab.evaluate((el) => ({
           scrollWidth: el.scrollWidth,
