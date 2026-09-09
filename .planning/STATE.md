@@ -5,8 +5,8 @@ milestone_name: Rails Finished, Phone Ready
 current_phase: 9
 current_phase_name: The Design Screens on a Phone
 status: planning
-stopped_at: Phase 9 context gathered
-last_updated: "2026-09-09T01:33:07.349Z"
+stopped_at: Phase 9 UI-SPEC approved
+last_updated: "2026-09-09T03:30:30.107Z"
 last_activity: 2026-09-08
 last_activity_desc: Phase 8 gap closure (08-07, 08-08, 08-09) executed, code-reviewed, verified (passed) and the phase marked complete; UAT gaps reconciled as resolved
 progress:
@@ -298,9 +298,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-09T01:33:07.311Z
-Stopped at: Phase 9 context gathered
-Resume file: .planning/phases/09-the-design-screens-on-a-phone/09-CONTEXT.md
+Last session: 2026-09-09T03:30:30.074Z
+Stopped at: Phase 9 UI-SPEC approved
+Resume file: .planning/phases/09-the-design-screens-on-a-phone/09-UI-SPEC.md
 Next action: `/gsd-discuss-phase 8` — Phase 8 has two open product decisions (whether the
 "Include Rail Band Instructions in Print" box starts ticked, and whether it saves with the board
 or stays a session preference) that research flagged for the discussion, not for a plan.
