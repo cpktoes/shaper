@@ -198,3 +198,7 @@ None — no external service configuration required. No dependency was installed
 ---
 *Phase: 09-the-design-screens-on-a-phone*
 *Completed: 2026-09-09*
+
+## Self-Check: PASSED
+
+All 7 commits (`4cb2127`, `7805ca1`, `ef01422`, `feb8a43`, `833c5f4`, `6ec0336`, `74572db`) verified present in `git log`. All 7 touched/created files (`components/viewer/drag-pick-wiring.test.ts`, `components/viewer/drag-readout-chip.test.ts`, `e2e/touch-drag.spec.ts`, `components/outline/outline-viewer.tsx`, `components/rocker/rocker-viewer.tsx`, `CLAUDE.md`, this SUMMARY) verified present on disk.
