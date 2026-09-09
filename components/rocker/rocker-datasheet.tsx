@@ -83,7 +83,14 @@ export function RockerDatasheet({
       <div className="text-sm text-surf-ink-muted font-normal">
         Your board&apos;s own blank datasheet — hold it beside a real foam blank when you order.
       </div>
-      <div className="overflow-x-auto">
+      {/* D-04: the box scrolls sideways on a narrow phone instead of re-stacking a single column
+          per row, keeping every column. The trailing fade (24px, toward --surf-panel — the card
+          this datasheet always sits inside, per TabbedPanel) is the "there's more, keep going"
+          hint, chosen over a caption so nothing needs re-authoring per unit system (UI-SPEC,
+          "Sideways-scrolling data tables"). Constant, not scroll-position-driven: on a fixed,
+          five-station table the box either scrolls or it doesn't per viewport, so a static hint
+          is enough and needs no extra scroll-tracking state. */}
+      <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]">
         <div className="min-w-[540px]">
           <div className="mb-2 flex gap-2 border-b-2 border-surf-line-faint pb-2">
             <div className="min-w-0 flex-[1.1]" />

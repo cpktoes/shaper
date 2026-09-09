@@ -31,7 +31,7 @@ const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "C
 /** The first section whose sidebar disclosure is open, Nose then Center then Tail order — Nose
  * when every section is collapsed, so the dialog is never a zero- or one-tab surface (UI-SPEC,
  * "Default tab"). */
-function firstOpenSection(sectionOpen: Record<RailSectionKey, boolean>): RailSectionKey {
+export function firstOpenSection(sectionOpen: Record<RailSectionKey, boolean>): RailSectionKey {
   return SECTION_ORDER.find((key) => sectionOpen[key]) ?? "nose";
 }
 
@@ -171,50 +171,79 @@ export function ViewFullSizedDialog({
          * it is. The DialogFooter below KEEPS its own data-print-hide (the print note and the Print
          * button do not belong on paper) — do not "tidy" the two into agreeing with each other. */}
         <DialogHeader>
-          <DialogTitle className="text-surf-ink">{SECTION_TITLE[activeSection]} Rail — Actual Size</DialogTitle>
+          <DialogTitle className="text-surf-ink">
+            {SECTION_TITLE[activeSection]} Rail
+            {/* The desktop/print "— Actual Size" suffix (D-13): on a phone the drawing below is
+             * shrunk to fit, not true size, so saying "Actual Size" there would be a lie. Kept
+             * on the desktop screen and on paper exactly as Phase 8 built it. */}
+            <span className="max-shell:hidden print:inline"> — Actual Size</span>
+          </DialogTitle>
         </DialogHeader>
 
         <TabbedPanel tabs={tabs} active={activeSection} onSelect={setActiveSection} panelClassName="gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-surf-line-faint pb-3">
-            <p className="max-w-md text-sm text-surf-ink-muted">
+          {/* Removed on a phone screen, kept on the desktop screen and kept on paper (D-05's
+           * second exception, D-13): once the drawing below is no longer true size, both the
+           * caveat sentence and the check bar would mislead. Each piece below is gated
+           * individually with the literal `max-shell:hidden print:block` pair so a narrow print
+           * viewport can never accidentally inherit the phone hide; the row itself carries the
+           * matching `print:flex` so the two pieces still sit side by side on paper exactly as
+           * Phase 8 drew them. The check bar's own internal layout (svg above its caption,
+           * centred) is untouched — it sits inside a plain neutral wrapper that carries the
+           * print/phone gating instead of being gated directly, so a `print:block` here can never
+           * fight that div's own `flex flex-col` and turn it into unstacked inline content. */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-surf-line-faint pb-3 max-shell:hidden print:flex">
+            <p className="max-w-md text-sm text-surf-ink-muted max-shell:hidden print:block">
               {"This assumes a standard screen at 100% zoom — check it against the bar below."}
             </p>
-            <div className="flex flex-none flex-col items-center gap-1">
-              {/* Drawn as SVG paint (a `<rect fill>`), not a painted-on background colour. A
-               * background colour is dropped from the printed page by default in Chrome and
-               * Safari — a shaper has to tick "Background graphics" / "Print backgrounds" for it
-               * to survive, which is off by default and is the whole reason this bar printed as
-               * caption-only-no-bar until the shaper reported it on 2026-09-08. A `fill` is
-               * foreground ink, so it prints unconditionally. app/design/summary/order-form.css
-               * takes the other route (`print-color-adjust: exact`) for its page shading; that
-               * route is deliberately not used here, because a scale-check reference a shaper
-               * measures with a ruler must not depend on a property a print pipeline may ignore.
-               *
-               * No `viewBox`: the rect's `width="100%" height="100%"` resolves against the svg's
-               * own box, so when actual-size.css swaps that box from a screen pixel width to the
-               * printed `2in`, the rect follows with nothing else to keep in step. A viewBox
-               * would insert a scale factor between the printed inch and what is drawn. */}
-              <svg
-                data-actual-size-box="check-bar"
-                ref={measureRef}
-                className="block h-1.5 text-surf-ink"
-                aria-hidden
-                style={
-                  {
-                    width: `${checkBarWidthIn * pxPerInch}px`,
-                    "--vfs-w-in": checkBarWidthIn,
-                  } as CSSProperties
-                }
-              >
-                <rect x="0" y="0" width="100%" height="100%" rx="3" ry="3" fill="currentColor" />
-              </svg>
-              <span className="text-xs text-surf-ink-muted">Check bar: {formatCalibrationMark(CHECK_BAR_MM, system)}</span>
+            <div className="max-shell:hidden print:block">
+              <div className="flex flex-none flex-col items-center gap-1">
+                {/* Drawn as SVG paint (a `<rect fill>`), not a painted-on background colour. A
+                 * background colour is dropped from the printed page by default in Chrome and
+                 * Safari — a shaper has to tick "Background graphics" / "Print backgrounds" for it
+                 * to survive, which is off by default and is the whole reason this bar printed as
+                 * caption-only-no-bar until the shaper reported it on 2026-09-08. A `fill` is
+                 * foreground ink, so it prints unconditionally. app/design/summary/order-form.css
+                 * takes the other route (`print-color-adjust: exact`) for its page shading; that
+                 * route is deliberately not used here, because a scale-check reference a shaper
+                 * measures with a ruler must not depend on a property a print pipeline may ignore. */}
+                <svg
+                  data-actual-size-box="check-bar"
+                  ref={measureRef}
+                  className="block h-1.5 text-surf-ink"
+                  aria-hidden
+                  style={
+                    {
+                      width: `${checkBarWidthIn * pxPerInch}px`,
+                      "--vfs-w-in": checkBarWidthIn,
+                    } as CSSProperties
+                  }
+                >
+                  <rect x="0" y="0" width="100%" height="100%" rx="3" ry="3" fill="currentColor" />
+                </svg>
+                <span className="text-xs text-surf-ink-muted">Check bar: {formatCalibrationMark(CHECK_BAR_MM, system)}</span>
+              </div>
             </div>
           </div>
 
+          {/* Phone only (D-13): the drawing is not true size here — no ruler check applies, so
+           * neither the check bar above nor the drawing below claim to be one. One line instead,
+           * naming what a shaper can still do: print it. */}
+          <p className="hidden text-sm text-surf-ink-muted max-shell:block print:hidden">
+            Shown smaller than actual size — tap Print for the full-sized rail.
+          </p>
+
           <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-auto py-3">
+            {/* True size on a desktop screen and on paper (D-13's kept case): explicit CSS pixels
+             * from the measured px-per-inch, unchanged from Phase 8 — actual-size.css's own
+             * !important rules on this box already take over entirely on paper, so nothing here
+             * needs a print variant. On a phone screen the same box is shrunk to
+             * fit the dialog's own width instead — a true-size view there would misrepresent a
+             * size no shaper is measuring against — via `max-shell:` overrides on this wrapper
+             * alone; the plot inside still renders through the same RailSectionPlot, fitted to
+             * whichever width this wrapper resolves to. */}
             <div
               data-actual-size-box="plot"
+              className="max-shell:!h-auto max-shell:!w-full"
               style={
                 {
                   width: `${plotWidthIn * pxPerInch}px`,
