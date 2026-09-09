@@ -28,9 +28,29 @@
  * angle/fullness/rail-length slider treatment — the rocker line is now built the same way the
  * board's outline curve is. The two 12" figures move from typed sliders to a read-only pair,
  * measured off the `RockerGeometry` the editor builds once per render and passes in.
+ *
+ * 09-03 (D-03): the six sliders a curve handle drag already sets — Nose/Tail Angle, Nose/Tail
+ * Smoothness, Nose/Tail Flatness — fold behind one closed "Fine adjust" row on a phone, reusing
+ * the shared disclosure header (`components/design/fine-adjust-group.tsx`) and the same CSS
+ * `order` mechanism `outline-controls.tsx` already proved: no `SliderRow` is ever rendered twice,
+ * and the desktop sidebar is byte-identical. Nose Rocker, Tail Rocker (tip lift is deliberately
+ * not draggable) and all five foil thicknesses (the foil has no drag points, D-14) stay in the
+ * open on both phone and desktop.
+ *
+ * The three rows to fold sit two levels below this file's own top-level scrolling column — nested
+ * inside the Rocker section's own wrapper `<div>` and its inner `flex flex-col` — unlike
+ * `outline-controls.tsx`'s rows, which are direct children of its top column already. Both of
+ * those wrapper `<div>`s below are given a phone-only `display: contents` override so that, below
+ * the shell breakpoint, they stop generating boxes and their children become direct flex items of
+ * the top-level column, where CSS `order` can reach them; at and above the breakpoint neither rule
+ * applies and the desktop is untouched. One side effect of that override, and it's intended: on a
+ * phone the rocker section's three rows now follow the scrolling column's own `gap-5` rhythm (the
+ * same spacing every other phone row uses) instead of this section's own tighter `gap-3.5` —
+ * matching the rest of the phone shell rather than fighting it.
  */
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { FineAdjustDisclosure } from "@/components/design/fine-adjust-group";
 import { SliderRow } from "@/components/design/slider-row";
 import { useUnits } from "@/components/units-provider";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec } from "@/lib/geometry/foil";
@@ -97,6 +117,9 @@ export function RockerControls({
   onToggleSectionOpen,
 }: RockerControlsProps) {
   const { system } = useUnits();
+  // D-03: screen-only state, like `outline-controls.tsx`'s own `fineAdjustOpen` — never saved,
+  // never in the design snapshot, resets to closed on every navigation to the screen.
+  const [fineAdjustOpen, setFineAdjustOpen] = useState(false);
   const noseLiftSlider = measureSlider(rocker.noseLift, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
   const tailLiftSlider = measureSlider(rocker.tailLift, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
   const noseTipSlider = measureSlider(foil.noseTip, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
@@ -105,13 +128,16 @@ export function RockerControls({
   const tail12Slider = measureSlider(foil.tail12, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
   const tailTipSlider = measureSlider(foil.tailTip, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
   return (
-    <div className="flex flex-col gap-5">
-      <div>
+    // `group` + `data-fine-adjust` (D-03) let the three folded rows below read their shown/hidden
+    // state off this one column, purely through CSS — no row is ever rendered a second time,
+    // mirroring `outline-controls.tsx`'s own top-level column.
+    <div className="group flex flex-col gap-5" data-fine-adjust={fineAdjustOpen ? "open" : "closed"}>
+      <div className="max-shell:contents">
         <SectionHeading open={sectionOpen.rocker} onToggle={() => onToggleSectionOpen("rocker")}>
           Rocker
         </SectionHeading>
         {sectionOpen.rocker && (
-          <div className="flex flex-col gap-3.5 pt-3">
+          <div className="flex flex-col gap-3.5 pt-3 max-shell:contents">
             <div className="mb-1.5 text-[10px] text-surf-ink-muted font-normal">
               Rocker is measured up from a flat surface with the board bottom-down — the center is
               the zero it&apos;s measured against. The two {stationLabel(system)} figures below are
@@ -127,7 +153,7 @@ export function RockerControls({
               onValueChange={(v) => onChangeRocker({ noseLift: noseLiftSlider.toMm(v) })}
             />
 
-            <div className="flex items-end gap-4">
+            <div className="flex items-end gap-4 max-shell:order-51 max-shell:group-data-[fine-adjust=closed]:hidden">
               <SliderRow
                 className="flex-1"
                 label={`Nose Angle — ${rocker.noseAngle}°`}
@@ -157,7 +183,7 @@ export function RockerControls({
               />
             </div>
 
-            <div className="flex items-end gap-4">
+            <div className="flex items-end gap-4 max-shell:order-52 max-shell:group-data-[fine-adjust=closed]:hidden">
               <SliderRow
                 className="flex-1"
                 label={`Nose Flatness — ${rocker.noseFlatness}%`}
@@ -187,7 +213,7 @@ export function RockerControls({
               />
             </div>
 
-            <div className="flex items-end gap-4">
+            <div className="flex items-end gap-4 max-shell:order-53 max-shell:group-data-[fine-adjust=closed]:hidden">
               <SliderRow
                 className="flex-1"
                 label={`Tail Smoothness — ${rocker.tailSmoothness}%`}
@@ -291,6 +317,16 @@ export function RockerControls({
           </div>
         )}
       </div>
+
+      {/* D-03: last item in the controls scroller on a phone, below every other control — every
+          other child above keeps its implicit CSS order of 0, so this header and the three rows
+          it reveals land last purely through `order`, with no `max-shell:` rule reaching a
+          desktop screen at all. Mirrors `outline-controls.tsx`'s own placement. */}
+      <FineAdjustDisclosure
+        open={fineAdjustOpen}
+        onToggle={() => setFineAdjustOpen((v) => !v)}
+        className="max-shell:order-50"
+      />
     </div>
   );
 }

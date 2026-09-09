@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useUnits } from "@/components/units-provider";
 import { useDesign } from "@/components/design/design-store";
+import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import { toeAimTableFor, type FinAdvancedSpec, type FinPlacementSpec } from "@/lib/geometry/fins";
 import { mmToInches, type Mm } from "@/lib/geometry/units";
 import { FinControls } from "./fin-controls";
@@ -90,6 +91,13 @@ function buildPresetSource(spec: FinPlacementSpec): string {
  * `lib/geometry/presets.ts` source, so a captured preset carries the shaper's own advanced/model
  * fields rather than whatever the outline happened to override — the Fins half of the same
  * shaper-tuning capture loop as components/outline/outline-editor.tsx (CONTEXT.md D-03).
+ *
+ * 09-03: moved onto the shared `DesignScreenShell`, `phonePinned="55dvh"` — the diagram pins to a
+ * little over half the phone screen and scales to the available width through its own existing
+ * viewBox fitting (no orientation rule applies to the fin viewer). `ToeAimTableModal` is passed
+ * through the shell's `outsideColumns` slot so it keeps rendering as a sibling of the two-column
+ * root, exactly as it does today — inside either column it would be clipped by the pinned area on
+ * a phone (RESEARCH.md Pitfall 5).
  */
 export function FinPlacementEditor() {
   const {
@@ -126,30 +134,61 @@ export function FinPlacementEditor() {
   );
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-nowrap">
-      {/* A flex column, not one scrolling box: the controls scroll in the region below and the dev
-          preset button sits in a footer that does not. As a plain last child of a scrolling aside it
-          was only ever pinned by luck — outline and rails happened to fit, so it looked right there,
-          while the longer fins controls pushed it past the bottom edge where it could only be met
-          mid-scroll. */}
-      <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink">
-        <div className="min-h-0 flex-1 overflow-y-auto p-10">
-          <FinControls
-            spec={spec}
-            result={result}
-            onChange={updateFins}
-            advancedOpen={advancedOpen}
-            onToggleAdvanced={() => setAdvancedOpen((v) => !v)}
-            settingsOpen={settingsOpen}
-            onToggleSettings={() => setSettingsOpen((v) => !v)}
-            showCallouts={showCallouts}
-            onToggleCallouts={() => setShowCallouts((v) => !v)}
-            onOpenToeTable={() => setToeTableOpen(true)}
-            importTemplate={finsImportTemplate}
-            onToggleImportTemplate={() => setFinsImportTemplate(!finsImportTemplate)}
-          />
-        </div>
-        {process.env.NODE_ENV === "development" && (
+    <DesignScreenShell
+      controls={
+        <FinControls
+          spec={spec}
+          result={result}
+          onChange={updateFins}
+          advancedOpen={advancedOpen}
+          onToggleAdvanced={() => setAdvancedOpen((v) => !v)}
+          settingsOpen={settingsOpen}
+          onToggleSettings={() => setSettingsOpen((v) => !v)}
+          showCallouts={showCallouts}
+          onToggleCallouts={() => setShowCallouts((v) => !v)}
+          onOpenToeTable={() => setToeTableOpen(true)}
+          importTemplate={finsImportTemplate}
+          onToggleImportTemplate={() => setFinsImportTemplate(!finsImportTemplate)}
+        />
+      }
+      canvas={
+        <TabbedPanel
+          tabs={TAB_ORDER.map((tab) => ({ id: tab, label: TAB_LABEL[tab] }))}
+          active={activeTab}
+          onSelect={setActiveTab}
+        >
+          {activeTab === "viewer" && (
+            <div className="flex min-h-0 flex-1 flex-col items-center">
+              <FinViewer
+                result={result}
+                tailShape={spec.tailShape}
+                tailWidth12={spec.tailWidth12}
+                showCallouts={showCallouts}
+                outlineOverride={finTailOutline}
+              />
+            </div>
+          )}
+
+          {activeTab === "data" && (
+            <FinDataPanel
+              result={result}
+              boardLength={spec.boardLength}
+              tailWidth12={spec.tailWidth12}
+              finSetup={spec.finSetup}
+              tailShape={spec.tailShape}
+            />
+          )}
+
+          {activeTab === "info" && <FinModelInfo />}
+        </TabbedPanel>
+      }
+      sidebarFooter={
+        // A flex column, not one scrolling box: the controls scroll in the region above (handled
+        // by DesignScreenShell) and this dev preset button sits in a footer that does not. As a
+        // plain last child of a scrolling aside it was only ever pinned by luck — outline and
+        // rails happened to fit, so it looked right there, while the longer fins controls pushed
+        // it past the bottom edge where it could only be met mid-scroll.
+        process.env.NODE_ENV === "development" ? (
           <div className="flex-none border-t border-surf-line-faint p-4">
             <Button
               variant="ghost"
@@ -160,47 +199,18 @@ export function FinPlacementEditor() {
               {justCopiedPreset ? "Copied!" : "Copy preset values"}
             </Button>
           </div>
-        )}
-      </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3">
-        <TabbedPanel
-          tabs={TAB_ORDER.map((tab) => ({ id: tab, label: TAB_LABEL[tab] }))}
-          active={activeTab}
-          onSelect={setActiveTab}
-        >
-        {activeTab === "viewer" && (
-          <div className="flex min-h-0 flex-1 flex-col items-center">
-            <FinViewer
-              result={result}
-              tailShape={spec.tailShape}
-              tailWidth12={spec.tailWidth12}
-              showCallouts={showCallouts}
-              outlineOverride={finTailOutline}
-            />
-          </div>
-        )}
-
-        {activeTab === "data" && (
-          <FinDataPanel
-            result={result}
-            boardLength={spec.boardLength}
-            tailWidth12={spec.tailWidth12}
-            finSetup={spec.finSetup}
-            tailShape={spec.tailShape}
-          />
-        )}
-
-        {activeTab === "info" && <FinModelInfo />}
-        </TabbedPanel>
-      </main>
-
-      <ToeAimTableModal
-        open={toeTableOpen}
-        onClose={() => setToeTableOpen(false)}
-        boardLength={spec.boardLength}
-        tailWidth12={spec.tailWidth12}
-        view={toeTableView}
-      />
-    </div>
+        ) : undefined
+      }
+      outsideColumns={
+        <ToeAimTableModal
+          open={toeTableOpen}
+          onClose={() => setToeTableOpen(false)}
+          boardLength={spec.boardLength}
+          tailWidth12={spec.tailWidth12}
+          view={toeTableView}
+        />
+      }
+      phonePinned="55dvh"
+    />
   );
 }
