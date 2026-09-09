@@ -165,7 +165,12 @@ export function ViewFullSizedDialog({
           ].join("\n")}
         </style>
 
-        <DialogHeader data-print-hide>
+        {/* Prints deliberately, unlike everything else in this header/footer/chrome group — the
+         * shaper asked for this on 2026-09-08: three printed rails on a bench are indistinguishable
+         * without a name, and this heading is the only place any printed output says which section
+         * it is. The DialogFooter below KEEPS its own data-print-hide (the print note and the Print
+         * button do not belong on paper) — do not "tidy" the two into agreeing with each other. */}
+        <DialogHeader>
           <DialogTitle className="text-surf-ink">{SECTION_TITLE[activeSection]} Rail — Actual Size</DialogTitle>
         </DialogHeader>
 

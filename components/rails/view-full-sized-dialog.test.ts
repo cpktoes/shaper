@@ -164,6 +164,35 @@ describe("view-full-sized-dialog.tsx (RAIL-04, D-12–D-16)", () => {
     }
   });
 
+  it("prints the rail's name — the DialogHeader carrying the title is not print-hidden (the shaper's 2026-09-08 print report)", () => {
+    const source = readStripped(DIALOG_PATH);
+    const headerIndex = source.indexOf("<DialogHeader");
+    const titleIndex = source.indexOf("Rail — Actual Size");
+    expect(headerIndex, "no <DialogHeader carrying the title found").toBeGreaterThanOrEqual(0);
+    expect(titleIndex, "no title text found").toBeGreaterThan(headerIndex);
+    const headerToTitle = source.slice(headerIndex, titleIndex);
+    // Same attribute name the WR-01 case above asserts about the stylesheet: the stylesheet
+    // still hides chrome, and this header is no longer chrome.
+    expect(headerToTitle, "the title's own DialogHeader is still print-hidden").not.toContain("data-print-hide");
+  });
+
+  it("still hides the footer's print note and Print button from paper (companion to the header no longer being hidden)", () => {
+    const source = readStripped(DIALOG_PATH);
+    const footerIndex = source.indexOf("<DialogFooter");
+    expect(footerIndex, "no <DialogFooter found").toBeGreaterThanOrEqual(0);
+    const footerLine = source.slice(footerIndex, source.indexOf(">", footerIndex) + 1);
+    expect(footerLine, "DialogFooter no longer carries data-print-hide").toContain("data-print-hide");
+  });
+
+  it("composes the printed title from SECTION_TITLE[activeSection], appearing exactly once in the source", () => {
+    const source = readStripped(DIALOG_PATH);
+    expect(source, "does not interpolate SECTION_TITLE[activeSection] into the title").toContain(
+      "{SECTION_TITLE[activeSection]} Rail — Actual Size",
+    );
+    const occurrences = source.split("Rail — Actual Size").length - 1;
+    expect(occurrences, "the words 'Rail — Actual Size' appear more than once — risk of drift").toBe(1);
+  });
+
   it("resets the CSS translate property for print from its own verbatim style element, not the stylesheet (G-08-5)", () => {
     // Tailwind v4 compiles the dialog's centring classes to `translate`, not `transform` — a
     // future edit that keeps only `transform: none` silently reintroduces the off-page offset.
