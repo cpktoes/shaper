@@ -93,7 +93,15 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-12 overflow-y-auto pt-10">
       <div>
-        <div className="overflow-x-auto">
+        {/* D-04: the box scrolls sideways on a narrow phone instead of dropping a column, keeping
+            every section's every mark. The trailing fade (24px, toward --surf-panel — the card
+            this table always sits inside, per TabbedPanel) is the "there's more, keep going"
+            hint, chosen over a caption so it needs no re-authoring per unit system (UI-SPEC,
+            "Sideways-scrolling data tables"). Constant, not scroll-position-driven — a static hint
+            is enough for a fixed-column table and needs no extra scroll-tracking state; this DATA
+            page's own full card only, not the `compact` Summary embed above, which deliberately
+            never scrolls at all (its own comment: a sheet of paper, not a panel). */}
+        <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]">
           <div className="min-w-[480px]">
             <div className="mb-3 flex gap-2 border-b-2 border-surf-line-faint pb-2">
               <div className="min-w-0 flex-[1.4]" />
