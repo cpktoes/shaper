@@ -63,7 +63,7 @@ import { Button } from "@/components/ui/button";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import * as ViewerMedia from "@/components/design/use-viewer-media";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
-import { RotateBoardIcon, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
+import { RotateBoardIcon, ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { type FoilSpec } from "@/lib/geometry/foil";
 import { buildRocker, type RockerSpec } from "@/lib/geometry/rocker";
@@ -228,53 +228,53 @@ export function RockerEditor() {
             // toolbar stays inside this tab only (Task 2's plan text) — DATASHEET has no drawing
             // to rotate or hide a reference under.
             <div className="relative flex min-h-0 flex-1 items-center justify-center">
-              <ViewerToolbarButton
-                onClick={() => setOrientation((o) => (o === "horizontal" ? "vertical" : "horizontal"))}
-                label="Rotate the board"
-                slot={0}
-                // D-05/D-11: the rotate button's one job on a phone is done by turning the phone,
-                // so it is absent below the shell breakpoint — the first of the phase's three
-                // removed controls (wide view, on the toolbar button below, is the third, added
-                // after the post-execution code review — see 09-REVIEW.md CR-01). Now gated on
-                // width AND pointer (quick task 260909-h3g): on any coarse pointer,
-                // `boardOrientation` above follows the device's own orientation query and never
-                // reads this button's state, so the button had nothing to do. That surfaced on a
-                // phone held sideways — 844px on an iPhone 14, 863px on a Pixel 7, both wider
-                // than the 820px shell breakpoint, so the width rule alone let the dead button
-                // back on screen. A touchscreen laptop hits the same case and is covered by the
-                // same rule. A mouse-driven desktop is unaffected at every width.
-                className="max-shell:hidden coarse:hidden"
-              >
-                <RotateBoardIcon className="size-6" />
-              </ViewerToolbarButton>
-              <ViewerToolbarButton
-                onClick={handleToggleConstruction}
-                pressed={showConstruction}
-                label={showConstruction ? "Hide construction lines" : "Show construction lines"}
-                slot={1}
-              >
-                <LocateFixedIcon className="size-6" />
-              </ViewerToolbarButton>
-              <ViewerToolbarButton
-                onClick={handleToggleWideView}
-                pressed={wideView}
-                label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
-                title={wideView ? "Show the sidebar" : "Wide view"}
-                slot={2}
-                // 09-REVIEW.md CR-01: on a phone the drawing already has the whole width and the
-                // controls are the entire column stacked beneath it, so there is nothing to
-                // widen — pressing this button would only hide every control, with no way back
-                // (the small icon that caused it would be gone too). Absent below the shell
-                // breakpoint, gated on width alone — unlike Rotate above, which is now gated on
-                // the pointer too — because a touchscreen laptop at desktop width genuinely does
-                // have a sidebar to hide, so this button still does its real job there.
-                // `DesignScreenShell` also refuses to fully drop the controls on a phone even if
-                // `wideView` is somehow still true, belt-and-suspenders for a desktop shaper who
-                // narrows the window after pressing this.
-                className="max-shell:hidden"
-              >
-                {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
-              </ViewerToolbarButton>
+              <ViewerToolbar>
+                <ViewerToolbarButton
+                  onClick={() => setOrientation((o) => (o === "horizontal" ? "vertical" : "horizontal"))}
+                  label="Rotate the board"
+                  // D-05/D-11: the rotate button's one job on a phone is done by turning the
+                  // phone, so it is absent below the shell breakpoint — the first of the phase's
+                  // three removed controls (wide view, on the toolbar button below, is the
+                  // third, added after the post-execution code review — see 09-REVIEW.md CR-01).
+                  // Now gated on width AND pointer (quick task 260909-h3g): on any coarse
+                  // pointer, `boardOrientation` above follows the device's own orientation query
+                  // and never reads this button's state, so the button had nothing to do. That
+                  // surfaced on a phone held sideways — 844px on an iPhone 14, 863px on a Pixel
+                  // 7, both wider than the 820px shell breakpoint, so the width rule alone let
+                  // the dead button back on screen. A touchscreen laptop hits the same case and
+                  // is covered by the same rule. A mouse-driven desktop is unaffected at every
+                  // width.
+                  className="max-shell:hidden coarse:hidden"
+                >
+                  <RotateBoardIcon className="size-6" />
+                </ViewerToolbarButton>
+                <ViewerToolbarButton
+                  onClick={handleToggleConstruction}
+                  pressed={showConstruction}
+                  label={showConstruction ? "Hide construction lines" : "Show construction lines"}
+                >
+                  <LocateFixedIcon className="size-6" />
+                </ViewerToolbarButton>
+                <ViewerToolbarButton
+                  onClick={handleToggleWideView}
+                  pressed={wideView}
+                  label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
+                  title={wideView ? "Show the sidebar" : "Wide view"}
+                  // 09-REVIEW.md CR-01: on a phone the drawing already has the whole width and
+                  // the controls are the entire column stacked beneath it, so there is nothing
+                  // to widen — pressing this button would only hide every control, with no way
+                  // back (the small icon that caused it would be gone too). Absent below the
+                  // shell breakpoint, gated on width alone — unlike Rotate above, which is now
+                  // gated on the pointer too — because a touchscreen laptop at desktop width
+                  // genuinely does have a sidebar to hide, so this button still does its real
+                  // job there. `DesignScreenShell` also refuses to fully drop the controls on a
+                  // phone even if `wideView` is somehow still true, belt-and-suspenders for a
+                  // desktop shaper who narrows the window after pressing this.
+                  className="max-shell:hidden"
+                >
+                  {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
+                </ViewerToolbarButton>
+              </ViewerToolbar>
               <RockerViewer
                 rocker={rocker}
                 foil={foil}

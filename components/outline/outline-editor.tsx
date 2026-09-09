@@ -5,7 +5,7 @@ import { DownloadIcon, LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } 
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
-import { RotateBoardIcon, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
+import { RotateBoardIcon, ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { ExportPreviewDialog } from "@/components/template/export-preview-dialog";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import * as ViewerMedia from "@/components/design/use-viewer-media";
@@ -144,73 +144,73 @@ export function OutlineEditor() {
     // panel title (the mockup had it there and the founder explicitly corrected this) and
     // not inline with the VIEWER tab. `TabbedPanel` itself is untouched.
     <div className="relative flex min-h-0 flex-1 items-stretch justify-center gap-6">
-      <ExportPreviewDialog
-        trigger={
-          // Slot 1 (right-10) sits immediately left of Rotate's slot 0 (right-0), so the two
-          // read as one icon-button pair. This button has no ON state to hold a fill after the
-          // pointer leaves — the dialog it opens covers the drawing, so any fill painted on the
-          // button underneath would be invisible while the dialog is open and only flash as it
-          // closes, which is why it carries no `pressed` prop at all.
-          <ViewerToolbarButton label="Export Template" slot={1}>
-            <DownloadIcon className="size-6" />
-          </ViewerToolbarButton>
-        }
-      />
-      <ViewerToolbarButton
-        onClick={() => setOrientation((o) => (o === "vertical" ? "horizontal" : "vertical"))}
-        label={
-          orientation === "vertical"
-            ? "Rotate the board to horizontal"
-            : "Rotate the board to vertical"
-        }
-        title="Rotate the board"
-        slot={0}
-        // D-05/D-11: the rotate button's one job on a phone is done by turning the phone, so it
-        // is absent below the shell breakpoint — the first of the phase's three removed controls
-        // (wide view, on the toolbar button below, is the third, added after the post-execution
-        // code review — see 09-REVIEW.md CR-01). Now gated on width AND pointer (quick task
-        // 260909-h3g): on any coarse pointer, `boardOrientation` above follows the device's own
-        // orientation query and never reads this button's state, so the button had nothing to
-        // do. That surfaced on a phone held sideways — 844px on an iPhone 14, 863px on a Pixel 7,
-        // both wider than the 820px shell breakpoint, so the width rule alone let the dead button
-        // back on screen. A touchscreen laptop hits the same case and is covered by the same
-        // rule. A mouse-driven desktop is unaffected at every width.
-        className="max-shell:hidden coarse:hidden"
-      >
-        <RotateBoardIcon className="size-6" />
-      </ViewerToolbarButton>
-      <ViewerToolbarButton
-        onClick={handleToggleConstruction}
-        pressed={showConstruction}
-        label={showConstruction ? "Hide construction lines" : "Show construction lines"}
-        slot={2}
-        // Icon is LocateFixedIcon, not a ruler: it echoes the draggable control point drawn on
-        // the construction overlay itself (components/outline/outline-viewer.tsx's drag
-        // targets — a ring with a filled centre dot, plus tick marks reads closest to
-        // LocateFixed of the candidates lucide-react offers), so the button previews the very
-        // glyph the shaper is about to see on the board.
-      >
-        <LocateFixedIcon className="size-6" />
-      </ViewerToolbarButton>
-      <ViewerToolbarButton
-        onClick={handleToggleWideView}
-        pressed={wideView}
-        label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
-        title={wideView ? "Show the sidebar" : "Wide view"}
-        slot={3}
-        // 09-REVIEW.md CR-01: on a phone the drawing already has the whole width and the
-        // controls are the entire column stacked beneath it, so there is nothing to widen —
-        // pressing this button would only hide every control, with no way back (the small icon
-        // that caused it would be gone too). Absent below the shell breakpoint, gated on width
-        // alone — unlike Rotate above, which is now gated on the pointer too — because a
-        // touchscreen laptop at desktop width genuinely does have a sidebar to hide, so this
-        // button still does its real job there. `DesignScreenShell` also refuses to fully drop
-        // the controls on a phone even if `wideView` is somehow still true, belt-and-suspenders
-        // for a desktop shaper who narrows the window after pressing this.
-        className="max-shell:hidden"
-      >
-        {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
-      </ViewerToolbarButton>
+      <ViewerToolbar>
+        <ViewerToolbarButton
+          onClick={() => setOrientation((o) => (o === "vertical" ? "horizontal" : "vertical"))}
+          label={
+            orientation === "vertical"
+              ? "Rotate the board to horizontal"
+              : "Rotate the board to vertical"
+          }
+          title="Rotate the board"
+          // D-05/D-11: the rotate button's one job on a phone is done by turning the phone, so it
+          // is absent below the shell breakpoint — the first of the phase's three removed
+          // controls (wide view, on the toolbar button below, is the third, added after the
+          // post-execution code review — see 09-REVIEW.md CR-01). Now gated on width AND pointer
+          // (quick task 260909-h3g): on any coarse pointer, `boardOrientation` above follows the
+          // device's own orientation query and never reads this button's state, so the button
+          // had nothing to do. That surfaced on a phone held sideways — 844px on an iPhone 14,
+          // 863px on a Pixel 7, both wider than the 820px shell breakpoint, so the width rule
+          // alone let the dead button back on screen. A touchscreen laptop hits the same case and
+          // is covered by the same rule. A mouse-driven desktop is unaffected at every width.
+          className="max-shell:hidden coarse:hidden"
+        >
+          <RotateBoardIcon className="size-6" />
+        </ViewerToolbarButton>
+        <ExportPreviewDialog
+          trigger={
+            // This button has no ON state to hold a fill after the pointer leaves — the dialog
+            // it opens covers the drawing, so any fill painted on the button underneath would be
+            // invisible while the dialog is open and only flash as it closes, which is why it
+            // carries no `pressed` prop at all. It is the row's corner item whenever Rotate is
+            // hidden (quick task 260909-hd9): `ViewerToolbar`'s `flex-row-reverse` packs it
+            // there automatically, no position of its own required.
+            <ViewerToolbarButton label="Export Template">
+              <DownloadIcon className="size-6" />
+            </ViewerToolbarButton>
+          }
+        />
+        <ViewerToolbarButton
+          onClick={handleToggleConstruction}
+          pressed={showConstruction}
+          label={showConstruction ? "Hide construction lines" : "Show construction lines"}
+          // Icon is LocateFixedIcon, not a ruler: it echoes the draggable control point drawn on
+          // the construction overlay itself (components/outline/outline-viewer.tsx's drag
+          // targets — a ring with a filled centre dot, plus tick marks reads closest to
+          // LocateFixed of the candidates lucide-react offers), so the button previews the very
+          // glyph the shaper is about to see on the board.
+        >
+          <LocateFixedIcon className="size-6" />
+        </ViewerToolbarButton>
+        <ViewerToolbarButton
+          onClick={handleToggleWideView}
+          pressed={wideView}
+          label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
+          title={wideView ? "Show the sidebar" : "Wide view"}
+          // 09-REVIEW.md CR-01: on a phone the drawing already has the whole width and the
+          // controls are the entire column stacked beneath it, so there is nothing to widen —
+          // pressing this button would only hide every control, with no way back (the small icon
+          // that caused it would be gone too). Absent below the shell breakpoint, gated on width
+          // alone — unlike Rotate above, which is now gated on the pointer too — because a
+          // touchscreen laptop at desktop width genuinely does have a sidebar to hide, so this
+          // button still does its real job there. `DesignScreenShell` also refuses to fully drop
+          // the controls on a phone even if `wideView` is somehow still true, belt-and-suspenders
+          // for a desktop shaper who narrows the window after pressing this.
+          className="max-shell:hidden"
+        >
+          {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
+        </ViewerToolbarButton>
+      </ViewerToolbar>
       <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center">
         <div className="relative flex min-h-0 w-full flex-1 justify-center">
           {/* A plain filled box — the drawing sizes itself inside it via preserveAspectRatio.
