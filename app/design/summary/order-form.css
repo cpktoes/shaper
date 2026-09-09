@@ -7,7 +7,10 @@
  * does not always drop a previously-loaded stylesheet on navigation — see
  * node_modules/next/dist/docs/01-app/01-getting-started/11-css.md, "Global CSS"). The one exception
  * is `@page { size: portrait }` below, which is unavoidably document-global — it is commented where
- * it appears.
+ * it appears. The `@property` registration for `--order-form-preview-scale` (below, before the
+ * print path) is the same kind of exception, for the same reason: like `@page`, `@property` cannot
+ * be scoped to a selector, but the property name belongs to this form and the file only loads on
+ * this route, so it is harmless.
  *
  * **This stylesheet, not `useOrderFormPrintFit`, decides the printed sheet's size.** The `width`
  * and `height` declared on `[data-order-form-root]` and `[data-order-form-sheet]` inside
@@ -34,7 +37,9 @@
  *
  * The `cqw` figures are calibrated against an 880px sheet — this form's on-screen max width — but
  * the size that actually matters is the PRINTED one, and the sheet prints at about 733px. Printed
- * type is therefore 83% of what the screen shows.
+ * type is therefore 83% of what the screen shows. That 880px is now declared once, as
+ * `--order-form-design-width` below, and the stack is always laid out at it — on a phone as much as
+ * on a desktop — rather than it being a maximum the stack happens to reach on a wide screen.
  *
  * **The floor is 9pt — 12px — and nothing on either sheet prints below it.** That is the clamp
  * minimum on every token here, so the floor holds at any container width rather than only at the
@@ -269,6 +274,87 @@
 [data-order-form-sheet] {
   aspect-ratio: 7.87 / 10.37;
   min-height: 0;
+}
+
+/*
+ * The phone preview.
+ *
+ * Until this block, a phone did not get a SMALLER order form — it got a DIFFERENT one. Every type
+ * size above is `clamp(min, N cqw, max)` against the stack's own width, so on a 342px-wide phone
+ * screen the whole sheet was re-laid-out at 342px: the type hit its clamp floor while the fixed-pixel
+ * parts (the sheet border, the sheet padding, the band gaps) stayed put and grew proportionally
+ * huge, and the drawings row — both board outlines, the rocker profile and all three rail section
+ * plots — was squeezed out of existence. A shaper checking a phone could not see what would come off
+ * the printer, because it was not the same sheet.
+ *
+ * The fix is to always draw the stack at its design width and shrink the finished picture, never to
+ * re-lay it out at the screen's width. That picture-shrink has to be `transform`, not the browser's
+ * own shrink-the-box property (`zoom`): in WebKit — what an iPhone runs — `zoom` resolves every
+ * `cqw` size against the SHRUNKEN box, so the type falls to its clamp floor anyway and the bug comes
+ * right back, invisibly, because Chromium gets `zoom` right and a Chromium-only look would show
+ * nothing wrong. `transform` never takes part in layout in either engine, so the stack is laid out
+ * at its design width and only the picture shrinks, with identical type in both.
+ *
+ * Because `transform` does not shrink the layout box it scales, something has to reserve the
+ * shrunken height itself, or the page would scroll past a screen and a half of empty space below
+ * the last sheet. `--order-form-stack-height` derives that height from numbers already declared
+ * elsewhere — the design width, the sheet's own `aspect-ratio` above (inverted, since the sheet's
+ * ratio is width-over-height and the stack's height needs height-over-width), the stack's `gap-8`
+ * (mirrored here as `--order-form-stack-gap`) and the sheet count — so it can never drift from what
+ * the stack actually contains; `components/summary/order-form-preview.test.ts` pins all four.
+ *
+ * And because this block exists only to make the SCREEN behave like a photograph of the page, none
+ * of it may reach the page itself: outside `@media screen`, `[data-order-form-scaler]` gets only
+ * `display: contents` — which on paper generates no box at all, so the print path sees exactly the
+ * element tree it always has — plus the two plain numbers the scale and height are built from. Both
+ * are inert off-screen: nothing reads them outside the `@media screen` block below. They live on the
+ * scaler (not the page wrapper) because the scaler is the one ancestor common to both consumers, the
+ * scaler's own screen-media rule and the sheet stack it wraps; `order-form-print.test.ts`'s own
+ * marker-based lookup for `[data-order-form-page]`'s print rule is why they don't live there instead.
+ */
+@property --order-form-preview-scale {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+[data-order-form-scaler] {
+  display: contents;
+  --order-form-design-width: 880px; /* the width this form is drawn and calibrated at */
+  --order-form-stack-gap: 2rem; /* must match the stack's own `gap-8` */
+}
+
+@media screen {
+  /* What the scale is measured against — a container's own content width already has the page
+     wrapper's `px-6` padding and any scrollbar taken out of it, which is what makes the fit exact.
+     `:where(...)` rather than the bare attribute selector on purpose: it carries zero specificity
+     here (nothing else ever sets `container-type` on this element, so that costs nothing), and it
+     keeps this rule from ever textually matching `order-form-print.test.ts`'s marker-based lookup
+     for the print path's own `[data-order-form-page] { ... }` rule below. */
+  :where([data-order-form-page]) {
+    container-type: inline-size;
+  }
+
+  [data-order-form-scaler] {
+    display: block;
+    /* The screen's available width over the design width, capped at 1 so a wide screen never draws
+       the sheet larger than its design size. Expressed through `tan(atan2(...))` because CSS has no
+       way to divide one length by another with `calc()` alone. */
+    --order-form-preview-scale: min(1, tan(atan2(100cqw, var(--order-form-design-width))));
+    --order-form-stack-height: calc(
+      var(--order-form-design-width) * 10.37 / 7.87 * var(--order-form-sheet-count) +
+        var(--order-form-stack-gap) * (var(--order-form-sheet-count) - 1)
+    );
+    width: calc(var(--order-form-design-width) * var(--order-form-preview-scale));
+    height: calc(var(--order-form-stack-height) * var(--order-form-preview-scale));
+  }
+
+  [data-order-form-root] {
+    width: var(--order-form-design-width);
+    max-width: none;
+    transform: scale(var(--order-form-preview-scale));
+    transform-origin: top left;
+  }
 }
 
 /* Carried the logo block, four rider fields and the shaper's sub-box at 17%. The sub-box moved to
