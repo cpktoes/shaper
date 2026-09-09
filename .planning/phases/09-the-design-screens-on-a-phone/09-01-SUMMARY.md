@@ -170,6 +170,12 @@ None - no external service configuration required. The suite runs entirely again
 - `data-drag-target` is now available on both viewers' hit circles for any later plan that needs to locate a drag target reliably (e.g. touch-drag tests).
 - No blockers for 09-02 onward.
 
+## Self-Check: PASSED
+
+All 9 created artifacts confirmed on disk (`playwright.config.ts`, both spec files, five baseline
+PNGs, this SUMMARY) and all 5 commits (`4121b5b`, `2efe936`, `f9c9c86`, `a23a255`, `2ffed90`)
+confirmed in `git log`. No missing items.
+
 ---
 *Phase: 09-the-design-screens-on-a-phone*
 *Completed: 2026-09-09*
