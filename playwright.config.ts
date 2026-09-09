@@ -20,11 +20,19 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
-      // Deliberate non-secrets — never a real key. Clerk's own test-mode publishable/secret pair
-      // and a localhost database URL that resolves to nothing. Every /design/* route is open to a
-      // signed-out shaper, so this suite runs signed out on every project, on purpose.
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk",
-      CLERK_SECRET_KEY: "sk_test_0000000000000000000000000000000000000000000",
+      // Deliberate non-secrets — never a real key. `pk_live_`/`sk_live_`, not `pk_test_`/
+      // `sk_test_`: a `pk_test_` key marks the app as a Clerk "development" instance, and
+      // @clerk/nextjs's clerkMiddleware then redirects every request through a dev-browser JWT
+      // handshake against the decoded fake host (`example.clerk.accounts.dev`) before it ever
+      // reaches the page — that handshake 400s ("Invalid host") against a host with no real
+      // Clerk instance, which aborts navigation before the design screen ever paints, no matter
+      // how open the route is. A `pk_live_`-prefixed key marks the instance "production", which
+      // skips that dev-only handshake entirely, so Clerk gives up quietly (a console warning,
+      // nothing more) and the app renders normally — confirmed with a scripted browser render,
+      // not just a curl check, since curl never runs Clerk's client-side JS. Every /design/*
+      // route is open to a signed-out shaper, so this suite runs signed out on every project.
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk",
+      CLERK_SECRET_KEY: "sk_live_0000000000000000000000000000000000000000000",
       DATABASE_URL: "postgresql://user:pass@localhost:5432/shaper",
     },
   },
