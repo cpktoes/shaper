@@ -5,6 +5,7 @@ import { Maximize2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { useDesign } from "@/components/design/design-store";
+import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import { type RailBandSpec, type RailSectionKey, type RailSectionSpec } from "@/lib/geometry/rail-bands";
 import { mm, mmToInches, type Mm } from "@/lib/geometry/units";
 import { RailControls } from "./rail-controls";
@@ -12,7 +13,7 @@ import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { RailDataTable } from "./rail-data-table";
 import { RailInstructions } from "./rail-instructions";
 import { RailSectionPlot, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
-import { ViewFullSizedDialog } from "./view-full-sized-dialog";
+import { ViewFullSizedDialog, firstOpenSection } from "./view-full-sized-dialog";
 
 type RailPage = "viewer" | "data" | "instructions";
 
@@ -120,6 +121,11 @@ export function RailBandEditor() {
   // Export Template dialog is opened from this screen's own toolbar rather than the dialog owning
   // its own trigger (RAIL-04, D-12).
   const [viewFullSizedOpen, setViewFullSizedOpen] = useState(false);
+  // D-12: which rail the phone's NOSE/CENTER/TAIL switch shows. Seeded from the same
+  // firstOpenSection rule the View Full Sized dialog already uses (Nose, unless a later section is
+  // open and Nose is not) rather than re-deriving it — screen state only, never saved, never in
+  // the design snapshot.
+  const [phoneSection, setPhoneSection] = useState<RailSectionKey>(() => firstOpenSection(sectionOpen));
 
   const updateSection = updateRailSection;
   const toggleHardEdge = toggleTailHardEdge;
@@ -200,33 +206,35 @@ export function RailBandEditor() {
   }, [openSectionsKey, vbW, sumOfVbH, activePage]);
 
   return (
-    // data-print-hide (D-15): when the View Full Sized dialog prints, only its own content
-    // reaches paper (app/design/rails/actual-size.css's @media print rules) -- the sidebar, the
-    // tab strip and the VIEWER/DATA/INSTRUCTIONS content below are marked here so none of them
-    // print alongside it. The dialog's own content is unaffected: Base UI's Dialog portals it
-    // outside this subtree, so it is never a descendant of this attribute.
-    <div data-print-hide className="flex min-h-0 w-full flex-1 flex-nowrap">
-      {/* A flex column, not one scrolling box: the controls scroll in the region below and the dev
-          preset button sits in a footer that does not. As a plain last child of a scrolling aside it
-          was only ever pinned by luck — outline and rails happened to fit, so it looked right there,
-          while the longer fins controls pushed it past the bottom edge where it could only be met
-          mid-scroll. */}
-      <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink">
-        <div className="min-h-0 flex-1 overflow-y-auto p-10">
-          <RailControls
-            spec={effectiveRails}
-            bands={bands}
-            onChangeSection={updateSection}
-            onToggleHardEdge={toggleHardEdge}
-            sectionOpen={sectionOpen}
-            onToggleSectionOpen={toggleSectionOpen}
-            advancedOpen={advancedOpen}
-            onToggleAdvancedOpen={toggleAdvancedOpen}
-            railsImportFoilThickness={railsImportFoilThickness}
-            onToggleRailsImportFoilThickness={toggleRailsImportFoilThickness}
-          />
-        </div>
-        {process.env.NODE_ENV === "development" && (
+    <DesignScreenShell
+      // data-print-hide (D-15): when the View Full Sized dialog prints, only its own content
+      // reaches paper (app/design/rails/actual-size.css's @media print rules) -- this shell's
+      // root, and so the sidebar, tab strip and VIEWER/DATA/INSTRUCTIONS content below, are all
+      // marked so none of them print alongside it. The dialog's own content is unaffected: Base
+      // UI's Dialog portals it outside this subtree, so it is never a descendant of this
+      // attribute. Losing this on a shell migration regresses quick task 260908-q0n.
+      printHide
+      // D-01/D-12: VIEWER and DATA pin the drawing to a 50dvh ceiling on a phone (one
+      // cross-section is roughly square, so it needs less room than TEMPLATE/ROCKER's full
+      // drawings); INSTRUCTIONS is read-only reference content with no control targeting it, so it
+      // collapses the pinned split entirely and scrolls as one column instead.
+      phonePinned={activePage === "instructions" ? "none" : "50dvh"}
+      controls={
+        <RailControls
+          spec={effectiveRails}
+          bands={bands}
+          onChangeSection={updateSection}
+          onToggleHardEdge={toggleHardEdge}
+          sectionOpen={sectionOpen}
+          onToggleSectionOpen={toggleSectionOpen}
+          advancedOpen={advancedOpen}
+          onToggleAdvancedOpen={toggleAdvancedOpen}
+          railsImportFoilThickness={railsImportFoilThickness}
+          onToggleRailsImportFoilThickness={toggleRailsImportFoilThickness}
+        />
+      }
+      sidebarFooter={
+        process.env.NODE_ENV === "development" ? (
           <div className="flex-none border-t border-surf-line-faint p-4">
             <Button
               variant="ghost"
@@ -237,9 +245,9 @@ export function RailBandEditor() {
               {justCopiedPreset ? "Copied!" : "Copy preset values"}
             </Button>
           </div>
-        )}
-      </aside>
-      <main className="flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3">
+        ) : undefined
+      }
+      canvas={
         <TabbedPanel
           tabs={[
             { id: "viewer" as const, label: "VIEWER" },
@@ -265,7 +273,10 @@ export function RailBandEditor() {
               sharedXAxisMin={sharedXAxisMin}
               sectionOpen={sectionOpen}
             />
-            <div ref={plotsContainerRef} className="flex min-h-0 w-full flex-1 flex-col items-center gap-2">
+            <div
+              ref={plotsContainerRef}
+              className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 max-shell:hidden"
+            >
               {openSections.map((key) => (
                 <div key={key} className="flex flex-none flex-col items-center" style={{ width: plotWidth }}>
                   <div
@@ -279,6 +290,27 @@ export function RailBandEditor() {
                   <RailSectionPlot sectionKey={key} output={bands[key]} xAxisMin={sharedXAxisMin} />
                 </div>
               ))}
+            </div>
+            {/* Phone only (D-12): one rail cross-section at a time behind a NOSE/CENTER/TAIL
+                switch — the same idiom the View Full Sized dialog already uses for the same
+                three-way choice. Rendered in the same server tree as the desktop plot row above,
+                both always present in the markup and chosen purely by max-shell:/hidden CSS, so
+                the first paint is right on every device with no JavaScript width check and no
+                flash between layouts — the same rule the nav bars follow. The extra
+                RailSectionPlot instance here is cheap: it derives from `bands`, which is already
+                computed for every section whether or not its plot is shown. */}
+            <div className="hidden min-h-0 w-full flex-1 flex-col max-shell:flex">
+              <TabbedPanel
+                tabs={[
+                  { id: "nose" as const, label: "NOSE" },
+                  { id: "center" as const, label: "CENTER" },
+                  { id: "tail" as const, label: "TAIL" },
+                ]}
+                active={phoneSection}
+                onSelect={setPhoneSection}
+              >
+                <RailSectionPlot sectionKey={phoneSection} output={bands[phoneSection]} xAxisMin={sharedXAxisMin} fit="width" />
+              </TabbedPanel>
             </div>
             {legend.length > 0 && (
               <div className="mt-4 flex flex-none flex-wrap items-center justify-center gap-x-6 gap-y-2">
@@ -308,7 +340,7 @@ export function RailBandEditor() {
 
         {activePage === "instructions" && <RailInstructions />}
         </TabbedPanel>
-      </main>
-    </div>
+      }
+    />
   );
 }

@@ -31,7 +31,7 @@ const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "C
 /** The first section whose sidebar disclosure is open, Nose then Center then Tail order — Nose
  * when every section is collapsed, so the dialog is never a zero- or one-tab surface (UI-SPEC,
  * "Default tab"). */
-function firstOpenSection(sectionOpen: Record<RailSectionKey, boolean>): RailSectionKey {
+export function firstOpenSection(sectionOpen: Record<RailSectionKey, boolean>): RailSectionKey {
   return SECTION_ORDER.find((key) => sectionOpen[key]) ?? "nose";
 }
 
