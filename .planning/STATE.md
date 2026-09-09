@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 Phase: 09 (the-design-screens-on-a-phone) — EXECUTING
 Plan: 1 of 7
 Status: Executing Phase 09
-Last activity: 2026-09-09 - Completed quick task 260909-h3g: Hide the viewer's rotate button on every touch device: on a phone held sideways it shows but does nothing, because a coarse pointer already turns the board with the phone
+Last activity: 2026-09-09 - Completed quick task 260909-hd9: On a phone the viewer's toolbar buttons sit in the drawing's top-right corner and pack toward it, so a button hidden on a touch screen no longer leaves an empty slot in front of the ones that remain
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
@@ -253,6 +253,8 @@ Recent decisions affecting current work:
 | 260908-cme | Every mark on the example rail gets its own name at its own spot: Corner Cut joins the apex column under Rail Mk1, Bottom Tuck 2 is named at its mid-tuck point, and Bottom Tuck 1 and 3 hang below the axis under their marks | 2026-09-08 | 2123558 | [260908-cme-every-mark-on-the-example-rail-gets-its-](./quick/260908-cme-every-mark-on-the-example-rail-gets-its-/) |
 | 260908-q0n | View Full Sized rail print fixed on two counts. The 2 in / 50.8 mm check bar now actually prints: it was a background colour, which print dialogs drop unless "Background graphics" is ticked, so the bar's 144 pt path was in the PDF but filled white on white (measured before the fix); it is now an SVG rect filled with ink, still sized from the one CHECK_BAR_MM constant through the unchanged print rule. The printed sheet also names its rail ("Nose / Center / Tail Rail — Actual Size"): the dialog title was print-hidden with the rest of the chrome; the header alone is printable now, the footer, close button and tab strip stay off paper. Proven after merge by headless-Chrome print-to-PDF with printBackground:false — a 144.0 × 4.5 pt ink-filled rect and the title on one landscape page, rail box unchanged at 625.5 pt. Screen unchanged (6px bar, same ink). 2255 → 2260 tests, build and lint clean | 2026-09-08 | 3d1467e | [260908-q0n-fix-the-rail-full-size-print-check-bar-a](./quick/260908-q0n-fix-the-rail-full-size-print-check-bar-a/) |
 | 260909-h3g | Hide the viewer's rotate button on every touch device: on a phone held sideways it shows but does nothing, because a coarse pointer already turns the board with the phone | 2026-09-09 | 285c251 | [260909-h3g-hide-the-viewer-s-rotate-button-on-every](./quick/260909-h3g-hide-the-viewer-s-rotate-button-on-every/) |
+| 260909-hmn | On a phone held sideways the FINS tail plot draws taller: its legend moves beside the plot instead of sitting beneath it whenever the screen is too short for the stacked layout | 2026-09-09 | ec6482b | [260909-hmn-on-a-phone-held-sideways-the-fins-tail-p](./quick/260909-hmn-on-a-phone-held-sideways-the-fins-tail-p/) |
+| 260909-hd9 | On a phone the viewer's toolbar buttons sit in the drawing's top-right corner and pack toward it, so a button hidden on a touch screen no longer leaves an empty slot in front of the ones that remain | 2026-09-09 | 859ff1a | [260909-hd9-on-a-phone-the-viewer-s-toolbar-buttons-](./quick/260909-hd9-on-a-phone-the-viewer-s-toolbar-buttons-/) |
 
 ## Deferred Items
 
