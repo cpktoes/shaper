@@ -933,6 +933,7 @@ export function RockerViewer({
             {dragTargets.map((d) => (
               <circle
                 key={`hit-${d.target}`}
+                data-drag-target={d.target}
                 cx={d.cx}
                 cy={d.cy}
                 r={DRAG_HIT_PX * handleUnit}
