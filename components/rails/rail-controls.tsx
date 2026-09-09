@@ -240,6 +240,12 @@ function RailSectionControls({
                 <div className="text-sm text-surf-ink-muted font-normal">
                   Ratio — {spec.ratioTopPercent}/{100 - spec.ratioTopPercent}
                 </div>
+                {/* 09-REVIEW.md IN-01: only the shared Button/Input/Slider primitives get their
+                    coarse: touch sizing for free (Slider's own coarse:after:-inset-4 is why the
+                    Family/Ratio sliders right beside this row need no explicit rule of their
+                    own). This is a hand-rolled label row, not one of those primitives, so it
+                    carries its own explicit coarse:min-h-11 -- see WR-02 for what happens to a
+                    hand-rolled control that skips this. */}
                 <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
                   <Checkbox
                     checked={spec.symmetrical}
