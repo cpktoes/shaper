@@ -3,7 +3,7 @@ status: diagnosed
 phase: 09-the-design-screens-on-a-phone
 source: [09-VERIFICATION.md]
 started: 2026-09-09T10:33:06.945Z
-updated: 2026-09-09T16:31:32.793Z
+updated: 2026-09-09T17:59:36.689Z
 ---
 
 ## Current Test
@@ -61,7 +61,7 @@ blocked: 0
   reason: "User reported: print buttons dont do anything"
   severity: major
   test: 6
-  root_cause: "The page does its part: on a phone the tap reaches the Print button, Base UI passes the click through, and window.print() runs synchronously inside a live user activation (measured with a counting stub on both phone projects, on the dev build and on the deployed site, for tap, click and raw touch). Nothing patches print, no request stays open, and the print document is not empty. The failure is iOS-side, after the call. Most consistent trigger: the site launched as a Home-Screen web app (iOS 26 opens every Home-Screen site as a standalone web app by default), where window.print() is documented as a silent no-op. Runner-up: Safari deferring the print until the page finishes loading. Underlying gap: window.print() is the only phone print path and nothing ever confirmed a phone can print; Playwright cannot exercise the native print step. Pending a 30-second device check by the shaper (open the URL in Safari itself and tap Print; if still nothing, tap Print then switch on Airplane Mode)."
+  root_cause: "CONFIRMED on the device (2026-09-09): printing works when the address is typed into Safari itself; the site had been launched from a Home-Screen icon, which iOS 26 opens as a standalone web app by default, and window.print() is a silent no-op there. The page does its part: on a phone the tap reaches the Print button and window.print() runs synchronously inside a live user activation (measured with a counting stub on both phone projects, on the dev build and on the deployed site). Underlying gap: window.print() is the only phone print path, nothing detects standalone mode, and nothing ever confirmed a phone can print; Playwright cannot exercise the native print step."
   artifacts:
     - path: "components/rails/view-full-sized-dialog.tsx"
       issue: "the phone's only print path is a bare onClick window.print() (line ~281); correct, but a no-op in an iOS standalone web app with no fallback"
