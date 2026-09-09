@@ -277,6 +277,12 @@ describe("dragging actually moves the board", () => {
   });
 });
 
+/** A board-space point, built from plain numbers — a local test-only counterpart to the file's own
+ * (unexported) `point` helper. */
+function point(station: number, halfWidth: number): OutlineDragPoint {
+  return { station: mm(station), halfWidth: mm(halfWidth) };
+}
+
 /** Euclidean distance between two board-space points, in mm — the same metric
  * `nearestOutlineDragTarget` compares against, used here only to build test fixtures. */
 function distanceMm(a: OutlineDragPoint, b: OutlineDragPoint): number {
@@ -334,17 +340,24 @@ describe("nearestOutlineDragTarget", () => {
   });
 
   it("a touch exactly equidistant from two points returns the one earlier in outlineDragPoints' order — the widepoint wins any tie it is in", () => {
-    // outlineDragPoints' own enumeration order: widepoint, tailHandle, tailRailHandle,
-    // noseRailHandle, noseHandle. The widepoint is index 0, so a tie against any other point
-    // resolves to it.
-    const widepoint = points.find((p) => p.target === "widepoint");
-    if (!widepoint) throw new Error("no widepoint drag point");
-    const other = points.find((p) => p.target === "tailRailHandle");
-    if (!other) throw new Error("no tailRailHandle drag point");
-
-    const midpoint = lerp(widepoint.point, other.point, 0.5);
-    const radius = mm(distanceMm(widepoint.point, other.point) / 2 + 1);
-    expect(nearestOutlineDragTarget(points, midpoint, radius)).toBe("widepoint");
+    // Hand-built, not derived from real board geometry: real coordinates are irrational enough
+    // that an interpolated midpoint can land a few floating-point ULPs off dead centre (squaring
+    // is not perfectly symmetric under IEEE754 rounding for arbitrary values), which would test
+    // rounding noise rather than the tie rule itself. Clean round numbers make the tie exact. This
+    // is about the ENUMERATION ORDER rule, which does not depend on which real board produced the
+    // points — the five targets are listed in outlineDragPoints' own order: widepoint, tailHandle,
+    // tailRailHandle, noseRailHandle, noseHandle.
+    const synthetic: OutlineDragPointAt[] = [
+      { target: "widepoint", point: point(0, 0), anchor: point(0, 0) },
+      { target: "tailHandle", point: point(100, 0), anchor: point(0, 0) },
+      { target: "tailRailHandle", point: point(500, 0), anchor: point(0, 0) },
+      { target: "noseRailHandle", point: point(1000, 0), anchor: point(0, 0) },
+      { target: "noseHandle", point: point(1500, 0), anchor: point(0, 0) },
+    ];
+    // Exactly 50mm from both the widepoint (station 0) and tailHandle (station 100) — 50*50 is
+    // IEEE754-exact on both sides, so this is a genuine tie, not an approximation of one.
+    const touch = point(50, 0);
+    expect(nearestOutlineDragTarget(synthetic, touch, mm(1000))).toBe("widepoint");
   });
 
   it("a touch outside every circle returns null", () => {
