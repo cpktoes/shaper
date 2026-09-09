@@ -644,6 +644,7 @@ export function OutlineViewer({
           {dragTargets.map((d) => (
             <circle
               key={d.target}
+              data-drag-target={d.target}
               cx={d.cx}
               cy={d.cy}
               r={DRAG_HIT_PX * handleUnit}
