@@ -35,7 +35,7 @@ export function FineAdjustDisclosure({ open, onToggle, className }: FineAdjustDi
       aria-expanded={open}
       className={cn(
         // 44px at rest needs no coarse: override — it already meets the touch minimum.
-        "hidden max-shell:flex min-h-11 w-full items-center justify-between rounded-md border border-surf-line-faint bg-surf-well px-4",
+        "focus-ring-accent hidden max-shell:flex min-h-11 w-full items-center justify-between rounded-md border border-surf-line-faint bg-surf-well px-4",
         className,
       )}
     >

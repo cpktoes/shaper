@@ -85,7 +85,7 @@ function DisclosureHeading({
     <button
       type="button"
       onClick={onToggle}
-      className="flex w-full items-center justify-between border-b border-surf-line-faint pb-2 pl-3 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold"
+      className="focus-ring-accent flex w-full items-center justify-between border-b border-surf-line-faint pb-2 pl-3 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold"
     >
       <span>{children}</span>
       <span>{open ? "▾" : "▸"}</span>
@@ -115,7 +115,7 @@ function PillButton({
         // 09-REVIEW.md WR-02: hand-rolled, not the shared Button component, so it never got
         // Button's own coarse:h-11 for free -- coarse:min-h-11 mirrors that same pointer-keyed
         // rule by hand (a finger needs 44px; a mouse at any width still gets today's height).
-        `rounded-md border px-1 py-2.5 text-[11px] font-bold coarse:min-h-11 ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"} ${
+        `focus-ring-accent rounded-md border px-1 py-2.5 text-[11px] font-bold coarse:min-h-11 ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"} ${
           active
             ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
             : "border-surf-line bg-surf-sidebar text-surf-ink"
@@ -183,7 +183,7 @@ function BaseLengthField({
           <button
             type="button"
             onClick={onOverride}
-            className="cursor-pointer rounded-md border border-surf-line px-2.5 py-1 text-[11px] text-outline-sidebar-text"
+            className="focus-ring-accent cursor-pointer rounded-md border border-surf-line px-2.5 py-1 text-[11px] text-outline-sidebar-text"
           >
             Override
           </button>
@@ -416,7 +416,7 @@ export function FinControls({
               type="button"
               onClick={() => onChange({ tailShape: shape as FinTailShape })}
               className={
-                "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 coarse:min-h-11 " +
+                "focus-ring-accent flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 coarse:min-h-11 " +
                 (spec.tailShape === shape
                   ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
                   : "border-surf-line bg-surf-sidebar text-surf-ink")
@@ -443,7 +443,7 @@ export function FinControls({
                 type="button"
                 onClick={() => applySetup(setup)}
                 className={
-                  "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 coarse:min-h-11 " +
+                  "focus-ring-accent flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 coarse:min-h-11 " +
                   (spec.finSetup === setup
                     ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
                     : "border-surf-line bg-surf-sidebar text-surf-ink")
@@ -627,7 +627,7 @@ export function FinControls({
                   <button
                     type="button"
                     onClick={onOpenToeTable}
-                    className="mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-ink underline"
+                    className="focus-ring-accent mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-ink underline"
                   >
                     View precise McKee toe-in aim tables ⤢
                   </button>
@@ -701,7 +701,7 @@ export function FinControls({
                               quadRearOffTailOverride: spec.advanced.quadRearOffTailOverride ?? resolved.quadRearOffTailBase,
                             });
                           }}
-                          className="cursor-pointer rounded-md border border-surf-line px-2.5 py-1 text-[11px] text-outline-sidebar-text"
+                          className="focus-ring-accent cursor-pointer rounded-md border border-surf-line px-2.5 py-1 text-[11px] text-outline-sidebar-text"
                         >
                           Override
                         </button>
@@ -752,7 +752,7 @@ export function FinControls({
                   <button
                     type="button"
                     onClick={onOpenToeTable}
-                    className="mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-ink underline"
+                    className="focus-ring-accent mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-ink underline"
                   >
                     View precise McKee toe-in aim tables ⤢
                   </button>
@@ -763,7 +763,7 @@ export function FinControls({
             <button
               type="button"
               onClick={resetAdvancedSettings}
-              className="cursor-pointer border-t border-surf-line-faint pt-4 text-left text-xs font-bold text-surf-accent-ink"
+              className="focus-ring-accent cursor-pointer border-t border-surf-line-faint pt-4 text-left text-xs font-bold text-surf-accent-ink"
             >
               ↺ Reset Advanced Settings
             </button>

@@ -87,8 +87,8 @@ function SectionHeading({
       onClick={onToggle}
       className={
         small
-          ? "flex w-full items-center justify-between border-b border-surf-line-faint pb-2 pl-3 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold"
-          : "mt-1.5 flex w-full items-center justify-between border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold"
+          ? "focus-ring-accent flex w-full items-center justify-between border-b border-surf-line-faint pb-2 pl-3 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold"
+          : "focus-ring-accent mt-1.5 flex w-full items-center justify-between border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold"
       }
     >
       <span>{children}</span>
@@ -341,7 +341,7 @@ function RailSectionControls({
                 <button
                   type="button"
                   onClick={resetAdvanced}
-                  className="cursor-pointer text-left text-[11px] font-bold text-surf-accent-ink"
+                  className="focus-ring-accent cursor-pointer text-left text-[11px] font-bold text-surf-accent-ink"
                 >
                   ↺ Reset Advanced Settings
                 </button>
