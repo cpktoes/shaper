@@ -7,6 +7,7 @@ import { useDesign } from "@/components/design/design-store";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { RotateBoardIcon, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { ExportPreviewDialog } from "@/components/template/export-preview-dialog";
+import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import { mmToInches } from "@/lib/geometry/units";
 import { OutlineControls } from "./outline-controls";
@@ -184,69 +185,62 @@ export function OutlineEditor() {
   );
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-nowrap">
-      {/* A flex column, not one scrolling box: the controls scroll in the region below and the dev
-          preset button sits in a footer that does not. As a plain last child of a scrolling aside it
-          was only ever pinned by luck — outline and rails happened to fit, so it looked right there,
-          while the longer fins controls pushed it past the bottom edge where it could only be met
-          mid-scroll. */}
-      {/* Hidden entirely, not resized, while wide view is on — the internal structure (scrolling
-          controls region + flex-none dev preset footer) stays untouched; a quick task already had
-          to fix that footer once because it was only pinned by luck. */}
-      {!wideView && (
-        <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink">
-          <div className="min-h-0 flex-1 overflow-y-auto p-10">
-            <OutlineControls
-              outline={outline}
-              geometry={outlineGeometry}
-              onChange={updateOutline}
-              showConstruction={showConstruction}
-              onToggleConstruction={() => setShowConstruction((v) => !v)}
-            />
-          </div>
-          {process.env.NODE_ENV === "development" && (
-            <div className="flex-none border-t border-surf-line-faint p-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent"
-                onClick={handleCopyPreset}
-              >
-                {justCopiedPreset ? "Copied!" : "Copy preset values"}
-              </Button>
-            </div>
-          )}
-        </aside>
-      )}
-      <main
-        className={
-          wideView
-            ? "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-1"
-            : "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3"
-        }
-      >
-        {/* Normal view keeps TabbedPanel's folder-tab strip and its own padded card (the same
-            panel and edge Rails and Fins use, which is what makes the four screens read as one
-            application rather than four layouts) — untouched from before wide view existed.
-            Wide view drops that chrome instead of reusing it: with the sidebar already gone and
-            only the one VIEWER tab to label, the tab row and the extra nested card are pure
-            overhead, not signal. The board's drawing is height-bound, not width-bound —
-            components/viewer/callout-primitives.tsx's own comment: "these drawings are
-            height-bound, so horizontal slack never shrinks the board" — so hiding the sidebar
-            alone never made the board bigger; what does is vertical room, and `bare` trims three
-            padded layers down to one and removes the tab row entirely, both only while wide view
-            is on.
-
-            `bare={wideView}` rather than branching between `<TabbedPanel>` and a plain `<div>`
-            here (WR-02): those are different element types at the same tree position, so
-            React's reconciler used to tear down and rebuild `viewerContent` — the drawing, its
-            drag state, the toolbar buttons, `ExportPreviewDialog` — on every Wide View toggle,
-            discarding any in-flight interaction. `<TabbedPanel>` is now the one component that
-            always sits here; only its internal chrome varies. */}
+    <DesignScreenShell
+      controls={
+        <OutlineControls
+          outline={outline}
+          geometry={outlineGeometry}
+          onChange={updateOutline}
+          showConstruction={showConstruction}
+          onToggleConstruction={() => setShowConstruction((v) => !v)}
+        />
+      }
+      canvas={
+        // Normal view keeps TabbedPanel's folder-tab strip and its own padded card (the same
+        // panel and edge Rails and Fins use, which is what makes the four screens read as one
+        // application rather than four layouts) — untouched from before wide view existed.
+        // Wide view drops that chrome instead of reusing it: with the sidebar already gone and
+        // only the one VIEWER tab to label, the tab row and the extra nested card are pure
+        // overhead, not signal. The board's drawing is height-bound, not width-bound —
+        // components/viewer/callout-primitives.tsx's own comment: "these drawings are
+        // height-bound, so horizontal slack never shrinks the board" — so hiding the sidebar
+        // alone never made the board bigger; what does is vertical room, and `bare` trims three
+        // padded layers down to one and removes the tab row entirely, both only while wide view
+        // is on.
+        //
+        // `bare={wideView}` rather than branching between `<TabbedPanel>` and a plain `<div>`
+        // here (WR-02): those are different element types at the same tree position, so
+        // React's reconciler used to tear down and rebuild `viewerContent` — the drawing, its
+        // drag state, the toolbar buttons, `ExportPreviewDialog` — on every Wide View toggle,
+        // discarding any in-flight interaction. `<TabbedPanel>` is now the one component that
+        // always sits here; only its internal chrome varies.
         <TabbedPanel bare={wideView} tabs={[{ id: "viewer" as const, label: "VIEWER" }]} active="viewer">
           {viewerContent}
         </TabbedPanel>
-      </main>
-    </div>
+      }
+      wideView={wideView}
+      sidebarFooter={
+        // A flex column, not one scrolling box: the controls scroll in the region above (handled
+        // by DesignScreenShell) and this dev preset button sits in a footer that does not. As a
+        // plain last child of a scrolling aside it was only ever pinned by luck — outline and
+        // rails happened to fit, so it looked right there, while the longer fins controls pushed
+        // it past the bottom edge where it could only be met mid-scroll. Hidden entirely, not
+        // resized, while wide view is on (DesignScreenShell hides the whole sidebar then) — a
+        // quick task already had to fix this footer once because it was only pinned by luck.
+        process.env.NODE_ENV === "development" ? (
+          <div className="flex-none border-t border-surf-line-faint p-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent"
+              onClick={handleCopyPreset}
+            >
+              {justCopiedPreset ? "Copied!" : "Copy preset values"}
+            </Button>
+          </div>
+        ) : undefined
+      }
+      phonePinned="66dvh"
+    />
   );
 }

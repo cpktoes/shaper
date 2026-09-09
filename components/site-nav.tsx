@@ -19,7 +19,10 @@ import { SettingsMenu } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
 import { SaveButton } from "@/components/design/save-button";
 
-const NAV_LINKS = [
+/** Exported so `components/design/phone-tab-bar.tsx` reads the same six words and order rather
+ * than re-declaring them — the labels can never drift between the desktop nav and the phone tab
+ * bar because there is only one copy. */
+export const NAV_LINKS = [
   { href: "/design/outline", label: "TEMPLATE" },
   { href: "/design/rocker", label: "ROCKER" },
   { href: "/design/rails", label: "RAILS" },
@@ -30,11 +33,19 @@ const NAV_LINKS = [
 
 export function SiteNav() {
   const pathname = usePathname();
+  // The desktop link row is replaced below the shell breakpoint by the phone's compact top bar
+  // and bottom tab bar — but only on the design routes those two components mount on
+  // (app/design/layout.tsx). The setup screen and the rack keep this same row at every width;
+  // that phone treatment is Phase 10's, not this phase's.
+  const onDesignRoute = pathname?.startsWith("/design/") ?? false;
 
   return (
     <nav
       data-print-hide
-      className="flex flex-none items-center justify-between gap-10 border-b border-surf-line-faint bg-surf-ground px-12 py-6"
+      className={
+        "flex flex-none items-center justify-between gap-10 border-b border-surf-line-faint bg-surf-ground px-12 py-6" +
+        (onDesignRoute ? " max-shell:hidden" : "")
+      }
     >
       <Link
         href="/"

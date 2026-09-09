@@ -1,0 +1,142 @@
+import { expect, test, type Page } from "@playwright/test";
+
+/**
+ * TEST-01's proof for Phase 9's tracer (09-02): TEMPLATE stacks on the iphone and android
+ * projects — the drawing pinned across the full width above a controls region that alone
+ * scrolls, and the six-tab bottom bar under the thumb — while the desktop project proves the
+ * sidebar-beside-canvas shell and both phone bars are untouched. Later plans in this phase (top
+ * bar and menu, orientation, Fine adjust) extend this same file rather than starting a new one.
+ */
+
+const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
+const SCREEN_LABELS = ["TEMPLATE", "ROCKER", "RAILS", "VOLUME", "FINS", "SUMMARY"];
+
+/** Matches desktop-baseline.spec.ts's own approach: dismiss the sign-in banner via
+ * sessionStorage, set before navigation, so its own height never confuses a layout assertion. */
+async function dismissSignInBanner(page: Page) {
+  await page.addInitScript((key) => {
+    window.sessionStorage.setItem(key, "true");
+  }, BANNER_DISMISSAL_KEY);
+}
+
+test.describe("phone shell — TEMPLATE stacks with the drawing pinned above the controls", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "phone-only shell assertions");
+    await dismissSignInBanner(page);
+  });
+
+  test("the drawing sits above the controls region, spans the full width, and only the controls region scrolls", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    const drawing = page.locator("main");
+    const controls = page.locator("aside");
+    await expect(drawing).toBeVisible();
+    await expect(controls).toBeVisible();
+
+    const drawingBox = await drawing.boundingBox();
+    const controlsBox = await controls.boundingBox();
+    if (!drawingBox || !controlsBox) throw new Error("missing bounding box");
+
+    // Stacked, not side by side (PHON-01): the drawing's bottom edge sits at or above the
+    // controls region's top edge.
+    expect(drawingBox.y + drawingBox.height).toBeLessThanOrEqual(controlsBox.y + 1);
+
+    const viewportSize = page.viewportSize();
+    if (!viewportSize) throw new Error("no viewport size");
+    // PHON-06: the drawing spans at least 90% of the viewport width.
+    expect(drawingBox.width / viewportSize.width).toBeGreaterThanOrEqual(0.9);
+
+    // Nothing scrolls sideways.
+    const scrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);
+    expect(scrollWidth).toBe(viewportSize.width);
+
+    // The page itself never scrolls — the controls region is the phone's one scroller.
+    const doc = await page.evaluate(() => ({
+      scrollHeight: document.scrollingElement?.scrollHeight ?? 0,
+      clientHeight: document.scrollingElement?.clientHeight ?? 0,
+    }));
+    expect(Math.abs(doc.scrollHeight - doc.clientHeight)).toBeLessThanOrEqual(1);
+
+    // ...while the controls region really is the scroller. The scrolling box itself is
+    // `data-design-controls-scroll` (the inner scroll div on most screens, the aside itself on
+    // VOLUME's simpler sidebar) — not necessarily `aside`, which can also carry a dev-only footer
+    // as a sibling flex item and so never overflows itself even while its scrolling child does.
+    const scroller = page.locator("[data-design-controls-scroll]");
+    const controlsScroll = await scroller.evaluate((el) => ({
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+    }));
+    expect(controlsScroll.scrollHeight).toBeGreaterThan(controlsScroll.clientHeight);
+  });
+
+  test("the bottom tab bar shows all six screens in order, TEMPLATE marked, every tab at least 44px", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    const tabBar = page.getByRole("navigation", { name: "Screens" });
+    await expect(tabBar).toBeVisible();
+
+    const tabs = tabBar.getByRole("link");
+    await expect(tabs).toHaveCount(6);
+    expect(await tabs.allTextContents()).toEqual(SCREEN_LABELS);
+
+    const templateTab = tabBar.getByRole("link", { name: "TEMPLATE" });
+    await expect(templateTab).toHaveClass(/border-surf-accent/);
+
+    for (const tab of await tabs.all()) {
+      const box = await tab.boundingBox();
+      if (!box) throw new Error("tab is missing a bounding box");
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.width).toBeGreaterThanOrEqual(44);
+    }
+  });
+
+  // Held-out overflow check (UI-SPEC "Bottom tab bar / overflow"): at these three narrow phone
+  // widths, all six labels render whole on one line — no wrap, clip or ellipsis.
+  for (const width of [360, 375, 393]) {
+    test(`all six tab labels stay whole at ${width}px wide`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 640 });
+      await page.goto("/design/outline");
+
+      const tabBar = page.getByRole("navigation", { name: "Screens" });
+      const tabs = tabBar.getByRole("link");
+      await expect(tabs).toHaveCount(6);
+
+      for (const tab of await tabs.all()) {
+        const fit = await tab.evaluate((el) => ({
+          scrollWidth: el.scrollWidth,
+          clientWidth: el.clientWidth,
+        }));
+        expect(fit.scrollWidth).toBeLessThanOrEqual(fit.clientWidth);
+        const text = await tab.textContent();
+        expect(text ?? "").not.toContain("…");
+      }
+    });
+  }
+});
+
+test.describe("desktop shell — unchanged", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop-only shell assertions");
+    await dismissSignInBanner(page);
+  });
+
+  test("the sidebar sits left of the canvas and the phone bars are hidden", async ({ page }) => {
+    await page.goto("/design/outline");
+
+    const sidebar = page.locator("aside");
+    const canvas = page.locator("main");
+    await expect(sidebar).toBeVisible();
+    await expect(canvas).toBeVisible();
+
+    const sidebarBox = await sidebar.boundingBox();
+    const canvasBox = await canvas.boundingBox();
+    if (!sidebarBox || !canvasBox) throw new Error("missing bounding box");
+    expect(sidebarBox.x + sidebarBox.width).toBeLessThanOrEqual(canvasBox.x + 1);
+
+    await expect(page.getByRole("navigation", { name: "Screens" })).toBeHidden();
+  });
+});
