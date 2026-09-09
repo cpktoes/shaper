@@ -428,3 +428,76 @@ test.describe("touch drag on the outline viewer (android/CDP only)", () => {
     await expect(offsetChip).not.toBeVisible();
   });
 });
+
+test.describe("touch drag on the rocker viewer (android/CDP only)", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "CDP touch dispatch is Chromium-only");
+  });
+
+  test("a tap picks the nose tip handle, then a thumb at the edge of the panel moves it", async ({
+    page,
+  }) => {
+    await page.goto("/design/rocker");
+    // The construction overlay (and its four drag targets) is already on for a coarse pointer
+    // (D-02) — no toggle needed. Nose Angle itself is folded behind the phone-only "Fine adjust"
+    // disclosure (rocker-controls.tsx's own D-03) — open it to read it from the sidebar.
+    await page.getByRole("button", { name: "Fine adjust" }).click();
+
+    const noseAngleLabel = page.getByText(/^Nose Angle — /);
+    await expect(noseAngleLabel).toBeVisible();
+    const noseAngleBeforeTap = await noseAngleLabel.textContent();
+
+    const noseTip = page.locator('[data-drag-target="noseTipHandle"]');
+    await expect(noseTip).toBeVisible();
+    const tapBox = await noseTip.boundingBox();
+    if (!tapBox) throw new Error("noseTipHandle drag target has no bounding box");
+    const tapX = tapBox.x + tapBox.width / 2;
+    const tapY = tapBox.y + tapBox.height / 2;
+
+    const cdp = await page.context().newCDPSession(page);
+
+    // A tap: touchStart then touchEnd at the same coordinates, no movement in between.
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: tapX, y: tapY }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    // A tap picks the handle — it does not shape it (D-02).
+    await expect(noseTip).toHaveAttribute("data-selected", "true");
+    await expect(noseAngleLabel).toHaveText(noseAngleBeforeTap ?? "");
+
+    // A probe genuinely nowhere near the handle. The rocker's own drag targets sit closer
+    // together than the outline's (40.2px on the tightest board at iPhone SE scale, per the
+    // measured baseline) — 60px still clears them on a Pixel 7's own rendered scale.
+    const probe = await findEmptyCanvasProbe(page);
+    expect(probe.distanceToNearestHandle).toBeGreaterThan(60);
+
+    const noseTipBeforeDrag = await noseTip.boundingBox();
+    if (!noseTipBeforeDrag) throw new Error("noseTipHandle drag target has no bounding box");
+
+    // A remote drag: thumb down at the probe, then four 10px steps.
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: probe.x, y: probe.y }],
+    });
+    let fingerY = probe.y;
+    for (let step = 0; step < 4; step++) {
+      fingerY -= 10;
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x: probe.x, y: fingerY }],
+      });
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    // Nose Angle changed and the handle moved in the thumb's own direction.
+    await expect(noseAngleLabel).not.toHaveText(noseAngleBeforeTap ?? "");
+    const noseTipAfterDrag = await noseTip.boundingBox();
+    if (!noseTipAfterDrag) throw new Error("noseTipHandle drag target has no bounding box");
+    expect(noseTipAfterDrag.y).not.toBeCloseTo(noseTipBeforeDrag.y, 0);
+
+    // The pick survives a remote drag (D-05).
+    await expect(noseTip).toHaveAttribute("data-selected", "true");
+  });
+});
