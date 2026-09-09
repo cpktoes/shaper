@@ -123,8 +123,7 @@ These come from ROADMAP.md's "Settled findings that constrain this phase" and
   four taps from TEMPLATE to FINS respectively).
 - **D-07: Each tab is a label only**, in the app's small-caps heading treatment (the same tracked
   uppercase the nav links and `TabbedPanel` tabs carry). No screen icons are invented.
-- **D-08: The top bar keeps the wordmark and Save; the gear and the account control go behind one
-  menu button.** Save keeps its wording (Saved / Saving / Unsaved) so a shaper can read the save
+- **D-08: The top bar keeps the wordmark and Save; the gear and the account control go behind one menu button.** Save keeps its wording (Saved / Saving / Unsaved) so a shaper can read the save
   state at a glance. Units and Theme (today's `SettingsMenu`) and the account control (today's
   `NavAuthControl`) are reached from the one menu. Phase 9's job is that they are reachable there;
   the account menu's own flows on a phone are Phase 10's (PHON-07).
@@ -136,13 +135,12 @@ These come from ROADMAP.md's "Settled findings that constrain this phase" and
   Nose-up in portrait means the outline and the side profile both use the tall pinned area
   (D-01). Orientation is view state, not design data — never saved, never in the snapshot —
   exactly as today's `orientation` state on both editors.
-- **D-10: Desktop orientation is untouched:** the desktop default and its rotate button behave
+- **D-10: Desktop orientation is untouched.** the desktop default and its rotate button behave
   exactly as today (PHON-05).
 - **D-11: The rotate button is absent on phones.** The phone's own orientation is the only
   orientation control there (exception 1 in D-05). Considered and set aside: keeping it as a
   manual override.
-- **D-18: ROCKER keeps D-09's nose-up reading and its pinned drawing area gets the same 66dvh ceiling
-  as TEMPLATE; a rocker drawing narrower than the full phone width is accepted.** Measured during
+- **D-18: ROCKER keeps D-09's nose-up reading and its pinned drawing area gets the same 66dvh ceiling as TEMPLATE; a rocker drawing narrower than the full phone width is accepted.** Measured during
   planning (2026-09-08) by running `rockerViewLayout()` from `components/rocker/rocker-view-frame.ts`
   at real phone sizes: nose-up, the rocker frame is about 0.55–0.64 wide for every 1.0 tall (the card
   rails reserve a fixed band on the cross axis), so it is height-bound on every phone. At the UI-SPEC's
@@ -158,8 +156,7 @@ These come from ROADMAP.md's "Settled findings that constrain this phase" and
   `rail-band-editor.tsx` (`sectionOpen`) can drive which rail shows first. Stacking all three
   inside the drawing area (a scroller inside the pinned area) and letting the width solver shrink
   them side by side (about 120px each) were set aside.
-- **D-13: View Full Sized on a phone shrinks the rail to fit the width; Print still prints true
-  size.** The founder: "no need to see full size on the phone since it'll almost always be too
+- **D-13: View Full Sized on a phone shrinks the rail to fit the width; Print still prints true size.** The founder: "no need to see full size on the phone since it'll almost always be too
   small, but printing full size is still required." On a phone the dialog shows one plain line —
   shown smaller than true size, Print for the full-sized rail — and neither the on-screen 2-inch
   check bar nor the 100%-zoom caveat (exception 2 in D-05). The print path is unchanged: it draws
