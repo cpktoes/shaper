@@ -8,6 +8,18 @@
  * node_modules/next/dist/docs/01-app/01-getting-started/11-css.md, "Global CSS"). The one exception
  * is `@page { size: portrait }` below, which is unavoidably document-global — it is commented where
  * it appears.
+ *
+ * **This stylesheet, not `useOrderFormPrintFit`, decides the printed sheet's size.** The `width`
+ * and `height` declared on `[data-order-form-root]` and `[data-order-form-sheet]` inside
+ * `@media print` below are a plain CSS fact in paper units, true the instant print media applies —
+ * before any JavaScript has run. `useOrderFormPrintFit` writes the same numbers inline on the DOM
+ * node for one reason only: it has to force that printing layout into existence before it can
+ * measure whether a sheet's contents overflow it (its own decision is the `zoom` overflow guard,
+ * nothing else — see that file's head comment). Until this change the size came ONLY from that
+ * handler, and a phone whose print path never applied the handler's work to its print snapshot
+ * printed the sheet at roughly its on-screen size instead of at a page — 86% too big, exactly the
+ * factor a shaper had to dial in by hand to get a correctly-sized print. With the size now a fact
+ * of the stylesheet, it holds whether or not that JavaScript ever runs.
  */
 
 /*
@@ -326,10 +338,19 @@
 
   /* The screen's grey desk, the page padding around the paper, and the gap that separates the two
      sheets on screen are all screen furniture — on paper each sheet IS a page, and the gap would
-     otherwise push page 2 down into a third. */
+     otherwise push page 2 down into a third.
+
+     `width` pins this root to the printable page width in paper units — the same expression given
+     to `[data-order-form-sheet]` below, built from `use-print-fit.ts`'s own PORTRAIT_PAPER_IN and
+     PAGE_MARGIN_MM constants (see this file's head comment and that file's). This root is the
+     `@container` every `cqw` font size on a sheet resolves against, so it has to carry the printed
+     width itself, not just its children — otherwise the container query would resolve against
+     whatever the print viewport happens to hand it, which is exactly the phone failure this
+     stylesheet now closes off. */
   [data-order-form-root] {
     max-width: none !important;
     gap: 0 !important;
+    width: calc(min(8.5in, 8.27in) - 16mm) !important;
   }
 
   /* GUARANTEE: whatever theme is on screen, the page prints white. Today that already happens
@@ -442,16 +463,35 @@
     print-color-adjust: exact;
   }
 
-  /* Release the on-screen aspect ratio so each sheet is sized by the inline width and height
-     `useOrderFormPrintFit` gives it.
+  /* Give each sheet its printed box outright, in paper units, as a fact of the stylesheet rather
+     than something only JavaScript ever knew.
 
-     This rule used to say `width: 100% !important; height: 100% !important`, which was right when
-     the hook sized the ROOT and a single sheet filled it. Now the hook sizes each SHEET, and those
-     percentages resolve against the root — which is no longer a page and has no height of its own,
-     so `height: 100%` would resolve to auto and the careful page-box sizing would be thrown away.
-     An `!important` declaration also beats the hook's inline style, so this was not a near miss. */
+     `width` and `height` are built from the same four numbers `useOrderFormPrintFit` uses —
+     `PORTRAIT_PAPER_IN`'s two papers, twice `PAGE_MARGIN_MM`, and (on height) `FIT_SAFETY`'s hair
+     of slack — arranged as `calc()` so the two can never quietly drift apart; Task 2's contract
+     test in `components/summary/order-form-print.test.ts` fails the moment they do. Written with
+     the LITERAL inch and millimetre figures rather than their metric equivalents: `8.27in` and
+     `210mm` differ by two tenths of a screen dot, and that is enough to put this stylesheet and the
+     hook on two different numbers for no gain (see `use-print-fit.ts`'s head comment, Fact 7 in
+     this plan). `aspect-ratio: auto` stays, now redundant with both axes given explicitly, because
+     it is also the thing that documents the on-screen shape is deliberately released here.
+
+     This is what makes the printed box a fact of print media itself, true before a line of
+     JavaScript runs: previously a sheet had no size in CSS at all — only `useOrderFormPrintFit`'s
+     `beforeprint` handler gave it one, by writing the same inline styles this rule now writes
+     declaratively. On a phone whose print path never applied that handler's work to the print
+     snapshot, a sheet fell back to sizing itself by its own on-screen aspect ratio and content,
+     roughly 86% larger than a page — exactly the overshoot a shaper had to dial back by hand. With
+     the box declared here, it holds whether or not that handler ever runs; the handler's inline
+     write becomes belt-and-braces, kept only because it also forces the printing layout into
+     existence so `scrollHeight` can measure whether a sheet's content still overflows it.
+
+     An `!important` declaration also beats the hook's inline style, which the hook's own comment
+     since G-08-10 already relies on for the same reason. */
   [data-order-form-sheet] {
     aspect-ratio: auto !important;
+    width: calc(min(8.5in, 8.27in) - 16mm) !important;
+    height: calc((min(11in, 11.69in) - 16mm) * 0.995) !important;
   }
 
   /* Scrolling containers — the rail data table and the fin placement table — print in full instead

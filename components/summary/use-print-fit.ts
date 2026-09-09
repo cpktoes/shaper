@@ -42,6 +42,19 @@
  *    to push sheet 1 onto its own page and spill a blank page after the last sheet), and it is
  *    the same reason the sign-in banner had to carry `data-print-hide` off the printed rails
  *    dialog page in plan 08-07 — neither is a sheet, so neither gets any of this budget.
+ *
+ * **`order-form.css` is now the source of truth for the printed sheet's size, not this handler.**
+ * Its `@media print` block declares the root's and every sheet's width and height as a plain CSS
+ * fact in paper units, built from these same four constants (`PAGE_MARGIN_MM`, `PORTRAIT_PAPER_IN`,
+ * `FIT_SAFETY`) arranged the same way — so that fact holds the instant print media applies, before
+ * this handler, or any JavaScript, has run. This handler's inline `width`/`height` writes below now
+ * exist for one remaining reason: forcing the printing layout into existence so `scrollHeight`
+ * measures the layout that actually prints, rather than the window's. This handler's own decision
+ * is the `zoom` overflow guard in point 2 above, and nothing else about the sheet's size. A phone
+ * whose print path never ran this handler used to print a sheet with no size at all — falling back
+ * to its on-screen shape, about 86% too big, which is exactly the fix this stylesheet closes.
+ * `components/summary/order-form-print.test.ts` fails the moment the stylesheet's numbers and these
+ * constants disagree.
  */
 
 import { useEffect, useRef } from "react";

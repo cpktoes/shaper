@@ -96,7 +96,10 @@ Litres read the same in both systems.
 Every conversion of a *design value* — in from a control, out to a label — goes through
 `lib/geometry/units.ts`, including imperial-fraction formatting and the cm/mm rules above.
 Don't reach for 25.4 (or 10) anywhere else. (`components/summary/use-print-fit.ts` has its own
-copy on purpose: it scales paper sizes, not board dimensions.)
+copy on purpose: it scales paper sizes, not board dimensions. `app/design/summary/order-form.css`'s
+`@media print` block is the second place allowed its own inch and millimetre figures, for the same
+reason — it sizes a sheet of paper, not a surfboard. The numbers there are deliberately the same
+four constants `use-print-fit.ts` uses, and a test fails if the two ever disagree.)
 
 **The preference is display-only.** Switching systems changes how numbers are shown and typed
 and nothing else — no saved board is ever rewritten, and switching back reproduces every value
