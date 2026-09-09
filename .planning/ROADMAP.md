@@ -163,7 +163,7 @@ Plans:
   4. A shaper can drag outline, rocker and foil points with a thumb: hit zones sized for a finger, not overlapping their neighbours, and no long-press text popup interrupting a drag.
   5. On a desktop, mouse dragging and keyboard operation behave exactly as they do today on every viewer touched, and automated tests on iPhone and Android viewports prove the stacked layout and touch drag on at least the outline viewer, so later phone changes can't quietly break them.
 
-**Plans**: 7/9 plans executed — 7/7 executed, plus 2 gap-closure plans from UAT
+**Plans**: 9/9 plans executed — 7/7 executed, plus 2 gap-closure plans from UAT
 
 Plans:
 **Wave 1**
@@ -187,8 +187,8 @@ Plans:
 
 **Gap closure — Wave 1** *(from 09-UAT.md; both plans share no files and run in parallel)*
 
-- [ ] 09-08-PLAN.md — Keyboard focus you can see: the slider ring on the element that really has focus, one shared ring on every hand-rolled button (G-09-4)
-- [ ] 09-09-PLAN.md — On a phone opened from the Home Screen, a plain note replaces the Print button that iOS will not honour (G-09-6)
+- [x] 09-08-PLAN.md — Keyboard focus you can see: the slider ring on the element that really has focus, one shared ring on every hand-rolled button (G-09-4)
+- [x] 09-09-PLAN.md — On a phone opened from the Home Screen, a plain note replaces the Print button that iOS will not honour (G-09-6)
 
 **UI hint**: yes
 
@@ -238,5 +238,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 6. The Design Screens in Metric | 9/9 | Complete    | 2026-09-05 |
 | 7. Metric on Paper | 5/5 | Complete    | 2026-09-06 |
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
-| 9. The Design Screens on a Phone | 7/7 | In Progress|  |
+| 9. The Design Screens on a Phone | 9/9 | In Progress|  |
 | 10. The Whole App on a Phone | 0/TBD | Not started | - |
