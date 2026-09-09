@@ -167,7 +167,11 @@ describe("view-full-sized-dialog.tsx (RAIL-04, D-12–D-16)", () => {
   it("prints the rail's name — the DialogHeader carrying the title is not print-hidden (the shaper's 2026-09-08 print report)", () => {
     const source = readStripped(DIALOG_PATH);
     const headerIndex = source.indexOf("<DialogHeader");
-    const titleIndex = source.indexOf("Rail — Actual Size");
+    // "{SECTION_TITLE[activeSection]} Rail" rather than the old "Rail — Actual Size": on a phone
+    // (09-04, D-13) the " — Actual Size" suffix moves into its own print-only span right after
+    // this text, so the two are no longer one contiguous string — this locator still finds the
+    // one place the rail's own name is composed, unaffected by that phone-only split.
+    const titleIndex = source.indexOf("{SECTION_TITLE[activeSection]} Rail");
     expect(headerIndex, "no <DialogHeader carrying the title found").toBeGreaterThanOrEqual(0);
     expect(titleIndex, "no title text found").toBeGreaterThan(headerIndex);
     const headerToTitle = source.slice(headerIndex, titleIndex);
@@ -187,10 +191,16 @@ describe("view-full-sized-dialog.tsx (RAIL-04, D-12–D-16)", () => {
   it("composes the printed title from SECTION_TITLE[activeSection], appearing exactly once in the source", () => {
     const source = readStripped(DIALOG_PATH);
     expect(source, "does not interpolate SECTION_TITLE[activeSection] into the title").toContain(
-      "{SECTION_TITLE[activeSection]} Rail — Actual Size",
+      "{SECTION_TITLE[activeSection]} Rail",
     );
-    const occurrences = source.split("Rail — Actual Size").length - 1;
-    expect(occurrences, "the words 'Rail — Actual Size' appear more than once — risk of drift").toBe(1);
+    const titleOccurrences = source.split("{SECTION_TITLE[activeSection]} Rail").length - 1;
+    expect(titleOccurrences, "'{SECTION_TITLE[activeSection]} Rail' appears more than once — risk of drift").toBe(1);
+    // 09-04/D-13: " — Actual Size" is no longer part of the same contiguous string — it moves into
+    // its own span right after the title text, hidden on a phone screen and print-only there, so
+    // this suffix is checked for the same no-duplication property on its own.
+    expect(source, "does not carry the — Actual Size suffix").toContain("— Actual Size");
+    const suffixOccurrences = source.split("— Actual Size").length - 1;
+    expect(suffixOccurrences, "the '— Actual Size' suffix appears more than once — risk of drift").toBe(1);
   });
 
   it("resets the CSS translate property for print from its own verbatim style element, not the stylesheet (G-08-5)", () => {
