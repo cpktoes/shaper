@@ -173,6 +173,28 @@ test.describe("phone compact top bar and the one menu", () => {
   });
 });
 
+test.describe("phone orientation and the construction overlay default", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "phone-only orientation/overlay assertions");
+    await dismissSignInBanner(page);
+  });
+
+  test("the rotate button is gone and the drag points already show, with nobody tapping anything", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    // D-05/D-11: on a phone, turning the phone does the rotate button's job.
+    await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeHidden();
+
+    // D-02: the construction overlay (and so its drag targets) is on by default on a touch
+    // device — present the moment the screen opens, before any tap.
+    const dragTargets = page.locator("[data-drag-target]");
+    await expect(dragTargets.first()).toBeVisible();
+    expect(await dragTargets.count()).toBeGreaterThan(0);
+  });
+});
+
 test.describe("desktop shell — unchanged", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "desktop-only shell assertions");
@@ -194,5 +216,21 @@ test.describe("desktop shell — unchanged", () => {
 
     await expect(page.getByRole("navigation", { name: "Screens" })).toBeHidden();
     await expect(page.getByRole("banner")).toBeHidden();
+  });
+
+  test("the rotate button is visible and the drag targets stay hidden until the construction toggle is pressed", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    // PHON-05: desktop's rotate button and off-by-default overlay are exactly what they are
+    // today — unaffected by this plan's touch-only defaults.
+    await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeVisible();
+
+    const dragTargets = page.locator("[data-drag-target]");
+    expect(await dragTargets.count()).toBe(0);
+
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+    await expect(dragTargets.first()).toBeVisible();
   });
 });
