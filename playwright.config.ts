@@ -32,7 +32,10 @@ export default defineConfig({
       // not just a curl check, since curl never runs Clerk's client-side JS. Every /design/*
       // route is open to a signed-out shaper, so this suite runs signed out on every project.
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk",
-      CLERK_SECRET_KEY: "sk_live_0000000000000000000000000000000000000000000",
+      // The secret key is deliberately NOT key-shaped (hyphens and words, not 43 base62
+      // characters) so GitHub's secret scanner never mistakes it for a real Clerk key and
+      // blocks a push. On a signed-out request the app only needs it to be a non-empty string.
+      CLERK_SECRET_KEY: "sk_live_fake-not-a-secret-for-playwright-only",
       DATABASE_URL: "postgresql://user:pass@localhost:5432/shaper",
     },
   },
