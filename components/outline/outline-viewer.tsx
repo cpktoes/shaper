@@ -686,10 +686,16 @@ export function OutlineViewer({
       // grid sizes itself, that one card inflated every other row and forced the printed sheet down
       // to 70% of the page width. Filling the box and letting `meet` scale the drawing inside it
       // keeps the card honest about how much height it needs, which is none in particular.
-      className="absolute inset-0 block h-full w-full select-none"
-      // Defensive against the iOS long-press text-selection popup (PHON-04, RESEARCH.md
+      // `touch-none` here too, not only on the hit circles: a real touch drag routinely moves
+      // past the original circle's own small radius (pointer capture is what keeps the SAME
+      // target receiving those moves), and once a touch strays onto a part of the SVG with no
+      // `touch-action: none` of its own the browser can still hand the gesture to native
+      // scrolling — cancelling the drag with a `pointercancel` even though `preventDefault()` was
+      // already called on the pointerdown. Confirmed with a real (CDP) touch drag, not assumed.
+      // `select-none` is the defensive iOS long-press callout suppression (PHON-04, RESEARCH.md
       // Pitfall 3): the SVG text drawn near a drag point can start a selection too, not only the
       // hit circles themselves — both places get the same suppression.
+      className="absolute inset-0 block h-full w-full select-none touch-none"
       style={{ WebkitTouchCallout: "none" }}
       onPointerDown={showConstruction && onOutlineDrag ? handlePointerDown : undefined}
       onPointerMove={onOutlineDrag ? handleDragMove : undefined}
@@ -896,7 +902,7 @@ export function OutlineViewer({
           mouse at every viewport width, PHON-05); `pointerEvents="none"` so it can never itself
           swallow the pointermove that is still steering the drag underneath it. */}
       {readoutChip && (
-        <g pointerEvents="none">
+        <g data-readout-chip={touchDragTarget} pointerEvents="none">
           <CalloutChipFrame x={readoutChip.x} y={readoutChip.y} width={readoutChip.width} height={readoutChip.height} />
           {readoutChip.lines.map((line, i) => (
             <text
