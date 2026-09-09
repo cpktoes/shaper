@@ -734,8 +734,12 @@ export function OrderForm() {
         </div>
       </div>
 
-      {/* Below the paper, and never on it. */}
-      <div data-print-hide className="mt-4 flex flex-none items-center gap-3">
+      {/* Below the paper, and never on it. Wraps (`flex-wrap`, centred with `justify-center`) so a
+          phone-width screen never forces the row's full unbroken width to overhang both edges — that
+          overhang, not the sheet above it, was the only thing making the Summary scroll sideways on a
+          phone, and it was hiding the Print Order Form button half off the left edge. A desktop screen
+          still fits the whole row on one line, so nothing changes there. */}
+      <div data-print-hide className="mt-4 flex flex-none flex-wrap items-center justify-center gap-3">
         <Button
           type="button"
           onClick={printOrderForm}

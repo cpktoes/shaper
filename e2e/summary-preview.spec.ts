@@ -234,4 +234,36 @@ test.describe("Summary order form — phone preview (260909-i7r)", () => {
       "a computer should never scroll sideways",
     ).toBe(geometry.pageClientWidth);
   });
+
+  test("the Print Order Form button sits fully on the screen on a phone", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "phone-only regression assertion");
+
+    await page.goto("/design/summary");
+    await expect(page.locator("[data-order-form-sheet]").first()).toBeVisible();
+
+    const printButton = page.getByRole("button", { name: "Print Order Form" });
+    const buttonBox = await printButton.boundingBox();
+    expect(buttonBox, "the Print Order Form button should have a bounding box").not.toBeNull();
+
+    const viewportSize = page.viewportSize();
+    expect(viewportSize, "the page should have a viewport size").not.toBeNull();
+
+    expect(
+      buttonBox!.x,
+      "the Print Order Form button's left edge should be at or right of 0",
+    ).toBeGreaterThanOrEqual(0);
+    expect(
+      buttonBox!.x + buttonBox!.width,
+      "the Print Order Form button's right edge should be at or left of the viewport width",
+    ).toBeLessThanOrEqual(viewportSize!.width);
+
+    // Now that the button row wraps, it no longer overhangs the page wrapper — this is the whole
+    // reason the Summary used to scroll sideways on a phone (Fact 6), independent of the sheet
+    // stack's own scaling fix proven above.
+    const geometry = await readPreviewGeometry(page);
+    expect(
+      geometry.pageScrollWidth,
+      "the page should not scroll sideways now that the button row wraps",
+    ).toBe(geometry.pageClientWidth);
+  });
 });
