@@ -239,4 +239,25 @@ describe("view-full-sized-dialog.tsx (RAIL-04, D-12–D-16)", () => {
     const source = readStripped(SIGN_IN_BANNER_PATH);
     expect(source, "does not carry data-print-hide on the banner").toMatch(/data-print-hide/);
   });
+
+  it("carries the exact Home-Screen note sentence for a phone with no working Print button (G-09-6)", () => {
+    const source = readStripped(DIALOG_PATH);
+    expect(source).toContain(
+      "Printing isn't available from the Home-Screen app — open this page in Safari to print the full-sized rail.",
+    );
+  });
+
+  it("detects the Home-Screen launch context in CSS only, never in JavaScript (G-09-6)", () => {
+    const source = readStripped(DIALOG_PATH);
+    expect(source, "gates the Print button and its note on display-mode:standalone").toMatch(
+      /display-mode:standalone/,
+    );
+    // Built from parts so this assertion's own text can never match itself.
+    const standaloneNeedle = ["navigator", ".standalone"].join("");
+    expect(source, `reads ${standaloneNeedle} in JavaScript`).not.toContain(standaloneNeedle);
+    const matchMediaNeedle = ["match", "Media"].join("");
+    expect(source, `calls ${matchMediaNeedle} in JavaScript`).not.toContain(matchMediaNeedle);
+    const displayModeNeedle = ["display", "Mode"].join("");
+    expect(source, `reads a JavaScript ${displayModeNeedle} property`).not.toContain(displayModeNeedle);
+  });
 });
