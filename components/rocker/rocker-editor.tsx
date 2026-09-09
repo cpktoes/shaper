@@ -235,9 +235,15 @@ export function RockerEditor() {
                 // D-05/D-11: the rotate button's one job on a phone is done by turning the phone,
                 // so it is absent below the shell breakpoint — the first of the phase's three
                 // removed controls (wide view, on the toolbar button below, is the third, added
-                // after the post-execution code review — see 09-REVIEW.md CR-01). Gated on width,
-                // not pointer: a touchscreen laptop at desktop width keeps it.
-                className="max-shell:hidden"
+                // after the post-execution code review — see 09-REVIEW.md CR-01). Now gated on
+                // width AND pointer (quick task 260909-h3g): on any coarse pointer,
+                // `boardOrientation` above follows the device's own orientation query and never
+                // reads this button's state, so the button had nothing to do. That surfaced on a
+                // phone held sideways — 844px on an iPhone 14, 863px on a Pixel 7, both wider
+                // than the 820px shell breakpoint, so the width rule alone let the dead button
+                // back on screen. A touchscreen laptop hits the same case and is covered by the
+                // same rule. A mouse-driven desktop is unaffected at every width.
+                className="max-shell:hidden coarse:hidden"
               >
                 <RotateBoardIcon className="size-6" />
               </ViewerToolbarButton>
@@ -259,11 +265,12 @@ export function RockerEditor() {
                 // controls are the entire column stacked beneath it, so there is nothing to
                 // widen — pressing this button would only hide every control, with no way back
                 // (the small icon that caused it would be gone too). Absent below the shell
-                // breakpoint, gated on width like Rotate above, so a touchscreen laptop at
-                // desktop width keeps it. `DesignScreenShell` also refuses to fully drop the
-                // controls on a phone even if `wideView` is somehow still true,
-                // belt-and-suspenders for a desktop shaper who narrows the window after pressing
-                // this.
+                // breakpoint, gated on width alone — unlike Rotate above, which is now gated on
+                // the pointer too — because a touchscreen laptop at desktop width genuinely does
+                // have a sidebar to hide, so this button still does its real job there.
+                // `DesignScreenShell` also refuses to fully drop the controls on a phone even if
+                // `wideView` is somehow still true, belt-and-suspenders for a desktop shaper who
+                // narrows the window after pressing this.
                 className="max-shell:hidden"
               >
                 {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}

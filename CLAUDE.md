@@ -132,6 +132,8 @@ know why:
 Two phone-only switches live in `app/globals.css`, and they answer two different questions: the
 `shell` breakpoint (820px) decides which LAYOUT a screen renders — stacked-and-pinned below it,
 side-by-side above it — while the `coarse` pointer variant decides how BIG a control draws, on
-any width a touch device happens to be. Width picks the layout; pointer picks the sizing; the two
-are never conflated, which is what keeps a touch laptop at 1280px wide from getting the phone
-stack, and a narrow desktop browser window from getting coarse-sized controls.
+any width a touch device happens to be, and, for the viewer's Rotate button alone, whether it
+draws at all — since turning a touch device already turns the board. Width picks the layout;
+pointer picks the sizing (and, for that one button, the presence); the two are never conflated,
+which is what keeps a touch laptop at 1280px wide from getting the phone stack, and a narrow
+desktop browser window from getting coarse-sized controls.
