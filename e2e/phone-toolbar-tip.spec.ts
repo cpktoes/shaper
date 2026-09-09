@@ -1,0 +1,150 @@
+import { expect, test, type Page } from "@playwright/test";
+
+/**
+ * 260909-hny's own proof: the founder's own fallback for "Can we 'hide toolbar' in the phone
+ * browser by default... Maybe a popup reminder on first entry if we can't force a hide from our
+ * side" — a one-time note on an iPhone telling a shaper how to hide Safari's own toolbar.
+ *
+ * The honest limitation, recorded once here rather than re-litigated by a future reader:
+ * Playwright's WebKit is desktop WebKit with a phone profile bolted on, and it does NOT implement
+ * `-webkit-touch-callout`. Probed directly at planning time with a real `webkit.launch()` and
+ * `devices['iPhone 14']`: `CSS.supports('(-webkit-touch-callout: none)')` returned **false** (and
+ * on `devices['Pixel 7']` with Chromium too). So the tip resolves to `display: none` in EVERY
+ * project here, `iphone` included, and no test below may claim to have SEEN it painted on an
+ * emulated iPhone. The source-contract test from Task 1
+ * (`components/design/toolbar-tip.test.ts`) is what actually guards the two CSS gates, since only
+ * a real iPhone can prove them visually.
+ */
+
+const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
+const TIP_DISMISSAL_KEY = "shaper-toolbar-tip-dismissed";
+
+/** Dismisses only the sign-in banner, leaving the tip UNdismissed — this is the one file where
+ * the tip must be present so it can be exercised. */
+async function dismissSignInBannerOnly(page: Page) {
+  await page.addInitScript((key) => {
+    window.sessionStorage.setItem(key, "true");
+  }, BANNER_DISMISSAL_KEY);
+}
+
+test.describe("the toolbar tip's DOM contract", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "phone-only DOM contract assertions");
+    await dismissSignInBannerOnly(page);
+  });
+
+  test("the tip is attached with its wording and its print-hide attribute", async ({ page }) => {
+    await page.goto("/design/outline");
+
+    // Never toBeVisible() here — see the header comment. The element is display:none in every
+    // Playwright project, so only its attachment and content can be asserted.
+    const tip = page.locator("[data-toolbar-tip]");
+    await expect(tip).toBeAttached();
+
+    const text = (await tip.textContent()) ?? "";
+    expect(text).toContain("the page menu in Safari's address bar");
+    expect(text).toContain("Hide Toolbar");
+    // Trap 1: neither the pre-iOS-26 glyph nor the iOS 26 ellipsis glyph may ever be named.
+    expect(text).not.toContain("aA");
+    expect(text).not.toContain("…");
+
+    // React renders a bare boolean JSX attribute (`data-print-hide`) as the string "true", not
+    // an empty string — matching what `SignInBanner`'s own `data-print-hide` renders as.
+    await expect(tip).toHaveAttribute("data-print-hide", "true");
+  });
+});
+
+test.describe("the toolbar tip's permanent dismissal", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "phone-only dismissal assertions");
+    await dismissSignInBannerOnly(page);
+  });
+
+  test("tapping Got it hides the tip immediately, permanently, and on every design screen", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    const tip = page.locator("[data-toolbar-tip]");
+    await expect(tip).toBeAttached();
+
+    // The Got it button has no bounding box while the CSS gate holds the tip at `display: none`
+    // in this emulator, so a normal .click() (which requires actionability) cannot reach it —
+    // and `getByRole` cannot find it either, since a `display: none` element is excluded from
+    // the accessibility tree entirely. A plain CSS locator still resolves it in the DOM, and a
+    // dispatched click still reaches React's root-level event delegation, so this proves the
+    // dismissal WIRING even though it cannot prove the button was ever visually tappable here —
+    // that half is what the source-contract test and a real iPhone are for.
+    await tip.locator("button", { hasText: "Got it" }).dispatchEvent("click");
+
+    await expect(tip).not.toBeAttached();
+
+    const stored = await page.evaluate(
+      (key) => window.localStorage.getItem(key),
+      TIP_DISMISSAL_KEY,
+    );
+    expect(stored).toBe("true");
+
+    await page.reload();
+    await expect(page.locator("[data-toolbar-tip]")).not.toBeAttached();
+
+    // Once per phone, not once per screen.
+    await page.goto("/design/rails");
+    await expect(page.locator("[data-toolbar-tip]")).not.toBeAttached();
+  });
+});
+
+test.describe("the toolbar tip's conditional visibility", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "phone-only visibility assertions");
+    await dismissSignInBannerOnly(page);
+  });
+
+  test("switches itself on when the emulator catches up to real iOS Safari", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/design/outline");
+
+    const supportsIOSGuard = await page.evaluate(() =>
+      CSS.supports("(-webkit-touch-callout: none)"),
+    );
+
+    // Reports the gap rather than hiding it — see the header comment's probe. This is the
+    // honest current state on every Playwright project, `iphone` included.
+    test.skip(
+      !supportsIOSGuard,
+      `${testInfo.project.name}'s WebKit/Chromium does not implement -webkit-touch-callout, so the tip cannot paint here`,
+    );
+
+    const tip = page.locator("[data-toolbar-tip]");
+    await expect(tip).toBeVisible();
+
+    const tipBox = await tip.boundingBox();
+    const viewportSize = page.viewportSize();
+    if (!tipBox || !viewportSize) throw new Error("missing bounding box or viewport size");
+    expect(tipBox.width).toBeGreaterThanOrEqual(viewportSize.width - 1);
+
+    const gotIt = tip.getByRole("button", { name: "Got it" });
+    const gotItBox = await gotIt.boundingBox();
+    if (!gotItBox) throw new Error("Got it button is missing a bounding box");
+    expect(gotItBox.height).toBeGreaterThanOrEqual(44);
+  });
+});
+
+test.describe("the toolbar tip never appears on a computer", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop-only guard");
+    await dismissSignInBannerOnly(page);
+  });
+
+  test("the tip is attached but hidden at 1280px, with the tip undismissed", async ({ page }) => {
+    await page.goto("/design/outline");
+
+    const tip = page.locator("[data-toolbar-tip]");
+    await expect(tip).toBeAttached();
+    await expect(tip).toBeHidden();
+
+    const display = await tip.evaluate((el) => getComputedStyle(el).display);
+    expect(display).toBe("none");
+  });
+});
