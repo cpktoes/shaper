@@ -69,9 +69,9 @@ function measurePxPerInch(): number {
  * returned callback is deliberately stable (an empty dependency array): React re-attaches a ref
  * callback whenever its identity changes, so an inline arrow here would remeasure on every render
  * while the dialog sits open, not just once per open. */
-function useMeasuredPxPerInch(): [number, (node: HTMLElement | null) => void] {
+function useMeasuredPxPerInch(): [number, (node: Element | null) => void] {
   const [pxPerInch, setPxPerInch] = useState(96);
-  const measureRef = useCallback((node: HTMLElement | null) => {
+  const measureRef = useCallback((node: Element | null) => {
     if (node) {
       setPxPerInch(measurePxPerInch());
     }
@@ -165,7 +165,12 @@ export function ViewFullSizedDialog({
           ].join("\n")}
         </style>
 
-        <DialogHeader data-print-hide>
+        {/* Prints deliberately, unlike everything else in this header/footer/chrome group — the
+         * shaper asked for this on 2026-09-08: three printed rails on a bench are indistinguishable
+         * without a name, and this heading is the only place any printed output says which section
+         * it is. The DialogFooter below KEEPS its own data-print-hide (the print note and the Print
+         * button do not belong on paper) — do not "tidy" the two into agreeing with each other. */}
+        <DialogHeader>
           <DialogTitle className="text-surf-ink">{SECTION_TITLE[activeSection]} Rail — Actual Size</DialogTitle>
         </DialogHeader>
 
@@ -175,17 +180,34 @@ export function ViewFullSizedDialog({
               {"This assumes a standard screen at 100% zoom — check it against the bar below."}
             </p>
             <div className="flex flex-none flex-col items-center gap-1">
-              <div
+              {/* Drawn as SVG paint (a `<rect fill>`), not a painted-on background colour. A
+               * background colour is dropped from the printed page by default in Chrome and
+               * Safari — a shaper has to tick "Background graphics" / "Print backgrounds" for it
+               * to survive, which is off by default and is the whole reason this bar printed as
+               * caption-only-no-bar until the shaper reported it on 2026-09-08. A `fill` is
+               * foreground ink, so it prints unconditionally. app/design/summary/order-form.css
+               * takes the other route (`print-color-adjust: exact`) for its page shading; that
+               * route is deliberately not used here, because a scale-check reference a shaper
+               * measures with a ruler must not depend on a property a print pipeline may ignore.
+               *
+               * No `viewBox`: the rect's `width="100%" height="100%"` resolves against the svg's
+               * own box, so when actual-size.css swaps that box from a screen pixel width to the
+               * printed `2in`, the rect follows with nothing else to keep in step. A viewBox
+               * would insert a scale factor between the printed inch and what is drawn. */}
+              <svg
                 data-actual-size-box="check-bar"
                 ref={measureRef}
-                className="h-1.5 rounded-full bg-[var(--color-surf-ink)]"
+                className="block h-1.5 text-surf-ink"
+                aria-hidden
                 style={
                   {
                     width: `${checkBarWidthIn * pxPerInch}px`,
                     "--vfs-w-in": checkBarWidthIn,
                   } as CSSProperties
                 }
-              />
+              >
+                <rect x="0" y="0" width="100%" height="100%" rx="3" ry="3" fill="currentColor" />
+              </svg>
               <span className="text-xs text-surf-ink-muted">Check bar: {formatCalibrationMark(CHECK_BAR_MM, system)}</span>
             </div>
           </div>
