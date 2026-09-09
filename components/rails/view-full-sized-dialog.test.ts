@@ -76,6 +76,50 @@ describe("view-full-sized-dialog.tsx (RAIL-04, D-12–D-16)", () => {
     }
   });
 
+  /** Locates the check bar's own element block — from its `<svg` open tag carrying
+   * `data-actual-size-box="check-bar"` to the following `</svg>` — so the cases below can each
+   * assert one structural property of it without repeating the search. */
+  function checkBarSvgSlice(source: string): string {
+    const openIndex = source.indexOf("<svg");
+    let searchFrom = openIndex;
+    while (searchFrom >= 0) {
+      const nextOpen = source.indexOf("<svg", searchFrom);
+      if (nextOpen === -1) break;
+      const nextCloseSvg = source.indexOf("</svg>", nextOpen);
+      const candidate = source.slice(nextOpen, nextCloseSvg + "</svg>".length);
+      if (candidate.includes('data-actual-size-box="check-bar"')) {
+        return candidate;
+      }
+      searchFrom = nextOpen + 1;
+    }
+    return "";
+  }
+
+  it("draws the check bar as an svg rect with foreground fill ink, not a painted background (the shaper's 2026-09-08 print report)", () => {
+    const source = readStripped(DIALOG_PATH);
+    const slice = checkBarSvgSlice(source);
+    expect(slice, "no <svg data-actual-size-box=\"check-bar\"> block found").not.toBe("");
+    expect(slice, "check-bar svg has no <rect").toMatch(/<rect\b/);
+    expect(slice, "check-bar rect has no fill= attribute").toMatch(/<rect\b[^>]*\bfill=/);
+    // Built from parts so a future edit cannot quietly reintroduce a background-colour utility
+    // class on the check bar and still satisfy this by accident.
+    const bgClassNeedle = ["b", "g"].join("") + "-";
+    expect(slice, `check-bar block still names a background-colour utility class (${bgClassNeedle})`).not.toMatch(
+      new RegExp(`\\b${bgClassNeedle}`),
+    );
+  });
+
+  it("derives the check bar's printed width from CHECK_BAR_MM with no viewBox to insert a scale factor", () => {
+    const source = readStripped(DIALOG_PATH);
+    const slice = checkBarSvgSlice(source);
+    expect(slice, "check-bar svg carries a viewBox — this would insert a scale factor").not.toMatch(/viewBox/);
+    expect(slice, "check-bar block does not carry --vfs-w-in").toContain("--vfs-w-in");
+    expect(source, "CHECK_BAR_MM is not derived with inchesToMm(2)").toMatch(/CHECK_BAR_MM[\s\S]{0,40}inchesToMm\(2\)/);
+    expect(source, "checkBarWidthIn is not derived with mmToInches(CHECK_BAR_MM)").toMatch(
+      /checkBarWidthIn[\s\S]{0,40}mmToInches\(CHECK_BAR_MM\)/,
+    );
+  });
+
   it("carries no calibration-flow instruction — the check bar is a passive check, not a step", () => {
     const source = readStripped(DIALOG_PATH);
     // "calibrate" (the verb, a real instruction) rather than "calibrat" alone, which would also
