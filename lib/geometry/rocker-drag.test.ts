@@ -1,14 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_BOARD_SPEC } from "./board";
+import { FOIL_THICKNESS_RANGE_IN } from "./foil";
 import {
+  ROCKER_LIFT_RANGE_IN,
   buildRocker,
   ROCKER_ANGLE_RANGE_DEG,
   ROCKER_FLATNESS_RANGE,
   ROCKER_SMOOTHNESS_RANGE,
   type RockerSpec,
 } from "./rocker";
-import { sideProfileDragPoints, solveSideProfileDrag, type SideProfileDragTarget } from "./rocker-drag";
-import { type Mm, inchesToMm, mm } from "./units";
+import {
+  SIDE_PROFILE_DRAG_HIT_PX,
+  nearestSideProfileDragTarget,
+  sideProfileDragPoints,
+  solveSideProfileDrag,
+  type SideProfileDragPointAt,
+  type SideProfileDragTarget,
+} from "./rocker-drag";
+import { MM_PER_INCH, type Mm, inchesToMm, mm, mmToInches } from "./units";
+import { rockerViewLayout } from "@/components/rocker/rocker-view-frame";
 
 const ROCKER: RockerSpec = DEFAULT_BOARD_SPEC.rocker;
 const LENGTH: Mm = DEFAULT_BOARD_SPEC.outline.length;
@@ -294,5 +304,121 @@ describe("patch keys: a solved patch touches only the fields its own target owns
     const dragged = { station: mm(p.point.station + inchesToMm(1)), height: p.point.height };
     const patch = solveSideProfileDrag(GEOMETRY, "noseFlatHandle", dragged);
     expect(Object.keys(patch)).toEqual(["noseFlatness"]);
+  });
+});
+
+/** A board-space point, built from plain numbers. */
+function point(station: number, height: number): { station: Mm; height: Mm } {
+  return { station: mm(station), height: mm(height) };
+}
+
+/** Euclidean distance between two board-space points, in mm — the same metric
+ * `nearestSideProfileDragTarget` compares against, used here only to build test fixtures. */
+function distanceMm(a: { station: Mm; height: Mm }, b: { station: Mm; height: Mm }): number {
+  return Math.hypot(a.station - b.station, a.height - b.height);
+}
+
+/** The globally closest pair among a set of drag points, by board-mm distance — computed, not
+ * assumed. */
+function closestPair(points: SideProfileDragPointAt[]): [SideProfileDragPointAt, SideProfileDragPointAt] {
+  let best: [SideProfileDragPointAt, SideProfileDragPointAt] | null = null;
+  let bestDist = Infinity;
+  for (let i = 0; i < points.length; i++) {
+    for (let j = i + 1; j < points.length; j++) {
+      const d = distanceMm(points[i].point, points[j].point);
+      if (d < bestDist) {
+        bestDist = d;
+        best = [points[i], points[j]];
+      }
+    }
+  }
+  if (!best) throw new Error("need at least two points to find a closest pair");
+  return best;
+}
+
+/** A point a fraction `t` of the way from `a` to `b`. */
+function lerp(a: { station: Mm; height: Mm }, b: { station: Mm; height: Mm }, t: number): { station: Mm; height: Mm } {
+  return point(a.station + (b.station - a.station) * t, a.height + (b.height - a.height) * t);
+}
+
+describe("nearestSideProfileDragTarget", () => {
+  const points = sideProfileDragPoints(GEOMETRY);
+
+  it("a touch exactly on one handle's centre returns that handle, for each of the four targets", () => {
+    for (const entry of points) {
+      expect(nearestSideProfileDragTarget(points, entry.point, mm(50))).toBe(entry.target);
+    }
+  });
+
+  it("a touch inside two overlapping circles returns whichever centre is nearer, both ways round", () => {
+    const [a, b] = closestPair(points);
+    const bigRadius = mm(distanceMm(a.point, b.point) + 1);
+
+    const nearA = lerp(a.point, b.point, 0.1);
+    expect(nearestSideProfileDragTarget(points, nearA, bigRadius)).toBe(a.target);
+
+    const nearB = lerp(a.point, b.point, 0.9);
+    expect(nearestSideProfileDragTarget(points, nearB, bigRadius)).toBe(b.target);
+  });
+
+  it("a touch exactly equidistant from two points returns the one earlier in sideProfileDragPoints' own order — tailTipHandle wins a tie against tailFlatHandle", () => {
+    // Hand-built, not derived from real board geometry, for the same reason
+    // outline-drag.test.ts's own tie test is: clean round numbers make the tie exact in floating
+    // point, where an interpolated real-geometry midpoint can land a few ULPs off centre.
+    // sideProfileDragPoints' own construction order (read off the file, not assumed from the type
+    // union's declaration order) is tailTipHandle, tailFlatHandle, noseFlatHandle, noseTipHandle.
+    const synthetic: SideProfileDragPointAt[] = [
+      { target: "tailTipHandle", point: point(0, 0), anchor: point(0, 0) },
+      { target: "tailFlatHandle", point: point(100, 0), anchor: point(0, 0) },
+      { target: "noseFlatHandle", point: point(500, 0), anchor: point(0, 0) },
+      { target: "noseTipHandle", point: point(1000, 0), anchor: point(0, 0) },
+    ];
+    const touch = point(50, 0); // exactly 50mm from both station 0 and station 100
+    expect(nearestSideProfileDragTarget(synthetic, touch, mm(1000))).toBe("tailTipHandle");
+  });
+
+  it("a touch outside every circle returns null", () => {
+    const farAway = point(999_999, 999_999);
+    expect(nearestSideProfileDragTarget(points, farAway, mm(1))).toBeNull();
+  });
+
+  it("an empty point list returns null for any touch and any radius", () => {
+    expect(nearestSideProfileDragTarget([], points[0].point, mm(1000))).toBeNull();
+  });
+
+  it("a zero radius returns null unless the touch is exactly on a centre", () => {
+    expect(nearestSideProfileDragTarget(points, points[0].point, mm(0))).toBe(points[0].target);
+    const justOff = point(points[0].point.station + 0.001, points[0].point.height);
+    expect(nearestSideProfileDragTarget(points, justOff, mm(0))).toBeNull();
+  });
+
+  it("the desktop invariant (PHON-05): at the existing 15px radius converted to mm, the pick returns exactly the target under the cursor, for all four handles, on the default board", () => {
+    // Mirrors rocker-editor.tsx's own desktop inputs (fitToBoard, stationRails "full", the
+    // worst-case deck reserve `rocker-viewer.tsx` always uses for "full") at fitScale 1 — the
+    // same no-additional-shrink desktop case components/viewer/drag-spacing.test.ts checks.
+    // `scale` does not depend on orientation, so this holds for either.
+    const maxDeckIn = ROCKER_LIFT_RANGE_IN.max + FOIL_THICKNESS_RANGE_IN.max;
+    const layout = rockerViewLayout({
+      lengthIn: mmToInches(LENGTH),
+      maxDeckIn,
+      orientation: "horizontal",
+      fitToBoard: true,
+      stationRails: "full",
+    });
+    const hitRadiusMm = mm((SIDE_PROFILE_DRAG_HIT_PX * MM_PER_INCH) / layout.scale);
+    for (const entry of points) {
+      expect(nearestSideProfileDragTarget(points, entry.point, hitRadiusMm)).toBe(entry.target);
+    }
+  });
+
+  it("is pure — calling it twice with the same inputs returns the same target, and it does not mutate the points array", () => {
+    const snapshot = points.map((p) => ({ ...p, point: { ...p.point }, anchor: { ...p.anchor } }));
+    const target = points[2].target;
+    const touch = points[2].point;
+    const first = nearestSideProfileDragTarget(points, touch, mm(50));
+    const second = nearestSideProfileDragTarget(points, touch, mm(50));
+    expect(first).toBe(target);
+    expect(second).toBe(first);
+    expect(points).toEqual(snapshot);
   });
 });
