@@ -137,3 +137,11 @@ draws at all — since turning a touch device already turns the board. Width pic
 pointer picks the sizing (and, for that one button, the presence); the two are never conflated,
 which is what keeps a touch laptop at 1280px wide from getting the phone stack, and a narrow
 desktop browser window from getting coarse-sized controls.
+
+A third switch answers a different question again: how SHORT the screen is decides whether, on
+FINS, the Base Length key sits beside the tail drawing or beneath it — written inline in
+`components/fins/fin-viewer.tsx` as `[@media(max-height:500px)]` rather than a named variant here,
+since it has exactly one consumer today, and deliberately not tied to width, because a phone held
+sideways lands on both sides of the 820px switch (863 dots wide on a Pixel 7, 750 on an iPhone 14)
+while being short on both. Width picks the layout, pointer picks the sizing, height picks whether
+the key sits beside or beneath — and none of the three is ever conflated with another.

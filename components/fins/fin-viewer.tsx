@@ -445,10 +445,18 @@ export function FinViewer({
     : (fitScale > 0 ? CALLOUT_PX.value / fitScale : CALLOUT_FONT_VALUE);
 
   return (
+    // Short-screen note (a phone held sideways): the condition below is the SCREEN'S HEIGHT and
+    // nothing else. A phone on its side lands on both sides of the 820px `shell` width switch
+    // (Pixel 7 863px wide reads the desktop shell, iPhone 14 750px wide reads the phone-stacked
+    // shell) so `max-shell:` would be wrong on one of them — only `max-height` is short on both.
+    // `items-stretch` below is load-bearing, not cosmetic: the svg is `absolute inset-0`, so in a
+    // row with centred items the plot's own height collapses to zero and the drawing vanishes.
+    // Measured payoff: on a Pixel 7 on its side the drawing grows from 116 x 89 to 211 x 162.
+    //
     // `h-full` as well as `flex-1`: the Summary card's body is a block, not a flex container, so
     // flex-1 alone resolves to zero height there. It went unnoticed while the svg carried an
     // intrinsic size and propped the height up from below.
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center gap-4">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center gap-4 [@media(max-height:500px)]:flex-row [@media(max-height:500px)]:items-stretch [@media(max-height:500px)]:gap-2">
       {/* The SVG is pinned to the whole available box and `meet` scales the drawing to fit inside
           it. Sizing is the container's job; `preserveAspectRatio` keeps the proportion.
 
@@ -458,7 +466,10 @@ export function FinViewer({
           one — the Summary's fin banner — it computes a height far taller than the cell and the
           drawing is clipped. Pinning to the edges removes the ratio from the box calculation
           entirely, leaving it to do the one job it should: scaling the drawing inside. */}
-      <div className="relative flex min-h-0 w-full flex-1 justify-center">
+      <div
+        data-fin-plot
+        className="relative flex min-h-0 w-full flex-1 justify-center [@media(max-height:500px)]:min-w-0"
+      >
         <svg
           ref={svgRef}
           viewBox={`0 ${VIEW_MIN_Y} ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
@@ -585,7 +596,10 @@ export function FinViewer({
         </svg>
       </div>
       {!compact && (
-        <div className="flex flex-none flex-col gap-1 text-[11px] text-muted-foreground">
+        <div
+          data-fin-legend
+          className="flex flex-none flex-col gap-1 text-[11px] text-muted-foreground [@media(max-height:500px)]:justify-center"
+        >
           <span>
             <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--outline-ink)]" />
             Trailing &amp; Leading Edges
