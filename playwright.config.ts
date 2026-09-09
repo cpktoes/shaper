@@ -10,13 +10,19 @@ import { defineConfig, devices } from "@playwright/test";
  * Port 3100, not 3000: the shaper's own `next dev` (and sometimes another project) holds 3000, so
  * this suite's dev server always starts on its own port instead of colliding with it.
  */
+// Port 3100 by default (never 3000 — that is the shaper's own dev server). PW_PORT overrides it
+// so several checkouts can run the suite at the same time without sharing one dev server:
+// with reuseExistingServer on, a second run on the same port would silently test whatever
+// code the first server is serving.
+const port = Number(process.env.PW_PORT ?? 3100);
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   workers: 1,
   webServer: {
-    command: "npm run dev -- --port 3100",
-    url: "http://localhost:3100/design/outline",
+    command: `npm run dev -- --port ${port}`,
+    url: `http://localhost:${port}/design/outline`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
@@ -40,7 +46,7 @@ export default defineConfig({
     },
   },
   use: {
-    baseURL: "http://localhost:3100",
+    baseURL: `http://localhost:${port}`,
   },
   expect: {
     toHaveScreenshot: {
