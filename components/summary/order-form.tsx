@@ -243,15 +243,28 @@ export function OrderForm() {
       className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto bg-surf-ground px-6 py-8"
     >
       {/*
-       * The outer element is the `@container` the sheets' type queries — a container query never
-       * matches the container itself — and it is what `useOrderFormPrintFit` walks to find the
-       * sheets. It is no longer itself a page: it is the stack of them.
+       * The scaler always draws the stack at the width the form was designed for
+       * (`--order-form-design-width` in order-form.css) and shrinks the whole drawn page to fit the
+       * screen — never re-laying it out at the screen's own width, which used to leave the boxes,
+       * columns and type sizes worked out again for a phone and collapse the drawings row entirely.
+       * `--order-form-sheet-count` is the same `sheetCount` the `PAGE x OF y` marks below already
+       * use, so the reserved screen height can never disagree with how many sheets are on the stack.
        */}
       <div
-        ref={rootRef}
-        data-order-form-root
-        className="@container flex w-full max-w-[880px] flex-none flex-col gap-8"
+        data-order-form-scaler
+        style={{ "--order-form-sheet-count": sheetCount } as CSSProperties}
       >
+        {/*
+         * The outer element is the `@container` the sheets' type queries — a container query never
+         * matches the container itself — and it is what `useOrderFormPrintFit` walks to find the
+         * sheets. It is no longer itself a page: it is the stack of them, always drawn at its design
+         * width — the scaler above shrinks the whole drawn page to fit the screen.
+         */}
+        <div
+          ref={rootRef}
+          data-order-form-root
+          className="@container flex flex-none flex-col gap-8"
+        >
         {/* ══════════ PAGE 1 — the order form ══════════════════════════════════════════════ */}
         <Sheet>
           {/* ─── BAND 1 — header ────────────────────────────────────────────────────────── */}
@@ -718,6 +731,7 @@ export function OrderForm() {
             <PageMark page={3} of={sheetCount} title="Rail Band Reference" />
           </Sheet>
         )}
+        </div>
       </div>
 
       {/* Below the paper, and never on it. */}
