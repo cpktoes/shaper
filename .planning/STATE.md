@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 Phase: 9 — The Design Screens on a Phone
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-09-08 — Phase 08 complete, transitioned to Phase 9
+Last activity: 2026-09-08 — Completed quick task 260908-q0n: fix the rail full size print check bar and rail name
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
@@ -251,6 +251,7 @@ Recent decisions affecting current work:
 | 260908-bk1 | Example rail mark names stack only when their text actually overlaps, and the axis rule moves only the names that need moving, so Deck 3 stays on the plot | 2026-09-08 | 48b54f8 | [260908-bk1-example-rail-mark-names-stack-only-when-](./quick/260908-bk1-example-rail-mark-names-stack-only-when-/) |
 | 260908-bxs | The View Full Sized dialog measures the screen's pixels per inch when its content mounts instead of setting state inside an effect, clearing the react-hooks/set-state-in-effect lint error in view-full-sized-dialog.tsx | 2026-09-08 | 8ce93cc | [260908-bxs-the-view-full-sized-dialog-measures-the-](./quick/260908-bxs-the-view-full-sized-dialog-measures-the-/) |
 | 260908-cme | Every mark on the example rail gets its own name at its own spot: Corner Cut joins the apex column under Rail Mk1, Bottom Tuck 2 is named at its mid-tuck point, and Bottom Tuck 1 and 3 hang below the axis under their marks | 2026-09-08 | 2123558 | [260908-cme-every-mark-on-the-example-rail-gets-its-](./quick/260908-cme-every-mark-on-the-example-rail-gets-its-/) |
+| 260908-q0n | View Full Sized rail print fixed on two counts. The 2 in / 50.8 mm check bar now actually prints: it was a background colour, which print dialogs drop unless "Background graphics" is ticked, so the bar's 144 pt path was in the PDF but filled white on white (measured before the fix); it is now an SVG rect filled with ink, still sized from the one CHECK_BAR_MM constant through the unchanged print rule. The printed sheet also names its rail ("Nose / Center / Tail Rail — Actual Size"): the dialog title was print-hidden with the rest of the chrome; the header alone is printable now, the footer, close button and tab strip stay off paper. Proven after merge by headless-Chrome print-to-PDF with printBackground:false — a 144.0 × 4.5 pt ink-filled rect and the title on one landscape page, rail box unchanged at 625.5 pt. Screen unchanged (6px bar, same ink). 2255 → 2260 tests, build and lint clean | 2026-09-08 | 3d1467e | [260908-q0n-fix-the-rail-full-size-print-check-bar-a](./quick/260908-q0n-fix-the-rail-full-size-print-check-bar-a/) |
 
 ## Deferred Items
 
