@@ -289,3 +289,33 @@ confirmation is on the human-verification list (item 6) rather than silently mar
 Status is `human_needed` rather than `passed` because five human-verification items remain — the
 same reason the phase was `human_needed` after the first pass, now with items 4 and 6 answering the
 two specific things the founder found broken in UAT.
+
+## Post-review addendum (2026-09-09, after the gap-closure code review)
+
+The gap-closure code review (`09-REVIEW.md`, commit `7aa362c`) found that the Home-Screen print
+note was keyed on `display-mode: standalone` alone, which is also true of a desktop Chrome/Edge
+"open as window" install and an Android home-screen launch — both of which can print. The fixes
+merged in `268384c` (details in `09-REVIEW-FIX.md`, "Gap-closure review fixes") supersede the
+G-09-6 evidence above on three points, each re-checked on `main` by the orchestrator after merge:
+
+- **The swap is now iOS-only.** Every standalone condition in `components/rails/view-full-sized-dialog.tsx`
+  reads `supports-[-webkit-touch-callout:none]:[@media(display-mode:standalone)]:…` (4 occurrences,
+  3 of them also under `max-shell:`); `-webkit-touch-callout` is implemented only by iOS WebKit, so
+  the "open this page in Safari" wording is now always true where it shows. The production CSS
+  chunk carries two `@supports (-webkit-touch-callout:none)` blocks (one nested under the 820px
+  width query, one bare for the D-13 clause) around four `display-mode:standalone` rules.
+- **The machine proof is now the compiled stylesheet, not the source text.**
+  `components/rails/view-full-sized-dialog.css.test.ts` compiles the exact class chains through the
+  app's own `app/globals.css` with `@tailwindcss/node` and asserts the emitted width, `@supports`
+  and `display-mode` nesting plus the `display:none`/`display:block` declarations (2 cases, passing
+  under `npx vitest run`; 46 files, 2315 passed, 2 skipped after merge).
+- **The always-skipping android CDP case is gone** from `e2e/phone-rails.spec.ts` (no
+  `newCDPSession`/`setEmulatedMedia` left): with the iOS guard no Chromium build could ever render
+  the note, so a permanent skip would have been noise. The Safari print-stub case on both phone
+  projects and the desktop guard are unchanged. `e2e/keyboard-focus.spec.ts`'s Tab ceiling is now
+  derived from the page's own focusable count (WR-02).
+
+Post-merge gates on `main` at `268384c`: `npm run build` exit 0; `npx vitest run` 2315 passed /
+2 skipped; `npm run lint` 0 errors; `PW_PORT=3100 npx playwright test` 101 passed / 85 skipped /
+0 failed; the five desktop baseline images matched with none regenerated. Status stays
+`human_needed`; human-verification items 4 and 6 are unchanged and remain open in `09-UAT.md`.
