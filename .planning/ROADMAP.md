@@ -163,7 +163,7 @@ Plans:
   4. A shaper can drag outline, rocker and foil points with a thumb: hit zones sized for a finger, not overlapping their neighbours, and no long-press text popup interrupting a drag.
   5. On a desktop, mouse dragging and keyboard operation behave exactly as they do today on every viewer touched, and automated tests on iPhone and Android viewports prove the stacked layout and touch drag on at least the outline viewer, so later phone changes can't quietly break them.
 
-**Plans**: 7/7 plans executed
+**Plans**: 7/9 plans executed — 7/7 executed, plus 2 gap-closure plans from UAT
 
 Plans:
 **Wave 1**
@@ -184,6 +184,11 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 09-07-PLAN.md — Thumb drag on both drawings with a readout by the finger, and the phase's closing sweep (wave 4)
+
+**Gap closure — Wave 1** *(from 09-UAT.md; both plans share no files and run in parallel)*
+
+- [ ] 09-08-PLAN.md — Keyboard focus you can see: the slider ring on the element that really has focus, one shared ring on every hand-rolled button (G-09-4)
+- [ ] 09-09-PLAN.md — On a phone opened from the Home Screen, a plain note replaces the Print button that iOS will not honour (G-09-6)
 
 **UI hint**: yes
 
