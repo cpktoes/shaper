@@ -9,6 +9,20 @@ import { expect, test, type Page } from "@playwright/test";
  * D-13: the View Full Sized dialog tells a phone shaper the drawing is shrunk, not true size;
  * D-04: the rocker DATASHEET, the rails DATA table and the fins data panel keep every column and
  * scroll sideways inside their own box, never the page. PHON-05: none of it moves a desktop pixel.
+ *
+ * The Home-Screen web-app print note (G-09-6) is gated in CSS only, on an iOS-only
+ * `@supports (-webkit-touch-callout: none)` guard alongside `display-mode: standalone` (gap-closure
+ * CR-01) — see the comment in view-full-sized-dialog.tsx. This file used to carry an
+ * android/CDP-only case that emulated `display-mode: standalone` via
+ * `Emulation.setEmulatedMedia`, but that Chromium build never honours a display-mode override, so
+ * the case always skipped itself, and with the iOS guard in place no Chromium build (this
+ * project's `android`, or any future one) can ever render the note at all — a permanently skipping
+ * test is noise, not a limitation, so it was removed. The Home-Screen appearance is instead proved
+ * by view-full-sized-dialog.test.ts's compiled-CSS contract test (WR-01: it compiles the real
+ * class chain through the app's own Tailwind pipeline and asserts the emitted `@supports` +
+ * `@media (display-mode: standalone)` nesting) and by the on-device UAT check
+ * (.planning/debug/phone-print-button-does-nothing.md) — an e2e cannot exercise a real iOS
+ * Home-Screen launch at all.
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
@@ -227,50 +241,6 @@ test.describe("RAILS on a phone — one rail at a time, nothing scrolling sidewa
     await expect.poll(() => readPrintCount(page)).toBe(1);
   });
 
-  test("View Full Sized: the Home-Screen web app shows the note instead of the Print button (G-09-6, android/CDP only)", async ({
-    page,
-  }, testInfo) => {
-    // Emulating a Home-Screen web app's `display-mode: standalone` needs the Chrome DevTools
-    // Protocol; WebKit has no equivalent exposed through Playwright, so the iphone project cannot
-    // run this case at all (unlike the tap-and-count case above, which is CDP-free and runs on
-    // both phones).
-    test.skip(testInfo.project.name !== "android", "display-mode:standalone emulation needs CDP; WebKit has no Playwright equivalent");
-
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send("Emulation.setEmulatedMedia", {
-      features: [{ name: "display-mode", value: "standalone" }],
-    });
-    await page.goto("/design/rails");
-
-    // Asserted first, on its own: this Chromium build's Emulation.setEmulatedMedia does not honour
-    // a display-mode feature override (confirmed at plan time: the identical call shape correctly
-    // flips prefers-color-scheme, so the CDP session and this file's own call are not the problem —
-    // display-mode specifically is not wired into this renderer's emulation path, in any of
-    // display-mode/displayMode/display_mode spellings, with or without an explicit media:"screen").
-    // Skipped rather than failed when that is true, so a future Chromium build that DOES implement
-    // it runs this case for real without a code change, and today's build reads as "not run" rather
-    // than a false failure that looks like a CSS bug in the app. The CSS-only gating itself is
-    // still covered without a real device: view-full-sized-dialog.test.ts's source-contract tests
-    // pin the exact selectors and sentence, and the real Home-Screen launch case is on Task 3's own
-    // human-verification list.
-    const standaloneMatched = await page.evaluate(() => window.matchMedia("(display-mode: standalone)").matches);
-    test.skip(
-      !standaloneMatched,
-      "this Chromium build's CDP does not honour a display-mode media-feature override — see the comment above",
-    );
-
-    await page.getByRole("button", { name: "View Full Sized" }).click();
-
-    // Both the note and the button are always in the DOM (the choice is a media query, never a
-    // JavaScript branch) — every assertion here is about visibility, never presence.
-    await expect(
-      page.getByText(
-        "Printing isn't available from the Home-Screen app — open this page in Safari to print the full-sized rail.",
-      ),
-    ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Print" })).not.toBeVisible();
-    await expect(page.getByText("Shown smaller than actual size.", { exact: true })).toBeVisible();
-  });
 });
 
 test.describe("ROCKER DATASHEET on a phone — the same sideways-scrolling box (D-04 held-out check)", () => {
