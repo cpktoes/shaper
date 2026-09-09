@@ -22,6 +22,28 @@ async function dismissSignInBanner(page: Page) {
   }, BANNER_DISMISSAL_KEY);
 }
 
+const PRINT_COUNT_KEY = "__shaperPrintCallCount";
+
+/** G-09-6's recurrence guard: a counting replacement for the browser's own print, installed in
+ * the same addInitScript shape as dismissSignInBanner above. Init scripts only apply to
+ * SUBSEQUENT navigations, so every case using this helper does its own page.goto after installing
+ * it, even when beforeEach already navigated once. Turns the debug session's throwaway measurement
+ * (a stubbed print counted 3/3 on both phone projects) into a kept test. */
+async function stubPrintCounter(page: Page) {
+  await page.addInitScript((key) => {
+    (window as unknown as Record<string, number>)[key] = 0;
+    window.print = () => {
+      (window as unknown as Record<string, number>)[key] += 1;
+    };
+  }, PRINT_COUNT_KEY);
+}
+
+/** Reads the counter back through an explicit narrow type, never `any`, so `npx tsc --noEmit`
+ * stays clean. */
+async function readPrintCount(page: Page): Promise<number> {
+  return page.evaluate((key) => (window as unknown as Record<string, number>)[key] ?? 0, PRINT_COUNT_KEY);
+}
+
 /** The RAILS screen's own top-level VIEWER/DATA/INSTRUCTIONS strip, scoped by its unique label so
  * it is never confused with the phone-only NOSE/CENTER/TAIL switch nested inside its VIEWER tab —
  * both are `role="tablist"`, and only this one has "DATA" among its tab names. */
@@ -182,6 +204,73 @@ test.describe("RAILS on a phone — one rail at a time, nothing scrolling sidewa
 
     await expect(page.getByRole("button", { name: "Print" })).toBeVisible();
   });
+
+  test("View Full Sized: tapping Print in Safari really calls the browser's print, exactly once (G-09-6)", async ({
+    page,
+  }) => {
+    await stubPrintCounter(page);
+    // The stub is only live for navigations after this point (init scripts apply to SUBSEQUENT
+    // loads) — beforeEach's own goto already happened before the stub was installed above, so this
+    // case does its own fresh navigation.
+    await page.goto("/design/rails");
+
+    await page.getByRole("button", { name: "View Full Sized" }).click();
+    await expect(page.getByRole("button", { name: "Print" })).toBeVisible();
+    await expect(
+      page.getByText(
+        "Printing isn't available from the Home-Screen app — open this page in Safari to print the full-sized rail.",
+      ),
+    ).not.toBeVisible();
+
+    // tap(), not click() — these are touch devices, and a tap is what a shaper does.
+    await page.getByRole("button", { name: "Print" }).tap();
+    await expect.poll(() => readPrintCount(page)).toBe(1);
+  });
+
+  test("View Full Sized: the Home-Screen web app shows the note instead of the Print button (G-09-6, android/CDP only)", async ({
+    page,
+  }, testInfo) => {
+    // Emulating a Home-Screen web app's `display-mode: standalone` needs the Chrome DevTools
+    // Protocol; WebKit has no equivalent exposed through Playwright, so the iphone project cannot
+    // run this case at all (unlike the tap-and-count case above, which is CDP-free and runs on
+    // both phones).
+    test.skip(testInfo.project.name !== "android", "display-mode:standalone emulation needs CDP; WebKit has no Playwright equivalent");
+
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setEmulatedMedia", {
+      features: [{ name: "display-mode", value: "standalone" }],
+    });
+    await page.goto("/design/rails");
+
+    // Asserted first, on its own: this Chromium build's Emulation.setEmulatedMedia does not honour
+    // a display-mode feature override (confirmed at plan time: the identical call shape correctly
+    // flips prefers-color-scheme, so the CDP session and this file's own call are not the problem —
+    // display-mode specifically is not wired into this renderer's emulation path, in any of
+    // display-mode/displayMode/display_mode spellings, with or without an explicit media:"screen").
+    // Skipped rather than failed when that is true, so a future Chromium build that DOES implement
+    // it runs this case for real without a code change, and today's build reads as "not run" rather
+    // than a false failure that looks like a CSS bug in the app. The CSS-only gating itself is
+    // still covered without a real device: view-full-sized-dialog.test.ts's source-contract tests
+    // pin the exact selectors and sentence, and the real Home-Screen launch case is on Task 3's own
+    // human-verification list.
+    const standaloneMatched = await page.evaluate(() => window.matchMedia("(display-mode: standalone)").matches);
+    test.skip(
+      !standaloneMatched,
+      "this Chromium build's CDP does not honour a display-mode media-feature override — see the comment above",
+    );
+
+    await page.getByRole("button", { name: "View Full Sized" }).click();
+
+    // Both the note and the button are always in the DOM (the choice is a media query, never a
+    // JavaScript branch) — every assertion here is about visibility, never presence.
+    await expect(
+      page.getByText(
+        "Printing isn't available from the Home-Screen app — open this page in Safari to print the full-sized rail.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Print" })).not.toBeVisible();
+    await expect(page.getByText("Shown smaller than actual size.", { exact: true })).toBeVisible();
+  });
 });
 
 test.describe("ROCKER DATASHEET on a phone — the same sideways-scrolling box (D-04 held-out check)", () => {
@@ -229,5 +318,18 @@ test.describe("RAILS on a desktop — unchanged (PHON-05)", () => {
     const dialogTitle = page.locator('[data-slot="dialog-title"]');
     const titleText = await dialogTitle.innerText();
     expect(titleText).toContain("Actual Size");
+  });
+
+  test("View Full Sized: the Print button is visible, and the Home-Screen note is not (G-09-6, PHON-05)", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "View Full Sized" }).click();
+
+    await expect(page.getByRole("button", { name: "Print" })).toBeVisible();
+    await expect(
+      page.getByText(
+        "Printing isn't available from the Home-Screen app — open this page in Safari to print the full-sized rail.",
+      ),
+    ).not.toBeVisible();
   });
 });

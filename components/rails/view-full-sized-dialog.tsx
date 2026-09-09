@@ -227,9 +227,12 @@ export function ViewFullSizedDialog({
 
           {/* Phone only (D-13): the drawing is not true size here — no ruler check applies, so
            * neither the check bar above nor the drawing below claim to be one. One line instead,
-           * naming what a shaper can still do: print it. */}
+           * naming what a shaper can still do: print it — except in the one context where that
+           * button is about to disappear below (G-09-6): the clause naming it is wrapped in its
+           * own span, hidden right alongside the button it names. No width variant needed here —
+           * the <p> itself is already phone-only. */}
           <p className="hidden text-sm text-surf-ink-muted max-shell:block print:hidden">
-            Shown smaller than actual size — tap Print for the full-sized rail.
+            Shown smaller than actual size<span className="[@media(display-mode:standalone)]:hidden"> — tap Print for the full-sized rail</span>.
           </p>
 
           <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-auto py-3">
@@ -273,13 +276,24 @@ export function ViewFullSizedDialog({
         </TabbedPanel>
 
         <DialogFooter data-print-hide className="sm:justify-between">
-          <p className="text-sm text-surf-ink-muted">
+          <p className="text-sm text-surf-ink-muted max-shell:[@media(display-mode:standalone)]:hidden">
             {"In your print dialog, turn off 'Fit to page' — scaling to fit would break the true size."}
+          </p>
+          {/* iOS 26 opens a site added to the Home Screen as its own standalone web app, and the
+           * browser's own print call is a documented, silent no-op inside one — the tap lands,
+           * the call fires, and nothing comes back
+           * (.planning/debug/phone-print-button-does-nothing.md). The honest fix is to stop
+           * offering a control that cannot work rather than leave a button that quietly fails:
+           * below the shell width AND in that launch context only, the Print button is hidden and
+           * this note takes its place. Printing itself is untouched — in Safari itself, and on a
+           * desktop installed web app, the button is exactly as it was. */}
+          <p className="hidden text-sm text-surf-ink-muted max-shell:[@media(display-mode:standalone)]:block">
+            {"Printing isn't available from the Home-Screen app — open this page in Safari to print the full-sized rail."}
           </p>
           <Button
             type="button"
             onClick={() => window.print()}
-            className="border-surf-on-accent bg-surf-accent text-surf-on-accent hover:bg-surf-accent/85"
+            className="border-surf-on-accent bg-surf-accent text-surf-on-accent hover:bg-surf-accent/85 max-shell:[@media(display-mode:standalone)]:hidden"
           >
             Print
           </Button>
