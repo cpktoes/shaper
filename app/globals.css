@@ -712,3 +712,45 @@
   border-color: var(--surf-ink);
   background: var(--surf-accent);
 }
+
+/*
+ * The slider thumb's keyboard focus ring.
+ *
+ * Base UI (1.7.0) renders the thumb as a DIV wrapping a visually-hidden `<input type="range">`,
+ * and it is that hidden input — not the DIV — that keyboard focus actually lands on. The
+ * primitive's own `focus-visible:ring-3` in components/ui/slider.tsx is written on the DIV, so
+ * under Tab it never matches; the input's own browser outline is clipped away to nothing by its
+ * `clip-path: inset(50%)`. Net effect measured in the debug session: Tab to a slider and nothing
+ * paints at all.
+ *
+ * The fix keys the ring on the DIV that CONTAINS the truly-focused element, `:has(:focus-visible)`,
+ * rather than on the DIV itself. It is unlayered, so when a thumb is both focused and hovered this
+ * full-strength ring wins over the half-strength hover ring above — which is the point. And because
+ * it is scoped to `.slider-accent`, a future slider that forgets that class gets no focus ring
+ * either — that scoping is deliberate, not an oversight, so don't broaden the selector without
+ * also asking whether the slider it's meant to reach carries the class.
+ *
+ * `outline: 2px solid transparent` with an offset paints nothing here — it is the same trick
+ * shadcn's own `outline-hidden` uses to keep an indicator alive in Windows High Contrast /
+ * forced-colors mode, where a box-shadow is not drawn at all.
+ */
+.slider-accent [data-slot="slider-thumb"]:has(:focus-visible) {
+  box-shadow: 0 0 0 3px var(--surf-accent-ink);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+/*
+ * The shared focus ring for every hand-rolled selection button on the design screens — the
+ * tail-shape tiles, the fin pills and grids, the rail section headings, Reset Advanced Settings,
+ * the Fine adjust row. None of these are the shared shadcn `Button`, so none of them carry its
+ * focus-visible ring; without this class their only indicator is the browser's automatic outline,
+ * painted in the base layer's half-strength `outline-ring/50`. One class here instead of a
+ * Tailwind run repeated at thirteen call sites is what keeps this from drifting the way the
+ * slider's styling once did across fourteen copies.
+ */
+.focus-ring-accent:focus-visible {
+  box-shadow: 0 0 0 3px var(--surf-accent-ink);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}

@@ -336,7 +336,7 @@ export function OutlineControls({
                   tailFullness: preset.tailFullness,
                 })
               }
-              className="flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-1.5 coarse:min-h-11"
+              className="focus-ring-accent flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-1.5 coarse:min-h-11"
               style={{
                 // Inline styles were invisible to both earlier passes: the border migration
                 // grepped for `border-surf-muted/N` classes, and the color-mix sweep only
