@@ -118,6 +118,61 @@ test.describe("phone shell — TEMPLATE stacks with the drawing pinned above the
   }
 });
 
+test.describe("phone compact top bar and the one menu", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "phone-only top bar assertions");
+    await dismissSignInBanner(page);
+  });
+
+  test("the desktop link row is hidden and the compact top bar shows the wordmark, Save and Menu", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    // The desktop screen-link row (SiteNav's own <nav>, distinguished from the phone tab bar's
+    // <nav aria-label="Screens"> by carrying no aria-label at all) is present in the tree but
+    // hidden by its own max-shell:hidden rule on a design route at phone width.
+    const desktopNav = page.locator("nav:not([aria-label])");
+    await expect(desktopNav).toBeHidden();
+
+    const topBar = page.getByRole("banner");
+    await expect(topBar).toBeVisible();
+    await expect(topBar.getByRole("link", { name: "SHAPER" })).toBeVisible();
+    // SaveButton's own accessible name before the first save.
+    await expect(topBar.getByRole("button", { name: "Save Board" })).toBeVisible();
+    const menuButton = topBar.getByRole("button", { name: "Menu" });
+    await expect(menuButton).toBeVisible();
+
+    // The whole row is one non-wrapping line at 360px wide.
+    await page.setViewportSize({ width: 360, height: 640 });
+    const fit = await topBar.evaluate((el) => ({
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+    }));
+    expect(Math.abs(fit.scrollHeight - fit.clientHeight)).toBeLessThanOrEqual(1);
+  });
+
+  test("the Menu button opens one popup holding both a units choice and the account control", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    const menuButton = page.getByRole("banner").getByRole("button", { name: "Menu" });
+    await menuButton.click();
+
+    const popup = page.getByRole("menu");
+    await expect(popup).toBeVisible();
+    await expect(popup.getByText("Imperial")).toBeVisible();
+    await expect(popup.getByText("Metric")).toBeVisible();
+    // The account row (NavAuthControl) is the same component the desktop nav renders — located
+    // by its own stable hook rather than a state-dependent label, since this suite's deliberately
+    // fake Clerk credentials never settle `isLoaded` true (NavAuthControl's own documented
+    // fallback while unresolved), so asserting on "Sign in" text would be testing this harness's
+    // Clerk stand-in rather than the phone menu's own composition.
+    await expect(popup.locator("[data-phone-menu-account]")).toBeVisible();
+  });
+});
+
 test.describe("desktop shell — unchanged", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "desktop-only shell assertions");
@@ -138,5 +193,6 @@ test.describe("desktop shell — unchanged", () => {
     expect(sidebarBox.x + sidebarBox.width).toBeLessThanOrEqual(canvasBox.x + 1);
 
     await expect(page.getByRole("navigation", { name: "Screens" })).toBeHidden();
+    await expect(page.getByRole("banner")).toBeHidden();
   });
 });
