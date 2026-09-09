@@ -179,3 +179,23 @@ export function solveSideProfileDrag(
     }
   }
 }
+
+/**
+ * Desktop's own drag hit-zone radius, in CSS px — the historic `DRAG_HIT_PX` value
+ * `rocker-viewer.tsx` has always used for its mouse circles, unchanged. Lives here (not only in the
+ * viewer) so 09-07 can replace the viewer's own private constant with an import of this one; until
+ * then this is the canonical value, and the two must stay equal.
+ */
+export const SIDE_PROFILE_DRAG_HIT_PX = 15;
+
+/**
+ * The phone (coarse-pointer) drag hit-zone radius, in CSS px — measured, not assumed
+ * (`components/viewer/drag-spacing.test.ts`, D-15/PHON-04). At the default board, nose-up,
+ * fit-to-board, D-18's shared 66dvh pinned ceiling, the closest pair of the four curve handles
+ * (`noseFlatHandle`/`noseTipHandle`) lands only ~40.2px apart on a 375x667 iPhone SE — short of the
+ * 22px target's 44px floor (a 336px-wide iPhone 14 clears it at ~50.8px, but one constant has to
+ * hold for both) — so this shrinks to the UI-SPEC's own 18px floor (36px target), which the same
+ * measurement clears with roughly 4px of margin on both measured devices. The foil has no drag
+ * points in this phase (D-14) and is not part of this measurement.
+ */
+export const SIDE_PROFILE_DRAG_HIT_COARSE_PX = 18;

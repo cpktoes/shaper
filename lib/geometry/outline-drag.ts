@@ -224,3 +224,22 @@ export function solveOutlineDrag(
 
 /** Exported for tests and for any UI that wants to show a field's legal range. */
 export const OUTLINE_DRAG_LIMITS = LIMITS;
+
+/**
+ * Desktop's own drag hit-zone radius, in CSS px — the historic `DRAG_HIT_PX` value
+ * `outline-viewer.tsx` has always used for its mouse circles, unchanged. Lives here (not only in
+ * the viewer) so 09-07 can replace the viewer's own private constant with an import of this one;
+ * until then this is the canonical value, and the two must stay equal.
+ */
+export const OUTLINE_DRAG_HIT_PX = 15;
+
+/**
+ * The phone (coarse-pointer) drag hit-zone radius, in CSS px — measured, not assumed
+ * (`components/viewer/drag-spacing.test.ts`, D-15/PHON-04). At the tightest realistic board (60in
+ * length, 25in widepoint — `BOARD_LENGTH_RANGE_IN`/`WIDEPOINT_WIDTH_RANGE_IN` in `board.ts`), the
+ * closest pair of the five drag points (`tailHandle`/`tailRailHandle`) still lands comfortably more
+ * than twice this radius apart on screen at TEMPLATE's 66dvh pinned ceiling on both a 375x667
+ * iPhone SE (~58.7px) and a 390x844 iPhone 14 (~61.2px), so the UI-SPEC's own 22px target needs no
+ * shrinking for the outline.
+ */
+export const OUTLINE_DRAG_HIT_COARSE_PX = 22;
