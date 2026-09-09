@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
-current_phase: 9
-current_phase_name: The Design Screens on a Phone
+current_phase: 09
+current_phase_name: the-design-screens-on-a-phone
 status: executing
 stopped_at: Phase 9 UI-SPEC approved
-last_updated: "2026-09-09T06:07:29.283Z"
+last_updated: "2026-09-09T06:21:29.024Z"
 last_activity: 2026-09-08
 last_activity_desc: Phase 8 gap closure (08-07, 08-08, 08-09) executed, code-reviewed, verified (passed) and the phase marked complete; UAT gaps reconciled as resolved
 progress:
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-07)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 08 — the-rails-screen-finished
+**Current focus:** Phase 09 — the-design-screens-on-a-phone
 
 ## Current Position
 
-Phase: 9 — The Design Screens on a Phone
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-09-08 — Completed quick task 260908-q0n: fix the rail full size print check bar and rail name
+Phase: 09 (the-design-screens-on-a-phone) — EXECUTING
+Plan: 1 of 7
+Status: Executing Phase 09
+Last activity: 2026-09-08 — Phase 09 execution started
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
