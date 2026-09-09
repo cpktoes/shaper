@@ -177,3 +177,7 @@ None — no external service configuration required. No dependency was installed
 ---
 *Phase: 09-the-design-screens-on-a-phone*
 *Completed: 2026-09-09*
+
+## Self-Check: PASSED
+
+All 4 commits (`26fe27b`, `781dc12`, `761e596`, `50c686f`) verified present in `git log`. All 11 touched/created files (`app/globals.css`, `components/ui/button.tsx`, `components/ui/checkbox.tsx`, `components/ui/input.tsx`, `components/ui/select.tsx`, `components/outline/outline-controls.tsx`, `components/fins/fin-controls.tsx`, `components/rails/rail-controls.tsx`, `components/design/fine-adjust-group.tsx`, `e2e/keyboard-focus.spec.ts`, this SUMMARY) verified present on disk.
