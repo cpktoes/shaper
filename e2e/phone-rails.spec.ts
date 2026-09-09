@@ -26,6 +26,12 @@ import { expect, test, type Page } from "@playwright/test";
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
+// 260909-hny insurance: today this changes no measurement, because the toolbar tip is already
+// `display: none` in every Playwright project (see e2e/phone-toolbar-tip.spec.ts's header
+// comment). It's dismissed here anyway so that if Playwright's WebKit ever implements
+// `-webkit-touch-callout`, a strip does not silently appear above every pinned-height and
+// bounding-box assertion in this file.
+const TOOLBAR_TIP_DISMISSAL_KEY = "shaper-toolbar-tip-dismissed";
 
 /** Matches desktop-baseline.spec.ts's/phone-layout.spec.ts's own approach: dismiss the sign-in
  * banner via sessionStorage, set before navigation, so its own height never confuses a layout
@@ -34,6 +40,9 @@ async function dismissSignInBanner(page: Page) {
   await page.addInitScript((key) => {
     window.sessionStorage.setItem(key, "true");
   }, BANNER_DISMISSAL_KEY);
+  await page.addInitScript((key) => {
+    window.localStorage.setItem(key, "true");
+  }, TOOLBAR_TIP_DISMISSAL_KEY);
 }
 
 const PRINT_COUNT_KEY = "__shaperPrintCallCount";

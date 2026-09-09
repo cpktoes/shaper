@@ -21,6 +21,12 @@ import { expect, test } from "@playwright/test";
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
+// 260909-hny insurance: the toolbar tip is `display: none` at desktop width regardless of
+// dismissal state (the phone-width CSS gate alone holds it there), so this changes no pixel here.
+// It's dismissed anyway for the same reason every sibling spec now does: if Playwright's WebKit
+// ever implements `-webkit-touch-callout`, nothing here should start depending on that to stay
+// pixel-stable.
+const TOOLBAR_TIP_DISMISSAL_KEY = "shaper-toolbar-tip-dismissed";
 
 test.describe("desktop baseline screenshots", () => {
   test.beforeEach(async ({ page }, testInfo) => {
@@ -30,6 +36,12 @@ test.describe("desktop baseline screenshots", () => {
         window.sessionStorage.setItem(key, "true");
       },
       BANNER_DISMISSAL_KEY,
+    );
+    await page.addInitScript(
+      (key) => {
+        window.localStorage.setItem(key, "true");
+      },
+      TOOLBAR_TIP_DISMISSAL_KEY,
     );
   });
 
