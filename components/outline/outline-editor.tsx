@@ -7,6 +7,8 @@ import { useDesign } from "@/components/design/design-store";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { RotateBoardIcon, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { ExportPreviewDialog } from "@/components/template/export-preview-dialog";
+import { DesignScreenShell } from "@/components/design/design-screen-shell";
+import * as ViewerMedia from "@/components/design/use-viewer-media";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import { mmToInches } from "@/lib/geometry/units";
 import { OutlineControls } from "./outline-controls";
@@ -63,28 +65,59 @@ function buildPresetSource(spec: OutlineSpec): string {
 
 export function OutlineEditor() {
   const { outline, updateOutline, outlineGeometry, finPlacement } = useDesign();
-  const [showConstruction, setShowConstruction] = useState(false);
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
-  /** View state, like `showConstruction` — not design data, and deliberately not a stored
-   * preference (D-03), so a reload always comes back vertical. */
+  /** View state, like the construction override below — not design data, and deliberately not a
+   * stored preference (D-03), so a reload always comes back vertical. Still what the rotate
+   * button writes to and what a fine pointer displays unchanged (D-10); on a coarse pointer
+   * `boardOrientation` below ignores it entirely in favour of the device's own orientation. */
   const [orientation, setOrientation] = useState<ViewerOrientation>("vertical");
+  /** D-02's construction-overlay default, as an explicit override rather than the overlay's own
+   * on/off flag: `null` means "no explicit choice yet, use the pointer-driven default";
+   * `true`/`false` means the shaper (or wide view, below) has said so directly. Reading
+   * `showConstruction` as `constructionOverride ?? coarsePointer` — a plain computed value, never
+   * its own piece of state a render-time or effect setState call would have to keep in sync — is
+   * what lets a touch device start with the overlay on without ever calling setState outside an
+   * event handler (this codebase's lint config rejects both; a render-time setState caused a real
+   * bug in plan 02-05). */
+  const [constructionOverride, setConstructionOverride] = useState<boolean | null>(null);
   /** Wide view hides the `aside` below so `main` gets the full window width. Also local view
    * state, not design data, deliberately not persisted — a reload always comes back with the
-   * sidebar showing. `preWideViewConstruction` remembers whatever `showConstruction` was set to
-   * before wide view forced it on, so leaving wide view restores it rather than leaving the
-   * shaper on a setting they never chose. Both are set together inside the click handler below,
-   * not from a render-time effect — this codebase's lint config rejects setting state during
-   * render, and doing so caused a real bug in plan 02-05. */
+   * sidebar showing. `preWideViewConstruction` remembers whatever the construction overlay was
+   * showing before wide view forced it on, so leaving wide view restores it rather than leaving
+   * the shaper on a setting they never chose. */
   const [wideView, setWideView] = useState(false);
   const [preWideViewConstruction, setPreWideViewConstruction] = useState(false);
 
+  // D-09/D-10: on a coarse (touch) pointer only, the board follows the phone's own orientation —
+  // nose-up in portrait, flat in landscape — computed fresh every render, never stored. On a fine
+  // pointer `coarsePointer` is false for the life of the component, so `boardOrientation` is
+  // always just `orientation` and the rotate button behaves exactly as it does today (D-10).
+  const coarsePointer = ViewerMedia.useCoarsePointer();
+  const portraitViewport = ViewerMedia.usePortraitViewport();
+  const boardOrientation: ViewerOrientation = coarsePointer
+    ? portraitViewport
+      ? "vertical"
+      : "horizontal"
+    : orientation;
+
+  // D-02: the construction overlay — the five drag targets, their guide chords and knot dots —
+  // starts ON for a touch device instead of desktop's off-by-default-behind-the-toggle, and stays
+  // whatever the shaper last chose once they have tapped the toggle at least once. Because the
+  // server cannot know the pointer type, `coarsePointer` (and so `showConstruction`) may flip on
+  // one render after hydration — the board itself is never late.
+  const showConstruction = constructionOverride ?? coarsePointer;
+
+  function handleToggleConstruction() {
+    setConstructionOverride(!showConstruction);
+  }
+
   function handleToggleWideView() {
     if (wideView) {
-      setShowConstruction(preWideViewConstruction);
+      setConstructionOverride(preWideViewConstruction);
       setWideView(false);
     } else {
       setPreWideViewConstruction(showConstruction);
-      setShowConstruction(true);
+      setConstructionOverride(true);
       setWideView(true);
     }
   }
@@ -132,11 +165,15 @@ export function OutlineEditor() {
         }
         title="Rotate the board"
         slot={0}
+        // D-05/D-11: the rotate button's one job on a phone is done by turning the phone, so it
+        // is absent below the shell breakpoint — one of the phase's only two removed controls.
+        // Gated on width, not pointer: a touchscreen laptop at desktop width keeps it.
+        className="max-shell:hidden"
       >
         <RotateBoardIcon className="size-6" />
       </ViewerToolbarButton>
       <ViewerToolbarButton
-        onClick={() => setShowConstruction((v) => !v)}
+        onClick={handleToggleConstruction}
         pressed={showConstruction}
         label={showConstruction ? "Hide construction lines" : "Show construction lines"}
         slot={2}
@@ -175,7 +212,7 @@ export function OutlineEditor() {
               finMarks={finPlacement.marks}
               hideFinMarks
               pinCalloutText
-              orientation={orientation}
+              orientation={boardOrientation}
             />
           </div>
         </div>
@@ -184,69 +221,62 @@ export function OutlineEditor() {
   );
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-nowrap">
-      {/* A flex column, not one scrolling box: the controls scroll in the region below and the dev
-          preset button sits in a footer that does not. As a plain last child of a scrolling aside it
-          was only ever pinned by luck — outline and rails happened to fit, so it looked right there,
-          while the longer fins controls pushed it past the bottom edge where it could only be met
-          mid-scroll. */}
-      {/* Hidden entirely, not resized, while wide view is on — the internal structure (scrolling
-          controls region + flex-none dev preset footer) stays untouched; a quick task already had
-          to fix that footer once because it was only pinned by luck. */}
-      {!wideView && (
-        <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink">
-          <div className="min-h-0 flex-1 overflow-y-auto p-10">
-            <OutlineControls
-              outline={outline}
-              geometry={outlineGeometry}
-              onChange={updateOutline}
-              showConstruction={showConstruction}
-              onToggleConstruction={() => setShowConstruction((v) => !v)}
-            />
-          </div>
-          {process.env.NODE_ENV === "development" && (
-            <div className="flex-none border-t border-surf-line-faint p-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent"
-                onClick={handleCopyPreset}
-              >
-                {justCopiedPreset ? "Copied!" : "Copy preset values"}
-              </Button>
-            </div>
-          )}
-        </aside>
-      )}
-      <main
-        className={
-          wideView
-            ? "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-1"
-            : "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3"
-        }
-      >
-        {/* Normal view keeps TabbedPanel's folder-tab strip and its own padded card (the same
-            panel and edge Rails and Fins use, which is what makes the four screens read as one
-            application rather than four layouts) — untouched from before wide view existed.
-            Wide view drops that chrome instead of reusing it: with the sidebar already gone and
-            only the one VIEWER tab to label, the tab row and the extra nested card are pure
-            overhead, not signal. The board's drawing is height-bound, not width-bound —
-            components/viewer/callout-primitives.tsx's own comment: "these drawings are
-            height-bound, so horizontal slack never shrinks the board" — so hiding the sidebar
-            alone never made the board bigger; what does is vertical room, and `bare` trims three
-            padded layers down to one and removes the tab row entirely, both only while wide view
-            is on.
-
-            `bare={wideView}` rather than branching between `<TabbedPanel>` and a plain `<div>`
-            here (WR-02): those are different element types at the same tree position, so
-            React's reconciler used to tear down and rebuild `viewerContent` — the drawing, its
-            drag state, the toolbar buttons, `ExportPreviewDialog` — on every Wide View toggle,
-            discarding any in-flight interaction. `<TabbedPanel>` is now the one component that
-            always sits here; only its internal chrome varies. */}
+    <DesignScreenShell
+      controls={
+        <OutlineControls
+          outline={outline}
+          geometry={outlineGeometry}
+          onChange={updateOutline}
+          showConstruction={showConstruction}
+          onToggleConstruction={handleToggleConstruction}
+        />
+      }
+      canvas={
+        // Normal view keeps TabbedPanel's folder-tab strip and its own padded card (the same
+        // panel and edge Rails and Fins use, which is what makes the four screens read as one
+        // application rather than four layouts) — untouched from before wide view existed.
+        // Wide view drops that chrome instead of reusing it: with the sidebar already gone and
+        // only the one VIEWER tab to label, the tab row and the extra nested card are pure
+        // overhead, not signal. The board's drawing is height-bound, not width-bound —
+        // components/viewer/callout-primitives.tsx's own comment: "these drawings are
+        // height-bound, so horizontal slack never shrinks the board" — so hiding the sidebar
+        // alone never made the board bigger; what does is vertical room, and `bare` trims three
+        // padded layers down to one and removes the tab row entirely, both only while wide view
+        // is on.
+        //
+        // `bare={wideView}` rather than branching between `<TabbedPanel>` and a plain `<div>`
+        // here (WR-02): those are different element types at the same tree position, so
+        // React's reconciler used to tear down and rebuild `viewerContent` — the drawing, its
+        // drag state, the toolbar buttons, `ExportPreviewDialog` — on every Wide View toggle,
+        // discarding any in-flight interaction. `<TabbedPanel>` is now the one component that
+        // always sits here; only its internal chrome varies.
         <TabbedPanel bare={wideView} tabs={[{ id: "viewer" as const, label: "VIEWER" }]} active="viewer">
           {viewerContent}
         </TabbedPanel>
-      </main>
-    </div>
+      }
+      wideView={wideView}
+      sidebarFooter={
+        // A flex column, not one scrolling box: the controls scroll in the region above (handled
+        // by DesignScreenShell) and this dev preset button sits in a footer that does not. As a
+        // plain last child of a scrolling aside it was only ever pinned by luck — outline and
+        // rails happened to fit, so it looked right there, while the longer fins controls pushed
+        // it past the bottom edge where it could only be met mid-scroll. Hidden entirely, not
+        // resized, while wide view is on (DesignScreenShell hides the whole sidebar then) — a
+        // quick task already had to fix this footer once because it was only pinned by luck.
+        process.env.NODE_ENV === "development" ? (
+          <div className="flex-none border-t border-surf-line-faint p-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent"
+              onClick={handleCopyPreset}
+            >
+              {justCopiedPreset ? "Copied!" : "Copy preset values"}
+            </Button>
+          </div>
+        ) : undefined
+      }
+      phonePinned="66dvh"
+    />
   );
 }

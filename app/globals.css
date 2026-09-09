@@ -67,6 +67,12 @@
   }
 }
 
+/* Pointer type, not viewport width — a touchscreen laptop at desktop width still gets touch
+   sizing (44px targets, 16px inputs, enlarged drag hit zones), while a mouse-driven browser
+   resized to phone width never does. Width and pointer are independent axes; this phase never
+   conflates them (see --breakpoint-shell below for the width switch). */
+@custom-variant coarse (@media (pointer: coarse));
+
 /* ---------------------------------------------------------------------------
    LAYER 1 — RAMPS  (one per theme; raw values, never referenced by a component)
    Every ratio was computed, not eyeballed: 4.5:1 for text, 3:1 for UI boundaries.
@@ -391,6 +397,14 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* The one width switch between the desktop sidebar-beside-canvas shell and the phone's stacked
+     shell. Turns into a `shell:` variant (width >= 820px, today's shell unmodified) and a
+     `max-shell:` variant (width < 820px, the phone stack) with no further config. 820px is the
+     desktop shell's own minimum (340px sidebar + 480px canvas), so the same number answers both
+     "when does a narrow phone stack" and "when does a rotated phone stop stacking". Pointer type
+     is a separate axis (see the `coarse` custom-variant above) — never conflated with this one. */
+  --breakpoint-shell: 820px;
 
   /* -- surf design language ------------------------------------------------
      bg-surf-ground, text-surf-ink, text-surf-ink-muted, border-surf-line,

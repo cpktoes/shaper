@@ -18,8 +18,12 @@ import { usePathname } from "next/navigation";
 import { SettingsMenu } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
 import { SaveButton } from "@/components/design/save-button";
+import { PhoneTopBar } from "@/components/design/phone-top-bar";
 
-const NAV_LINKS = [
+/** Exported so `components/design/phone-tab-bar.tsx` reads the same six words and order rather
+ * than re-declaring them — the labels can never drift between the desktop nav and the phone tab
+ * bar because there is only one copy. */
+export const NAV_LINKS = [
   { href: "/design/outline", label: "TEMPLATE" },
   { href: "/design/rocker", label: "ROCKER" },
   { href: "/design/rails", label: "RAILS" },
@@ -30,47 +34,62 @@ const NAV_LINKS = [
 
 export function SiteNav() {
   const pathname = usePathname();
+  // The desktop link row is replaced below the shell breakpoint by the phone's compact top bar
+  // and bottom tab bar — but only on the design routes those two components mount on
+  // (app/design/layout.tsx). The setup screen and the rack keep this same row at every width;
+  // that phone treatment is Phase 10's, not this phase's.
+  const onDesignRoute = pathname?.startsWith("/design/") ?? false;
 
   return (
-    <nav
-      data-print-hide
-      className="flex flex-none items-center justify-between gap-10 border-b border-surf-line-faint bg-surf-ground px-12 py-6"
-    >
-      <Link
-        href="/"
-        className="text-sm font-extrabold tracking-architectural text-surf-ink transition-colors hover:text-surf-accent-ink"
+    <>
+      <nav
+        data-print-hide
+        className={
+          "flex flex-none items-center justify-between gap-10 border-b border-surf-line-faint bg-surf-ground px-12 py-6" +
+          (onDesignRoute ? " max-shell:hidden" : "")
+        }
       >
-        SHAPER
-      </Link>
-      <div className="flex items-center gap-5">
-        {NAV_LINKS.map((link) => {
-          const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={
-                "border-b-2 pb-0.5 text-xs font-bold tracking-architectural uppercase transition-colors " +
-                (active
-                  ? "border-surf-accent text-surf-ink"
-                  : "border-transparent text-surf-ink-muted hover:text-surf-ink")
-              }
-            >
-              {link.label}
-            </Link>
-          );
-        })}
-        {/* Sits inside the same right-hand cluster as the screen links, separated by a rule
-            rather than by distance: it is chrome, not a sixth screen, so it should read as a
-            different kind of thing without drifting away from the group. */}
-        <span aria-hidden className="ml-1 h-4 w-px bg-surf-line-faint" />
-        <SettingsMenu />
-        {/* Save (D-05) and the auth control (D-02) share this cluster, both chrome rather than
-            a design screen, in the order a shaper acts: save the work, then who's signed in. */}
-        <span aria-hidden className="h-4 w-px bg-surf-line-faint" />
-        <SaveButton />
-        <NavAuthControl />
-      </div>
-    </nav>
+        <Link
+          href="/"
+          className="text-sm font-extrabold tracking-architectural text-surf-ink transition-colors hover:text-surf-accent-ink"
+        >
+          SHAPER
+        </Link>
+        <div className="flex items-center gap-5">
+          {NAV_LINKS.map((link) => {
+            const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={
+                  "border-b-2 pb-0.5 text-xs font-bold tracking-architectural uppercase transition-colors " +
+                  (active
+                    ? "border-surf-accent text-surf-ink"
+                    : "border-transparent text-surf-ink-muted hover:text-surf-ink")
+                }
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+          {/* Sits inside the same right-hand cluster as the screen links, separated by a rule
+              rather than by distance: it is chrome, not a sixth screen, so it should read as a
+              different kind of thing without drifting away from the group. */}
+          <span aria-hidden className="ml-1 h-4 w-px bg-surf-line-faint" />
+          <SettingsMenu />
+          {/* Save (D-05) and the auth control (D-02) share this cluster, both chrome rather than
+              a design screen, in the order a shaper acts: save the work, then who's signed in. */}
+          <span aria-hidden className="h-4 w-px bg-surf-line-faint" />
+          <SaveButton />
+          <NavAuthControl />
+        </div>
+      </nav>
+      {/* The phone's compact top bar (D-08) — a sibling of the desktop row above, shown only
+          below the shell breakpoint and only on the design routes it replaces navigation for.
+          Both are always in the server-rendered tree; the CSS width variant on each decides
+          which paints, so the first frame is right on every device with no JavaScript check. */}
+      {onDesignRoute && <PhoneTopBar />}
+    </>
   );
 }

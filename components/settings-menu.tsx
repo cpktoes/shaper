@@ -39,10 +39,96 @@ const MODE_LABEL: Record<ThemeMode, string> = { light: "Light", dark: "Dark" };
 /** Heading order. A mode with no themes registered simply does not render. */
 const MODES: ThemeMode[] = ["light", "dark"];
 
-export function SettingsMenu() {
+/**
+ * The popup's own content — the Units and Theme radio groups — factored out of `SettingsMenu` so
+ * `components/design/phone-menu.tsx` can render the exact same rows inside its own single popup
+ * (stacked above the account control) rather than copying the radio groups: one definition, so
+ * the two menus can never drift apart. Must render inside a `Menu.Root` (it uses `Menu.RadioGroup`
+ * and `Menu.GroupLabel`, which read a context only `Menu.Root` provides) — it owns no
+ * `Menu.Trigger`/`Menu.Portal`/`Menu.Popup` of its own, since each caller supplies its own trigger
+ * and popup chrome around this shared content.
+ */
+export function SettingsMenuContent() {
   const { preference, setPreference, systemTheme } = useTheme();
   const { system, setSystem } = useUnits();
 
+  return (
+    <>
+      {/* Units sits above Theme (D-05) — a sibling Menu.RadioGroup, not nested inside it.
+          Base UI walks a RadioGroup's own children to register its items, so neither
+          group may be wrapped in an intervening element. */}
+      <Menu.RadioGroup value={system} onValueChange={(next) => setSystem(next as UnitsSystem)}>
+        <Menu.GroupLabel className="px-2 pt-1 pb-2 text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase">
+          Units
+        </Menu.GroupLabel>
+
+        <UnitsRow
+          value="imperial"
+          label="Imperial"
+          detail={formatDimsExample(UNITS_EXAMPLE_SUMMARY, "imperial")}
+        />
+        <UnitsRow
+          value="metric"
+          label="Metric"
+          detail={formatDimsExample(UNITS_EXAMPLE_SUMMARY, "metric")}
+        />
+      </Menu.RadioGroup>
+
+      <Menu.RadioGroup
+        value={preference}
+        onValueChange={(next) => setPreference(next as ThemePreference)}
+        // Same top spacing the "Light"/"Dark" mode headings already use, so the rhythm
+        // between the two top-level groups matches the rhythm inside them.
+        className="mt-1.5"
+      >
+        {/* Inside the RadioGroup, not beside it: Base UI's group parts read a context
+            only Menu.Group/Menu.RadioGroup provide, and it throws otherwise. It is also
+            the more correct place — this is the radiogroup's accessible name. */}
+        <Menu.GroupLabel className="px-2 pt-1 pb-2 text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase">
+          Theme
+        </Menu.GroupLabel>
+
+        <ThemeRow
+          value="system"
+          Icon={MonitorIcon}
+          label="System"
+          /* The only row whose subtitle moves. With four themes "follow the OS" is
+             ambiguous until you name what it currently picks — and that is
+             `systemTheme`, NOT the theme on screen. With an explicit theme chosen the
+             two differ, and showing the latter would claim the OS had chosen it. */
+          detail={`Follows the OS — ${systemTheme.label} right now`}
+        />
+
+        {MODES.map((mode) => {
+          const themes = THEMES.filter((t) => t.mode === mode);
+          if (themes.length === 0) return null;
+          const Icon = MODE_ICON[mode];
+          return (
+            // Fragment, not a wrapper div. Base UI registers menu items by walking the
+            // RadioGroup's children, so an intervening DOM node leaves the rows
+            // rendered but inert — they take no click and no keyboard focus.
+            <Fragment key={mode}>
+              <div className="mt-1.5 px-2 pt-1 pb-1 text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase">
+                {MODE_LABEL[mode]}
+              </div>
+              {themes.map((theme) => (
+                <ThemeRow
+                  key={theme.id}
+                  value={theme.id}
+                  Icon={Icon}
+                  label={theme.label}
+                  detail={theme.description}
+                />
+              ))}
+            </Fragment>
+          );
+        })}
+      </Menu.RadioGroup>
+    </>
+  );
+}
+
+export function SettingsMenu() {
   return (
     <Menu.Root>
       <Menu.Trigger
@@ -56,79 +142,7 @@ export function SettingsMenu() {
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="end" sideOffset={10} className="isolate z-50">
           <Menu.Popup className="min-w-64 origin-(--transform-origin) rounded-lg border border-surf-line-faint bg-surf-panel p-1.5 shadow-lg outline-none duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
-            {/* Units sits above Theme (D-05) — a sibling Menu.RadioGroup, not nested inside it.
-                Base UI walks a RadioGroup's own children to register its items, so neither
-                group may be wrapped in an intervening element. */}
-            <Menu.RadioGroup
-              value={system}
-              onValueChange={(next) => setSystem(next as UnitsSystem)}
-            >
-              <Menu.GroupLabel className="px-2 pt-1 pb-2 text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase">
-                Units
-              </Menu.GroupLabel>
-
-              <UnitsRow
-                value="imperial"
-                label="Imperial"
-                detail={formatDimsExample(UNITS_EXAMPLE_SUMMARY, "imperial")}
-              />
-              <UnitsRow
-                value="metric"
-                label="Metric"
-                detail={formatDimsExample(UNITS_EXAMPLE_SUMMARY, "metric")}
-              />
-            </Menu.RadioGroup>
-
-            <Menu.RadioGroup
-              value={preference}
-              onValueChange={(next) => setPreference(next as ThemePreference)}
-              // Same top spacing the "Light"/"Dark" mode headings already use, so the rhythm
-              // between the two top-level groups matches the rhythm inside them.
-              className="mt-1.5"
-            >
-              {/* Inside the RadioGroup, not beside it: Base UI's group parts read a context
-                  only Menu.Group/Menu.RadioGroup provide, and it throws otherwise. It is also
-                  the more correct place — this is the radiogroup's accessible name. */}
-              <Menu.GroupLabel className="px-2 pt-1 pb-2 text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase">
-                Theme
-              </Menu.GroupLabel>
-
-              <ThemeRow
-                value="system"
-                Icon={MonitorIcon}
-                label="System"
-                /* The only row whose subtitle moves. With four themes "follow the OS" is
-                   ambiguous until you name what it currently picks — and that is
-                   `systemTheme`, NOT the theme on screen. With an explicit theme chosen the
-                   two differ, and showing the latter would claim the OS had chosen it. */
-                detail={`Follows the OS — ${systemTheme.label} right now`}
-              />
-
-              {MODES.map((mode) => {
-                const themes = THEMES.filter((t) => t.mode === mode);
-                if (themes.length === 0) return null;
-                const Icon = MODE_ICON[mode];
-                return (
-                  // Fragment, not a wrapper div. Base UI registers menu items by walking the
-                  // RadioGroup's children, so an intervening DOM node leaves the rows
-                  // rendered but inert — they take no click and no keyboard focus.
-                  <Fragment key={mode}>
-                    <div className="mt-1.5 px-2 pt-1 pb-1 text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase">
-                      {MODE_LABEL[mode]}
-                    </div>
-                    {themes.map((theme) => (
-                      <ThemeRow
-                        key={theme.id}
-                        value={theme.id}
-                        Icon={Icon}
-                        label={theme.label}
-                        detail={theme.description}
-                      />
-                    ))}
-                  </Fragment>
-                );
-              })}
-            </Menu.RadioGroup>
+            <SettingsMenuContent />
           </Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>

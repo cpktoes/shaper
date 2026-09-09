@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -33,19 +33,37 @@ export const metadata: Metadata = {
 };
 
 /**
+ * The "cover" fit is what makes the bottom tab bar's safe-area padding
+ * (`env(safe-area-inset-bottom)`) do anything at all; the resizing-widget setting keeps the
+ * layout height in step with the visible viewport so a bottom-anchored bar is never left under
+ * the iOS keyboard. No scale-limiting field is added here, ever: removing a shaper's ability to
+ * pinch-zoom is a WCAG 2.1 1.4.4 failure, and the 16px touch-input text size is the correct and
+ * sufficient cure for iOS zoom-on-focus.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
+};
+
+/**
  * Root layout — mounts the single shared board-state provider and top nav instance that both `/`
  * and every `/design/*` screen share, so a preset applied on `/` (or an edit made in the outline
  * editor) is visible everywhere without a remount. The wrapper div below is layout-critical, not
  * decoration — it passes full-height flex sizing from this file's `body` down to the design
  * screens' own flex-1 panels; dropping it collapses them to content height.
  *
- * `body` is clamped to exactly the viewport height (`h-full` against `html`'s own `h-full`, which
- * resolves against the viewport) with `overflow-hidden`, rather than `min-h-full` (a minimum
- * only). A min-height lets body grow taller than the viewport whenever any descendant's content
- * demands it, which turns the *whole page* into the scroll container instead of just the panel
- * that should scroll (e.g. the outline editor's control sidebar, which already opts into its own
- * `overflow-y-auto`). Clamping here is what makes that descendant-level scrolling possible instead
- * of page-level scrolling swallowing it.
+ * `body` is clamped to exactly the viewport's visible height, matching `html`'s own dynamic
+ * viewport height class below, with `overflow-hidden`, rather than a minimum-only height. A
+ * minimum lets body grow taller than the viewport whenever any descendant's content demands it,
+ * which turns the *whole page* into the scroll container instead of just the panel that should
+ * scroll (e.g. the outline editor's control sidebar, which already opts into its own
+ * `overflow-y-auto`). Clamping here is what makes that descendant-level scrolling possible
+ * instead of page-level scrolling swallowing it. Dynamic viewport units, not a static percentage:
+ * on a desktop the two resolve to the same number, but on a phone the dynamic unit tracks
+ * Safari's toolbar coming and going, so the page itself never clips or traps scroll as the
+ * visible viewport changes height (PHON-02).
  *
  * `async` because it calls `resolveUnitsHandoff()` before returning (D-12): the numbers a
  * shaper reads have to be right in the server's own HTML, not corrected after the fact like
@@ -66,7 +84,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <ClerkProvider>
       <html
         lang="en"
-        className={`${geistMono.variable} ${inter.variable} h-full antialiased`}
+        className={`${geistMono.variable} ${inter.variable} h-dvh antialiased`}
         // The init script below adds `light`/`dark` to this element's class list before React
         // hydrates, so the server's markup and the client's first render disagree by design.
         suppressHydrationWarning
@@ -91,7 +109,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
            */}
           <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         </head>
-        <body className="flex h-full flex-col overflow-hidden bg-surf-ground">
+        <body className="flex h-dvh flex-col overflow-hidden bg-surf-ground">
           {/* Outside ThemeProvider, not nested inside it — the units value has to be available
               to everything the nav renders, including the settings menu's Units group beside
               its Theme group. No pre-hydration script counterpart: units renders text, and the

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -34,8 +35,25 @@ import {
 } from "@/lib/geometry/measure-display";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { MeasureField } from "@/components/design/measure-field";
+import { FineAdjustDisclosure } from "@/components/design/fine-adjust-group";
 import { useUnits } from "@/components/units-provider";
 import { TailShapeIcon, type IconTailShape } from "./tail-shape-icon";
+
+/** D-03: the four folded rows' own complete literal class strings — Tailwind cannot see an
+ * interpolated class name, so each row below carries its own full string rather than one built
+ * by concatenation. The order number places the row in the reading order the closed group opens
+ * back into (Width and Offset first, Tail Angle and Fullness last); the hidden rule folds it away
+ * while that group is closed, reading `data-fine-adjust` off the `group`-marked column below. No
+ * row is ever rendered a second time — only its own existing `<div className="flex gap-4">`
+ * wrapper gains these two phone-only rules. */
+const FINE_ADJUST_WIDEPOINT_CLASS =
+  "flex gap-4 max-shell:order-51 max-shell:group-data-[fine-adjust=closed]:hidden";
+const FINE_ADJUST_RAIL_LENGTHS_CLASS =
+  "flex gap-4 max-shell:order-52 max-shell:group-data-[fine-adjust=closed]:hidden";
+const FINE_ADJUST_NOSE_TIP_CLASS =
+  "flex gap-4 max-shell:order-53 max-shell:group-data-[fine-adjust=closed]:hidden";
+const FINE_ADJUST_TAIL_TIP_CLASS =
+  "flex gap-4 max-shell:order-54 max-shell:group-data-[fine-adjust=closed]:hidden";
 
 const TAIL_SHAPES: IconTailShape[] = ["pin", "round", "diamond", "squash", "swallow"];
 
@@ -93,6 +111,9 @@ export function OutlineControls({
   onToggleConstruction,
 }: OutlineControlsProps) {
   const { system } = useUnits();
+  // D-03: screen-only state, like `showConstruction`/`orientation` elsewhere in this phase — never
+  // saved, never in the design snapshot, resets to closed on every navigation to the screen.
+  const [fineAdjustOpen, setFineAdjustOpen] = useState(false);
   const lengthIn = mmToInches(outline.length);
   const lengthFeet = Math.floor(lengthIn / 12);
   const lengthInches = Math.round(lengthIn - lengthFeet * 12);
@@ -115,7 +136,9 @@ export function OutlineControls({
     mmToInches(geometry.effectiveDiamondDepth) < mmToInches(outline.tail.depth) - 1e-6;
 
   return (
-    <div className="flex flex-col gap-5">
+    // `group` + `data-fine-adjust` (D-03) let the four folded rows below read their shown/hidden
+    // state off this one column, purely through CSS — no row is ever rendered a second time.
+    <div className="group flex flex-col gap-5" data-fine-adjust={fineAdjustOpen ? "open" : "closed"}>
       <div>
         <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">Template Builder</div>
         <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
@@ -198,7 +221,7 @@ export function OutlineControls({
       })()}
 
       <SectionHeading>Nose Controls</SectionHeading>
-      <div className="flex gap-4">
+      <div className={FINE_ADJUST_NOSE_TIP_CLASS}>
         <SliderRow
           className="flex-1"
           label="Nose Angle"
@@ -226,7 +249,7 @@ export function OutlineControls({
       </div>
 
       <SectionHeading>Widepoint Controls</SectionHeading>
-      <div className="flex gap-4">
+      <div className={FINE_ADJUST_WIDEPOINT_CLASS}>
         {(() => {
           const width = measureSlider(
             outline.widePointWidth,
@@ -266,7 +289,7 @@ export function OutlineControls({
           );
         })()}
       </div>
-      <div className="flex gap-4">
+      <div className={FINE_ADJUST_RAIL_LENGTHS_CLASS}>
         <SliderRow
           className="flex-1"
           label="Tail Rail"
@@ -389,7 +412,7 @@ export function OutlineControls({
         })()}
       </div>
 
-      <div className="flex gap-4">
+      <div className={FINE_ADJUST_TAIL_TIP_CLASS}>
         <SliderRow
           className="flex-1"
           label="Tail Angle"
@@ -426,6 +449,16 @@ export function OutlineControls({
           View Construction Lines
         </label>
       </div>
+
+      {/* D-03: last item in the controls scroller on a phone, below every other control — every
+          other child above keeps its implicit CSS order of 0, so this header and the four rows
+          it reveals land last purely through `order`, with no `max-shell:` rule reaching a
+          desktop screen at all. */}
+      <FineAdjustDisclosure
+        open={fineAdjustOpen}
+        onToggle={() => setFineAdjustOpen((v) => !v)}
+        className="max-shell:order-50"
+      />
     </div>
   );
 }
