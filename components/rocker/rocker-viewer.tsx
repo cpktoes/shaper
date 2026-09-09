@@ -74,7 +74,7 @@
  */
 
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef, useState } from "react";
-import { CALLOUT_PX, CalloutChipFrame, DimensionTick, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
+import { CALLOUT_CHAR_PX, CALLOUT_PX, CalloutChipFrame, DimensionTick, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { useUnits } from "@/components/units-provider";
 import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import { FOIL_THICKNESS_RANGE_IN, sampleFoil, type FoilSpec } from "@/lib/geometry/foil";
@@ -118,6 +118,17 @@ const DRAG_TARGET_CORE_PX = 2.6;
 /** Fixed reference knots and construction-line termini — deliberately plain, so only grabbable
  * points look grabbable. */
 const KNOT_DOT_PX = 3;
+/**
+ * The drag readout chip (D-17), in CSS pixels — copied from `outline-viewer.tsx`'s own constants
+ * (the same card, the same sizing rules): the small card that reads a slider row back while a
+ * finger drags the control-point handle that drives it. `READOUT_GAP_PX` is the standing
+ * clearance between the touched point and the chip's own bottom edge; `READOUT_ROW_PX`/
+ * `READOUT_PAD_PX` size the card to however many driven fields the touched target owns (one or
+ * two).
+ */
+const READOUT_GAP_PX = 24;
+const READOUT_ROW_PX = 18;
+const READOUT_PAD_PX = 8;
 
 /** Curve sampling density — enough to read as smooth at this frame's scale, well past the five
  * knots the monotone splines are built from. */
@@ -700,6 +711,57 @@ export function RockerViewer({
     cy: pxY(mmToInches(d.point.height)),
   }));
 
+  /**
+   * The drag readout chip's own box (D-17) — mirrors `outline-viewer.tsx`'s own build exactly.
+   * `null` whenever no touch drag is live, which is what keeps the chip absent for a mouse at
+   * every viewport width (PHON-05): only `handlePointerDown`'s own `pointerType === "touch"`
+   * check ever sets `touchDragTarget`.
+   *
+   * Sized and positioned entirely in rendered viewBox space (`toViewBoxPoint` below), the same
+   * space `viewBox`'s own four numbers describe — so the clamp below ("never clipped by the
+   * drawing's own edge") is an exact bounds check, not an approximation across two coordinate
+   * spaces. `CALLOUT_CHAR_PX` is calibrated in the same screen-px terms `CALLOUT_PX` is
+   * (`callout-primitives.tsx`'s own doc comment), so both are multiplied by `handleUnit` once, at
+   * the end, the same conversion `cardPinScale` performs above.
+   */
+  let readoutChip:
+    | { lines: { label: string; value: string }[]; x: number; y: number; width: number; height: number }
+    | null = null;
+  if (touchDragTarget) {
+    const touched = dragTargets.find((d) => d.target === touchDragTarget);
+    if (touched) {
+      const lines = rockerReadoutLines(touchDragTarget);
+      const longestChars = Math.max(...lines.map((l) => `${l.label} — ${l.value}`.length));
+      const widthPx = Math.max(CALLOUT_PX.chipW, longestChars * CALLOUT_CHAR_PX + READOUT_PAD_PX * 2);
+      const heightPx = lines.length * READOUT_ROW_PX + READOUT_PAD_PX * 2;
+      const width = widthPx * handleUnit;
+      const height = heightPx * handleUnit;
+      const [vbMinX, vbMinY, vbWidth, vbHeight] = viewBox.split(" ").map(Number);
+      const anchor = toViewBoxPoint(touched.cx, touched.cy);
+      let boxBottom = anchor.y - READOUT_GAP_PX * handleUnit;
+      let boxTop = boxBottom - height;
+      let boxLeft = anchor.x - width / 2;
+      let boxRight = boxLeft + width;
+      if (boxLeft < vbMinX) {
+        boxLeft = vbMinX;
+        boxRight = boxLeft + width;
+      }
+      if (boxRight > vbMinX + vbWidth) {
+        boxRight = vbMinX + vbWidth;
+        boxLeft = boxRight - width;
+      }
+      if (boxTop < vbMinY) {
+        boxTop = vbMinY;
+        boxBottom = boxTop + height;
+      }
+      if (boxBottom > vbMinY + vbHeight) {
+        boxBottom = vbMinY + vbHeight;
+        boxTop = boxBottom - height;
+      }
+      readoutChip = { lines, x: boxLeft, y: boxTop, width, height };
+    }
+  }
+
   // The construction overlay: one line per handle (four, always — two Bezier segments each with a
   // handle at both ends), from `geometry.handles`. Every coordinate comes straight off
   // `buildRocker`'s own knots/handles, in the same canonical space pxX/pxY draw everything else
@@ -773,6 +835,45 @@ export function RockerViewer({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+  }
+
+  /**
+   * The readout chip's own words (D-17): the same `label — value` composition
+   * `rocker-controls.tsx` already bakes into its own slider labels, for the field or fields the
+   * touched handle drives, read off the live `rocker` spec (never the raw pointer position), so a
+   * handle clamped against its own angle/smoothness/flatness range shows the clamped value, not a
+   * stale pre-clamp number.
+   */
+  function rockerReadoutLines(target: SideProfileDragTarget): { label: string; value: string }[] {
+    switch (target) {
+      case "tailTipHandle":
+        return [
+          { label: "Tail Angle", value: `${rocker.tailAngle}°` },
+          { label: "Tail Smoothness", value: `${rocker.tailSmoothness}%` },
+        ];
+      case "noseTipHandle":
+        return [
+          { label: "Nose Angle", value: `${rocker.noseAngle}°` },
+          { label: "Nose Smoothness", value: `${rocker.noseSmoothness}%` },
+        ];
+      case "tailFlatHandle":
+        return [{ label: "Tail Flatness", value: `${rocker.tailFlatness}%` }];
+      case "noseFlatHandle":
+        return [{ label: "Nose Flatness", value: `${rocker.noseFlatness}%` }];
+    }
+  }
+
+  /**
+   * A point drawn in this viewer's canonical (pre-rotation) space, mapped to where it lands in
+   * the outer, rendered viewBox space — the exact inverse of the content group's own `rotate(90)`
+   * in vertical (identity in horizontal). `rotate(90)` (about the origin, so this is a pure
+   * linear map with no translation to account for) sends canonical `(x, y)` to rendered
+   * `(-y, x)`. Used only to place the readout chip, which is drawn OUTSIDE the rotated content
+   * group (a plain sibling `<g>`) so its text is always screen-upright with no counter-rotation
+   * of its own to get wrong.
+   */
+  function toViewBoxPoint(x: number, y: number): { x: number; y: number } {
+    return vertical ? { x: -y, y: x } : { x, y };
   }
 
   return (
@@ -992,6 +1093,37 @@ export function RockerViewer({
           </>
         )}
       </g>
+      {/* The drag readout chip (D-17): a sibling of the rotated content group above, not a
+          child of it, so its box and text are always drawn screen-upright in the outer viewBox
+          space directly — no counter-rotation needed. Touch-only (`readoutChip` is `null` for a
+          mouse at every viewport width, PHON-05); `pointerEvents="none"` so it can never itself
+          swallow the pointermove that is still steering the drag underneath it. */}
+      {readoutChip && (
+        <g pointerEvents="none">
+          <CalloutChipFrame x={readoutChip.x} y={readoutChip.y} width={readoutChip.width} height={readoutChip.height} />
+          {readoutChip.lines.map((line, i) => (
+            <text
+              key={line.label}
+              x={readoutChip.x + readoutChip.width / 2}
+              y={readoutChip.y + READOUT_PAD_PX * handleUnit + READOUT_ROW_PX * handleUnit * (i + 0.75)}
+              textAnchor="middle"
+            >
+              <tspan
+                style={{ fontSize: CALLOUT_PX.name * handleUnit, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                fill="var(--outline-callout-label)"
+              >
+                {line.label} —{" "}
+              </tspan>
+              <tspan
+                style={{ fontSize: CALLOUT_PX.value * handleUnit, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                fill="var(--color-surf-accent-ink)"
+              >
+                {line.value}
+              </tspan>
+            </text>
+          ))}
+        </g>
+      )}
     </svg>
   );
 }

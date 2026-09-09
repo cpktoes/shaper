@@ -46,7 +46,10 @@ import { formatDim, formatLength, formatSignedDim, stationLabel } from "@/lib/ge
 import { useUnits } from "@/components/units-provider";
 import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import {
+  CALLOUT_CHAR_PX,
+  CALLOUT_PX,
   CalloutChip,
+  CalloutChipFrame,
   MIN_PINNED_FIT_SCALE,
   OUTLINE_CHIP_HEIGHT,
   OutputRail,
@@ -100,6 +103,16 @@ const DRAG_TARGET_RING_PX = 1.6;
 const DRAG_TARGET_CORE_PX = 2.6;
 /** Fixed reference knots — deliberately plain, so only grabbable points look grabbable. */
 const KNOT_DOT_PX = 3;
+/**
+ * The drag readout chip (D-17), in CSS pixels: the small card that reads a slider row back while
+ * a finger drags the point that drives it. `READOUT_GAP_PX` is the standing clearance between the
+ * touched point and the chip's own bottom edge, so the chip never sits under the fingertip;
+ * `READOUT_ROW_PX`/`READOUT_PAD_PX` size the card to however many driven fields the touched
+ * target owns (one or two).
+ */
+const READOUT_GAP_PX = 24;
+const READOUT_ROW_PX = 18;
+const READOUT_PAD_PX = 8;
 /** How far the static stringer/centreline overhangs the board's own tip/tail — a drafting nicety
  * (sketch 004's reference render), not load-bearing geometry. */
 const STRINGER_OVERHANG = 8;
@@ -447,6 +460,52 @@ export function OutlineViewer({
     }
   }
 
+  /**
+   * The readout chip's own words (D-17): `SliderRow`'s own `label — displayValue` composition
+   * (`components/design/slider-row.tsx`) for the field or fields the touched target drives, read
+   * off the live `outline` spec (never the raw pointer position), so a point clamped against
+   * `OUTLINE_DRAG_LIMITS` shows the clamped value, not a stale pre-clamp number. The widepoint is
+   * the one exception to "only the fields this target owns" (`solveOutlineDrag` only returns
+   * `widePointOffset` for it): the sidebar always shows Width grouped directly above Offset
+   * (sketch 004), so the chip shows both, exactly as `outline-controls.tsx` does.
+   */
+  function outlineReadoutLines(target: OutlineDragTarget): { label: string; value: string }[] {
+    switch (target) {
+      case "widepoint":
+        return [
+          { label: "Width", value: formatDim(outline.widePointWidth, system) },
+          { label: "Offset", value: formatSignedDim(outline.widePointOffset, system) },
+        ];
+      case "tailRailHandle":
+        return [{ label: "Tail Rail", value: `${outline.tailRailLength}%` }];
+      case "noseRailHandle":
+        return [{ label: "Nose Rail", value: `${outline.noseRailLength}%` }];
+      case "tailHandle":
+        return [
+          { label: "Tail Angle", value: `${outline.tailAngle}°` },
+          { label: "Fullness", value: `${outline.tailFullness}%` },
+        ];
+      case "noseHandle":
+        return [
+          { label: "Nose Angle", value: `${outline.noseAngle}°` },
+          { label: "Fullness", value: `${outline.noseFullness}%` },
+        ];
+    }
+  }
+
+  /**
+   * A point drawn in this viewer's canonical (pre-rotation) space, mapped to where it lands in
+   * the outer, rendered viewBox space — the exact inverse of the content group's own
+   * `rotate(-90)` in horizontal (identity in vertical). `rotate(-90)` (about the origin, so this
+   * is a pure linear map with no translation to account for) sends canonical `(x, y)` to rendered
+   * `(y, -x)` — see the file header's own note on the content group above. Used only to place the
+   * readout chip, which is drawn OUTSIDE the rotated content group (a plain sibling `<g>`) so its
+   * text is always screen-upright with no counter-rotation of its own to get wrong.
+   */
+  function toViewBoxPoint(x: number, y: number): { x: number; y: number } {
+    return horizontal ? { x: y, y: -x } : { x, y };
+  }
+
   // Inputs: left gutter chips. Length sits at the nose tip; Widepoint leaders to the rail at its
   // own station; WP Offset carries no leader (grouped beneath Widepoint — sketch 004); Tail Block
   // only exists for tail shapes that actually have one (pin/round have none).
@@ -544,6 +603,57 @@ export function OutlineViewer({
   const hitRadiusPx = coarsePointer ? OUTLINE_DRAG_HIT_COARSE_PX : OUTLINE_DRAG_HIT_PX;
   const hitRadiusUserUnits = hitRadiusPx * handleUnit;
   const hitRadiusMm = inchesToMm(hitRadiusUserUnits / scale);
+
+  /**
+   * The drag readout chip's own box (D-17), computed here — not inside the JSX below — so it
+   * reads like every other layout constant in this file. `null` whenever no touch drag is live,
+   * which is what keeps the chip absent for a mouse at every viewport width (PHON-05): only
+   * `handlePointerDown`'s own `pointerType === "touch"` check ever sets `touchDragTarget`.
+   *
+   * Sized and positioned entirely in rendered viewBox space (`toViewBoxPoint` above), which is
+   * exactly the space `viewBox`'s own four numbers describe — so the clamp below ("never clipped
+   * by the drawing's own edge") is an exact bounds check, not an approximation across two
+   * coordinate spaces. `CALLOUT_CHAR_PX` is calibrated in the same screen-px terms `CALLOUT_PX`
+   * is (`callout-primitives.tsx`'s own doc comment), so both are multiplied by `handleUnit` once,
+   * at the end, the same conversion `pinnedCalloutSizes` performs.
+   */
+  let readoutChip:
+    | { lines: { label: string; value: string }[]; x: number; y: number; width: number; height: number }
+    | null = null;
+  if (touchDragTarget) {
+    const touched = dragTargets.find((d) => d.target === touchDragTarget);
+    if (touched) {
+      const lines = outlineReadoutLines(touchDragTarget);
+      const longestChars = Math.max(...lines.map((l) => `${l.label} — ${l.value}`.length));
+      const widthPx = Math.max(CALLOUT_PX.chipW, longestChars * CALLOUT_CHAR_PX + READOUT_PAD_PX * 2);
+      const heightPx = lines.length * READOUT_ROW_PX + READOUT_PAD_PX * 2;
+      const width = widthPx * handleUnit;
+      const height = heightPx * handleUnit;
+      const [vbMinX, vbMinY, vbWidth, vbHeight] = viewBox.split(" ").map(Number);
+      const anchor = toViewBoxPoint(touched.cx, touched.cy);
+      let boxBottom = anchor.y - READOUT_GAP_PX * handleUnit;
+      let boxTop = boxBottom - height;
+      let boxLeft = anchor.x - width / 2;
+      let boxRight = boxLeft + width;
+      if (boxLeft < vbMinX) {
+        boxLeft = vbMinX;
+        boxRight = boxLeft + width;
+      }
+      if (boxRight > vbMinX + vbWidth) {
+        boxRight = vbMinX + vbWidth;
+        boxLeft = boxRight - width;
+      }
+      if (boxTop < vbMinY) {
+        boxTop = vbMinY;
+        boxBottom = boxTop + height;
+      }
+      if (boxBottom > vbMinY + vbHeight) {
+        boxBottom = vbMinY + vbHeight;
+        boxTop = boxBottom - height;
+      }
+      readoutChip = { lines, x: boxLeft, y: boxTop, width, height };
+    }
+  }
 
   // WP Offset is grouped with Widepoint (sketch 004) and carries no leader. In vertical it sits
   // directly beneath Widepoint in the same gutter column — stepping down by a chip height. Read
@@ -780,6 +890,37 @@ export function OutlineViewer({
         </>
       )}
       </g>
+      {/* The drag readout chip (D-17): a sibling of the rotated content group above, not a
+          child of it, so its box and text are always drawn screen-upright in the outer viewBox
+          space directly — no counter-rotation needed. Touch-only (`readoutChip` is `null` for a
+          mouse at every viewport width, PHON-05); `pointerEvents="none"` so it can never itself
+          swallow the pointermove that is still steering the drag underneath it. */}
+      {readoutChip && (
+        <g pointerEvents="none">
+          <CalloutChipFrame x={readoutChip.x} y={readoutChip.y} width={readoutChip.width} height={readoutChip.height} />
+          {readoutChip.lines.map((line, i) => (
+            <text
+              key={line.label}
+              x={readoutChip.x + readoutChip.width / 2}
+              y={readoutChip.y + READOUT_PAD_PX * handleUnit + READOUT_ROW_PX * handleUnit * (i + 0.75)}
+              textAnchor="middle"
+            >
+              <tspan
+                style={{ fontSize: CALLOUT_PX.name * handleUnit, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                fill="var(--outline-callout-label)"
+              >
+                {line.label} —{" "}
+              </tspan>
+              <tspan
+                style={{ fontSize: CALLOUT_PX.value * handleUnit, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                fill="var(--color-surf-accent-ink)"
+              >
+                {line.value}
+              </tspan>
+            </text>
+          ))}
+        </g>
+      )}
     </svg>
     </ViewerOrientationProvider>
     </CalloutSizeProvider>
