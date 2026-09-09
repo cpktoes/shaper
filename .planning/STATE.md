@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 Phase: 09 (the-design-screens-on-a-phone) — EXECUTING
 Plan: 1 of 7
 Status: Executing Phase 09
-Last activity: 2026-09-09 - Completed quick task 260909-ktq: On a phone a control point is selected with a tap and then moved by dragging anywhere on the drawing, so a thumb and its readout no longer have to sit on top of the outline while it moves
+Last activity: 2026-09-09 - Completed quick task 260909-kyz: Sliders work under a finger again: the drag-point sliders in the sidebar on a phone held sideways, and the Fine adjust sliders on an upright phone, both take a touch drag
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
@@ -260,6 +260,7 @@ Recent decisions affecting current work:
 | 260909-hos | Printing the Summary order form from a phone comes out at true size at 100%, where today the shaper had to print at 86% to get the sheets to fit the page | 2026-09-09 | 4ac6d50 | [260909-hos-printing-the-summary-order-form-from-a-p](./quick/260909-hos-printing-the-summary-order-form-from-a-p/) |
 | 260909-i7r | On a phone the Summary shows each order-form sheet as a true preview of the printed page, shrunk as one piece to fit the screen width, instead of reflowing and resizing every box | 2026-09-09 | 8ee99fc | [260909-i7r-on-a-phone-the-summary-shows-each-order-](./quick/260909-i7r-on-a-phone-the-summary-shows-each-order-/) |
 | 260909-ktq | On a phone a control point is selected with a tap and then moved by dragging anywhere on the drawing, so a thumb and its readout no longer have to sit on top of the outline while it moves | 2026-09-09 | 6388499 | [260909-ktq-on-a-phone-a-control-point-is-selected-w](./quick/260909-ktq-on-a-phone-a-control-point-is-selected-w/) |
+| 260909-kyz | Sliders work under a finger again: the drag-point sliders in the sidebar on a phone held sideways, and the Fine adjust sliders on an upright phone, both take a touch drag | 2026-09-09 | fefb33f | [260909-kyz-sliders-work-under-a-finger-again-the-dr](./quick/260909-kyz-sliders-work-under-a-finger-again-the-dr/) |
 
 ## Deferred Items
 
