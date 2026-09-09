@@ -34,11 +34,12 @@ export const NAV_LINKS = [
 
 export function SiteNav() {
   const pathname = usePathname();
-  // The desktop link row is replaced below the shell breakpoint by the phone's compact top bar
-  // and bottom tab bar — but only on the design routes those two components mount on
-  // (app/design/layout.tsx). The setup screen and the rack keep this same row at every width;
-  // that phone treatment is Phase 10's, not this phase's.
-  const onDesignRoute = pathname?.startsWith("/design/") ?? false;
+  // Below the shell breakpoint the desktop link row is replaced by the compact top bar and the
+  // bottom tab bar on the design routes AND on the home screen. The bottom bar itself is mounted
+  // per route (app/design/layout.tsx for the design screens, app/page.tsx for the home screen)
+  // because it must be the last child of the root layout's own flex column — see either file's
+  // own doc comment for why.
+  const onPhoneShellRoute = pathname === "/" || (pathname?.startsWith("/design/") ?? false);
 
   return (
     <>
@@ -46,7 +47,7 @@ export function SiteNav() {
         data-print-hide
         className={
           "flex flex-none items-center justify-between gap-10 border-b border-surf-line-faint bg-surf-ground px-12 py-6" +
-          (onDesignRoute ? " max-shell:hidden" : "")
+          (onPhoneShellRoute ? " max-shell:hidden" : "")
         }
       >
         <Link
@@ -89,7 +90,7 @@ export function SiteNav() {
           below the shell breakpoint and only on the design routes it replaces navigation for.
           Both are always in the server-rendered tree; the CSS width variant on each decides
           which paints, so the first frame is right on every device with no JavaScript check. */}
-      {onDesignRoute && <PhoneTopBar />}
+      {onPhoneShellRoute && <PhoneTopBar />}
     </>
   );
 }

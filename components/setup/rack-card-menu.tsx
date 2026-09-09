@@ -16,8 +16,11 @@ import { Menu } from "@base-ui/react/menu";
 import { MoreVerticalIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// The minimum-row-height override below is the same idiom volume-controls.tsx, fin-controls.tsx
+// and rail-controls.tsx use for a hand-rolled interactive row, so Rename / Duplicate / Delete are
+// thumb-sized on a touch pointer without changing their resting appearance to a mouse.
 const ROW_CLASS =
-  "flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm outline-none select-none data-highlighted:bg-surf-well";
+  "flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm outline-none select-none coarse:min-h-11 data-highlighted:bg-surf-well";
 
 interface RackCardMenuProps {
   /** Named in the trigger's accessible name and used nowhere else — the menu's own callbacks
@@ -32,10 +35,15 @@ interface RackCardMenuProps {
 export function RackCardMenu({ boardName, onRename, onDuplicate, onDelete, className }: RackCardMenuProps) {
   return (
     <Menu.Root>
+      {/* Same fixed-square idiom phone-menu.tsx uses for its own icon-only trigger — 28px drawn
+          at rest (a 16px icon plus 6px of padding each side) grows to a 44px square on a touch
+          pointer, with the icon centred inside it. The trigger is positioned over the card's
+          corner by its caller (board-rack-card.tsx), so at 44px it covers more of the card's
+          corner on a touch device by design. */}
       <Menu.Trigger
         aria-label={`Board actions for ${boardName}`}
         className={cn(
-          "flex cursor-pointer items-center rounded-md border border-surf-line-faint bg-surf-canvas p-1.5 text-surf-ink-muted transition-colors outline-none hover:border-surf-accent-ink hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink data-popup-open:text-surf-ink",
+          "flex cursor-pointer items-center justify-center rounded-md border border-surf-line-faint bg-surf-canvas p-1.5 text-surf-ink-muted transition-colors outline-none coarse:size-11 hover:border-surf-accent-ink hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink data-popup-open:text-surf-ink",
           className,
         )}
       >
