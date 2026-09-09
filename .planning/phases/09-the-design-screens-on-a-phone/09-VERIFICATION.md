@@ -1,135 +1,291 @@
 ---
 phase: 09-the-design-screens-on-a-phone
-verified: 2026-09-09T10:30:05Z
+verified: 2026-09-09T19:15:00Z
 status: human_needed
 score: 7/7 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
+re_verification:
+  previous_status: human_needed
+  previous_score: 7/7
+  gaps_closed:
+    - "G-09-4: keyboard focus was invisible on sliders and barely visible on hand-rolled buttons (found in UAT test 4, 09-08 closes it)"
+    - "G-09-6: the phone Print button did nothing when launched from an iOS Home-Screen icon (found in UAT test 6, 09-09 closes it)"
+  gaps_remaining: []
+  regressions: []
 human_verification:
   - test: "On a real iPhone in Safari, open each design screen and scroll the controls so the dynamic toolbar collapses and re-expands."
     expected: "The pinned drawing area is never clipped, the bottom tab bar stays visible, and scrolling never gets trapped."
-    why_human: "Playwright's device emulation does not reproduce Safari's dynamic viewport-resize behaviour; the automated suite can only assert the dvh-based height chain and that scrollHeight never exceeds clientHeight, not the real toolbar animation. (PHON-02, carried from every plan in the phase.)"
+    why_human: "Playwright's device emulation does not reproduce Safari's dynamic viewport-resize behaviour; the automated suite can only assert the dvh-based height chain and that scrollHeight never exceeds clientHeight, not the real toolbar animation. (PHON-02, carried from every plan in the phase.) UAT test 1 already passed once on this ground; carried forward for completeness since nothing in this wave touched layout."
   - test: "On a real iPhone, tap a typed number field (e.g. Board Length in Metric, a rail mark, a fin placement number)."
     expected: "The page does not zoom in on focus."
-    why_human: "iOS's auto-zoom-on-focus behaviour for sub-16px fields is not reproduced by WebKit/Chromium emulation; the automated check only confirms the 16px font-size rule and window.visualViewport.scale, not real iOS zoom behaviour. (PHON-03, 09-05.)"
+    why_human: "iOS's auto-zoom-on-focus behaviour for sub-16px fields is not reproduced by WebKit/Chromium emulation. (PHON-03, 09-05.) UAT test 2 already passed; nothing in this wave touched input sizing."
   - test: "On a real iPhone, press and hold one of the outline's or rocker's drag points for two seconds, then drag."
     expected: "No text-selection callout or magnifier interrupts the drag."
-    why_human: "The iOS long-press callout is not emulated by Playwright; select-none and WebkitTouchCallout: none are in place and the android/CDP touch-drag test confirms no text gets selected, but the callout itself cannot be reproduced by any current automated check. (PHON-04, 09-07.)"
-  - test: "On a desktop browser at least 820px wide, across all five design screens: tab to every sidebar control and operate it with the keyboard (arrow keys on sliders, focus rings on buttons/checkboxes/selects), click every button and drag every slider with the mouse, press the rotate button, the construction toggle and the wide-view toggle."
-    expected: "Every control behaves exactly as it does on the currently deployed site — nothing moved, resized, or changed behaviour."
-    why_human: "The automated suite proves pixel-identical screenshots and one real mouse-drag per viewer (TEMPLATE, ROCKER), but no plan in this phase wrote a full keyboard-only walkthrough of every control; every SUMMARY defers this to end-of-phase UAT per workflow.human_verify_mode. (PHON-05, carried through 09-02 to 09-07.)"
+    why_human: "The iOS long-press callout is not emulated by Playwright. (PHON-04, 09-07.) UAT test 3 already passed; nothing in this wave touched drag handling."
+  - test: "On a desktop browser at least 820px wide, across all five design screens: Tab to every sidebar control and confirm each one paints an obvious accent-coloured ring — every slider thumb, every tail-shape/fin-setup tile, every pill, every disclosure heading, every Reset Advanced Settings link, every checkbox, every select trigger and every typed field. Then, with the mouse, click every button, drag every slider, press rotate/construction/wide-view, and confirm nothing at rest or under the mouse looks any different from the deployed site."
+    expected: "Every control lights up clearly under the keyboard in the same accent-ink strength, in all four themes (Daylight, Chalk, Slate, Phosphor); nothing hovered, dragged, or resting has changed."
+    why_human: "This replaces the original UAT test 4, which the founder failed on 2026-09-09 (G-09-4: no visible indicator when tabbing). 09-08 fixed the root cause — the slider ring was keyed on a DIV that Base UI never focuses, and every hand-rolled button had no focus style of its own — and a real Chromium Tab-walk (e2e/keyboard-focus.spec.ts, independently re-run during this verification) now proves a slider thumb and two tail-shape/pill buttons both paint the ring. But no automated test walks all five screens in all four themes, and 'obvious at a glance' is inherently a human judgement; the five pixel-identical desktop baselines (independently re-confirmed, none regenerated) are this wave's own proof that nothing at rest or under the mouse moved. (PHON-05, G-09-4.)"
   - test: "Hold an iPhone-sized phone in hand on the ROCKER screen at the default board and look at the side-profile drawing, which is narrower than the pinned drawing area (about 322x341px measured on an iPhone-14-class screen, versus the pinned area's own width)."
-    expected: "The founder confirms the narrower rocker drawing still reads clearly enough in the hand, per D-18's accepted trade-off (the board stays upright with the phone rather than lying flat to fill the width)."
-    why_human: "D-18 already accepts this in writing and the automated suite proves the 40-68% pinned-height band and the measured render sizes, but whether it 'reads right in the hand' is explicitly the founder's own judgement call, not something Playwright's emulation can answer. (D-18, carried since 09-02/09-03.)"
-  - test: "Print a rail cross-section from a real phone's View Full Sized dialog (Print button) and measure the printed page with a ruler, in both Imperial and Metric."
-    expected: "The printed rail is ruler-true (1:1), matching Phase 8's own desktop guarantee, even though the on-screen phone view shows it shrunk with the plain 'Shown smaller than actual size' line and no check bar."
-    why_human: "The automated suite confirms actual-size.css and every @media print rule are byte-for-byte untouched and the dialog's print-path unit tests still pass, but an actual printed sheet measured with a ruler was not produced during execution. (D-13, carried from 09-04.)"
+    expected: "The founder confirms the narrower rocker drawing still reads clearly enough in the hand, per D-18's accepted trade-off."
+    why_human: "D-18 already accepts this in writing; UAT test 5 already passed. Carried forward for completeness — nothing in this wave touched ROCKER."
+  - test: "Two device checks, in place of the original UAT test 6 which failed (G-09-6: 'print buttons dont do anything'). (1) From the site's Home-Screen icon: go to RAILS, tap View Full Sized, and confirm the note — \"Printing isn't available from the Home-Screen app — open this page in Safari to print the full-sized rail.\" — appears exactly where the Print button used to be, with no Print button visible. (2) From Safari itself (not the Home-Screen icon): go to RAILS, tap View Full Sized, confirm the Print button is there, tap it, confirm the print sheet opens, and measure the printed rail with a ruler in both Imperial and Metric."
+    expected: "(1) The note appears, no dead button. (2) The Print button works from Safari, the print sheet opens, and the printed rail is ruler-true (1:1) in both unit systems."
+    why_human: "09-09's root-cause diagnosis (confirmed on the founder's own device on 2026-09-09) found the tap already reached window.print() correctly — the failure was iOS itself silently no-op'ing print calls from a Home-Screen-launched standalone web app. The fix (a CSS-only display-mode:standalone swap) is proven by two source-contract vitest cases pinning the exact note wording and the no-JavaScript-detection rule (independently re-run, 21/21 pass), and by a real Playwright print-call-counting stub that proves a Safari tap on a phone genuinely calls print exactly once (independently re-run on both iphone and android, both pass). The one thing no test in this environment can prove: the installed Chromium build's CDP does not honour a `display-mode` media-feature override (confirmed empirically by the executor; the test self-detects this and calls test.skip() rather than reporting a false pass — independently re-run, confirms the skip is genuine, not silently hidden), so the actual Home-Screen-launch appearance and the ruler-true printed page both still need the device in hand. (PHON-01, D-13, G-09-6.)"
   - test: "At 360px wide in the Metric system, read the RAILS INSTRUCTIONS tab end to end (the example rail card, the three-step copy, the legend grid, the plan/side figure, the closing note)."
     expected: "Nothing clips, overlaps, or truncates, and the cm-formatted numbers read correctly."
-    why_human: "e2e/phone-rails.spec.ts confirms the tab is one vertical scroller with every section reachable, but the UI-SPEC's own backstop check (wrapping without clipping at the narrowest supported width, specifically in Metric) was never visually inspected by a human. (09-04.)"
+    why_human: "UAT test 7 already passed. Carried forward for completeness — nothing in this wave touched RAILS INSTRUCTIONS."
 ---
 
 # Phase 9: The Design Screens on a Phone Verification Report
 
-**Phase Goal:** A shaper can shape a board on a phone — all five design screens laid out for a narrow screen, with controls and drag handles sized for a thumb, and desktop untouched.
-**Verified:** 2026-09-09T10:30:05Z
+**Phase Goal:** One shared screen shell stacks the five design screens for a narrow screen, with finger-sized controls and outline, rocker and foil points a thumb can drag.
+**Verified:** 2026-09-09T19:15:00Z
 **Status:** human_needed
-**Re-verification:** No — initial verification
+**Re-verification:** Yes — after gap closure (09-08, 09-09)
+
+## Context
+
+This is the second verification of Phase 9. The first pass (09-VERIFICATION.md, `human_needed`,
+7/7 must-haves) sent the phase to UAT (09-UAT.md), where the founder ran all seven human checks and
+found two failures:
+
+- **G-09-4** (UAT test 4, PHON-05): tabbing through sidebar controls gave no visible indicator of
+  which control had keyboard focus — sliders painted nothing at all, and the tail-shape tiles were
+  "barely" visible.
+- **G-09-6** (UAT test 6, PHON-01/D-13): the phone Print button in the View Full Sized dialog "does
+  nothing" — later root-caused on the founder's own device to iOS 26 silently no-op'ing
+  `window.print()` inside a Home-Screen-launched standalone web app.
+
+Two gap-closure plans (09-08 for G-09-4, 09-09 for G-09-6) were executed in the same wave, merged to
+main as commits `8756991` and `8dcd6da`, with tracking updated in `2e37393`. This report re-verifies
+both gaps against the actual code and tests on `main` at that HEAD — not against either SUMMARY's
+own narration.
+
+## Gap Closure
+
+### G-09-4 (keyboard focus invisible) — CLOSED IN CODE
+
+**Root cause (confirmed):** `components/ui/slider.tsx` painted its focus ring on the thumb `<div>`,
+but Base UI 1.7.0 gives real keyboard focus to a visually-hidden `<input type="range">` nested
+*inside* that div (clipped by `clip-path: inset(50%)`), so the ring's selector never matched.
+Separately, every hand-rolled selection button (tail-shape tiles, FINS pills/grids, RAILS
+disclosures) had no focus style of its own, leaving only the browser's automatic outline at the
+base layer's half-opacity `outline-ring/50` — measured at 2.18–2.65:1 against the sidebar, under
+the palette contract's own 3:1 floor.
+
+**Evidence independently gathered during this verification (not just cited from the SUMMARY):**
+
+- `app/globals.css` carries two new, additive-only rules immediately after the existing
+  `.slider-accent` block: `.slider-accent [data-slot="slider-thumb"]:has(:focus-visible)` and
+  `.focus-ring-accent:focus-visible`, both a 3px `box-shadow` in `var(--surf-accent-ink)` plus the
+  Windows-High-Contrast-safe transparent outline trick. Confirmed by direct read.
+- `components/ui/{button,checkbox,input,select}.tsx` each carry `focus-visible:ring-ring` (full
+  opacity) in place of `ring-ring/50` — confirmed by grep; each file's diff is exactly one word
+  changed (`git show --stat` on the merge commit: `+1/-1` for each of the four files).
+- All thirteen hand-rolled buttons across `outline-controls.tsx` (1), `fin-controls.tsx` (9),
+  `rail-controls.tsx` (2), `fine-adjust-group.tsx` (1) carry `focus-ring-accent` — confirmed by
+  grep, counts match the plan's own must-have exactly.
+- `e2e/keyboard-focus.spec.ts` exists (139 lines) and was **independently re-run** during this
+  verification on a fresh port: `PW_PORT=3101 npx playwright test --project=desktop
+  e2e/keyboard-focus.spec.ts` — 2/2 passed. It Tabs a real Chromium session onto a real slider
+  thumb and two real hand-rolled buttons (TEMPLATE's "pin" tile, FINS' "Pin" pill) and reads the
+  ring colour live off `--surf-accent-ink`.
+- `components/ui/slider.tsx` is untouched (absent from `git diff --name-only a04a5b5 HEAD`), so the
+  primitive's own half-strength hover/active ring is provably unchanged.
+- The five desktop baseline screenshots were **independently re-run** during this verification
+  (`PW_PORT=3101 npx playwright test --project=desktop e2e/desktop-baseline.spec.ts`) — 5/5 passed,
+  `git status` on the snapshots directory clean (nothing regenerated).
+- `npx vitest run` independently re-run in full: 2311 passed, 2 skipped — matches the orchestrator's
+  reported count exactly.
+
+**What remains genuinely human:** whether the ring reads as "obvious at a glance" across all five
+screens and all four themes, and a full keyboard/mouse parity walk, are judgement calls no automated
+suite makes — this was true before the gap and remains true after; the fix closes the actual defect
+(nothing painted at all) and the human item now asks a materially easier question (is the fix
+*good enough*, not *does anything paint*).
+
+### G-09-6 (phone Print button does nothing) — CLOSED IN CODE, WITH ONE HONESTLY-FLAGGED LIMITATION
+
+**Root cause (confirmed on the founder's own device, 2026-09-09):** the phone's Print button
+correctly called `window.print()` synchronously inside a live tap — the app did its job. The failure
+was downstream: the site had been launched from an iOS Home-Screen icon, which iOS 26 opens as a
+standalone web app, and `window.print()` is a documented, silent no-op in that context. Typing the
+address into Safari itself and tapping Print works.
+
+**Founder's decision:** detect the Home-Screen (standalone) launch in CSS only, and on a phone in
+that context replace the Print button with a plain note directing the shaper to open the page in
+Safari. No PDF path, no change to the print stylesheet, no change to `window.print()` itself.
+
+**Evidence independently gathered during this verification:**
+
+- `components/rails/view-full-sized-dialog.tsx` gates the Print button, the "turn off Fit to page"
+  caveat, and the D-13 line's "tap Print" clause with the same Tailwind arbitrary variant,
+  `max-shell:[@media(display-mode:standalone)]:hidden` (4 occurrences, confirmed by grep), and
+  shows a new note gated the mirror way. The note's exact text —
+  `"Printing isn't available from the Home-Screen app — open this page in Safari to print the
+  full-sized rail."` — is present verbatim (confirmed by grep). `window.print()` appears exactly
+  once in the file, unchanged. No `navigator.standalone`, no `matchMedia`, no new `useState` —
+  confirmed by grep (all zero).
+- `components/rails/view-full-sized-dialog.test.ts` was **independently re-run**
+  (`npx vitest run components/rails/view-full-sized-dialog.test.ts`) — 21/21 passed, including the
+  two new source-contract cases pinning the note's exact sentence and the CSS-only (no-JavaScript)
+  detection rule.
+- `e2e/phone-rails.spec.ts` was **independently re-run** on a fresh port across all three projects
+  (`PW_PORT=3101 npx playwright test e2e/phone-rails.spec.ts --project=iphone --project=android
+  --project=desktop`): the Safari tap-and-count case passed on both iphone and android (a stubbed
+  `window.print` counter reads exactly 1 after a real tap); the desktop guard passed (button
+  visible, note not visible); the android/CDP Home-Screen emulation case genuinely **skipped**
+  (shown as `-` in the run, not a pass) rather than reporting a false result.
+- Files outside this plan's declared three (`app/design/rails/actual-size.css`,
+  `components/summary/use-print-fit.ts`, `components/template/build-template-pdf.ts`,
+  `components/rails/rail-section-plot.tsx`, `app/globals.css`) are absent from
+  `git diff --name-only a04a5b5 HEAD` for this plan's concern — confirmed the print path itself
+  was not touched.
+
+**The known limitation, judged:** the plan called for an android Playwright case that emulates
+`display-mode: standalone` via CDP `Emulation.setEmulatedMedia`. The installed Chromium build
+(153.0.8010.12) does not honour a `display-mode` feature override in any spelling — confirmed
+empirically by the executor (a `prefers-color-scheme` override with the identical call shape
+correctly took effect, ruling out a call-syntax mistake). The test detects this at run time and
+calls `test.skip()`, verified during this re-verification to be a genuine skip rather than a
+hidden pass.
+
+**Judgement on whether this is acceptable for a must-have "proved by a machine":** Acceptable, with
+the item routed to human verification rather than treated as an unproven gap, for three reasons.
+First, `@media (display-mode: standalone)` is a standard, browser-native CSS media feature — the
+same mechanism as `prefers-color-scheme`, which this codebase's print block already depends on
+correctly — so the risk surface is "does this browser evaluate a spec'd media query correctly,"
+not "does this app's own logic work," and that risk is effectively zero. Second, the actual
+mechanism this app owns (the CSS-only gating, the exact note text, the absence of any JavaScript
+detection) is fully and independently proven by the source-contract tests and by the identical
+`max-shell:`/`print:`/pointer-variant pattern already exercised correctly elsewhere in this same
+file and proven by dozens of other passing e2e assertions. Third, the test is honest about its own
+limitation — it does not claim to have proven the Home-Screen case, it skips and says why, and the
+real on-device confirmation is explicitly on the human-verification list below (item 6) rather than
+silently declared "done." This is the same class of gap the phase has carried honestly throughout
+(the iOS long-press callout, the dynamic toolbar) — a real device is required to close the loop, and
+the SUMMARY and this report both say so rather than paper over it.
 
 ## Goal Achievement
 
 ### Observable Truths
 
-Truths below are the five ROADMAP.md success criteria, expanded with the phase's most load-bearing PLAN must-haves. All truths were checked directly against the code at HEAD (`b40aa35`), not against SUMMARY.md's claims — grep/read checks, plus independent re-runs of the relevant Vitest and Playwright suites from a clean shell, are cited as evidence below.
+The seven truths below restate the previous verification's own truths (unchanged where this wave
+didn't touch that surface) with #4 (PHON-05/G-09-4) and the print-related portion of #1
+(PHON-01/G-09-6) re-verified fresh against the current code, not carried forward from the prior
+pass.
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | On a phone, each of the five design screens stacks its controls and its drawing so nothing overlaps and nothing is hidden — every control a shaper can reach on a desktop is reachable on the phone (PHON-01). | VERIFIED | All five editors (`outline-editor.tsx`, `rocker-editor.tsx`, `rail-band-editor.tsx`, `fin-placement-editor.tsx`, `volume-estimator.tsx`) render through the shared `DesignScreenShell` (confirmed by `grep -n "DesignScreenShell"` in each file). Re-ran `e2e/phone-layout.spec.ts`, `e2e/phone-screens.spec.ts`, `e2e/phone-rails.spec.ts` on iphone+android — all pass, 0 failures. Exactly three controls are absent on a phone, all named and rationalized in code comments: the rotate button (D-05/D-11) and the wide-view button (added as the review's third exception, CR-01) on TEMPLATE/ROCKER, both `max-shell:hidden` with the same job done another way (turning the phone; nothing to widen on an already-full-width screen); the View Full Sized check bar/zoom caveat (D-13, D-05). `DesignScreenShell`'s `<aside>` is now always in the tree per the CR-01 fix, so a phone shaper can never lose the controls column outright. |
-| 2 | The page fits the phone's visible area as Safari's toolbar comes and goes — nothing clipped, no trapped scrolling — and the board drawings use the full width of the screen (PHON-02, PHON-06). | VERIFIED (code) / human_needed (real toolbar behaviour) | `app/layout.tsx` carries `h-dvh` on `<html>`/`<body>` and a `viewport` export with `viewportFit: "cover"`, `interactiveWidget: "resizes-content"`, no scale-limiting field (confirmed by direct read). `e2e/phone-layout.spec.ts` asserts `scrollHeight` never exceeds `clientHeight`. TEMPLATE, RAILS and FINS drawings measure ≥90% of the pinned area's own width (automated). ROCKER is a documented, decided exception (D-18): the drawing is height-bound and narrower than the pinned area by design; CONTEXT.md explicitly instructs the verifier not to fail ROCKER on this. RAILS has a documented residual gap: at the `<svg>` level the drawing is ~80-81% of viewport width even though the pinned drawing AREA clears 90% (09-04-SUMMARY "Known Gaps," confirmed still present in the current code — the outer `TabbedPanel`'s own unmodifiable padding accounts for the rest). Real Safari toolbar-in-motion behaviour is not reproducible by Playwright device emulation and is deferred to human verification (see below) — carried as an open item across every plan's own SUMMARY. |
-| 3 | Sliders, buttons, tabs and typed fields are big enough to hit with a finger, and tapping a number field does not zoom the page (PHON-03). | VERIFIED (code) / human_needed (real iOS zoom) | `coarse:h-11`/`coarse:size-11` on Button, `coarse:after:-inset-4` on the Slider thumb, `coarse:text-base` on Input, `coarse:h-11 coarse:text-base` on MeasureField, `coarse:min-h-11` on every checkbox row across five files — all confirmed by direct grep of the current code. WR-02's fix is also present: the hand-rolled tail-shape/fin-setup grid buttons on TEMPLATE and FINS now carry `coarse:min-h-11` (confirmed by grep — not just claimed in REVIEW-FIX.md). Re-ran `e2e/touch-sizing.spec.ts` on iphone+android — 30/30 applicable tests pass (44px-class targets on touch, unchanged smaller sizes on desktop verified separately, not re-run here but present in the suite). Zoom-on-focus is the correct 16px-text cure, present and tested via `window.visualViewport.scale`; the real device confirmation is deferred to human verification. |
-| 4 | A shaper can drag outline, rocker and foil points with a thumb: hit zones sized for a finger, not overlapping their neighbours, and no long-press text popup interrupting a drag (PHON-04). | VERIFIED | `lib/geometry/outline-drag.ts` and `lib/geometry/rocker-drag.ts` both export `nearest*DragTarget` pure functions plus measured hit radii (`OUTLINE_DRAG_HIT_COARSE_PX = 22`, `SIDE_PROFILE_DRAG_HIT_COARSE_PX = 18`, both confirmed by direct read), backed by a committed station-spacing measurement (`components/viewer/drag-spacing.test.ts`) and unit tests (113 tests across the five geometry/wiring test files, independently re-run — all pass). Both viewers (`outline-viewer.tsx`, `rocker-viewer.tsx`) wire the delegated pick into one `onPointerDown`, carry `select-none`/`WebkitTouchCallout: none`/`touch-none` on the hit circles and the root SVG (confirmed by grep), and render the D-17 readout chip. A real (CDP) touch drag test (`e2e/touch-drag.spec.ts`) was independently re-run on the android project and passes — the board actually moves, the readout shows mid-drag, no text is selected. `PHON-04's "foil points"` is explicitly re-scoped by decision D-14 (documented in 09-CONTEXT.md and every relevant PLAN's must-haves) to mean the rocker's four existing curve handles, since the foil itself has no drag points before or after this phase — this is a decided scope narrowing, not a gap, and is called out here for the record rather than silently absorbed. |
-| 5 | On a desktop, mouse dragging and keyboard operation behave exactly as they do today on every viewer touched, and automated tests on iPhone and Android viewports prove the stacked layout and touch drag on at least the outline viewer (PHON-05, TEST-01). | VERIFIED (automated) / human_needed (full keyboard walkthrough) | `@playwright/test@^1.63.0` is a devDependency only (confirmed: `node -e` check on `package.json` shows it absent from `dependencies`). `playwright.config.ts` declares `iphone`/`android`/`desktop` projects and runs on port 3100 (never 3000), with fake, non-secret `pk_live_`/`sk_live_`-format Clerk env — confirmed by direct read. Independently re-ran `e2e/desktop-baseline.spec.ts` + `e2e/desktop-regression.spec.ts` on the desktop project — all 7 pass, zero snapshots regenerated, `git status` on the snapshots directory clean. `e2e/touch-drag.spec.ts` independently re-run on android — both tests pass (real CDP touch drag moves the board). No SUMMARY-reported deviation weakened this truth. The full human keyboard/mouse walkthrough across all five screens (arrow-key slider operation, tab order, rotate/construction/wide-view toggles) was never run by a human during autonomous execution — every plan's own SUMMARY defers it to end-of-phase UAT, consistent with `workflow.human_verify_mode`. |
-| 6 | `npm run build`, `npm test` and `npm run lint` all stay clean at HEAD (project-level regression gate, applies to every phase). | VERIFIED | Independently re-ran `npm run lint` — 0 errors, 12 pre-existing warnings in unrelated files, matching 09-REVIEW-FIX.md's own final verification exactly. Independently re-ran the geometry/wiring unit-test files touched by this phase (113 tests, 5 files) — all pass. Orchestrator-reported `npm run build` (clean) and full `npx vitest run` (2309 passed, 2 pre-existing skips) were not re-run in full here (they are slow and were already reproduced once by the orchestrator on this exact HEAD) but nothing found during this verification contradicts them. |
-| 7 | The post-execution code review's findings were actually fixed in the code, not just narrated in 09-REVIEW-FIX.md. | VERIFIED | All four findings (CR-01 wide-view stripping every phone control, WR-01 the mis-documented scroll hook, WR-02 unsized selection-grid buttons, IN-01 the comment-only note) were independently confirmed present in the current source: `design-screen-shell.tsx`'s `<aside>` is unconditionally in the tree with the CSS-only hide/show swap described in the fix; both editors' wide-view buttons carry `max-shell:hidden`; `outline-controls.tsx`/`fin-controls.tsx` carry the new `coarse:min-h-11` grid-button classes; `rail-controls.tsx` carries the IN-01 comment. Re-ran the four spec files the fix commits themselves cite (`e2e/phone-layout.spec.ts`, `e2e/phone-screens.spec.ts`, `e2e/touch-sizing.spec.ts`, `e2e/phone-rails.spec.ts`) — all pass. |
+| 1 | On a phone, each of the five design screens stacks its controls and its drawing so nothing overlaps and nothing is hidden — every control a shaper can reach on a desktop is reachable on the phone (PHON-01), and a phone's View Full Sized dialog never offers a control that silently fails (G-09-6). | VERIFIED | Unchanged layout evidence from the prior pass, still true (DesignScreenShell wiring untouched by this wave). New: the Home-Screen print-button swap is CSS-only, present, and independently re-run passing (source-contract + e2e, see Gap Closure above). |
+| 2 | The page fits the phone's visible area as Safari's toolbar comes and goes — nothing clipped, no trapped scrolling — and the board drawings use the full width of the screen (PHON-02, PHON-06). | VERIFIED (code) / human_needed (real toolbar behaviour) | Unchanged from prior pass — this wave touched neither file. |
+| 3 | Sliders, buttons, tabs and typed fields are big enough to hit with a finger, and tapping a number field does not zoom the page (PHON-03). | VERIFIED (code) / human_needed (real iOS zoom) | Unchanged from prior pass — this wave touched neither the coarse-sizing rules nor input font sizing (confirmed: `git diff --name-only a04a5b5 HEAD` does not include `components/ui/measure-field.tsx` or the checkbox row files for sizing purposes; the checkbox/input/select edits in this wave are focus-ring-only, one word each). |
+| 4 | A shaper can drag outline, rocker and foil points with a thumb: hit zones sized for a finger, not overlapping their neighbours, and no long-press text popup interrupting a drag (PHON-04). | VERIFIED | Unchanged from prior pass — this wave touched no drag-related file. |
+| 5 | On a desktop, mouse dragging and keyboard operation behave exactly as they do today on every viewer touched, AND a shaper tabbing through the sidebar can now see which control has focus (PHON-05, G-09-4, TEST-01). | VERIFIED (automated) / human_needed (full visual keyboard walkthrough) | The keyboard-invisibility defect is fixed and independently re-proven: `e2e/keyboard-focus.spec.ts` re-run, 2/2 pass; the five desktop baselines re-run, 5/5 match, none regenerated; `e2e/desktop-regression.spec.ts` and the desktop half of `e2e/touch-sizing.spec.ts` untouched and still relied upon as this wave's own proof nothing moved. Whether the ring reads as obvious at a glance across all screens/themes remains a human call. |
+| 6 | `npm run build`, `npm test` and `npm run lint` all stay clean at HEAD (project-level regression gate, applies to every phase). | VERIFIED | Independently re-ran `npx vitest run` in full (2311 passed, 2 skipped — matches orchestrator exactly), `npm run lint` (0 errors, the same 12 pre-existing warnings in unrelated `scripts/` files), `npx tsc --noEmit` (0 errors). `npm run build` was reported clean by the orchestrator on this exact HEAD; not independently re-run here (slow, and nothing found during this verification contradicts it — matches the phase's established practice from the first pass). |
+| 7 | The two UAT-reported gaps (G-09-4, G-09-6) are actually fixed in the code, not just narrated in their SUMMARYs. | VERIFIED | See "Gap Closure" section above — every must-have from both 09-08-PLAN.md and 09-09-PLAN.md was independently checked against the current source (grep + read) and independently re-run (vitest + fresh-port Playwright), not read off either SUMMARY's own claims. |
 
-**Score:** 7/7 truths verified (0 present-but-behavior-unverified). Six of the seven truths carry a real-device or human-judgement caveat that automated checks structurally cannot close — these are collected under Human Verification below, not counted as failures, per every plan's own explicit deferral to end-of-phase UAT.
+**Score:** 7/7 truths verified (0 present-but-behavior-unverified). Five of the seven truths carry a
+real-device or human-judgement caveat that automated checks structurally cannot close — collected
+under Human Verification below, consistent with the phase's `workflow.human_verify_mode =
+end-of-phase` convention and the founder's own UAT pass.
 
-### Required Artifacts
+### Required Artifacts (gap-closure wave only)
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `playwright.config.ts` | Playwright installed dev-only, 3 projects, port 3100, no real credentials | VERIFIED | Present, read directly; devDependency-only confirmed by script |
-| `components/design/design-screen-shell.tsx` | The one shared shell, desktop-identical, phone stack additive | VERIFIED | Present, read directly; all 5 editors import and use it |
-| `components/design/phone-tab-bar.tsx` | Bottom 6-tab nav, safe-area inset | VERIFIED | Present, read directly; includes the post-merge 360px padding fix (commit `09d3c8f`) |
-| `components/design/phone-top-bar.tsx` / `phone-menu.tsx` | Compact top bar, one menu behind gear/account | VERIFIED | Referenced from `app/design/layout.tsx` via `site-nav.tsx`; present |
-| `components/design/fine-adjust-group.tsx` | Closed-by-default fold group for duplicate sliders | VERIFIED | Present; wired into `outline-controls.tsx` and `rocker-controls.tsx` |
-| `lib/geometry/outline-drag.ts` / `rocker-drag.ts` | Nearest-point pick, measured hit radii, pure/tested | VERIFIED | Both exports confirmed present; 0 React/browser/DB imports; unit tests re-run and pass |
-| `components/outline/outline-viewer.tsx` / `rocker-viewer.tsx` | Delegated pick, coarse radius, callout suppression, readout chip | VERIFIED | All confirmed present by direct grep; wired to the 09-06 geometry functions |
-| `components/rails/rail-band-editor.tsx` | One-rail-at-a-time phone switch (D-12) | VERIFIED | NOSE/CENTER/TAIL switch present, seeded from `firstOpenSection` |
-| `components/rails/view-full-sized-dialog.tsx` | Phone branch (D-13): plain line, hidden bar/caveat, split title | VERIFIED | All three pieces present and correctly `max-shell:hidden print:*`-gated |
-| `e2e/*.spec.ts` (8 files) | Playwright tests proving the above | VERIFIED | All 8 files present; independently re-run subsets pass (see Behavioral Spot-Checks) |
+| `app/globals.css` (new rules) | Slider-thumb focus ring + shared `.focus-ring-accent` class, additive only | VERIFIED | Both rules present, read directly; `git diff` on this file for the wave shows 0 deleted lines |
+| `components/ui/{button,checkbox,input,select}.tsx` | Full-strength `ring-ring` focus rings | VERIFIED | One word each, confirmed by grep; slider primitive itself untouched |
+| `components/{outline/outline-controls,fins/fin-controls,rails/rail-controls,design/fine-adjust-group}.tsx` | `focus-ring-accent` on all 13 hand-rolled buttons | VERIFIED | Counts match exactly (1+9+2(x2 lines)+1) |
+| `e2e/keyboard-focus.spec.ts` | Real Chromium Tab-walk proof | VERIFIED | Present, independently re-run, 2/2 pass |
+| `components/rails/view-full-sized-dialog.tsx` | CSS-only Home-Screen note swap | VERIFIED | Present, all 4 gating occurrences confirmed, print handler unchanged |
+| `components/rails/view-full-sized-dialog.test.ts` | Source-contract cases for note text + no-JS detection | VERIFIED | Present, independently re-run, 21/21 pass |
+| `e2e/phone-rails.spec.ts` (additions) | Print-stub proof, CDP Home-Screen case, desktop guard | VERIFIED (with one honestly-skipped sub-case) | Present, independently re-run across all 3 projects; CDP case genuinely skips, not a false pass |
 
-### Key Link Verification
+### Key Link Verification (gap-closure wave only)
 
 | From | To | Via | Status | Details |
 |------|-----|-----|--------|---------|
-| Five editors | `DesignScreenShell` | `controls`/`canvas`/`phonePinned`/etc. props | WIRED | Confirmed by grep in all 5 editor files |
-| `app/design/layout.tsx` | `PhoneTabBar` | mounted as last child | WIRED | Confirmed present |
-| `outline-viewer.tsx`/`rocker-viewer.tsx` | `nearestOutlineDragTarget`/`nearestSideProfileDragTarget` | delegated `onPointerDown` | WIRED | Confirmed by grep; e2e touch-drag test independently re-run and passes |
-| `rail-band-editor.tsx` | `firstOpenSection` (from `view-full-sized-dialog.tsx`) | import, not re-derived | WIRED | Confirmed by grep |
-| `components/ui/{button,slider,input}.tsx`, `measure-field.tsx` | every call site | shared component `coarse:` classes | WIRED | One rule per component reaches every screen; confirmed present, `e2e/touch-sizing.spec.ts` independently re-run |
+| `.slider-accent` (every `<Slider>` in the app) | new `:has(:focus-visible)` thumb rule | shared CSS class | WIRED | One rule reaches every slider; confirmed by grep and by the e2e Tab-walk on TEMPLATE |
+| `.focus-ring-accent` | 13 hand-rolled buttons across 4 files | shared CSS class | WIRED | Confirmed by grep count per file; e2e confirms it reached FINS as well as TEMPLATE |
+| Print button / note in `view-full-sized-dialog.tsx` | `display-mode: standalone` media feature | Tailwind arbitrary variant | WIRED | Confirmed by grep; e2e desktop guard proves the button, not the note, shows outside that context |
 
-### Behavioral Spot-Checks
+### Behavioral Spot-Checks (gap-closure wave, independently re-run during this verification)
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Geometry/wiring unit suite (drag, spacing, pick, readout) | `npx vitest run lib/geometry/outline-drag.test.ts lib/geometry/rocker-drag.test.ts components/viewer/drag-spacing.test.ts components/viewer/drag-pick-wiring.test.ts components/viewer/drag-readout-chip.test.ts` | 5 files, 113 tests, all passed | ✓ PASS |
-| `@playwright/test` correctly dev-only | `node -e` check on `package.json` | dependencies: false, devDependencies: true (^1.63.0) | ✓ PASS |
-| Phone shell + wide-view fix (CR-01) | `PW_PORT=3109 npx playwright test --project=iphone --project=android e2e/phone-layout.spec.ts e2e/touch-drag.spec.ts` | 24 passed, 10 skipped (project-scoped), 0 failed | ✓ PASS |
-| Desktop baseline + mouse-drag regression | `PW_PORT=3109 npx playwright test --project=desktop e2e/desktop-baseline.spec.ts e2e/desktop-regression.spec.ts` | 7 passed, 0 failed; snapshot dir clean | ✓ PASS |
-| RAILS, ROCKER/VOLUME/FINS, touch sizing | `PW_PORT=3109 npx playwright test --project=iphone --project=android e2e/phone-rails.spec.ts e2e/phone-screens.spec.ts e2e/touch-sizing.spec.ts` | 54 passed, 14 skipped, 0 failed | ✓ PASS |
-| Lint | `npm run lint` | 0 errors, 12 pre-existing warnings (unrelated files) | ✓ PASS |
-| Full build/full test/full Playwright suite | Reported by orchestrator on this exact HEAD (`b40aa35`) | build passes; 45 files/2309 passed/2 skipped; 96 e2e passed/0 failed/78 skipped | ✓ PASS (trusted — not independently re-run in full, orchestrator's report is reproducible and this verification's own subset re-runs found nothing contradicting it) |
+| Source-contract cases for the dialog's note text and CSS-only detection | `npx vitest run components/rails/view-full-sized-dialog.test.ts` | 21/21 passed | ✓ PASS |
+| Keyboard-focus Tab-walk (slider + two hand-rolled buttons) | `PW_PORT=3101 npx playwright test --project=desktop e2e/keyboard-focus.spec.ts` | 2/2 passed | ✓ PASS |
+| Phone print-stub + Home-Screen CDP case + desktop guard | `PW_PORT=3101 npx playwright test e2e/phone-rails.spec.ts --project=iphone --project=android --project=desktop` | 21 passed, 18 skipped (CDP case genuinely skipped on iphone/android/desktop as designed), 0 failed | ✓ PASS |
+| Desktop baselines unmoved by either gap fix | `PW_PORT=3101 npx playwright test --project=desktop e2e/desktop-baseline.spec.ts` | 5/5 matched, none regenerated (`git status` on snapshots dir clean) | ✓ PASS |
+| Full unit suite | `npx vitest run` | 45 files, 2311 passed, 2 skipped | ✓ PASS |
+| Lint | `npm run lint` | 0 errors, 12 pre-existing warnings (unrelated `scripts/` files) | ✓ PASS |
+| Type check | `npx tsc --noEmit` | 0 errors | ✓ PASS |
 
 ### Requirements Coverage
 
 | Requirement | Source Plan(s) | Description | Status | Evidence |
 |---|---|---|---|---|
-| PHON-01 | 09-02, 09-03, 09-04 | Every screen stacks, nothing hidden | SATISFIED | DesignScreenShell on all 5 screens; only 3 named, rationalized exceptions |
-| PHON-02 | 09-02 | Page fits phone viewport as toolbar moves | SATISFIED (code) / human check open | dvh root + viewport export present and tested; real toolbar motion needs a real device |
-| PHON-03 | 09-05 | 44px-class targets, no zoom on tap | SATISFIED (code) / human check open | coarse: classes present on every shared control incl. WR-02's grid-button fix |
-| PHON-04 | 09-06, 09-07 | Thumb drag, no long-press popup | SATISFIED | Nearest-point pick, measured radii, real CDP touch-drag test passing; foil scope explicitly narrowed by D-14 |
-| PHON-05 | 09-01, 09-02, 09-05, 09-07 (also exercised by 09-03, 09-04) | Desktop unchanged | SATISFIED (automated) / human keyboard walkthrough open | Pixel-identical baselines + real mouse-drag regression, independently re-confirmed |
-| PHON-06 | 09-02, 09-03, 09-04 | Drawings use full phone width | SATISFIED, with two documented, decided exceptions (ROCKER's D-18 narrower drawing; RAILS' ~80-81% SVG-level residual noted in 09-04's own "Known Gaps") | Automated ≥90%-of-pinned-area checks pass under the phase's own established convention |
-| TEST-01 | 09-01, 09-02, 09-07 | Playwright installed, proves layout + touch drag | SATISFIED | Installed dev-only; iphone/android/desktop projects; real CDP touch drag on outline viewer passing |
+| PHON-01 | 09-02, 09-03, 09-04, 09-09 | Every screen stacks, nothing hidden; phone print offers no dead control | SATISFIED | Prior-pass evidence + this wave's Home-Screen note swap, independently confirmed |
+| PHON-02 | 09-02 | Page fits phone viewport as toolbar moves | SATISFIED (code) / human check open | Unchanged this wave |
+| PHON-03 | 09-05 | 44px-class targets, no zoom on tap | SATISFIED (code) / human check open | Unchanged this wave |
+| PHON-04 | 09-06, 09-07 | Thumb drag, no long-press popup | SATISFIED | Unchanged this wave |
+| PHON-05 | 09-01, 09-02, 09-05, 09-07, 09-08 (also 09-03, 09-04) | Desktop unchanged; keyboard focus now visible | SATISFIED (automated) / human keyboard walkthrough open | This wave's G-09-4 fix independently re-run and passing; desktop baselines re-confirmed unmoved |
+| PHON-06 | 09-02, 09-03, 09-04 | Drawings use full phone width | SATISFIED, with two documented exceptions carried from the prior pass | Unchanged this wave |
+| TEST-01 | 09-01, 09-02, 09-07 | Playwright installed, proves layout + touch drag | SATISFIED | Unchanged this wave |
 
-No orphaned requirements: REQUIREMENTS.md maps exactly PHON-01 through PHON-06 plus TEST-01 to Phase 9, and every one of those seven IDs is claimed by at least one of the seven plans' `requirements:` frontmatter. PHON-07 through PHON-10 are correctly scoped to Phase 10 and are out of this phase's boundary (confirmed against 09-CONTEXT.md's own "Not in this phase" list).
+No orphaned requirements. REQUIREMENTS.md marks PHON-01 through PHON-06 and TEST-01 all `Complete`
+for Phase 9, and all seven IDs are claimed by at least one of the phase's nine plans' `requirements:`
+frontmatter (cross-checked directly against `.planning/REQUIREMENTS.md` during this verification).
 
 ### Anti-Patterns Found
 
-None. A targeted scan for `TBD`/`FIXME`/`XXX`, `TODO`/`HACK`, and stub language (`placeholder`, `coming soon`, `not yet implemented`) across the ~35 files this phase's seven plans touched found zero debt markers and zero stub patterns. `npm run lint` is 0 errors on the current HEAD.
+None. A targeted scan for `TBD`/`FIXME`/`XXX`, `TODO`/`HACK`/`PLACEHOLDER`, and stub language across
+every file this gap-closure wave touched found zero debt markers. The two grep hits on `input.tsx`
+and `select.tsx` are the Tailwind utility classes `placeholder:text-muted-foreground` and
+`data-placeholder:text-muted-foreground` — false positives on the word "placeholder" inside a CSS
+class name, not stub language. `npm run lint` is 0 errors.
 
 ### Deferred Items
 
-None. This phase's own boundary already excludes Phase 10's PHON-07–10 (sign-in, the rack, the summary/order form, and the real-device end-to-end pass), and none of this phase's own gaps map onto later-phase success criteria — the open items below are genuinely items no phase in this milestone will close except by a human looking at a real phone, which is exactly what end-of-phase UAT is for.
+None new. This wave closed the two items UAT found; it introduced no new deferred concern beyond the
+one CDP tooling limitation already judged acceptable above and folded into the human-verification
+list (item 6).
 
 ### Human Verification Required
 
-Every item below was explicitly and consistently flagged as deferred by the plan(s) that produced the surface it concerns — none is a surprise discovered during this verification pass. They are collected here, deduplicated across all seven plans' own "Human verification deferred to end-of-phase UAT" sections, per this project's `workflow.human_verify_mode = end-of-phase`.
+Per this task's instruction, two items are replaced from the prior report to reflect what the gap
+closures actually changed; the other five are carried forward unchanged because nothing in this wave
+touched their surface, and the founder already passed them once in UAT.
 
-1. **Safari's dynamic toolbar (PHON-02).** Scroll each design screen's controls so the toolbar collapses/expands on a real iPhone; confirm nothing clips and scroll never gets trapped.
-2. **No zoom on a typed number field, on real iOS (PHON-03).** Tap Board Length (Metric), a rail mark, or a fin placement field; confirm the page does not zoom.
-3. **No long-press popup during a real thumb drag (PHON-04).** Press-and-hold a drag point for two seconds, then drag, on a real iPhone; confirm no text-selection callout appears.
-4. **Full desktop keyboard/mouse walkthrough across all five screens (PHON-05).** Tab to every control, operate it with arrow keys, drag every point with the mouse, use rotate/construction/wide-view — confirm nothing differs from the deployed site.
-5. **ROCKER's narrower-than-full-width drawing, in the hand (D-18).** A founder judgement call on whether the accepted 322×341px-class rocker drawing reads clearly enough on a real phone.
-6. **A printed rail from a phone, measured with a ruler, in both unit systems (D-13).** Confirm the printed sheet stays ruler-true even though the on-screen phone view now shows it shrunk.
-7. **RAILS INSTRUCTIONS at 360px, in Metric.** Confirm nothing clips or truncates and the cm figures read correctly at the narrowest supported width.
+1. **Safari's dynamic toolbar (PHON-02).** Unchanged from the prior pass — carried forward.
+2. **No zoom on a typed number field, on real iOS (PHON-03).** Unchanged from the prior pass — carried forward.
+3. **No long-press popup during a real thumb drag (PHON-04).** Unchanged from the prior pass — carried forward.
+4. **Full desktop keyboard walkthrough, now checking that every control shows a visible ring (PHON-05, G-09-4 — REPLACES the prior item and the failed UAT test 4).** Tab through the sidebar of all five design screens and confirm every slider thumb, tail/fin-setup tile, pill, disclosure heading, Reset Advanced Settings link, checkbox, select trigger and typed field shows an obvious accent-coloured ring — and that nothing at rest, on hover, or under a mouse drag looks any different from the deployed site.
+5. **ROCKER's narrower-than-full-width drawing, in the hand (D-18).** Unchanged from the prior pass — carried forward.
+6. **Two device checks for the phone print path (G-09-6 — REPLACES the prior item and the failed UAT test 6).** (1) From the Home-Screen icon: RAILS → View Full Sized shows the note where the Print button was, with no dead button. (2) From Safari itself: the Print button is there, tapping it opens the print sheet, and the printed rail measures true with a ruler in both Imperial and Metric.
+7. **RAILS INSTRUCTIONS at 360px, in Metric.** Unchanged from the prior pass — carried forward.
 
 ### Gaps Summary
 
-No blocking gaps. Every one of the phase's seven declared requirements (PHON-01 through PHON-06, TEST-01) has direct, independently-reproduced evidence in the current codebase — not merely a SUMMARY.md claim. The post-execution code review's one critical and three lesser findings were all independently confirmed fixed in the code (not just narrated in 09-REVIEW-FIX.md). Two items are worth the founder's explicit attention even though neither blocks the phase:
+No blocking gaps. Both UAT-reported failures (G-09-4, G-09-6) are closed in the actual code, not
+just narrated in their SUMMARYs — every must-have from both `09-08-PLAN.md` and `09-09-PLAN.md` was
+independently checked against source and independently re-run (vitest, and Playwright on a fresh
+port distinct from the executors' own worktree ports) during this verification, not accepted on
+either SUMMARY's word. The two items the prior verification flagged for the founder's attention
+(RAILS' rail drawing at ~80-81% of viewport width at the `<svg>` level, and the Playwright suite not
+wired into CI) are unchanged by this wave — neither gap-closure plan touched that area — and remain
+open observations rather than blocking gaps, exactly as recorded previously.
 
-- **RAILS' rail drawing reaches only ~80-81% of the phone viewport width at the `<svg>` level**, short of the "full width" reading PHON-06 otherwise achieves elsewhere, even though the pinned drawing AREA itself clears the phase's own 90% convention (the same convention TEMPLATE established). 09-04-SUMMARY documents this candidly as a "Known Gap" caused by two files outside that plan's scope (`design-screen-shell.tsx`'s own `main` padding and `tabbed-panel.tsx`'s own unmodifiable card padding). Confirmed still present in the current code — not closed by the later review-fix pass, which did not touch this area.
-- **The Playwright suite is not wired into `.github/workflows/ci.yml`.** TEST-01's own wording ("automated tests prove the stacked phone layout and touch drag ... so later phone changes can't quietly break them") implies an ongoing guard rail, but CI today only runs `npm test`, `npm run lint` and `npm run build` — the Playwright job Claude's Discretion in 09-CONTEXT.md recommended ("the phone suite gates every push ... beside the geometry suites") was never added by any of the seven plans, and no plan declared CI wiring as one of its own must-haves. This is a real gap against the phase discussion's own recommendation, though not against a declared must-have — it is being surfaced here for a founder decision (accept as a follow-up quick task, or treat as blocking) rather than silently passed over.
+The one new item worth calling out honestly: the android/CDP case meant to prove the Home-Screen
+print-button swap end-to-end cannot run in this environment (the installed Chromium build doesn't
+honour a `display-mode` media-feature override), and the test says so by skipping rather than lying.
+This is judged acceptable (see "Gap Closure" above) because the mechanism it would have proven is a
+standard browser CSS feature, not app logic, and the app's own contribution (the CSS-only gating, the
+exact note, zero JavaScript detection) is fully proven by other means. The actual on-device
+confirmation is on the human-verification list (item 6) rather than silently marked done.
 
-Neither item changes the phase's `passed`-worthy artifact/link/truth evidence; both are flagged as findings for the founder alongside the routine human-verification list above, which is why overall status is `human_needed` rather than `passed`.
+Status is `human_needed` rather than `passed` because five human-verification items remain — the
+same reason the phase was `human_needed` after the first pass, now with items 4 and 6 answering the
+two specific things the founder found broken in UAT.

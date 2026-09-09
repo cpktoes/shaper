@@ -1,14 +1,18 @@
 ---
-status: diagnosed
+status: testing
 phase: 09-the-design-screens-on-a-phone
 source: [09-VERIFICATION.md]
 started: 2026-09-09T10:33:06.945Z
-updated: 2026-09-09T18:02:59.575Z
+updated: 2026-09-09T19:16:07.810Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 4
+name: On a desktop browser at least 820px wide, across all five design screens: Tab to every sidebar control and confirm each one paints an obvious accent-coloured ring — every slider thumb, every tail-shape/fin-setup tile, every pill, every disclosure heading, every Reset Advanced Settings link, every checkbox, every select trigger and every typed field. Then, with the mouse, click every button, drag every slider, press rotate/construction/wide-view, and confirm nothing at rest or under the mouse looks any different from the deployed site.
+expected: |
+  Every control lights up clearly under the keyboard in the same accent-ink strength, in all four themes (Daylight, Chalk, Slate, Phosphor); nothing hovered, dragged, or resting has changed.
+awaiting: user response
 
 ## Tests
 
@@ -24,21 +28,17 @@ result: pass
 expected: No text-selection callout or magnifier interrupts the drag.
 result: pass
 
-### 4. On a desktop browser at least 820px wide, across all five design screens: tab to every sidebar control and operate it with the keyboard (arrow keys on sliders, focus rings on buttons/checkboxes/selects), click every button and drag every slider with the mouse, press the rotate button, the construction toggle and the wide-view toggle.
-expected: Every control behaves exactly as it does on the currently deployed site — nothing moved, resized, or changed behaviour.
-result: issue
-reported: "all functions but you cannot tell which slider you're on when tabbing though, theres no indicator which you've selected and even the tail shape icons barely show which is currently selected wiht the tab"
-severity: major
+### 4. On a desktop browser at least 820px wide, across all five design screens: Tab to every sidebar control and confirm each one paints an obvious accent-coloured ring — every slider thumb, every tail-shape/fin-setup tile, every pill, every disclosure heading, every Reset Advanced Settings link, every checkbox, every select trigger and every typed field. Then, with the mouse, click every button, drag every slider, press rotate/construction/wide-view, and confirm nothing at rest or under the mouse looks any different from the deployed site.
+expected: Every control lights up clearly under the keyboard in the same accent-ink strength, in all four themes (Daylight, Chalk, Slate, Phosphor); nothing hovered, dragged, or resting has changed.
+result: [pending]
 
 ### 5. Hold an iPhone-sized phone in hand on the ROCKER screen at the default board and look at the side-profile drawing, which is narrower than the pinned drawing area (about 322x341px measured on an iPhone-14-class screen, versus the pinned area's own width).
 expected: The founder confirms the narrower rocker drawing still reads clearly enough in the hand, per D-18's accepted trade-off (the board stays upright with the phone rather than lying flat to fill the width).
 result: pass
 
-### 6. Print a rail cross-section from a real phone's View Full Sized dialog (Print button) and measure the printed page with a ruler, in both Imperial and Metric.
-expected: The printed rail is ruler-true (1:1), matching Phase 8's own desktop guarantee, even though the on-screen phone view shows it shrunk with the plain 'Shown smaller than actual size' line and no check bar.
-result: issue
-reported: "print buttons dont do anything"
-severity: major
+### 6. Two device checks, in place of the original test 6 (G-09-6: 'print buttons dont do anything'). (1) From the site's Home-Screen icon: go to RAILS, tap View Full Sized, and confirm the note — "Printing isn't available from the Home-Screen app — open this page in Safari to print the full-sized rail." — appears exactly where the Print button used to be, with no Print button visible. (2) From Safari itself (not the Home-Screen icon): go to RAILS, tap View Full Sized, confirm the Print button is there, tap it, confirm the print sheet opens, and measure the printed rail with a ruler in both Imperial and Metric.
+expected: (1) The note appears, no dead button. (2) The Print button works from Safari, the print sheet opens, and the printed rail is ruler-true (1:1) in both unit systems.
+result: [pending]
 
 ### 7. At 360px wide in the Metric system, read the RAILS INSTRUCTIONS tab end to end (the example rail card, the three-step copy, the legend grid, the plan/side figure, the closing note).
 expected: Nothing clips, overlaps, or truncates, and the cm-formatted numbers read correctly.
@@ -48,8 +48,8 @@ result: pass
 
 total: 7
 passed: 5
-issues: 2
-pending: 0
+issues: 0
+pending: 2
 skipped: 0
 blocked: 0
 
@@ -57,7 +57,9 @@ blocked: 0
 
 - gap_id: G-09-6
   truth: "The printed rail is ruler-true (1:1), matching Phase 8's own desktop guarantee, even though the on-screen phone view shows it shrunk with the plain 'Shown smaller than actual size' line and no check bar."
-  status: failed
+  status: resolved
+  resolved_by: 09-09-PLAN.md
+  resolved_at: 2026-09-09
   reason: "User reported: print buttons dont do anything"
   severity: major
   test: 6
@@ -76,7 +78,9 @@ blocked: 0
   debug_session: ".planning/debug/phone-print-button-does-nothing.md"
 - gap_id: G-09-4
   truth: "Every control behaves exactly as it does on the currently deployed site — nothing moved, resized, or changed behaviour."
-  status: failed
+  status: resolved
+  resolved_by: 09-08-PLAN.md
+  resolved_at: 2026-09-09
   reason: "User reported: all functions but you cannot tell which slider you're on when tabbing though, theres no indicator which you've selected and even the tail shape icons barely show which is currently selected wiht the tab"
   severity: major
   test: 4
