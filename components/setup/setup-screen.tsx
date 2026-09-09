@@ -116,10 +116,33 @@ export function SetupScreen({ models }: SetupScreenProps) {
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-surf-ground">
-      <div className="mx-auto max-w-5xl px-6 pt-16 pb-16 md:px-8">
+      {/* This container carries a bare DOM hook for the browser test to measure, changing no
+          pixel — the same convention as the design screens' own scroller and phone-menu hooks.
+          Its inset is a single unprefixed 32px value with one width-keyed 16px override for the
+          phone, replacing the old two-breakpoint split: that split's own boundary sat BELOW the
+          app's 820px shell breakpoint, so it would have fought the phone-width override inside
+          the 768-819px band with the winner decided by Tailwind's sort order rather than intent.
+          Removing the collision instead of betting on it — at 820px and above the result (32px)
+          is identical to what the old split already produced there, which is why this rewrite
+          touches nothing on a desktop. The top/bottom gaps get the same treatment: the existing
+          64px desktop value stays, with a phone-width override (24px above the first card, 32px
+          below the last one — the scale's section-padding and stacked-block steps). */}
+      <div
+        data-setup-content
+        className="mx-auto max-w-5xl px-8 pt-16 pb-16 max-shell:px-4 max-shell:pt-6 max-shell:pb-8"
+      >
         <BoardRack entries={rackEntries} onSelectModel={handleSelectModel} onContinue={goToEditor} />
-        <h1 className="text-3xl leading-[1.2] font-display text-surf-ink uppercase tracking-architectural font-extrabold">Shape a New Board</h1>
-        <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {/* The phone-width headline size below is already an app size (the rack heading and
+            every card name use it) — no new size introduced. At the desktop size, with the app's
+            wide all-caps tracking, "Shape a New Board" doesn't fit one line on a 360px phone. */}
+        <h1 className="text-3xl max-shell:text-xl leading-[1.2] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
+          Shape a New Board
+        </h1>
+        {/* A phone-width override brings the gap above and between cards down to 16px (the
+            scale's card-gap step); the column rule itself is left completely alone — it already
+            gives one card per row at every real phone width, and forcing a single column up to
+            the shell breakpoint would waste a rotated phone's screen. */}
+        <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 max-shell:mt-4 max-shell:gap-4">
           {BOARD_PRESETS.map((preset) => (
             <PresetCard key={preset.id} preset={preset} onSelect={handleSelectPreset} />
           ))}

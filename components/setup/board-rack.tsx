@@ -86,11 +86,18 @@ export function BoardRack({ entries, onSelectModel, onContinue }: BoardRackProps
   };
 
   return (
-    <div className="mb-12">
-      <h2 className="text-xl leading-[1.2] font-display text-surf-ink uppercase tracking-architectural font-bold">
+    // A phone-width override brings this section's bottom gap down to 32px (the scale's step
+    // for a gap between major stacked blocks), replacing the desktop's 48px.
+    <div className="mb-12 max-shell:mb-8">
+      {/* The phone-width heading size below is one step smaller than the headline's own
+          phone-width size in setup-screen.tsx, keeping the two sizes' order — both already
+          exist in the app. */}
+      <h2 className="text-xl max-shell:text-base leading-[1.2] font-display text-surf-ink uppercase tracking-architectural font-bold">
         Your Boards
       </h2>
-      <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Same width-keyed 16px gap above and between cards as the preset grid, and the same
+          untouched column rule. */}
+      <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 max-shell:mt-4 max-shell:gap-4">
         {entries.map((entry) =>
           entry.kind === "in-progress" ? (
             <BoardRackCard key="in-progress" variant="in-progress" onSelect={onContinue} />
