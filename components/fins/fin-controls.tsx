@@ -112,7 +112,10 @@ function PillButton({
       onClick={onClick}
       disabled={disabled}
       className={
-        `rounded-md border px-1 py-2.5 text-[11px] font-bold ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"} ${
+        // 09-REVIEW.md WR-02: hand-rolled, not the shared Button component, so it never got
+        // Button's own coarse:h-11 for free -- coarse:min-h-11 mirrors that same pointer-keyed
+        // rule by hand (a finger needs 44px; a mouse at any width still gets today's height).
+        `rounded-md border px-1 py-2.5 text-[11px] font-bold coarse:min-h-11 ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"} ${
           active
             ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
             : "border-surf-line bg-surf-sidebar text-surf-ink"
@@ -400,6 +403,9 @@ export function FinControls({
         <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
           Tail Shape — {TAIL_SHAPE_LABEL[spec.tailShape as IconTailShape]}
         </div>
+        {/* 09-REVIEW.md WR-02: hand-rolled <button>s, not PillButton or the shared Button
+            component, so coarse:min-h-11 is added by hand -- same pointer-keyed rule, no effect
+            on a mouse at any width. */}
         <div
           className="mt-2 mb-6 grid grid-cols-5 gap-2.5"
           style={{ pointerEvents: importTemplate ? "none" : "auto" }}
@@ -410,7 +416,7 @@ export function FinControls({
               type="button"
               onClick={() => onChange({ tailShape: shape as FinTailShape })}
               className={
-                "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
+                "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 coarse:min-h-11 " +
                 (spec.tailShape === shape
                   ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
                   : "border-surf-line bg-surf-sidebar text-surf-ink")
@@ -427,6 +433,7 @@ export function FinControls({
 
       <div>
         <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">Fin Setup</div>
+        {/* 09-REVIEW.md WR-02: same hand-rolled coarse:min-h-11 as the tail-shape grid above. */}
         <div className="mt-2 mb-6 grid grid-cols-5 gap-2.5">
           {FIN_SETUP_ORDER.map((setup) => {
             const opt = FIN_SETUPS.find((o) => o.value === setup)!;
@@ -436,7 +443,7 @@ export function FinControls({
                 type="button"
                 onClick={() => applySetup(setup)}
                 className={
-                  "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 " +
+                  "flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 coarse:min-h-11 " +
                   (spec.finSetup === setup
                     ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
                     : "border-surf-line bg-surf-sidebar text-surf-ink")

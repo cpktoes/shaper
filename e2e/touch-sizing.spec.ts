@@ -169,6 +169,37 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     const scale = await page.evaluate(() => window.visualViewport?.scale ?? 1);
     expect(scale).toBe(1);
   });
+
+  // 09-REVIEW.md WR-02: the tail-shape grid, Fin Setup grid and PillButton rows are hand-rolled
+  // <button>s, not the shared Button component, so they carry no `data-slot="button"` marker and
+  // were left out of the sweep above entirely. The accessible name here is the button's raw text
+  // content — TEMPLATE's tail-shape labels render lowercase and rely on a CSS `capitalize` for
+  // their look, so this locator matches lowercase on purpose (the accessibility tree does not
+  // reflect that CSS transform).
+  test("TEMPLATE: every tail-shape button is at least 44px tall", async ({ page }) => {
+    await page.goto("/design/outline");
+    for (const shape of ["pin", "round", "diamond", "squash", "swallow"]) {
+      const button = page.getByRole("button", { name: shape, exact: true });
+      await expect(button).toBeVisible();
+      const box = await button.boundingBox();
+      if (!box) throw new Error(`${shape} tail-shape button is missing a bounding box`);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+  });
+
+  test("FINS: every button in the tail-shape and Fin Setup grids is at least 44px tall", async ({
+    page,
+  }) => {
+    await page.goto("/design/fins");
+    const labels = ["Pin", "Round", "Diamond", "Squash", "Swallow", "Single Fin", "Twin", "Thruster", "2+1", "Quad"];
+    for (const label of labels) {
+      const button = page.getByRole("button", { name: label, exact: true });
+      await expect(button).toBeVisible();
+      const box = await button.boundingBox();
+      if (!box) throw new Error(`"${label}" button is missing a bounding box`);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+  });
 });
 
 test.describe("touch sizing — desktop stays exactly today's smaller sizes", () => {
@@ -202,5 +233,31 @@ test.describe("touch sizing — desktop stays exactly today's smaller sizes", ()
     const thumbBox = await slideThumbTargetBox(thumb);
     expect(thumbBox.width).toBe(28);
     expect(thumbBox.height).toBe(28);
+  });
+
+  // 09-REVIEW.md WR-02: proves coarse:min-h-11 stayed pointer-keyed — a mouse at desktop width
+  // keeps exactly today's resting height on these hand-rolled grids, unchanged by the fix.
+  test("TEMPLATE and FINS: tail-shape and Fin Setup buttons keep today's resting height on a mouse", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+    const pinButton = page.getByRole("button", { name: "pin", exact: true });
+    await expect(pinButton).toBeVisible();
+    const pinBox = await pinButton.boundingBox();
+    if (!pinBox) throw new Error("pin tail-shape button is missing a bounding box");
+    expect(pinBox.height).toBe(59.5);
+
+    await page.goto("/design/fins");
+    const finsPinButton = page.getByRole("button", { name: "Pin", exact: true });
+    await expect(finsPinButton).toBeVisible();
+    const finsPinBox = await finsPinButton.boundingBox();
+    if (!finsPinBox) throw new Error("FINS Pin tail-shape button is missing a bounding box");
+    expect(finsPinBox.height).toBe(65);
+
+    const singleFinButton = page.getByRole("button", { name: "Single Fin", exact: true });
+    await expect(singleFinButton).toBeVisible();
+    const singleFinBox = await singleFinButton.boundingBox();
+    if (!singleFinBox) throw new Error("Single Fin setup button is missing a bounding box");
+    expect(singleFinBox.height).toBe(69);
   });
 });

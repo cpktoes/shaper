@@ -317,6 +317,10 @@ export function OutlineControls({
       </div>
 
       <SectionHeading>Tail Controls</SectionHeading>
+      {/* 09-REVIEW.md WR-02: a hand-rolled <button>, not the shared Button component, so it never
+          got Button's own coarse:h-11 for free -- `coarse:min-h-11` mirrors that same
+          pointer-keyed rule by hand (a finger needs 44px; a mouse at any width still gets the
+          smaller resting height). */}
       <div className="mt-2 mb-6 grid grid-cols-5 gap-2.5">
         {TAIL_SHAPES.map((shape) => {
           const active = outline.tail.kind === shape;
@@ -332,7 +336,7 @@ export function OutlineControls({
                   tailFullness: preset.tailFullness,
                 })
               }
-              className="flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-1.5"
+              className="flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-1.5 coarse:min-h-11"
               style={{
                 // Inline styles were invisible to both earlier passes: the border migration
                 // grepped for `border-surf-muted/N` classes, and the color-mix sweep only
