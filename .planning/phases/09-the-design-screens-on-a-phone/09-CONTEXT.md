@@ -135,7 +135,7 @@ These come from ROADMAP.md's "Settled findings that constrain this phase" and
   Nose-up in portrait means the outline and the side profile both use the tall pinned area
   (D-01). Orientation is view state, not design data — never saved, never in the snapshot —
   exactly as today's `orientation` state on both editors.
-- **D-10: Desktop orientation is untouched.** the desktop default and its rotate button behave
+- **D-10: Desktop orientation is untouched.** The desktop default and its rotate button behave
   exactly as today (PHON-05).
 - **D-11: The rotate button is absent on phones.** The phone's own orientation is the only
   orientation control there (exception 1 in D-05). Considered and set aside: keeping it as a
