@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 Phase: 09 (the-design-screens-on-a-phone) — EXECUTING
 Plan: 1 of 7
 Status: Executing Phase 09
-Last activity: 2026-09-09 - Completed quick task 260909-hq9: The home screen on a phone takes the same shape as the design screens: the compact top bar, the bottom tab bar, and the board rack and preset cards stacked one wide and sized for a thumb
+Last activity: 2026-09-09 - Completed quick task 260909-hos: Printing the Summary order form from a phone comes out at true size at 100%, where today the shaper had to print at 86% to get the sheets to fit the page
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
@@ -257,6 +257,7 @@ Recent decisions affecting current work:
 | 260909-hd9 | On a phone the viewer's toolbar buttons sit in the drawing's top-right corner and pack toward it, so a button hidden on a touch screen no longer leaves an empty slot in front of the ones that remain | 2026-09-09 | 859ff1a | [260909-hd9-on-a-phone-the-viewer-s-toolbar-buttons-](./quick/260909-hd9-on-a-phone-the-viewer-s-toolbar-buttons-/) |
 | 260909-hny | A one-time tip on a phone explains how to hide the browser toolbar for more drawing room, since a website cannot hide it itself; shown once, dismissed with a tap, remembered on that phone | 2026-09-09 | 5d3bdf3 | [260909-hny-a-one-time-tip-on-a-phone-explains-how-t](./quick/260909-hny-a-one-time-tip-on-a-phone-explains-how-t/) |
 | 260909-hq9 | The home screen on a phone takes the same shape as the design screens: the compact top bar, the bottom tab bar, and the board rack and preset cards stacked one wide and sized for a thumb | 2026-09-09 | 11005fd | [260909-hq9-the-home-screen-on-a-phone-takes-the-sam](./quick/260909-hq9-the-home-screen-on-a-phone-takes-the-sam/) |
+| 260909-hos | Printing the Summary order form from a phone comes out at true size at 100%, where today the shaper had to print at 86% to get the sheets to fit the page | 2026-09-09 | 4ac6d50 | [260909-hos-printing-the-summary-order-form-from-a-p](./quick/260909-hos-printing-the-summary-order-form-from-a-p/) |
 
 ## Deferred Items
 
