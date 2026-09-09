@@ -89,7 +89,12 @@ import {
   type SideProfileDragTarget,
 } from "@/lib/geometry/rocker-drag";
 import { buildRocker, ROCKER_LIFT_RANGE_IN, sampleRocker, type RockerSpec } from "@/lib/geometry/rocker";
-import { inchesToMm, type Mm, mmToInches } from "@/lib/geometry/units";
+import { inchesToMm, mm, type Mm, mmToInches } from "@/lib/geometry/units";
+import {
+  nextSelection,
+  remoteDragPoint,
+  type DragSelectionEvent,
+} from "@/components/viewer/drag-selection";
 import {
   cardPinScale,
   COMPACT_BASELINE_DASH,
@@ -118,6 +123,10 @@ const DRAG_TARGET_CORE_PX = 2.6;
 /** Fixed reference knots and construction-line termini — deliberately plain, so only grabbable
  * points look grabbable. */
 const KNOT_DOT_PX = 3;
+/** The picked-point halo ring (D-07, 260909-ktq) — copied from `outline-viewer.tsx`'s own
+ * constant: one extra concentric circle, drawn only around whichever handle is currently picked.
+ * Only ever drawn on a touch pick, so a mouse-driven desktop screenshot cannot change. */
+const DRAG_SELECTED_HALO_PX = 11;
 /**
  * The drag readout chip (D-17), in CSS pixels — copied from `outline-viewer.tsx`'s own constants
  * (the same card, the same sizing rules): the small card that reads a slider row back while a
@@ -477,14 +486,33 @@ export function RockerViewer({
   /** The content group carrying the rotation, in vertical — see `toBoardPoint` below for why the
    * drag matrix must be read off this instead of the SVG root. */
   const contentRef = useRef<SVGGElement>(null);
-  /** Which grab target the active gesture owns, if any. A ref, not state: it changes on
-   * pointerdown and is read on pointermove, and re-rendering for it would be a wasted pass. */
-  const draggingRef = useRef<SideProfileDragTarget | null>(null);
+  /** The active gesture, if any. A ref, not state: it changes on pointerdown and is read on
+   * pointermove, and re-rendering for it would be a wasted pass. Mirrors
+   * `outline-viewer.tsx`'s own gesture record exactly (260909-ktq) — see that file's comment for
+   * the full reasoning on `pointStart` never being re-read live. A mouse or pen only ever sets
+   * `target`/`pointStart`/`fingerStart`/`fingerClientStart` with `remote: false` (PHON-05). */
+  const draggingRef = useRef<{
+    target: SideProfileDragTarget;
+    remote: boolean;
+    pointStart: SideProfileDragPoint;
+    fingerStart: SideProfileDragPoint;
+    fingerClientStart: { x: number; y: number };
+    maxTravelPx: number;
+  } | null>(null);
   /** Which control point a TOUCH gesture is dragging, if any — state, not a ref, so the drag
    * readout chip (09-07 Task 2) re-renders when this starts and stops. Stays `null` for a mouse
    * or pen at every viewport width (D-17, PHON-05): only `handlePointerDown`'s own `pointerType
    * === "touch"` check ever sets it. */
   const [touchDragTarget, setTouchDragTarget] = useState<SideProfileDragTarget | null>(null);
+  /** Which handle is PICKED (260909-ktq, D-02): set by a touch tap or a touch drag-start, and it
+   * survives a lift — that is what lets a shaper drag a handle directly once and then keep
+   * shaping it from anywhere else on the drawing. Drives the halo ring and the `data-selected`
+   * hook. Stays `null` for a mouse or pen at every viewport width (PHON-05). */
+  const [selectedTarget, setSelectedTarget] = useState<SideProfileDragTarget | null>(null);
+  /** The finger's own live board position during a touch gesture (260909-ktq, D-06) — the drag
+   * readout chip's anchor, so the card follows the THUMB rather than the point. `null` whenever no
+   * touch gesture is live. */
+  const [touchFingerBoard, setTouchFingerBoard] = useState<SideProfileDragPoint | null>(null);
   const lengthIn = mmToInches(length);
   // Built once per render and shared by the sampling loop, the drag-target enumerator and the
   // solver below, the same posture `rocker-editor.tsx` takes building it once for the controls,
@@ -717,6 +745,12 @@ export function RockerViewer({
    * every viewport width (PHON-05): only `handlePointerDown`'s own `pointerType === "touch"`
    * check ever sets `touchDragTarget`.
    *
+   * Anchored on the FINGER, not the handle (260909-ktq, D-06): `touchFingerBoard` is projected
+   * through the same `pxX`/`pxY` the drag targets themselves use, so it lands in exactly the
+   * content-group pixel the finger is touching — during a direct drag that is where the handle
+   * already is, so nothing looks different; during a remote drag it rides out to the thumb,
+   * wherever on the drawing that is.
+   *
    * Sized and positioned entirely in rendered viewBox space (`toViewBoxPoint` below), the same
    * space `viewBox`'s own four numbers describe — so the clamp below ("never clipped by the
    * drawing's own edge") is an exact bounds check, not an approximation across two coordinate
@@ -727,39 +761,38 @@ export function RockerViewer({
   let readoutChip:
     | { lines: { label: string; value: string }[]; x: number; y: number; width: number; height: number }
     | null = null;
-  if (touchDragTarget) {
-    const touched = dragTargets.find((d) => d.target === touchDragTarget);
-    if (touched) {
-      const lines = rockerReadoutLines(touchDragTarget);
-      const longestChars = Math.max(...lines.map((l) => `${l.label} — ${l.value}`.length));
-      const widthPx = Math.max(CALLOUT_PX.chipW, longestChars * CALLOUT_CHAR_PX + READOUT_PAD_PX * 2);
-      const heightPx = lines.length * READOUT_ROW_PX + READOUT_PAD_PX * 2;
-      const width = widthPx * handleUnit;
-      const height = heightPx * handleUnit;
-      const [vbMinX, vbMinY, vbWidth, vbHeight] = viewBox.split(" ").map(Number);
-      const anchor = toViewBoxPoint(touched.cx, touched.cy);
-      let boxBottom = anchor.y - READOUT_GAP_PX * handleUnit;
-      let boxTop = boxBottom - height;
-      let boxLeft = anchor.x - width / 2;
-      let boxRight = boxLeft + width;
-      if (boxLeft < vbMinX) {
-        boxLeft = vbMinX;
-        boxRight = boxLeft + width;
-      }
-      if (boxRight > vbMinX + vbWidth) {
-        boxRight = vbMinX + vbWidth;
-        boxLeft = boxRight - width;
-      }
-      if (boxTop < vbMinY) {
-        boxTop = vbMinY;
-        boxBottom = boxTop + height;
-      }
-      if (boxBottom > vbMinY + vbHeight) {
-        boxBottom = vbMinY + vbHeight;
-        boxTop = boxBottom - height;
-      }
-      readoutChip = { lines, x: boxLeft, y: boxTop, width, height };
+  if (touchDragTarget && touchFingerBoard) {
+    const lines = rockerReadoutLines(touchDragTarget);
+    const longestChars = Math.max(...lines.map((l) => `${l.label} — ${l.value}`.length));
+    const widthPx = Math.max(CALLOUT_PX.chipW, longestChars * CALLOUT_CHAR_PX + READOUT_PAD_PX * 2);
+    const heightPx = lines.length * READOUT_ROW_PX + READOUT_PAD_PX * 2;
+    const width = widthPx * handleUnit;
+    const height = heightPx * handleUnit;
+    const [vbMinX, vbMinY, vbWidth, vbHeight] = viewBox.split(" ").map(Number);
+    const fingerCx = pxX(mmToInches(touchFingerBoard.station));
+    const fingerCy = pxY(mmToInches(touchFingerBoard.height));
+    const anchor = toViewBoxPoint(fingerCx, fingerCy);
+    let boxBottom = anchor.y - READOUT_GAP_PX * handleUnit;
+    let boxTop = boxBottom - height;
+    let boxLeft = anchor.x - width / 2;
+    let boxRight = boxLeft + width;
+    if (boxLeft < vbMinX) {
+      boxLeft = vbMinX;
+      boxRight = boxLeft + width;
     }
+    if (boxRight > vbMinX + vbWidth) {
+      boxRight = vbMinX + vbWidth;
+      boxLeft = boxRight - width;
+    }
+    if (boxTop < vbMinY) {
+      boxTop = vbMinY;
+      boxBottom = boxTop + height;
+    }
+    if (boxBottom > vbMinY + vbHeight) {
+      boxBottom = vbMinY + vbHeight;
+      boxTop = boxBottom - height;
+    }
+    readoutChip = { lines, x: boxLeft, y: boxTop, width, height };
   }
 
   // The construction overlay: one line per handle (four, always — two Bezier segments each with a
@@ -797,41 +830,138 @@ export function RockerViewer({
     return { station: inchesToMm(stationIn), height: inchesToMm(heightIn) };
   }
 
+  /**
+   * Every move writes the spec and the redraw arrives back through props — nothing here is
+   * cached across renders, which is what keeps the sliders and the datasheet cells in step with
+   * the drawing mid-drag.
+   *
+   * A DIRECT gesture (thumb, mouse, or pen on the handle itself) passes the finger's own board
+   * point straight through, exactly as it always has. A REMOTE gesture (260909-ktq, D-03: a touch
+   * picked a handle, then moved from elsewhere on the drawing) instead asks `remoteDragPoint` for
+   * the picked handle's OWN board position at touch-down plus the finger's travel since then —
+   * never the finger's own live position, which would teleport the handle onto wherever the thumb
+   * happens to be. `remoteDragPoint` is axis-neutral, so the mapping into/out of it here is
+   * `{x: station, y: height}` — the outline viewer's own mapping is `{x: station, y: halfWidth}`.
+   */
   function handleDragMove(event: ReactPointerEvent<SVGElement>) {
-    if (!draggingRef.current || !onDrag) return;
+    const gesture = draggingRef.current;
+    if (!gesture || !onDrag) return;
     const boardPoint = toBoardPoint(event);
     if (!boardPoint) return;
-    // Every move writes the spec and the redraw arrives back through props — nothing here is
-    // cached across renders, which is what keeps the sliders and the datasheet cells in step
-    // with the drawing mid-drag.
-    onDrag(solveSideProfileDrag(geometry, draggingRef.current, boardPoint));
+
+    gesture.maxTravelPx = Math.max(
+      gesture.maxTravelPx,
+      Math.hypot(
+        event.clientX - gesture.fingerClientStart.x,
+        event.clientY - gesture.fingerClientStart.y,
+      ),
+    );
+
+    const dragTo = gesture.remote
+      ? (() => {
+          const moved = remoteDragPoint(
+            { x: gesture.pointStart.station, y: gesture.pointStart.height },
+            { x: gesture.fingerStart.station, y: gesture.fingerStart.height },
+            { x: boardPoint.station, y: boardPoint.height },
+          );
+          return { station: mm(moved.x), height: mm(moved.y) };
+        })()
+      : boardPoint;
+
+    onDrag(solveSideProfileDrag(geometry, gesture.target, dragTo));
+
+    // The readout chip (D-06/D-17) follows the finger, so this is set on every move a touch makes
+    // — direct or remote — and never for a mouse or pen (PHON-05).
+    if (event.pointerType === "touch") setTouchFingerBoard(boardPoint);
   }
 
   /**
    * The one delegated drag-start pick (D-15, RESEARCH.md Pitfall 2): a press anywhere on the
    * drawing converts to board coordinates and asks `nearestSideProfileDragTarget` which of the
    * four curve handles, if any, is within reach — never which hit-circle happened to catch the
-   * browser's own (paint-order) hit-test. Pressing empty canvas returns `null` and starts
-   * nothing. One pointer path for both a mouse and a touch (D-16): the drag starts on
-   * pointer-down with no movement threshold, because the drawing is pinned inside the phone
-   * shell and can never be mistaken for a page scroll.
+   * browser's own (paint-order) hit-test. One pointer path for both a mouse and a touch (D-16): a
+   * gesture starts on pointer-down with no movement threshold, because the drawing is pinned
+   * inside the phone shell and can never be mistaken for a page scroll.
+   *
+   * A mouse or pen (260909-ktq, PHON-05) keeps today's path byte-for-byte: no hit, nothing
+   * happens; a hit starts a direct drag exactly as it always has. It never reaches `nextSelection`
+   * and never sets `selectedTarget` or `touchFingerBoard` — picking, the halo ring and the readout
+   * chip following the finger are touch-only.
+   *
+   * A touch asks `nextSelection` what the press means: a hit always picks that handle and starts
+   * a direct drag (D-02, D-04 — even mid-pick, a newly touched handle wins); empty canvas with a
+   * handle already picked starts a remote drag on it (D-03); empty canvas with nothing picked does
+   * nothing at all, and takes no pointer capture — exactly as it always has (D-05).
    */
   function handlePointerDown(event: ReactPointerEvent<SVGElement>) {
     if (!onDrag) return;
     const boardPoint = toBoardPoint(event);
     if (!boardPoint) return;
-    const target = nearestSideProfileDragTarget(dragPointsAt, boardPoint, hitRadiusMm);
-    if (!target) return;
+    const hit = nearestSideProfileDragTarget(dragPointsAt, boardPoint, hitRadiusMm);
+
+    if (event.pointerType !== "touch") {
+      if (!hit) return;
+      event.preventDefault();
+      draggingRef.current = {
+        target: hit,
+        remote: false,
+        pointStart: boardPoint,
+        fingerStart: boardPoint,
+        fingerClientStart: { x: event.clientX, y: event.clientY },
+        maxTravelPx: 0,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      return;
+    }
+
+    const decision = nextSelection({ selected: selectedTarget, mode: "idle" }, { type: "touchDown", hit });
+    if (decision.mode === "idle" || decision.selected === null) return;
+
     event.preventDefault();
-    draggingRef.current = target;
     event.currentTarget.setPointerCapture(event.pointerId);
-    // The readout chip (D-17) is touch-only, at any viewport width — a mouse never sets this.
-    if (event.pointerType === "touch") setTouchDragTarget(target);
+    const remote = decision.mode === "remote";
+    // A remote gesture's `pointStart` is the picked handle's own entry in `dragPointsAt` — the
+    // same array the pick itself was made against, so there is one source of truth for where the
+    // handles are. A direct gesture's `pointStart` is unused (`dragTo` takes the finger's live
+    // point in that branch of `handleDragMove`), so the finger's own board point stands in for it.
+    const pointStart = remote
+      ? (dragPointsAt.find((d) => d.target === decision.selected)?.point ?? boardPoint)
+      : boardPoint;
+    draggingRef.current = {
+      target: decision.selected,
+      remote,
+      pointStart,
+      fingerStart: boardPoint,
+      fingerClientStart: { x: event.clientX, y: event.clientY },
+      maxTravelPx: 0,
+    };
+    setSelectedTarget(decision.selected);
+    setTouchDragTarget(decision.selected);
+    setTouchFingerBoard(boardPoint);
   }
 
-  function handleDragEnd(event: ReactPointerEvent<SVGElement>) {
+  /**
+   * Split from a genuine lift (260909-ktq): a lift asks `nextSelection` whether the gesture was a
+   * tap on empty space (releases the pick, D-05) or a drag (the pick survives, D-02); a cancelled
+   * gesture always leaves the pick exactly where it was (D-05). Both clear the live gesture,
+   * the readout chip's own state, and pointer capture exactly as before. A mouse or pen never
+   * reaches `nextSelection` (PHON-05).
+   */
+  function handleDragEnd(event: ReactPointerEvent<SVGElement>, cancelled: boolean) {
+    const gesture = draggingRef.current;
+    if (gesture && event.pointerType === "touch") {
+      const dragEvent: DragSelectionEvent<SideProfileDragTarget> = cancelled
+        ? { type: "cancel" }
+        : { type: "touchUp", travelPx: gesture.maxTravelPx };
+      const result = nextSelection(
+        { selected: selectedTarget, mode: gesture.remote ? "remote" : "direct" },
+        dragEvent,
+      );
+      setSelectedTarget(result.selected);
+    }
     draggingRef.current = null;
     if (touchDragTarget !== null) setTouchDragTarget(null);
+    if (touchFingerBoard !== null) setTouchFingerBoard(null);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -901,8 +1031,8 @@ export function RockerViewer({
       aria-label="Side profile of the board, showing the rocker line and deck thickness"
       onPointerDown={showConstruction && onDrag ? handlePointerDown : undefined}
       onPointerMove={onDrag ? handleDragMove : undefined}
-      onPointerUp={onDrag ? handleDragEnd : undefined}
-      onPointerCancel={onDrag ? handleDragEnd : undefined}
+      onPointerUp={onDrag ? (event) => handleDragEnd(event, false) : undefined}
+      onPointerCancel={onDrag ? (event) => handleDragEnd(event, true) : undefined}
     >
       {/* Every child below is drawn in the canonical (horizontal, nose-left) coordinate space,
           untouched — the rotation lives on this ONE group, so pxX/pxY and their call sites keep
@@ -1060,12 +1190,23 @@ export function RockerViewer({
               />
             ))}
             {/* The drag targets themselves: board-fill disc, accent ring, warning core — the same
-                three-part treatment `outline-viewer.tsx` draws its own drag targets with. The
-                four control-point handle termini appear here — the two tip knots and the centre
-                knot are never among them. pointer-events:none throughout — the transparent hit
-                circles below own every pointer interaction. */}
+                three-part treatment `outline-viewer.tsx` draws its own drag targets with, plus,
+                for whichever handle is picked (260909-ktq, D-07), a halo ring drawn one size
+                further out. The four control-point handle termini appear here — the two tip
+                knots and the centre knot are never among them. pointer-events:none throughout —
+                the transparent hit circles below own every pointer interaction. */}
             {dragTargets.map((d) => (
               <g key={`target-${d.target}`} pointerEvents="none">
+                {d.target === selectedTarget && (
+                  <circle
+                    cx={d.cx}
+                    cy={d.cy}
+                    r={DRAG_SELECTED_HALO_PX * handleUnit}
+                    fill="none"
+                    stroke="var(--color-surf-accent-ink)"
+                    strokeWidth={DRAG_TARGET_RING_PX * handleUnit}
+                  />
+                )}
                 <circle
                   cx={d.cx}
                   cy={d.cy}
@@ -1083,11 +1224,15 @@ export function RockerViewer({
                 `data-drag-target` test hook only. `touch-action:none` stops a touch drag
                 scrolling the page instead of shaping the board; `select-none` plus the inline
                 `WebkitTouchCallout` suppression stop iOS's long-press text-selection popup
-                (PHON-04, RESEARCH.md Pitfall 3) from interrupting a drag mid-gesture. */}
+                (PHON-04, RESEARCH.md Pitfall 3) from interrupting a drag mid-gesture.
+                `data-selected` (260909-ktq) is `undefined` — not `"false"` — when the handle is
+                not picked, so React omits it entirely and the phone specs that count
+                `[data-drag-target]` elements stay exact. */}
             {dragTargets.map((d) => (
               <circle
                 key={`hit-${d.target}`}
                 data-drag-target={d.target}
+                data-selected={d.target === selectedTarget ? "true" : undefined}
                 cx={d.cx}
                 cy={d.cy}
                 r={hitRadiusUserUnits}
