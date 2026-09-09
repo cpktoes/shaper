@@ -94,6 +94,20 @@ test.describe("phone shell — TEMPLATE stacks with the drawing pinned above the
     }
   });
 
+  // 09-REVIEW.md CR-01: the wide-view toggle is a desktop-only affordance (it widens the canvas
+  // by removing the sidebar, and a phone's canvas is already full width), so it must never
+  // strip a phone shaper's one way to reach every control.
+  test("the wide-view button is hidden on a phone, and the controls stay reachable", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    await expect(
+      page.getByRole("button", { name: "Hide the sidebar for a wider view" }),
+    ).toBeHidden();
+    await expect(page.locator("[data-design-controls-scroll]").first()).toBeVisible();
+  });
+
   // Held-out overflow check (UI-SPEC "Bottom tab bar / overflow"): at these three narrow phone
   // widths, all six labels render whole on one line — no wrap, clip or ellipsis.
   for (const width of [360, 375, 393]) {
@@ -234,6 +248,25 @@ test.describe("phone Fine adjust group", () => {
   });
 });
 
+test.describe("phone shell — ROCKER's wide-view button is hidden too", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "phone-only shell assertions");
+    await dismissSignInBanner(page);
+  });
+
+  // 09-REVIEW.md CR-01: same guard as TEMPLATE above, on the other screen the finding named.
+  test("the wide-view button is hidden on a phone, and the controls stay reachable", async ({
+    page,
+  }) => {
+    await page.goto("/design/rocker");
+
+    await expect(
+      page.getByRole("button", { name: "Hide the sidebar for a wider view" }),
+    ).toBeHidden();
+    await expect(page.locator("[data-design-controls-scroll]").first()).toBeVisible();
+  });
+});
+
 test.describe("desktop shell — unchanged", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "desktop-only shell assertions");
@@ -271,6 +304,21 @@ test.describe("desktop shell — unchanged", () => {
 
     await page.getByRole("button", { name: "Show construction lines" }).click();
     await expect(dragTargets.first()).toBeVisible();
+  });
+
+  // 09-REVIEW.md CR-01: proves the toggle still does its one real job on desktop, unaffected by
+  // the phone-only guard added above.
+  test("wide view still hides the sidebar on desktop, and pressing it again shows it", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    const wideViewButton = page.getByRole("button", { name: "Hide the sidebar for a wider view" });
+    await wideViewButton.click();
+    await expect(page.locator("aside")).toBeHidden();
+
+    await page.getByRole("button", { name: "Show the sidebar" }).click();
+    await expect(page.locator("aside")).toBeVisible();
   });
 
   test("no Fine adjust control appears and the Width slider is visible without tapping anything", async ({

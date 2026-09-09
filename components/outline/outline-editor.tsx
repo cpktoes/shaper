@@ -166,8 +166,10 @@ export function OutlineEditor() {
         title="Rotate the board"
         slot={0}
         // D-05/D-11: the rotate button's one job on a phone is done by turning the phone, so it
-        // is absent below the shell breakpoint — one of the phase's only two removed controls.
-        // Gated on width, not pointer: a touchscreen laptop at desktop width keeps it.
+        // is absent below the shell breakpoint — the first of the phase's three removed controls
+        // (wide view, on the toolbar button below, is the third, added after the post-execution
+        // code review — see 09-REVIEW.md CR-01). Gated on width, not pointer: a touchscreen
+        // laptop at desktop width keeps it.
         className="max-shell:hidden"
       >
         <RotateBoardIcon className="size-6" />
@@ -191,6 +193,15 @@ export function OutlineEditor() {
         label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
         title={wideView ? "Show the sidebar" : "Wide view"}
         slot={3}
+        // 09-REVIEW.md CR-01: on a phone the drawing already has the whole width and the
+        // controls are the entire column stacked beneath it, so there is nothing to widen —
+        // pressing this button would only hide every control, with no way back (the small icon
+        // that caused it would be gone too). Absent below the shell breakpoint, gated on width
+        // like Rotate above, so a touchscreen laptop at desktop width keeps it.
+        // `DesignScreenShell` also refuses to fully drop the controls on a phone even if
+        // `wideView` is somehow still true, belt-and-suspenders for a desktop shaper who narrows
+        // the window after pressing this.
+        className="max-shell:hidden"
       >
         {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
       </ViewerToolbarButton>

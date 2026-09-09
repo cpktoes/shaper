@@ -74,17 +74,43 @@ export function DesignScreenShell({
     ? "flex min-h-0 w-full flex-1 flex-nowrap max-shell:flex-col max-shell:overflow-y-auto"
     : "flex min-h-0 w-full flex-1 flex-nowrap max-shell:flex-col";
 
+  // `simpleAsideBase`/`nonSimpleAsideBase` are byte-identical to what `asideClassName` used to
+  // compute unconditionally — `wideView` only ever layers an ADDITIVE transform on top of one of
+  // these four literal strings (below), never edits them, so a desktop baseline with `wideView`
+  // false renders exactly the classes it always has.
+  const simpleAsideBase = nonePinned
+    ? "h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto border-r border-surf-line-faint bg-surf-sidebar p-10 text-surf-ink " +
+      "max-shell:order-last max-shell:h-auto max-shell:flex-none max-shell:w-full max-shell:max-w-none max-shell:basis-auto max-shell:border-r-0 max-shell:border-t max-shell:overflow-visible"
+    : // simpleSidebar && !nonePinned: no current caller exercises this combination (VOLUME, the
+      // only `simpleSidebar` caller, always pairs it with `phonePinned="none"`) — kept, not
+      // deleted, for a future caller that might.
+      "h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto border-r border-surf-line-faint bg-surf-sidebar p-10 text-surf-ink " +
+      "max-shell:order-last max-shell:h-auto max-shell:w-full max-shell:max-w-none max-shell:basis-auto max-shell:border-r-0 max-shell:border-t";
+
+  const nonSimpleAsideBase = nonePinned
+    ? "flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink " +
+      "max-shell:order-last max-shell:h-auto max-shell:min-h-0 max-shell:flex-none max-shell:w-full max-shell:max-w-none max-shell:basis-auto max-shell:border-r-0 max-shell:border-t max-shell:overflow-visible"
+    : "flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink " +
+      "max-shell:order-last max-shell:h-auto max-shell:min-h-0 max-shell:flex-1 max-shell:w-full max-shell:max-w-none max-shell:basis-auto max-shell:border-r-0 max-shell:border-t max-shell:overflow-y-auto";
+
+  // 09-REVIEW.md CR-01: the aside is now ALWAYS in the tree (see the return statement below) —
+  // a phone has no concept of "widening the canvas" (it's already full width), so removing this
+  // element outright when `wideView` is true would strip a phone shaper's only reachable
+  // controls, with no way back. `wideView` still hides the whole sidebar on DESKTOP (its actual,
+  // only job), but purely via an additive CSS swap here, never a second conditional branch that
+  // could also fire below the shell breakpoint:
+  //   - the non-simple base's own leading class IS its display rule (`flex`) — swap only that
+  //     one token for `hidden` (the two are never both present on the element) and add a
+  //     `max-shell:flex` override that restores it below the shell breakpoint.
+  //   - the simple base carries no display class of its own (an `<aside>` is block by default),
+  //     so its own hidden/shown pair is simply appended: `hidden max-shell:block`.
   const asideClassName = simpleSidebar
-    ? nonePinned
-      ? "h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto border-r border-surf-line-faint bg-surf-sidebar p-10 text-surf-ink " +
-        "max-shell:order-last max-shell:h-auto max-shell:flex-none max-shell:w-full max-shell:max-w-none max-shell:basis-auto max-shell:border-r-0 max-shell:border-t max-shell:overflow-visible"
-      : "h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto border-r border-surf-line-faint bg-surf-sidebar p-10 text-surf-ink " +
-        "max-shell:order-last max-shell:h-auto max-shell:w-full max-shell:max-w-none max-shell:basis-auto max-shell:border-r-0 max-shell:border-t"
-    : nonePinned
-      ? "flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink " +
-        "max-shell:order-last max-shell:h-auto max-shell:min-h-0 max-shell:flex-none max-shell:w-full max-shell:max-w-none max-shell:basis-auto max-shell:border-r-0 max-shell:border-t max-shell:overflow-visible"
-      : "flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink " +
-        "max-shell:order-last max-shell:h-auto max-shell:min-h-0 max-shell:flex-1 max-shell:w-full max-shell:max-w-none max-shell:basis-auto max-shell:border-r-0 max-shell:border-t max-shell:overflow-y-auto";
+    ? wideView
+      ? `${simpleAsideBase} hidden max-shell:block`
+      : simpleAsideBase
+    : wideView
+      ? `hidden ${nonSimpleAsideBase.slice("flex ".length)} max-shell:flex`
+      : nonSimpleAsideBase;
 
   const controlsScrollClassName = "min-h-0 flex-1 overflow-y-auto p-10 max-shell:p-4";
 
@@ -100,24 +126,24 @@ export function DesignScreenShell({
 
   return (
     <div className={rootClassName} data-print-hide={printHide ? true : undefined}>
-      {!wideView && (
+      {
         // `data-design-controls-scroll` is a test-only hook — a stable, pixel-inert Playwright
         // locator, the same idiom as `data-drag-target` on the outline/rocker viewers — placed on
         // whichever element is the actual scrolling box: the aside itself in `simpleSidebar` mode
         // (VOLUME has no inner scroll div), the inner div otherwise.
-        <aside className={asideClassName} data-design-controls-scroll={simpleSidebar ? true : undefined}>
-          {simpleSidebar ? (
-            controls
-          ) : (
-            <>
-              <div data-design-controls-scroll className={controlsScrollClassName}>
-                {controls}
-              </div>
-              {sidebarFooter}
-            </>
-          )}
-        </aside>
-      )}
+      }
+      <aside className={asideClassName} data-design-controls-scroll={simpleSidebar ? true : undefined}>
+        {simpleSidebar ? (
+          controls
+        ) : (
+          <>
+            <div data-design-controls-scroll className={controlsScrollClassName}>
+              {controls}
+            </div>
+            {sidebarFooter}
+          </>
+        )}
+      </aside>
       <main className={mainClassName}>{canvas}</main>
       {outsideColumns}
     </div>
