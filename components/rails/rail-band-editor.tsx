@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Maximize2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ViewerToolbarButton } from "@/components/viewer/toolbar-button";
+import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { useDesign } from "@/components/design/design-store";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import { type RailBandSpec, type RailSectionKey, type RailSectionSpec } from "@/lib/geometry/rail-bands";
@@ -259,13 +259,11 @@ export function RailBandEditor() {
         >
         {activePage === "viewer" && (
           <div className="relative flex min-h-0 flex-1 flex-col">
-            <ViewerToolbarButton
-              label="View Full Sized"
-              slot={0}
-              onClick={() => setViewFullSizedOpen(true)}
-            >
-              <Maximize2Icon className="size-6" />
-            </ViewerToolbarButton>
+            <ViewerToolbar>
+              <ViewerToolbarButton label="View Full Sized" onClick={() => setViewFullSizedOpen(true)}>
+                <Maximize2Icon className="size-6" />
+              </ViewerToolbarButton>
+            </ViewerToolbar>
             <ViewFullSizedDialog
               open={viewFullSizedOpen}
               onOpenChange={setViewFullSizedOpen}
