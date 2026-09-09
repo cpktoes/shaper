@@ -224,3 +224,61 @@ export function solveOutlineDrag(
 
 /** Exported for tests and for any UI that wants to show a field's legal range. */
 export const OUTLINE_DRAG_LIMITS = LIMITS;
+
+/**
+ * Which of the five drag points a finger (or a mouse) has grabbed, when hit zones are big enough
+ * to overlap (D-15) — one pass over `points`, closest centre within `hitRadiusMm` wins, or `null`
+ * if nothing is in reach.
+ *
+ * **Units.** Both `touch` and `hitRadiusMm` are in board millimetres, the same axes
+ * `OutlineDragPoint` uses. The caller converts the screen-pixel hit radius to millimetres at the
+ * current render scale before calling; this function never sees a pixel and never sees the screen.
+ * That is what lets one function serve the desktop's `OUTLINE_DRAG_HIT_PX` circles and the phone's
+ * larger `OUTLINE_DRAG_HIT_COARSE_PX` ones without knowing which is which — the caller supplies
+ * whichever radius (already converted) applies to the current pointer.
+ *
+ * **Ties.** The comparison is strictly-less-than on the running best squared distance, so a later
+ * point can never displace an equidistant earlier one: `outlineDragPoints`' own enumeration order
+ * — widepoint, tailHandle, tailRailHandle, noseRailHandle, noseHandle — is the tie-break, and the
+ * widepoint wins any tie it is in. The result is a pure function of `(points, touch, hitRadiusMm)`:
+ * the same three inputs return the same target on every call, independent of paint order, DOM
+ * order or call history.
+ */
+export function nearestOutlineDragTarget(
+  points: OutlineDragPointAt[],
+  touch: OutlineDragPoint,
+  hitRadiusMm: Mm,
+): OutlineDragTarget | null {
+  let best: OutlineDragTarget | null = null;
+  let bestDistSq = Infinity;
+  const radiusSq = hitRadiusMm * hitRadiusMm;
+  for (const p of points) {
+    const dx = p.point.station - touch.station;
+    const dy = p.point.halfWidth - touch.halfWidth;
+    const distSq = dx * dx + dy * dy;
+    if (distSq <= radiusSq && distSq < bestDistSq) {
+      best = p.target;
+      bestDistSq = distSq;
+    }
+  }
+  return best;
+}
+
+/**
+ * Desktop's own drag hit-zone radius, in CSS px — the historic `DRAG_HIT_PX` value
+ * `outline-viewer.tsx` has always used for its mouse circles, unchanged. Lives here (not only in
+ * the viewer) so 09-07 can replace the viewer's own private constant with an import of this one;
+ * until then this is the canonical value, and the two must stay equal.
+ */
+export const OUTLINE_DRAG_HIT_PX = 15;
+
+/**
+ * The phone (coarse-pointer) drag hit-zone radius, in CSS px — measured, not assumed
+ * (`components/viewer/drag-spacing.test.ts`, D-15/PHON-04). At the tightest realistic board (60in
+ * length, 25in widepoint — `BOARD_LENGTH_RANGE_IN`/`WIDEPOINT_WIDTH_RANGE_IN` in `board.ts`), the
+ * closest pair of the five drag points (`tailHandle`/`tailRailHandle`) still lands comfortably more
+ * than twice this radius apart on screen at TEMPLATE's 66dvh pinned ceiling on both a 375x667
+ * iPhone SE (~58.7px) and a 390x844 iPhone 14 (~61.2px), so the UI-SPEC's own 22px target needs no
+ * shrinking for the outline.
+ */
+export const OUTLINE_DRAG_HIT_COARSE_PX = 22;

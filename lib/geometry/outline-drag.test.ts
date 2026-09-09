@@ -1,15 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_BOARD_SPEC, type OutlineSpec } from "./board";
+import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, WIDEPOINT_WIDTH_RANGE_IN, type OutlineSpec } from "./board";
 import {
+  OUTLINE_DRAG_HIT_PX,
   OUTLINE_DRAG_LIMITS,
+  type OutlineDragPoint,
+  type OutlineDragPointAt,
   type OutlineDragTarget,
+  nearestOutlineDragTarget,
   outlineDragPoints,
   solveOutlineDrag,
 } from "./outline-drag";
 import { buildOutline } from "./outline";
-import { type Mm, degrees, inchesToMm, mm, mmToInches } from "./units";
+import { MM_PER_INCH, type Mm, degrees, inchesToMm, mm, mmToInches } from "./units";
 
 const BASE = DEFAULT_BOARD_SPEC.outline;
+
+/** The tightest realistic board this app can produce — shortest length, widest widepoint,
+ * everything else default (the same board `components/viewer/drag-spacing.test.ts` measures). */
+const TIGHT_SPEC: OutlineSpec = {
+  ...BASE,
+  length: inchesToMm(BOARD_LENGTH_RANGE_IN.min),
+  widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max),
+};
 
 function pointFor(spec: OutlineSpec, target: OutlineDragTarget) {
   const geometry = buildOutline(spec);
@@ -262,5 +274,136 @@ describe("dragging actually moves the board", () => {
     // A longer nose rail carries width further forward, so the nose measures wider.
     const pulled = buildOutline({ ...BASE, ...patch });
     expect(mmToInches(pulled.noseWidthAt12in)).toBeGreaterThan(mmToInches(geometry.noseWidthAt12in));
+  });
+});
+
+/** A board-space point, built from plain numbers — a local test-only counterpart to the file's own
+ * (unexported) `point` helper. */
+function point(station: number, halfWidth: number): OutlineDragPoint {
+  return { station: mm(station), halfWidth: mm(halfWidth) };
+}
+
+/** Euclidean distance between two board-space points, in mm — the same metric
+ * `nearestOutlineDragTarget` compares against, used here only to build test fixtures. */
+function distanceMm(a: OutlineDragPoint, b: OutlineDragPoint): number {
+  return Math.hypot(a.station - b.station, a.halfWidth - b.halfWidth);
+}
+
+/** The globally closest pair among a set of drag points, by board-mm distance — computed, not
+ * assumed, so the overlap/tie fixtures below stay correct if the geometry ever shifts which pair
+ * is nearest. */
+function closestPair(points: OutlineDragPointAt[]): [OutlineDragPointAt, OutlineDragPointAt] {
+  let best: [OutlineDragPointAt, OutlineDragPointAt] | null = null;
+  let bestDist = Infinity;
+  for (let i = 0; i < points.length; i++) {
+    for (let j = i + 1; j < points.length; j++) {
+      const d = distanceMm(points[i].point, points[j].point);
+      if (d < bestDist) {
+        bestDist = d;
+        best = [points[i], points[j]];
+      }
+    }
+  }
+  if (!best) throw new Error("need at least two points to find a closest pair");
+  return best;
+}
+
+/** A point a fraction `t` of the way from `a` to `b`. */
+function lerp(a: OutlineDragPoint, b: OutlineDragPoint, t: number): OutlineDragPoint {
+  return {
+    station: mm(a.station + (b.station - a.station) * t),
+    halfWidth: mm(a.halfWidth + (b.halfWidth - a.halfWidth) * t),
+  };
+}
+
+describe("nearestOutlineDragTarget", () => {
+  const geometry = buildOutline(BASE);
+  const points = outlineDragPoints(geometry);
+
+  it("a touch exactly on one point's centre returns that point, for each of the five targets", () => {
+    for (const entry of points) {
+      expect(nearestOutlineDragTarget(points, entry.point, mm(50))).toBe(entry.target);
+    }
+  });
+
+  it("a touch inside two overlapping circles returns whichever centre is nearer, both ways round", () => {
+    const [a, b] = closestPair(points);
+    // A radius comfortably larger than the whole gap between the closest pair — big enough that
+    // both circles genuinely overlap at every point tested below.
+    const bigRadius = mm(distanceMm(a.point, b.point) + 1);
+
+    const nearA = lerp(a.point, b.point, 0.1);
+    expect(nearestOutlineDragTarget(points, nearA, bigRadius)).toBe(a.target);
+
+    const nearB = lerp(a.point, b.point, 0.9);
+    expect(nearestOutlineDragTarget(points, nearB, bigRadius)).toBe(b.target);
+  });
+
+  it("a touch exactly equidistant from two points returns the one earlier in outlineDragPoints' order — the widepoint wins any tie it is in", () => {
+    // Hand-built, not derived from real board geometry: real coordinates are irrational enough
+    // that an interpolated midpoint can land a few floating-point ULPs off dead centre (squaring
+    // is not perfectly symmetric under IEEE754 rounding for arbitrary values), which would test
+    // rounding noise rather than the tie rule itself. Clean round numbers make the tie exact. This
+    // is about the ENUMERATION ORDER rule, which does not depend on which real board produced the
+    // points — the five targets are listed in outlineDragPoints' own order: widepoint, tailHandle,
+    // tailRailHandle, noseRailHandle, noseHandle.
+    const synthetic: OutlineDragPointAt[] = [
+      { target: "widepoint", point: point(0, 0), anchor: point(0, 0) },
+      { target: "tailHandle", point: point(100, 0), anchor: point(0, 0) },
+      { target: "tailRailHandle", point: point(500, 0), anchor: point(0, 0) },
+      { target: "noseRailHandle", point: point(1000, 0), anchor: point(0, 0) },
+      { target: "noseHandle", point: point(1500, 0), anchor: point(0, 0) },
+    ];
+    // Exactly 50mm from both the widepoint (station 0) and tailHandle (station 100) — 50*50 is
+    // IEEE754-exact on both sides, so this is a genuine tie, not an approximation of one.
+    const touch = point(50, 0);
+    expect(nearestOutlineDragTarget(synthetic, touch, mm(1000))).toBe("widepoint");
+  });
+
+  it("a touch outside every circle returns null", () => {
+    const farAway: OutlineDragPoint = { station: mm(999_999), halfWidth: mm(999_999) };
+    expect(nearestOutlineDragTarget(points, farAway, mm(1))).toBeNull();
+  });
+
+  it("an empty point list returns null for any touch and any radius", () => {
+    expect(nearestOutlineDragTarget([], points[0].point, mm(1000))).toBeNull();
+  });
+
+  it("a zero radius returns null unless the touch is exactly on a centre", () => {
+    expect(nearestOutlineDragTarget(points, points[0].point, mm(0))).toBe(points[0].target);
+    const justOff: OutlineDragPoint = {
+      station: mm(points[0].point.station + 0.001),
+      halfWidth: points[0].point.halfWidth,
+    };
+    expect(nearestOutlineDragTarget(points, justOff, mm(0))).toBeNull();
+  });
+
+  it("the desktop invariant (PHON-05): at the existing 15px radius converted to mm, the pick returns exactly the target under the cursor, for every point, on the default board and the tightest realistic board", () => {
+    // Mirrors outline-viewer.tsx's own outlineViewMetrics length-fit scale (VIEW_H 620, PAD_Y 24),
+    // at fitScale 1 — the desktop sidebar canvas is generously sized, so this is the same
+    // no-additional-shrink desktop case components/viewer/drag-spacing.test.ts checks.
+    const DESKTOP_VIEW_H = 620;
+    const DESKTOP_PAD_Y = 24;
+    for (const spec of [BASE, TIGHT_SPEC]) {
+      const geom = buildOutline(spec);
+      const pts = outlineDragPoints(geom);
+      const lengthIn = mmToInches(geom.length);
+      const scale = (DESKTOP_VIEW_H - DESKTOP_PAD_Y * 2) / lengthIn;
+      const hitRadiusMm = mm((OUTLINE_DRAG_HIT_PX * MM_PER_INCH) / scale);
+      for (const entry of pts) {
+        expect(nearestOutlineDragTarget(pts, entry.point, hitRadiusMm)).toBe(entry.target);
+      }
+    }
+  });
+
+  it("is pure — calling it twice with the same inputs returns the same target, and it does not mutate the points array", () => {
+    const snapshot = points.map((p) => ({ ...p, point: { ...p.point }, anchor: { ...p.anchor } }));
+    const target = points[2].target;
+    const touch = points[2].point;
+    const first = nearestOutlineDragTarget(points, touch, mm(50));
+    const second = nearestOutlineDragTarget(points, touch, mm(50));
+    expect(first).toBe(target);
+    expect(second).toBe(first);
+    expect(points).toEqual(snapshot);
   });
 });
