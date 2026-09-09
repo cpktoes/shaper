@@ -167,3 +167,7 @@ Per this wave's orchestrator ruling (`workflow.human_verify_mode` is end-of-phas
 ---
 *Phase: 09-the-design-screens-on-a-phone*
 *Completed: 2026-09-08*
+
+## Self-Check: PASSED
+
+All 7 commits (`cbb2550`, `cb33a27`, `429dd39`, `a06c3b9`, `7916ce9`, `01f4ea8`, plus this SUMMARY's own commit) verified present in `git log`. All 6 touched/created files (`components/viewer/drag-spacing.test.ts`, `lib/geometry/outline-drag.ts`, `lib/geometry/outline-drag.test.ts`, `lib/geometry/rocker-drag.ts`, `lib/geometry/rocker-drag.test.ts`, this SUMMARY) verified present on disk.
