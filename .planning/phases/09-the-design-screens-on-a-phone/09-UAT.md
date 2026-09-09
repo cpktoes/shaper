@@ -3,7 +3,7 @@ status: diagnosed
 phase: 09-the-design-screens-on-a-phone
 source: [09-VERIFICATION.md]
 started: 2026-09-09T10:33:06.945Z
-updated: 2026-09-09T17:59:36.689Z
+updated: 2026-09-09T18:02:59.575Z
 ---
 
 ## Current Test
@@ -70,10 +70,9 @@ blocked: 0
     - path: "e2e/phone-rails.spec.ts"
       issue: "the phone dialog test stops at 'Print button is visible' and never asserts the handler runs"
   missing:
-    - "A phone print path that does not rely on window.print(): build the ruler-true rail as a PDF with jsPDF (already a dependency, already builds the Full Sized Template) and offer Save PDF / share, which prints from Safari and from a web app alike"
-    - "Detect standalone mode (display-mode: standalone / navigator.standalone) and tell the shaper to open the page in Safari when print is unavailable"
-    - "A phone-project e2e asserting that tapping Print calls a stubbed window.print"
-    - "The same treatment for SUMMARY's print buttons (Phase 10 scope; note only)"
+    - "FOUNDER DECISION (2026-09-09): detect the Home-Screen web app (standalone display mode) and, in the View Full Sized dialog on a phone, replace the Print button with a plain note telling the shaper to open this page in Safari to print; printing itself stays exactly as it is. No PDF path in this phase."
+    - "A phone-project e2e asserting that tapping Print calls a stubbed window.print in the normal (Safari) case, and that the standalone case shows the note instead"
+    - "SUMMARY's print buttons share the cause but are Phase 10's screen: note only"
   debug_session: ".planning/debug/phone-print-button-does-nothing.md"
 - gap_id: G-09-4
   truth: "Every control behaves exactly as it does on the currently deployed site — nothing moved, resized, or changed behaviour."
