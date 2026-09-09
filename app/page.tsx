@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { SetupScreen } from "@/components/setup/setup-screen";
 import type { SavedModel } from "@/components/setup/board-rack-card";
+import { PhoneTabBar } from "@/components/design/phone-tab-bar";
 import { listModels } from "@/lib/db/queries";
 import { parseSnapshot } from "@/lib/models/design-snapshot";
 
@@ -31,14 +32,26 @@ export const metadata: Metadata = {
 export default async function Home() {
   const { userId } = await auth();
 
-  if (!userId) {
-    return <SetupScreen models={[]} />;
-  }
-
+  // A single returned fragment, `PhoneTabBar` as its last child on both the signed-in and
+  // signed-out paths, so the bar is mounted exactly once no matter which branch renders — two
+  // separate early returns each mounting their own copy is the one mistake this shape prevents.
+  // It has to live here rather than in `components/site-nav.tsx` for the same reason
+  // `app/design/layout.tsx` mounts it after `props.children`: it must be the LAST child of the
+  // root layout's flex column (app/layout.tsx) to sit at the bottom. No bottom padding is needed
+  // anywhere for it either — the bar is `flex-none` and `SetupScreen`'s own root is `min-h-0
+  // flex-1 overflow-y-auto` (setup-screen.tsx), so that scroller shrinks to fit above the bar on
+  // its own and nothing can hide underneath it.
   return (
-    <Suspense fallback={<SetupScreen models={[]} />}>
-      <BoardRackData userId={userId} />
-    </Suspense>
+    <>
+      {!userId ? (
+        <SetupScreen models={[]} />
+      ) : (
+        <Suspense fallback={<SetupScreen models={[]} />}>
+          <BoardRackData userId={userId} />
+        </Suspense>
+      )}
+      <PhoneTabBar />
+    </>
   );
 }
 
