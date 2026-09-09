@@ -260,4 +260,31 @@ describe("view-full-sized-dialog.tsx (RAIL-04, D-12–D-16)", () => {
     const displayModeNeedle = ["display", "Mode"].join("");
     expect(source, `reads a JavaScript ${displayModeNeedle} property`).not.toContain(displayModeNeedle);
   });
+
+  it("gates the standalone swap on max-shell (width) before the iOS supports guard (gap-closure CR-01)", () => {
+    const source = readStripped(DIALOG_PATH);
+    expect(
+      source,
+      "no line pairs max-shell: with the iOS supports guard ahead of the display-mode media query",
+    ).toMatch(/max-shell:supports-\[-webkit-touch-callout:none\]:\[@media\(display-mode:standalone\)\]:/);
+  });
+
+  it("every display-mode:standalone condition carries the -webkit-touch-callout iOS guard (gap-closure CR-01)", () => {
+    // -webkit-touch-callout is implemented only by iOS/iPadOS WebKit — never by desktop Safari,
+    // Chromium or Firefox — so `supports-[-webkit-touch-callout:none]:` is the CSS-only signal
+    // that keeps the Home-Screen print swap scoped to the one platform with the defect
+    // (.planning/debug/phone-print-button-does-nothing.md). A standalone condition missing this
+    // guard would hide a working Print button on a desktop Chrome/Edge "installed app" window or
+    // an Android Home-Screen launch, both of which also report display-mode:standalone but print
+    // fine — so this asserts every occurrence carries the guard, not just that one does.
+    const source = readStripped(DIALOG_PATH);
+    const standaloneOccurrences = source.match(/\[@media\(display-mode:standalone\)\]:/g) ?? [];
+    const guardedOccurrences =
+      source.match(/supports-\[-webkit-touch-callout:none\]:\[@media\(display-mode:standalone\)\]:/g) ?? [];
+    expect(standaloneOccurrences.length, "no display-mode:standalone occurrences found").toBeGreaterThanOrEqual(4);
+    expect(
+      guardedOccurrences.length,
+      `only ${guardedOccurrences.length} of ${standaloneOccurrences.length} display-mode:standalone occurrences carry the -webkit-touch-callout guard`,
+    ).toBe(standaloneOccurrences.length);
+  });
 });
