@@ -163,7 +163,7 @@ Plans:
   4. A shaper can drag outline, rocker and foil points with a thumb: hit zones sized for a finger, not overlapping their neighbours, and no long-press text popup interrupting a drag.
   5. On a desktop, mouse dragging and keyboard operation behave exactly as they do today on every viewer touched, and automated tests on iPhone and Android viewports prove the stacked layout and touch drag on at least the outline viewer, so later phone changes can't quietly break them.
 
-**Plans**: 6/7 plans executed
+**Plans**: 7/7 plans executed
 
 Plans:
 **Wave 1**
@@ -183,7 +183,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 09-07-PLAN.md — Thumb drag on both drawings with a readout by the finger, and the phase's closing sweep (wave 4)
+- [x] 09-07-PLAN.md — Thumb drag on both drawings with a readout by the finger, and the phase's closing sweep (wave 4)
 
 **UI hint**: yes
 
@@ -233,5 +233,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 6. The Design Screens in Metric | 9/9 | Complete    | 2026-09-05 |
 | 7. Metric on Paper | 5/5 | Complete    | 2026-09-06 |
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
-| 9. The Design Screens on a Phone | 6/7 | In Progress|  |
+| 9. The Design Screens on a Phone | 7/7 | In Progress|  |
 | 10. The Whole App on a Phone | 0/TBD | Not started | - |

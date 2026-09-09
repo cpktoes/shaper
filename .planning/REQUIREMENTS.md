@@ -25,12 +25,12 @@ Requirements are written as things a shaper can do or see. IDs continue from the
 
 ### Phone: The Design Screens
 
-- [ ] **PHON-01**: On a phone, each of the five design screens stacks its controls and viewer so nothing overlaps and nothing is hidden — every control reachable on a desktop is reachable on the phone
-- [ ] **PHON-02**: The page fits the phone's visible area even as Safari's toolbar comes and goes — no clipped content and no trapped scrolling
-- [ ] **PHON-03**: Sliders, buttons, tabs and typed fields are sized for a finger (44px-class targets), and tapping a number field does not zoom the page
-- [ ] **PHON-04**: User can drag outline, rocker and foil points with a thumb — hit zones big enough for a finger, not overlapping neighbouring points, with no long-press text popup mid-drag
-- [ ] **PHON-05**: Desktop mouse drag and keyboard operation behave exactly as they do today on every viewer touched
-- [ ] **PHON-06**: The board drawings use the full phone width so they are legible (pinch-zoom deliberately not included)
+- [x] **PHON-01**: On a phone, each of the five design screens stacks its controls and viewer so nothing overlaps and nothing is hidden — every control reachable on a desktop is reachable on the phone
+- [x] **PHON-02**: The page fits the phone's visible area even as Safari's toolbar comes and goes — no clipped content and no trapped scrolling
+- [x] **PHON-03**: Sliders, buttons, tabs and typed fields are sized for a finger (44px-class targets), and tapping a number field does not zoom the page
+- [x] **PHON-04**: User can drag outline, rocker and foil points with a thumb — hit zones big enough for a finger, not overlapping neighbouring points, with no long-press text popup mid-drag
+- [x] **PHON-05**: Desktop mouse drag and keyboard operation behave exactly as they do today on every viewer touched
+- [x] **PHON-06**: The board drawings use the full phone width so they are legible (pinch-zoom deliberately not included)
 
 ### Phone: The Rest of the App
 
@@ -41,7 +41,7 @@ Requirements are written as things a shaper can do or see. IDs continue from the
 
 ### Testing
 
-- [ ] **TEST-01**: Playwright is installed with iPhone and Android device profiles, and automated tests prove the stacked phone layout and touch drag on at least the outline viewer, so later phone changes can't quietly break them
+- [x] **TEST-01**: Playwright is installed with iPhone and Android device profiles, and automated tests prove the stacked phone layout and touch drag on at least the outline viewer, so later phone changes can't quietly break them
 
 ## Future Requirements (deferred, not in v1.2)
 
@@ -70,17 +70,17 @@ Requirements are written as things a shaper can do or see. IDs continue from the
 | RAIL-06 | Phase 8 | Complete | — |
 | PRNT-05 | Phase 8 | Complete | — |
 | PRNT-06 | Phase 8 | Complete | — |
-| PHON-01 | Phase 9 | Pending | — |
-| PHON-02 | Phase 9 | Pending | — |
-| PHON-03 | Phase 9 | Pending | — |
-| PHON-04 | Phase 9 | Pending | — |
-| PHON-05 | Phase 9 | Pending | — |
-| PHON-06 | Phase 9 | Pending | — |
+| PHON-01 | Phase 9 | Complete | — |
+| PHON-02 | Phase 9 | Complete | — |
+| PHON-03 | Phase 9 | Complete | — |
+| PHON-04 | Phase 9 | Complete | — |
+| PHON-05 | Phase 9 | Complete | — |
+| PHON-06 | Phase 9 | Complete | — |
 | PHON-07 | Phase 10 | Pending | — |
 | PHON-08 | Phase 10 | Pending | — |
 | PHON-09 | Phase 10 | Pending | — |
 | PHON-10 | Phase 10 | Pending | — |
-| TEST-01 | Phase 9 | Pending | — |
+| TEST-01 | Phase 9 | Complete | — |
 
 All 18 v1.2 requirements are mapped, each to exactly one phase: Phase 8 owns the seven rails and
 print items, Phase 9 the six design-screen phone items plus the Playwright test harness, and
