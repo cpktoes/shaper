@@ -35,12 +35,33 @@
  * that turns wide view on lives inside the VIEWER tab's own toolbar and stays on screen in both
  * states, so the active tab is invariantly VIEWER whenever wide view is on, and one press always
  * brings the strip back.
+ *
+ * 09-03 moves this screen onto the shared `DesignScreenShell` (the same migration
+ * `outline-editor.tsx` went through in 09-02): the hand-rolled `aside`/`main` markup above is gone,
+ * and `DesignScreenShell` renders it from props instead — desktop is byte-identical, and the phone
+ * stack is the shell's own `max-shell:` layer, never this file's own layout code.
+ *
+ * On a phone this screen keeps D-09's nose-up reading and gets the SAME 66dvh pinned-area ceiling
+ * TEMPLATE uses — not a shorter one — even though the rocker frame does not fill the width there.
+ * Measured during planning (2026-09-08) by running `rockerViewLayout()` from
+ * `./rocker-view-frame.ts` at real phone sizes: nose-up, the rocker frame is about 0.55–0.64 wide
+ * for every 1.0 tall (the card rails reserve a fixed band on the cross axis), so the drawing is
+ * height-bound on every phone, not width-bound. At a shorter ceiling once considered the 74"
+ * default board drew only 181px wide on a 375px-wide iPhone SE (half the screen); at this file's
+ * 66dvh it draws about 266 x 400px there and 336 x 506px on a 390px iPhone 14. Lying the rocker
+ * flat instead would have filled the width at about a fifth of the screen's height, but the
+ * founder chose to keep the board standing with the phone and accepted a rocker drawing narrower
+ * than the full phone width (D-18) — do not "fix" this by narrowing `rocker-view-frame.ts`'s
+ * card-rail reservation or reintroducing a shorter pinned-area ceiling; both were considered and
+ * set aside.
  */
 
 import { useState } from "react";
 import { LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
 import { Button } from "@/components/ui/button";
+import { DesignScreenShell } from "@/components/design/design-screen-shell";
+import * as ViewerMedia from "@/components/design/use-viewer-media";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
 import { RotateBoardIcon, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
@@ -101,36 +122,63 @@ export function RockerEditor() {
   });
   /** View state, like Template's own `orientation`/`showConstruction` — not design data, never
    * persisted. Per D-03 this screen's default is horizontal (nose left), the OPPOSITE of the
-   * Template screen's vertical default, so a reload always comes back horizontal here. */
+   * Template screen's vertical default, so a reload always comes back horizontal here. Untouched
+   * on a fine pointer (D-10); on a coarse pointer `boardOrientation` below ignores it entirely in
+   * favour of the device's own orientation (D-09/D-18). */
   const [orientation, setOrientation] = useState<ViewerOrientation>("horizontal");
-  /** Reveals the construction-line overlay and its two tip drag targets on the side profile.
-   * Local view state, not design data, deliberately not persisted — mirrors `showConstruction`'s
-   * posture on the Template screen; defaults to `false` there too. */
-  const [showConstruction, setShowConstruction] = useState(false);
+  /** D-02's construction-overlay default, as an explicit override rather than the overlay's own
+   * on/off flag — the same `constructionOverride ?? coarsePointer` shape `outline-editor.tsx`
+   * uses: `null` means "no explicit choice yet, use the pointer-driven default"; `true`/`false`
+   * means the shaper (or wide view, below) has said so directly. A plain computed value, never a
+   * second piece of state kept in sync by an effect or a render-time setState — this codebase's
+   * lint config rejects both. */
+  const [constructionOverride, setConstructionOverride] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<RockerTab>("viewer");
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
   /** Wide view hides the `aside` below so `main` gets the full window width. Local view state, not
    * design data, deliberately not persisted — a reload always comes back with the sidebar showing.
-   * `preWideViewConstruction` remembers whatever `showConstruction` was set to before wide view
-   * forced it on, so leaving wide view restores it rather than leaving the shaper on a setting they
-   * never chose. Both are set together inside the click handler below, not from a render-time
-   * effect — this codebase's lint config rejects setting state during render, and doing so caused a
-   * real bug in plan 02-05. Mirrors `outline-editor.tsx`'s own `wideView`/`preWideViewConstruction`
-   * pair. */
+   * `preWideViewConstruction` remembers whatever the construction overlay was showing before wide
+   * view forced it on, so leaving wide view restores it rather than leaving the shaper on a
+   * setting they never chose. Both are set together inside the click handler below, not from a
+   * render-time effect — this codebase's lint config rejects setting state during render, and
+   * doing so caused a real bug in plan 02-05. Mirrors `outline-editor.tsx`'s own `wideView`/
+   * `preWideViewConstruction` pair. */
   const [wideView, setWideView] = useState(false);
   const [preWideViewConstruction, setPreWideViewConstruction] = useState(false);
+
+  // D-09/D-10/D-18: on a coarse (touch) pointer only, the board follows the phone's own
+  // orientation — nose-up in portrait, flat in landscape — computed fresh every render, never
+  // stored. On a fine pointer `coarsePointer` is false for the life of the component, so
+  // `boardOrientation` is always just `orientation` and the rotate button behaves exactly as it
+  // does today (D-10).
+  const coarsePointer = ViewerMedia.useCoarsePointer();
+  const portraitViewport = ViewerMedia.usePortraitViewport();
+  const boardOrientation: ViewerOrientation = coarsePointer
+    ? portraitViewport
+      ? "vertical"
+      : "horizontal"
+    : orientation;
+
+  // D-02: the construction overlay — the four Bezier handles, their chords and the three knot
+  // dots — starts ON for a touch device instead of desktop's off-by-default-behind-the-toggle,
+  // and stays whatever the shaper last chose once they have tapped the toggle at least once.
+  const showConstruction = constructionOverride ?? coarsePointer;
 
   function toggleSection(key: RockerControlsSectionKey) {
     setSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
+  function handleToggleConstruction() {
+    setConstructionOverride(!showConstruction);
+  }
+
   function handleToggleWideView() {
     if (wideView) {
-      setShowConstruction(preWideViewConstruction);
+      setConstructionOverride(preWideViewConstruction);
       setWideView(false);
     } else {
       setPreWideViewConstruction(showConstruction);
-      setShowConstruction(true);
+      setConstructionOverride(true);
       setWideView(true);
     }
   }
@@ -148,58 +196,30 @@ export function RockerEditor() {
   }
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-nowrap">
-      {/* A flex column, not one scrolling box — mirrors `outline-editor.tsx`'s aside exactly (quick
-          task 260823-ux2): the controls scroll in the region below and the dev preset button sits
-          in a footer that does not, so it is always reachable regardless of how much the controls
-          region grows. Hidden entirely, not resized, while wide view is on — the internal
-          structure (scrolling controls region + flex-none dev preset footer) stays untouched; a
-          quick task already had to fix that footer once because it was only pinned by luck. */}
-      {!wideView && (
-        <aside className="flex h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] flex-col border-r border-surf-line-faint bg-surf-sidebar text-surf-ink">
-          <div className="min-h-0 flex-1 overflow-y-auto p-10">
-            <div className="flex flex-col gap-5">
-              <div>
-                <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">
-                  Rocker &amp; Foil
-                </div>
-                <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
-                  Shape the board&apos;s side profile — the bottom curve and the deck it carries
-                </div>
-              </div>
-
-              <RockerControls
-                rocker={rocker}
-                foil={foil}
-                geometry={geometry}
-                onChangeRocker={updateRocker}
-                onChangeFoil={updateFoil}
-                sectionOpen={sectionOpen}
-                onToggleSectionOpen={toggleSection}
-              />
+    <DesignScreenShell
+      controls={
+        <div className="flex flex-col gap-5">
+          <div>
+            <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">
+              Rocker &amp; Foil
+            </div>
+            <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
+              Shape the board&apos;s side profile — the bottom curve and the deck it carries
             </div>
           </div>
-          {process.env.NODE_ENV === "development" && (
-            <div className="flex-none border-t border-surf-line-faint p-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent"
-                onClick={handleCopyPreset}
-              >
-                {justCopiedPreset ? "Copied!" : "Copy preset values"}
-              </Button>
-            </div>
-          )}
-        </aside>
-      )}
-      <main
-        className={
-          wideView
-            ? "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-1"
-            : "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3"
-        }
-      >
+
+          <RockerControls
+            rocker={rocker}
+            foil={foil}
+            geometry={geometry}
+            onChangeRocker={updateRocker}
+            onChangeFoil={updateFoil}
+            sectionOpen={sectionOpen}
+            onToggleSectionOpen={toggleSection}
+          />
+        </div>
+      }
+      canvas={
         <TabbedPanel bare={wideView} tabs={ROCKER_TABS} active={activeTab} onSelect={setActiveTab}>
           {activeTab === "viewer" ? (
             // `relative` makes this div the positioning context for the two toolbar buttons
@@ -212,11 +232,15 @@ export function RockerEditor() {
                 onClick={() => setOrientation((o) => (o === "horizontal" ? "vertical" : "horizontal"))}
                 label="Rotate the board"
                 slot={0}
+                // D-05/D-11: the rotate button's one job on a phone is done by turning the phone,
+                // so it is absent below the shell breakpoint. Gated on width, not pointer: a
+                // touchscreen laptop at desktop width keeps it.
+                className="max-shell:hidden"
               >
                 <RotateBoardIcon className="size-6" />
               </ViewerToolbarButton>
               <ViewerToolbarButton
-                onClick={() => setShowConstruction((v) => !v)}
+                onClick={handleToggleConstruction}
                 pressed={showConstruction}
                 label={showConstruction ? "Hide construction lines" : "Show construction lines"}
                 slot={1}
@@ -236,7 +260,7 @@ export function RockerEditor() {
                 rocker={rocker}
                 foil={foil}
                 length={outline.length}
-                orientation={orientation}
+                orientation={boardOrientation}
                 showConstruction={showConstruction}
                 onDrag={updateRocker}
                 fitToBoard
@@ -254,7 +278,23 @@ export function RockerEditor() {
             />
           )}
         </TabbedPanel>
-      </main>
-    </div>
+      }
+      wideView={wideView}
+      sidebarFooter={
+        process.env.NODE_ENV === "development" ? (
+          <div className="flex-none border-t border-surf-line-faint p-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full border border-outline-sidebar-divider bg-outline-sidebar-input-bg text-outline-sidebar-text hover:border-surf-accent hover:bg-surf-accent hover:text-surf-on-accent"
+              onClick={handleCopyPreset}
+            >
+              {justCopiedPreset ? "Copied!" : "Copy preset values"}
+            </Button>
+          </div>
+        ) : undefined
+      }
+      phonePinned="66dvh"
+    />
   );
 }
