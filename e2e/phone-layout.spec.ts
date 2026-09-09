@@ -195,6 +195,39 @@ test.describe("phone orientation and the construction overlay default", () => {
   });
 });
 
+test.describe("phone Fine adjust group", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "phone-only Fine adjust assertions");
+    await dismissSignInBanner(page);
+  });
+
+  test("folds the repeated sliders behind one 44px tap, last in the controls scroller", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    const fineAdjustButton = page.getByRole("button", { name: "Fine adjust" });
+    await expect(fineAdjustButton).toBeVisible();
+    const buttonBox = await fineAdjustButton.boundingBox();
+    if (!buttonBox) throw new Error("Fine adjust button is missing a bounding box");
+    expect(buttonBox.height).toBeGreaterThanOrEqual(44);
+
+    // Width — one of D-03's eight folded sliders — is not visible before the group is tapped.
+    const widthLabel = page.getByText(/^Width — /);
+    await expect(widthLabel).toBeHidden();
+
+    // Last item in the controls scroller: every other row, including the always-open Settings
+    // checkbox, sits above it.
+    const settingsRow = page.getByText("View Construction Lines");
+    const settingsBox = await settingsRow.boundingBox();
+    if (!settingsBox) throw new Error("Settings row is missing a bounding box");
+    expect(buttonBox.y).toBeGreaterThanOrEqual(settingsBox.y);
+
+    await fineAdjustButton.click();
+    await expect(widthLabel).toBeVisible();
+  });
+});
+
 test.describe("desktop shell — unchanged", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "desktop-only shell assertions");
@@ -232,5 +265,14 @@ test.describe("desktop shell — unchanged", () => {
 
     await page.getByRole("button", { name: "Show construction lines" }).click();
     await expect(dragTargets.first()).toBeVisible();
+  });
+
+  test("no Fine adjust control appears and the Width slider is visible without tapping anything", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    await expect(page.getByRole("button", { name: "Fine adjust" })).toBeHidden();
+    await expect(page.getByText(/^Width — /)).toBeVisible();
   });
 });
