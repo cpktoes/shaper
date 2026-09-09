@@ -43,19 +43,26 @@ async function ringColorRgb(page: Page): Promise<string> {
   });
 }
 
+/** Every element the page itself would offer the Tab key a stop at — the same selector list
+ * MDN/WHATWG's usual "focusable" shorthand names, visible or not (a hidden one still counts
+ * against how far Tab could walk before this test gives up). Used to size `tabUntil`'s ceiling
+ * from the page rather than a fixed guess (gap-closure WR-02). */
+const FOCUSABLE_SELECTOR = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 /** Presses Tab until `document.activeElement` sits inside an element matching `selector` with the
- * given (case-insensitive, trimmed) text content, with a generous ceiling so a genuine regression
- * reads as "never reached [what]" rather than a bare Playwright timeout. Matching against a CSS
- * selector plus text — evaluated fresh in the page on every press — is what lets one helper serve
- * both the slider thumb (matched by `data-slot`, no text) and the tail-shape buttons (matched by
- * their accessible text) without a second, near-duplicate loop. */
-async function tabUntil(
-  page: Page,
-  selector: string,
-  text: string | null,
-  what: string,
-  ceiling = 150,
-) {
+ * given (case-insensitive, trimmed) text content. The ceiling is derived from the page's own count
+ * of focusable elements (`count * 2 + 20`) rather than a fixed guess, so a page that grows a lot of
+ * new controls doesn't need this file edited, and a failure message can tell "the page grew" apart
+ * from "the ring broke": `count * 2` allows for a focusable element needing more than one Tab press
+ * in edge cases (e.g. a control that briefly steals and returns focus), and `+ 20` covers a handful
+ * of always-present chrome elements (nav links, the sign-in banner) even on a page with very few
+ * focusable elements. Matching against a CSS selector plus text — evaluated fresh in the page on
+ * every press — is what lets one helper serve both the slider thumb (matched by `data-slot`, no
+ * text) and the tail-shape buttons (matched by their accessible text) without a second,
+ * near-duplicate loop. */
+async function tabUntil(page: Page, selector: string, text: string | null, what: string) {
+  const focusableCount = await page.locator(FOCUSABLE_SELECTOR).count();
+  const ceiling = focusableCount * 2 + 20;
   for (let i = 0; i < ceiling; i++) {
     const found = await page.evaluate(
       ({ selector, text }) => {
@@ -70,7 +77,9 @@ async function tabUntil(
     if (found) return;
     await page.keyboard.press("Tab");
   }
-  throw new Error(`tabUntil: never reached ${what} within ${ceiling} Tab presses`);
+  throw new Error(
+    `tabUntil: never reached ${what} within ${ceiling} Tab presses (page has ${focusableCount} focusable elements)`,
+  );
 }
 
 test.describe("keyboard focus is visible on sliders and hand-rolled buttons", () => {
