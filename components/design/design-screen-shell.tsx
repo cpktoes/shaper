@@ -125,12 +125,32 @@ export function DesignScreenShell({
   const mainClassName = `${mainBase} ${mainPhone}`;
 
   return (
-    <div className={rootClassName} data-print-hide={printHide ? true : undefined}>
+    <div
+      className={rootClassName}
+      data-print-hide={printHide ? true : undefined}
+      // 09-REVIEW.md WR-01: which element actually scrolls on a phone depends on `phonePinned`
+      // and `simpleSidebar` together, not on `data-design-controls-scroll` alone — see the
+      // comment on that attribute below. `data-design-page-scroll` names the one case
+      // `data-design-controls-scroll` cannot: `simpleSidebar` + `phonePinned="none"` (VOLUME,
+      // its only caller) on a PHONE, where this root div is the whole shell's one scroller.
+      data-design-page-scroll={nonePinned ? true : undefined}
+    >
       {
         // `data-design-controls-scroll` is a test-only hook — a stable, pixel-inert Playwright
-        // locator, the same idiom as `data-drag-target` on the outline/rocker viewers — placed on
-        // whichever element is the actual scrolling box: the aside itself in `simpleSidebar` mode
-        // (VOLUME has no inner scroll div), the inner div otherwise.
+        // locator, the same idiom as `data-drag-target` on the outline/rocker viewers. Which
+        // element it names as the scrolling box depends on the mode:
+        //   - normally (not `simpleSidebar`): the inner controls div right below, the one
+        //     wrapping `{controls}` in the `controlsScrollClassName` branch.
+        //   - `simpleSidebar` on DESKTOP: the aside itself (VOLUME has no inner scroll div), so
+        //     the attribute moves onto `<aside>` in that branch instead.
+        //   - `simpleSidebar` + `phonePinned="none"` on a PHONE (VOLUME again, its only caller):
+        //     NEITHER of those scrolls — `asideClassName` ends in `max-shell:overflow-visible`
+        //     on purpose — because the shell ROOT div above is the phone's one scroller instead
+        //     (`max-shell:overflow-y-auto` in `rootClassName`'s `nonePinned` branch). Naming
+        //     `<aside>` as the scroller here would be a lie, so the root instead carries the
+        //     second, equally pixel-inert `data-design-page-scroll` hook for exactly this case.
+        //     `e2e/phone-screens.spec.ts`'s own VOLUME test reaches this element via its own
+        //     `xpath=..` locator rather than either hook, on purpose — not changed here.
       }
       <aside className={asideClassName} data-design-controls-scroll={simpleSidebar ? true : undefined}>
         {simpleSidebar ? (
