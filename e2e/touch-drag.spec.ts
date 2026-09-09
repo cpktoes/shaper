@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 /**
  * TEST-01's automated proof that a real touch drag moves the board (PHON-04): the touchscreen
@@ -11,6 +11,66 @@ import { expect, test } from "@playwright/test";
  * WebKit equivalent is exposed through Playwright, which is why this spec runs on the `android`
  * project only. TEST-01 only requires the touch drag on at least the outline viewer.
  */
+
+/**
+ * A point on the panel that is genuinely "nowhere near" any drag point (260909-ktq) — a probe for
+ * the remote-drag cases, derived at run time from the drawing's own rendered layout, never a
+ * hardcoded coordinate. Reused by every case in this file that needs one.
+ *
+ * Candidates sit inset 14px from the drawing's left, right and bottom edges — at 50%, 85% and 96%
+ * of the panel's height on the two side edges, and at 15%, 50% and 85% of its width along the
+ * bottom edge — and deliberately never in the top 20%, where the viewer toolbar row sits. The
+ * candidate whose distance to the NEAREST drag-point centre is largest wins.
+ */
+async function findEmptyCanvasProbe(page: Page): Promise<{
+  x: number;
+  y: number;
+  distanceToNearestHandle: number;
+  handleCentres: { target: string; x: number; y: number }[];
+}> {
+  const svg = page.locator("svg:has([data-drag-target])").first();
+  const svgBox = await svg.boundingBox();
+  if (!svgBox) throw new Error("drag-target svg has no bounding box");
+
+  const handles = page.locator("[data-drag-target]");
+  const handleCount = await handles.count();
+  const handleCentres: { target: string; x: number; y: number }[] = [];
+  for (let i = 0; i < handleCount; i++) {
+    const handle = handles.nth(i);
+    const box = await handle.boundingBox();
+    if (!box) continue;
+    const target = (await handle.getAttribute("data-drag-target")) ?? `handle-${i}`;
+    handleCentres.push({ target, x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  }
+
+  const INSET = 14;
+  const candidates: { x: number; y: number }[] = [];
+  for (const x of [svgBox.x + INSET, svgBox.x + svgBox.width - INSET]) {
+    for (const heightFraction of [0.5, 0.85, 0.96]) {
+      candidates.push({ x, y: svgBox.y + svgBox.height * heightFraction });
+    }
+  }
+  for (const widthFraction of [0.15, 0.5, 0.85]) {
+    candidates.push({
+      x: svgBox.x + svgBox.width * widthFraction,
+      y: svgBox.y + svgBox.height - INSET,
+    });
+  }
+
+  let best = candidates[0];
+  let bestDistance = -Infinity;
+  for (const candidate of candidates) {
+    const nearest = Math.min(
+      ...handleCentres.map((h) => Math.hypot(h.x - candidate.x, h.y - candidate.y)),
+    );
+    if (nearest > bestDistance) {
+      bestDistance = nearest;
+      best = candidate;
+    }
+  }
+
+  return { x: best.x, y: best.y, distanceToNearestHandle: bestDistance, handleCentres };
+}
 
 test.describe("touch drag on the outline viewer (android/CDP only)", () => {
   test.beforeEach(async ({}, testInfo) => {
@@ -154,5 +214,83 @@ test.describe("touch drag on the outline viewer (android/CDP only)", () => {
     // so this settles after React's post-touchend re-render rather than racing it.
     await expect(page.getByText(new RegExp(`^${nearLabel} — `))).not.toHaveText(before[nearLabel] ?? "");
     await expect(page.getByText(new RegExp(`^${farLabel} — `))).toHaveText(before[farLabel] ?? "");
+  });
+
+  test("a tap picks the widepoint, then a thumb at the edge of the panel moves it one-for-one", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+    await page.getByRole("button", { name: "Fine adjust" }).click();
+
+    const offsetLabel = page.getByText(/^Offset — /);
+    await expect(offsetLabel).toBeVisible();
+    const offsetBeforeTap = await offsetLabel.textContent();
+
+    const widepoint = page.locator('[data-drag-target="widepoint"]');
+    await expect(widepoint).toBeVisible();
+    const tapBox = await widepoint.boundingBox();
+    if (!tapBox) throw new Error("widepoint drag target has no bounding box");
+    const tapX = tapBox.x + tapBox.width / 2;
+    const tapY = tapBox.y + tapBox.height / 2;
+
+    const cdp = await page.context().newCDPSession(page);
+
+    // A tap: touchStart then touchEnd at the same coordinates, no movement in between.
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: tapX, y: tapY }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    // A tap picks the point — it does not shape it (D-02).
+    await expect(widepoint).toHaveAttribute("data-selected", "true");
+    await expect(offsetLabel).toHaveText(offsetBeforeTap ?? "");
+
+    // A probe genuinely nowhere near the point: more than 60px from every drag target's centre.
+    const probe = await findEmptyCanvasProbe(page);
+    expect(probe.distanceToNearestHandle).toBeGreaterThan(60);
+
+    const offsetChip = page.locator("svg text").filter({ hasText: /^Offset — / });
+
+    const pointBeforeDrag = await widepoint.boundingBox();
+    if (!pointBeforeDrag) throw new Error("widepoint drag target has no bounding box");
+    const pointStartY = pointBeforeDrag.y + pointBeforeDrag.height / 2;
+
+    // A remote drag: thumb down at the probe, then four 10px steps toward the nose (40px total —
+    // sized in the measured baseline above so the +/-12in Offset clamp cannot saturate).
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: probe.x, y: probe.y }],
+    });
+    let fingerY = probe.y;
+    for (let step = 0; step < 4; step++) {
+      fingerY -= 10;
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x: probe.x, y: fingerY }],
+      });
+    }
+
+    // Mid-gesture: the readout card rides out with the thumb and is visible from the panel edge.
+    await expect(offsetChip).toBeVisible();
+
+    // Before lifting: the widepoint moved in the same direction the thumb travelled (its centre y
+    // decreased, since the thumb moved toward the nose), and by within about seven slider steps of
+    // the thumb's own travel — one-for-one. A half-speed gain would miss by 20px; passing the
+    // finger's absolute board point to the solver instead of the delta would teleport the point
+    // hundreds of pixels.
+    const pointDuringDrag = await widepoint.boundingBox();
+    if (!pointDuringDrag) throw new Error("widepoint drag target has no bounding box");
+    const pointEndY = pointDuringDrag.y + pointDuringDrag.height / 2;
+    const deltaFingerY = fingerY - probe.y;
+    const deltaPointY = pointEndY - pointStartY;
+    expect(deltaPointY).toBeLessThan(0);
+    expect(Math.abs(deltaPointY - deltaFingerY)).toBeLessThanOrEqual(15);
+
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    // The card is gone the instant the thumb lifts, and the pick survives a remote drag (D-05).
+    await expect(offsetChip).not.toBeVisible();
+    await expect(widepoint).toHaveAttribute("data-selected", "true");
   });
 });
