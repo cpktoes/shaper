@@ -72,6 +72,13 @@ function readPortraitPapersIn(source: string): { width: number; height: number }
  * to interpret a raw CSS `px` length read straight out of the stylesheet's own print rule below. */
 const CSS_REFERENCE_PX_PER_INCH = 96;
 
+/** CSS's own fixed mm-per-inch — a fact of the unit system itself, the same way
+ * `CSS_REFERENCE_PX_PER_INCH` above is. Deliberately NOT read from `use-print-fit.ts`'s own
+ * `MM_PER_INCH`: the stylesheet's literal `mm` figure is always interpreted against the real
+ * physical constant, so a drift in the hook's `MM_PER_INCH` shows up as a mismatch below rather
+ * than cancelling out on both sides of the comparison. */
+const CSS_MM_PER_INCH = 25.4;
+
 /** Converts a padding value + CSS unit (as matched out of the stylesheet) into inches. No unit is
  * only ever valid for a value of 0 — the print rule this feeds is expected to declare
  * `padding: 0 !important` with no unit, and any other unitless length would be ambiguous. */
@@ -83,6 +90,50 @@ function paddingToInches(value: number, unit: string | undefined, mmPerInch: num
   if (unit === "in") return value;
   if (unit === "mm") return value / mmPerInch;
   return value / CSS_REFERENCE_PX_PER_INCH;
+}
+
+/** Extracts the `{ ... }` body of the print rule for `[data-order-form-sheet]` that carries
+ * `aspect-ratio: auto` — the rule Task 1 extended with the printed sheet's width and height, not
+ * the file's other `[data-order-form-sheet]` rules (the on-screen `aspect-ratio: 7.87 / 10.37`
+ * rule, the page-break rules, the border rule, or the overflow backstop). */
+function printedSheetRuleBody(css: string): string {
+  const marker = "[data-order-form-sheet] {";
+  let searchFrom = 0;
+  while (true) {
+    const start = css.indexOf(marker, searchFrom);
+    expect(start, "no [data-order-form-sheet] rule carrying aspect-ratio: auto found").toBeGreaterThanOrEqual(0);
+    const bodyStart = start + marker.length;
+    const bodyEnd = css.indexOf("}", bodyStart);
+    expect(bodyEnd, "rule body never closes").toBeGreaterThan(bodyStart);
+    const body = css.slice(bodyStart, bodyEnd);
+    if (/aspect-ratio:\s*auto/.test(body)) return body;
+    searchFrom = bodyEnd + 1;
+  }
+}
+
+/** Reads one `property: <value>;` declaration's raw value out of a rule body. Requires the
+ * property name to start at a declaration boundary (start-of-body, `;`, `{` or whitespace) so
+ * `width:` can never accidentally match inside a longer property name like `min-width:`. */
+function extractDeclarationValue(body: string, property: string): string {
+  const match = body.match(new RegExp(`(?:^|[\\s;{])${property}:\\s*([^;]+);`));
+  expect(match, `no "${property}:" declaration found in the printed sheet's print rule`).not.toBeNull();
+  return match![1].trim();
+}
+
+/** Pulls the numbers out of a `calc(min(Ain, Bin) - Cmm)` or `calc((min(Ain, Bin) - Cmm) * D)`
+ * expression without caring exactly how its parens nest — the two `in` figures inside `min()`,
+ * the `mm` figure subtracted, and (if present) the multiplier trailing a closing paren. */
+function parseCalcNumbers(expr: string): { papers: number[]; marginMm: number; multiplier: number | undefined } {
+  const papers = [...expr.matchAll(/([\d.]+)in/g)].map(([, value]) => Number(value));
+  expect(papers.length, `expected two "Nin" figures in "${expr}"`).toBe(2);
+  const marginMatch = expr.match(/([\d.]+)mm/);
+  expect(marginMatch, `no "Nmm" figure found in "${expr}"`).not.toBeNull();
+  const multiplierMatch = expr.match(/\)\s*\*\s*([\d.]+)/);
+  return {
+    papers,
+    marginMm: Number(marginMatch![1]),
+    multiplier: multiplierMatch ? Number(multiplierMatch[1]) : undefined,
+  };
 }
 
 describe("order form print path (G-08-10, PRNT-06)", () => {
@@ -142,5 +193,78 @@ describe("order form print path (G-08-10, PRNT-06)", () => {
       fittedSheetHeightIn + wrapperPrintPaddingIn,
       `fitted sheet height (${fittedSheetHeightIn.toFixed(4)}in) plus wrapper print padding (${wrapperPrintPaddingIn}in) does not fit inside the shortest paper's printable height (${printableHeightIn.toFixed(4)}in) — a sheet, or the desk padding, would spill onto its own page`,
     ).toBeLessThanOrEqual(printableHeightIn);
+  });
+
+  // The printed size is now declared in two places on purpose — the stylesheet decides it,
+  // `useOrderFormPrintFit` mirrors it only to force the printing layout it measures — and two
+  // places is exactly how a number goes quietly wrong. This case pins them together structurally,
+  // reading both from their real source rather than trusting either file's prose.
+  it("the stylesheet's printed sheet box and the print handler's own box describe the same piece of paper", () => {
+    const css = readStripped(ORDER_FORM_CSS_PATH);
+    const sheetBody = printedSheetRuleBody(css);
+    const widthExpr = extractDeclarationValue(sheetBody, "width");
+    const heightExpr = extractDeclarationValue(sheetBody, "height");
+
+    const hookSource = readStripped(USE_PRINT_FIT_PATH);
+    const mmPerInch = readNumericConst(hookSource, "MM_PER_INCH");
+    const marginMm = readNumericConst(hookSource, "PAGE_MARGIN_MM");
+    const fitSafety = readNumericConst(hookSource, "FIT_SAFETY");
+    const papers = readPortraitPapersIn(hookSource);
+
+    const widthNumbers = parseCalcNumbers(widthExpr);
+    const heightNumbers = parseCalcNumbers(heightExpr);
+
+    expect(
+      [...widthNumbers.papers].sort((a, b) => a - b),
+      `the width expression's paper figures (${widthNumbers.papers}) do not match PORTRAIT_PAPER_IN's widths`,
+    ).toEqual([...papers.map((p) => p.width)].sort((a, b) => a - b));
+
+    expect(
+      [...heightNumbers.papers].sort((a, b) => a - b),
+      `the height expression's paper figures (${heightNumbers.papers}) do not match PORTRAIT_PAPER_IN's heights`,
+    ).toEqual([...papers.map((p) => p.height)].sort((a, b) => a - b));
+
+    expect(
+      widthNumbers.marginMm,
+      `the width expression subtracts ${widthNumbers.marginMm}mm, not twice PAGE_MARGIN_MM (${2 * marginMm}mm)`,
+    ).toBe(2 * marginMm);
+    expect(
+      heightNumbers.marginMm,
+      `the height expression subtracts ${heightNumbers.marginMm}mm, not twice PAGE_MARGIN_MM (${2 * marginMm}mm)`,
+    ).toBe(2 * marginMm);
+
+    expect(
+      heightNumbers.multiplier,
+      `the height expression's multiplier (${heightNumbers.multiplier}) does not equal FIT_SAFETY (${fitSafety})`,
+    ).toBe(fitSafety);
+    expect(
+      widthNumbers.multiplier,
+      "the width expression carries a multiplier — only the height is meant to shave FIT_SAFETY off",
+    ).toBeUndefined();
+
+    // Evaluate both expressions at CSS's own fixed 96px-per-inch and 25.4mm-per-inch, and compare
+    // against the handler's own printableBoxPx() arithmetic (mirrored here, using the hook's own
+    // MM_PER_INCH — not CSS_MM_PER_INCH — so a drift in that constant alone still surfaces).
+    const stylesheetWidthPx =
+      Math.min(...widthNumbers.papers) * CSS_REFERENCE_PX_PER_INCH -
+      (widthNumbers.marginMm / CSS_MM_PER_INCH) * CSS_REFERENCE_PX_PER_INCH;
+    const stylesheetHeightPx =
+      (Math.min(...heightNumbers.papers) * CSS_REFERENCE_PX_PER_INCH -
+        (heightNumbers.marginMm / CSS_MM_PER_INCH) * CSS_REFERENCE_PX_PER_INCH) *
+      (heightNumbers.multiplier ?? 1);
+
+    const hookMarginIn = marginMm / mmPerInch;
+    const hookWidthPx = (Math.min(...papers.map((p) => p.width)) - 2 * hookMarginIn) * CSS_REFERENCE_PX_PER_INCH;
+    const hookHeightPx =
+      (Math.min(...papers.map((p) => p.height)) - 2 * hookMarginIn) * CSS_REFERENCE_PX_PER_INCH * fitSafety;
+
+    expect(
+      Math.abs(stylesheetWidthPx - hookWidthPx),
+      `stylesheet width (${stylesheetWidthPx.toFixed(4)}px) and handler width (${hookWidthPx.toFixed(4)}px) have drifted apart by more than 0.02 dots`,
+    ).toBeLessThanOrEqual(0.02);
+    expect(
+      Math.abs(stylesheetHeightPx - hookHeightPx),
+      `stylesheet height (${stylesheetHeightPx.toFixed(4)}px) and handler height (${hookHeightPx.toFixed(4)}px) have drifted apart by more than 0.02 dots`,
+    ).toBeLessThanOrEqual(0.02);
   });
 });
