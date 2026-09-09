@@ -24,7 +24,7 @@
  * and Phase 7's printed paths before they are ready for it).
  */
 
-import { type PointerEvent as ReactPointerEvent, useRef } from "react";
+import { type PointerEvent as ReactPointerEvent, useRef, useState } from "react";
 import {
   BOARD_LENGTH_RANGE_IN,
   WIDEPOINT_WIDTH_RANGE_IN,
@@ -32,12 +32,19 @@ import {
 } from "@/lib/geometry/board";
 import type { FinMark } from "@/lib/geometry/fins";
 import type { OutlineDragPoint, OutlineDragTarget } from "@/lib/geometry/outline-drag";
-import { outlineDragPoints, solveOutlineDrag } from "@/lib/geometry/outline-drag";
+import {
+  nearestOutlineDragTarget,
+  outlineDragPoints,
+  OUTLINE_DRAG_HIT_COARSE_PX,
+  OUTLINE_DRAG_HIT_PX,
+  solveOutlineDrag,
+} from "@/lib/geometry/outline-drag";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import { sampleOutline } from "@/lib/geometry/outline";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
-import { formatDim, formatLength, stationLabel } from "@/lib/geometry/measure-display";
+import { formatDim, formatLength, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
 import { useUnits } from "@/components/units-provider";
+import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import {
   CalloutChip,
   MIN_PINNED_FIT_SCALE,
@@ -93,8 +100,6 @@ const DRAG_TARGET_RING_PX = 1.6;
 const DRAG_TARGET_CORE_PX = 2.6;
 /** Fixed reference knots — deliberately plain, so only grabbable points look grabbable. */
 const KNOT_DOT_PX = 3;
-/** Invisible grab radius: comfortably larger than the drawn target, for a thumb as well as a mouse. */
-const DRAG_HIT_PX = 15;
 /** How far the static stringer/centreline overhangs the board's own tip/tail — a drafting nicety
  * (sketch 004's reference render), not load-bearing geometry. */
 const STRINGER_OVERHANG = 8;
@@ -267,6 +272,7 @@ export function OutlineViewer({
 }: OutlineViewerProps) {
   const { system } = useUnits();
   const horizontal = orientation === "horizontal";
+  const coarsePointer = useCoarsePointer();
   const svgRef = useRef<SVGSVGElement>(null);
   /** The content group carrying the rotation, in horizontal — see `toBoardPoint` below for why
    * the drag matrix must be read off this instead of the SVG root. */
@@ -274,6 +280,11 @@ export function OutlineViewer({
   /** Which control point the active gesture owns, if any. A ref, not state: it changes on
    * pointerdown and is read on pointermove, and re-rendering for it would be a wasted pass. */
   const draggingRef = useRef<OutlineDragTarget | null>(null);
+  /** Which point a TOUCH gesture is dragging, if any — state, not a ref, because the drag
+   * readout chip (09-07 Task 2) has to re-render when this starts and stops. Stays `null` for a
+   * mouse or pen at every viewport width (D-17, PHON-05): only `handlePointerDown`'s own
+   * `pointerType === "touch"` check ever sets it. */
+  const [touchDragTarget, setTouchDragTarget] = useState<OutlineDragTarget | null>(null);
   const { lengthIn, centerlineX, scale, frame, tailPy, tipPy } = outlineViewMetrics(
     geometry,
     hideCallouts,
@@ -367,14 +378,15 @@ export function OutlineViewer({
   });
 
   // Grabbable points, in the same left-side px space as the dots above. Only built when a drag
-  // handler is present, so every other consumer renders exactly what it did before.
-  const dragTargets = onOutlineDrag
-    ? outlineDragPoints(geometry).map((d) => ({
-        target: d.target,
-        cx: pxX(CONSTRUCTION_SIDE * mmToInches(d.point.halfWidth)),
-        cy: lenToY(mmToInches(d.point.station)),
-      }))
-    : [];
+  // handler is present, so every other consumer renders exactly what it did before. Kept in its
+  // raw (board-mm) shape too — `dragPointsAt` — so the delegated pick below and this view-space
+  // mapping read the exact same five points, never two separately-derived copies.
+  const dragPointsAt = onOutlineDrag ? outlineDragPoints(geometry) : [];
+  const dragTargets = dragPointsAt.map((d) => ({
+    target: d.target,
+    cx: pxX(CONSTRUCTION_SIDE * mmToInches(d.point.halfWidth)),
+    cy: lenToY(mmToInches(d.point.station)),
+  }));
 
   /** Screen point -> board coordinates: undo the SVG transform, then invert pxX/lenToY.
    *
@@ -405,15 +417,31 @@ export function OutlineViewer({
     onOutlineDrag(solveOutlineDrag(geometry, draggingRef.current, boardPoint));
   }
 
-  function handleDragStart(target: OutlineDragTarget, event: ReactPointerEvent<SVGElement>) {
+  /**
+   * The one delegated drag-start pick (D-15, RESEARCH.md Pitfall 2): a press anywhere on the
+   * drawing converts to board coordinates and asks `nearestOutlineDragTarget` which of the five
+   * points, if any, is within reach — never which hit-circle happened to catch the browser's own
+   * (paint-order) hit-test. Pressing empty canvas returns `null` and starts nothing. One pointer
+   * path for both a mouse and a touch (D-16): the drag starts on pointer-down with no movement
+   * threshold, because the drawing is pinned inside the phone shell and can never be mistaken for
+   * a page scroll.
+   */
+  function handlePointerDown(event: ReactPointerEvent<SVGElement>) {
     if (!onOutlineDrag) return;
+    const boardPoint = toBoardPoint(event);
+    if (!boardPoint) return;
+    const target = nearestOutlineDragTarget(dragPointsAt, boardPoint, hitRadiusMm);
+    if (!target) return;
     event.preventDefault();
     draggingRef.current = target;
     event.currentTarget.setPointerCapture(event.pointerId);
+    // The readout chip (D-17) is touch-only, at any viewport width — a mouse never sets this.
+    if (event.pointerType === "touch") setTouchDragTarget(target);
   }
 
   function handleDragEnd(event: ReactPointerEvent<SVGElement>) {
     draggingRef.current = null;
+    if (touchDragTarget !== null) setTouchDragTarget(null);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -505,6 +533,18 @@ export function OutlineViewer({
   /** User units per CSS pixel — what the px-denominated handle sizes above are drawn in. */
   const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
 
+  /**
+   * One hit radius drives both what is drawn (the hit circles below) and what the delegated pick
+   * tests against — never two numbers that could drift apart (RESEARCH.md Pitfall 2's own
+   * warning). `OUTLINE_DRAG_HIT_COARSE_PX` is the 09-06 measured phone radius; a fine pointer
+   * keeps the historic 15px unchanged (PHON-05). Converted once, here, from CSS px to board
+   * millimetres at THIS render's own scale, since `nearestOutlineDragTarget` takes millimetres —
+   * it never sees a pixel.
+   */
+  const hitRadiusPx = coarsePointer ? OUTLINE_DRAG_HIT_COARSE_PX : OUTLINE_DRAG_HIT_PX;
+  const hitRadiusUserUnits = hitRadiusPx * handleUnit;
+  const hitRadiusMm = inchesToMm(hitRadiusUserUnits / scale);
+
   // WP Offset is grouped with Widepoint (sketch 004) and carries no leader. In vertical it sits
   // directly beneath Widepoint in the same gutter column — stepping down by a chip height. Read
   // `calloutSizes`, so these two declarations live here rather than beside `widepointChipY`
@@ -536,7 +576,12 @@ export function OutlineViewer({
       // grid sizes itself, that one card inflated every other row and forced the printed sheet down
       // to 70% of the page width. Filling the box and letting `meet` scale the drawing inside it
       // keeps the card honest about how much height it needs, which is none in particular.
-      className="absolute inset-0 block h-full w-full"
+      className="absolute inset-0 block h-full w-full select-none"
+      // Defensive against the iOS long-press text-selection popup (PHON-04, RESEARCH.md
+      // Pitfall 3): the SVG text drawn near a drag point can start a selection too, not only the
+      // hit circles themselves — both places get the same suppression.
+      style={{ WebkitTouchCallout: "none" }}
+      onPointerDown={showConstruction && onOutlineDrag ? handlePointerDown : undefined}
       onPointerMove={onOutlineDrag ? handleDragMove : undefined}
       onPointerUp={onOutlineDrag ? handleDragEnd : undefined}
       onPointerCancel={onOutlineDrag ? handleDragEnd : undefined}
@@ -639,18 +684,23 @@ export function OutlineViewer({
               />
             </g>
           ))}
-          {/* Transparent grab areas, last so they sit above everything they cover.
-              touch-action:none stops a touch drag scrolling the page instead of shaping the board. */}
+          {/* Transparent grab areas, last so they sit above everything they cover. No press
+              handler of their own — the root `<svg>`'s one delegated handler owns every
+              drag-start pick (D-15); these circles are the visual/cursor affordance and the
+              `data-drag-target` test hook only. `touch-action:none` stops a touch drag scrolling
+              the page instead of shaping the board; `select-none` plus the inline
+              `WebkitTouchCallout` suppression stop iOS's long-press text-selection popup
+              (PHON-04, RESEARCH.md Pitfall 3) from interrupting a drag mid-gesture. */}
           {dragTargets.map((d) => (
             <circle
               key={d.target}
               data-drag-target={d.target}
               cx={d.cx}
               cy={d.cy}
-              r={DRAG_HIT_PX * handleUnit}
+              r={hitRadiusUserUnits}
               fill="transparent"
-              className="cursor-grab touch-none active:cursor-grabbing"
-              onPointerDown={(event) => handleDragStart(d.target, event)}
+              className="cursor-grab touch-none select-none active:cursor-grabbing"
+              style={{ WebkitTouchCallout: "none" }}
             />
           ))}
         </>

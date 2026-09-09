@@ -73,13 +73,17 @@
  * patch straight up — the caller (`rocker-editor.tsx`) passes it straight to `updateRocker`.
  */
 
-import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef } from "react";
+import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef, useState } from "react";
 import { CALLOUT_PX, CalloutChipFrame, DimensionTick, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { useUnits } from "@/components/units-provider";
+import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import { FOIL_THICKNESS_RANGE_IN, sampleFoil, type FoilSpec } from "@/lib/geometry/foil";
 import { formatMark, stationLabel } from "@/lib/geometry/measure-display";
 import {
+  nearestSideProfileDragTarget,
   sideProfileDragPoints,
+  SIDE_PROFILE_DRAG_HIT_COARSE_PX,
+  SIDE_PROFILE_DRAG_HIT_PX,
   solveSideProfileDrag,
   type SideProfileDragPoint,
   type SideProfileDragTarget,
@@ -114,7 +118,6 @@ const DRAG_TARGET_CORE_PX = 2.6;
 /** Fixed reference knots and construction-line termini — deliberately plain, so only grabbable
  * points look grabbable. */
 const KNOT_DOT_PX = 3;
-const DRAG_HIT_PX = 15;
 
 /** Curve sampling density — enough to read as smooth at this frame's scale, well past the five
  * knots the monotone splines are built from. */
@@ -458,6 +461,7 @@ export function RockerViewer({
 }: RockerViewerProps) {
   const { system } = useUnits();
   const vertical = orientation === "vertical";
+  const coarsePointer = useCoarsePointer();
   const svgRef = useRef<SVGSVGElement>(null);
   /** The content group carrying the rotation, in vertical — see `toBoardPoint` below for why the
    * drag matrix must be read off this instead of the SVG root. */
@@ -465,6 +469,11 @@ export function RockerViewer({
   /** Which grab target the active gesture owns, if any. A ref, not state: it changes on
    * pointerdown and is read on pointermove, and re-rendering for it would be a wasted pass. */
   const draggingRef = useRef<SideProfileDragTarget | null>(null);
+  /** Which control point a TOUCH gesture is dragging, if any — state, not a ref, so the drag
+   * readout chip (09-07 Task 2) re-renders when this starts and stops. Stays `null` for a mouse
+   * or pen at every viewport width (D-17, PHON-05): only `handlePointerDown`'s own `pointerType
+   * === "touch"` check ever sets it. */
+  const [touchDragTarget, setTouchDragTarget] = useState<SideProfileDragTarget | null>(null);
   const lengthIn = mmToInches(length);
   // Built once per render and shared by the sampling loop, the drag-target enumerator and the
   // solver below, the same posture `rocker-editor.tsx` takes building it once for the controls,
@@ -667,16 +676,29 @@ export function RockerViewer({
   /** User units per CSS pixel — what the px-denominated drag-target sizes above are drawn in. */
   const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
 
+  /**
+   * One hit radius drives both what is drawn (the hit circles below) and what the delegated pick
+   * tests against — never two numbers that could drift apart (RESEARCH.md Pitfall 2's own
+   * warning). `SIDE_PROFILE_DRAG_HIT_COARSE_PX` is the 09-06 measured phone radius; a fine
+   * pointer keeps the historic 15px unchanged (PHON-05). Converted once, here, from CSS px to
+   * board millimetres at THIS render's own scale, since `nearestSideProfileDragTarget` takes
+   * millimetres — it never sees a pixel.
+   */
+  const hitRadiusPx = coarsePointer ? SIDE_PROFILE_DRAG_HIT_COARSE_PX : SIDE_PROFILE_DRAG_HIT_PX;
+  const hitRadiusUserUnits = hitRadiusPx * handleUnit;
+  const hitRadiusMm = inchesToMm(hitRadiusUserUnits / scale);
+
   // Grabbable points, in the same canonical space pxX/pxY draw everything else in. Only built
   // when a drag handler is present, so a consumer with no `onDrag` renders exactly what it did
-  // before this prop existed.
-  const dragTargets = onDrag
-    ? sideProfileDragPoints(geometry).map((d) => ({
-        target: d.target,
-        cx: pxX(mmToInches(d.point.station)),
-        cy: pxY(mmToInches(d.point.height)),
-      }))
-    : [];
+  // before this prop existed. Kept in its raw (board-mm) shape too — `dragPointsAt` — so the
+  // delegated pick below and this view-space mapping read the exact same four points, never two
+  // separately-derived copies.
+  const dragPointsAt = onDrag ? sideProfileDragPoints(geometry) : [];
+  const dragTargets = dragPointsAt.map((d) => ({
+    target: d.target,
+    cx: pxX(mmToInches(d.point.station)),
+    cy: pxY(mmToInches(d.point.height)),
+  }));
 
   // The construction overlay: one line per handle (four, always — two Bezier segments each with a
   // handle at both ends), from `geometry.handles`. Every coordinate comes straight off
@@ -723,15 +745,31 @@ export function RockerViewer({
     onDrag(solveSideProfileDrag(geometry, draggingRef.current, boardPoint));
   }
 
-  function handleDragStart(target: SideProfileDragTarget, event: ReactPointerEvent<SVGElement>) {
+  /**
+   * The one delegated drag-start pick (D-15, RESEARCH.md Pitfall 2): a press anywhere on the
+   * drawing converts to board coordinates and asks `nearestSideProfileDragTarget` which of the
+   * four curve handles, if any, is within reach — never which hit-circle happened to catch the
+   * browser's own (paint-order) hit-test. Pressing empty canvas returns `null` and starts
+   * nothing. One pointer path for both a mouse and a touch (D-16): the drag starts on
+   * pointer-down with no movement threshold, because the drawing is pinned inside the phone
+   * shell and can never be mistaken for a page scroll.
+   */
+  function handlePointerDown(event: ReactPointerEvent<SVGElement>) {
     if (!onDrag) return;
+    const boardPoint = toBoardPoint(event);
+    if (!boardPoint) return;
+    const target = nearestSideProfileDragTarget(dragPointsAt, boardPoint, hitRadiusMm);
+    if (!target) return;
     event.preventDefault();
     draggingRef.current = target;
     event.currentTarget.setPointerCapture(event.pointerId);
+    // The readout chip (D-17) is touch-only, at any viewport width — a mouse never sets this.
+    if (event.pointerType === "touch") setTouchDragTarget(target);
   }
 
   function handleDragEnd(event: ReactPointerEvent<SVGElement>) {
     draggingRef.current = null;
+    if (touchDragTarget !== null) setTouchDragTarget(null);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -747,9 +785,14 @@ export function RockerViewer({
       // drawing inside it, or a fixed-size panel (the Summary order form's rocker box) inflates
       // to the drawing's own aspect ratio instead of holding still. The immediate parent supplies
       // both `relative` and a definite size in every consumer of this component.
-      className="absolute inset-0 block h-full w-full"
+      className="absolute inset-0 block h-full w-full select-none"
+      // Defensive against the iOS long-press text-selection popup (PHON-04, RESEARCH.md
+      // Pitfall 3): the SVG text drawn near a drag point can start a selection too, not only the
+      // hit circles themselves — both places get the same suppression.
+      style={{ WebkitTouchCallout: "none" }}
       role="img"
       aria-label="Side profile of the board, showing the rocker line and deck thickness"
+      onPointerDown={showConstruction && onDrag ? handlePointerDown : undefined}
       onPointerMove={onDrag ? handleDragMove : undefined}
       onPointerUp={onDrag ? handleDragEnd : undefined}
       onPointerCancel={onDrag ? handleDragEnd : undefined}
@@ -927,19 +970,23 @@ export function RockerViewer({
                 <circle cx={d.cx} cy={d.cy} r={DRAG_TARGET_CORE_PX * handleUnit} fill="var(--color-surf-warning)" />
               </g>
             ))}
-            {/* Transparent grab areas, last so they sit above everything they cover.
-                touch-action:none stops a touch drag scrolling the page instead of shaping the
-                board. */}
+            {/* Transparent grab areas, last so they sit above everything they cover. No press
+                handler of their own — the root `<svg>`'s one delegated handler owns every
+                drag-start pick (D-15); these circles are the visual/cursor affordance and the
+                `data-drag-target` test hook only. `touch-action:none` stops a touch drag
+                scrolling the page instead of shaping the board; `select-none` plus the inline
+                `WebkitTouchCallout` suppression stop iOS's long-press text-selection popup
+                (PHON-04, RESEARCH.md Pitfall 3) from interrupting a drag mid-gesture. */}
             {dragTargets.map((d) => (
               <circle
                 key={`hit-${d.target}`}
                 data-drag-target={d.target}
                 cx={d.cx}
                 cy={d.cy}
-                r={DRAG_HIT_PX * handleUnit}
+                r={hitRadiusUserUnits}
                 fill="transparent"
-                className="cursor-grab touch-none active:cursor-grabbing"
-                onPointerDown={(event) => handleDragStart(d.target, event)}
+                className="cursor-grab touch-none select-none active:cursor-grabbing"
+                style={{ WebkitTouchCallout: "none" }}
               />
             ))}
           </>
