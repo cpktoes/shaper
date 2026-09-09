@@ -141,6 +141,17 @@ These come from ROADMAP.md's "Settled findings that constrain this phase" and
 - **D-11: The rotate button is absent on phones.** The phone's own orientation is the only
   orientation control there (exception 1 in D-05). Considered and set aside: keeping it as a
   manual override.
+- **D-18: ROCKER keeps D-09's nose-up reading and its pinned drawing area gets the same 66dvh ceiling
+  as TEMPLATE; a rocker drawing narrower than the full phone width is accepted.** Measured during
+  planning (2026-09-08) by running `rockerViewLayout()` from `components/rocker/rocker-view-frame.ts`
+  at real phone sizes: nose-up, the rocker frame is about 0.55–0.64 wide for every 1.0 tall (the card
+  rails reserve a fixed band on the cross axis), so it is height-bound on every phone. At the UI-SPEC's
+  original 45dvh the 74" default drew 181px wide on a 375×667 iPhone SE (half the screen) and 229px on a
+  390×844 iPhone 14; at 66dvh it draws 266 × 400px and 336 × 506px. Lying the rocker flat would have
+  filled the width at about 20dvh (board 342–375px long) but the founder chose to keep the board
+  standing with the phone. For ROCKER, PHON-06's "full width" is read as "the board's long axis fills
+  the pinned area" — the verifier must not fail ROCKER because the drawing does not touch both edges.
+  TEMPLATE, RAILS and FINS keep the full-width reading.
 - **D-12: The RAILS screen shows one cross-section at a time on a phone**, with a Nose / Centre /
   Tail switch — the idiom Phase 8 built into the View Full Sized dialog (Phase 8 D-12). Each rail
   gets the full width and fits the pinned area. The existing per-section open/closed state in
