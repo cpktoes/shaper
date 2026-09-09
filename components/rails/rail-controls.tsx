@@ -240,7 +240,7 @@ function RailSectionControls({
                 <div className="text-sm text-surf-ink-muted font-normal">
                   Ratio — {spec.ratioTopPercent}/{100 - spec.ratioTopPercent}
                 </div>
-                <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
+                <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
                   <Checkbox
                     checked={spec.symmetrical}
                     onCheckedChange={() => onChange({ symmetrical: !spec.symmetrical })}
@@ -258,7 +258,7 @@ function RailSectionControls({
               />
               <RatioTickCaptions />
               {isTail && (
-                <label className="mt-2 flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
+                <label className="mt-2 flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
                   <Checkbox checked={hardEdgeOn} onCheckedChange={() => onToggleHardEdge?.()} />
                   Hard Edge
                 </label>
@@ -281,7 +281,7 @@ function RailSectionControls({
                     <div className="text-sm text-surf-ink-muted font-normal">
                       Corner Cut Offset — {formatMark(cornerCutOffsetMm, system)}
                     </div>
-                    <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
+                    <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
                       <Checkbox
                         checked={spec.removeCornerCut}
                         onCheckedChange={() => onChange({ removeCornerCut: !spec.removeCornerCut })}
@@ -313,7 +313,7 @@ function RailSectionControls({
                       <div className="text-sm text-surf-ink-muted font-normal">
                         Bottom Tuck 3 — {formatMark(output.result.bottomTuck3, system)}
                       </div>
-                      <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
+                      <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
                         <Checkbox
                           checked={spec.singleTuck}
                           onCheckedChange={() => onChange({ singleTuck: !spec.singleTuck })}
@@ -372,7 +372,7 @@ export function RailControls({
       </div>
 
       <div>
-        <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
+        <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
           <Checkbox
             checked={railsImportFoilThickness}
             onCheckedChange={() => onToggleRailsImportFoilThickness()}
@@ -428,7 +428,7 @@ export function RailControls({
       />
 
       <div>
-        <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
+        <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
           <Checkbox
             checked={printRailInstructions}
             onCheckedChange={() => setPrintRailInstructions(!printRailInstructions)}

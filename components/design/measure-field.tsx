@@ -102,9 +102,12 @@ export function MeasureField({
   // gets a 96px box (w-24), matching the error line's own w-24 below. The bare in-table cells keep
   // the 64px box because at the ROCKER datasheet's 540px floor each station column is only about
   // 82px wide, and a wider cell would push the table past its floor.
+  // Both branches carry a pointer-keyed (not width-keyed) touch override: the field grows to 44px
+  // tall and its text to 16px on a touch pointer — 16px is what stops iOS zooming in on focus — and
+  // a fine-pointer mouse sees the unchanged desktop height and type size at any window width.
   const inputClassName = bare
-    ? "h-7 w-16 min-w-16 max-w-16 rounded-md border border-surf-line bg-surf-ground px-1.5 text-right text-sm text-surf-ink"
-    : "h-7 w-24 min-w-24 max-w-24 rounded-md border border-surf-line bg-surf-ground px-1.5 text-right text-sm text-surf-ink";
+    ? "h-7 w-16 min-w-16 max-w-16 rounded-md border border-surf-line bg-surf-ground px-1.5 text-right text-sm text-surf-ink coarse:h-11 coarse:text-base"
+    : "h-7 w-24 min-w-24 max-w-24 rounded-md border border-surf-line bg-surf-ground px-1.5 text-right text-sm text-surf-ink coarse:h-11 coarse:text-base";
 
   return (
     <div className="inline-flex flex-col items-end">

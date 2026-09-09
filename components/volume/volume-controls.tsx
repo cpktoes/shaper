@@ -93,7 +93,7 @@ export function VolumeControls({
           accurate cross-section litres, everywhere the app quotes volume); off is this screen's
           own standalone quick estimate from a board type and its factor tables. */}
       {templateAvailable && (
-        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-surf-ink-muted font-normal">
+        <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-xs text-surf-ink-muted font-normal">
           <Checkbox
             checked={effectiveVolume.importTemplateDimensions}
             onCheckedChange={() => onToggleImportTemplateDimensions()}
@@ -103,7 +103,7 @@ export function VolumeControls({
       )}
 
       {railAvailable && (
-        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-surf-ink-muted font-normal">
+        <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-xs text-surf-ink-muted font-normal">
           <Checkbox
             checked={effectiveVolume.importRailThickness}
             onCheckedChange={() => onToggleImportRailThickness()}

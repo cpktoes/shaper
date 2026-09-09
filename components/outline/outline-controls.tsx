@@ -444,7 +444,7 @@ export function OutlineControls({
         <div className="mb-2 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
           Settings
         </div>
-        <label className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
+        <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
           <Checkbox checked={showConstruction} onCheckedChange={() => onToggleConstruction()} />
           View Construction Lines
         </label>
