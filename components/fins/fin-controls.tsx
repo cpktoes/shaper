@@ -302,7 +302,7 @@ export function FinControls({
 
       <div className="flex items-center justify-between gap-2.5 border-b border-outline-sidebar-divider pb-1.5">
         <div className="text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">Inputs</div>
-        <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-surf-ink-muted font-normal">
+        <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 whitespace-nowrap text-xs text-surf-ink-muted font-normal">
           <Checkbox checked={importTemplate} onCheckedChange={() => onToggleImportTemplate()} />
           Import Template Values
         </label>
@@ -496,7 +496,7 @@ export function FinControls({
             )}
           </div>
           {flags.quadCenterFinAvailable && (
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-surf-ink-muted font-normal">
+            <label className="flex cursor-pointer items-center gap-2 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
               <Checkbox checked={spec.quadCenterFinOn} onCheckedChange={() => onChange({ quadCenterFinOn: !spec.quadCenterFinOn })} />
               Add 5th/Center fin
             </label>
@@ -770,7 +770,7 @@ export function FinControls({
         </DisclosureHeading>
         {settingsOpen && (
           <div className="mt-3 pl-3">
-            <label className="mb-4 flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted font-normal">
+            <label className="mb-4 flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
               <Checkbox checked={showCallouts} onCheckedChange={onToggleCallouts} />
               Fin Placement Callouts
             </label>

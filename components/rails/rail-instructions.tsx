@@ -185,7 +185,7 @@ export function RailInstructions() {
           {RAIL_REFERENCE_LEGEND.map((entry) => (
             <label
               key={entry.key}
-              className="flex cursor-pointer items-center gap-1.5 text-sm text-surf-ink-muted"
+              className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 print:min-h-0 text-sm text-surf-ink-muted"
             >
               <Checkbox checked={visibleGroups.has(entry.key)} onCheckedChange={() => toggleGroup(entry.key)} />
               <span

@@ -41,7 +41,10 @@ function Slider({
           <SliderPrimitive.Thumb
             data-slot="slider-thumb"
             key={index}
-            className="relative block size-3 shrink-0 rounded-full border border-ring bg-surf-ground ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
+            // The touch hit-ring override below is pointer-keyed, not width-keyed: it grows only
+            // the invisible ring (8px/side to 16px/side, making a 44px target) for a finger; the
+            // visible 12px dot is unchanged, and a fine-pointer mouse never sees the wider ring.
+            className="relative block size-3 shrink-0 rounded-full border border-ring bg-surf-ground ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 coarse:after:-inset-4 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
           />
         ))}
       </SliderPrimitive.Control>
