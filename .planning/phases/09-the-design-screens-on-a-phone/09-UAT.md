@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 09-the-design-screens-on-a-phone
 source: [09-VERIFICATION.md]
 started: 2026-09-09T10:33:06.945Z
-updated: 2026-09-09T15:57:12.457Z
+updated: 2026-09-09T15:58:08.554Z
 ---
 
 ## Current Test
 
-number: 7
-name: At 360px wide in the Metric system, read the RAILS INSTRUCTIONS tab end to end (the example rail card, the three-step copy, the legend grid, the plan/side figure, the closing note).
-expected: |
-  Nothing clips, overlaps, or truncates, and the cm-formatted numbers read correctly.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -46,14 +42,14 @@ severity: major
 
 ### 7. At 360px wide in the Metric system, read the RAILS INSTRUCTIONS tab end to end (the example rail card, the three-step copy, the legend grid, the plan/side figure, the closing note).
 expected: Nothing clips, overlaps, or truncates, and the cm-formatted numbers read correctly.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 7
-passed: 4
+passed: 5
 issues: 2
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
