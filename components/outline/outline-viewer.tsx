@@ -24,7 +24,7 @@
  * and Phase 7's printed paths before they are ready for it).
  */
 
-import { type PointerEvent as ReactPointerEvent, useRef } from "react";
+import { type PointerEvent as ReactPointerEvent, useRef, useState } from "react";
 import {
   BOARD_LENGTH_RANGE_IN,
   WIDEPOINT_WIDTH_RANGE_IN,
@@ -32,14 +32,24 @@ import {
 } from "@/lib/geometry/board";
 import type { FinMark } from "@/lib/geometry/fins";
 import type { OutlineDragPoint, OutlineDragTarget } from "@/lib/geometry/outline-drag";
-import { outlineDragPoints, solveOutlineDrag } from "@/lib/geometry/outline-drag";
+import {
+  nearestOutlineDragTarget,
+  outlineDragPoints,
+  OUTLINE_DRAG_HIT_COARSE_PX,
+  OUTLINE_DRAG_HIT_PX,
+  solveOutlineDrag,
+} from "@/lib/geometry/outline-drag";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import { sampleOutline } from "@/lib/geometry/outline";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
-import { formatDim, formatLength, stationLabel } from "@/lib/geometry/measure-display";
+import { formatDim, formatLength, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
 import { useUnits } from "@/components/units-provider";
+import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import {
+  CALLOUT_CHAR_PX,
+  CALLOUT_PX,
   CalloutChip,
+  CalloutChipFrame,
   MIN_PINNED_FIT_SCALE,
   OUTLINE_CHIP_HEIGHT,
   OutputRail,
@@ -93,8 +103,16 @@ const DRAG_TARGET_RING_PX = 1.6;
 const DRAG_TARGET_CORE_PX = 2.6;
 /** Fixed reference knots — deliberately plain, so only grabbable points look grabbable. */
 const KNOT_DOT_PX = 3;
-/** Invisible grab radius: comfortably larger than the drawn target, for a thumb as well as a mouse. */
-const DRAG_HIT_PX = 15;
+/**
+ * The drag readout chip (D-17), in CSS pixels: the small card that reads a slider row back while
+ * a finger drags the point that drives it. `READOUT_GAP_PX` is the standing clearance between the
+ * touched point and the chip's own bottom edge, so the chip never sits under the fingertip;
+ * `READOUT_ROW_PX`/`READOUT_PAD_PX` size the card to however many driven fields the touched
+ * target owns (one or two).
+ */
+const READOUT_GAP_PX = 24;
+const READOUT_ROW_PX = 18;
+const READOUT_PAD_PX = 8;
 /** How far the static stringer/centreline overhangs the board's own tip/tail — a drafting nicety
  * (sketch 004's reference render), not load-bearing geometry. */
 const STRINGER_OVERHANG = 8;
@@ -267,6 +285,7 @@ export function OutlineViewer({
 }: OutlineViewerProps) {
   const { system } = useUnits();
   const horizontal = orientation === "horizontal";
+  const coarsePointer = useCoarsePointer();
   const svgRef = useRef<SVGSVGElement>(null);
   /** The content group carrying the rotation, in horizontal — see `toBoardPoint` below for why
    * the drag matrix must be read off this instead of the SVG root. */
@@ -274,6 +293,11 @@ export function OutlineViewer({
   /** Which control point the active gesture owns, if any. A ref, not state: it changes on
    * pointerdown and is read on pointermove, and re-rendering for it would be a wasted pass. */
   const draggingRef = useRef<OutlineDragTarget | null>(null);
+  /** Which point a TOUCH gesture is dragging, if any — state, not a ref, because the drag
+   * readout chip (09-07 Task 2) has to re-render when this starts and stops. Stays `null` for a
+   * mouse or pen at every viewport width (D-17, PHON-05): only `handlePointerDown`'s own
+   * `pointerType === "touch"` check ever sets it. */
+  const [touchDragTarget, setTouchDragTarget] = useState<OutlineDragTarget | null>(null);
   const { lengthIn, centerlineX, scale, frame, tailPy, tipPy } = outlineViewMetrics(
     geometry,
     hideCallouts,
@@ -367,14 +391,15 @@ export function OutlineViewer({
   });
 
   // Grabbable points, in the same left-side px space as the dots above. Only built when a drag
-  // handler is present, so every other consumer renders exactly what it did before.
-  const dragTargets = onOutlineDrag
-    ? outlineDragPoints(geometry).map((d) => ({
-        target: d.target,
-        cx: pxX(CONSTRUCTION_SIDE * mmToInches(d.point.halfWidth)),
-        cy: lenToY(mmToInches(d.point.station)),
-      }))
-    : [];
+  // handler is present, so every other consumer renders exactly what it did before. Kept in its
+  // raw (board-mm) shape too — `dragPointsAt` — so the delegated pick below and this view-space
+  // mapping read the exact same five points, never two separately-derived copies.
+  const dragPointsAt = onOutlineDrag ? outlineDragPoints(geometry) : [];
+  const dragTargets = dragPointsAt.map((d) => ({
+    target: d.target,
+    cx: pxX(CONSTRUCTION_SIDE * mmToInches(d.point.halfWidth)),
+    cy: lenToY(mmToInches(d.point.station)),
+  }));
 
   /** Screen point -> board coordinates: undo the SVG transform, then invert pxX/lenToY.
    *
@@ -405,18 +430,80 @@ export function OutlineViewer({
     onOutlineDrag(solveOutlineDrag(geometry, draggingRef.current, boardPoint));
   }
 
-  function handleDragStart(target: OutlineDragTarget, event: ReactPointerEvent<SVGElement>) {
+  /**
+   * The one delegated drag-start pick (D-15, RESEARCH.md Pitfall 2): a press anywhere on the
+   * drawing converts to board coordinates and asks `nearestOutlineDragTarget` which of the five
+   * points, if any, is within reach — never which hit-circle happened to catch the browser's own
+   * (paint-order) hit-test. Pressing empty canvas returns `null` and starts nothing. One pointer
+   * path for both a mouse and a touch (D-16): the drag starts on pointer-down with no movement
+   * threshold, because the drawing is pinned inside the phone shell and can never be mistaken for
+   * a page scroll.
+   */
+  function handlePointerDown(event: ReactPointerEvent<SVGElement>) {
     if (!onOutlineDrag) return;
+    const boardPoint = toBoardPoint(event);
+    if (!boardPoint) return;
+    const target = nearestOutlineDragTarget(dragPointsAt, boardPoint, hitRadiusMm);
+    if (!target) return;
     event.preventDefault();
     draggingRef.current = target;
     event.currentTarget.setPointerCapture(event.pointerId);
+    // The readout chip (D-17) is touch-only, at any viewport width — a mouse never sets this.
+    if (event.pointerType === "touch") setTouchDragTarget(target);
   }
 
   function handleDragEnd(event: ReactPointerEvent<SVGElement>) {
     draggingRef.current = null;
+    if (touchDragTarget !== null) setTouchDragTarget(null);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+  }
+
+  /**
+   * The readout chip's own words (D-17): `SliderRow`'s own `label — displayValue` composition
+   * (`components/design/slider-row.tsx`) for the field or fields the touched target drives, read
+   * off the live `outline` spec (never the raw pointer position), so a point clamped against
+   * `OUTLINE_DRAG_LIMITS` shows the clamped value, not a stale pre-clamp number. The widepoint is
+   * the one exception to "only the fields this target owns" (`solveOutlineDrag` only returns
+   * `widePointOffset` for it): the sidebar always shows Width grouped directly above Offset
+   * (sketch 004), so the chip shows both, exactly as `outline-controls.tsx` does.
+   */
+  function outlineReadoutLines(target: OutlineDragTarget): { label: string; value: string }[] {
+    switch (target) {
+      case "widepoint":
+        return [
+          { label: "Width", value: formatDim(outline.widePointWidth, system) },
+          { label: "Offset", value: formatSignedDim(outline.widePointOffset, system) },
+        ];
+      case "tailRailHandle":
+        return [{ label: "Tail Rail", value: `${outline.tailRailLength}%` }];
+      case "noseRailHandle":
+        return [{ label: "Nose Rail", value: `${outline.noseRailLength}%` }];
+      case "tailHandle":
+        return [
+          { label: "Tail Angle", value: `${outline.tailAngle}°` },
+          { label: "Fullness", value: `${outline.tailFullness}%` },
+        ];
+      case "noseHandle":
+        return [
+          { label: "Nose Angle", value: `${outline.noseAngle}°` },
+          { label: "Fullness", value: `${outline.noseFullness}%` },
+        ];
+    }
+  }
+
+  /**
+   * A point drawn in this viewer's canonical (pre-rotation) space, mapped to where it lands in
+   * the outer, rendered viewBox space — the exact inverse of the content group's own
+   * `rotate(-90)` in horizontal (identity in vertical). `rotate(-90)` (about the origin, so this
+   * is a pure linear map with no translation to account for) sends canonical `(x, y)` to rendered
+   * `(y, -x)` — see the file header's own note on the content group above. Used only to place the
+   * readout chip, which is drawn OUTSIDE the rotated content group (a plain sibling `<g>`) so its
+   * text is always screen-upright with no counter-rotation of its own to get wrong.
+   */
+  function toViewBoxPoint(x: number, y: number): { x: number; y: number } {
+    return horizontal ? { x: y, y: -x } : { x, y };
   }
 
   // Inputs: left gutter chips. Length sits at the nose tip; Widepoint leaders to the rail at its
@@ -505,6 +592,69 @@ export function OutlineViewer({
   /** User units per CSS pixel — what the px-denominated handle sizes above are drawn in. */
   const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
 
+  /**
+   * One hit radius drives both what is drawn (the hit circles below) and what the delegated pick
+   * tests against — never two numbers that could drift apart (RESEARCH.md Pitfall 2's own
+   * warning). `OUTLINE_DRAG_HIT_COARSE_PX` is the 09-06 measured phone radius; a fine pointer
+   * keeps the historic 15px unchanged (PHON-05). Converted once, here, from CSS px to board
+   * millimetres at THIS render's own scale, since `nearestOutlineDragTarget` takes millimetres —
+   * it never sees a pixel.
+   */
+  const hitRadiusPx = coarsePointer ? OUTLINE_DRAG_HIT_COARSE_PX : OUTLINE_DRAG_HIT_PX;
+  const hitRadiusUserUnits = hitRadiusPx * handleUnit;
+  const hitRadiusMm = inchesToMm(hitRadiusUserUnits / scale);
+
+  /**
+   * The drag readout chip's own box (D-17), computed here — not inside the JSX below — so it
+   * reads like every other layout constant in this file. `null` whenever no touch drag is live,
+   * which is what keeps the chip absent for a mouse at every viewport width (PHON-05): only
+   * `handlePointerDown`'s own `pointerType === "touch"` check ever sets `touchDragTarget`.
+   *
+   * Sized and positioned entirely in rendered viewBox space (`toViewBoxPoint` above), which is
+   * exactly the space `viewBox`'s own four numbers describe — so the clamp below ("never clipped
+   * by the drawing's own edge") is an exact bounds check, not an approximation across two
+   * coordinate spaces. `CALLOUT_CHAR_PX` is calibrated in the same screen-px terms `CALLOUT_PX`
+   * is (`callout-primitives.tsx`'s own doc comment), so both are multiplied by `handleUnit` once,
+   * at the end, the same conversion `pinnedCalloutSizes` performs.
+   */
+  let readoutChip:
+    | { lines: { label: string; value: string }[]; x: number; y: number; width: number; height: number }
+    | null = null;
+  if (touchDragTarget) {
+    const touched = dragTargets.find((d) => d.target === touchDragTarget);
+    if (touched) {
+      const lines = outlineReadoutLines(touchDragTarget);
+      const longestChars = Math.max(...lines.map((l) => `${l.label} — ${l.value}`.length));
+      const widthPx = Math.max(CALLOUT_PX.chipW, longestChars * CALLOUT_CHAR_PX + READOUT_PAD_PX * 2);
+      const heightPx = lines.length * READOUT_ROW_PX + READOUT_PAD_PX * 2;
+      const width = widthPx * handleUnit;
+      const height = heightPx * handleUnit;
+      const [vbMinX, vbMinY, vbWidth, vbHeight] = viewBox.split(" ").map(Number);
+      const anchor = toViewBoxPoint(touched.cx, touched.cy);
+      let boxBottom = anchor.y - READOUT_GAP_PX * handleUnit;
+      let boxTop = boxBottom - height;
+      let boxLeft = anchor.x - width / 2;
+      let boxRight = boxLeft + width;
+      if (boxLeft < vbMinX) {
+        boxLeft = vbMinX;
+        boxRight = boxLeft + width;
+      }
+      if (boxRight > vbMinX + vbWidth) {
+        boxRight = vbMinX + vbWidth;
+        boxLeft = boxRight - width;
+      }
+      if (boxTop < vbMinY) {
+        boxTop = vbMinY;
+        boxBottom = boxTop + height;
+      }
+      if (boxBottom > vbMinY + vbHeight) {
+        boxBottom = vbMinY + vbHeight;
+        boxTop = boxBottom - height;
+      }
+      readoutChip = { lines, x: boxLeft, y: boxTop, width, height };
+    }
+  }
+
   // WP Offset is grouped with Widepoint (sketch 004) and carries no leader. In vertical it sits
   // directly beneath Widepoint in the same gutter column — stepping down by a chip height. Read
   // `calloutSizes`, so these two declarations live here rather than beside `widepointChipY`
@@ -536,7 +686,18 @@ export function OutlineViewer({
       // grid sizes itself, that one card inflated every other row and forced the printed sheet down
       // to 70% of the page width. Filling the box and letting `meet` scale the drawing inside it
       // keeps the card honest about how much height it needs, which is none in particular.
-      className="absolute inset-0 block h-full w-full"
+      // `touch-none` here too, not only on the hit circles: a real touch drag routinely moves
+      // past the original circle's own small radius (pointer capture is what keeps the SAME
+      // target receiving those moves), and once a touch strays onto a part of the SVG with no
+      // `touch-action: none` of its own the browser can still hand the gesture to native
+      // scrolling — cancelling the drag with a `pointercancel` even though `preventDefault()` was
+      // already called on the pointerdown. Confirmed with a real (CDP) touch drag, not assumed.
+      // `select-none` is the defensive iOS long-press callout suppression (PHON-04, RESEARCH.md
+      // Pitfall 3): the SVG text drawn near a drag point can start a selection too, not only the
+      // hit circles themselves — both places get the same suppression.
+      className="absolute inset-0 block h-full w-full select-none touch-none"
+      style={{ WebkitTouchCallout: "none" }}
+      onPointerDown={showConstruction && onOutlineDrag ? handlePointerDown : undefined}
       onPointerMove={onOutlineDrag ? handleDragMove : undefined}
       onPointerUp={onOutlineDrag ? handleDragEnd : undefined}
       onPointerCancel={onOutlineDrag ? handleDragEnd : undefined}
@@ -639,18 +800,23 @@ export function OutlineViewer({
               />
             </g>
           ))}
-          {/* Transparent grab areas, last so they sit above everything they cover.
-              touch-action:none stops a touch drag scrolling the page instead of shaping the board. */}
+          {/* Transparent grab areas, last so they sit above everything they cover. No press
+              handler of their own — the root `<svg>`'s one delegated handler owns every
+              drag-start pick (D-15); these circles are the visual/cursor affordance and the
+              `data-drag-target` test hook only. `touch-action:none` stops a touch drag scrolling
+              the page instead of shaping the board; `select-none` plus the inline
+              `WebkitTouchCallout` suppression stop iOS's long-press text-selection popup
+              (PHON-04, RESEARCH.md Pitfall 3) from interrupting a drag mid-gesture. */}
           {dragTargets.map((d) => (
             <circle
               key={d.target}
               data-drag-target={d.target}
               cx={d.cx}
               cy={d.cy}
-              r={DRAG_HIT_PX * handleUnit}
+              r={hitRadiusUserUnits}
               fill="transparent"
-              className="cursor-grab touch-none active:cursor-grabbing"
-              onPointerDown={(event) => handleDragStart(d.target, event)}
+              className="cursor-grab touch-none select-none active:cursor-grabbing"
+              style={{ WebkitTouchCallout: "none" }}
             />
           ))}
         </>
@@ -730,6 +896,37 @@ export function OutlineViewer({
         </>
       )}
       </g>
+      {/* The drag readout chip (D-17): a sibling of the rotated content group above, not a
+          child of it, so its box and text are always drawn screen-upright in the outer viewBox
+          space directly — no counter-rotation needed. Touch-only (`readoutChip` is `null` for a
+          mouse at every viewport width, PHON-05); `pointerEvents="none"` so it can never itself
+          swallow the pointermove that is still steering the drag underneath it. */}
+      {readoutChip && (
+        <g data-readout-chip={touchDragTarget} pointerEvents="none">
+          <CalloutChipFrame x={readoutChip.x} y={readoutChip.y} width={readoutChip.width} height={readoutChip.height} />
+          {readoutChip.lines.map((line, i) => (
+            <text
+              key={line.label}
+              x={readoutChip.x + readoutChip.width / 2}
+              y={readoutChip.y + READOUT_PAD_PX * handleUnit + READOUT_ROW_PX * handleUnit * (i + 0.75)}
+              textAnchor="middle"
+            >
+              <tspan
+                style={{ fontSize: CALLOUT_PX.name * handleUnit, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                fill="var(--outline-callout-label)"
+              >
+                {line.label} —{" "}
+              </tspan>
+              <tspan
+                style={{ fontSize: CALLOUT_PX.value * handleUnit, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                fill="var(--color-surf-accent-ink)"
+              >
+                {line.value}
+              </tspan>
+            </text>
+          ))}
+        </g>
+      )}
     </svg>
     </ViewerOrientationProvider>
     </CalloutSizeProvider>

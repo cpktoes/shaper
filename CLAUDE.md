@@ -19,7 +19,13 @@ answers, commit messages and summaries alike.
 - Deployed on Vercel from `main` → https://shaper-coral.vercel.app
 
 Clerk auth and Neon Postgres via Drizzle are installed and in use (accounts and saved
-designs, Phase 2). Playwright remains prescribed but not yet installed (Phase 3).
+designs, Phase 2). Playwright is installed and in use (Phase 9) — the browser-driven tests in
+`e2e/` cover the phone layouts, touch-sized controls, a real thumb drag, and a desktop
+regression pass that proves nothing changed for a mouse. The desktop baseline screenshots under
+`e2e/*-snapshots/` are macOS-rendered and local only — nothing runs them in CI. Chromium and
+WebKit are installed once with `npx playwright install chromium webkit`; the suite's own dev
+server always starts on port 3100 (override with `PW_PORT=`) so it never collides with a
+`npm run dev` already on 3000.
 
 ## Commands
 
@@ -28,6 +34,8 @@ npm run dev            # dev server on localhost:3000
 npm test                # vitest run — all geometry suites must stay green
 npm run build           # run from the main checkout; Turbopack won't resolve next in a worktree
 npm run lint
+npm run test:e2e        # every browser test: both phones and the desktop, own dev server on port 3100
+npm run test:e2e:phone  # just the two phone profiles (iPhone, Android) — faster while iterating
 npm run golden          # regenerate geometry fixtures from the prototype in reference/
 npm run db:generate     # write a new migration file from the schema
 npm run db:migrate      # apply migrations to the development branch
@@ -120,3 +128,10 @@ know why:
 - `components/{outline,rails,fins,volume,summary}/` — per-screen UI
 - `reference/project/` — the original Claude Design prototype; source of truth for formulas
 - `.planning/` — GSD roadmap, phase plans and quick-task log
+
+Two phone-only switches live in `app/globals.css`, and they answer two different questions: the
+`shell` breakpoint (820px) decides which LAYOUT a screen renders — stacked-and-pinned below it,
+side-by-side above it — while the `coarse` pointer variant decides how BIG a control draws, on
+any width a touch device happens to be. Width picks the layout; pointer picks the sizing; the two
+are never conflated, which is what keeps a touch laptop at 1280px wide from getting the phone
+stack, and a narrow desktop browser window from getting coarse-sized controls.

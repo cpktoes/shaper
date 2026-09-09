@@ -73,13 +73,17 @@
  * patch straight up — the caller (`rocker-editor.tsx`) passes it straight to `updateRocker`.
  */
 
-import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef } from "react";
-import { CALLOUT_PX, CalloutChipFrame, DimensionTick, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
+import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef, useState } from "react";
+import { CALLOUT_CHAR_PX, CALLOUT_PX, CalloutChipFrame, DimensionTick, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { useUnits } from "@/components/units-provider";
+import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import { FOIL_THICKNESS_RANGE_IN, sampleFoil, type FoilSpec } from "@/lib/geometry/foil";
 import { formatMark, stationLabel } from "@/lib/geometry/measure-display";
 import {
+  nearestSideProfileDragTarget,
   sideProfileDragPoints,
+  SIDE_PROFILE_DRAG_HIT_COARSE_PX,
+  SIDE_PROFILE_DRAG_HIT_PX,
   solveSideProfileDrag,
   type SideProfileDragPoint,
   type SideProfileDragTarget,
@@ -114,7 +118,17 @@ const DRAG_TARGET_CORE_PX = 2.6;
 /** Fixed reference knots and construction-line termini — deliberately plain, so only grabbable
  * points look grabbable. */
 const KNOT_DOT_PX = 3;
-const DRAG_HIT_PX = 15;
+/**
+ * The drag readout chip (D-17), in CSS pixels — copied from `outline-viewer.tsx`'s own constants
+ * (the same card, the same sizing rules): the small card that reads a slider row back while a
+ * finger drags the control-point handle that drives it. `READOUT_GAP_PX` is the standing
+ * clearance between the touched point and the chip's own bottom edge; `READOUT_ROW_PX`/
+ * `READOUT_PAD_PX` size the card to however many driven fields the touched target owns (one or
+ * two).
+ */
+const READOUT_GAP_PX = 24;
+const READOUT_ROW_PX = 18;
+const READOUT_PAD_PX = 8;
 
 /** Curve sampling density — enough to read as smooth at this frame's scale, well past the five
  * knots the monotone splines are built from. */
@@ -458,6 +472,7 @@ export function RockerViewer({
 }: RockerViewerProps) {
   const { system } = useUnits();
   const vertical = orientation === "vertical";
+  const coarsePointer = useCoarsePointer();
   const svgRef = useRef<SVGSVGElement>(null);
   /** The content group carrying the rotation, in vertical — see `toBoardPoint` below for why the
    * drag matrix must be read off this instead of the SVG root. */
@@ -465,6 +480,11 @@ export function RockerViewer({
   /** Which grab target the active gesture owns, if any. A ref, not state: it changes on
    * pointerdown and is read on pointermove, and re-rendering for it would be a wasted pass. */
   const draggingRef = useRef<SideProfileDragTarget | null>(null);
+  /** Which control point a TOUCH gesture is dragging, if any — state, not a ref, so the drag
+   * readout chip (09-07 Task 2) re-renders when this starts and stops. Stays `null` for a mouse
+   * or pen at every viewport width (D-17, PHON-05): only `handlePointerDown`'s own `pointerType
+   * === "touch"` check ever sets it. */
+  const [touchDragTarget, setTouchDragTarget] = useState<SideProfileDragTarget | null>(null);
   const lengthIn = mmToInches(length);
   // Built once per render and shared by the sampling loop, the drag-target enumerator and the
   // solver below, the same posture `rocker-editor.tsx` takes building it once for the controls,
@@ -667,16 +687,80 @@ export function RockerViewer({
   /** User units per CSS pixel — what the px-denominated drag-target sizes above are drawn in. */
   const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
 
+  /**
+   * One hit radius drives both what is drawn (the hit circles below) and what the delegated pick
+   * tests against — never two numbers that could drift apart (RESEARCH.md Pitfall 2's own
+   * warning). `SIDE_PROFILE_DRAG_HIT_COARSE_PX` is the 09-06 measured phone radius; a fine
+   * pointer keeps the historic 15px unchanged (PHON-05). Converted once, here, from CSS px to
+   * board millimetres at THIS render's own scale, since `nearestSideProfileDragTarget` takes
+   * millimetres — it never sees a pixel.
+   */
+  const hitRadiusPx = coarsePointer ? SIDE_PROFILE_DRAG_HIT_COARSE_PX : SIDE_PROFILE_DRAG_HIT_PX;
+  const hitRadiusUserUnits = hitRadiusPx * handleUnit;
+  const hitRadiusMm = inchesToMm(hitRadiusUserUnits / scale);
+
   // Grabbable points, in the same canonical space pxX/pxY draw everything else in. Only built
   // when a drag handler is present, so a consumer with no `onDrag` renders exactly what it did
-  // before this prop existed.
-  const dragTargets = onDrag
-    ? sideProfileDragPoints(geometry).map((d) => ({
-        target: d.target,
-        cx: pxX(mmToInches(d.point.station)),
-        cy: pxY(mmToInches(d.point.height)),
-      }))
-    : [];
+  // before this prop existed. Kept in its raw (board-mm) shape too — `dragPointsAt` — so the
+  // delegated pick below and this view-space mapping read the exact same four points, never two
+  // separately-derived copies.
+  const dragPointsAt = onDrag ? sideProfileDragPoints(geometry) : [];
+  const dragTargets = dragPointsAt.map((d) => ({
+    target: d.target,
+    cx: pxX(mmToInches(d.point.station)),
+    cy: pxY(mmToInches(d.point.height)),
+  }));
+
+  /**
+   * The drag readout chip's own box (D-17) — mirrors `outline-viewer.tsx`'s own build exactly.
+   * `null` whenever no touch drag is live, which is what keeps the chip absent for a mouse at
+   * every viewport width (PHON-05): only `handlePointerDown`'s own `pointerType === "touch"`
+   * check ever sets `touchDragTarget`.
+   *
+   * Sized and positioned entirely in rendered viewBox space (`toViewBoxPoint` below), the same
+   * space `viewBox`'s own four numbers describe — so the clamp below ("never clipped by the
+   * drawing's own edge") is an exact bounds check, not an approximation across two coordinate
+   * spaces. `CALLOUT_CHAR_PX` is calibrated in the same screen-px terms `CALLOUT_PX` is
+   * (`callout-primitives.tsx`'s own doc comment), so both are multiplied by `handleUnit` once, at
+   * the end, the same conversion `cardPinScale` performs above.
+   */
+  let readoutChip:
+    | { lines: { label: string; value: string }[]; x: number; y: number; width: number; height: number }
+    | null = null;
+  if (touchDragTarget) {
+    const touched = dragTargets.find((d) => d.target === touchDragTarget);
+    if (touched) {
+      const lines = rockerReadoutLines(touchDragTarget);
+      const longestChars = Math.max(...lines.map((l) => `${l.label} — ${l.value}`.length));
+      const widthPx = Math.max(CALLOUT_PX.chipW, longestChars * CALLOUT_CHAR_PX + READOUT_PAD_PX * 2);
+      const heightPx = lines.length * READOUT_ROW_PX + READOUT_PAD_PX * 2;
+      const width = widthPx * handleUnit;
+      const height = heightPx * handleUnit;
+      const [vbMinX, vbMinY, vbWidth, vbHeight] = viewBox.split(" ").map(Number);
+      const anchor = toViewBoxPoint(touched.cx, touched.cy);
+      let boxBottom = anchor.y - READOUT_GAP_PX * handleUnit;
+      let boxTop = boxBottom - height;
+      let boxLeft = anchor.x - width / 2;
+      let boxRight = boxLeft + width;
+      if (boxLeft < vbMinX) {
+        boxLeft = vbMinX;
+        boxRight = boxLeft + width;
+      }
+      if (boxRight > vbMinX + vbWidth) {
+        boxRight = vbMinX + vbWidth;
+        boxLeft = boxRight - width;
+      }
+      if (boxTop < vbMinY) {
+        boxTop = vbMinY;
+        boxBottom = boxTop + height;
+      }
+      if (boxBottom > vbMinY + vbHeight) {
+        boxBottom = vbMinY + vbHeight;
+        boxTop = boxBottom - height;
+      }
+      readoutChip = { lines, x: boxLeft, y: boxTop, width, height };
+    }
+  }
 
   // The construction overlay: one line per handle (four, always — two Bezier segments each with a
   // handle at both ends), from `geometry.handles`. Every coordinate comes straight off
@@ -723,18 +807,73 @@ export function RockerViewer({
     onDrag(solveSideProfileDrag(geometry, draggingRef.current, boardPoint));
   }
 
-  function handleDragStart(target: SideProfileDragTarget, event: ReactPointerEvent<SVGElement>) {
+  /**
+   * The one delegated drag-start pick (D-15, RESEARCH.md Pitfall 2): a press anywhere on the
+   * drawing converts to board coordinates and asks `nearestSideProfileDragTarget` which of the
+   * four curve handles, if any, is within reach — never which hit-circle happened to catch the
+   * browser's own (paint-order) hit-test. Pressing empty canvas returns `null` and starts
+   * nothing. One pointer path for both a mouse and a touch (D-16): the drag starts on
+   * pointer-down with no movement threshold, because the drawing is pinned inside the phone
+   * shell and can never be mistaken for a page scroll.
+   */
+  function handlePointerDown(event: ReactPointerEvent<SVGElement>) {
     if (!onDrag) return;
+    const boardPoint = toBoardPoint(event);
+    if (!boardPoint) return;
+    const target = nearestSideProfileDragTarget(dragPointsAt, boardPoint, hitRadiusMm);
+    if (!target) return;
     event.preventDefault();
     draggingRef.current = target;
     event.currentTarget.setPointerCapture(event.pointerId);
+    // The readout chip (D-17) is touch-only, at any viewport width — a mouse never sets this.
+    if (event.pointerType === "touch") setTouchDragTarget(target);
   }
 
   function handleDragEnd(event: ReactPointerEvent<SVGElement>) {
     draggingRef.current = null;
+    if (touchDragTarget !== null) setTouchDragTarget(null);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+  }
+
+  /**
+   * The readout chip's own words (D-17): the same `label — value` composition
+   * `rocker-controls.tsx` already bakes into its own slider labels, for the field or fields the
+   * touched handle drives, read off the live `rocker` spec (never the raw pointer position), so a
+   * handle clamped against its own angle/smoothness/flatness range shows the clamped value, not a
+   * stale pre-clamp number.
+   */
+  function rockerReadoutLines(target: SideProfileDragTarget): { label: string; value: string }[] {
+    switch (target) {
+      case "tailTipHandle":
+        return [
+          { label: "Tail Angle", value: `${rocker.tailAngle}°` },
+          { label: "Tail Smoothness", value: `${rocker.tailSmoothness}%` },
+        ];
+      case "noseTipHandle":
+        return [
+          { label: "Nose Angle", value: `${rocker.noseAngle}°` },
+          { label: "Nose Smoothness", value: `${rocker.noseSmoothness}%` },
+        ];
+      case "tailFlatHandle":
+        return [{ label: "Tail Flatness", value: `${rocker.tailFlatness}%` }];
+      case "noseFlatHandle":
+        return [{ label: "Nose Flatness", value: `${rocker.noseFlatness}%` }];
+    }
+  }
+
+  /**
+   * A point drawn in this viewer's canonical (pre-rotation) space, mapped to where it lands in
+   * the outer, rendered viewBox space — the exact inverse of the content group's own `rotate(90)`
+   * in vertical (identity in horizontal). `rotate(90)` (about the origin, so this is a pure
+   * linear map with no translation to account for) sends canonical `(x, y)` to rendered
+   * `(-y, x)`. Used only to place the readout chip, which is drawn OUTSIDE the rotated content
+   * group (a plain sibling `<g>`) so its text is always screen-upright with no counter-rotation
+   * of its own to get wrong.
+   */
+  function toViewBoxPoint(x: number, y: number): { x: number; y: number } {
+    return vertical ? { x: -y, y: x } : { x, y };
   }
 
   return (
@@ -747,9 +886,20 @@ export function RockerViewer({
       // drawing inside it, or a fixed-size panel (the Summary order form's rocker box) inflates
       // to the drawing's own aspect ratio instead of holding still. The immediate parent supplies
       // both `relative` and a definite size in every consumer of this component.
-      className="absolute inset-0 block h-full w-full"
+      // `touch-none` here too, not only on the hit circles: a real touch drag routinely moves
+      // past the original circle's own small radius (pointer capture is what keeps the SAME
+      // target receiving those moves), and once a touch strays onto a part of the SVG with no
+      // `touch-action: none` of its own the browser can still hand the gesture to native
+      // scrolling — cancelling the drag with a `pointercancel` even though `preventDefault()` was
+      // already called on the pointerdown. Confirmed with a real (CDP) touch drag, not assumed.
+      // `select-none` is the defensive iOS long-press callout suppression (PHON-04, RESEARCH.md
+      // Pitfall 3): the SVG text drawn near a drag point can start a selection too, not only the
+      // hit circles themselves — both places get the same suppression.
+      className="absolute inset-0 block h-full w-full select-none touch-none"
+      style={{ WebkitTouchCallout: "none" }}
       role="img"
       aria-label="Side profile of the board, showing the rocker line and deck thickness"
+      onPointerDown={showConstruction && onDrag ? handlePointerDown : undefined}
       onPointerMove={onDrag ? handleDragMove : undefined}
       onPointerUp={onDrag ? handleDragEnd : undefined}
       onPointerCancel={onDrag ? handleDragEnd : undefined}
@@ -927,24 +1077,59 @@ export function RockerViewer({
                 <circle cx={d.cx} cy={d.cy} r={DRAG_TARGET_CORE_PX * handleUnit} fill="var(--color-surf-warning)" />
               </g>
             ))}
-            {/* Transparent grab areas, last so they sit above everything they cover.
-                touch-action:none stops a touch drag scrolling the page instead of shaping the
-                board. */}
+            {/* Transparent grab areas, last so they sit above everything they cover. No press
+                handler of their own — the root `<svg>`'s one delegated handler owns every
+                drag-start pick (D-15); these circles are the visual/cursor affordance and the
+                `data-drag-target` test hook only. `touch-action:none` stops a touch drag
+                scrolling the page instead of shaping the board; `select-none` plus the inline
+                `WebkitTouchCallout` suppression stop iOS's long-press text-selection popup
+                (PHON-04, RESEARCH.md Pitfall 3) from interrupting a drag mid-gesture. */}
             {dragTargets.map((d) => (
               <circle
                 key={`hit-${d.target}`}
                 data-drag-target={d.target}
                 cx={d.cx}
                 cy={d.cy}
-                r={DRAG_HIT_PX * handleUnit}
+                r={hitRadiusUserUnits}
                 fill="transparent"
-                className="cursor-grab touch-none active:cursor-grabbing"
-                onPointerDown={(event) => handleDragStart(d.target, event)}
+                className="cursor-grab touch-none select-none active:cursor-grabbing"
+                style={{ WebkitTouchCallout: "none" }}
               />
             ))}
           </>
         )}
       </g>
+      {/* The drag readout chip (D-17): a sibling of the rotated content group above, not a
+          child of it, so its box and text are always drawn screen-upright in the outer viewBox
+          space directly — no counter-rotation needed. Touch-only (`readoutChip` is `null` for a
+          mouse at every viewport width, PHON-05); `pointerEvents="none"` so it can never itself
+          swallow the pointermove that is still steering the drag underneath it. */}
+      {readoutChip && (
+        <g data-readout-chip={touchDragTarget} pointerEvents="none">
+          <CalloutChipFrame x={readoutChip.x} y={readoutChip.y} width={readoutChip.width} height={readoutChip.height} />
+          {readoutChip.lines.map((line, i) => (
+            <text
+              key={line.label}
+              x={readoutChip.x + readoutChip.width / 2}
+              y={readoutChip.y + READOUT_PAD_PX * handleUnit + READOUT_ROW_PX * handleUnit * (i + 0.75)}
+              textAnchor="middle"
+            >
+              <tspan
+                style={{ fontSize: CALLOUT_PX.name * handleUnit, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                fill="var(--outline-callout-label)"
+              >
+                {line.label} —{" "}
+              </tspan>
+              <tspan
+                style={{ fontSize: CALLOUT_PX.value * handleUnit, fontWeight: 700, fontFamily: "var(--font-body)" }}
+                fill="var(--color-surf-accent-ink)"
+              >
+                {line.value}
+              </tspan>
+            </text>
+          ))}
+        </g>
+      )}
     </svg>
   );
 }
