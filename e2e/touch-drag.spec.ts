@@ -293,4 +293,138 @@ test.describe("touch drag on the outline viewer (android/CDP only)", () => {
     await expect(offsetChip).not.toBeVisible();
     await expect(widepoint).toHaveAttribute("data-selected", "true");
   });
+
+  test("a tap on empty canvas lets the picked point go", async ({ page }) => {
+    await page.goto("/design/outline");
+    await page.getByRole("button", { name: "Fine adjust" }).click();
+
+    const offsetLabel = page.getByText(/^Offset — /);
+    await expect(offsetLabel).toBeVisible();
+    const offsetBefore = await offsetLabel.textContent();
+
+    const widepoint = page.locator('[data-drag-target="widepoint"]');
+    await expect(widepoint).toBeVisible();
+    const tapBox = await widepoint.boundingBox();
+    if (!tapBox) throw new Error("widepoint drag target has no bounding box");
+    const tapX = tapBox.x + tapBox.width / 2;
+    const tapY = tapBox.y + tapBox.height / 2;
+
+    const cdp = await page.context().newCDPSession(page);
+
+    // Tap the widepoint: it picks.
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: tapX, y: tapY }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(widepoint).toHaveAttribute("data-selected", "true");
+
+    // Tap empty canvas — zero travel, same coordinates for touchStart and touchEnd: it lets go.
+    const probe = await findEmptyCanvasProbe(page);
+    expect(probe.distanceToNearestHandle).toBeGreaterThan(60);
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: probe.x, y: probe.y }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    // React omits `data-selected` entirely once nothing is picked (rather than "false").
+    await expect(widepoint).not.toHaveAttribute("data-selected", "true");
+    // Letting a point go shapes nothing.
+    await expect(offsetLabel).toHaveText(offsetBefore ?? "");
+  });
+
+  test("a direct drag leaves its point picked, so the next move can come from the edge", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+    await page.getByRole("button", { name: "Fine adjust" }).click();
+
+    const offsetLabel = page.getByText(/^Offset — /);
+    await expect(offsetLabel).toBeVisible();
+    const offsetBefore = await offsetLabel.textContent();
+
+    const widepoint = page.locator('[data-drag-target="widepoint"]');
+    await expect(widepoint).toBeVisible();
+    const box = await widepoint.boundingBox();
+    if (!box) throw new Error("widepoint drag target has no bounding box");
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+
+    const cdp = await page.context().newCDPSession(page);
+
+    // A direct drag — thumb on the point itself, exactly as the very first case in this file.
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: startX, y: startY }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: startX, y: startY - 40 }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    // The founder's own working rhythm: one direct drag to get close leaves the point picked.
+    await expect(widepoint).toHaveAttribute("data-selected", "true");
+    const offsetAfterDirect = await offsetLabel.textContent();
+    expect(offsetAfterDirect).not.toBe(offsetBefore);
+
+    // Then refine it from the edge — a remote drag moves it again.
+    const probe = await findEmptyCanvasProbe(page);
+    expect(probe.distanceToNearestHandle).toBeGreaterThan(60);
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: probe.x, y: probe.y }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: probe.x, y: probe.y - 40 }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    await expect(offsetLabel).not.toHaveText(offsetAfterDirect ?? "");
+  });
+
+  test("a touch on empty canvas with nothing picked still does nothing", async ({ page }) => {
+    await page.goto("/design/outline");
+    await page.getByRole("button", { name: "Fine adjust" }).click();
+
+    const targets = ["widepoint", "tailRailHandle", "noseRailHandle", "tailHandle", "noseHandle"];
+    const boxesBefore: Record<string, { x: number; y: number; width: number; height: number }> = {};
+    for (const target of targets) {
+      const box = await page.locator(`[data-drag-target="${target}"]`).boundingBox();
+      if (!box) throw new Error(`${target} drag target has no bounding box`);
+      boxesBefore[target] = box;
+    }
+
+    const offsetChip = page.locator("svg text").filter({ hasText: /^Offset — / });
+
+    const probe = await findEmptyCanvasProbe(page);
+    expect(probe.distanceToNearestHandle).toBeGreaterThan(60);
+
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: probe.x, y: probe.y }],
+    });
+    let fingerY = probe.y;
+    for (let step = 0; step < 4; step++) {
+      fingerY -= 10;
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x: probe.x, y: fingerY }],
+      });
+      // No card ever appears — nothing is picked, so nothing is being shaped.
+      await expect(offsetChip).not.toBeVisible();
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    for (const target of targets) {
+      const box = await page.locator(`[data-drag-target="${target}"]`).boundingBox();
+      if (!box) throw new Error(`${target} drag target has no bounding box`);
+      expect(box.x).toBeCloseTo(boxesBefore[target].x, 0);
+      expect(box.y).toBeCloseTo(boxesBefore[target].y, 0);
+    }
+    await expect(offsetChip).not.toBeVisible();
+  });
 });
