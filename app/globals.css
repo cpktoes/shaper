@@ -69,8 +69,11 @@
 
 /* Pointer type, not viewport width — a touchscreen laptop at desktop width still gets touch
    sizing (44px targets, 16px inputs, enlarged drag hit zones), while a mouse-driven browser
-   resized to phone width never does. Width and pointer are independent axes; this phase never
-   conflates them (see --breakpoint-shell below for the width switch). */
+   resized to phone width never does. Mostly this variant decides how big a control draws, but
+   (quick task 260909-h3g) it now also decides whether one control draws at all: the viewer's
+   Rotate button, hidden by this variant because turning a touch device already turns the board.
+   Width and pointer are independent axes; this phase never conflates them (see --breakpoint-shell
+   below for the width switch). */
 @custom-variant coarse (@media (pointer: coarse));
 
 /* ---------------------------------------------------------------------------

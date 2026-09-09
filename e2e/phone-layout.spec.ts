@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { devices, expect, test, type Page } from "@playwright/test";
 
 /**
  * TEST-01's proof for Phase 9's tracer (09-02): TEMPLATE stacks on the iphone and android
@@ -215,6 +215,64 @@ test.describe("phone orientation and the construction overlay default", () => {
   });
 });
 
+// 260909-h3g: a phone held sideways is where the founder found this bug. An iPhone 14 held
+// sideways reports 844 real CSS px and a Pixel 7 reports 863, both over the 820px shell
+// breakpoint, which is how a width-only rule let a dead rotate button back on screen there.
+// Playwright's own `iPhone 14 landscape` descriptor emulates 750px — UNDER the breakpoint — so a
+// test written against it would pass with or without the fix and prove nothing. `Pixel 7
+// landscape` (863px, chromium) is the descriptor that actually reproduces the complaint, so this
+// describe supplies it directly and only runs on the `android` project (the chromium one that
+// descriptor expects).
+// `defaultBrowserType` is part of the descriptor but can't be set via `test.use` inside a
+// describe (Playwright: "forces a new worker" — only allowed top-level or in the config file).
+// It's redundant here anyway: the `android` project this describe is pinned to already runs
+// chromium, which is what the descriptor asks for.
+const { defaultBrowserType: pixel7LandscapeBrowserType, ...pixel7LandscapeViewport } =
+  devices["Pixel 7 landscape"];
+void pixel7LandscapeBrowserType;
+
+test.describe("phone held sideways — the rotate button stays gone even at a width wide enough for the desktop layout", () => {
+  test.use({ ...pixel7LandscapeViewport });
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "android",
+      "this describe supplies its own device (Pixel 7 landscape)",
+    );
+    await dismissSignInBanner(page);
+  });
+
+  test("the rotate button is gone on both TEMPLATE and ROCKER, even though the screen is wide enough for the desktop layout", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    // Load-bearing precondition: without this, a viewport that quietly fell under the shell
+    // breakpoint would hide the button by the OLD width-only rule and prove nothing. Measured at
+    // planning time: this device reports 863 CSS px and a coarse pointer.
+    const preconditions = await page.evaluate(() => ({
+      coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+      wideEnoughForDesktopShell: window.matchMedia("(min-width: 820px)").matches,
+    }));
+    expect(preconditions.coarsePointer).toBe(true);
+    expect(preconditions.wideEnoughForDesktopShell).toBe(true);
+
+    // The desktop side-by-side shell really is what rendered at this width — the same comparison
+    // the desktop describe below makes.
+    const sidebar = page.locator("aside");
+    const canvas = page.locator("main");
+    const sidebarBox = await sidebar.boundingBox();
+    const canvasBox = await canvas.boundingBox();
+    if (!sidebarBox || !canvasBox) throw new Error("missing bounding box");
+    expect(sidebarBox.x + sidebarBox.width).toBeLessThanOrEqual(canvasBox.x + 1);
+
+    await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeHidden();
+
+    await page.goto("/design/rocker");
+    await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeHidden();
+  });
+});
+
 test.describe("phone Fine adjust group", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "phone-only Fine adjust assertions");
@@ -304,6 +362,15 @@ test.describe("desktop shell — unchanged", () => {
 
     await page.getByRole("button", { name: "Show construction lines" }).click();
     await expect(dragTargets.first()).toBeVisible();
+  });
+
+  // 260909-h3g: the guard on this change's central promise — pointer, not width, is what was
+  // added to the rotate button, so a mouse-driven desktop keeps its button at every width on
+  // both screens. ROCKER opens on its VIEWER tab, where this toolbar lives.
+  test("the rotate button is visible on ROCKER too", async ({ page }) => {
+    await page.goto("/design/rocker");
+
+    await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeVisible();
   });
 
   // 09-REVIEW.md CR-01: proves the toggle still does its one real job on desktop, unaffected by
