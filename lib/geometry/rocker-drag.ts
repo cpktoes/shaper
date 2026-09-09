@@ -181,6 +181,48 @@ export function solveSideProfileDrag(
 }
 
 /**
+ * Which of the rocker's four curve handles a finger (or a mouse) has grabbed, when hit zones are
+ * big enough to overlap (D-15) — mirrors `lib/geometry/outline-drag.ts`'s own
+ * `nearestOutlineDragTarget` exactly: one scan, closest centre within `hitRadiusMm` wins, or `null`
+ * if nothing is in reach.
+ *
+ * **Units.** Both `touch` and `hitRadiusMm` are in board millimetres (`station`/`height`, the same
+ * axes `SideProfileDragPoint` uses). The caller converts the screen-pixel hit radius to millimetres
+ * at the current render scale before calling; this function never sees a pixel and never sees the
+ * screen — the same contract that lets one function serve the desktop's `SIDE_PROFILE_DRAG_HIT_PX`
+ * circles and the phone's larger `SIDE_PROFILE_DRAG_HIT_COARSE_PX` ones.
+ *
+ * **Ties.** Strictly-less-than on the running best squared distance, so a later point never
+ * displaces an equidistant earlier one: `sideProfileDragPoints`' own construction order — read off
+ * that function's own `targets` array, not assumed from `SideProfileDragTarget`'s type-union
+ * declaration order — is the tie-break: tailTipHandle, tailFlatHandle, noseFlatHandle,
+ * noseTipHandle. The result is a pure function of `(points, touch, hitRadiusMm)`.
+ *
+ * **Scope.** This covers the four Bezier curve handles only. The foil is five sliders on the
+ * ROCKER screen and has no drag points in this phase (D-14) — adding them would be new inverse
+ * geometry and a desktop behaviour change, and it is deferred.
+ */
+export function nearestSideProfileDragTarget(
+  points: SideProfileDragPointAt[],
+  touch: SideProfileDragPoint,
+  hitRadiusMm: Mm,
+): SideProfileDragTarget | null {
+  let best: SideProfileDragTarget | null = null;
+  let bestDistSq = Infinity;
+  const radiusSq = hitRadiusMm * hitRadiusMm;
+  for (const p of points) {
+    const dx = p.point.station - touch.station;
+    const dy = p.point.height - touch.height;
+    const distSq = dx * dx + dy * dy;
+    if (distSq <= radiusSq && distSq < bestDistSq) {
+      best = p.target;
+      bestDistSq = distSq;
+    }
+  }
+  return best;
+}
+
+/**
  * Desktop's own drag hit-zone radius, in CSS px — the historic `DRAG_HIT_PX` value
  * `rocker-viewer.tsx` has always used for its mouse circles, unchanged. Lives here (not only in the
  * viewer) so 09-07 can replace the viewer's own private constant with an import of this one; until
