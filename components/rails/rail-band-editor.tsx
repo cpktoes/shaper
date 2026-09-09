@@ -275,6 +275,7 @@ export function RailBandEditor() {
             />
             <div
               ref={plotsContainerRef}
+              data-rail-plot-row="desktop"
               className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 max-shell:hidden"
             >
               {openSections.map((key) => (
@@ -292,25 +293,54 @@ export function RailBandEditor() {
               ))}
             </div>
             {/* Phone only (D-12): one rail cross-section at a time behind a NOSE/CENTER/TAIL
-                switch — the same idiom the View Full Sized dialog already uses for the same
-                three-way choice. Rendered in the same server tree as the desktop plot row above,
-                both always present in the markup and chosen purely by max-shell:/hidden CSS, so
-                the first paint is right on every device with no JavaScript width check and no
-                flash between layouts — the same rule the nav bars follow. The extra
-                RailSectionPlot instance here is cheap: it derives from `bands`, which is already
-                computed for every section whether or not its plot is shown. */}
-            <div className="hidden min-h-0 w-full flex-1 flex-col max-shell:flex">
-              <TabbedPanel
-                tabs={[
-                  { id: "nose" as const, label: "NOSE" },
-                  { id: "center" as const, label: "CENTER" },
-                  { id: "tail" as const, label: "TAIL" },
-                ]}
-                active={phoneSection}
-                onSelect={setPhoneSection}
-              >
+                switch. Rendered in the same server tree as the desktop plot row above, both
+                always present in the markup and chosen purely by max-shell:/hidden CSS, so the
+                first paint is right on every device with no JavaScript width check and no flash
+                between layouts — the same rule the nav bars follow. The extra RailSectionPlot
+                instance here is cheap: it derives from `bands`, which is already computed for
+                every section whether or not its plot is shown.
+
+                Deliberately NOT a second nested `<TabbedPanel>` instance: this whole block already
+                sits inside the VIEWER tab's own content, itself already wrapped in the outer
+                VIEWER/DATA/INSTRUCTIONS TabbedPanel's own card. Nesting a second full TabbedPanel
+                here (tab strip + its two padded card layers) measured out to just 270px of a
+                390px iPhone — 69%, well under PHON-06's 90% floor — because the two components'
+                card chrome compounds instead of sharing one border. The tab row below copies
+                TabbedPanel's own tab-button classes verbatim (same idiom, same look, same
+                behaviour as the View Full Sized dialog's Nose/Center/Tail tabs) without a second
+                nested card, so the plot gets the pinned area's actual full width. */}
+            <div data-rail-plot-row="phone" className="hidden min-h-0 w-full flex-1 flex-col max-shell:flex">
+              <div className="flex flex-none gap-1.5" role="tablist">
+                {(
+                  [
+                    { id: "nose" as const, label: "NOSE" },
+                    { id: "center" as const, label: "CENTER" },
+                    { id: "tail" as const, label: "TAIL" },
+                  ] as const
+                ).map((tab) => {
+                  const on = tab.id === phoneSection;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      onClick={() => setPhoneSection(tab.id)}
+                      className={
+                        "cursor-pointer rounded-t-lg border px-[18px] py-1.5 text-xs font-display font-bold tracking-architectural uppercase " +
+                        (on
+                          ? "border-surf-line border-b-0 bg-surf-tab-active text-surf-ink"
+                          : "border-transparent bg-transparent text-surf-ink-muted")
+                      }
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="-mt-px flex min-h-0 flex-1 flex-col items-center justify-center rounded-tr-lg rounded-b-lg border border-surf-line p-1">
                 <RailSectionPlot sectionKey={phoneSection} output={bands[phoneSection]} xAxisMin={sharedXAxisMin} fit="width" />
-              </TabbedPanel>
+              </div>
             </div>
             {legend.length > 0 && (
               <div className="mt-4 flex flex-none flex-wrap items-center justify-center gap-x-6 gap-y-2">
