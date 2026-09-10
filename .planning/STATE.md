@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 Phase: 09 (the-design-screens-on-a-phone) — EXECUTING
 Plan: 1 of 7
 Status: Executing Phase 09
-Last activity: 2026-09-09 - Completed quick task 260909-ok2: A diamond tail's angle stays fixed under the drag point as well as the greyed-out slider: dragging the tail handle shapes only the tail's fullness, so the drawing can never disagree with a locked control
+Last activity: 2026-09-09 - Completed quick task 260909-oho: The phone's Fine adjust fold is gone: every slider sits in its own section on TEMPLATE and ROCKER exactly where it does on a desktop, so nothing is tucked away behind a header
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
@@ -263,6 +263,7 @@ Recent decisions affecting current work:
 | 260909-kyz | Sliders work under a finger again: the drag-point sliders in the sidebar on a phone held sideways, and the Fine adjust sliders on an upright phone, both take a touch drag | 2026-09-09 | fefb33f | [260909-kyz-sliders-work-under-a-finger-again-the-dr](./quick/260909-kyz-sliders-work-under-a-finger-again-the-dr/) |
 | 260909-nvw | Slider dots always show on a phone: a slider that loads folded away or in a hidden tab measures its dot once it is actually on screen, instead of staying invisible until its value changes | 2026-09-09 | 4343385 | [260909-nvw-slider-dots-always-show-on-a-phone-a-sli](./quick/260909-nvw-slider-dots-always-show-on-a-phone-a-sli/) |
 | 260909-ok2 | A diamond tail's angle stays fixed under the drag point as well as the greyed-out slider: dragging the tail handle shapes only the tail's fullness, so the drawing can never disagree with a locked control | 2026-09-09 | 6067644 | [260909-ok2-a-diamond-tail-s-angle-stays-fixed-under](./quick/260909-ok2-a-diamond-tail-s-angle-stays-fixed-under/) |
+| 260909-oho | The phone's Fine adjust fold is gone: every slider sits in its own section on TEMPLATE and ROCKER exactly where it does on a desktop, so nothing is tucked away behind a header | 2026-09-09 | 6f7bc63 | [260909-oho-the-phone-s-fine-adjust-fold-is-gone-eve](./quick/260909-oho-the-phone-s-fine-adjust-fold-is-gone-eve/) |
 
 ## Deferred Items
 
