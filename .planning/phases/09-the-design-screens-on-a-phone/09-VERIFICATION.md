@@ -1,7 +1,7 @@
 ---
 phase: 09-the-design-screens-on-a-phone
 verified: 2026-09-09T19:15:00Z
-status: human_needed
+status: passed
 score: 7/7 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -9,29 +9,37 @@ re_verification:
   previous_status: human_needed
   previous_score: 7/7
   gaps_closed:
+
     - "G-09-4: keyboard focus was invisible on sliders and barely visible on hand-rolled buttons (found in UAT test 4, 09-08 closes it)"
     - "G-09-6: the phone Print button did nothing when launched from an iOS Home-Screen icon (found in UAT test 6, 09-09 closes it)"
   gaps_remaining: []
   regressions: []
 human_verification:
+
   - test: "On a real iPhone in Safari, open each design screen and scroll the controls so the dynamic toolbar collapses and re-expands."
     expected: "The pinned drawing area is never clipped, the bottom tab bar stays visible, and scrolling never gets trapped."
     why_human: "Playwright's device emulation does not reproduce Safari's dynamic viewport-resize behaviour; the automated suite can only assert the dvh-based height chain and that scrollHeight never exceeds clientHeight, not the real toolbar animation. (PHON-02, carried from every plan in the phase.) UAT test 1 already passed once on this ground; carried forward for completeness since nothing in this wave touched layout."
+
   - test: "On a real iPhone, tap a typed number field (e.g. Board Length in Metric, a rail mark, a fin placement number)."
     expected: "The page does not zoom in on focus."
     why_human: "iOS's auto-zoom-on-focus behaviour for sub-16px fields is not reproduced by WebKit/Chromium emulation. (PHON-03, 09-05.) UAT test 2 already passed; nothing in this wave touched input sizing."
+
   - test: "On a real iPhone, press and hold one of the outline's or rocker's drag points for two seconds, then drag."
     expected: "No text-selection callout or magnifier interrupts the drag."
     why_human: "The iOS long-press callout is not emulated by Playwright. (PHON-04, 09-07.) UAT test 3 already passed; nothing in this wave touched drag handling."
+
   - test: "On a desktop browser at least 820px wide, across all five design screens: Tab to every sidebar control and confirm each one paints an obvious accent-coloured ring — every slider thumb, every tail-shape/fin-setup tile, every pill, every disclosure heading, every Reset Advanced Settings link, every checkbox, every select trigger and every typed field. Then, with the mouse, click every button, drag every slider, press rotate/construction/wide-view, and confirm nothing at rest or under the mouse looks any different from the deployed site."
     expected: "Every control lights up clearly under the keyboard in the same accent-ink strength, in all four themes (Daylight, Chalk, Slate, Phosphor); nothing hovered, dragged, or resting has changed."
     why_human: "This replaces the original UAT test 4, which the founder failed on 2026-09-09 (G-09-4: no visible indicator when tabbing). 09-08 fixed the root cause — the slider ring was keyed on a DIV that Base UI never focuses, and every hand-rolled button had no focus style of its own — and a real Chromium Tab-walk (e2e/keyboard-focus.spec.ts, independently re-run during this verification) now proves a slider thumb and two tail-shape/pill buttons both paint the ring. But no automated test walks all five screens in all four themes, and 'obvious at a glance' is inherently a human judgement; the five pixel-identical desktop baselines (independently re-confirmed, none regenerated) are this wave's own proof that nothing at rest or under the mouse moved. (PHON-05, G-09-4.)"
+
   - test: "Hold an iPhone-sized phone in hand on the ROCKER screen at the default board and look at the side-profile drawing, which is narrower than the pinned drawing area (about 322x341px measured on an iPhone-14-class screen, versus the pinned area's own width)."
     expected: "The founder confirms the narrower rocker drawing still reads clearly enough in the hand, per D-18's accepted trade-off."
     why_human: "D-18 already accepts this in writing; UAT test 5 already passed. Carried forward for completeness — nothing in this wave touched ROCKER."
+
   - test: "Two device checks, in place of the original UAT test 6 which failed (G-09-6: 'print buttons dont do anything'). (1) From the site's Home-Screen icon: go to RAILS, tap View Full Sized, and confirm the note — \"Printing isn't available from the Home-Screen app — open this page in Safari to print the full-sized rail.\" — appears exactly where the Print button used to be, with no Print button visible. (2) From Safari itself (not the Home-Screen icon): go to RAILS, tap View Full Sized, confirm the Print button is there, tap it, confirm the print sheet opens, and measure the printed rail with a ruler in both Imperial and Metric."
     expected: "(1) The note appears, no dead button. (2) The Print button works from Safari, the print sheet opens, and the printed rail is ruler-true (1:1) in both unit systems."
     why_human: "09-09's root-cause diagnosis (confirmed on the founder's own device on 2026-09-09) found the tap already reached window.print() correctly — the failure was iOS itself silently no-op'ing print calls from a Home-Screen-launched standalone web app. The fix (a CSS-only display-mode:standalone swap) is proven by two source-contract vitest cases pinning the exact note wording and the no-JavaScript-detection rule (independently re-run, 21/21 pass), and by a real Playwright print-call-counting stub that proves a Safari tap on a phone genuinely calls print exactly once (independently re-run on both iphone and android, both pass). The one thing no test in this environment can prove: the installed Chromium build's CDP does not honour a `display-mode` media-feature override (confirmed empirically by the executor; the test self-detects this and calls test.skip() rather than reporting a false pass — independently re-run, confirms the skip is genuine, not silently hidden), so the actual Home-Screen-launch appearance and the ruler-true printed page both still need the device in hand. (PHON-01, D-13, G-09-6.)"
+
   - test: "At 360px wide in the Metric system, read the RAILS INSTRUCTIONS tab end to end (the example rail card, the three-step copy, the legend grid, the plan/side figure, the closing note)."
     expected: "Nothing clips, overlaps, or truncates, and the cm-formatted numbers read correctly."
     why_human: "UAT test 7 already passed. Carried forward for completeness — nothing in this wave touched RAILS INSTRUCTIONS."
@@ -53,6 +61,7 @@ found two failures:
 - **G-09-4** (UAT test 4, PHON-05): tabbing through sidebar controls gave no visible indicator of
   which control had keyboard focus — sliders painted nothing at all, and the tail-shape tiles were
   "barely" visible.
+
 - **G-09-6** (UAT test 6, PHON-01/D-13): the phone Print button in the View Full Sized dialog "does
   nothing" — later root-caused on the founder's own device to iOS 26 silently no-op'ing
   `window.print()` inside a Home-Screen-launched standalone web app.
@@ -80,22 +89,28 @@ the palette contract's own 3:1 floor.
   `.slider-accent` block: `.slider-accent [data-slot="slider-thumb"]:has(:focus-visible)` and
   `.focus-ring-accent:focus-visible`, both a 3px `box-shadow` in `var(--surf-accent-ink)` plus the
   Windows-High-Contrast-safe transparent outline trick. Confirmed by direct read.
+
 - `components/ui/{button,checkbox,input,select}.tsx` each carry `focus-visible:ring-ring` (full
   opacity) in place of `ring-ring/50` — confirmed by grep; each file's diff is exactly one word
   changed (`git show --stat` on the merge commit: `+1/-1` for each of the four files).
+
 - All thirteen hand-rolled buttons across `outline-controls.tsx` (1), `fin-controls.tsx` (9),
   `rail-controls.tsx` (2), `fine-adjust-group.tsx` (1) carry `focus-ring-accent` — confirmed by
   grep, counts match the plan's own must-have exactly.
+
 - `e2e/keyboard-focus.spec.ts` exists (139 lines) and was **independently re-run** during this
   verification on a fresh port: `PW_PORT=3101 npx playwright test --project=desktop
   e2e/keyboard-focus.spec.ts` — 2/2 passed. It Tabs a real Chromium session onto a real slider
   thumb and two real hand-rolled buttons (TEMPLATE's "pin" tile, FINS' "Pin" pill) and reads the
   ring colour live off `--surf-accent-ink`.
+
 - `components/ui/slider.tsx` is untouched (absent from `git diff --name-only a04a5b5 HEAD`), so the
   primitive's own half-strength hover/active ring is provably unchanged.
+
 - The five desktop baseline screenshots were **independently re-run** during this verification
   (`PW_PORT=3101 npx playwright test --project=desktop e2e/desktop-baseline.spec.ts`) — 5/5 passed,
   `git status` on the snapshots directory clean (nothing regenerated).
+
 - `npx vitest run` independently re-run in full: 2311 passed, 2 skipped — matches the orchestrator's
   reported count exactly.
 
@@ -127,16 +142,19 @@ Safari. No PDF path, no change to the print stylesheet, no change to `window.pri
   full-sized rail."` — is present verbatim (confirmed by grep). `window.print()` appears exactly
   once in the file, unchanged. No `navigator.standalone`, no `matchMedia`, no new `useState` —
   confirmed by grep (all zero).
+
 - `components/rails/view-full-sized-dialog.test.ts` was **independently re-run**
   (`npx vitest run components/rails/view-full-sized-dialog.test.ts`) — 21/21 passed, including the
   two new source-contract cases pinning the note's exact sentence and the CSS-only (no-JavaScript)
   detection rule.
+
 - `e2e/phone-rails.spec.ts` was **independently re-run** on a fresh port across all three projects
   (`PW_PORT=3101 npx playwright test e2e/phone-rails.spec.ts --project=iphone --project=android
   --project=desktop`): the Safari tap-and-count case passed on both iphone and android (a stubbed
   `window.print` counter reads exactly 1 after a real tap); the desktop guard passed (button
   visible, note not visible); the android/CDP Home-Screen emulation case genuinely **skipped**
   (shown as `-` in the run, not a pass) rather than reporting a false result.
+
 - Files outside this plan's declared three (`app/design/rails/actual-size.css`,
   `components/summary/use-print-fit.ts`, `components/template/build-template-pdf.ts`,
   `components/rails/rail-section-plot.tsx`, `app/globals.css`) are absent from
@@ -304,11 +322,13 @@ G-09-6 evidence above on three points, each re-checked on `main` by the orchestr
   the "open this page in Safari" wording is now always true where it shows. The production CSS
   chunk carries two `@supports (-webkit-touch-callout:none)` blocks (one nested under the 820px
   width query, one bare for the D-13 clause) around four `display-mode:standalone` rules.
+
 - **The machine proof is now the compiled stylesheet, not the source text.**
   `components/rails/view-full-sized-dialog.css.test.ts` compiles the exact class chains through the
   app's own `app/globals.css` with `@tailwindcss/node` and asserts the emitted width, `@supports`
   and `display-mode` nesting plus the `display:none`/`display:block` declarations (2 cases, passing
   under `npx vitest run`; 46 files, 2315 passed, 2 skipped after merge).
+
 - **The always-skipping android CDP case is gone** from `e2e/phone-rails.spec.ts` (no
   `newCDPSession`/`setEmulatedMedia` left): with the iOS guard no Chromium build could ever render
   the note, so a permanent skip would have been noise. The Safari print-stub case on both phone
