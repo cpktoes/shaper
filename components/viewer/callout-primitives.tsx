@@ -103,7 +103,37 @@ export function pinnedCalloutSizes(fitScale: number): CalloutSizes {
 }
 
 /**
- * The px-per-user-unit an svg's `preserveAspectRatio="…meet"` fit is currently applying.
+ * An svg's laid-out box in CSS pixels — `clientWidth`/`clientHeight` at mount, the ResizeObserver
+ * entry's content box once it delivers — which is the box the drawing's own units are fitted to.
+ *
+ * Deliberately NOT `getBoundingClientRect()`, which both hooks below read until 260909-wrz. That
+ * reports the box AFTER every ancestor `transform`, and the Summary's phone preview draws the whole
+ * order form under `transform: scale(0.39)` (see `app/design/summary/order-form.css`). Measured that
+ * way, a rail plot on an iPhone read 0.39 of its laid-out width, so `useSvgFitScale` handed back a
+ * fit 2.6 times too small and every axis number and pinned callout was drawn 2.6 times too large in
+ * the drawing's own units: the right size on the shrunken picture, huge in the drawing itself — and
+ * huge on paper, since a phone's print snapshot is taken from exactly that state, before anything
+ * re-measures. The client box and the observer's content box are both reported before any transform
+ * on every engine (probed: 400 laid-out against 160 painted under `scale(0.4)`, on Safari 26.5.2,
+ * WebKit 26.6 and Chromium 153 alike). The one thing the client box lacks is sub-pixel precision —
+ * it is an integer — which the observer's first delivery, a moment later, restores.
+ */
+function svgLayoutSize(el: SVGSVGElement, entry?: ResizeObserverEntry): { width: number; height: number } {
+  const box = entry?.contentBoxSize?.[0];
+  if (box) return { width: box.inlineSize, height: box.blockSize };
+  if (entry) return { width: entry.contentRect.width, height: entry.contentRect.height };
+  const width = el.clientWidth;
+  const height = el.clientHeight;
+  if (width > 0 && height > 0) return { width, height };
+  // An engine that reports no client box for an svg (none of the three above) — fall back to the
+  // painted box rather than measure nothing at all.
+  const rect = el.getBoundingClientRect();
+  return { width: rect.width, height: rect.height };
+}
+
+/**
+ * The px-per-user-unit an svg's `preserveAspectRatio="…meet"` fit is currently applying — px of the
+ * svg's own laid-out box, before any ancestor transform (see `svgLayoutSize` above).
  *
  * Returns 1 until the element is measured. Callers divide their target pixel sizes by this
  * to counter the drawing's scale.
@@ -119,17 +149,17 @@ export function useSvgFitScale(
     const el = ref.current;
     if (!el || viewBoxWidth <= 0 || viewBoxHeight <= 0) return;
 
-    const measure = () => {
-      const rect = el.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
-      const next = Math.min(rect.width / viewBoxWidth, rect.height / viewBoxHeight);
+    const measure = (entry?: ResizeObserverEntry) => {
+      const { width, height } = svgLayoutSize(el, entry);
+      if (width <= 0 || height <= 0) return;
+      const next = Math.min(width / viewBoxWidth, height / viewBoxHeight);
       // Quantise before storing: sub-pixel jitter from a resize would otherwise re-render
       // every callout on every observer tick for a change nobody can see.
       setScale((prev) => (Math.abs(prev - next) < 0.005 ? prev : next));
     };
 
     measure();
-    const observer = new ResizeObserver(measure);
+    const observer = new ResizeObserver((entries) => measure(entries[0]));
     observer.observe(el);
     return () => observer.disconnect();
   }, [ref, viewBoxWidth, viewBoxHeight]);
@@ -138,15 +168,17 @@ export function useSvgFitScale(
 }
 
 /**
- * An svg element's own rendered client size, in CSS pixels — `{ width: 0, height: 0 }` until the
- * element is measured.
+ * An svg element's own laid-out client box, in CSS pixels — `{ width: 0, height: 0 }` until the
+ * element is measured. The same box `useSvgFitScale` measures (see `svgLayoutSize` above), so a
+ * caller dividing this by the fit scale gets the drawing's visible extent in its own units
+ * whatever any ancestor transform is doing to the picture.
  *
- * Reads `getBoundingClientRect()` inside a `useLayoutEffect`, the same pattern
- * `useSvgFitScale` uses just above, and for the same reason: a ref's `.current` may only be read
- * outside render (an event handler or an effect), never during it (`react-hooks/refs`) — reading
- * it inline while building the drag readout chip's placement bounds (quick task 260909-oge) would
- * trip that rule even though the read only ever runs while a finger is down on a touch device.
- * Exposing the measured size as state instead lets both viewers read a plain number during render.
+ * Measured inside a `useLayoutEffect`, the same pattern `useSvgFitScale` uses just above, and for
+ * the same reason: a ref's `.current` may only be read outside render (an event handler or an
+ * effect), never during it (`react-hooks/refs`) — reading it inline while building the drag readout
+ * chip's placement bounds (quick task 260909-oge) would trip that rule even though the read only
+ * ever runs while a finger is down on a touch device. Exposing the measured size as state instead
+ * lets both viewers read a plain number during render.
  */
 export function useSvgClientSize(ref: RefObject<SVGSVGElement | null>): { width: number; height: number } {
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -155,17 +187,17 @@ export function useSvgClientSize(ref: RefObject<SVGSVGElement | null>): { width:
     const el = ref.current;
     if (!el) return;
 
-    const measure = () => {
-      const rect = el.getBoundingClientRect();
+    const measure = (entry?: ResizeObserverEntry) => {
+      const { width, height } = svgLayoutSize(el, entry);
       setSize((prev) =>
-        Math.abs(prev.width - rect.width) < 0.5 && Math.abs(prev.height - rect.height) < 0.5
+        Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5
           ? prev
-          : { width: rect.width, height: rect.height },
+          : { width, height },
       );
     };
 
     measure();
-    const observer = new ResizeObserver(measure);
+    const observer = new ResizeObserver((entries) => measure(entries[0]));
     observer.observe(el);
     return () => observer.disconnect();
   }, [ref]);

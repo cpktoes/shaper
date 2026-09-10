@@ -338,9 +338,26 @@
   [data-order-form-scaler] {
     display: block;
     /* The screen's available width over the design width, capped at 1 so a wide screen never draws
-       the sheet larger than its design size. Expressed through `tan(atan2(...))` because CSS has no
-       way to divide one length by another with `calc()` alone. */
-    --order-form-preview-scale: min(1, tan(atan2(100cqw, var(--order-form-design-width))));
+       the sheet larger than its design size. A plain division of two lengths into a number — CSS
+       typed arithmetic, in Safari since 18.2 and Chrome since 140.
+
+       NOT `tan(atan2(100cqw, ...))`, the older idiom for the same division, which this used to be
+       (260909-i7r). Safari 26.5.2 evaluates `tan()` of an `atan2()` that involves a container unit
+       as though the angle's degree figure were radians — measured on a real Safari with a 342px
+       container: `atan2(100cqw, 880px)` computes to 21.237937deg, correctly, but `tan()` of it to
+       -0.937614, which is tan(21.24 rad). The same sum in pixels only, `tan(atan2(342px, 880px))`,
+       comes out right at 0.388636, and so does the container-unit form in Playwright's newer WebKit
+       build — so every emulated phone run passed while every real iPhone drew the sheet upside down
+       (a negative scale is a half turn) at a fraction of its size, with the width and height below
+       gone negative and clamped to zero (260909-wrz). The stylesheet contract in
+       `components/summary/order-form-preview.test.ts` fails if `atan2()` ever comes back.
+
+       For an engine that cannot yet divide lengths (Firefox, older Chromium forks) this declaration
+       is invalid at computed-value time, so the registered property is 1 for the first paint — the
+       sheet at its design size, as on a computer. `components/summary/use-preview-scale.ts` then
+       writes the same `min(1, width / design width)` inline on hydration and keeps it current on
+       resize; where the stylesheet can do the division itself, the two agree to six decimals. */
+    --order-form-preview-scale: min(1, calc(100cqw / var(--order-form-design-width)));
     --order-form-stack-height: calc(
       var(--order-form-design-width) * 10.37 / 7.87 * var(--order-form-sheet-count) +
         var(--order-form-stack-gap) * (var(--order-form-sheet-count) - 1)

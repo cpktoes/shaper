@@ -69,6 +69,7 @@ import {
   OrderFormTick,
   RailLabel,
 } from "./order-form-primitives";
+import { useOrderFormPreviewScale } from "./use-preview-scale";
 import { useOrderFormPrintFit } from "./use-print-fit";
 import { dimensionValueFitClass } from "./dimension-fit";
 import { cn } from "@/lib/utils";
@@ -214,6 +215,10 @@ export function OrderForm() {
   } = useDesign();
   const { system } = useUnits();
   const { rootRef, printOrderForm } = useOrderFormPrintFit();
+  // The phone preview's scale, measured, for the engines whose stylesheet cannot divide two lengths
+  // (260909-wrz) — see use-preview-scale.ts. The page wrapper is what it measures, the scaler is
+  // where it writes.
+  const { pageRef, scalerRef } = useOrderFormPreviewScale();
   // One value both the page marks and the sheet stack itself follow (D-09) — two sheets unticked,
   // matching this form's pre-milestone output byte-for-byte (PRNT-06), three ticked.
   const { included: printRailInstructions, setIncluded: setPrintRailInstructions } =
@@ -240,6 +245,7 @@ export function OrderForm() {
   return (
     <div
       data-order-form-page
+      ref={pageRef}
       className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto bg-surf-ground px-6 py-8"
     >
       {/*
@@ -252,6 +258,7 @@ export function OrderForm() {
        */}
       <div
         data-order-form-scaler
+        ref={scalerRef}
         style={{ "--order-form-sheet-count": sheetCount } as CSSProperties}
       >
         {/*
