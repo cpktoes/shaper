@@ -166,7 +166,7 @@ test.describe("phone compact top bar and the one menu", () => {
 
     const topBar = page.getByRole("banner");
     await expect(topBar).toBeVisible();
-    await expect(topBar.getByRole("link", { name: "SHAPER" })).toBeVisible();
+    await expect(topBar.getByRole("link", { name: "SHAPER ASSISTANT" })).toBeVisible();
     // SaveButton's own accessible name before the first save.
     await expect(topBar.getByRole("button", { name: "Save Board" })).toBeVisible();
     const menuButton = topBar.getByRole("button", { name: "Menu" });
@@ -179,6 +179,24 @@ test.describe("phone compact top bar and the one menu", () => {
       clientHeight: el.clientHeight,
     }));
     expect(Math.abs(fit.scrollHeight - fit.clientHeight)).toBeLessThanOrEqual(1);
+
+    // D-01: at least 20px of clear air between the name and Save, measured in Save's own widest
+    // face — this signed-out suite can only ever render the everyday filled "Save" button (the
+    // three min-w-20 faces, Saving…/Saved/Not saved, all require a signed-in shaper), so the
+    // real Save element's min-width is forced to 80px (min-w-20's own pixel value) for the
+    // measurement, then restored — an honest worst-case gap, not one inferred from "no overflow".
+    const gap = await topBar.evaluate((el) => {
+      const wordmark = el.querySelector("a") as HTMLElement | null;
+      const saveEl = el.querySelector("button[aria-label='Save Board']") as HTMLElement | null;
+      if (!wordmark || !saveEl) throw new Error("missing wordmark or Save element");
+      const originalMinWidth = saveEl.style.minWidth;
+      saveEl.style.minWidth = "80px";
+      const wordmarkRect = wordmark.getBoundingClientRect();
+      const saveRect = saveEl.getBoundingClientRect();
+      saveEl.style.minWidth = originalMinWidth;
+      return saveRect.left - wordmarkRect.right;
+    });
+    expect(gap).toBeGreaterThanOrEqual(20);
   });
 
   test("the Menu button opens one popup holding both a units choice and the account control", async ({

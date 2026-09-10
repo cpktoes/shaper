@@ -60,7 +60,7 @@
   --order-form-row: clamp(12px, 1.7cqw, 21px); /* 15px / 12.5px — table rows */
   --order-form-group: clamp(12px, 1.636cqw, 20px); /* 14.4px / 12px — section headings */
   --order-form-dim: clamp(14px, 2.3cqw, 28px); /* 20.2px / 16.9px — the dimensions row */
-  --order-form-wordmark: clamp(16px, 2.8cqw, 34px); /* 24.6px / 20.5px — the SHAPER logo block */
+  --order-form-wordmark: clamp(16px, 2.8cqw, 34px); /* 24.6px / 20.5px — the SHAPER ASSISTANT logo block */
 }
 
 /*

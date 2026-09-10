@@ -27,7 +27,7 @@ test.describe("phone home screen — the compact top bar", () => {
     await dismissSignInBanner(page);
   });
 
-  test("the desktop link row is hidden, the compact top bar shows SHAPER/Save/Menu, and SHAPER is not a link here", async ({
+  test("the desktop link row is hidden, the compact top bar shows SHAPER ASSISTANT/Save/Menu, and SHAPER ASSISTANT is not a link here", async ({
     page,
   }) => {
     await page.goto("/");
@@ -37,9 +37,9 @@ test.describe("phone home screen — the compact top bar", () => {
 
     const topBar = page.getByRole("banner");
     await expect(topBar).toBeVisible();
-    await expect(topBar.getByText("SHAPER")).toBeVisible();
+    await expect(topBar.getByText("SHAPER ASSISTANT")).toBeVisible();
     // On the page it points at, the wordmark is plain text, not a dead-tap link.
-    await expect(topBar.getByRole("link", { name: "SHAPER" })).toHaveCount(0);
+    await expect(topBar.getByRole("link", { name: "SHAPER ASSISTANT" })).toHaveCount(0);
     await expect(topBar.getByRole("button", { name: "Save Board" })).toBeVisible();
     await expect(topBar.getByRole("button", { name: "Menu" })).toBeVisible();
   });
@@ -102,7 +102,7 @@ test.describe("phone home screen — the round trip proves both bars navigate", 
     await dismissSignInBanner(page);
   });
 
-  test("a preset tap opens TEMPLATE, and SHAPER in the top bar there returns home with the rack showing", async ({
+  test("a preset tap opens TEMPLATE, and SHAPER ASSISTANT in the top bar there returns home with the rack showing", async ({
     page,
   }) => {
     await page.goto("/");
@@ -112,7 +112,7 @@ test.describe("phone home screen — the round trip proves both bars navigate", 
     await page.waitForURL("**/design/outline");
 
     // On a design route the wordmark IS a link — this is the return path home.
-    await page.getByRole("banner").getByRole("link", { name: "SHAPER" }).click();
+    await page.getByRole("banner").getByRole("link", { name: "SHAPER ASSISTANT" }).click();
     await page.waitForURL("/");
 
     await expect(page.getByRole("heading", { name: "Your Boards" })).toBeVisible();
@@ -229,7 +229,7 @@ test.describe("phone home screen — margins, headings and thumb-sized cards", (
     const firstPreset = page.getByRole("button").filter({ hasText: "Start Shaping" }).first();
     await firstPreset.click();
     await page.waitForURL("**/design/outline");
-    await page.getByRole("banner").getByRole("link", { name: "SHAPER" }).click();
+    await page.getByRole("banner").getByRole("link", { name: "SHAPER ASSISTANT" }).click();
     await page.waitForURL("/");
 
     const rackHeading = page.getByRole("heading", { name: "Your Boards" });

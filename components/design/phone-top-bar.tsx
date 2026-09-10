@@ -24,9 +24,15 @@ import { usePathname } from "next/navigation";
 import { SaveButton } from "@/components/design/save-button";
 import { PhoneMenu } from "@/components/design/phone-menu";
 
-/** Same string as SiteNav's own wordmark class — copied, not approximated. Hoisted here (rather
+/** Deliberately one size smaller than SiteNav's own desktop wordmark class (D-01), now that the
+ * name is longer — `tracking-architectural` and the weight still match, so the phone mark keeps
+ * the app's one architectural tracking value, and only steps down from `text-sm` to `text-xs`.
+ * Measured at planning time on `/design/outline` at 360px with a coarse pointer: the bar's inside
+ * width is 328px, its right-hand cluster is 149.0px wide in Save's widest face (`min-w-20`, wider
+ * than the everyday filled Save button), and `SHAPER ASSISTANT` at `text-xs` is 150.3px — leaving
+ * 28.7px of clear air before Save, more than a same-size alternative would. Hoisted here (rather
  * than inlined twice below) so the linked and plain-text renderings of the mark can never drift. */
-const WORDMARK_CLASS = "text-sm font-extrabold tracking-architectural text-surf-ink";
+const WORDMARK_CLASS = "text-xs font-extrabold tracking-architectural text-surf-ink";
 
 export function PhoneTopBar() {
   const pathname = usePathname();
@@ -38,10 +44,10 @@ export function PhoneTopBar() {
       className="hidden max-shell:flex h-14 flex-none items-center justify-between border-b border-surf-line-faint bg-surf-ground px-4"
     >
       {onHomeScreen ? (
-        <span className={WORDMARK_CLASS}>SHAPER</span>
+        <span className={WORDMARK_CLASS}>SHAPER ASSISTANT</span>
       ) : (
         <Link href="/" className={`${WORDMARK_CLASS} transition-colors hover:text-surf-accent-ink`}>
-          SHAPER
+          SHAPER ASSISTANT
         </Link>
       )}
       <div className="flex items-center gap-3">
