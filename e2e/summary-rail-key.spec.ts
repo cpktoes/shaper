@@ -147,34 +147,62 @@ test.describe("Summary order form — rail plan/side line key (260910-jfp)", () 
   test("the key costs no height, the drawing does not shrink, and it is present at every swept width", async ({
     page,
   }) => {
+    // Quick task 260910-jfp originally toggled all nine ticks on AND off at EVERY one of the
+    // seven widths — 14 toggle-and-settle passes (9 clicks each) per width, 126 clicks total. The
+    // orchestrator's first run of this spec on a clean checkout showed that cost: desktop
+    // (Chromium) finished the whole old sweep in 19.8s, but iphone (WebKit/iOS emulation) only got
+    // through width=560 — 1 of 7 — and android only reached width=760 — 5 of 7 — before hitting
+    // Playwright's default 30000ms per-test timeout. Restructured below so the nine ticks are set
+    // only ONCE per state for the whole sweep — every width read with the key ON, then the ticks
+    // flipped once and every width read again with the key OFF — cutting 126 clicks to 18 without
+    // dropping a single width or the on/off comparison. 90000ms gives real headroom even under the
+    // slowest per-click cost the timed-out runs implied (roughly 1.7s/click on WebKit mobile: 18
+    // clicks ~= 31s) plus the fourteen lightweight viewport-resize-and-read passes, which cost far
+    // less than a click-and-settle cycle.
+    test.setTimeout(90_000);
+
     await enableRailBandInstructions(page);
     await page.goto("/design/summary");
     await expect(page.locator("[data-order-form-sheet]")).toHaveCount(3);
 
     console.log(`\n[260910-jfp] key-on/key-off card height + drawing width sweep`);
+
+    type Reading = { box: { cardHeight: number; drawingWidth: number }; overflow: boolean[] };
+    const onReadings = new Map<number, Reading & { keyVisible: boolean }>();
+
+    // Pass 1: every line ticked (key on), swept across all seven widths — one tick toggle for the
+    // whole pass, not one per width.
+    await setAllLineTicks(page, true);
     for (const width of SWEEP_WIDTHS) {
       await page.setViewportSize({ width, height: 1400 });
+      const box = await readFigureBox(page);
+      const keyVisible = await page.locator("[data-rail-line-key]").isVisible();
+      const overflow = await readOverflow(page);
+      onReadings.set(width, { box, overflow, keyVisible });
+    }
 
-      await setAllLineTicks(page, true);
-      const on = await readFigureBox(page);
-      const onKeyVisible = await page.locator("[data-rail-line-key]").isVisible();
-      const onOverflow = await readOverflow(page);
-
-      await setAllLineTicks(page, false);
+    // Pass 2: every line unticked (key off), swept across all seven widths again — the second and
+    // last tick toggle. Each width's key-off reading is compared against that SAME width's
+    // key-on reading captured above, so the on/off comparison the original interleaved loop made
+    // is unchanged — only the toggle order moved.
+    await setAllLineTicks(page, false);
+    for (const width of SWEEP_WIDTHS) {
+      await page.setViewportSize({ width, height: 1400 });
       const off = await readFigureBox(page);
       const offKeyPresent = (await page.locator("[data-rail-line-key]").count()) > 0;
       const offOverflow = await readOverflow(page);
+      const on = onReadings.get(width)!;
 
       console.log(
-        `[260910-jfp]   width=${width}  card height on=${on.cardHeight.toFixed(2)}px off=${off.cardHeight.toFixed(2)}px  ` +
-          `drawing width on=${on.drawingWidth.toFixed(2)}px off=${off.drawingWidth.toFixed(2)}px  ` +
-          `key present+visible=${onKeyVisible}  ` +
-          `overflow on=[${onOverflow.map((o) => (o ? "OVERFLOW" : "ok")).join(", ")}] ` +
+        `[260910-jfp]   width=${width}  card height on=${on.box.cardHeight.toFixed(2)}px off=${off.cardHeight.toFixed(2)}px  ` +
+          `drawing width on=${on.box.drawingWidth.toFixed(2)}px off=${off.drawingWidth.toFixed(2)}px  ` +
+          `key present+visible=${on.keyVisible}  ` +
+          `overflow on=[${on.overflow.map((o) => (o ? "OVERFLOW" : "ok")).join(", ")}] ` +
           `off=[${offOverflow.map((o) => (o ? "OVERFLOW" : "ok")).join(", ")}]`,
       );
 
       expect(
-        onKeyVisible,
+        on.keyVisible,
         `width=${width}: [data-rail-line-key] should be present and visible with every line ticked`,
       ).toBe(true);
       expect(
@@ -183,16 +211,16 @@ test.describe("Summary order form — rail plan/side line key (260910-jfp)", () 
       ).toBe(false);
 
       expect(
-        Math.abs(on.cardHeight - off.cardHeight),
-        `width=${width}: card height moved between key-on (${on.cardHeight.toFixed(2)}) and key-off (${off.cardHeight.toFixed(2)})`,
+        Math.abs(on.box.cardHeight - off.cardHeight),
+        `width=${width}: card height moved between key-on (${on.box.cardHeight.toFixed(2)}) and key-off (${off.cardHeight.toFixed(2)})`,
       ).toBeLessThanOrEqual(HEIGHT_TOLERANCE_PX);
 
       expect(
-        Math.abs(on.drawingWidth - off.drawingWidth),
-        `width=${width}: drawing width moved between key-on (${on.drawingWidth.toFixed(2)}) and key-off (${off.drawingWidth.toFixed(2)})`,
+        Math.abs(on.box.drawingWidth - off.drawingWidth),
+        `width=${width}: drawing width moved between key-on (${on.box.drawingWidth.toFixed(2)}) and key-off (${off.drawingWidth.toFixed(2)})`,
       ).toBeLessThanOrEqual(HEIGHT_TOLERANCE_PX);
 
-      onOverflow.forEach((overflowed, i) =>
+      on.overflow.forEach((overflowed, i) =>
         expect(overflowed, `width=${width}: sheet #${i} overflows its band with every line ticked`).toBe(false),
       );
       offOverflow.forEach((overflowed, i) =>
@@ -200,8 +228,8 @@ test.describe("Summary order form — rail plan/side line key (260910-jfp)", () 
       );
     }
 
-    // Leave every line ticked — the default a fresh session would show — rather than ending the
-    // test on the all-unticked state the sweep above finishes in.
+    // Leave every line ticked — the default a fresh session would show, rather than ending the
+    // test on the all-unticked state pass 2 finishes in.
     await setAllLineTicks(page, true);
   });
 
