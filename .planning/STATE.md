@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 Phase: 10 — The Whole App on a Phone
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-09-09 — Phase 9 complete, transitioned to Phase 10
+Last activity: 2026-09-09 - Completed quick task 260909-vrc: The rail band reference figure no longer sits in a white box on a dark theme: on screen its panel and inks follow the theme like every other drawing, on paper it still prints white
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
@@ -267,6 +267,7 @@ Recent decisions affecting current work:
 | 260909-oho | The phone's Fine adjust fold is gone: every slider sits in its own section on TEMPLATE and ROCKER exactly where it does on a desktop, so nothing is tucked away behind a header | 2026-09-09 | 6f7bc63 | [260909-oho-the-phone-s-fine-adjust-fold-is-gone-eve](./quick/260909-oho-the-phone-s-fine-adjust-fold-is-gone-eve/) |
 | 260909-oge | The readout box that appears while a finger shapes a point stays outside the board's outline on TEMPLATE and outside the side profile on ROCKER, so it never covers the curve being shaped | 2026-09-09 | 3219039 | [260909-oge-the-readout-box-that-appears-while-a-fin](./quick/260909-oge-the-readout-box-that-appears-while-a-fin/) |
 | 260909-sda | The product is now called Shaper Assistant, matching its home at shaperassistant.com: the wordmark on every screen and printed sheet, the browser titles, and the project's own docs say so, while every mention of a shaper the person stays exactly as it is | 2026-09-09 | be1abcf | [260909-sda-the-product-is-now-called-shaper-assista](./quick/260909-sda-the-product-is-now-called-shaper-assista/) |
+| 260909-vrc | The rail band reference figure no longer sits in a white box on a dark theme: on screen its panel and inks follow the theme like every other drawing, on paper it still prints white | 2026-09-09 | 8c6d7ae | [260909-vrc-the-rail-band-reference-figure-no-longer](./quick/260909-vrc-the-rail-band-reference-figure-no-longer/) |
 
 ## Deferred Items
 
