@@ -74,7 +74,15 @@
  */
 
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef, useState } from "react";
-import { CALLOUT_CHAR_PX, CALLOUT_PX, CalloutChipFrame, DimensionTick, useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
+import {
+  CALLOUT_CHAR_PX,
+  CALLOUT_PX,
+  CalloutChipFrame,
+  DimensionTick,
+  useSvgClientSize,
+  useSvgFitScale,
+  type ViewerOrientation,
+} from "@/components/viewer/callout-primitives";
 import { useUnits } from "@/components/units-provider";
 import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import { FOIL_THICKNESS_RANGE_IN, sampleFoil, type FoilSpec } from "@/lib/geometry/foil";
@@ -95,6 +103,11 @@ import {
   remoteDragPoint,
   type DragSelectionEvent,
 } from "@/components/viewer/drag-selection";
+import {
+  boardSection,
+  placeReadoutClearOfBoard,
+  type Rect as ReadoutRect,
+} from "@/components/viewer/readout-placement";
 import {
   cardPinScale,
   COMPACT_BASELINE_DASH,
@@ -558,6 +571,11 @@ export function RockerViewer({
   // suite pins this equality by test).
   const framePass = rockerViewLayout({ lengthIn, maxDeckIn, orientation, fitToBoard, stationRails: callouts });
   const fitScale = useSvgFitScale(svgRef, framePass.width, framePass.height);
+  // The svg's own rendered client size (quick task 260909-oge), measured the same way
+  // `fitScale` is — a `useLayoutEffect`, never a ref read during render — so the drag readout
+  // chip's placement bounds below can use a plain number. Called unconditionally, every render,
+  // even though it is only ever READ inside the touch-drag block further down.
+  const svgClientSize = useSvgClientSize(svgRef);
   // The card-pin scale (quick task 260830-03j): 1 (unpinned) whenever this call's own
   // `stationRails` never draws a card at all (`cardPinScale`/`maxCardPinScale`'s own ceiling
   // forces that), so the Summary order form's `"compact"`/`"none"` paths are unaffected no matter
@@ -792,7 +810,49 @@ export function RockerViewer({
       boxBottom = vbMinY + vbHeight;
       boxTop = boxBottom - height;
     }
-    readoutChip = { lines, x: boxLeft, y: boxTop, width, height };
+
+    // Keep the card clear of the side profile too (quick task 260909-oge) — a mirror of
+    // `outline-viewer.tsx`'s own wiring. `bottomPoints[i]`/`deckPoints[i]` already share a
+    // station by construction, so each pair, mapped into rendered space through the same
+    // `toViewBoxPoint` the chip's own anchor uses, is one cross-section of the board.
+    // `alongAxis` is `"y"` in vertical (the rotated content group sends the board's long axis
+    // onto rendered y) and `"x"` in horizontal, the identity map — the opposite pairing from
+    // `outline-viewer.tsx`, because this drawing's own rotation runs the other way.
+    const boardSections = bottomPoints.map((bp, i) => {
+      const dp = deckPoints[i];
+      const edgeA = toViewBoxPoint(bp.x, bp.y);
+      const edgeB = toViewBoxPoint(dp.x, dp.y);
+      return boardSection(edgeA, edgeB, vertical ? "y" : "x");
+    });
+
+    // The card may use the whole VISIBLE drawing, not just the viewBox (D-07) — load-bearing
+    // here, not a nicety: measured on a Pixel 7, the card is 309.47 units wide, the gap beside
+    // the profile inside the viewBox is 289.09 units (it does not fit) and the gap inside the
+    // visible drawing is 354.59 (it fits, with 45.12 units — about 23 screen px — to spare).
+    // Never "tidy" this back to the four viewBox numbers; it would quietly break this screen.
+    let placementBounds: ReadoutRect = { x: vbMinX, y: vbMinY, width: vbWidth, height: vbHeight };
+    if (fitScale > 0 && svgClientSize.width > 0 && svgClientSize.height > 0) {
+      const drawnW = svgClientSize.width / fitScale;
+      const drawnH = svgClientSize.height / fitScale;
+      const vbCenterX = vbMinX + vbWidth / 2;
+      const vbCenterY = vbMinY + vbHeight / 2;
+      placementBounds = {
+        x: vbCenterX - drawnW / 2,
+        y: vbCenterY - drawnH / 2,
+        width: drawnW,
+        height: drawnH,
+      };
+    }
+
+    const placed = placeReadoutClearOfBoard(
+      { x: boxLeft, y: boxTop, width, height },
+      { alongAxis: vertical ? "y" : "x", sections: boardSections },
+      READOUT_GAP_PX * handleUnit,
+      placementBounds,
+      anchor,
+    );
+
+    readoutChip = { lines, x: placed.x, y: placed.y, width, height };
   }
 
   // The construction overlay: one line per handle (four, always — two Bezier segments each with a
@@ -1054,6 +1114,7 @@ export function RockerViewer({
           strokeDasharray={callouts === "compact" ? COMPACT_BASELINE_DASH : "4 3"}
         />
         <path
+          data-board-silhouette="profile"
           d={boardPath}
           fill={boardFill ? "var(--outline-board-fill)" : "none"}
           stroke="var(--outline-ink)"

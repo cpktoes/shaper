@@ -51,6 +51,11 @@ import {
   type DragSelectionEvent,
 } from "@/components/viewer/drag-selection";
 import {
+  boardSection,
+  placeReadoutClearOfBoard,
+  type Rect as ReadoutRect,
+} from "@/components/viewer/readout-placement";
+import {
   CALLOUT_CHAR_PX,
   CALLOUT_PX,
   CalloutChip,
@@ -62,6 +67,7 @@ import {
   CalloutSizeProvider,
   UNPINNED_CALLOUT_SIZES,
   pinnedCalloutSizes,
+  useSvgClientSize,
   useSvgFitScale,
   ViewerOrientationProvider,
   type ViewerOrientation,
@@ -722,6 +728,11 @@ export function OutlineViewer({
   const vbW = horizontal ? horizW : baseW;
   const vbH = horizontal ? horizH : baseH;
   const fitScale = useSvgFitScale(svgRef, vbW, vbH);
+  // The svg's own rendered client size (quick task 260909-oge): measured the same way
+  // `fitScale` is, in a `useLayoutEffect` rather than read off the ref during render, so the
+  // drag readout chip's placement bounds below can use a plain number. Called unconditionally,
+  // every render, even though it is only ever READ inside the touch-drag block further down.
+  const svgClientSize = useSvgClientSize(svgRef);
   const calloutSizes = pinCalloutText ? pinnedCalloutSizes(fitScale) : UNPINNED_CALLOUT_SIZES;
   /** User units per CSS pixel — what the px-denominated handle sizes above are drawn in. */
   const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
@@ -791,7 +802,54 @@ export function OutlineViewer({
       boxBottom = vbMinY + vbHeight;
       boxTop = boxBottom - height;
     }
-    readoutChip = { lines, x: boxLeft, y: boxTop, width, height };
+
+    // Keep the card clear of the board itself (quick task 260909-oge): the founder's own
+    // complaint, shaping directly on a point, was that the card above sits right on top of the
+    // outline it is reading. The board's silhouette is the outline's own rail edges, mapped into
+    // this same rendered viewBox space through `toViewBoxPoint` — comparing a card in rendered
+    // space against a board in canonical space would silently be wrong the moment this drawing is
+    // rotated. `alongAxis` is `"x"` in horizontal (the rotated content group sends the board's
+    // long axis onto rendered x) and `"y"` in vertical, the identity map.
+    const boardSections = geometry.points.map((p) => {
+      const stationPy = lenToY(mmToInches(p.station));
+      const edgeA = toViewBoxPoint(pxX(mmToInches(p.halfWidth)), stationPy);
+      const edgeB = toViewBoxPoint(pxX(-mmToInches(p.halfWidth)), stationPy);
+      return boardSection(edgeA, edgeB, horizontal ? "x" : "y");
+    });
+    // The tail's closing triangle (D-08) counts as board too — a degenerate section, both edges
+    // the same point, so a card anchored right at the tail still sees it.
+    const tailClosePoint = toViewBoxPoint(pxX(0), lenToY(centerCloseIn));
+    boardSections.push(boardSection(tailClosePoint, tailClosePoint, horizontal ? "x" : "y"));
+
+    // The card may use the whole VISIBLE drawing, not just the viewBox (D-07): both viewers draw
+    // `xMidYMid meet`, so the letterbox slack either side of the fitted drawing is real, paintable
+    // space. `svgClientSize` is measured the same way `fitScale` is (a `useLayoutEffect`, never a
+    // ref read during render) and is only ever USED here, inside the touch-drag block, so this
+    // bounds calculation only ever matters while a finger is actually down on a touch device.
+    // Falls back to the four viewBox numbers if the element or the scale is not yet readable.
+    let placementBounds: ReadoutRect = { x: vbMinX, y: vbMinY, width: vbWidth, height: vbHeight };
+    if (fitScale > 0 && svgClientSize.width > 0 && svgClientSize.height > 0) {
+      const drawnW = svgClientSize.width / fitScale;
+      const drawnH = svgClientSize.height / fitScale;
+      const vbCenterX = vbMinX + vbWidth / 2;
+      const vbCenterY = vbMinY + vbHeight / 2;
+      placementBounds = {
+        x: vbCenterX - drawnW / 2,
+        y: vbCenterY - drawnH / 2,
+        width: drawnW,
+        height: drawnH,
+      };
+    }
+
+    const placed = placeReadoutClearOfBoard(
+      { x: boxLeft, y: boxTop, width, height },
+      { alongAxis: horizontal ? "x" : "y", sections: boardSections },
+      READOUT_GAP_PX * handleUnit,
+      placementBounds,
+      anchor,
+    );
+
+    readoutChip = { lines, x: placed.x, y: placed.y, width, height };
   }
 
   // WP Offset is grouped with Widepoint (sketch 004) and carries no leader. In vertical it sits
@@ -848,7 +906,13 @@ export function OutlineViewer({
           `app/globals.css` has no `svg` descendant selectors, so an extra group cannot change
           what any existing consumer draws either way. */}
       <g ref={contentRef} transform={horizontal ? "rotate(-90)" : undefined}>
-      <path d={outlinePath} fill="var(--outline-board-fill)" stroke="var(--outline-ink)" strokeWidth={2} />
+      <path
+        data-board-silhouette="outline"
+        d={outlinePath}
+        fill="var(--outline-board-fill)"
+        stroke="var(--outline-ink)"
+        strokeWidth={2}
+      />
 
       {(!hideCallouts || showStationLines) && (
         <>
