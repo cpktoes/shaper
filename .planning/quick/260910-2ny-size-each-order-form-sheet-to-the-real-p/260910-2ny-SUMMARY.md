@@ -10,22 +10,31 @@ provides:
     print from his own iPhone and hand back a PDF answering whether iOS Safari resolves 100vh/100vw
     against the real printed page area. Built in Task 1, deleted again in Task 6 once its one
     question was answered."
-  - "A phone-only print rule (`[data-order-form-root][data-print-touch] [data-order-form-sheet]`
-    in app/design/summary/order-form.css) that gives a touch device's Summary order form sheet a
-    shorter, paper-shaped box, while leaving a computer's printed sheet byte-identical to before."
-  - "components/summary/order-form-print.test.ts's source-contract cases, which now also pin the
-    phone rule to the same PORTRAIT_PAPER_IN/PAGE_MARGIN_MM constants use-print-fit.ts uses for the
-    desktop box, so the two can never quietly drift apart."
-  - "e2e/summary-print-touch-box.spec.ts — a new browser spec (written, not yet run in this
-    worktree — see Deviations) measuring the phone box on Chromium, WebKit-iPhone and
-    WebKit-Android, plus a real Chromium PDF proving the shorter sheet still paginates one sheet
-    per page."
-affects: [260910-2ny-Task-7]
+  - "SUPERSEDED by Task 9 — a phone-only print rule giving a shorter, PAPER-SHAPED box with an
+    absolute inch width. Task 7's confirming print showed the width was the actual bug (iOS does not
+    honour an absolute inch width at all); see the Task 9 entry below for what replaced it."
+  - "Two touch print rules in app/design/summary/order-form.css
+    (`[data-order-form-root][data-print-touch]` and its `[data-order-form-sheet]` descendant) that
+    give a touch device's sheet its WIDTH FROM THE PAGE (a plain 100%) and its SHAPE FROM THE PAPER
+    (`aspect-ratio: 8.5 / 11`) — no absolute length anywhere in either rule — while a computer's
+    printed sheet stays byte-identical to before (D-01)."
+  - "components/summary/use-print-fit.ts's `beforePrint` now writes NOTHING on the touch path — it
+    reads the touch attribute the mount effect already set and returns before any inline width or
+    height is written, so nothing in the app can put a fixed size back."
+  - "components/summary/order-form-print.test.ts's source-contract cases, rewritten to guard the new
+    mechanism: the phone rule's shape must stay the squarest paper `use-print-fit.ts` claims to fit,
+    neither touch rule may carry an absolute length or a viewport unit, and the handler must return
+    before writing anything on the touch path."
+  - "e2e/summary-print-touch-box.spec.ts — rewritten around the page-relative mechanism (six cases:
+    desktop control, touch relationships at two page widths, PDF page count with its control, and a
+    type-size/fit sweep across seven page widths). Written and gated by vitest/tsc/lint only — NOT
+    RUN in this worktree; see 'NOT RUN' below."
+affects: [260910-2ny-Task-11, 260910-2ny-Task-12]
 
 actuals:
-  tokens: 13600
-  tasks: 4
-  commits: 4
+  tokens: 29500
+  tasks: 8
+  commits: 8
 
 tech-stack:
   added: []
@@ -33,10 +42,18 @@ tech-stack:
     - "A hidden public/ probe page (noindex, zero external requests) as the only way to settle a
       print-engine question no CLI or emulator can answer — build it, get a human to print it on
       the real device, read the PDF, then delete it."
-    - "A phone-only print box expressed as a SHAPE (a ratio applied to a width the sheet already
-      has) rather than a SIZE, so it survives an automatic width-shrink the app cannot see or
-      control — proved with a one-line inequality (a paper-shaped box fits inside any uniform
-      margin) rather than a fudge factor."
+    - "SUPERSEDED (Task 7 disproved the premise) — a phone-only print box expressed as a SHAPE
+      applied to an absolute width. Kept here so the record shows what was tried and why it failed:
+      the shape half was right, the absolute width beside it was not."
+    - "A touch sheet's box expressed as a WIDTH FROM THE PAGE (`width: 100%` on the container, plain
+      `width: auto` on the sheet) and a SHAPE FROM THE PAPER (`aspect-ratio`) — no size, no
+      calculation, no absolute length anywhere — because iOS Safari was measured (twice, on the
+      founder's own phone) to scale a page-relative layout to fit while letting an absolute-width
+      one overflow. `aspect-ratio` on a definite width still yields a definite height, so the
+      sheet's `flex` bands keep dividing a real number rather than going content-proportional."
+    - "A print handler that WRITES NOTHING on the path it used to control — reading a DOM attribute
+      and returning immediately is a stronger contract than mirroring two files' numbers, because
+      there is no longer anything for the two files to disagree about."
     - "A DOM attribute written once at mount from a screen-media `matchMedia` query
       (`data-print-touch`), read only by print-media CSS — keeps the print stylesheet from ever
       having to ask a printer what kind of pointer it has, and keeps 'which device' out of a print
@@ -45,16 +62,41 @@ tech-stack:
 key-files:
   created:
     - public/__print-probe.html (Task 1, deleted again in Task 6)
-    - e2e/summary-print-touch-box.spec.ts
   modified:
-    - components/summary/order-form-print.test.ts
-    - app/design/summary/order-form.css
-    - components/summary/use-print-fit.ts
-    - components/summary/order-form.tsx
-    - components/rocker/rocker-view-frame.ts
-    - e2e/summary-print-size.spec.ts (comment-only — see Deviations)
+    - components/summary/order-form-print.test.ts (Tasks 3, 8)
+    - app/design/summary/order-form.css (Tasks 4, 9)
+    - components/summary/use-print-fit.ts (Tasks 4, 9)
+    - components/summary/order-form.tsx (Tasks 4, 9)
+    - components/rocker/rocker-view-frame.ts (Tasks 4, 9)
+    - e2e/summary-print-touch-box.spec.ts (Tasks 5, 10 — still not run; see "NOT RUN" below)
+    - e2e/summary-print-size.spec.ts (comment-only, Task 4 — untouched again in Tasks 9-10, D-01)
 
 key-decisions:
+  - "Task 8's rewritten test cases assert ABSENCE (no absolute length, no viewport unit anywhere in
+    either touch rule) rather than a specific number, because the defect the founder's second print
+    found was exactly a property nobody reviewing a diff would notice going missing. A positive
+    'the height is X' assertion could never have caught this task's own predecessor bug."
+  - "Deleted `TOUCH_SHEET_RATIO` from use-print-fit.ts entirely rather than keeping it unused —
+    confirmed with a grep first that nothing outside that file imported it. The stylesheet now owns
+    the shape outright (`aspect-ratio: 8.5 / 11`); a derived constant with no consumer is exactly
+    the kind of stale reference that outlives the code it described."
+  - "`aspect-ratio: 8.5 / 11` is the plain two-number form, not the measured-and-working
+    `max(8.5 / 11, 8.27 / 11.69)` — this project has already shipped a case where Safari and
+    Playwright's WebKit disagreed on a CSS math function in this exact file
+    (`--order-form-preview-scale`'s `tan(atan2())`), the founder has exactly one print left, and a
+    two-number ratio has been bedrock everywhere since 2021. The derivation itself still lives in
+    `order-form-print.test.ts`, which works out the squarest paper from `PORTRAIT_PAPER_IN` and
+    asserts these two figures, so the stylesheet stays dumb and the two files still cannot drift."
+  - "The handler's early return sits immediately after `data-printing` is set and before
+    `printableBoxPx()` is even called — not just before the inline width write — so nothing between
+    the touch check and the return does any work for a device that is about to discard it."
+  - "e2e/summary-print-touch-box.spec.ts's six cases assert RELATIONSHIPS (sheet width equals root
+    width equals page width; height/width equals the paper's own ratio) instead of absolute dot
+    figures, because the touch sheet no longer has a size of its own — an absolute assertion there
+    would test the Playwright viewport, not the app."
+  - "The type-size/fit sweep (case 6) pairs samples by DOM position across two page widths rather
+    than by a CSS class label, so a fixed-pixel size that fails to scale is caught by index even if
+    it shares a class name with a token that does scale correctly."
   - "Followed the plan's spec for Task 1's probe verbatim — no architectural deviations, no Rule 4
     escalations (recorded in the original Task-1 summary, kept below unmodified)."
   - "The founder's own iPhone print sent this plan down research fallback (b) — a phone-only box —
@@ -133,32 +175,29 @@ coverage:
         status: pass
     human_judgment: false
   - id: D3
-    description: "The stylesheet's phone rule and use-print-fit.ts's touch height describe the same
-      box; the phone rule changes only height, never width; it keys on the pointer attribute the
-      handler writes, not a width"
+    description: "SUPERSEDED (Task 7's print disproved the mechanism this pinned) — the stylesheet's
+      phone rule and use-print-fit.ts's touch height described the same box, changing only height.
+      See E1/E2 below for the mechanism that replaced it; the pointer-not-width half of this ID
+      (now E5) is unchanged and still correct."
     verification:
       - kind: unit
-        ref: "components/summary/order-form-print.test.ts — 3 new cases, RED against pre-Task-4
-          source (confirmed 3 failing, 4 passing), GREEN after Task 4 (7/7 passing)"
-        status: pass
+        ref: "components/summary/order-form-print.test.ts — the 2 cases this covered were rewritten
+          in Task 8; see E1/E2."
+        status: superseded
     human_judgment: false
   - id: D4
-    description: "A touch device's sheet is 733.44 x 949.16 CSS px (ratio 1.294118), a computer's
-      sheet stays 733.44 x 990.55; both derived from the same PORTRAIT_PAPER_IN/PAGE_MARGIN_MM
-      constants the desktop box already used"
+    description: "SUPERSEDED (Task 7's print disproved the box this pinned) — a touch device's sheet
+      was 733.44 x 949.16 CSS px, a fixed size derived from the same paper constants as the desktop
+      box. Task 7 showed the WIDTH half of that box was never honoured by iOS Safari. See E1-E3 for
+      the page-relative mechanism that replaced it."
     verification:
       - kind: unit
-        ref: "components/summary/order-form-print.test.ts's new case, evaluating both the CSS
-          calc() expression and the hook's own arithmetic at CSS's fixed 96px/25.4mm-per-inch,
-          within 0.02 dots — PASS. Independently re-verified with `node -e` against the same
-          constants outside the test file: width 733.4476px, touch height 949.167px, desktop height
-          990.550px, touch/desktop = 0.9582 (4.18% shorter)."
-        status: pass
+        ref: "components/summary/order-form-print.test.ts's old case — rewritten in Task 8; see E1."
+        status: superseded
       - kind: e2e
-        ref: "e2e/summary-print-touch-box.spec.ts asserts this same box across desktop/iphone/android
-          — written this session but NOT run in this worktree; see Deviations. Left for the
-          orchestrator on a clean checkout."
-        status: pending
+        ref: "e2e/summary-print-touch-box.spec.ts — rewritten in Task 10; see 'NOT RUN' in the body
+          below."
+        status: superseded
     human_judgment: false
   - id: D5
     description: "The desktop gate (e2e/summary-print-size.spec.ts) still passes on its current
@@ -178,8 +217,8 @@ coverage:
       with the touch box forced on, and exactly three without it (control)"
     verification:
       - kind: e2e
-        ref: "e2e/summary-print-touch-box.spec.ts's two page-count cases — written this session but
-          NOT run in this worktree; see Deviations. Left for the orchestrator on a clean checkout."
+        ref: "e2e/summary-print-touch-box.spec.ts's two page-count cases — rewritten in Task 10 for
+          the new mechanism, still NOT run in this worktree; see 'NOT RUN' in the body below."
         status: pending
     human_judgment: false
   - id: D7
@@ -190,10 +229,273 @@ coverage:
         ref: "`test ! -e public/__print-probe.html` and `grep -rl '__print-probe' --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=.git --exclude-dir=.planning .` — both confirmed empty/passing"
         status: pass
     human_judgment: false
+  - id: E1
+    description: "Neither touch rule (`[data-order-form-root][data-print-touch]` or its
+      `[data-order-form-sheet]` descendant) carries an absolute CSS length or a viewport unit
+      anywhere in its declarations; the sheet rule's shape is the squarest paper
+      PORTRAIT_PAPER_IN claims to fit"
+    verification:
+      - kind: unit
+        ref: "components/summary/order-form-print.test.ts — 2 rewritten cases, RED against
+          pre-Task-9 source (confirmed 3 of 8 failing for the right reasons, 5 passing), GREEN
+          after Task 9 (8/8 passing)."
+        status: pass
+    human_judgment: false
+  - id: E2
+    description: "The print handler (use-print-fit.ts's beforePrint) returns before writing any
+      inline width or height on the touch path — reads the mount-time attribute, never the media
+      query a second time"
+    verification:
+      - kind: unit
+        ref: "components/summary/order-form-print.test.ts's new case, checking the comment-stripped
+          source for the attribute read, the first inline width write, and a bare return between
+          them — RED before Task 9, GREEN after."
+        status: pass
+    human_judgment: false
+  - id: E3
+    description: "A touch device's sheet width equals the root's width equals the page wrapper's own
+      content width, at more than one page width, in both phone engines; its height/width ratio is
+      1.294118 (US Letter); a computer's box (733.44 x 990.55) is unmoved"
+    verification:
+      - kind: e2e
+        ref: "e2e/summary-print-touch-box.spec.ts — rewritten in Task 10 (six cases, including this
+          relationship at two page widths). NOT RUN in this worktree; see 'NOT RUN' in the body
+          below. tsc/lint/npm test all pass against the new file."
+        status: pending
+    human_judgment: false
+  - id: E4
+    description: "Every text size on a touch sheet scales with the page area above the design width
+      (no fixed-pixel size hiding in the sheet), and no sheet overflows its band across a swept
+      range of page widths, with the Rail Band Instructions sheet on"
+    verification:
+      - kind: e2e
+        ref: "e2e/summary-print-touch-box.spec.ts's sweep case (case 6) — written in Task 10. NOT RUN
+          in this worktree; see 'NOT RUN' in the body below. This is the measurement Task 11 exists
+          to take and could not."
+        status: pending
+    human_judgment: false
+  - id: E5
+    description: "The touch rule keys on the pointer attribute the handler writes, decided from the
+      pointer rather than the window's width (unchanged from D3, still correct)"
+    verification:
+      - kind: unit
+        ref: "components/summary/order-form-print.test.ts's kept case, untouched by Tasks 8-9,
+          still passing."
+        status: pass
+    human_judgment: false
 
-duration: 55min
+duration: 55min + this session
 completed: 2026-09-10
-status: complete
+status: incomplete
+---
+
+# Quick Task 260910-2ny — Tasks 8-11 of 12: a phone's sheet now sizes itself off the page
+
+**This session picked the plan up after Task 7's confirming print FAILED, and ran Tasks 8, 9 and
+10 to green — a new print test, the fix it demands, and the browser spec that will prove it on
+real WebKit and Chromium. Task 11, the measurement the founder's last print depends on, could NOT
+be run: this worktree cannot start a Next.js dev server, and Playwright needs one. Task 11 is
+recorded below as NOT RUN, with the exact commands the orchestrator has to run before Task 12.**
+
+## Why this session exists — Task 7 failed
+
+The founder printed the real order form from his iPhone at 100% on 2026-09-10 at 11:53, after
+Tasks 3-6 shipped the first phone-only fix. **Still four pages for three sheets.** The reading is
+`260910-2ny-PROBE-READING-2.md`, and it is the most useful measurement of the three taken so far,
+because it isolates exactly what was wrong:
+
+| | CSS sheet | printed | scale |
+|---|---|---|---|
+| before the first fix | 7.6400 x 10.3182in | 8.758 x 11.832in | 1.1464 |
+| after the first fix  | 7.6400 x  9.8870in | 8.719 x 11.288in | 1.1413 |
+
+**The identical 7.640in of CSS width printed at 8.758in and then 8.719in — the width barely moved
+while only the height changed.** iOS Safari does not honour an absolute inch width at all; it
+scales the whole document by about 1.144 regardless of the sheet's own height, so the sheet
+overhung the 7.347in printable width by about 19% on both edges no matter what shape it was given.
+No height could have fixed that — fitting at that printed width would need a ratio 13% squarer than
+the paper, visibly distorting the form and calibrated to one phone's margins.
+
+The lever had been sitting in round 1's own probe print the whole time, unread: a layout with NO
+absolute width printed at exactly 7.347 x 9.821in — the printable box, Safari's own margins
+honoured, nothing overhanging. iOS scales a page-relative layout to fit and lets an absolute-width
+one overflow.
+
+## Task 8 — the contract test first, RED again
+
+Rewrote two of Task 3's three phone cases in `components/summary/order-form-print.test.ts` and
+added a fourth, all confirmed failing against Task 4's shipped (now-disproven) source before Task 9
+made them pass:
+
+1. **The phone rule's shape is the squarest paper `use-print-fit.ts` claims to fit** — reads the
+   touch sheet rule's `aspect-ratio`, works out which of `PORTRAIT_PAPER_IN`'s papers is squarest,
+   and asserts the two match (both the figures and the evaluated ratio, to six places).
+2. **The phone rules carry no absolute length at all** — the file's most important assertion. Reads
+   every declaration in both touch rules (the root's and the sheet's) and asserts none carries an
+   inch, millimetre, centimetre, point, pica, quarter-millimetre, pixel or viewport unit; the sheet
+   declares `width`/`height: auto` plus an `aspect-ratio`; the root declares a plain `100%` width
+   and nothing else is allowed a percentage; both rules sit later in the file than their desktop
+   counterparts.
+3. **The handler returns before writing anything on the touch path** — reads the comment-stripped
+   hook source, finds where it reads the touch attribute and where it first writes an inline root
+   width, and asserts the attribute read comes first with a bare `return` between them.
+
+Confirmed before committing: exactly the 3 new/rewritten cases failed, the 4 original desktop cases
+and the kept pointer case (5 total) still passed. `npm run lint` clean (0 errors, the same 12
+pre-existing warnings). Commit: `338fa9c` (test).
+
+## Task 9 — GREEN, and every stale comment corrected again
+
+Four files changed (commit `076e8f2`, fix):
+
+- **`app/design/summary/order-form.css`.** The desktop rules (`[data-order-form-root]`,
+  `[data-order-form-sheet]`) are byte-for-byte unchanged. Replaced the shipped
+  `[data-order-form-root][data-print-touch] [data-order-form-sheet]` height-only rule with two
+  rules: `[data-order-form-root][data-print-touch] { width: 100% !important; }`, and the sheet
+  descendant rule now declaring `width: auto !important; height: auto !important; aspect-ratio: 8.5
+  / 11 !important;` — nothing else. No inch, millimetre, pixel or viewport unit anywhere in either
+  rule. Corrected the head comment, the `@page` margin comment, the desktop sheet box comment, and
+  rewrote the `cqw` type-scale comment to add the touch-path arithmetic (the 8.65pt-to-10.3pt range
+  and what it means).
+- **`components/summary/use-print-fit.ts`.** Deleted `TOUCH_SHEET_RATIO` outright (grepped first —
+  no consumer outside this file). `beforePrint` now reads the touch attribute immediately after
+  setting `data-printing`, before `printableBoxPx()` is even called, and returns — nothing below
+  that point runs on a touch device. Rewrote the head comment's closing paragraph.
+- **`components/summary/order-form.tsx`** and **`components/rocker/rocker-view-frame.ts`** — one
+  paragraph each rewritten (no code changes) to describe the new mechanism; see `key-decisions`
+  above for exactly what changed in each.
+- **`e2e/summary-print-size.spec.ts`** — untouched. Confirmed empty diff before committing (D-01).
+
+Gates run, all green: `npx vitest run components/summary/order-form-print.test.ts` (8/8),
+`npx tsc --noEmit` (only the two documented pre-existing `LayoutProps` errors), `npm test` (55
+files, 2421 passing — the 2420 baseline plus Task 8's one net new case — 2 skipped), `npm run lint`
+(0 errors, 12 pre-existing warnings), the diff gate on `e2e/summary-print-size.spec.ts` (empty).
+
+## Task 10 — the browser spec rewritten around the new mechanism
+
+Rewrote `e2e/summary-print-touch-box.spec.ts` (commit `c809bed`, test) from scratch around
+relationships instead of absolute dot figures — the touch sheet no longer has a size of its own, so
+an absolute assertion would test the Playwright viewport rather than the app. Six cases:
+
+1. **Desktop control (D-01)** — unchanged box, 733.44 x 990.55 within a dot.
+2. **A touch device's sheet takes its width from the page** — on `iphone`/`android`: the
+   load-bearing pointer precondition first, then the touch attribute, then three relationships:
+   sheet width = root width = page wrapper's own content width, and sheet height/width = 1.294118.
+3. **The same three relationships at a materially different page width** (+300px viewport) — if any
+   relationship moves with the viewport, something absolute is still in the chain.
+4. **The shorter sheet still makes exactly 3 PDF pages** with the touch box forced on (desktop
+   only, real Chromium PDF, page-object count).
+5. **The control** — same 3 sheets, same PDF, without the touch box forced on: still 3.
+6. **THE MEASUREMENT** — sweeps 7 page widths (560, 618, 680, 733, 760, 812, 900 dots) on all three
+   projects, with the Rail Band Instructions sheet on and the touch box forced on. At each width:
+   walks every element inside every sheet, records the smallest computed font size and which
+   element carries it, every distinct size, and whether `scrollHeight` exceeds `clientHeight` per
+   sheet — printed to the console as a table. Asserts (a) every font size scales with the page
+   between the two widths above the design width (760 vs 812), paired by DOM position so a
+   fixed-pixel size is caught even if it shares a class name with a token that scales correctly, and
+   (b) nothing overflows at any width.
+
+Gates run, all green: `npx tsc --noEmit` (same two pre-existing errors only), `npm run lint` (0
+errors, unchanged), `npm test` (55/55, 2421 passing, 2 skipped — vitest's `include` never touches
+`e2e/`, so this only proves nothing else broke). **None of this file's own Playwright commands
+could be run — see Task 11 below.**
+
+## Task 11 — NOT RUN (this is the task this session exists for, and it could not be performed here)
+
+**This worktree cannot start a Next.js dev server at all**, confirmed directly this session (not
+assumed from the prior session's note): `npm run dev -- --port 3108` produces the identical
+Turbopack "Could not find the Next.js package" error `npm run build` already fails with —
+
+```
+Turbopack build encountered 1 error:
+./app
+Error: Could not find the Next.js package (next/package.json)
+Resolved from: <worktree>/app
+```
+
+Playwright's `webServer` config runs exactly that command, so no Playwright test that needs the
+real app running — which is every case in `e2e/summary-print-touch-box.spec.ts` and
+`e2e/summary-print-size.spec.ts` — can execute inside this worktree. There is no standalone
+workaround this time either: unlike a static probe page, the order form is a full React app behind
+the design store, and there is no way to render it without either the broken dev server or a build.
+Hitting the deployed production site instead would not help — it is still running the FIRST
+(now-disproven) fix, not the code this session just wrote.
+
+**Per this run's own rulings, a derived number is not a measurement, and writing
+`260910-2ny-BROWSER-READING.md` with anything other than real measured numbers is explicitly
+prohibited.** No such file has been written. Task 11 is left unclaimed rather than faked.
+
+### NOT RUN — orchestrator must run these before the founder prints
+
+On a clean checkout of this worktree's branch (where `next dev` actually resolves):
+
+```bash
+PW_PORT=3108 npx playwright test e2e/summary-print-touch-box.spec.ts
+PW_PORT=3108 npx playwright test e2e/summary-print-size.spec.ts --project=desktop
+```
+
+The first command runs all three projects (`desktop`, `iphone`, `android`) — deliberate, since the
+touch relationships have to be measured on WebKit as well as Chromium. The second is the desktop
+half of D-01: if it does not pass, STOP — a computer's printing changing is worse than anything else
+this plan could produce, and it has never been run since the touch rules first existed.
+
+After both pass, write `.planning/quick/260910-2ny-size-each-order-form-sheet-to-the-real-p/260910-2ny-BROWSER-READING.md`
+per Task 11's own `<action>` block: front matter naming what ran and on what, the measured desktop
+box, the three touch relationships on both phone projects at both swept widths (with real numbers,
+not "within tolerance"), both PDF page counts, case 6's whole console table, and the two plain-
+English answers the founder's print depends on — the printed type size in points (convert with
+`72 x dots x P / C`, `P` = 7.347in measured on his phone, `C` = the page area in dots) and the
+narrowest page the form still fits. **If case 6(a) or 6(b) fails, do not proceed to Task 12** — the
+named remedies are in the plan's Task 11 `<action>` block.
+
+## What the founder's one remaining print (Task 12) must show
+
+Unchanged from the plan itself, restated here so it is not buried three files away: with **Include
+Rail Band Instructions in Print** ticked, **three sheets on three pages at 100%** — one sheet per
+page, nothing sliced across a page break, no sliver of the next sheet at the foot of a page, and no
+blank page at the end. (Two sheets on two pages if that box is left unticked.) Worth a glance but
+not a pass condition on their own: the rail band marking table's last row is present; there is
+white space down both sides of each page as well as at the foot (Safari's own margin, respected for
+the first time); the numbers read a whisker smaller than a computer's — about 4%, because his phone
+leaves 7.35in of usable paper against a computer's 7.64in once Safari takes its own margins.
+
+**This print cannot be requested — Task 11 must pass first (D-06).** The founder has done two
+prints already and this plan is written so the third is the last one.
+
+## Task Commits (this session)
+
+6. Task 8: the contract test, RED again — `338fa9c` (test)
+7. Task 9: the page-relative fix, GREEN, comments corrected — `076e8f2` (fix)
+8. Task 10: the browser spec rewritten around the new mechanism — `c809bed` (test)
+
+_No plan-metadata commit — the orchestrator handles STATE.md/ROADMAP.md updates once this SUMMARY
+is in place, per this run's constraints. This SUMMARY.md is left uncommitted and modified on disk
+for the orchestrator to pick up, same as the previous session left it._
+
+## Deviations from Plan
+
+**Task 11 could not be executed — a discovered environment limitation, not a code defect, and it is
+the reason this whole run exists rather than a surprise found along the way.** See "Task 11 — NOT
+RUN" above for the full account and the exact commands left for the orchestrator. No Rule 1-3
+auto-fixes were needed for Tasks 8-10 — the plan's own arithmetic and file contents matched what was
+found in the repo at each task's start.
+
+## Human verification deferred to end-of-phase UAT
+
+Per this run's orchestrator rulings (no mid-plan human-verify checkpoints;
+`workflow.human_verify_mode: "end-of-phase"`), no `<human-check>` items were raised this session.
+**Task 12 itself is the deferred human verification for the whole plan** — see "What the founder's
+one remaining print must show" above — and it is explicitly blocked on Task 11 completing first.
+
+## Next Steps
+
+1. Orchestrator runs the two Playwright commands under "NOT RUN" above, on a clean checkout.
+2. If both pass, orchestrator writes `260910-2ny-BROWSER-READING.md` with the real measured numbers
+   per Task 11's own `<action>` block, applying either named remedy if case 6(a) or 6(b) calls for
+   one, then re-measures.
+3. Only then: push to `main`, confirm the deploy, and hand the founder the Task 12 print steps
+   above — his third and, per this plan, his last.
+
 ---
 
 # Quick Task 260910-2ny — Tasks 3-6 of 7: a phone gets a shorter, paper-shaped sheet
