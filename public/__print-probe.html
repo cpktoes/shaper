@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>260910-2ny print probe (temporary — do not index)</title>
+<style>
+  /* Quick task 260910-2ny. One self-contained static file, no external request of any kind.
+     Reset first so the document flow starts at the very top-left of the printed page area —
+     nothing may sit above the vh/inch ruler pair, or every reading below needs an offset
+     subtracted from it. */
+  @page {
+    size: portrait;
+    margin: 8mm;
+  }
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: "Courier New", Courier, monospace;
+    color: #000;
+    background: #fff;
+  }
+
+  /* Section 1 — the ruler pair. Left column: ten 10vh bands. Right column: twelve 1in bands.
+     No break-avoidance rule anywhere in this section — the break falling inside the ruler IS
+     the measurement. */
+  .ruler-pair {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.3in;
+  }
+  .ruler-col {
+    width: 2.2in;
+    flex: 0 0 auto;
+  }
+  .band {
+    height: 10vh;
+    border-bottom: 1px solid #000;
+    position: relative;
+  }
+  .band-in {
+    height: 1in;
+  }
+  .band:nth-child(even) {
+    background: #e2e2e2;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .band-figure {
+    position: absolute;
+    right: 4px;
+    bottom: 2px;
+    font-size: 11px;
+    line-height: 1;
+  }
+  .band-caption {
+    position: absolute;
+    left: 4px;
+    top: 2px;
+    right: 4px;
+    font-size: 8px;
+    line-height: 1.15;
+    font-weight: bold;
+  }
+
+  /* Section 2 — the width bar. Both wrappers are exactly 100vw with clipped overflow so nothing
+     inside them can widen the document and trigger a shrink-to-fit. */
+  .width-bar-wrap {
+    width: 100vw;
+    overflow: hidden;
+    position: relative;
+    margin-top: 0.15in;
+  }
+  .width-bar {
+    width: 100vw;
+    height: 0.55in;
+    position: relative;
+    border: 1px solid #000;
+    /* Quarter-inch ticks, half height, unlabelled — a repeating background pattern covering
+       every 0.25in out to 9in, anchored to the bottom half of the bar. The explicit full-height
+       whole-inch ticks below are drawn on top of this at the same x-positions. */
+    background-image: repeating-linear-gradient(
+      to right,
+      #999 0,
+      #999 1px,
+      transparent 1px,
+      transparent 0.25in
+    );
+    background-size: 9in 50%;
+    background-position: left bottom;
+    background-repeat: repeat-x;
+  }
+  .tick-full {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    border-left: 1px solid #000;
+  }
+  .tick-today {
+    border-left: 2px solid #c00;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .tick-label {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    font-size: 8px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .tick-label-today {
+    color: #c00;
+    font-weight: bold;
+    top: auto;
+    bottom: 2px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .width-fill-wrap {
+    width: 100vw;
+    overflow: hidden;
+    position: relative;
+    height: 0.3in;
+    margin-top: 0.08in;
+  }
+  .width-fill {
+    width: 7.6401in;
+    height: 100%;
+    background: #999;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .width-fill-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 7.6401in;
+    width: 2px;
+    background: #c00;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .width-caption {
+    font-size: 9px;
+    margin: 0.06in 0 0;
+  }
+
+  /* Section 3 — the break test. Two page-tall blocks, each asking for a break after it in both
+     the modern and legacy spelling. */
+  .break-block {
+    height: 100vh;
+    border: 2px solid #000;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    break-after: page;
+    page-break-after: always;
+  }
+  .break-label {
+    padding: 6px 8px;
+    font-size: 13px;
+    font-weight: bold;
+  }
+
+  /* Section 4 — the flags and the scale square. Fixed height/width so replacing a box's text
+     cannot reflow anything around it. */
+  .flags-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.15in;
+    margin-top: 0.15in;
+  }
+  .flag-box {
+    width: 2in;
+    height: 0.4in;
+    border: 1px solid #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    overflow: hidden;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+  .scale-square {
+    width: 2in;
+    height: 2in;
+    border: 1px solid #000;
+    position: relative;
+    flex: 0 0 auto;
+  }
+  .scale-square::before,
+  .scale-square::after {
+    content: "";
+    position: absolute;
+    background: #000;
+  }
+  .scale-square::before {
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+  }
+  .scale-square::after {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+  }
+  .scale-square-caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 4px;
+    text-align: center;
+    font-size: 11px;
+  }
+
+  /* Section 5 — how to read this. */
+  .how-to-read {
+    margin-top: 0.2in;
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .how-to-read h2 {
+    font-size: 11px;
+    margin: 0 0 4px;
+  }
+  .how-to-read ol {
+    margin: 0;
+    padding-left: 1.1em;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Section 1: the vh ruler beside the inch ruler. Nothing sits above this — it is the top of
+       the printed flow. -->
+  <div class="ruler-pair">
+    <div class="ruler-col">
+      <div class="band" data-vh-band>
+        <span class="band-caption">PRINT PROBE — quick task 260910-2ny</span>
+        <span class="band-figure">10vh</span>
+      </div>
+      <div class="band" data-vh-band><span class="band-figure">20vh</span></div>
+      <div class="band" data-vh-band><span class="band-figure">30vh</span></div>
+      <div class="band" data-vh-band><span class="band-figure">40vh</span></div>
+      <div class="band" data-vh-band><span class="band-figure">50vh</span></div>
+      <div class="band" data-vh-band><span class="band-figure">60vh</span></div>
+      <div class="band" data-vh-band><span class="band-figure">70vh</span></div>
+      <div class="band" data-vh-band><span class="band-figure">80vh</span></div>
+      <div class="band" data-vh-band><span class="band-figure">90vh</span></div>
+      <div class="band" data-vh-band><span class="band-figure">100vh</span></div>
+    </div>
+    <div class="ruler-col">
+      <div class="band band-in" data-in-band><span class="band-figure">1in</span></div>
+      <div class="band band-in" data-in-band><span class="band-figure">2in</span></div>
+      <div class="band band-in" data-in-band><span class="band-figure">3in</span></div>
+      <div class="band band-in" data-in-band><span class="band-figure">4in</span></div>
+      <div class="band band-in" data-in-band><span class="band-figure">5in</span></div>
+      <div class="band band-in" data-in-band><span class="band-figure">6in</span></div>
+      <div class="band band-in" data-in-band><span class="band-figure">7in</span></div>
+      <div class="band band-in" data-in-band><span class="band-figure">8in</span></div>
+      <div class="band band-in" data-in-band><span class="band-figure">9in</span></div>
+      <div class="band band-in" data-in-band><span class="band-figure">10in</span></div>
+      <div class="band band-in" data-in-band><span class="band-figure">11in</span></div>
+      <div class="band band-in" data-in-band><span class="band-figure">12in</span></div>
+    </div>
+  </div>
+
+  <!-- Section 2: the width bar. -->
+  <div class="width-bar-wrap">
+    <div class="width-bar" id="width-bar">
+      <div class="tick-full" style="left: 1in"></div>
+      <div class="tick-label" style="left: 1in">1in</div>
+      <div class="tick-full" style="left: 2in"></div>
+      <div class="tick-label" style="left: 2in">2in</div>
+      <div class="tick-full" style="left: 3in"></div>
+      <div class="tick-label" style="left: 3in">3in</div>
+      <div class="tick-full" style="left: 4in"></div>
+      <div class="tick-label" style="left: 4in">4in</div>
+      <div class="tick-full" style="left: 5in"></div>
+      <div class="tick-label" style="left: 5in">5in</div>
+      <div class="tick-full" style="left: 6in"></div>
+      <div class="tick-label" style="left: 6in">6in</div>
+      <div class="tick-full" style="left: 7in"></div>
+      <div class="tick-label" style="left: 7in">7in</div>
+      <div class="tick-full" style="left: 8in"></div>
+      <div class="tick-label" style="left: 8in">8in</div>
+      <div class="tick-full" style="left: 9in"></div>
+      <div class="tick-label" style="left: 9in">9in</div>
+      <div class="tick-full tick-today" style="left: 7.6401in"></div>
+      <div class="tick-label tick-label-today" style="left: 7.6401in">TODAY 7.6401in</div>
+    </div>
+  </div>
+  <div class="width-fill-wrap">
+    <div class="width-fill"></div>
+    <div class="width-fill-marker"></div>
+  </div>
+  <p class="width-caption">
+    Reading this bar: the highest inch figure still drawn inside it, before the wrapper's clip
+    cuts it off, is the printed page area's width. The lower filled bar is exactly 7.6401in — the
+    width the order form's sheet uses today — so whether it reaches the wrapper's right edge or
+    is visibly cut short shows the same reading a second way.
+  </p>
+
+  <!-- Section 3: the break test. -->
+  <div class="break-block" id="sheet-a">
+    <div class="break-label">SHEET A TOP</div>
+    <div class="break-label">SHEET A BOTTOM</div>
+  </div>
+  <div class="break-block" id="sheet-b">
+    <div class="break-label">SHEET B TOP</div>
+    <div class="break-label">SHEET B BOTTOM</div>
+  </div>
+
+  <!-- Section 4: the JS-written flags and the scale-check square. -->
+  <div class="flags-row">
+    <div class="flag-box" id="flag-js">JS: no</div>
+    <div class="flag-box" id="flag-beforeprint">BEFOREPRINT: waiting</div>
+    <div class="flag-box" id="flag-viewport">VIEWPORT: pending</div>
+    <div class="scale-square">
+      <span class="scale-square-caption">50.8 mm</span>
+    </div>
+  </div>
+
+  <!-- Section 5: how to read this. -->
+  <div class="how-to-read">
+    <h2>HOW TO READ THIS</h2>
+    <ol>
+      <li>Where the <code>100vh</code> label (bottom of the left column) lands against the inch
+        column beside it — that is <code>1vh</code> in inches, as printed.</li>
+      <li>Which inch figure sits at the foot of printed page 1, and which sits at the foot of
+        printed page 2 — that is the page pitch.</li>
+      <li>The highest inch figure still drawn inside the width bar, and whether the
+        <code>TODAY 7.6401in</code> tick survives inside it or is clipped away.</li>
+      <li>Whether SHEET A and SHEET B each landed on a page of their own, top label and bottom
+        label together.</li>
+      <li>This page declares a portrait page with an 8mm margin (<code>@page { size: portrait;
+        margin: 8mm; }</code>) — whether that was honoured is part of what the reading above
+        shows.</li>
+    </ol>
+  </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    document.getElementById("flag-js").textContent = "JS: yes";
+    document.getElementById("flag-viewport").textContent =
+      "VIEWPORT " + window.innerWidth + " " + window.innerHeight;
+  });
+  window.addEventListener("beforeprint", function () {
+    document.getElementById("flag-beforeprint").textContent = "BEFOREPRINT: fired";
+  });
+</script>
+</body>
+</html>
