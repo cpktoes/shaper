@@ -344,6 +344,20 @@ function lerp(a: { station: Mm; height: Mm }, b: { station: Mm; height: Mm }, t:
 describe("nearestSideProfileDragTarget", () => {
   const points = sideProfileDragPoints(GEOMETRY);
 
+  it("a touch with a NaN coordinate picks nothing, however large the radius (T-09-17 / T-09-24)", () => {
+    // A touch converted from a stale or detached pointer can arrive as NaN. The pick compares
+    // squared distances with strict `<`/`<=`, which every NaN fails both ways, so no point can be
+    // grabbed and the drag never starts — the property the phase-9 threat register relies on.
+    const sample = points[0].point;
+    for (const key of Object.keys(sample) as (keyof typeof sample)[]) {
+      const touch = { ...sample, [key]: mm(NaN) } as typeof sample;
+      expect(nearestSideProfileDragTarget(points, touch, mm(50))).toBeNull();
+      expect(nearestSideProfileDragTarget(points, touch, mm(Number.POSITIVE_INFINITY))).toBeNull();
+    }
+    const allNaN = Object.fromEntries(Object.keys(sample).map((k) => [k, mm(NaN)])) as unknown as typeof sample;
+    expect(nearestSideProfileDragTarget(points, allNaN, mm(1e9))).toBeNull();
+  });
+
   it("a touch exactly on one handle's centre returns that handle, for each of the four targets", () => {
     for (const entry of points) {
       expect(nearestSideProfileDragTarget(points, entry.point, mm(50))).toBe(entry.target);
