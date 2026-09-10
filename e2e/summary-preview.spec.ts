@@ -23,6 +23,10 @@ const SHEET_ASPECT = 10.37 / 7.87;
 /** The SHAPER ASSISTANT wordmark's type at the design width — `2.8cqw` of 880 — measured identical in both
  * engines once the sheet is laid out at its design width rather than the screen's. */
 const WORDMARK_PX = 24.64;
+/** The pinned size of a rail plot's axis numbers in laid-out screen pixels — `CALLOUT_PX.name` in
+ * `components/viewer/callout-primitives.tsx`. A plot draws its numbers at `11 / fit scale` of its own
+ * units so they land at 11px however large the plot is laid out. */
+const TICK_LABEL_PX = 11;
 
 /** Matches phone-screens.spec.ts's own idiom: dismiss the sign-in banner via sessionStorage, set
  * before navigation, so its height never confuses a layout assertion. */
@@ -233,6 +237,73 @@ test.describe("Summary order form — phone preview (260909-i7r)", () => {
       geometry.pageScrollWidth,
       "a computer should never scroll sideways",
     ).toBe(geometry.pageClientWidth);
+  });
+
+  test("the rail plots' tick numbers are drawn the size a computer draws them, not the size of the shrunken picture", async ({
+    page,
+  }) => {
+    // 260909-wrz. The plots size their axis numbers from a measurement of their own box, and until
+    // this task that measurement was `getBoundingClientRect()` — the box AFTER the preview's
+    // `transform: scale()`, 0.39 of the laid-out box on an iPhone 14. The numbers came out 2.6 times
+    // too big in the drawing's own units, and a phone's print snapshot printed them that way. Runs on
+    // the desktop too, where the scale is 1 and this has always held, so a computer is proven unchanged.
+    await page.goto("/design/summary");
+    await expect(page.locator("[data-order-form-sheet]").first()).toBeVisible();
+    // The server's HTML carries every plot at fit scale 1 (11 units); the numbers are only fitted
+    // once React has measured the plot on the client, and the phone's WebKit hydrates the dev bundle
+    // a beat after the sheet is already visible. The measured preview-scale backstop
+    // (use-preview-scale.ts) writes its number inline on the scaler in that same hydration pass, so
+    // its presence is the proof the client has taken over — and, below, that the backstop agrees
+    // with the stylesheet's own division.
+    await page.waitForFunction(() => {
+      const scaler = document.querySelector<HTMLElement>("[data-order-form-scaler]");
+      return !!scaler && scaler.style.getPropertyValue("--order-form-preview-scale") !== "";
+    });
+
+    const { inlineScale, pageInnerWidth, ticks } = await page.evaluate(() => {
+      const pageEl = document.querySelector("[data-order-form-page]") as HTMLElement;
+      const pageStyle = getComputedStyle(pageEl);
+      const scaler = document.querySelector("[data-order-form-scaler]") as HTMLElement;
+      const plots = Array.from(
+        document.querySelectorAll<SVGSVGElement>("[data-order-form-sheet] svg[data-rail-section-plot]"),
+      );
+      return {
+        inlineScale: parseFloat(scaler.style.getPropertyValue("--order-form-preview-scale")),
+        pageInnerWidth:
+          pageEl.clientWidth - parseFloat(pageStyle.paddingLeft) - parseFloat(pageStyle.paddingRight),
+        ticks: plots.map((svg) => {
+          const viewBox = svg.viewBox.baseVal;
+          // The plot's own laid-out box, before any ancestor transform — what the drawing's units
+          // are fitted to, whatever the preview then shrinks the picture to.
+          const laidOutPxPerUnit = Math.min(svg.clientWidth / viewBox.width, svg.clientHeight / viewBox.height);
+          const firstTick = svg.querySelector("text");
+          const fontSizeUnits = parseFloat(firstTick?.getAttribute("font-size") ?? "NaN");
+          return {
+            section: svg.dataset.railSectionPlot,
+            fontSizeUnits,
+            laidOutPxPerUnit,
+            laidOutPx: fontSizeUnits * laidOutPxPerUnit,
+          };
+        }),
+      };
+    });
+
+    expect(
+      inlineScale,
+      "the measured backstop should write the same rule the stylesheet states: min(1, content width / design width)",
+    ).toBeCloseTo(Math.min(1, pageInnerWidth / DESIGN_WIDTH), 3);
+
+    expect(ticks.map((t) => t.section), "the order form should carry the nose, center and tail plots").toEqual([
+      "nose",
+      "center",
+      "tail",
+    ]);
+    for (const tick of ticks) {
+      expect(
+        tick.laidOutPx,
+        `${tick.section} plot: its first tick number, in laid-out screen pixels (${tick.fontSizeUnits} units at ${tick.laidOutPxPerUnit} px/unit)`,
+      ).toBeCloseTo(TICK_LABEL_PX, 0);
+    }
   });
 
   test("the Print Order Form button sits fully on the screen on a phone", async ({ page }, testInfo) => {

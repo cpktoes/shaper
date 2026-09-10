@@ -147,8 +147,8 @@ describe("Summary order form — phone preview's borrowed numbers (260909-i7r)",
 
     expect(
       screenBlock,
-      "the scale expression's atan2() call should name var(--order-form-design-width), not a literal 880px",
-    ).toMatch(/tan\(atan2\(100cqw,\s*var\(--order-form-design-width\)\)\)/);
+      "the scale expression's division should name var(--order-form-design-width), not a literal 880px",
+    ).toMatch(/calc\(\s*100cqw\s*\/\s*var\(--order-form-design-width\)\s*\)/);
 
     // No bare "880px" should reappear inside the @media screen block itself — the design width is
     // declared once (on the scaler, outside any media query) and only ever referenced by name here.
@@ -187,5 +187,46 @@ describe("Summary order form — phone preview's borrowed numbers (260909-i7r)",
       baseScalerBody,
       "the scaler's base (non-media) rule should declare display: contents, so it generates no box on paper",
     ).toMatch(/display:\s*contents/);
+  });
+});
+
+/**
+ * 260909-wrz: the preview's scale used to be `min(1, tan(atan2(100cqw, design width)))`, the CSS
+ * idiom for dividing one length by another. Safari 26.5.2 evaluates `tan()` of an `atan2()` that
+ * involves a container unit as if the angle's degree figure were radians — measured on a real
+ * Safari: atan2(100cqw, 880px) = 21.237937deg, but tan() of it = -0.937614, i.e. tan(21.24 rad) —
+ * so a phone drew the sheet upside down at a fraction of its size. Playwright's WebKit build is
+ * newer and gets it right, which is why no browser test ever caught it; these two contracts are the
+ * only automated guard. The scale is now a plain typed division, with a measured JavaScript backstop
+ * for engines that cannot yet divide lengths.
+ */
+describe("Summary order form — the preview scale survives Safari (260909-wrz)", () => {
+  it("the scale is a plain division of the two lengths, and no atan2() survives anywhere in the stylesheet", () => {
+    const css = readStripped(ORDER_FORM_CSS_PATH);
+    const screenBlock = extractBraceBlock(css, "@media screen {");
+
+    expect(
+      screenBlock,
+      "the preview scale should be min(1, calc(100cqw / var(--order-form-design-width)))",
+    ).toMatch(
+      /--order-form-preview-scale:\s*min\(\s*1,\s*calc\(\s*100cqw\s*\/\s*var\(--order-form-design-width\)\s*\)\s*\)/,
+    );
+    expect(css, "tan(atan2()) must not come back — Safari 26.5 computes it wrong with container units").not.toMatch(
+      /atan2\(/,
+    );
+  });
+
+  it("the order form wires the measured backstop, which reads the stylesheet's own two properties", () => {
+    const tsx = readStripped(ORDER_FORM_TSX_PATH);
+    expect(tsx, "order-form.tsx should call useOrderFormPreviewScale()").toMatch(/useOrderFormPreviewScale\(\)/);
+    expect(tsx, "the page wrapper should carry the hook's pageRef").toMatch(/data-order-form-page[\s\S]{0,200}ref=\{pageRef\}/);
+    expect(tsx, "the scaler should carry the hook's scalerRef").toMatch(/data-order-form-scaler[\s\S]{0,200}ref=\{scalerRef\}/);
+
+    const hook = readStripped("components/summary/use-preview-scale.ts");
+    expect(hook, "the backstop should read the design width from --order-form-design-width, not carry its own 880").toMatch(
+      /--order-form-design-width/,
+    );
+    expect(hook, "the backstop should write --order-form-preview-scale").toMatch(/--order-form-preview-scale/);
+    expect(hook, "the backstop should carry no 880 of its own").not.toMatch(/880/);
   });
 });

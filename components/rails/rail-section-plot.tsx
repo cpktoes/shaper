@@ -423,7 +423,7 @@ function chooseMetricLabelEvery(
   return METRIC_LABEL_EVERY_CANDIDATES[METRIC_LABEL_EVERY_CANDIDATES.length - 1];
 }
 
-export function RailSectionPlot({ output, xAxisMin, fit = "width", callouts }: RailSectionPlotProps) {
+export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", callouts }: RailSectionPlotProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const { system } = useUnits();
   const { result, segments, domed, boardThickness, thicknessEff } = output;
@@ -552,6 +552,8 @@ export function RailSectionPlot({ output, xAxisMin, fit = "width", callouts }: R
   return (
     <svg
       ref={svgRef}
+      // A handle for the browser tests: which of the three section plots this is. Nothing styles it.
+      data-rail-section-plot={sectionKey}
       viewBox={`0 0 ${width} ${height}`}
       style={
         fit === "height"
