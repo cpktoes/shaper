@@ -107,6 +107,29 @@ export const REF_GROUP_COLORS: Record<RailReferenceGroup, string> = {
   tuckBlend: "#7030A0",
 };
 
+/**
+ * The same map for the SCREEN, where the figure sits on whatever ground the shaper's theme
+ * paints. `REF_GROUP_COLORS` above stays the prototype's own hex, byte for byte — that is what
+ * the fidelity test pins and what the printed sheet draws, because print forces the Daylight
+ * tokens. On a dark ground three of those hues stop working: the board's own outline (`black`,
+ * #1c1b19) reads 1.07:1 on Slate and simply vanishes, the rail-mark red (#C00000) reads 2.84:1 and
+ * the tuck purple (#7030A0) 2.30:1, both under the palette contract's 3:1 floor for a UI edge.
+ * So on screen those three go through theme tokens: the outline takes the ink token (an ink role,
+ * as `rail-section-plot.tsx` already argues for its own edge keys), and the two data hues take
+ * `--surf-rail-mark` / `--surf-rail-tuck`, which resolve to the prototype's exact values on the
+ * light themes and to lifted variants of the same hue on Slate and Phosphor (measured 4.76:1 /
+ * 5.47:1 on Slate, 5.21:1 / 5.98:1 on Phosphor). The other six hues already clear 3:1 on both
+ * grounds and are left exactly as the prototype drew them.
+ */
+export const REF_GROUP_SCREEN_COLORS: Record<RailReferenceGroup, string> = {
+  ...REF_GROUP_COLORS,
+  black: "var(--color-surf-ink)",
+  railMark1: "var(--color-surf-rail-mark)",
+  railBand1: "var(--color-surf-rail-mark)",
+  railTuck1: "var(--color-surf-rail-tuck)",
+  tuckBlend: "var(--color-surf-rail-tuck)",
+};
+
 /** Stroke-width overrides for the groups the prototype widens (Rails.dc.html lines 1377, 1384) —
  * every other group falls back to `REF_GROUP_DEFAULT_WIDTH`. */
 export const REF_GROUP_WIDTHS: Partial<Record<RailReferenceGroup, string>> = {

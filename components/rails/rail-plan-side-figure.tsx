@@ -26,7 +26,7 @@ import {
   PLAN_REF_PATHS,
   PLAN_REF_VIEWBOX,
   REF_DASH_PX,
-  REF_GROUP_COLORS,
+  REF_GROUP_SCREEN_COLORS,
   REF_GROUP_DEFAULT_WIDTH,
   REF_GROUP_WIDTHS,
   SIDE_REF_PATHS,
@@ -61,15 +61,15 @@ interface RailReferenceLegendEntry {
 /** The prototype's own nine legend entries (Rails.dc.html lines 1290-1298), in its own order —
  * D-03's "all nine start ticked" is the caller's (`RailInstructions`) local state, not this list. */
 export const RAIL_REFERENCE_LEGEND: RailReferenceLegendEntry[] = [
-  { key: "deckMark1", label: "Deck Marks 1", color: REF_GROUP_COLORS.deckMark1 },
-  { key: "deckBand1", label: "Deck Band 1", color: REF_GROUP_COLORS.deckBand1 },
-  { key: "deckMark3", label: "Deck Marks 3", color: REF_GROUP_COLORS.deckMark3 },
-  { key: "deckBand2", label: "Deck Band 2", color: REF_GROUP_COLORS.deckBand2 },
-  { key: "deckMark3Full", label: "Deck Mark 3 Center (full board)", color: REF_GROUP_COLORS.deckMark3Full },
-  { key: "railMark1", label: "Rail Marks 1", color: REF_GROUP_COLORS.railMark1 },
-  { key: "railBand1", label: "Rail Band 1", color: REF_GROUP_COLORS.railBand1 },
-  { key: "railTuck1", label: "Rail Tucks 1", color: REF_GROUP_COLORS.railTuck1 },
-  { key: "tuckBlend", label: "Tuck blend to hard tail", color: REF_GROUP_COLORS.tuckBlend },
+  { key: "deckMark1", label: "Deck Marks 1", color: REF_GROUP_SCREEN_COLORS.deckMark1 },
+  { key: "deckBand1", label: "Deck Band 1", color: REF_GROUP_SCREEN_COLORS.deckBand1 },
+  { key: "deckMark3", label: "Deck Marks 3", color: REF_GROUP_SCREEN_COLORS.deckMark3 },
+  { key: "deckBand2", label: "Deck Band 2", color: REF_GROUP_SCREEN_COLORS.deckBand2 },
+  { key: "deckMark3Full", label: "Deck Mark 3 Center (full board)", color: REF_GROUP_SCREEN_COLORS.deckMark3Full },
+  { key: "railMark1", label: "Rail Marks 1", color: REF_GROUP_SCREEN_COLORS.railMark1 },
+  { key: "railBand1", label: "Rail Band 1", color: REF_GROUP_SCREEN_COLORS.railBand1 },
+  { key: "railTuck1", label: "Rail Tucks 1", color: REF_GROUP_SCREEN_COLORS.railTuck1 },
+  { key: "tuckBlend", label: "Tuck blend to hard tail", color: REF_GROUP_SCREEN_COLORS.tuckBlend },
 ];
 
 /** Every gateable group, for a caller (the third print sheet, 08-05) that wants every line drawn
@@ -117,7 +117,7 @@ function refPathElements(paths: RailReferencePath[], visibleGroups: Set<RailRefe
         key={`${p.group}-${i}`}
         d={p.d}
         fill="none"
-        stroke={REF_GROUP_COLORS[p.group]}
+        stroke={REF_GROUP_SCREEN_COLORS[p.group]}
         strokeWidth={REF_GROUP_WIDTHS[p.group] ?? REF_GROUP_DEFAULT_WIDTH}
         strokeDasharray={REF_DASH_PX[p.dash] ?? "none"}
       />
@@ -145,7 +145,7 @@ export function RailPlanSideFigure({ visibleGroups }: { visibleGroups: Set<RailR
     // Pinned to the prototype's own literal light values in every theme (UI-SPEC Color) — the
     // PNG background cannot invert for a dark theme, so this one card stays light on purpose, the
     // same reasoning app/globals.css's @media print block already pins Daylight tokens for print.
-    <div className="mx-auto w-full rounded-lg border border-[#e4ddc9] bg-[#fff] p-3.5">
+    <div className="mx-auto w-full rounded-lg border border-surf-line-faint bg-surf-ground p-3.5">
       <div
         className="@container relative mx-auto w-full"
         style={{ aspectRatio: `${FIGURE_CONTENT_WIDTH} / ${FIGURE_HEIGHT}`, maxWidth: `${FIGURE_MAX_RENDERED_WIDTH}px` }}
@@ -168,7 +168,7 @@ export function RailPlanSideFigure({ visibleGroups }: { visibleGroups: Set<RailR
           </div>
 
           <div
-            className="relative h-full flex-none text-[#1c1b19]"
+            className="relative h-full flex-none text-surf-ink"
             style={{ width: widthPercent(FIGURE_COLUMNS.label), fontSize: LABEL_FONT_SIZE }}
           >
             <span
@@ -204,7 +204,7 @@ export function RailPlanSideFigure({ visibleGroups }: { visibleGroups: Set<RailR
 
           <div className="relative h-full flex-none" style={{ width: widthPercent(FIGURE_COLUMNS.note) }}>
             <div
-              className="absolute left-0 text-[#1c1b19]"
+              className="absolute left-0 text-surf-ink"
               style={{ top: "62%", fontSize: LABEL_FONT_SIZE, lineHeight: 1.4 }}
             >
               Taper Tuck to

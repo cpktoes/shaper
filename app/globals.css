@@ -104,6 +104,11 @@
   --ramp-daylight-accent: #8ec1b8;
   --ramp-daylight-on-accent: #1f2a3b;
   --ramp-daylight-accent-ink: #48605c;
+  /* The rail band reference figure's two data hues that could not survive a dark ground as the
+     prototype drew them (#C00000 read 2.84:1 on Slate, #7030A0 2.30:1): the light ramps keep the
+     prototype's exact values, the dark ramps lift them to the same hue at ≥4.7:1. */
+  --ramp-daylight-rail-mark: #C00000;
+  --ramp-daylight-rail-tuck: #7030A0;
   --ramp-daylight-warning: #ff5722;
   --ramp-daylight-on-warning: #1f2a3b;
   --ramp-daylight-warning-ink: #ac3811;
@@ -127,6 +132,8 @@
   --ramp-chalk-accent: #3490bc;
   --ramp-chalk-on-accent: #090e16;
   --ramp-chalk-accent-ink: #2b424c;
+  --ramp-chalk-rail-mark: #C00000;
+  --ramp-chalk-rail-tuck: #7030A0;
   --ramp-chalk-warning: #ff5722;
   --ramp-chalk-on-warning: #1f2a3b;
   --ramp-chalk-warning-ink: #ac3811;
@@ -150,6 +157,8 @@
   --ramp-slate-accent: #18526d;
   --ramp-slate-on-accent: #f2f4f7;
   --ramp-slate-accent-ink: #3490bc;
+  --ramp-slate-rail-mark: #e05050;
+  --ramp-slate-rail-tuck: #a874e0;
   --ramp-slate-warning: #ff5722;
   --ramp-slate-on-warning: #111111;
   --ramp-slate-warning-ink: #ff9670;
@@ -173,6 +182,8 @@
   --ramp-phosphor-accent: #2ca62c;
   --ramp-phosphor-on-accent: #050805;
   --ramp-phosphor-accent-ink: #52ab52;
+  --ramp-phosphor-rail-mark: #e05050;
+  --ramp-phosphor-rail-tuck: #a874e0;
   --ramp-phosphor-warning: #5eff5e;
   --ramp-phosphor-on-warning: #050805;
   --ramp-phosphor-warning-ink: #a6ffa6;
@@ -215,6 +226,8 @@
   --surf-accent: var(--ramp-daylight-accent);
   --surf-on-accent: var(--ramp-daylight-on-accent);
   --surf-accent-ink: var(--ramp-daylight-accent-ink);
+  --surf-rail-mark: var(--ramp-daylight-rail-mark);
+  --surf-rail-tuck: var(--ramp-daylight-rail-tuck);
   --surf-warning: var(--ramp-daylight-warning);
   --surf-on-warning: var(--ramp-daylight-on-warning);
   --surf-warning-ink: var(--ramp-daylight-warning-ink);
@@ -239,6 +252,8 @@
     --surf-accent: var(--ramp-slate-accent);
     --surf-on-accent: var(--ramp-slate-on-accent);
     --surf-accent-ink: var(--ramp-slate-accent-ink);
+    --surf-rail-mark: var(--ramp-slate-rail-mark);
+    --surf-rail-tuck: var(--ramp-slate-rail-tuck);
     --surf-warning: var(--ramp-slate-warning);
     --surf-on-warning: var(--ramp-slate-on-warning);
     --surf-warning-ink: var(--ramp-slate-warning-ink);
@@ -263,6 +278,8 @@
   --surf-accent: var(--ramp-daylight-accent);
   --surf-on-accent: var(--ramp-daylight-on-accent);
   --surf-accent-ink: var(--ramp-daylight-accent-ink);
+  --surf-rail-mark: var(--ramp-daylight-rail-mark);
+  --surf-rail-tuck: var(--ramp-daylight-rail-tuck);
   --surf-warning: var(--ramp-daylight-warning);
   --surf-on-warning: var(--ramp-daylight-on-warning);
   --surf-warning-ink: var(--ramp-daylight-warning-ink);
@@ -286,6 +303,8 @@
   --surf-accent: var(--ramp-chalk-accent);
   --surf-on-accent: var(--ramp-chalk-on-accent);
   --surf-accent-ink: var(--ramp-chalk-accent-ink);
+  --surf-rail-mark: var(--ramp-chalk-rail-mark);
+  --surf-rail-tuck: var(--ramp-chalk-rail-tuck);
   --surf-warning: var(--ramp-chalk-warning);
   --surf-on-warning: var(--ramp-chalk-on-warning);
   --surf-warning-ink: var(--ramp-chalk-warning-ink);
@@ -309,6 +328,8 @@
   --surf-accent: var(--ramp-slate-accent);
   --surf-on-accent: var(--ramp-slate-on-accent);
   --surf-accent-ink: var(--ramp-slate-accent-ink);
+  --surf-rail-mark: var(--ramp-slate-rail-mark);
+  --surf-rail-tuck: var(--ramp-slate-rail-tuck);
   --surf-warning: var(--ramp-slate-warning);
   --surf-on-warning: var(--ramp-slate-on-warning);
   --surf-warning-ink: var(--ramp-slate-warning-ink);
@@ -332,6 +353,8 @@
   --surf-accent: var(--ramp-phosphor-accent);
   --surf-on-accent: var(--ramp-phosphor-on-accent);
   --surf-accent-ink: var(--ramp-phosphor-accent-ink);
+  --surf-rail-mark: var(--ramp-phosphor-rail-mark);
+  --surf-rail-tuck: var(--ramp-phosphor-rail-tuck);
   --surf-warning: var(--ramp-phosphor-warning);
   --surf-on-warning: var(--ramp-phosphor-on-warning);
   --surf-warning-ink: var(--ramp-phosphor-warning-ink);
@@ -432,6 +455,8 @@
   --color-surf-on-accent: var(--surf-on-accent);
   --color-surf-on-ink: var(--surf-on-ink);
   --color-surf-accent-ink: var(--surf-accent-ink);
+  --color-surf-rail-mark: var(--surf-rail-mark);
+  --color-surf-rail-tuck: var(--surf-rail-tuck);
   --color-surf-warning: var(--surf-warning);
   --color-surf-on-warning: var(--surf-on-warning);
   --color-surf-warning-ink: var(--surf-warning-ink);
@@ -659,6 +684,8 @@
     --surf-accent: var(--ramp-daylight-accent);
     --surf-on-accent: var(--ramp-daylight-on-accent);
     --surf-accent-ink: var(--ramp-daylight-accent-ink);
+    --surf-rail-mark: var(--ramp-daylight-rail-mark);
+    --surf-rail-tuck: var(--ramp-daylight-rail-tuck);
     --surf-warning: var(--ramp-daylight-warning);
     --surf-on-warning: var(--ramp-daylight-on-warning);
     --surf-warning-ink: var(--ramp-daylight-warning-ink);
