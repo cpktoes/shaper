@@ -59,6 +59,22 @@ describe("outline-viewer.tsx: the drag readout chip", () => {
     expect(stripped).not.toMatch(/25\.4/);
     expect(stripped).not.toContain("dangerouslySetInnerHTML");
   });
+
+  // Quick task 260909-oge: the card steps clear of the board it is reading, through the one
+  // shared rule both viewers call — pinned here so a future edit cannot quietly revert one
+  // drawing to the old on-top-of-the-board placement while the other keeps the new one.
+  it("calls the shared board-avoidance rule, not a private copy of it", () => {
+    expect(source).toContain("placeReadoutClearOfBoard");
+    expect(source).toContain("@/components/viewer/readout-placement");
+  });
+
+  it("builds its silhouette through boardSection, the shared rule's own input shape", () => {
+    expect(source).toContain("boardSection");
+  });
+
+  it("carries the data-board-silhouette hook the browser tests depend on", () => {
+    expect(source).toContain("data-board-silhouette");
+  });
 });
 
 describe("rocker-viewer.tsx: the drag readout chip", () => {
@@ -85,5 +101,20 @@ describe("rocker-viewer.tsx: the drag readout chip", () => {
   it("never reaches for a bare imperial conversion factor or builds markup from a string", () => {
     expect(stripped).not.toMatch(/25\.4/);
     expect(stripped).not.toContain("dangerouslySetInnerHTML");
+  });
+
+  // Quick task 260909-oge: the rocker's own copy of the outline's board-avoidance assertions
+  // above, so a future edit cannot quietly revert one drawing while leaving the other alone.
+  it("calls the shared board-avoidance rule, not a private copy of it", () => {
+    expect(source).toContain("placeReadoutClearOfBoard");
+    expect(source).toContain("@/components/viewer/readout-placement");
+  });
+
+  it("builds its silhouette through boardSection, the shared rule's own input shape", () => {
+    expect(source).toContain("boardSection");
+  });
+
+  it("carries the data-board-silhouette hook the browser tests depend on", () => {
+    expect(source).toContain("data-board-silhouette");
   });
 });
