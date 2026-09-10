@@ -105,7 +105,7 @@ async function touchDrag(
   await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
 }
 
-test.describe("Case A: upright phone, Width behind the Fine adjust fold", () => {
+test.describe("Case A: upright phone, Width in its own section", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== "android",
@@ -118,7 +118,6 @@ test.describe("Case A: upright phone, Width behind the Fine adjust fold", () => 
     page,
   }) => {
     await page.goto("/design/outline");
-    await page.getByRole("button", { name: "Fine adjust" }).click();
 
     const widthLabel = page.getByText(/^Width — /);
     await expect(widthLabel).toBeVisible();
@@ -163,7 +162,7 @@ test.describe("Case B: phone held sideways, Width visible in the desktop-style s
     await dismissSignInBanner(page);
   });
 
-  test("a bar press moves the value with no Fine adjust tap needed, and the wandering drag still works", async ({
+  test("a bar press moves the value and the wandering drag still works", async ({
     page,
   }) => {
     await page.goto("/design/outline");
