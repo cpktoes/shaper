@@ -36,6 +36,7 @@ npm run build           # run from the main checkout; Turbopack won't resolve ne
 npm run lint
 npm run test:e2e        # every browser test: both phones and the desktop, own dev server on port 3100
 npm run test:e2e:phone  # just the two phone profiles (iPhone, Android) — faster while iterating
+npm run test:e2e:prod   # the specs under e2e/prod/ against a production build (next start on 3107) — catches what StrictMode hides on the dev server
 npm run golden          # regenerate geometry fixtures from the prototype in reference/
 npm run db:generate     # write a new migration file from the schema
 npm run db:migrate      # apply migrations to the development branch
