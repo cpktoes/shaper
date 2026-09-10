@@ -109,6 +109,12 @@
      prototype's exact values, the dark ramps lift them to the same hue at ≥4.7:1. */
   --ramp-daylight-rail-mark: #C00000;
   --ramp-daylight-rail-tuck: #7030A0;
+  /* The rail band reference figure's plan view is drawn over a raster crop of the prototype's own
+     background (white paper, grey grid). On a dark ground that crop is inverted and screen-blended
+     so its white becomes the theme's ground and its grid reads light; the light ramps leave it
+     exactly as drawn, and print takes the Daylight values through the print block below. */
+  --ramp-daylight-raster-filter: none;
+  --ramp-daylight-raster-blend: normal;
   --ramp-daylight-warning: #ff5722;
   --ramp-daylight-on-warning: #1f2a3b;
   --ramp-daylight-warning-ink: #ac3811;
@@ -134,6 +140,8 @@
   --ramp-chalk-accent-ink: #2b424c;
   --ramp-chalk-rail-mark: #C00000;
   --ramp-chalk-rail-tuck: #7030A0;
+  --ramp-chalk-raster-filter: none;
+  --ramp-chalk-raster-blend: normal;
   --ramp-chalk-warning: #ff5722;
   --ramp-chalk-on-warning: #1f2a3b;
   --ramp-chalk-warning-ink: #ac3811;
@@ -159,6 +167,8 @@
   --ramp-slate-accent-ink: #3490bc;
   --ramp-slate-rail-mark: #e05050;
   --ramp-slate-rail-tuck: #a874e0;
+  --ramp-slate-raster-filter: invert(1);
+  --ramp-slate-raster-blend: screen;
   --ramp-slate-warning: #ff5722;
   --ramp-slate-on-warning: #111111;
   --ramp-slate-warning-ink: #ff9670;
@@ -184,6 +194,8 @@
   --ramp-phosphor-accent-ink: #52ab52;
   --ramp-phosphor-rail-mark: #e05050;
   --ramp-phosphor-rail-tuck: #a874e0;
+  --ramp-phosphor-raster-filter: invert(1);
+  --ramp-phosphor-raster-blend: screen;
   --ramp-phosphor-warning: #5eff5e;
   --ramp-phosphor-on-warning: #050805;
   --ramp-phosphor-warning-ink: #a6ffa6;
@@ -228,6 +240,8 @@
   --surf-accent-ink: var(--ramp-daylight-accent-ink);
   --surf-rail-mark: var(--ramp-daylight-rail-mark);
   --surf-rail-tuck: var(--ramp-daylight-rail-tuck);
+  --surf-raster-filter: var(--ramp-daylight-raster-filter);
+  --surf-raster-blend: var(--ramp-daylight-raster-blend);
   --surf-warning: var(--ramp-daylight-warning);
   --surf-on-warning: var(--ramp-daylight-on-warning);
   --surf-warning-ink: var(--ramp-daylight-warning-ink);
@@ -254,6 +268,8 @@
     --surf-accent-ink: var(--ramp-slate-accent-ink);
     --surf-rail-mark: var(--ramp-slate-rail-mark);
     --surf-rail-tuck: var(--ramp-slate-rail-tuck);
+    --surf-raster-filter: var(--ramp-slate-raster-filter);
+    --surf-raster-blend: var(--ramp-slate-raster-blend);
     --surf-warning: var(--ramp-slate-warning);
     --surf-on-warning: var(--ramp-slate-on-warning);
     --surf-warning-ink: var(--ramp-slate-warning-ink);
@@ -280,6 +296,8 @@
   --surf-accent-ink: var(--ramp-daylight-accent-ink);
   --surf-rail-mark: var(--ramp-daylight-rail-mark);
   --surf-rail-tuck: var(--ramp-daylight-rail-tuck);
+  --surf-raster-filter: var(--ramp-daylight-raster-filter);
+  --surf-raster-blend: var(--ramp-daylight-raster-blend);
   --surf-warning: var(--ramp-daylight-warning);
   --surf-on-warning: var(--ramp-daylight-on-warning);
   --surf-warning-ink: var(--ramp-daylight-warning-ink);
@@ -305,6 +323,8 @@
   --surf-accent-ink: var(--ramp-chalk-accent-ink);
   --surf-rail-mark: var(--ramp-chalk-rail-mark);
   --surf-rail-tuck: var(--ramp-chalk-rail-tuck);
+  --surf-raster-filter: var(--ramp-chalk-raster-filter);
+  --surf-raster-blend: var(--ramp-chalk-raster-blend);
   --surf-warning: var(--ramp-chalk-warning);
   --surf-on-warning: var(--ramp-chalk-on-warning);
   --surf-warning-ink: var(--ramp-chalk-warning-ink);
@@ -330,6 +350,8 @@
   --surf-accent-ink: var(--ramp-slate-accent-ink);
   --surf-rail-mark: var(--ramp-slate-rail-mark);
   --surf-rail-tuck: var(--ramp-slate-rail-tuck);
+  --surf-raster-filter: var(--ramp-slate-raster-filter);
+  --surf-raster-blend: var(--ramp-slate-raster-blend);
   --surf-warning: var(--ramp-slate-warning);
   --surf-on-warning: var(--ramp-slate-on-warning);
   --surf-warning-ink: var(--ramp-slate-warning-ink);
@@ -355,6 +377,8 @@
   --surf-accent-ink: var(--ramp-phosphor-accent-ink);
   --surf-rail-mark: var(--ramp-phosphor-rail-mark);
   --surf-rail-tuck: var(--ramp-phosphor-rail-tuck);
+  --surf-raster-filter: var(--ramp-phosphor-raster-filter);
+  --surf-raster-blend: var(--ramp-phosphor-raster-blend);
   --surf-warning: var(--ramp-phosphor-warning);
   --surf-on-warning: var(--ramp-phosphor-on-warning);
   --surf-warning-ink: var(--ramp-phosphor-warning-ink);
@@ -686,6 +710,8 @@
     --surf-accent-ink: var(--ramp-daylight-accent-ink);
     --surf-rail-mark: var(--ramp-daylight-rail-mark);
     --surf-rail-tuck: var(--ramp-daylight-rail-tuck);
+    --surf-raster-filter: var(--ramp-daylight-raster-filter);
+    --surf-raster-blend: var(--ramp-daylight-raster-blend);
     --surf-warning: var(--ramp-daylight-warning);
     --surf-on-warning: var(--ramp-daylight-on-warning);
     --surf-warning-ink: var(--ramp-daylight-warning-ink);

@@ -155,7 +155,7 @@ export function RailPlanSideFigure({ visibleGroups }: { visibleGroups: Set<RailR
             <img
               src="/rail-bands-plan-bg.png"
               alt="Plan and side view of an example board showing where the rail sections sit"
-              className="absolute inset-0 h-full w-full"
+              className="absolute inset-0 h-full w-full [filter:var(--surf-raster-filter)] [mix-blend-mode:var(--surf-raster-blend)]"
             />
             <svg
               viewBox={PLAN_REF_VIEWBOX}
