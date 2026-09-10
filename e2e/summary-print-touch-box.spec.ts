@@ -179,18 +179,32 @@ async function forceTouchSheet(page: Page) {
  * position would be the wrong thing to compare against. `isSvg` records whether the element is
  * SVG-namespaced (`el.namespaceURI === "http://www.w3.org/2000/svg"`), detected by namespace
  * rather than by tag name or class so it can never be fooled by an HTML element that merely looks
- * like a drawing label. A board drawing's own `<text>` scales with that drawing's `viewBox` fit,
- * not with the sheet's `cqw` container, so it stays in every reported number below (it is real
- * measured type on the page) but is excluded from case 6(a)'s linear-with-page-width assertion,
- * which is meaningless for it. */
-type FontSample = { key: string; label: string; fontPx: number; isSvg: boolean };
+ * like a drawing label — reported below (`smallestSvgPx`), but no longer what scopes case 6(a)'s
+ * scaling assertion; see `isTokenScale`.
+ *
+ * `isTokenScale` records whether the element itself, or an ancestor of it up to and including its
+ * sheet, carries one of the classes `order-form.css` maps a `--order-form-*` clamp() token onto:
+ * `order-form-caption`, `-micro`, `-value`, `-row`, `-group`, `-dim`, `-dim-step-1`, `-dim-step-2`
+ * (that pair are `--order-form-dim`'s own step-down sizes, order-form.css ~207-225, the same
+ * clamp() family as the rest, not a separate one), and `-wordmark`. That set of nine IS "the
+ * form's own type". Matched exactly, never as a bare `order-form-` prefix: several purely
+ * geometric classes share that prefix (`order-form-rocker`, `order-form-left-col`,
+ * `order-form-spine`, `order-form-band-glassing`, `order-form-logo-col`) and a prefix match would
+ * wrongly pull the rocker's compact value label back into the sample, since it sits inside
+ * `order-form-rocker`/`order-form-left-col`. Case 6(a)'s scaling assertion below keeps only
+ * `isTokenScale` samples. */
+type FontSample = { key: string; label: string; fontPx: number; isSvg: boolean; isTokenScale: boolean };
 
 type SweepRow = {
   width: number;
   smallestPx: number;
   smallestLabel: string;
-  /** Smallest size among HTML (non-SVG) samples only — the `--order-form-*` token scale, the one
-   * case 6(a) actually holds to a growth ratio and the one with a clamp floor. */
+  /** Smallest size among HTML (non-SVG) samples only. Reported for the same reason `smallestSvgPx`
+   * is — so a reader can see the namespace split — but this is NOT what case 6(a)'s scaling
+   * assertion is scoped to any more; see `smallestTokenScalePx` below for that. "HTML" is broader
+   * than "the form's own type": it also includes non-token HTML such as the rocker's
+   * absolutely-positioned compact value label, so this number can legitimately differ from
+   * `smallestTokenScalePx`. */
   smallestHtmlPx: number;
   smallestHtmlLabel: string;
   /** Smallest size among SVG-namespaced samples only — board-drawing labels, which scale with
@@ -198,6 +212,12 @@ type SweepRow = {
    * asserted on. */
   smallestSvgPx: number;
   smallestSvgLabel: string;
+  /** Smallest size among samples whose element (or an ancestor up to the sheet) carries one of the
+   * nine `--order-form-*` clamp() classes (see `FontSample.isTokenScale`) — the form's own type,
+   * the one family this stylesheet actually promises a 9pt/12px floor and a growth ratio for, and
+   * the only family case 6(a)'s scaling assertion below is scoped to. */
+  smallestTokenScalePx: number;
+  smallestTokenScaleLabel: string;
   distinctSizes: number[];
   overflowBySheet: boolean[];
   samples: FontSample[];
@@ -215,16 +235,18 @@ type SweepRow = {
  * keyed to its element by a DOM path from the sheet root rather than by array position, so a walk
  * taken at one width can be matched to the same element in a walk taken at another width (case
  * 6(a)) instead of assuming the two walks list elements in the same order. Each sample also records
- * whether it is SVG-namespaced (see `FontSample` above) — reported here, but only excluded from the
- * scaling assertion itself, in case 6(a). Also records whether each sheet's content overflows its
- * own band. This is case 6's one measurement, repeated at every width in `SWEEP_WIDTHS`. */
+ * whether it is SVG-namespaced and whether it (or an ancestor) belongs to the form's own
+ * `--order-form-*` type scale (see `FontSample` above for both) — the SVG flag is reporting only
+ * now, the token-scale flag is what case 6(a)'s scaling assertion below is actually scoped to.
+ * Also records whether each sheet's content overflows its own band. This is case 6's one
+ * measurement, repeated at every width in `SWEEP_WIDTHS`. */
 async function collectSweepRow(page: Page, width: number): Promise<SweepRow> {
   const viewport = page.viewportSize();
   await page.setViewportSize({ width, height: viewport?.height ?? 1400 });
 
   const raw = await page.evaluate(() => {
     const sheets = Array.from(document.querySelectorAll<HTMLElement>("[data-order-form-sheet]"));
-    const samples: { key: string; label: string; fontPx: number; isSvg: boolean }[] = [];
+    const samples: { key: string; label: string; fontPx: number; isSvg: boolean; isTokenScale: boolean }[] = [];
     const overflowBySheet: boolean[] = [];
 
     const paintsOwnText = (el: Element) =>
@@ -247,6 +269,25 @@ async function collectSweepRow(page: Page, width: number): Promise<SweepRow> {
       return steps.join(".");
     };
 
+    // The nine classes order-form.css maps a `--order-form-*` clamp() token onto — see
+    // `FontSample.isTokenScale`'s own comment for the full reasoning. Matched exactly, never as an
+    // `order-form-` prefix: several purely geometric classes share that prefix
+    // (`order-form-rocker`, `order-form-left-col`, `order-form-spine`, `order-form-band-glassing`,
+    // `order-form-logo-col`) and a prefix match would wrongly pull the rocker's compact value label
+    // back into the type-scale sample, since it sits inside `order-form-rocker`.
+    const TOKEN_SCALE_CLASS_PATTERN = /^order-form-(caption|micro|value|row|group|dim(-step-[12])?|wordmark)$/;
+    const isTokenScale = (el: Element, sheet: Element) => {
+      let node: Element | null = el;
+      while (node) {
+        for (const cls of node.classList) {
+          if (TOKEN_SCALE_CLASS_PATTERN.test(cls)) return true;
+        }
+        if (node === sheet) break;
+        node = node.parentElement;
+      }
+      return false;
+    };
+
     sheets.forEach((sheet, sheetIndex) => {
       overflowBySheet.push(sheet.scrollHeight > sheet.clientHeight + 0.5);
       const all: Element[] = [sheet, ...Array.from(sheet.querySelectorAll("*"))];
@@ -257,11 +298,17 @@ async function collectSweepRow(page: Page, width: number): Promise<SweepRow> {
         const cls = el.getAttribute("class");
         const label = el.tagName.toLowerCase() + (cls ? "." + cls.split(/\s+/)[0] : "");
         // Namespace, not tag name or class: an SVG `<text>` (or `<tspan>`) reports
-        // "http://www.w3.org/2000/svg" here, an HTML element reports the XHTML namespace. That is
-        // what lets the scaling assertion in case 6(a) tell a board-drawing label — scaled by its
-        // own viewBox fit, not by the container — apart from real `--order-form-*` token type.
+        // "http://www.w3.org/2000/svg" here, an HTML element reports the XHTML namespace. Reported
+        // below (`smallestSvgPx`), but no longer what scopes case 6(a)'s assertion — see
+        // `isTokenScale` above and `FontSample`'s own comment for why.
         const isSvg = el.namespaceURI === "http://www.w3.org/2000/svg";
-        samples.push({ key: `${sheetIndex}:${pathFromSheet(el, sheet)}`, label, fontPx, isSvg });
+        samples.push({
+          key: `${sheetIndex}:${pathFromSheet(el, sheet)}`,
+          label,
+          fontPx,
+          isSvg,
+          isTokenScale: isTokenScale(el, sheet),
+        });
       }
     });
 
@@ -272,14 +319,16 @@ async function collectSweepRow(page: Page, width: number): Promise<SweepRow> {
   const distinctSizes = [...new Set(samples.map((s) => Math.round(s.fontPx * 100) / 100))].sort((a, b) => a - b);
   const smallestOf = (pool: FontSample[]) =>
     pool.reduce<FontSample | undefined>((min, s) => (!min || s.fontPx < min.fontPx ? s : min), undefined);
-  // Reported in three ways for three different questions: `smallest`/`smallestPx` is the overall
+  // Reported in four ways for four different questions: `smallest`/`smallestPx` is the overall
   // floor across everything painted on the sheet (unchanged — still what the sweep table and the
   // founder's points conversion use); `smallestHtml*` and `smallestSvg*` split that same set by
-  // namespace purely so the console table can label which family a number belongs to. Only
-  // `smallestHtml*`-shaped data feeds an assertion (case 6(a), below); these two are reporting only.
+  // namespace, reporting only, purely so the console table can label which family a number belongs
+  // to; `smallestTokenScale*` is the one that actually feeds case 6(a)'s scaling assertion below —
+  // see `FontSample.isTokenScale` for what "the form's own type" means.
   const smallest = smallestOf(samples);
   const smallestHtml = smallestOf(samples.filter((s) => !s.isSvg));
   const smallestSvg = smallestOf(samples.filter((s) => s.isSvg));
+  const smallestTokenScale = smallestOf(samples.filter((s) => s.isTokenScale));
 
   return {
     width,
@@ -289,6 +338,9 @@ async function collectSweepRow(page: Page, width: number): Promise<SweepRow> {
     smallestHtmlLabel: smallestHtml?.label ?? "(no HTML text-painting element found)",
     smallestSvgPx: smallestSvg?.fontPx ?? Number.NaN,
     smallestSvgLabel: smallestSvg?.label ?? "(no SVG text-painting element found)",
+    smallestTokenScalePx: smallestTokenScale?.fontPx ?? Number.NaN,
+    smallestTokenScaleLabel:
+      smallestTokenScale?.label ?? "(no order-form-* token-scale text-painting element found)",
     distinctSizes,
     overflowBySheet: raw.overflowBySheet,
     samples,
@@ -388,16 +440,22 @@ test.describe("Summary order form — touch print box (260910-2ny)", () => {
           `distinct=[${row.distinctSizes.map((s) => s.toFixed(2)).join(", ")}]  ` +
           `overflow=[${row.overflowBySheet.map((o) => (o ? "OVERFLOW" : "ok")).join(", ")}]`,
       );
-      // These two answer different questions (see `SweepRow`, above): HTML is the `--order-form-*`
-      // token scale case 6(a) actually holds to a growth ratio, with the 12px/16px clamp floor;
-      // SVG is a board-drawing label, scaled by its own viewBox fit rather than the page, with no
-      // floor and no scaling assertion made on it. Labelled explicitly so this table is never read
-      // as one undifferentiated "smallest text" figure.
+      // Three questions, three numbers (see `SweepRow`, above): HTML/SVG report the namespace
+      // split only — HTML is everything non-SVG that paints text, which includes non-token HTML
+      // (such as the rocker's compact value label) alongside the real token scale; SVG is a
+      // board-drawing label, scaled by its own viewBox fit rather than the page, with no floor and
+      // no scaling assertion made on it. "token scale" is the one that answers "is the form's own
+      // type holding its 9pt/12px floor" — the only one case 6(a)'s assertion below is scoped to.
+      // Labelled explicitly so this table is never read as one undifferentiated "smallest text"
+      // figure.
       console.log(
-        `[260910-2ny]     smallest HTML (--order-form-* token scale) = ${row.smallestHtmlPx.toFixed(3)}px (${row.smallestHtmlLabel})`,
+        `[260910-2ny]     smallest HTML (all non-SVG, reporting only) = ${row.smallestHtmlPx.toFixed(3)}px (${row.smallestHtmlLabel})`,
       );
       console.log(
         `[260910-2ny]     smallest SVG (board-drawing label, own viewBox fit) = ${row.smallestSvgPx.toFixed(3)}px (${row.smallestSvgLabel})`,
+      );
+      console.log(
+        `[260910-2ny]     smallest order-form-* TOKEN SCALE (the form's own type, 9pt/12px floor — case 6(a)'s own assertion) = ${row.smallestTokenScalePx.toFixed(3)}px (${row.smallestTokenScaleLabel})`,
       );
     }
 
@@ -437,36 +495,61 @@ test.describe("Summary order form — touch print box (260910-2ny)", () => {
       .map(([key, a]) => ({ key, a, b: samplesByKeyAbove2.get(key) }))
       .filter((pair): pair is { key: string; a: FontSample; b: FontSample } => pair.b !== undefined);
 
-    // SVG text (detected by namespace on `FontSample.isSvg` — see the type's own comment above) is
-    // excluded from the scaling assertion below, not from the match: a board drawing's `<text>` is
-    // fitted inside its own `viewBox` and scales with THAT fit, not with the sheet's `cqw`
-    // container — as the page gets wider a fitted drawing's internal scale moves independently of
-    // the container, which is why a real sweep found these labels non-monotonic in page width
-    // (e.g. one project measured 7.41px at 560, 11.96px at 680/733/760, 9.34px at 812, 8.04px at
-    // 900) rather than growing smoothly with it. A linear-with-page-width assertion is meaningless
-    // for that text and would fail on correct code forever, so this case only holds HTML type — the
-    // `--order-form-*` token scale this stylesheet actually promises to grow — to a growth ratio.
-    // SVG samples are never dropped from the sweep itself: they stay in `matchedPairs`, in every
-    // row's console output, and in `smallestPx`/`smallestLabel`/`distinctSizes` above; only the
-    // assertion narrows to `htmlMatchedPairs`.
-    const htmlMatchedPairs = matchedPairs.filter((pair) => !pair.a.isSvg && !pair.b.isSvg);
+    // Scoped to `FontSample.isTokenScale` — an element (or an ancestor of it up to the sheet)
+    // carrying one of the nine classes `order-form.css` maps a `--order-form-*` clamp() token onto.
+    // Not from the match itself: every family below stays in `matchedPairs`, in every row's console
+    // output, and in `smallestPx`/`smallestLabel`/`distinctSizes` above; only this assertion
+    // narrows, to `tokenScaleMatchedPairs`. Three families are excluded here — all of them real
+    // measured type on the page, none of them a fixed-pixel bug:
+    //
+    //  1. Text-less layout containers (332 of them at a typical print width — border frames, spine
+    //     columns, divider rules) that declare no font-size of their own and simply inherit the
+    //     browser's 16px document default, which never moves when the page resizes. These never
+    //     become samples at all — `paintsOwnText` (above) already excludes them before this point —
+    //     named here for completeness, so a future reader hunting "why isn't X counted" finds every
+    //     excluded family in one place.
+    //  2. Board-drawing labels — SVG `<text>`/`<tspan>`, fitted inside their own `viewBox` and
+    //     scaling with THAT fit, not with the sheet's `cqw` container. As the page gets wider a
+    //     fitted drawing's internal scale moves independently of the container, which is why a real
+    //     sweep found these labels non-monotonic in page width (7.41px at 560, 16.67px at 680,
+    //     8.04px at 900 dots — see the sweep table logged above). A linear-with-page-width assertion
+    //     is meaningless for that text and would fail on correct code forever. No SVG element ever
+    //     carries one of the nine token-scale classes, nor sits under an ancestor that does — a
+    //     board drawing is always inside a layout wrapper like `order-form-left-col` or
+    //     `order-form-rocker`, never inside `order-form-value` and friends — so `isTokenScale`
+    //     already excludes every one of them; the earlier `!isSvg` filter this replaced is
+    //     therefore redundant and has been removed, rather than kept alongside a rule that already
+    //     subsumes it.
+    //  3. `components/rocker/rocker-viewer.tsx`'s absolutely-positioned compact value label
+    //     (`COMPACT_VALUE_SIZE`) — a rocker-drawing annotation sized by the rocker frame's own fit,
+    //     which is width-bound and therefore near-constant: a flat 11.963px at every swept width.
+    //     It is a drawing annotation in every sense that matters here, wearing an HTML tag rather
+    //     than an SVG one, which is why the SVG-namespace filter alone never excluded it. It sits
+    //     inside `order-form-rocker`/`order-form-left-col` — layout classes that merely share the
+    //     `order-form-` prefix — never inside one of the nine token-scale classes itself, so
+    //     `isTokenScale` excludes it correctly without a bespoke rule of its own.
+    const tokenScaleMatchedPairs = matchedPairs.filter((pair) => pair.a.isTokenScale && pair.b.isTokenScale);
     expect(
-      htmlMatchedPairs.length,
-      "the two widths above the design width produced no matched HTML text-painting elements to compare (SVG board-drawing labels are excluded from this assertion on purpose — see the comment above) — the sweep found nothing on the token scale to check",
+      tokenScaleMatchedPairs.length,
+      "the two widths above the design width produced no matched order-form-* token-scale elements to compare — the type-scale walk found nothing on the form's own type to check (see the isTokenScale comment above for what counts)",
     ).toBeGreaterThan(0);
 
     // This stylesheet's two clamp floors (order-form.css ~line 82-90, 226-228): `--order-form-wordmark`
     // floors at 16px, every other `--order-form-*` token floors at 12px. Below DESIGN_WIDTH_DOTS the
     // clamp intentionally holds a token at its floor instead of shrinking further — a value pinned
-    // there is the clamp doing its job, not a bug, and it cannot be expected to scale. The exemption
-    // below only ever applies when the NARROWER of the two widths being compared is below the design
-    // width; 760 and 812 (this case's own pair) are both above it, so the exemption never actually
-    // fires here today, and it can never mask a fixed-pixel size that fails to scale ABOVE the design
-    // width — the one thing this case exists to catch — only a legitimately floored one below it.
+    // there is the clamp doing its job, not a bug, and it cannot be expected to scale. Still
+    // load-bearing after the `isTokenScale` narrowing above, because the two rules answer different
+    // questions — `isTokenScale` asks "is this element part of the form's own type at all?",
+    // this exemption asks "is a floored value allowed to stay flat?" — so neither makes the other
+    // redundant. The exemption below only ever applies when the NARROWER of the two widths being
+    // compared is below the design width; 760 and 812 (this case's own pair) are both above it, so
+    // the exemption never actually fires here today, and it can never mask a fixed-pixel size that
+    // fails to scale ABOVE the design width — the one thing this case exists to catch — only a
+    // legitimately floored one below it.
     const CLAMP_FLOOR_PX = [12, 16];
     const comparingBelowDesignWidth = Math.min(above1!.width, above2!.width) < DESIGN_WIDTH_DOTS;
 
-    for (const { key, a, b } of htmlMatchedPairs) {
+    for (const { key, a, b } of tokenScaleMatchedPairs) {
       if (comparingBelowDesignWidth && a.fontPx === b.fontPx && CLAMP_FLOOR_PX.includes(a.fontPx)) {
         continue;
       }
