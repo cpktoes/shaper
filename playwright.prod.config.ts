@@ -17,11 +17,28 @@ import base from "./playwright.config";
  */
 const port = Number(process.env.PW_PROD_PORT ?? 3107);
 
+/**
+ * The dev-server config injects fake Clerk keys so the suite never needs real credentials. A
+ * production server cannot use them: Clerk's middleware answers a browser's first visit with a
+ * handshake redirect and then verifies the handshake token with the secret key — the fake secret
+ * fails that check, and `next start` turns it into a 500 on every page (measured 2026-09-09:
+ * "Handshake token verification failed: The provided Clerk Secret Key is invalid"). The dev server
+ * tolerates the same failure. So this config drops the fake environment and lets `next start` load
+ * the machine's own `.env.local` (the development Clerk instance and the development database
+ * branch), exactly as `npm run dev` does for a person. These specs are local-only and run on
+ * purpose, never in CI, so that is the honest arrangement.
+ */
+const { env: _fakeDevServerEnv, ...productionServer } = base.webServer as Exclude<
+  typeof base.webServer,
+  undefined | unknown[]
+>;
+void _fakeDevServerEnv;
+
 export default defineConfig({
   ...base,
   testDir: "./e2e/prod",
   webServer: {
-    ...base.webServer,
+    ...productionServer,
     command: `npx next start -p ${port}`,
     url: `http://localhost:${port}/design/outline`,
     reuseExistingServer: true,
