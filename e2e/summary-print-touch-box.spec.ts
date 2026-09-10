@@ -174,7 +174,10 @@ async function forceTouchSheet(page: Page) {
   await page.locator("[data-order-form-root]").evaluate((el) => el.setAttribute("data-print-touch", "true"));
 }
 
-type FontSample = { index: number; label: string; fontPx: number };
+/** `key` is a DOM path from its sheet's root ("sheetIndex:childIndex.childIndex...") captured at
+ * collection time, not an array position — see the matching note in case 6(a) below for why a
+ * position would be the wrong thing to compare against. */
+type FontSample = { key: string; label: string; fontPx: number };
 
 type SweepRow = {
   width: number;
@@ -185,33 +188,66 @@ type SweepRow = {
   samples: FontSample[];
 };
 
-/** Resizes the viewport to `width`, then walks every element inside every
- * `[data-order-form-sheet]` and records its computed font size, plus whether each sheet's content
- * overflows its own band. This is case 6's one measurement, repeated at every width in
- * `SWEEP_WIDTHS`. */
+/** Resizes the viewport to `width`, then walks every element inside every `[data-order-form-sheet]`
+ * and records the computed font size of the ones that actually PAINT their own text — an element
+ * with at least one direct child text node that is not just whitespace. That is deliberate: a plain
+ * layout `div` with no text of its own (this sheet has 332 of them at a typical print width — border
+ * frames, spine columns, divider rules) declares no font-size and simply inherits the browser's 16px
+ * document default, which never moves when the page resizes. Sampling it reports a "fixed-pixel"
+ * failure against an element that was never sized in the first place. SVG `<text>` elements paint
+ * text too and stay in the sample, since the test is "does this element have its own text node", not
+ * "is this an HTML text tag" — filtering by tag name would silently drop them. Each kept sample is
+ * keyed to its element by a DOM path from the sheet root rather than by array position, so a walk
+ * taken at one width can be matched to the same element in a walk taken at another width (case
+ * 6(a)) instead of assuming the two walks list elements in the same order. Also records whether each
+ * sheet's content overflows its own band. This is case 6's one measurement, repeated at every width
+ * in `SWEEP_WIDTHS`. */
 async function collectSweepRow(page: Page, width: number): Promise<SweepRow> {
   const viewport = page.viewportSize();
   await page.setViewportSize({ width, height: viewport?.height ?? 1400 });
 
   const raw = await page.evaluate(() => {
     const sheets = Array.from(document.querySelectorAll<HTMLElement>("[data-order-form-sheet]"));
-    const samples: { label: string; fontPx: number }[] = [];
+    const samples: { key: string; label: string; fontPx: number }[] = [];
     const overflowBySheet: boolean[] = [];
-    for (const sheet of sheets) {
+
+    const paintsOwnText = (el: Element) =>
+      Array.from(el.childNodes).some(
+        (node) => node.nodeType === Node.TEXT_NODE && (node.textContent ?? "").trim().length > 0,
+      );
+
+    // Rebuilds "which child of which child..." from `sheet` down to `el`, using sibling position
+    // among Element children at each level. The DOM tree does not change between sweep widths (only
+    // layout does — see the caller), so this path resolves to the same element at every width.
+    const pathFromSheet = (el: Element, sheet: Element) => {
+      const steps: number[] = [];
+      let node: Element | null = el;
+      while (node && node !== sheet) {
+        const parent: Element | null = node.parentElement;
+        if (!parent) break;
+        steps.unshift(Array.prototype.indexOf.call(parent.children, node));
+        node = parent;
+      }
+      return steps.join(".");
+    };
+
+    sheets.forEach((sheet, sheetIndex) => {
       overflowBySheet.push(sheet.scrollHeight > sheet.clientHeight + 0.5);
-      const all: HTMLElement[] = [sheet, ...Array.from(sheet.querySelectorAll<HTMLElement>("*"))];
+      const all: Element[] = [sheet, ...Array.from(sheet.querySelectorAll("*"))];
       for (const el of all) {
+        if (!paintsOwnText(el)) continue;
         const fontPx = Number.parseFloat(getComputedStyle(el).fontSize);
         if (!Number.isFinite(fontPx)) continue;
         const cls = el.getAttribute("class");
         const label = el.tagName.toLowerCase() + (cls ? "." + cls.split(/\s+/)[0] : "");
-        samples.push({ label, fontPx });
+        samples.push({ key: `${sheetIndex}:${pathFromSheet(el, sheet)}`, label, fontPx });
       }
-    }
+    });
+
     return { samples, overflowBySheet };
   });
 
-  const samples: FontSample[] = raw.samples.map((s, index) => ({ index, ...s }));
+  const samples: FontSample[] = raw.samples;
   const distinctSizes = [...new Set(samples.map((s) => Math.round(s.fontPx * 100) / 100))].sort((a, b) => a - b);
   const smallest = samples.reduce<FontSample | undefined>(
     (min, s) => (!min || s.fontPx < min.fontPx ? s : min),
@@ -221,7 +257,7 @@ async function collectSweepRow(page: Page, width: number): Promise<SweepRow> {
   return {
     width,
     smallestPx: smallest?.fontPx ?? Number.NaN,
-    smallestLabel: smallest?.label ?? "(no sized element found)",
+    smallestLabel: smallest?.label ?? "(no text-painting element found)",
     distinctSizes,
     overflowBySheet: raw.overflowBySheet,
     samples,
@@ -346,18 +382,42 @@ test.describe("Summary order form — touch print box (260910-2ny)", () => {
     expect(above1, "SWEEP_WIDTHS must include 760").toBeDefined();
     expect(above2, "SWEEP_WIDTHS must include 812").toBeDefined();
     const growthRatio = above2!.width / above1!.width;
-    const count = Math.min(above1!.samples.length, above2!.samples.length);
+
+    // Match samples by their DOM-path key, not by array position: `above1.samples[i]` and
+    // `above2.samples[i]` are two SEPARATE walks of the sheet, one per collectSweepRow call, and
+    // nothing guarantees `querySelectorAll("*")` visits elements in the same order at every call
+    // just because the underlying tree did not change — an index-aligned comparison across two
+    // independent layouts is a false positive of its own. Unmatched samples (present in one walk,
+    // absent from the other) are skipped rather than compared against something they are not.
+    const samplesByKeyAbove1 = new Map(above1!.samples.map((s) => [s.key, s]));
+    const samplesByKeyAbove2 = new Map(above2!.samples.map((s) => [s.key, s]));
+    const matchedPairs = [...samplesByKeyAbove1.entries()]
+      .map(([key, a]) => ({ key, a, b: samplesByKeyAbove2.get(key) }))
+      .filter((pair): pair is { key: string; a: FontSample; b: FontSample } => pair.b !== undefined);
     expect(
-      count,
-      "the two widths above the design width produced no elements to compare — the sweep found nothing sized",
+      matchedPairs.length,
+      "the two widths above the design width produced no matched, text-painting elements to compare — the sweep found nothing sized",
     ).toBeGreaterThan(0);
-    for (let i = 0; i < count; i++) {
-      const a = above1!.samples[i];
-      const b = above2!.samples[i];
+
+    // This stylesheet's two clamp floors (order-form.css ~line 82-90, 226-228): `--order-form-wordmark`
+    // floors at 16px, every other `--order-form-*` token floors at 12px. Below DESIGN_WIDTH_DOTS the
+    // clamp intentionally holds a token at its floor instead of shrinking further — a value pinned
+    // there is the clamp doing its job, not a bug, and it cannot be expected to scale. The exemption
+    // below only ever applies when the NARROWER of the two widths being compared is below the design
+    // width; 760 and 812 (this case's own pair) are both above it, so the exemption never actually
+    // fires here today, and it can never mask a fixed-pixel size that fails to scale ABOVE the design
+    // width — the one thing this case exists to catch — only a legitimately floored one below it.
+    const CLAMP_FLOOR_PX = [12, 16];
+    const comparingBelowDesignWidth = Math.min(above1!.width, above2!.width) < DESIGN_WIDTH_DOTS;
+
+    for (const { key, a, b } of matchedPairs) {
+      if (comparingBelowDesignWidth && a.fontPx === b.fontPx && CLAMP_FLOOR_PX.includes(a.fontPx)) {
+        continue;
+      }
       const actualRatio = b.fontPx / a.fontPx;
       expect(
         Math.abs(actualRatio - growthRatio) / growthRatio,
-        `${b.label} (element #${i}) does not scale with the page: ${a.fontPx.toFixed(3)}px at ${above1!.width} dots -> ${b.fontPx.toFixed(3)}px at ${above2!.width} dots (ratio ${actualRatio.toFixed(4)}, expected ~${growthRatio.toFixed(4)}) — a fixed-pixel size prints disproportionately small on a page wider than the design width`,
+        `${b.label} (${key}) does not scale with the page: ${a.fontPx.toFixed(3)}px at ${above1!.width} dots -> ${b.fontPx.toFixed(3)}px at ${above2!.width} dots (ratio ${actualRatio.toFixed(4)}, expected ~${growthRatio.toFixed(4)}) — a fixed-pixel size prints disproportionately small on a page wider than the design width`,
       ).toBeLessThanOrEqual(0.005);
     }
 
