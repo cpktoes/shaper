@@ -22,7 +22,6 @@ import { useUnits } from "@/components/units-provider";
 import { formatDim, stationLabel } from "@/lib/geometry/measure-display";
 import { inchesToMm, type UnitsSystem } from "@/lib/geometry/units";
 import {
-  GATEABLE_RAIL_REFERENCE_GROUPS,
   PLAN_REF_PATHS,
   PLAN_REF_VIEWBOX,
   REF_DASH_PX,
@@ -59,7 +58,8 @@ interface RailReferenceLegendEntry {
 }
 
 /** The prototype's own nine legend entries (Rails.dc.html lines 1290-1298), in its own order —
- * D-03's "all nine start ticked" is the caller's (`RailInstructions`) local state, not this list. */
+ * D-01/D-02's "all nine start ticked" is the shared `RailLegendProvider`'s own seed
+ * (`rail-legend-provider.tsx`), not this list. */
 export const RAIL_REFERENCE_LEGEND: RailReferenceLegendEntry[] = [
   { key: "deckMark1", label: "Deck Marks 1", color: REF_GROUP_SCREEN_COLORS.deckMark1 },
   { key: "deckBand1", label: "Deck Band 1", color: REF_GROUP_SCREEN_COLORS.deckBand1 },
@@ -71,11 +71,6 @@ export const RAIL_REFERENCE_LEGEND: RailReferenceLegendEntry[] = [
   { key: "railTuck1", label: "Rail Tucks 1", color: REF_GROUP_SCREEN_COLORS.railTuck1 },
   { key: "tuckBlend", label: "Tuck blend to hard tail", color: REF_GROUP_SCREEN_COLORS.tuckBlend },
 ];
-
-/** Every gateable group, for a caller (the third print sheet, 08-05) that wants every line drawn
- * regardless of any on-screen tick state — the fixed reference sheet is always "every legend line
- * drawn" (D-08), never borrowed from this tab's own ticked set. */
-export const ALL_RAIL_REFERENCE_GROUPS: Set<RailReferenceGroup> = new Set(GATEABLE_RAIL_REFERENCE_GROUPS);
 
 // The prototype's own 499x630 layout box (Rails.dc.html line 417), before its hard-coded
 // `scale(0.7492)` — ported here as proportions of one box that fits its container, never that

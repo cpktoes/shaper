@@ -15,7 +15,6 @@
  */
 
 import { useMemo, useState } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useUnits } from "@/components/units-provider";
 import { TwoOptionToggle } from "@/components/viewer/two-option-toggle";
 import { formatMark } from "@/lib/geometry/measure-display";
@@ -28,8 +27,9 @@ import {
 } from "@/lib/geometry/rail-bands";
 import { inchesToMm, type Mm } from "@/lib/geometry/units";
 import { buildRailCallouts, deOverlapCallouts, RAIL_CALLOUT_AXIS_CLEARANCE, RAIL_CALLOUT_MIN_GAP } from "./rail-callouts";
-import { RAIL_REFERENCE_LEGEND, RailPlanSideFigure, formatTaperTuckRange } from "./rail-plan-side-figure";
-import type { RailReferenceGroup } from "./rail-reference-paths";
+import { useRailLegend } from "./rail-legend-provider";
+import { RailLegendTicks } from "./rail-legend-ticks";
+import { RailPlanSideFigure, formatTaperTuckRange } from "./rail-plan-side-figure";
 import { RailSectionPlot, railPlotProjection } from "./rail-section-plot";
 
 type FlatDomed = "flat" | "domed";
@@ -114,22 +114,12 @@ export function RailInstructions() {
   const domed = flatDomed === "domed";
   const { system } = useUnits();
 
-  // All nine legend items start ticked (D-03). Screen-only UI state: it never reaches the design
-  // store, never marks a board dirty, and is never read outside this component — the printed
-  // sheet (08-05) asks RailPlanSideFigure's own "every gateable group" constant for every line
-  // instead of borrowing this tab's own ticked set (D-08).
-  const [visibleGroups, setVisibleGroups] = useState<Set<RailReferenceGroup>>(
-    () => new Set(RAIL_REFERENCE_LEGEND.map((entry) => entry.key)),
-  );
-
-  function toggleGroup(key: RailReferenceGroup) {
-    setVisibleGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
+  // The nine legend ticks are shared with the printed Rail Band Instructions sheet, and with the
+  // Summary's own mirrored ticks — by the founder's own decision (D-01), this tab no longer keeps
+  // a private copy. The shared set lives in `rail-legend-provider.tsx`, mounted once at
+  // `app/design/layout.tsx`; it still never reaches the design store and still never marks a board
+  // dirty (D-02) — it is simply read from one place instead of two.
+  const { visibleGroups } = useRailLegend();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
@@ -181,21 +171,7 @@ export function RailInstructions() {
           </ol>
         </div>
 
-        <div className="flex flex-wrap gap-x-4 gap-y-2">
-          {RAIL_REFERENCE_LEGEND.map((entry) => (
-            <label
-              key={entry.key}
-              className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 print:min-h-0 text-sm text-surf-ink-muted"
-            >
-              <Checkbox checked={visibleGroups.has(entry.key)} onCheckedChange={() => toggleGroup(entry.key)} />
-              <span
-                className="inline-block h-[9px] w-[9px] flex-shrink-0 rounded-full"
-                style={{ background: entry.color }}
-              />
-              {entry.label}
-            </label>
-          ))}
-        </div>
+        <RailLegendTicks className="flex flex-wrap gap-x-4 gap-y-2 text-sm" />
 
         <RailPlanSideFigure visibleGroups={visibleGroups} />
       </div>
