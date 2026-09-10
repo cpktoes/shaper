@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 Phase: 09 (the-design-screens-on-a-phone) — EXECUTING
 Plan: 1 of 7
 Status: Executing Phase 09
-Last activity: 2026-09-09 - Completed quick task 260909-oge: The readout box that appears while a finger shapes a point stays outside the board's outline on TEMPLATE and outside the side profile on ROCKER, so it never covers the curve being shaped
+Last activity: 2026-09-09 - Completed quick task 260909-sda: The product is now called Shaper Assistant, matching its home at shaperassistant.com: the wordmark on every screen and printed sheet, the browser titles, and the project's own docs say so, while every mention of a shaper the person stays exactly as it is
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
@@ -265,6 +265,7 @@ Recent decisions affecting current work:
 | 260909-ok2 | A diamond tail's angle stays fixed under the drag point as well as the greyed-out slider: dragging the tail handle shapes only the tail's fullness, so the drawing can never disagree with a locked control | 2026-09-09 | 6067644 | [260909-ok2-a-diamond-tail-s-angle-stays-fixed-under](./quick/260909-ok2-a-diamond-tail-s-angle-stays-fixed-under/) |
 | 260909-oho | The phone's Fine adjust fold is gone: every slider sits in its own section on TEMPLATE and ROCKER exactly where it does on a desktop, so nothing is tucked away behind a header | 2026-09-09 | 6f7bc63 | [260909-oho-the-phone-s-fine-adjust-fold-is-gone-eve](./quick/260909-oho-the-phone-s-fine-adjust-fold-is-gone-eve/) |
 | 260909-oge | The readout box that appears while a finger shapes a point stays outside the board's outline on TEMPLATE and outside the side profile on ROCKER, so it never covers the curve being shaped | 2026-09-09 | 3219039 | [260909-oge-the-readout-box-that-appears-while-a-fin](./quick/260909-oge-the-readout-box-that-appears-while-a-fin/) |
+| 260909-sda | The product is now called Shaper Assistant, matching its home at shaperassistant.com: the wordmark on every screen and printed sheet, the browser titles, and the project's own docs say so, while every mention of a shaper the person stays exactly as it is | 2026-09-09 | be1abcf | [260909-sda-the-product-is-now-called-shaper-assista](./quick/260909-sda-the-product-is-now-called-shaper-assista/) |
 
 ## Deferred Items
 
