@@ -176,13 +176,28 @@ async function forceTouchSheet(page: Page) {
 
 /** `key` is a DOM path from its sheet's root ("sheetIndex:childIndex.childIndex...") captured at
  * collection time, not an array position — see the matching note in case 6(a) below for why a
- * position would be the wrong thing to compare against. */
-type FontSample = { key: string; label: string; fontPx: number };
+ * position would be the wrong thing to compare against. `isSvg` records whether the element is
+ * SVG-namespaced (`el.namespaceURI === "http://www.w3.org/2000/svg"`), detected by namespace
+ * rather than by tag name or class so it can never be fooled by an HTML element that merely looks
+ * like a drawing label. A board drawing's own `<text>` scales with that drawing's `viewBox` fit,
+ * not with the sheet's `cqw` container, so it stays in every reported number below (it is real
+ * measured type on the page) but is excluded from case 6(a)'s linear-with-page-width assertion,
+ * which is meaningless for it. */
+type FontSample = { key: string; label: string; fontPx: number; isSvg: boolean };
 
 type SweepRow = {
   width: number;
   smallestPx: number;
   smallestLabel: string;
+  /** Smallest size among HTML (non-SVG) samples only — the `--order-form-*` token scale, the one
+   * case 6(a) actually holds to a growth ratio and the one with a clamp floor. */
+  smallestHtmlPx: number;
+  smallestHtmlLabel: string;
+  /** Smallest size among SVG-namespaced samples only — board-drawing labels, which scale with
+   * their own `viewBox` fit rather than the container and have no floor. Reported, never
+   * asserted on. */
+  smallestSvgPx: number;
+  smallestSvgLabel: string;
   distinctSizes: number[];
   overflowBySheet: boolean[];
   samples: FontSample[];
@@ -199,16 +214,17 @@ type SweepRow = {
  * "is this an HTML text tag" — filtering by tag name would silently drop them. Each kept sample is
  * keyed to its element by a DOM path from the sheet root rather than by array position, so a walk
  * taken at one width can be matched to the same element in a walk taken at another width (case
- * 6(a)) instead of assuming the two walks list elements in the same order. Also records whether each
- * sheet's content overflows its own band. This is case 6's one measurement, repeated at every width
- * in `SWEEP_WIDTHS`. */
+ * 6(a)) instead of assuming the two walks list elements in the same order. Each sample also records
+ * whether it is SVG-namespaced (see `FontSample` above) — reported here, but only excluded from the
+ * scaling assertion itself, in case 6(a). Also records whether each sheet's content overflows its
+ * own band. This is case 6's one measurement, repeated at every width in `SWEEP_WIDTHS`. */
 async function collectSweepRow(page: Page, width: number): Promise<SweepRow> {
   const viewport = page.viewportSize();
   await page.setViewportSize({ width, height: viewport?.height ?? 1400 });
 
   const raw = await page.evaluate(() => {
     const sheets = Array.from(document.querySelectorAll<HTMLElement>("[data-order-form-sheet]"));
-    const samples: { key: string; label: string; fontPx: number }[] = [];
+    const samples: { key: string; label: string; fontPx: number; isSvg: boolean }[] = [];
     const overflowBySheet: boolean[] = [];
 
     const paintsOwnText = (el: Element) =>
@@ -240,7 +256,12 @@ async function collectSweepRow(page: Page, width: number): Promise<SweepRow> {
         if (!Number.isFinite(fontPx)) continue;
         const cls = el.getAttribute("class");
         const label = el.tagName.toLowerCase() + (cls ? "." + cls.split(/\s+/)[0] : "");
-        samples.push({ key: `${sheetIndex}:${pathFromSheet(el, sheet)}`, label, fontPx });
+        // Namespace, not tag name or class: an SVG `<text>` (or `<tspan>`) reports
+        // "http://www.w3.org/2000/svg" here, an HTML element reports the XHTML namespace. That is
+        // what lets the scaling assertion in case 6(a) tell a board-drawing label — scaled by its
+        // own viewBox fit, not by the container — apart from real `--order-form-*` token type.
+        const isSvg = el.namespaceURI === "http://www.w3.org/2000/svg";
+        samples.push({ key: `${sheetIndex}:${pathFromSheet(el, sheet)}`, label, fontPx, isSvg });
       }
     });
 
@@ -249,15 +270,25 @@ async function collectSweepRow(page: Page, width: number): Promise<SweepRow> {
 
   const samples: FontSample[] = raw.samples;
   const distinctSizes = [...new Set(samples.map((s) => Math.round(s.fontPx * 100) / 100))].sort((a, b) => a - b);
-  const smallest = samples.reduce<FontSample | undefined>(
-    (min, s) => (!min || s.fontPx < min.fontPx ? s : min),
-    undefined,
-  );
+  const smallestOf = (pool: FontSample[]) =>
+    pool.reduce<FontSample | undefined>((min, s) => (!min || s.fontPx < min.fontPx ? s : min), undefined);
+  // Reported in three ways for three different questions: `smallest`/`smallestPx` is the overall
+  // floor across everything painted on the sheet (unchanged — still what the sweep table and the
+  // founder's points conversion use); `smallestHtml*` and `smallestSvg*` split that same set by
+  // namespace purely so the console table can label which family a number belongs to. Only
+  // `smallestHtml*`-shaped data feeds an assertion (case 6(a), below); these two are reporting only.
+  const smallest = smallestOf(samples);
+  const smallestHtml = smallestOf(samples.filter((s) => !s.isSvg));
+  const smallestSvg = smallestOf(samples.filter((s) => s.isSvg));
 
   return {
     width,
     smallestPx: smallest?.fontPx ?? Number.NaN,
     smallestLabel: smallest?.label ?? "(no text-painting element found)",
+    smallestHtmlPx: smallestHtml?.fontPx ?? Number.NaN,
+    smallestHtmlLabel: smallestHtml?.label ?? "(no HTML text-painting element found)",
+    smallestSvgPx: smallestSvg?.fontPx ?? Number.NaN,
+    smallestSvgLabel: smallestSvg?.label ?? "(no SVG text-painting element found)",
     distinctSizes,
     overflowBySheet: raw.overflowBySheet,
     samples,
@@ -357,6 +388,17 @@ test.describe("Summary order form — touch print box (260910-2ny)", () => {
           `distinct=[${row.distinctSizes.map((s) => s.toFixed(2)).join(", ")}]  ` +
           `overflow=[${row.overflowBySheet.map((o) => (o ? "OVERFLOW" : "ok")).join(", ")}]`,
       );
+      // These two answer different questions (see `SweepRow`, above): HTML is the `--order-form-*`
+      // token scale case 6(a) actually holds to a growth ratio, with the 12px/16px clamp floor;
+      // SVG is a board-drawing label, scaled by its own viewBox fit rather than the page, with no
+      // floor and no scaling assertion made on it. Labelled explicitly so this table is never read
+      // as one undifferentiated "smallest text" figure.
+      console.log(
+        `[260910-2ny]     smallest HTML (--order-form-* token scale) = ${row.smallestHtmlPx.toFixed(3)}px (${row.smallestHtmlLabel})`,
+      );
+      console.log(
+        `[260910-2ny]     smallest SVG (board-drawing label, own viewBox fit) = ${row.smallestSvgPx.toFixed(3)}px (${row.smallestSvgLabel})`,
+      );
     }
 
     const smallestOverall = rows.reduce((min, r) => (r.smallestPx < min.smallestPx ? r : min), rows[0]);
@@ -394,9 +436,23 @@ test.describe("Summary order form — touch print box (260910-2ny)", () => {
     const matchedPairs = [...samplesByKeyAbove1.entries()]
       .map(([key, a]) => ({ key, a, b: samplesByKeyAbove2.get(key) }))
       .filter((pair): pair is { key: string; a: FontSample; b: FontSample } => pair.b !== undefined);
+
+    // SVG text (detected by namespace on `FontSample.isSvg` — see the type's own comment above) is
+    // excluded from the scaling assertion below, not from the match: a board drawing's `<text>` is
+    // fitted inside its own `viewBox` and scales with THAT fit, not with the sheet's `cqw`
+    // container — as the page gets wider a fitted drawing's internal scale moves independently of
+    // the container, which is why a real sweep found these labels non-monotonic in page width
+    // (e.g. one project measured 7.41px at 560, 11.96px at 680/733/760, 9.34px at 812, 8.04px at
+    // 900) rather than growing smoothly with it. A linear-with-page-width assertion is meaningless
+    // for that text and would fail on correct code forever, so this case only holds HTML type — the
+    // `--order-form-*` token scale this stylesheet actually promises to grow — to a growth ratio.
+    // SVG samples are never dropped from the sweep itself: they stay in `matchedPairs`, in every
+    // row's console output, and in `smallestPx`/`smallestLabel`/`distinctSizes` above; only the
+    // assertion narrows to `htmlMatchedPairs`.
+    const htmlMatchedPairs = matchedPairs.filter((pair) => !pair.a.isSvg && !pair.b.isSvg);
     expect(
-      matchedPairs.length,
-      "the two widths above the design width produced no matched, text-painting elements to compare — the sweep found nothing sized",
+      htmlMatchedPairs.length,
+      "the two widths above the design width produced no matched HTML text-painting elements to compare (SVG board-drawing labels are excluded from this assertion on purpose — see the comment above) — the sweep found nothing on the token scale to check",
     ).toBeGreaterThan(0);
 
     // This stylesheet's two clamp floors (order-form.css ~line 82-90, 226-228): `--order-form-wordmark`
@@ -410,7 +466,7 @@ test.describe("Summary order form — touch print box (260910-2ny)", () => {
     const CLAMP_FLOOR_PX = [12, 16];
     const comparingBelowDesignWidth = Math.min(above1!.width, above2!.width) < DESIGN_WIDTH_DOTS;
 
-    for (const { key, a, b } of matchedPairs) {
+    for (const { key, a, b } of htmlMatchedPairs) {
       if (comparingBelowDesignWidth && a.fontPx === b.fontPx && CLAMP_FLOOR_PX.includes(a.fontPx)) {
         continue;
       }
