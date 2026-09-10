@@ -1,13 +1,15 @@
 "use client";
 
 /**
- * The order form's third sheet (PRNT-05, D-08, D-09) — a fixed reference page at the back of the
- * print stack. It always shows the Flat example rail with every mark named and the plan/side
- * figure with every legend line drawn, whatever the INSTRUCTIONS tab's own Flat/Domed switch and
- * legend ticks are set to on screen: two prints of the same board are the same sheet. This
- * component takes no props that vary its content and holds no state of its own to reflect — it
- * composes the exact same pieces the INSTRUCTIONS tab renders (`ExampleRailFigure`,
- * `RailPlanSideFigure`) so the printed sheet can never drift from the screen that explains it.
+ * The order form's third sheet (PRNT-05, D-08, D-09, D-01) — a reference page at the back of the
+ * print stack. It always shows the Flat example rail with its own stated thickness (D-08 stands
+ * for the example rail), but the plan/side figure now draws only the legend lines the shaper left
+ * ticked — on either screen, since RAILS → INSTRUCTIONS and the Summary's own mirrored ticks are
+ * one shared set (D-01 overturns the legend half of the old "always every line" rule; the Flat
+ * example rail half still stands). So two prints of the same board can differ if the shaper
+ * changed his mind about which lines he wants to see. This component still holds no state of its
+ * own to drift — it reads the one shared set through `useRailLegend()` rather than keeping a
+ * second copy that could disagree with the screen.
  *
  * Rendered by `order-form.tsx` inside a third `<Sheet variant="instructions">`, conditional on
  * `usePrintRailInstructions()`, with the sheet's own `<PageMark>` — this component supplies only
@@ -16,10 +18,8 @@
 
 import { useUnits } from "@/components/units-provider";
 import { ExampleRailFigure, exampleRailThickness } from "@/components/rails/rail-instructions";
-import {
-  ALL_RAIL_REFERENCE_GROUPS,
-  RailPlanSideFigure,
-} from "@/components/rails/rail-plan-side-figure";
+import { useRailLegend } from "@/components/rails/rail-legend-provider";
+import { RailPlanSideFigure } from "@/components/rails/rail-plan-side-figure";
 import { formatMark } from "@/lib/geometry/measure-display";
 
 // D-08: the sheet is always the Flat rail, so its own stated example thickness (D-19) reads
@@ -28,6 +28,7 @@ import { formatMark } from "@/lib/geometry/measure-display";
 
 export function RailInstructionsSheet() {
   const { system } = useUnits();
+  const { visibleGroups } = useRailLegend();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -45,8 +46,9 @@ export function RailInstructionsSheet() {
             box always prints the same rail regardless of what was last selected on screen. */}
         <ExampleRailFigure domed={false} />
       </div>
-      {/* Every gateable group, always (D-08) — never the tab's own legend tick state. */}
-      <RailPlanSideFigure visibleGroups={ALL_RAIL_REFERENCE_GROUPS} />
+      {/* The shaper's own chosen lines (D-01) — shared with the RAILS tab's INSTRUCTIONS ticks and
+          the Summary's own mirrored ticks below the print buttons, never a hard-coded "every line". */}
+      <RailPlanSideFigure visibleGroups={visibleGroups} />
     </div>
   );
 }

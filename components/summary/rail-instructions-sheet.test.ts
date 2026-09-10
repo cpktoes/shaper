@@ -4,13 +4,15 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * Source-contract tests for `RailInstructionsSheet` (the order form's third sheet, PRNT-05, D-08)
- * — proving structurally that the sheet is fixed, not a mirror of the INSTRUCTIONS tab's own
- * on-screen state: no state of its own, the non-domed rail hard-set rather than read from a
- * variable, every legend group, and the Copywriting Contract's own strings verbatim. Same idiom as
- * `lib/units-isolation.test.ts` and `components/rails/view-full-sized-dialog.test.ts`: read the
- * real source, strip comments, assert a structural property — so a mention inside a doc comment
- * (like this one) can never false-positive an assertion.
+ * Source-contract tests for `RailInstructionsSheet` (the order form's third sheet, PRNT-05, D-01,
+ * D-08) — proving structurally that the sheet is the Flat example rail (fixed, always) drawn with
+ * the shaper's own chosen legend lines (shared, D-01 overturns the old "always every line" rule for
+ * the legend half only): no state of its own, the non-domed rail hard-set rather than read from a
+ * variable, the shared `useRailLegend()` set passed straight through, and the Copywriting
+ * Contract's own strings verbatim. Same idiom as `lib/units-isolation.test.ts` and
+ * `components/rails/view-full-sized-dialog.test.ts`: read the real source, strip comments, assert a
+ * structural property — so a mention inside a doc comment (like this one) can never false-positive
+ * an assertion.
  */
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -30,15 +32,16 @@ function readStripped(relativePath: string): string {
 const SHEET_PATH = "components/summary/rail-instructions-sheet.tsx";
 const ORDER_FORM_PATH = "components/summary/order-form.tsx";
 
-describe("RailInstructionsSheet — a fixed reference sheet, never a partial one (D-08)", () => {
+describe("RailInstructionsSheet — the Flat example rail with the shaper's own chosen lines (D-01, D-08)", () => {
   const sheetSource = readStripped(SHEET_PATH);
   const orderFormSource = readStripped(ORDER_FORM_PATH);
 
-  it("names ALL_RAIL_REFERENCE_GROUPS — every legend line, never a subset gated by on-screen ticks", () => {
-    expect(sheetSource).toContain("ALL_RAIL_REFERENCE_GROUPS");
+  it("reads the shared set from useRailLegend and passes it straight through to RailPlanSideFigure (D-01)", () => {
+    expect(sheetSource).toContain("useRailLegend");
+    expect(sheetSource).toMatch(/visibleGroups=\{visibleGroups\}/);
   });
 
-  it("holds no state of its own to reflect", () => {
+  it("still keeps no set of its own to drift — reads the shared one, not a local useState/useReducer", () => {
     expect(sheetSource).not.toMatch(/useState/);
     expect(sheetSource).not.toMatch(/useReducer/);
   });
@@ -91,5 +94,49 @@ describe("RailInstructionsSheet — a fixed reference sheet, never a partial one
     expect(thirdSheetIndex).toBeGreaterThan(-1);
     const before = orderFormSource.slice(Math.max(0, thirdSheetIndex - 150), thirdSheetIndex);
     expect(before).toMatch(/<Sheet\b[^>]*variant="instructions"/);
+  });
+});
+
+describe("the Summary's own mirrored ticks, under the print buttons (D-01)", () => {
+  const orderFormSource = readStripped(ORDER_FORM_PATH);
+
+  it("renders the shared ticks component", () => {
+    expect(orderFormSource).toContain("RailLegendTicks");
+  });
+
+  it("is gated on the same preference as the sheet itself", () => {
+    const ticksIndex = orderFormSource.indexOf("<RailLegendTicks");
+    expect(ticksIndex).toBeGreaterThan(-1);
+    const window = orderFormSource.slice(Math.max(0, ticksIndex - 300), ticksIndex);
+    expect(window).toMatch(/printRailInstructions\s*&&/);
+  });
+
+  it("sits below the paper, never on it — after the data-print-hide control row's opening tag", () => {
+    const rowIndex = orderFormSource.indexOf("data-print-hide");
+    const ticksIndex = orderFormSource.indexOf("<RailLegendTicks");
+    expect(rowIndex).toBeGreaterThan(-1);
+    expect(ticksIndex).toBeGreaterThan(rowIndex);
+  });
+
+  it("cannot break the phone row — the control row still wraps and centres, and the ticks always take their own line", () => {
+    const rowOpenMatch = orderFormSource.match(/data-print-hide className="([^"]*)"/);
+    expect(rowOpenMatch).not.toBeNull();
+    expect(rowOpenMatch![1]).toContain("flex-wrap");
+    expect(rowOpenMatch![1]).toContain("justify-center");
+
+    const ticksCallMatch = orderFormSource.match(/<RailLegendTicks\s+className="([^"]*)"/);
+    expect(ticksCallMatch).not.toBeNull();
+    expect(ticksCallMatch![1]).toContain("flex-wrap");
+
+    const wrapperMatch = orderFormSource.match(/<div className="([^"]*w-full[^"]*)">\s*<span>Lines on the instructions sheet/);
+    expect(wrapperMatch).not.toBeNull();
+    expect(wrapperMatch![1]).toContain("w-full");
+  });
+
+  it("the page-count sentences are unchanged, byte for byte", () => {
+    expect(orderFormSource).toContain(
+      "Two portrait pages, printed double-sided — plus a single-sided Rail Band Instructions page.",
+    );
+    expect(orderFormSource).toContain("Two portrait pages — print double-sided for a front-and-back form.");
   });
 });
