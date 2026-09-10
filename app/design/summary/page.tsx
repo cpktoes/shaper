@@ -3,7 +3,7 @@ import { OrderForm } from "@/components/summary/order-form";
 import "./order-form.css";
 
 export const metadata: Metadata = {
-  title: "Board Order Form — Shaper",
+  title: "Board Order Form — Shaper Assistant",
   description: "The whole board design on one printable order form.",
 };
 

@@ -7,7 +7,8 @@
  * editing the URL. An anonymous or never-saved board still lives only in the design store's
  * memory, so a hard navigation would drop it — but a saved board on a signed-in shaper's account
  * now survives one, since it autosaves to Postgres regardless of how the shaper moves between
- * screens. The SHAPER wordmark links back to `/` for the same client-side-navigation reason.
+ * screens. The SHAPER ASSISTANT wordmark links back to `/` for the same client-side-navigation
+ * reason.
  * Client component because it reads the active path (usePathname) to highlight the current link,
  * and mounts the nav's right-hand chrome cluster: the settings menu, the Save control (D-05), and
  * the sign-in/account control (D-02).
@@ -54,7 +55,7 @@ export function SiteNav() {
           href="/"
           className="text-sm font-extrabold tracking-architectural text-surf-ink transition-colors hover:text-surf-accent-ink"
         >
-          SHAPER
+          SHAPER ASSISTANT
         </Link>
         <div className="flex items-center gap-5">
           {NAV_LINKS.map((link) => {

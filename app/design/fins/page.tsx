@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { FinPlacementEditor } from "@/components/fins/fin-placement-editor";
 
 export const metadata: Metadata = {
-  title: "Fin Setup & Placement — Shaper",
+  title: "Fin Setup & Placement — Shaper Assistant",
   description: "Place a surfboard's fins with live, calculated positions, toe and spread.",
 };
 

@@ -8,7 +8,7 @@ import { listModels } from "@/lib/db/queries";
 import { parseSnapshot } from "@/lib/models/design-snapshot";
 
 export const metadata: Metadata = {
-  title: "Shaper — Start a New Board",
+  title: "Shaper Assistant — Start a New Board",
   description: "Pick a board type and start shaping.",
 };
 

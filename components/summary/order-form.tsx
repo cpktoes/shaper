@@ -569,7 +569,7 @@ export function OrderForm() {
           <div className="flex flex-none items-baseline justify-between gap-3 border-b-[1.5px] border-surf-ink pb-1 order-form-band-refhead">
             <div className="flex min-w-0 items-baseline gap-2">
               <span className="font-display font-extrabold tracking-architectural text-surf-ink uppercase leading-none order-form-wordmark">
-                Shaper
+                Shaper Assistant
               </span>
               <span className="truncate font-bold text-surf-ink order-form-value">
                 {boardName || "Unnamed board"}

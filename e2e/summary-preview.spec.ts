@@ -20,7 +20,7 @@ const PRINT_RAIL_INSTRUCTIONS_STORAGE_KEY = "shaper-print-rail-instructions";
 const DESIGN_WIDTH = 880;
 /** Tall over wide, from the sheet's own `aspect-ratio: 7.87 / 10.37` in order-form.css. */
 const SHEET_ASPECT = 10.37 / 7.87;
-/** The SHAPER wordmark's type at the design width — `2.8cqw` of 880 — measured identical in both
+/** The SHAPER ASSISTANT wordmark's type at the design width — `2.8cqw` of 880 — measured identical in both
  * engines once the sheet is laid out at its design width rather than the screen's. */
 const WORDMARK_PX = 24.64;
 
@@ -55,7 +55,7 @@ type PreviewGeometry = {
   firstSheet: { width: number; height: number; left: number; right: number };
   /** The first sheet's laid-out width, from `offsetWidth` — unaffected by any `transform` scale. */
   firstSheetOffsetWidth: number;
-  /** The computed font size (px) of the SHAPER wordmark, wherever it appears on the stack. */
+  /** The computed font size (px) of the SHAPER ASSISTANT wordmark, wherever it appears on the stack. */
   wordmarkPx: number;
   /** Every sheet's painted left/right edge. */
   sheetEdges: { left: number; right: number }[];
