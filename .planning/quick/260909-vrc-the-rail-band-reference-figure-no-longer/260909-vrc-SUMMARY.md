@@ -29,6 +29,13 @@ exact hues.
   `--surf-rail-tuck` in every theme block including the print block, and the `--color-surf-*`
   bridge for Tailwind.
 
+- Follow-up (e1a41a0): the plan view is drawn over a raster crop of the prototype's background (white
+  paper, grey grid), which still showed as a white block. Two more per-theme tokens,
+  `--surf-raster-filter` (`none` on the light ramps, `invert(1)` on the dark) and
+  `--surf-raster-blend` (`normal` / `screen`), are applied to that image through Tailwind
+  arbitrary properties; read back on Slate as `invert(1)` + `screen` on screen and `none` +
+  `normal` under print emulation.
+
 ## Measured
 
 Contrast against each ground (WCAG relative luminance): the lifted red reads 4.76:1 on Slate and
