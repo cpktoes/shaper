@@ -61,6 +61,7 @@ import { RockerViewer } from "@/components/rocker/rocker-viewer";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ExportPreviewDialog } from "@/components/template/export-preview-dialog";
+import { RailLegendTicks } from "@/components/rails/rail-legend-ticks";
 import { RailInstructionsSheet } from "./rail-instructions-sheet";
 import {
   FormBox,
@@ -780,6 +781,22 @@ export function OrderForm() {
             ? "Two portrait pages, printed double-sided — plus a single-sided Rail Band Instructions page."
             : "Two portrait pages — print double-sided for a front-and-back form."}
         </span>
+        {/* These are the RAILS tab's own nine ticks (D-01), not a second set — ticking one here
+            changes the sheet above immediately and changes the INSTRUCTIONS tab too. No
+            Flat/Domed switch comes with them (D-03): the example rail above stays Flat always.
+            Gated on the same preference as the sheet itself: with the box unticked there is no
+            third sheet on screen and none on paper, so nine ticks would have nothing to change.
+            One nested `w-full` child, not nine more row siblings — on a flex child of this
+            wrapping, centred row, `w-full` forces its own line at every width, so the buttons and
+            hint keep line one on a desktop and a phone gets a tidy block instead of the ticks
+            interleaving with the buttons, which is what would undo the fix that stopped the
+            Summary scrolling sideways. */}
+        {printRailInstructions && (
+          <div className="flex w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-surf-ink-muted">
+            <span>Lines on the instructions sheet:</span>
+            <RailLegendTicks className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1" />
+          </div>
+        )}
       </div>
     </div>
   );
