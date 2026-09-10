@@ -156,4 +156,73 @@ describe("the RAILS tab does NOT ask for a second, unclickable copy of the key (
     expect(callMatch).not.toBeNull();
     expect(callMatch![0]).not.toMatch(/showLineKey/);
   });
+
+  it("its own RailPlanSideFigure call carries no fit — the new opt-in height-driven fit is only for the printed sheet (quick 260910-kz2)", () => {
+    const callMatch = railsTabSource.match(/<RailPlanSideFigure\b[\s\S]*?\/>/);
+    expect(callMatch).not.toBeNull();
+    expect(callMatch![0]).not.toMatch(/fit=/);
+  });
+});
+
+/**
+ * Source-contract tests for the sheet's new height division (quick 260910-kz2, PRNT-05) — proving,
+ * before any source change, that the sheet has no way to stop its example rail band from being the
+ * ONLY thing that gives when the paper runs short. Every case below FAILS today: the sheet imports
+ * no `FIGURE_MAX_CARD_HEIGHT_PX` from the figure, declares no `FIGURE_MAX_BODY_SHARE_PERCENT` of
+ * its own, and asks the figure for no `fit` at all.
+ *
+ * **The browser half of this bug — that the example rail's own SVG measures literally 0x0 below
+ * 454 dots of page area — cannot be run from a worktree.** `npm run dev` fails here with
+ * Turbopack's "Could not find the Next.js package"; `e2e/summary-rail-instructions-fit.spec.ts`
+ * (written, not run, in this same commit) is what proves it in a real browser, on the main
+ * checkout, in quick task 260910-kz2's Task 3. The narrow sweep in that file exists because this
+ * sheet used to lose its own reference drawing on a small page with no clipping, no pagination and
+ * no warning — silently, which is the whole reason this is a bug worth fixing.
+ */
+describe("RailInstructionsSheet's height division between its two drawings (quick 260910-kz2)", () => {
+  const sheetSource = readStripped(SHEET_PATH);
+
+  it("imports FIGURE_MAX_CARD_HEIGHT_PX from the figure and declares its own FIGURE_MAX_BODY_SHARE_PERCENT, so neither number is a bare literal", () => {
+    const importMatch = sheetSource.match(
+      /import\s*\{([^}]*)\}\s*from\s*["']@\/components\/rails\/rail-plan-side-figure["']/,
+    );
+    expect(importMatch, "expected an import from rail-plan-side-figure").not.toBeNull();
+    const names = importMatch![1].split(",").map((n) => n.trim());
+    expect(names).toContain("RailPlanSideFigure");
+    expect(names).toContain("FIGURE_MAX_CARD_HEIGHT_PX");
+
+    const shareMatch = sheetSource.match(/const FIGURE_MAX_BODY_SHARE_PERCENT\s*=\s*([\d.]+)/);
+    expect(shareMatch, "expected a numeric const FIGURE_MAX_BODY_SHARE_PERCENT in the source").not.toBeNull();
+    const share = Number(shareMatch![1]);
+    expect(share).toBeGreaterThan(50);
+    expect(share).toBeLessThan(100);
+  });
+
+  it("composes the figure's own height box with min(), so the pixel cap wins whenever there is room", () => {
+    expect(sheetSource).toMatch(
+      /min\(\s*\$\{FIGURE_MAX_CARD_HEIGHT_PX\}px,\s*\$\{FIGURE_MAX_BODY_SHARE_PERCENT\}%\s*\)/,
+    );
+  });
+
+  it("asks the figure for the height-driven fit", () => {
+    const callMatch = sheetSource.match(/<RailPlanSideFigure\b[\s\S]*?\/>/);
+    expect(callMatch).not.toBeNull();
+    expect(callMatch![0]).toMatch(/fit="height"/);
+  });
+
+  it("the two drawing bands share one wrapper that is separate from the heading, and the heading cannot shrink", () => {
+    const flexColCount = (sheetSource.match(/flex-col/g) ?? []).length;
+    expect(
+      flexColCount,
+      "expected a drawings wrapper column, distinct from the sheet's own outer column, so a percentage height means 'of the two drawings' shared height'",
+    ).toBeGreaterThanOrEqual(2);
+
+    const headingBlock = sheetSource.match(/<div className="[^"]*flex-none[^"]*">[\s\S]{0,120}?Rail Band Instructions/);
+    expect(headingBlock, "expected the heading's own div to carry flex-none so it cannot shrink").not.toBeNull();
+
+    const exampleRailIndex = sheetSource.indexOf("<ExampleRailFigure");
+    const figureIndex = sheetSource.indexOf("<RailPlanSideFigure");
+    expect(exampleRailIndex).toBeGreaterThan(-1);
+    expect(figureIndex).toBeGreaterThan(exampleRailIndex);
+  });
 });
