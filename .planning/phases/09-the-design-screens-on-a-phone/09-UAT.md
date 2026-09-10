@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 09-the-design-screens-on-a-phone
 source: [09-VERIFICATION.md]
 started: 2026-09-09T10:33:06.945Z
-updated: 2026-09-09T19:16:07.810Z
+updated: 2026-09-10T05:45:10.024Z
 ---
 
 ## Current Test
 
-number: 4
-name: On a desktop browser at least 820px wide, across all five design screens: Tab to every sidebar control and confirm each one paints an obvious accent-coloured ring — every slider thumb, every tail-shape/fin-setup tile, every pill, every disclosure heading, every Reset Advanced Settings link, every checkbox, every select trigger and every typed field. Then, with the mouse, click every button, drag every slider, press rotate/construction/wide-view, and confirm nothing at rest or under the mouse looks any different from the deployed site.
-expected: |
-  Every control lights up clearly under the keyboard in the same accent-ink strength, in all four themes (Daylight, Chalk, Slate, Phosphor); nothing hovered, dragged, or resting has changed.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -30,7 +26,7 @@ result: pass
 
 ### 4. On a desktop browser at least 820px wide, across all five design screens: Tab to every sidebar control and confirm each one paints an obvious accent-coloured ring — every slider thumb, every tail-shape/fin-setup tile, every pill, every disclosure heading, every Reset Advanced Settings link, every checkbox, every select trigger and every typed field. Then, with the mouse, click every button, drag every slider, press rotate/construction/wide-view, and confirm nothing at rest or under the mouse looks any different from the deployed site.
 expected: Every control lights up clearly under the keyboard in the same accent-ink strength, in all four themes (Daylight, Chalk, Slate, Phosphor); nothing hovered, dragged, or resting has changed.
-result: [pending]
+result: pass
 
 ### 5. Hold an iPhone-sized phone in hand on the ROCKER screen at the default board and look at the side-profile drawing, which is narrower than the pinned drawing area (about 322x341px measured on an iPhone-14-class screen, versus the pinned area's own width).
 expected: The founder confirms the narrower rocker drawing still reads clearly enough in the hand, per D-18's accepted trade-off (the board stays upright with the phone rather than lying flat to fill the width).
@@ -38,7 +34,8 @@ result: pass
 
 ### 6. Two device checks, in place of the original test 6 (G-09-6: 'print buttons dont do anything'). (1) From the site's Home-Screen icon: go to RAILS, tap View Full Sized, and confirm the note — "Printing isn't available from the Home-Screen app — open this page in Safari to print the full-sized rail." — appears exactly where the Print button used to be, with no Print button visible. (2) From Safari itself (not the Home-Screen icon): go to RAILS, tap View Full Sized, confirm the Print button is there, tap it, confirm the print sheet opens, and measure the printed rail with a ruler in both Imperial and Metric.
 expected: (1) The note appears, no dead button. (2) The Print button works from Safari, the print sheet opens, and the printed rail is ruler-true (1:1) in both unit systems.
-result: [pending]
+result: pass
+note: "Founder (2026-09-09): printing works from Safari and from the Home-Screen icon alike — the icon evidently opens as a normal Safari page rather than a standalone app on this phone, so the note case was not exercised; no dead Print button anywhere."
 
 ### 7. At 360px wide in the Metric system, read the RAILS INSTRUCTIONS tab end to end (the example rail card, the three-step copy, the legend grid, the plan/side figure, the closing note).
 expected: Nothing clips, overlaps, or truncates, and the cm-formatted numbers read correctly.
@@ -47,9 +44,9 @@ result: pass
 ## Summary
 
 total: 7
-passed: 5
+passed: 7
 issues: 0
-pending: 2
+pending: 0
 skipped: 0
 blocked: 0
 
