@@ -5,7 +5,7 @@ import { devices, expect, test, type Page } from "@playwright/test";
  * projects — the drawing pinned across the full width above a controls region that alone
  * scrolls, and the six-tab bottom bar under the thumb — while the desktop project proves the
  * sidebar-beside-canvas shell and both phone bars are untouched. Later plans in this phase (top
- * bar and menu, orientation, Fine adjust) extend this same file rather than starting a new one.
+ * bar and menu, orientation) extend this same file rather than starting a new one.
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
@@ -282,36 +282,37 @@ test.describe("phone held sideways — the rotate button stays gone even at a wi
   });
 });
 
-test.describe("phone Fine adjust group", () => {
+test.describe("phone controls — every slider sits in its own section", () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === "desktop", "phone-only Fine adjust assertions");
+    test.skip(testInfo.project.name === "desktop", "phone-only controls assertions");
     await dismissSignInBanner(page);
   });
 
-  test("folds the repeated sliders behind one 44px tap, last in the controls scroller", async ({
+  test("Width and Nose Angle are on screen the moment the page opens, with no Fine adjust row anywhere", async ({
     page,
   }) => {
     await page.goto("/design/outline");
 
-    const fineAdjustButton = page.getByRole("button", { name: "Fine adjust" });
-    await expect(fineAdjustButton).toBeVisible();
-    const buttonBox = await fineAdjustButton.boundingBox();
-    if (!buttonBox) throw new Error("Fine adjust button is missing a bounding box");
-    expect(buttonBox.height).toBeGreaterThanOrEqual(44);
+    // No fold left to tap, on TEMPLATE or anywhere else — a hidden button would still fail this.
+    await expect(page.getByRole("button", { name: "Fine adjust" })).toHaveCount(0);
 
-    // Width — one of D-03's eight folded sliders — is not visible before the group is tapped.
+    // Width is visible without tapping anything, because it never left the Widepoint Controls
+    // section a shaper already sees on a desktop screen.
     const widthLabel = page.getByText(/^Width — /);
-    await expect(widthLabel).toBeHidden();
-
-    // Last item in the controls scroller: every other row, including the always-open Settings
-    // checkbox, sits above it.
-    const settingsRow = page.getByText("View Construction Lines");
-    const settingsBox = await settingsRow.boundingBox();
-    if (!settingsBox) throw new Error("Settings row is missing a bounding box");
-    expect(buttonBox.y).toBeGreaterThanOrEqual(settingsBox.y);
-
-    await fineAdjustButton.click();
     await expect(widthLabel).toBeVisible();
+
+    // It sits ABOVE the Settings checkbox at the bottom of the sidebar — proof it is back in its
+    // own section instead of pushed to the end of the list.
+    const settingsRow = page.getByText("View Construction Lines");
+    const widthBox = await widthLabel.boundingBox();
+    const settingsBox = await settingsRow.boundingBox();
+    if (!widthBox || !settingsBox) throw new Error("missing bounding box");
+    expect(widthBox.y).toBeLessThan(settingsBox.y);
+
+    await page.goto("/design/rocker");
+
+    await expect(page.getByRole("button", { name: "Fine adjust" })).toHaveCount(0);
+    await expect(page.getByText(/^Nose Angle — /)).toBeVisible();
   });
 });
 
@@ -397,9 +398,7 @@ test.describe("desktop shell — unchanged", () => {
     await expect(page.locator("aside")).toBeVisible();
   });
 
-  test("no Fine adjust control appears and the Width slider is visible without tapping anything", async ({
-    page,
-  }) => {
+  test("the desktop sidebar shows every slider with nothing to tap", async ({ page }) => {
     await page.goto("/design/outline");
 
     await expect(page.getByRole("button", { name: "Fine adjust" })).toBeHidden();

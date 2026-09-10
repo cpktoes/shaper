@@ -745,12 +745,12 @@
 
 /*
  * The shared focus ring for every hand-rolled selection button on the design screens — the
- * tail-shape tiles, the fin pills and grids, the rail section headings, Reset Advanced Settings,
- * the Fine adjust row. None of these are the shared shadcn `Button`, so none of them carry its
- * focus-visible ring; without this class their only indicator is the browser's automatic outline,
- * painted in the base layer's half-strength `outline-ring/50`. One class here instead of a
- * Tailwind run repeated at thirteen call sites is what keeps this from drifting the way the
- * slider's styling once did across fourteen copies.
+ * tail-shape tiles, the fin pills and grids, the rail section headings, Reset Advanced Settings.
+ * None of these are the shared shadcn `Button`, so none of them carry its focus-visible ring;
+ * without this class their only indicator is the browser's automatic outline, painted in the base
+ * layer's half-strength `outline-ring/50`. One class here instead of a Tailwind run repeated at
+ * twelve call sites is what keeps this from drifting the way the slider's styling once did across
+ * fourteen copies.
  */
 .focus-ring-accent:focus-visible {
   box-shadow: 0 0 0 3px var(--surf-accent-ink);
