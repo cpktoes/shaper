@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 Phase: 10 — The Whole App on a Phone
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-09-10 - Completed quick task 260909-wrz: The phone Summary preview stands the right way up again (Safari computes tan(atan2()) wrong with container units — now a plain division plus a measured backstop) and the rail plots' tick numbers print computer-sized (svg fit measured before the preview's transform)
+Last activity: 2026-09-10 - Completed quick task 260910-0b1: The rail marking and band ticks are now one shared set across the RAILS screen and the Summary, so a shaper picks which lines print on the Rail Band Instructions sheet
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
@@ -269,6 +269,7 @@ Recent decisions affecting current work:
 | 260909-sda | The product is now called Shaper Assistant, matching its home at shaperassistant.com: the wordmark on every screen and printed sheet, the browser titles, and the project's own docs say so, while every mention of a shaper the person stays exactly as it is | 2026-09-09 | be1abcf | [260909-sda-the-product-is-now-called-shaper-assista](./quick/260909-sda-the-product-is-now-called-shaper-assista/) |
 | 260909-vrc | The rail band reference figure no longer sits in a white box on a dark theme: on screen its panel and inks follow the theme like every other drawing, on paper it still prints white | 2026-09-09 | 8c6d7ae | [260909-vrc-the-rail-band-reference-figure-no-longer](./quick/260909-vrc-the-rail-band-reference-figure-no-longer/) |
 | 260909-wrz | The phone Summary preview stands the right way up again (Safari computes tan(atan2()) wrong with container units — now a plain division plus a measured backstop) and the rail plots' tick numbers print computer-sized (svg fit measured before the preview's transform) | 2026-09-10 | 7ca3355 | [260909-wrz-the-phone-summary-screen-got-all-wonky-a](./quick/260909-wrz-the-phone-summary-screen-got-all-wonky-a/) |
+| 260910-0b1 | The nine rail marking/band ticks are now one shared set: they appear on the Summary under the print buttons (only when the instructions sheet is included), tick either screen and the other follows, and the printed Rail Band Instructions sheet draws only the lines left ticked. All nine start on again after a reload — nothing is saved to an account or a board. The example rail on the sheet is still always Flat. | 2026-09-10 | e731ba4 | [260910-0b1-add-the-rail-instruction-legend-checkbox](./quick/260910-0b1-add-the-rail-instruction-legend-checkbox/) |
 
 ## Deferred Items
 
