@@ -158,7 +158,11 @@
   }
 
   /* Section 3 — the break test. Two page-tall blocks, each asking for a break after it in both
-     the modern and legacy spelling. */
+     the modern and legacy spelling. SHEET A additionally asks for a break BEFORE it, because the
+     width bar above it (section 2) is not page-tall — without that push, SHEET A starts partway
+     down whatever page section 2 lands on and its own 100vh box cannot fit in the remainder, so
+     it fragments across two pages even in an engine that honours breaks perfectly. SHEET B needs
+     no break-before of its own: SHEET A's break-after already hands it a fresh page. */
   .break-block {
     height: 100vh;
     border: 2px solid #000;
@@ -167,6 +171,10 @@
     justify-content: space-between;
     break-after: page;
     page-break-after: always;
+  }
+  #sheet-a {
+    break-before: page;
+    page-break-before: always;
   }
   .break-label {
     padding: 6px 8px;
