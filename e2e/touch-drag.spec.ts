@@ -21,8 +21,20 @@ import { expect, test, type Page } from "@playwright/test";
  * of the panel's height on the two side edges, and at 15%, 50% and 85% of its width along the
  * bottom edge — and deliberately never in the top 20%, where the viewer toolbar row sits. The
  * candidate whose distance to the NEAREST drag-point centre is largest wins.
+ *
+ * `avoidPathSelector` (quick task 260909-oge) additionally drops any candidate that lands inside
+ * the named board silhouette's own fill, checked the same way `findInteriorBoardPoint` below does
+ * (`isPointInFill`, off the path's OWN `getScreenCTM()`). On TEMPLATE, staying clear of the five
+ * drag-target handles has always also meant staying clear of the board, since the handles ring
+ * its own edge — but ROCKER's side-profile silhouette is a thin band running the board's FULL
+ * length, so a candidate near a panel edge but far from any handle can still land squarely inside
+ * it. Callers that never pass this (every one before 260909-oge) get byte-for-byte the same
+ * candidates and the same answer as before.
  */
-async function findEmptyCanvasProbe(page: Page): Promise<{
+async function findEmptyCanvasProbe(
+  page: Page,
+  avoidPathSelector?: string,
+): Promise<{
   x: number;
   y: number;
   distanceToNearestHandle: number;
@@ -44,7 +56,7 @@ async function findEmptyCanvasProbe(page: Page): Promise<{
   }
 
   const INSET = 14;
-  const candidates: { x: number; y: number }[] = [];
+  let candidates: { x: number; y: number }[] = [];
   for (const x of [svgBox.x + INSET, svgBox.x + svgBox.width - INSET]) {
     for (const heightFraction of [0.5, 0.85, 0.96]) {
       candidates.push({ x, y: svgBox.y + svgBox.height * heightFraction });
@@ -55,6 +67,21 @@ async function findEmptyCanvasProbe(page: Page): Promise<{
       x: svgBox.x + svgBox.width * widthFraction,
       y: svgBox.y + svgBox.height - INSET,
     });
+  }
+
+  if (avoidPathSelector) {
+    const path = page.locator(avoidPathSelector);
+    const insideFill: boolean[] = await path.evaluate(
+      (el: SVGPathElement, points: { x: number; y: number }[]) => {
+        const ctm = el.getScreenCTM();
+        if (!ctm) return points.map(() => false);
+        const inverse = ctm.inverse();
+        return points.map((p) => el.isPointInFill(new DOMPoint(p.x, p.y).matrixTransform(inverse)));
+      },
+      candidates,
+    );
+    const clear = candidates.filter((_, i) => !insideFill[i]);
+    if (clear.length > 0) candidates = clear;
   }
 
   let best = candidates[0];
@@ -83,9 +110,14 @@ async function findInteriorBoardPoint(page: Page, selector: string): Promise<{ x
   const box = await path.boundingBox();
   if (!box) throw new Error(`${selector} has no bounding box`);
   const result = await path.evaluate((el: SVGPathElement, rect) => {
-    const svg = el.ownerSVGElement;
-    const ctm = svg?.getScreenCTM();
-    if (!svg || !ctm) return null;
+    // The CTM must come off the PATH itself, never `el.ownerSVGElement`: a viewer that draws
+    // its content inside a rotated `<g>` (ROCKER, when the phone's own orientation flips it
+    // vertical) has a root-SVG CTM that stops at the viewBox and omits that group's own
+    // rotation — mapping a screen point through it lands outside the path's own `d`
+    // coordinates entirely. The element's OWN `getScreenCTM()` composes every ancestor
+    // transform, so its inverse always lands back in the exact space `isPointInFill` expects.
+    const ctm = el.getScreenCTM();
+    if (!ctm) return null;
     const inverse = ctm.inverse();
     const GRID = 9;
     for (let gy = 1; gy < GRID; gy++) {
@@ -120,9 +152,9 @@ async function sampleChipAgainstPath(
   if (!chipBox) throw new Error(`${chipSelector} has no bounding box`);
   const path = page.locator(pathSelector);
   return path.evaluate((el: SVGPathElement, rect) => {
-    const svg = el.ownerSVGElement;
-    const ctm = svg?.getScreenCTM();
-    if (!svg || !ctm) throw new Error("board path has no screen CTM");
+    // Same reasoning as `findInteriorBoardPoint` above: the CTM must come off the path itself.
+    const ctm = el.getScreenCTM();
+    if (!ctm) throw new Error("board path has no screen CTM");
     const inverse = ctm.inverse();
     const SAMPLES = 5;
     const results: { inFill: boolean; inStroke: boolean }[] = [];
@@ -602,5 +634,130 @@ test.describe("touch drag on the rocker viewer (android/CDP only)", () => {
 
     // The pick survives a remote drag (D-05).
     await expect(noseTip).toHaveAttribute("data-selected", "true");
+  });
+
+  test("the readout card clears the side profile while shaping the nose tip toward the middle of the board (260909-oge)", async ({
+    page,
+  }) => {
+    await page.goto("/design/rocker");
+
+    const profilePath = page.locator('[data-board-silhouette="profile"]');
+    await expect(profilePath).toBeVisible();
+
+    const noseTip = page.locator('[data-drag-target="noseTipHandle"]');
+    await expect(noseTip).toBeVisible();
+    const box = await noseTip.boundingBox();
+    if (!box) throw new Error("noseTipHandle drag target has no bounding box");
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+
+    // A point genuinely deep inside the drawn side profile, found the same way as the outline's
+    // own case above.
+    const interior = await findInteriorBoardPoint(page, '[data-board-silhouette="profile"]');
+
+    const chip = page.locator("[data-readout-chip]");
+
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: startX, y: startY }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: interior.x, y: interior.y }],
+    });
+
+    await expect(chip).toBeVisible();
+
+    // All 25 samples across the card land outside the profile's own fill and stroke.
+    const samples = await sampleChipAgainstPath(page, "[data-readout-chip]", '[data-board-silhouette="profile"]');
+    expect(samples).toHaveLength(25);
+    for (const sample of samples) {
+      expect(sample.inFill).toBe(false);
+      expect(sample.inStroke).toBe(false);
+    }
+
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(chip).not.toBeVisible();
+  });
+
+  test("a card settled beside the board stays put as the thumb keeps moving away from it (260909-oge)", async ({
+    page,
+  }) => {
+    await page.goto("/design/rocker");
+
+    // MEASURED at execution time (Pixel 7, this drawing's own scale): the profile's cross band
+    // sits close enough to the middle of the viewBox, and the nose-flatness card is wide enough
+    // relative to that viewBox, that literally no cross position is both off the board AND clear
+    // of the pre-existing viewBox-edge clamp — the clamp and the board's own reach overlap for
+    // every reachable finger position. So "a card already clear, centred exactly on the finger"
+    // (the plan's own literal scenario) is not reachable here the way it is on TEMPLATE (D-07's
+    // note that ROCKER needed the wider "visible drawing" bounds already flagged this drawing as
+    // tight; this is the sharper edge of that same tightness). What IS reachable, and what this
+    // test proves instead: once the finger has pushed the card into its settled, board-clear
+    // resting spot on one side, further finger travel deeper into that SAME side must not nudge
+    // the card any further — the new rule's own degrade-to-flush behaviour is a function of the
+    // BOARD and the BOUNDS, not of exactly where in that region the finger happens to be, so two
+    // different finger positions on the same settled side must render byte-for-byte the same
+    // card. That is "the new rule only fires when it is needed" in the only form this drawing's
+    // own numbers can actually exercise.
+    const noseFlat = page.locator('[data-drag-target="noseFlatHandle"]');
+    await expect(noseFlat).toBeVisible();
+    const tapBox = await noseFlat.boundingBox();
+    if (!tapBox) throw new Error("noseFlatHandle drag target has no bounding box");
+    const tapX = tapBox.x + tapBox.width / 2;
+    const tapY = tapBox.y + tapBox.height / 2;
+
+    const cdp = await page.context().newCDPSession(page);
+
+    // A tap picks the handle (D-02).
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: tapX, y: tapY }] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(noseFlat).toHaveAttribute("data-selected", "true");
+
+    const chip = page.locator("[data-readout-chip]");
+
+    // A probe far from every handle AND clear of the profile's own fill (260909-oge's
+    // `avoidPathSelector`) — the starting finger position for the remote drag.
+    const probe = await findEmptyCanvasProbe(page, '[data-board-silhouette="profile"]');
+    expect(probe.distanceToNearestHandle).toBeGreaterThan(60);
+
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: probe.x, y: probe.y }] });
+    await expect(chip).toBeVisible();
+    const firstBox = await chip.boundingBox();
+    if (!firstBox) throw new Error("readout chip has no bounding box");
+
+    // The card must be clear of the board at this settled position — proving it is a genuine
+    // resting spot, not a still-overlapping bug.
+    const firstSamples = await sampleChipAgainstPath(page, "[data-readout-chip]", '[data-board-silhouette="profile"]');
+    for (const sample of firstSamples) {
+      expect(sample.inFill).toBe(false);
+      expect(sample.inStroke).toBe(false);
+    }
+
+    // Now slide the SAME finger further in the same direction it is already inset from the
+    // drawing's edge — deeper into the identical settled region, several more CSS px, in small
+    // steps (as every other remote drag in this file does).
+    const svgBox = await page.locator("svg:has([data-drag-target])").first().boundingBox();
+    if (!svgBox) throw new Error("drag-target svg has no bounding box");
+    const towardEdge = probe.x < svgBox.x + svgBox.width / 2 ? -1 : 1;
+    let fingerX = probe.x;
+    for (let step = 0; step < 4; step++) {
+      fingerX += towardEdge * 5;
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: fingerX, y: probe.y }] });
+    }
+    await expect(chip).toBeVisible();
+    const secondBox = await chip.boundingBox();
+    if (!secondBox) throw new Error("readout chip has no bounding box");
+
+    // Byte-for-byte the same card: the new rule's own settled placement does not drift with the
+    // finger once it has already found its resting spot beside the board.
+    expect(secondBox.x).toBeCloseTo(firstBox.x, 0);
+    expect(secondBox.y).toBeCloseTo(firstBox.y, 0);
+    expect(secondBox.width).toBeCloseTo(firstBox.width, 0);
+    expect(secondBox.height).toBeCloseTo(firstBox.height, 0);
+
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(chip).not.toBeVisible();
   });
 });
