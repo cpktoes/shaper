@@ -17,7 +17,22 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 
 ## Current State
 
-**In progress: v1.2 — Rails Finished, Phone Ready.** Phase 8 complete (2026-09-08, 9 plans): the
+**In progress: v1.2 — Rails Finished, Phone Ready.** Phase 9 complete (2026-09-09, 9 plans): the
+five design screens work on a phone. One shared shell stacks each screen — the drawing pinned at
+the top, the controls scrolling beneath, a slim top bar and a six-tab bottom bar — below an 820px
+width switch, while a separate pointer switch sizes every control for a thumb on any touch device.
+The outline's five points and the rocker's four handles drag under a finger with a readout card
+beside it, a tap picks a point so it can be shaped from the edge of the screen, and the card keeps
+off the curve. Playwright now runs the phone layouts on iPhone and Android profiles plus a desktop
+pass with five reference screenshots that prove nothing moved for a mouse, and a production-build
+suite that catches what the dev server's StrictMode hides. The founder's UAT passed 7/7 after two
+gap plans (visible keyboard focus everywhere; a plain note in place of a Print button that iOS will
+not honour from a Home-Screen app), security verified 47/47, and the same day's quick tasks pulled
+part of Phase 10 forward (phone home screen, the Summary previewed and printed true from a phone,
+the app renamed Shaper Assistant at shaperassistant.com). Phase 10, the whole app on a phone, is
+next.
+
+Before that, Phase 8 (2026-09-08, 9 plans): the
 rails screen is finished. It has the INSTRUCTIONS tab the prototype always had — a live example
 rail a shaper can flip between Flat and Domed, every mark named beside it, and a plan-and-side
 view of the whole board showing where the nose, centre and tail sections sit — plus "View Full
@@ -95,9 +110,11 @@ Archives: [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-ph
 - [x] User can read the rails screen's INSTRUCTIONS page — a live example rail with every mark named — and fold that sheet into what they print — Validated in Phase 8: The Rails Screen, Finished (INSTRUCTIONS tab with a Flat/Domed example rail and its callouts; "Include Rail Band Instructions in Print" saved on the account with a per-browser fallback; the sheet prints as the order form's third page in either system, and unticked output is byte-identical; UAT 7/10, the three gaps closed and re-measured)
 - [x] User can view the rail cross-section at actual size on screen, and see where each rail section sits along the board outline — Validated in Phase 8: The Rails Screen, Finished (View Full Sized dialog with a 2 in / 50.8 mm check bar, true size on screen and on a landscape printed page; plan-and-side reference figure with a nine-item legend)
 
+- [x] User can shape a board on the five design screens from a phone — stacked layout, thumb-sized controls, outline and rocker points that drag under a finger, drawings that use the full width — with desktop mouse and keyboard behaviour unchanged, all proven by Playwright on iPhone and Android profiles — Validated in Phase 9: The Design Screens on a Phone (PHON-01…06, TEST-01; UAT 7/7 after two gap plans; security 47/47)
+
 ### Active
 
-- [ ] User can do everything the app does from a phone, with controls sized for a thumb
+- [ ] User can do everything else the app does from a phone — sign-in, the rack, the summary — with the whole trip proven on real phones (Phase 10; the phone home screen and the Summary preview/print landed early as quick tasks on 2026-09-09)
 
 ### Out of Scope
 
@@ -157,6 +174,10 @@ templates ("the math is right").
 | The Summary order form stays part-metric until Phase 7 | Its own dims block, thickness, size line and fin rows are the same component on screen and on paper; Phase 7 (PRNT-01) converts every printed output together rather than splitting the order form across two phases | Accepted (Phase 6 UAT, deferred follow-up) |
 | The printed scale-check square stays two inches in both systems | It is a calibration reference measured with a ruler, so it must agree with what is actually drawn; only its caption changes, making `50.8 mm` the app's one millimetre value that carries a decimal | Validated (Phase 7, plan 07-01) |
 | A unit is carried once per line of running text; a value alone in its own box carries its own | The Full Sized Template's wrapped dims row takes `cm` once at the end while the order form's seven bordered cells each take their own — the same numbers, formatted two ways, on purpose | Validated (Phase 7, plans 07-01 and 07-04) |
+| A phone gets three independent switches, never conflated: width picks the layout (820px), pointer picks control size and whether the rotate button exists at all, height picks whether FINS' key sits beside or beneath the plot | A touch laptop at 1280px must not get the phone stack, a narrow desktop window must not get finger-sized controls, and a phone held sideways lands on both sides of the width switch while being short on both | Validated (Phase 9, quick tasks 260909-h3g and -hmn) |
+| Tap to pick a point, then shape it from anywhere on the drawing; the readout card follows the finger and stays off the board | The founder's thumb and its card covered the very curve being shaped; the drag solver stays board-millimetre only and a pinned angle (diamond tail) is never written back | Validated (2026-09-09 quick tasks 260909-ktq, -oge, -ok2) |
+| The Home-Screen print note fires only on iOS (`-webkit-touch-callout` guard), and printing itself is never changed | iOS 26 opens Home-Screen sites as standalone apps where `window.print()` is a silent no-op; desktop Chrome app windows and Android can print, so the plain media feature alone hid a working button — caught in code review | Validated (Phase 9 gap plan 09-09 + review fix) |
+| Verify phone bugs against a production build, not the dev server | React StrictMode's double effects hid a Base UI slider bug for a whole phase (folded sliders never got their dot); `npm run test:e2e:prod` now exists for exactly this class | Validated (quick task 260909-nvw) |
 
 ## Evolution
 
@@ -176,4 +197,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-08 after Phase 8: The Rails Screen, Finished*
+*Last updated: 2026-09-09 after Phase 9: The Design Screens on a Phone*
