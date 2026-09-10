@@ -9,12 +9,22 @@
  *
  * The ported data (the path strings, the viewBoxes, the colour/width/dash maps) lives in
  * `rail-reference-paths.ts`, pinned against the prototype's own source by a parity test. This
- * file is presentation only: it lays the four columns out as one box that fits its container's
- * width up to the prototype's own rendered size (never the prototype's own hard-coded `0.7492`
- * transform, UI-SPEC "The figure's fit") — a shaper needs the whole example board on screen at
- * once, not stretched wide enough to run off the bottom of the column — filters the ported paths
- * by `visibleGroups`, and reads its two literal figures — the station labels and the tail-distance
- * range — through the display boundary (RAIL-06).
+ * file lays the four columns out as one box that fits its container's width up to the prototype's
+ * own rendered size (never the prototype's own hard-coded `0.7492` transform, UI-SPEC "The
+ * figure's fit") — a shaper needs the whole example board on screen at once, not stretched wide
+ * enough to run off the bottom of the column — filters the ported paths by `visibleGroups`, and
+ * reads its two literal figures — the station labels and the tail-distance range — through the
+ * display boundary (RAIL-06).
+ *
+ * Beside that drawing sits an OPTIONAL key (quick 260910-jfp, PRNT-05) — a colour-dot-plus-name
+ * list naming every line the shaper left ticked, drawn in the blank paper that was already there
+ * and costing no vertical space. It is opt-in via `showLineKey` (default `false`): the RAILS tab's
+ * INSTRUCTIONS page already shows the same nine names as tick boxes and does not want a second,
+ * unclickable copy beside its own drawing, so only `RailInstructionsSheet` (the printed order
+ * form's third sheet) asks for it. It is also deliberately not drawn at all below
+ * `KEY_ROW_MIN_WIDTH_PX` of row width — squeezed narrower than that, a wrapped label could grow
+ * taller than the drawing itself, and the founder's whole reason for choosing this placement is
+ * that it costs nothing.
  */
 
 import type { ReactNode } from "react";
@@ -55,6 +65,16 @@ interface RailReferenceLegendEntry {
   key: RailReferenceGroup;
   label: string;
   color: string;
+}
+
+/** The 9px round colour dot both the RAILS tab's clickable ticks (`RailLegendTicks`) and this
+ * figure's own printed, unclickable key draw — one swatch expression, so a dot and the line it
+ * names can never resolve to different ink (both read `entry.color`, which is always
+ * `REF_GROUP_SCREEN_COLORS[key]`, the same map `refPathElements` below strokes the paths with). */
+export function RailLegendSwatch({ color }: { color: string }) {
+  return (
+    <span className="inline-block h-[9px] w-[9px] flex-shrink-0 rounded-full" style={{ background: color }} />
+  );
 }
 
 /** The prototype's own nine legend entries (Rails.dc.html lines 1290-1298), in its own order —
@@ -101,6 +121,23 @@ function widthPercent(column: number): string {
   return `${(column / FIGURE_CONTENT_WIDTH) * 100}%`;
 }
 
+// The key's own three constants (quick 260910-jfp). Measured at plan time (see PLAN.md
+// must_haves.key_links) so none of these is a guess: the gap between drawing and key, the
+// narrowest column the key may ever be drawn in, and the row width at which it turns on.
+/** The gap between the drawing and the key, in the row's flex `gap`. */
+const KEY_GAP_PX = 12;
+/** The narrowest the key's own column is ever allowed to be when it draws — guaranteed by the
+ * `@min-[...]/rail-key` container query on the row below, not by a `min-width` on the key itself
+ * (a `min-width` there would re-open the very drawing-shrink path this key must never cause). */
+const KEY_MIN_COLUMN_PX = 100;
+/** The row width at which the key turns on — below it, the key is not drawn at all and the figure
+ * is byte-identical to today's. `Math.ceil` rounds UP on purpose: rounding up can only ever turn
+ * the key on LATER, never earlier, so this can never draw the key in a column narrower than
+ * `KEY_MIN_COLUMN_PX`. The matching literal lives in the Tailwind class below
+ * (`@min-[486px]/rail-key:block`) — Tailwind cannot compose a class name from a variable, so that
+ * literal is unavoidable, and `rail-plan-side-figure.test.ts` pins the two against each other. */
+export const KEY_ROW_MIN_WIDTH_PX = Math.ceil(FIGURE_MAX_RENDERED_WIDTH + KEY_GAP_PX + KEY_MIN_COLUMN_PX);
+
 /** Renders one ported path array, filtered by `visibleGroups` — the side view's own `black` board
  * outline is never gated (the prototype's `show` map hardcodes it `true`, Rails.dc.html line
  * 1386), so it always renders regardless of the legend. */
@@ -119,97 +156,162 @@ function refPathElements(paths: RailReferencePath[], visibleGroups: Set<RailRefe
     ));
 }
 
+/** The station labels' `cqw` percentage, factored out of `LABEL_FONT_SIZE` below so it appears
+ * exactly once in this file — both the clamp string and the key's own font size (quick 260910-jfp)
+ * are built from this one number, and can never drift into two different copies of the same
+ * percentage. */
+const LABEL_FONT_CQW = 3.2;
+
 /** A label's font size, tied to the figure's own container width rather than the viewport's — the
  * same `clamp(min, N cqw, max)` idiom `app/design/summary/order-form.css` already establishes for
  * a surface that scales as one box. This needs no change for the new render-size cap above: at the
  * capped `FIGURE_MAX_RENDERED_WIDTH` (373.85px) this clamp computes to 373.85 * 0.032 = 11.96px,
  * which is the prototype's own 16px label at its own 0.7492 rendering (16 * 0.7492 = 11.99px). The
  * container query already tracks the capped box, so the cap brings the labels to the prototype's
- * size automatically. */
-const LABEL_FONT_SIZE = "clamp(9px, 3.2cqw, 20px)";
+ * size automatically. The key beside the drawing (quick 260910-jfp) takes the same number in px —
+ * see `KEY_FONT_SIZE_PX` below. */
+const LABEL_FONT_SIZE = `clamp(9px, ${LABEL_FONT_CQW}cqw, 20px)`;
+
+/** The key's own font size (quick 260910-jfp). Not a `cqw` of its own: the key sits BESIDE the
+ * drawing's `@container`, outside it, so a `cqw` there would read the key column's own
+ * page-dependent width instead of the figure's fixed one. It therefore takes the station labels'
+ * percentage directly against the figure's fixed rendered width — the same 11.96px the labels
+ * themselves compute to at that cap, so the key prints at the sheet's own floor size, never below
+ * it. */
+const KEY_FONT_SIZE_PX = FIGURE_MAX_RENDERED_WIDTH * (LABEL_FONT_CQW / 100);
 
 /**
  * The plan and side reference figure (RAIL-05). `visibleGroups` decides which of the nine
  * gateable line families draw — the board outline, side strip and station labels are unaffected
  * by the set and always render (RAIL-05 empty-state: unticking every box never blanks the box).
+ *
+ * `showLineKey` (quick 260910-jfp, default `false`) asks for the printed key beside the drawing —
+ * see this file's head comment for who asks for it and why. The key itself only ever appears when
+ * `showLineKey` is true AND at least one line is ticked, so there is nothing left behind — no
+ * heading, no empty column, no border round nothing — when every line is unticked.
  */
-export function RailPlanSideFigure({ visibleGroups }: { visibleGroups: Set<RailReferenceGroup> }) {
+export function RailPlanSideFigure({
+  visibleGroups,
+  showLineKey = false,
+}: {
+  visibleGroups: Set<RailReferenceGroup>;
+  showLineKey?: boolean;
+}) {
   const { system } = useUnits();
+  const keyEntries = RAIL_REFERENCE_LEGEND.filter((e) => visibleGroups.has(e.key));
 
   return (
     // Pinned to the prototype's own literal light values in every theme (UI-SPEC Color) — the
     // PNG background cannot invert for a dark theme, so this one card stays light on purpose, the
     // same reasoning app/globals.css's @media print block already pins Daylight tokens for print.
-    <div className="mx-auto w-full rounded-lg border border-surf-line-faint bg-surf-ground p-3.5">
+    <div className="mx-auto w-full rounded-lg border border-surf-line-faint bg-surf-ground p-3.5" data-rail-figure>
+      {/* The row holding the drawing and its optional key (quick 260910-jfp). `justify-center`
+          reproduces today's own `mx-auto` the moment the key is absent — whether because
+          `showLineKey` is off, every line is unticked, or the key's own container query below has
+          hidden it on a narrow page — since the drawing is then the row's only item. When the key
+          IS shown, `justify-center` is a no-op: the key's own `flex-1` has already claimed every
+          pixel of free space, which is what pushes the drawing flush left with the key in the
+          blank column to its right. */}
       <div
-        className="@container relative mx-auto w-full"
-        style={{ aspectRatio: `${FIGURE_CONTENT_WIDTH} / ${FIGURE_HEIGHT}`, maxWidth: `${FIGURE_MAX_RENDERED_WIDTH}px` }}
+        className="@container/rail-key flex w-full items-start justify-center"
+        style={{ gap: `${KEY_GAP_PX}px` }}
       >
-        <div className="absolute inset-0 flex" style={{ gap: `${(FIGURE_GAP / FIGURE_CONTENT_WIDTH) * 100}%` }}>
-          <div className="relative h-full flex-none" style={{ width: widthPercent(FIGURE_COLUMNS.plan) }}>
-            <img
-              src="/rail-bands-plan-bg.png"
-              alt="Plan and side view of an example board showing where the rail sections sit"
-              className="absolute inset-0 h-full w-full [filter:var(--surf-raster-filter)] [mix-blend-mode:var(--surf-raster-blend)]"
-            />
-            <svg
-              viewBox={PLAN_REF_VIEWBOX}
-              preserveAspectRatio="none"
-              className="absolute inset-0 h-full w-full"
-              aria-hidden="true"
-            >
-              {refPathElements(PLAN_REF_PATHS, visibleGroups)}
-            </svg>
-          </div>
+        <div
+          className="@container relative min-w-0"
+          style={{
+            aspectRatio: `${FIGURE_CONTENT_WIDTH} / ${FIGURE_HEIGHT}`,
+            flex: `0 1 ${FIGURE_MAX_RENDERED_WIDTH}px`,
+          }}
+        >
+          <div className="absolute inset-0 flex" style={{ gap: `${(FIGURE_GAP / FIGURE_CONTENT_WIDTH) * 100}%` }}>
+            <div className="relative h-full flex-none" style={{ width: widthPercent(FIGURE_COLUMNS.plan) }}>
+              <img
+                src="/rail-bands-plan-bg.png"
+                alt="Plan and side view of an example board showing where the rail sections sit"
+                className="absolute inset-0 h-full w-full [filter:var(--surf-raster-filter)] [mix-blend-mode:var(--surf-raster-blend)]"
+              />
+              <svg
+                viewBox={PLAN_REF_VIEWBOX}
+                preserveAspectRatio="none"
+                className="absolute inset-0 h-full w-full"
+                aria-hidden="true"
+              >
+                {refPathElements(PLAN_REF_PATHS, visibleGroups)}
+              </svg>
+            </div>
 
-          <div
-            className="relative h-full flex-none text-surf-ink"
-            style={{ width: widthPercent(FIGURE_COLUMNS.label), fontSize: LABEL_FONT_SIZE }}
-          >
-            <span
-              className="absolute inset-x-0 text-center whitespace-nowrap"
-              style={{ top: "19.01%", transform: "translateY(-50%)" }}
-            >
-              {stationLabel(system)}
-            </span>
-            <span
-              className="absolute inset-x-0 top-1/2 text-center whitespace-nowrap"
-              style={{ transform: "translateY(-50%)" }}
-            >
-              @Center
-            </span>
-            <span
-              className="absolute inset-x-0 text-center whitespace-nowrap"
-              style={{ top: "81.23%", transform: "translateY(-50%)" }}
-            >
-              {stationLabel(system)}
-            </span>
-          </div>
-
-          <div className="relative h-full flex-none" style={{ width: widthPercent(FIGURE_COLUMNS.side) }}>
-            <svg
-              viewBox={SIDE_REF_VIEWBOX}
-              preserveAspectRatio="none"
-              className="absolute inset-0 h-full w-full"
-              aria-hidden="true"
-            >
-              {refPathElements(SIDE_REF_PATHS, visibleGroups)}
-            </svg>
-          </div>
-
-          <div className="relative h-full flex-none" style={{ width: widthPercent(FIGURE_COLUMNS.note) }}>
             <div
-              className="absolute left-0 text-surf-ink"
-              style={{ top: "62%", fontSize: LABEL_FONT_SIZE, lineHeight: 1.4 }}
+              className="relative h-full flex-none text-surf-ink"
+              style={{ width: widthPercent(FIGURE_COLUMNS.label), fontSize: LABEL_FONT_SIZE }}
             >
-              Taper Tuck to
-              <br />
-              a Sharp Edge at
-              <br />
-              {formatTaperTuckRange(system)} off Tail
+              <span
+                className="absolute inset-x-0 text-center whitespace-nowrap"
+                style={{ top: "19.01%", transform: "translateY(-50%)" }}
+              >
+                {stationLabel(system)}
+              </span>
+              <span
+                className="absolute inset-x-0 top-1/2 text-center whitespace-nowrap"
+                style={{ transform: "translateY(-50%)" }}
+              >
+                @Center
+              </span>
+              <span
+                className="absolute inset-x-0 text-center whitespace-nowrap"
+                style={{ top: "81.23%", transform: "translateY(-50%)" }}
+              >
+                {stationLabel(system)}
+              </span>
+            </div>
+
+            <div className="relative h-full flex-none" style={{ width: widthPercent(FIGURE_COLUMNS.side) }}>
+              <svg
+                viewBox={SIDE_REF_VIEWBOX}
+                preserveAspectRatio="none"
+                className="absolute inset-0 h-full w-full"
+                aria-hidden="true"
+              >
+                {refPathElements(SIDE_REF_PATHS, visibleGroups)}
+              </svg>
+            </div>
+
+            <div className="relative h-full flex-none" style={{ width: widthPercent(FIGURE_COLUMNS.note) }}>
+              <div
+                className="absolute left-0 text-surf-ink"
+                style={{ top: "62%", fontSize: LABEL_FONT_SIZE, lineHeight: 1.4 }}
+              >
+                Taper Tuck to
+                <br />
+                a Sharp Edge at
+                <br />
+                {formatTaperTuckRange(system)} off Tail
+              </div>
             </div>
           </div>
         </div>
+
+        {showLineKey && keyEntries.length > 0 && (
+          // A KEY, not a control (founder decision 3): no checkbox, no touch target, nothing
+          // clickable — the ticks stay where they already are, on the RAILS screen and under the
+          // Summary's own print buttons. `hidden @min-[486px]/rail-key:block` is the one guard
+          // that keeps this from ever costing the figure a pixel of height: below that row width
+          // the key simply is not drawn, and `justify-center` above re-centres the drawing exactly
+          // as it is today. `min-w-0` plus wrapping labels mean the key's own min-content
+          // contribution is its longest WORD, not its longest label, so it can never widen the
+          // sheet even before the container query removes it.
+          <ul
+            data-rail-line-key
+            className="hidden min-w-0 flex-1 @min-[486px]/rail-key:block"
+            style={{ fontSize: `${KEY_FONT_SIZE_PX}px`, lineHeight: 1.4 }}
+          >
+            {keyEntries.map((entry) => (
+              <li key={entry.key} className="flex items-baseline gap-1.5 text-surf-ink [overflow-wrap:break-word]">
+                <RailLegendSwatch color={entry.color} />
+                <span className="min-w-0">{entry.label}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

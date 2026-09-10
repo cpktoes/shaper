@@ -41,6 +41,13 @@ describe("RailInstructionsSheet — the Flat example rail with the shaper's own 
     expect(sheetSource).toMatch(/visibleGroups=\{visibleGroups\}/);
   });
 
+  it("asks the figure to draw the line key — the sheet is the one place a key is wanted (quick 260910-jfp)", () => {
+    const callMatch = sheetSource.match(/<RailPlanSideFigure\b[\s\S]*?\/>/);
+    expect(callMatch).not.toBeNull();
+    expect(callMatch![0]).toMatch(/visibleGroups=\{visibleGroups\}/);
+    expect(callMatch![0]).toMatch(/showLineKey/);
+  });
+
   it("still keeps no set of its own to drift — reads the shared one, not a local useState/useReducer", () => {
     expect(sheetSource).not.toMatch(/useState/);
     expect(sheetSource).not.toMatch(/useReducer/);
@@ -138,5 +145,15 @@ describe("the Summary's own mirrored ticks, under the print buttons (D-01)", () 
       "Two portrait pages, printed double-sided — plus a single-sided Rail Band Instructions page.",
     );
     expect(orderFormSource).toContain("Two portrait pages — print double-sided for a front-and-back form.");
+  });
+});
+
+describe("the RAILS tab does NOT ask for a second, unclickable copy of the key (quick 260910-jfp)", () => {
+  const railsTabSource = readStripped("components/rails/rail-instructions.tsx");
+
+  it("its own RailPlanSideFigure call carries no showLineKey — the nine lines already sit there as tick boxes", () => {
+    const callMatch = railsTabSource.match(/<RailPlanSideFigure\b[\s\S]*?\/>/);
+    expect(callMatch).not.toBeNull();
+    expect(callMatch![0]).not.toMatch(/showLineKey/);
   });
 });

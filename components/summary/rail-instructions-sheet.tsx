@@ -47,8 +47,10 @@ export function RailInstructionsSheet() {
         <ExampleRailFigure domed={false} />
       </div>
       {/* The shaper's own chosen lines (D-01) — shared with the RAILS tab's INSTRUCTIONS ticks and
-          the Summary's own mirrored ticks below the print buttons, never a hard-coded "every line". */}
-      <RailPlanSideFigure visibleGroups={visibleGroups} />
+          the Summary's own mirrored ticks below the print buttons, never a hard-coded "every line".
+          Now also NAMES them: `showLineKey` is asked for here and only here (quick 260910-jfp) —
+          the RAILS tab shows the same nine names as ticks already, so it does not repeat them. */}
+      <RailPlanSideFigure visibleGroups={visibleGroups} showLineKey />
     </div>
   );
 }
