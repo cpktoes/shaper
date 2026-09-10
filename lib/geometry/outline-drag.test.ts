@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, WIDEPOINT_WIDTH_RANGE_IN, type OutlineSpec } from "./board";
+import {
+  BOARD_LENGTH_RANGE_IN,
+  DEFAULT_BOARD_SPEC,
+  TAIL_PRESETS,
+  WIDEPOINT_WIDTH_RANGE_IN,
+  type OutlineSpec,
+} from "./board";
 import {
   OUTLINE_DRAG_HIT_PX,
   OUTLINE_DRAG_LIMITS,
@@ -405,5 +411,58 @@ describe("nearestOutlineDragTarget", () => {
     expect(first).toBe(target);
     expect(second).toBe(first);
     expect(points).toEqual(snapshot);
+  });
+});
+
+describe("a diamond tail's angle is pinned under the drag point, exactly as its slider is", () => {
+  // The tail-shape button applies the preset (30°, 30% fullness) — the same numbers the prototype
+  // set — and greys the Tail Angle slider out. The drag point has to honour the same lock, on a
+  // desktop mouse and a phone thumb alike, or the drawing can be dragged into a shape no control can
+  // ever reproduce.
+  const DIAMOND: OutlineSpec = { ...BASE, ...TAIL_PRESETS.diamond };
+
+  it("marks a diamond's geometry pinned at the angle it was built with, and a squash unpinned", () => {
+    const diamond = buildOutline(DIAMOND);
+    expect(diamond.tailAnglePinned).toBe(true);
+    expect(diamond.tailAngle).toBe(TAIL_PRESETS.diamond.tailAngle);
+    expect(buildOutline(BASE).tailAnglePinned).toBe(false);
+  });
+
+  it("dragging the tail handle never writes tailAngle back", () => {
+    const { geometry, point } = pointFor(DIAMOND, "tailHandle");
+    const dragged = { station: mm(point.station + 20), halfWidth: mm(point.halfWidth + 10) };
+    expect(Object.keys(solveOutlineDrag(geometry, "tailHandle", dragged))).toEqual(["tailFullness"]);
+  });
+
+  it("an undragged tail handle round-trips its own fullness", () => {
+    const { geometry, point } = pointFor(DIAMOND, "tailHandle");
+    expect(solveOutlineDrag(geometry, "tailHandle", point).tailFullness).toBeCloseTo(DIAMOND.tailFullness, 6);
+  });
+
+  it("only travel along the pinned direction changes fullness; sideways travel is ignored", () => {
+    const { geometry, point } = pointFor(DIAMOND, "tailHandle");
+    const rad = (DIAMOND.tailAngle * Math.PI) / 180;
+    const along = { x: Math.cos(rad), y: Math.sin(rad) };
+    const across = { x: -Math.sin(rad), y: Math.cos(rad) };
+    const sideways = solveOutlineDrag(geometry, "tailHandle", {
+      station: mm(point.station + across.x * 15),
+      halfWidth: mm(point.halfWidth + across.y * 15),
+    });
+    expect(sideways.tailFullness).toBeCloseTo(DIAMOND.tailFullness, 6);
+    const further = solveOutlineDrag(geometry, "tailHandle", {
+      station: mm(point.station + along.x * 25),
+      halfWidth: mm(point.halfWidth + along.y * 25),
+    });
+    expect(further.tailFullness).toBeGreaterThan(DIAMOND.tailFullness);
+    expect(further.tailAngle).toBeUndefined();
+  });
+
+  it("a squash tail keeps both degrees of freedom", () => {
+    const { geometry, point } = pointFor(BASE, "tailHandle");
+    const patch = solveOutlineDrag(geometry, "tailHandle", {
+      station: mm(point.station + 20),
+      halfWidth: mm(point.halfWidth + 10),
+    });
+    expect(Object.keys(patch).sort()).toEqual(["tailAngle", "tailFullness"]);
   });
 });

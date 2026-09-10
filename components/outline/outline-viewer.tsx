@@ -611,10 +611,14 @@ export function OutlineViewer({
       case "noseRailHandle":
         return [{ label: "Nose Rail", value: `${outline.noseRailLength}%` }];
       case "tailHandle":
-        return [
-          { label: "Tail Angle", value: `${outline.tailAngle}°` },
-          { label: "Fullness", value: `${outline.tailFullness}%` },
-        ];
+        // A diamond tail's angle is pinned (its slider is greyed out and `solveOutlineDrag` never
+        // writes it), so the card names only the field this drag can actually change.
+        return geometry.tailAnglePinned
+          ? [{ label: "Fullness", value: `${outline.tailFullness}%` }]
+          : [
+              { label: "Tail Angle", value: `${outline.tailAngle}°` },
+              { label: "Fullness", value: `${outline.tailFullness}%` },
+            ];
       case "noseHandle":
         return [
           { label: "Nose Angle", value: `${outline.noseAngle}°` },

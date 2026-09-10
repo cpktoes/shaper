@@ -187,6 +187,28 @@ export function solveOutlineDrag(
       // (cos a, sin a), so the vector from the knot reads the angle off directly.
       const vx = dragged.station - tailPod.point.x;
       const vy = dragged.halfWidth - tailPod.point.y;
+      if (geometry.tailAnglePinned) {
+        // A diamond tail's angle is pinned — its slider is greyed out — so the drag has one degree
+        // of freedom left, not two: how far the handle sits along the FIXED direction sets
+        // fullness, and any sideways travel of the finger or mouse is ignored rather than turned
+        // into an angle the shaper cannot otherwise set. The same cap as below, evaluated at the
+        // pinned angle. Returns fullness only, so a pinned angle is never written back.
+        const pinnedRad = geometry.tailAngle / RAD_TO_DEG;
+        const along = Math.max(0, vx * Math.cos(pinnedRad) + vy * Math.sin(pinnedRad));
+        if (along < MIN_DRAG_LENGTH_MM) return { tailFullness: LIMITS.fullness.min };
+        const pinnedMax = tailHandleMaxLength(
+          Math.sin(pinnedRad),
+          tailChord,
+          halfWidePointWidth,
+          tailPod.point.y,
+        );
+        return {
+          tailFullness: quantise(
+            pinnedMax > 0 ? (along / pinnedMax) * 100 : LIMITS.fullness.min,
+            LIMITS.fullness,
+          ),
+        };
+      }
       const length = Math.hypot(vx, vy);
       if (length < MIN_DRAG_LENGTH_MM) return { tailFullness: LIMITS.fullness.min };
 

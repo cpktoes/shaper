@@ -24,7 +24,7 @@ import type {
   OutlineSpec,
   Point2D,
 } from "./board";
-import { type Mm, inchesToMm, mm } from "./units";
+import { type Degrees, type Mm, inchesToMm, mm } from "./units";
 
 const MARGIN_MM = inchesToMm(16);
 const DIAMOND_DEPTH_CAP_MM = inchesToMm(5);
@@ -98,6 +98,14 @@ export interface OutlineGeometry {
   halfTailBlockWidth: Mm;
   /** True for pin and round tails, whose tail block is forced to zero width. */
   tailBlockPinned: boolean;
+  /**
+   * True for a diamond tail, whose angle is pinned at its preset's 30° (the prototype's own
+   * `tailAnglePinned`): the Tail Angle slider is greyed out, and the tail handle's drag shapes
+   * fullness only, so the drawing can never disagree with a locked control.
+   */
+  tailAnglePinned: boolean;
+  /** The tail angle this outline was built with — what a pinned tail handle keeps while dragged. */
+  tailAngle: Degrees;
   widePointStation: Mm;
   tailPodStation: Mm;
   centreCloseStation: Mm;
@@ -154,6 +162,7 @@ export function buildOutline(spec: OutlineSpec): OutlineGeometry {
 
   const tail = spec.tail;
   const tailBlockPinned = tail.kind === "pin" || tail.kind === "round";
+  const tailAnglePinned = tail.kind === "diamond";
 
   let halfTailBlockWidth = 0;
   let tailPodStation = 0;
@@ -306,6 +315,8 @@ export function buildOutline(spec: OutlineSpec): OutlineGeometry {
     halfWidePointWidth: mm(halfWidePointWidth),
     halfTailBlockWidth: mm(halfTailBlockWidth),
     tailBlockPinned,
+    tailAnglePinned,
+    tailAngle: spec.tailAngle,
     widePointStation: mm(widePointStation),
     tailPodStation: mm(tailPodStation),
     centreCloseStation: mm(centreCloseStation),
