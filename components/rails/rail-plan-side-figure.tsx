@@ -8,13 +8,23 @@
  * generic board, never the shaper's own outline (D-01) — nothing here reads the design store.
  *
  * The ported data (the path strings, the viewBoxes, the colour/width/dash maps) lives in
- * `rail-reference-paths.ts`, pinned against the prototype's own source by a parity test. This
- * file lays the four columns out as one box that fits its container's width up to the prototype's
- * own rendered size (never the prototype's own hard-coded `0.7492` transform, UI-SPEC "The
- * figure's fit") — a shaper needs the whole example board on screen at once, not stretched wide
- * enough to run off the bottom of the column — filters the ported paths by `visibleGroups`, and
- * reads its two literal figures — the station labels and the tail-distance range — through the
+ * `rail-reference-paths.ts`, pinned against the prototype's own source by a parity test. This file
+ * lays the four columns out as one box that fits the space its caller gives it, up to the
+ * prototype's own rendered size (never the prototype's own hard-coded `0.7492` transform, UI-SPEC
+ * "The figure's fit") — a shaper needs the whole example board on screen at once, not stretched
+ * wide enough to run off the bottom of the column — filters the ported paths by `visibleGroups`,
+ * and reads its two literal figures — the station labels and the tail-distance range — through the
  * display boundary (RAIL-06).
+ *
+ * `fit` (quick 260910-kz2, PRNT-05) decides which dimension that space is measured in. `"width"`
+ * (the default) is today's exact behaviour, unchanged: the drawing takes its WIDTH from a fixed
+ * flex-basis and derives its height from the aspect ratio — what the RAILS tab's own scrolling
+ * INSTRUCTIONS page asks for, since it has no fixed box to fit and the figure should simply be as
+ * big as its own cap allows. `"height"` takes the drawing's HEIGHT from the box its caller hands it
+ * and derives the width instead — what the printed Rail Band Instructions sheet asks for, because a
+ * sheet of paper has a FIXED amount of height to divide between this figure and the example rail
+ * beside it, and the old width-only sizing had no way to shrink when that height ran out: it simply
+ * clipped, silently, with the example rail drawing squeezed to nothing below it.
  *
  * Beside that drawing sits an OPTIONAL key (quick 260910-jfp, PRNT-05) — a colour-dot-plus-name
  * list naming every line the shaper left ticked, drawn in the blank paper that was already there
@@ -117,6 +127,22 @@ const FIGURE_CONTENT_WIDTH =
 const FIGURE_MAX_RENDERED_HEIGHT = 472;
 const FIGURE_MAX_RENDERED_WIDTH = (FIGURE_MAX_RENDERED_HEIGHT * FIGURE_CONTENT_WIDTH) / FIGURE_HEIGHT;
 
+// The card's own height chrome (quick 260910-kz2) — its `p-3.5` padding (14px, Tailwind's spacing
+// scale: 3.5 * 4px) top and bottom, plus its `border` (Tailwind's default 1px) top and bottom.
+// Named as two factors rather than one typed total, so `rail-plan-side-figure.test.ts` can pin
+// each factor against the card's own Tailwind classes independently, and a future edit to either
+// class is caught rather than silently drifting from this number.
+const FIGURE_CARD_PADDING_PX = 14;
+const FIGURE_CARD_BORDER_PX = 1;
+const FIGURE_CARD_CHROME_PX = FIGURE_CARD_PADDING_PX * 2 + FIGURE_CARD_BORDER_PX * 2;
+
+/** The tallest this card is ever drawn — the prototype's own rendered figure height plus the
+ * card's own chrome. Exported so `RailInstructionsSheet` (quick 260910-kz2) can cap the box it
+ * hands this figure at exactly this number rather than a second, potentially-drifting copy of it:
+ * the pixel cap has exactly one home. Composed from the two constants above, never typed as the
+ * literal 502 the browser measures this as (501.98, sub-pixel rendering aside). */
+export const FIGURE_MAX_CARD_HEIGHT_PX = FIGURE_MAX_RENDERED_HEIGHT + FIGURE_CARD_CHROME_PX;
+
 function widthPercent(column: number): string {
   return `${(column / FIGURE_CONTENT_WIDTH) * 100}%`;
 }
@@ -189,13 +215,18 @@ const KEY_FONT_SIZE_PX = FIGURE_MAX_RENDERED_WIDTH * (LABEL_FONT_CQW / 100);
  * see this file's head comment for who asks for it and why. The key itself only ever appears when
  * `showLineKey` is true AND at least one line is ticked, so there is nothing left behind — no
  * heading, no empty column, no border round nothing — when every line is unticked.
+ *
+ * `fit` (quick 260910-kz2, default `"width"`) decides which dimension the figure fits itself to —
+ * see this file's head comment for the two modes and who asks for which.
  */
 export function RailPlanSideFigure({
   visibleGroups,
   showLineKey = false,
+  fit = "width",
 }: {
   visibleGroups: Set<RailReferenceGroup>;
   showLineKey?: boolean;
+  fit?: "width" | "height";
 }) {
   const { system } = useUnits();
   const keyEntries = RAIL_REFERENCE_LEGEND.filter((e) => visibleGroups.has(e.key));
@@ -204,24 +235,56 @@ export function RailPlanSideFigure({
     // Pinned to the prototype's own literal light values in every theme (UI-SPEC Color) — the
     // PNG background cannot invert for a dark theme, so this one card stays light on purpose, the
     // same reasoning app/globals.css's @media print block already pins Daylight tokens for print.
-    <div className="mx-auto w-full rounded-lg border border-surf-line-faint bg-surf-ground p-3.5" data-rail-figure>
+    // In the height-driven mode (quick 260910-kz2) the card fills the box its caller hands it and
+    // lays out as a column, so the row below can take that height rather than the row's own
+    // content dictating it — the width-driven mode's classes are untouched, byte for byte.
+    <div
+      className={
+        fit === "height"
+          ? "flex h-full w-full flex-col rounded-lg border border-surf-line-faint bg-surf-ground p-3.5"
+          : "mx-auto w-full rounded-lg border border-surf-line-faint bg-surf-ground p-3.5"
+      }
+      data-rail-figure
+    >
       {/* The row holding the drawing and its optional key (quick 260910-jfp). `justify-center`
           reproduces today's own `mx-auto` the moment the key is absent — whether because
           `showLineKey` is off, every line is unticked, or the key's own container query below has
           hidden it on a narrow page — since the drawing is then the row's only item. When the key
           IS shown, `justify-center` is a no-op: the key's own `flex-1` has already claimed every
           pixel of free space, which is what pushes the drawing flush left with the key in the
-          blank column to its right. */}
+          blank column to its right.
+
+          In the height-driven mode (quick 260910-kz2) the row is also the column's flexible
+          child (`min-h-0 flex-1`), allowed to shrink all the way to nothing — it is what actually
+          divides the card's own height between the drawing and (if drawn) the key. */}
       <div
-        className="@container/rail-key flex w-full items-start justify-center"
+        className={
+          fit === "height"
+            ? "@container/rail-key flex min-h-0 w-full flex-1 items-start justify-center"
+            : "@container/rail-key flex w-full items-start justify-center"
+        }
         style={{ gap: `${KEY_GAP_PX}px` }}
       >
         <div
           className="@container relative min-w-0"
-          style={{
-            aspectRatio: `${FIGURE_CONTENT_WIDTH} / ${FIGURE_HEIGHT}`,
-            flex: `0 1 ${FIGURE_MAX_RENDERED_WIDTH}px`,
-          }}
+          style={
+            fit === "height"
+              ? {
+                  // The drawing's HEIGHT leads here, filling the row, with its WIDTH derived from
+                  // the aspect ratio it already declares — the opposite of the width-driven
+                  // branch below. `maxWidth: "100%"` is an inert guard against the row ever
+                  // running out of width before it runs out of height (considered and measured at
+                  // plan time: it never binds on any real page, since the height runs out first).
+                  aspectRatio: `${FIGURE_CONTENT_WIDTH} / ${FIGURE_HEIGHT}`,
+                  height: "100%",
+                  width: "auto",
+                  maxWidth: "100%",
+                }
+              : {
+                  aspectRatio: `${FIGURE_CONTENT_WIDTH} / ${FIGURE_HEIGHT}`,
+                  flex: `0 1 ${FIGURE_MAX_RENDERED_WIDTH}px`,
+                }
+          }
         >
           <div className="absolute inset-0 flex" style={{ gap: `${(FIGURE_GAP / FIGURE_CONTENT_WIDTH) * 100}%` }}>
             <div className="relative h-full flex-none" style={{ width: widthPercent(FIGURE_COLUMNS.plan) }}>
