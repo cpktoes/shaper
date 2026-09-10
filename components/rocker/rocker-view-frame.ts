@@ -822,15 +822,21 @@ export function compactRailReadingXs(layout: RockerViewLayout, readings: Compact
  * These are derived, not measured — the executor cannot run `npm run dev` inside a worktree. An
  * error in the taller direction only keeps the frame width-bound, i.e. only keeps the type at its
  * 9pt target — the safe direction to be wrong in. The founder's post-merge print check is the real
- * verification of this number; see quick task 260910-2ny's Task 7 (his own confirming iPhone print).
+ * verification of this number; see quick task 260910-2ny's Task 12 (his own confirming iPhone
+ * print).
  *
- * **The touch box costs this frame nothing (260910-2ny).** On a touch device the sheet is 4.18%
- * shorter (`TOUCH_SHEET_RATIO` in `use-print-fit.ts`), which puts this box's height share at about
- * 84.9px there instead of 88.6px. Measured at plan time with `npx tsx` against the real
- * `rockerViewLayout`, over board lengths 60-120in and deck thicknesses 4-9in: `width/layout.width`
- * is 0.5017 against a smallest `height/layout.height` of 0.6108, even in the shorter touch box — so
- * the frame stays WIDTH-bound in both, the rocker readings come out the same size on a phone as on
- * a computer, and the 9pt floor is untouched.
+ * **The touch box costs this frame nothing (260910-2ny).** On a touch device the sheet no longer
+ * has a fixed height at all — it takes its width from the page and derives its height from
+ * `aspect-ratio`, so this box's own height is that same share of whatever the page gives, not a
+ * fixed number of pixels. What stays true regardless: the touch sheet's shape factor against the
+ * desktop sheet's is unchanged at 1.294118 over 1.350553, which is 0.9582, so the smallest height
+ * ratio measured at plan time (over board lengths 60-120in and deck thicknesses 4-9in, against the
+ * real `rockerViewLayout`) becomes 0.6108 x 0.9582 = 0.5853, still comfortably above a width ratio
+ * of 0.5017 — the frame stays WIDTH-bound in both, and width-boundness is a ratio property that
+ * survives any uniform scale, so the rocker readings come out proportionally identical on a phone.
+ * Proportionally identical is not physically identical, though: the phone's whole sheet prints
+ * 3.8% smaller once Safari's own margins are honoured, so these readings land near 8.7pt rather
+ * than 9.0pt there — which is the photograph, not this box.
  */
 export const ORDER_FORM_ROCKER_BOX_PX = { width: 451.5, height: 88.6 } as const;
 

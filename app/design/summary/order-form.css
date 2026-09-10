@@ -19,15 +19,18 @@
  * node for one reason only: it has to force that printing layout into existence before it can
  * measure whether a sheet's contents overflow it (its own decision is the `zoom` overflow guard,
  * nothing else — see that file's head comment). Until this change the size came ONLY from that
- * handler. **The founder's own iPhone print (260910-2ny-PROBE-READING.md) showed that was never
- * the bug** — the handler runs on iOS Safari, and its writes reach the print snapshot, same as on a
- * computer. What went wrong was the BOX: a desktop page's shape, sized for a page of a different
- * shape, then shrunk automatically to fit the paper's WIDTH by Safari itself — that automatic
- * shrink is the 86% a shaper had to dial in by hand, not a sign the sheet went unsized. With the
- * size now a fact of the stylesheet, it holds whether or not that handler ever runs, and a touch
- * device gets its own shorter, paper-shaped box further down (`[data-print-touch]`) for exactly
- * this reason: the width shrink is automatic and unavoidable, so only the sheet's SHAPE can be
- * fixed from here.
+ * handler. **The founder's own iPhone prints (260910-2ny-PROBE-READING.md,
+ * 260910-2ny-PROBE-READING-2.md) showed the JavaScript was never the bug** — the handler runs on
+ * iOS Safari, and its writes reach the print snapshot, same as on a computer. What went wrong was
+ * the BOX, twice. First it was a desktop page's shape, sized for a page of a different shape.
+ * Fixing the shape alone was not enough: the SECOND print showed the identical 7.640in of CSS
+ * WIDTH printing at 8.758in and then 8.719in — the width barely moved while only the height
+ * changed — so iOS Safari does not honour an absolute inch width at all. A layout with no absolute
+ * width, by contrast, printed at exactly the printable box on round 1's own probe, margins
+ * honoured. So the desktop box below is unchanged (D-01) and a touch device gets rules further
+ * down (`[data-print-touch]`) that take their WIDTH FROM THE PAGE and their SHAPE FROM THE PAPER —
+ * no absolute length anywhere in either rule, because an absolute length is exactly what iOS
+ * declines to honour.
  */
 
 /*
@@ -57,6 +60,24 @@
  *
  * The properties are declared on the container itself, which is fine: `cqw` resolves where a
  * property is USED, and every user is a descendant.
+ *
+ * **On a touch device the container width is no longer 733px (260910-2ny).** The root below takes
+ * its width from the page instead of a fixed printed figure, so the `@container` every `cqw` token
+ * resolves against is now the page area a phone's browser actually hands it, and the printed size
+ * follows the paper the phone gives rather than a fixed number of dots. The arithmetic: a
+ * container-relative size prints at `72 x px x P / C` points, for `P` the printed sheet width in
+ * inches and `C` the page area in CSS px. For the smallest token, that comes out to a flat **8.65pt
+ * for any page area at or above 733.44 CSS px** — flat, because `cqw` type scales with the sheet —
+ * rising above 9pt below that as the 12px clamp floor takes over. So the range across the widths
+ * `e2e/summary-print-touch-box.spec.ts` sweeps is roughly **8.7pt to 10.3pt, with 8.7pt the worst
+ * case**. That reads like a breach of the 9pt floor two paragraphs up and is not a type decision at
+ * all: the founder's iPhone leaves 7.347in of usable paper against a computer's 7.640in once Safari
+ * takes its own margins, so his whole sheet — type included — is a 96.2% photograph of a
+ * computer's. There is no lever that recovers the missing 0.35pt; the paper simply has less room,
+ * and the alternative is the sheet not fitting the page at all. The one thing that does NOT scale
+ * this way: type sized in fixed pixels rather than `cqw` prints disproportionately small on a page
+ * area wider than 733.44px, not merely photographically small, and
+ * `e2e/summary-print-touch-box.spec.ts` is what measures whether any such type sits on the sheet.
  */
 [data-order-form-root] {
   --order-form-caption: clamp(12px, 1.636cqw, 20px); /* 14.4px screen / 12px print — field labels */
@@ -430,8 +451,7 @@
      fits — the hook mirrors this value as PAGE_MARGIN_MM, so the two must be changed together.
      Measured on the founder's own iPhone (260910-2ny-PROBE-READING.md): iOS Safari ignores this
      margin outright and picks its own uniform 0.579in, drawing its own header and footer inside
-     it — which is exactly why the phone rule below leans on nothing but the sheet's SHAPE rather
-     than any margin figure this file declares. */
+     it — which is exactly why the phone rules below lean on nothing this file declares at all. */
   margin: 8mm;
 }
 
@@ -591,17 +611,14 @@
      This is what makes the printed box a fact of print media itself, true before a line of
      JavaScript runs: previously a sheet had no size in CSS at all — only `useOrderFormPrintFit`'s
      `beforeprint` handler gave it one, by writing the same inline styles this rule now writes
-     declaratively. **The founder's own iPhone print (260910-2ny-PROBE-READING.md) showed the
-     failure was never that JavaScript.** The handler runs on iOS Safari too, and its writes reach
-     the print snapshot there the same as on a computer — what actually happened is this box, sized
-     for a desktop page's SHAPE, printed at the right size for the wrong shape of page, and Safari's
-     own automatic width shrink then squeezed the result about 1% too tall — enough on its own to
-     fragment every sheet in two. With the box declared here, it holds whether or not that handler
-     ever runs; the handler's inline write becomes belt-and-braces, kept only because it also forces
-     the printing layout into existence so `scrollHeight` can measure whether a sheet's content
-     still overflows it. A touch device gets its own shorter, paper-shaped version of this box
-     immediately below (`[data-print-touch]`) — because on a phone the fix that is actually needed
-     is the sheet's SHAPE, not its size.
+     declaratively. **The founder's own iPhone prints (260910-2ny-PROBE-READING.md,
+     260910-2ny-PROBE-READING-2.md) showed the failure was never that JavaScript.** The handler
+     runs on iOS Safari too, and its writes reach the print snapshot there the same as on a
+     computer. With the box declared here, it holds whether or not that handler ever runs; the
+     handler's inline write becomes belt-and-braces, kept only because it also forces the printing
+     layout into existence so `scrollHeight` can measure whether a sheet's content still overflows
+     it. This desktop box is untouched by the touch rules below and by both rounds of the phone
+     fix (D-01) — an absolute width is fine here, because a computer's own print path honours one.
 
      An `!important` declaration also beats the hook's inline style, which the hook's own comment
      since G-08-10 already relies on for the same reason. */
@@ -611,27 +628,50 @@
     height: calc((min(11in, 11.69in) - 16mm) * 0.995) !important;
   }
 
-  /* The touch-device sheet — a SHAPE, not a size (260910-2ny). Measured, not reasoned: the
-     founder's own iPhone print (260910-2ny-PROBE-READING.md) showed the handler runs there, this
-     stylesheet applies there, and iOS Safari ignores the `@page` margin above entirely in favour of
-     its own uniform 0.579in margins with its own URL/date header and page-number footer drawn
-     inside them — then shrinks the whole document automatically to fit the paper's WIDTH. That
-     automatic shrink is what the founder was duplicating by hand at 86% in his print dialog.
+  /* The touch-device sheet takes its WIDTH FROM THE PAGE and its SHAPE FROM THE PAPER
+     (260910-2ny). Measured, not reasoned, and it is the founder's SECOND iPhone print that
+     settled it (260910-2ny-PROBE-READING-2.md): the identical 7.640in of CSS width printed at
+     8.758in before the first phone fix and 8.719in after it — the width barely moved while only
+     the height changed, so iOS Safari does not honour an absolute inch WIDTH at all. No height
+     could fix that: fitting at a printed width of 8.719in would need a ratio 13% squarer than the
+     paper, visibly distorting the form and calibrated to one phone's margins. What round 1's own
+     probe had shown all along, and nobody read at the time: a layout with no absolute width
+     printed at exactly 7.347 x 9.821in, Safari's own 0.579in margins honoured, nothing overhanging.
+     iOS scales a page-relative layout to FIT and lets an absolute-width layout overflow — so the
+     sheet below takes its width from the page and its shape from the paper.
 
-     Because the width shrink is automatic and cannot be reached from here, the only thing that
-     still governs on iOS is the sheet's SHAPE. A sheet shaped like the paper itself fits inside any
-     uniform margin the browser picks, whatever it picks — which is the only workable target when it
-     will not use ours. The width part of this expression is character-for-character the desktop
-     rule's own width above, so the two can never drift apart; the ratio,
-     `min(11 / 8.5, 11.69 / 8.27)`, is the SQUAREST of the two portrait papers this form already
-     fits (US Letter), built from the same four figures `use-print-fit.ts` holds in
-     `PORTRAIT_PAPER_IN`. Measured against this iPhone's own page: 1.294118 against the 1.3379 that
-     page allows, 3.3% to spare. It costs 4.18% of the sheet's height, and only on a touch device —
-     the width is deliberately left untouched, because the root above is the `@container` every
-     `cqw` font size resolves against, and a phone-only width would silently change the printed type
-     size without looking like a bug. */
+     The ROOT rule's `width: 100%` resolves against `[data-order-form-page]`, whose print padding
+     is already zeroed above and whose width in print media is the page area. The SHEET rule's
+     `width: auto` then stretches the sheet to that same width as a flex item, and `aspect-ratio`
+     derives a DEFINITE height from it — the non-negotiable from `use-print-fit.ts`'s head comment,
+     since the sheet's `flex` bands must divide a real number rather than going
+     content-proportional. `8.5 / 11` is US Letter, the squarest of the two portrait papers this
+     form fits, chosen because a sheet shaped like the paper fits inside any uniform margin a
+     browser picks — the proof is one line: for a portrait page with a uniform margin, the
+     printable box's height-over-width is always at least the paper's own, for any margin from
+     zero upward. On the founder's own measured page this leaves 7.347 x 9.509in of sheet inside
+     7.347 x 9.821in of paper, 0.31in of white at the foot — headroom that is now a property of the
+     paper's shape and cannot be wrong, unlike the previous fix's headroom, which depended on
+     guessing iOS's shrink factor correctly.
+
+     `8.5 / 11` is deliberately the plain two-number form, not a derived `max(8.5 / 11, 8.27 /
+     11.69)` — both engines were measured at plan time to accept the derived form, but this
+     project has already been caught once shipping Safari disagreeing with Playwright's WebKit on a
+     CSS math function (`tan(atan2())`, `--order-form-preview-scale` above), and a two-number ratio
+     has been bedrock in every engine since 2021. The derivation itself does not disappear with it:
+     `components/summary/order-form-print.test.ts` works out which of `use-print-fit.ts`'s own
+     `PORTRAIT_PAPER_IN` papers is squarest and asserts these exact two figures, so the stylesheet
+     stays dumb and the two files still cannot drift.
+
+     No inch, millimetre, pixel or viewport unit anywhere in either rule's values on purpose — an
+     absolute length is exactly what iOS declines to honour. */
+  [data-order-form-root][data-print-touch] {
+    width: 100% !important;
+  }
   [data-order-form-root][data-print-touch] [data-order-form-sheet] {
-    height: calc((min(8.5in, 8.27in) - 16mm) * min(11 / 8.5, 11.69 / 8.27)) !important;
+    width: auto !important;
+    height: auto !important;
+    aspect-ratio: 8.5 / 11 !important;
   }
 
   /* One break between the two sheets, asked for from BOTH sides (D-03): the pair above already

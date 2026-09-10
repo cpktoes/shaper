@@ -14,11 +14,15 @@ import { describe, expect, it } from "vitest";
  * stylesheet's `@page` margin and `use-print-fit.ts`'s `PAGE_MARGIN_MM` each promise, in prose, to
  * mirror the other, and nobody was checking. This file closes that.
  *
- * This file now also guards the PHONE's own box (quick task 260910-2ny). The reason it has to is
- * the same reason as above, twice over: the phone's shorter sheet is described in two places — the
- * stylesheet applies it in `[data-order-form-root][data-print-touch] [data-order-form-sheet]`, and
- * the print handler measures against it in `use-print-fit.ts` — and two places describing one box
- * is exactly how a number goes quietly wrong.
+ * This file now also guards the PHONE's own box (quick task 260910-2ny). The founder's SECOND
+ * iPhone print (260910-2ny-PROBE-READING-2.md) showed the desktop-shaped box quietly overhanging
+ * his paper by about 19% on each edge, because iOS Safari does not honour an absolute inch WIDTH
+ * at all — only a page-relative one. So what the phone rules now need guarding is not a box
+ * described in two places, but two subtler things: a SHAPE that has to stay tied to the same papers
+ * `use-print-fit.ts` lists (add one, or change one, and the stylesheet has to follow or this
+ * fails), and the ABSENCE of any absolute length in either touch rule — a property nobody reviewing
+ * a diff would notice going missing, and exactly the property that cost the founder his second
+ * print.
  */
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -187,24 +191,74 @@ function desktopSheetRuleIndex(css: string): number {
   }
 }
 
-/** Pulls the touch height calc's numbers out of an expression shaped like
- * `calc((min(Ain, Bin) - Cmm) * min(H1 / W1, H2 / W2))`: the two `Nin` paper widths, the `Nmm`
- * margin, and the ratio's two `H / W` pairs inside the trailing `min()` — without caring exactly
- * how the parens nest. */
-function parseTouchHeightExpr(expr: string): {
-  papers: number[];
-  marginMm: number;
-  ratioPairs: [number, number][];
-} {
-  const papers = [...expr.matchAll(/([\d.]+)in/g)].map(([, value]) => Number(value));
-  expect(papers.length, `expected two "Nin" figures in "${expr}"`).toBe(2);
-  const marginMatch = expr.match(/([\d.]+)mm/);
-  expect(marginMatch, `no "Nmm" figure found in "${expr}"`).not.toBeNull();
-  const ratioMatches = [...expr.matchAll(/([\d.]+)\s*\/\s*([\d.]+)/g)];
-  expect(ratioMatches.length, `expected two "H / W" ratio pairs in "${expr}"`).toBe(2);
-  const ratioPairs = ratioMatches.map(([, h, w]) => [Number(h), Number(w)] as [number, number]);
-  return { papers, marginMm: Number(marginMatch![1]), ratioPairs };
+/** Extracts the `{ ... }` body of the root's OWN touch rule — the rule whose selector is exactly
+ * `[data-order-form-root][data-print-touch]`, with no descendant combinator, distinct from
+ * `phoneSheetRuleBody`'s sheet-descendant rule. */
+function phoneRootRuleBody(css: string): { body: string; index: number } {
+  const marker = "[data-order-form-root][data-print-touch] {";
+  const start = css.indexOf(marker);
+  expect(start, `no rule found for exactly "${marker}"`).toBeGreaterThanOrEqual(0);
+  const bodyStart = start + marker.length;
+  const bodyEnd = css.indexOf("}", bodyStart);
+  expect(bodyEnd, "rule body never closes").toBeGreaterThan(bodyStart);
+  return { body: css.slice(bodyStart, bodyEnd), index: start };
 }
+
+/** Finds the offset of the desktop print rule for `[data-order-form-root]` itself — the one
+ * declaring `width: calc(min(...in, ...in) - ...mm)`, not the type-scale declarations at the top of
+ * the file or the on-screen scaler rule, both of which share the same bare selector text. */
+function desktopRootRuleIndex(css: string): number {
+  const marker = "[data-order-form-root] {";
+  let searchFrom = 0;
+  while (true) {
+    const start = css.indexOf(marker, searchFrom);
+    expect(
+      start,
+      "no [data-order-form-root] print rule found (width: calc(min(...in, ...in) - ...mm))",
+    ).toBeGreaterThanOrEqual(0);
+    const bodyStart = start + marker.length;
+    const bodyEnd = css.indexOf("}", bodyStart);
+    expect(bodyEnd, "rule body never closes").toBeGreaterThan(bodyStart);
+    const body = css.slice(bodyStart, bodyEnd);
+    if (/width:\s*calc\(min\(/.test(body)) return start;
+    searchFrom = bodyEnd + 1;
+  }
+}
+
+/** Parses a plain two-number `aspect-ratio: W / H` declaration value — the form the stylesheet
+ * deliberately uses instead of a derived `max()` (see this plan's `<mechanism>`), so this parser
+ * only ever needs to handle two bare numbers either side of a slash. */
+function parseAspectRatio(expr: string): { width: number; height: number } {
+  const stripped = stripImportant(expr);
+  const match = stripped.match(/^([\d.]+)\s*\/\s*([\d.]+)$/);
+  expect(match, `expected a plain "W / H" aspect-ratio value, got "${stripped}"`).not.toBeNull();
+  return { width: Number(match![1]), height: Number(match![2]) };
+}
+
+/** Strips a trailing `!important` (and its surrounding whitespace) off a declaration value already
+ * extracted by `extractDeclarationValue`, for an exact-match comparison. */
+function stripImportant(value: string): string {
+  return value.replace(/\s*!important\s*$/, "").trim();
+}
+
+/** Splits a rule body into its own `{ property, value }` declarations — each value still carries a
+ * trailing `!important` where the source declares one, exactly as `extractDeclarationValue` returns
+ * it, so a caller comparing raw text sees what the stylesheet actually wrote. */
+function ruleDeclarations(body: string): { property: string; value: string }[] {
+  return [...body.matchAll(/([a-z-]+)\s*:\s*([^;]+);/gi)].map(([, property, value]) => ({
+    property: property.trim(),
+    value: value.trim(),
+  }));
+}
+
+/** Absolute CSS lengths — inches, millimetres, centimetres, points, picas, quarter-millimetres or
+ * pixels — the one property iOS Safari does not honour on the touch path
+ * (260910-2ny-PROBE-READING-2.md). `cqw` deliberately does not match: it ends in the same letter as
+ * `vw` but is a container-query unit, not an absolute length. */
+const ABSOLUTE_LENGTH_RE = /\d\s*(in|mm|cm|pt|pc|q|px)\b/i;
+
+/** Viewport units — round 1's probe measured these against the SCREEN, not the printed page. */
+const VIEWPORT_UNIT_RE = /\d\s*(vh|vw|vmin|vmax)\b/i;
 
 describe("order form print path (G-08-10, PRNT-06)", () => {
   it("zeroes the page wrapper's screen padding in print, so a future tidy-up cannot quietly put the blank pages back", () => {
@@ -339,88 +393,132 @@ describe("order form print path (G-08-10, PRNT-06)", () => {
   });
 
   // A touch device's sheet is a SHAPE, not a size — the ratio of the squarest portrait paper this
-  // form fits, so it fits inside whatever uniform margin the browser picks (260910-2ny). This case
-  // pins the stylesheet's phone rule to the same PORTRAIT_PAPER_IN/PAGE_MARGIN_MM constants the
-  // desktop rule above is already pinned to, so the two boxes can never quietly describe two
-  // different papers.
-  it("the phone's printed sheet and the print handler's own phone box describe the same piece of paper", () => {
+  // form fits, so it fits inside whatever uniform margin the browser picks
+  // (260910-2ny-PROBE-READING-2.md). This case pins the stylesheet's `aspect-ratio` to the same
+  // PORTRAIT_PAPER_IN constants the desktop rule above is already pinned to — add a paper here, or
+  // change one, and the stylesheet has to follow or this fails.
+  it("the phone rule's shape is the squarest paper use-print-fit.ts claims to fit", () => {
     const css = readStripped(ORDER_FORM_CSS_PATH);
-    const { body: phoneBody } = phoneSheetRuleBody(css);
-    const heightExpr = extractDeclarationValue(phoneBody, "height");
-    const touch = parseTouchHeightExpr(heightExpr);
+    const { body: sheetBody } = phoneSheetRuleBody(css);
+    const aspectRatioExpr = extractDeclarationValue(sheetBody, "aspect-ratio");
+    const { width: cssWidth, height: cssHeight } = parseAspectRatio(aspectRatioExpr);
 
     const hookSource = readStripped(USE_PRINT_FIT_PATH);
-    const mmPerInch = readNumericConst(hookSource, "MM_PER_INCH");
-    const marginMm = readNumericConst(hookSource, "PAGE_MARGIN_MM");
     const papers = readPortraitPapersIn(hookSource);
+    const squarest = papers.reduce((a, b) => (a.height / a.width <= b.height / b.width ? a : b));
 
     expect(
-      [...touch.papers].sort((a, b) => a - b),
-      `the phone height expression's paper widths (${touch.papers}) do not match PORTRAIT_PAPER_IN's widths`,
-    ).toEqual([...papers.map((p) => p.width)].sort((a, b) => a - b));
-
+      cssWidth,
+      `the phone rule's aspect-ratio width (${cssWidth}) is not the squarest paper's own width (${squarest.width})`,
+    ).toBe(squarest.width);
     expect(
-      touch.marginMm,
-      `the phone height expression subtracts ${touch.marginMm}mm, not twice PAGE_MARGIN_MM (${2 * marginMm}mm)`,
-    ).toBe(2 * marginMm);
+      cssHeight,
+      `the phone rule's aspect-ratio height (${cssHeight}) is not the squarest paper's own height (${squarest.height})`,
+    ).toBe(squarest.height);
 
-    const cssRatioPairsSorted = touch.ratioPairs.map(([h, w]) => `${h}/${w}`).sort();
-    const paperRatioPairsSorted = papers.map((p) => `${p.height}/${p.width}`).sort();
+    // Pinned to six places so the MEANING is checked as well as the digits — a ratio that happens
+    // to equal the right numbers by coincidence would still pass the two assertions above.
+    const evaluatedRatio = cssHeight / cssWidth;
+    const derivedRatio = squarest.height / squarest.width;
     expect(
-      cssRatioPairsSorted,
-      `the phone rule's ratio pairs (${touch.ratioPairs.map((r) => r.join("/"))}) are not PORTRAIT_PAPER_IN's own height/width pairs`,
-    ).toEqual(paperRatioPairsSorted);
-
-    // The chosen ratio is the SMALLEST height/width pair — the squarest portrait paper — never a
-    // literal, so it can only ever mean "the squarest paper this form claims to fit".
-    const touchRatio = Math.min(...touch.ratioPairs.map(([h, w]) => h / w));
-    const derivedRatio = Math.min(...papers.map((p) => p.height / p.width));
-    expect(
-      touchRatio,
-      `the phone rule's ratio (${touchRatio}) does not equal the squarest portrait paper's own height/width ratio (${derivedRatio})`,
+      evaluatedRatio,
+      `the phone rule's evaluated ratio (${evaluatedRatio}) does not equal the squarest portrait paper's own height/width ratio (${derivedRatio})`,
     ).toBeCloseTo(derivedRatio, 6);
-
-    // Evaluate both sides at CSS's own fixed 96px/25.4mm-per-inch, the same idiom and tolerance the
-    // desktop case above uses.
-    const marginIn = marginMm / mmPerInch;
-    const widthIn = Math.min(...papers.map((p) => p.width)) - 2 * marginIn;
-    const expectedHeightPx = widthIn * CSS_REFERENCE_PX_PER_INCH * derivedRatio;
-
-    const cssWidthIn = Math.min(...touch.papers) - touch.marginMm / CSS_MM_PER_INCH;
-    const cssHeightPx = cssWidthIn * CSS_REFERENCE_PX_PER_INCH * touchRatio;
-
-    expect(
-      Math.abs(cssHeightPx - expectedHeightPx),
-      `phone rule height (${cssHeightPx.toFixed(4)}px) and the handler's own derived box (${expectedHeightPx.toFixed(4)}px) have drifted apart by more than 0.02 dots`,
-    ).toBeLessThanOrEqual(0.02);
   });
 
-  // The phone rule changes only the height, never the width — the root is the `@container` every
-  // `cqw` font size resolves against, so a phone-only width would silently change the printed type
-  // size and look like a design decision rather than a bug.
-  it("the phone rule changes only the height, so the type container stays in lockstep", () => {
+  // The most important assertion in this file (260910-2ny-PROBE-READING-2.md): the founder's
+  // second iPhone print showed the identical 7.640in of CSS width printing at 8.758in and then
+  // 8.719in — iOS Safari does not honour an absolute inch width at all. So neither touch rule may
+  // carry one, or any viewport unit either (round 1's own probe measured those against the screen,
+  // not the page).
+  it("the phone rules carry no absolute length at all — the touch box takes its width from the page and its shape from the paper", () => {
     const css = readStripped(ORDER_FORM_CSS_PATH);
-    const { body: phoneBody, index: phoneIndex } = phoneSheetRuleBody(css);
+    const { body: rootBody, index: rootIndex } = phoneRootRuleBody(css);
+    const { body: sheetBody, index: sheetIndex } = phoneSheetRuleBody(css);
 
-    const heightExpr = extractDeclarationValue(phoneBody, "height");
-    expect(heightExpr, `the phone rule's height value ("${heightExpr}") carries a viewport unit`).not.toMatch(
-      /\d(vh|vw|vmin|vmax)\b/i,
-    );
-    expect(heightExpr, `the phone rule's height value ("${heightExpr}") carries a percentage`).not.toMatch(/%/);
+    for (const { property, value } of [...ruleDeclarations(rootBody), ...ruleDeclarations(sheetBody)]) {
+      expect(
+        value,
+        `"${property}: ${value}" in a touch rule carries an absolute CSS length — iOS does not honour one (260910-2ny-PROBE-READING-2.md)`,
+      ).not.toMatch(ABSOLUTE_LENGTH_RE);
+      expect(
+        value,
+        `"${property}: ${value}" in a touch rule carries a viewport unit — round 1's probe measured those against the screen, not the page`,
+      ).not.toMatch(VIEWPORT_UNIT_RE);
+    }
+
+    // The sheet takes its size from the page (width/height: auto) and its shape from the paper
+    // (aspect-ratio) — nothing else.
+    expect(
+      stripImportant(extractDeclarationValue(sheetBody, "width")),
+      "the sheet's touch rule must declare width: auto",
+    ).toBe("auto");
+    expect(
+      stripImportant(extractDeclarationValue(sheetBody, "height")),
+      "the sheet's touch rule must declare height: auto",
+    ).toBe("auto");
+    expect(
+      () => extractDeclarationValue(sheetBody, "aspect-ratio"),
+      "the sheet's touch rule declares no aspect-ratio",
+    ).not.toThrow();
+
+    // The root's width is the one percentage this file allows — a percentage of the PAGE is
+    // exactly the point — and nothing else in either rule may carry one.
+    const rootDecls = ruleDeclarations(rootBody);
+    const rootWidthDecl = rootDecls.find((d) => d.property === "width");
+    expect(rootWidthDecl, "the root's touch rule declares no width").toBeDefined();
+    expect(stripImportant(rootWidthDecl!.value), "the root's touch rule width must be a plain 100%").toBe("100%");
+
+    for (const { property, value } of [
+      ...rootDecls.filter((d) => d.property !== "width"),
+      ...ruleDeclarations(sheetBody),
+    ]) {
+      expect(
+        value,
+        `"${property}: ${value}" carries a percentage — only the root's own width is allowed to`,
+      ).not.toMatch(/%/);
+    }
+
+    // Source order is the belt to the selector's own braces — a media query adds no specificity —
+    // so both touch rules must appear later in the file than their desktop counterparts.
+    const desktopSheetIndex = desktopSheetRuleIndex(css);
+    expect(
+      sheetIndex,
+      "the sheet's touch rule must appear later in the file than the desktop sheet rule",
+    ).toBeGreaterThan(desktopSheetIndex);
+    const desktopRootIndex = desktopRootRuleIndex(css);
+    expect(
+      rootIndex,
+      "the root's touch rule must appear later in the file than the desktop root rule",
+    ).toBeGreaterThan(desktopRootIndex);
+  });
+
+  // There is no target width to pin on the touch path — the whole fix is that the page decides it
+  // — and pinning one in pixels would re-impose from inside the app the exact absolute width iOS
+  // refuses to honour, undoing the fix invisibly. A re-introduced inline width on the touch path is
+  // the one change that would quietly break this without looking like a diff anyone should question.
+  it("the print handler returns before writing anything on the touch path", () => {
+    const hookSource = readStripped(USE_PRINT_FIT_PATH).replace(/\s+/g, " ");
+
+    const attrReadIdx = hookSource.indexOf("hasAttribute(TOUCH_PRINT_ATTRIBUTE)");
+    expect(
+      attrReadIdx,
+      "use-print-fit.ts does not read the touch attribute off the root inside beforePrint",
+    ).toBeGreaterThanOrEqual(0);
+
+    const inlineRootWidthIdx = hookSource.indexOf("root.style.width =");
+    expect(inlineRootWidthIdx, "use-print-fit.ts never writes an inline root width").toBeGreaterThanOrEqual(0);
 
     expect(
-      () => extractDeclarationValue(phoneBody, "width"),
-      "the phone rule declares a width — only height is meant to change on a touch device",
-    ).toThrow();
+      attrReadIdx,
+      "the touch attribute must be read before the first inline root width is written, or a re-introduced inline width could win on the touch path",
+    ).toBeLessThan(inlineRootWidthIdx);
 
-    // Source order is the belt to the selector's braces: the phone selector is the more specific of
-    // the two, but a media query adds no specificity, so source order is what keeps the phone rule
-    // winning if that specificity margin is ever narrowed.
-    const desktopIndex = desktopSheetRuleIndex(css);
+    const between = hookSource.slice(attrReadIdx, inlineRootWidthIdx);
     expect(
-      phoneIndex,
-      "the phone rule must appear later in the file than the desktop sheet rule",
-    ).toBeGreaterThan(desktopIndex);
+      between,
+      "no bare return statement between the touch attribute read and the first inline width write — the handler can still write something on the touch path",
+    ).toMatch(/\breturn\s*;/);
   });
 
   // The phone rule is reached by the pointer, never by a width — in print media a width query tests
