@@ -123,3 +123,50 @@ describe("RailPlanSideFigure's line key (quick 260910-jfp)", () => {
     expect(source).toMatch(/justify-center/);
   });
 });
+
+/**
+ * Source-contract tests for the figure's new `fit` prop (quick 260910-kz2, PRNT-05) — proving,
+ * before any source change, that the printed Rail Band Instructions sheet has no way to ask this
+ * figure to fit a BOX rather than only a width, which is the root cause of the sheet quietly
+ * clipping its own example rail drawing on a narrow page. Every case below FAILS today: the `fit`
+ * prop, `FIGURE_CARD_CHROME_PX` and `FIGURE_MAX_CARD_HEIGHT_PX` do not exist yet, and the drawing
+ * box has exactly one way to size itself (its width, from a fixed flex-basis).
+ */
+describe("RailPlanSideFigure's height-driven fit (quick 260910-kz2)", () => {
+  const source = readStripped(FIGURE_PATH);
+
+  it("the card's chrome constant is derived, in the source, from two named factors that agree with the card's own Tailwind classes (p-3.5 twice, border twice)", () => {
+    const paddingMatch = source.match(/const FIGURE_CARD_PADDING_PX\s*=\s*([\d.]+)/);
+    expect(paddingMatch, "expected a numeric const FIGURE_CARD_PADDING_PX in the source").not.toBeNull();
+    expect(Number(paddingMatch![1])).toBe(14);
+
+    const borderMatch = source.match(/const FIGURE_CARD_BORDER_PX\s*=\s*([\d.]+)/);
+    expect(borderMatch, "expected a numeric const FIGURE_CARD_BORDER_PX in the source").not.toBeNull();
+    expect(Number(borderMatch![1])).toBe(1);
+
+    expect(source).toMatch(
+      /const FIGURE_CARD_CHROME_PX\s*=\s*FIGURE_CARD_PADDING_PX\s*\*\s*2\s*\+\s*FIGURE_CARD_BORDER_PX\s*\*\s*2/,
+    );
+    expect(source).toMatch(/p-3\.5/);
+    expect(source).toContain("border border-surf-line-faint");
+  });
+
+  it("FIGURE_MAX_CARD_HEIGHT_PX is exported and composed from FIGURE_MAX_RENDERED_HEIGHT and the chrome constant, not typed as a literal", () => {
+    expect(source).toMatch(
+      /export const FIGURE_MAX_CARD_HEIGHT_PX\s*=\s*FIGURE_MAX_RENDERED_HEIGHT\s*\+\s*FIGURE_CARD_CHROME_PX/,
+    );
+  });
+
+  it("the figure takes a fit prop whose default is the width-driven mode, so a caller that passes nothing gets today's behaviour", () => {
+    expect(source).toMatch(/fit\s*=\s*"width"/);
+    expect(source).toMatch(/fit\?:\s*"width"\s*\|\s*"height"/);
+  });
+
+  it("in the height-driven mode the drawing's height leads and its width is derived from the aspect ratio, not pinned", () => {
+    expect(source).toMatch(/fit === "height"[\s\S]{0,400}height:\s*"100%"[\s\S]{0,200}width:\s*"auto"/);
+  });
+
+  it("the width-driven mode still pins the drawing to FIGURE_MAX_RENDERED_WIDTH — today's behaviour stays expressed, not deleted", () => {
+    expect(source).toMatch(/flex:\s*`0 1 \$\{FIGURE_MAX_RENDERED_WIDTH\}px`/);
+  });
+});
