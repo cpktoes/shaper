@@ -14,9 +14,12 @@ import { inflateSync } from "node:zlib";
  * - Chromium's print path lays out at the PAPER's width and ignores the screen viewport entirely —
  *   measured identical at a 1280x800 desktop, an iPhone 14 and an 880x900 window. A phone-viewport
  *   print case would therefore prove nothing and is deliberately not written here.
- * - The real leverage is instead switching the app's own print JavaScript OFF, which is what a
- *   phone whose print path never applied `beforeprint`'s work to its print snapshot effectively
- *   did — see `use-print-fit.ts` and `order-form.css`'s head comments for the fix this proves.
+ * - The middle case below switches the app's own print JavaScript OFF — a deliberate simulation of
+ *   a suppressed handler, not a description of what a phone's print path actually does. The
+ *   founder's own iPhone print (260910-2ny-PROBE-READING.md) showed `beforeprint` DOES fire there
+ *   and its writes DO reach the print snapshot; this case instead proves the stylesheet's own
+ *   paper-unit declarations hold even in the case where that JavaScript never ran at all — a
+ *   stronger guarantee than the app actually needs, kept because it is cheap to keep.
  */
 
 const PRINT_RAIL_INSTRUCTIONS_STORAGE_KEY = "shaper-print-rail-instructions";

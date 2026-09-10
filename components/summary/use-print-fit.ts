@@ -50,11 +50,20 @@
  * this handler, or any JavaScript, has run. This handler's inline `width`/`height` writes below now
  * exist for one remaining reason: forcing the printing layout into existence so `scrollHeight`
  * measures the layout that actually prints, rather than the window's. This handler's own decision
- * is the `zoom` overflow guard in point 2 above, and nothing else about the sheet's size. A phone
- * whose print path never ran this handler used to print a sheet with no size at all — falling back
- * to its on-screen shape, about 86% too big, which is exactly the fix this stylesheet closes.
- * `components/summary/order-form-print.test.ts` fails the moment the stylesheet's numbers and these
- * constants disagree.
+ * is the `zoom` overflow guard in point 2 above, and nothing else about the sheet's size.
+ *
+ * **What actually went wrong on a phone, corrected against the founder's own iPhone print
+ * (260910-2ny-PROBE-READING.md).** This handler runs on iOS Safari exactly as it does on a
+ * computer, and its writes reach the print snapshot there too — the stylesheet's own declarations
+ * apply on both. What went wrong was the BOX: this handler and the stylesheet both gave a sheet a
+ * desktop page's shape, and iOS Safari then shrank the whole document automatically to fit the
+ * paper's WIDTH — that automatic shrink is the 86% a shaper had to dial in by hand, not a sheet
+ * that printed unsized. Because that width shrink cannot be reached from here, a touch device now
+ * gets a shorter, paper-shaped sheet instead of the desktop one: `TOUCH_SHEET_RATIO` below is a
+ * RATIO, not a size, chosen because a sheet shaped like the paper fits inside whatever uniform
+ * margin the browser picks — which is the only workable target when iOS ignores `PAGE_MARGIN_MM`
+ * outright and picks its own. `components/summary/order-form-print.test.ts` fails the moment the
+ * stylesheet's numbers and these constants disagree, on either the desktop box or the touch one.
  */
 
 import { useEffect, useRef } from "react";
@@ -79,6 +88,30 @@ const PORTRAIT_PAPER_IN = [
  */
 const FIT_SAFETY = 0.995;
 
+/** Written on `[data-order-form-root]` at mount when the pointer is coarse, and read by
+ * `order-form.css`'s phone-only sheet rule — the one place both files agree on the attribute's
+ * name. */
+const TOUCH_PRINT_ATTRIBUTE = "data-print-touch";
+
+/** Pointer, not width (260910-2ny): in PRINT media a width query tests the PAGE, not the screen,
+ * so a width condition would match on a computer and wreck the desktop box D-01 protects. An iPad
+ * is also a coarse pointer on a wide screen running the same WebKit print path as an iPhone, so a
+ * width condition would exclude precisely the device that most needs this fix. Read once, here, in
+ * SCREEN media at mount, where `pointer` has a well-defined meaning — a printer has no pointer to
+ * ask about. */
+const COARSE_POINTER_QUERY = "(pointer: coarse)";
+
+/**
+ * The squarest portrait paper this form fits — its smallest height-over-width pair — derived from
+ * `PORTRAIT_PAPER_IN` rather than a literal, so it can only ever mean "the squarest paper we claim
+ * to fit". For a portrait page with a uniform margin on every side, the printable box's ratio is at
+ * or above the paper's own height/width for any margin from zero upward, so a sheet built to this
+ * ratio fits inside whatever uniform margin a touch device's browser picks — which is the whole
+ * point when iOS ignores `PAGE_MARGIN_MM` outright and picks its own (measured 0.579in on the
+ * founder's iPhone, see 260910-2ny-PROBE-READING.md).
+ */
+const TOUCH_SHEET_RATIO = Math.min(...PORTRAIT_PAPER_IN.map((p) => p.height / p.width));
+
 /** CSS px per inch, measured rather than assumed — a zoomed or high-DPI context is not 96. */
 function measurePxPerInch(): number {
   const probe = document.createElement("div");
@@ -99,6 +132,29 @@ function printableBoxPx(): { width: number; height: number } {
 
 export function useOrderFormPrintFit() {
   const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // Decide the touch attribute from the POINTER, at mount, in screen media — not in `beforePrint`,
+  // where a printer has no pointer to ask about, and not from a width, which a print query would
+  // read against the page rather than the screen (see TOUCH_PRINT_ATTRIBUTE / COARSE_POINTER_QUERY
+  // above). Follows the query's own `change` event so a tablet that gains a mouse mid-session does
+  // not keep a stale attribute into its next print.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || typeof window.matchMedia !== "function") return;
+
+    const query = window.matchMedia(COARSE_POINTER_QUERY);
+    const applyTouchAttribute = () => {
+      if (query.matches) {
+        root.setAttribute(TOUCH_PRINT_ATTRIBUTE, "true");
+      } else {
+        root.removeAttribute(TOUCH_PRINT_ATTRIBUTE);
+      }
+    };
+
+    applyTouchAttribute();
+    query.addEventListener("change", applyTouchAttribute);
+    return () => query.removeEventListener("change", applyTouchAttribute);
+  }, []);
 
   useEffect(() => {
     const sheetsOf = (root: HTMLElement) =>
@@ -124,11 +180,20 @@ export function useOrderFormPrintFit() {
       // hold. Pinned, the container query resolves to the printed width, and the layout measured
       // here is the layout that prints.
       root.style.width = `${page.width}px`;
-      // A hair under the page box, not exactly it. A sheet sized to the page's precise height is one
-      // sub-pixel rounding error away from "does not fit", and with `break-inside: avoid` on it the
-      // browser answers that by pushing the whole sheet onto the next page — turning two pages into
-      // four, half of them blank. The shave is well under a printed millimetre.
-      const sheetHeight = page.height * FIT_SAFETY;
+
+      // Choose the sheet height from the attribute the root is ALREADY carrying (written at mount,
+      // above) rather than asking the pointer media query a second time here — so the number
+      // written inline can never disagree with the rule in order-form.css that is about to apply.
+      const isTouch = root.hasAttribute(TOUCH_PRINT_ATTRIBUTE);
+      const sheetHeight = isTouch
+        ? page.width * TOUCH_SHEET_RATIO
+        : // A hair under the page box, not exactly it. A sheet sized to the page's precise height is
+          // one sub-pixel rounding error away from "does not fit", and with `break-inside: avoid` on
+          // it the browser answers that by pushing the whole sheet onto the next page — turning two
+          // pages into four, half of them blank. The shave is well under a printed millimetre. Not
+          // applied on the touch path: that box already carries 3.3% of headroom by construction
+          // (see TOUCH_SHEET_RATIO above), so it does not need one.
+          page.height * FIT_SAFETY;
 
       for (const sheet of sheetsOf(root)) {
         // Hand each sheet the page box outright — both axes — rather than letting it size itself

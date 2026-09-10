@@ -822,7 +822,15 @@ export function compactRailReadingXs(layout: RockerViewLayout, readings: Compact
  * These are derived, not measured — the executor cannot run `npm run dev` inside a worktree. An
  * error in the taller direction only keeps the frame width-bound, i.e. only keeps the type at its
  * 9pt target — the safe direction to be wrong in. The founder's post-merge print check is the real
- * verification of this number; see this plan's `<post_merge_check>`.
+ * verification of this number; see quick task 260910-2ny's Task 7 (his own confirming iPhone print).
+ *
+ * **The touch box costs this frame nothing (260910-2ny).** On a touch device the sheet is 4.18%
+ * shorter (`TOUCH_SHEET_RATIO` in `use-print-fit.ts`), which puts this box's height share at about
+ * 84.9px there instead of 88.6px. Measured at plan time with `npx tsx` against the real
+ * `rockerViewLayout`, over board lengths 60-120in and deck thicknesses 4-9in: `width/layout.width`
+ * is 0.5017 against a smallest `height/layout.height` of 0.6108, even in the shorter touch box — so
+ * the frame stays WIDTH-bound in both, the rocker readings come out the same size on a phone as on
+ * a computer, and the 9pt floor is untouched.
  */
 export const ORDER_FORM_ROCKER_BOX_PX = { width: 451.5, height: 88.6 } as const;
 

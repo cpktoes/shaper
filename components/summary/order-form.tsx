@@ -47,7 +47,8 @@
  * width in `cqw` units (see `app/design/summary/order-form.css`). That is what lets the same layout
  * be measured on screen and printed to paper: `useOrderFormPrintFit` pins every sheet to the
  * printable page box before measuring, and because the type is tied to the container rather than
- * the viewport, the layout it measures is the layout that prints.
+ * the viewport, the layout it measures is the layout that prints. On a touch device that box is
+ * the shorter, paper-shaped one (`[data-print-touch]`, 260910-2ny) — a computer's box is untouched.
  */
 
 import type { CSSProperties, ReactNode } from "react";
