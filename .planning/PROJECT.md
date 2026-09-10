@@ -1,4 +1,4 @@
-# Shaper
+# Shaper Assistant
 
 ## What This Is
 
@@ -110,7 +110,7 @@ Archives: [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-ph
 ## Context
 
 **Current state (Phase 2 complete, 2026-08-28):** The app is live at
-https://shaper-coral.vercel.app, auto-deploying from `main`, with accounts and saved designs
+https://www.shaperassistant.com, auto-deploying from `main`, with accounts and saved designs
 working end to end. A shaper can sign in (email/password or Google via Clerk), design a board,
 and have it autosave to their own rack — named models they can reopen, rename, duplicate, and
 delete. Sign-in is a nudge, never a gate: every design tool works signed out. Data lives in

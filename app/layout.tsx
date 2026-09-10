@@ -28,7 +28,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Shaper — Surfboard Design",
+  title: "Shaper Assistant — Surfboard Design",
   description: "Design custom surfboards with calculated rail bands, fin placement, and volume.",
 };
 

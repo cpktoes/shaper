@@ -14,7 +14,7 @@ import { TOOLBAR_TIP_DISMISSAL_KEY } from "../../lib/models/toolbar-tip";
  * (`--position: NaN%; visibility: hidden`) until a shaper changed its value. The phone's "Fine
  * adjust" fold used to hide six sliders that way; it was removed at the founder's request on
  * 2026-09-09, and with it went the only slider anywhere in the app that ever loaded hidden — every
- * other collapsible section in Shaper renders no slider at all while closed, and mounts a fresh
+ * other collapsible section in Shaper Assistant renders no slider at all while closed, and mounts a fresh
  * one the moment it opens.
  *
  * So this spec is no longer "open the fold, then check" — it is the standing production proof

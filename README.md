@@ -1,3 +1,8 @@
+# Shaper Assistant
+
+Shaper Assistant helps surfboard shapers design custom boards, with rail-band dimensions, fin
+placement and volume calculated from real shaping formulas.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

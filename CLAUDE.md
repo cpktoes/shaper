@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Shaper
+# Shaper Assistant
 
 A web app for designing surfboards. Users set overall dimensions, then shape an outline
 curve, rail contour, foil and fin placement — with rail-band dimensions, fin placement and
@@ -16,7 +16,8 @@ answers, commit messages and summaries alike.
 - Next.js 16 (App Router) + React 19 + TypeScript (strict mode)
 - Tailwind CSS v4, shadcn/ui components built on Base UI, lucide-react icons
 - Vitest for unit tests — `lib/**/*.test.ts`, node environment
-- Deployed on Vercel from `main` → https://shaper-coral.vercel.app
+- Deployed on Vercel from `main` → https://www.shaperassistant.com (the old
+  shaper-coral.vercel.app address still works — it redirects there)
 
 Clerk auth and Neon Postgres via Drizzle are installed and in use (accounts and saved
 designs, Phase 2). Playwright is installed and in use (Phase 9) — the browser-driven tests in

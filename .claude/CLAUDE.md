@@ -2,7 +2,7 @@
 
 ## Project
 
-**Shaper**
+**Shaper Assistant**
 
 A web app that helps surfboard shapers — hobbyist, professional, and curious surfers — design custom boards. Users set overall dimensions, then shape an outline curve, rocker profile, rail contour, and foil, and place fins, with rail-band dimensions, fin placement, and board volume *calculated* from real shaping formulas rather than just hand-drawn. Designs are saved as named models and can be exported as printable full-size templates. Public sharing and paid tiers come later, once real shapers have used the free version.
 
