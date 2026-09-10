@@ -19,10 +19,15 @@
  * node for one reason only: it has to force that printing layout into existence before it can
  * measure whether a sheet's contents overflow it (its own decision is the `zoom` overflow guard,
  * nothing else — see that file's head comment). Until this change the size came ONLY from that
- * handler, and a phone whose print path never applied the handler's work to its print snapshot
- * printed the sheet at roughly its on-screen size instead of at a page — 86% too big, exactly the
- * factor a shaper had to dial in by hand to get a correctly-sized print. With the size now a fact
- * of the stylesheet, it holds whether or not that JavaScript ever runs.
+ * handler. **The founder's own iPhone print (260910-2ny-PROBE-READING.md) showed that was never
+ * the bug** — the handler runs on iOS Safari, and its writes reach the print snapshot, same as on a
+ * computer. What went wrong was the BOX: a desktop page's shape, sized for a page of a different
+ * shape, then shrunk automatically to fit the paper's WIDTH by Safari itself — that automatic
+ * shrink is the 86% a shaper had to dial in by hand, not a sign the sheet went unsized. With the
+ * size now a fact of the stylesheet, it holds whether or not that handler ever runs, and a touch
+ * device gets its own shorter, paper-shaped box further down (`[data-print-touch]`) for exactly
+ * this reason: the width shrink is automatic and unavoidable, so only the sheet's SHAPE can be
+ * fixed from here.
  */
 
 /*
@@ -422,7 +427,11 @@
   size: portrait;
   /* Pinned so the printable box is knowable. Without it the area moves with whatever margin the
      shaper has set in their print dialog, and `useOrderFormPrintFit` cannot compute a box that
-     fits — the hook mirrors this value as PAGE_MARGIN_MM, so the two must be changed together. */
+     fits — the hook mirrors this value as PAGE_MARGIN_MM, so the two must be changed together.
+     Measured on the founder's own iPhone (260910-2ny-PROBE-READING.md): iOS Safari ignores this
+     margin outright and picks its own uniform 0.579in, drawing its own header and footer inside
+     it — which is exactly why the phone rule below leans on nothing but the sheet's SHAPE rather
+     than any margin figure this file declares. */
   margin: 8mm;
 }
 
@@ -448,8 +457,8 @@
      PAGE_MARGIN_MM constants (see this file's head comment and that file's). This root is the
      `@container` every `cqw` font size on a sheet resolves against, so it has to carry the printed
      width itself, not just its children — otherwise the container query would resolve against
-     whatever the print viewport happens to hand it, which is exactly the phone failure this
-     stylesheet now closes off. */
+     whatever the print viewport happens to hand it, and the type would print at a size neither the
+     design nor `useOrderFormPrintFit`'s own measurement ever saw. */
   [data-order-form-root] {
     max-width: none !important;
     gap: 0 !important;
@@ -484,9 +493,9 @@
      `color-mix` against `--surf-ink-muted` / `--outline-widepoint-knot`, see globals.css around
      `--outline-station-line` / `--outline-widepoint-line` — so they read as construction lines
      rather than as part of the board outline. Low-alpha dashed and dotted strokes are the first
-     thing a consumer printer drops, and this sheet already prints at roughly 0.69 zoom (see
-     `useOrderFormPrintFit`'s header comment), so those percentages are exactly the risk the
-     pending todo (2026-08-22-summary-print-after-callout-system.md, items 4-5) flags. Raised here,
+     thing a consumer printer drops — paper carries none of a screen's backlight to help a faint
+     line show up — so those percentages are exactly the risk the pending todo
+     (2026-08-22-summary-print-after-callout-system.md, items 4-5) flags. Raised here,
      for paper only — the screen values in globals.css are untouched.
 
      Scoped to `[data-order-form-page]`, this file's own outer hook (see order-form.tsx), tripled
@@ -582,12 +591,17 @@
      This is what makes the printed box a fact of print media itself, true before a line of
      JavaScript runs: previously a sheet had no size in CSS at all — only `useOrderFormPrintFit`'s
      `beforeprint` handler gave it one, by writing the same inline styles this rule now writes
-     declaratively. On a phone whose print path never applied that handler's work to the print
-     snapshot, a sheet fell back to sizing itself by its own on-screen aspect ratio and content,
-     roughly 86% larger than a page — exactly the overshoot a shaper had to dial back by hand. With
-     the box declared here, it holds whether or not that handler ever runs; the handler's inline
-     write becomes belt-and-braces, kept only because it also forces the printing layout into
-     existence so `scrollHeight` can measure whether a sheet's content still overflows it.
+     declaratively. **The founder's own iPhone print (260910-2ny-PROBE-READING.md) showed the
+     failure was never that JavaScript.** The handler runs on iOS Safari too, and its writes reach
+     the print snapshot there the same as on a computer — what actually happened is this box, sized
+     for a desktop page's SHAPE, printed at the right size for the wrong shape of page, and Safari's
+     own automatic width shrink then squeezed the result about 1% too tall — enough on its own to
+     fragment every sheet in two. With the box declared here, it holds whether or not that handler
+     ever runs; the handler's inline write becomes belt-and-braces, kept only because it also forces
+     the printing layout into existence so `scrollHeight` can measure whether a sheet's content
+     still overflows it. A touch device gets its own shorter, paper-shaped version of this box
+     immediately below (`[data-print-touch]`) — because on a phone the fix that is actually needed
+     is the sheet's SHAPE, not its size.
 
      An `!important` declaration also beats the hook's inline style, which the hook's own comment
      since G-08-10 already relies on for the same reason. */
@@ -595,6 +609,40 @@
     aspect-ratio: auto !important;
     width: calc(min(8.5in, 8.27in) - 16mm) !important;
     height: calc((min(11in, 11.69in) - 16mm) * 0.995) !important;
+  }
+
+  /* The touch-device sheet — a SHAPE, not a size (260910-2ny). Measured, not reasoned: the
+     founder's own iPhone print (260910-2ny-PROBE-READING.md) showed the handler runs there, this
+     stylesheet applies there, and iOS Safari ignores the `@page` margin above entirely in favour of
+     its own uniform 0.579in margins with its own URL/date header and page-number footer drawn
+     inside them — then shrinks the whole document automatically to fit the paper's WIDTH. That
+     automatic shrink is what the founder was duplicating by hand at 86% in his print dialog.
+
+     Because the width shrink is automatic and cannot be reached from here, the only thing that
+     still governs on iOS is the sheet's SHAPE. A sheet shaped like the paper itself fits inside any
+     uniform margin the browser picks, whatever it picks — which is the only workable target when it
+     will not use ours. The width part of this expression is character-for-character the desktop
+     rule's own width above, so the two can never drift apart; the ratio,
+     `min(11 / 8.5, 11.69 / 8.27)`, is the SQUAREST of the two portrait papers this form already
+     fits (US Letter), built from the same four figures `use-print-fit.ts` holds in
+     `PORTRAIT_PAPER_IN`. Measured against this iPhone's own page: 1.294118 against the 1.3379 that
+     page allows, 3.3% to spare. It costs 4.18% of the sheet's height, and only on a touch device —
+     the width is deliberately left untouched, because the root above is the `@container` every
+     `cqw` font size resolves against, and a phone-only width would silently change the printed type
+     size without looking like a bug. */
+  [data-order-form-root][data-print-touch] [data-order-form-sheet] {
+    height: calc((min(8.5in, 8.27in) - 16mm) * min(11 / 8.5, 11.69 / 8.27)) !important;
+  }
+
+  /* One break between the two sheets, asked for from BOTH sides (D-03): the pair above already
+     gives every sheet but the last a `break-after`, and this asks for the same break from the
+     sheet that follows. Belt and braces, not a repair — it was verified at plan time that the print
+     buttons sit outside `[data-order-form-root]`, so the `:last-child` reset above already stops a
+     trailing blank page; this is what keeps that true if the tree around the sheets ever changes.
+     Two forced breaks at one break point combine into one break, in every engine measured. */
+  [data-order-form-sheet] + [data-order-form-sheet] {
+    break-before: page;
+    page-break-before: always;
   }
 
   /* Scrolling containers — the rail data table and the fin placement table — print in full instead
@@ -609,12 +657,15 @@
     display: none !important;
   }
 
-  /* Set by useOrderFormPrintFit's beforeprint handler, which also gives every sheet an inline
-     width and height equal to the printable page box. A sheet's height is deliberately NOT forced
-     to `auto`: that is what lets flex bands go content-proportional and inflate a sheet past its
-     page. `overflow: hidden` is the backstop — with each box the exact size of a page, anything
-     that still spills cannot start another one. */
-  [data-order-form-root][data-printing] [data-order-form-sheet] {
+  /* The overflow backstop — with each sheet's box a fact of the stylesheet above (desktop or
+     touch), anything that still spills its own band cannot start a second page. Unconditional, not
+     scoped to `[data-printing]`: that scoping rested on a belief the founder's print disproved —
+     that a phone's print path never applies the handler's work — so it now holds whether or not any
+     JavaScript ever runs. `data-printing` itself is still written by `useOrderFormPrintFit`, even
+     though no rule here reads it any more: `e2e/summary-print-size.spec.ts` uses its absence to
+     prove its middle case genuinely suppressed the handler, and without it that case would silently
+     become a duplicate of its first and prove nothing. */
+  [data-order-form-sheet] {
     overflow: hidden !important;
   }
 }
