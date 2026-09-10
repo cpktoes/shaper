@@ -144,17 +144,6 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     });
   }
 
-  test("TEMPLATE: the Fine adjust disclosure row is at least 44px tall (already at rest, no override needed)", async ({
-    page,
-  }) => {
-    await page.goto("/design/outline");
-    const fineAdjust = page.getByRole("button", { name: "Fine adjust" });
-    await expect(fineAdjust).toBeVisible();
-    const box = await fineAdjust.boundingBox();
-    if (!box) throw new Error("Fine adjust row is missing a bounding box");
-    expect(box.height).toBeGreaterThanOrEqual(44);
-  });
-
   test("every bottom tab bar tab is at least 44px tall", async ({ page }) => {
     await page.goto("/design/outline");
     const tabs = page.getByRole("navigation", { name: "Screens" }).getByRole("link");

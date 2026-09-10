@@ -83,10 +83,7 @@ test.describe("touch drag on the outline viewer (android/CDP only)", () => {
     await page.goto("/design/outline");
 
     // D-02 on a touch device: the construction overlay (and its five drag targets) is already on
-    // — no tap needed to reveal it. Width/Offset themselves are folded behind the phone-only
-    // "Fine adjust" disclosure (D-03) — open it to read them from the sidebar.
-    await page.getByRole("button", { name: "Fine adjust" }).click();
-
+    // — no tap needed to reveal it.
     const widthLabel = page.getByText(/^Width — /);
     await expect(widthLabel).toBeVisible();
     const widthBefore = await widthLabel.textContent();
@@ -146,9 +143,9 @@ test.describe("touch drag on the outline viewer (android/CDP only)", () => {
     page,
   }) => {
     await page.goto("/design/outline");
-    // Every one of these five labels is folded behind the phone-only "Fine adjust" disclosure
-    // (D-03) — open it so a real shaper (not just this test) could read the value that changed.
-    await page.getByRole("button", { name: "Fine adjust" }).click();
+
+    // Every one of these five labels is on screen in the sidebar, so the value that changes is
+    // one a real shaper can read.
 
     // Every drag target's own field, tracked by a label unique on the page (so an ambiguous
     // duplicate — both Nose and Tail Fullness read "Fullness — …%" — is never used as the probe).
@@ -220,7 +217,6 @@ test.describe("touch drag on the outline viewer (android/CDP only)", () => {
     page,
   }) => {
     await page.goto("/design/outline");
-    await page.getByRole("button", { name: "Fine adjust" }).click();
 
     const offsetLabel = page.getByText(/^Offset — /);
     await expect(offsetLabel).toBeVisible();
@@ -296,7 +292,6 @@ test.describe("touch drag on the outline viewer (android/CDP only)", () => {
 
   test("a tap on empty canvas lets the picked point go", async ({ page }) => {
     await page.goto("/design/outline");
-    await page.getByRole("button", { name: "Fine adjust" }).click();
 
     const offsetLabel = page.getByText(/^Offset — /);
     await expect(offsetLabel).toBeVisible();
@@ -338,7 +333,6 @@ test.describe("touch drag on the outline viewer (android/CDP only)", () => {
     page,
   }) => {
     await page.goto("/design/outline");
-    await page.getByRole("button", { name: "Fine adjust" }).click();
 
     const offsetLabel = page.getByText(/^Offset — /);
     await expect(offsetLabel).toBeVisible();
@@ -387,7 +381,6 @@ test.describe("touch drag on the outline viewer (android/CDP only)", () => {
 
   test("a touch on empty canvas with nothing picked still does nothing", async ({ page }) => {
     await page.goto("/design/outline");
-    await page.getByRole("button", { name: "Fine adjust" }).click();
 
     const targets = ["widepoint", "tailRailHandle", "noseRailHandle", "tailHandle", "noseHandle"];
     const boxesBefore: Record<string, { x: number; y: number; width: number; height: number }> = {};
@@ -439,10 +432,7 @@ test.describe("touch drag on the rocker viewer (android/CDP only)", () => {
   }) => {
     await page.goto("/design/rocker");
     // The construction overlay (and its four drag targets) is already on for a coarse pointer
-    // (D-02) — no toggle needed. Nose Angle itself is folded behind the phone-only "Fine adjust"
-    // disclosure (rocker-controls.tsx's own D-03) — open it to read it from the sidebar.
-    await page.getByRole("button", { name: "Fine adjust" }).click();
-
+    // (D-02) — no toggle needed.
     const noseAngleLabel = page.getByText(/^Nose Angle — /);
     await expect(noseAngleLabel).toBeVisible();
     const noseAngleBeforeTap = await noseAngleLabel.textContent();
