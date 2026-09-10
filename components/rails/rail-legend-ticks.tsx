@@ -14,7 +14,7 @@
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRailLegend } from "./rail-legend-provider";
-import { RAIL_REFERENCE_LEGEND } from "./rail-plan-side-figure";
+import { RAIL_REFERENCE_LEGEND, RailLegendSwatch } from "./rail-plan-side-figure";
 
 export function RailLegendTicks({ className }: { className?: string }) {
   const { visibleGroups, toggleGroup } = useRailLegend();
@@ -27,10 +27,7 @@ export function RailLegendTicks({ className }: { className?: string }) {
           className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 print:min-h-0 text-surf-ink-muted"
         >
           <Checkbox checked={visibleGroups.has(entry.key)} onCheckedChange={() => toggleGroup(entry.key)} />
-          <span
-            className="inline-block h-[9px] w-[9px] flex-shrink-0 rounded-full"
-            style={{ background: entry.color }}
-          />
+          <RailLegendSwatch color={entry.color} />
           {entry.label}
         </label>
       ))}
