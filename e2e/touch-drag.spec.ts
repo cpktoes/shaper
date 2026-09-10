@@ -72,6 +72,72 @@ async function findEmptyCanvasProbe(page: Page): Promise<{
   return { x: best.x, y: best.y, distanceToNearestHandle: bestDistance, handleCentres };
 }
 
+/**
+ * A screen point genuinely deep inside a drawn board silhouette (quick task 260909-oge), found by
+ * sampling a grid across the path's own client rect and asking the path itself — `isPointInFill`,
+ * mapped into the path's own user space through `getScreenCTM().inverse()` — never a hardcoded
+ * coordinate, since the drawing's own frame changes with every board and every orientation.
+ */
+async function findInteriorBoardPoint(page: Page, selector: string): Promise<{ x: number; y: number }> {
+  const path = page.locator(selector);
+  const box = await path.boundingBox();
+  if (!box) throw new Error(`${selector} has no bounding box`);
+  const result = await path.evaluate((el: SVGPathElement, rect) => {
+    const svg = el.ownerSVGElement;
+    const ctm = svg?.getScreenCTM();
+    if (!svg || !ctm) return null;
+    const inverse = ctm.inverse();
+    const GRID = 9;
+    for (let gy = 1; gy < GRID; gy++) {
+      for (let gx = 1; gx < GRID; gx++) {
+        const screenX = rect.x + (rect.width * gx) / GRID;
+        const screenY = rect.y + (rect.height * gy) / GRID;
+        const point = new DOMPoint(screenX, screenY).matrixTransform(inverse);
+        if (el.isPointInFill(point)) {
+          return { x: screenX, y: screenY };
+        }
+      }
+    }
+    return null;
+  }, box);
+  if (!result) throw new Error(`no interior point found inside ${selector}`);
+  return result;
+}
+
+/**
+ * Whether the drag readout chip sits clear of a drawn board silhouette (quick task 260909-oge,
+ * D-09): samples a 5x5 grid across the chip's own client rect and asks the board PATH itself —
+ * `isPointInFill`/`isPointInStroke`, mapped into the path's own user space — rather than comparing
+ * two rectangles. An outline's bounding box is a rectangle and the outline is not, so a box
+ * comparison would fail a card that is honestly clear of the curve.
+ */
+async function sampleChipAgainstPath(
+  page: Page,
+  chipSelector: string,
+  pathSelector: string,
+): Promise<{ inFill: boolean; inStroke: boolean }[]> {
+  const chipBox = await page.locator(chipSelector).boundingBox();
+  if (!chipBox) throw new Error(`${chipSelector} has no bounding box`);
+  const path = page.locator(pathSelector);
+  return path.evaluate((el: SVGPathElement, rect) => {
+    const svg = el.ownerSVGElement;
+    const ctm = svg?.getScreenCTM();
+    if (!svg || !ctm) throw new Error("board path has no screen CTM");
+    const inverse = ctm.inverse();
+    const SAMPLES = 5;
+    const results: { inFill: boolean; inStroke: boolean }[] = [];
+    for (let gy = 0; gy < SAMPLES; gy++) {
+      for (let gx = 0; gx < SAMPLES; gx++) {
+        const screenX = rect.x + (rect.width * gx) / (SAMPLES - 1);
+        const screenY = rect.y + (rect.height * gy) / (SAMPLES - 1);
+        const point = new DOMPoint(screenX, screenY).matrixTransform(inverse);
+        results.push({ inFill: el.isPointInFill(point), inStroke: el.isPointInStroke(point) });
+      }
+    }
+    return results;
+  }, chipBox);
+}
+
 test.describe("touch drag on the outline viewer (android/CDP only)", () => {
   test.beforeEach(async ({}, testInfo) => {
     test.skip(testInfo.project.name !== "android", "CDP touch dispatch is Chromium-only");
@@ -419,6 +485,53 @@ test.describe("touch drag on the outline viewer (android/CDP only)", () => {
       expect(box.y).toBeCloseTo(boxesBefore[target].y, 0);
     }
     await expect(offsetChip).not.toBeVisible();
+  });
+
+  test("the readout card steps clear of the outline while shaping a point in the middle of the board (260909-oge)", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    const boardPath = page.locator('[data-board-silhouette="outline"]');
+    await expect(boardPath).toBeVisible();
+
+    const widepoint = page.locator('[data-drag-target="widepoint"]');
+    await expect(widepoint).toBeVisible();
+    const box = await widepoint.boundingBox();
+    if (!box) throw new Error("widepoint drag target has no bounding box");
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+
+    // A point genuinely deep inside the board — not the widepoint's own rail-edge position — so
+    // the card, anchored on the finger, has to step around real board fill to clear it.
+    const interior = await findInteriorBoardPoint(page, '[data-board-silhouette="outline"]');
+
+    const chip = page.locator("[data-readout-chip]");
+
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: startX, y: startY }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: interior.x, y: interior.y }],
+    });
+
+    await expect(chip).toBeVisible();
+
+    // The proof itself: 25 samples across the card, every one of them outside the outline's own
+    // fill and stroke (D-09) — sampling the path rather than comparing bounding rectangles, since
+    // an outline's bounding box is a rectangle and the outline is not.
+    const samples = await sampleChipAgainstPath(page, "[data-readout-chip]", '[data-board-silhouette="outline"]');
+    expect(samples).toHaveLength(25);
+    for (const sample of samples) {
+      expect(sample.inFill).toBe(false);
+      expect(sample.inStroke).toBe(false);
+    }
+
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(chip).not.toBeVisible();
   });
 });
 

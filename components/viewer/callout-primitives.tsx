@@ -137,6 +137,42 @@ export function useSvgFitScale(
   return scale;
 }
 
+/**
+ * An svg element's own rendered client size, in CSS pixels — `{ width: 0, height: 0 }` until the
+ * element is measured.
+ *
+ * Reads `getBoundingClientRect()` inside a `useLayoutEffect`, the same pattern
+ * `useSvgFitScale` uses just above, and for the same reason: a ref's `.current` may only be read
+ * outside render (an event handler or an effect), never during it (`react-hooks/refs`) — reading
+ * it inline while building the drag readout chip's placement bounds (quick task 260909-oge) would
+ * trip that rule even though the read only ever runs while a finger is down on a touch device.
+ * Exposing the measured size as state instead lets both viewers read a plain number during render.
+ */
+export function useSvgClientSize(ref: RefObject<SVGSVGElement | null>): { width: number; height: number } {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      setSize((prev) =>
+        Math.abs(prev.width - rect.width) < 0.5 && Math.abs(prev.height - rect.height) < 0.5
+          ? prev
+          : { width: rect.width, height: rect.height },
+      );
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return size;
+}
+
 /** Half-length of a `DimensionTick`'s 45-degree slash, in SVG user units. */
 export const CALLOUT_TICK_SIZE = 4;
 /** Gap left between an extension line's far end and where its value text begins. */
