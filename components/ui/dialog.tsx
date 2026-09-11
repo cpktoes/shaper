@@ -65,7 +65,11 @@ function DialogContent({
             render={
               <Button
                 variant="ghost"
-                className="absolute top-2 right-2"
+                // The touch-size override below is pointer-keyed (a finger needs a 44px target),
+                // never width-keyed — same idiom as Button's own `icon`/`default` sizes, which
+                // `icon-sm` (this button's own size) never got. A mouse at any window width still
+                // sees the unchanged 28px (`size-7`) close-X.
+                className="absolute top-2 right-2 coarse:size-11"
                 size="icon-sm"
               />
             }
