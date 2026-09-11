@@ -32,13 +32,11 @@
  */
 
 import { useDesign } from "@/components/design/design-store";
-import { OutlineViewer } from "@/components/outline/outline-viewer";
 import { CardMetadataLine } from "@/components/setup/card-metadata-line";
+import { CardThumbnail } from "@/components/setup/card-thumbnail";
 import { RackCardMenu } from "@/components/setup/rack-card-menu";
 import { buildOutline } from "@/lib/geometry/outline";
 import { summarizeDesign } from "@/lib/geometry/design";
-import type { OutlineGeometry } from "@/lib/geometry/outline";
-import type { OutlineSpec } from "@/lib/geometry/board";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 import { cn } from "@/lib/utils";
 
@@ -82,16 +80,6 @@ const CARD_SHELL_CLASS =
 
 function formatLastTouched(date: Date): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function CardThumbnail({ geometry, outline }: { geometry: OutlineGeometry; outline: OutlineSpec }) {
-  return (
-    <div className="rounded-lg border border-surf-line bg-surf-tab-active p-3">
-      <div className="relative aspect-[340/620] w-full overflow-hidden rounded-lg border border-surf-line-faint bg-surf-panel">
-        <OutlineViewer geometry={geometry} outline={outline} showConstruction={false} hideCallouts />
-      </div>
-    </div>
-  );
 }
 
 export function BoardRackCard(props: BoardRackCardProps) {
