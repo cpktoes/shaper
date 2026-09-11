@@ -74,12 +74,14 @@ surfaces (Phase 8), any new capability — see Deferred Ideas.
   across the signed-in and signed-out branches — whatever implements this must not reintroduce two
   copies.
 
+### The card height, measured (added at plan time)
+
+- **D-08:** **The phone card stays upright and lands at about 550px, superseding D-01's 280-320px range.** Measured at plan time on an emulated iPhone 14 (2026-09-10): an upright board cannot be legible inside a 280-320px card. At a 300px card every preset draws 26-39px wide, a sliver, because the thumbnail's width is fixed by the one-column layout and its height is what the drawing scales to. The founder was shown four screenshots (today's 721px card; upright at a 300px card; upright at a 550px card; and a sideways board with the frame's empty side margin cropped, a 294px card with the board drawn 278px long) and chose **upright at ~550px**. So: the thumbnail box is 387px tall on the phone shell (`max-shell:`), the card lands at ~550px (preset) / ~546px (rack), the board draws 357px long and 74-110px wide across the four presets, about 1.2 cards fit a screen instead of 1.0, and all four text lines stay. No geometry change is needed: capping the thumbnail box's height with today's 340x620 frame untouched produces exactly this render (the viewer's `meet` fit scales by height and letterboxes the sides); shrinking the frame's own vertical pad would add under 3% and is not worth a `lib/geometry` change. The sideways option was measured and declined, not overlooked. The rack cards match (D-02). A phone held sideways (640-819px wide, an iPhone at 750px) keeps today's two-up grid rather than moving to one column: with a fixed-height thumbnail the board draws the same size either way, and two boards side by side compare better than one 700px-wide card. That last point is a Claude ruling for the real-device sweep to confirm, not a founder decision.
+
 ### Claude's Discretion
 
-- The exact card height and drawing cap in D-01, chosen from a measurement of the smallest drawing
-  that still distinguishes the outlines.
-- Whether the dims line, descriptor and "Start Shaping" all survive at the shorter card height, and
-  in what order.
+- ~~The exact card height and drawing cap in D-01~~ — settled by D-08 (387px thumbnail box, ~550px card).
+- ~~Whether the dims line, descriptor and "Start Shaping" all survive at the shorter card height~~ — all four survive, in today's order (D-08).
 - Placement of the Delete button inside the confirm dialog relative to where the menu's Delete row
   sat (raised as an option, not chosen — the founder took plain thumb-sizing as sufficient).
 - Everything not listed as a decision above: the researcher and planner read the code.

@@ -232,10 +232,14 @@ sizing decision below serves that: the drawing may shrink, but it may never shri
 where a shortboard, a fish and a longboard stop being tellable apart at a glance. The name, dims,
 descriptor and CTA are supporting text and stay supporting text at every width.
 
-**Target, per D-01 verbatim:** on a phone, the card (drawing + name + dims + descriptor + CTA,
-today 343×693px) lands around **280–320px tall**, so about two-and-a-bit cards are visible in one
-screenful. One card system, one column, unchanged from today — this only changes how tall the
-drawing inside it is allowed to get.
+**Target, per D-08 (measured at plan time; supersedes D-01's 280-320px range):** on a phone
+(`max-shell:`), the thumbnail box is **387px tall** and the card lands at **~550px** (preset) /
+**~546px** (rack); the board draws **357px long and 74-110px wide** across the four presets
+(shortboard 90, fish 110, mid-length 89, longboard 74). About 1.2 cards fit a screen instead of
+1.0. The founder chose this from screenshots on 2026-09-10 over a 300px upright card (board 26-39px
+wide, unreadable) and over a sideways board (294px card, board 278px long) — CONTEXT.md D-08
+records the options. One card system, one column, unchanged from today — this only changes how tall
+the drawing inside it is allowed to get.
 
 **Kept unchanged:** all four text lines (name, dims line, descriptor, CTA) — cutting any of them
 would be "a phone layout that works by hiding a control," the thing this whole milestone forbids.
@@ -248,40 +252,20 @@ window, the receding hairline, the well (`preset-card.tsx`'s own five-layer doc 
 flatten this nesting to reclaim padding; those two hairlines are load-bearing in the Slate theme
 (Color, above).
 
-**What has to change, and why it isn't a CSS-only job:** naively shrinking only the CSS box around
-the drawing (a shorter `aspect-[…]` or a `max-shell:max-h-[…]`) will not produce a legible smaller
-drawing — it will produce the exact drawing the founder already rejected. Here's the arithmetic:
-the thumbnail's `OutlineViewer` renders into a **fixed 340×620 viewBox regardless of which board is
-loaded** (`outline-viewer.tsx`'s `VIEW_W`/`VIEW_H`, the `hideCallouts` path preset/rack cards use),
-and that viewBox's own doc comment states plainly that **up to 55% of its width is empty margin**
-for a typical board ("a 19-inch board draws 151 units inside 340"). `preserveAspectRatio="xMidYMid
-meet"` fits that whole 340×620 box — blank margin included — into whatever CSS box it's given. So
-capping the CSS box's height while leaving the 340×620 viewBox untouched scales the **entire
-frame** down, blank margin and all — at a ~300px-tall box the actual drawn board would render at a
-fraction of its current width, converging on the same "~150px wide, silhouettes only" outcome the
-two-up grid was rejected for. Capping the box is not the fix; **tightening the frame the board
-draws inside of, for this one thumbnail context, is.**
+**What has to change — and it IS a CSS-only job, contrary to this section's first draft:** cap the
+thumbnail box's height on the phone shell (`max-shell:`, 387px) and leave the `340×620` viewBox
+untouched. `preserveAspectRatio="xMidYMid meet"` then fits the frame by HEIGHT (387/620 = 0.624px
+per unit, against 291/340 = 0.856 available by width), so the board draws 357px long, centred, with
+white space either side — exactly the render the founder approved from the screenshot. Measured
+and disproved at plan time: cropping the frame's *width* does nothing for a fixed-width,
+height-capped box, and shrinking the frame's vertical pad (`PAD_Y` 24 → 6 units) buys under 3% of
+board length. So: **no new `OutlineViewer` option and no `lib/geometry` change** for the cards.
 
-**What this phase's plan needs to do, concretely:**
-1. Add a phone-only, tighter frame to the `hideCallouts` thumbnail path (a new option alongside
-   `hideCallouts`/`fixedFrame` in `OutlineViewer`, or a new call into `outlineViewMetrics`) that
-   crops the wasted side margin the 340-unit frame carries today, so the same board renders close
-   to its current apparent density inside a shorter box — not a CSS aspect-ratio change on the
-   container alone.
-2. **Measure before locking a number**, the same way Phase 9's ROCKER ceiling was measured with
-   `rockerViewLayout()` at plan time (`npx tsx`, not a guess): render the shortest+widest and the
-   longest+narrowest boards (`BOARD_LENGTH_RANGE_IN`/`WIDEPOINT_WIDTH_RANGE_IN`,
-   `lib/geometry/board.ts`) through the new frame at a few candidate box heights inside the 280–320
-   range, and pick the tallest-still-under-320 (or shortest-still-over-280) value at which every
-   preset's outline is still distinguishable from its neighbors. Record the chosen number and the
-   measured drawing width in the plan.
-3. **Legibility floor, stated so it can be checked:** whatever the new frame produces, the rendered
-   board itself must not be narrower than what the rejected two-up layout already ruled out
-   (~150px wide) — landing at that same width by a different route is not a win. If the frame
-   tightening can't clear that floor within 280–320px card height, the card height ceiling widens
-   rather than the board shrinking past that floor — CONTEXT.md's own range is a target, not a
-   hard cap, and "the drawing must stay large enough to tell the outlines apart" is the rule it is
-   subordinate to.
+**Legibility check, stated so it can be tested:** on the Playwright phone projects, the first
+preset card's outline path (`[data-board-silhouette="outline"]`, `getBoundingClientRect()`)
+measures at least 350px tall and at least 85px wide, the card itself is between 520 and 580px
+tall, and on the desktop project the same path and card measure exactly what they measure on
+`main` today (the desktop screenshot baselines under `e2e/*-snapshots/` are the proof).
 
 **D-02, applied:** whatever frame/box change (1) settles on must be the *same* change for
 `preset-card.tsx`'s `OutlineViewer` call and `board-rack-card.tsx`'s `CardThumbnail` (both render
@@ -372,8 +356,8 @@ Every rule above is additive on top of an unchanged desktop base, gated on one o
 three switches (`max-shell:`, `coarse:`, or the route check) exactly as Phase 9's own "Desktop
 untouched" section states for its own rules. Concretely: the tab-bar route check only ever removes
 the bar from `/`, never touches its rendering on any `/design/*` route or at `shell:` width where
-the bar is already hidden by the width variant; the card frame tightening is scoped to the
-`hideCallouts` thumbnail path used only by the setup screen (order-form/print `fixedFrame` usage is
+the bar is already hidden by the width variant; the card's phone height cap is `max-shell:`-gated on the
+thumbnail box alone (the viewer, its `hideCallouts` path and the order form's `fixedFrame` usage are
 untouched); every touch-sizing fix in this contract is `coarse:`-gated, so a desktop mouse at any
 width sees byte-identical markup and behaviour to what exists today.
 
@@ -397,9 +381,9 @@ dismissed** — every row below is a real answer the founder can revisit and ove
 | **Empty / no data** | Cannot be empty: the four presets are compile-time constants in lib/geometry/presets.ts, not fetched data. The zero-item branch is unreachable, so no empty state is designed. | _backstop_ |
 | **Loading / in-flight** | No loading state: the cards are rendered by SetupScreen from static presets and draw through buildOutline synchronously, with no fetch. A signed-out visitor gets this grid immediately. | _backstop_ |
 | **Error / failure** | No error state: nothing can fail. The thumbnails are computed from the same pure geometry the click applies, so there is no image to 404 and no request to reject. | _backstop_ |
-| **Populated / happy path** | The happy path IS the phase's subject: four cards, one per row, each about 280-320px tall on a phone so two-and-a-bit are visible at once (D-01). The outline drawing is the focal point and may never shrink past the point where a shortboard, fish and longboard stop being tellable apart. | _explicit_ |
+| **Populated / happy path** | The happy path IS the phase's subject: four cards, one per row, each about 550px tall on a phone per D-08 (D-01's 280-320px range was measured unreachable for an upright board). The outline drawing is the focal point and may never shrink past the point where a shortboard, fish and longboard stop being tellable apart. | _explicit_ |
 | **Partial / incomplete** | No partial state: every preset carries a complete outline, name, dims, descriptor and CTA by construction. A preset missing a field would be a build-time type error. | _backstop_ |
-| **Overflow / truncation** | The grid scrolls vertically inside SetupScreen's own min-h-0 flex-1 overflow-y-auto root, which shrinks to fit above the tab bar with no bottom padding. Shortening the cards per D-01 takes the scroll from 4.2 screens to under two. | _explicit_ |
+| **Overflow / truncation** | The grid scrolls vertically inside SetupScreen's own min-h-0 flex-1 overflow-y-auto root, which shrinks to fit above the tab bar with no bottom padding. Shortening the cards per D-08 takes the scroll from 4.2 screens to about 3.3. | _explicit_ |
 | **Zero / one / many** | Always exactly four. Zero and one are unreachable, so no singular/plural copy or spacing variant is needed. | _backstop_ |
 
 ### Saved-board rack

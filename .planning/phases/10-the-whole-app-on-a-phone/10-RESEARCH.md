@@ -751,3 +751,26 @@ screenshot/screen recording if possible)**, or **N/A (why)**. A single markdown 
 step) handed to the verifier is sufficient — this phase's `checkpoint:human-verify` tasks should
 each point at one row of that table, so the verifier can read a pass/fail directly rather than
 re-deriving it from a narrative account.
+
+
+---
+
+# Orchestrator addendum (2026-09-10, after the founder's ruling)
+
+The Headline Finding above is correct for an upright board and was confirmed by rendering the
+real cards on an emulated iPhone 14 with Playwright (today: 721px card, board 130px wide; forced
+to a 300px card: board 32px wide). Two corrections for the planner:
+
+1. **The viewer already draws a board sideways** (`OutlineViewer`'s `orientation="horizontal"`,
+   the Template screen's Rotate button). Sideways, the cross axis becomes the card's height, so
+   cropping the frame's empty side margin DOES shorten the card: a 294px card with the board drawn
+   278px long. It was measured, shown to the founder, and **declined** — see CONTEXT.md D-08.
+2. **The founder chose upright at ~550px**, and that is a CSS-only change: cap the thumbnail box
+   at 387px tall under `max-shell:` with the `340×620` frame untouched (meet-fit by height gives a
+   357px-long board, 90px wide for the shortboard, measured 355 × 90 in the browser). The
+   "Recommended Project Structure" entries for `components/outline/outline-viewer.tsx` and
+   `lib/geometry/outline.ts` are therefore **withdrawn**; Wave 0's "unit test for the new
+   phone-thumbnail frame function" is replaced by a Playwright measurement of the rendered card.
+3. **The landscape grid (Factual Drift #3) is NOT changed to `shell:grid-cols-2`.** With a
+   fixed-height thumbnail, two-up at 640-819px draws the board the same 357px long as one-up and
+   shows two boards side by side; the real-device sweep's step 10 confirms it in hand (D-08).
