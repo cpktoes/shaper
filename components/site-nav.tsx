@@ -47,7 +47,7 @@ export function SiteNav() {
       <nav
         data-print-hide
         className={
-          "flex flex-none items-center justify-between gap-10 border-b border-surf-line-faint bg-surf-ground px-12 py-6" +
+          "flex flex-none items-center justify-between gap-10 border-b border-surf-line-faint bg-surf-ground px-6 py-6 lg:px-12" +
           (onPhoneShellRoute ? " max-shell:hidden" : "")
         }
       >
@@ -57,7 +57,7 @@ export function SiteNav() {
         >
           SHAPER ASSISTANT
         </Link>
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4 lg:gap-5">
           {NAV_LINKS.map((link) => {
             const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);
             return (
