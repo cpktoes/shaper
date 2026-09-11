@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 Phase: 10 — The Whole App on a Phone
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-09-10 - Phase 10 discussed: seven decisions captured for the setup screen, the five dialogs and the account control, with the rack menu and gear menu measured as already done
+Last activity: 2026-09-10 - Phase 10 UI-SPEC approved: 6/6 design dimensions pass and all 49 UI considerations across 11 surfaces are resolved
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
@@ -320,6 +320,6 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-09-09T03:30:30.074Z
-Stopped at: Phase 10 CONTEXT.md written - ready for the UI-SPEC pass
-Resume file: .planning/phases/10-the-whole-app-on-a-phone/10-CONTEXT.md
-Next action: `/gsd-ui-phase 10` - phase 10 is UI-flagged and phase 9 set the precedent of a UI-SPEC before planning.
+Stopped at: Phase 10 UI-SPEC approved - ready to plan
+Resume file: .planning/phases/10-the-whole-app-on-a-phone/10-UI-SPEC.md
+Next action: `/gsd-plan-phase 10` - context and design contract are both in place.
