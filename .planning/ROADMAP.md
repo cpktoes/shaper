@@ -218,7 +218,7 @@ Plans:
 
   4. The whole trip — sign in, pick a preset, open from the rack, work through all five design screens, save, read the summary — runs end to end on a real iPhone and a real Android phone, with desktop mouse and keyboard behaviour unchanged.
 
-**Plans**: 4/4 plans executed created 2026-09-10 — 0/4 executed
+**Plans**: 8 plans — 4/4 executed in waves 1-2; 4 gap-closure plans added 2026-09-11 in waves 3-5, 0/4 executed
 
 Plans:
 **Wave 1**
@@ -231,10 +231,24 @@ Plans:
 
 - [x] 10-04-PLAN.md — The whole trip on real phones: the machine walk, then the founder's own sweep (wave 2)
 
+**Wave 3** *(gap closure — blocked on Wave 2 completion)*
+
+- [ ] 10-05-PLAN.md — A phone held sideways stays a phone: the layout switch learns about screen height (wave 3)
+
+**Wave 4** *(gap closure — blocked on Wave 3 completion)*
+
+- [ ] 10-06-PLAN.md — A board card sized to the screen it is on, not to a fixed number of dots (wave 4)
+- [ ] 10-07-PLAN.md — The account avatar made genuinely finger-sized, and the top row given the test it shipped without (wave 4)
+
+**Wave 5** *(gap closure — blocked on Wave 4 completion)*
+
+- [ ] 10-08-PLAN.md — The real-device sweep, walked to the end this time: every step, both phones, no blank cells (wave 5)
+
 Cross-cutting constraints:
 
 - Every fix is gated on the `coarse` pointer variant or a route check, so a desktop mouse sees byte-identical markup; the desktop screenshot baselines are the regression proof and are never re-recorded.
 - Wave 1's three plans touch sixteen files with no overlap, so they run in parallel worktrees.
+- Gap closure: wave 3 is the layout switch and lands alone, because it silently re-flows every use of the phone/desktop variants across the codebase. Wave 4's two plans depend on it and touch no file in common. Wave 5 is human work on real phones and cannot start until every code fix has landed.
 
 **UI hint**: yes
 
