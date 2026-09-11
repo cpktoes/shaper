@@ -86,7 +86,7 @@ describe("nav-auth-control.tsx — source contract", () => {
     expect(placeholderTag, "missing coarse:size-11").toContain("coarse:size-11");
   });
 
-  it("D-05: the signed-in branch returns Clerk's button directly, with no wrapper, carrying the coarse padding class", () => {
+  it("D-05: the signed-in branch returns Clerk's button directly, with no wrapper, carrying the important-flagged coarse padding class", () => {
     const source = readStripped(NAV_PATH);
     // No element (a <div>, a <span>, anything) may sit between `return` and `<UserButton` — a
     // wrapper would insert its own opening tag there and this regex would stop matching.
@@ -94,8 +94,11 @@ describe("nav-auth-control.tsx — source contract", () => {
       source,
       "the signed-in branch does not return <UserButton /> directly — a wrapper may have been introduced",
     ).toMatch(/if\s*\(isSignedIn\)\s*\{\s*[\s\S]{0,400}?return\s*<UserButton\b/);
-    expect(source, "missing appearance.elements.userButtonTrigger").toMatch(
-      /appearance=\{\{\s*elements:\s*\{\s*userButtonTrigger:\s*["']coarse:p-2["']/,
+    // The pre-authorised D-05 fallback: the sweep came back "unsure, looks the same to me" for
+    // the plain coarse:p-2 class, so the class now carries Tailwind's trailing `!` important
+    // marker, so it outranks whatever Clerk's own runtime stylesheet declares.
+    expect(source, "missing appearance.elements.userButtonTrigger with the important flag").toMatch(
+      /appearance=\{\{\s*elements:\s*\{\s*userButtonTrigger:\s*["']coarse:p-2!["']/,
     );
   });
 
@@ -110,7 +113,30 @@ describe("nav-auth-control.tsx — source contract", () => {
     expect(source, `reads a raw ${useridNeedle}`).not.toContain(useridNeedle);
     // The only string literal reaching the `elements` prop is the padding class.
     expect(source, "appearance prop carries something other than the padding class").toMatch(
-      /userButtonTrigger:\s*"coarse:p-2"\s*\}\s*\}\}/,
+      /userButtonTrigger:\s*"coarse:p-2!"\s*\}\s*\}\}/,
+    );
+  });
+});
+
+describe("nav-auth-control.tsx — compiled-CSS proof the important flag outranks an ordinary rule (D-05 fallback)", () => {
+  it("coarse:p-2! compiles to a padding declaration carrying !important, inside a coarse-pointer media rule", async () => {
+    const css = await compileCandidates(["coarse:p-2!"]);
+    expect(css, "no pointer: coarse media condition found").toMatch(/@media\s*\(pointer:\s*coarse\)/);
+    // Verified against this checkout on 2026-09-11 with the app's own Tailwind (v4.3.3):
+    // `padding: calc(var(--spacing) * 2) !important;` — 0.25rem * 2 = 0.5rem = 8px a side.
+    expect(css, "no !important padding declaration found for coarse:p-2!").toMatch(
+      /padding:\s*calc\(var\(--spacing\)\s*\*\s*2\)\s*!important/,
+    );
+  });
+
+  it("the same utility WITHOUT the flag compiles to the identical padding, but with no !important — proving the flag is what changed", async () => {
+    const css = await compileCandidates(["coarse:p-2"]);
+    expect(css, "no pointer: coarse media condition found").toMatch(/@media\s*\(pointer:\s*coarse\)/);
+    expect(css, "expected the unflagged declaration to carry no !important").not.toMatch(
+      /padding:\s*calc\(var\(--spacing\)\s*\*\s*2\)\s*!important/,
+    );
+    expect(css, "no plain padding declaration found for coarse:p-2").toMatch(
+      /padding:\s*calc\(var\(--spacing\)\s*\*\s*2\)\s*;/,
     );
   });
 });
