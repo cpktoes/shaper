@@ -218,7 +218,7 @@ Plans:
 
   4. The whole trip — sign in, pick a preset, open from the rack, work through all five design screens, save, read the summary — runs end to end on a real iPhone and a real Android phone, with desktop mouse and keyboard behaviour unchanged.
 
-**Plans**: 3/4 plans executed created 2026-09-10 — 0/4 executed
+**Plans**: 4/4 plans executed created 2026-09-10 — 0/4 executed
 
 Plans:
 **Wave 1**
@@ -229,7 +229,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 10-04-PLAN.md — The whole trip on real phones: the machine walk, then the founder's own sweep (wave 2)
+- [x] 10-04-PLAN.md — The whole trip on real phones: the machine walk, then the founder's own sweep (wave 2)
 
 Cross-cutting constraints:
 
@@ -261,4 +261,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 7. Metric on Paper | 5/5 | Complete    | 2026-09-06 |
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
-| 10. The Whole App on a Phone | 3/4 | In Progress|  |
+| 10. The Whole App on a Phone | 4/4 | In Progress|  |
