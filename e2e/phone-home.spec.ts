@@ -268,47 +268,71 @@ test.describe("phone home screen — margins, headings and thumb-sized cards", (
     }
   });
 
-  // D-08's card cap, measured directly rather than trusted from the plan: on 2026-09-10 this
-  // read 358 x 550 with paths 91/112/90/75 wide by ~357 long on the iphone project, and
-  // 380 x 550 with paths 95/115/94/79 wide by ~360 long on the android project — both inside the
-  // ranges asserted below.
-  test("every preset card's thumbnail is capped at 387px tall, and its board drawing still reads as a distinct outline", async ({
+  // D-08's fixed 387px cap is disproven by 10-SWEEP.md (a real phone held sideways read 757px on
+  // a 237px-tall screen). The 2026-09-11 decision replaces it with a share of the screen the card
+  // sits in: about three-quarters of the scroller's own visible height (one whole board plus the
+  // top of the next), measured against `[data-setup-content]`'s scrolling ancestor rather than a
+  // fixed pixel figure, so the assertion is correct at any viewport height by construction.
+  test("every preset card is about three-quarters of the scroller's visible height, and its board drawing still reads as a distinct outline", async ({
     page,
   }) => {
     await page.goto("/");
+
+    const scrollerHeight = await page.locator("[data-setup-content]").evaluate((el) => {
+      let node: HTMLElement | null = el.parentElement;
+      while (node) {
+        const style = getComputedStyle(node);
+        if (style.overflowY === "auto" || style.overflowY === "scroll") return node.clientHeight;
+        node = node.parentElement;
+      }
+      throw new Error("no scrolling ancestor found for [data-setup-content]");
+    });
 
     const presetCards = page.getByRole("button").filter({ hasText: "Start Shaping" });
     const cards = await presetCards.all();
     expect(cards.length).toBeGreaterThan(1);
 
+    const pathWidths: number[] = [];
     for (let i = 0; i < cards.length; i++) {
       const card = cards[i];
       const cardBox = await card.boundingBox();
       if (!cardBox) throw new Error("preset card is missing a bounding box");
-      expect(cardBox.height).toBeGreaterThanOrEqual(520);
-      expect(cardBox.height).toBeLessThanOrEqual(580);
+      const ratio = cardBox.height / scrollerHeight;
+      expect(ratio).toBeGreaterThanOrEqual(0.7);
+      expect(ratio).toBeLessThanOrEqual(0.82);
 
       const path = card.locator('[data-board-silhouette="outline"]');
       const pathBox = await path.boundingBox();
       if (!pathBox) throw new Error("outline path is missing a bounding box");
-      expect(pathBox.height).toBeGreaterThanOrEqual(350);
-      expect(pathBox.width).toBeGreaterThanOrEqual(70);
-      if (i === 0) {
-        expect(pathBox.width).toBeGreaterThanOrEqual(85);
-      }
+      expect(pathBox.height).toBeGreaterThan(0);
+      pathWidths.push(pathBox.width);
 
-      // The thumbnail's inner box is capped at exactly 387px — not the height its own width and
-      // the 340/620 aspect ratio would otherwise compute to — which is what proves the cap
-      // actually applied on this width rather than the ratio quietly winning instead. Three
-      // levels up from the path: path -> <g> -> <svg> (OutlineViewer's own root) -> the capped
-      // well div.
+      // The thumbnail's inner box is now a MAXIMUM, not a fixed height — it must be strictly
+      // less than the height the 340/620 aspect ratio alone would compute, which is what proves
+      // the viewport-height cap actually applied here rather than the ratio quietly winning.
+      // Three levels up from the path: path -> <g> -> <svg> (OutlineViewer's own root) -> the
+      // capped well div.
       const thumbnailBox = path.locator("xpath=../../..");
       const box = await thumbnailBox.boundingBox();
       if (!box) throw new Error("thumbnail box is missing a bounding box");
-      expect(box.height).toBe(387);
       const ratioHeight = box.width * (620 / 340);
-      expect(Math.abs(box.height - ratioHeight)).toBeGreaterThan(1);
+      expect(box.height).toBeLessThan(ratioHeight);
     }
+    // The four presets stay tellable apart at the new size (this plan's own prohibition).
+    expect(new Set(pathWidths.map((w) => Math.round(w))).size).toBeGreaterThan(1);
+
+    // The second card's top edge falls inside the scroller's visible box — the "and the top of
+    // the next one" half of the shaper's decision.
+    const scrollerBox = await page
+      .locator("[data-setup-content]")
+      .evaluate((el) => el.parentElement?.getBoundingClientRect())
+      .then((rect) => {
+        if (!rect) throw new Error("no scroller rect");
+        return rect;
+      });
+    const secondCardBox = await cards[1].boundingBox();
+    if (!secondCardBox) throw new Error("second preset card is missing a bounding box");
+    expect(secondCardBox.y).toBeLessThan(scrollerBox.y + scrollerBox.height);
   });
 });
 
