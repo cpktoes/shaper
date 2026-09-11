@@ -132,22 +132,26 @@ test.describe("phone, upright — the corner icons pack tight with no gap where 
   });
 });
 
-// 260909-h3g: a phone held sideways is where the founder found the rotate-button bug this
-// toolbar-row change also had to reach. An iPhone 14 held sideways reports 844 real CSS px and a
-// Pixel 7 reports 863, both over the 820px shell breakpoint — a case no phone-WIDTH-only fix could
-// ever reach, since it is not a narrow-width case at all. Copied verbatim from
-// e2e/phone-layout.spec.ts's own landscape describe rather than inventing a second pattern.
-const { defaultBrowserType: pixel7LandscapeBrowserType, ...pixel7LandscapeViewport } =
-  devices["Pixel 7 landscape"];
-void pixel7LandscapeBrowserType;
+// 10-05 (was 260909-h3g): a real iPhone held sideways reports about 844 CSS px and a real Pixel 7
+// about 863, and the shaper's own decision (10-SWEEP.md, 2026-09-11) is that BOTH now stay in the
+// phone stack — a phone on its side is a phone. So 863 x 360 is no longer "a width wide enough for
+// the desktop layout"; it is a phone-stack case, and this file's own subject — Rotate gone on a
+// TOUCH device even where a sidebar survives to hide — needs a screen that genuinely still keeps
+// the desktop shell under the new width-and-height rule. `iPad Mini landscape` (1024 x 768, WebKit)
+// is that screen: a tablet-sized touch viewport, wide and tall enough to stay on the desktop side.
+// Copied verbatim from e2e/phone-layout.spec.ts's own re-pointed describe rather than inventing a
+// second pattern.
+const { defaultBrowserType: ipadMiniLandscapeBrowserType, ...ipadMiniLandscapeViewport } =
+  devices["iPad Mini landscape"];
+void ipadMiniLandscapeBrowserType;
 
-test.describe("phone held sideways — the corner still packs tight even at a width wide enough for the desktop layout", () => {
-  test.use({ ...pixel7LandscapeViewport });
+test.describe("touch tablet, sideways — the corner still packs tight even though the screen keeps the desktop layout", () => {
+  test.use({ ...ipadMiniLandscapeViewport });
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "android",
-      "this describe supplies its own device (Pixel 7 landscape)",
+      testInfo.project.name !== "iphone",
+      "this describe supplies its own device (iPad Mini landscape, WebKit)",
     );
     await dismissSignInBanner(page);
   });
@@ -157,21 +161,22 @@ test.describe("phone held sideways — the corner still packs tight even at a wi
   }) => {
     await page.goto("/design/outline");
 
-    // Load-bearing precondition: without this, a viewport that quietly fell under the shell
-    // breakpoint would hide Rotate by the OLD width-only rule and prove nothing about the
-    // pointer-driven case. Measured at planning time: this device reports 863 CSS px and a
-    // coarse pointer.
+    // Load-bearing precondition: a coarse pointer AND a screen at least 820 wide AND at least 500
+    // tall — the exact bed the desktop-side variant's negation keeps in the desktop shell. Without
+    // all three, this proves nothing about the pointer-driven case.
     const preconditions = await page.evaluate(() => ({
       coarsePointer: window.matchMedia("(pointer: coarse)").matches,
       wideEnoughForDesktopShell: window.matchMedia("(min-width: 820px)").matches,
+      tallEnoughForDesktopShell: window.matchMedia("(min-height: 500px)").matches,
     }));
     expect(preconditions.coarsePointer).toBe(true);
     expect(preconditions.wideEnoughForDesktopShell).toBe(true);
+    expect(preconditions.tallEnoughForDesktopShell).toBe(true);
 
     const { rowBox, buttons } = await measureToolbar(page);
-    // Rotate is gone on a touch screen at any width; Wide view survives because the viewport is
-    // above the 820px shell breakpoint and still has a sidebar to hide — this is the case no
-    // phone-width-only fix could ever have reached.
+    // Rotate is gone on a touch screen at any width; Wide view survives because the viewport
+    // stays on the desktop side of the shell switch and still has a sidebar to hide — this is the
+    // case no phone-width-only fix could ever have reached.
     expect(buttons.length).toBe(3);
     expect(buttons[0].name).toBe("Export Template");
     assertCornerFlush(rowBox, buttons[0]);

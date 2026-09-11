@@ -242,50 +242,60 @@ test.describe("phone orientation and the construction overlay default", () => {
   });
 });
 
-// 260909-h3g: a phone held sideways is where the founder found this bug. An iPhone 14 held
-// sideways reports 844 real CSS px and a Pixel 7 reports 863, both over the 820px shell
-// breakpoint, which is how a width-only rule let a dead rotate button back on screen there.
-// Playwright's own `iPhone 14 landscape` descriptor emulates 750px — UNDER the breakpoint — so a
-// test written against it would pass with or without the fix and prove nothing. `Pixel 7
-// landscape` (863px, chromium) is the descriptor that actually reproduces the complaint, so this
-// describe supplies it directly and only runs on the `android` project (the chromium one that
-// descriptor expects).
-// `defaultBrowserType` is part of the descriptor but can't be set via `test.use` inside a
-// describe (Playwright: "forces a new worker" — only allowed top-level or in the config file).
-// It's redundant here anyway: the `android` project this describe is pinned to already runs
-// chromium, which is what the descriptor asks for.
+// 10-05 (was 260909-h3g): a real iPhone held sideways reports about 844 CSS px and a real Pixel 7
+// about 863, and the app's shaper-approved decision (10-SWEEP.md, 2026-09-11) is that BOTH stay in
+// the phone stack now — a phone on its side is a phone. That retires this describe's original bed:
+// 863 x 360 is no longer "a width wide enough for the desktop layout", it is the phone-stack case
+// the block below this one covers. What this describe was actually proving — that a TOUCH device
+// wide enough for the desktop shell still loses its rotate button (pointer, not width, decides
+// that) — is still true, just not provable on a phone any more. `iPad Mini landscape` (1024 x 768,
+// WebKit) is a genuinely tablet-sized touch screen: wide AND tall enough to keep the desktop shell
+// under the new width-and-height rule, so it still carries the case this file was written for. Runs
+// on the `iphone` project (the WebKit one the descriptor expects).
+// `defaultBrowserType` is part of the descriptor but can't be set via `test.use` inside a describe
+// (Playwright: "forces a new worker" — only allowed top-level or in the config file). It's
+// redundant here anyway: the `iphone` project this describe is pinned to already runs WebKit.
+const { defaultBrowserType: ipadMiniLandscapeBrowserType, ...ipadMiniLandscapeViewport } =
+  devices["iPad Mini landscape"];
+void ipadMiniLandscapeBrowserType;
+
+// Still needed below for the phone-stack case (863 x 360, android/chromium project) — see that
+// describe's own comment for why this same descriptor no longer carries the tablet case above.
 const { defaultBrowserType: pixel7LandscapeBrowserType, ...pixel7LandscapeViewport } =
   devices["Pixel 7 landscape"];
 void pixel7LandscapeBrowserType;
 
-test.describe("phone held sideways — the rotate button stays gone even at a width wide enough for the desktop layout", () => {
-  test.use({ ...pixel7LandscapeViewport });
+test.describe("touch tablet, sideways — the rotate button stays gone even though the screen keeps the desktop layout", () => {
+  test.use({ ...ipadMiniLandscapeViewport });
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "android",
-      "this describe supplies its own device (Pixel 7 landscape)",
+      testInfo.project.name !== "iphone",
+      "this describe supplies its own device (iPad Mini landscape, WebKit)",
     );
     await dismissSignInBanner(page);
   });
 
-  test("the rotate button is gone on both TEMPLATE and ROCKER, even though the screen is wide enough for the desktop layout", async ({
+  test("the rotate button is gone on both TEMPLATE and ROCKER, even though the screen keeps the desktop layout", async ({
     page,
   }) => {
     await page.goto("/design/outline");
 
-    // Load-bearing precondition: without this, a viewport that quietly fell under the shell
-    // breakpoint would hide the button by the OLD width-only rule and prove nothing. Measured at
-    // planning time: this device reports 863 CSS px and a coarse pointer.
+    // Load-bearing precondition: a coarse pointer AND a screen at least 820 wide AND at least 500
+    // tall — the exact bed the desktop-side variant's negation is meant to keep in the desktop
+    // shell. Without all three, this proves nothing about the pointer-driven rotate-button rule.
     const preconditions = await page.evaluate(() => ({
       coarsePointer: window.matchMedia("(pointer: coarse)").matches,
       wideEnoughForDesktopShell: window.matchMedia("(min-width: 820px)").matches,
+      tallEnoughForDesktopShell: window.matchMedia("(min-height: 500px)").matches,
     }));
     expect(preconditions.coarsePointer).toBe(true);
     expect(preconditions.wideEnoughForDesktopShell).toBe(true);
+    expect(preconditions.tallEnoughForDesktopShell).toBe(true);
 
     // The desktop side-by-side shell really is what rendered at this width — the same comparison
-    // the desktop describe below makes.
+    // the desktop describe below makes. This is the "an iPad sideways keeps the desktop layout"
+    // half of the shaper's own decision (10-SWEEP.md).
     const sidebar = page.locator("aside");
     const canvas = page.locator("main");
     const sidebarBox = await sidebar.boundingBox();
@@ -295,19 +305,25 @@ test.describe("phone held sideways — the rotate button stays gone even at a wi
 
     await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeHidden();
 
-    await page.goto("/design/rocker");
+    // Client-side nav via the desktop link row (visible here, since this viewport keeps the
+    // desktop shell) rather than a second hard `page.goto` — a WebKit-only dev-server quirk,
+    // reproducible on this exact viewport, otherwise races a hard navigation against a background
+    // Fast-Refresh reload the dev server occasionally pushes right after the outline route's first
+    // paint. A shaper would move between screens exactly this way (the desktop nav's own link),
+    // so this is not a weaker proof of the rotate button's own rule — same assertion, a navigation
+    // path already exercised by every other desktop-shell test in this file.
+    await page.getByRole("link", { name: "ROCKER" }).click();
     await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeHidden();
   });
 });
 
 // 10-05: closing 10-VERIFICATION.md gap 4 — the layout switch stops being width-only. This is the
-// exact case the fix targets: 863 x 360 (this same Pixel 7 landscape descriptor) used to render the
-// DESKTOP shell above (width alone was 863px, over the old 820px switch), which is precisely why the
-// board card and the Hide Toolbar tip disappeared sideways. After the fix, a coarse pointer on a
-// screen shorter than 500px renders the phone stack regardless of width. This describe is
-// deliberately separate from — and does not touch — the one above: that block still proves the
-// desktop-style TABLET case is unaffected (task 2 re-points it at a real tablet, since 863 x 360 no
-// longer carries that case after this change).
+// exact case the fix targets: 863 x 360 used to render the DESKTOP shell (width alone was 863px,
+// over the old 820px switch), which is precisely why the board card and the Hide Toolbar tip
+// disappeared sideways. After the fix, a coarse pointer on a screen shorter than 500px renders the
+// phone stack regardless of width. This describe is deliberately separate from — and does not
+// touch the BODY of — the tablet describe above: that block now proves the desktop-style TABLET
+// case is unaffected, on a device that genuinely still carries it.
 test.describe("phone held sideways — the phone stack renders, not the desktop shell (10-05)", () => {
   test.use({ ...pixel7LandscapeViewport });
 
@@ -319,7 +335,7 @@ test.describe("phone held sideways — the phone stack renders, not the desktop 
     await dismissSignInBanner(page);
   });
 
-  test("at 863 x 360 the phone stack renders: the six-screen bottom bar and compact top bar show, the desktop link row is hidden", async ({
+  test("at 863 x 360 the phone stack renders: the six-screen bottom bar and compact top bar show, the desktop link row is hidden, and the rotate button is gone", async ({
     page,
   }) => {
     await page.goto("/design/outline");
@@ -346,6 +362,11 @@ test.describe("phone held sideways — the phone stack renders, not the desktop 
     // inside the phone stack.
     const desktopNav = page.locator("nav:not([aria-label])");
     await expect(desktopNav).toBeHidden();
+
+    // This file's original subject (260909-h3g), now proved in the shell this width-and-height
+    // combination actually renders after this change: turning the phone is what did the rotate
+    // button's job, on a phone that stayed a phone.
+    await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeHidden();
   });
 });
 
