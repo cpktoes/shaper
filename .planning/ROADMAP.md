@@ -215,16 +215,17 @@ Plans:
      form print correctly from the founder's own iPhone, confirmed by him the same day. Read this criterion
      as "the summary and the on-screen order form are readable on a phone"; phone printing is WORKING, not
      out of scope. Same note applies to PHON-09's parenthetical in REQUIREMENTS.md.)*
+
   4. The whole trip — sign in, pick a preset, open from the rack, work through all five design screens, save, read the summary — runs end to end on a real iPhone and a real Android phone, with desktop mouse and keyboard behaviour unchanged.
 
-**Plans**: 4 plans created 2026-09-10 — 0/4 executed
+**Plans**: 3/4 plans executed created 2026-09-10 — 0/4 executed
 
 Plans:
 **Wave 1**
 
-- [ ] 10-01-PLAN.md — The rack's dialogs, thumb-sized: the close X and the board-name field (wave 1)
-- [ ] 10-02-PLAN.md — The account control on a phone: the Sign in row, Clerk's avatar, the banner's dismiss X (wave 1)
-- [ ] 10-03-PLAN.md — The home screen: the tab bar steps aside, one shared thumbnail, a card that fits (wave 1)
+- [x] 10-01-PLAN.md — The rack's dialogs, thumb-sized: the close X and the board-name field (wave 1)
+- [x] 10-02-PLAN.md — The account control on a phone: the Sign in row, Clerk's avatar, the banner's dismiss X (wave 1)
+- [x] 10-03-PLAN.md — The home screen: the tab bar steps aside, one shared thumbnail, a card that fits (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -260,4 +261,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 7. Metric on Paper | 5/5 | Complete    | 2026-09-06 |
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
-| 10. The Whole App on a Phone | 0/4 | Planned     | - |
+| 10. The Whole App on a Phone | 3/4 | In Progress|  |
