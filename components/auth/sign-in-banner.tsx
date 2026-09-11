@@ -91,11 +91,21 @@ export function SignInBanner() {
             Sign In
           </button>
         </p>
+        {/* PHON-07: Phase 9's own UI-SPEC already called for this fix and it never shipped — the
+            same fixed-square idiom phone-menu.tsx's trigger uses, so the 16px XIcon stays put
+            while the tappable square around it grows to 44px under a touch pointer. That alone
+            would make the banner taller (measured 2026-09-10: 36px on desktop and on a Pixel 7,
+            with the 20px line of copy sitting inside py-2 — a 32px square child pushes the row
+            to 48px, a 44px one to 60px, stealing up to 24px from the drawing on every design
+            screen). So the square overflows the row instead of stretching it: -my-1.5 at rest
+            (32 − 12 = 20px line) and coarse:-my-3 under a touch pointer (44 − 24 = the same 20px
+            line). If a real measurement disagrees, change these two margins — the fixed number
+            is the banner's own 36px height, not the margin. */}
         <button
           type="button"
           aria-label="Dismiss"
           onClick={handleDismiss}
-          className="shrink-0 text-surf-ink-muted transition-colors outline-none hover:text-surf-ink focus-visible:text-surf-ink"
+          className="flex size-8 coarse:size-11 shrink-0 -my-1.5 coarse:-my-3 items-center justify-center rounded-md text-surf-ink-muted transition-colors outline-none hover:text-surf-ink focus-visible:text-surf-ink"
         >
           <XIcon className="size-4" />
         </button>
