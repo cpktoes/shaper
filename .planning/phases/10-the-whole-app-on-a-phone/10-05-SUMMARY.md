@@ -215,6 +215,10 @@ Identical — the ratio was never driven by the shell switch, so this plan's cha
 - Plan 10-06 (the board card's height cap) depends on this plan landing first — the cap only reaches a sideways phone once a sideways phone is a phone, which is now true.
 - No blockers. The switch, its compiled-CSS proof, and every browser test that touches it are green across all three Playwright projects and the full Vitest suite.
 
+## Self-Check: PASSED
+
+All 12 files listed in "Files Created/Modified" (plus this SUMMARY) confirmed present on disk with `[ -f ... ]`. All 5 commit hashes (`4b94908`, `a15887d`, `16976d5`, `7cc28b9`, `cb4fdec`) confirmed present in `git log --oneline --all`. No missing items.
+
 ---
 *Phase: 10-the-whole-app-on-a-phone*
 *Completed: 2026-09-11*
