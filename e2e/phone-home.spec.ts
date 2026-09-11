@@ -401,8 +401,11 @@ test.describe("desktop home screen — margins and headings unmoved", () => {
   // The 819/820px boundary, made measurable: the phone card cap is `width < 820px`, a strict
   // less-than, so nothing merges and nothing collides at the touching value (PHON-10 adjacency).
   // Run on a fine-pointer (desktop) project deliberately — the cap is a width rule and must not
-  // depend on the pointer.
-  test("at 819px the thumbnail box is capped at 387px, and at 820px it is back to the width/ratio height", async ({
+  // depend on the pointer. The cap itself is now viewport-height-relative rather than a fixed
+  // 387px (10-06), so the boundary is expressed the same way the rest of this plan does: a
+  // strict inequality where the cap applies, and equality (within a dot) where the ratio alone
+  // governs — never a pixel figure that is itself viewport-relative.
+  test("at 819px the phone cap applies (thumbnail height is strictly less than the width/ratio height), and at 820px it is back to the width/ratio height exactly", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 819, height: 900 });
@@ -416,13 +419,13 @@ test.describe("desktop home screen — margins and headings unmoved", () => {
     const thumbnailBox819 = firstPath.locator("xpath=../../..");
     const box819 = await thumbnailBox819.boundingBox();
     if (!box819) throw new Error("thumbnail box is missing a bounding box at 819px");
-    expect(box819.height).toBe(387);
+    const ratioHeight819 = box819.width * (620 / 340);
+    expect(box819.height).toBeLessThan(ratioHeight819);
 
     await page.setViewportSize({ width: 820, height: 900 });
     const box820 = await thumbnailBox819.boundingBox();
     if (!box820) throw new Error("thumbnail box is missing a bounding box at 820px");
     const ratioHeight820 = box820.width * (620 / 340);
     expect(Math.abs(box820.height - ratioHeight820)).toBeLessThanOrEqual(1);
-    expect(box820.height).not.toBe(387);
   });
 });
