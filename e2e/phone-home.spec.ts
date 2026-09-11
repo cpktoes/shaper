@@ -267,6 +267,49 @@ test.describe("phone home screen — margins, headings and thumb-sized cards", (
       expect(box.height).toBeGreaterThanOrEqual(44);
     }
   });
+
+  // D-08's card cap, measured directly rather than trusted from the plan: on 2026-09-10 this
+  // read 358 x 550 with paths 91/112/90/75 wide by ~357 long on the iphone project, and
+  // 380 x 550 with paths 95/115/94/79 wide by ~360 long on the android project — both inside the
+  // ranges asserted below.
+  test("every preset card's thumbnail is capped at 387px tall, and its board drawing still reads as a distinct outline", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const presetCards = page.getByRole("button").filter({ hasText: "Start Shaping" });
+    const cards = await presetCards.all();
+    expect(cards.length).toBeGreaterThan(1);
+
+    for (let i = 0; i < cards.length; i++) {
+      const card = cards[i];
+      const cardBox = await card.boundingBox();
+      if (!cardBox) throw new Error("preset card is missing a bounding box");
+      expect(cardBox.height).toBeGreaterThanOrEqual(520);
+      expect(cardBox.height).toBeLessThanOrEqual(580);
+
+      const path = card.locator('[data-board-silhouette="outline"]');
+      const pathBox = await path.boundingBox();
+      if (!pathBox) throw new Error("outline path is missing a bounding box");
+      expect(pathBox.height).toBeGreaterThanOrEqual(350);
+      expect(pathBox.width).toBeGreaterThanOrEqual(70);
+      if (i === 0) {
+        expect(pathBox.width).toBeGreaterThanOrEqual(85);
+      }
+
+      // The thumbnail's inner box is capped at exactly 387px — not the height its own width and
+      // the 340/620 aspect ratio would otherwise compute to — which is what proves the cap
+      // actually applied on this width rather than the ratio quietly winning instead. Three
+      // levels up from the path: path -> <g> -> <svg> (OutlineViewer's own root) -> the capped
+      // well div.
+      const thumbnailBox = path.locator("xpath=../../..");
+      const box = await thumbnailBox.boundingBox();
+      if (!box) throw new Error("thumbnail box is missing a bounding box");
+      expect(box.height).toBe(387);
+      const ratioHeight = box.width * (620 / 340);
+      expect(Math.abs(box.height - ratioHeight)).toBeGreaterThan(1);
+    }
+  });
 });
 
 test.describe("desktop home screen — margins and headings unmoved", () => {
@@ -302,5 +345,60 @@ test.describe("desktop home screen — margins and headings unmoved", () => {
       expect(box.y).toBeCloseTo(topY, 0);
     }
     expect(distinctLeftEdges.size).toBe(4);
+  });
+
+  // Measured today at 1280 x 800: card 222 x 494, thumbnail 170 x 310 — the assertion is written
+  // as the computed width * 620/340 relationship rather than a hard-coded 310, so it stays true
+  // if a future change moves the column width, and it proves the phone-only cap (D-08) never
+  // reaches this project: the aspect ratio, not the 387px cap, still governs the box's height.
+  test("the thumbnail box's height still follows its own width and the 340/620 ratio — the phone cap never reaches here", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const presetCards = page.getByRole("button").filter({ hasText: "Start Shaping" });
+    const cards = await presetCards.all();
+    expect(cards.length).toBe(4);
+
+    for (const card of cards) {
+      const cardBox = await card.boundingBox();
+      if (!cardBox) throw new Error("preset card is missing a bounding box");
+      expect(cardBox.height).toBeLessThan(520);
+
+      const path = card.locator('[data-board-silhouette="outline"]');
+      const thumbnailBox = path.locator("xpath=../../..");
+      const box = await thumbnailBox.boundingBox();
+      if (!box) throw new Error("thumbnail box is missing a bounding box");
+      const ratioHeight = box.width * (620 / 340);
+      expect(Math.abs(box.height - ratioHeight)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  // The 819/820px boundary, made measurable: the phone card cap is `width < 820px`, a strict
+  // less-than, so nothing merges and nothing collides at the touching value (PHON-10 adjacency).
+  // Run on a fine-pointer (desktop) project deliberately — the cap is a width rule and must not
+  // depend on the pointer.
+  test("at 819px the thumbnail box is capped at 387px, and at 820px it is back to the width/ratio height", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 819, height: 900 });
+    await page.goto("/");
+
+    const firstPath = page
+      .getByRole("button")
+      .filter({ hasText: "Start Shaping" })
+      .first()
+      .locator('[data-board-silhouette="outline"]');
+    const thumbnailBox819 = firstPath.locator("xpath=../../..");
+    const box819 = await thumbnailBox819.boundingBox();
+    if (!box819) throw new Error("thumbnail box is missing a bounding box at 819px");
+    expect(box819.height).toBe(387);
+
+    await page.setViewportSize({ width: 820, height: 900 });
+    const box820 = await thumbnailBox819.boundingBox();
+    if (!box820) throw new Error("thumbnail box is missing a bounding box at 820px");
+    const ratioHeight820 = box820.width * (620 / 340);
+    expect(Math.abs(box820.height - ratioHeight820)).toBeLessThanOrEqual(1);
+    expect(box820.height).not.toBe(387);
   });
 });
