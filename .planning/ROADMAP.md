@@ -218,7 +218,7 @@ Plans:
 
   4. The whole trip — sign in, pick a preset, open from the rack, work through all five design screens, save, read the summary — runs end to end on a real iPhone and a real Android phone, with desktop mouse and keyboard behaviour unchanged.
 
-**Plans**: 8 plans — 4/4 executed in waves 1-2; 4 gap-closure plans added 2026-09-11 in waves 3-5, 0/4 executed
+**Plans**: 5/8 plans executed — 4/4 executed in waves 1-2; 4 gap-closure plans added 2026-09-11 in waves 3-5, 0/4 executed
 
 Plans:
 **Wave 1**
@@ -233,7 +233,7 @@ Plans:
 
 **Wave 3** *(gap closure — blocked on Wave 2 completion)*
 
-- [ ] 10-05-PLAN.md — A phone held sideways stays a phone: the layout switch learns about screen height (wave 3)
+- [x] 10-05-PLAN.md — A phone held sideways stays a phone: the layout switch learns about screen height (wave 3)
 
 **Wave 4** *(gap closure — blocked on Wave 3 completion)*
 
@@ -275,4 +275,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 7. Metric on Paper | 5/5 | Complete    | 2026-09-06 |
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
-| 10. The Whole App on a Phone | 4/4 | In Progress|  |
+| 10. The Whole App on a Phone | 5/8 | In Progress|  |
