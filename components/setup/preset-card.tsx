@@ -21,8 +21,8 @@
  */
 
 import { useMemo } from "react";
-import { OutlineViewer } from "@/components/outline/outline-viewer";
 import { CardMetadataLine } from "@/components/setup/card-metadata-line";
+import { CardThumbnail } from "@/components/setup/card-thumbnail";
 import * as outlineGeometryLib from "@/lib/geometry/outline";
 import type { BoardPreset } from "@/lib/geometry/presets";
 import { presetSummary } from "@/lib/geometry/summary-line";
@@ -75,16 +75,7 @@ export function PresetCard({ preset, onSelect, className }: PresetCardProps) {
         className,
       )}
     >
-      <div className="rounded-lg border border-surf-line bg-surf-tab-active p-3">
-        <div className="relative aspect-[340/620] w-full overflow-hidden rounded-lg border border-surf-line-faint bg-surf-panel">
-          <OutlineViewer
-            geometry={geometry}
-            outline={preset.outline}
-            showConstruction={false}
-            hideCallouts
-          />
-        </div>
-      </div>
+      <CardThumbnail geometry={geometry} outline={preset.outline} />
       <span className="text-[20px] leading-[1.2] font-semibold text-foreground">{preset.name}</span>
       <CardMetadataLine summary={summary} />
       <span className="text-sm leading-[1.5] text-surf-ink-muted">{preset.descriptor}</span>

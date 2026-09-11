@@ -2,9 +2,21 @@
 
 /**
  * The bottom tab bar (D-06/D-07): the app's six design screens under the thumb on a phone, one
- * tap away, mirroring what the desktop top nav already does for the same six routes. Mounted once
- * in `app/design/layout.tsx` as the last child, so it appears on every design screen and nowhere
- * else (the setup screen and the rack are Phase 10's).
+ * tap away, mirroring what the desktop top nav already does for the same six routes. Mounted in
+ * TWO places — as the last child of `app/page.tsx`'s single returned fragment (so it appears
+ * exactly once across that page's signed-in and signed-out branches) and as the last child of
+ * `app/design/layout.tsx` (so it appears on every one of the six design routes). It renders on
+ * those six design routes and deliberately not on the home route (`/`) — D-07: the six tabs are
+ * noise while a shaper is still choosing a board, and hiding them there gives the setup screen's
+ * cards back the 56px + safe-area the bar was costing them. Neither mount point is touched to get
+ * that: the component decides its own visibility from the route it already reads, the same shape
+ * `PhoneTopBar`'s `onHomeScreen` already uses for its own wordmark.
+ *
+ * This route check is the app's third, independent switch, beside the `max-shell:` width
+ * breakpoint that picks a layout and the `coarse:` pointer variant that picks a control's size
+ * (CLAUDE.md §Layout) — it is not a fourth way of doing what either of those already does; a
+ * phone at any width and any pointer type gets the bar on a design route and not on the home
+ * route.
  *
  * Shown only below the shell breakpoint (`hidden max-shell:flex`) — the desktop top nav is the
  * only navigation at and above it, hidden by the matching `max-shell:hidden` rule on its own
@@ -20,8 +32,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_LINKS } from "@/components/site-nav";
 
+const HOME_ROUTE = "/";
+
 export function PhoneTabBar() {
   const pathname = usePathname();
+
+  // Exact-equality only — never a prefix or pattern match — so no crafted path (e.g.
+  // `/designer`) can suppress the bar on a route that is not actually the home screen (T-10-07).
+  if (pathname === HOME_ROUTE) {
+    return null;
+  }
 
   return (
     <nav
