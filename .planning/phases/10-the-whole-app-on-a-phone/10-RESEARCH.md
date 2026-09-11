@@ -515,9 +515,9 @@ See below.
 **If this table were empty:** it isn't — A1 in particular gates the D-05 implementation and must
 become a `checkpoint:human-verify` task in the plan, not a decision made from this document alone.
 
-## Open Questions
+## Open Questions (ALL RESOLVED — see the Orchestrator addendum at the end of this file)
 
-1. **What card height does the founder actually approve for D-01/D-02?**
+1. **What card height does the founder actually approve for D-01/D-02?** — **RESOLVED 2026-09-10: ~550px upright, recorded as D-08 in CONTEXT.md.** The founder chose it from four rendered screenshots.
    - What we know: 280-320px fails every preset against a 150px floor; ~550-650px roughly matches
      today's own worst-case legibility; the numbers for several candidates are in the table above.
    - What's unclear: whether the founder's real bar is "150px," "no worse than today," or
@@ -527,7 +527,7 @@ become a `checkpoint:human-verify` task in the plan, not a decision made from th
      for all four presets and put them in front of the founder as a `checkpoint:human-verify`
      before locking the number, exactly as D-01's own instruction asks ("measures the smallest
      drawing that still reads before fixing a number").
-2. **Does `<UserButton />` actually measure under 44px?**
+2. **Does `<UserButton />` actually measure under 44px?** — **RESOLVED 2026-09-10: yes, 28 x 28px with zero padding**, measured in the founder's signed-in production session; D-05's "grow the hit area" branch applies.
    - What we know: no `appearance` override exists today; Clerk's documented default avatar size
      is commonly cited in the 28-32px range, but this research did not verify that against
      Clerk's own current documentation (no web search was run, per this phase's config — see
@@ -536,7 +536,7 @@ become a `checkpoint:human-verify` task in the plan, not a decision made from th
    - Recommendation: a `checkpoint:human-verify` task, exactly as D-05 specifies, on a real
      signed-in phone or desktop browser, before writing any wrapper.
 3. **Does the iOS keyboard actually cover `rename-dialog.tsx`/`board-name-prompt.tsx`'s centred
-   text input?**
+   text input?** — **RESOLVED as a planned check:** it is step 5 of plan 10-04's real-device sweep, so it is answered in hand rather than guessed at; no speculative fix ships.
    - What we know: `interactiveWidget: "resizes-content"` is already set app-wide
      (`app/layout.tsx:47`), which UI-SPEC believes already covers this.
    - What's unclear: whether that setting is sufficient in practice on a real iPhone with the

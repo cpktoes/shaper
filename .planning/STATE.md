@@ -4,15 +4,15 @@ milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
 current_phase: 10
 current_phase_name: The Whole App on a Phone
-status: planning
-stopped_at: Phase 9 UI-SPEC approved
-last_updated: "2026-09-10T05:46:03.154Z"
-last_activity: 2026-09-09
-last_activity_desc: Phase 09 execution resumed (wave continue)
+status: executing
+stopped_at: Phase 10 planned
+last_updated: "2026-09-11T02:31:33.858Z"
+last_activity: 2026-09-10
+last_activity_desc: "Phase 10 planned: 4 plans in 2 waves, plan-checker passed, card height settled by measurement (D-08)"
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 18
+  total_plans: 22
   completed_plans: 18
   percent: 67
 ---
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 Phase: 10 — The Whole App on a Phone
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-09-10 - Phase 10 UI-SPEC approved: 6/6 design dimensions pass and all 49 UI considerations across 11 surfaces are resolved
+Status: Ready to execute
+Last activity: 2026-09-10 - Phase 10 planned: 4 plans in 2 waves, plan-checker passed, card height settled by measurement (D-08)
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
 
