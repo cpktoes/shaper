@@ -22,10 +22,17 @@ import { describe, expect, it } from "vitest";
  * `e2e/phone-account.spec.ts` measures the one state that IS reachable in a browser — the loading
  * placeholder, which renders unconditionally while `isLoaded` is false — and defers the rest to
  * this file, plus the founder's real-device pass in the end-of-phase sweep.
+ *
+ * PHON-07's sign-in banner (`SignInBanner`) is gated behind the exact same `if (!isLoaded) return
+ * null;` line, so it never appears on a `/design/*` route in this suite either — confirmed by
+ * navigating there with no dismissal at all and polling for its copy for over 20 seconds. Its
+ * dismiss-button contract lives here too, in the one Vitest file this plan is allowed to create,
+ * rather than in a second new file — the reason is identical to the two components above.
  */
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const NAV_PATH = "components/auth/nav-auth-control.tsx";
+const BANNER_PATH = "components/auth/sign-in-banner.tsx";
 const GLOBALS_CSS_PATH = path.join(REPO_ROOT, "app/globals.css");
 const GLOBALS_CSS_SOURCE = readFileSync(GLOBALS_CSS_PATH, "utf8");
 const GLOBALS_CSS_BASE = path.dirname(GLOBALS_CSS_PATH);
@@ -108,6 +115,28 @@ describe("nav-auth-control.tsx — source contract", () => {
   });
 });
 
+describe("sign-in-banner.tsx — source contract (PHON-07)", () => {
+  it("the dismiss button is a fixed square that grows under a coarse pointer, overflowing the row instead of stretching it", () => {
+    const source = readStripped(BANNER_PATH);
+    const dismissTag = tagAround(source, 'aria-label="Dismiss"', "button");
+    for (const token of ["flex", "size-8", "coarse:size-11", "shrink-0", "items-center", "justify-center"]) {
+      expect(dismissTag, `missing ${token}`).toContain(token);
+    }
+    // The overflow margins that keep the banner at 36px regardless of the square's own size.
+    expect(dismissTag, "missing the resting -my-1.5 overflow margin").toContain("-my-1.5");
+    expect(dismissTag, "missing the coarse:-my-3 overflow margin").toContain("coarse:-my-3");
+  });
+
+  it("the XIcon inside the dismiss button keeps its 16px size-4 — the icon stays put, the square grows", () => {
+    const source = readStripped(BANNER_PATH);
+    const dismissIndex = source.indexOf('aria-label="Dismiss"');
+    const iconIndex = source.indexOf("<XIcon", dismissIndex);
+    const iconTagEnd = source.indexOf(">", iconIndex);
+    const iconTag = source.slice(iconIndex, iconTagEnd + 1);
+    expect(iconTag, "XIcon lost its size-4").toContain("size-4");
+  });
+});
+
 describe("compiled-CSS proof — every coarse: candidate above actually compiles (not silently dropped)", () => {
   it("D-05/D-06: the avatar padding, placeholder square and Sign-in row-growth candidates all emit a pointer:coarse rule with a real declaration", async () => {
     const css = await compileCandidates([
@@ -123,6 +152,19 @@ describe("compiled-CSS proof — every coarse: candidate above actually compiles
     // is acceptable proof that size-11/min-h-11 emitted a real height, not nothing.
     expect(css, "no height/min-height declaration found for coarse:size-11 / coarse:min-h-11").toMatch(
       /(min-)?height:\s*(calc\(var\(--spacing\)[^;]*\)|[\d.]+rem)/,
+    );
+  });
+
+  it("PHON-07: the banner's coarse square and overflow-margin candidates all emit a pointer:coarse rule with a real declaration", async () => {
+    const css = await compileCandidates(["size-8", "coarse:size-11", "-my-1.5", "coarse:-my-3"]);
+    expect(css, "no pointer: coarse media condition found").toMatch(/@media\s*\(pointer:\s*coarse\)/);
+    expect(css, "no width/height declaration found for size-8/coarse:size-11").toMatch(
+      /(min-)?(width|height):\s*(calc\(var\(--spacing\)[^;]*\)|-?[\d.]+rem)/,
+    );
+    // Tailwind emits negative -my-N as margin-block (or margin-top+margin-bottom) with a negative
+    // calc() — tolerant of either form, per the same house rule the CSS-compile pattern uses.
+    expect(css, "no margin declaration found for -my-1.5 / coarse:-my-3").toMatch(
+      /margin(-block|-top|-bottom)?:\s*calc\(var\(--spacing\)[^;]*-[^;]*\)/,
     );
   });
 });
