@@ -1,16 +1,22 @@
 import { devices, expect, test, type Page } from "@playwright/test";
 
 /**
- * The setup screen's preset grid with the phone held sideways (D-08's own closing note). A phone
- * held sideways lands on both sides of the 820px `shell` breakpoint depending on the handset — an
- * iPhone 14 landscape measures 750px wide (stays in the phone stack), a Pixel 7 landscape measures
- * 863px wide (crosses into the desktop shell). This file deliberately takes the iPhone case: at
- * 750 x 340, `sm:grid-cols-2` (Tailwind's own 640px breakpoint, untouched by this plan) already
- * puts the grid at two columns, and the card height cap (`max-shell:h-[387px]`, gated on the
- * 820px shell breakpoint) still applies at 750px — so a shaper turning their phone sideways keeps
- * today's two-up grid, each card the same height as upright, exactly as D-08 records. That
- * two-up-at-820px-and-under ruling is a Claude ruling the end-of-phase real-device sweep
- * confirms in hand, not a founder decision — recorded here so it is not mistaken for one.
+ * The setup screen's preset grid with the phone held sideways (D-08's own closing note). This file
+ * takes 750 x 340 — Playwright's `iPhone 14 landscape` EMULATED viewport — not what a real iPhone
+ * reports sideways: the shaper measured a real one at about 844 x 390 on 2026-09-11 (10-SWEEP.md),
+ * so this file exercises the emulator's width, not the hardware's. That gap is exactly what 10-05
+ * closes for the app's overall LAYOUT switch (`app/globals.css`'s `max-shell`/`shell` custom
+ * variants are now width-and-height, not width alone) — under the corrected rule, both widths land
+ * in the phone stack anyway: the emulated 750px one because it is still narrower than 820px, the
+ * real 844px one because it is a coarse pointer on a screen shorter than 500px. So this file's own
+ * assertions, unchanged here, still hold for the reason CLAUDE.md's Layout section now states.
+ *
+ * At 750 x 340, `sm:grid-cols-2` (Tailwind's own 640px breakpoint, untouched by this plan) already
+ * puts the grid at two columns, and the card height cap (`max-shell:h-[387px]`) still applies — so
+ * a shaper turning their phone sideways keeps today's two-up grid, each card the same height as
+ * upright, exactly as D-08 records. That two-up-at-this-width ruling is a Claude ruling — the
+ * end-of-phase real-device sweep confirms it in hand ("two is fine," 10-SWEEP.md, 2026-09-11) — not
+ * a founder decision, recorded here so it is not mistaken for one.
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";

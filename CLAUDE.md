@@ -134,19 +134,38 @@ know why:
 - `reference/project/` — the original Claude Design prototype; source of truth for formulas
 - `.planning/` — GSD roadmap, phase plans and quick-task log
 
-Two phone-only switches live in `app/globals.css`, and they answer two different questions: the
-`shell` breakpoint (820px) decides which LAYOUT a screen renders — stacked-and-pinned below it,
-side-by-side above it — while the `coarse` pointer variant decides how BIG a control draws, on
-any width a touch device happens to be, and, for the viewer's Rotate button alone, whether it
-draws at all — since turning a touch device already turns the board. Width picks the layout;
-pointer picks the sizing (and, for that one button, the presence); the two are never conflated,
-which is what keeps a touch laptop at 1280px wide from getting the phone stack, and a narrow
-desktop browser window from getting coarse-sized controls.
+Three switches live in `app/globals.css` and `components/fins/fin-viewer.tsx`, and each answers a
+different question about the screen — never conflated with either of the others.
 
-A third switch answers a different question again: how SHORT the screen is decides whether, on
+**Layout — width AND height together.** The `max-shell`/`shell` custom variants in
+`app/globals.css` decide which LAYOUT a screen renders: stacked-and-pinned (drawing above,
+controls scrolling beneath, a compact top bar and a six-tab bottom bar) below the switch, the
+desktop sidebar-beside-canvas shell above it. Until 2026-09-11 that switch was pure width — under
+820px was a phone, at or above it was a desktop — and a real iPhone held sideways disproved it: it
+measures about 844 dots wide (a real Pixel 7, about 863), both over 820, so a phone lost its own
+layout at the exact moment its screen got shortest (10-SWEEP.md's real-device sweep). The rule is
+now `width < 820px` **OR** `(a coarse pointer AND height < 500px)` for the phone stack, and
+`width >= 820px` **AND NOT** that same coarse-and-short pair for the desktop shell — so a phone
+held sideways stays a phone, while a touch laptop at 1280px and an iPad held sideways (1024 x 768,
+wide AND tall enough) keep the desktop shell. A narrow desktop browser window keeps today's
+stacked layout by width alone, same as always, and a SHORT desktop window (a mouse-driven browser
+resized very small) still never gets the phone layout either, for the same reason it never got
+coarse-sized controls: it has no coarse pointer, so the height branch can't fire for it. 500px is
+not a new number: it is the same "short screen" figure the third switch below already used, reused
+here rather than reinvented, so the codebase has one meaning of "short." (An
+earlier version of this section quoted 750 dots for a sideways iPhone — that number came from a
+test tool's emulated device, never from real hardware, which is exactly how the width-only mistake
+went uncaught until a shaper held an actual phone sideways. The corrected figures above are
+measured, not emulated, so the same mistake is not made twice.)
+
+**Control size (and the Rotate button's presence) — pointer alone.** The `coarse` pointer variant
+decides how BIG a control draws, on any width a touch device happens to be, and, for the viewer's
+Rotate button alone, whether it draws at all — since turning a touch device already turns the
+board. Pointer never decides a LAYOUT on its own; the layout switch above reads width, height and
+pointer together, and this variant is never reached for to move one.
+
+**Beside or beneath (FINS only) — height alone.** How SHORT the screen is decides whether, on
 FINS, the Base Length key sits beside the tail drawing or beneath it — written inline in
-`components/fins/fin-viewer.tsx` as `[@media(max-height:500px)]` rather than a named variant here,
-since it has exactly one consumer today, and deliberately not tied to width, because a phone held
-sideways lands on both sides of the 820px switch (863 dots wide on a Pixel 7, 750 on an iPhone 14)
-while being short on both. Width picks the layout, pointer picks the sizing, height picks whether
-the key sits beside or beneath — and none of the three is ever conflated with another.
+`fin-viewer.tsx` as `[@media(max-height:500px)]` rather than a named variant, since it has exactly
+one consumer today. This is the original 500px rule the phone-held-sideways fix above reused
+rather than duplicated.

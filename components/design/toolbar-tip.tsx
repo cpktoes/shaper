@@ -15,8 +15,14 @@
  * `props.children`, so it appears on every design screen and nowhere else.
  *
  * Three gates, and which technology owns each:
- * - Phone width only — CSS, `hidden max-shell:…:flex`, the same idiom
- *   `components/design/phone-tab-bar.tsx` already uses.
+ * - The phone LAYOUT (not phone width alone) — CSS, `hidden max-shell:…:flex`, the same idiom
+ *   `components/design/phone-tab-bar.tsx` already uses. Before 10-05 this was width-only, and that
+ *   was the bug the founder's own sweep found (10-SWEEP.md, 2026-09-11): a real iPhone held
+ *   sideways is about 844 dots wide, over the old 820px switch, so this tip went dark at the exact
+ *   moment — the extra height from a sideways phone — a shaper most wanted it. `max-shell:` now
+ *   also fires on a coarse pointer over a screen shorter than 500px, so the tip is reachable
+ *   sideways too, with no change to the tip itself or its wording — the fix was entirely in the
+ *   gate this class name reads.
  * - iOS/iPadOS only — CSS, `supports-[-webkit-touch-callout:none]:`, the same iOS-only
  *   feature-detection guard `components/rails/view-full-sized-dialog.tsx` already ships, kept in
  *   the same variant order (max-shell: first, then supports-[...]:) already proven to compile in

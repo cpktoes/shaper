@@ -9,9 +9,11 @@ import type { ReactNode } from "react";
  * sidebar-beside-canvas layout was hand-copied into all five editors with zero breakpoints, so
  * fixing the phone layout meant fixing it five times. Now it is written once here, and a desktop
  * shaper sees byte-for-byte what they always have: every phone rule below is an ADDITIVE
- * `max-shell:` override layered on the unprefixed desktop base, gated on the `--breakpoint-shell`
- * token declared in `app/globals.css` — never a second branch, never a default flip a desktop
- * mouse could ever trigger.
+ * `max-shell:` override layered on the unprefixed desktop base, gated on the `max-shell`/`shell`
+ * custom variants declared in `app/globals.css` (10-05: width-and-height together, not the
+ * width-only `--breakpoint-shell` theme token those variants used before a real phone held
+ * sideways disproved it) — never a second branch, never a default flip a desktop mouse could ever
+ * trigger.
  *
  * Two structural exceptions this file must never lose, because they are what let RAILS and FINS
  * fit the same shell without editing it:
