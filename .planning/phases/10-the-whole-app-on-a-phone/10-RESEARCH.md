@@ -774,3 +774,7 @@ to a 300px card: board 32px wide). Two corrections for the planner:
 3. **The landscape grid (Factual Drift #3) is NOT changed to `shell:grid-cols-2`.** With a
    fixed-height thumbnail, two-up at 640-819px draws the board the same 357px long as one-up and
    shows two boards side by side; the real-device sweep's step 10 confirms it in hand (D-08).
+4. **Open Question 2 is answered:** measured in the founder's signed-in production session on
+   2026-09-10, Clerk's `.cl-userButtonTrigger` is 28 × 28px with `padding: 0`. D-05's "if it comes up
+   short" branch applies — grow the hit area via `appearance.elements.userButtonTrigger`, re-measure.
+   Assumption A1 is confirmed, not assumed.

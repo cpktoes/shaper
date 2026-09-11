@@ -60,6 +60,12 @@ surfaces (Phase 8), any new capability — see Deferred Ideas.
   clears 44px on a phone, Clerk's component is left completely alone. If it does not, wrap it in a
   44px tap target **without changing how it looks** — the same trick the app already uses for small
   icon controls. Do not write a wrapper that might be doing nothing.
+  **Measured at plan time (2026-09-10), in the founder's signed-in session on www.shaperassistant.com:** the
+  `.cl-userButtonTrigger` button is **28 x 28px with zero padding** (the avatar image is the whole button),
+  so it does NOT clear 44px and the hit area must be grown — per the UI-SPEC, through Clerk's
+  `appearance.elements.userButtonTrigger` with a `coarse:`-gated padding (28 + 2 x 8 = 44), never a
+  wrapping `<div>`, and the executor re-measures the button after the change because Clerk's own
+  injected stylesheet may outrank a plain utility (use the `!` important variant only if measured short).
 
 - **D-06:** **The signed-out "Sign in" row in the nav menu is sized for a finger.** Measured at
   **20px tall** today (`nav-auth-control.tsx` renders a bare `<button>` with text styling only) —
