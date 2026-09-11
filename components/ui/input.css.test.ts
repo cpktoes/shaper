@@ -1,4 +1,5 @@
 import { compile } from "@tailwindcss/node";
+import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +18,14 @@ import { describe, expect, it } from "vitest";
  * Tailwind entry point `next build` uses) with `@tailwindcss/node`'s `compile()`, exactly the
  * pattern `components/rails/view-full-sized-dialog.css.test.ts` established, and asserts on the
  * emitted CSS text itself.
+ *
+ * Gap-closure note (10-REVIEW.md, plan 10-07): WR-02 found the "exactly the three known
+ * consumers" case below checking only that three named files still import `Input`, never
+ * counting the real importers — a fourth file could start using it and this test would keep
+ * passing despite its own name. That is fixed below. A sibling finding, IN-01 in
+ * `components/auth/nav-auth-control.test.ts`, was reviewed at the same time and left as a
+ * deliberate deferral (reviewer disposition: "no action required") — recorded there, not here,
+ * since it concerns that file's own credential-guard test, not this one.
  */
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -87,17 +96,37 @@ describe("Input (components/ui/input.tsx) — the shared field's two touch rules
     }
   });
 
-  it("edge case: exactly the three known consumers of Input exist — a fourth would be a deliberate decision, not an accident", () => {
+  it("edge case: exactly the three known consumers of Input exist — a fourth would be a deliberate decision, not an accident (WR-02)", () => {
     const consumers = [
       "components/design/measure-field.tsx",
       "components/setup/rename-dialog.tsx",
       "components/setup/board-name-prompt.tsx",
     ];
-    for (const consumer of consumers) {
-      const source = readFileSync(path.join(REPO_ROOT, consumer), "utf8");
-      expect(source, `${consumer} no longer imports Input`).toMatch(
-        /import\s*\{[^}]*\bInput\b[^}]*\}\s*from\s*["']@\/components\/ui\/input["']/,
-      );
-    }
+
+    // Built from parts, never one literal, so this test file can never match its own search
+    // needle — the same idiom `components/design/toolbar-tip.test.ts` already uses. Also
+    // fixed-string (`-F`), not a regex, so the leading "@" and the slashes in the import path
+    // can never be misread as regex metacharacters.
+    const importSpecifier = ["@/components/ui", "/input"].join("");
+    const fromImportNeedle = ["from \"", importSpecifier, "\""].join("");
+
+    // Covers both trees a consumer could live in — `components` and `app` — so the completeness
+    // claim below can't be false in the tree this search didn't look at.
+    const rawImporters = execSync(`grep -rlF '${fromImportNeedle}' components app`, {
+      cwd: REPO_ROOT,
+    })
+      .toString()
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+
+    // Belt-and-braces alongside the built-from-parts needle above: a test file that imports
+    // `Input` to test it (not to consume it as UI) doesn't count as one of the three consumers
+    // this case is about.
+    const importers = rawImporters.filter((file) => !file.includes(".test."));
+
+    // Sorted on both sides so the assertion never depends on the order a file search happens to
+    // return the results in.
+    expect([...importers].sort()).toEqual([...consumers].sort());
   });
 });
