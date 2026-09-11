@@ -5,6 +5,13 @@
  * own avatar — never a gate. Nothing in the design tool needs an account, so every state this
  * control can be in (loading, signed out, signed in, or Clerk failing to load at all) falls
  * back to something a shaper can ignore and keep shaping through.
+ *
+ * D-06 (Phase 10): the signed-out "Sign in" button is sized with "enlarge the row, not the
+ * glyph" — the same idiom `components/setup/rack-card-menu.tsx`'s `ROW_CLASS` and
+ * `components/design/phone-menu.tsx`'s fixed-square trigger already use for a hand-rolled
+ * interactive control. The word keeps its 14px `text-sm` size; only the tappable row around it
+ * grows to 44px under a touch pointer (`coarse:`), on both the phone menu's slot and the
+ * desktop nav — the rule is pointer-gated, not route- or width-gated.
  */
 
 import { useState } from "react";
@@ -30,10 +37,14 @@ export function NavAuthControl() {
 
   return (
     <>
+      {/* D-06 / "enlarge the row, not the glyph": the same idiom rack-card-menu.tsx's ROW_CLASS
+          and phone-menu.tsx's fixed-square trigger already use for a hand-rolled interactive
+          control. The word "Sign in" keeps its 14px text-sm size everywhere; only the tappable
+          row around it grows to 44px, and only under a touch pointer. */}
       <button
         type="button"
         onClick={() => setDialogOpen(true)}
-        className="text-sm text-surf-ink-muted transition-colors outline-none hover:text-surf-ink focus-visible:text-surf-accent-ink"
+        className="text-sm text-surf-ink-muted transition-colors outline-none coarse:flex coarse:min-h-11 coarse:items-center hover:text-surf-ink focus-visible:text-surf-accent-ink"
       >
         Sign in
       </button>
