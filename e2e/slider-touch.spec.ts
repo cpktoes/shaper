@@ -149,16 +149,26 @@ test.describe("Case A: upright phone, Width in its own section", () => {
   });
 });
 
-test.describe("Case B: phone held sideways, Width visible in the desktop-style sidebar", () => {
-  // `defaultBrowserType` is a worker-scoped option Playwright only accepts from the config file's
-  // own `projects` list, not from a describe-level `test.use` — the `android` project already
-  // pins chromium, so it is dropped here (same recipe as e2e/phone-fins-landscape.spec.ts).
-  const pixel7Landscape = { ...devices["Pixel 7 landscape"] };
-  delete (pixel7Landscape as { defaultBrowserType?: unknown }).defaultBrowserType;
-  test.use({ ...pixel7Landscape });
+test.describe("Case B: touch tablet, sideways, Width visible in the desktop-style sidebar", () => {
+  // 10-05: `Pixel 7 landscape` (863 x 360) used to keep the desktop-style sidebar at this width —
+  // that is exactly the assumption the sweep disproved (10-SWEEP.md, 2026-09-11): a real phone
+  // held sideways now stays a phone, so this bed no longer carries "wide enough for the desktop
+  // sidebar." This case's actual subject is a REAL FINGER touch bar-press and a wandering drag —
+  // this file's own header explains that real touch input only comes from a CDP session driving
+  // `Input.dispatchTouchEvent`, which only Playwright's Chromium exposes — so the replacement bed
+  // has to stay Chromium too, ruling out the `iPad Mini landscape` (WebKit) descriptor the sibling
+  // files in this plan re-point at. `Galaxy Tab S9 landscape` (1024 x 640, Chromium, touch) is a
+  // genuinely tablet-sized touch screen that keeps the desktop shell under the new width-and-height
+  // rule while staying on Chromium, so it is the descriptor chosen here. `defaultBrowserType` is a
+  // worker-scoped option Playwright only accepts from the config file's own `projects` list, not
+  // from a describe-level `test.use` — the `android` project already pins Chromium, so it is
+  // dropped here (same recipe as e2e/phone-fins-landscape.spec.ts).
+  const galaxyTabS9Landscape = { ...devices["Galaxy Tab S9 landscape"] };
+  delete (galaxyTabS9Landscape as { defaultBrowserType?: unknown }).defaultBrowserType;
+  test.use({ ...galaxyTabS9Landscape });
 
   test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "android", "sideways-phone assertion runs on the chromium project only");
+    test.skip(testInfo.project.name !== "android", "touch-tablet assertion runs on the chromium project only");
     await dismissSignInBanner(page);
   });
 
@@ -167,16 +177,21 @@ test.describe("Case B: phone held sideways, Width visible in the desktop-style s
   }) => {
     await page.goto("/design/outline");
 
-    // Prove the bed is real before asserting anything about it: this really is a sideways phone
-    // wide enough to render the desktop-style sidebar, not the phone stack.
+    // Prove the bed is real before asserting anything about it: a coarse pointer AND a screen at
+    // least 820 wide AND at least 500 tall — the exact bed the desktop-side variant's negation
+    // keeps in the desktop shell, not the phone stack.
     const dims = await page.evaluate(() => ({
       width: window.innerWidth,
       height: window.innerHeight,
+      coarsePointer: window.matchMedia("(pointer: coarse)").matches,
       sidebarShell: window.matchMedia("(min-width: 820px)").matches,
+      tallEnoughForDesktopShell: window.matchMedia("(min-height: 500px)").matches,
     }));
-    expect(dims.width).toBe(863);
-    expect(dims.height).toBe(360);
+    expect(dims.width).toBe(1024);
+    expect(dims.height).toBe(640);
+    expect(dims.coarsePointer).toBe(true);
     expect(dims.sidebarShell).toBe(true);
+    expect(dims.tallEnoughForDesktopShell).toBe(true);
 
     const widthLabel = page.getByText(/^Width — /);
     await expect(widthLabel).toBeVisible();

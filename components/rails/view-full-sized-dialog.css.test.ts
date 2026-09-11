@@ -45,9 +45,11 @@ describe("view-full-sized-dialog.tsx — compiled CSS proof of the Home-Screen n
       "max-shell:supports-[-webkit-touch-callout:none]:[@media(display-mode:standalone)]:block",
     ]);
 
-    // Width condition for the 820px shell breakpoint (app/globals.css: --breakpoint-shell: 820px).
-    // Tailwind v4 emits a range media feature (`width < 820px`) rather than `max-width`; tolerant
-    // of whitespace so a Tailwind formatting change alone does not break this.
+    // Width condition for the phone-stack `max-shell` custom variant (app/globals.css — 10-05:
+    // `max-shell` is now width < 820px OR a coarse pointer on a screen shorter than 500px, no
+    // longer derived from a single `--breakpoint-shell` theme token). Tailwind v4 emits a range
+    // media feature (`width < 820px`) rather than `max-width`; tolerant of whitespace so a
+    // Tailwind formatting change alone does not break this.
     expect(css, "no width<820px media condition found for max-shell:").toMatch(/@media\s*\(width\s*<\s*820px\)/);
 
     // The iOS-only feature-support guard — tolerant of the space @supports normally carries after

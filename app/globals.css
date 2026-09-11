@@ -72,9 +72,57 @@
    resized to phone width never does. Mostly this variant decides how big a control draws, but
    (quick task 260909-h3g) it now also decides whether one control draws at all: the viewer's
    Rotate button, hidden by this variant because turning a touch device already turns the board.
-   Width and pointer are independent axes; this phase never conflates them (see --breakpoint-shell
-   below for the width switch). */
+   Pointer never decides a LAYOUT on its own (see `max-shell`/`shell` below) — the layout switch
+   reads width, height and pointer together, and this variant is never reached for to move one. */
 @custom-variant coarse (@media (pointer: coarse));
+
+/* The two LAYOUT switches: `max-shell:` (the phone stack — drawing pinned above scrolling
+   controls, compact top bar, six-tab bottom bar) and `shell:` (the desktop shell — sidebar beside
+   canvas, top nav row). Written once, here, so roughly 116 call sites across the app inherit the
+   rule with no edits of their own (10-05, closing 10-VERIFICATION.md gap 4 and the shaper's own
+   "a phone held sideways stays a phone" decision, 10-SWEEP.md, 2026-09-11).
+
+   Until this change the switch was pure width — a `--breakpoint-shell: 820px` token in the
+   `@theme` block below, and Tailwind derived both variants from that one number automatically.
+   But a real iPhone held sideways measures about 844 CSS px — OVER 820 — so a phone lost its own
+   layout at the exact moment its screen got shortest: the board card grew to 757px tall on a
+   237px-tall screen, and the already-built "Hide Toolbar" tip (components/design/toolbar-tip.tsx)
+   disappeared, the one moment a shaper wants the extra height. The rule now reads width AND
+   height together, and the number lives in exactly these two variants — nowhere else:
+
+     max-shell: (phone stack)   width < 820px, OR a coarse pointer on a screen shorter than 500px
+     shell:     (desktop shell) width >= 820px, AND NOT (a coarse pointer on a screen < 500px)
+
+   500px is not a new number: it is `components/fins/fin-viewer.tsx`'s own existing rule for "this
+   screen is short" (the FINS Base Length key, beside the tail plot or beneath it), reused here so
+   the codebase has one meaning of "short," not two.
+
+   The negation on `shell:` is load-bearing, not decorative (STRIDE T-10-02): without it, a
+   genuinely short touch screen — 844 x 390 — would match BOTH conditions at once (width >= 820px
+   is true, and the coarse-and-short OR-branch of `max-shell:` is also true), and which one
+   Tailwind applies would come down to source order, not intent. The negation is what keeps the
+   two layouts a strict partition: exactly one applies at every point.
+
+   None of this changes what the `coarse` variant above decides (a control's SIZE, and the
+   viewer's Rotate button's presence), and it does not touch FINS' own separate
+   `[@media(max-height:500px)]` rule in fin-viewer.tsx, which decides beside-vs-beneath and has
+   always been about height alone. Three switches, three questions, never conflated: width and
+   height together pick the LAYOUT, pointer picks a control's SIZE, and screen height alone (FINS
+   only) picks beside-or-beneath. */
+@custom-variant max-shell {
+  @media (width < 820px) {
+    @slot;
+  }
+  @media (pointer: coarse) and (height < 500px) {
+    @slot;
+  }
+}
+
+@custom-variant shell {
+  @media (width >= 820px) and (not ((pointer: coarse) and (height < 500px))) {
+    @slot;
+  }
+}
 
 /* ---------------------------------------------------------------------------
    LAYER 1 — RAMPS  (one per theme; raw values, never referenced by a component)
@@ -447,14 +495,6 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-
-  /* The one width switch between the desktop sidebar-beside-canvas shell and the phone's stacked
-     shell. Turns into a `shell:` variant (width >= 820px, today's shell unmodified) and a
-     `max-shell:` variant (width < 820px, the phone stack) with no further config. 820px is the
-     desktop shell's own minimum (340px sidebar + 480px canvas), so the same number answers both
-     "when does a narrow phone stack" and "when does a rotated phone stop stacking". Pointer type
-     is a separate axis (see the `coarse` custom-variant above) — never conflated with this one. */
-  --breakpoint-shell: 820px;
 
   /* -- surf design language ------------------------------------------------
      bg-surf-ground, text-surf-ink, text-surf-ink-muted, border-surf-line,
