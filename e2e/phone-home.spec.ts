@@ -45,31 +45,29 @@ test.describe("phone home screen — the compact top bar", () => {
   });
 });
 
-test.describe("phone home screen — the six-tab bottom bar", () => {
+test.describe("phone home screen — the six-tab bottom bar is hidden here, shown once a board is picked (D-07)", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "phone-only shell assertions");
     await dismissSignInBanner(page);
   });
 
-  test("the tab bar shows all six screens in order, none marked, every tab at least 44px", async ({
+  test("the Screens navigation is absent on the home route, and present after picking a preset", async ({
     page,
   }) => {
     await page.goto("/");
 
-    const tabBar = page.getByRole("navigation", { name: "Screens" });
-    await expect(tabBar).toBeVisible();
+    // The six design tabs are noise while a shaper is still choosing a board (D-07) — the bar
+    // must not just be visually hidden, it must not render at all, so the setup screen's cards
+    // get the full 56px + safe-area it was costing them.
+    await expect(page.getByRole("navigation", { name: "Screens" })).toHaveCount(0);
 
-    const tabs = tabBar.getByRole("link");
-    await expect(tabs).toHaveCount(6);
-    expect(await tabs.allTextContents()).toEqual(SCREEN_LABELS);
+    const firstPreset = page.getByRole("button").filter({ hasText: "Start Shaping" }).first();
+    await firstPreset.click();
+    await page.waitForURL("**/design/outline");
 
-    for (const tab of await tabs.all()) {
-      await expect(tab).not.toHaveClass(/border-surf-accent/);
-      const box = await tab.boundingBox();
-      if (!box) throw new Error("tab is missing a bounding box");
-      expect(box.height).toBeGreaterThanOrEqual(44);
-      expect(box.width).toBeGreaterThanOrEqual(44);
-    }
+    // The six labels in order, the marked tab and the 44px minimums are already asserted by
+    // e2e/phone-layout.spec.ts's own six-tab test on this same route — not duplicated here.
+    await expect(page.getByRole("navigation", { name: "Screens" })).toBeVisible();
   });
 });
 
