@@ -300,6 +300,55 @@ test.describe("phone held sideways — the rotate button stays gone even at a wi
   });
 });
 
+// 10-05: closing 10-VERIFICATION.md gap 4 — the layout switch stops being width-only. This is the
+// exact case the fix targets: 863 x 360 (this same Pixel 7 landscape descriptor) used to render the
+// DESKTOP shell above (width alone was 863px, over the old 820px switch), which is precisely why the
+// board card and the Hide Toolbar tip disappeared sideways. After the fix, a coarse pointer on a
+// screen shorter than 500px renders the phone stack regardless of width. This describe is
+// deliberately separate from — and does not touch — the one above: that block still proves the
+// desktop-style TABLET case is unaffected (task 2 re-points it at a real tablet, since 863 x 360 no
+// longer carries that case after this change).
+test.describe("phone held sideways — the phone stack renders, not the desktop shell (10-05)", () => {
+  test.use({ ...pixel7LandscapeViewport });
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "android",
+      "this describe supplies its own device (Pixel 7 landscape)",
+    );
+    await dismissSignInBanner(page);
+  });
+
+  test("at 863 x 360 the phone stack renders: the six-screen bottom bar and compact top bar show, the desktop link row is hidden", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+
+    // Load-bearing precondition: this really is the short-touch screen the new rule targets,
+    // before asserting anything about which shell rendered.
+    const preconditions = await page.evaluate(() => ({
+      width: window.innerWidth,
+      height: window.innerHeight,
+      coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+    }));
+    expect(preconditions.width).toBe(863);
+    expect(preconditions.height).toBe(360);
+    expect(preconditions.coarsePointer).toBe(true);
+
+    const tabBar = page.getByRole("navigation", { name: "Screens" });
+    await expect(tabBar).toBeVisible();
+
+    const topBar = page.getByRole("banner");
+    await expect(topBar).toBeVisible();
+
+    // The desktop screen-link row (SiteNav's own bare <nav>, no aria-label) is present in the tree
+    // but hidden by its own `max-shell:hidden` rule now that this width-and-height combination is
+    // inside the phone stack.
+    const desktopNav = page.locator("nav:not([aria-label])");
+    await expect(desktopNav).toBeHidden();
+  });
+});
+
 test.describe("phone controls — every slider sits in its own section", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "phone-only controls assertions");
