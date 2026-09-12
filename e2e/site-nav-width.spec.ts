@@ -17,12 +17,15 @@ import { devices, expect, test, type Page } from "@playwright/test";
  * overflow, and 863px is a real Pixel 7 held sideways (10-SWEEP.md, 2026-09-11) — the touch case
  * where the account control's extra width made the overflow 7px worse.
  *
- * After 10-05, a short TOUCH screen in this band is now the phone layout (`max-shell` is
- * `width < 820px` OR `coarse pointer AND height < 500px`), where this row is hidden entirely and
- * `PhoneTopBar` renders instead. That is exactly why the touch case below uses a screen that is
- * both wide AND tall enough to keep the desktop shell, rather than a short sideways phone, which
- * would never render `SiteNav`'s full row at all and so could never prove anything about its
- * width. The device is `Galaxy Tab S9 landscape` (1024 x 640, Chromium, `hasTouch: true`) — the
+ * 10-05 briefly redefined `max-shell` to also fire on a short TOUCH screen in this band
+ * (`width < 820px` OR `coarse pointer AND height < 500px`), which would have hidden this row
+ * entirely there and rendered `PhoneTopBar` instead. D-10 (10-SWEEP-2.md, 2026-09-11) withdrew
+ * that term: as of this round `max-shell` reads width alone again, exactly as it did before 10-05.
+ * The touch case below still uses a screen that is both wide AND tall enough to keep the desktop
+ * shell — not because the height figure is load-bearing today (it isn't, since D-10), but because a
+ * short sideways phone would never render `SiteNav`'s full row at all under EITHER version of the
+ * rule, so it could never prove anything about this row's width regardless of which one is active.
+ * The device is `Galaxy Tab S9 landscape` (1024 x 640, Chromium, `hasTouch: true`) — the
  * same descriptor `e2e/slider-touch.spec.ts` Case B settled on in 10-05 for the same reason it's
  * needed here: this file must run under `--project=android` (this plan's own acceptance
  * criterion), and only a Chromium-backed device runs on that project.
@@ -122,11 +125,14 @@ test.describe("top nav row — fits without horizontal scroll, 820 to 870px wide
   }
 });
 
-// `Galaxy Tab S9 landscape` (1024 x 640, Chromium, `hasTouch: true`) — genuinely wide AND tall
-// enough (>= 820, >= 500) to keep the desktop shell under the width-and-height `max-shell` rule,
-// so `SiteNav`'s full row — not `PhoneTopBar` — is what renders here. This is the case the
-// original bug actually bit on: the account control only grows to 44px under a touch pointer, so
-// a mouse-driven viewport at the same width never exercised the wider control at all.
+// `Galaxy Tab S9 landscape` (1024 x 640, Chromium, `hasTouch: true`) — genuinely wide enough
+// (>= 820) to keep the desktop shell under the width-only `max-shell` rule (D-10), so `SiteNav`'s
+// full row — not `PhoneTopBar` — is what renders here. Its height (640) also comfortably clears
+// the 500px term 10-05 briefly added and D-10 withdrew, which is incidental today rather than
+// load-bearing, but the device is kept exactly as it was chosen so this describe still proves the
+// same touch case regardless of which version of the switch happens to be active. This is the
+// case the original bug actually bit on: the account control only grows to 44px under a touch
+// pointer, so a mouse-driven viewport at the same width never exercised the wider control at all.
 // `defaultBrowserType` is part of the descriptor but can't be set via `test.use` inside a
 // describe (Playwright only allows it top-level or in the config file) — it's redundant here
 // anyway, since the `android` project this describe is pinned to already runs Chromium.
@@ -150,16 +156,19 @@ test.describe("top nav row — fits without horizontal scroll on a touch screen 
   }) => {
     await page.goto("/design/outline");
 
-    // Load-bearing precondition: a coarse pointer, and wide/tall enough to keep the desktop
-    // shell — without all three this proves nothing about the case the bug actually occurred in.
+    // Load-bearing precondition: a coarse pointer, and wide enough to keep the desktop shell
+    // (the switch reads width alone as of D-10) — without both this proves nothing about the case
+    // the bug actually occurred in. This used to also check a height term (`min-height: 500px`),
+    // load-bearing back when 10-05's now-withdrawn rule read pointer-and-height as an alternate
+    // route into the phone layout; D-10 removed that route, so the check was dropped here rather
+    // than kept as a dead, always-true assertion — matching how `e2e/phone-layout.spec.ts` and
+    // `e2e/viewer-toolbar.spec.ts` dropped their own equivalent height preconditions this round.
     const preconditions = await page.evaluate(() => ({
       coarsePointer: window.matchMedia("(pointer: coarse)").matches,
       wideEnoughForDesktopShell: window.matchMedia("(min-width: 820px)").matches,
-      tallEnoughForDesktopShell: window.matchMedia("(min-height: 500px)").matches,
     }));
     expect(preconditions.coarsePointer).toBe(true);
     expect(preconditions.wideEnoughForDesktopShell).toBe(true);
-    expect(preconditions.tallEnoughForDesktopShell).toBe(true);
 
     const viewportSize = page.viewportSize();
     if (!viewportSize) throw new Error("no viewport size");
