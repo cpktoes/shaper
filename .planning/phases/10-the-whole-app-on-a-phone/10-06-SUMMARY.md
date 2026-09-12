@@ -72,7 +72,7 @@ coverage:
         ref: "git diff --stat against preset-card.tsx, board-rack-card.tsx, setup-screen.tsx, outline-viewer.tsx and lib/ reports no changes"
         status: pass
       - kind: e2e
-        ref: "e2e/phone-home.spec.ts and e2e/phone-setup-landscape.spec.ts both assert the first two presets draw outlines at visibly different widths at every measured viewport"
+        ref: "e2e/phone-home.spec.ts checks at least two of the four presets draw outlines at visibly different widths at every measured viewport; e2e/phone-setup-landscape.spec.ts checks the first two specifically differ"
         status: pass
     human_judgment: false
 
