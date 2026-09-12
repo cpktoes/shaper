@@ -35,7 +35,13 @@ Wrapped the rail-band controls in an always-present element inside `rail-band-ed
 class alone follows the active tab, so on a phone the rail-band control column disappears on
 INSTRUCTIONS (read-only reference reading) and stays exactly where it was, one tap away, on VIEWER
 and DATA — closing the shaper's own 2026-09-11 finding, "rails keeps the controls under all 3
-tabs," without touching the shared shell or any other screen.
+tabs," for an **upright** phone, without touching the shared shell or any other screen. **(CR-01,
+10-REVIEW-3.md, corrected after this SUMMARY first shipped: a phone turned sideways is deliberately
+left in the same open bucket as a desktop mouse — see "The open question for the founder" below —
+because D-10, landing one plan earlier in this very round, already moved that orientation into the
+desktop shell, where this fix's `max-shell:` gate cannot fire. The finding is closed for the
+orientation the shaper actually reported it in; sideways was never tested by this plan and is not
+claimed closed here.)**
 
 ## What shipped
 
@@ -89,6 +95,18 @@ control column sits *beside* the INSTRUCTIONS reading rather than after it, but 
 don't act on anything that tab shows. Should the desktop someday hide them there too, matching the
 phone? Not decided here — the standing rule for this phase is that nothing a mouse sees changes,
 and nobody has asked the founder this question yet.
+
+**Added by CR-01 (10-REVIEW-3.md):** a phone turned sideways sits in that identical bucket, and for
+the identical reason — D-10, landing in this same round one plan before this one, redefined the
+phone/desktop switch to read width alone, so a phone held sideways (about 844 CSS px on a real
+iPhone, about 863 on a real Pixel 7, both measured 2026-09-11) now clears 820px and renders the
+same desktop shell a mouse gets, where this fix's `max-shell:hidden` gate cannot fire. That is
+consistent with D-10's own reasoning that a phone on its side should behave like a small desktop,
+but nobody made that call for this fix specifically before now. `rail-band-editor.tsx`'s comment
+and `e2e/phone-rails.spec.ts` now say so and pin it with a test at 844×390 (iPhone) and 863×360
+(Pixel 7). Whether a sideways phone belongs in the same bucket as a desktop mouse, or should behave
+like an upright phone instead, is left for the founder's real-device sweep to decide, same as the
+desktop question above.
 
 ## Verification
 

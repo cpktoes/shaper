@@ -276,6 +276,44 @@ test.describe("RAILS on a phone — one rail at a time, nothing scrolling sidewa
 
 });
 
+// CR-01 (10-REVIEW-3.md): D-10 landed one plan earlier in this same round and redefined the
+// phone/desktop switch to read width alone again — so a phone turned sideways (about 844 CSS px on
+// a real iPhone, about 863 on a real Pixel 7, both measured 2026-09-11) now clears the 820px
+// cutoff and gets the DESKTOP shell, where `max-shell:hidden` (rail-band-editor.tsx) can never
+// fire. The rail-band control heading therefore stays visible beside the INSTRUCTIONS reading on a
+// sideways phone — the SAME bucket a real desktop mouse already occupies, and the same open
+// question left for the founder's sweep (see rail-band-editor.tsx's own comment). This is
+// DELIBERATE and PINNED here on purpose: these two tests assert that the heading IS visible, not
+// that it is hidden, precisely so a future change cannot silently "fix" this one orientation
+// without someone noticing the test that says it was decided this way.
+test.describe("RAILS held sideways — the controls stay put, same bucket as a desktop mouse (D-10, CR-01)", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissSignInBanner(page);
+  });
+
+  test("iPhone sideways, 844x390: the rail-band control heading IS still visible on INSTRUCTIONS", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "a real iPhone's sideways measurement is WebKit-specific");
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.goto("/design/rails");
+
+    await railsPageTabs(page).getByRole("tab", { name: "INSTRUCTIONS" }).click();
+    await expect(page.getByText("Rail Band Calculator", { exact: true })).toBeVisible();
+  });
+
+  test("Pixel 7 sideways, 863x360: the rail-band control heading IS still visible on INSTRUCTIONS", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "a real Pixel 7's sideways measurement is Chromium-specific");
+    await page.setViewportSize({ width: 863, height: 360 });
+    await page.goto("/design/rails");
+
+    await railsPageTabs(page).getByRole("tab", { name: "INSTRUCTIONS" }).click();
+    await expect(page.getByText("Rail Band Calculator", { exact: true })).toBeVisible();
+  });
+});
+
 test.describe("ROCKER DATASHEET on a phone — the same sideways-scrolling box (D-04 held-out check)", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "phone-only DATASHEET assertion");

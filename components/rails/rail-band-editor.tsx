@@ -231,6 +231,15 @@ export function RailBandEditor() {
       // the column sits BESIDE the reading rather than after it, so a mouse never met this problem,
       // and changing what it sees is outside this phase's standing rule — whether the desktop
       // should someday match this is left as an open question for the founder, not decided here.
+      //
+      // CR-01 (10-REVIEW-3.md): a phone turned SIDEWAYS falls into that same bucket, on purpose,
+      // not by oversight. D-10 -- landing one plan earlier in this very round -- redefined the
+      // phone/desktop switch to read width alone again, so a phone held sideways (about 844 CSS px
+      // on a real iPhone, about 863 on a real Pixel 7, both measured 2026-09-11) now clears 820px
+      // and gets the very same desktop shell a mouse gets, where `max-shell:` can never fire and
+      // this column sits BESIDE the reading exactly as it does for a mouse. Whether that's right in
+      // the hand for a phone -- rather than for a real desktop -- is left for the founder's
+      // real-device sweep to judge, the same as the desktop question above; it is not decided here.
       phonePinned={activePage === "instructions" ? "none" : "50dvh"}
       controls={
         <div className={activePage === "instructions" ? "max-shell:hidden" : undefined}>
