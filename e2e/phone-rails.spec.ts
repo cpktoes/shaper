@@ -312,6 +312,67 @@ test.describe("RAILS held sideways — the controls stay put, same bucket as a d
     await railsPageTabs(page).getByRole("tab", { name: "INSTRUCTIONS" }).click();
     await expect(page.getByText("Rail Band Calculator", { exact: true })).toBeVisible();
   });
+
+  // 10-SWEEP-2.md, "The finding: RAILS sideways does not scroll" -- the founder's own words on a
+  // real iPhone: "3 makes the big which is nice but the window doesn't scroll so you can only see
+  // whatever is on top." All three rail sections are open by default, so simply landing on VIEWER
+  // at a real sideways-phone height reproduces it with no extra toggling. This pins the fix
+  // (`design-screen-shell.tsx`'s `overflow-y-auto` on the drawing column) against the REAL
+  // element's own scrollHeight/clientHeight/scrollTop, never a CSS class name, and proves the
+  // user-visible half of the fix too: the Tail section, pushed below the fold before scrolling,
+  // is reachable after.
+  test("iPhone sideways, 844x390: the drawing column scrolls, and the Tail section it hides becomes reachable", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "a real iPhone's sideways measurement is WebKit-specific");
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.goto("/design/rails");
+
+    const main = page.locator("main");
+    await expect(main).toBeVisible();
+
+    // Prove the test is not vacuous: at this real height, three open sections really do overflow
+    // the drawing column -- otherwise there is nothing here for the fix to prove itself against.
+    const metrics = await main.evaluate((el) => ({ scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }));
+    expect(
+      metrics.scrollHeight,
+      "nothing overflows the drawing column at this height -- this test has nothing to prove the fix against",
+    ).toBeGreaterThan(metrics.clientHeight);
+
+    const scrollTopBefore = await main.evaluate((el) => el.scrollTop);
+    expect(scrollTopBefore).toBe(0);
+
+    const tailTitle = main.getByText("Tail", { exact: true });
+    await expect(tailTitle).toBeAttached();
+
+    const mainBoxBefore = await main.boundingBox();
+    const tailBoxBefore = await tailTitle.boundingBox();
+    if (!mainBoxBefore || !tailBoxBefore) throw new Error("missing bounding box");
+    expect(
+      tailBoxBefore.y,
+      "the Tail section is already on screen before scrolling -- this test set up nothing to prove",
+    ).toBeGreaterThanOrEqual(mainBoxBefore.y + mainBoxBefore.height - 1);
+
+    // Scroll the drawing column to its end -- the real fix under test, not a CSS class assertion.
+    await main.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
+    const scrollTopAfter = await main.evaluate((el) => el.scrollTop);
+    expect(scrollTopAfter, "scrolling the drawing column did not move it").toBeGreaterThan(scrollTopBefore);
+
+    // The user-visible point of the fix: the Tail section is now reachable, inside the column's
+    // own visible bounds, not still hanging off the bottom.
+    const mainBoxAfter = await main.boundingBox();
+    const tailBoxAfter = await tailTitle.boundingBox();
+    if (!mainBoxAfter || !tailBoxAfter) throw new Error("missing bounding box");
+    expect(tailBoxAfter.y, "the Tail section is still above the column's own top edge").toBeGreaterThanOrEqual(
+      mainBoxAfter.y - 1,
+    );
+    expect(
+      tailBoxAfter.y + tailBoxAfter.height,
+      "the Tail section is still below the fold after scrolling",
+    ).toBeLessThanOrEqual(mainBoxAfter.y + mainBoxAfter.height + 1);
+  });
 });
 
 test.describe("ROCKER DATASHEET on a phone — the same sideways-scrolling box (D-04 held-out check)", () => {

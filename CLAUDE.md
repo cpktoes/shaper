@@ -170,11 +170,15 @@ Rotate button alone, whether it draws at all — since turning a touch device al
 board. Pointer never decides a LAYOUT; the layout switch above reads width alone, and this variant
 is never reached for to move one.
 
-**Beside or beneath (FINS only) — height alone.** How SHORT the screen is decides whether, on
-FINS, the Base Length key sits beside the tail drawing or beneath it — written inline in
-`fin-viewer.tsx` as `[@media(max-height:500px)]` rather than a named variant, since it has exactly
-one consumer today, and deliberately not tied to width or to the layout switch above: a phone held
-sideways is short regardless of which layout it lands in.
+**Short screen — height alone.** How SHORT the screen is decides two separate things, both written
+inline as `[@media(max-height:500px)]` rather than a named variant, and both deliberately not tied
+to width or to the layout switch above: a phone held sideways is short regardless of which layout
+it lands in. On FINS, `fin-viewer.tsx` uses it to decide whether the Base Length key sits beside
+the tail drawing or beneath it. In `design-screen-shell.tsx`, the same query lets the drawing
+column scroll instead of clipping unreachable content — added for a phone held sideways (about
+390 dots tall on a real iPhone), which lands in the desktop shell above and, unlike a real desktop
+window, is short enough to need it (10-SWEEP-2.md). A real desktop window is never under 500 dots
+tall, so that rule can never reach a mouse.
 
-Width picks the layout, pointer picks the sizing, height (FINS only) picks beside-or-beneath — and
-none of the three is ever conflated with another.
+Width picks the layout, pointer picks the sizing, height picks whether a short screen scrolls
+(and, on FINS only, beside-or-beneath) — and none of the three is ever conflated with another.

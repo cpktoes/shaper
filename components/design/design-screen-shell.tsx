@@ -115,13 +115,37 @@ export function DesignScreenShell({
 
   const controlsScrollClassName = "min-h-0 flex-1 overflow-y-auto p-10 max-shell:p-4";
 
+  // 10-SWEEP-2.md: a phone held SIDEWAYS (about 844x390 on a real iPhone) clears 820px and lands
+  // in this desktop branch (D-10), where a real desktop window was always tall enough that nobody
+  // noticed this column had no scrollbar. At ~390dvh tall it bites immediately -- RAILS with three
+  // sections open pushes content below the fold with nothing to reach it.
+  //
+  // Shape A (an unconditional `overflow-y-auto`, no height gate) was tried first and reverted: it
+  // moved the RAILS and VOLUME desktop screenshot baselines under e2e/*-snapshots/, meaning it
+  // changed what a mouse sees even though no scrollbar ever became visible there -- the flex
+  // column's own sizing math shifts slightly once it can clip/scroll instead of growing past its
+  // box, and that shift reached a real desktop window. Per the standing rule, a moved baseline is
+  // the signal to switch shapes, not to re-record it.
+  //
+  // Shape B, shipped here instead: gate the scroll on `[@media(max-height:500px)]`, this
+  // codebase's own existing idiom for "this screen is short" (CLAUDE.md's Layout section;
+  // `components/fins/fin-viewer.tsx`'s identical media query). A real desktop window is never
+  // under 500px tall, so this rule can never reach a mouse at all -- not "reaches it but draws the
+  // same," genuinely never applies -- which is what keeps the screenshot baselines untouched.
   const mainBase = wideView
-    ? "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-1"
-    : "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3";
+    ? "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-1 [@media(max-height:500px)]:overflow-y-auto"
+    : "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3 [@media(max-height:500px)]:overflow-y-auto";
 
+  // The phone stack must stay byte-identical to before this fix. Every viewport this project's own
+  // Playwright suite exercises under the phone-stack width (< 820px) is also taller than 500px, so
+  // the new height-gated rule above never fires there in practice -- but `max-shell:overflow-visible`
+  // is added defensively to both branches anyway (previously only the `nonePinned` branch declared
+  // it, redundantly, since the base carried no overflow rule at all), so even a hypothetical narrow
+  // AND short viewport (an embedded in-app browser, say) cannot change the phone stack's own
+  // overflow behaviour.
   const mainPhone = nonePinned
     ? "max-shell:order-first max-shell:flex-none max-shell:basis-auto max-shell:p-2 max-shell:h-auto max-shell:overflow-visible"
-    : `max-shell:order-first max-shell:flex-none max-shell:basis-auto max-shell:p-2 ${PHONE_PINNED_MAX_HEIGHT_CLASS[phonePinned]}`;
+    : `max-shell:order-first max-shell:flex-none max-shell:basis-auto max-shell:p-2 max-shell:overflow-visible ${PHONE_PINNED_MAX_HEIGHT_CLASS[phonePinned]}`;
 
   const mainClassName = `${mainBase} ${mainPhone}`;
 
