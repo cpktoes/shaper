@@ -123,4 +123,31 @@ describe("app/globals.css — the layout switch reads width and nothing else (D-
       "the retired --breakpoint-shell custom property should not be emitted any more",
     ).not.toMatch(/--breakpoint-shell/);
   });
+
+  it("the Hide Toolbar tip's own class compiles to a pointer-plus-iOS gate with no width condition anywhere", async () => {
+    // The tip's gate (components/design/toolbar-tip.tsx) moved off the layout axis entirely: a
+    // touch pointer is the outer condition, the iOS feature-support guard is nested inside it, and
+    // neither is a width or layout test. A source-contract test (toolbar-tip.test.ts) proves the
+    // class STRING is right; it does not prove Tailwind actually compiles that combination to real
+    // nested at-rules, and a variant chain that fails to compile emits nothing at all. This case
+    // closes that gap.
+    const css = await compileCandidates(["coarse:supports-[-webkit-touch-callout:none]:flex"]);
+
+    expect(css, "no coarse pointer condition found for the tip's class").toMatch(
+      /@media\s*\(pointer:\s*coarse\)/,
+    );
+    expect(css, "no -webkit-touch-callout feature-support condition found for the tip's class").toMatch(
+      /@supports\s*\(-webkit-touch-callout:\s*none\)/,
+    );
+    expect(css, "the tip's compiled class should carry no width condition at all").not.toMatch(
+      /@media\s*\(width\s*[<>]=?\s*820px\)/,
+    );
+
+    // Exactly one candidate was built, so exactly one `display: flex;` declaration should be
+    // emitted — a variant chain that fails to compile emits none at all, and a chain that
+    // compiles to two branches (the same trap the max-shell:/shell: cases above guard against)
+    // would emit two.
+    const declarationCount = (css.match(/display:\s*flex;/g) ?? []).length;
+    expect(declarationCount, "expected exactly one display: flex; declaration for this candidate").toBe(1);
+  });
 });

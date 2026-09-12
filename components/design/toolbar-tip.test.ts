@@ -6,10 +6,12 @@ import { describe, expect, it } from "vitest";
 /**
  * Source-contract test for `ToolbarTip`, in the house idiom `components/viewer/toolbar-button.test.ts`
  * already uses: read a real source file, strip its comments, and assert a structural property.
- * This is the test that actually guards the two CSS gates (phone width, iOS-only) — Playwright's
- * WebKit does not implement `-webkit-touch-callout`, so no browser test in this repo can prove
- * either gate visually (see `e2e/phone-toolbar-tip.spec.ts`'s header comment for the probe); this
- * file proves them structurally instead.
+ * This is the test that actually guards the two CSS gates (a touch pointer, iOS-only) —
+ * Playwright's WebKit does not implement `-webkit-touch-callout`, so no browser test in this repo
+ * can prove either gate visually (see `e2e/phone-toolbar-tip.spec.ts`'s header comment for the
+ * probe); this file proves them structurally instead. The pointer gate replaced the phone-layout
+ * gate the tip carried before D-10 (10-SWEEP-2.md, 2026-09-11) — see
+ * `components/design/toolbar-tip.tsx`'s own doc comment for why.
  */
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -31,9 +33,9 @@ const layoutSource = stripComments(readFileSync(LAYOUT_PATH, "utf8"));
 const modelSource = readFileSync(MODEL_PATH, "utf8");
 
 // Built from parts, never one literal, so this test file can never accidentally match itself.
-const WIDTH_VARIANT = ["max-shell", ":"].join("");
+const POINTER_VARIANT = ["coar", "se:"].join("");
 const IOS_VARIANT = ["supports-[-webkit-touch-callout", ":none]:"].join("");
-const COMBINED_VARIANT = WIDTH_VARIANT + IOS_VARIANT;
+const COMBINED_VARIANT = POINTER_VARIANT + IOS_VARIANT;
 const HIDDEN_BASE_CLASS = ["hid", "den"].join("");
 const PRINT_HIDE_ATTR = ["data-print", "-hide"].join("");
 const MODEL_SPECIFIER = ["@/lib/models", "/toolbar-tip"].join("");
@@ -45,7 +47,7 @@ const SIGN_IN_BANNER_ELEMENT = ["<Sign", "InBanner"].join("");
 const NON_GROWING_FLEX_CLASS = ["flex", "-none"].join("");
 
 describe("ToolbarTip source contract", () => {
-  it("carries the combined width+iOS variant, in order, on the same class as the hidden base", () => {
+  it("carries the combined pointer+iOS variant, in order, on the same class as the hidden base", () => {
     expect(tipSource).toContain(COMBINED_VARIANT);
     expect(tipSource).toContain(HIDDEN_BASE_CLASS);
   });
