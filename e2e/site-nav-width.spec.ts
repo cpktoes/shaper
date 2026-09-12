@@ -26,6 +26,26 @@ import { devices, expect, test, type Page } from "@playwright/test";
  * same descriptor `e2e/slider-touch.spec.ts` Case B settled on in 10-05 for the same reason it's
  * needed here: this file must run under `--project=android` (this plan's own acceptance
  * criterion), and only a Chromium-backed device runs on that project.
+ *
+ * WHAT THIS FILE CANNOT PROVE (10-REVIEW-2.md WR2-01): `components/auth/nav-auth-control.test.ts`
+ * (lines 13-24) and `e2e/phone-account.spec.ts` (lines 7-24) both document, as an empirically
+ * confirmed fact, that under this suite's deliberately fake Clerk publishable key
+ * `useUser().isLoaded` never settles `true` — confirmed by polling the DOM for over 20 seconds.
+ * That means `NavAuthControl` is permanently stuck on its `!isLoaded` loading-placeholder branch
+ * (`<span aria-hidden className="block size-7 coarse:size-11" />`) for the entire life of this
+ * suite, on every project. Neither the real signed-out "Sign in" text button (D-06, sized by its
+ * 14px text, no `coarse:` width class at all) nor Clerk's real avatar (D-05, `coarse:p-2!`) is
+ * EVER the element `nav.locator("> div").last()` measures below — only the placeholder is, fixed
+ * at `size-7` (28px) on the mouse-driven describe and `coarse:size-11` (44px) on the touch-driven
+ * one. The 44px touch figure happens to match the avatar's target footprint by design
+ * (`nav-auth-control.tsx`'s own comment), but the "Sign in" button's real width was never measured
+ * anywhere in this suite and there's no reason to expect it exactly equals 28px or 44px — it's
+ * plausibly wider. The slack assertion each case makes below exists specifically so a future
+ * change that narrows the row's spare room fails here before the real, un-faked control (which
+ * only the founder's real-device sweep ever renders) has a chance to reopen the original overflow
+ * silently. Residual risk: if the real "Sign in" button or Clerk's real avatar ever renders wider
+ * than the slack this file currently measures, only that real-device sweep — not this suite —
+ * would catch it.
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
@@ -71,6 +91,18 @@ async function assertNavRowFitsViewport(page: Page, width: number) {
   if (!wordmarkBox || !clusterBox) throw new Error("missing bounding box for wordmark or cluster");
   expect(wordmarkBox.x).toBeGreaterThanOrEqual(0);
   expect(clusterBox.x + clusterBox.width).toBeLessThanOrEqual(width);
+
+  // 4. Real headroom, not just "hasn't overflowed yet". This suite can only ever measure the
+  // account control's loading placeholder (see this file's header comment) — never the real
+  // "Sign in" button or Clerk's real avatar — so a bare no-overflow check above could stay green
+  // right up until the real control ships wider and overflows in production. Measuring and
+  // logging the actual slack is what would catch that before a shaper ever sees it.
+  const slack = width - (clusterBox.x + clusterBox.width);
+  console.log(`[site-nav-width] ${width}px viewport: ${slack.toFixed(1)}px of slack right of the nav cluster`);
+  // 24px: the real "Sign in" button (14px text, no horizontal padding) renders roughly 20px wider
+  // than the 28px placeholder this suite measures in its place; 24 leaves a little margin on top
+  // of that gap, so this fails before the real control would actually overflow.
+  expect(slack).toBeGreaterThanOrEqual(24);
 }
 
 test.describe("top nav row — fits without horizontal scroll, 820 to 870px wide (mouse)", () => {
@@ -113,7 +145,7 @@ test.describe("top nav row — fits without horizontal scroll on a touch screen 
     await dismissSignInBanner(page);
   });
 
-  test("the row fits with no horizontal scroll and both end items on screen, with the wider touch account control", async ({
+  test("the row fits with no horizontal scroll and both end items on screen, using this suite's 44px touch placeholder in place of the real widened account control", async ({
     page,
   }) => {
     await page.goto("/design/outline");
