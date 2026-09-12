@@ -14,6 +14,11 @@ import { expect, test, type Page } from "@playwright/test";
  * emulated iPhone. The source-contract test from Task 1
  * (`components/design/toolbar-tip.test.ts`) is what actually guards the two CSS gates, since only
  * a real iPhone can prove them visually.
+ *
+ * D-10 (10-SWEEP-2.md, 2026-09-11): the tip's outer gate is now the `coarse` pointer variant, not
+ * the phone-layout switch — so it is attached on every touch project at every viewport, upright or
+ * sideways. The reason no test here can see it painted is unchanged and is still the emulator's
+ * missing feature test, never the gate.
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
@@ -52,6 +57,26 @@ test.describe("the toolbar tip's DOM contract", () => {
     // an empty string — matching what `SignInBanner`'s own `data-print-hide` renders as.
     await expect(tip).toHaveAttribute("data-print-hide", "true");
   });
+
+  // D-10: the outer gate is now the coarse pointer variant, not the phone-layout switch, so the
+  // tip must stay attached at BOTH orientations — no emulator here can paint it (see the header),
+  // but this is the standing proof that the sideways reachability this plan delivers actually
+  // exists in the DOM, at the real width real hardware reported (844x390 on an iPhone) rather than
+  // Playwright's own stale 750x340 iPhone-landscape descriptor.
+  test("the tip stays attached both upright and sideways at a real iPhone width (844x390)", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "iphone",
+      "844x390 is the real iPhone sideways width this plan restores; this proves the pointer gate holds at that hardware size",
+    );
+    await page.goto("/design/outline");
+
+    await expect(page.locator("[data-toolbar-tip]")).toBeAttached();
+
+    await page.setViewportSize({ width: 844, height: 390 });
+    await expect(page.locator("[data-toolbar-tip]")).toBeAttached();
+  });
 });
 
 test.describe("the toolbar tip's permanent dismissal", () => {
@@ -88,8 +113,13 @@ test.describe("the toolbar tip's permanent dismissal", () => {
     await page.reload();
     await expect(page.locator("[data-toolbar-tip]")).not.toBeAttached();
 
-    // Once per phone, not once per screen.
-    await page.goto("/design/rails");
+    // Once per phone, not once per screen. A client-side nav via the bottom tab bar (the same
+    // path a shaper actually uses to move between design screens on a phone), not a second hard
+    // `page.goto` — a WebKit-only dev-server quirk, reproducible on this exact describe, otherwise
+    // races a hard navigation against a background Fast Refresh full reload the dev server
+    // occasionally pushes right after the outline route's first paint (same root cause and fix as
+    // e2e/phone-layout.spec.ts's own tablet describe, 10-05). Same assertion either way.
+    await page.getByRole("navigation", { name: "Screens" }).getByRole("link", { name: "RAILS" }).click();
     await expect(page.locator("[data-toolbar-tip]")).not.toBeAttached();
   });
 });
@@ -131,6 +161,11 @@ test.describe("the toolbar tip's conditional visibility", () => {
   });
 });
 
+// D-10 stronger evidence: the gate used to be the layout switch, so a desktop mouse never seeing
+// the tip was in part a width fact (1280px is a desktop width). Now the gate is the pointer alone,
+// so this is a genuine touch-vs-mouse proof rather than a width coincidence — a desktop CAN be
+// exactly 819px wide (still the phone layout) and still never see this tip, because it has no
+// coarse pointer to satisfy the gate.
 test.describe("the toolbar tip never appears on a computer", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "desktop-only guard");

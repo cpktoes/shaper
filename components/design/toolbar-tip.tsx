@@ -15,17 +15,20 @@
  * `props.children`, so it appears on every design screen and nowhere else.
  *
  * Three gates, and which technology owns each:
- * - The phone LAYOUT (not phone width alone) — CSS, `hidden max-shell:…:flex`, the same idiom
- *   `components/design/phone-tab-bar.tsx` already uses. Before 10-05 this was width-only, and that
- *   was the bug the founder's own sweep found (10-SWEEP.md, 2026-09-11): a real iPhone held
- *   sideways is about 844 dots wide, over the old 820px switch, so this tip went dark at the exact
- *   moment — the extra height from a sideways phone — a shaper most wanted it. `max-shell:` now
- *   also fires on a coarse pointer over a screen shorter than 500px, so the tip is reachable
- *   sideways too, with no change to the tip itself or its wording — the fix was entirely in the
- *   gate this class name reads.
+ * - A touch pointer (not the phone LAYOUT) — CSS, `hidden coarse:…:flex`. Whether a browser has a
+ *   toolbar worth hiding is a question about the device in your hand, not about which layout the
+ *   screen selected — and mis-filing it on the layout axis is exactly why this tip went dark at
+ *   the moment a shaper most wanted it, twice, for two different reasons: before 10-05 a sideways
+ *   iPhone was over the phone/desktop width switch, so the tip was hidden; 10-05 moved the switch
+ *   to reach it (a real iPhone held sideways is about 844 dots wide, over the old 820px cutoff),
+ *   and the shaper still reported not seeing it; and D-10 (10-SWEEP-2.md, 2026-09-11) has now put
+ *   that switch back to width alone, so the only way this tip is reliably reachable is to stop it
+ *   depending on the switch at all. The consequence is intended: on a touch device in the desktop
+ *   layout — a phone held sideways, or a tablet — the tip now appears, and that is when the extra
+ *   height is most wanted.
  * - iOS/iPadOS only — CSS, `supports-[-webkit-touch-callout:none]:`, the same iOS-only
  *   feature-detection guard `components/rails/view-full-sized-dialog.tsx` already ships, kept in
- *   the same variant order (max-shell: first, then supports-[...]:) already proven to compile in
+ *   the same variant order (coarse: first, then supports-[...]:) already proven to compile in
  *   this Tailwind v4 setup.
  * - Not yet dismissed — React, `useSyncExternalStore` over `lib/models/toolbar-tip.ts`'s
  *   permanent localStorage key.
@@ -84,7 +87,7 @@ export function ToolbarTip() {
     <div
       data-print-hide
       data-toolbar-tip
-      className="hidden max-shell:supports-[-webkit-touch-callout:none]:flex flex-none items-center gap-2 bg-surf-canvas px-4 py-2 text-surf-ink"
+      className="hidden coarse:supports-[-webkit-touch-callout:none]:flex flex-none items-center gap-2 bg-surf-canvas px-4 py-2 text-surf-ink"
     >
       <p className="text-balance text-sm text-surf-ink">
         {/* Never name the page-menu button's own glyph: it is labelled "aA" on iOS 17-25 and "…"

@@ -12,10 +12,10 @@
  * This is the ONE sanctioned use of a JavaScript media query in this phase, and only this one: it
  * drives React *state* — which way the board faces, whether the construction overlay starts on —
  * that cannot be expressed as a CSS variant. The stacked-versus-desktop LAYOUT switch stays
- * CSS-only — the `max-shell`/`shell` custom variants declared directly in `app/globals.css` (10-05:
- * width-and-height, not the width-only `--breakpoint-shell` theme token that mechanism used before
- * a real phone held sideways disproved it) — and this standing rule is unchanged by that: nobody
- * should reach for either hook below to move a layout.
+ * CSS-only — the `max-shell`/`shell` custom variants declared directly in `app/globals.css`, a
+ * single width test (D-10, 10-SWEEP-2.md, 2026-09-11: the shaper's own decision, reverting a
+ * width-and-height version 10-05 tried and withdrew) — and this standing rule is unchanged by any
+ * of that: nobody should reach for either hook below to move a layout.
  */
 
 import * as React from "react";

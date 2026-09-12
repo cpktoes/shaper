@@ -5,19 +5,20 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * Compiled-CSS proof for the phone-held-sideways layout switch (10-05, closing 10-VERIFICATION.md
- * gap 4 and 10-SWEEP.md's "a phone held sideways stays a phone" decision).
+ * Compiled-CSS guard for the layout switch, after D-10 (10-SWEEP-2.md, 2026-09-11) reverted it
+ * from a width-and-height rule (10-05) back to width alone.
  *
- * Before this plan, `max-shell:`/`shell:` were DERIVED from one `--breakpoint-shell: 820px` token
- * in the `@theme` block — a pure width switch, and Tailwind's own machinery produced both variants
- * from it automatically. This plan replaces that token with two explicit `@custom-variant`
- * declarations in `app/globals.css`, each carrying more than one media condition (an OR on the
- * phone side, a negation on the desktop side) — something a single theme token cannot express. A
- * typo in either variant's media-condition syntax, a dropped OR branch, or a missing negation would
- * compile to the WRONG condition (or to nothing at all) with no warning from Tailwind. This is the
- * only test in the suite that would catch that: it runs the real `app/globals.css` through the
- * app's own Tailwind pipeline (`compile()` from `@tailwindcss/node`) and asserts on the emitted CSS
- * text itself, the same house pattern as `components/rails/view-full-sized-dialog.css.test.ts`.
+ * This file used to prove the OPPOSITE of what it proves now: that `max-shell:` carried an OR of
+ * two branches (width, and a coarse-pointer-and-short-height pair) and that `shell:` carried a
+ * negation of that same pair. That rule is withdrawn — see `app/globals.css`'s own comment above
+ * the two variants for why. What survives is the REASON this file exists at all: a decision that
+ * has already been made in both directions needs a test that fails loudly if it is ever quietly
+ * reversed a third time. A typo in a media-condition, a stray OR branch, or a re-added negation
+ * would compile silently to the wrong rule (or to nothing) with no warning from Tailwind — this is
+ * the only test in the suite that would catch that, by running the real `app/globals.css` through
+ * the app's own Tailwind pipeline (`compile()` from `@tailwindcss/node`) and asserting on the
+ * emitted CSS text itself, the same house pattern as
+ * `components/rails/view-full-sized-dialog.css.test.ts`.
  *
  * `@tailwindcss/node`'s `compile()` returns a compiler whose `build()` calls accumulate candidates
  * across calls on the SAME compiler instance (verified there at authoring time) — so each case
@@ -37,64 +38,55 @@ async function compileCandidates(candidates: string[]): Promise<string> {
   return compiler.build(candidates);
 }
 
-describe("app/globals.css — the phone-held-sideways layout switch (10-05)", () => {
-  it("max-shell: emits both the under-820px width rule and the coarse-and-short-height rule, each carrying the candidate's own declaration", async () => {
+describe("app/globals.css — the layout switch reads width and nothing else (D-10)", () => {
+  it("max-shell: emits exactly one rule, at a width condition under 820, with no pointer-type term and no height term", async () => {
     const css = await compileCandidates(["max-shell:hidden"]);
 
-    // Branch 1: the width-only condition, unchanged from before this plan (Tailwind v4 emits a
-    // range media feature rather than max-width; tolerant of whitespace).
     expect(css, "no width<820px media condition found for max-shell:").toMatch(
       /@media\s*\(width\s*<\s*820px\)/,
     );
 
-    // Branch 2: the new coarse-pointer-and-short-height condition — the OR half of "a phone held
-    // sideways stays a phone" (10-SWEEP.md). 500px is fin-viewer.tsx's own existing short-screen
-    // number, reused rather than reinvented.
-    expect(
-      css,
-      "no coarse-pointer-and-short-height media condition found for max-shell:",
-    ).toMatch(/@media\s*\(pointer:\s*coarse\)\s*and\s*\(height\s*<\s*500px\)/);
+    // The withdrawn OR-branch (a coarse pointer on a screen shorter than 500px) must be gone
+    // entirely — not merely unreachable, but absent from the emitted text.
+    expect(css, "max-shell: should carry no pointer-type term any more").not.toMatch(/pointer:\s*coarse/);
+    expect(css, "max-shell: should carry no height term any more").not.toMatch(/height\s*<\s*500px/);
 
-    // Both branches must carry the SAME declaration — a real OR, not one branch silently emitting
-    // nothing. Two rules for `.max-shell\:hidden`, one per media block — matched on the candidate's
-    // OWN selector rather than a bare `display: none` count, since Tailwind's preflight layer
-    // emits its own unrelated `[hidden] { display: none !important; }` reset that a bare count
-    // would also pick up.
+    // Exactly one rule for one candidate — matched on the candidate's OWN selector rather than a
+    // bare `display: none` count, since Tailwind's preflight layer emits its own unrelated
+    // `[hidden] { display: none !important; }` reset that a bare count would also pick up.
     const candidateRuleCount = (
       css.match(/\.max-shell\\:hidden\s*\{\s*display:\s*none;\s*\}/g) ?? []
     ).length;
     expect(
       candidateRuleCount,
-      "expected two .max-shell\\:hidden { display: none; } rules (one per media branch) — a variant compiling to a single rule or to nothing would fail this",
-    ).toBe(2);
+      "expected exactly one .max-shell\\:hidden { display: none; } rule — a variant compiling to two branches (or to nothing) would fail this",
+    ).toBe(1);
   });
 
-  it("shell: emits exactly one media rule combining width>=820px with a negation of the coarse-and-short pair", async () => {
+  it("shell: emits exactly one rule, at a width condition of 820 or more, with no negation keyword", async () => {
     const css = await compileCandidates(["shell:flex"]);
 
-    expect(css, "no width>=820px media condition found for shell:").toMatch(
+    // Scoped to the candidate's OWN emitted block (the @media wrapping `.shell\:flex`), not the
+    // whole compiled stylesheet — Tailwind's own boilerplate (tw-animate-css's `@supports not
+    // (...)` feature queries, elsewhere in this same output) legitimately contains the word "not"
+    // for reasons that have nothing to do with this variant, so a whole-file search for `not`
+    // would false-fail on that boilerplate alone.
+    const shellBlockMatch = css.match(
+      /@media[^{]*\{[\s\S]*?\.shell\\:flex\s*\{[\s\S]*?\}\s*\}/,
+    );
+    expect(shellBlockMatch, "no emitted block found for .shell\\:flex").not.toBeNull();
+    const shellBlock = shellBlockMatch![0];
+
+    expect(shellBlock, "no width>=820px media condition found for shell:").toMatch(
       /@media\s*\(width\s*>=\s*820px\)/,
     );
 
-    // The negation is load-bearing (threat T-10-02): without it, a genuinely short touch screen
-    // (844 x 390) would match BOTH variants at once and Tailwind's source order — not intent —
-    // would silently decide which wins. Matched by the negation keyword and the two negated terms
-    // separately, rather than the whole clause verbatim, so a Tailwind formatting/parenthesization
-    // change alone cannot break this.
-    expect(
-      css,
-      "no negation keyword found in the shell: condition — the desktop side must NOT the coarse-and-short pair",
-    ).toMatch(/\bnot\b/);
-    expect(css, "the coarse-pointer term should still appear (negated) in the shell: condition").toMatch(
-      /pointer:\s*coarse/,
-    );
-    expect(css, "the short-height term should still appear (negated) in the shell: condition").toMatch(
-      /height\s*<\s*500px/,
-    );
+    // The withdrawn negation (STRIDE T-10-02 in 10-05, now retired) must be gone entirely — the
+    // desktop side is a single plain condition again, not a negated pair.
+    expect(shellBlock, "shell: should carry no negation keyword any more").not.toMatch(/\bnot\b/);
+    expect(shellBlock, "shell: should carry no pointer-type term any more").not.toMatch(/pointer:\s*coarse/);
+    expect(shellBlock, "shell: should carry no height term any more").not.toMatch(/height\s*<\s*500px/);
 
-    // Exactly one rule for one candidate — the desktop side is one condition, never an OR of two.
-    // Matched on the candidate's own selector, mirroring the max-shell: case above, so Tailwind's
-    // unrelated preflight declarations can never be miscounted as part of this variant's output.
     const candidateRuleCount = (
       css.match(/\.shell\\:flex\s*\{\s*display:\s*flex;\s*\}/g) ?? []
     ).length;
@@ -104,7 +96,24 @@ describe("app/globals.css — the phone-held-sideways layout switch (10-05)", ()
     ).toBe(1);
   });
 
-  it("carries no --breakpoint-shell theme token in the compiled output — the number now lives in exactly one place", async () => {
+  it("the two conditions partition at 820: max-shell is strictly under it, shell is at or over it, so the boundary belongs to exactly one side", async () => {
+    const css = await compileCandidates(["max-shell:hidden", "shell:flex"]);
+
+    // Built from strict-less-than and greater-or-equal, which are exact complements by
+    // construction: 820 itself can never satisfy `width < 820px`, and always satisfies
+    // `width >= 820px`. Asserting both operators together is what proves the boundary is owned by
+    // declaration, not by which rule Tailwind happens to emit first.
+    expect(css, "max-shell: should be a strict less-than at 820").toMatch(/@media\s*\(width\s*<\s*820px\)/);
+    expect(css, "shell: should be a greater-or-equal at 820").toMatch(/@media\s*\(width\s*>=\s*820px\)/);
+
+    // Guards against a formatting drift that would silently widen the phone side to include 820
+    // (e.g. `<=` swapped in for `<`), which would double-match the boundary.
+    expect(css, "max-shell: must not have become a less-or-equal at 820").not.toMatch(
+      /@media\s*\(width\s*<=\s*820px\)/,
+    );
+  });
+
+  it("carries no --breakpoint-shell theme token in the compiled output — the number lives in exactly one place", async () => {
     const css = await compileCandidates(["max-shell:hidden", "shell:flex"]);
 
     // Asserted against the COMPILED CSS text, never the source file, so a doc comment mentioning
@@ -113,5 +122,32 @@ describe("app/globals.css — the phone-held-sideways layout switch (10-05)", ()
       css,
       "the retired --breakpoint-shell custom property should not be emitted any more",
     ).not.toMatch(/--breakpoint-shell/);
+  });
+
+  it("the Hide Toolbar tip's own class compiles to a pointer-plus-iOS gate with no width condition anywhere", async () => {
+    // The tip's gate (components/design/toolbar-tip.tsx) moved off the layout axis entirely: a
+    // touch pointer is the outer condition, the iOS feature-support guard is nested inside it, and
+    // neither is a width or layout test. A source-contract test (toolbar-tip.test.ts) proves the
+    // class STRING is right; it does not prove Tailwind actually compiles that combination to real
+    // nested at-rules, and a variant chain that fails to compile emits nothing at all. This case
+    // closes that gap.
+    const css = await compileCandidates(["coarse:supports-[-webkit-touch-callout:none]:flex"]);
+
+    expect(css, "no coarse pointer condition found for the tip's class").toMatch(
+      /@media\s*\(pointer:\s*coarse\)/,
+    );
+    expect(css, "no -webkit-touch-callout feature-support condition found for the tip's class").toMatch(
+      /@supports\s*\(-webkit-touch-callout:\s*none\)/,
+    );
+    expect(css, "the tip's compiled class should carry no width condition at all").not.toMatch(
+      /@media\s*\(width\s*[<>]=?\s*820px\)/,
+    );
+
+    // Exactly one candidate was built, so exactly one `display: flex;` declaration should be
+    // emitted — a variant chain that fails to compile emits none at all, and a chain that
+    // compiles to two branches (the same trap the max-shell:/shell: cases above guard against)
+    // would emit two.
+    const declarationCount = (css.match(/display:\s*flex;/g) ?? []).length;
+    expect(declarationCount, "expected exactly one display: flex; declaration for this candidate").toBe(1);
   });
 });

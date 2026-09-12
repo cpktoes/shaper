@@ -6,19 +6,24 @@ import { devices, expect, test, type Page } from "@playwright/test";
  *
  * The key-beside-plot rule is driven by a SEPARATE 500px max-height media query written inline in
  * `components/fins/fin-viewer.tsx` — it has never been about the `max-shell:`/`shell:` layout
- * switch, and 10-05 does not touch it. This file's own viewport (`Pixel 7 landscape`, 863 x 360) DID
- * change shell under 10-05, though: before that plan it rendered the DESKTOP shell (863px alone was
- * over the old width-only 820px switch), and now it renders the PHONE STACK, because a coarse
- * pointer on a screen shorter than 500px is the phone-stack case the shaper's own decision
- * (10-SWEEP.md, 2026-09-11 — "a phone held sideways stays a phone") deliberately adds. The
+ * switch, and no plan in this phase has ever touched it, this one (D-10, 10-SWEEP-2.md,
+ * 2026-09-11) included. This file's own viewport (`Pixel 7 landscape`, 863 x 360) has changed which
+ * SHELL it renders twice, though, for reasons that have nothing to do with the rule this file
+ * actually tests: before 10-05 it rendered the DESKTOP shell (863px alone was over the width-only
+ * 820px switch); 10-05 moved it into the PHONE STACK (a coarse pointer on a screen shorter than
+ * 500px was briefly also a phone-stack condition); D-10 withdraws that and puts it back to the
+ * DESKTOP shell, the same as before 10-05, because the switch reads width alone again. The
  * plot-to-viewer ratio this test asserts is re-measured on every run rather than carried over from
- * a fixed figure recorded here — re-measured on this checkout after 10-05 landed: 1.000, identical
- * to the figure this file recorded before that plan, because the ratio was never driven by the shell
- * in the first place. `iPhone 14 landscape` is deliberately NOT used here even though it is a real
- * sideways phone — Playwright emulates it at 750px wide, already under 820px before 10-05 and still
- * under it after, so it renders the phone-stacked shell either way. That is a fine screen for the
- * feature itself, but a poor descriptor for THIS assertion: a file whose whole point is proving the
- * short-screen rule should not silently depend on which shell a given phone happens to land in.
+ * a fixed figure recorded here — re-measured on this checkout after D-10 landed: 1.000, identical
+ * to the figure recorded both before and during 10-05, because the ratio was never driven by the
+ * shell switch in the first place, under any of its three rules. `iPhone 14 landscape` is
+ * deliberately NOT used here even though it is a real sideways phone — Playwright emulates it at
+ * 750px wide, under 820px in every version of the switch this phase has shipped, so it would render
+ * the phone stack regardless of which shell rule is active. That is a fine screen for the feature
+ * itself, but a poor descriptor for THIS assertion: a file whose whole point is proving the
+ * short-screen rule should not silently depend on which shell a given phone happens to land in —
+ * `Pixel 7 landscape` exercises the short-screen rule under the DESKTOP shell precisely because it
+ * sits on the other side of the width switch.
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
