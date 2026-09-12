@@ -277,6 +277,32 @@ Recent decisions affecting current work:
 
 ## Deferred Items
 
+### Acknowledged at the v1.2 close (2026-09-12)
+
+Sixteen open artifacts acknowledged and deferred, per the founder's choice at milestone close. The
+debug sessions and the three 260910 quick-task records are shipped work whose bookkeeping was never
+closed (their fixes and tests are in the tree); the todos are backlog for a later milestone.
+
+| Category | Item | Status |
+|----------|------|--------|
+| debug | fin-placement-numbers-in-cm | diagnosed — fix shipped (Phase 6 UAT) |
+| debug | keyboard-focus-invisible-on-sliders | diagnosed — fix shipped (09-08) |
+| debug | metric-axis-labels-instructions-card | diagnosed — fix shipped (08-08) |
+| debug | order-form-letter-blank-pages | diagnosed — fix shipped (quick task, Phase 7/8) |
+| debug | phone-print-button-does-nothing | diagnosed — fix shipped (09-09) |
+| debug | typed-length-box-too-narrow | diagnosed — fix shipped |
+| debug | view-full-sized-print-offset | diagnosed — fix shipped (08-07) |
+| quick_task | 260818*-rebuild-volume* | record missing |
+| quick_task | 260910-2ny-size-each-order-form-sheet-to-the-real-page | incomplete record; work shipped and tested (summary-print-touch-box.spec.ts) |
+| quick_task | 260910-jfp-print-a-key-beside-the-rail-plan-side-drawing | incomplete record; work shipped and tested (summary-rail-key.spec.ts) |
+| quick_task | 260910-kz2-stop-the-rail-instructions-sheet-clipping | incomplete record; work shipped and tested (summary-rail-instructions-fit.spec.ts) |
+| todo | 2026-08-19-add-finished-board-photo-uploads-with-ratings | pending — backlog |
+| todo | 2026-08-19-mobile-phone-width-layout-polish | pending — largely superseded by v1.2 Phases 9–10; review before v1.3 |
+| todo | 2026-08-21-copy-spec-to-clipboard | pending — backlog |
+| todo | 2026-08-21-fins-imported-template-width-branch | pending — backlog |
+| todo | 2026-08-21-presets-for-rails-and-fins | pending — backlog |
+
+
 Items acknowledged and carried forward from previous milestone close:
 
 | Category | Item | Status | Deferred At |
