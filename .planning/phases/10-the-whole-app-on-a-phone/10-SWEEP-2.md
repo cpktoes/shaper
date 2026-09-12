@@ -152,3 +152,78 @@ FAIL above:
 *If you need to stop partway through, note which phone and which numbered step you reached in a
 sentence to whoever picks this back up — a `.continue-here.md` will be written from that so the
 next session starts exactly where you left off, not from step 1.*
+
+---
+
+## First walk — what came back (2026-09-11)
+
+One phone, walked by the shaper. **Model not yet confirmed** — see the open question at the end;
+until it is, nothing here is filed in the per-phone columns above, because one of these answers
+means opposite things on an iPhone and on an Android.
+
+The walk was **stopped after step 10 by decision**, not by running out of steps: two of the
+findings below are faults in this very round of fixes, so walking the second phone would have
+re-found the same three things. The fixes come first, then both phones are walked clean.
+
+### Answers, in the shaper's own words
+
+| # | Step | Answer (verbatim) |
+|---|------|-------------------|
+| 1–5 | Sign up, sign in/out, account menu, pick a preset, rename/duplicate/delete | "1 -5 good." |
+| 6 | All five design screens by the tab bar; RAILS tabs; turning sideways and back | "rails keeps the controls under all 3 tabs" |
+| 7 | Sideways on a design screen | "horizontal is useless, as there are no controls other than the drag. It was honestly better when it was treated as a normal browser rather than a phone. I did not see the hide toolbar tip." |
+| 8 | Save two boards, check the rack's order on return | **Not answered** — carry to the re-sweep |
+| 9 | Summary screen and on-screen order form | "sumamry screen looks pretty good both V and H" |
+| 10 | Home screen sideways | "horizontal the boards on the landing page cards have a 0 height" |
+| — | The avatar five-tap count | **Not answered** — carry to the re-sweep |
+
+### What the code says about each finding
+
+Checked against `main` at `c698a09` before anything was written down:
+
+- **Boards at zero height sideways — CONFIRMED, a fault in plan 10-06.** The card's picture is
+  capped at three-quarters of the screen *minus a fixed 205px* for the card's own text (name, the
+  four numbers, the descriptor, the button). That text does not shrink on a short screen, so
+  sideways it eats the whole budget: 88px of board left at a 390px-tall screen, 35px at 320px,
+  5px at 280px, and nothing at all at 270px and under. With Safari's toolbar showing, a sideways
+  iPhone sits inside that range. There is no floor stopping it at zero.
+- **RAILS controls under all three tabs — CONFIRMED, pre-existing.** `rail-band-editor.tsx` hands
+  the rail-band controls to the screen shell on every tab, INSTRUCTIONS included. That file's own
+  comment already says INSTRUCTIONS "is read-only reference content with no control targeting it"
+  — and the controls are rendered under it regardless.
+- **The Hide Toolbar tip — CANNOT BE SCORED until the phone is named.** `toolbar-tip.tsx` gates the
+  tip on `supports-[-webkit-touch-callout:none]:`, which only iOS and iPadOS satisfy. Not seeing it
+  on an Android phone is correct behaviour; not seeing it on an iPhone is a failure of the one thing
+  plan 10-05 was actually meant to fix.
+
+### Decisions taken from this walk
+
+**D-10 — A phone on its side goes back to being treated as a normal browser.** Plan 10-05's switch
+(*narrower than 820px OR a touch screen shorter than 500px*) is to be reverted to width alone. The
+shaper's verdict, in their words: *"horizontal is useless, as there are no controls other than the
+drag. It was honestly better when it was treated as a normal browser rather than a phone."*
+
+The reasoning that supports it: the desktop layout needs 820px because that is 340px of controls
+beside a 480px drawing. A phone on its side is about 844–863px — it fits, and that is a better use
+of a short wide screen than stacking a half-height drawing over controls that then have almost no
+room left. Re-reading the three symptoms 10-05 was built on, with a real phone in hand:
+
+- the giant board card sideways was a **card** fault (now confirmed above), not a layout-switch fault;
+- the tabs moving to the top bar sideways was the layout **correctly adapting**, not a fault;
+- the Hide Toolbar tip was the one symptom genuinely about the switch — and it **still did not
+  appear** after the switch changed, so 10-05 did not deliver even that.
+
+**D-11 — Fix before re-sweeping.** The second phone is not walked on this build.
+
+### Carried into the next round of fixes
+
+1. Revert the layout switch to width-only (D-10), and make CLAUDE.md's Layout section say so.
+2. Give the board card's height cap a floor so it can never resolve to nothing, whatever the screen.
+3. Stop showing the rail-band controls under the RAILS INSTRUCTIONS tab.
+4. Settle the Hide Toolbar tip once the phone is named — and, if it was an iPhone, find out why it
+   did not appear.
+
+### Open question before this sheet can be filed
+
+**Which phone was this walk done on?** Every row above is recorded against one unnamed device, and
+finding 3 flips between "correct" and "failed" depending on the answer.
