@@ -218,20 +218,35 @@ export function RailBandEditor() {
       // cross-section is roughly square, so it needs less room than TEMPLATE/ROCKER's full
       // drawings); INSTRUCTIONS is read-only reference content with no control targeting it, so it
       // collapses the pinned split entirely and scrolls as one column instead.
+      //
+      // 10-11: that last sentence used to be written down and never acted on. On a phone the
+      // sidebar sorts AFTER the canvas in scroll order (DesignScreenShell's own `max-shell:order-
+      // last`), so a shaper reading INSTRUCTIONS to its end used to land on a full column of
+      // sliders that change nothing they can see there — confirmed on a real phone on 2026-09-11
+      // ("rails keeps the controls under all 3 tabs"). The wrapper below is always present, on
+      // every tab, so the shell always receives the same shape of `controls`; only its class moves
+      // with the active tab, hiding it on a phone for INSTRUCTIONS alone. Nothing is taken away —
+      // every rail-band control is still exactly where it always was, one tap away on VIEWER or
+      // DATA, where it acts on something visible. A desktop mouse is deliberately untouched: there
+      // the column sits BESIDE the reading rather than after it, so a mouse never met this problem,
+      // and changing what it sees is outside this phase's standing rule — whether the desktop
+      // should someday match this is left as an open question for the founder, not decided here.
       phonePinned={activePage === "instructions" ? "none" : "50dvh"}
       controls={
-        <RailControls
-          spec={effectiveRails}
-          bands={bands}
-          onChangeSection={updateSection}
-          onToggleHardEdge={toggleHardEdge}
-          sectionOpen={sectionOpen}
-          onToggleSectionOpen={toggleSectionOpen}
-          advancedOpen={advancedOpen}
-          onToggleAdvancedOpen={toggleAdvancedOpen}
-          railsImportFoilThickness={railsImportFoilThickness}
-          onToggleRailsImportFoilThickness={toggleRailsImportFoilThickness}
-        />
+        <div className={activePage === "instructions" ? "max-shell:hidden" : undefined}>
+          <RailControls
+            spec={effectiveRails}
+            bands={bands}
+            onChangeSection={updateSection}
+            onToggleHardEdge={toggleHardEdge}
+            sectionOpen={sectionOpen}
+            onToggleSectionOpen={toggleSectionOpen}
+            advancedOpen={advancedOpen}
+            onToggleAdvancedOpen={toggleAdvancedOpen}
+            railsImportFoilThickness={railsImportFoilThickness}
+            onToggleRailsImportFoilThickness={toggleRailsImportFoilThickness}
+          />
+        </div>
       }
       sidebarFooter={
         process.env.NODE_ENV === "development" ? (
