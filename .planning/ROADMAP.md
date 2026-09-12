@@ -218,7 +218,7 @@ Plans:
 
   4. The whole trip — sign in, pick a preset, open from the rack, work through all five design screens, save, read the summary — runs end to end on a real iPhone and a real Android phone, with desktop mouse and keyboard behaviour unchanged.
 
-**Plans**: 7/11 plans executed — 4/4 executed in waves 1-2; 3 gap-closure plans executed in waves 3-4; the real-device sweep (wave 8) and the three fixes its first walk produced (waves 6-7) are outstanding
+**Plans**: 7/11 plans executed — 4/4 executed in waves 1-2; 3 gap-closure plans executed in waves 3-4; the real-device sweep (wave 7) and the three fixes its first walk produced (waves 5-6) are outstanding
 
 Plans:
 **Wave 1**
@@ -240,18 +240,18 @@ Plans:
 - [x] 10-06-PLAN.md — A board card sized to the screen it is on, not to a fixed number of dots (wave 4)
 - [x] 10-07-PLAN.md — The account avatar made genuinely finger-sized, and the top row given the test it shipped without (wave 4)
 
-**Wave 6** *(gap closure — from the first real-device walk, 2026-09-11)*
+**Wave 5** *(gap closure — from the first real-device walk, 2026-09-11)*
 
-- [ ] 10-09-PLAN.md — A board card's picture gets a floor, so it can never shrink to nothing (wave 6)
+- [ ] 10-09-PLAN.md — A board card's picture gets a floor, so it can never shrink to nothing (wave 5)
 
-**Wave 7** *(gap closure — blocked on Wave 6 completion)*
+**Wave 6** *(gap closure — blocked on Wave 5 completion)*
 
-- [ ] 10-10-PLAN.md — A phone on its side goes back to being a normal browser, and the Hide Toolbar tip finds the place it belongs (wave 7)
-- [ ] 10-11-PLAN.md — The rails instructions page stops carrying sliders that do nothing (wave 7)
+- [ ] 10-10-PLAN.md — A phone on its side goes back to being a normal browser, and the Hide Toolbar tip finds the place it belongs (wave 6)
+- [ ] 10-11-PLAN.md — The rails instructions page stops carrying sliders that do nothing (wave 6)
 
-**Wave 8** *(blocked on Wave 7 completion)*
+**Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 10-08-PLAN.md — The real-device sweep, re-issued and walked from step 1 on both phones (wave 8)
+- [ ] 10-08-PLAN.md — The real-device sweep, re-issued and walked from step 1 on both phones (wave 7)
 
 Cross-cutting constraints:
 
