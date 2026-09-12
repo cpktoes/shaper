@@ -78,48 +78,61 @@
 
 /* The two LAYOUT switches: `max-shell:` (the phone stack — drawing pinned above scrolling
    controls, compact top bar, six-tab bottom bar) and `shell:` (the desktop shell — sidebar beside
-   canvas, top nav row). Written once, here, so roughly 116 call sites across the app inherit the
-   rule with no edits of their own (10-05, closing 10-VERIFICATION.md gap 4 and the shaper's own
-   "a phone held sideways stays a phone" decision, 10-SWEEP.md, 2026-09-11).
+   canvas, top nav row). Written once, here, so roughly 117 call sites across the app inherit the
+   rule with no edits of their own.
 
-   Until this change the switch was pure width — a `--breakpoint-shell: 820px` token in the
-   `@theme` block below, and Tailwind derived both variants from that one number automatically.
-   But a real iPhone held sideways measures about 844 CSS px — OVER 820 — so a phone lost its own
-   layout at the exact moment its screen got shortest: the board card grew to 757px tall on a
-   237px-tall screen, and the already-built "Hide Toolbar" tip (components/design/toolbar-tip.tsx)
-   disappeared, the one moment a shaper wants the extra height. The rule now reads width AND
-   height together, and the number lives in exactly these two variants — nowhere else:
+   The switch asks exactly one question again — how wide is this screen — after a detour through
+   a width-and-height version a real phone disproved. D-10 (10-SWEEP-2.md, 2026-09-11), the
+   shaper's own words holding a real phone sideways: "horizontal is useless, as there are no
+   controls other than the drag. It was honestly better when it was treated as a normal browser
+   rather than a phone." That reverts 10-05's rule — kept below only as the record of what did NOT
+   work: `max-shell:` fired on width < 820px OR a coarse pointer on a screen shorter than 500px,
+   and `shell:` fired on the negation of that same pair. It was built to fix a different real
+   complaint from an earlier walk — a sideways iPhone at ~844 CSS px, over the 820px cutoff, lost
+   its own layout at the exact moment its screen got shortest. But re-reading that walk's three
+   symptoms with a real phone in hand: the giant board card sideways was a CARD fault, fixed
+   separately and permanently by 10-09 (which moved the card's own height cap onto the `coarse`
+   pointer variant, off this axis entirely); the six tabs moving to the top bar sideways was the
+   layout correctly adapting, not a fault at all; and the Hide Toolbar tip — the one symptom
+   genuinely about this switch — still did not appear even after 10-05 changed it, so that plan did
+   not deliver even the one thing it was built to fix.
 
-     max-shell: (phone stack)   width < 820px, OR a coarse pointer on a screen shorter than 500px
-     shell:     (desktop shell) width >= 820px, AND NOT (a coarse pointer on a screen < 500px)
+   The reasoning behind reverting: the desktop shell needs 820px because that is 340px of controls
+   beside a 480px drawing, and a phone held sideways is about 844-863 CSS px (real hardware, not an
+   emulator's stale 750px figure) — it fits. Controls beside the board is a better use of a short
+   wide screen than a half-height drawing stacked over controls with almost nothing left under
+   them.
 
-   500px is not a new number: it is `components/fins/fin-viewer.tsx`'s own existing rule for "this
-   screen is short" (the FINS Base Length key, beside the tail plot or beneath it), reused here so
-   the codebase has one meaning of "short," not two.
+     max-shell: (phone stack)   width < 820px
+     shell:     (desktop shell) width >= 820px
 
-   The negation on `shell:` is load-bearing, not decorative (STRIDE T-10-02): without it, a
-   genuinely short touch screen — 844 x 390 — would match BOTH conditions at once (width >= 820px
-   is true, and the coarse-and-short OR-branch of `max-shell:` is also true), and which one
-   Tailwind applies would come down to source order, not intent. The negation is what keeps the
-   two layouts a strict partition: exactly one applies at every point.
+   At exactly 820px the desktop side owns the boundary, by declaration rather than by source order:
+   `shell:`'s own condition is `>= 820px`, `max-shell:`'s is strictly `< 820px` — the two are exact
+   complements by construction, so precisely one applies at every width, the boundary value
+   included.
 
-   None of this changes what the `coarse` variant above decides (a control's SIZE, and the
-   viewer's Rotate button's presence), and it does not touch FINS' own separate
-   `[@media(max-height:500px)]` rule in fin-viewer.tsx, which decides beside-vs-beneath and has
-   always been about height alone. Three switches, three questions, never conflated: width and
-   height together pick the LAYOUT, pointer picks a control's SIZE, and screen height alone (FINS
-   only) picks beside-or-beneath. */
+   Kept as two explicit `@custom-variant` declarations rather than restored to a single
+   `--breakpoint-shell` theme token — the form a pure width switch would ordinarily take, and the
+   form this codebase used before 10-05. That is a deliberate choice, not a half-finished revert:
+   the two forms are behaviourally identical, but the explicit form is what lets the compiled-CSS
+   guard below exist at all, and lets it fail loudly if this decision is ever quietly reversed a
+   third time.
+
+   Two other switches in this codebase are untouched by any of this and answer different
+   questions: the `coarse` pointer variant above decides how BIG a control draws (and, for the
+   viewer's Rotate button alone, whether it draws at all) on any width a touch device happens to
+   be — never a LAYOUT; and `components/fins/fin-viewer.tsx`'s own `[@media(max-height:500px)]`
+   rule decides, on FINS only, whether the Base Length key sits beside the tail drawing or beneath
+   it. Width picks the LAYOUT, pointer picks a control's SIZE, and screen height alone (FINS only)
+   picks beside-or-beneath — three switches, three questions, never conflated. */
 @custom-variant max-shell {
   @media (width < 820px) {
-    @slot;
-  }
-  @media (pointer: coarse) and (height < 500px) {
     @slot;
   }
 }
 
 @custom-variant shell {
-  @media (width >= 820px) and (not ((pointer: coarse) and (height < 500px))) {
+  @media (width >= 820px) {
     @slot;
   }
 }
