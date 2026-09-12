@@ -342,3 +342,28 @@ itself.**
 - **The entire Android column.** Not walked.
 - The Hide Toolbar tip on Android (should stay absent) — Android-only, unanswered.
 - The two inferred iPhone cells above, if either is wrong.
+
+### Decision taken from this walk
+
+**D-12 — Fix the scroll and call the sweep done; the Android column is not walked.** Offered three
+routes (fix then walk Android; walk Android now, fix after; fix and close on the iPhone alone), the
+founder chose the third, with the consequence stated plainly at the time of choosing: PHON-10's own
+wording asks for "a real iPhone and a real Android phone", so that requirement closes on one
+phone's evidence. This sheet, the plan's summary and the phase verification all say so; none of
+them claims a second phone was walked.
+
+What that leaves genuinely unproven on Android: the keyboard behaviour on sign-up and rename
+(steps 1, 5a), the account menu's rows and long-press (step 3), turning sideways and back on the
+design screens (steps 6–7), and that the Hide Toolbar tip correctly stays absent. Everything else
+on the sheet is layout and geometry that a browser test already exercises at Android widths.
+
+### Overall verdict — founder, iPhone
+
+**Yes, with one fix.** The whole trip — sign up on an empty account, sign in, the account menu,
+picking a board, rename/duplicate/delete from the rack, all five design screens, saving, the
+summary, and the sideways return home — works end to end on the iPhone. The single thing that
+needs fixing is the RAILS drawing column not scrolling on a short screen, recorded above with the
+founder's own proposed remedy.
+
+**Carried into the fix:** let the drawing column scroll when the screen is short (height, not
+width, is the axis that matters — a sideways phone is wide and short).
