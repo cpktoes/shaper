@@ -2,10 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
-current_phase: 10
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 10 UI-SPEC approved - ready to plan
-last_updated: "2026-09-12T21:37:52.819Z"
+last_updated: "2026-09-12T22:02:04.973Z"
 last_activity: 2026-09-12
 last_activity_desc: Phase 10 complete
 progress:
@@ -14,6 +13,7 @@ progress:
   total_plans: 29
   completed_plans: 29
   percent: 100
+current_phase: 10
 current_phase_name: the-whole-app-on-a-phone
 ---
 
@@ -21,27 +21,17 @@ current_phase_name: the-whole-app-on-a-phone
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-07)
+See: .planning/PROJECT.md (updated 2026-09-12)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 10 — the-whole-app-on-a-phone
+**Current focus:** Planning the next milestone (`/gsd-new-milestone`). v1.2 shipped 2026-09-12.
 
 ## Current Position
 
-Phase: 10
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-09-12 — Phase 10 complete
+**v1.2 — Rails Finished, Phone Ready: SHIPPED 2026-09-12.** Phases 8–10 complete and verified; audit passed 18/18. Archived under .planning/milestones/ (v1.2-ROADMAP.md, v1.2-REQUIREMENTS.md, v1.2-MILESTONE-AUDIT.md, v1.2-phases/). REQUIREMENTS.md removed pending the next milestone's definition.
 
-Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)
-
-**Milestone v1.2 — Rails Finished, Phone Ready** (Phase 8 is its first phase; Phases 1–7 shipped in v1.0 and v1.1)
-
-| Phase | Name | Requirements | Status |
-|-------|------|--------------|--------|
-| 8 | The Rails Screen, Finished | RAIL-02..06, PRNT-05, PRNT-06 | Not started |
-| 9 | The Design Screens on a Phone | PHON-01..06, TEST-01 | Not started |
-| 10 | The Whole App on a Phone | PHON-07..10 | Not started |
+Status: Awaiting next milestone
+Last activity: 2026-09-12 — v1.2 closed
 
 ## Performance Metrics
 
@@ -302,7 +292,6 @@ closed (their fixes and tests are in the tree); the todos are backlog for a late
 | todo | 2026-08-21-fins-imported-template-width-branch | pending — backlog |
 | todo | 2026-08-21-presets-for-rails-and-fins | pending — backlog |
 
-
 Items acknowledged and carried forward from previous milestone close:
 
 | Category | Item | Status | Deferred At |
@@ -350,3 +339,7 @@ Last session: 2026-09-09T03:30:30.074Z
 Stopped at: Phase 10 UI-SPEC approved - ready to plan
 Resume file: .planning/phases/10-the-whole-app-on-a-phone/10-UI-SPEC.md
 Next action: `/gsd-plan-phase 10` - context and design contract are both in place.
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

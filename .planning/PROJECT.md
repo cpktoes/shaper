@@ -113,10 +113,11 @@ Archives: [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-ph
 - [x] User can view the rail cross-section at actual size on screen, and see where each rail section sits along the board outline — Validated in Phase 8: The Rails Screen, Finished (View Full Sized dialog with a 2 in / 50.8 mm check bar, true size on screen and on a landscape printed page; plan-and-side reference figure with a nine-item legend)
 
 - [x] User can shape a board on the five design screens from a phone — stacked layout, thumb-sized controls, outline and rocker points that drag under a finger, drawings that use the full width — with desktop mouse and keyboard behaviour unchanged, all proven by Playwright on iPhone and Android profiles — Validated in Phase 9: The Design Screens on a Phone (PHON-01…06, TEST-01; UAT 7/7 after two gap plans; security 47/47)
+- ✓ User can do everything else the app does from a phone — sign-in, the rack, the summary — with the whole trip proven in a shaper's hand on a real iPhone (Android walk skipped by founder decision D-12) — v1.2, Phase 10: The Whole App on a Phone (2026-09-12)
 
 ### Active
 
-- [x] User can do everything else the app does from a phone — sign-in, the rack, the summary — with the whole trip proven on real phones (Phase 10; the phone home screen and the Summary preview/print landed early as quick tasks on 2026-09-09) — *Validated in Phase 10: The Whole App on a Phone (2026-09-12), on a real iPhone; the Android walk was skipped by the founder (D-12).*
+_(none — the next milestone's requirements are defined by `/gsd-new-milestone`)_
 
 ### Out of Scope
 
@@ -127,6 +128,8 @@ Archives: [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-ph
 - Public sharing / model gallery — deferred alongside billing (build guide milestone M6)
 
 ## Context
+
+**After v1.2 (2026-09-12):** 2,463 unit tests (Vitest) and 225 browser tests (Playwright: iPhone, Android, desktop projects, five desktop screenshot baselines) green; the whole app usable on a phone; live at shaperassistant.com. Open backlog and deferred bookkeeping are listed in STATE.md's Deferred Items.
 
 **Current state (Phase 2 complete, 2026-08-28):** The app is live at
 https://www.shaperassistant.com, auto-deploying from `main`, with accounts and saved designs
@@ -181,6 +184,13 @@ templates ("the math is right").
 | The Home-Screen print note fires only on iOS (`-webkit-touch-callout` guard), and printing itself is never changed | iOS 26 opens Home-Screen sites as standalone apps where `window.print()` is a silent no-op; desktop Chrome app windows and Android can print, so the plain media feature alone hid a working button — caught in code review | Validated (Phase 9 gap plan 09-09 + review fix) |
 | Verify phone bugs against a production build, not the dev server | React StrictMode's double effects hid a Base UI slider bug for a whole phase (folded sliders never got their dot); `npm run test:e2e:prod` now exists for exactly this class | Validated (quick task 260909-nvw) |
 
+| A phone on its side is a normal browser, not a phone (D-10, 2026-09-11) | The desktop shell's 820px floor is 340px of controls beside a 480px drawing, and a sideways phone at 844–863px fits it; the founder found the phone-stack sideways unusable in the hand. Reversed a fix shipped six hours earlier | ✓ Good — confirmed on the iPhone at the second sweep |
+| The board card's picture caps at max(220 dots, three-quarters of the screen), gated on the touch pointer rather than the layout | A fixed subtraction let the picture reach zero on a short screen; gating on the pointer keeps the cap correct on both sides of D-10. The same gate reaches touch tablets in the desktop-shell band (WR-02) | ✓ Good for phones; ⚠️ Revisit the tablet case if one ever matters |
+| Height, not width, decides whether a short screen scrolls and where the FINS key sits (500px, written inline) | A sideways phone is wide and short; a real desktop window never is. One meaning of "short screen" in the codebase | ✓ Good |
+| Real-device sweeps are the only evidence a phone requirement gets; automated tests are never allowed to stand in for them | Emulators missed the 844px sideways width, the iOS long-press callout and Safari's toolbar; the founder's hands found every real defect in phase 10 | ✓ Good |
+| PHON-10 closed on one phone by explicit founder decision (D-12), recorded in the requirement row, the summary and the verification | The consequence was stated at the moment of choosing; nothing claims the Android walk happened | ⚠️ Revisit — walk Android if a future milestone touches the phone |
+| Code review runs between the last code wave and the human checkpoint, and each review's findings are fixed in the same round | Three rounds in phase 10 each caught a real defect in the round's own fixes (one a same-wave gate dependency the orchestrator introduced) | ✓ Good |
+
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
@@ -199,4 +209,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-12 after Phase 10: The Whole App on a Phone*
+*Last updated: 2026-09-12 after v1.2 milestone*
