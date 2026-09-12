@@ -182,4 +182,25 @@ test.describe("the toolbar tip never appears on a computer", () => {
     const display = await tip.evaluate((el) => getComputedStyle(el).display);
     expect(display).toBe("none");
   });
+
+  // IN-01 (10-REVIEW-3.md): the header comment above names 819px specifically ("a desktop CAN be
+  // exactly 819px wide (still the phone layout) and still never see this tip"), but until now
+  // nothing in this file ran at that width — the case above only ever measured 1280px. Cheap to
+  // add and makes the comment's own claim true rather than merely correct-in-theory: 819px is
+  // still under the 820px layout switch (so `max-shell:` reads phone here), yet the desktop
+  // project's fine pointer still fails the tip's `coarse:` gate, so it must stay hidden regardless
+  // of which layout the width selects.
+  test("the tip is attached but hidden at 819px too — still under the width switch, still a fine pointer", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 819, height: 900 });
+    await page.goto("/design/outline");
+
+    const tip = page.locator("[data-toolbar-tip]");
+    await expect(tip).toBeAttached();
+    await expect(tip).toBeHidden();
+
+    const display = await tip.evaluate((el) => getComputedStyle(el).display);
+    expect(display).toBe("none");
+  });
 });
