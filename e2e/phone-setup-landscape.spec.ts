@@ -132,6 +132,51 @@ test.describe("the setup screen's preset grid with the phone held sideways — E
   test("the grid stays two-up and every card fits the screen, at 750 x 340", async ({ page }) => {
     await assertSidewaysGridFitsTheScreen(page, 750, 340);
   });
+
+  // The floor this plan adds (Task 1, 10-09): at this suite's shortest screen the old fixed-205px
+  // card-chrome subtraction ate the whole budget and the board picture resolved to a sliver (about
+  // 13px wide, 46px tall, measured before this fix). This pins two things at once — that a real
+  // board still draws large enough to tell apart, and that the box's own height is exactly what the
+  // formula says it should be, not a number this test invented — so a future change to either
+  // constant is forced through the same arithmetic rather than quietly drifting back toward zero.
+  test("the board never resolves to a sliver: every outline clears 40x150 CSS px, and the picture box's height equals max(floor, share)", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const primitives = await page.evaluate(() => {
+      const style = getComputedStyle(document.documentElement);
+      return {
+        floor: parseFloat(style.getPropertyValue("--setup-card-thumb-min-h")),
+        topBar: parseFloat(style.getPropertyValue("--phone-top-bar-h")),
+        cardChrome: parseFloat(style.getPropertyValue("--setup-card-chrome-h")),
+        innerHeight: window.innerHeight,
+      };
+    });
+    const share = 0.75 * primitives.innerHeight - 0.75 * primitives.topBar - primitives.cardChrome;
+    const expectedMaxH = Math.max(primitives.floor, share);
+
+    const presetCards = page.getByRole("button").filter({ hasText: "Start Shaping" });
+    const cards = await presetCards.all();
+    expect(cards.length).toBeGreaterThan(1);
+
+    for (const card of cards) {
+      const path = card.locator('[data-board-silhouette="outline"]');
+      const pathBox = await path.boundingBox();
+      if (!pathBox) throw new Error("outline path is missing a bounding box");
+      expect(pathBox.width).toBeGreaterThanOrEqual(40);
+      expect(pathBox.height).toBeGreaterThanOrEqual(150);
+
+      // Three levels up from the path: path -> <g> -> <svg> (OutlineViewer's own root) -> the
+      // capped well div — same walk e2e/phone-home.spec.ts's own guard uses.
+      const thumbnailBox = path.locator("xpath=../../..");
+      const box = await thumbnailBox.boundingBox();
+      if (!box) throw new Error("thumbnail box is missing a bounding box");
+      const ratioHeight = box.width * (620 / 340);
+      const expectedHeight = Math.min(ratioHeight, expectedMaxH);
+      expect(Math.abs(box.height - expectedHeight)).toBeLessThanOrEqual(1);
+    }
+  });
 });
 
 test.describe("the setup screen's preset grid with the phone held sideways — HAND-SET: standing in for a real iPhone measured sideways (844 x 390, 10-SWEEP.md, 2026-09-11)", () => {
