@@ -335,4 +335,28 @@ test.describe("RAILS on a desktop — unchanged (PHON-05)", () => {
       ),
     ).not.toBeVisible();
   });
+
+  // 10-11: the phone fix above is gated on the phone layout (a class that only takes effect under
+  // the max-shell breakpoint), so a mouse must never be able to reach it, on any of the three
+  // tabs. This is the standing proof of that rather than an inference from the gate's name — it
+  // would fail the moment the gate widened past a phone.
+  //
+  // The desktop side of the SAME oddity is left alone here on purpose, and it is still open: a
+  // desktop mouse sees the rail-band control column beside the reading on INSTRUCTIONS too, and
+  // none of those controls act on anything the reading shows there either. It was not changed
+  // because nothing a mouse sees may change in this phase, and because the founder has not been
+  // asked whether the desktop should someday match the phone. That is a question for them, not a
+  // silent fix and not a silent drop.
+  test("rail-band controls: visible on all three tabs to a mouse", async ({ page }) => {
+    const controlsHeading = page.getByText("Rail Band Calculator", { exact: true });
+
+    // VIEWER is the tab this screen opens on.
+    await expect(controlsHeading).toBeVisible();
+
+    await railsPageTabs(page).getByRole("tab", { name: "DATA" }).click();
+    await expect(controlsHeading).toBeVisible();
+
+    await railsPageTabs(page).getByRole("tab", { name: "INSTRUCTIONS" }).click();
+    await expect(controlsHeading).toBeVisible();
+  });
 });
