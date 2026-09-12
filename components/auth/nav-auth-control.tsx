@@ -43,12 +43,23 @@ export function NavAuthControl() {
     // never a wrapping element around it (a wrapper only adds inert padding beside a still-28px
     // target — a box that looks 44px around a 28px button is a lie told to a finger). The
     // arithmetic: 28px trigger + 8px padding a side = 44px, applied only under a touch pointer.
-    // Clerk injects its own stylesheet at runtime, so if a real signed-in measurement comes up
-    // short the fallback is the same class with Tailwind's `!` important variant
-    // (`coarse:p-2!`) — not a wrapper. Playwright cannot render this signed-in on this suite's
-    // fake Clerk keys (see nav-auth-control.test.ts's own header), so the pixel proof is the
-    // founder's own re-measurement, deferred to the end-of-phase sweep.
-    return <UserButton appearance={{ elements: { userButtonTrigger: "coarse:p-2" } }} />;
+    //
+    // The plain class shipped first, as planned. The founder's own real-phone sweep
+    // (10-SWEEP.md, 2026-09-11) came back "unsure, looks the same to me" — which this project's
+    // own rule treats as a failure, not a shrug, because a tap target can't be judged by eye.
+    // D-05 anticipated exactly this outcome and pre-authorised the answer in advance: Clerk
+    // injects its own stylesheet at runtime, so a plain utility class handed to its appearance
+    // prop can lose that cascade. The fix is the pre-authorised fallback — the same class, still
+    // gated on a touch pointer, now carrying Tailwind's trailing `!` important marker
+    // (`coarse:p-2!`) so it outranks whatever rule Clerk's own stylesheet declares — never a
+    // wrapper, which stays forbidden for the reason above. The one thing this still cannot
+    // settle is whether Clerk's own injected rule is itself flagged important, in which case
+    // this loses too and no test in this repository could tell — so the real phone is asked
+    // again, this time for a behaviour (tapping just outside the visible circle) rather than an
+    // opinion about size. Playwright cannot render this signed-in on this suite's fake Clerk
+    // keys (see nav-auth-control.test.ts's own header); the compiled-CSS case in that file
+    // proves the class itself outranks an ordinary rule, which is the half a machine can settle.
+    return <UserButton appearance={{ elements: { userButtonTrigger: "coarse:p-2!" } }} />;
   }
 
   return (
