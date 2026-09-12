@@ -137,35 +137,44 @@ know why:
 Three switches live in `app/globals.css` and `components/fins/fin-viewer.tsx`, and each answers a
 different question about the screen — never conflated with either of the others.
 
-**Layout — width AND height together.** The `max-shell`/`shell` custom variants in
-`app/globals.css` decide which LAYOUT a screen renders: stacked-and-pinned (drawing above,
-controls scrolling beneath, a compact top bar and a six-tab bottom bar) below the switch, the
-desktop sidebar-beside-canvas shell above it. Until 2026-09-11 that switch was pure width — under
-820px was a phone, at or above it was a desktop — and a real iPhone held sideways disproved it: it
-measures about 844 dots wide (a real Pixel 7, about 863), both over 820, so a phone lost its own
-layout at the exact moment its screen got shortest (10-SWEEP.md's real-device sweep). The rule is
-now `width < 820px` **OR** `(a coarse pointer AND height < 500px)` for the phone stack, and
-`width >= 820px` **AND NOT** that same coarse-and-short pair for the desktop shell — so a phone
-held sideways stays a phone, while a touch laptop at 1280px and an iPad held sideways (1024 x 768,
-wide AND tall enough) keep the desktop shell. A narrow desktop browser window keeps today's
-stacked layout by width alone, same as always, and a SHORT desktop window (a mouse-driven browser
-resized very small) still never gets the phone layout either, for the same reason it never got
-coarse-sized controls: it has no coarse pointer, so the height branch can't fire for it. 500px is
-not a new number: it is the same "short screen" figure the third switch below already used, reused
-here rather than reinvented, so the codebase has one meaning of "short." (An
-earlier version of this section quoted 750 dots for a sideways iPhone — that number came from a
-test tool's emulated device, never from real hardware, which is exactly how the width-only mistake
-went uncaught until a shaper held an actual phone sideways. The corrected figures above are
-measured, not emulated, so the same mistake is not made twice.)
+**Layout — width alone.** The `max-shell`/`shell` custom variants in `app/globals.css` decide
+which LAYOUT a screen renders: stacked-and-pinned (drawing above, controls scrolling beneath, a
+compact top bar and a six-tab bottom bar) below 820 dots wide, the desktop sidebar-beside-canvas
+shell at or above it. At exactly 820 the desktop side owns the boundary, by declaration rather
+than by source order. For one wave (10-05, 2026-09-11 to 2026-09-11) this switch read width AND
+height together, because a real iPhone held sideways — about 844 dots wide, a real Pixel 7 about
+863, both over 820 — had been losing its own layout at the exact moment its screen got shortest.
+That fix was tried and withdrawn the same day: walking a real phone sideways, the shaper's own
+verdict was blunt — *"horizontal is useless, as there are no controls other than the drag. It was
+honestly better when it was treated as a normal browser rather than a phone"* (D-10, 10-SWEEP-2.md).
+The desktop shell needs 820 dots because that is 340 dots of controls beside a 480-dot drawing, and
+a phone on its side, at 844-863 real dots, fits — controls beside the board beats a half-height
+drawing stacked over controls with almost nothing left under them. So the switch reads width alone
+again, and a phone held sideways gets the desktop shell, same as a touch laptop at 1280px or an
+iPad held sideways. A narrow desktop browser window keeps the stacked layout by width alone, same
+as always — width is the one question, on any device. (An earlier version of this section quoted
+750 dots for a sideways iPhone — that number came from a test tool's emulated device, never from
+real hardware. The corrected figures above, about 844 on an iPhone and about 863 on a Pixel 7, are
+measured, not emulated, and they survive this revert: what changed is the conclusion drawn from
+them, not the numbers themselves.)
+
+Two things that used to ride on this switch no longer do, on purpose: the setup screen's board-card
+height cap and the Hide Toolbar tip both read the `coarse` pointer variant below instead, because
+how big a picture draws and whether a browser has a toolbar worth hiding are both questions about
+the device in hand, not about which layout a width selects. That is what lets both keep working
+correctly on either side of this switch, including through the one wave it briefly read height too.
 
 **Control size (and the Rotate button's presence) — pointer alone.** The `coarse` pointer variant
 decides how BIG a control draws, on any width a touch device happens to be, and, for the viewer's
 Rotate button alone, whether it draws at all — since turning a touch device already turns the
-board. Pointer never decides a LAYOUT on its own; the layout switch above reads width, height and
-pointer together, and this variant is never reached for to move one.
+board. Pointer never decides a LAYOUT; the layout switch above reads width alone, and this variant
+is never reached for to move one.
 
 **Beside or beneath (FINS only) — height alone.** How SHORT the screen is decides whether, on
 FINS, the Base Length key sits beside the tail drawing or beneath it — written inline in
 `fin-viewer.tsx` as `[@media(max-height:500px)]` rather than a named variant, since it has exactly
-one consumer today. This is the original 500px rule the phone-held-sideways fix above reused
-rather than duplicated.
+one consumer today, and deliberately not tied to width or to the layout switch above: a phone held
+sideways is short regardless of which layout it lands in.
+
+Width picks the layout, pointer picks the sizing, height (FINS only) picks beside-or-beneath — and
+none of the three is ever conflated with another.
