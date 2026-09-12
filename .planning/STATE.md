@@ -4,16 +4,16 @@ milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
 current_phase: 10
 current_phase_name: the-whole-app-on-a-phone
-status: Phase 10 parked at the 10-08 real-device checkpoint — the first walk found three faults; sideways reverts to width-only (D-10) and the fixes are planned before the re-sweep (D-11)
+status: executing
 stopped_at: Phase 10 planned
-last_updated: "2026-09-12T04:57:32.325Z"
+last_updated: "2026-09-12T05:12:01.151Z"
 last_activity: 2026-09-11
 last_activity_desc: Phase 10 execution started
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 29
-  completed_plans: 22
+  completed_plans: 25
   percent: 67
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 10 (the-whole-app-on-a-phone) — EXECUTING
-Plan: 1 of 8
-Status: Phase 10 parked at the 10-08 real-device checkpoint — the first walk found three faults; sideways reverts to width-only (D-10) and the fixes are planned before the re-sweep (D-11)
+Plan: 1 of 11
+Status: Executing Phase 10
 Last activity: 2026-09-11 — Phase 10 execution started
 
 Progress: [░░░░░░░░░░] 0% (0 of 3 v1.2 phases complete)

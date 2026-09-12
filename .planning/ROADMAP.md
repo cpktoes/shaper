@@ -218,7 +218,7 @@ Plans:
 
   4. The whole trip — sign in, pick a preset, open from the rack, work through all five design screens, save, read the summary — runs end to end on a real iPhone and a real Android phone, with desktop mouse and keyboard behaviour unchanged.
 
-**Plans**: 7/11 plans executed — 4/4 executed in waves 1-2; 3 gap-closure plans executed in waves 3-4; the real-device sweep (wave 7) and the three fixes its first walk produced (waves 5-6) are outstanding
+**Plans**: 8/11 plans executed — 4/4 executed in waves 1-2; 3 gap-closure plans executed in waves 3-4; the real-device sweep (wave 7) and the three fixes its first walk produced (waves 5-6) are outstanding
 
 Plans:
 **Wave 1**
@@ -242,7 +242,7 @@ Plans:
 
 **Wave 5** *(gap closure — from the first real-device walk, 2026-09-11)*
 
-- [ ] 10-09-PLAN.md — A board card's picture gets a floor, so it can never shrink to nothing (wave 5)
+- [x] 10-09-PLAN.md — A board card's picture gets a floor, so it can never shrink to nothing (wave 5)
 
 **Wave 6** *(gap closure — blocked on Wave 5 completion)*
 
@@ -285,4 +285,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 7. Metric on Paper | 5/5 | Complete    | 2026-09-06 |
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
-| 10. The Whole App on a Phone | 7/8 | In Progress|  |
+| 10. The Whole App on a Phone | 8/11 | In Progress|  |
