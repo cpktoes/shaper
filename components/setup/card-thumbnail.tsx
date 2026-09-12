@@ -57,6 +57,18 @@
  * because the two cards drew this box from near-identical duplicated markup, and D-02 exists
  * specifically to close off that drift risk: whatever this box's rule is, both cards must obey
  * the same rule, written once.
+ *
+ * **A known, decided trade (WR-02, 10-REVIEW-3.md): the pointer gate also reaches a touch tablet
+ * inside the desktop-shell width band, at a modest height.** Before 10-09 the cap could only ever
+ * apply below the 820px layout switch, so a tablet rendering the desktop grid was never at risk of
+ * it. Gating on `coarse:` instead — which is what lets the cap survive a phone held sideways under
+ * D-10 — means it now also reaches any coarse-pointer device at any width, tablets included. At a
+ * worked figure of 1024x600 (a small Android tablet, or a touch laptop with reduced vertical
+ * chrome) the cap can squeeze a board picture noticeably shorter than its `aspect-[340/620]` wants
+ * — about 32% shorter in that example. This is tolerated rather than special-cased: the cap only
+ * ever makes a picture SHORTER, never absent (the floor above guarantees that), and a touch tablet
+ * is exactly the finger-driven device class the `coarse:` axis exists to describe. No new gate was
+ * added for it.
  */
 
 import { OutlineViewer } from "@/components/outline/outline-viewer";
