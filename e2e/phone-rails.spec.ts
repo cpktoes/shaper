@@ -250,6 +250,30 @@ test.describe("RAILS on a phone — one rail at a time, nothing scrolling sidewa
     await expect.poll(() => readPrintCount(page)).toBe(1);
   });
 
+  // 10-11: the shaper's own words on 2026-09-11 — "rails keeps the controls under all 3 tabs."
+  // INSTRUCTIONS is read-only reference content (rail-band-editor.tsx's own comment already said
+  // so before this fix); on a phone the controls sit AFTER the content in scroll order, so reading
+  // to the end used to land on a column of sliders that change nothing visible on that tab. This
+  // proves the fix without proving a regression: the same heading must still be reachable on the
+  // two tabs where it acts on something, so a fix that hid the controls everywhere cannot pass.
+  test("rail-band controls: out of sight on INSTRUCTIONS, in sight on VIEWER and DATA", async ({ page }) => {
+    const controlsHeading = page.getByText("Rail Band Calculator", { exact: true });
+
+    // VIEWER is the tab this screen opens on.
+    await expect(controlsHeading).toBeVisible();
+
+    await railsPageTabs(page).getByRole("tab", { name: "DATA" }).click();
+    await expect(controlsHeading).toBeVisible();
+
+    await railsPageTabs(page).getByRole("tab", { name: "INSTRUCTIONS" }).click();
+    await expect(controlsHeading).not.toBeVisible();
+
+    // Switching back off INSTRUCTIONS restores it — nothing about the control itself is gone,
+    // only its visibility on the one tab with nothing for it to target.
+    await railsPageTabs(page).getByRole("tab", { name: "VIEWER" }).click();
+    await expect(controlsHeading).toBeVisible();
+  });
+
 });
 
 test.describe("ROCKER DATASHEET on a phone — the same sideways-scrolling box (D-04 held-out check)", () => {
