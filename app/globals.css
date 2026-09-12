@@ -124,6 +124,25 @@
   }
 }
 
+/* Two measured constants the phone setup screen's card-height cap (`card-thumbnail.tsx`) derives
+   from, declared here — beside the layout switch they are logically part of — rather than baked
+   into that file's own arbitrary-value literal (10-REVIEW-2.md WR2-02), so `PhoneTopBar`'s real
+   height and the cap's arithmetic can never quietly disagree. */
+:root {
+  /* Read by `phone-top-bar.tsx` itself (`h-(--phone-top-bar-h)`), so a future change to the bar's
+     own height (a longer wordmark, a taller Save button, an added row) moves this one number and
+     the cap that depends on it moves with it — there is no second place to remember. */
+  --phone-top-bar-h: 56px;
+  /* The preset card's own text stack and padding above/below its thumbnail box — the name, the
+     four-number dims line, the descriptor line, and the button's own padding — measured 2026-09-11
+     against the preset variant, the largest of the three card families' extra text. Nothing in
+     this codebase renders that gap on its own, so unlike `--phone-top-bar-h` this constant has no
+     second consumer to stay honest against; `e2e/phone-home.spec.ts`'s standing guard measures the
+     real gap and asserts it still equals this value, so a card-chrome change that drifts from it
+     fails loudly there instead of silently degrading the cap. */
+  --setup-card-chrome-h: 162.59375px;
+}
+
 /* ---------------------------------------------------------------------------
    LAYER 1 — RAMPS  (one per theme; raw values, never referenced by a component)
    Every ratio was computed, not eyeballed: 4.5:1 for text, 3:1 for UI boundaries.

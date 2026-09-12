@@ -41,7 +41,7 @@ export function PhoneTopBar() {
   return (
     <header
       data-print-hide
-      className="hidden max-shell:flex h-14 flex-none items-center justify-between border-b border-surf-line-faint bg-surf-ground px-4"
+      className="hidden max-shell:flex h-(--phone-top-bar-h) flex-none items-center justify-between border-b border-surf-line-faint bg-surf-ground px-4"
     >
       {onHomeScreen ? (
         <span className={WORDMARK_CLASS}>SHAPER ASSISTANT</span>

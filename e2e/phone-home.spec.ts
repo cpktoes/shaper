@@ -268,6 +268,39 @@ test.describe("phone home screen — margins, headings and thumb-sized cards", (
     }
   });
 
+  // The standing guard for the two constants the card-height cap is built from
+  // (10-REVIEW-2.md WR2-02): `card-thumbnail.tsx`'s formula reads `--phone-top-bar-h` and
+  // `--setup-card-chrome-h` from app/globals.css rather than a pre-computed literal, but nothing
+  // previously proved those declared numbers still match what actually renders. This reads the
+  // declared custom properties straight off the page (not a copy kept in this file) and checks
+  // each against a real measurement, so either constant drifting — a taller top bar, a longer
+  // card descriptor — fails here instead of silently degrading the cap's arithmetic.
+  test("the top bar's real height and the card's real chrome gap still match the CSS constants the height cap is derived from", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const declared = await page.evaluate(() => {
+      const style = getComputedStyle(document.documentElement);
+      return {
+        phoneTopBarH: parseFloat(style.getPropertyValue("--phone-top-bar-h")),
+        setupCardChromeH: parseFloat(style.getPropertyValue("--setup-card-chrome-h")),
+      };
+    });
+
+    const topBarBox = await page.getByRole("banner").boundingBox();
+    if (!topBarBox) throw new Error("top bar is missing a bounding box");
+    expect(Math.abs(topBarBox.height - declared.phoneTopBarH)).toBeLessThanOrEqual(1);
+
+    const presetCard = page.getByRole("button").filter({ hasText: "Start Shaping" }).first();
+    const cardBox = await presetCard.boundingBox();
+    const path = presetCard.locator('[data-board-silhouette="outline"]');
+    const thumbnailBox = await path.locator("xpath=../../..").boundingBox();
+    if (!cardBox || !thumbnailBox) throw new Error("missing bounding box for card or thumbnail");
+    const chromeHeight = cardBox.height - thumbnailBox.height;
+    expect(Math.abs(chromeHeight - declared.setupCardChromeH)).toBeLessThanOrEqual(1);
+  });
+
   // D-08's fixed 387px cap is disproven by 10-SWEEP.md (a real phone held sideways read 757px on
   // a 237px-tall screen). The 2026-09-11 decision replaces it with a share of the screen the card
   // sits in: about three-quarters of the scroller's own visible height (one whole board plus the
@@ -297,9 +330,15 @@ test.describe("phone home screen — margins, headings and thumb-sized cards", (
       const card = cards[i];
       const cardBox = await card.boundingBox();
       if (!cardBox) throw new Error("preset card is missing a bounding box");
+      // 0.74-0.76: narrowed from an earlier 0.70-0.82 band (10-REVIEW-2.md WR2-02) — a band that
+      // wide would not notice a visibly wrong card. The measured spread across five viewports
+      // (360/375/393px upright here, plus the two sideways widths in
+      // e2e/phone-setup-landscape.spec.ts) came back 0.7499-0.7500, under 0.0002 of spread, so a
+      // ±0.01 band around the intended 0.75 still passes every real measurement with room to
+      // spare while catching a regression that visibly isn't "three-quarters" any more.
       const ratio = cardBox.height / scrollerHeight;
-      expect(ratio).toBeGreaterThanOrEqual(0.7);
-      expect(ratio).toBeLessThanOrEqual(0.82);
+      expect(ratio).toBeGreaterThanOrEqual(0.74);
+      expect(ratio).toBeLessThanOrEqual(0.76);
 
       const path = card.locator('[data-board-silhouette="outline"]');
       const pathBox = await path.boundingBox();

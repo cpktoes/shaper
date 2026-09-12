@@ -34,28 +34,34 @@
  * unrepeatable here.
  *
  * The share itself is written as three-quarters of a CARD, translated into a maximum height on
- * the THUMBNAIL, using two constants measured on this checkout on 2026-09-11 (not calculated on
- * paper — that is exactly the mistake this comment is replacing):
+ * the THUMBNAIL, using two constants declared once in `app/globals.css` (beside the `max-shell`/
+ * `shell` layout switch they are logically part of) rather than remembered here as a bare literal
+ * (10-REVIEW-2.md WR2-02) — measured on this checkout on 2026-09-11 (not calculated on paper —
+ * that is exactly the mistake this comment is replacing):
  *
- * 1. **Shell chrome — 56px.** The gap between the phone's viewport height and the setup screen's
- *    own scroller (`[data-setup-content]`'s scrolling ancestor) — the compact top bar plus
- *    whatever else sits above or below the scroller. Measured identical (56px) at two different
- *    viewport heights (640px and 900px) on the home route, confirming it really is a constant and
- *    not something that happens to match at one size.
- * 2. **Card chrome — 162.59375px.** The gap between a rendered card's own height and its
- *    thumbnail box's height — the name, the four-number dims line, and the descriptor or "Last
- *    touched"/"In progress" line, plus the button's own padding. Measured against the PRESET
- *    variant, which carries the largest of the three card families' extra text (its `text-sm`
- *    descriptor line is taller than the saved/in-progress variants' `text-xs` third line;
- *    in-progress measured 158.39px the same day, confirming preset is the larger of the two this
- *    suite can reach signed out — see this plan's SUMMARY for the saved variant's structural
+ * 1. **Shell chrome — `--phone-top-bar-h`, 56px.** The gap between the phone's viewport height and
+ *    the setup screen's own scroller (`[data-setup-content]`'s scrolling ancestor) — the compact
+ *    top bar plus whatever else sits above or below the scroller. Measured identical (56px) at two
+ *    different viewport heights (640px and 900px) on the home route, confirming it really is a
+ *    constant and not something that happens to match at one size. `phone-top-bar.tsx` reads the
+ *    same custom property for its own height (`h-(--phone-top-bar-h)`), so the bar's real height
+ *    and this cap's arithmetic can never disagree.
+ * 2. **Card chrome — `--setup-card-chrome-h`, 162.59375px.** The gap between a rendered card's own
+ *    height and its thumbnail box's height — the name, the four-number dims line, and the
+ *    descriptor or "Last touched"/"In progress" line, plus the button's own padding. Measured
+ *    against the PRESET variant, which carries the largest of the three card families' extra text
+ *    (its `text-sm` descriptor line is taller than the saved/in-progress variants' `text-xs` third
+ *    line; in-progress measured 158.39px the same day, confirming preset is the larger of the two
+ *    this suite can reach signed out — see this plan's SUMMARY for the saved variant's structural
  *    argument, since a fake/no-database test run cannot render a saved board to measure directly).
  *
- * Combining them: a card that is 75% of the scroller (`scrollerHeight = 100dvh - 56px`) is
- * `0.75 * (100dvh - 56px) = 75dvh - 42px` tall; subtracting the 162.59375px of card chrome (the
- * thumbnail box's own share of that card height) gives the thumbnail's own maximum:
- * `75dvh - 42px - 162.59375px = 75dvh - 204.6px` (rounded to one decimal for the class name — the
- * unrounded remainder is under a fifth of a pixel and invisible at any real device pixel ratio).
+ * Combining them: a card that is 75% of the scroller (`scrollerHeight = 100dvh - phone-top-bar-h`)
+ * is `0.75 * (100dvh - phone-top-bar-h)` tall; subtracting the card chrome (the thumbnail box's own
+ * share of that card height) gives the thumbnail's own maximum:
+ * `calc(75dvh - 0.75*var(--phone-top-bar-h) - var(--setup-card-chrome-h))` — the same arithmetic as
+ * before, now read from its own two named sources instead of pre-computed into one literal, so
+ * either input drifting is structurally forced through this formula rather than requiring someone
+ * to remember to re-measure and re-derive a combined number.
  *
  * `OutlineViewer`'s frame itself is untouched: still a fixed 340 (wide) x 620 (tall) viewBox
  * (`components/outline/outline-viewer.tsx`), fitted with `preserveAspectRatio="xMidYMid meet"`.
@@ -82,7 +88,7 @@ interface CardThumbnailProps {
 export function CardThumbnail({ geometry, outline }: CardThumbnailProps) {
   return (
     <div className="rounded-lg border border-surf-line bg-surf-tab-active p-3">
-      <div className="relative aspect-[340/620] w-full max-shell:max-h-[calc(75dvh-204.6px)] overflow-hidden rounded-lg border border-surf-line-faint bg-surf-panel">
+      <div className="relative aspect-[340/620] w-full max-shell:max-h-[calc(75dvh-0.75*var(--phone-top-bar-h)-var(--setup-card-chrome-h))] overflow-hidden rounded-lg border border-surf-line-faint bg-surf-panel">
         <OutlineViewer geometry={geometry} outline={outline} showConstruction={false} hideCallouts />
       </div>
     </div>
