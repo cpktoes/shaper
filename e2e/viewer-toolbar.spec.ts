@@ -132,26 +132,32 @@ test.describe("phone, upright — the corner icons pack tight with no gap where 
   });
 });
 
-// 10-05 (was 260909-h3g): a real iPhone held sideways reports about 844 CSS px and a real Pixel 7
-// about 863, and the shaper's own decision (10-SWEEP.md, 2026-09-11) is that BOTH now stay in the
-// phone stack — a phone on its side is a phone. So 863 x 360 is no longer "a width wide enough for
-// the desktop layout"; it is a phone-stack case, and this file's own subject — Rotate gone on a
-// TOUCH device even where a sidebar survives to hide — needs a screen that genuinely still keeps
-// the desktop shell under the new width-and-height rule. `iPad Mini landscape` (1024 x 768, WebKit)
-// is that screen: a tablet-sized touch viewport, wide and tall enough to stay on the desktop side.
-// Copied verbatim from e2e/phone-layout.spec.ts's own re-pointed describe rather than inventing a
-// second pattern.
-const { defaultBrowserType: ipadMiniLandscapeBrowserType, ...ipadMiniLandscapeViewport } =
-  devices["iPad Mini landscape"];
-void ipadMiniLandscapeBrowserType;
+// D-10 (10-SWEEP-2.md, 2026-09-11) brings this describe home to a real sideways phone. 10-05 had
+// re-pointed it at a tablet (`iPad Mini landscape`) because a sideways phone had briefly stopped
+// being wide-AND-tall enough for that plan's own width-and-height switch; D-10 withdraws that
+// switch, so this file's own subject — Rotate gone on a touch device even where a sidebar survives
+// to hide — is provable on a real phone again, at the width real hardware reported (about 844 CSS
+// px on an iPhone). Playwright's own `iPhone 14 landscape` descriptor reports 750 x 340 instead —
+// an emulator's figure, already under 820px before AND after this plan — so the viewport is
+// hand-set on top of that descriptor's other properties (touch, scale factor, user agent). Copied
+// verbatim from e2e/phone-layout.spec.ts's own re-pointed describe rather than inventing a second
+// pattern.
+const {
+  defaultBrowserType: iphoneLandscapeBrowserType,
+  viewport: iphoneLandscapeEmulatorViewport,
+  ...iphoneLandscapeRest
+} = devices["iPhone 14 landscape"];
+void iphoneLandscapeBrowserType;
+void iphoneLandscapeEmulatorViewport;
+const realSidewaysIphoneViewport = { ...iphoneLandscapeRest, viewport: { width: 844, height: 390 } };
 
-test.describe("touch tablet, sideways — the corner still packs tight even though the screen keeps the desktop layout", () => {
-  test.use({ ...ipadMiniLandscapeViewport });
+test.describe("phone held sideways, iPhone — the corner still packs tight, controls beside the board (D-10)", () => {
+  test.use({ ...realSidewaysIphoneViewport });
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== "iphone",
-      "this describe supplies its own device (iPad Mini landscape, WebKit)",
+      "this describe supplies its own viewport (a real sideways iPhone, 844x390, WebKit)",
     );
     await dismissSignInBanner(page);
   });
@@ -161,22 +167,24 @@ test.describe("touch tablet, sideways — the corner still packs tight even thou
   }) => {
     await page.goto("/design/outline");
 
-    // Load-bearing precondition: a coarse pointer AND a screen at least 820 wide AND at least 500
-    // tall — the exact bed the desktop-side variant's negation keeps in the desktop shell. Without
-    // all three, this proves nothing about the pointer-driven case.
+    // Load-bearing precondition: a coarse pointer AND a screen at least 820 wide — the switch now
+    // reads width alone, so a real sideways iPhone clears the desktop-shell cutoff on width, and
+    // the toolbar's own pointer-driven rules read the pointer separately.
     const preconditions = await page.evaluate(() => ({
+      width: window.innerWidth,
+      height: window.innerHeight,
       coarsePointer: window.matchMedia("(pointer: coarse)").matches,
       wideEnoughForDesktopShell: window.matchMedia("(min-width: 820px)").matches,
-      tallEnoughForDesktopShell: window.matchMedia("(min-height: 500px)").matches,
     }));
+    expect(preconditions.width).toBe(844);
+    expect(preconditions.height).toBe(390);
     expect(preconditions.coarsePointer).toBe(true);
     expect(preconditions.wideEnoughForDesktopShell).toBe(true);
-    expect(preconditions.tallEnoughForDesktopShell).toBe(true);
 
     const { rowBox, buttons } = await measureToolbar(page);
     // Rotate is gone on a touch screen at any width; Wide view survives because the viewport
-    // stays on the desktop side of the shell switch and still has a sidebar to hide — this is the
-    // case no phone-width-only fix could ever have reached.
+    // stays on the desktop side of the shell switch and still has a sidebar to hide — this is D-10
+    // on real iPhone hardware.
     expect(buttons.length).toBe(3);
     expect(buttons[0].name).toBe("Export Template");
     assertCornerFlush(rowBox, buttons[0]);

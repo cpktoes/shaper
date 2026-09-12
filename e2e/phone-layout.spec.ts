@@ -242,60 +242,65 @@ test.describe("phone orientation and the construction overlay default", () => {
   });
 });
 
-// 10-05 (was 260909-h3g): a real iPhone held sideways reports about 844 CSS px and a real Pixel 7
-// about 863, and the app's shaper-approved decision (10-SWEEP.md, 2026-09-11) is that BOTH stay in
-// the phone stack now — a phone on its side is a phone. That retires this describe's original bed:
-// 863 x 360 is no longer "a width wide enough for the desktop layout", it is the phone-stack case
-// the block below this one covers. What this describe was actually proving — that a TOUCH device
-// wide enough for the desktop shell still loses its rotate button (pointer, not width, decides
-// that) — is still true, just not provable on a phone any more. `iPad Mini landscape` (1024 x 768,
-// WebKit) is a genuinely tablet-sized touch screen: wide AND tall enough to keep the desktop shell
-// under the new width-and-height rule, so it still carries the case this file was written for. Runs
-// on the `iphone` project (the WebKit one the descriptor expects).
-// `defaultBrowserType` is part of the descriptor but can't be set via `test.use` inside a describe
-// (Playwright: "forces a new worker" — only allowed top-level or in the config file). It's
-// redundant here anyway: the `iphone` project this describe is pinned to already runs WebKit.
-const { defaultBrowserType: ipadMiniLandscapeBrowserType, ...ipadMiniLandscapeViewport } =
-  devices["iPad Mini landscape"];
-void ipadMiniLandscapeBrowserType;
+// D-10 (10-SWEEP-2.md, 2026-09-11) brings this describe home to a real sideways phone — the case
+// that now needs proving, since a real phone on its side is exactly what keeps the desktop shell
+// again. 10-05 had re-pointed this describe at a tablet (`iPad Mini landscape`) because a sideways
+// phone had briefly stopped being wide-AND-tall enough for that plan's own width-and-height switch;
+// D-10 withdraws that switch, so a sideways phone carries the case on width alone once more. The
+// width used is the one real hardware reported on 2026-09-11 — about 844 CSS px on an iPhone —
+// never Playwright's own `iPhone 14 landscape` descriptor, which reports 750 x 340 (an emulator's
+// figure, already under 820px before AND after this plan, so it would prove nothing about this
+// switch). `defaultBrowserType` is part of the base descriptor but cannot be set via `test.use`
+// inside a describe (Playwright: "forces a new worker" — only allowed top-level or in the config
+// file); it is dropped here and is redundant anyway, since the `iphone` project this describe is
+// pinned to already runs WebKit.
+const {
+  defaultBrowserType: iphoneLandscapeBrowserType,
+  viewport: iphoneLandscapeEmulatorViewport,
+  ...iphoneLandscapeRest
+} = devices["iPhone 14 landscape"];
+void iphoneLandscapeBrowserType;
+void iphoneLandscapeEmulatorViewport;
+const realSidewaysIphoneViewport = { ...iphoneLandscapeRest, viewport: { width: 844, height: 390 } };
 
-// Still needed below for the phone-stack case (863 x 360, android/chromium project) — see that
-// describe's own comment for why this same descriptor no longer carries the tablet case above.
+// Still needed below for the D-10 case on the OTHER real hardware width (863 x 360, android/
+// chromium project) — see that describe's own comment.
 const { defaultBrowserType: pixel7LandscapeBrowserType, ...pixel7LandscapeViewport } =
   devices["Pixel 7 landscape"];
 void pixel7LandscapeBrowserType;
 
-test.describe("touch tablet, sideways — the rotate button stays gone even though the screen keeps the desktop layout", () => {
-  test.use({ ...ipadMiniLandscapeViewport });
+test.describe("phone held sideways, iPhone — the rotate button stays gone, controls beside the board (D-10)", () => {
+  test.use({ ...realSidewaysIphoneViewport });
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== "iphone",
-      "this describe supplies its own device (iPad Mini landscape, WebKit)",
+      "this describe supplies its own viewport (a real sideways iPhone, 844x390, WebKit)",
     );
     await dismissSignInBanner(page);
   });
 
-  test("the rotate button is gone on both TEMPLATE and ROCKER, even though the screen keeps the desktop layout", async ({
+  test("the rotate button is gone on both TEMPLATE and ROCKER, with the desktop shell rendering", async ({
     page,
   }) => {
     await page.goto("/design/outline");
 
-    // Load-bearing precondition: a coarse pointer AND a screen at least 820 wide AND at least 500
-    // tall — the exact bed the desktop-side variant's negation is meant to keep in the desktop
-    // shell. Without all three, this proves nothing about the pointer-driven rotate-button rule.
+    // Load-bearing precondition: a coarse pointer AND a screen at least 820 wide — the switch now
+    // reads width alone, so a real sideways iPhone clears the desktop-shell cutoff on width, and
+    // the rotate button's own rule reads the pointer separately. Without both, this proves nothing.
     const preconditions = await page.evaluate(() => ({
+      width: window.innerWidth,
+      height: window.innerHeight,
       coarsePointer: window.matchMedia("(pointer: coarse)").matches,
       wideEnoughForDesktopShell: window.matchMedia("(min-width: 820px)").matches,
-      tallEnoughForDesktopShell: window.matchMedia("(min-height: 500px)").matches,
     }));
+    expect(preconditions.width).toBe(844);
+    expect(preconditions.height).toBe(390);
     expect(preconditions.coarsePointer).toBe(true);
     expect(preconditions.wideEnoughForDesktopShell).toBe(true);
-    expect(preconditions.tallEnoughForDesktopShell).toBe(true);
 
     // The desktop side-by-side shell really is what rendered at this width — the same comparison
-    // the desktop describe below makes. This is the "an iPad sideways keeps the desktop layout"
-    // half of the shaper's own decision (10-SWEEP.md).
+    // the desktop describe below makes. This is D-10 on real iPhone hardware.
     const sidebar = page.locator("aside");
     const canvas = page.locator("main");
     const sidebarBox = await sidebar.boundingBox();

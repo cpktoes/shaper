@@ -149,26 +149,26 @@ test.describe("Case A: upright phone, Width in its own section", () => {
   });
 });
 
-test.describe("Case B: touch tablet, sideways, Width visible in the desktop-style sidebar", () => {
-  // 10-05: `Pixel 7 landscape` (863 x 360) used to keep the desktop-style sidebar at this width —
-  // that is exactly the assumption the sweep disproved (10-SWEEP.md, 2026-09-11): a real phone
-  // held sideways now stays a phone, so this bed no longer carries "wide enough for the desktop
-  // sidebar." This case's actual subject is a REAL FINGER touch bar-press and a wandering drag —
-  // this file's own header explains that real touch input only comes from a CDP session driving
-  // `Input.dispatchTouchEvent`, which only Playwright's Chromium exposes — so the replacement bed
-  // has to stay Chromium too, ruling out the `iPad Mini landscape` (WebKit) descriptor the sibling
-  // files in this plan re-point at. `Galaxy Tab S9 landscape` (1024 x 640, Chromium, touch) is a
-  // genuinely tablet-sized touch screen that keeps the desktop shell under the new width-and-height
-  // rule while staying on Chromium, so it is the descriptor chosen here. `defaultBrowserType` is a
-  // worker-scoped option Playwright only accepts from the config file's own `projects` list, not
-  // from a describe-level `test.use` — the `android` project already pins Chromium, so it is
-  // dropped here (same recipe as e2e/phone-fins-landscape.spec.ts).
-  const galaxyTabS9Landscape = { ...devices["Galaxy Tab S9 landscape"] };
-  delete (galaxyTabS9Landscape as { defaultBrowserType?: unknown }).defaultBrowserType;
-  test.use({ ...galaxyTabS9Landscape });
+test.describe("Case B: phone held sideways, Width visible in the desktop-style sidebar (D-10)", () => {
+  // D-10 (10-SWEEP-2.md, 2026-09-11) brings this case home to a real sideways phone. 10-05 had
+  // re-pointed it at a tablet (`Galaxy Tab S9 landscape`) because a sideways phone had briefly
+  // stopped being wide-AND-tall enough for that plan's own width-and-height switch; D-10 withdraws
+  // that switch, so a real sideways phone carries "wide enough for the desktop sidebar" on width
+  // alone once more. Two requirements have to be satisfied by the SAME descriptor: a real
+  // sideways-phone width, and real-finger touch dispatch — this file's own header explains that
+  // real touch input only comes from a CDP session driving `Input.dispatchTouchEvent`, which only
+  // Playwright's Chromium exposes. `Pixel 7 landscape` (863 x 360, Chromium, touch) satisfies both
+  // at once — it is the real width real hardware reported on an Android phone turned sideways, and
+  // it runs on the engine this case's touch dispatch needs — so it is the descriptor chosen here.
+  // `defaultBrowserType` is a worker-scoped option Playwright only accepts from the config file's
+  // own `projects` list, not from a describe-level `test.use` — the `android` project already pins
+  // Chromium, so it is dropped here (same recipe as e2e/phone-fins-landscape.spec.ts).
+  const pixel7Landscape = { ...devices["Pixel 7 landscape"] };
+  delete (pixel7Landscape as { defaultBrowserType?: unknown }).defaultBrowserType;
+  test.use({ ...pixel7Landscape });
 
   test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "android", "touch-tablet assertion runs on the chromium project only");
+    test.skip(testInfo.project.name !== "android", "real touch input is only available on the android (Chromium) project");
     await dismissSignInBanner(page);
   });
 
@@ -178,20 +178,18 @@ test.describe("Case B: touch tablet, sideways, Width visible in the desktop-styl
     await page.goto("/design/outline");
 
     // Prove the bed is real before asserting anything about it: a coarse pointer AND a screen at
-    // least 820 wide AND at least 500 tall — the exact bed the desktop-side variant's negation
-    // keeps in the desktop shell, not the phone stack.
+    // least 820 wide — the switch now reads width alone, so a real sideways Pixel 7 clears the
+    // desktop-shell cutoff on width.
     const dims = await page.evaluate(() => ({
       width: window.innerWidth,
       height: window.innerHeight,
       coarsePointer: window.matchMedia("(pointer: coarse)").matches,
       sidebarShell: window.matchMedia("(min-width: 820px)").matches,
-      tallEnoughForDesktopShell: window.matchMedia("(min-height: 500px)").matches,
     }));
-    expect(dims.width).toBe(1024);
-    expect(dims.height).toBe(640);
+    expect(dims.width).toBe(863);
+    expect(dims.height).toBe(360);
     expect(dims.coarsePointer).toBe(true);
     expect(dims.sidebarShell).toBe(true);
-    expect(dims.tallEnoughForDesktopShell).toBe(true);
 
     const widthLabel = page.getByText(/^Width — /);
     await expect(widthLabel).toBeVisible();
