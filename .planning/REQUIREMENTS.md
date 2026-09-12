@@ -34,10 +34,10 @@ Requirements are written as things a shaper can do or see. IDs continue from the
 
 ### Phone: The Rest of the App
 
-- [ ] **PHON-07**: User can sign in, sign up and use the account menu on a phone
-- [ ] **PHON-08**: User can pick a preset and open, rename, duplicate or delete a saved board from the rack, on a phone
-- [ ] **PHON-09**: User can read the summary and the on-screen order form on a phone (printing stays a desktop job)
-- [ ] **PHON-10**: The whole flow — sign in → pick a preset → open from the rack → all five design screens → save → summary — works end to end on a real iPhone and a real Android phone
+- [x] **PHON-07**: User can sign in, sign up and use the account menu on a phone
+- [x] **PHON-08**: User can pick a preset and open, rename, duplicate or delete a saved board from the rack, on a phone
+- [x] **PHON-09**: User can read the summary and the on-screen order form on a phone (printing stays a desktop job)
+- [x] **PHON-10**: The whole flow — sign in → pick a preset → open from the rack → all five design screens → save → summary — works end to end on a real iPhone and a real Android phone *(closed on the iPhone alone — the Android walk was skipped by the founder, decision D-12 in 10-SWEEP-2.md, 2026-09-12)*
 
 ### Testing
 
@@ -76,10 +76,10 @@ Requirements are written as things a shaper can do or see. IDs continue from the
 | PHON-04 | Phase 9 | Complete | — |
 | PHON-05 | Phase 9 | Complete | — |
 | PHON-06 | Phase 9 | Complete | — |
-| PHON-07 | Phase 10 | Pending | — |
-| PHON-08 | Phase 10 | Pending | — |
-| PHON-09 | Phase 10 | Pending | — |
-| PHON-10 | Phase 10 | Pending | — |
+| PHON-07 | Phase 10 | Complete | — |
+| PHON-08 | Phase 10 | Complete | — |
+| PHON-09 | Phase 10 | Complete | — |
+| PHON-10 | Phase 10 | Complete | —  iPhone only; Android skipped by founder (D-12) |
 | TEST-01 | Phase 9 | Complete | — |
 
 All 18 v1.2 requirements are mapped, each to exactly one phase: Phase 8 owns the seven rails and
