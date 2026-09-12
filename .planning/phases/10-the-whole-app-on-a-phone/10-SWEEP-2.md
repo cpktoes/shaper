@@ -259,3 +259,86 @@ room left. Re-reading the three symptoms 10-05 was built on, with a real phone i
 
 **Which phone was this walk done on?** Every row above is recorded against one unnamed device, and
 finding 3 flips between "correct" and "failed" depending on the answer.
+
+---
+
+## Second walk — iPhone (2026-09-12)
+
+The iPhone column, walked end to end on the live site at commit `7b5ece3`. **Android not yet
+walked.** One finding, and it is a good one.
+
+### The ten steps — iPhone
+
+The shaper's verdict on the table: **"iphone done, 1-10 all good."** Every one of the ten steps
+passes on the iPhone, including the three that had never been answered on any walk of this sheet
+(step 8's rack ordering, and — by inclusion in step 7 — the Hide Toolbar tip appearing on an
+iPhone, which was a FAIL last time).
+
+Two cells are marked **PASS (inferred)** rather than PASS, because they are covered by "1-10 all
+good" rather than answered in their own words, and both are cells whose answer CHANGED from the
+first walk. If either is wrong, it should be corrected before this sheet is filed:
+
+- step 7, the Hide Toolbar tip appearing on the iPhone sideways — *"I did not see the hide toolbar
+  tip"* last time;
+- step 7, the six tabs moving to a row across the top sideways — the D-10 behaviour, being checked
+  in the hand for the first time.
+
+### The named questions — iPhone
+
+| Question | Answer (verbatim) | Verdict |
+|---|---|---|
+| The avatar's real tap size (five-tap count) | *"avatar only opens when touched, felt good."* | **PASS on use — but the question could not do its job; see below** |
+| Two cards sideways, with the picture now floored | *"220 dots seem great."* | **PASS** |
+| Is 220 dots enough to tell a board apart | *"220 dots seem great."* | **PASS** |
+| RAILS → INSTRUCTIONS sideways | see the finding below | **FAIL** |
+
+### The finding: RAILS sideways does not scroll
+
+In the shaper's own words:
+
+> *"Rails sideways is the only issue. Vertical, the rails appear in their own tabs. Horizontal,
+> they appear as desktop on one window; one at a time is fine, two are too small to view, and 3
+> makes the big which is nice but the window doesn't scroll so you can only see whatever is on top.
+> I feel like the only real solution would be to allow the scroll on small width screens."*
+
+**Confirmed in the code.** `components/design/design-screen-shell.tsx:118-120` — the `<main>`
+drawing column is `flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col` with **no**
+`overflow-y-auto` on the desktop branch, while the controls `<aside>` beside it does carry one
+(line 83). Nothing inside RAILS supplies its own scroller either (`rail-band-editor.tsx` and
+`rail-section-plot.tsx` contain no overflow rule at all). So on the desktop layout, any RAILS
+content taller than the viewport is cut off and unreachable.
+
+**This is not a regression from D-10, and not new.** The missing scroll has always been there; it
+simply never bit, because a real desktop window is tall enough to fit the sections. D-10 moved a
+390-dot-tall sideways phone into that same layout, and at that height it bites immediately — with
+three sections open, only the top one can be seen at all.
+
+**The shaper's proposed fix is the right shape:** let the drawing column scroll when the screen is
+short. Note the distinction that matters — the answer to the question this sheet actually asked
+("should the rail-band controls get out of the way sideways?") is **no**. The desktop layout
+sideways is fine and is the shaper's own preferred behaviour (D-10 holds). What is missing is a
+scrollbar, not a different layout.
+
+### The avatar question could not do its job — a fault in this sheet, not in the app
+
+This sheet asked the shaper to tap *"about a finger-width out from its rim"*, five times. That
+distance was wrong. The implemented target is a 28-dot circle plus 8 dots of padding on each side —
+so the tappable ring extends only about 8 dots (roughly 2mm) beyond what you can see, while a
+finger-width is nearer 35 dots. A tap that far out is *supposed* to miss, on a correct
+implementation and a broken one alike, so *"only opens when touched"* cannot tell the two apart.
+
+Worse, the two cases are probably not separable by hand at all: a fingertip's contact patch is
+around 8mm, four times the width of the ring being tested.
+
+What IS settled: the compiled-CSS test proves the padding rule ships and outranks an ordinary rule.
+What remains unsettled by any means available here: whether the sign-in service's own rule is
+*also* flagged important, in which case it wins and the target stays 28 dots. The shaper's
+practical verdict — it opens when tapped and felt good in use — is recorded as a pass on use, not
+as proof of a 44-dot target. **Do not re-ask this question in its current form; it cannot answer
+itself.**
+
+### Still outstanding
+
+- **The entire Android column.** Not walked.
+- The Hide Toolbar tip on Android (should stay absent) — Android-only, unanswered.
+- The two inferred iPhone cells above, if either is wrong.
