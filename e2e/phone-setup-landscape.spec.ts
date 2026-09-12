@@ -5,20 +5,26 @@ import { devices, expect, test, type Page } from "@playwright/test";
  * covering the width the emulator reports AND the widths real hardware reported on 2026-09-11
  * (10-SWEEP.md): a real iPhone measures about 844 x 390 held sideways, a real Pixel 7 about
  * 863 x 360 — both wider than Playwright's own `iPhone 14 landscape` descriptor (750 x 340), which
- * is an emulator's number, not a phone's. Under 10-05's corrected width-and-height layout switch,
- * all three land in the phone stack anyway (the 750px one because it is under 820px, the two
- * hardware widths because they combine a coarse pointer with a screen under 500px tall), so this
- * file's own assertions hold at all three for the reason CLAUDE.md's Layout section now states.
+ * is an emulator's number, not a phone's, kept here alongside the two hand-set hardware figures
+ * (each describe below says which kind of number its own viewport is, so nobody again mistakes
+ * one for the other the way the original 750px assumption was mistaken for a phone's actual
+ * sideways width).
  *
- * Each describe below says, in its own name, which kind of number its viewport is — an emulated
- * device descriptor, or a hand-set size standing in for a real hardware measurement — so nobody
- * again mistakes one for the other the way the original 750px assumption was mistaken for a
- * phone's actual sideways width.
+ * **This file is about the BOARD and the POINTER, and deliberately says nothing about which
+ * LAYOUT a width selects (10-09).** All three viewports here are touch screens, so the board
+ * picture's cap (`coarse:max-h-(--setup-card-thumb-max-h)`, `card-thumbnail.tsx`) applies at all
+ * three regardless of which layout their widths happen to select — the cap reads the pointer, not
+ * the width. Which layout each width selects — the phone stack or the desktop shell — is a
+ * separate question, answered by the switch in `app/globals.css` and asserted in
+ * `e2e/phone-layout.spec.ts`; this file asserts nothing about it, which is what keeps every
+ * assertion below true whichever way that switch reads at the moment it runs, including after the
+ * layout decision (D-10) landing in the following wave changes what these same three widths
+ * select.
  *
- * The card-height assertion itself is the same measured ratio `e2e/phone-home.spec.ts` introduced
- * for the upright case (10-06): the fixed 520-580px band this file used to assert was D-08's own
- * fixed cap, which the 2026-09-11 sweep disproved outright — 757px on a 237px-tall real screen,
- * more than double the "580" ceiling this file used to assert as a maximum.
+ * The card-height assertion itself pins the whole formula this plan introduces — the box's height
+ * equals `min(width * 620/340, max(floor, share))`, with the floor and the three primitives read
+ * from the page's own computed style — rather than a flat ratio band. Every number in this file's
+ * own comments is one this run measured, not one carried over from a plan or an earlier SUMMARY.
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
@@ -32,10 +38,12 @@ async function dismissSignInBanner(page: Page) {
 }
 
 /** Shared body for all three sideways viewports below: the two-up grid the shaper confirmed by
- * hand ("two is fine"), the card-to-scroller ratio in the same band as upright, the next card's
- * top edge inside the scroller's visible box, and the outline still drawing at a non-zero,
- * distinguishable size — so the cards have not become slivers at the shortest screens this suite
- * exercises. */
+ * hand ("two is fine"), the board picture box's height pinned against the formula this plan
+ * introduces (`min(width * 620/340, max(floor, share))`) rather than a flat ratio band, every
+ * outline clearing the floor's own 40x150 CSS px minimum, and the next card's top edge check made
+ * conditional on which régime is actually in force — computed from the same primitives already
+ * read, never from a hard-coded viewport list, so a future viewport added here gets the right
+ * branch automatically. */
 async function assertSidewaysGridFitsTheScreen(
   page: Page,
   expectedWidth: number,
@@ -55,16 +63,6 @@ async function assertSidewaysGridFitsTheScreen(
   expect(preconditions.height).toBe(expectedHeight);
   expect(preconditions.coarsePointer).toBe(true);
 
-  const scrollerHeight = await page.locator("[data-setup-content]").evaluate((el) => {
-    let node: HTMLElement | null = el.parentElement;
-    while (node) {
-      const style = getComputedStyle(node);
-      if (style.overflowY === "auto" || style.overflowY === "scroll") return node.clientHeight;
-      node = node.parentElement;
-    }
-    throw new Error("no scrolling ancestor found for [data-setup-content]");
-  });
-
   const presetCards = page.getByRole("button").filter({ hasText: "Start Shaping" });
   const cards = await presetCards.all();
   expect(cards.length).toBeGreaterThan(1);
@@ -77,41 +75,69 @@ async function assertSidewaysGridFitsTheScreen(
   }
 
   // The two-up grid: exactly two distinct left edges, not one column and not four across — the
-  // shaper's own "two is fine" verdict, unchanged by this plan.
+  // shaper's own "two is fine" verdict, unchanged by this plan. This comes from the setup screen's
+  // own small-screen grid breakpoint, not from which layout the width selects, so it stays true on
+  // both sides of the layout decision landing next.
   const distinctLeftEdges = new Set(boxes.map((box) => Math.round(box.x)));
   expect(distinctLeftEdges.size).toBe(2);
 
-  for (const box of boxes) {
-    const ratio = box.height / scrollerHeight;
-    expect(ratio).toBeGreaterThanOrEqual(0.7);
-    expect(ratio).toBeLessThanOrEqual(0.82);
-  }
+  // The régime this viewport resolves to, computed from the same three primitives the cap itself
+  // reads — never from a list of viewport sizes. Above the crossover the share is the larger of
+  // the two and governs; at or below it the floor is the larger and governs instead.
+  const primitives = await page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement);
+    return {
+      floor: parseFloat(style.getPropertyValue("--setup-card-thumb-min-h")),
+      topBar: parseFloat(style.getPropertyValue("--phone-top-bar-h")),
+      cardChrome: parseFloat(style.getPropertyValue("--setup-card-chrome-h")),
+      innerHeight: window.innerHeight,
+    };
+  });
+  const share = 0.75 * primitives.innerHeight - 0.75 * primitives.topBar - primitives.cardChrome;
+  const expectedMaxH = Math.max(primitives.floor, share);
+  const shareGoverns = share >= primitives.floor;
 
-  // The second card's top edge falls inside the scroller's visible box — a shaper can see the
-  // list continues, sideways as well as upright.
-  const scrollerBox = await page
-    .locator("[data-setup-content]")
-    .evaluate((el) => el.parentElement?.getBoundingClientRect())
-    .then((rect) => {
-      if (!rect) throw new Error("no scroller rect");
-      return rect;
-    });
-  expect(boxes[1].y).toBeLessThan(scrollerBox.y + scrollerBox.height);
-
-  // The board outline still draws with real height, and the first two presets still draw at
-  // different widths — the cards have not become slivers at this screen's shortest dimension.
+  // The board picture box's height equals the formula, at every card, and every drawn outline
+  // clears the floor's own 40x150 CSS px minimum — the floor's actual purpose, measured rather
+  // than inferred from the box's own height.
   const pathWidths: number[] = [];
   for (const card of cards) {
     const path = card.locator('[data-board-silhouette="outline"]');
     const pathBox = await path.boundingBox();
     if (!pathBox) throw new Error("outline path is missing a bounding box");
-    expect(pathBox.height).toBeGreaterThan(0);
+    expect(pathBox.width).toBeGreaterThanOrEqual(40);
+    expect(pathBox.height).toBeGreaterThanOrEqual(150);
     pathWidths.push(pathBox.width);
+
+    // Three levels up from the path: path -> <g> -> <svg> (OutlineViewer's own root) -> the
+    // capped well div — same walk e2e/phone-home.spec.ts's own guard uses.
+    const thumbnailBox = path.locator("xpath=../../..");
+    const box = await thumbnailBox.boundingBox();
+    if (!box) throw new Error("thumbnail box is missing a bounding box");
+    const ratioHeight = box.width * (620 / 340);
+    const expectedHeight = Math.min(ratioHeight, expectedMaxH);
+    expect(Math.abs(box.height - expectedHeight)).toBeLessThanOrEqual(1);
   }
   // The first two presets specifically — the shortboard and the fish, per BOARD_PRESETS' own
   // order — must still read as visibly different boards, not just "the set of four differs
   // somewhere."
   expect(Math.round(pathWidths[0])).not.toBe(Math.round(pathWidths[1]));
+
+  // The second card's top edge falls inside the scroller's visible box — but only where the share
+  // governs, which is the whole point of three-quarters: one whole board plus the top of the next.
+  // Where the floor governs, the screen is too short to show a legible board AND the next card's
+  // top edge at once, and this project chose the legible board — no assertion here is the correct
+  // assertion, not a gap.
+  if (shareGoverns) {
+    const scrollerBox = await page
+      .locator("[data-setup-content]")
+      .evaluate((el) => el.parentElement?.getBoundingClientRect())
+      .then((rect) => {
+        if (!rect) throw new Error("no scroller rect");
+        return rect;
+      });
+    expect(boxes[1].y).toBeLessThan(scrollerBox.y + scrollerBox.height);
+  }
 }
 
 test.describe("the setup screen's preset grid with the phone held sideways — EMULATED: Playwright's own `iPhone 14 landscape` descriptor (750 x 340)", () => {
