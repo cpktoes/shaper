@@ -17,6 +17,8 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 
 ## Current State
 
+**Phase 10 complete (2026-09-12, 11 plans): the whole app on a phone.** The rack’s dialogs, the account controls and the home screen were sized for a thumb, then the app was put in the founder’s hands on a real iPhone — twice. The first walk found what no emulator could: a phone held sideways is ~844 dots wide, not the emulator’s 750, so it crossed the 820px layout switch. A round of fixes tried to make a sideways phone stay a phone; the founder, phone in hand, said it was better as a normal browser, and that stands (D-10). The second walk passed all ten steps on the iPhone and found one thing — the drawing column didn’t scroll on a short screen — fixed the same day and pinned by a test that measures a real scroll. The board card’s picture now has a floor it can never fall below; the RAILS instructions page dropped its sliders on an upright phone; three code-review rounds fixed every finding that could reach a shaper. The Android phone was not walked, by the founder’s explicit call, so PHON-10 closes on the iPhone’s evidence alone.
+
 **In progress: v1.2 — Rails Finished, Phone Ready.** Phase 9 complete (2026-09-09, 9 plans): the
 five design screens work on a phone. One shared shell stacks each screen — the drawing pinned at
 the top, the controls scrolling beneath, a slim top bar and a six-tab bottom bar — below an 820px
@@ -114,7 +116,7 @@ Archives: [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-ph
 
 ### Active
 
-- [ ] User can do everything else the app does from a phone — sign-in, the rack, the summary — with the whole trip proven on real phones (Phase 10; the phone home screen and the Summary preview/print landed early as quick tasks on 2026-09-09)
+- [x] User can do everything else the app does from a phone — sign-in, the rack, the summary — with the whole trip proven on real phones (Phase 10; the phone home screen and the Summary preview/print landed early as quick tasks on 2026-09-09) — *Validated in Phase 10: The Whole App on a Phone (2026-09-12), on a real iPhone; the Android walk was skipped by the founder (D-12).*
 
 ### Out of Scope
 
@@ -197,4 +199,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-09 after Phase 9: The Design Screens on a Phone*
+*Last updated: 2026-09-12 after Phase 10: The Whole App on a Phone*
