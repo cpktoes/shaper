@@ -317,14 +317,16 @@ test.describe("touch tablet, sideways — the rotate button stays gone even thou
   });
 });
 
-// 10-05: closing 10-VERIFICATION.md gap 4 — the layout switch stops being width-only. This is the
-// exact case the fix targets: 863 x 360 used to render the DESKTOP shell (width alone was 863px,
-// over the old 820px switch), which is precisely why the board card and the Hide Toolbar tip
-// disappeared sideways. After the fix, a coarse pointer on a screen shorter than 500px renders the
-// phone stack regardless of width. This describe is deliberately separate from — and does not
-// touch the BODY of — the tablet describe above: that block now proves the desktop-style TABLET
-// case is unaffected, on a device that genuinely still carries it.
-test.describe("phone held sideways — the phone stack renders, not the desktop shell (10-05)", () => {
+// D-10 (10-SWEEP-2.md, 2026-09-11): the shaper's own verdict, holding a real phone sideways —
+// "horizontal is useless, as there are no controls other than the drag. It was honestly better
+// when it was treated as a normal browser rather than a phone." That reverts 10-05's
+// width-and-height switch back to width alone, so a phone held sideways (about 844-863 real CSS
+// px on real hardware, both over the 820px cutoff) now gets the DESKTOP shell — controls beside
+// the board, not stacked above them with almost nothing left underneath. This describe used to
+// prove the opposite (10-05's own rule); it now proves D-10 in a real browser. It is deliberately
+// separate from — and does not touch the BODY of — the touch-tablet describe above, which now
+// proves the same D-10 outcome on the OTHER real hardware width (a real iPhone held sideways).
+test.describe("phone held sideways — the desktop shell renders, controls beside the board (D-10)", () => {
   test.use({ ...pixel7LandscapeViewport });
 
   test.beforeEach(async ({ page }, testInfo) => {
@@ -335,13 +337,13 @@ test.describe("phone held sideways — the phone stack renders, not the desktop 
     await dismissSignInBanner(page);
   });
 
-  test("at 863 x 360 the phone stack renders: the six-screen bottom bar and compact top bar show, the desktop link row is hidden, and the rotate button is gone", async ({
+  test("at 863 x 360 (a real Pixel 7 turned sideways) the desktop shell renders: the desktop link row shows all six screens, the six-tab bottom bar and compact top bar are gone, and the rotate button is gone (a touch pointer's own job, not this switch's)", async ({
     page,
   }) => {
     await page.goto("/design/outline");
 
-    // Load-bearing precondition: this really is the short-touch screen the new rule targets,
-    // before asserting anything about which shell rendered.
+    // Load-bearing precondition: this really is the width real hardware reported, on a touch
+    // device, before asserting anything about which shell rendered.
     const preconditions = await page.evaluate(() => ({
       width: window.innerWidth,
       height: window.innerHeight,
@@ -351,22 +353,52 @@ test.describe("phone held sideways — the phone stack renders, not the desktop 
     expect(preconditions.height).toBe(360);
     expect(preconditions.coarsePointer).toBe(true);
 
+    // The desktop screen-link row (SiteNav's own bare <nav>, no aria-label) now renders — the
+    // layout switch reads width alone again, and 863px clears the 820px cutoff.
+    const desktopNav = page.locator("nav:not([aria-label])");
+    await expect(desktopNav).toBeVisible();
+    for (const label of SCREEN_LABELS) {
+      await expect(desktopNav.getByRole("link", { name: label })).toBeVisible();
+    }
+
     const tabBar = page.getByRole("navigation", { name: "Screens" });
-    await expect(tabBar).toBeVisible();
+    await expect(tabBar).toBeHidden();
 
     const topBar = page.getByRole("banner");
-    await expect(topBar).toBeVisible();
+    await expect(topBar).toBeHidden();
 
-    // The desktop screen-link row (SiteNav's own bare <nav>, no aria-label) is present in the tree
-    // but hidden by its own `max-shell:hidden` rule now that this width-and-height combination is
-    // inside the phone stack.
+    // Unchanged, because it was never a layout question: a touch device turning already turns the
+    // board, so the Rotate button stays gone here too — this is the `coarse` pointer variant's own
+    // job (app/globals.css), not the width switch this describe is about.
+    await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeHidden();
+  });
+});
+
+// PHON-10 adjacency: at exactly 820 dots, exactly one layout applies, decided by declaration
+// rather than by which rule Tailwind happens to emit first (app/globals.css's own comment above
+// `max-shell`/`shell`). Runs on the desktop project deliberately — a mouse, not a touch device —
+// because after D-10 the switch reads width alone, so this boundary owes nothing to pointer type
+// any more. Previously this pair was proved through the board card's height cap at 819/820px, but
+// 10-09 moved that cap onto the `coarse` pointer variant (off this axis entirely), so the boundary
+// needs its own standing test rather than a borrowed one.
+test.describe("the 820px layout boundary — exactly one shell applies at each width (PHON-10)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "pointer-independent now — proved once, on a mouse");
+    await dismissSignInBanner(page);
+  });
+
+  test("819px wide renders the phone stack, 820px wide renders the desktop shell", async ({ page }) => {
+    const tabBar = page.getByRole("navigation", { name: "Screens" });
     const desktopNav = page.locator("nav:not([aria-label])");
+
+    await page.setViewportSize({ width: 819, height: 900 });
+    await page.goto("/design/outline");
+    await expect(tabBar).toBeVisible();
     await expect(desktopNav).toBeHidden();
 
-    // This file's original subject (260909-h3g), now proved in the shell this width-and-height
-    // combination actually renders after this change: turning the phone is what did the rotate
-    // button's job, on a phone that stayed a phone.
-    await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeHidden();
+    await page.setViewportSize({ width: 820, height: 900 });
+    await expect(tabBar).toBeHidden();
+    await expect(desktopNav).toBeVisible();
   });
 });
 
