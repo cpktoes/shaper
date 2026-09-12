@@ -141,6 +141,29 @@
      real gap and asserts it still equals this value, so a card-chrome change that drifts from it
      fails loudly there instead of silently degrading the cap. */
   --setup-card-chrome-h: 162.59375px;
+  /* The board picture's floor (10-09, closing a fault confirmed on 2026-09-11): the smallest
+     height the picture may draw at, whatever the screen. D-08's original arithmetic — three-
+     quarters of the scroller minus the fixed card-chrome above — has no lower bound, and a real
+     phone held sideways drove it to zero: about 88px of board left at a 390px-tall screen, 35px
+     at 320px, 5px at 280px, nothing at all at 270px and under. 220px is a Claude ruling, not a
+     founder decision, with a stated basis: D-08 measured, and the founder rejected, a card at
+     which the four presets drew 26-39 dots wide, calling that "a sliver … cannot be legible"; at
+     220px of picture the same four presets draw about 42-63 dots wide and about 203 dots long
+     (arithmetic figures — see this plan's own SUMMARY for what a real browser measured). 220 also
+     sits below the smallest share any phone this suite runs UPRIGHT resolves to (the crossover is
+     around a 566px-tall viewport — see the property below), so no upright phone's three-quarters
+     behaviour moves; only a screen shorter than that crossover ever reaches the floor. Plan 10-08's
+     re-sweep puts the number itself to the shaper by name, the same way D-08's landscape ruling was. */
+  --setup-card-thumb-min-h: 220px;
+  /* The whole cap, composed from the floor above and the three-quarters share below — one property
+     so there is exactly one place a change to either input is forced through (10-REVIEW-2.md
+     WR2-02's remedy, finished). Above a viewport height of about 566px the share (the second `max()`
+     argument) is the larger of the two and the three-quarters rule governs exactly as before; below
+     it the floor is the larger and a card is allowed to be taller than three-quarters of the screen
+     — a board a shaper can still recognise, with a small scroll for the rest of the card, in place
+     of a board that resolves to nothing. `card-thumbnail.tsx` names this property; it carries no
+     arithmetic of its own. */
+  --setup-card-thumb-max-h: max(var(--setup-card-thumb-min-h), calc(75dvh - 0.75 * var(--phone-top-bar-h) - var(--setup-card-chrome-h)));
 }
 
 /* ---------------------------------------------------------------------------
