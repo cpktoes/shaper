@@ -268,14 +268,19 @@ test.describe("phone home screen — margins, headings and thumb-sized cards", (
     }
   });
 
-  // The standing guard for the two constants the card-height cap is built from
-  // (10-REVIEW-2.md WR2-02): `card-thumbnail.tsx`'s formula reads `--phone-top-bar-h` and
-  // `--setup-card-chrome-h` from app/globals.css rather than a pre-computed literal, but nothing
-  // previously proved those declared numbers still match what actually renders. This reads the
-  // declared custom properties straight off the page (not a copy kept in this file) and checks
-  // each against a real measurement, so either constant drifting — a taller top bar, a longer
-  // card descriptor — fails here instead of silently degrading the cap's arithmetic.
-  test("the top bar's real height and the card's real chrome gap still match the CSS constants the height cap is derived from", async ({
+  // The standing guard for the constants the card-height cap is built from
+  // (10-REVIEW-2.md WR2-02): `card-thumbnail.tsx`'s formula reads `--phone-top-bar-h`,
+  // `--setup-card-chrome-h`, `--setup-card-thumb-min-h` and the composed `--setup-card-thumb-max-h`
+  // from app/globals.css rather than a pre-computed literal, but nothing previously proved those
+  // declared numbers still match what actually renders OR that the composed sum really is the two
+  // primitives it claims to combine. This reads every declared custom property straight off the
+  // page (not a copy kept in this file), checks the two measurable primitives against a real
+  // measurement, and — closing the gap 10-REVIEW-2.md named — computes the expected composed cap
+  // from the three primitives and this viewport's own `innerHeight`, then asserts the browser's
+  // own resolved `max-height` on the board picture box equals it within a pixel. Either constant
+  // drifting, or the composed property quietly disagreeing with its own inputs, fails here instead
+  // of silently degrading the cap.
+  test("the top bar's real height and the card's real chrome gap still match the CSS constants the height cap is derived from, and the composed cap equals what those constants imply", async ({
     page,
   }) => {
     await page.goto("/");
@@ -285,6 +290,8 @@ test.describe("phone home screen — margins, headings and thumb-sized cards", (
       return {
         phoneTopBarH: parseFloat(style.getPropertyValue("--phone-top-bar-h")),
         setupCardChromeH: parseFloat(style.getPropertyValue("--setup-card-chrome-h")),
+        setupCardThumbMinH: parseFloat(style.getPropertyValue("--setup-card-thumb-min-h")),
+        innerHeight: window.innerHeight,
       };
     });
 
@@ -295,10 +302,22 @@ test.describe("phone home screen — margins, headings and thumb-sized cards", (
     const presetCard = page.getByRole("button").filter({ hasText: "Start Shaping" }).first();
     const cardBox = await presetCard.boundingBox();
     const path = presetCard.locator('[data-board-silhouette="outline"]');
-    const thumbnailBox = await path.locator("xpath=../../..").boundingBox();
+    const thumbnailLocator = path.locator("xpath=../../..");
+    const thumbnailBox = await thumbnailLocator.boundingBox();
     if (!cardBox || !thumbnailBox) throw new Error("missing bounding box for card or thumbnail");
     const chromeHeight = cardBox.height - thumbnailBox.height;
     expect(Math.abs(chromeHeight - declared.setupCardChromeH)).toBeLessThanOrEqual(1);
+
+    // The composed cap: does `--setup-card-thumb-max-h` actually equal
+    // max(floor, 0.75*innerHeight - 0.75*topBar - cardChrome) on a rendered page, or has it quietly
+    // drifted from the three primitives it claims to combine?
+    const share =
+      0.75 * declared.innerHeight - 0.75 * declared.phoneTopBarH - declared.setupCardChromeH;
+    const expectedCap = Math.max(declared.setupCardThumbMinH, share);
+    const resolvedMaxHeight = await thumbnailLocator.evaluate((el) =>
+      parseFloat(getComputedStyle(el).maxHeight),
+    );
+    expect(Math.abs(resolvedMaxHeight - expectedCap)).toBeLessThanOrEqual(1);
   });
 
   // D-08's fixed 387px cap is disproven by 10-SWEEP.md (a real phone held sideways read 757px on
@@ -310,6 +329,30 @@ test.describe("phone home screen — margins, headings and thumb-sized cards", (
     page,
   }) => {
     await page.goto("/");
+
+    // Load-bearing precondition (10-09): this test is a measurement of the THREE-QUARTERS régime,
+    // not of the floor 10-09 adds. Both phone projects run upright, well above the measured
+    // crossover (between 566px and 567px of viewport height, per 10-09-SUMMARY.md), so the share
+    // still governs and neither project's own numbers below move. If this ever fails, the viewport
+    // this test runs at has dropped below the crossover, and this test has silently become a
+    // measurement of the floor instead of a measurement of three-quarters — it must be REWRITTEN
+    // (as e2e/phone-setup-landscape.spec.ts's shared body already is), not re-banded.
+    const crossoverPrimitives = await page.evaluate(() => {
+      const style = getComputedStyle(document.documentElement);
+      return {
+        floor: parseFloat(style.getPropertyValue("--setup-card-thumb-min-h")),
+        topBar: parseFloat(style.getPropertyValue("--phone-top-bar-h")),
+        cardChrome: parseFloat(style.getPropertyValue("--setup-card-chrome-h")),
+        innerHeight: window.innerHeight,
+      };
+    });
+    const crossoverHeight =
+      (crossoverPrimitives.floor + 0.75 * crossoverPrimitives.topBar + crossoverPrimitives.cardChrome) /
+      0.75;
+    expect(
+      crossoverPrimitives.innerHeight,
+      `this viewport (${crossoverPrimitives.innerHeight}px tall) is at or below the measured crossover (${crossoverHeight}px) — the floor now governs here, not the three-quarters share, and this test must be rewritten rather than re-banded`,
+    ).toBeGreaterThan(crossoverHeight);
 
     const scrollerHeight = await page.locator("[data-setup-content]").evaluate((el) => {
       let node: HTMLElement | null = el.parentElement;
@@ -437,14 +480,17 @@ test.describe("desktop home screen — margins and headings unmoved", () => {
     }
   });
 
-  // The 819/820px boundary, made measurable: the phone card cap is `width < 820px`, a strict
-  // less-than, so nothing merges and nothing collides at the touching value (PHON-10 adjacency).
-  // Run on a fine-pointer (desktop) project deliberately — the cap is a width rule and must not
-  // depend on the pointer. The cap itself is now viewport-height-relative rather than a fixed
-  // 387px (10-06), so the boundary is expressed the same way the rest of this plan does: a
-  // strict inequality where the cap applies, and equality (within a dot) where the ratio alone
-  // governs — never a pixel figure that is itself viewport-relative.
-  test("at 819px the phone cap applies (thumbnail height is strictly less than the width/ratio height), and at 820px it is back to the width/ratio height exactly", async ({
+  // 819/820px used to be the phone/desktop layout boundary, and this test used to prove the cap
+  // applied strictly below it and stopped exactly at it. 10-09 moves the cap's gate off that
+  // boundary entirely — onto the pointer, not the width — so on this fine-pointer (desktop)
+  // project the cap can no longer reach EITHER width. This is now the strongest desktop-no-change
+  // proof in this file: it shows the cap cannot reach a mouse at any width, not only at the widths
+  // a screenshot baseline happens to cover. The 819/820 pair is still meaningful, but now as a
+  // LAYOUT boundary rather than a cap boundary — the layout half (which of the two shells a width
+  // this side of 820px selects) is asserted in e2e/phone-layout.spec.ts, owned by the plan that
+  // owns the layout switch (10-10), so this file's own silence on layout here is deliberate, not
+  // a dropped check.
+  test("at 819px and at 820px, on a fine (mouse) pointer, the board picture box never gets the height cap at all — it follows only its own width and the 340/620 ratio", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 819, height: 900 });
@@ -459,12 +505,16 @@ test.describe("desktop home screen — margins and headings unmoved", () => {
     const box819 = await thumbnailBox819.boundingBox();
     if (!box819) throw new Error("thumbnail box is missing a bounding box at 819px");
     const ratioHeight819 = box819.width * (620 / 340);
-    expect(box819.height).toBeLessThan(ratioHeight819);
+    expect(Math.abs(box819.height - ratioHeight819)).toBeLessThanOrEqual(1);
+    const maxHeight819 = await thumbnailBox819.evaluate((el) => getComputedStyle(el).maxHeight);
+    expect(maxHeight819).toBe("none");
 
     await page.setViewportSize({ width: 820, height: 900 });
     const box820 = await thumbnailBox819.boundingBox();
     if (!box820) throw new Error("thumbnail box is missing a bounding box at 820px");
     const ratioHeight820 = box820.width * (620 / 340);
     expect(Math.abs(box820.height - ratioHeight820)).toBeLessThanOrEqual(1);
+    const maxHeight820 = await thumbnailBox819.evaluate((el) => getComputedStyle(el).maxHeight);
+    expect(maxHeight820).toBe("none");
   });
 });
