@@ -386,12 +386,26 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // differs from "after" yet. And applying an undo/redo sets no pending key (see undoEdit/redoEdit
   // below), which is exactly why undoing a step never records itself as a new one: this effect
   // sees a changed snapshot with nothing pending, and skips.
+  //
+  // The reference check (`before === historySnapshot`) alone is not enough: `historySnapshot`
+  // recomputes to a NEW object whenever its own dependencies (state.outline, state.rails, ...)
+  // change reference — which every mutator's `{ ...prev.X, ...patch }` spread does unconditionally,
+  // even when `patch` carries the exact values already there. A typed measurement field commits on
+  // every blur regardless of whether its text actually changed (`MeasureField`'s own `commit` calls
+  // `onCommit` whenever the parse succeeds, not only when the parsed value differs) — so a shaper
+  // who taps into a box and taps back out without changing a digit would otherwise spend a real
+  // undo step reverting NOTHING VISIBLE, silently pushing the edit they actually care about one
+  // press further away. The JSON comparison below is the deliberately blunt fix: cheap at this
+  // scale (a handful of small objects, computed once per committed edit, never per keystroke), and
+  // it is what "ONE accidental movement is ONE step back" actually requires at its zero-movement
+  // edge — no visible change, no step, full stop.
   useEffect(() => {
     const before = historyPrevSnapshotRef.current;
     historyPrevSnapshotRef.current = historySnapshot;
     const pendingKey = pendingEditKeyRef.current;
     pendingEditKeyRef.current = undefined;
     if (pendingKey === undefined || before === historySnapshot) return;
+    if (JSON.stringify(before) === JSON.stringify(historySnapshot)) return;
     setHistory((prev) => recordEdit(prev, before, pendingKey, Date.now()));
   }, [historySnapshot]);
 
