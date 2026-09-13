@@ -69,6 +69,26 @@ import {
 } from "@/lib/geometry/volume";
 import { type Litres, inchesToMm, mm } from "@/lib/geometry/units";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
+import {
+  canRedo,
+  canUndo,
+  emptyHistory,
+  isTextEntryTarget,
+  recordEdit,
+  redo,
+  undo,
+  undoShortcut,
+  type DesignHistory,
+} from "@/lib/design-history";
+
+/** What one undo/redo step holds — `DesignSnapshotFields` (D-11's ten-field saved-board shape)
+ * minus `boardName`. The exclusion is deliberate and structural, not a special case bolted onto
+ * one mutator: `boardName` is a text box, and a text box's own undo belongs to the browser
+ * (`isTextEntryTarget` below is what actually enforces that at the keyboard), so it is simply
+ * never a field this history's own `useMemo` looks at — a typed board name can never produce a
+ * new snapshot identity, and so can never record a step, by construction rather than by a
+ * separate guard that could drift out of sync with it. */
+type DesignHistorySnapshot = Omit<DesignSnapshotFields, "boardName">;
 
 interface DesignState {
   outline: OutlineSpec;
@@ -182,6 +202,18 @@ interface DesignContextValue {
    * and for the one-click retry after a failed save. A no-op while `modelId` is null (nothing to
    * save to yet) or while a save is already in flight (never two concurrent writes to one row). */
   requestSave: () => void;
+
+  /** Whether there is a step to take back this session — `phone-undo-bar.tsx` and the keyboard
+   * shortcut both gate on this so nothing new appears until there is something to undo. */
+  canUndo: boolean;
+  /** The mirror of `canUndo`, for redo. */
+  canRedo: boolean;
+  /** Steps the board back one entry (a no-op with nothing to undo). See its own doc comment in
+   * `DesignProvider` for why it is safe: it never reaches `modelId`, `saveStatus` or `boardName`,
+   * and it marks the board dirty so the change it just made gets autosaved like any other. */
+  undoEdit: () => void;
+  /** The mirror of `undoEdit`, for redo. */
+  redoEdit: () => void;
 
   updateOutline: (patch: Partial<OutlineSpec>) => void;
   updateRocker: (patch: Partial<RockerSpec>) => void;
@@ -299,14 +331,113 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // instant retry (`requestSave`, which never goes through this timer) the whole time.
   const consecutiveFailuresRef = useRef(0);
 
-  const updateOutline = (patch: Partial<OutlineSpec>) =>
+  // This session's undo/redo stacks (see lib/design-history.ts's own doc comment for the rules
+  // themselves — this provider only supplies the WHEN). Session-only and per-board: never written
+  // to Postgres, and cleared by applyPreset/applyModel below whenever the board itself changes.
+  const [history, setHistory] = useState<DesignHistory<DesignHistorySnapshot>>(emptyHistory);
+
+  // Deliberately NOT listing state.boardName — see DesignHistorySnapshot's own doc comment above
+  // for why that omission is structural rather than a special case.
+  const historySnapshot: DesignHistorySnapshot = useMemo(
+    () => ({
+      outline: state.outline,
+      rocker: state.rocker,
+      foil: state.foil,
+      rails: state.rails,
+      fins: state.fins,
+      volume: state.volume,
+      finsImportTemplate: state.finsImportTemplate,
+      railsImportFoilThickness: state.railsImportFoilThickness,
+      finSystem: state.finSystem,
+    }),
+    [
+      state.outline,
+      state.rocker,
+      state.foil,
+      state.rails,
+      state.fins,
+      state.volume,
+      state.finsImportTemplate,
+      state.railsImportFoilThickness,
+      state.finSystem,
+    ],
+  );
+
+  // undefined: no edit is currently pending. null: a pending edit that must never fold with the
+  // next one (a discrete toggle flip). A string: the coalescing key a real mutator just noted.
+  // Set by each mutator's noteEdit call below, read and cleared by the recording effect that
+  // follows historySnapshot's own identity.
+  const pendingEditKeyRef = useRef<string | null | undefined>(undefined);
+
+  // This effect's OWN copy of "what the snapshot looked like last time", independent of
+  // designSnapshotFieldsRef above (which exists for an unrelated reason — the save path) — so
+  // this effect never depends on where that other one happens to sit in the file.
+  const historyPrevSnapshotRef = useRef(historySnapshot);
+
+  // THE WHOLE SAFETY ARGUMENT FOR WHERE A HISTORY PUSH HAPPENS. A push cannot live inside a
+  // setState updater: updaters must stay pure, and React's StrictMode deliberately runs them
+  // TWICE (this repo's own npm run test:e2e:prod exists to catch exactly what StrictMode would
+  // otherwise hide). So instead: each mutator below sets a plain ref in its own event handler —
+  // outside any updater — naming what it touched, and this one effect, which reruns only when
+  // historySnapshot's own identity changes, is the sole place that actually calls setHistory.
+  //
+  // On mount the two refs are identical (both start as the same historySnapshot), so StrictMode's
+  // double invocation of this effect records nothing on either pass — there is no "before" that
+  // differs from "after" yet. And applying an undo/redo sets no pending key (see undoEdit/redoEdit
+  // below), which is exactly why undoing a step never records itself as a new one: this effect
+  // sees a changed snapshot with nothing pending, and skips.
+  //
+  // The reference check (`before === historySnapshot`) alone is not enough: `historySnapshot`
+  // recomputes to a NEW object whenever its own dependencies (state.outline, state.rails, ...)
+  // change reference — which every mutator's `{ ...prev.X, ...patch }` spread does unconditionally,
+  // even when `patch` carries the exact values already there. A typed measurement field commits on
+  // every blur regardless of whether its text actually changed (`MeasureField`'s own `commit` calls
+  // `onCommit` whenever the parse succeeds, not only when the parsed value differs) — so a shaper
+  // who taps into a box and taps back out without changing a digit would otherwise spend a real
+  // undo step reverting NOTHING VISIBLE, silently pushing the edit they actually care about one
+  // press further away. The JSON comparison below is the deliberately blunt fix: cheap at this
+  // scale (a handful of small objects, computed once per committed edit, never per keystroke), and
+  // it is what "ONE accidental movement is ONE step back" actually requires at its zero-movement
+  // edge — no visible change, no step, full stop.
+  useEffect(() => {
+    const before = historyPrevSnapshotRef.current;
+    historyPrevSnapshotRef.current = historySnapshot;
+    const pendingKey = pendingEditKeyRef.current;
+    pendingEditKeyRef.current = undefined;
+    if (pendingKey === undefined || before === historySnapshot) return;
+    if (JSON.stringify(before) === JSON.stringify(historySnapshot)) return;
+    setHistory((prev) => recordEdit(prev, before, pendingKey, Date.now()));
+  }, [historySnapshot]);
+
+  /** Called as the FIRST statement of every design mutator, before its own setState — records
+   * what this edit should be filed under (or null for a discrete flip that must never coalesce
+   * with anything, including another flip of the same toggle). The effect above reads and clears
+   * this once the resulting state change actually commits. */
+  function noteEdit(key: string | null) {
+    pendingEditKeyRef.current = key;
+  }
+
+  /** The coalescing key suffix for a patch-shaped mutator: which fields it touched, not what they
+   * changed to — so a wide-page drag on the same field keeps its own key stable no matter the
+   * intermediate values, and two different fields never share one by accident. */
+  function patchKey(patch: object): string {
+    return Object.keys(patch).sort().join(",");
+  }
+
+  const updateOutline = (patch: Partial<OutlineSpec>) => {
+    noteEdit(`outline:${patchKey(patch)}`);
     setState((prev) => ({ ...prev, outline: { ...prev.outline, ...patch }, boardStarted: true, dirty: true }));
+  };
 
-  const updateRocker = (patch: Partial<RockerSpec>) =>
+  const updateRocker = (patch: Partial<RockerSpec>) => {
+    noteEdit(`rocker:${patchKey(patch)}`);
     setState((prev) => ({ ...prev, rocker: { ...prev.rocker, ...patch }, boardStarted: true, dirty: true }));
+  };
 
-  const updateFoil = (patch: Partial<FoilSpec>) =>
+  const updateFoil = (patch: Partial<FoilSpec>) => {
+    noteEdit(`foil:${patchKey(patch)}`);
     setState((prev) => ({ ...prev, foil: { ...prev.foil, ...patch }, boardStarted: true, dirty: true }));
+  };
 
   // A preset is a complete spec, not a patch (see BoardPreset's own doc comment) — every field
   // not supplied by the preset resets to DEFAULT_DESIGN_STATE's value rather than carrying over
@@ -314,7 +445,13 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // board (WR-01). rocker/foil joined outline/rails/fins here in 04-05 (D-12) — a preset without
   // them would leave every board type drawing the same generic side profile regardless of which
   // one was picked, which is exactly what D-12 exists to fix.
-  const applyPreset = (preset: BoardPreset) =>
+  const applyPreset = (preset: BoardPreset) => {
+    // The history belongs to the board that is open, not to the session. Carrying it across a
+    // board swap would let Cmd+Z drag a piece of the board just closed into the board just
+    // opened — so both the pending-edit ref and the stacks themselves reset here, right beside
+    // the state replacement they belong with.
+    pendingEditKeyRef.current = undefined;
+    setHistory(emptyHistory());
     setState(() => ({
       ...DEFAULT_DESIGN_STATE,
       outline: preset.outline,
@@ -325,6 +462,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       boardStarted: true,
       dirty: true,
     }));
+  };
 
   // The one place `dirty` deliberately does NOT follow `boardStarted`: opening a saved board
   // sets boardStarted true (a board is in progress) but leaves dirty at DEFAULT_DESIGN_STATE's
@@ -334,6 +472,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     // A fresh row has no save-failure history of its own — carrying over a backoff earned by
     // whatever board was open before would slow its first autosave for no reason.
     consecutiveFailuresRef.current = 0;
+    // Same reasoning as applyPreset above: the undo history belongs to the board on screen, and
+    // opening a different saved board is exactly the moment it must not survive.
+    pendingEditKeyRef.current = undefined;
+    setHistory(emptyHistory());
     setState(() => ({
       ...DEFAULT_DESIGN_STATE,
       outline: snapshot.outline,
@@ -351,53 +493,77 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const updateRailSection = (key: RailSectionKey, patch: Partial<RailSectionSpec>) =>
+  const updateRailSection = (key: RailSectionKey, patch: Partial<RailSectionSpec>) => {
+    noteEdit(`rails:${key}:${patchKey(patch)}`);
     setState((prev) => ({
       ...prev,
       rails: { ...prev.rails, [key]: { ...prev.rails[key], ...patch } },
       boardStarted: true,
       dirty: true,
     }));
+  };
 
-  const toggleTailHardEdge = () =>
+  // A discrete switch, not a slider — noteEdit(null) so flipping it twice is always two steps,
+  // never folded into one the way a drag would be.
+  const toggleTailHardEdge = () => {
+    noteEdit(null);
     setState((prev) => ({
       ...prev,
       rails: { ...prev.rails, tailHardEdge: !prev.rails.tailHardEdge },
       boardStarted: true,
       dirty: true,
     }));
+  };
 
-  const updateFins = (patch: Partial<FinPlacementSpec>) =>
+  const updateFins = (patch: Partial<FinPlacementSpec>) => {
+    noteEdit(`fins:${patchKey(patch)}`);
     setState((prev) => ({ ...prev, fins: { ...prev.fins, ...patch }, boardStarted: true, dirty: true }));
+  };
 
-  const updateVolume = (patch: Partial<VolumeSpec>) =>
+  const updateVolume = (patch: Partial<VolumeSpec>) => {
+    noteEdit(`volume:${patchKey(patch)}`);
     setState((prev) => ({ ...prev, volume: { ...prev.volume, ...patch }, boardStarted: true, dirty: true }));
+  };
 
-  const setFinsImportTemplate = (next: boolean) =>
+  // A discrete switch — see toggleTailHardEdge's comment above for why noteEdit(null).
+  const setFinsImportTemplate = (next: boolean) => {
+    noteEdit(null);
     setState((prev) => ({ ...prev, finsImportTemplate: next, boardStarted: true, dirty: true }));
+  };
 
   // A plain flip, mirroring setFinsImportTemplate exactly. Copies nothing into or out of
   // `rails.*.boardThickness` — those three values are written only by updateRailSection (the
   // RAILS sliders), so a shaper's hand-typed thickness survives untouched across any number of
   // link flips (D-09/D-10). See DesignContextValue.toggleRailsImportFoilThickness's doc comment.
-  const toggleRailsImportFoilThickness = () =>
+  // A discrete switch — see toggleTailHardEdge's comment above for why noteEdit(null).
+  const toggleRailsImportFoilThickness = () => {
+    noteEdit(null);
     setState((prev) => ({ ...prev, railsImportFoilThickness: !prev.railsImportFoilThickness, boardStarted: true, dirty: true }));
+  };
 
+  // No noteEdit call: boardName is deliberately absent from historySnapshot (see
+  // DesignHistorySnapshot's doc comment), so recording a pending key here would do nothing but
+  // confuse the next real edit's coalescing — do not "fix" this by adding one.
   const setBoardName = (next: string) =>
     setState((prev) => ({ ...prev, boardName: next, boardStarted: true, dirty: true }));
 
-  const setFinSystem = (next: FinSystem) =>
+  // A discrete switch — see toggleTailHardEdge's comment above for why noteEdit(null).
+  const setFinSystem = (next: FinSystem) => {
+    noteEdit(null);
     setState((prev) => ({ ...prev, finSystem: next, boardStarted: true, dirty: true }));
+  };
 
   // Not a design-mutating action — pointing the store at a different (or no) saved row doesn't
-  // change the board itself, so this deliberately does NOT set boardStarted.
+  // change the board itself, so this deliberately does NOT set boardStarted, and does NOT
+  // noteEdit: it never changes historySnapshot's fields either.
   const setModelId = (next: string | null) => setState((prev) => ({ ...prev, modelId: next }));
 
   // The shaper's own first, deliberate save (D-08's "only does real work the first time") —
   // there was no modelId for the autosave effect to target until this moment, so it cannot have
   // run performSave/requestSave itself. Setting saveStatus "saved" here, not just modelId, is
   // what lets the nav show "Saved" on the very next render instead of falling back through the
-  // plain "Save" button (modelId was null) or an unset "idle" status.
+  // plain "Save" button (modelId was null) or an unset "idle" status. No noteEdit call: bookkeeping
+  // (modelId, boardName, saveStatus), not a design change — nothing here touches historySnapshot.
   const markSaved = (id: string, name: string) =>
     setState((prev) => ({ ...prev, modelId: id, boardName: name, dirty: false, saveStatus: "saved" }));
 
@@ -497,7 +663,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   // The prototype's own handoff semantics (Volume.dc.html lines 412-437) — the one place derived
   // values must be written back into stored state.
+  // A discrete switch — see toggleTailHardEdge's comment (above, near the other RAILS/FINS
+  // toggles) for why noteEdit(null).
   const toggleImportTemplateDimensions = () => {
+    noteEdit(null);
     setState((prev) => {
       const next = !prev.volume.importTemplateDimensions;
       if (next) {
@@ -523,8 +692,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  // A discrete switch — see toggleTailHardEdge's comment above for why noteEdit(null). Called
+  // AFTER the early-return guard below, so a no-op call (template import already off) records
+  // nothing.
   const toggleImportRailThickness = () => {
     if (!state.volume.importTemplateDimensions) return;
+    noteEdit(null);
     setState((prev) => {
       const next = !prev.volume.importRailThickness;
       if (next) {
@@ -657,6 +830,54 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn, state.modelId, state.dirty, saveInFlight, designSnapshotFields]);
 
+  /** Steps the board back one entry, or does nothing on an empty past. Spreading exactly the nine
+   * `DesignHistorySnapshot` fields into state — never the whole state object — is exactly why
+   * `modelId`, `saveStatus` and `boardName` are left untouched by an undo. `dirty: true` is
+   * deliberate, not an oversight: taking a change back IS a change, and the existing autosave
+   * effect should write the undone board to the shaper's account exactly as it would any other
+   * edit. `pendingEditKeyRef` is cleared first so this restoring setState is never mistaken by the
+   * recording effect above for a new edit to file away. */
+  const undoEdit = () => {
+    const result = undo(history, historySnapshot);
+    if (!result) return;
+    pendingEditKeyRef.current = undefined;
+    setHistory(result.history);
+    setState((prev) => ({ ...prev, ...result.restored, boardStarted: true, dirty: true }));
+  };
+
+  /** The mirror of undoEdit — see its doc comment above for why each line is there. */
+  const redoEdit = () => {
+    const result = redo(history, historySnapshot);
+    if (!result) return;
+    pendingEditKeyRef.current = undefined;
+    setHistory(result.history);
+    setState((prev) => ({ ...prev, ...result.restored, boardStarted: true, dirty: true }));
+  };
+
+  // The keyboard shortcut (Cmd/Ctrl+Z, Shift+Cmd/Ctrl+Z). Reads the plain decision from
+  // lib/design-history.ts rather than inlining any key-matching here, and defers entirely to the
+  // browser's own text-box undo whenever the event's target is a text-entry field
+  // (isTextEntryTarget) — deliberately NOT "whenever any input is focused", since Base UI renders
+  // a slider's thumb as a real, focused `<input type="range">`, and blocking the shortcut there
+  // would kill it exactly where a shaper most wants it right after a slider move.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const shortcut = undoShortcut(event);
+      if (shortcut === null) return;
+      const target = event.target as { tagName?: string | null; type?: string | null; isContentEditable?: boolean } | null;
+      if (isTextEntryTarget(target)) return;
+      event.preventDefault();
+      if (shortcut === "undo") undoEdit();
+      else redoEdit();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+    // undoEdit/redoEdit close over history and historySnapshot freshly on every render, so
+    // listing them too would rebind this listener every render for no behavioural difference —
+    // the same posture the autosave effect above takes with performSave.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history, historySnapshot]);
+
   const value: DesignContextValue = {
     outline: state.outline,
     rocker: state.rocker,
@@ -674,6 +895,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     isDirty: state.dirty,
     saveStatus: state.saveStatus,
     requestSave: performSave,
+    canUndo: canUndo(history),
+    canRedo: canRedo(history),
+    undoEdit,
+    redoEdit,
     updateOutline,
     updateRocker,
     updateFoil,
