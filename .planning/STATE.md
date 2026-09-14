@@ -4,15 +4,15 @@ milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
 status: Awaiting next milestone
 stopped_at: Phase 10 UI-SPEC approved - ready to plan
-last_updated: "2026-09-12T22:02:04.973Z"
-last_activity: 2026-09-12
-last_activity_desc: Phase 10 complete
+last_updated: "2026-09-14T01:13:36.088Z"
+last_activity: 2026-09-13
+last_activity_desc: "Completed quick task 260913-k5k: undo and redo for accidental design edits"
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 29
-  completed_plans: 29
-  percent: 100
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 current_phase: 10
 current_phase_name: the-whole-app-on-a-phone
 ---
@@ -265,6 +265,7 @@ Recent decisions affecting current work:
 | 260910-jfp | The printed Rail Band Instructions page now carries a key naming every marking and band line, each with the same coloured dot the line is drawn in, so a shaper reading the sheet in the bay knows what each line on the deck means. It lists only the lines left ticked, and it sits in the blank column beside the plan and side drawings - measured to cost no height at all (the card is 501.98px with the key on and off, at all seven page widths, on all three browsers), so the example rail drawing above it is untouched. The same key shows on the Summary's on-screen preview, since the preview is the print. | 2026-09-10 | 71a624a | [260910-jfp-print-a-key-beside-the-rail-plan-side-dr](./quick/260910-jfp-print-a-key-beside-the-rail-plan-side-dr/) |
 | 260910-kz2 | The printed Rail Band Instructions page no longer loses its example rail drawing on a small page. The plan/side figure held a 502px floor it could not be pushed below, so on any page under about 454 dots the example rail - the drawing that names every mark the rest of the page talks about - was squeezed to nothing and silently clipped away. The two drawings now shrink together instead, so the sheet keeps both from 268 dots up (2.8in of paper, narrower than a 4x6 photo). Nothing that already ships moved: the figure card is still 502.00px and the drawing 373.84x472.00 at 560, 618, 733 and 900 dots, and a computer's sheet is still 733.44x990.55. | 2026-09-10 | 1a8705c | [260910-kz2-stop-the-rail-instructions-sheet-clippin](./quick/260910-kz2-stop-the-rail-instructions-sheet-clippin/) |
 | 260913-k5k | Undo and redo for accidental design edits: Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z step a board's outline, rocker, foil, rails, fins and volume back and forward one movement at a time, with a matching pair of round arrow buttons on a phone; a session-only history cleared when the board changes; no database change | 2026-09-13 | ae3216e | [260913-k5k-undo-and-redo-for-accidental-design-edit](./quick/260913-k5k-undo-and-redo-for-accidental-design-edit/) |
+| 102 | A Home icon beside the settings gear on a desktop (1280px and up), and a Home row first in the phone menu; the five desktop baselines re-recorded on purpose for the new icon | 2026-09-14 | 3cf0af1 | — |
 
 ## Deferred Items
 
