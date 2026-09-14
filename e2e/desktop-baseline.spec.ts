@@ -1,6 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 /**
+ *
+ * RE-RECORDED 2026-09-13 (quick task: a Home icon beside the settings gear) — the one deliberate
+ * re-record since these were created in 09-01. The founder asked for a desktop change, so the
+ * desktop changed: the five images now show a house icon beside the gear at 1280px and the six
+ * screen links shifted left to make room; the diff images confirmed nothing below the nav row
+ * moved. The standing rule is unchanged for everything else — phone work must never move a
+ * desktop pixel, and these baselines are still the proof. Re-record only for an intended desktop
+ * change, from the main checkout, after inspecting the diff.
  * PHON-05's "before" evidence: a picture of all five desktop design screens exactly as they look
  * today, before any phone work starts. Every later plan in Phase 9 re-runs this spec and must
  * leave every pixel unchanged — that is what "desktop untouched" means as a measurement rather

@@ -15,6 +15,7 @@
  */
 
 import Link from "next/link";
+import { HouseIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { SettingsMenu } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
@@ -79,6 +80,18 @@ export function SiteNav() {
               rather than by distance: it is chrome, not a sixth screen, so it should read as a
               different kind of thing without drifting away from the group. */}
           <span aria-hidden className="ml-1 h-4 w-px bg-surf-line-faint" />
+          {/* A way home that isn't the wordmark, sitting beside the gear as the same kind of
+              chrome. Shown only from 1280px up: at 1024px (the touch-tablet band) the row has
+              48px of headroom and e2e/site-nav-width.spec.ts guards a 24px floor, and at
+              820–863px (a phone held sideways) the cluster already ends at the padding edge —
+              so below 1280 the wordmark stays the way home, exactly as before. */}
+          <Link
+            href="/"
+            aria-label="Home"
+            className="hidden xl:flex -mr-1 cursor-pointer items-center rounded-md p-1 text-surf-ink-muted transition-colors outline-none hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+          >
+            <HouseIcon aria-hidden className="size-4" />
+          </Link>
           <SettingsMenu />
           {/* Save (D-05) and the auth control (D-02) share this cluster, both chrome rather than
               a design screen, in the order a shaper acts: save the work, then who's signed in. */}

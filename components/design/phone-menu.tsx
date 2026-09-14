@@ -16,11 +16,14 @@
  */
 
 import { Menu } from "@base-ui/react/menu";
-import { MenuIcon } from "lucide-react";
+import { HouseIcon, MenuIcon } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { SettingsMenuContent } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
 
 export function PhoneMenu() {
+  const pathname = usePathname();
+  const router = useRouter();
   return (
     <Menu.Root>
       <Menu.Trigger
@@ -38,6 +41,23 @@ export function PhoneMenu() {
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="end" sideOffset={10} className="isolate z-50">
           <Menu.Popup className="min-w-64 origin-(--transform-origin) rounded-lg border border-surf-line-faint bg-surf-panel p-1.5 shadow-lg outline-none duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+            {/* A way back to the home screen from any design screen — the phone has no
+                wordmark row to tap, so the menu carries it. Hidden on the home screen itself,
+                where it would only close the menu. router.push keeps the board in memory (a hard
+                navigation would drop the design store). Row sizing matches rack-card-menu.tsx's
+                ROW_CLASS: 44px tall under a touch pointer, today's height for a mouse. */}
+            {pathname !== "/" && (
+              <>
+                <Menu.Item
+                  onClick={() => router.push("/")}
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-surf-ink outline-none select-none coarse:min-h-11 data-highlighted:bg-surf-well"
+                >
+                  <HouseIcon aria-hidden className="size-4 text-surf-ink-muted" />
+                  Home
+                </Menu.Item>
+                <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />
+              </>
+            )}
             <SettingsMenuContent />
             {/* No Menu.Separator export exists on this Base UI version's Menu module — a plain
                 divider row does the same job, matching the popup's own line token. */}
