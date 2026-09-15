@@ -39,7 +39,7 @@ key-files:
 key-decisions:
   - "The spacing rule is a forward-then-backward bounded pass (push down for predecessors, then push up for successors, each pass clamped to the label's own dimension-line bounds) rather than a single monotone sweep — a single sweep was proven at plan time to drive the centre label straight through the tail line on an iPhone. Two labels only interact at all if their estimated x-ranges overlap; that gate is what keeps the desktop drawing (where the sideways tier stagger already gives enough separation) completely untouched."
   - "A bound the label's own untouched baseline already violates is relaxed to that untouched baseline, so the rule can never move a label to a position worse than where it started — proven by test 8 (never worse)."
-  - "The off-tail labels are sorted by an explicit Record<FinRole, number> rank (front:0, rear:1, center:2) before the rule runs, per orchestrator ruling: that rank is also each label's top-to-bottom order on the drawing for every real fin setup, and stays correct even if an advanced override ever moves a dimension line."
+  - "The off-tail labels are ordered top-to-bottom by their own dimension line's top before the rule runs — the drawing's true reading order — with an explicit Record<FinRole, number> rank (front:0, rear:1, center:2) only as a tiebreak (orchestrator ruling, applied in a follow-up commit after the executor's merge). For every real fin setup that is the same order, since the front fins sit furthest from the tail and the centre fin nearest, and it stays right if an advanced override ever moves a line."
   - "svgRef/useSvgFitScale/valueFontSize were hoisted above marksWithDims (they used to sit below it) so the new label-spacing memo has the resolved numeric font size available — every hook still fires unconditionally, in the same order, on every render."
   - "Only labelY is ever rewritten by the new memo; labelX, the dimension line, the ticks and the extension lines are copied through untouched, and the Summary's compact card (whose font is a CSS variable string, not a number) is bypassed entirely."
 
@@ -142,7 +142,7 @@ coverage:
 ## Accomplishments
 
 - **`components/fins/fin-label-layout.ts`** — a pure, React-free module with no browser API. Exports `FIN_LABEL_CHAR_EM` (derived from `CALLOUT_CHAR_PX / CALLOUT_PX.name`, not a new literal), `FIN_LABEL_CLEARANCE_EM` (1.05 em minimum baseline distance — leaves 2.52 CSS px of visible air at the pinned 14px callout face), `FIN_LABEL_INK_TOP_EM`/`FIN_LABEL_INK_BOTTOM_EM` (the per-label bounds that keep a number below the fin it describes and above the tail line), `estimateFinLabelWidth`, and `layoutFinLabelBaselines` — the rule itself: two labels interact only if their estimated x-ranges overlap; a forward pass pushes each label down only as far as interacting predecessors demand (clamped to its own dimension line); a backward pass pushes back up only as far as interacting successors still demand (clamped the other way). Bounds always win over clearance, so a number is never pushed off the end of its own line. Written test-first: all nine cases in `fin-label-layout.test.ts` were committed failing (module didn't exist), then implemented and made to pass in the same commit — `npm test -- components/fins/fin-label-layout.test.ts` showed 0 tests/module-not-found before the implementation, 10 passed after.
-- **`components/fins/fin-viewer.tsx`** — every dimension (`PlainDim`/`BelowDim`/`RailVDim`) now carries a `measure: "off-tail" | "toe" | "spread" | "off-rail"` field, set at each of the five push sites in `dimsForMark`. The label render pass puts `data-fin-dim`/`data-fin-role` on every `<text>`, so a test can find a label by what it measures rather than by matching its text. A new memo (`marksWithAdjustedDims`) sits right after `marksWithDims`, bails out unchanged for the Summary's compact card (a CSS-variable font size, not a number) or when fewer than two off-tail labels exist, otherwise collects every `off-tail` dim across every fin mark, sorts front-then-rear-then-centre, and calls `layoutFinLabelBaselines`, writing back only the changed `labelY` values. Both the dimension-line render pass and the label render pass now read from this memo. Nothing else about the drawing changed: `labelX`, the dimension line coordinates, the ticks, the extension lines, `SCALE`, `ORIGIN_X`, `TAIL_Y`, and the sideways tier stagger are all bit-for-bit as they were.
+- **`components/fins/fin-viewer.tsx`** — every dimension (`PlainDim`/`BelowDim`/`RailVDim`) now carries a `measure: "off-tail" | "toe" | "spread" | "off-rail"` field, set at each of the five push sites in `dimsForMark`. The label render pass puts `data-fin-dim`/`data-fin-role` on every `<text>`, so a test can find a label by what it measures rather than by matching its text. A new memo (`marksWithAdjustedDims`) sits right after `marksWithDims`, bails out unchanged for the Summary's compact card (a CSS-variable font size, not a number) or when fewer than two off-tail labels exist, otherwise collects every `off-tail` dim across every fin mark, orders them top-to-bottom by where their dimension lines start (front, then rear, then centre on every real setup), and calls `layoutFinLabelBaselines`, writing back only the changed `labelY` values. Both the dimension-line render pass and the label render pass now read from this memo. Nothing else about the drawing changed: `labelX`, the dimension line coordinates, the ticks, the extension lines, `SCALE`, `ORIGIN_X`, `TAIL_Y`, and the sideways tier stagger are all bit-for-bit as they were.
 - **`e2e/phone-fins-labels.spec.ts`** — loads the Mid-length board (a quad with the centre fin on) through the real setup-screen flow, opens FINS, waits for the drawing's real fit scale to settle, and proves the test isn't vacuous (exactly three off-tail labels, roles `[center, front, rear]`) before measuring anything. Measures the actual drawn ink of each label with a canvas 2d context (`ctx.measureText`'s `actualBoundingBox*` fields) rather than a DOM bounding box, because a line of type's em box is taller than the letters actually drawn in it. On the two phone projects, in both Imperial and Metric, it asserts the rear and centre labels' ink keeps at least 2 real CSS px of air, that no two of the three ink boxes overlap at all, and that nothing prints past the tail line. On desktop it asserts the three labels' raw `x`/`y` attributes are pixel-identical to the pre-task measured table — the "nothing moved for a mouse" proof.
 
 ## Task Commits
@@ -197,3 +197,27 @@ Per this task's orchestrator ruling (`human_verify_mode: end-of-phase`, no inter
 ---
 *Phase: quick-260914-rj0*
 *Completed: 2026-09-14*
+
+## Orchestrator verification on the merged branch (2026-09-14)
+
+After `worktree.cleanup-wave` merged the executor's branch (`8878937`), the orchestrator applied one
+refinement the executor had missed from its rulings — the off-tail labels are handed to the rule in
+the order their own dimension lines start down the drawing, with the fin role only as a tiebreak
+(`6716979`) — and re-ran everything on the session branch `claude/heuristic-snyder-fb0d8b`:
+
+- `npm test`: 62 files, 2498 passed, 2 skipped.
+- `npx tsc --noEmit`: clean apart from the two known phantom `LayoutProps` errors.
+- `npm run lint`: 0 errors, 12 pre-existing warnings.
+- Full Playwright suite (`PW_PORT=3131 IS_WEBPACK_TEST=1 npx playwright test`, all three projects):
+  240 passed, 227 skipped, 1 failed — `e2e/phone-rails.spec.ts:324` "iPhone sideways, 844x390: the
+  drawing column scrolls…". Unrelated to this task and pre-existing in this harness: the RAILS drawing
+  column's content settles to exactly the column's own height (297px, nothing left to scroll) a moment
+  after load under the worktree's webpack dev server — measured identically with the pre-task fin
+  viewer swapped in (2 of 2 runs) and with main's five newer source files checked out (1 of 1) — so the
+  test passes only when its scroll lands before that re-layout (1 of 4 whole-file runs here). Against
+  the shaper's own Turbopack dev server on port 3000 the same column measures 1005px of content in
+  297px and scrolls to 708px, 4 of 4 runs. Inside the full run, `e2e/phone-fins-labels.spec.ts`
+  (5 passed), `e2e/desktop-baseline.spec.ts` (5 passed, no snapshot regenerated) and
+  `e2e/phone-fins-landscape.spec.ts` (2 passed) all passed.
+- Before/after evidence: the Mid-length board's fin drawing on the iPhone 14 and Pixel 7 profiles read
+  `6 1/4"5/8"` before and `12"`, `6 1/4"`, `3 5/8"` as three separate numbers after.

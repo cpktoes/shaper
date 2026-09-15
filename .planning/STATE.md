@@ -4,9 +4,9 @@ milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
 status: Awaiting next milestone
 stopped_at: Phase 10 UI-SPEC approved - ready to plan
-last_updated: "2026-09-15T02:43:24.080Z"
-last_activity: 2026-09-13
-last_activity_desc: "Completed quick task 260913-k5k: undo and redo for accidental design edits"
+last_updated: "2026-09-15T03:42:39.994Z"
+last_activity: 2026-09-14
+last_activity_desc: "Completed quick task 260914-rj0: The rear-fin and centre-fin heights on the fin drawing no longer run into each other on a phone: on the Mid-length board (a quad with the centre fin on) the rear fins' 6 1/4\" and the centre fin's 3 5/8\" printed on top of each other as one smear on a phone; each height number now slides along its own dimension line only when it would actually collide with a neighbour, never below the tail line, decided by the number's own size on the drawing and not by any screen switch, so a phone held sideways is fixed too. Nothing moves for a mouse (the desktop numbers and the five desktop screenshot baselines are unchanged), and a browser test measures the real drawn ink on an iPhone and a Pixel 7, in Imperial and Metric, and fails on the old overlap."
 progress:
   total_phases: 4
   completed_phases: 0
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 **v1.2 — Rails Finished, Phone Ready: SHIPPED 2026-09-12.** Phases 8–10 complete and verified; audit passed 18/18. Archived under .planning/milestones/ (v1.2-ROADMAP.md, v1.2-REQUIREMENTS.md, v1.2-MILESTONE-AUDIT.md, v1.2-phases/). REQUIREMENTS.md removed pending the next milestone's definition.
 
 Status: Awaiting next milestone
-Last activity: 2026-09-13 - Completed quick task 260913-k5k: undo and redo for accidental design edits
+Last activity: 2026-09-14 - Completed quick task 260914-rj0: The rear-fin and centre-fin heights on the fin drawing no longer run into each other on a phone: on the Mid-length board (a quad with the centre fin on) the rear fins' 6 1/4" and the centre fin's 3 5/8" printed on top of each other as one smear on a phone; each height number now slides along its own dimension line only when it would actually collide with a neighbour, never below the tail line, decided by the number's own size on the drawing and not by any screen switch, so a phone held sideways is fixed too. Nothing moves for a mouse (the desktop numbers and the five desktop screenshot baselines are unchanged), and a browser test measures the real drawn ink on an iPhone and a Pixel 7, in Imperial and Metric, and fails on the old overlap.
 
 ## Performance Metrics
 
@@ -270,6 +270,7 @@ Recent decisions affecting current work:
 | 104 | The Shortboard preset now also carries the shaper's own rails and fins, captured from the Rails and Fins screens' Copy preset values buttons: centre and tail rails on family 4 (nose stays 3) with a hard tail edge, and a thruster with the front fins on the basic model; the Fish, Mid-length and Longboard still carry the default rails and fins | 2026-09-14 | d376b1a | — |
 | 105 | The Fish preset is now fully shaper-captured across all five screens: a 5'8" x 20 1/4" x 2 1/2" swallow tail at 33.8 L with the widepoint 2" forward and a 10" tail block, 4 5/8" nose and 1 15/16" tail rocker, family-2 centre and tail rails with a 55/45 nose ratio, and a twin fin with the front base overridden to 5 1/2". The template suite's frozen characterisation pins now hash a fixed copy of the outlines they were pinned against instead of the live presets, and the zero-offset label tests build their coincident widepoint explicitly; only the Mid-length and Longboard still carry drafted values | 2026-09-14 | 63a1848 | — |
 | 106 | The Mid-length preset is now fully shaper-captured across all five screens: a 7'2" x 21 1/4" x 2 3/4" round tail at 48.3 L with the widepoint 2 1/2" forward, 5 3/8" nose and 2 5/16" tail rocker, family-2 nose and centre rails (50/50 nose ratio) with a family-3 tail and the deck profile eased off flat, and a quad on the basic off-rail rear model with the centre fin on and all three base lengths set by hand. The template suites' recorded planning facts and the name-block worked example now read the frozen pinned outlines (moved to a shared fixture) instead of the live presets; only the Longboard still carries drafted rocker and foil and default rails and fins | 2026-09-14 | 9b7df25 | — |
+| 260914-rj0 | The rear-fin and centre-fin heights on the fin drawing no longer run into each other on a phone: on the Mid-length board (a quad with the centre fin on) the rear fins' 6 1/4" and the centre fin's 3 5/8" printed on top of each other as one smear on a phone; each height number now slides along its own dimension line only when it would actually collide with a neighbour, never below the tail line, decided by the number's own size on the drawing and not by any screen switch, so a phone held sideways is fixed too. Nothing moves for a mouse (the desktop numbers and the five desktop screenshot baselines are unchanged), and a browser test measures the real drawn ink on an iPhone and a Pixel 7, in Imperial and Metric, and fails on the old overlap. | 2026-09-14 | 6716979 | [260914-rj0-the-rear-fin-and-centre-fin-heights-on-t](./quick/260914-rj0-the-rear-fin-and-centre-fin-heights-on-t/) |
 
 ## Deferred Items
 
