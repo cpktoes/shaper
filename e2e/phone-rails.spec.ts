@@ -106,6 +106,113 @@ function shellRoot(page: Page) {
   return page.locator("div:has(> aside):has(> main)").first();
 }
 
+const SETTLE_KEY = "__shaperRailsSettle";
+
+/**
+ * Waits until the drawing column has stopped changing shape, so anything measured after this is
+ * what a shaper is actually looking at — not the page as it briefly was before the browser took
+ * over. Two signals, in order:
+ *
+ *  1. `data-rail-plot-fit="measured"` on the plots row (rail-band-editor.tsx). The server sends
+ *     every rail plot at the 900px ceiling, so before the browser has measured anything the column
+ *     is ~1005px of drawing inside a 297px box and merely LOOKS like it scrolls. That attribute
+ *     appears only once the browser's own fit has run against a real measurement, so its presence
+ *     is the "this page is real now" signal. There is no ready-made one: `window.__NEXT_HYDRATED`
+ *     does not exist outside Next's own `__NEXT_TEST_MODE`.
+ *  2. The column's own scrollHeight/clientHeight unchanged for 10 straight animation frames. The
+ *     fit re-runs on every resize, so the first measurement is not always the last one.
+ *
+ * Deliberately no `waitForTimeout` — a sleep is the same race with a longer fuse.
+ */
+async function settledDrawingColumn(page: Page) {
+  await page.waitForFunction(
+    () => !!document.querySelector('[data-rail-plot-row="desktop"][data-rail-plot-fit="measured"]'),
+  );
+  await page.evaluate((key) => {
+    delete (window as unknown as Record<string, unknown>)[key];
+  }, SETTLE_KEY);
+  await page.waitForFunction(
+    (key) => {
+      const main = document.querySelector("main");
+      if (!main) return false;
+      const store = window as unknown as Record<
+        string,
+        { scrollHeight: number; clientHeight: number; steady: number } | undefined
+      >;
+      const last = store[key];
+      const steady =
+        last && last.scrollHeight === main.scrollHeight && last.clientHeight === main.clientHeight
+          ? last.steady + 1
+          : 0;
+      store[key] = { scrollHeight: main.scrollHeight, clientHeight: main.clientHeight, steady };
+      return steady >= 10;
+    },
+    SETTLE_KEY,
+    { polling: "raf" },
+  );
+}
+
+/** One body, two heights (see the two tests below) — so the height that still fails runs exactly
+ * the same steps as the height that passes, and fails loudly on the same precondition. */
+async function proveDrawingColumnScrolls(page: Page, viewport: { width: number; height: number }) {
+  await page.setViewportSize(viewport);
+  await page.goto("/design/rails");
+
+  const main = page.locator("main");
+  await expect(main).toBeVisible();
+  await settledDrawingColumn(page);
+
+  // Prove the test is not vacuous: three open sections really do overflow the drawing column at
+  // this height -- otherwise there is nothing here for the fix to prove itself against.
+  const metrics = await main.evaluate((el) => ({
+    scrollHeight: el.scrollHeight,
+    clientHeight: el.clientHeight,
+  }));
+  const plotWidths = await page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLElement>('[data-rail-plot-row="desktop"] > *')).map(
+      (el) => el.style.width || "(unset)",
+    ),
+  );
+  expect(
+    metrics.scrollHeight,
+    `after hydration and a settled layout at ${viewport.width}x${viewport.height}, the drawing column's content (${metrics.scrollHeight}px) fits inside the column (${metrics.clientHeight}px) — the three open rail plots were fitted to the column (wrappers ${plotWidths.join(", ")} wide), so there is nothing here for the scroll fix to prove itself against`,
+  ).toBeGreaterThan(metrics.clientHeight);
+
+  const scrollTopBefore = await main.evaluate((el) => el.scrollTop);
+  expect(scrollTopBefore).toBe(0);
+
+  const tailTitle = main.getByText("Tail", { exact: true });
+  await expect(tailTitle).toBeAttached();
+
+  const mainBoxBefore = await main.boundingBox();
+  const tailBoxBefore = await tailTitle.boundingBox();
+  if (!mainBoxBefore || !tailBoxBefore) throw new Error("missing bounding box");
+  expect(
+    tailBoxBefore.y,
+    "the Tail section is already on screen before scrolling -- this test set up nothing to prove",
+  ).toBeGreaterThanOrEqual(mainBoxBefore.y + mainBoxBefore.height - 1);
+
+  // Scroll the drawing column to its end -- the real fix under test, not a CSS class assertion.
+  await main.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  const scrollTopAfter = await main.evaluate((el) => el.scrollTop);
+  expect(scrollTopAfter, "scrolling the drawing column did not move it").toBeGreaterThan(scrollTopBefore);
+
+  // The user-visible point of the fix: the Tail section is now reachable, inside the column's own
+  // visible bounds, not still hanging off the bottom.
+  const mainBoxAfter = await main.boundingBox();
+  const tailBoxAfter = await tailTitle.boundingBox();
+  if (!mainBoxAfter || !tailBoxAfter) throw new Error("missing bounding box");
+  expect(tailBoxAfter.y, "the Tail section is still above the column's own top edge").toBeGreaterThanOrEqual(
+    mainBoxAfter.y - 1,
+  );
+  expect(
+    tailBoxAfter.y + tailBoxAfter.height,
+    "the Tail section is still below the fold after scrolling",
+  ).toBeLessThanOrEqual(mainBoxAfter.y + mainBoxAfter.height + 1);
+}
+
 test.describe("RAILS on a phone — one rail at a time, nothing scrolling sideways", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "phone-only RAILS assertions");
@@ -321,57 +428,59 @@ test.describe("RAILS held sideways — the controls stay put, same bucket as a d
   // element's own scrollHeight/clientHeight/scrollTop, never a CSS class name, and proves the
   // user-visible half of the fix too: the Tail section, pushed below the fold before scrolling,
   // is reachable after.
-  test("iPhone sideways, 844x390: the drawing column scrolls, and the Tail section it hides becomes reachable", async ({
+  //
+  // 260914-tsp: the single 844x390 test that used to live here passed only when it beat the
+  // browser to the page. The server always draws all three rail cross-sections at the solver's
+  // 900px ceiling -- before the browser has measured anything, the drawing column looks like
+  // 1005px of drawing crammed into a 297px box, and merely LOOKS like it scrolls. A beat later
+  // `rail-band-editor.tsx`'s own solver measures the real container and shrinks the plots to fit,
+  // and at 390 dots tall it shrinks them so far (three 40-dot slivers) that the column reads
+  // 297/297 with nothing left to scroll. That beat measured 250-400ms after the page's own load
+  // event on every run checked (2026-09-14); the old test's steps usually finished inside it,
+  // because `page.goto` resolves at load, not at hydration -- "usually" was the whole guarantee.
+  //
+  // The cliff, measured after hydration settles at 844 wide (main's own height is the viewport
+  // minus 93px of chrome; the plots container is main minus a further 159px):
+  //
+  //   page height | plots container | each plot wrapper  | column content / column | scrolled to
+  //   390         | 138px            | 40px                | 297 / 297                | 0
+  //   353         | 101px            | 1px                 | 260 / 260                | 0
+  //   352         | 100px            | 416px (full width)  | 554 / 259                | 295
+  //   340         | 88px             | 416px (full width)  | 554 / 247                | 307
+  //
+  // The cliff sits exactly where the plots container is no taller than the three section titles'
+  // own chrome (100px): at or below it the solver has no height left to shrink into and falls back
+  // to drawing the plots full width, so the column genuinely overflows and scrolls. Above it the
+  // plots shrink continuously -- 1px at 353, all the way down to 40px at 390.
+  //
+  // Where 340 comes from: a real iPhone 14 held sideways is about 844 dots across (measured
+  // 2026-09-11, recorded in CLAUDE.md's Layout section, which also warns that a test tool's own
+  // emulated 750 is not real hardware). Safari's own landscape toolbar leaves the page about 340
+  // dots tall -- the same height Playwright's own "iPhone 14 landscape" device descriptor uses.
+  // The founder's own sideways sweep bounds it independently: with two sections open the chrome is
+  // only 64px so the plots still fit small, but with three it is 100px, the plots go full width,
+  // and -- before the 09-12 fix -- nothing scrolled (10-SWEEP-2.md). That is only true between
+  // roughly 316 and 352 dots tall. 390 is the SAME phone with the toolbar hidden, which the app's
+  // own Hide Toolbar tip invites a shaper to do.
+  test("iPhone sideways with Safari's bar showing, 844x340: the drawing column scrolls, and the Tail section it hides becomes reachable", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "a real iPhone's sideways measurement is WebKit-specific");
-    await page.setViewportSize({ width: 844, height: 390 });
-    await page.goto("/design/rails");
+    await proveDrawingColumnScrolls(page, { width: 844, height: 340 });
+  });
 
-    const main = page.locator("main");
-    await expect(main).toBeVisible();
-
-    // Prove the test is not vacuous: at this real height, three open sections really do overflow
-    // the drawing column -- otherwise there is nothing here for the fix to prove itself against.
-    const metrics = await main.evaluate((el) => ({ scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }));
-    expect(
-      metrics.scrollHeight,
-      "nothing overflows the drawing column at this height -- this test has nothing to prove the fix against",
-    ).toBeGreaterThan(metrics.clientHeight);
-
-    const scrollTopBefore = await main.evaluate((el) => el.scrollTop);
-    expect(scrollTopBefore).toBe(0);
-
-    const tailTitle = main.getByText("Tail", { exact: true });
-    await expect(tailTitle).toBeAttached();
-
-    const mainBoxBefore = await main.boundingBox();
-    const tailBoxBefore = await tailTitle.boundingBox();
-    if (!mainBoxBefore || !tailBoxBefore) throw new Error("missing bounding box");
-    expect(
-      tailBoxBefore.y,
-      "the Tail section is already on screen before scrolling -- this test set up nothing to prove",
-    ).toBeGreaterThanOrEqual(mainBoxBefore.y + mainBoxBefore.height - 1);
-
-    // Scroll the drawing column to its end -- the real fix under test, not a CSS class assertion.
-    await main.evaluate((el) => {
-      el.scrollTop = el.scrollHeight;
-    });
-    const scrollTopAfter = await main.evaluate((el) => el.scrollTop);
-    expect(scrollTopAfter, "scrolling the drawing column did not move it").toBeGreaterThan(scrollTopBefore);
-
-    // The user-visible point of the fix: the Tail section is now reachable, inside the column's
-    // own visible bounds, not still hanging off the bottom.
-    const mainBoxAfter = await main.boundingBox();
-    const tailBoxAfter = await tailTitle.boundingBox();
-    if (!mainBoxAfter || !tailBoxAfter) throw new Error("missing bounding box");
-    expect(tailBoxAfter.y, "the Tail section is still above the column's own top edge").toBeGreaterThanOrEqual(
-      mainBoxAfter.y - 1,
+  test("iPhone sideways with the toolbar hidden, 844x390: the three open plots collapse to slivers, so there is nothing to scroll (known, expected to fail)", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "a real iPhone's sideways measurement is WebKit-specific");
+    test.fail(
+      true,
+      "at 844x390 the rail plot fit shrinks all three open plots to 40px slivers, so the drawing " +
+        "column has nothing left to scroll. The day the plot fit stops shrinking this far on a " +
+        'short screen, Playwright will report "Expected to fail, but passed." -- at which point ' +
+        "this test.fail should be deleted, turning this into the 390 proof.",
     );
-    expect(
-      tailBoxAfter.y + tailBoxAfter.height,
-      "the Tail section is still below the fold after scrolling",
-    ).toBeLessThanOrEqual(mainBoxAfter.y + mainBoxAfter.height + 1);
+    await proveDrawingColumnScrolls(page, { width: 844, height: 390 });
   });
 });
 

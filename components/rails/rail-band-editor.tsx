@@ -123,6 +123,7 @@ export function RailBandEditor() {
   const plotsContainerRef = useRef<HTMLDivElement | null>(null);
   const titleRefs = useRef<Partial<Record<RailSectionKey, HTMLDivElement | null>>>({});
   const [plotWidth, setPlotWidth] = useState(MAX_PLOT_W);
+  const [plotFitMeasured, setPlotFitMeasured] = useState(false);
 
   // Solves for the single width every open plot renders at. Re-measures the actual title heights
   // and inter-section gap (rather than hardcoding them) so a font or spacing change can't silently
@@ -159,6 +160,7 @@ export function RailBandEditor() {
       // sub-pixel stack overflow; rounding down cannot.
       const solvedWidth = widthFromHeight > 0 ? Math.floor(Math.min(containerWidth, MAX_PLOT_W, widthFromHeight)) : Math.floor(Math.min(containerWidth, MAX_PLOT_W));
       setPlotWidth(Number.isFinite(solvedWidth) && solvedWidth > 0 ? solvedWidth : Math.floor(Math.min(containerWidth, MAX_PLOT_W)));
+      setPlotFitMeasured(true);
     };
 
     recompute();
@@ -261,6 +263,17 @@ export function RailBandEditor() {
             <div
               ref={plotsContainerRef}
               data-rail-plot-row="desktop"
+              // `data-rail-plot-fit` is a test-only, pixel-inert Playwright locator, the same
+              // idiom as `data-design-controls-scroll` (design-screen-shell.tsx). The server
+              // always sends these plots at the solver's `MAX_PLOT_W` ceiling -- only the
+              // browser's own measurement above (`recompute`) decides their real size, so a test
+              // that measures this column before this attribute appears is measuring a page no
+              // shaper ever sees. It is set only on the real-measurement path, never on the
+              // degenerate early return (initial paint before layout, or a hidden/zero-size
+              // pane -- a portrait phone's desktop plots row is `max-shell:hidden` and never
+              // measures anything), so its presence means "the browser measured this container",
+              // not merely "this effect ran". Once true it stays true.
+              data-rail-plot-fit={plotFitMeasured ? "measured" : undefined}
               className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 max-shell:hidden"
             >
               {openSections.map((key) => (
