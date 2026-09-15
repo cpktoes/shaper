@@ -2,11 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
-status: Awaiting next milestone
+status: "Awaiting next milestone — quick task 260914-rj0 shipped as PR #1"
 stopped_at: Phase 10 UI-SPEC approved - ready to plan
-last_updated: "2026-09-15T03:09:09.624Z"
-last_activity: 2026-09-13
-last_activity_desc: "Completed quick task 260913-k5k: undo and redo for accidental design edits"
+last_updated: "2026-09-15T04:17:11.377Z"
+last_activity: 2026-09-14
 current_phase: 10
 current_phase_name: the-whole-app-on-a-phone
 progress:
@@ -15,6 +14,7 @@ progress:
   total_plans: 0
   completed_plans: 0
   percent: 0
+last_activity_desc: "Completed quick task 260914-rj0: The rear-fin and centre-fin heights on the fin drawing no longer run into each other on a phone: on the Mid-length board (a quad with the centre fin on) the rear fins' 6 1/4\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\" and the centre fin's 3 5/8\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\" printed on top of each other as one smear on a phone; each height number now slides along its own dimension line only when it would actually collide with a neighbour, never below the tail line, decided by the number's own size on the drawing and not by any screen switch, so a phone held sideways is fixed too. Nothing moves for a mouse (the desktop numbers and the five desktop screenshot baselines are unchanged), and a browser test measures the real drawn ink on an iPhone and a Pixel 7, in Imperial and Metric, and fails on the old overlap."
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 
 **v1.2 — Rails Finished, Phone Ready: SHIPPED 2026-09-12.** Phases 8–10 complete and verified; audit passed 18/18. Archived under .planning/milestones/ (v1.2-ROADMAP.md, v1.2-REQUIREMENTS.md, v1.2-MILESTONE-AUDIT.md, v1.2-phases/). REQUIREMENTS.md removed pending the next milestone's definition.
 
-Status: Awaiting next milestone
+Status: Awaiting next milestone — quick task 260914-rj0 shipped as PR #1; 260914-tsp and 260914-v2v landed on main
 Last activity: 2026-09-14 - Completed quick task 260914-v2v: on a phone held sideways the rail plots take the drawing column's width and the column scrolls
 
 ## Performance Metrics
@@ -266,6 +266,7 @@ Recent decisions affecting current work:
 | 106 | The Mid-length preset is now fully shaper-captured across all five screens: a 7'2" x 21 1/4" x 2 3/4" round tail at 48.3 L with the widepoint 2 1/2" forward, 5 3/8" nose and 2 5/16" tail rocker, family-2 nose and centre rails (50/50 nose ratio) with a family-3 tail and the deck profile eased off flat, and a quad on the basic off-rail rear model with the centre fin on and all three base lengths set by hand. The template suites' recorded planning facts and the name-block worked example now read the frozen pinned outlines (moved to a shared fixture) instead of the live presets; only the Longboard still carries drafted rocker and foil and default rails and fins | 2026-09-14 | 9b7df25 | — |
 | 107 | The Longboard preset is now fully shaper-captured across all five screens, completing the set: a 9'0" x 22 1/2" x 3" squash tail at 71.0 L with the widepoint 3 1/2" forward, 4 5/16" nose and 3 1/4" tail rocker, symmetrical 50/50 rails on family 3 with a 45/55 family-4 tail and no hard edge, and a single fin. Its wide point lands 0.3 mm inside a Paper Saver page's top edge, which exposed a strip label that would have printed past the page: a mark's label on the Paper Saver now flips below its tick when the label above would leave the page, the same inward flip the registration labels already had, and the frozen strip digests prove nothing else moved | 2026-09-14 | a99aace | — |
 | 108 | The dev-only Copy preset values buttons on TEMPLATE, ROCKER, RAILS and FINS now copy the exact sixteenth a slider is set to (2 1/16" copies as 2.0625, not the 2.063 that made the Shortboard capture need hand-correcting), using the fewest decimals that give back the stored number; the four screens share one tested printer, lib/geometry/preset-source.ts, and nothing on screen changes | 2026-09-14 | 96cfab2 | — |
+| 260914-rj0 | The rear-fin and centre-fin heights on the fin drawing no longer run into each other on a phone: on the Mid-length board (a quad with the centre fin on) the rear fins' 6 1/4" and the centre fin's 3 5/8" printed on top of each other as one smear on a phone; each height number now slides along its own dimension line only when it would actually collide with a neighbour, never below the tail line, decided by the number's own size on the drawing and not by any screen switch, so a phone held sideways is fixed too. Nothing moves for a mouse (the desktop numbers and the five desktop screenshot baselines are unchanged), and a browser test measures the real drawn ink on an iPhone and a Pixel 7, in Imperial and Metric, and fails on the old overlap. | 2026-09-14 | 6716979 | [260914-rj0-the-rear-fin-and-centre-fin-heights-on-t](./quick/260914-rj0-the-rear-fin-and-centre-fin-heights-on-t/) |
 | 260914-tsp | The RAILS held-sideways browser test no longer passes by racing the page: it waits for the drawing to settle, proves the scroll at a real iPhone's sideways height with Safari's bar showing (844x340), and records the plot collapse at the full 390 dots as a known, expected failure - nothing a shaper sees changed | 2026-09-14 | 2aee827 | [260914-tsp-the-rails-held-sideways-browser-test-no-](./quick/260914-tsp-the-rails-held-sideways-browser-test-no-/) |
 | 260914-v2v | On a phone held sideways the rail cross-sections now take the drawing column's full width and the column scrolls, instead of shrinking to fit the screen's height (416 dots wide on a real iPhone, up from 40-dot slivers), and the coloured key sits under the last plot instead of over it; closing a section keeps the rest full width; nothing changes on a computer - the founder's own choice from four measured fitting rules | 2026-09-14 | 05c1ae1 | [260914-v2v-on-a-phone-held-sideways-the-rail-cross-](./quick/260914-v2v-on-a-phone-held-sideways-the-rail-cross-/) |
 
