@@ -55,6 +55,11 @@
  * on the Rails screen (components/rails/rail-band-editor.tsx) and Fins
  * screen (components/fins/fin-placement-editor.tsx), in a follow-up session.
  *
+ * Shortboard rails/fins captured (2026-09-14): the `shortboard` block's `rails` and `fins` now
+ * carry the founder's own values from exactly those two capture affordances, so the "all four
+ * presets" in the paragraph above now means the other three — `fish`, `midlength` and
+ * `longboard` still carry the two defaults verbatim.
+ *
  * Any future change to any preset field should go through the matching
  * capture loop rather than being hand-edited. Every length/width/offset is
  * authored via `inchesToMm()` and every angle via `degrees()` — never a bare
@@ -127,8 +132,76 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
       tail12: inchesToMm(1.5625),
       tailTip: inchesToMm(0.9375),
     },
-    rails: DEFAULT_RAIL_BAND_SPEC,
-    fins: DEFAULT_FIN_PLACEMENT_SPEC,
+    // Shaper-captured 2026-09-14 from the Rails and Fins screens' development-only "Copy preset
+    // values" buttons, pasted in wholesale: centre and tail rails on family 4 (nose stays 3), the
+    // front fins on the basic model, everything else the prototype's own defaults. Both buttons
+    // read back the RAW stored spec, so the rail thicknesses (1.31/2.5/1.56) and the fins' 72"
+    // board / 13" tail here are the fallbacks a shaper only sees after switching off the Rails
+    // screen's foil-thickness link or the Fins screen's template link (both on by default, and
+    // `applyPreset` resets them on) — while linked, thickness comes from this foil and board
+    // length / tail width from this outline.
+    rails: {
+      nose: {
+        boardThickness: inchesToMm(1.31),
+        deckPercent: 100,
+        family: 3,
+        ratioTopPercent: 60,
+        symmetrical: false,
+        cornerCutOffsetOverride: null,
+        removeCornerCut: false,
+        singleTuck: false,
+        bottomTuck3Override: null,
+      },
+      center: {
+        boardThickness: inchesToMm(2.5),
+        deckPercent: 100,
+        family: 4,
+        ratioTopPercent: 60,
+        symmetrical: false,
+        cornerCutOffsetOverride: null,
+        removeCornerCut: false,
+        singleTuck: false,
+        bottomTuck3Override: null,
+      },
+      tail: {
+        boardThickness: inchesToMm(1.56),
+        deckPercent: 100,
+        family: 4,
+        ratioTopPercent: 60,
+        symmetrical: false,
+        cornerCutOffsetOverride: null,
+        removeCornerCut: false,
+        singleTuck: false,
+        bottomTuck3Override: null,
+      },
+      tailHardEdge: true,
+    },
+    fins: {
+      boardLength: inchesToMm(72),
+      tailWidth12: inchesToMm(13),
+      tailShape: "squash",
+      finSetup: "thruster",
+      frontModel: "basic",
+      quadRearModel: "mckeeSB",
+      twinTemplate: "upright",
+      quadCenterFinOn: false,
+      advanced: {
+        baseLenForward: inchesToMm(4.5),
+        baseLenForwardOverridden: false,
+        baseLenRear: inchesToMm(4.5),
+        baseLenRearOverridden: false,
+        baseLenCenter: inchesToMm(4.5),
+        baseLenCenterOverridden: false,
+        centerPositionOffset: inchesToMm(0),
+        forwardPositionOffset: inchesToMm(0),
+        forwardToeOverride: null,
+        rearPositionOffset: inchesToMm(0),
+        rearToeOverride: null,
+        quadRearOffRailOverride: null,
+        quadRearOffTailOverride: null,
+        quadRearOffTailOverridden: false,
+      },
+    },
   },
   {
     id: "fish",

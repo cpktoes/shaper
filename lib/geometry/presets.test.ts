@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_FIN_PLACEMENT_SPEC } from "./fins";
+import { computeFinPlacement, DEFAULT_FIN_PLACEMENT_SPEC } from "./fins";
 import { FOIL_THICKNESS_RANGE_IN, sampleFoil } from "./foil";
 import { buildOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
@@ -106,13 +106,38 @@ describe("BOARD_PRESETS", () => {
     expect(preset.descriptor.length).toBeGreaterThan(0);
   });
 
-  it.each(BOARD_PRESETS)("$id: carries a complete, structurally valid rails spec", (preset) => {
-    expect(preset.rails).toEqual(DEFAULT_RAIL_BAND_SPEC);
+  it.each(BOARD_PRESETS)("$id: carries a complete rails spec the rail-band calculator accepts", (preset) => {
+    for (const key of ["nose", "center", "tail"] as const) {
+      const section = preset.rails[key];
+      expect(Number.isFinite(section.boardThickness)).toBe(true);
+      expect(section.boardThickness).toBeGreaterThan(0);
+      expect([1, 2, 3, 4, 5]).toContain(section.family);
+      expect(Number.isFinite(section.deckPercent)).toBe(true);
+      expect(Number.isFinite(section.ratioTopPercent)).toBe(true);
+    }
+    expect(typeof preset.rails.tailHardEdge).toBe("boolean");
     expect(() => computeRailBands(preset.rails)).not.toThrow();
   });
 
-  it.each(BOARD_PRESETS)("$id: carries a complete, structurally valid fins spec", (preset) => {
-    expect(preset.fins).toEqual(DEFAULT_FIN_PLACEMENT_SPEC);
+  it.each(BOARD_PRESETS)("$id: carries a complete fins spec the fin-placement calculator accepts", (preset) => {
+    expect(Number.isFinite(preset.fins.boardLength)).toBe(true);
+    expect(Number.isFinite(preset.fins.tailWidth12)).toBe(true);
+    expect(() => computeFinPlacement(preset.fins)).not.toThrow();
+  });
+
+  it("rails and fins tuning status: the Shortboard's are shaper-captured, the other three still carry the defaults verbatim", () => {
+    const shortboard = BOARD_PRESETS.find((p) => p.id === "shortboard")!;
+    // Captured 2026-09-14: centre and tail rails on family 4 (nose stays 3), front fins on the
+    // basic model — see the block's own comment in presets.ts.
+    expect(shortboard.rails.nose.family).toBe(3);
+    expect(shortboard.rails.center.family).toBe(4);
+    expect(shortboard.rails.tail.family).toBe(4);
+    expect(shortboard.fins.frontModel).toBe("basic");
+    for (const id of ["fish", "midlength", "longboard"] as const) {
+      const preset = BOARD_PRESETS.find((p) => p.id === id)!;
+      expect(preset.rails).toEqual(DEFAULT_RAIL_BAND_SPEC);
+      expect(preset.fins).toEqual(DEFAULT_FIN_PLACEMENT_SPEC);
+    }
   });
 
   it.each(BOARD_PRESETS)("$id: carries a rocker with all eight fields and a foil with all five thickness keys, each finite", (preset) => {
