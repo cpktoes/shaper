@@ -257,12 +257,14 @@ describe(
       expect(byLabel['TAIL @ 12"'].secondaryLabel).toBeUndefined();
     });
 
-    it("merges into one WIDEPOINT / CENTER line when the offset is zero (fish preset)", () => {
-      const options = buildOptions("letter", 1); // fish preset: widePointOffset 0
-      expect(options.outline.widePointOffset).toBe(0);
-      const lines = overviewStationLines(options.geometry, "imperial");
+    it("merges into one WIDEPOINT / CENTER line when the offset is zero (fish outline with the offset zeroed)", () => {
+      // A coincident widepoint is constructed, not read off a preset — the Fish's own offset is 2in
+      // since its 2026-09-14 capture.
+      const geometry = buildOutline({ ...BOARD_PRESETS[1].outline, widePointOffset: mm(0) });
+      expect(geometry.widePointStation).toBe(mm(geometry.length / 2));
+      const lines = overviewStationLines(geometry, "imperial");
       expect(lines.map((l) => l.label)).toEqual(['NOSE @ 12"', "WIDEPOINT / CENTER", 'TAIL @ 12"']);
-      expect(lines[1].station).toBe(options.geometry.widePointStation);
+      expect(lines[1].station).toBe(geometry.widePointStation);
       expect(lines[1].secondaryLabel).toBeUndefined();
     });
 
@@ -271,7 +273,7 @@ describe(
       // tiny amount; deciding the merge from the raw float (rather than the printed magnitude)
       // used to leave WIDEPOINT and CENTER as two separate lines with a nonsensical
       // "WP OFFSET — 0\" forward" secondary label.
-      const preset = BOARD_PRESETS[1]; // fish preset: widePointOffset 0
+      const preset = BOARD_PRESETS[1]; // fish outline — the offset is set explicitly below
       const geometry = buildOutline({ ...preset.outline, widePointOffset: inchesToMm(0.015625) });
       const lines = overviewStationLines(geometry, "imperial");
       expect(lines.map((l) => l.label)).toEqual(['NOSE @ 12"', "WIDEPOINT / CENTER", 'TAIL @ 12"']);
@@ -306,9 +308,9 @@ describe(
       expect(metricLines.map((l) => l.station)).toEqual(imperialLines.map((l) => l.station));
     });
 
-    it("merges into one WIDEPOINT / CENTER line on Metric when the offset is zero (fish preset)", () => {
-      const options = buildOptions("letter", 1, "metric"); // fish preset: widePointOffset 0
-      const lines = overviewStationLines(options.geometry, "metric");
+    it("merges into one WIDEPOINT / CENTER line on Metric when the offset is zero (fish outline with the offset zeroed)", () => {
+      const geometry = buildOutline({ ...BOARD_PRESETS[1].outline, widePointOffset: mm(0) });
+      const lines = overviewStationLines(geometry, "metric");
       expect(lines.map((l) => l.label)).toEqual([`NOSE @ ${stationLabel("metric")}`, "WIDEPOINT / CENTER", `TAIL @ ${stationLabel("metric")}`]);
       expect(lines[1].secondaryLabel).toBeUndefined();
     });
@@ -336,7 +338,7 @@ describe(
       }
       expect(boundaryOffsetMm).not.toBeNull();
 
-      const preset = BOARD_PRESETS[1]; // fish preset: widePointOffset 0, so the boundary offset is the whole story
+      const preset = BOARD_PRESETS[1]; // fish outline — the offset is set explicitly below, so the boundary offset is the whole story
       const geometry = buildOutline({ ...preset.outline, widePointOffset: mm(boundaryOffsetMm as number) });
 
       const imperialLines = overviewStationLines(geometry, "imperial");

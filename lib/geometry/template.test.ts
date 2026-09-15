@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { BOARD_LENGTH_RANGE_IN, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
+import { BOARD_LENGTH_RANGE_IN, type OutlineSpec, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
 import { MEASURE_STATION_MM, buildOutline, type OutlineGeometry, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import {
@@ -79,6 +79,76 @@ function overlapLength(aRange: [number, number], bRange: [number, number]): numb
  * rubber-stamped digest. See `design_decision` §1 of that task's plan for the full ruling: split
  * the proof from the pin, then recapture, never overwrite on trust.
  */
+/**
+ * The four presets' outlines exactly as they were when the three characterisation pins below were
+ * recorded (quick tasks 260902-cj5, 260902-kon and 260903-18d). `BOARD_PRESETS` is live
+ * shaper-tuned data — the Fish outline was recaptured from the live editor on 2026-09-14 — and a
+ * preset capture is a data change, not a code change, so it must never feed a frozen pin: these
+ * pins exist to prove the CODE's output for a fixed input has not moved. Frozen, never edit.
+ */
+const PINNED_PRESET_OUTLINES: readonly { id: string; outline: OutlineSpec }[] = [
+  {
+    id: "shortboard",
+    outline: {
+      length: inchesToMm(74),
+      widePointWidth: inchesToMm(18.75),
+      widePointOffset: inchesToMm(-1),
+      tailRailLength: 50,
+      noseRailLength: 50,
+      noseAngle: degrees(50),
+      noseFullness: 20,
+      tailAngle: degrees(55),
+      tailFullness: 45,
+      tail: { kind: "squash", endWidth: inchesToMm(4) },
+    },
+  },
+  {
+    id: "fish",
+    outline: {
+      length: inchesToMm(66),
+      widePointWidth: inchesToMm(20.5),
+      widePointOffset: inchesToMm(0),
+      tailRailLength: 60,
+      noseRailLength: 60,
+      noseAngle: degrees(70),
+      noseFullness: 55,
+      tailAngle: degrees(35),
+      tailFullness: 15,
+      tail: { kind: "swallow", endWidth: inchesToMm(9), crotchDepth: inchesToMm(2.5) },
+    },
+  },
+  {
+    id: "midlength",
+    outline: {
+      length: inchesToMm(84),
+      widePointWidth: inchesToMm(21),
+      widePointOffset: inchesToMm(3.5),
+      tailRailLength: 55,
+      noseRailLength: 55,
+      noseAngle: degrees(65),
+      noseFullness: 45,
+      tailAngle: degrees(90),
+      tailFullness: 64.5,
+      tail: { kind: "round" },
+    },
+  },
+  {
+    id: "longboard",
+    outline: {
+      length: inchesToMm(108),
+      widePointWidth: inchesToMm(22.5),
+      widePointOffset: inchesToMm(8),
+      tailRailLength: 50,
+      noseRailLength: 50,
+      noseAngle: degrees(90),
+      noseFullness: 90,
+      tailAngle: degrees(30),
+      tailFullness: 53.5,
+      tail: { kind: "squash", endWidth: inchesToMm(8) },
+    },
+  },
+];
+
 describe("existing tile-grid output is unchanged by the strip work (characterisation pin, quick task 260902-cj5 — frozen, never edit)", () => {
   const EXPECTED_TILE_GRID_DIGESTS: Record<string, string> = {
     "shortboard-letter": "3cbffdc1fc29fa49",
@@ -92,7 +162,7 @@ describe("existing tile-grid output is unchanged by the strip work (characterisa
   };
 
   for (const paper of PAPERS) {
-    it.each(BOARD_PRESETS)(`$id (${paper}): tile-grid digest matches the pinned value`, (preset) => {
+    it.each(PINNED_PRESET_OUTLINES)(`$id (${paper}): tile-grid digest matches the pinned value`, (preset) => {
       const geometry = buildOutline(preset.outline);
       const layout = computeTemplateLayout(geometry, paper);
       const marks = computeTemplateMarks(geometry);
@@ -162,7 +232,7 @@ describe(
     };
 
     for (const paper of PAPERS) {
-      it.each(BOARD_PRESETS)(`$id (${paper}): seven-function tile-grid digest matches the pinned value`, (preset) => {
+      it.each(PINNED_PRESET_OUTLINES)(`$id (${paper}): seven-function tile-grid digest matches the pinned value`, (preset) => {
         const geometry = buildOutline(preset.outline);
         const layout = computeTemplateLayout(geometry, paper);
         const marks = computeTemplateMarks(geometry);
@@ -246,7 +316,7 @@ describe("Paper Saver strip output is unchanged by the name-block move (characte
   };
 
   for (const paper of PAPERS) {
-    it.each(BOARD_PRESETS)(`$id (${paper}): strip digest matches the pinned value`, (preset) => {
+    it.each(PINNED_PRESET_OUTLINES)(`$id (${paper}): strip digest matches the pinned value`, (preset) => {
       const geometry = buildOutline(preset.outline);
       const layout = computeStripLayout(geometry, paper);
       const marks = computeTemplateMarks(geometry);
@@ -272,7 +342,7 @@ describe("Paper Saver strip output is unchanged by the name-block move (characte
       expect(digest).toBe(EXPECTED_STRIP_DIGESTS[key]);
     });
 
-    it.each(BOARD_PRESETS)(
+    it.each(PINNED_PRESET_OUTLINES)(
       `$id (${paper}): the 2in scale square's topStation and halfWidthStart are the founder's locked constraint — literal numbers, not a digest`,
       (preset) => {
         const geometry = buildOutline(preset.outline);
@@ -538,9 +608,10 @@ describe("markPlacements", () => {
         );
       });
 
-      it("coincident (fish preset, 0in offset): merges into a single 'Widepoint / Center' placement, dropping the separate widepoint entry", () => {
-        const preset = BOARD_PRESETS[1]; // fish — widePointOffset 0in
-        const geometry = buildOutline(preset.outline);
+      it("coincident (fish outline with the offset zeroed): merges into a single 'Widepoint / Center' placement, dropping the separate widepoint entry", () => {
+        // A coincident widepoint is constructed, not read off a preset — the Fish's own offset is
+        // 2in since its 2026-09-14 capture.
+        const geometry = buildOutline({ ...BOARD_PRESETS[1].outline, widePointOffset: mm(0) });
         expect(geometry.widePointStation).toBe(mm(geometry.length / 2));
 
         const layout = computeTemplateLayout(geometry, "letter");
@@ -596,7 +667,7 @@ describe(
     });
 
     it('swallow (fish preset): the notch point sits FORWARD of the corner (station 0) — "cut back toward the nose at the stringer"', () => {
-      const geometry = buildOutline(BOARD_PRESETS[1].outline); // fish — swallow, crotchDepth 2.5in
+      const geometry = buildOutline(BOARD_PRESETS[1].outline); // fish — swallow, crotchDepth 2.75in
       expect(geometry.centreCloseStation).toBeGreaterThan(0);
       const closure = computeTailClosure(geometry)!;
       expect(closure).toBeDefined();

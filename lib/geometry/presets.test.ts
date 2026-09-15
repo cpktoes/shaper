@@ -125,7 +125,7 @@ describe("BOARD_PRESETS", () => {
     expect(() => computeFinPlacement(preset.fins)).not.toThrow();
   });
 
-  it("rails and fins tuning status: the Shortboard's are shaper-captured, the other three still carry the defaults verbatim", () => {
+  it("rails and fins tuning status: the Shortboard's and Fish's are shaper-captured, the other two still carry the defaults verbatim", () => {
     const shortboard = BOARD_PRESETS.find((p) => p.id === "shortboard")!;
     // Captured 2026-09-14: centre and tail rails on family 4 (nose stays 3), front fins on the
     // basic model — see the block's own comment in presets.ts.
@@ -133,7 +133,15 @@ describe("BOARD_PRESETS", () => {
     expect(shortboard.rails.center.family).toBe(4);
     expect(shortboard.rails.tail.family).toBe(4);
     expect(shortboard.fins.frontModel).toBe("basic");
-    for (const id of ["fish", "midlength", "longboard"] as const) {
+    const fish = BOARD_PRESETS.find((p) => p.id === "fish")!;
+    // Captured 2026-09-14: nose ratio 55, centre and tail rails on family 2, a twin with the front
+    // base length overridden to 5 1/2".
+    expect(fish.rails.nose.ratioTopPercent).toBe(55);
+    expect(fish.rails.center.family).toBe(2);
+    expect(fish.rails.tail.family).toBe(2);
+    expect(fish.fins.finSetup).toBe("twin");
+    expect(fish.fins.advanced.baseLenForwardOverridden).toBe(true);
+    for (const id of ["midlength", "longboard"] as const) {
       const preset = BOARD_PRESETS.find((p) => p.id === id)!;
       expect(preset.rails).toEqual(DEFAULT_RAIL_BAND_SPEC);
       expect(preset.fins).toEqual(DEFAULT_FIN_PLACEMENT_SPEC);
@@ -260,7 +268,8 @@ describe("BOARD_PRESETS", () => {
         // Shaper-captured 2026-09-14, not solved against a prior pair: the captured curve's own
         // derived figures, as its block comment records them.
         shortboard: { nose12: 1.8, tail12: 0.94 },
-        fish: { nose12: 1.0, tail12: 0.3 },
+        // Likewise shaper-captured 2026-09-14.
+        fish: { nose12: 1.4, tail12: 0.66 },
         midlength: { nose12: 1.25, tail12: 0.4 },
         longboard: { nose12: 1.5, tail12: 0.35 },
       };

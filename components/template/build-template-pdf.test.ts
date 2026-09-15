@@ -535,9 +535,10 @@ describe(
       expect(rectsOverlap(centerRect, widepointRect)).toBe(false);
     });
 
-    it("coincident (fish preset): only one merged rect is ever drawn — there is no second label to overlap it", () => {
-      const preset = BOARD_PRESETS[1]; // fish — widePointOffset 0in
-      const geometry = buildOutline(preset.outline);
+    it("coincident (fish outline with the offset zeroed): only one merged rect is ever drawn — there is no second label to overlap it", () => {
+      // A coincident widepoint is constructed, not read off a preset — the Fish's own offset is 2in
+      // since its 2026-09-14 capture.
+      const geometry = buildOutline({ ...BOARD_PRESETS[1].outline, widePointOffset: inchesToMm(0) });
       const layout = computeTemplateLayout(geometry, "letter");
       const marks = computeTemplateMarks(geometry);
       const placements = markPlacements(layout, marks, geometry);
