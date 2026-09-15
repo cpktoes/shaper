@@ -258,9 +258,15 @@ export function RailBandEditor() {
           ]}
           active={activePage}
           onSelect={setActivePage}
+          // 260914-v2v: RAILS is the only screen whose drawing (three stacked rail cross-sections)
+          // can run taller than a sideways phone's own 340-390dvh -- growOnShortScreen lets both
+          // card layers grow with that content on a short screen instead of clipping it, so the
+          // key row lands under the plots and the drawing column scrolls one whole card rather
+          // than the content spilling past two borders.
+          growOnShortScreen
         >
         {activePage === "viewer" && (
-          <div className="relative flex min-h-0 flex-1 flex-col">
+          <div className="relative flex min-h-0 flex-1 flex-col [@media(max-height:500px)]:flex-none">
             <ViewerToolbar>
               <ViewerToolbarButton label="View Full Sized" onClick={() => setViewFullSizedOpen(true)}>
                 <Maximize2Icon className="size-6" />
@@ -287,7 +293,7 @@ export function RailBandEditor() {
               // measures anything), so its presence means "the browser measured this container",
               // not merely "this effect ran". Once true it stays true.
               data-rail-plot-fit={plotFitMeasured ? "measured" : undefined}
-              className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 max-shell:hidden"
+              className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 max-shell:hidden [@media(max-height:500px)]:flex-none"
             >
               {openSections.map((key) => (
                 <div key={key} className="flex flex-none flex-col items-center" style={{ width: plotWidth }}>
