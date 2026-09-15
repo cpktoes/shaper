@@ -485,17 +485,27 @@ export function FinViewer({
       markIndex: number;
       dimIndex: number;
       role: FinRole;
+      /** The top of this label's own dimension line — the drawing's true reading order. */
+      lineTop: number;
     }
     const entries: OffTailEntry[] = [];
     marksWithDims.forEach(({ geom, dims }, markIndex) => {
       dims.forEach((d, dimIndex) => {
-        if (d.kind === "plain") entries.push({ markIndex, dimIndex, role: geom.mark.role });
+        if (d.kind === "plain") {
+          entries.push({ markIndex, dimIndex, role: geom.mark.role, lineTop: Math.min(d.y1, d.y2) });
+        }
       });
     });
 
     if (entries.length < 2) return marksWithDims;
 
-    entries.sort((a, b) => FIN_ROLE_LABEL_RANK[a.role] - FIN_ROLE_LABEL_RANK[b.role]);
+    // Read down the page in the order the dimension lines start (top first) — the drawing's own
+    // order — with the fin role (front, rear, centre) only as a tiebreak. For every real fin setup
+    // that is the same order, because the front fins sit furthest from the tail and the centre fin
+    // nearest, and it stays right if an advanced override ever moves a line.
+    entries.sort(
+      (a, b) => a.lineTop - b.lineTop || FIN_ROLE_LABEL_RANK[a.role] - FIN_ROLE_LABEL_RANK[b.role],
+    );
 
     const boxes: FinLabelBox[] = entries.map(({ markIndex, dimIndex }) => {
       const d = marksWithDims[markIndex]!.dims[dimIndex] as PlainDim;
