@@ -131,6 +131,17 @@ export function RailBandEditor() {
   // thickness change alters a plot's natural viewBox height (sumOfVbH), or the VIEWER/DATA tab
   // switch mounts a fresh container node (the plots container unmounts on the DATA tab, so the
   // previous ResizeObserver's node goes stale and must be re-attached on return to VIEWER).
+  //
+  // 260914-v2v (the founder's decision, 2026-09-14, chosen from four fitting rules built and
+  // measured side by side): when the drawing column is allowed to scroll, the plots are no longer
+  // fitted to its height at all -- they are drawn at its WIDTH instead, and the column scrolls to
+  // reach whatever doesn't fit. That reads the column's own scroll setting (`overflow-y` on the
+  // `<main>` this container sits inside), not a repeated 500-dot height check -- the cutoff for
+  // when a drawing column may scroll lives in one place, in `design-screen-shell.tsx`'s
+  // `[@media(max-height:500px)]:overflow-y-auto` rule, and this solver reads its consequence one
+  // step later so the two can never drift apart. Measured outcome: at 844 dots wide sideways the
+  // plots come out 416px each with the column scrolling, while every desktop size is unchanged --
+  // 518px at 1280x800, 261px at 1280x560.
   useLayoutEffect(() => {
     const container = plotsContainerRef.current;
     if (!container) return;
@@ -154,7 +165,9 @@ export function RailBandEditor() {
       }, rowGap * Math.max(0, openSections.length - 1));
 
       const availablePlotH = containerHeight - chrome;
-      const widthFromHeight = availablePlotH > 0 ? (availablePlotH * vbW) / sumOfVbH : 0;
+      const column = container.closest("main");
+      const columnScrolls = !!column && /^(auto|scroll)$/.test(getComputedStyle(column).overflowY);
+      const widthFromHeight = !columnScrolls && availablePlotH > 0 ? (availablePlotH * vbW) / sumOfVbH : 0;
       // Floor to a whole pixel and bias down (never up) -- offsetHeight measurements above already
       // round to the nearest pixel, so rounding the solved width up here could compound into a
       // sub-pixel stack overflow; rounding down cannot.
