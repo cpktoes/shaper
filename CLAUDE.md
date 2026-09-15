@@ -170,18 +170,23 @@ Rotate button alone, whether it draws at all — since turning a touch device al
 board. Pointer never decides a LAYOUT; the layout switch above reads width alone, and this variant
 is never reached for to move one.
 
-**Short screen — height alone.** How SHORT the screen is decides two separate things, both written
-inline as `[@media(max-height:500px)]` rather than a named variant, and both deliberately not tied
+**Short screen — height alone.** How SHORT the screen is decides three separate things, all written
+inline as `[@media(max-height:500px)]` rather than a named variant, and all deliberately not tied
 to width or to the layout switch above: a phone held sideways is short regardless of which layout
 it lands in. On FINS, `fin-viewer.tsx` uses it to decide whether the Base Length key sits beside
 the tail drawing or beneath it. In `design-screen-shell.tsx`, the same query lets the drawing
 column scroll instead of clipping unreachable content — added for a phone held sideways (about
 390 dots tall on a real iPhone), which lands in the desktop shell above and, unlike a real desktop
 window, is short enough to need it (10-SWEEP-2.md). That 390 is the screen; Safari's own bar leaves
-the page about 340 dots, and 340 is the height `e2e/phone-rails.spec.ts` proves the scroll at. At
-the full 390 — the toolbar hidden — the rails plot fit shrinks three open plots to 40-dot slivers,
-so there is nothing left to scroll; that is recorded in the same spec as an expected failure (quick
-260914-tsp) until the founder decides how plots should fit on a short screen. A real desktop window
+the page about 340 dots, and `e2e/phone-rails.spec.ts` proves the scroll at both heights. And on a
+short screen the RAILS plot fit follows that same scroll rule rather than competing with it: when
+the drawing column may scroll, the three rail cross-sections take the column's width and the column
+scrolls, with the coloured key under the last plot (the founder's decision, 2026-09-14, quick
+260914-v2v, chosen from four measured fitting rules); on a taller screen they fit to height exactly
+as they always have. The third thing is what puts that key row under the plots rather than over
+them: on a short screen the RAILS viewer's own cards grow with their content instead of being
+pinned to the column's height (`rail-band-editor.tsx`, and `tabbed-panel.tsx`'s `growOnShortScreen`
+prop, which only RAILS passes) — still height alone, still written inline. A real desktop window
 is never under 500 dots tall, so that rule can never reach a mouse.
 
 Width picks the layout, pointer picks the sizing, height picks whether a short screen scrolls

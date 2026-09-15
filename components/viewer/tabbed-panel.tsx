@@ -40,6 +40,7 @@ export function TabbedPanel<T extends string>({
   children,
   panelClassName = "",
   bare = false,
+  growOnShortScreen = false,
 }: {
   tabs: readonly PanelTab<T>[];
   active: T;
@@ -70,6 +71,17 @@ export function TabbedPanel<T extends string>({
    * changes shape either way — only its surrounding classes do.
    */
   bare?: boolean;
+  /**
+   * On a short screen (`[@media(max-height:500px)]`, this codebase's own height-alone idiom —
+   * CLAUDE.md's Layout section), both card layers grow to their content's own height instead of
+   * being pinned to the column's height, so a drawing taller than the screen scrolls as one whole
+   * card rather than spilling past two borders. Off by default. RAILS (quick 260914-v2v) is the
+   * only screen that asks for it, because it is the only one whose drawing is a stack of plots
+   * that can run taller than a sideways phone. A real desktop window is never under 500 dots
+   * tall, so this can never reach a mouse; when unset the emitted classes are byte-identical to
+   * before this prop existed.
+   */
+  growOnShortScreen?: boolean;
 }) {
   const interactive = typeof onSelect === "function" && tabs.length > 1;
 
@@ -120,11 +132,12 @@ export function TabbedPanel<T extends string>({
           Wide View is the inner card below, not this one. */}
       <div
         key="panel"
-        className={
+        className={cn(
           bare
             ? "flex min-h-0 flex-1 flex-col"
-            : "flex min-h-0 flex-1 flex-col rounded-tr-lg rounded-b-lg border border-surf-line bg-surf-tab-active p-3 -mt-px"
-        }
+            : "flex min-h-0 flex-1 flex-col rounded-tr-lg rounded-b-lg border border-surf-line bg-surf-tab-active p-3 -mt-px",
+          growOnShortScreen && "[@media(max-height:500px)]:min-h-fit",
+        )}
       >
         {/* The content's own card. In non-bare mode these are two nested boundaries doing
             different jobs: the panel's `--surf-line` edge above says where the working surface
@@ -141,6 +154,7 @@ export function TabbedPanel<T extends string>({
           className={cn(
             "flex min-h-0 flex-1 flex-col rounded-lg border bg-surf-panel",
             bare ? "border-surf-line p-1" : "border-surf-line-faint p-3",
+            growOnShortScreen && "[@media(max-height:500px)]:min-h-fit",
             panelClassName,
           )}
         >
