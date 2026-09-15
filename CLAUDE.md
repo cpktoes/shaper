@@ -177,8 +177,12 @@ it lands in. On FINS, `fin-viewer.tsx` uses it to decide whether the Base Length
 the tail drawing or beneath it. In `design-screen-shell.tsx`, the same query lets the drawing
 column scroll instead of clipping unreachable content — added for a phone held sideways (about
 390 dots tall on a real iPhone), which lands in the desktop shell above and, unlike a real desktop
-window, is short enough to need it (10-SWEEP-2.md). A real desktop window is never under 500 dots
-tall, so that rule can never reach a mouse.
+window, is short enough to need it (10-SWEEP-2.md). That 390 is the screen; Safari's own bar leaves
+the page about 340 dots, and 340 is the height `e2e/phone-rails.spec.ts` proves the scroll at. At
+the full 390 — the toolbar hidden — the rails plot fit shrinks three open plots to 40-dot slivers,
+so there is nothing left to scroll; that is recorded in the same spec as an expected failure (quick
+260914-tsp) until the founder decides how plots should fit on a short screen. A real desktop window
+is never under 500 dots tall, so that rule can never reach a mouse.
 
 Width picks the layout, pointer picks the sizing, height picks whether a short screen scrolls
 (and, on FINS only, beside-or-beneath) — and none of the three is ever conflated with another.
