@@ -4,7 +4,7 @@ milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
 status: Awaiting next milestone
 stopped_at: Phase 10 UI-SPEC approved - ready to plan
-last_updated: "2026-09-15T01:39:58.659Z"
+last_updated: "2026-09-15T02:12:52.416Z"
 last_activity: 2026-09-13
 last_activity_desc: "Completed quick task 260913-k5k: undo and redo for accidental design edits"
 progress:
@@ -268,6 +268,7 @@ Recent decisions affecting current work:
 | 102 | A Home icon beside the settings gear on a desktop (1280px and up), and a Home row first in the phone menu; the five desktop baselines re-recorded on purpose for the new icon | 2026-09-14 | 3cf0af1 | — |
 | 103 | The Shortboard preset now carries the shaper's own rocker and foil, captured from the live rocker editor's Copy preset values button: nose rocker 5 1/2" (was 4 3/4"), tail rocker 2 1/16" (was 2 1/8"), thickness 2 1/4" (was 2 3/8"), volume 28.8 L (was 28.6 L); the Fish, Mid-length and Longboard still carry drafted rocker and foil awaiting the same capture | 2026-09-14 | 1095a17 | — |
 | 104 | The Shortboard preset now also carries the shaper's own rails and fins, captured from the Rails and Fins screens' Copy preset values buttons: centre and tail rails on family 4 (nose stays 3) with a hard tail edge, and a thruster with the front fins on the basic model; the Fish, Mid-length and Longboard still carry the default rails and fins | 2026-09-14 | d376b1a | — |
+| 105 | The Fish preset is now fully shaper-captured across all five screens: a 5'8" x 20 1/4" x 2 1/2" swallow tail at 33.8 L with the widepoint 2" forward and a 10" tail block, 4 5/8" nose and 1 15/16" tail rocker, family-2 centre and tail rails with a 55/45 nose ratio, and a twin fin with the front base overridden to 5 1/2". The template suite's frozen characterisation pins now hash a fixed copy of the outlines they were pinned against instead of the live presets, and the zero-offset label tests build their coincident widepoint explicitly; only the Mid-length and Longboard still carry drafted values | 2026-09-14 | 63a1848 | — |
 
 ## Deferred Items
 
