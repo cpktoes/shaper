@@ -65,6 +65,11 @@
  * (fish outline "approved without change") and the two "other three" lists in the paragraphs
  * above now leave only `midlength` and `longboard` on drafted rocker/foil and default rails/fins.
  *
+ * Mid-length captured (2026-09-14): the `midlength` block is now shaper-captured in full as well —
+ * its D-03 outline re-tuned in the live editor (86" now, was 84") and its rocker, foil, rails and
+ * fins from their screens' capture affordances — leaving only `longboard` on drafted rocker/foil
+ * and default rails/fins (its D-03 outline stands).
+ *
  * Any future change to any preset field should go through the matching
  * capture loop rather than being hand-edited. Every length/width/offset is
  * authored via `inchesToMm()` and every angle via `degrees()` — never a bare
@@ -83,8 +88,8 @@ import { degrees, inchesToMm } from "./units";
 // Each preset's rocker block keeps its own noseLift/tailLift exactly as before this task, and
 // carries six shape controls solved (not hand-guessed) so the derived 12" figures land within a
 // hundredth of an inch of the preset's own prior stored 12" numbers — see each block's own
-// comment for the figures it was solved against. The `shortboard` and `fish` blocks are the
-// exceptions since 2026-09-14: shaper-captured rather than solved, see their own comments.
+// comment for the figures it was solved against. The `shortboard`, `fish` and `midlength` blocks
+// are the exceptions since 2026-09-14: shaper-captured rather than solved, see their own comments.
 
 export interface BoardPreset {
   id: "shortboard" | "fish" | "midlength" | "longboard";
@@ -319,39 +324,111 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
     id: "midlength",
     name: "Mid-length",
     descriptor: "Easy paddling with room to maneuver",
+    // Shaper-captured 2026-09-14: every block below — outline, rocker, foil, rails and fins — is
+    // the founder's own, read back out of the five design screens' development-only "Copy preset
+    // values" buttons and pasted in wholesale (the D-03 outline re-tuned in the same live editor:
+    // 86" now, was 84"). The one Copy-button rounding is written back as the exact sixteenth the
+    // slider holds: tail lift 2.313 → 2.3125. The three `deckPercent` floats are verbatim — the
+    // Deck Profile slider steps on a grid derived from each section's thickness, so its values
+    // are exact JS numbers that only look like rounding noise.
     outline: {
-      length: inchesToMm(84),
-      widePointWidth: inchesToMm(21),
-      widePointOffset: inchesToMm(3.5),
-      tailRailLength: 55,
-      noseRailLength: 55,
+      length: inchesToMm(86),
+      widePointWidth: inchesToMm(21.25),
+      widePointOffset: inchesToMm(2.5),
+      tailRailLength: 72.75,
+      noseRailLength: 60,
       noseAngle: degrees(65),
-      noseFullness: 45,
+      noseFullness: 76,
       tailAngle: degrees(90),
-      tailFullness: 64.5,
+      tailFullness: 46.75,
       tail: { kind: "round" },
     },
-    // Solved against the old stored nose12 1.25"/tail12 0.4": derived nose12 ≈ 1.2499",
-    // tail12 ≈ 0.399" — both within a hundredth of an inch.
+    // Derived nose12 ≈ 2.05", tail12 ≈ 1.23" — the figures presets.test.ts checks this block against.
     rocker: {
-      noseLift: inchesToMm(4.5),
-      tailLift: inchesToMm(1.75),
-      noseAngle: degrees(30),
+      noseLift: inchesToMm(5.375),
+      tailLift: inchesToMm(2.3125),
+      noseAngle: degrees(28),
       tailAngle: degrees(30),
-      noseSmoothness: 20.5,
-      tailSmoothness: 16,
-      noseFlatness: 50,
-      tailFlatness: 50,
+      noseSmoothness: 27,
+      tailSmoothness: 80,
+      noseFlatness: 10,
+      tailFlatness: 0,
     },
     foil: {
-      noseTip: inchesToMm(0.375),
-      nose12: inchesToMm(1.7),
-      center: inchesToMm(2.9),
-      tail12: inchesToMm(1.85),
-      tailTip: inchesToMm(0.3125),
+      noseTip: inchesToMm(0.625),
+      nose12: inchesToMm(1.625),
+      center: inchesToMm(2.75),
+      tail12: inchesToMm(1.75),
+      tailTip: inchesToMm(0.75),
     },
-    rails: DEFAULT_RAIL_BAND_SPEC,
-    fins: DEFAULT_FIN_PLACEMENT_SPEC,
+    // Rails: nose and centre on family 2 (nose ratio 50/50), tail on 3, deck profile eased off 100
+    // on all three; fins: a quad on the basic off-rail rear model with the centre fin on and all
+    // three base lengths overridden (4 1/2" front, 4" rear, 4 1/2" centre). As on the Shortboard,
+    // the thicknesses (1.31/2.5/1.56), the fins' 72" board / 13" tail and the "squash" tail shape
+    // are the raw fallbacks the Copy buttons read back — the screens' foil and template links (on
+    // by default, reset on by `applyPreset`) read this board's own foil and round-tail outline.
+    rails: {
+      nose: {
+        boardThickness: inchesToMm(1.31),
+        deckPercent: 96.22222222222223,
+        family: 2,
+        ratioTopPercent: 50,
+        symmetrical: false,
+        cornerCutOffsetOverride: null,
+        removeCornerCut: false,
+        singleTuck: false,
+        bottomTuck3Override: null,
+      },
+      center: {
+        boardThickness: inchesToMm(2.5),
+        deckPercent: 90.93333333333334,
+        family: 2,
+        ratioTopPercent: 60,
+        symmetrical: false,
+        cornerCutOffsetOverride: null,
+        removeCornerCut: false,
+        singleTuck: false,
+        bottomTuck3Override: null,
+      },
+      tail: {
+        boardThickness: inchesToMm(1.56),
+        deckPercent: 93.2,
+        family: 3,
+        ratioTopPercent: 60,
+        symmetrical: false,
+        cornerCutOffsetOverride: null,
+        removeCornerCut: false,
+        singleTuck: false,
+        bottomTuck3Override: null,
+      },
+      tailHardEdge: true,
+    },
+    fins: {
+      boardLength: inchesToMm(72),
+      tailWidth12: inchesToMm(13),
+      tailShape: "squash",
+      finSetup: "quad",
+      frontModel: "mckeeSB",
+      quadRearModel: "basicOffRail",
+      twinTemplate: "upright",
+      quadCenterFinOn: true,
+      advanced: {
+        baseLenForward: inchesToMm(4.5),
+        baseLenForwardOverridden: true,
+        baseLenRear: inchesToMm(4),
+        baseLenRearOverridden: true,
+        baseLenCenter: inchesToMm(4.5),
+        baseLenCenterOverridden: true,
+        centerPositionOffset: inchesToMm(0),
+        forwardPositionOffset: inchesToMm(0),
+        forwardToeOverride: null,
+        rearPositionOffset: inchesToMm(0),
+        rearToeOverride: null,
+        quadRearOffRailOverride: null,
+        quadRearOffTailOverride: null,
+        quadRearOffTailOverridden: false,
+      },
+    },
   },
   {
     id: "longboard",

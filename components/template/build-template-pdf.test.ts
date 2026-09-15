@@ -3,6 +3,7 @@ import jsPDF from "jspdf";
 import { describe, expect, it } from "vitest";
 import { WIDEPOINT_WIDTH_RANGE_IN, type OutlineSpec } from "@/lib/geometry/board";
 import { buildOutline, sampleOutline } from "@/lib/geometry/outline";
+import { PINNED_PRESET_OUTLINES, pinnedOutline } from "@/lib/geometry/__fixtures__/pinned-preset-outlines";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import {
   NAME_BOX_CLEARANCE_MM,
@@ -112,6 +113,46 @@ const ALL_HOWTO_BOX_CASES = [
     id,
     build: (paper: "letter" | "a4") => buildOptionsForOutline(basePreset, outline, basePreset.name, paper),
   })),
+];
+
+/** The planning facts were measured on the presets as they were at planning time (quick task
+ * 260903-fqv) — the pinned outlines, with the three wide variants rebuilt on the same base — never
+ * the live presets, which are shaper-tuned data (the Fish and Mid-length were recaptured on
+ * 2026-09-14). The live preset still supplies the name and the raw rails thickness the dims row
+ * needs; only the outline is pinned. */
+const PLANNING_FACT_CASES = [
+  ...PINNED_PRESET_OUTLINES.map(({ id, outline }) => {
+    const basePreset = BOARD_PRESETS.find((p) => p.id === id)!;
+    return {
+      id,
+      build: (paper: "letter" | "a4") => buildOptionsForOutline(basePreset, outline, basePreset.name, paper),
+    };
+  }),
+  {
+    id: "widest-shortboard",
+    build: (paper: "letter" | "a4") =>
+      buildOptionsForOutline(
+        BOARD_PRESETS[0],
+        { ...pinnedOutline("shortboard"), widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max) },
+        BOARD_PRESETS[0].name,
+        paper,
+      ),
+  },
+  {
+    id: "widest-longboard",
+    build: (paper: "letter" | "a4") =>
+      buildOptionsForOutline(
+        BOARD_PRESETS[3],
+        { ...pinnedOutline("longboard"), widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max) },
+        BOARD_PRESETS[3].name,
+        paper,
+      ),
+  },
+  {
+    id: "fullnose-longboard",
+    build: (paper: "letter" | "a4") =>
+      buildOptionsForOutline(BOARD_PRESETS[3], { ...pinnedOutline("longboard"), noseFullness: 100 }, BOARD_PRESETS[3].name, paper),
+  },
 ];
 
 describe("buildTemplatePdf", () => {
@@ -1001,7 +1042,7 @@ describe("templateHowToBoxPlacement / howToBoxRect", () => {
   it("derived outcome matches the planning facts: shortboard, midlength and the widest shortboard stay outboard; fish, longboard, the widest longboard and the noseFullness-100 longboard go interior", () => {
     const expectedOutboard = new Set(["shortboard", "midlength", "widest-shortboard"]);
     for (const paper of ["letter", "a4"] as const) {
-      for (const { id, build } of ALL_HOWTO_BOX_CASES) {
+      for (const { id, build } of PLANNING_FACT_CASES) {
         const options = build(paper);
         const { placement } = templateHowToBoxPlacement(options);
         expect(placement.position).toBe(expectedOutboard.has(id) ? "outboard" : "interior");
@@ -1137,7 +1178,7 @@ describe("templateScaleSquarePlacement / scaleSquareRect", () => {
   it("derived outcome matches the planning facts: shortboard, fish, midlength, longboard and the widest shortboard keep the corner; the widest longboard and the noseFullness-100 longboard move interior", () => {
     const expectedCorner = new Set(["shortboard", "fish", "midlength", "longboard", "widest-shortboard"]);
     for (const paper of ["letter", "a4"] as const) {
-      for (const { id, build } of ALL_HOWTO_BOX_CASES) {
+      for (const { id, build } of PLANNING_FACT_CASES) {
         const options = build(paper);
         const { placement } = templateScaleSquarePlacement(options);
         expect(placement.position).toBe(expectedCorner.has(id) ? "corner" : "interior");

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { BOARD_LENGTH_RANGE_IN, type OutlineSpec, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
+import { BOARD_LENGTH_RANGE_IN, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
+import { PINNED_PRESET_OUTLINES, pinnedOutline } from "./__fixtures__/pinned-preset-outlines";
 import { MEASURE_STATION_MM, buildOutline, type OutlineGeometry, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import {
@@ -79,76 +80,6 @@ function overlapLength(aRange: [number, number], bRange: [number, number]): numb
  * rubber-stamped digest. See `design_decision` §1 of that task's plan for the full ruling: split
  * the proof from the pin, then recapture, never overwrite on trust.
  */
-/**
- * The four presets' outlines exactly as they were when the three characterisation pins below were
- * recorded (quick tasks 260902-cj5, 260902-kon and 260903-18d). `BOARD_PRESETS` is live
- * shaper-tuned data — the Fish outline was recaptured from the live editor on 2026-09-14 — and a
- * preset capture is a data change, not a code change, so it must never feed a frozen pin: these
- * pins exist to prove the CODE's output for a fixed input has not moved. Frozen, never edit.
- */
-const PINNED_PRESET_OUTLINES: readonly { id: string; outline: OutlineSpec }[] = [
-  {
-    id: "shortboard",
-    outline: {
-      length: inchesToMm(74),
-      widePointWidth: inchesToMm(18.75),
-      widePointOffset: inchesToMm(-1),
-      tailRailLength: 50,
-      noseRailLength: 50,
-      noseAngle: degrees(50),
-      noseFullness: 20,
-      tailAngle: degrees(55),
-      tailFullness: 45,
-      tail: { kind: "squash", endWidth: inchesToMm(4) },
-    },
-  },
-  {
-    id: "fish",
-    outline: {
-      length: inchesToMm(66),
-      widePointWidth: inchesToMm(20.5),
-      widePointOffset: inchesToMm(0),
-      tailRailLength: 60,
-      noseRailLength: 60,
-      noseAngle: degrees(70),
-      noseFullness: 55,
-      tailAngle: degrees(35),
-      tailFullness: 15,
-      tail: { kind: "swallow", endWidth: inchesToMm(9), crotchDepth: inchesToMm(2.5) },
-    },
-  },
-  {
-    id: "midlength",
-    outline: {
-      length: inchesToMm(84),
-      widePointWidth: inchesToMm(21),
-      widePointOffset: inchesToMm(3.5),
-      tailRailLength: 55,
-      noseRailLength: 55,
-      noseAngle: degrees(65),
-      noseFullness: 45,
-      tailAngle: degrees(90),
-      tailFullness: 64.5,
-      tail: { kind: "round" },
-    },
-  },
-  {
-    id: "longboard",
-    outline: {
-      length: inchesToMm(108),
-      widePointWidth: inchesToMm(22.5),
-      widePointOffset: inchesToMm(8),
-      tailRailLength: 50,
-      noseRailLength: 50,
-      noseAngle: degrees(90),
-      noseFullness: 90,
-      tailAngle: degrees(30),
-      tailFullness: 53.5,
-      tail: { kind: "squash", endWidth: inchesToMm(8) },
-    },
-  },
-];
-
 describe("existing tile-grid output is unchanged by the strip work (characterisation pin, quick task 260902-cj5 — frozen, never edit)", () => {
   const EXPECTED_TILE_GRID_DIGESTS: Record<string, string> = {
     "shortboard-letter": "3cbffdc1fc29fa49",
@@ -1726,8 +1657,9 @@ describe("stripFurniture", () => {
   }
 
   it("midlength/letter: the name block is pushed below the numeral's own station rather than the naive first-fitting band", () => {
-    const preset = BOARD_PRESETS.find((p) => p.id === "midlength")!;
-    const geometry = buildOutline(preset.outline);
+    // The pinned Mid-length outline is the worked example that produces this collision; the live
+    // preset was recaptured on 2026-09-14 and no longer does.
+    const geometry = buildOutline(pinnedOutline("midlength"));
     const layout = computeStripLayout(geometry, "letter");
     const marks = computeTemplateMarks(geometry);
     const labelRows = stripLabelRows(layout, marks, geometry);
@@ -1960,6 +1892,21 @@ describe("howToBoxPlacement", () => {
   ];
 
   const ALL_CASES = [...BOARD_PRESETS.map((preset) => ({ id: preset.id, outline: preset.outline })), ...WIDE_VARIANTS];
+  // The planning facts below were measured on the presets as they were at planning time — the
+  // pinned outlines, with the three wide variants rebuilt on the same base — never the live
+  // presets, which are shaper-tuned data.
+  const PLANNING_CASES = [
+    ...PINNED_PRESET_OUTLINES.map(({ id, outline }) => ({ id, outline })),
+    {
+      id: "widest-shortboard",
+      outline: { ...pinnedOutline("shortboard"), widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max) },
+    },
+    {
+      id: "widest-longboard",
+      outline: { ...pinnedOutline("longboard"), widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max) },
+    },
+    { id: "fullnose-longboard", outline: { ...pinnedOutline("longboard"), noseFullness: 100 } },
+  ];
 
   function outboardCandidate(layout: TemplateLayout): { topStation: number; halfWidthStart: number } {
     const box = templatePageBoxes(layout)[0];
@@ -2078,7 +2025,7 @@ describe("howToBoxPlacement", () => {
     () => {
       const expectedOutboard = new Set(["shortboard", "midlength", "widest-shortboard"]);
       for (const paper of PAPERS) {
-        for (const { id, outline } of ALL_CASES) {
+        for (const { id, outline } of PLANNING_CASES) {
           const geometry = buildOutline(outline);
           const layout = computeTemplateLayout(geometry, paper);
           const nameBlock = nameBlockPlacement(layout, geometry);
@@ -2158,6 +2105,21 @@ describe("scaleSquarePlacement", () => {
   ];
 
   const ALL_CASES = [...BOARD_PRESETS.map((preset) => ({ id: preset.id, outline: preset.outline })), ...WIDE_VARIANTS];
+  // The planning facts below were measured on the presets as they were at planning time — the
+  // pinned outlines, with the three wide variants rebuilt on the same base — never the live
+  // presets, which are shaper-tuned data.
+  const PLANNING_CASES = [
+    ...PINNED_PRESET_OUTLINES.map(({ id, outline }) => ({ id, outline })),
+    {
+      id: "widest-shortboard",
+      outline: { ...pinnedOutline("shortboard"), widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max) },
+    },
+    {
+      id: "widest-longboard",
+      outline: { ...pinnedOutline("longboard"), widePointWidth: inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max) },
+    },
+    { id: "fullnose-longboard", outline: { ...pinnedOutline("longboard"), noseFullness: 100 } },
+  ];
 
   /** The square's own corner candidate, exactly the way `build-template-pdf.ts`'s
    * `computeScaleSquarePlacement` derives it from the page's own alignment box. */
@@ -2307,7 +2269,7 @@ describe("scaleSquarePlacement", () => {
     () => {
       const expectedCorner = new Set(["shortboard", "fish", "midlength", "longboard", "widest-shortboard"]);
       for (const paper of PAPERS) {
-        for (const { id, outline } of ALL_CASES) {
+        for (const { id, outline } of PLANNING_CASES) {
           const geometry = buildOutline(outline);
           const layout = computeTemplateLayout(geometry, paper);
           const { placement } = computeScaleSquarePlacement(layout, geometry);
