@@ -4,7 +4,7 @@ milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
 status: Awaiting next milestone
 stopped_at: Phase 10 UI-SPEC approved - ready to plan
-last_updated: "2026-09-15T00:37:18.947Z"
+last_updated: "2026-09-15T01:39:58.659Z"
 last_activity: 2026-09-13
 last_activity_desc: "Completed quick task 260913-k5k: undo and redo for accidental design edits"
 progress:
@@ -267,6 +267,7 @@ Recent decisions affecting current work:
 | 260913-k5k | Undo and redo for accidental design edits: Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z step a board's outline, rocker, foil, rails, fins and volume back and forward one movement at a time, with a matching pair of round arrow buttons on a phone; a session-only history cleared when the board changes; no database change | 2026-09-13 | ae3216e | [260913-k5k-undo-and-redo-for-accidental-design-edit](./quick/260913-k5k-undo-and-redo-for-accidental-design-edit/) |
 | 102 | A Home icon beside the settings gear on a desktop (1280px and up), and a Home row first in the phone menu; the five desktop baselines re-recorded on purpose for the new icon | 2026-09-14 | 3cf0af1 | — |
 | 103 | The Shortboard preset now carries the shaper's own rocker and foil, captured from the live rocker editor's Copy preset values button: nose rocker 5 1/2" (was 4 3/4"), tail rocker 2 1/16" (was 2 1/8"), thickness 2 1/4" (was 2 3/8"), volume 28.8 L (was 28.6 L); the Fish, Mid-length and Longboard still carry drafted rocker and foil awaiting the same capture | 2026-09-14 | 1095a17 | — |
+| 104 | The Shortboard preset now also carries the shaper's own rails and fins, captured from the Rails and Fins screens' Copy preset values buttons: centre and tail rails on family 4 (nose stays 3) with a hard tail edge, and a thruster with the front fins on the basic model; the Fish, Mid-length and Longboard still carry the default rails and fins | 2026-09-14 | d376b1a | — |
 
 ## Deferred Items
 
