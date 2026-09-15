@@ -4,7 +4,7 @@ milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
 status: Awaiting next milestone
 stopped_at: Phase 10 UI-SPEC approved - ready to plan
-last_updated: "2026-09-15T02:43:24.080Z"
+last_updated: "2026-09-15T03:09:09.624Z"
 last_activity: 2026-09-13
 last_activity_desc: "Completed quick task 260913-k5k: undo and redo for accidental design edits"
 progress:
@@ -270,6 +270,7 @@ Recent decisions affecting current work:
 | 104 | The Shortboard preset now also carries the shaper's own rails and fins, captured from the Rails and Fins screens' Copy preset values buttons: centre and tail rails on family 4 (nose stays 3) with a hard tail edge, and a thruster with the front fins on the basic model; the Fish, Mid-length and Longboard still carry the default rails and fins | 2026-09-14 | d376b1a | — |
 | 105 | The Fish preset is now fully shaper-captured across all five screens: a 5'8" x 20 1/4" x 2 1/2" swallow tail at 33.8 L with the widepoint 2" forward and a 10" tail block, 4 5/8" nose and 1 15/16" tail rocker, family-2 centre and tail rails with a 55/45 nose ratio, and a twin fin with the front base overridden to 5 1/2". The template suite's frozen characterisation pins now hash a fixed copy of the outlines they were pinned against instead of the live presets, and the zero-offset label tests build their coincident widepoint explicitly; only the Mid-length and Longboard still carry drafted values | 2026-09-14 | 63a1848 | — |
 | 106 | The Mid-length preset is now fully shaper-captured across all five screens: a 7'2" x 21 1/4" x 2 3/4" round tail at 48.3 L with the widepoint 2 1/2" forward, 5 3/8" nose and 2 5/16" tail rocker, family-2 nose and centre rails (50/50 nose ratio) with a family-3 tail and the deck profile eased off flat, and a quad on the basic off-rail rear model with the centre fin on and all three base lengths set by hand. The template suites' recorded planning facts and the name-block worked example now read the frozen pinned outlines (moved to a shared fixture) instead of the live presets; only the Longboard still carries drafted rocker and foil and default rails and fins | 2026-09-14 | 9b7df25 | — |
+| 107 | The Longboard preset is now fully shaper-captured across all five screens, completing the set: a 9'0" x 22 1/2" x 3" squash tail at 71.0 L with the widepoint 3 1/2" forward, 4 5/16" nose and 3 1/4" tail rocker, symmetrical 50/50 rails on family 3 with a 45/55 family-4 tail and no hard edge, and a single fin. Its wide point lands 0.3 mm inside a Paper Saver page's top edge, which exposed a strip label that would have printed past the page: a mark's label on the Paper Saver now flips below its tick when the label above would leave the page, the same inward flip the registration labels already had, and the frozen strip digests prove nothing else moved | 2026-09-14 | a99aace | — |
 
 ## Deferred Items
 
