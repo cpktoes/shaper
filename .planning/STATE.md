@@ -2,11 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
-status: Awaiting next milestone
+status: "Awaiting next milestone — quick task 260914-rj0 shipped as PR #1"
 stopped_at: Phase 10 UI-SPEC approved - ready to plan
-last_updated: "2026-09-15T04:09:28.819Z"
+last_updated: "2026-09-15T04:17:11.377Z"
 last_activity: 2026-09-14
-last_activity_desc: "Completed quick task 260914-rj0: The rear-fin and centre-fin heights on the fin drawing no longer run into each other on a phone: on the Mid-length board (a quad with the centre fin on) the rear fins' 6 1/4\" and the centre fin's 3 5/8\" printed on top of each other as one smear on a phone; each height number now slides along its own dimension line only when it would actually collide with a neighbour, never below the tail line, decided by the number's own size on the drawing and not by any screen switch, so a phone held sideways is fixed too. Nothing moves for a mouse (the desktop numbers and the five desktop screenshot baselines are unchanged), and a browser test measures the real drawn ink on an iPhone and a Pixel 7, in Imperial and Metric, and fails on the old overlap."
 current_phase: 10
 current_phase_name: the-whole-app-on-a-phone
 progress:
@@ -15,6 +14,7 @@ progress:
   total_plans: 0
   completed_plans: 0
   percent: 0
+last_activity_desc: "Completed quick task 260914-rj0: The rear-fin and centre-fin heights on the fin drawing no longer run into each other on a phone: on the Mid-length board (a quad with the centre fin on) the rear fins' 6 1/4\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\" and the centre fin's 3 5/8\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\" printed on top of each other as one smear on a phone; each height number now slides along its own dimension line only when it would actually collide with a neighbour, never below the tail line, decided by the number's own size on the drawing and not by any screen switch, so a phone held sideways is fixed too. Nothing moves for a mouse (the desktop numbers and the five desktop screenshot baselines are unchanged), and a browser test measures the real drawn ink on an iPhone and a Pixel 7, in Imperial and Metric, and fails on the old overlap."
 ---
 
 # Project State
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 
 **v1.2 — Rails Finished, Phone Ready: SHIPPED 2026-09-12.** Phases 8–10 complete and verified; audit passed 18/18. Archived under .planning/milestones/ (v1.2-ROADMAP.md, v1.2-REQUIREMENTS.md, v1.2-MILESTONE-AUDIT.md, v1.2-phases/). REQUIREMENTS.md removed pending the next milestone's definition.
 
-Status: Awaiting next milestone
-Last activity: 2026-09-14 - Completed quick task 260914-rj0: The rear-fin and centre-fin heights on the fin drawing no longer run into each other on a phone: on the Mid-length board (a quad with the centre fin on) the rear fins' 6 1/4" and the centre fin's 3 5/8" printed on top of each other as one smear on a phone; each height number now slides along its own dimension line only when it would actually collide with a neighbour, never below the tail line, decided by the number's own size on the drawing and not by any screen switch, so a phone held sideways is fixed too. Nothing moves for a mouse (the desktop numbers and the five desktop screenshot baselines are unchanged), and a browser test measures the real drawn ink on an iPhone and a Pixel 7, in Imperial and Metric, and fails on the old overlap.
+Status: Awaiting next milestone — quick task 260914-rj0 shipped as PR #1
+Last activity: 2026-09-14
 
 ## Performance Metrics
 
