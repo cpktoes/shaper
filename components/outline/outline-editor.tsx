@@ -9,8 +9,7 @@ import { RotateBoardIcon, ViewerToolbar, ViewerToolbarButton } from "@/component
 import { ExportPreviewDialog } from "@/components/template/export-preview-dialog";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import * as ViewerMedia from "@/components/design/use-viewer-media";
-import type { OutlineSpec } from "@/lib/geometry/board";
-import { mmToInches } from "@/lib/geometry/units";
+import { buildOutlinePresetSource } from "@/lib/geometry/preset-source";
 import { OutlineControls } from "./outline-controls";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { OutlineViewer } from "./outline-viewer";
@@ -26,42 +25,10 @@ import { OutlineViewer } from "./outline-viewer";
  * gated on `process.env.NODE_ENV === "development"` so the bundler dead-code-eliminates it from
  * production. It reads the live `outline` back out as pasteable `lib/geometry/presets.ts` source —
  * this is how a `BoardPreset` gets shaper-tuned in the real editor (CONTEXT.md D-03) rather than
- * hand-guessed.
+ * hand-guessed. The text itself comes from `buildOutlinePresetSource` in
+ * `lib/geometry/preset-source.ts`, shared with the ROCKER, RAILS and FINS screens since 2026-09-14 —
+ * that file's header says why the four builders moved out of their editors together.
  */
-
-/** Rounds a millimetre value to inches, 3 decimal places, matching the precision the capture affordance emits. */
-function roundedInches(value: OutlineSpec["length"]): number {
-  return Number(mmToInches(value).toFixed(3));
-}
-
-/** Builds a pasteable `BoardPreset["outline"]` source block from the live outline spec. */
-function buildPresetSource(spec: OutlineSpec): string {
-  const tailFields: string[] = [`kind: "${spec.tail.kind}"`];
-  if (spec.tail.kind === "squash" || spec.tail.kind === "diamond" || spec.tail.kind === "swallow") {
-    tailFields.push(`endWidth: inchesToMm(${roundedInches(spec.tail.endWidth)})`);
-  }
-  if (spec.tail.kind === "diamond") {
-    tailFields.push(`depth: inchesToMm(${roundedInches(spec.tail.depth)})`);
-  }
-  if (spec.tail.kind === "swallow") {
-    tailFields.push(`crotchDepth: inchesToMm(${roundedInches(spec.tail.crotchDepth)})`);
-  }
-
-  return [
-    "outline: {",
-    `  length: inchesToMm(${roundedInches(spec.length)}),`,
-    `  widePointWidth: inchesToMm(${roundedInches(spec.widePointWidth)}),`,
-    `  widePointOffset: inchesToMm(${roundedInches(spec.widePointOffset)}),`,
-    `  tailRailLength: ${spec.tailRailLength},`,
-    `  noseRailLength: ${spec.noseRailLength},`,
-    `  noseAngle: degrees(${spec.noseAngle}),`,
-    `  noseFullness: ${spec.noseFullness},`,
-    `  tailAngle: degrees(${spec.tailAngle}),`,
-    `  tailFullness: ${spec.tailFullness},`,
-    `  tail: { ${tailFields.join(", ")} },`,
-    "},",
-  ].join("\n");
-}
 
 export function OutlineEditor() {
   const { outline, updateOutline, outlineGeometry, finPlacement } = useDesign();
@@ -123,7 +90,7 @@ export function OutlineEditor() {
   }
 
   function handleCopyPreset() {
-    const text = buildPresetSource(outline);
+    const text = buildOutlinePresetSource(outline);
     console.log(text);
     setJustCopiedPreset(true);
     navigator.clipboard.writeText(text).catch(() => {

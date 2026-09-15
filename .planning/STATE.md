@@ -4,17 +4,17 @@ milestone: v1.2
 milestone_name: Rails Finished, Phone Ready
 status: Awaiting next milestone
 stopped_at: Phase 10 UI-SPEC approved - ready to plan
-last_updated: "2026-09-15T03:42:39.994Z"
+last_updated: "2026-09-15T04:09:28.819Z"
 last_activity: 2026-09-14
 last_activity_desc: "Completed quick task 260914-rj0: The rear-fin and centre-fin heights on the fin drawing no longer run into each other on a phone: on the Mid-length board (a quad with the centre fin on) the rear fins' 6 1/4\" and the centre fin's 3 5/8\" printed on top of each other as one smear on a phone; each height number now slides along its own dimension line only when it would actually collide with a neighbour, never below the tail line, decided by the number's own size on the drawing and not by any screen switch, so a phone held sideways is fixed too. Nothing moves for a mouse (the desktop numbers and the five desktop screenshot baselines are unchanged), and a browser test measures the real drawn ink on an iPhone and a Pixel 7, in Imperial and Metric, and fails on the old overlap."
+current_phase: 10
+current_phase_name: the-whole-app-on-a-phone
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
   percent: 0
-current_phase: 10
-current_phase_name: the-whole-app-on-a-phone
 ---
 
 # Project State
@@ -140,20 +140,14 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-12 pending:
+6 pending:
 
-- [minor/ui] Template screen: construction-lines toggle button + sidebar-minimize wide view (after Phase 2) — `.planning/todos/pending/2026-08-27-template-construction-toggle-and-wide-view.md`
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Mobile/phone-width layout polish for the design screens — `.planning/todos/pending/2026-08-19-mobile-phone-width-layout-polish.md`
-- [minor/ui] Copy-spec-to-clipboard across the design screens — `.planning/todos/pending/2026-08-21-copy-spec-to-clipboard.md`
 - [minor/general] Fins imported tail uses the generic polynomial curve, not the drawn outline — `.planning/todos/pending/2026-08-21-fins-imported-template-width-branch.md`
-- [minor/general] Extend presets beyond outline to rail bands and fin setups — `.planning/todos/pending/2026-08-21-presets-for-rails-and-fins.md`
-- [minor/ui] Rails: port the INSTRUCTIONS page (third tab) — `.planning/todos/pending/2026-08-21-rails-instructions-page.md`
-- [minor/ui] Rails viewer: View Full Sized modal and board-outline plan view — `.planning/todos/pending/2026-08-21-rails-viewer-extras.md`
-- [minor/ui] Global settings: units toggle (inches vs cm) and colour themes — `.planning/todos/pending/2026-08-21-units-toggle-global-settings.md`
-- [minor/ui] Verify and refit the Summary print sheet after the callout-system rebuild — `.planning/todos/pending/2026-08-22-summary-print-after-callout-system.md`
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
-- [minor/ui] Horizontal board view (nose left) as an option on the Template screen — `.planning/todos/pending/2026-08-23-horizontal-board-view-option.md`
+- [minor/general] Brand the order form with a shaper's own logo and contact details (paid tier) — `.planning/todos/pending/2026-09-06-brand-the-order-form-for-paid-shapers.md`
+- [minor/ui] Show live coordinates under the pointer on the Template and Rocker curves — `.planning/todos/pending/2026-09-14-live-pointer-coordinates-on-the-template-and-rocker-curves.md`
 
 ### Blockers/Concerns
 
@@ -270,6 +264,8 @@ Recent decisions affecting current work:
 | 104 | The Shortboard preset now also carries the shaper's own rails and fins, captured from the Rails and Fins screens' Copy preset values buttons: centre and tail rails on family 4 (nose stays 3) with a hard tail edge, and a thruster with the front fins on the basic model; the Fish, Mid-length and Longboard still carry the default rails and fins | 2026-09-14 | d376b1a | — |
 | 105 | The Fish preset is now fully shaper-captured across all five screens: a 5'8" x 20 1/4" x 2 1/2" swallow tail at 33.8 L with the widepoint 2" forward and a 10" tail block, 4 5/8" nose and 1 15/16" tail rocker, family-2 centre and tail rails with a 55/45 nose ratio, and a twin fin with the front base overridden to 5 1/2". The template suite's frozen characterisation pins now hash a fixed copy of the outlines they were pinned against instead of the live presets, and the zero-offset label tests build their coincident widepoint explicitly; only the Mid-length and Longboard still carry drafted values | 2026-09-14 | 63a1848 | — |
 | 106 | The Mid-length preset is now fully shaper-captured across all five screens: a 7'2" x 21 1/4" x 2 3/4" round tail at 48.3 L with the widepoint 2 1/2" forward, 5 3/8" nose and 2 5/16" tail rocker, family-2 nose and centre rails (50/50 nose ratio) with a family-3 tail and the deck profile eased off flat, and a quad on the basic off-rail rear model with the centre fin on and all three base lengths set by hand. The template suites' recorded planning facts and the name-block worked example now read the frozen pinned outlines (moved to a shared fixture) instead of the live presets; only the Longboard still carries drafted rocker and foil and default rails and fins | 2026-09-14 | 9b7df25 | — |
+| 107 | The Longboard preset is now fully shaper-captured across all five screens, completing the set: a 9'0" x 22 1/2" x 3" squash tail at 71.0 L with the widepoint 3 1/2" forward, 4 5/16" nose and 3 1/4" tail rocker, symmetrical 50/50 rails on family 3 with a 45/55 family-4 tail and no hard edge, and a single fin. Its wide point lands 0.3 mm inside a Paper Saver page's top edge, which exposed a strip label that would have printed past the page: a mark's label on the Paper Saver now flips below its tick when the label above would leave the page, the same inward flip the registration labels already had, and the frozen strip digests prove nothing else moved | 2026-09-14 | a99aace | — |
+| 108 | The dev-only Copy preset values buttons on TEMPLATE, ROCKER, RAILS and FINS now copy the exact sixteenth a slider is set to (2 1/16" copies as 2.0625, not the 2.063 that made the Shortboard capture need hand-correcting), using the fewest decimals that give back the stored number; the four screens share one tested printer, lib/geometry/preset-source.ts, and nothing on screen changes | 2026-09-14 | 96cfab2 | — |
 | 260914-rj0 | The rear-fin and centre-fin heights on the fin drawing no longer run into each other on a phone: on the Mid-length board (a quad with the centre fin on) the rear fins' 6 1/4" and the centre fin's 3 5/8" printed on top of each other as one smear on a phone; each height number now slides along its own dimension line only when it would actually collide with a neighbour, never below the tail line, decided by the number's own size on the drawing and not by any screen switch, so a phone held sideways is fixed too. Nothing moves for a mouse (the desktop numbers and the five desktop screenshot baselines are unchanged), and a browser test measures the real drawn ink on an iPhone and a Pixel 7, in Imperial and Metric, and fails on the old overlap. | 2026-09-14 | 6716979 | [260914-rj0-the-rear-fin-and-centre-fin-heights-on-t](./quick/260914-rj0-the-rear-fin-and-centre-fin-heights-on-t/) |
 
 ## Deferred Items

@@ -125,7 +125,7 @@ describe("BOARD_PRESETS", () => {
     expect(() => computeFinPlacement(preset.fins)).not.toThrow();
   });
 
-  it("rails and fins tuning status: the Shortboard's, Fish's and Mid-length's are shaper-captured, the Longboard still carries the defaults verbatim", () => {
+  it("rails and fins tuning status: all four presets are shaper-captured — none carries the default rails or fins", () => {
     const shortboard = BOARD_PRESETS.find((p) => p.id === "shortboard")!;
     // Captured 2026-09-14: centre and tail rails on family 4 (nose stays 3), front fins on the
     // basic model — see the block's own comment in presets.ts.
@@ -151,10 +151,17 @@ describe("BOARD_PRESETS", () => {
     expect(midlength.fins.finSetup).toBe("quad");
     expect(midlength.fins.quadRearModel).toBe("basicOffRail");
     expect(midlength.fins.quadCenterFinOn).toBe(true);
-    for (const id of ["longboard"] as const) {
-      const preset = BOARD_PRESETS.find((p) => p.id === id)!;
-      expect(preset.rails).toEqual(DEFAULT_RAIL_BAND_SPEC);
-      expect(preset.fins).toEqual(DEFAULT_FIN_PLACEMENT_SPEC);
+    const longboard = BOARD_PRESETS.find((p) => p.id === "longboard")!;
+    // Captured 2026-09-14: symmetrical 50/50 nose and centre rails on family 3, a symmetrical 45/55
+    // tail on family 4 with no hard edge, and a single fin.
+    expect(longboard.rails.nose.symmetrical).toBe(true);
+    expect(longboard.rails.center.ratioTopPercent).toBe(50);
+    expect(longboard.rails.tail.family).toBe(4);
+    expect(longboard.rails.tailHardEdge).toBe(false);
+    expect(longboard.fins.finSetup).toBe("single");
+    for (const preset of BOARD_PRESETS) {
+      expect(preset.rails).not.toEqual(DEFAULT_RAIL_BAND_SPEC);
+      expect(preset.fins).not.toEqual(DEFAULT_FIN_PLACEMENT_SPEC);
     }
   });
 
@@ -282,7 +289,8 @@ describe("BOARD_PRESETS", () => {
         fish: { nose12: 1.4, tail12: 0.66 },
         // Likewise shaper-captured 2026-09-14.
         midlength: { nose12: 2.05, tail12: 1.23 },
-        longboard: { nose12: 1.5, tail12: 0.35 },
+        // Likewise shaper-captured 2026-09-14.
+        longboard: { nose12: 2.29, tail12: 1.8 },
       };
       const prior = priorFigures[preset.id];
       expect(Math.abs(mmToInches(geometry.noseLiftAt12in) - prior.nose12)).toBeLessThanOrEqual(0.25);

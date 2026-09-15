@@ -70,6 +70,14 @@
  * fins from their screens' capture affordances — leaving only `longboard` on drafted rocker/foil
  * and default rails/fins (its D-03 outline stands).
  *
+ * Longboard captured (2026-09-14): the `longboard` block is now shaper-captured in full too — its
+ * D-03 outline re-tuned in the live editor and its rocker, foil, rails and fins from their screens'
+ * capture affordances. With this, every block of every preset is the founder's own: the
+ * "Claude-drafted" and "seeded-but-untuned" states the D-12 and rails/fins paragraphs above
+ * describe are history, kept for the record, and `DEFAULT_RAIL_BAND_SPEC` /
+ * `DEFAULT_FIN_PLACEMENT_SPEC` are no longer imported here — they remain the design store's own
+ * starting values for a board that begins without a preset, but no preset carries them.
+ *
  * Any future change to any preset field should go through the matching
  * capture loop rather than being hand-edited. Every length/width/offset is
  * authored via `inchesToMm()` and every angle via `degrees()` — never a bare
@@ -79,17 +87,18 @@
  */
 
 import type { OutlineSpec } from "./board";
-import { DEFAULT_FIN_PLACEMENT_SPEC, type FinPlacementSpec } from "./fins";
+import type { FinPlacementSpec } from "./fins";
 import type { FoilSpec } from "./foil";
-import { DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "./rail-bands";
+import type { RailBandSpec } from "./rail-bands";
 import type { RockerSpec } from "./rocker";
 import { degrees, inchesToMm } from "./units";
 
 // Each preset's rocker block keeps its own noseLift/tailLift exactly as before this task, and
 // carries six shape controls solved (not hand-guessed) so the derived 12" figures land within a
 // hundredth of an inch of the preset's own prior stored 12" numbers — see each block's own
-// comment for the figures it was solved against. The `shortboard`, `fish` and `midlength` blocks
-// are the exceptions since 2026-09-14: shaper-captured rather than solved, see their own comments.
+// comment for the figures it was solved against. Since 2026-09-14 every block is shaper-captured
+// rather than solved — see each block's own comment; the sentence above describes the 260829-rda
+// state, kept for the record.
 
 export interface BoardPreset {
   id: "shortboard" | "fish" | "midlength" | "longboard";
@@ -121,9 +130,11 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
     },
     // Shaper-captured 2026-09-14: the founder's own rocker and foil for this board, read back out
     // of the live ROCKER editor by its development-only "Copy preset values" affordance and pasted
-    // in wholesale — the same loop that tuned the midlength/longboard outlines. That affordance
-    // prints inches rounded to three decimals (2.063, 0.438, 1.563, 0.938); those four are written
-    // here as the exact sixteenths the sliders hold (2.0625, 0.4375, 1.5625, 0.9375). Derived
+    // in wholesale — the same loop that tuned the midlength/longboard outlines. At the time that
+    // affordance printed inches rounded to three decimals (2.063, 0.438, 1.563, 0.938), so those
+    // four were written here by hand as the exact sixteenths the sliders hold (2.0625, 0.4375,
+    // 1.5625, 0.9375); later that day it learned to print the exact sixteenth itself
+    // (`lib/geometry/preset-source.ts`), so a recapture pastes in as-is. Derived
     // nose12 ≈ 1.80", tail12 ≈ 0.94" — the figures presets.test.ts checks this block against.
     rocker: {
       noseLift: inchesToMm(5.5),
@@ -434,38 +445,108 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
     id: "longboard",
     name: "Longboard",
     descriptor: "Smooth glide, nose-to-tail control",
+    // Shaper-captured 2026-09-14: every block below — outline, rocker, foil, rails and fins — is
+    // the founder's own, read back out of the five design screens' development-only "Copy preset
+    // values" buttons and pasted in wholesale (the D-03 outline re-tuned in the same live editor).
+    // The one Copy-button rounding is written back as the exact sixteenth the slider holds: nose
+    // lift 4.313 → 4.3125.
     outline: {
       length: inchesToMm(108),
       widePointWidth: inchesToMm(22.5),
-      widePointOffset: inchesToMm(8),
-      tailRailLength: 50,
-      noseRailLength: 50,
+      widePointOffset: inchesToMm(3.5),
+      tailRailLength: 40,
+      noseRailLength: 87,
       noseAngle: degrees(90),
       noseFullness: 90,
       tailAngle: degrees(30),
-      tailFullness: 53.5,
-      tail: { kind: "squash", endWidth: inchesToMm(8) },
+      tailFullness: 46.75,
+      tail: { kind: "squash", endWidth: inchesToMm(8.5) },
     },
-    // Solved against the old stored nose12 1.5"/tail12 0.35": derived nose12 ≈ 1.4972",
-    // tail12 ≈ 0.3489" — both within a hundredth of an inch.
+    // Derived nose12 ≈ 2.29", tail12 ≈ 1.80" — the figures presets.test.ts checks this block against.
     rocker: {
-      noseLift: inchesToMm(5.5),
-      tailLift: inchesToMm(1.6),
-      noseAngle: degrees(25),
-      tailAngle: degrees(12),
-      noseSmoothness: 5,
-      tailSmoothness: 4,
-      noseFlatness: 90,
-      tailFlatness: 95,
+      noseLift: inchesToMm(4.3125),
+      tailLift: inchesToMm(3.25),
+      noseAngle: degrees(12),
+      tailAngle: degrees(11),
+      noseSmoothness: 23,
+      tailSmoothness: 65,
+      noseFlatness: 0,
+      tailFlatness: 28,
     },
     foil: {
-      noseTip: inchesToMm(0.5),
-      nose12: inchesToMm(2.1),
-      center: inchesToMm(3.25),
-      tail12: inchesToMm(2.0),
-      tailTip: inchesToMm(0.4375),
+      noseTip: inchesToMm(0.875),
+      nose12: inchesToMm(1.625),
+      center: inchesToMm(3),
+      tail12: inchesToMm(1.75),
+      tailTip: inchesToMm(0.875),
     },
-    rails: DEFAULT_RAIL_BAND_SPEC,
-    fins: DEFAULT_FIN_PLACEMENT_SPEC,
+    // Rails: symmetrical 50/50 rails on family 3 at the nose and centre, a symmetrical 45/55 tail
+    // on family 4, and no hard edge — a log's soft rails; fins: a single fin, its base length left
+    // to the calculator. As on the other three, the thicknesses (1.31/2.5/1.56) and the fins' 72"
+    // board / 13" tail are the raw fallbacks the Copy buttons read back — the screens' foil and
+    // template links (on by default, reset on by `applyPreset`) read this board's own foil and
+    // outline instead.
+    rails: {
+      nose: {
+        boardThickness: inchesToMm(1.31),
+        deckPercent: 100,
+        family: 3,
+        ratioTopPercent: 50,
+        symmetrical: true,
+        cornerCutOffsetOverride: null,
+        removeCornerCut: false,
+        singleTuck: false,
+        bottomTuck3Override: null,
+      },
+      center: {
+        boardThickness: inchesToMm(2.5),
+        deckPercent: 100,
+        family: 3,
+        ratioTopPercent: 50,
+        symmetrical: true,
+        cornerCutOffsetOverride: null,
+        removeCornerCut: false,
+        singleTuck: false,
+        bottomTuck3Override: null,
+      },
+      tail: {
+        boardThickness: inchesToMm(1.56),
+        deckPercent: 100,
+        family: 4,
+        ratioTopPercent: 45,
+        symmetrical: true,
+        cornerCutOffsetOverride: null,
+        removeCornerCut: false,
+        singleTuck: false,
+        bottomTuck3Override: null,
+      },
+      tailHardEdge: false,
+    },
+    fins: {
+      boardLength: inchesToMm(72),
+      tailWidth12: inchesToMm(13),
+      tailShape: "squash",
+      finSetup: "single",
+      frontModel: "mckeeSB",
+      quadRearModel: "mckeeSB",
+      twinTemplate: "upright",
+      quadCenterFinOn: false,
+      advanced: {
+        baseLenForward: inchesToMm(4.5),
+        baseLenForwardOverridden: false,
+        baseLenRear: inchesToMm(4.5),
+        baseLenRearOverridden: false,
+        baseLenCenter: inchesToMm(10.5),
+        baseLenCenterOverridden: false,
+        centerPositionOffset: inchesToMm(0),
+        forwardPositionOffset: inchesToMm(0),
+        forwardToeOverride: null,
+        rearPositionOffset: inchesToMm(0),
+        rearToeOverride: null,
+        quadRearOffRailOverride: null,
+        quadRearOffTailOverride: null,
+        quadRearOffTailOverridden: false,
+      },
+    },
   },
 ];
