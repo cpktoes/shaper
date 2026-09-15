@@ -1,5 +1,7 @@
 ---
 created: 2026-08-21
+closed: 2026-09-14
+resolution: superseded
 title: Copy-spec-to-clipboard across the design screens
 area: ui
 severity: minor
@@ -13,6 +15,20 @@ resolves_phase:
 ---
 
 # Copy-spec-to-clipboard across screens
+
+**Closed 2026-09-14 at the founder's request, without code.** No shaper-facing "copy this screen's
+numbers" button was built. What exists instead:
+
+- The four development-only "Copy preset values" buttons (TEMPLATE, ROCKER, RAILS and FINS) serialise
+  the live spec to the clipboard for the preset-capture loop — since 14b03a7 through the shared,
+  tested `lib/geometry/preset-source.ts`, copying the exact stored value. They are for capturing
+  presets into `lib/geometry/presets.ts`, not a shaper's export, and never ship in production.
+- A shaper's numbers now leave the app on paper: the Summary order form, the Overview Sheet, the Full
+  Sized Template and the Paper Saver all carry the board's dims in the shaper's chosen units.
+
+If a plain-text export is ever wanted again, reopen this — the prototype's per-screen `specLines`
+builders remain the content source, and the preset-source module is the serialisation precedent.
+
 
 Every prototype screen has a copy-to-clipboard spec export, and all four were deferred
 independently, so no single todo ever captured them:
