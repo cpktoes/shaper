@@ -124,6 +124,79 @@ const SETTLE_KEY = "__shaperRailsSettle";
  *
  * Deliberately no `waitForTimeout` — a sleep is the same race with a longer fuse.
  */
+/**
+ * The fit rule itself (quick 260914-v2v, the founder's decision 2026-09-14): on a short screen the
+ * plots are NOT squeezed to fit the column's height — every open one is drawn at the drawing
+ * column's own width, and the column scrolls instead. Measured against each wrapper's inline width,
+ * the exact value `rail-band-editor.tsx`'s solver decided, not a class name.
+ */
+async function expectPlotsFillTheColumn(page: Page, expectedCount: number) {
+  const measured = await page.evaluate(() => {
+    const container = document.querySelector<HTMLElement>('[data-rail-plot-row="desktop"]');
+    if (!container) return null;
+    return {
+      containerWidth: container.clientWidth,
+      widths: Array.from(container.children).map((el) => (el as HTMLElement).style.width || "(unset)"),
+    };
+  });
+  if (!measured) throw new Error("the desktop rail plot row is not in the page");
+  expect(measured.widths, "wrong number of open rail sections for this case").toHaveLength(expectedCount);
+  expect(
+    measured.widths,
+    `each open rail cross-section should be drawn at the drawing column's own width (${measured.containerWidth}px) on a short screen rather than shrunk to fit its height — measured ${measured.widths.join(", ")}`,
+  ).toEqual(Array.from({ length: expectedCount }, () => `${measured.containerWidth}px`));
+  return measured.containerWidth;
+}
+
+/**
+ * The other half of the same change: the coloured key sits UNDER the last plot, and the card the
+ * plots live in has grown far enough to hold both — nothing drawn over a plot, nothing crossing a
+ * card's border on its way down the page.
+ */
+async function expectKeyRowUnderThePlots(page: Page) {
+  const measured = await page.evaluate(() => {
+    const container = document.querySelector<HTMLElement>('[data-rail-plot-row="desktop"]');
+    if (!container) return null;
+    const plots = Array.from(container.querySelectorAll("svg"));
+    const lastPlot = plots[plots.length - 1];
+    // The key row is found by its own text — the first entry buildRailLegend always emits — never
+    // by a class name. The deepest <div> carrying "Apex Center" IS the row: everything else
+    // carrying that text is either one of its ancestors (earlier in document order) or a <span>
+    // inside it.
+    const key = Array.from(document.querySelectorAll<HTMLElement>("div"))
+      .filter((el) => el.textContent?.includes("Apex Center"))
+      .pop();
+    // The card the drawing sits in (tabbed-panel.tsx's inner content card — the one visible box a
+    // shaper sees around the plots). Its surface class is used only to FIND it; nothing below
+    // asserts anything about the class itself, only about where its bottom edge lands.
+    const card = container.closest<HTMLElement>(".bg-surf-panel");
+    // And the outer panel around that card (tabbed-panel.tsx's bordered panel layer) — both
+    // layers must have grown, or the inner card would cross the outer one's border instead.
+    const panel = container.closest<HTMLElement>(".bg-surf-tab-active");
+    if (!lastPlot || !key || !card || !panel) return null;
+    const edges = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return { top: Math.round(r.top), bottom: Math.round(r.bottom) };
+    };
+    return { plot: edges(lastPlot), key: edges(key), card: edges(card), panel: edges(panel) };
+  });
+  if (!measured) {
+    throw new Error("could not find the last rail plot, the coloured key row, the card they sit in, or its outer panel");
+  }
+  expect(
+    measured.key.top,
+    `the coloured key is drawn over the last rail cross-section instead of under it — the key's top edge is at ${measured.key.top} and the plot's bottom edge is at ${measured.plot.bottom}`,
+  ).toBeGreaterThanOrEqual(measured.plot.bottom - 1);
+  expect(
+    measured.card.bottom,
+    `the drawing's own card ends at ${measured.card.bottom} but its content runs to ${measured.key.bottom} — the plots and key are spilling past the card's border instead of the card growing to hold them`,
+  ).toBeGreaterThanOrEqual(measured.key.bottom - 1);
+  expect(
+    measured.panel.bottom,
+    `the outer panel ends at ${measured.panel.bottom} but the card inside it runs to ${measured.card.bottom} — the panel did not grow with its card`,
+  ).toBeGreaterThanOrEqual(measured.card.bottom - 1);
+}
+
 async function settledDrawingColumn(page: Page) {
   await page.waitForFunction(
     () => !!document.querySelector('[data-rail-plot-row="desktop"][data-rail-plot-fit="measured"]'),
@@ -161,6 +234,8 @@ async function proveDrawingColumnScrolls(page: Page, viewport: { width: number; 
   const main = page.locator("main");
   await expect(main).toBeVisible();
   await settledDrawingColumn(page);
+  await expectPlotsFillTheColumn(page, 3);
+  await expectKeyRowUnderThePlots(page);
 
   // Prove the test is not vacuous: three open sections really do overflow the drawing column at
   // this height -- otherwise there is nothing here for the fix to prove itself against.
@@ -420,27 +495,29 @@ test.describe("RAILS held sideways — the controls stay put, same bucket as a d
     await expect(page.getByText("Rail Band Calculator", { exact: true })).toBeVisible();
   });
 
-  // 10-SWEEP-2.md, "The finding: RAILS sideways does not scroll" -- the founder's own words on a
-  // real iPhone: "3 makes the big which is nice but the window doesn't scroll so you can only see
-  // whatever is on top." All three rail sections are open by default, so simply landing on VIEWER
-  // at a real sideways-phone height reproduces it with no extra toggling. This pins the fix
-  // (`design-screen-shell.tsx`'s `overflow-y-auto` on the drawing column) against the REAL
-  // element's own scrollHeight/clientHeight/scrollTop, never a CSS class name, and proves the
-  // user-visible half of the fix too: the Tail section, pushed below the fold before scrolling,
-  // is reachable after.
+  // HISTORY -- 10-SWEEP-2.md, "The finding: RAILS sideways does not scroll" -- the founder's own
+  // words on a real iPhone: "3 makes the big which is nice but the window doesn't scroll so you
+  // can only see whatever is on top." All three rail sections are open by default, so simply
+  // landing on VIEWER at a real sideways-phone height reproduced it with no extra toggling. This
+  // pinned the first half of the fix (`design-screen-shell.tsx`'s `overflow-y-auto` on the drawing
+  // column) against the REAL element's own scrollHeight/clientHeight/scrollTop, never a CSS class
+  // name, and proved the user-visible half of that fix too: the Tail section, pushed below the
+  // fold before scrolling, was reachable after.
   //
-  // 260914-tsp: the single 844x390 test that used to live here passed only when it beat the
-  // browser to the page. The server always draws all three rail cross-sections at the solver's
+  // HISTORY -- 260914-tsp: the single 844x390 test that used to live here passed only when it beat
+  // the browser to the page. The server always draws all three rail cross-sections at the solver's
   // 900px ceiling -- before the browser has measured anything, the drawing column looks like
   // 1005px of drawing crammed into a 297px box, and merely LOOKS like it scrolls. A beat later
-  // `rail-band-editor.tsx`'s own solver measures the real container and shrinks the plots to fit,
-  // and at 390 dots tall it shrinks them so far (three 40-dot slivers) that the column reads
-  // 297/297 with nothing left to scroll. That beat measured 250-400ms after the page's own load
-  // event on every run checked (2026-09-14); the old test's steps usually finished inside it,
-  // because `page.goto` resolves at load, not at hydration -- "usually" was the whole guarantee.
+  // `rail-band-editor.tsx`'s own solver measured the real container and, before 260914-v2v, shrank
+  // the plots to fit the column's height -- at 390 dots tall it shrank them so far (three 40-dot
+  // slivers) that the column read 297/297 with nothing left to scroll. That beat measured
+  // 250-400ms after the page's own load event on every run checked (2026-09-14); the old test's
+  // steps usually finished inside it, because `page.goto` resolves at load, not at hydration --
+  // "usually" was the whole guarantee.
   //
-  // The cliff, measured after hydration settles at 844 wide (main's own height is the viewport
-  // minus 93px of chrome; the plots container is main minus a further 159px):
+  // HISTORY -- the cliff before 260914-v2v, measured after hydration settles at 844 wide (main's
+  // own height is the viewport minus 93px of chrome; the plots container is main minus a further
+  // 159px): the plots shrank to fit, all the way down to 40px slivers at 390 dots tall.
   //
   //   page height | plots container | each plot wrapper  | column content / column | scrolled to
   //   390         | 138px            | 40px                | 297 / 297                | 0
@@ -448,20 +525,31 @@ test.describe("RAILS held sideways — the controls stay put, same bucket as a d
   //   352         | 100px            | 416px (full width)  | 554 / 259                | 295
   //   340         | 88px             | 416px (full width)  | 554 / 247                | 307
   //
-  // The cliff sits exactly where the plots container is no taller than the three section titles'
-  // own chrome (100px): at or below it the solver has no height left to shrink into and falls back
-  // to drawing the plots full width, so the column genuinely overflows and scrolls. Above it the
-  // plots shrink continuously -- 1px at 353, all the way down to 40px at 390.
+  // That cliff sat exactly where the plots container was no taller than the three section titles'
+  // own chrome (100px): at or below it the solver had no height left to shrink into and fell back
+  // to drawing the plots full width, so the column genuinely overflowed and scrolled. Above it the
+  // plots shrank continuously -- 1px at 353, all the way down to 40px at 390.
+  //
+  // THE RULE THAT REPLACED IT (the founder's decision, 2026-09-14, quick 260914-v2v, chosen from
+  // four measured fitting rules built and shown side by side): on a screen 500 dots tall or
+  // shorter -- the same cutoff under which `design-screen-shell.tsx` already lets the drawing
+  // column scroll -- the rail plots take the drawing column's own width instead of fitting its
+  // height, and the column scrolls with the coloured key sitting under the last plot; on a taller
+  // screen they keep fitting to height exactly as before. Measured under the new rule: 844x340
+  // three open -> 416px plots, column 554/247, scrolled 307; 844x340 two open -> 416px, 400/247,
+  // scrolled 153; 844x390 three open -> 416px, 554/297, scrolled 257; 863x360 three open -> 426px,
+  // 564/267. Desktop is unchanged -- 518px at 1280x800, 261px at 1280x560.
   //
   // Where 340 comes from: a real iPhone 14 held sideways is about 844 dots across (measured
   // 2026-09-11, recorded in CLAUDE.md's Layout section, which also warns that a test tool's own
   // emulated 750 is not real hardware). Safari's own landscape toolbar leaves the page about 340
   // dots tall -- the same height Playwright's own "iPhone 14 landscape" device descriptor uses.
   // The founder's own sideways sweep bounds it independently: with two sections open the chrome is
-  // only 64px so the plots still fit small, but with three it is 100px, the plots go full width,
-  // and -- before the 09-12 fix -- nothing scrolled (10-SWEEP-2.md). That is only true between
-  // roughly 316 and 352 dots tall. 390 is the SAME phone with the toolbar hidden, which the app's
-  // own Hide Toolbar tip invites a shaper to do.
+  // only 64px so the plots still fit small under the old rule, but with three it is 100px, the
+  // plots went full width, and -- before the 09-12 fix -- nothing scrolled (10-SWEEP-2.md). That
+  // was only true between roughly 316 and 352 dots tall. 390 is the SAME phone with the toolbar
+  // hidden, which the app's own Hide Toolbar tip invites a shaper to do. Both heights now run the
+  // same proof, through the same helper.
   test("iPhone sideways with Safari's bar showing, 844x340: the drawing column scrolls, and the Tail section it hides becomes reachable", async ({
     page,
   }, testInfo) => {
@@ -469,18 +557,46 @@ test.describe("RAILS held sideways — the controls stay put, same bucket as a d
     await proveDrawingColumnScrolls(page, { width: 844, height: 340 });
   });
 
-  test("iPhone sideways with the toolbar hidden, 844x390: the three open plots collapse to slivers, so there is nothing to scroll (known, expected to fail)", async ({
+  test("iPhone sideways with the toolbar hidden, 844x390: the drawing column scrolls, and the Tail section it hides becomes reachable", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "a real iPhone's sideways measurement is WebKit-specific");
-    test.fail(
-      true,
-      "at 844x390 the rail plot fit shrinks all three open plots to 40px slivers, so the drawing " +
-        "column has nothing left to scroll. The day the plot fit stops shrinking this far on a " +
-        'short screen, Playwright will report "Expected to fail, but passed." -- at which point ' +
-        "this test.fail should be deleted, turning this into the 390 proof.",
-    );
     await proveDrawingColumnScrolls(page, { width: 844, height: 390 });
+  });
+
+  // The founder's own sideways sweep judged two open sections as well as three ("two are too small
+  // to view"), and two is where the OLD rule looked healthiest — 37px slivers that still fit, so
+  // nothing scrolled and nothing looked broken. Under the new rule two sections get the same full
+  // width as three (measured 416px, column 400 inside 247), so this case cannot quietly regress to
+  // fitting-by-height while the three-section cases stay green.
+  test("iPhone sideways with Safari's bar showing, 844x340: with the Tail section closed, the two remaining plots are still as wide as the column and the column still scrolls", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "a real iPhone's sideways measurement is WebKit-specific");
+    await page.setViewportSize({ width: 844, height: 340 });
+    await page.goto("/design/rails");
+
+    const main = page.locator("main");
+    await expect(main).toBeVisible();
+    await settledDrawingColumn(page);
+
+    // Close Tail from the controls beside the drawing — the same tap a shaper makes.
+    await page.locator("aside button", { hasText: /^tail\b/i }).first().click();
+    await page.waitForFunction(
+      () => document.querySelectorAll('[data-rail-plot-row="desktop"] > *').length === 2,
+    );
+    await settledDrawingColumn(page);
+
+    await expectPlotsFillTheColumn(page, 2);
+
+    const metrics = await main.evaluate((el) => ({
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+    }));
+    expect(
+      metrics.scrollHeight,
+      `with two rail sections open at 844x340 the drawing column's content (${metrics.scrollHeight}px) fits inside the column (${metrics.clientHeight}px) — the two plots were shrunk to fit rather than drawn at the column's width, so a shaper has nothing to scroll`,
+    ).toBeGreaterThan(metrics.clientHeight);
   });
 });
 
