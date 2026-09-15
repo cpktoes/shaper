@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useUnits } from "@/components/units-provider";
 import { useDesign } from "@/components/design/design-store";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
-import { toeAimTableFor, type FinAdvancedSpec, type FinPlacementSpec } from "@/lib/geometry/fins";
-import { mmToInches, type Mm } from "@/lib/geometry/units";
+import { toeAimTableFor } from "@/lib/geometry/fins";
+import { buildFinsPresetSource } from "@/lib/geometry/preset-source";
 import { FinControls } from "./fin-controls";
 import { FinDataPanel } from "./fin-data-panel";
 import { FinModelInfo } from "./fin-model-info";
@@ -18,64 +18,6 @@ type FinTab = "viewer" | "data" | "info";
 
 const TAB_LABEL: Record<FinTab, string> = { viewer: "VIEWER", data: "DATA", info: "MODEL INFO" };
 const TAB_ORDER: FinTab[] = ["viewer", "data", "info"];
-
-/** Rounds a millimetre value to inches, 3 decimal places — matches outline-editor.tsx's own helper. */
-function roundedInches(value: Mm): number {
-  return Number(mmToInches(value).toFixed(3));
-}
-
-/** Builds a pasteable `FinAdvancedSpec` source block, nested `indent` spaces inside its caller. */
-function buildAdvancedSource(spec: FinAdvancedSpec, indent: string): string {
-  const pad = `${indent}  `;
-  const forwardToeOverride =
-    spec.forwardToeOverride === null ? "null" : `inchesToMm(${roundedInches(spec.forwardToeOverride)})`;
-  const rearToeOverride =
-    spec.rearToeOverride === null ? "null" : `inchesToMm(${roundedInches(spec.rearToeOverride)})`;
-  const quadRearOffRailOverride =
-    spec.quadRearOffRailOverride === null
-      ? "null"
-      : `inchesToMm(${roundedInches(spec.quadRearOffRailOverride)})`;
-  const quadRearOffTailOverride =
-    spec.quadRearOffTailOverride === null
-      ? "null"
-      : `inchesToMm(${roundedInches(spec.quadRearOffTailOverride)})`;
-
-  return [
-    "{",
-    `${pad}baseLenForward: inchesToMm(${roundedInches(spec.baseLenForward)}),`,
-    `${pad}baseLenForwardOverridden: ${spec.baseLenForwardOverridden},`,
-    `${pad}baseLenRear: inchesToMm(${roundedInches(spec.baseLenRear)}),`,
-    `${pad}baseLenRearOverridden: ${spec.baseLenRearOverridden},`,
-    `${pad}baseLenCenter: inchesToMm(${roundedInches(spec.baseLenCenter)}),`,
-    `${pad}baseLenCenterOverridden: ${spec.baseLenCenterOverridden},`,
-    `${pad}centerPositionOffset: inchesToMm(${roundedInches(spec.centerPositionOffset)}),`,
-    `${pad}forwardPositionOffset: inchesToMm(${roundedInches(spec.forwardPositionOffset)}),`,
-    `${pad}forwardToeOverride: ${forwardToeOverride},`,
-    `${pad}rearPositionOffset: inchesToMm(${roundedInches(spec.rearPositionOffset)}),`,
-    `${pad}rearToeOverride: ${rearToeOverride},`,
-    `${pad}quadRearOffRailOverride: ${quadRearOffRailOverride},`,
-    `${pad}quadRearOffTailOverride: ${quadRearOffTailOverride},`,
-    `${pad}quadRearOffTailOverridden: ${spec.quadRearOffTailOverridden},`,
-    `${indent}}`,
-  ].join("\n");
-}
-
-/** Builds a pasteable `BoardPreset["fins"]` source block from the live (raw, non-imported) fin spec. */
-function buildPresetSource(spec: FinPlacementSpec): string {
-  return [
-    "fins: {",
-    `  boardLength: inchesToMm(${roundedInches(spec.boardLength)}),`,
-    `  tailWidth12: inchesToMm(${roundedInches(spec.tailWidth12)}),`,
-    `  tailShape: "${spec.tailShape}",`,
-    `  finSetup: "${spec.finSetup}",`,
-    `  frontModel: "${spec.frontModel}",`,
-    `  quadRearModel: "${spec.quadRearModel}",`,
-    `  twinTemplate: "${spec.twinTemplate}",`,
-    `  quadCenterFinOn: ${spec.quadCenterFinOn},`,
-    `  advanced: ${buildAdvancedSource(spec.advanced, "  ")},`,
-    "},",
-  ].join("\n");
-}
 
 /**
  * Reads the design state from the shared `DesignProvider` (components/design/design-store.tsx)
@@ -90,7 +32,10 @@ function buildPresetSource(spec: FinPlacementSpec): string {
  * production. It reads the raw `fins` spec (not `effectiveFins`) back out as pasteable
  * `lib/geometry/presets.ts` source, so a captured preset carries the shaper's own advanced/model
  * fields rather than whatever the outline happened to override — the Fins half of the same
- * shaper-tuning capture loop as components/outline/outline-editor.tsx (CONTEXT.md D-03).
+ * shaper-tuning capture loop as components/outline/outline-editor.tsx (CONTEXT.md D-03). The text
+ * itself comes from `buildFinsPresetSource` in `lib/geometry/preset-source.ts`, shared with the
+ * other three screens since 2026-09-14 — that file's header says why the four builders moved out
+ * of their editors together.
  *
  * 09-03: moved onto the shared `DesignScreenShell`, `phonePinned="55dvh"` — the diagram pins to a
  * little over half the phone screen and scales to the available width through its own existing
@@ -118,7 +63,7 @@ export function FinPlacementEditor() {
   const { system } = useUnits();
 
   function handleCopyPreset() {
-    const text = buildPresetSource(rawSpec);
+    const text = buildFinsPresetSource(rawSpec);
     console.log(text);
     setJustCopiedPreset(true);
     navigator.clipboard.writeText(text).catch(() => {

@@ -130,9 +130,11 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
     },
     // Shaper-captured 2026-09-14: the founder's own rocker and foil for this board, read back out
     // of the live ROCKER editor by its development-only "Copy preset values" affordance and pasted
-    // in wholesale — the same loop that tuned the midlength/longboard outlines. That affordance
-    // prints inches rounded to three decimals (2.063, 0.438, 1.563, 0.938); those four are written
-    // here as the exact sixteenths the sliders hold (2.0625, 0.4375, 1.5625, 0.9375). Derived
+    // in wholesale — the same loop that tuned the midlength/longboard outlines. At the time that
+    // affordance printed inches rounded to three decimals (2.063, 0.438, 1.563, 0.938), so those
+    // four were written here by hand as the exact sixteenths the sliders hold (2.0625, 0.4375,
+    // 1.5625, 0.9375); later that day it learned to print the exact sixteenth itself
+    // (`lib/geometry/preset-source.ts`), so a recapture pastes in as-is. Derived
     // nose12 ≈ 1.80", tail12 ≈ 0.94" — the figures presets.test.ts checks this block against.
     rocker: {
       noseLift: inchesToMm(5.5),

@@ -29,8 +29,10 @@
  * "faithful local mirror, not a shared extraction" posture: that class string and glyph were
  * hand-edited in all seven button instances across both files, twice in one day, and that real
  * cost is what changed the decision, not this screen's own needs. `buildRockerPresetSource`
- * stays a local counterpart to `outline-editor.tsx`'s own preset-capture function — the dev-only
- * capture affordance was never part of this extraction. `bare` removes the tab strip, and this
+ * stayed a local counterpart to `outline-editor.tsx`'s own preset-capture function until
+ * 2026-09-14, when the same argument caught up with it: its three-decimal inch printer was wrong
+ * in all four editors at once (a slider on 2 1/16" pasted as `inchesToMm(2.063)`), so the four
+ * builders now share `lib/geometry/preset-source.ts`. `bare` removes the tab strip, and this
  * screen has two tabs (DATASHEET is unreachable while wide view is on) — safe because the button
  * that turns wide view on lives inside the VIEWER tab's own toolbar and stays on screen in both
  * states, so the active tab is invariantly VIEWER whenever wide view is on, and one press always
@@ -65,45 +67,11 @@ import * as ViewerMedia from "@/components/design/use-viewer-media";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
 import { RotateBoardIcon, ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
-import { type FoilSpec } from "@/lib/geometry/foil";
-import { buildRocker, type RockerSpec } from "@/lib/geometry/rocker";
-import { type Mm, mmToInches } from "@/lib/geometry/units";
+import { buildRockerPresetSource } from "@/lib/geometry/preset-source";
+import { buildRocker } from "@/lib/geometry/rocker";
 import { RockerControls, type RockerControlsSectionKey } from "./rocker-controls";
 import { RockerDatasheet } from "./rocker-datasheet";
 import { RockerViewer } from "./rocker-viewer";
-
-/** Rounds a millimetre value to inches, 3 decimal places, matching `outline-editor.tsx`'s
- * `roundedInches` precision for the same capture affordance. */
-function roundedInches(value: Mm): number {
-  return Number(mmToInches(value).toFixed(3));
-}
-
-/** Builds a pasteable `BoardPreset["rocker"]`/`["foil"]` source block from the live rocker and
- * foil specs — the ROCKER-screen counterpart to `outline-editor.tsx`'s `buildPresetSource`.
- * Emits the current eight-field `RockerSpec` shape (quick task 260829-rda), the two lifts and
- * two angles authored through `inchesToMm()`/`degrees()` the way `presets.ts` itself authors
- * them, so the dev-only capture affordance still round-trips straight into that file. */
-function buildRockerPresetSource(rocker: RockerSpec, foil: FoilSpec): string {
-  return [
-    "rocker: {",
-    `  noseLift: inchesToMm(${roundedInches(rocker.noseLift)}),`,
-    `  tailLift: inchesToMm(${roundedInches(rocker.tailLift)}),`,
-    `  noseAngle: degrees(${rocker.noseAngle}),`,
-    `  tailAngle: degrees(${rocker.tailAngle}),`,
-    `  noseSmoothness: ${rocker.noseSmoothness},`,
-    `  tailSmoothness: ${rocker.tailSmoothness},`,
-    `  noseFlatness: ${rocker.noseFlatness},`,
-    `  tailFlatness: ${rocker.tailFlatness},`,
-    "},",
-    "foil: {",
-    `  noseTip: inchesToMm(${roundedInches(foil.noseTip)}),`,
-    `  nose12: inchesToMm(${roundedInches(foil.nose12)}),`,
-    `  center: inchesToMm(${roundedInches(foil.center)}),`,
-    `  tail12: inchesToMm(${roundedInches(foil.tail12)}),`,
-    `  tailTip: inchesToMm(${roundedInches(foil.tailTip)}),`,
-    "},",
-  ].join("\n");
-}
 
 type RockerTab = "viewer" | "datasheet";
 const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [

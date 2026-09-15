@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { useDesign } from "@/components/design/design-store";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
-import { type RailBandSpec, type RailSectionKey, type RailSectionSpec } from "@/lib/geometry/rail-bands";
-import { mm, mmToInches, type Mm } from "@/lib/geometry/units";
+import { buildRailsPresetSource } from "@/lib/geometry/preset-source";
+import { type RailSectionKey } from "@/lib/geometry/rail-bands";
+import { mm, type Mm } from "@/lib/geometry/units";
 import { RailControls } from "./rail-controls";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { RailDataTable } from "./rail-data-table";
@@ -28,46 +29,6 @@ const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "C
 // ultrawide display.
 const MAX_PLOT_W = 900;
 
-/** Rounds a millimetre value to inches, 3 decimal places — matches outline-editor.tsx's own helper. */
-function roundedInches(value: Mm): number {
-  return Number(mmToInches(value).toFixed(3));
-}
-
-/** Builds a pasteable `RailSectionSpec` source block, nested `indent` spaces inside its caller. */
-function buildSectionSource(spec: RailSectionSpec, indent: string): string {
-  const pad = `${indent}  `;
-  const cornerCutOffsetOverride =
-    spec.cornerCutOffsetOverride === null ? "null" : `inchesToMm(${roundedInches(spec.cornerCutOffsetOverride)})`;
-  const bottomTuck3Override =
-    spec.bottomTuck3Override === null ? "null" : `inchesToMm(${roundedInches(spec.bottomTuck3Override)})`;
-
-  return [
-    "{",
-    `${pad}boardThickness: inchesToMm(${roundedInches(spec.boardThickness)}),`,
-    `${pad}deckPercent: ${spec.deckPercent},`,
-    `${pad}family: ${spec.family},`,
-    `${pad}ratioTopPercent: ${spec.ratioTopPercent},`,
-    `${pad}symmetrical: ${spec.symmetrical},`,
-    `${pad}cornerCutOffsetOverride: ${cornerCutOffsetOverride},`,
-    `${pad}removeCornerCut: ${spec.removeCornerCut},`,
-    `${pad}singleTuck: ${spec.singleTuck},`,
-    `${pad}bottomTuck3Override: ${bottomTuck3Override},`,
-    `${indent}}`,
-  ].join("\n");
-}
-
-/** Builds a pasteable `BoardPreset["rails"]` source block from the live rail-band spec. */
-function buildPresetSource(spec: RailBandSpec): string {
-  return [
-    "rails: {",
-    `  nose: ${buildSectionSource(spec.nose, "  ")},`,
-    `  center: ${buildSectionSource(spec.center, "  ")},`,
-    `  tail: ${buildSectionSource(spec.tail, "  ")},`,
-    `  tailHardEdge: ${spec.tailHardEdge},`,
-    "},",
-  ].join("\n");
-}
-
 /**
  * Reads the design state from the shared `DesignProvider` (components/design/design-store.tsx)
  * instead of owning it locally — this screen is one of four views onto a single board design.
@@ -79,7 +40,9 @@ function buildPresetSource(spec: RailBandSpec): string {
  * gated on `process.env.NODE_ENV === "development"` so the bundler dead-code-eliminates it from
  * production. It reads the live `rails` spec back out as pasteable `lib/geometry/presets.ts`
  * source — the Rails half of the same shaper-tuning capture loop as
- * components/outline/outline-editor.tsx (CONTEXT.md D-03).
+ * components/outline/outline-editor.tsx (CONTEXT.md D-03). The text itself comes from
+ * `buildRailsPresetSource` in `lib/geometry/preset-source.ts`, shared with the other three screens
+ * since 2026-09-14 — that file's header says why the four builders moved out of their editors.
  */
 export function RailBandEditor() {
   const {
@@ -97,7 +60,7 @@ export function RailBandEditor() {
     // Captures the shaper's own stored rails, not the foil-derived effectiveRails — a captured
     // preset must record what was actually authored on this section, never a number borrowed from
     // whatever the link happened to be showing at capture time.
-    const text = buildPresetSource(rails);
+    const text = buildRailsPresetSource(rails);
     console.log(text);
     setJustCopiedPreset(true);
     navigator.clipboard.writeText(text).catch(() => {
