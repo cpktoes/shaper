@@ -1341,7 +1341,10 @@ export interface StripLabelRow {
  * pages (the whole point of the registration mechanism) must always read at the same distance
  * from its own line. A mark row starts at its own default position (just above its tick, `station
  * + STRIP_LABEL_INTERIOR_GAP_MM`) and is nudged to the opposite side only when that default would
- * sit closer than `STRIP_LABEL_MIN_SEPARATION_MM` to an already-placed row on the same page.
+ * sit closer than `STRIP_LABEL_MIN_SEPARATION_MM` to an already-placed row on the same page — or
+ * (2026-09-14) when that side would put the baseline past the page's own edge, which a tick inside
+ * the half-inch overlap two pages share can do on one of them: then the side that stays on the
+ * page wins, the same inward flip registration rows get at every page edge.
  *
  * `system` (07-01, extended 07-02) defaults to `"imperial"` and is passed straight through to both
  * `stripRegistrationLines` and `stripMarkSegments` — same load-bearing reason as every other
@@ -1402,14 +1405,27 @@ export function stripLabelRows(
 
     const settledAbove = settle(above, 1);
     const settledBelow = settle(below, -1);
-    // Keep whichever side needed the smaller total nudge away from the tick's own natural
-    // position — the side "further from the row it collides with" per <design_decision>, without
-    // travelling further than necessary once it IS clear.
-    const baselineStation = mm(
-      Math.abs(settledBelow - below) < Math.abs(settledAbove - above) ? settledBelow : settledAbove,
-    );
+    // A row must print on its own page. A tick within the interior gap of a page's top or bottom
+    // edge — a mark inside the half-inch overlap two pages share lands there on one of them — has
+    // its default "just above" baseline past the edge, so when exactly one side stays on the page
+    // that side wins: the same inward flip registration rows get at every page edge. The epsilon
+    // is float slack only, never a placement tolerance.
+    const page = layout.pages[segment.pageIndex];
+    const onPage = (station: number) =>
+      station >= page.stationRange[0] - 1e-6 && station <= page.stationRange[1] + 1e-6;
+    const aboveFits = onPage(settledAbove);
+    const belowFits = onPage(settledBelow);
+    let baselineStation: number;
+    if (aboveFits !== belowFits) {
+      baselineStation = aboveFits ? settledAbove : settledBelow;
+    } else {
+      // Both fit (the usual case): keep whichever side needed the smaller total nudge away from
+      // the tick's own natural position — the side "further from the row it collides with" per
+      // <design_decision>, without travelling further than necessary once it IS clear.
+      baselineStation = Math.abs(settledBelow - below) < Math.abs(settledAbove - above) ? settledBelow : settledAbove;
+    }
 
-    place({ pageIndex: segment.pageIndex, kind: "mark", baselineStation, text: segment.label });
+    place({ pageIndex: segment.pageIndex, kind: "mark", baselineStation: mm(baselineStation), text: segment.label });
   }
 
   return rows;

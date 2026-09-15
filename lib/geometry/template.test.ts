@@ -1238,6 +1238,25 @@ describe("stripMarkSegments", () => {
 });
 
 describe("stripLabelRows", () => {
+  it("a mark within the interior gap of a page's top edge labels below its tick on that page instead of spilling past the edge, and keeps its default above-the-tick label on the neighbouring page that shares the mark", () => {
+    // Built on the pinned Longboard so the case can't drift with the live preset: only the wide
+    // point moves, to 3 1/2in forward — where the shaper's 2026-09-14 capture put it — which lands
+    // its station 0.3 mm inside one Letter page's top edge and inside the next page's overlap.
+    const geometry = buildOutline({ ...pinnedOutline("longboard"), widePointOffset: inchesToMm(3.5) });
+    const layout = computeStripLayout(geometry, "letter");
+    const marks = computeTemplateMarks(geometry);
+    const rows = stripLabelRows(layout, marks, geometry).filter((row) => row.text.startsWith("Wide point"));
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      const page = layout.pages[row.pageIndex];
+      expect(row.baselineStation).toBeGreaterThanOrEqual(page.stationRange[0] - TOLERANCE_MM);
+      expect(row.baselineStation).toBeLessThanOrEqual(page.stationRange[1] + TOLERANCE_MM);
+    }
+    const [noseward, tailward] = [...rows].sort((a, b) => a.pageIndex - b.pageIndex);
+    expect(noseward.baselineStation).toBeGreaterThan(geometry.widePointStation); // the default: just above its tick
+    expect(tailward.baselineStation).toBeLessThan(geometry.widePointStation); // flipped below — above would leave the page
+  });
+
   for (const paper of PAPERS) {
     describe(paper, () => {
       it.each(BOARD_PRESETS)(
