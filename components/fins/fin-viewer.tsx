@@ -33,6 +33,7 @@ import { formatDim, formatLength, formatMark } from "@/lib/geometry/measure-disp
 import type { Point2D } from "@/lib/geometry/board";
 import { CALLOUT_FONT_VALUE, CALLOUT_PX, DimensionTick, useSvgFitScale } from "@/components/viewer/callout-primitives";
 import { useUnits } from "@/components/units-provider";
+import { layoutFinLabelBaselines, type FinLabelBox } from "./fin-label-layout";
 
 const SCALE = 14;
 const ORIGIN_X = 260;
@@ -108,8 +109,14 @@ function buildOutlinePaths(
   return { filled: `${d} Z`, open: d };
 }
 
+/** What a dimension callout on the fin drawing measures — lets the browser test (and the
+ * off-tail label-spacing rule below) find a label by what it measures rather than by matching
+ * its text. */
+type FinDimMeasure = "off-tail" | "toe" | "spread" | "off-rail";
+
 interface PlainDim {
   kind: "plain";
+  measure: FinDimMeasure;
   x1: number;
   y1: number;
   x2: number;
@@ -127,6 +134,7 @@ interface PlainDim {
 }
 interface BelowDim {
   kind: "below";
+  measure: FinDimMeasure;
   extLeftX: number;
   extLeftY1: number;
   extLeftY2: number;
@@ -143,6 +151,7 @@ interface BelowDim {
 }
 interface RailVDim {
   kind: "railV";
+  measure: FinDimMeasure;
   x1: number;
   y1: number;
   x2a: number;
@@ -249,6 +258,7 @@ function dimsForMark(
     const botEdgeX = ORIGIN_X - botEdgeXIn * SCALE;
     dims.push({
       kind: "plain",
+      measure: "off-tail",
       x1: dimX,
       y1: TAIL_Y,
       x2: dimX,
@@ -271,6 +281,7 @@ function dimsForMark(
     const midXAbove = (teX + leX) / 2;
     dims.push({
       kind: "below",
+      measure: "toe",
       extLeftX: teX,
       extLeftY1: teY - 3,
       extLeftY2: aboveRowY - 4,
@@ -296,6 +307,7 @@ function dimsForMark(
     const edgeYRight = TAIL_Y - edgeOffTailRightIn * SCALE;
     dims.push({
       kind: "below",
+      measure: "spread",
       extLeftX: ORIGIN_X,
       extLeftY1: TAIL_Y,
       extLeftY2: rowY + 4,
@@ -317,6 +329,7 @@ function dimsForMark(
     const midXAbove = (teX + leX) / 2;
     dims.push({
       kind: "below",
+      measure: "toe",
       extLeftX: teX,
       extLeftY1: teY - 3,
       extLeftY2: aboveRowY - 4,
@@ -345,6 +358,7 @@ function dimsForMark(
     }
     dims.push({
       kind: "railV",
+      measure: "off-rail",
       x1: railEnd,
       y1: teY,
       x2a: railEdgeX,
@@ -418,21 +432,10 @@ export function FinViewer({
     tailWidth12,
   );
 
-  const marksWithDims = useMemo(
-    () =>
-      marksGeom.map((geom) => ({
-        geom,
-        dims: dimsForMark(geom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier, system),
-      })),
-    [marksGeom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier, system],
-  );
-
-  const w12In = mmToInches(tailWidth12);
-  const svgTopY = TAIL_Y - (24 - VIEW_TOP_MARGIN) * SCALE;
-  const w12LineY = TAIL_Y - 12 * SCALE;
-  const w12LineX1 = ORIGIN_X - (w12In / 2) * SCALE;
-  const w12LineX2 = ORIGIN_X + (w12In / 2) * SCALE;
-
+  // Hoisted above marksWithDims (and the off-tail label-spacing memo below it, which needs the
+  // resolved numeric font size): every hook here still runs unconditionally, on every render, in
+  // the same order — only the position of these non-conditional declarations moved.
+  //
   // Non-compact shares the outline viewer's callout scale so a dimension reads the same
   // size on either screen. Compact keeps the summary scale the print-fit depends on.
   // Non-compact counters the drawing's fit so a dimension reads at CALLOUT_PX.value on screen
@@ -443,6 +446,85 @@ export function FinViewer({
   const valueFontSize = compact
     ? "var(--summary-font-callout, 10px)"
     : (fitScale > 0 ? CALLOUT_PX.value / fitScale : CALLOUT_FONT_VALUE);
+
+  const marksWithDims = useMemo(
+    () =>
+      marksGeom.map((geom) => ({
+        geom,
+        dims: dimsForMark(geom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier, system),
+      })),
+    [marksGeom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier, system],
+  );
+
+  /**
+   * Keeps the off-tail height labels legible on a phone (D-260914-rj0).
+   *
+   * `dimsForMark` staggers the three off-tail heights sideways by tier and nudges them only
+   * +/-10 drawing units vertically (`midY` above) — enough while the callout text is small, and
+   * not enough once the drawing renders small and the pinned 14 CSS px callout face grows to
+   * 20-33 drawing units. On the Mid-length board (a quad with a centre fin) that leaves the rear
+   * and centre labels' baselines just 1.48 units apart on a phone, printing as `6 1/4"5/8"`.
+   *
+   * The fix is decided by the labels' own size and text (`layoutFinLabelBaselines`,
+   * `components/fins/fin-label-layout.ts`) — deliberately NOT by any of the three screen
+   * switches CLAUDE.md keeps apart (width/pointer/height). A phone held sideways lands in the
+   * DESKTOP shell and still needs this, because the drawing there is short and the type is still
+   * large. It must run here, after `marksWithDims`, because the rule has to see every off-tail
+   * label across every mark at once — a per-mark fix cannot know what the other marks did.
+   *
+   * Only `labelY` is ever rewritten. `labelX`, the dimension line, the ticks and the extension
+   * lines are untouched, and the compact Summary card (whose font is a CSS variable string, not
+   * a number, because its size follows the print fit) is left alone entirely.
+   */
+  const marksWithAdjustedDims = useMemo(() => {
+    if (typeof valueFontSize !== "number") return marksWithDims;
+
+    const FIN_ROLE_LABEL_RANK: Record<FinRole, number> = { front: 0, rear: 1, center: 2 };
+
+    interface OffTailEntry {
+      markIndex: number;
+      dimIndex: number;
+      role: FinRole;
+    }
+    const entries: OffTailEntry[] = [];
+    marksWithDims.forEach(({ geom, dims }, markIndex) => {
+      dims.forEach((d, dimIndex) => {
+        if (d.kind === "plain") entries.push({ markIndex, dimIndex, role: geom.mark.role });
+      });
+    });
+
+    if (entries.length < 2) return marksWithDims;
+
+    entries.sort((a, b) => FIN_ROLE_LABEL_RANK[a.role] - FIN_ROLE_LABEL_RANK[b.role]);
+
+    const boxes: FinLabelBox[] = entries.map(({ markIndex, dimIndex }) => {
+      const d = marksWithDims[markIndex]!.dims[dimIndex] as PlainDim;
+      return {
+        x: d.labelX,
+        y: d.labelY,
+        text: d.text,
+        lineTop: Math.min(d.y1, d.y2),
+        lineBottom: Math.max(d.y1, d.y2),
+      };
+    });
+
+    const adjustedYs = layoutFinLabelBaselines(boxes, valueFontSize);
+
+    // Rebuild the array, writing back only the changed labelY values — everything else about
+    // every dim (plain, below, railV alike) is copied through unchanged.
+    const next = marksWithDims.map(({ geom, dims }) => ({ geom, dims: dims.slice() }));
+    entries.forEach(({ markIndex, dimIndex }, i) => {
+      const original = next[markIndex]!.dims[dimIndex] as PlainDim;
+      next[markIndex]!.dims[dimIndex] = { ...original, labelY: adjustedYs[i]! };
+    });
+    return next;
+  }, [marksWithDims, valueFontSize]);
+
+  const w12In = mmToInches(tailWidth12);
+  const svgTopY = TAIL_Y - (24 - VIEW_TOP_MARGIN) * SCALE;
+  const w12LineY = TAIL_Y - 12 * SCALE;
+  const w12LineX1 = ORIGIN_X - (w12In / 2) * SCALE;
+  const w12LineX2 = ORIGIN_X + (w12In / 2) * SCALE;
 
   return (
     // Short-screen note (a phone held sideways): the condition below is the SCREEN'S HEIGHT and
@@ -500,7 +582,7 @@ export function FinViewer({
               strokeDasharray="var(--outline-station-dash)"
             />
 
-            {marksWithDims.map(({ geom, dims }, mi) => (
+            {marksWithAdjustedDims.map(({ geom, dims }, mi) => (
               <g key={mi}>
                 <line
                   x1={geom.teX}
@@ -575,10 +657,12 @@ export function FinViewer({
               </text>
             )}
             {showCallouts &&
-              marksWithDims.map(({ dims }, mi) =>
+              marksWithAdjustedDims.map(({ geom, dims }, mi) =>
                 dims.map((d, di) => (
                   <text
                     key={`${mi}-${di}`}
+                    data-fin-dim={d.measure}
+                    data-fin-role={geom.mark.role}
                     x={d.labelX}
                     y={d.labelY}
                     textAnchor={d.labelAnchor}
