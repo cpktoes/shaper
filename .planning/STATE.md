@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 **v1.2 — Rails Finished, Phone Ready: SHIPPED 2026-09-12.** Phases 8–10 complete and verified; audit passed 18/18. Archived under .planning/milestones/ (v1.2-ROADMAP.md, v1.2-REQUIREMENTS.md, v1.2-MILESTONE-AUDIT.md, v1.2-phases/). REQUIREMENTS.md removed pending the next milestone's definition.
 
 Status: Awaiting next milestone
-Last activity: 2026-09-14 - Completed quick task 260914-tsp: the RAILS held-sideways browser test waits for the drawing to settle instead of racing the page
+Last activity: 2026-09-14 - Completed quick task 260914-v2v: on a phone held sideways the rail plots take the drawing column's width and the column scrolls
 
 ## Performance Metrics
 
@@ -267,6 +267,7 @@ Recent decisions affecting current work:
 | 107 | The Longboard preset is now fully shaper-captured across all five screens, completing the set: a 9'0" x 22 1/2" x 3" squash tail at 71.0 L with the widepoint 3 1/2" forward, 4 5/16" nose and 3 1/4" tail rocker, symmetrical 50/50 rails on family 3 with a 45/55 family-4 tail and no hard edge, and a single fin. Its wide point lands 0.3 mm inside a Paper Saver page's top edge, which exposed a strip label that would have printed past the page: a mark's label on the Paper Saver now flips below its tick when the label above would leave the page, the same inward flip the registration labels already had, and the frozen strip digests prove nothing else moved | 2026-09-14 | a99aace | — |
 | 108 | The dev-only Copy preset values buttons on TEMPLATE, ROCKER, RAILS and FINS now copy the exact sixteenth a slider is set to (2 1/16" copies as 2.0625, not the 2.063 that made the Shortboard capture need hand-correcting), using the fewest decimals that give back the stored number; the four screens share one tested printer, lib/geometry/preset-source.ts, and nothing on screen changes | 2026-09-14 | 96cfab2 | — |
 | 260914-tsp | The RAILS held-sideways browser test no longer passes by racing the page: it waits for the drawing to settle, proves the scroll at a real iPhone's sideways height with Safari's bar showing (844x340), and records the plot collapse at the full 390 dots as a known, expected failure - nothing a shaper sees changed | 2026-09-14 | 2aee827 | [260914-tsp-the-rails-held-sideways-browser-test-no-](./quick/260914-tsp-the-rails-held-sideways-browser-test-no-/) |
+| 260914-v2v | On a phone held sideways the rail cross-sections now take the drawing column's full width and the column scrolls, instead of shrinking to fit the screen's height (416 dots wide on a real iPhone, up from 40-dot slivers), and the coloured key sits under the last plot instead of over it; closing a section keeps the rest full width; nothing changes on a computer - the founder's own choice from four measured fitting rules | 2026-09-14 | 05c1ae1 | [260914-v2v-on-a-phone-held-sideways-the-rail-cross-](./quick/260914-v2v-on-a-phone-held-sideways-the-rail-cross-/) |
 
 ## Deferred Items
 
