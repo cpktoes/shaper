@@ -36,6 +36,15 @@
  * beside each block). Still awaiting the founder's review in the live ROCKER editor, same as
  * before this task.
  *
+ * Shortboard rocker/foil captured (2026-09-14): the `shortboard` block's `rocker` and `foil` now
+ * carry the founder's own values, captured in the live ROCKER editor via the development-only
+ * "Copy preset values" affordance and pasted in wholesale — the first of the four to come back
+ * through the capture loop the two paragraphs above describe. `fish`, `midlength` and
+ * `longboard` still carry Claude-drafted rocker/foil awaiting the same review. Two consequences:
+ * the Shortboard's nose lift (5.5") now ties the Longboard's drafted 5.5", so the "Longboard with
+ * the most nose lift" note above no longer holds (presets.test.ts's test of it was retired for
+ * the same reason), and the Shortboard's derived 12" figures were re-recorded beside its block.
+ *
  * `rails` and `fins` are seeded-but-untuned for all four presets as of this
  * task: every preset's `rails` is `DEFAULT_RAIL_BAND_SPEC` and every preset's
  * `fins` is `DEFAULT_FIN_PLACEMENT_SPEC`, verbatim and un-differentiated by
@@ -64,7 +73,8 @@ import { degrees, inchesToMm } from "./units";
 // Each preset's rocker block keeps its own noseLift/tailLift exactly as before this task, and
 // carries six shape controls solved (not hand-guessed) so the derived 12" figures land within a
 // hundredth of an inch of the preset's own prior stored 12" numbers — see each block's own
-// comment for the figures it was solved against.
+// comment for the figures it was solved against. The `shortboard` block is the exception since
+// 2026-09-14: shaper-captured rather than solved, see its own comment.
 
 export interface BoardPreset {
   id: "shortboard" | "fish" | "midlength" | "longboard";
@@ -94,24 +104,28 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
       tailFullness: 45,
       tail: { kind: "squash", endWidth: inchesToMm(4) },
     },
-    // Solved against the old stored nose12 1.4"/tail12 0.45": derived nose12 ≈ 1.4006",
-    // tail12 ≈ 0.4509" — both within a hundredth of an inch.
+    // Shaper-captured 2026-09-14: the founder's own rocker and foil for this board, read back out
+    // of the live ROCKER editor by its development-only "Copy preset values" affordance and pasted
+    // in wholesale — the same loop that tuned the midlength/longboard outlines. That affordance
+    // prints inches rounded to three decimals (2.063, 0.438, 1.563, 0.938); those four are written
+    // here as the exact sixteenths the sliders hold (2.0625, 0.4375, 1.5625, 0.9375). Derived
+    // nose12 ≈ 1.80", tail12 ≈ 0.94" — the figures presets.test.ts checks this block against.
     rocker: {
-      noseLift: inchesToMm(4.75),
-      tailLift: inchesToMm(2.1),
+      noseLift: inchesToMm(5.5),
+      tailLift: inchesToMm(2.0625),
       noseAngle: degrees(30),
-      tailAngle: degrees(30),
-      noseSmoothness: 39,
-      tailSmoothness: 21,
+      tailAngle: degrees(26),
+      noseSmoothness: 49,
+      tailSmoothness: 100,
       noseFlatness: 50,
-      tailFlatness: 50,
+      tailFlatness: 44.5,
     },
     foil: {
-      noseTip: inchesToMm(0.3125),
-      nose12: inchesToMm(1.2),
-      center: inchesToMm(2.4),
-      tail12: inchesToMm(1.45),
-      tailTip: inchesToMm(0.25),
+      noseTip: inchesToMm(0.4375),
+      nose12: inchesToMm(1.375),
+      center: inchesToMm(2.25),
+      tail12: inchesToMm(1.5625),
+      tailTip: inchesToMm(0.9375),
     },
     rails: DEFAULT_RAIL_BAND_SPEC,
     fins: DEFAULT_FIN_PLACEMENT_SPEC,

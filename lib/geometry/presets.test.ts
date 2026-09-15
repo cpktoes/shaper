@@ -197,12 +197,6 @@ describe("BOARD_PRESETS", () => {
     expect(fishRatio).toBeGreaterThan(shortboardRatio);
   });
 
-  it("the Longboard's nose-tip lift exceeds the Shortboard's — a longboard carries more nose lift", () => {
-    const longboard = BOARD_PRESETS.find((p) => p.id === "longboard")!;
-    const shortboard = BOARD_PRESETS.find((p) => p.id === "shortboard")!;
-    expect(longboard.rocker.noseLift).toBeGreaterThan(shortboard.rocker.noseLift);
-  });
-
   it.each(BOARD_PRESETS)(
     "$id: the built rocker curve and sampleFoil run over the preset at its own length without a fold-back or a negative thickness",
     (preset) => {
@@ -230,14 +224,17 @@ describe("BOARD_PRESETS", () => {
   );
 
   it.each(BOARD_PRESETS)(
-    "$id: derived 12in figures sit within 1/4in of the preset's own prior stored figure, recorded in its rocker block's own comment",
+    "$id: derived 12in figures sit within 1/4in of the figures recorded in its rocker block's own comment",
     (preset) => {
       const geometry = buildRocker(preset.rocker, preset.outline.length);
-      // Every preset's block comment records the two prior stored figures it was solved
-      // against — re-derive them from that same comment via the preset id, so this test can't
-      // silently drift from the comment it is meant to be checking.
+      // Every preset's block comment records two 12" figures — the prior stored pair a solved
+      // block was matched to, or a captured block's own derived pair — re-derive them from that
+      // same comment via the preset id, so this test can't silently drift from the comment it is
+      // meant to be checking.
       const priorFigures: Record<string, { nose12: number; tail12: number }> = {
-        shortboard: { nose12: 1.4, tail12: 0.45 },
+        // Shaper-captured 2026-09-14, not solved against a prior pair: the captured curve's own
+        // derived figures, as its block comment records them.
+        shortboard: { nose12: 1.8, tail12: 0.94 },
         fish: { nose12: 1.0, tail12: 0.3 },
         midlength: { nose12: 1.25, tail12: 0.4 },
         longboard: { nose12: 1.5, tail12: 0.35 },
