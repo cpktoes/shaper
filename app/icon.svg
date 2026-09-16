@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- The site's tab icon: a shortboard outline and its stringer, turned 45° nose-up. The board is
+       filled white so it still shows in a dark browser tab bar; the line is the site's daylight ink.
+       favicon.ico and apple-icon.png beside this file are the same drawing, rendered to pixels. -->
+  <g transform="rotate(-45 16 16)" fill="none" stroke="#1f2a3b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path fill="#fff" d="M34.84 16C29.08 21.19 24.17 24 15.44 24C8.69 24 4.8 22.24 .44 19.3V12.7C4.8 9.76 8.69 8 15.44 8C24.17 8 29.08 10.81 34.84 16Z"/>
+    <path d="M34.84 16H.44"/>
+  </g>
+</svg>
