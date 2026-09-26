@@ -619,6 +619,67 @@ test.describe("ROCKER DATASHEET on a phone — the same sideways-scrolling box (
     const box = await tableBox.evaluate((el) => ({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
     expect(box.scrollWidth, "the datasheet box does not scroll sideways at all").toBeGreaterThan(box.clientWidth);
   });
+
+  // Plan 11-12 (D-16, 11-UI-SPEC §11): with a blank picked the DATASHEET grows to eight rows in three
+  // blocks, and its row names are sticky — scrolled all the way to the Tail Tip column, a shaper can
+  // still read which row is Foam Off. Picks "the first row under FITS THIS BOARD", whatever the
+  // catalogue calls it.
+  test("the ROCKER DATASHEET with a blank still scrolls sideways at 360px, and its row names stay in view", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 360, height: 700 });
+    await page.goto("/design/rocker");
+    const list = page.getByRole("list", { name: "Blanks" });
+    await expect(list).toBeVisible({ timeout: 30_000 });
+    // The streamed list is live only once React owns it — a tap before then is lost.
+    await page.waitForFunction(() => {
+      const el = document.querySelector('ul[aria-label="Blanks"] li[data-group="fits"] button');
+      return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+    });
+    const firstFit = list.locator('li[data-group="fits"] button').first();
+    const name = (await firstFit.locator("[data-blank-name]").innerText()).trim();
+    await firstFit.click();
+    await expect(page.locator("[data-picked-blank]")).toContainText(name);
+
+    await page.getByRole("tab", { name: "DATASHEET" }).click();
+    const tableBox = page.locator("main .overflow-x-auto").first();
+    await expect(tableBox).toBeVisible();
+    const foamOffLabel = tableBox.getByText(/^Foam Off/);
+    await expect(foamOffLabel).toBeVisible();
+
+    const docScrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);
+    expect(docScrollWidth, "the document itself scrolled sideways at 360px").toBe(360);
+    const sizes = await tableBox.evaluate((el) => ({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
+    expect(sizes.scrollWidth, "the datasheet box does not scroll sideways at all").toBeGreaterThan(sizes.clientWidth);
+
+    // A column heading is NOT sticky, so it is the control: it must move left by the scroll.
+    const heading = tableBox.getByText("Nose Tip", { exact: true }).first();
+    const headingBefore = await heading.boundingBox();
+    if (!headingBefore) throw new Error("the Nose Tip heading has no bounding box");
+
+    // Scroll the box all the way to its right-hand end.
+    const scrolledTo = await tableBox.evaluate((el) => {
+      el.scrollLeft = el.scrollWidth;
+      return el.scrollLeft;
+    });
+    expect(scrolledTo, "the box did not scroll").toBeGreaterThan(0);
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    expect(await page.evaluate(() => document.scrollingElement?.scrollLeft ?? 0), "the page moved, not the box").toBe(0);
+
+    const headingAfter = await heading.boundingBox();
+    if (!headingAfter) throw new Error("the Nose Tip heading has no bounding box after scrolling");
+    expect(headingAfter.x, "the columns did not move under the scroll").toBeLessThan(headingBefore.x - 1);
+
+    // The Foam Off row's name is still wholly inside the box's visible rectangle.
+    const inside = await foamOffLabel.evaluate((label, boxEl) => {
+      const l = label.getBoundingClientRect();
+      const b = (boxEl as Element).getBoundingClientRect();
+      return { label: { left: l.left, right: l.right }, box: { left: b.left, right: b.right } };
+    }, await tableBox.elementHandle());
+    expect(inside.label.left, "Foam Off slid off the left of the box").toBeGreaterThanOrEqual(inside.box.left - 0.5);
+    expect(inside.label.right, "Foam Off is past the right of the box").toBeLessThanOrEqual(inside.box.right + 0.5);
+    await expect(foamOffLabel).toBeVisible();
+  });
 });
 
 test.describe("RAILS on a desktop — unchanged (PHON-05)", () => {

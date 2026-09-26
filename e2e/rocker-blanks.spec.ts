@@ -220,3 +220,92 @@ test.describe("ROCKER — centre, placement, live numbers and the 12\" fine-tune
     await expect(page.getByText('Board Thickness — 2 3/4"')).toBeVisible();
   });
 });
+
+/**
+ * Undo, the way a shaper reaches it: Cmd/Ctrl+Z at a keyboard, the floating Undo button on a phone
+ * (`components/design/phone-undo-bar.tsx`, shown only in the phone layout).
+ */
+async function undoOnce(page: Page, projectName: string) {
+  if (projectName === "desktop") {
+    await page.keyboard.press("ControlOrMeta+z");
+  } else {
+    await page.locator("[data-phone-undo-bar]").getByRole("button", { name: "Undo" }).click();
+  }
+}
+
+test.describe("ROCKER — the DATASHEET beside a blank, one undo after Remove, and Metric in millimetres (11-12)", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissChrome(page);
+  });
+
+  test("with a blank picked the DATASHEET shows the blank's block, the board's block, Foam Off and the catalogue footnote", async ({
+    page,
+  }) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    await page.getByRole("tab", { name: "DATASHEET" }).click();
+
+    const sheet = page.locator("main");
+    await expect(sheet.getByText(/^BLANK — /)).toBeVisible();
+    await expect(sheet.getByText("YOUR BOARD", { exact: true })).toBeVisible();
+    await expect(sheet.getByText(/^Foam Off/)).toBeVisible();
+    await expect(sheet.getByText(/catalog, page \d+/)).toBeVisible();
+  });
+
+  test("Remove This Blank, then one undo, brings back the same blank, its placement and its fine-tune", async ({
+    page,
+  }, testInfo) => {
+    await openRocker(page);
+    const name = await pickFirstFittingBlank(page);
+
+    // Slide the board off centre and fine-tune the nose 12" station, so there is something to lose.
+    const placement = sliderUnder(page, /^Placement — /);
+    await placement.focus();
+    await placement.press("ArrowLeft");
+    await placement.press("ArrowLeft");
+    const placementLabel = page.getByText(/^Placement — .+ toward nose$/);
+    await expect(placementLabel).toBeVisible();
+    const placementText = await placementLabel.innerText();
+
+    const nose12Row = page.getByText(/^Nose @ 12" — /).locator("xpath=..");
+    await nose12Row.getByRole("slider").focus();
+    await nose12Row.getByRole("slider").press("ArrowRight");
+    await expect(nose12Row).toContainText('Tweak +1/16"');
+
+    await page.getByRole("button", { name: "Remove This Blank" }).click();
+    await expect(pickedCard(page)).toHaveCount(0);
+    await expect(page.getByText("Placement — pick a blank first")).toBeVisible();
+
+    await undoOnce(page, testInfo.project.name);
+
+    await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(name);
+    await expect(page.getByText(placementText, { exact: true })).toBeVisible();
+    await expect(page.getByText(/^Nose @ 12" — /).locator("xpath=..")).toContainText('Tweak +1/16"');
+    await expect(page.locator("[data-blank-silhouette]")).toBeVisible();
+  });
+
+  test("in Metric the readouts, the placement label and the fine-tune read in whole millimetres", async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+
+    const readouts = page.locator("[data-readouts]");
+    await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
+    const readoutText = await readouts.innerText();
+    expect(readoutText).toContain("mm");
+    expect(readoutText).not.toContain('"');
+
+    const placement = sliderUnder(page, /^Placement — /);
+    await placement.focus();
+    await placement.press("ArrowLeft");
+    await expect(page.getByText(/^Placement — \d+ mm toward nose$/)).toBeVisible();
+    expect(await readouts.innerText()).not.toContain('"');
+
+    // The 12" fine-tune's hint reads in millimetres too.
+    const nose12Row = page.getByText(/^Nose @ .+ — /).first().locator("xpath=..");
+    await nose12Row.getByRole("slider").focus();
+    await nose12Row.getByRole("slider").press("ArrowRight");
+    await expect(nose12Row).toContainText(/Tweak \+\d+ mm/);
+    expect(await nose12Row.innerText()).not.toContain('"');
+  });
+});

@@ -709,3 +709,100 @@ test.describe("touch on the rocker viewer (android/CDP only) — read-only since
     expect(await chip.count()).toBe(0);
   });
 });
+
+/**
+ * Plan 11-12 (R14, R3): the placement slider's own thumb, dragged by a real (trusted, CDP) touch.
+ * A shaper slides the board along its blank with a thumb and watches the rocker numbers change —
+ * and every one of those numbers is worked out in the browser, so not one request may leave the
+ * page while the thumb moves (R14). The suite runs signed out, so a board has no saved model and
+ * autosave can never fire (RESEARCH Pitfall 9); the counter is attached only once the page has
+ * settled and a blank is picked, and it counts every request of any kind, to any host, between the
+ * first touch and the lift.
+ *
+ * The slider's LEFT end is toward the nose (R3, 11-UI-SPEC §3), so a drag to the left must end with
+ * the label reading `… toward nose`.
+ */
+const SIGN_IN_BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
+const HIDE_TOOLBAR_TIP_DISMISSAL_KEY = "shaper-toolbar-tip-dismissed";
+
+/**
+ * Opens ROCKER with the sign-in banner and toolbar tip already dismissed (so neither shifts
+ * anything under a thumb), waits for the streamed blank list and for React to own its first row
+ * (a tap before hydration is lost — the same wait `openRocker` in e2e/rocker-blanks.spec.ts makes),
+ * then taps the first blank under FITS THIS BOARD and waits for the board to sit centred in it.
+ */
+async function openRockerWithFirstFittingBlank(page: Page) {
+  await page.addInitScript((key) => window.sessionStorage.setItem(key, "true"), SIGN_IN_BANNER_DISMISSAL_KEY);
+  await page.addInitScript((key) => window.localStorage.setItem(key, "true"), HIDE_TOOLBAR_TIP_DISMISSAL_KEY);
+  await page.goto("/design/rocker");
+  const list = page.getByRole("list", { name: "Blanks" });
+  await expect(list).toBeVisible({ timeout: 30_000 });
+  await page.waitForFunction(() => {
+    const el = document.querySelector('ul[aria-label="Blanks"] li[data-group="fits"] button');
+    return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+  });
+  const firstFit = list.locator('li[data-group="fits"] button').first();
+  const name = (await firstFit.locator("[data-blank-name]").innerText()).trim();
+  await firstFit.click();
+  await expect(page.locator("[data-picked-blank]")).toContainText(name);
+  await expect(page.getByText("Placement — centered")).toBeVisible();
+}
+
+/**
+ * The placement slider's thumb, scrolled into view, and its centre once its position has held
+ * still for ten frames — picking a blank reflows the sidebar (the list folds into the picked card,
+ * the readouts appear), so a centre read mid-reflow would put the finger beside the thumb.
+ */
+async function settledPlacementThumbCentre(page: Page): Promise<{ x: number; y: number }> {
+  const thumb = page.getByText(/^Placement — /).locator("xpath=..").locator('[data-slot="slider-thumb"]');
+  await thumb.scrollIntoViewIfNeeded();
+  let previous = "";
+  let steady = 0;
+  for (let attempt = 0; attempt < 120; attempt++) {
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 16))));
+    const box = await thumb.boundingBox();
+    const key = box ? `${box.x.toFixed(2)},${box.y.toFixed(2)},${box.width},${box.height}` : "";
+    steady = box && key === previous ? steady + 1 : 0;
+    previous = key;
+    if (box && steady >= 10) return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  }
+  throw new Error("the placement thumb never held still");
+}
+
+test.describe("touch on the ROCKER placement slider (android/CDP only)", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "CDP touch dispatch is Chromium-only");
+  });
+
+  test("a thumb drags the placement slider: the label and the Nose Tip readout change, and no request leaves the page (R14)", async ({
+    page,
+  }) => {
+    await openRockerWithFirstFittingBlank(page);
+    const noseTip = page.locator('[data-readouts] [data-readout-row="noseTip"]');
+    const noseTipBefore = await noseTip.innerText();
+    const start = await settledPlacementThumbCentre(page);
+
+    const requests: string[] = [];
+    page.on("request", (request) => requests.push(request.url()));
+
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [start] });
+    for (let step = 1; step <= 8; step++) {
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x: start.x - 8 * step, y: start.y }],
+      });
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    // Nothing left the page while the thumb moved (the list is printed on failure so a stray
+    // request names itself).
+    expect(requests, `requests during the drag: ${requests.join(", ")}`).toHaveLength(0);
+    expect(requests.length).toBe(0);
+
+    // The left end is the nose (R3), and the rocker numbers moved with the board.
+    await expect(page.getByText(/^Placement — .+ toward nose$/)).toBeVisible();
+    await expect(noseTip).not.toHaveText(noseTipBefore);
+    await expect(page.locator("[data-readouts] [data-readout-row]")).toHaveCount(5);
+  });
+});

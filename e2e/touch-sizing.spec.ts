@@ -72,7 +72,11 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     await setMetricUnits(page);
   });
 
-  for (const path of ["/design/outline", "/design/volume"] as const) {
+  // ROCKER joined this loop in plan 11-12 (Phase 11): its Center Thickness box, the blank search
+  // box and every slider it shows with no blank picked. It has no checkbox rows, so that one check
+  // is generated for TEMPLATE and VOLUME only; the blank list, the text links and the DATASHEET's
+  // typed cells are measured in the ROCKER-only test further down, once a blank is picked.
+  for (const path of ["/design/outline", "/design/volume", "/design/rocker"] as const) {
     test(`${path}: every visible slider thumb's tap target is at least 44x44`, async ({ page }) => {
       await page.goto(path);
       const thumbs = page.locator('[data-slot="slider-thumb"]');
@@ -126,6 +130,8 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
       }
       expect(checked).toBeGreaterThan(0);
     });
+
+    if (path === "/design/rocker") continue;
 
     test(`${path}: every visible checkbox row is at least 44px tall`, async ({ page }) => {
       await page.goto(path);
@@ -197,6 +203,96 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
       if (!box) throw new Error(`"${label}" button is missing a bounding box`);
       expect(box.height).toBeGreaterThanOrEqual(44);
     }
+  });
+
+  // Plan 11-12 (11-UI-SPEC §15): the ROCKER controls that only exist once a blank is in play — every
+  // blank row, every text link (they grow their row, not their glyph, on a touch pointer) and the
+  // DATASHEET's typed cells. Names are read off the page, never typed in: the first row under FITS
+  // THIS BOARD is picked, whatever the catalogue calls it.
+  test("ROCKER: every blank row, every text link and every DATASHEET typed cell is finger-sized", async ({
+    page,
+  }) => {
+    await page.goto("/design/rocker");
+    const list = page.getByRole("list", { name: "Blanks" });
+    await expect(list).toBeVisible({ timeout: 30_000 });
+    // The streamed list is live only once React owns it — a tap before then is lost.
+    await page.waitForFunction(() => {
+      const el = document.querySelector('ul[aria-label="Blanks"] li[data-group="fits"] button');
+      return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+    });
+
+    const heightOf = async (locator: ReturnType<Page["locator"]>, what: string) => {
+      await expect(locator, `${what} is not on screen`).toBeVisible();
+      const box = await locator.boundingBox();
+      if (!box) throw new Error(`${what} is missing a bounding box`);
+      return box.height;
+    };
+
+    // "Show all {n} blanks", and once opened, "Show Fewer".
+    const showAll = page.getByRole("button", { name: /^Show all \d+ blanks$/ });
+    expect(await heightOf(showAll, "Show all")).toBeGreaterThanOrEqual(44);
+    await showAll.click();
+    expect(await heightOf(page.getByRole("button", { name: "Show Fewer" }), "Show Fewer")).toBeGreaterThanOrEqual(44);
+
+    // Clear Search, shown only when nothing matches.
+    const search = page.getByRole("searchbox", { name: "Search blanks" });
+    await search.fill("zzz");
+    const clear = page.getByRole("button", { name: "Clear Search" });
+    expect(await heightOf(clear, "Clear Search")).toBeGreaterThanOrEqual(44);
+    await clear.click();
+    await expect(search).toHaveValue("");
+
+    // Pick the first blank that fits, then open Change Blank so the list shows under the picked card.
+    const firstFit = list.locator('li[data-group="fits"] button').first();
+    const name = (await firstFit.locator("[data-blank-name]").innerText()).trim();
+    await firstFit.click();
+    await expect(page.locator("[data-picked-blank]")).toContainText(name);
+
+    const change = page.getByRole("button", { name: "Change Blank" });
+    expect(await heightOf(change, "Change Blank")).toBeGreaterThanOrEqual(44);
+    expect(await heightOf(page.getByRole("button", { name: "Remove This Blank" }), "Remove This Blank")).toBeGreaterThanOrEqual(44);
+    expect(await heightOf(page.getByRole("button", { name: "↺ Reset Fine-Tune" }), "Reset Fine-Tune")).toBeGreaterThanOrEqual(44);
+    await change.click();
+    expect(await heightOf(page.getByRole("button", { name: "Keep This Blank" }), "Keep This Blank")).toBeGreaterThanOrEqual(44);
+
+    // Every visible `Use …` row, fitting or greyed.
+    const rows = page.getByRole("list", { name: "Blanks" }).getByRole("button", { name: /^Use / });
+    await expect(rows.first()).toBeVisible();
+    let checkedRows = 0;
+    for (const row of await rows.all()) {
+      if (!(await row.isVisible())) continue;
+      const box = await row.boundingBox();
+      if (!box) throw new Error("blank row is missing a bounding box");
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      checkedRows += 1;
+    }
+    expect(checkedRows).toBeGreaterThan(0);
+
+    // With a blank picked, every visible slider — placement and the two 12" fine-tunes among them.
+    let checkedThumbs = 0;
+    for (const thumb of await page.locator('[data-slot="slider-thumb"]').all()) {
+      if (!(await thumb.isVisible())) continue;
+      const box = await slideThumbTargetBox(thumb);
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      checkedThumbs += 1;
+    }
+    expect(checkedThumbs).toBeGreaterThan(0);
+
+    // The DATASHEET's typed cells (the board's Thickness at Nose Tip, Center and Tail Tip).
+    await page.getByRole("tab", { name: "DATASHEET" }).click();
+    const cells = page.locator('main [data-slot="input"]');
+    await expect(cells.first()).toBeVisible();
+    let checkedCells = 0;
+    for (const cell of await cells.all()) {
+      if (!(await cell.isVisible())) continue;
+      const box = await cell.boundingBox();
+      if (!box) throw new Error("DATASHEET cell is missing a bounding box");
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(await cell.evaluate((el) => getComputedStyle(el).fontSize)).toBe("16px");
+      checkedCells += 1;
+    }
+    expect(checkedCells).toBeGreaterThan(0);
   });
 });
 

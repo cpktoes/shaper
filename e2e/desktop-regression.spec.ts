@@ -100,4 +100,65 @@ test.describe("desktop mouse drag regression", () => {
 
     await expect(profilePath).toHaveAttribute("d", dBefore ?? "");
   });
+
+  // Plan 11-12 (R14, R3): the mouse twin of e2e/touch-drag.spec.ts's placement thumb drag. Signed
+  // out (the suite's default) so autosave cannot fire (RESEARCH Pitfall 9); the counter is attached
+  // only once a blank is picked and the thumb has held still, and counts every request to any host
+  // between the press and the release.
+  test("ROCKER: a mouse drag of the placement slider moves the board toward the nose with no network request", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => window.sessionStorage.setItem("shaper-sign-in-banner-dismissed", "true"));
+    await page.addInitScript(() => window.localStorage.setItem("shaper-toolbar-tip-dismissed", "true"));
+    await page.goto("/design/rocker");
+
+    // The streamed blank list, once React owns its first row (a click before hydration is lost).
+    const list = page.getByRole("list", { name: "Blanks" });
+    await expect(list).toBeVisible({ timeout: 30_000 });
+    await page.waitForFunction(() => {
+      const el = document.querySelector('ul[aria-label="Blanks"] li[data-group="fits"] button');
+      return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+    });
+    const firstFit = list.locator('li[data-group="fits"] button').first();
+    const name = (await firstFit.locator("[data-blank-name]").innerText()).trim();
+    await firstFit.click();
+    await expect(page.locator("[data-picked-blank]")).toContainText(name);
+    await expect(page.getByText("Placement — centered")).toBeVisible();
+
+    const noseTip = page.locator('[data-readouts] [data-readout-row="noseTip"]');
+    const noseTipBefore = await noseTip.innerText();
+
+    // The thumb's centre once it has held still for ten frames (picking a blank reflows the sidebar).
+    const thumb = page.getByText(/^Placement — /).locator("xpath=..").locator('[data-slot="slider-thumb"]');
+    await thumb.scrollIntoViewIfNeeded();
+    let centre: { x: number; y: number } | null = null;
+    let previous = "";
+    let steady = 0;
+    for (let attempt = 0; attempt < 120 && !centre; attempt++) {
+      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 16))));
+      const box = await thumb.boundingBox();
+      const key = box ? `${box.x.toFixed(2)},${box.y.toFixed(2)},${box.width},${box.height}` : "";
+      steady = box && key === previous ? steady + 1 : 0;
+      previous = key;
+      if (box && steady >= 10) centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    }
+    if (!centre) throw new Error("the placement thumb never held still");
+
+    const requests: string[] = [];
+    page.on("request", (request) => requests.push(request.url()));
+
+    await page.mouse.move(centre.x, centre.y);
+    await page.mouse.down();
+    await page.mouse.move(centre.x - 20, centre.y, { steps: 4 });
+    await page.mouse.move(centre.x - 40, centre.y, { steps: 4 });
+    await page.mouse.up();
+
+    expect(requests, `requests during the drag: ${requests.join(", ")}`).toHaveLength(0);
+    expect(requests.length).toBe(0);
+
+    // The slider's left end is the nose (R3), and the rocker numbers moved with the board.
+    await expect(page.getByText(/^Placement — .+ toward nose$/)).toBeVisible();
+    await expect(noseTip).not.toHaveText(noseTipBefore);
+    await expect(page.locator("[data-readouts] [data-readout-row]")).toHaveCount(5);
+  });
 });

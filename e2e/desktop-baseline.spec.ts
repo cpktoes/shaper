@@ -2,6 +2,16 @@ import { expect, test } from "@playwright/test";
 
 /**
  *
+ * RE-RECORDED 2026-09-26 (Phase 11, plan 11-12) — two images only, `rocker-desktop.png` and
+ * `volume-desktop.png`. ROCKER is a new screen: the sidebar now reads Center Thickness, the blank
+ * list (the ROCKER shot waits for that streamed list, so the picture always includes it), a
+ * disabled Placement slider waiting for a blank, and the hand-set rocker and thickness, beside a
+ * drawing that no longer has grab handles. VOLUME's two litres figures moved when the foil moved
+ * onto the new smooth curve (D-13, 29.79 → 29.94 L on the default board); a pixel check against
+ * the old image, run before re-recording, proved every changed pixel sat inside the two litres
+ * figures and nothing else on VOLUME moved. TEMPLATE, RAILS and FINS were not re-recorded, and
+ * their images are byte-for-byte what they were.
+ *
  * RE-RECORDED 2026-09-13 (quick task: a Home icon beside the settings gear) — the one deliberate
  * re-record since these were created in 09-01. The founder asked for a desktop change, so the
  * desktop changed: the five images now show a house icon beside the gear at 1280px and the six
@@ -62,6 +72,20 @@ test.describe("desktop baseline screenshots", () => {
   test("ROCKER (/design/rocker)", async ({ page }) => {
     await page.goto("/design/rocker");
     await expect(page.locator("svg").first()).toBeVisible();
+    // The blank list streams in after the page (Phase 11): wait for it, so the picture is the
+    // screen a shaper sees once it has loaded, never the "Loading blanks…" line.
+    await expect(page.getByRole("list", { name: "Blanks" })).toBeVisible({ timeout: 30_000 });
+    // ...and wait for React to take over the list and the search box before the screenshot. The
+    // screenshot hides the text caret by touching the page; done before the list's boundary has
+    // hydrated, React sees server HTML it didn't write, reports a hydration mismatch, and the dev
+    // server's red "1 Issue" badge lands in the picture (seen in this plan's first recording).
+    await page.waitForFunction(() => {
+      const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+      return (
+        owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
+        owned(document.querySelector('input[aria-label="Search blanks"]'))
+      );
+    });
     await expect(page).toHaveScreenshot("rocker-desktop.png");
   });
 
