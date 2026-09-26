@@ -28,14 +28,18 @@
 
 import { type ReactNode } from "react";
 import { SliderRow } from "@/components/design/slider-row";
+import type { BlankCatalogResult } from "@/lib/db/blanks";
 import { useUnits } from "@/components/units-provider";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec } from "@/lib/geometry/foil";
 import { formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
 import { ROCKER_LIFT_RANGE_IN, type FiveStationRocker } from "@/lib/geometry/rocker";
+import { BlankPicker } from "./blank-picker";
 
-export type RockerControlsSectionKey = "rocker" | "thickness";
+export type RockerControlsSectionKey = "blank" | "rocker" | "thickness";
 
 interface RockerControlsProps {
+  /** The pickable catalogue, streamed from the page and never awaited there (Pattern 8). */
+  blanks: Promise<BlankCatalogResult>;
   /** The board's hand-set rocker (D-14) — four typed stations, the centre always 0. */
   rocker: FiveStationRocker;
   foil: FoilSpec;
@@ -69,6 +73,7 @@ function SectionHeading({
 }
 
 export function RockerControls({
+  blanks,
   rocker,
   foil,
   onChangeRocker,
@@ -88,6 +93,17 @@ export function RockerControls({
   const tailTipSlider = measureSlider(foil.tailTip, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
   return (
     <div className="flex flex-col gap-5">
+      <div>
+        <SectionHeading open={sectionOpen.blank} onToggle={() => onToggleSectionOpen("blank")}>
+          Blank
+        </SectionHeading>
+        {sectionOpen.blank && (
+          <div className="pt-3">
+            <BlankPicker catalog={blanks} />
+          </div>
+        )}
+      </div>
+
       <div>
         <SectionHeading open={sectionOpen.rocker} onToggle={() => onToggleSectionOpen("rocker")}>
           Rocker

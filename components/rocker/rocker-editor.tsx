@@ -60,6 +60,7 @@
  */
 
 import { useState } from "react";
+import type { BlankCatalogResult } from "@/lib/db/blanks";
 import { LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
 import { Button } from "@/components/ui/button";
@@ -79,12 +80,13 @@ const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
   { id: "datasheet", label: "DATASHEET" },
 ];
 
-export function RockerEditor() {
+export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }) {
   const { rocker, updateRocker, foil, updateFoil, blank, sideProfile, outlineGeometry } = useDesign();
   // The drawing and the DATASHEET both read the store's ONE side profile (Phase 11, Pattern 5) —
   // the same object RAILS and VOLUME read — built from the board's blank when one is picked and
   // from the four hand-set rocker stations when not (D-14). Nothing here builds a curve of its own.
   const [sectionOpen, setSectionOpen] = useState<Record<RockerControlsSectionKey, boolean>>({
+    blank: true,
     rocker: true,
     thickness: true,
   });
@@ -177,11 +179,12 @@ export function RockerEditor() {
               Rocker &amp; Foil
             </div>
             <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
-              Shape the board&apos;s side profile — the bottom curve and the deck it carries
+              Pick a real blank, slide your board along it, and read the rocker and foil off the foam.
             </div>
           </div>
 
           <RockerControls
+            blanks={blanks}
             rocker={rocker}
             foil={foil}
             onChangeRocker={updateRocker}
