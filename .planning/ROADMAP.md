@@ -13,7 +13,7 @@ Shaper started from a working prototype (built in Claude Design) that already pr
 - ✅ **v1.0 — the design tool, in inches** — Phases 1–4 (shipped 2026-08-29)
 - ✅ **v1.1 — Imperial vs Metric** — Phases 5–7 (shipped 2026-09-06)
 - ✅ **v1.2 — Rails Finished, Phone Ready** — Phases 8–10 (shipped 2026-09-12)
-- ⏭ **next** — to be defined by `/gsd-new-milestone` (phase numbering continues at 11)
+- 🚧 **v1.3 — Rocker from Real Blanks** — Phase 11 (opened 2026-09-25 on branch `rocker-blanks`; context gathered, not yet planned)
 
 ## Phases
 
@@ -42,6 +42,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8: The Rails Screen, Finished** - The INSTRUCTIONS tab with its named example rail and Flat/Domed toggle, "View Full Sized" at 1:1, the plan and side reference view, and an option to fold the instructions sheet into what gets printed (completed 2026-09-08)
 - [x] **Phase 9: The Design Screens on a Phone** - One shared screen shell stacks the five design screens for a narrow screen, with finger-sized controls and outline, rocker and foil points a thumb can drag (completed 2026-09-09)
 - [x] **Phase 10: The Whole App on a Phone** - Sign-in, presets, the rack and the summary reflowed and touch-sized, with the whole trip walked end to end on real phones (completed 2026-09-12)
+
+**Milestone v1.3 — Rocker from Real Blanks (in progress)**
+
+- [ ] **Phase 11: Rocker from Real Blanks** - The ROCKER screen sets rocker, thickness and foil from a real blank the shaper picks and slides the board along, with the fit checked at every point, the four rocker numbers live and every blank that won't fit shown with why; blank data seeded from the three vendor catalogues
 
 ## Phase Details
 
@@ -108,12 +112,28 @@ decision (D-12) and is recorded as such. Full phase detail archived in
 [`.planning/milestones/v1.2-MILESTONE-AUDIT.md`](milestones/v1.2-MILESTONE-AUDIT.md); phase
 artifacts in [`.planning/milestones/v1.2-phases/`](milestones/v1.2-phases/).
 
+### Milestone v1.3: Rocker from Real Blanks (Phase 11, in progress)
+
+Opened 2026-09-25 on branch `rocker-blanks` from the founder's written brief, which is locked as the phase's spec. The ROCKER screen stops being a hand-drawn curve: a shaper sets a target centre thickness, picks a real blank that fits from the US Blanks, Arctic Foam and Marko Foam catalogues (162 blanks seeded from `db/seed/blanks/`), slides the board along it, and the board's rocker, thickness and foil are read off where it sits in that foam. Requirements and decisions live in the phase directory; nothing lands on `main` until the founder approves the plan.
+
+### Phase 11: Rocker from Real Blanks
+
+**Goal:** A shaper sets a target centre thickness, picks a real blank that fits, slides the board along it, and the board's rocker, thickness and foil are read off where it sits in that foam — the four rocker numbers and the foam to remove shown live, every blank that won't fit shown with why, and a foil that matches the shaper's centre and tip thicknesses; the four named geometry tests land before any UI.
+**Requirements**: locked in `.planning/phases/11-rocker-from-real-blanks/11-SPEC.md` (16 requirements); decisions in `11-CONTEXT.md` (D-01–D-16)
+**Depends on:** Phase 10
+**Success criteria:** the brief's DONE WHEN — pick a blank, slide the board along it, watch the four rocker numbers change live, see which blanks don't fit and why, and get a foil that matches the centre and tip thicknesses — plus the four named tests green before the UI, the seed re-runnable, and every older saved board reopening
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 11 to break down)
+
 ---
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 6 → 7 (v1.1, complete) → 8 → 9 → 10 (v1.2, complete)
+Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 6 → 7 (v1.1, complete) → 8 → 9 → 10 (v1.2, complete) → 11 (v1.3, in progress)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -127,3 +147,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
+| 11. Rocker from Real Blanks | 0/0 | Context gathered | — |
