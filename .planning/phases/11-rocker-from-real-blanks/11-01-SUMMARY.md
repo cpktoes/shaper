@@ -72,7 +72,7 @@ No REFACTOR commit was needed.
 
 ## Verification
 
-- `npx vitest run`: 67 files, 2,591 passed, 2 skipped (the skips were already there). The new suites are pchip 26 tests, csv 10, catalog 17 and blank-fit 24.
+- `npx vitest run`: 67 files, 2,591 passed, 2 skipped (the skips were already there). The new suites are pchip 24 tests, csv 10, catalog 16 and blank-fit 24.
 - The four R16 titles are all present: the grep count is 4, and all four pass.
 - `npx tsc --noEmit`: exit 0. The worktree first needed `npx next typegen` to generate Next's route types (`LayoutProps`) in the git-ignored `.next/`. None of the plan's files were involved.
 - `npm run lint`: 0 errors. The 12 warnings are the same unused `eslint-disable` warnings in `scripts/` and elsewhere that were there before this plan. This plan's files lint clean.
