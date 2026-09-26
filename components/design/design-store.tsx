@@ -42,7 +42,8 @@ import {
 } from "@/lib/models/autosave";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec, type Point2D } from "@/lib/geometry/board";
 import { buildOutline, sampleOutline, type OutlineGeometry } from "@/lib/geometry/outline";
-import { bezierToFiveStations, type FiveStationRocker } from "@/lib/geometry/rocker";
+import type { FiveStationRocker } from "@/lib/geometry/rocker";
+import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import type { FoilSpec } from "@/lib/geometry/foil";
 import type { BlankRecord, BoardBlank } from "@/lib/geometry/blank";
 import { prepareBlank, type PreparedBlank } from "@/lib/geometry/blank-fit";
@@ -264,11 +265,11 @@ interface DesignContextValue {
    * stations and the foil's two 12" thicknesses from the CURRENT side profile so the drawing does
    * not jump. One undo step brings the blank back. */
   removeBlank: () => void;
-  /** Applies a board-type preset (components/setup/setup-screen.tsx) by replacing outline, rails
-   * and fins wholesale — a preset is a complete spec, not a patch, so none of the three merges
-   * against whatever was there before. Every other field (volume, finsImportTemplate, boardName)
-   * resets to `DEFAULT_DESIGN_STATE`, so this always produces a genuinely fresh board rather than
-   * carrying over the board the user just discarded. */
+  /** Applies a board-type preset (components/setup/setup-screen.tsx) by replacing outline, foil,
+   * rails, fins and the blank wholesale from `presetDesignFields` — a preset is a complete spec, not
+   * a patch, and it opens sitting in its blank (D-03). Every other field (volume,
+   * finsImportTemplate, boardName) resets to `DEFAULT_DESIGN_STATE`, so this always produces a
+   * genuinely fresh board rather than carrying over the board the user just discarded. */
   applyPreset: (preset: BoardPreset) => void;
   /** Opens a saved board (D-06/D-07's rack card click). Mirrors `applyPreset`'s wholesale-replace
    * shape exactly: spreads `DEFAULT_DESIGN_STATE`, then sets every field the snapshot carries
@@ -498,9 +499,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // A preset is a complete spec, not a patch (see BoardPreset's own doc comment) — every field
   // not supplied by the preset resets to DEFAULT_DESIGN_STATE's value rather than carrying over
   // from whatever board was there before, so "Discard & Start New" produces a genuinely fresh
-  // board (WR-01). rocker/foil joined outline/rails/fins here in 04-05 (D-12) — a preset without
-  // them would leave every board type drawing the same generic side profile regardless of which
-  // one was picked, which is exactly what D-12 exists to fix.
+  // board (WR-01). Since Phase 11 (D-03) a preset opens sitting in its blank: the fields come from
+  // ONE pure mapping, `presetDesignFields` (lib/blanks/preset-blanks.ts) — the blank's own copy of
+  // its catalogue rows at the preset's placement with zero fine-tunes, the preset's centre and tips,
+  // and the default hand-set rocker (unread while the blank is picked). The preset card's numbers
+  // (`presetSummary`) read the same mapping, so the card and the board it opens always agree. The
+  // preset's own tips are set here, so a preset board never follows the live tip defaults (D-19).
   const applyPreset = (preset: BoardPreset) => {
     // The history belongs to the board that is open, not to the session. Carrying it across a
     // board swap would let Cmd+Z drag a piece of the board just closed into the board just
@@ -508,19 +512,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     // the state replacement they belong with.
     pendingEditKeyRef.current = undefined;
     setHistory(emptyHistory());
-    setState(() => ({
-      ...DEFAULT_DESIGN_STATE,
-      outline: preset.outline,
-      // Presets still carry their tuned Bezier curves this wave; read at the preset's own five
-      // stations exactly as a version-3 save reopens. 11-10 gives every preset a real blank instead.
-      rocker: bezierToFiveStations(preset.rocker, preset.outline.length),
-      foil: preset.foil,
-      rails: preset.rails,
-      fins: preset.fins,
-      blank: null,
-      boardStarted: true,
-      dirty: true,
-    }));
+    setState(() => ({ ...DEFAULT_DESIGN_STATE, ...presetDesignFields(preset), boardStarted: true, dirty: true }));
   };
 
   // The one place `dirty` deliberately does NOT follow `boardStarted`: opening a saved board

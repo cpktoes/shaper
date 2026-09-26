@@ -366,8 +366,54 @@ describe("bezierToFiveStations (the version-3 migration)", () => {
   });
 
   it("reads every preset's captured Bezier rocker at its own length", () => {
+    // The presets retired these blocks in 11-10 (D-03: a preset now names a blank), but a board
+    // saved from a preset before Phase 11 still carries one, so the migration keeps being tested on
+    // the four real captured curves — frozen here exactly as `presets.ts` last carried them. They
+    // are migration INPUTS, not expected figures; the expectations are read off `buildRocker`.
+    const RETIRED_PRESET_ROCKERS: Record<(typeof BOARD_PRESETS)[number]["id"], RockerSpec> = {
+      shortboard: {
+        noseLift: inchesToMm(5.5),
+        tailLift: inchesToMm(2.0625),
+        noseAngle: degrees(30),
+        tailAngle: degrees(26),
+        noseSmoothness: 49,
+        tailSmoothness: 100,
+        noseFlatness: 50,
+        tailFlatness: 44.5,
+      },
+      fish: {
+        noseLift: inchesToMm(4.625),
+        tailLift: inchesToMm(1.9375),
+        noseAngle: degrees(30),
+        tailAngle: degrees(9),
+        noseSmoothness: 54.5,
+        tailSmoothness: 34,
+        noseFlatness: 51,
+        tailFlatness: 16,
+      },
+      midlength: {
+        noseLift: inchesToMm(5.375),
+        tailLift: inchesToMm(2.3125),
+        noseAngle: degrees(28),
+        tailAngle: degrees(30),
+        noseSmoothness: 27,
+        tailSmoothness: 80,
+        noseFlatness: 10,
+        tailFlatness: 0,
+      },
+      longboard: {
+        noseLift: inchesToMm(4.3125),
+        tailLift: inchesToMm(3.25),
+        noseAngle: degrees(12),
+        tailAngle: degrees(11),
+        noseSmoothness: 23,
+        tailSmoothness: 65,
+        noseFlatness: 0,
+        tailFlatness: 28,
+      },
+    };
     for (const preset of BOARD_PRESETS) {
-      expectMatchesBezier(preset.rocker, preset.outline.length);
+      expectMatchesBezier(RETIRED_PRESET_ROCKERS[preset.id], preset.outline.length);
     }
   });
 

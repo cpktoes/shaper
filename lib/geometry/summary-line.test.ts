@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { BOARD_PRESETS } from "./presets";
 import { summarizeDesign, type DesignSummary } from "./design";
 import { DEFAULT_VOLUME_SPEC } from "./volume";
@@ -8,11 +9,10 @@ import { formatDimsExample, formatSummaryLine, presetSummary } from "./summary-l
 
 const shortboard = BOARD_PRESETS.find((p) => p.id === "shortboard")!;
 
-/** A fixed summary to exercise the string composition against known numbers. */
+/** A fixed summary to exercise the string composition against known numbers — the Shortboard
+ * exactly as `applyPreset` opens it (its blank included), built independently of `presetSummary`. */
 const FIXED_SUMMARY: DesignSummary = summarizeDesign({
-  outline: shortboard.outline,
-  rails: shortboard.rails,
-  foil: shortboard.foil,
+  ...presetDesignFields(shortboard),
   railsImportFoilThickness: true,
   volume: DEFAULT_VOLUME_SPEC,
 });

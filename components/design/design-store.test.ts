@@ -74,9 +74,11 @@ describe("design-store.tsx — the blank rides in every hand-written field list 
     expect(deps).toMatch(/\bstate\.blank\b/);
   });
 
-  it("applyModel restores the saved blank, and applyPreset resets it", () => {
+  it("applyModel restores the saved blank, and applyPreset rebuilds the board from the preset's one mapping (its blank included)", () => {
     expect(handler("applyModel")).toMatch(/\bblank:\s*snapshot\.blank\b/);
-    expect(handler("applyPreset")).toMatch(/\bblank:\s*null\b/);
+    // D-03: a preset opens in its blank — the whole board comes from presetDesignFields, spread over
+    // DEFAULT_DESIGN_STATE so every field a preset does not set (new ones included) resets safely.
+    expect(handler("applyPreset")).toMatch(/\.\.\.DEFAULT_DESIGN_STATE,\s*\.\.\.presetDesignFields\(preset\)/);
   });
 
   it("DEFAULT_DESIGN_STATE starts with no blank and still carries the defaults presetSummary assumes", () => {
