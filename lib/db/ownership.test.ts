@@ -15,6 +15,8 @@ const ACTIONS_PATH = join(REPO_ROOT, "app/design/actions.ts");
 const QUERIES_PATH = join(REPO_ROOT, "lib/db/queries.ts");
 const UNITS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/units.ts");
 const PRINT_INSTRUCTIONS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/print-instructions.ts");
+const BLANKS_READ_PATH = join(REPO_ROOT, "lib/db/blanks.ts");
+const SCHEMA_PATH = join(REPO_ROOT, "lib/db/schema.ts");
 
 /** Strips `//` line comments and `/* *\/` block comments, same helper as lib/auth/open-access.test.ts. */
 function stripComments(source: string): string {
@@ -149,5 +151,71 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
         }
       });
     }
+  });
+});
+
+/**
+ * The vendor blank catalogue (Phase 11) is public data that belongs to no shaper, so it cannot pass
+ * the owned-table loop above and is deliberately NOT in it. It is held to a stricter contract
+ * instead: its one read file only ever SELECTs, only from `blanks`, never names a shaper's table
+ * and takes no identity — and the `blanks` table itself has no owner column and no
+ * station-numbered columns (its stations live in one jsonb list, R8).
+ */
+describe("the public blank catalogue read (Phase 11)", () => {
+  const blanksSource = stripComments(readFileSync(BLANKS_READ_PATH, "utf8"));
+  const schemaSource = stripComments(readFileSync(SCHEMA_PATH, "utf8"));
+
+  /** The `blanks` pgTable block of schema.ts, from its declaration to its row type. */
+  function blanksTableBlock(): string {
+    const start = schemaSource.search(/pgTable\(\s*"blanks"/);
+    const end = schemaSource.indexOf("export type BlankRow", start);
+    expect(start, "schema.ts declares no blanks table").toBeGreaterThanOrEqual(0);
+    expect(end, "schema.ts exports no BlankRow type after the blanks table").toBeGreaterThan(start);
+    return schemaSource.slice(start, end);
+  }
+
+  it("lib/db/blanks.ts reads, and never inserts, updates or deletes", () => {
+    expect(blanksSource).toMatch(/\bdb\s*\.\s*select\s*\(/);
+    expect(blanksSource).not.toMatch(/\bdb\s*\.\s*(insert|update|delete|execute)\s*\(/);
+    expect(blanksSource).not.toMatch(/\bsql\s*`/);
+  });
+
+  it("every select in lib/db/blanks.ts reads from the blanks table and nothing else", () => {
+    const selects = [...blanksSource.matchAll(/\bdb\s*\.\s*select\s*\(/g)].map((m) => m.index);
+    expect(selects.length).toBeGreaterThan(0);
+    selects.forEach((start, i) => {
+      const end = i + 1 < selects.length ? selects[i + 1] : blanksSource.length;
+      const statement = blanksSource.slice(start, end);
+      const froms = [...statement.matchAll(/\.from\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/g)].map((m) => m[1]);
+      expect(froms, "a select in lib/db/blanks.ts reads from something other than blanks").toEqual([
+        "blanks",
+      ]);
+    });
+    // Never a shaper's table, not even by name.
+    expect(blanksSource).not.toMatch(/\b(models|userPreferences)\b/);
+  });
+
+  it("no function exported from lib/db/blanks.ts takes a shaper identity", () => {
+    const signatures = exportedFunctionSignatures(blanksSource);
+    expect(signatures.map((fn) => fn.name).sort()).toEqual([
+      "blankRecordToRow",
+      "blankRowToRecord",
+      "loadPickableBlanks",
+    ]);
+    const offenders = signatures.filter((fn) => /userId|ownerId|clerkUserId|clerkId/.test(fn.params));
+    expect(offenders, JSON.stringify(offenders)).toEqual([]);
+  });
+
+  it("the blanks table has no owner column", () => {
+    expect(blanksTableBlock()).not.toMatch(/clerk_user_id|clerkUserId|owner|user_id/i);
+  });
+
+  it("the blanks table has no column named after a station — the stations are one jsonb list", () => {
+    const block = blanksTableBlock();
+    expect(block).toMatch(/jsonb\(\s*"stations"\s*\)/);
+    const columnNames = [...block.matchAll(/\b[a-zA-Z]+\(\s*("[^"]+")/g)].map((m) => m[1]);
+    expect(columnNames).toContain('"vendor"');
+    const stationLike = columnNames.filter((name) => /"(t|n)\d+"|"c_|station_\d/i.test(name));
+    expect(stationLike).toEqual([]);
   });
 });
