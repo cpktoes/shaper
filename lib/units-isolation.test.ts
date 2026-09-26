@@ -343,6 +343,10 @@ describe("the design screens read every measurement through the display boundary
     { file: "components/volume/volume-controls.tsx", converted: true },
     { file: "components/volume/volume-calculation-card.tsx", converted: true },
     { file: "components/volume/volume-estimator.tsx", converted: true },
+    // 11-08 (D-09, R15): the gear menu's Fit & Tip Defaults dialog shows five marks. It lives
+    // outside the five walked screen folders, so it has to be named here to be checked at all —
+    // listed, the loops below hold it to the same boundary every design screen reads through.
+    { file: "components/fit-defaults-dialog.tsx", converted: true },
   ];
 
   const OUT_OF_SCOPE_UNITS_FILES: { file: string; reason: string }[] = [
