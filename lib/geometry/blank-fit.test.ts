@@ -20,6 +20,8 @@ import {
   judgeBlank,
   levelCurve,
   listBlanks,
+  nearestFit,
+  nearestFittingPlacement,
   placementRange,
   prepareBlank,
   TIP_EASE_WINDOW_MM,
@@ -775,30 +777,192 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
     });
 
     it("both — each floor alone leaves blanks, but no blank passes both", () => {
+      // The catalogue's longest blank is also among its thickest, so "both" needs a pair of real
+      // blanks where the longer one is the thinner: floors set so only the long one is long enough
+      // and only the thick one is thick enough.
       const ctx = defaultContext(72, 2.5);
       const pickable = PREPARED_ALL.filter((p) => isPickable(p.record));
-      // Thresholds found in the catalogue itself: some blanks at least this long, some at least
-      // this thick at the centre, and none both.
-      let settings: FitSettings | null = null;
+      let pair: [PreparedBlank, PreparedBlank] | null = null;
       for (const long of pickable) {
-        if (settings) break;
-        const longEnough = pickable.filter((p) => p.lengthMm >= long.lengthMm);
-        for (const thick of pickable) {
-          const thickEnough = pickable.filter((p) => p.centerThicknessMm >= thick.centerThicknessMm);
-          if (longEnough.some((p) => thickEnough.includes(p))) continue;
-          settings = {
-            ...DEFAULT_SETTINGS,
-            extraLength: mm(long.lengthMm - ctx.board.length),
-            extraCenterThickness: mm(thick.centerThicknessMm - ctx.board.centerThickness),
-          };
+        const thick = pickable.find(
+          (p) => p.lengthMm < long.lengthMm && p.centerThicknessMm > long.centerThicknessMm,
+        );
+        if (thick) {
+          pair = [long, thick];
           break;
         }
       }
-      expect(settings).not.toBeNull();
-      const result = listBlanks(PREPARED_ALL, ctx, settings!);
+      expect(pair).not.toBeNull();
+      const [long, thick] = pair!;
+      const settings: FitSettings = {
+        ...DEFAULT_SETTINGS,
+        extraLength: mm(long.lengthMm - ctx.board.length),
+        extraCenterThickness: mm(thick.centerThicknessMm - ctx.board.centerThickness),
+      };
+      const result = listBlanks([long, thick], ctx, settings);
       expect(result.fits).toEqual([]);
       expect(result.wontFit).toEqual([]);
       expect(result.emptyReason).toBe("both");
+    });
+  });
+});
+
+describe("the offer and the rescue (D-08, R6)", () => {
+  /** The offer's properties (Pitfall 12): fits, is not the current blank, and nothing is closer. */
+  function expectClosestOffer(
+    offer: BlankVerdict,
+    current: Pick<BlankRecord, "vendor" | "name" | "lengthMm">,
+    fits: readonly BlankVerdict[],
+    target: Mm,
+  ) {
+    expect(offer.fits).toBe(true);
+    expect(keyOf(offer.prepared.record)).not.toBe(keyOf(current));
+    const gap = Math.abs(offer.prepared.lengthMm - current.lengthMm);
+    const spare = offer.prepared.centerThicknessMm - target;
+    for (const other of fits) {
+      if (keyOf(other.prepared.record) === keyOf(current)) continue;
+      const otherGap = Math.abs(other.prepared.lengthMm - current.lengthMm);
+      expect(otherGap).toBeGreaterThanOrEqual(gap - 1e-9);
+      // Same length gap: the offer leaves no more spare foam at the centre.
+      if (Math.abs(otherGap - gap) <= 1e-9) {
+        expect(spare).toBeLessThanOrEqual(other.prepared.centerThicknessMm - target + 1e-9);
+      }
+    }
+  }
+
+  it("R6: M-Regular stops passing the centre floor, and the offer is the closest-length blank that fits", () => {
+    const mRegular = findBlank(MARKO_VENDOR, M_REGULAR);
+    const prepared = prepareBlank(mRegular);
+    const before = defaultContext(70, 2.5);
+    expect(listedKeys(listBlanks(PREPARED_ALL, before, DEFAULT_SETTINGS))).toContain(keyOf(mRegular));
+
+    const centre = mm(prepared.centerThicknessMm - DEFAULT_SETTINGS.extraCenterThickness + SIXTEENTH_MM);
+    const after = fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(70), centre);
+    const floor = floorCheck(prepared, after.board.length, centre, DEFAULT_SETTINGS);
+    expect(floor.passes).toBe(false);
+    expect(floor.centerShortBy).toBeCloseTo(SIXTEENTH_MM, 9);
+
+    const list = listBlanks(PREPARED_ALL, after, DEFAULT_SETTINGS);
+    const offer = nearestFit(mRegular, list.fits, centre);
+    expect(offer).not.toBeNull();
+    expectClosestOffer(offer!, mRegular, list.fits, centre);
+  });
+
+  it("the offer is always the closest-length fitting blank, over every preset at three centres", () => {
+    let offers = 0;
+    for (const preset of BOARD_PRESETS) {
+      for (const extra of [0, 0.25, 0.5]) {
+        const target = mm(preset.foil.center + inchesToMm(extra));
+        const ctx = fitContext(preset.outline, preset.outline.length, target, {
+          noseTip: preset.foil.noseTip,
+          tailTip: preset.foil.tailTip,
+        });
+        const list = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+        for (const current of list.fits.slice(0, 3)) {
+          const offer = nearestFit(current.prepared.record, list.fits, target);
+          if (offer === null) {
+            // Only possible when the current blank is the one fitting blank.
+            expect(list.fits.filter((v) => v !== current)).toEqual([]);
+            continue;
+          }
+          offers++;
+          expectClosestOffer(offer, current.prepared.record, list.fits, target);
+        }
+      }
+    }
+    expect(offers).toBeGreaterThan(20);
+  });
+
+  it("ties on length go to the blank with less spare foam at the centre", () => {
+    // Two copies of one real blank at the same length, one a sixteenth thicker at its centre.
+    const base = prepareBlank(findBlank(MARKO_VENDOR, M_REGULAR));
+    const ctx = defaultContext(70, 2.5);
+    const verdict = judgeBlank(base, ctx, DEFAULT_SETTINGS);
+    expect(verdict.fits).toBe(true);
+    const thinner: BlankVerdict = {
+      ...verdict,
+      prepared: { ...base, record: { ...base.record, name: "thinner" } },
+    };
+    const thicker: BlankVerdict = {
+      ...verdict,
+      prepared: {
+        ...base,
+        record: { ...base.record, name: "thicker" },
+        centerThicknessMm: mm(base.centerThicknessMm + SIXTEENTH_MM),
+      },
+    };
+    const current = { vendor: "Nobody", name: "current", lengthMm: base.lengthMm };
+    expect(nearestFit(current, [thicker, thinner], ctx.board.centerThickness)?.prepared.record.name).toBe("thinner");
+    expect(nearestFit(current, [thinner, thicker], ctx.board.centerThickness)?.prepared.record.name).toBe("thinner");
+  });
+
+  it("F5: no offer when nothing fits, or when only the current blank does", () => {
+    const ctx = defaultContext(70, 2.5);
+    const list = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+    const current = list.fits[0];
+    expect(nearestFit(current.prepared.record, [], ctx.board.centerThickness)).toBeNull();
+    expect(nearestFit(current.prepared.record, [current], ctx.board.centerThickness)).toBeNull();
+    // A not-fitting verdict handed in by mistake is never offered.
+    const failing = list.wontFit[0] ?? { ...list.fits[1], fits: false };
+    expect(nearestFit(current.prepared.record, [current, failing], ctx.board.centerThickness)).toBeNull();
+  });
+
+  describe("Move to Where It Fits (nearestFittingPlacement)", () => {
+    it("moves to the fitting placement nearest to where the board is now — no 1/16\" step closer fits", () => {
+      let rescued = 0;
+      for (const { ctx } of sweepContexts()) {
+        const list = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+        for (const verdict of list.fits) {
+          const { prepared } = verdict;
+          const range = placementRange(prepared.lengthMm, ctx.board.length);
+          for (const from of [0, range.min, range.max, range.max / 3]) {
+            if (fitHere(prepared, ctx, DEFAULT_SETTINGS, from).fits) continue;
+            if (rescued >= 25) break;
+            rescued++;
+            const p = nearestFittingPlacement(prepared, ctx, DEFAULT_SETTINGS, mm(from));
+            expect(p).not.toBeNull();
+            expect(fitHere(prepared, ctx, DEFAULT_SETTINGS, p!).fits).toBe(true);
+            expect(p!).toBeGreaterThanOrEqual(range.min);
+            expect(p!).toBeLessThanOrEqual(range.max);
+            for (const g of sixteenthGrid(prepared, ctx.board.length)) {
+              if (Math.abs(g - from) < Math.abs(p! - from) - 1e-9) {
+                expect(fitHere(prepared, ctx, DEFAULT_SETTINGS, g).fits).toBe(false);
+              }
+            }
+          }
+        }
+      }
+      expect(rescued).toBeGreaterThan(5);
+    });
+
+    it("returns null for a blank that fits nowhere", () => {
+      let checked = 0;
+      for (const { ctx } of sweepContexts()) {
+        for (const verdict of listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS).wontFit.slice(0, 2)) {
+          checked++;
+          expect(nearestFittingPlacement(verdict.prepared, ctx, DEFAULT_SETTINGS, verdict.placement)).toBeNull();
+        }
+      }
+      expect(checked).toBeGreaterThan(0);
+    });
+
+    it("returns where the board already is (clamped into range) when it already fits there", () => {
+      const ctx = defaultContext(72, 2.5);
+      const list = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+      let clampedChecked = 0;
+      for (const verdict of list.fits) {
+        const { prepared } = verdict;
+        expect(nearestFittingPlacement(prepared, ctx, DEFAULT_SETTINGS, verdict.placement)).toBe(verdict.placement);
+        const range = placementRange(prepared.lengthMm, ctx.board.length);
+        if (range.max > 0 && fitHere(prepared, ctx, DEFAULT_SETTINGS, range.max).fits) {
+          clampedChecked++;
+          const past = mm(range.max + inchesToMm(10));
+          expect(nearestFittingPlacement(prepared, ctx, DEFAULT_SETTINGS, past)).toBe(
+            clampPlacement(past, prepared.lengthMm, ctx.board.length),
+          );
+        }
+      }
+      expect(clampedChecked).toBeGreaterThan(0);
     });
   });
 });
