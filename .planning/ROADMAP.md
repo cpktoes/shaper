@@ -122,7 +122,7 @@ Opened 2026-09-25 on branch `rocker-blanks` from the founder's written brief, wh
 **Requirements**: locked in `.planning/phases/11-rocker-from-real-blanks/11-SPEC.md` (16 requirements); decisions in `11-CONTEXT.md` (D-01–D-20)
 **Depends on:** Phase 10
 **Success criteria:** the brief's DONE WHEN — pick a blank, slide the board along it, watch the four rocker numbers change live, see which blanks don't fit and why, and get a foil that matches the centre and tip thicknesses — plus the four named tests green before the UI, the seed re-runnable, and every older saved board reopening
-**Plans:** 9/13 plans executed in 7 waves
+**Plans:** 11/13 plans executed in 7 waves
 
 Plans:
 
@@ -149,8 +149,8 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 11-10-PLAN.md — How a new board starts: presets open in real (provisional) blanks, an untouched board follows the tip defaults, and every litres figure agrees (R5 R13 R14)
-- [ ] 11-11-PLAN.md — The ROCKER sidebar in the brief's order: centre thickness, the blank list and search, the flag and the offer, the placement slider with live numbers, tips and the 12" fine-tune (R1 R2 R3 R4 R5 R6 R12 R14 R15)
+- [x] 11-10-PLAN.md — How a new board starts: presets open in real (provisional) blanks, an untouched board follows the tip defaults, and every litres figure agrees (R5 R13 R14)
+- [x] 11-11-PLAN.md — The ROCKER sidebar in the brief's order: centre thickness, the blank list and search, the flag and the offer, the placement slider with live numbers, tips and the 12" fine-tune (R1 R2 R3 R4 R5 R6 R12 R14 R15)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -181,4 +181,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
-| 11. Rocker from Real Blanks | 9/13 | In Progress|  |
+| 11. Rocker from Real Blanks | 11/13 | In Progress|  |
