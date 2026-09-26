@@ -239,6 +239,34 @@ export function fitDefaultsCookieString(pref: FitDefaultsPreference): string {
 }
 
 /**
+ * Writes a preference to the browser's two stores through the sinks the caller hands in (the
+ * provider passes `localStorage.setItem` and a `document.cookie` assignment; this module never
+ * touches a browser global itself). Each write is tried ON ITS OWN (IN-02): a browser that refuses
+ * storage (Safari private mode, blocked-storage contexts) can still accept the cookie, and the
+ * cookie is what the server reads to render the shaper's own numbers on the next page's first
+ * paint — so a refused localStorage must never skip it, nor a refused cookie the storage. Returns
+ * which of the two landed. Never throws.
+ */
+export function writeFitDefaultsToBrowser(
+  pref: FitDefaultsPreference,
+  sinks: { setStorage: (raw: string) => void; setCookie: (cookie: string) => void },
+): { storage: boolean; cookie: boolean } {
+  let storage = true;
+  let cookie = true;
+  try {
+    sinks.setStorage(JSON.stringify(pref));
+  } catch {
+    storage = false;
+  }
+  try {
+    sinks.setCookie(fitDefaultsCookieString(pref));
+  } catch {
+    cookie = false;
+  }
+  return { storage, cookie };
+}
+
+/**
  * Reads the cookie's value part (what the server's `cookies().get(...).value` hands back):
  * percent-decode, JSON-parse, then the field-by-field allow-list. Five nulls for a missing value,
  * undecodable escapes or anything that is not JSON — never throws (T-11-05).

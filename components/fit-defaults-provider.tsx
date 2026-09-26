@@ -36,7 +36,6 @@ import { FitDefaultsDialog } from "@/components/fit-defaults-dialog";
 import {
   EMPTY_FIT_DEFAULTS_PREFERENCE,
   FIT_DEFAULTS_STORAGE_KEY,
-  fitDefaultsCookieString,
   mergeFitDefaultsPatch,
   parseFitDefaultsPreference,
   resolveFitDefaults,
@@ -46,6 +45,7 @@ import {
   type FitDefaultsKey,
   type FitDefaultsPatch,
   type FitDefaultsPreference,
+  writeFitDefaultsToBrowser,
 } from "@/lib/fit-defaults-preference";
 import { createPreferenceWriteQueue, type PreferenceWriteQueue } from "@/lib/preference-handoff";
 import type { FitSettings } from "@/lib/geometry/blank";
@@ -98,17 +98,19 @@ function parseStoredRaw(raw: string): FitDefaultsPreference {
 }
 
 /** Writes a preference into the browser — localStorage and the cookie the server reads for the
- * next request's first paint — falling back to page memory when storage is blocked. */
+ * next request's first paint — falling back to page memory when storage is blocked. The two
+ * writes are tried separately (`writeFitDefaultsToBrowser`, IN-02): with localStorage blocked the
+ * cookie still lands, so the server still renders the shaper's own numbers on the next page. When
+ * storage is blocked the value still applies for this page (the emit that follows every write)
+ * through `blockedStorageRaw`. */
 function writeToBrowser(next: FitDefaultsPreference) {
-  const raw = JSON.stringify(next);
-  blockedStorageRaw = raw;
-  try {
-    localStorage.setItem(FIT_DEFAULTS_STORAGE_KEY, raw);
-    document.cookie = fitDefaultsCookieString(next);
-  } catch {
-    // Storage blocked — the value still applies for this page (the emit that follows every
-    // write), it just won't survive a reload. Better than refusing the value.
-  }
+  blockedStorageRaw = JSON.stringify(next);
+  writeFitDefaultsToBrowser(next, {
+    setStorage: (raw) => localStorage.setItem(FIT_DEFAULTS_STORAGE_KEY, raw),
+    setCookie: (cookie) => {
+      document.cookie = cookie;
+    },
+  });
 }
 
 /* -------------------------------------------------------------------------------------- */

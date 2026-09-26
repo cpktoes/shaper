@@ -16,6 +16,7 @@ import {
   fitDefaultsUpdateSet,
   mergeFitDefaultsPatch,
   parseFitDefaultsPatch,
+  writeFitDefaultsToBrowser,
   parseFitDefaultValue,
   parseFitDefaultsCookieValue,
   parseFitDefaultsPreference,
@@ -317,6 +318,49 @@ describe("fit-defaults preference boundary", () => {
       for (const key of FIT_DEFAULTS_KEYS) {
         expect(columns[FIT_DEFAULTS_COLUMNS[key]]).toBe(key === "tailTipThickness" ? inchesToMm(0.375) : null);
       }
+    });
+  });
+
+  describe("writeFitDefaultsToBrowser — each store is written on its own (IN-02)", () => {
+    const pref = { ...FIVE_NULLS, widthMargin: inchesToMm(2) };
+
+    it("with localStorage blocked, the cookie is still written", () => {
+      const cookies: string[] = [];
+      const result = writeFitDefaultsToBrowser(pref, {
+        setStorage: () => {
+          throw new Error("SecurityError: storage is blocked");
+        },
+        setCookie: (cookie) => cookies.push(cookie),
+      });
+      expect(result).toEqual({ storage: false, cookie: true });
+      expect(cookies).toEqual([fitDefaultsCookieString(pref)]);
+    });
+
+    it("with cookies refused, localStorage is still written", () => {
+      const stored: string[] = [];
+      const result = writeFitDefaultsToBrowser(pref, {
+        setStorage: (raw) => stored.push(raw),
+        setCookie: () => {
+          throw new Error("cookies refused");
+        },
+      });
+      expect(result).toEqual({ storage: true, cookie: false });
+      expect(stored.map((raw) => JSON.parse(raw))).toEqual([pref]);
+    });
+
+    it("writes both when both are allowed, and never throws when neither is", () => {
+      const stored: string[] = [];
+      const cookies: string[] = [];
+      expect(writeFitDefaultsToBrowser(pref, { setStorage: (r) => stored.push(r), setCookie: (c) => cookies.push(c) })).toEqual({
+        storage: true,
+        cookie: true,
+      });
+      expect(stored).toHaveLength(1);
+      expect(cookies).toHaveLength(1);
+      const refuse = () => {
+        throw new Error("no");
+      };
+      expect(writeFitDefaultsToBrowser(pref, { setStorage: refuse, setCookie: refuse })).toEqual({ storage: false, cookie: false });
     });
   });
 });
