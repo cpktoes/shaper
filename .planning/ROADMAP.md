@@ -122,11 +122,38 @@ Opened 2026-09-25 on branch `rocker-blanks` from the founder's written brief, wh
 **Requirements**: locked in `.planning/phases/11-rocker-from-real-blanks/11-SPEC.md` (16 requirements); decisions in `11-CONTEXT.md` (D-01–D-20)
 **Depends on:** Phase 10
 **Success criteria:** the brief's DONE WHEN — pick a blank, slide the board along it, watch the four rocker numbers change live, see which blanks don't fit and why, and get a foil that matches the centre and tip thicknesses — plus the four named tests green before the UI, the seed re-runnable, and every older saved board reopening
-**Plans:** 0 plans
+**Plans:** 13 plans in 7 waves
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 11 to break down)
+**Wave 1**
+- [ ] 11-01-PLAN.md — The blank maths, proven against the catalogues first: pchip, the catalogue reader, levelling, the board sitting on the blank, the scaled foil and the fit check — with the brief's four named tests (R3 R4 R7 R8 R9 R10 R11 R12 R13 R14 R16)
+- [ ] 11-02-PLAN.md — Two building blocks: a signed "+1/16"" figure for fine-tunes, and the storage rules for the five fit and tip defaults (R2 R5 R15)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 11-03-PLAN.md — Judge every blank for a board (fits, won't fit and why, where the slider lands, the closest blank that fits) and word the reasons in inches and millimetres (R2 R6 R12 R15)
+- [ ] 11-04-PLAN.md — One side profile every screen reads; the hand-set five-station rocker; the foil moves onto pchip (litres move by a hair) (R4 R5 R10 R13 R14)
+- [ ] 11-05-PLAN.md — The blank catalogue in the database: table, migration, a read that can't break the page, and a re-runnable seed of all 162 blanks (R7 R8 R9)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 11-06-PLAN.md — The five fit and tip defaults saved on the account: columns, migration, server read, one save action (R2 R5 R12)
+- [ ] 11-07-PLAN.md — The drawing: the board inside its blank with the foam shaded, measuring points, nothing to drag; the old drag code and old spline retired (R4 R15)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 11-08-PLAN.md — "Fit & Tip Defaults" in the gear menu, on desktop and phone (R2 R5 R15)
+- [ ] 11-09-PLAN.md — Saved boards move to version 4 (the blank travels with the board); the store learns about blanks; four hand-set rocker sliders; the DATASHEET shows the blank beside the board (R1 R4 R5 R6 R14)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 11-10-PLAN.md — How a new board starts: presets open in real (provisional) blanks, an untouched board follows the tip defaults, and every litres figure agrees (R5 R13 R14)
+- [ ] 11-11-PLAN.md — The ROCKER sidebar in the brief's order: centre thickness, the blank list and search, the flag and the offer, the placement slider with live numbers, tips and the 12" fine-tune (R1 R2 R3 R4 R5 R6 R12 R14 R15)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 11-12-PLAN.md — Browser proof on both phones and the desktop (no network requests while sliding), then the ROCKER and VOLUME screenshots re-recorded once (R3 R4 R6 R14 R15 R16)
+
+**Wave 7** *(blocked on Wave 6 completion — a founder step after the merge is live)*
+- [ ] 11-13-PLAN.md — After the merge is live on Vercel: migrate production and load the blanks (a founder checkpoint) (R7 R8 R9)
+
+Cross-cutting constraints: geometry pure and tested under `lib/geometry/` before any screen changes (R16); every conversion through `lib/geometry/units.ts` and every displayed number through `measure-display.ts` (R15); no new dependency and no package.json change (D-20); development-branch migrations inside the plans, production only after the deploy (CLAUDE.md Database); the ROCKER and VOLUME desktop baselines re-recorded once in 11-12, TEMPLATE/RAILS/FINS byte-identical.
 
 ---
 
@@ -147,4 +174,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
-| 11. Rocker from Real Blanks | 0/0 | Context gathered | — |
+| 11. Rocker from Real Blanks | 0/13 | Planned | — |

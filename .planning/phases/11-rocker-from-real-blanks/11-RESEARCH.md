@@ -613,7 +613,7 @@ Measured: 1.74, 0.5599999999999997, 1.3200000000000012, 4.12. [VERIFIED: probe]
 | A7 | Fit-defaults handoff is decided per field | Pattern 7 | Mixed-device choices could overwrite one another |
 | A8 | Declaring `tsx@4.23.12` as a devDependency is acceptable (not "runtime") | Standard Stack | If the founder reads "no new dependency" strictly, the seed runs via `npx tsx` on a transitive install |
 
-## Open Questions
+## Open Questions (RESOLVED — all five closed by the `### Rulings` block below, 2026-09-26)
 
 1. **Tip rule: floor or ease-in? (blocks the geometry plan's foil tests)**
    - What we know: D-10 says "floored at the tip setting", while the discretion note says "eases into the tip setting". With default settings the floor binds on 0 of 499 blank/centre pairs (smallest scaled tip 0.435 in, median 1.113 in). R5 and the DONE WHEN want "a foil that matches my … tip thicknesses", and UI-SPEC §9 draws Nose Tip and Tail Tip as set cards.
