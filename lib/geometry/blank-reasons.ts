@@ -114,7 +114,14 @@ export function formatPlacement(placement: Mm, system: UnitsSystem): string {
  * left end is the most nose-ward placement — matching the drawing's nose-left view and the
  * nose-first order of every list on the screen (`(researcher's choice — founder may overrule)` in
  * the UI-SPEC). `toMm` negates back, so a drag to the left raises the stored, nose-positive
- * placement. Step 1/16" / 1 mm; metric bounds round inward, never past the range.
+ * placement. Step 1/16" / 1 mm; bounds round inward, never past the range.
+ *
+ * Both ends sit on the step grid SYMMETRICALLY about zero (IN-01): the slider snaps to
+ * `min + k·step`, so an end that is off the grid (a US Blanks length such as 72.748" leaves a
+ * reach that is not a whole sixteenth) would put every reachable position off the grid and the
+ * thumb could never land exactly on centred. Imperial rounds each end's reach inward to a whole
+ * 1/16" here; Metric's `metricSliderRange` already rounds each end inward to a whole millimetre.
+ * Either way zero is always a step on the grid, and `formatPlacement` then reads `centered`.
  */
 export function placementSlider(
   placement: Mm,
@@ -122,13 +129,17 @@ export function placementSlider(
   system: UnitsSystem,
 ): MeasureSliderView {
   const negate = (value: number) => (value === 0 ? 0 : -value);
-  const view = measureSlider(
-    mm(negate(placement)),
-    { min: negate(mmToInches(range.max)), max: negate(mmToInches(range.min)) },
-    1 / 16,
-    1,
-    system,
-  );
+  const step = 1 / 16;
+  /** A reach, in inches, rounded inward onto the 1/16" grid (the same 1e-9 nudge as every grid
+   * rounding in `units.ts`, so a reach exactly on the grid never loses a step to float noise). */
+  const onGrid = (reachIn: number) => Math.floor(Math.max(0, reachIn) / step + 1e-9) * step;
+  const noseReachIn = mmToInches(range.max);
+  const tailReachIn = negate(mmToInches(range.min));
+  const rangeIn =
+    system === "imperial"
+      ? { min: negate(onGrid(noseReachIn)), max: onGrid(tailReachIn) }
+      : { min: negate(noseReachIn), max: tailReachIn };
+  const view = measureSlider(mm(negate(placement)), rangeIn, step, 1, system);
   // `view.value` is already the negated placement in the slider's own unit; only `toMm` turns back.
   return { ...view, toMm: (dragged: number) => mm(negate(view.toMm(dragged))) };
 }

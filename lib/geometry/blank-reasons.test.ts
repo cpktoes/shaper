@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
 import type { BlankRecord, BlankShortfall } from "./blank";
@@ -19,7 +20,9 @@ import {
   placementSlider,
   REASON_SNAP_MM,
 } from "./blank-reasons";
+import { DEFAULT_BOARD_SPEC } from "./board";
 import { formatDim, formatLength, formatMark, stationLabel } from "./measure-display";
+import { BOARD_PRESETS } from "./presets";
 import { MEASURE_STATION_MM } from "./outline";
 import { inchesToMm, litres, mm, mmToInches, UNITS_SYSTEMS, type Mm, type UnitsSystem } from "./units";
 
@@ -200,6 +203,56 @@ describe("placementSlider — the nose is the left end (R3)", () => {
   it("reads the stored value as its negation in the slider's own unit", () => {
     const p = inchesToMm(2.5);
     expect(placementSlider(p, range, "imperial").value).toBeCloseTo(-mmToInches(p), 12);
+  });
+});
+
+describe("placementSlider — the thumb can always land exactly on centred (IN-01)", () => {
+  // Every pickable blank, through the tested reader, under the default board and each preset's
+  // board. The slider snaps a drag to `min + k·step` (Base UI's own rounding), so zero is
+  // reachable only when it is a whole number of steps from the minimum.
+  const pickable = readSeedCatalog().filter(isPickable);
+  const boards = [
+    { label: "the default board", length: DEFAULT_BOARD_SPEC.outline.length },
+    ...BOARD_PRESETS.map((preset) => ({ label: preset.name, length: preset.outline.length })),
+  ];
+
+  it.each(UNITS_SYSTEMS)("in %s, zero is on the grid for every pickable blank, and a drag there reads centered", (system) => {
+    const offGrid: string[] = [];
+    let slidable = 0;
+    for (const board of boards) {
+      for (const blank of pickable) {
+        const range = placementRange(blank.lengthMm, board.length);
+        const view = placementSlider(mm(0), range, system);
+        if (view.max > view.min) slidable++;
+        // The Base UI snap of a drag landing on zero, and what that drag stores.
+        const snapped = view.min + Math.round((0 - view.min) / view.step) * view.step;
+        const stored = view.toMm(snapped);
+        const ok =
+          view.min <= 0 &&
+          view.max >= 0 &&
+          snapped === 0 &&
+          Object.is(stored, 0) &&
+          formatPlacement(stored, system) === "centered" &&
+          view.min === -view.max;
+        if (!ok) offGrid.push(`${board.label} on ${blank.vendor} ${blank.name}`);
+      }
+    }
+    expect(offGrid).toEqual([]);
+    // Not vacuous: most pairs really can slide.
+    expect(slidable).toBeGreaterThan(pickable.length);
+  });
+
+  it("imperial bounds never reach past the placement range (beyond float noise)", () => {
+    // A reach that is a whole sixteenth mathematically can come out of the millimetre maths a few
+    // ULPs short of it; the grid rounding keeps that sixteenth, so allow float noise, not foam.
+    const FLOAT_NOISE_MM = 1e-9;
+    for (const blank of pickable) {
+      const range = placementRange(blank.lengthMm, DEFAULT_BOARD_SPEC.outline.length);
+      const view = placementSlider(mm(0), range, "imperial");
+      expect(view.toMm(view.min)).toBeLessThanOrEqual(range.max + FLOAT_NOISE_MM);
+      expect(view.toMm(view.max)).toBeGreaterThanOrEqual(range.min - FLOAT_NOISE_MM);
+      expect(range.max - view.toMm(view.min)).toBeLessThan(inchesToMm(1 / 16));
+    }
   });
 });
 
