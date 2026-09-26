@@ -122,7 +122,7 @@ Opened 2026-09-25 on branch `rocker-blanks` from the founder's written brief, wh
 **Requirements**: locked in `.planning/phases/11-rocker-from-real-blanks/11-SPEC.md` (16 requirements); decisions in `11-CONTEXT.md` (D-01–D-20)
 **Depends on:** Phase 10
 **Success criteria:** the brief's DONE WHEN — pick a blank, slide the board along it, watch the four rocker numbers change live, see which blanks don't fit and why, and get a foil that matches the centre and tip thicknesses — plus the four named tests green before the UI, the seed re-runnable, and every older saved board reopening
-**Plans:** 2/13 plans executed in 7 waves
+**Plans:** 5/13 plans executed in 7 waves
 
 Plans:
 
@@ -133,9 +133,9 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 11-03-PLAN.md — Judge every blank for a board (fits, won't fit and why, where the slider lands, the closest blank that fits) and word the reasons in inches and millimetres (R2 R6 R12 R15)
-- [ ] 11-04-PLAN.md — One side profile every screen reads; the hand-set five-station rocker; the foil moves onto pchip (litres move by a hair) (R4 R5 R10 R13 R14)
-- [ ] 11-05-PLAN.md — The blank catalogue in the database: table, migration, a read that can't break the page, and a re-runnable seed of all 162 blanks (R7 R8 R9)
+- [x] 11-03-PLAN.md — Judge every blank for a board (fits, won't fit and why, where the slider lands, the closest blank that fits) and word the reasons in inches and millimetres (R2 R6 R12 R15)
+- [x] 11-04-PLAN.md — One side profile every screen reads; the hand-set five-station rocker; the foil moves onto pchip (litres move by a hair) (R4 R5 R10 R13 R14)
+- [x] 11-05-PLAN.md — The blank catalogue in the database: table, migration, a read that can't break the page, and a re-runnable seed of all 162 blanks (R7 R8 R9)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -181,4 +181,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
-| 11. Rocker from Real Blanks | 2/13 | In Progress|  |
+| 11. Rocker from Real Blanks | 5/13 | In Progress|  |
