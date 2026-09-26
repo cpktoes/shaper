@@ -189,3 +189,9 @@ comparison and the VOLUME pixel-region check.
 - A ROCKER screenshot that doesn't wait for hydration gets a dev-overlay badge. Any new ROCKER
   screenshot or pixel check should wait for React to own the list first.
 - The 11-11 note about a cold webpack server reloading TEMPLATE once did not show up in any run here.
+
+## Self-Check: PASSED
+
+- FOUND: all eight `files_modified` paths changed, and nothing else apart from this SUMMARY (`git diff --name-status d143980 HEAD`)
+- FOUND commits: 2019aa4, 2edb0c0, f0891de
+- `e2e/_volume-diff.tmp.spec.ts` and `e2e/_diag.tmp.spec.ts` are both gone
