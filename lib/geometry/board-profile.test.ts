@@ -8,7 +8,7 @@ import {
   buildFallbackProfile,
   type BoardSideProfile,
 } from "./board-profile";
-import { DEFAULT_FOIL_SPEC, foilStationPoints, type FoilStationKey } from "./foil";
+import { DEFAULT_FOIL_SPEC, foilStationPoints, sampleFoil, type FoilStationKey } from "./foil";
 import { MEASURE_STATION_MM } from "./outline";
 import { preparePchip } from "./pchip";
 import { DEFAULT_FALLBACK_ROCKER, rockerStationPositions } from "./rocker";
@@ -82,6 +82,13 @@ describe("the fallback profile — a board with no blank (D-14)", () => {
       foilStationPoints(DEFAULT_FOIL_SPEC, length).map((p) => ({ x: p.station, y: p.thickness })),
     );
     const mismatches = sweep(length, 72).filter((s) => profile.thicknessAt(s) !== curve.sample(s));
+    expect(mismatches).toEqual([]);
+  });
+
+  it("reads exactly what sampleFoil reads, on a 1in sweep", () => {
+    const mismatches = sweep(length, 72).filter(
+      (s) => profile.thicknessAt(s) !== sampleFoil(DEFAULT_FOIL_SPEC, length, s),
+    );
     expect(mismatches).toEqual([]);
   });
 
