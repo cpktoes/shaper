@@ -7,9 +7,11 @@ import { DesignProvider as Provider } from "@/components/design/design-store";
 import { ThemeProvider } from "@/components/theme-provider";
 import { UnitsProvider } from "@/components/units-provider";
 import { PrintInstructionsProvider } from "@/components/print-instructions-provider";
+import { FitDefaultsProvider } from "@/components/fit-defaults-provider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { resolveUnitsHandoff } from "@/lib/units-server";
 import { resolvePrintRailInstructionsHandoff } from "@/lib/print-instructions-server";
+import { resolveFitDefaultsHandoff } from "@/lib/fit-defaults-server";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -71,10 +73,18 @@ export const viewport: Viewport = {
  * every route into dynamic rendering — a deliberate cost of "never a blink of inches", and
  * `app/page.tsx` already renders dynamically today for the same reason (its own `auth()` +
  * model-list read).
+ *
+ * Three handoffs are resolved this way — units, the print-instructions tick, and the shaper's five
+ * fit and tip defaults (D-09) — awaited together in one `Promise.all` rather than one after the
+ * other, so the third costs no extra wait; the fit-defaults provider mounts above the design store
+ * so a brand-new board's tips can come from it (D-09/D-19).
  */
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const unitsHandoff = await resolveUnitsHandoff();
-  const printInstructionsHandoff = await resolvePrintRailInstructionsHandoff();
+  const [unitsHandoff, printInstructionsHandoff, fitDefaultsHandoff] = await Promise.all([
+    resolveUnitsHandoff(),
+    resolvePrintRailInstructionsHandoff(),
+    resolveFitDefaultsHandoff(),
+  ]);
   return (
     // ClerkProvider is the outermost app-level provider — it owns nothing about the theme or
     // the board, only the signed-in/signed-out session every screen can read via `useUser()`.
@@ -122,14 +132,18 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               doc comment (WR-02). */}
           <UnitsProvider handoff={unitsHandoff}>
             <PrintInstructionsProvider handoff={printInstructionsHandoff}>
-              <ThemeProvider>
-                <Provider>
-                  <div className="flex min-h-0 flex-1 flex-col">
-                    <SiteNav />
-                    {children}
-                  </div>
-                </Provider>
-              </ThemeProvider>
+              {/* Above the design store (and the nav's gear menu, which opens its dialog) so
+                  every screen — and a brand-new board's tips — can read the shaper's defaults. */}
+              <FitDefaultsProvider handoff={fitDefaultsHandoff}>
+                <ThemeProvider>
+                  <Provider>
+                    <div className="flex min-h-0 flex-1 flex-col">
+                      <SiteNav />
+                      {children}
+                    </div>
+                  </Provider>
+                </ThemeProvider>
+              </FitDefaultsProvider>
             </PrintInstructionsProvider>
           </UnitsProvider>
         </body>
