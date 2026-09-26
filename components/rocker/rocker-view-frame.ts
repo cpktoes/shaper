@@ -92,6 +92,30 @@ export interface RockerViewLayoutInput {
    * `resolveEffectiveLengthIn` gives a corrupt `lengthIn` (threat T-03J-01).
    */
   cardScale?: number;
+  /**
+   * The blank the board sits in, when the ROCKER editor shows one (Phase 11, D-15) — how far the
+   * blank reaches past the board's own ends and how high and low it sits, all in inches in the
+   * board's own frame (the baseline is the board's levelled rocker zero). With it, the frame fits
+   * the WHOLE blank rather than the board alone, so the board draws slightly smaller inside it;
+   * the rails, cards and titles stay on the board's own five stations, shifted by `boardOffsetX`.
+   *
+   * - `tailOverhangIn` / `noseOverhangIn`: how far the blank runs past the board's tail and nose
+   *   tips (0 when it stops short of that tip).
+   * - `lowestBottomIn`: the lowest the blank's bottom gets (below 0 only if it dips under the
+   *   board's baseline anywhere along its length).
+   * - `highestDeckIn`: the highest the blank's deck gets.
+   *
+   * A negative or non-finite value resolves to 0 (threat T-11-22), the same corrupt-input posture
+   * `resolveEffectiveLengthIn` gives a corrupt length. Absent (every consumer but the editor with
+   * a blank picked, including the Summary order form), every field below is computed exactly as it
+   * was before this input existed and `boardOffsetX` is 0.
+   */
+  blankSpanIn?: {
+    tailOverhangIn: number;
+    noseOverhangIn: number;
+    lowestBottomIn: number;
+    highestDeckIn: number;
+  };
 }
 
 /** One compact-mode reading row's three anchors, in canonical (horizontal) coordinates — see
@@ -206,6 +230,11 @@ export interface RockerViewLayout {
    * the horizontal CENTRING and `labelStationX` becomes the BASELINE. Populated in every mode so
    * the field is never `NaN`; outside `"full"` it is unused. */
   labelStationX: number;
+  /** How far right, in the canonical nose-left frame, the board's own nose tip sits from `PAD_X` —
+   * the blank's nose overhang at this layout's `scale`, so the blank's nose lands on `PAD_X` and
+   * the board draws inside it (Phase 11, D-15). A consumer projects a station as
+   * `PAD_X + boardOffsetX + (lengthIn - stationIn) * scale`. Exactly 0 without `blankSpanIn`. */
+  boardOffsetX: number;
   minX: number;
   minY: number;
   width: number;
@@ -499,15 +528,30 @@ function resolveEffectiveLengthIn(lengthIn: number): number {
  * `VIEW_W - 2 * PAD_X` (820-unit) drawing area, instead of every board sharing one scale derived
  * from the longest board this app can produce.
  */
-function resolveScale(lengthIn: number, fitToBoard: boolean): number {
-  if (!fitToBoard) return FIXED_SCALE;
-  return (VIEW_W - PAD_X * 2) / resolveEffectiveLengthIn(lengthIn);
+function resolveScale(lengthIn: number, fitToBoard: boolean, overhangIn: number = 0): number {
+  if (!fitToBoard) {
+    if (overhangIn === 0) return FIXED_SCALE;
+    // A blank on the fixed frame: keep the shared scale unless the whole blank would not fit in
+    // the drawing area at it — the whole blank is always in view (D-15).
+    return Math.min(FIXED_SCALE, (VIEW_W - PAD_X * 2) / (resolveEffectiveLengthIn(lengthIn) + overhangIn));
+  }
+  // With a blank, the blank's whole length fills the drawing area instead of the board's: the
+  // board's own length plus however far the blank reaches past each of its tips (0 without one).
+  return (VIEW_W - PAD_X * 2) / (resolveEffectiveLengthIn(lengthIn) + overhangIn);
+}
+
+/** One `blankSpanIn` figure as the frame uses it: a negative or non-finite value resolves to 0
+ * (threat T-11-22), the same fallback posture `resolveEffectiveLengthIn` gives a corrupt length. */
+function resolveSpanIn(value: number): number {
+  return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
 /**
  * The rocker drawing's scale and frame, for a given board and orientation — the single source
- * `rocker-viewer.tsx` reads `pxX`, `pxY` and `toBoardPoint`'s inverse from, so a drag can never
- * solve against a different scale than the drawing was made with (planner finding 9).
+ * `rocker-viewer.tsx` reads `pxX` and `pxY` from, so every curve, card and dot on the drawing is
+ * projected at one scale (planner finding 9). With `blankSpanIn` (Phase 11, D-15) the frame fits
+ * the whole blank and the board sits `boardOffsetX` in from the blank's nose; without it every
+ * field is exactly what it was before the blank existed.
  *
  * The horizontal frame is built from its own formulas. The vertical frame is built from its own
  * rotated content — both rails' own outer edges on the cross axis, the label's own band to the
@@ -524,8 +568,20 @@ export function rockerViewLayout({
   fitToBoard,
   stationRails,
   cardScale = 1,
+  blankSpanIn,
 }: RockerViewLayoutInput): RockerViewLayout {
-  const scale = resolveScale(lengthIn, fitToBoard);
+  // The blank's reach past the board, resolved once (Phase 11, D-15). Every term is exactly 0
+  // without `blankSpanIn`, and each place one enters below is written so that 0 leaves the value
+  // byte-for-byte what it was before the blank existed (the invariance suite pins this).
+  const tailOverhangIn = blankSpanIn ? resolveSpanIn(blankSpanIn.tailOverhangIn) : 0;
+  const noseOverhangIn = blankSpanIn ? resolveSpanIn(blankSpanIn.noseOverhangIn) : 0;
+  const blankDeckIn = blankSpanIn ? resolveSpanIn(blankSpanIn.highestDeckIn) : 0;
+  const blankBelowIn = blankSpanIn ? resolveSpanIn(-blankSpanIn.lowestBottomIn) : 0;
+  const scale = resolveScale(lengthIn, fitToBoard, tailOverhangIn + noseOverhangIn);
+  // The blank's nose lands on `PAD_X`; the board's own nose sits this far in from it.
+  const boardOffsetX = noseOverhangIn * scale;
+  // The cross axis reserves whichever deck is higher: the board's worst case or the blank's.
+  const deckReserveIn = blankSpanIn ? Math.max(maxDeckIn, blankDeckIn) : maxDeckIn;
   const horizontal = orientation === "horizontal";
   const showStationCards = stationRails === "full";
   const effectiveHorizontal = horizontal || stationRails === "compact";
@@ -554,27 +610,34 @@ export function rockerViewLayout({
   // mode actually draws into it: "full" reserves the card-rail band, "compact" reserves its own
   // bare-value bands (sized for 9pt printed type — this plan's `<design_decision>` section 5),
   // "none" reserves only a hairline of pad.
+  //
+  // `bottomY` is the lowest thing drawn: the baseline itself, unless a blank's bottom dips below
+  // it somewhere (Phase 11, D-15), in which case every band on the bottom side hangs off that
+  // lower line instead. Without a blank it IS `baselineY`.
   let deckTopY: number;
   let baselineY: number;
+  let bottomY: number;
   let viewH: number;
   if (stationRails === "compact") {
     deckTopY = COMPACT_DECK_BAND;
-    baselineY = deckTopY + maxDeckIn * scale;
-    viewH = baselineY + COMPACT_BOTTOM_BAND;
+    baselineY = deckTopY + deckReserveIn * scale;
+    bottomY = blankBelowIn > 0 ? baselineY + blankBelowIn * scale : baselineY;
+    viewH = bottomY + COMPACT_BOTTOM_BAND;
   } else {
     const topPad = showStationCards ? railLabelBandDepth(orientation) : BARE_PAD;
     const band = showStationCards ? cardBandDepth(orientation) : 0;
     deckTopY = topPad + band;
-    baselineY = deckTopY + maxDeckIn * scale;
+    baselineY = deckTopY + deckReserveIn * scale;
+    bottomY = blankBelowIn > 0 ? baselineY + blankBelowIn * scale : baselineY;
     viewH =
-      baselineY +
+      bottomY +
       (showStationCards ? bottomCardBandDepth(orientation) + railLabelBandDepth(orientation) : BARE_PAD);
   }
 
   // Bottom (rocker) rail — its own, larger gap (see `BOTTOM_RAIL_GAP`): this rail measures from
   // the baseline the board's bottom curve actually touches, not from the worst-case line the deck
-  // rail clears.
-  const tickEndY = baselineY + BOTTOM_RAIL_GAP;
+  // rail clears (or from the blank's own bottom, when that dips lower still).
+  const tickEndY = bottomY + BOTTOM_RAIL_GAP;
   const railY = effectiveHorizontal ? tickEndY : tickEndY + cardWidth / 2;
 
   // Deck (thickness) rail — the mirror of the bottom rail on the board's other side.
@@ -587,13 +650,13 @@ export function rockerViewLayout({
   // The compact rails' own two row anchors — populated in every mode so the field is never
   // `NaN`; outside compact it is unused and the card fields above carry the drawing.
   const deckTextY = deckTopY - COMPACT_CURVE_GAP;
-  const bottomTextY = baselineY + COMPACT_CURVE_GAP + COMPACT_CAP;
+  const bottomTextY = bottomY + COMPACT_CURVE_GAP + COMPACT_CAP;
   const compactRows: RockerCompactRows = {
     deck: { textY: deckTextY, leaderStartY: deckTextY + 2, kneeY: deckTopY - 2 },
     bottom: {
       textY: bottomTextY,
       leaderStartY: bottomTextY - COMPACT_CAP - 2,
-      kneeY: baselineY + 2,
+      kneeY: bottomY + 2,
     },
   };
 
@@ -614,7 +677,7 @@ export function rockerViewLayout({
     deckLabelY = deckRailFarY - RAIL_LABEL_GAP;
     const bottomRailFarY = tickEndY + maxCardHeight;
     bottomLabelY = bottomRailFarY + RAIL_LABEL_GAP + railLabelSize * RAIL_LABEL_CAP_RATIO;
-    labelStationX = PAD_X + boardSpan / 2;
+    labelStationX = PAD_X + boardOffsetX + boardSpan / 2;
   } else {
     // Nose-up the title heads its own rail's Center card directly, so its cross-axis anchor IS
     // that rail's own LIVE anchor (`deckRailY`/`railY`, quick task 260830-31h, `<design_decision>`
@@ -629,7 +692,8 @@ export function rockerViewLayout({
     // Back off the middle station by the Center card's own half-height (its extent along the
     // rotated station axis) and a gap in EMs (`RAIL_LABEL_STATION_GAP_EM`) — nose is up, so
     // subtracting moves the word up the screen, clear of the card it heads.
-    labelStationX = PAD_X + boardSpan / 2 - cardHeight / 2 - railLabelSize * RAIL_LABEL_STATION_GAP_EM;
+    labelStationX =
+      PAD_X + boardOffsetX + boardSpan / 2 - cardHeight / 2 - railLabelSize * RAIL_LABEL_STATION_GAP_EM;
   }
 
   let minX: number;
@@ -655,7 +719,7 @@ export function rockerViewLayout({
     // `viewH` use, added after the existing `+ maxCardWidth + CARD_GUTTER` term.
     const crossFar = showStationCards
       ? tickEndY + maxCardWidth + CARD_GUTTER + railLabelBandDepth(orientation)
-      : baselineY + BARE_PAD;
+      : bottomY + BARE_PAD;
     const crossNear = showStationCards
       ? deckTickEndY - maxCardWidth - CARD_GUTTER - railLabelBandDepth(orientation)
       : deckTopY - BARE_PAD;
@@ -667,13 +731,22 @@ export function rockerViewLayout({
     // for the same frame-invariance reason as the cross axis above. The old (now-removed)
     // board-length label's own long-axis reserve is gone with it (this plan's `<design_decision>`
     // section 1) — the rail titles reserve on the CROSS axis instead, above.
+    //
+    // With a blank (Phase 11, D-15) the long axis also has to hold the blank's own two ends: its
+    // nose at `PAD_X` and its tail `blankSpan` further on, with the board's end cards shifted in by
+    // `boardOffsetX`. Each end takes whichever reaches further — the board's end card, or the
+    // blank's end plus a hairline of pad. Without a blank neither `Math.min`/`Math.max` runs, so
+    // both ends are exactly the expressions this frame has always used.
+    const blankSpan = (tailOverhangIn + resolveEffectiveLengthIn(lengthIn) + noseOverhangIn) * scale;
     if (showStationCards) {
-      minY = PAD_X - maxCardHeight / 2 - 4;
-      const maxY = PAD_X + boardSpan + maxCardHeight / 2 + 4;
+      const cardMinY = PAD_X + boardOffsetX - maxCardHeight / 2 - 4;
+      const cardMaxY = PAD_X + boardOffsetX + boardSpan + maxCardHeight / 2 + 4;
+      minY = blankSpanIn ? Math.min(cardMinY, PAD_X - BARE_PAD) : cardMinY;
+      const maxY = blankSpanIn ? Math.max(cardMaxY, PAD_X + blankSpan + BARE_PAD) : cardMaxY;
       height = maxY - minY;
     } else {
       minY = PAD_X - BARE_PAD;
-      const maxY = PAD_X + boardSpan + BARE_PAD;
+      const maxY = PAD_X + (blankSpanIn ? blankSpan : boardSpan) + BARE_PAD;
       height = maxY - minY;
     }
   }
@@ -709,6 +782,7 @@ export function rockerViewLayout({
     deckLabelY,
     bottomLabelY,
     labelStationX,
+    boardOffsetX,
     minX,
     minY,
     width,

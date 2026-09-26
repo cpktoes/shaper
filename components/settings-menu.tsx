@@ -15,7 +15,16 @@
 
 import { Fragment } from "react";
 import { Menu } from "@base-ui/react/menu";
-import { CheckIcon, MonitorIcon, MoonIcon, RulerIcon, SettingsIcon, SunIcon } from "lucide-react";
+import {
+  CheckIcon,
+  MonitorIcon,
+  MoonIcon,
+  RulerIcon,
+  SettingsIcon,
+  SlidersHorizontalIcon,
+  SunIcon,
+} from "lucide-react";
+import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { useTheme } from "@/components/theme-provider";
 import { useUnits } from "@/components/units-provider";
 import { formatDimsExample, presetSummary } from "@/lib/geometry/summary-line";
@@ -40,7 +49,8 @@ const MODE_LABEL: Record<ThemeMode, string> = { light: "Light", dark: "Dark" };
 const MODES: ThemeMode[] = ["light", "dark"];
 
 /**
- * The popup's own content — the Units and Theme radio groups — factored out of `SettingsMenu` so
+ * The popup's own content — the Units and Theme radio groups, and the Blanks row that opens the
+ * fit and tip defaults dialog — factored out of `SettingsMenu` so
  * `components/design/phone-menu.tsx` can render the exact same rows inside its own single popup
  * (stacked above the account control) rather than copying the radio groups: one definition, so
  * the two menus can never drift apart. Must render inside a `Menu.Root` (it uses `Menu.RadioGroup`
@@ -51,6 +61,7 @@ const MODES: ThemeMode[] = ["light", "dark"];
 export function SettingsMenuContent() {
   const { preference, setPreference, systemTheme } = useTheme();
   const { system, setSystem } = useUnits();
+  const { openDialog } = useFitDefaults();
 
   return (
     <>
@@ -124,6 +135,27 @@ export function SettingsMenuContent() {
           );
         })}
       </Menu.RadioGroup>
+
+      {/* D-09: the shaper's five fit and tip defaults. The row only opens a dialog — typed
+          numbers inside the menu would fight its own arrow-key and typeahead handling — and the
+          dialog is rendered by FitDefaultsProvider, not here, because this popup unmounts the
+          moment it closes. A plain Menu.Item closes the menu on click, which is what we want. */}
+      <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />
+      <Menu.Group>
+        <Menu.GroupLabel className="px-2 pt-1 pb-2 text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase">
+          Blanks
+        </Menu.GroupLabel>
+        <Menu.Item
+          onClick={openDialog}
+          className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none select-none coarse:min-h-11 data-highlighted:bg-surf-well"
+        >
+          <SlidersHorizontalIcon aria-hidden className="size-4 shrink-0 text-surf-ink-muted" />
+          <span className="flex-1 leading-tight">
+            <span className="block text-sm text-surf-ink">Fit & Tip Defaults</span>
+            <span className="block text-[11px] text-surf-ink-muted">Spare foam and tip thickness</span>
+          </span>
+        </Menu.Item>
+      </Menu.Group>
     </>
   );
 }

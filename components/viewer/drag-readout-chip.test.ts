@@ -8,6 +8,9 @@ import { describe, expect, it } from "vitest";
  * `drag-pick-wiring.test.ts`'s own idiom: read the real viewer source and assert a structural
  * property, since neither viewer can be rendered in this suite's `node` environment.
  *
+ * (Since Phase 11 only the outline viewer draws the chip — the rocker's half below now proves it
+ * is gone; see that describe's own comment.)
+ *
  * RED (this commit): every assertion fails — neither viewer yet draws a readout chip at all.
  * GREEN (the next commit): both viewers gain a touch-only chip built from `CalloutChipFrame` and
  * `CALLOUT_PX`, inked in the accent colour, and this file goes green with no further edits.
@@ -77,25 +80,22 @@ describe("outline-viewer.tsx: the drag readout chip", () => {
   });
 });
 
-describe("rocker-viewer.tsx: the drag readout chip", () => {
-  const source = readSource(ROCKER_VIEWER_PATH);
-  const stripped = stripComments(source);
+/**
+ * The rocker drawing's side since Phase 11 (D-14): the readout card only ever read back the slider
+ * a finger was steering by dragging a handle, and the handles retired with the Bezier they
+ * steered — so the rocker drawing draws no readout card at all now. What this suite still guards
+ * on it is the part that outlives the card: no bare conversion factor, never markup built from a
+ * string (the blank's vendor and name now reach the drawing's accessible name — threat T-11-21),
+ * and the silhouette hook the browser tests locate.
+ */
+describe("rocker-viewer.tsx: no drag readout chip since Phase 11 (D-14)", () => {
+  const stripped = stripComments(readSource(ROCKER_VIEWER_PATH));
 
-  it("reuses CalloutChipFrame and CALLOUT_PX rather than a new chip component", () => {
-    expect(source).toContain("CalloutChipFrame");
-    expect(source).toContain("CALLOUT_PX");
-  });
-
-  it("inks the live reading in the accent colour", () => {
-    expect(source).toContain("surf-accent-ink");
-  });
-
-  it("renders only for a touch pointer", () => {
-    expect(source).toContain('"touch"');
-  });
-
-  it("actually reads touchDragTarget to decide what to draw, not only to set/clear it", () => {
-    expect(source.match(/touchDragTarget/g)?.length ?? 0).toBeGreaterThan(3);
+  it("renders no readout chip and keeps no touch-drag state to draw one from", () => {
+    expect(stripped).not.toContain("data-readout-chip");
+    expect(stripped).not.toMatch(/touchDragTarget|touchFingerBoard|readoutChip/);
+    expect(stripped).not.toContain("placeReadoutClearOfBoard");
+    expect(stripped).not.toContain("@/components/viewer/readout-placement");
   });
 
   it("never reaches for a bare imperial conversion factor or builds markup from a string", () => {
@@ -103,18 +103,13 @@ describe("rocker-viewer.tsx: the drag readout chip", () => {
     expect(stripped).not.toContain("dangerouslySetInnerHTML");
   });
 
-  // Quick task 260909-oge: the rocker's own copy of the outline's board-avoidance assertions
-  // above, so a future edit cannot quietly revert one drawing while leaving the other alone.
-  it("calls the shared board-avoidance rule, not a private copy of it", () => {
-    expect(source).toContain("placeReadoutClearOfBoard");
-    expect(source).toContain("@/components/viewer/readout-placement");
-  });
-
-  it("builds its silhouette through boardSection, the shared rule's own input shape", () => {
-    expect(source).toContain("boardSection");
+  it("puts the blank's vendor and name only into a plain aria-label attribute", () => {
+    expect(stripped).toMatch(/aria-label=\{ariaLabel\}/);
+    expect(stripped).toContain("blank.record.vendor");
+    expect(stripped).toContain("blank.record.name");
   });
 
   it("carries the data-board-silhouette hook the browser tests depend on", () => {
-    expect(source).toContain("data-board-silhouette");
+    expect(stripped).toContain("data-board-silhouette");
   });
 });

@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Rails Finished, Phone Ready
-status: "Awaiting next milestone — quick task 260914-rj0 shipped as PR #1"
-stopped_at: Phase 10 UI-SPEC approved - ready to plan
-last_updated: "2026-09-16T16:26:45.251Z"
-last_activity: 2026-09-14
-last_activity_desc: "Completed quick task 260914-rj0: The rear-fin and centre-fin heights on the fin drawing no longer run into each other on a phone: on the Mid-length board (a quad with the centre fin on) the rear fins' 6 1/4\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\" and the centre fin's 3 5/8\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\" printed on top of each other as one smear on a phone; each height number now slides along its own dimension line only when it would actually collide with a neighbour, never below the tail line, decided by the number's own size on the drawing and not by any screen switch, so a phone held sideways is fixed too. Nothing moves for a mouse (the desktop numbers and the five desktop screenshot baselines are unchanged), and a browser test measures the real drawn ink on an iPhone and a Pixel 7, in Imperial and Metric, and fails on the old overlap."
+milestone: v1.3
+milestone_name: Rocker from Real Blanks
+status: executing
+stopped_at: Phase 11 — UAT complete (7 of 7 passed; 2 follow-ups filed as todos), verification passed, security verified (43 of 43 threats closed); the phase completes when the founder runs plan 11-13 (production migrate → seed → merge → deploy → live checks) per .continue-here.md, then /gsd-execute-phase 11
+last_updated: "2026-09-26T20:17:24.235Z"
+last_activity: 2026-09-26
+last_activity_desc: Phase 11 UAT passed 7/7 on the branch, verification passed, SECURITY.md verified; two follow-up todos (manufacturer tick-boxes, smoother drawn curve); production step 11-13 still parked
 progress:
-  total_phases: 4
+  total_phases: 1
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 13
+  completed_plans: 12
   percent: 0
-current_phase: 10
-current_phase_name: the-whole-app-on-a-phone
+current_phase: 11
+current_phase_name: Rocker from Real Blanks
 ---
 
 # Project State
@@ -24,14 +24,14 @@ current_phase_name: the-whole-app-on-a-phone
 See: .planning/PROJECT.md (updated 2026-09-12)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Planning the next milestone (`/gsd-new-milestone`). v1.2 shipped 2026-09-12.
+**Current focus:** Phase 11 — Rocker from Real Blanks
 
 ## Current Position
 
 **v1.2 — Rails Finished, Phone Ready: SHIPPED 2026-09-12.** Phases 8–10 complete and verified; audit passed 18/18. Archived under .planning/milestones/ (v1.2-ROADMAP.md, v1.2-REQUIREMENTS.md, v1.2-MILESTONE-AUDIT.md, v1.2-phases/). REQUIREMENTS.md removed pending the next milestone's definition.
 
-Status: Awaiting next milestone — quick task 260914-rj0 shipped as PR #1; 260914-tsp and 260914-v2v landed on main
-Last activity: 2026-09-14 - Completed quick task 260914-v2v: on a phone held sideways the rail plots take the drawing column's width and the column scrolls
+Status: Executing Phase 11
+Last activity: 2026-09-26 — Phase 11: UAT passed 7/7 on rocker-blanks, verification passed, security verified; production step 11-13 parked in .continue-here.md — run it, then /gsd-execute-phase 11 closes the phase
 
 ## Performance Metrics
 
@@ -341,9 +341,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-09T03:30:30.074Z
-Stopped at: Phase 10 UI-SPEC approved - ready to plan
-Resume file: .planning/phases/10-the-whole-app-on-a-phone/10-UI-SPEC.md
+Last session: 2026-09-26T20:17:24.206Z
+Stopped at: Phase 11 planned — 13 plans awaiting the founder's approval
+Resume file: .planning/phases/11-rocker-from-real-blanks/11-01-PLAN.md
 Next action: `/gsd-plan-phase 10` - context and design contract are both in place.
 
 ## Operator Next Steps

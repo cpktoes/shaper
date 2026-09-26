@@ -147,8 +147,16 @@ function findPrintSurfaceFiles(): string[] {
 function importsUnitsModule(source: string): boolean {
   return /@\/lib\/geometry\/units\b/.test(source) || /from\s+["']\.\/units["']/.test(source);
 }
+/** Phase 11 (11-11): the blank screens compose every sentence around a number through
+ * `lib/geometry/blank-reasons.ts` — the copy layer that sits directly on the display boundary (it
+ * imports `./measure-display` for every number it prints, asserted below) — so a screen file whose
+ * numbers all arrive through those sentences counts as reading through the boundary too. */
 function importsDisplayBoundary(source: string): boolean {
-  return /@\/lib\/geometry\/measure-display/.test(source) || /from\s+["']\.\/measure-display["']/.test(source);
+  return (
+    /@\/lib\/geometry\/measure-display/.test(source) ||
+    /from\s+["']\.\/measure-display["']/.test(source) ||
+    /@\/lib\/geometry\/blank-reasons/.test(source)
+  );
 }
 
 /** Extracts the full text of the first call to `fnName(` in `source`, from `fnName` through its
@@ -343,6 +351,17 @@ describe("the design screens read every measurement through the display boundary
     { file: "components/volume/volume-controls.tsx", converted: true },
     { file: "components/volume/volume-calculation-card.tsx", converted: true },
     { file: "components/volume/volume-estimator.tsx", converted: true },
+    // 11-08 (D-09, R15): the gear menu's Fit & Tip Defaults dialog shows five marks. It lives
+    // outside the five walked screen folders, so it has to be named here to be checked at all —
+    // listed, the loops below hold it to the same boundary every design screen reads through.
+    { file: "components/fit-defaults-dialog.tsx", converted: true },
+    // 11-11 (R15): the ROCKER sidebar's blank list and picked card. Every number in it arrives
+    // through `lib/geometry/blank-reasons.ts`'s sentences, which print through the boundary.
+    { file: "components/rocker/blank-picker.tsx", converted: true },
+    // 11-11 (R15): the fit flag and its offer — reasons, floor shortfalls and the offer's length.
+    { file: "components/rocker/blank-flag.tsx", converted: true },
+    // 11-11 (R3, R4, R15): the placement slider and the live rocker / foam-off readouts.
+    { file: "components/rocker/board-on-blank.tsx", converted: true },
   ];
 
   const OUT_OF_SCOPE_UNITS_FILES: { file: string; reason: string }[] = [
@@ -405,6 +424,17 @@ describe("the design screens read every measurement through the display boundary
         importsDisplayBoundary(source),
         `${file} is marked converted but does not import lib/geometry/measure-display`,
       ).toBe(true);
+    }
+  });
+
+  it("the blank screens' sentence layer itself prints every number through the display boundary", () => {
+    // What lets `importsDisplayBoundary` count an import of blank-reasons as reading through the
+    // boundary: the sentence file imports measure-display and calls none of the banned formatters.
+    const source = readStripped("lib/geometry/blank-reasons.ts");
+    expect(importsDisplayBoundary(source.replace(/@\/lib\/geometry\/blank-reasons/g, ""))).toBe(true);
+    expect(/from\s+["']\.\/measure-display["']/.test(source)).toBe(true);
+    for (const banned of BANNED_DISPLAY_FORMATTERS) {
+      expect(source, `lib/geometry/blank-reasons.ts calls ${banned}`).not.toContain(banned);
     }
   });
 

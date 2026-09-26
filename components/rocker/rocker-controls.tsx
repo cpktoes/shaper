@@ -1,73 +1,83 @@
 "use client";
 
 /**
- * The ROCKER sidebar. The Rocker group's six shape controls sit two to a line, mirroring how
- * `outline-controls.tsx` already pairs its own sliders on the TEMPLATE sidebar. Each tip's Angle
- * sits beside that same tip's Smoothness, because one dragged handle on the drawing sets both
- * together; the two Flatness controls share the middle line, since they are the two ends of the
- * one flat spot running through the centre of the board. Nose Rocker and Tail Rocker keep full
- * lines of their own, as the two headline figures a shaper quotes first about a board. Below that
- * sits the Thickness group's five sliders, one per line — the five-station nose-to-tail
- * progression has no natural pairs. Both groups are collapsible, mirroring `rail-controls.tsx`'s
- * house style: the same `SectionHeading` treatment, the same slider label/track markup (`mb-2
- * text-sm ...` label, `.slider-accent` track), so this sidebar reads as the same system as the
- * rail sidebar directly below it in the nav. Presentational only — `rocker-editor.tsx` owns the
- * design state and the section-open state; this component just renders it (mirroring how
- * `RailControls` is shaped).
+ * The ROCKER sidebar, top to bottom in the brief's order (Phase 11, 11-UI-SPEC "The sidebar, top to
+ * bottom"): CENTER THICKNESS → BLANK → BOARD ON BLANK → ROCKER (only with no blank) → THICKNESS.
+ * Every group is the same collapsible `SectionHeading` `rail-controls.tsx` uses, all open on
+ * arrival; the open/closed map is view state owned by `rocker-editor.tsx`, never saved.
  *
- * Every slider below is now drawn by the shared `SliderRow` component
- * (components/design/slider-row.tsx). Each one still commits its own number through its own
- * conversion at its call site — the two lifts convert between inches and millimetres, the two
- * Angle sliders carry a branded degrees type, the rest are plain percentages — `SliderRow` never
- * sees or touches that conversion; it only renders the row and reports the raw number back
- * through `onValueChange`. The paired two-per-line rows keep their flex parent here; each child
- * now passes its own flex sizing through `SliderRow`'s `className` instead of a wrapper div.
+ * CENTER THICKNESS (R1, D-12) is the page's first control: the board's ONE centre thickness, the
+ * same stored `foil.center` RAILS and VOLUME read — a typed field on the label line and a slider,
+ * the Board Length hand-rolled shape compacted to one line (the one raw `<Slider>` here, named in
+ * `slider-row.test.ts`'s allowlist). Changing it re-judges the blank list and re-checks the picked
+ * blank; it never clears the pick.
  *
- * Quick task 260829-rda replaced the four typed rocker-lift sliders with eight shape controls
- * (Nose/Tail Rocker, Angle, Smoothness, Flatness), matching `outline-controls.tsx`'s own
- * angle/fullness/rail-length slider treatment — the rocker line is now built the same way the
- * board's outline curve is. The two 12" figures move from typed sliders to a read-only pair,
- * measured off the `RockerGeometry` the editor builds once per render and passes in.
+ * BLANK (`blank-picker.tsx`) and BOARD ON BLANK (`board-on-blank.tsx`) read the store themselves.
  *
- * Every slider in this sidebar is on screen from the moment the page opens, on a phone the same as
- * on a desktop. A phone-only fold used to hide the six drag-mirror sliders (Nose/Tail Angle,
- * Nose/Tail Smoothness, Nose/Tail Flatness) behind a "Fine adjust" header; it was removed at the
- * founder's request on 2026-09-09 (decision D-03 in the Phase 9 context is withdrawn — the record
- * there stays as history).
+ * ROCKER (D-14) is the hand-set fallback a board carries until a blank is picked: four plain
+ * sliders — Nose Tip, Nose @ 12", Tail @ 12", Tail Tip — over `ROCKER_LIFT_RANGE_IN`. The centre is
+ * always 0 (the flat the rocker is measured up from) and is not a control. The founder chose four
+ * typed stations knowing a hand-typed 12" value can put a kink back into the curve there (D-14); do
+ * not bring the Angle/Smoothness/Flatness shape controls back without asking. With a blank picked
+ * the rocker comes off the blank, so this section is not shown at all.
+ *
+ * THICKNESS, nose to tail. The two tips are absolute in both states and stored on the board (D-10).
+ * With no blank the two 12" stations are absolute too. With a blank picked they are the blank's own
+ * foil scaled to the centre (D-18) plus the shaper's signed fine-tune (D-11): the label shows the
+ * FINAL thickness, the slider moves only the tweak (±1/4" / ±6 mm around 0), and the two-ended hint
+ * reads "From blank …" and "Tweak …" (or "No tweak"). "↺ Reset Fine-Tune" clears both tweaks; with
+ * both at zero it stays in place, dimmed and inert, so nothing above it shifts.
+ *
+ * Every slider commits its own number through `measureSlider`'s conversion at its call site, and
+ * every number reads through `lib/geometry/measure-display.ts` (CLAUDE.md Rule 2). Every control is
+ * on screen from the moment the page opens, on a phone the same as on a desktop.
  */
 
 import { type ReactNode } from "react";
-import { SliderRow } from "@/components/design/slider-row";
+import { MeasureField } from "@/components/design/measure-field";
+import { SliderRow, sliderValue } from "@/components/design/slider-row";
+import { Slider } from "@/components/ui/slider";
 import { useUnits } from "@/components/units-provider";
+import type { BlankCatalogResult } from "@/lib/db/blanks";
+import type { BoardBlank } from "@/lib/geometry/blank";
+import type { BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec } from "@/lib/geometry/foil";
-import { formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
 import {
-  ROCKER_ANGLE_RANGE_DEG,
-  ROCKER_FLATNESS_RANGE,
-  ROCKER_LIFT_RANGE_IN,
-  ROCKER_SMOOTHNESS_RANGE,
-  type RockerGeometry,
-  type RockerSpec,
-} from "@/lib/geometry/rocker";
-import { degrees } from "@/lib/geometry/units";
+  formatMark,
+  formatSignedMark,
+  measureSlider,
+  stationLabel,
+  typedFieldBounds,
+} from "@/lib/geometry/measure-display";
+import { ROCKER_LIFT_RANGE_IN, type FiveStationRocker } from "@/lib/geometry/rocker";
+import { mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
+import { cn } from "@/lib/utils";
+import { BlankPicker } from "./blank-picker";
+import { BoardOnBlankSection } from "./board-on-blank";
 
-export type RockerControlsSectionKey = "rocker" | "thickness";
+export type RockerControlsSectionKey = "center" | "blank" | "boardOnBlank" | "rocker" | "thickness";
+
+/** The 12" fine-tune's reach either way from the blank-derived thickness, in inches (±6 mm metric,
+ * rounded inward by `measureSlider`) — `(researcher's choice — founder may overrule)` (UI-SPEC §5). */
+const FINE_TUNE_RANGE_IN = { min: -0.25, max: 0.25 } as const;
+const FINE_TUNE_STEP_IN = 0.0625;
 
 interface RockerControlsProps {
-  rocker: RockerSpec;
+  /** The pickable catalogue, streamed from the page and never awaited there (Pattern 8). */
+  blanks: Promise<BlankCatalogResult>;
+  /** The board's hand-set rocker (D-14) — four typed stations, the centre always 0. */
+  rocker: FiveStationRocker;
   foil: FoilSpec;
-  /** The built curve, so the derived 12" read-out can show a number without rebuilding it here —
-   * built once by `rocker-editor.tsx` and shared with the datasheet and viewer. */
-  geometry: RockerGeometry;
-  onChangeRocker: (patch: Partial<RockerSpec>) => void;
+  /** The board's blank, or null for the hand-set fallback. */
+  blank: BoardBlank | null;
+  /** The store's one side profile — the final thicknesses and, with a blank, the derived 12"s. */
+  sideProfile: BoardSideProfile;
+  onChangeRocker: (patch: Partial<FiveStationRocker>) => void;
   onChangeFoil: (patch: Partial<FoilSpec>) => void;
+  onFineTune: (patch: Partial<{ nose12Offset: Mm; tail12Offset: Mm }>) => void;
+  onResetFineTune: () => void;
   sectionOpen: Record<RockerControlsSectionKey, boolean>;
   onToggleSectionOpen: (key: RockerControlsSectionKey) => void;
-}
-
-function clampFinite(value: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) return min;
-  return Math.min(max, Math.max(min, value));
 }
 
 /** Copied verbatim from `rail-controls.tsx`'s `SectionHeading` — same border, uppercase,
@@ -93,156 +103,198 @@ function SectionHeading({
   );
 }
 
+/** One absolute thickness slider over `FOIL_THICKNESS_RANGE_IN`. */
+function ThicknessRow({
+  label,
+  value,
+  system,
+  onChange,
+}: {
+  label: string;
+  value: Mm;
+  system: UnitsSystem;
+  onChange: (next: Mm) => void;
+}) {
+  const slider = measureSlider(value, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
+  return (
+    <SliderRow
+      label={`${label} — ${formatMark(value, system)}`}
+      value={slider.value}
+      min={slider.min}
+      max={slider.max}
+      step={slider.step}
+      onValueChange={(v) => onChange(slider.toMm(v))}
+    />
+  );
+}
+
+/** A 12" station with a blank picked: the final thickness in the label, the tweak on the slider. */
+function FineTuneRow({
+  label,
+  finalThickness,
+  derived,
+  offset,
+  system,
+  onChange,
+}: {
+  label: string;
+  finalThickness: Mm;
+  derived: Mm;
+  offset: Mm;
+  system: UnitsSystem;
+  onChange: (next: Mm) => void;
+}) {
+  const slider = measureSlider(offset, FINE_TUNE_RANGE_IN, FINE_TUNE_STEP_IN, 1, system);
+  const tweak = formatSignedMark(offset, system);
+  return (
+    <SliderRow
+      label={`${label} — ${formatMark(finalThickness, system)}`}
+      value={slider.value}
+      min={slider.min}
+      max={slider.max}
+      step={slider.step}
+      leftHint={`From blank ${formatMark(derived, system)}`}
+      rightHint={tweak === formatSignedMark(mm(0), system) ? "No tweak" : `Tweak ${tweak}`}
+      onValueChange={(v) => onChange(slider.toMm(v))}
+    />
+  );
+}
+
 export function RockerControls({
+  blanks,
   rocker,
   foil,
-  geometry,
+  blank,
+  sideProfile,
   onChangeRocker,
   onChangeFoil,
+  onFineTune,
+  onResetFineTune,
   sectionOpen,
   onToggleSectionOpen,
 }: RockerControlsProps) {
   const { system } = useUnits();
-  const noseLiftSlider = measureSlider(rocker.noseLift, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
-  const tailLiftSlider = measureSlider(rocker.tailLift, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
-  const noseTipSlider = measureSlider(foil.noseTip, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
-  const nose12Slider = measureSlider(foil.nose12, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
+  const rockerNoseTipSlider = measureSlider(rocker.noseTip, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
+  const rockerNose12Slider = measureSlider(rocker.nose12, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
+  const rockerTail12Slider = measureSlider(rocker.tail12, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
+  const rockerTailTipSlider = measureSlider(rocker.tailTip, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
   const centerSlider = measureSlider(foil.center, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
-  const tail12Slider = measureSlider(foil.tail12, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
-  const tailTipSlider = measureSlider(foil.tailTip, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
+  // The typed field's bounds in ITS own domain (whole millimetres in Metric, inches in Imperial).
+  const centerFieldBounds = typedFieldBounds(centerSlider, "mark", system);
+  const view = blank ? sideProfile.blank : null;
+  const noTweak = !blank || (blank.nose12Offset === 0 && blank.tail12Offset === 0);
+  const station = stationLabel(system);
+
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <SectionHeading open={sectionOpen.rocker} onToggle={() => onToggleSectionOpen("rocker")}>
-          Rocker
+        <SectionHeading open={sectionOpen.center} onToggle={() => onToggleSectionOpen("center")}>
+          Center Thickness
         </SectionHeading>
-        {sectionOpen.rocker && (
-          <div className="flex flex-col gap-3.5 pt-3">
-            <div className="mb-1.5 text-[10px] text-surf-ink-muted font-normal">
-              Rocker is measured up from a flat surface with the board bottom-down — the center is
-              the zero it&apos;s measured against. The two {stationLabel(system)} figures below are
-              measured off the drawn curve, not set by hand.
+        {sectionOpen.center && (
+          <div className="pt-3">
+            {/* The Board Length hand-rolled shape compacted to one line: label and typed field on
+                the label line, the slider beneath — allow-listed in slider-row.test.ts. */}
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="text-sm text-surf-ink-muted font-normal">Center Thickness</span>
+              <MeasureField
+                value={foil.center}
+                onCommit={(next) => onChangeFoil({ center: next })}
+                label="Center Thickness"
+                family="mark"
+                min={centerFieldBounds.min}
+                max={centerFieldBounds.max}
+                system={system}
+              />
             </div>
-
-            <SliderRow
-              label={`Nose Rocker — ${formatMark(rocker.noseLift, system)}`}
-              value={noseLiftSlider.value}
-              min={noseLiftSlider.min}
-              max={noseLiftSlider.max}
-              step={noseLiftSlider.step}
-              onValueChange={(v) => onChangeRocker({ noseLift: noseLiftSlider.toMm(v) })}
+            <Slider
+              value={centerSlider.value}
+              min={centerSlider.min}
+              max={centerSlider.max}
+              step={centerSlider.step}
+              onValueChange={(v) => onChangeFoil({ center: centerSlider.toMm(sliderValue(v)) })}
+              className="slider-accent"
             />
-
-            <div className="flex items-end gap-4">
-              <SliderRow
-                className="flex-1"
-                label={`Nose Angle — ${rocker.noseAngle}°`}
-                value={rocker.noseAngle}
-                min={ROCKER_ANGLE_RANGE_DEG.min}
-                max={ROCKER_ANGLE_RANGE_DEG.max}
-                step={ROCKER_ANGLE_RANGE_DEG.step}
-                onValueChange={(v) =>
-                  onChangeRocker({
-                    noseAngle: degrees(clampFinite(v, ROCKER_ANGLE_RANGE_DEG.min, ROCKER_ANGLE_RANGE_DEG.max)),
-                  })
-                }
-              />
-
-              <SliderRow
-                className="flex-1"
-                label={`Nose Smoothness — ${rocker.noseSmoothness}%`}
-                value={rocker.noseSmoothness}
-                min={ROCKER_SMOOTHNESS_RANGE.min}
-                max={ROCKER_SMOOTHNESS_RANGE.max}
-                step={ROCKER_SMOOTHNESS_RANGE.step}
-                onValueChange={(v) =>
-                  onChangeRocker({
-                    noseSmoothness: clampFinite(v, ROCKER_SMOOTHNESS_RANGE.min, ROCKER_SMOOTHNESS_RANGE.max),
-                  })
-                }
-              />
-            </div>
-
-            <div className="flex items-end gap-4">
-              <SliderRow
-                className="flex-1"
-                label={`Nose Flatness — ${rocker.noseFlatness}%`}
-                value={rocker.noseFlatness}
-                min={ROCKER_FLATNESS_RANGE.min}
-                max={ROCKER_FLATNESS_RANGE.max}
-                step={ROCKER_FLATNESS_RANGE.step}
-                onValueChange={(v) =>
-                  onChangeRocker({
-                    noseFlatness: clampFinite(v, ROCKER_FLATNESS_RANGE.min, ROCKER_FLATNESS_RANGE.max),
-                  })
-                }
-              />
-
-              <SliderRow
-                className="flex-1"
-                label={`Tail Flatness — ${rocker.tailFlatness}%`}
-                value={rocker.tailFlatness}
-                min={ROCKER_FLATNESS_RANGE.min}
-                max={ROCKER_FLATNESS_RANGE.max}
-                step={ROCKER_FLATNESS_RANGE.step}
-                onValueChange={(v) =>
-                  onChangeRocker({
-                    tailFlatness: clampFinite(v, ROCKER_FLATNESS_RANGE.min, ROCKER_FLATNESS_RANGE.max),
-                  })
-                }
-              />
-            </div>
-
-            <div className="flex items-end gap-4">
-              <SliderRow
-                className="flex-1"
-                label={`Tail Smoothness — ${rocker.tailSmoothness}%`}
-                value={rocker.tailSmoothness}
-                min={ROCKER_SMOOTHNESS_RANGE.min}
-                max={ROCKER_SMOOTHNESS_RANGE.max}
-                step={ROCKER_SMOOTHNESS_RANGE.step}
-                onValueChange={(v) =>
-                  onChangeRocker({
-                    tailSmoothness: clampFinite(v, ROCKER_SMOOTHNESS_RANGE.min, ROCKER_SMOOTHNESS_RANGE.max),
-                  })
-                }
-              />
-
-              <SliderRow
-                className="flex-1"
-                label={`Tail Angle — ${rocker.tailAngle}°`}
-                value={rocker.tailAngle}
-                min={ROCKER_ANGLE_RANGE_DEG.min}
-                max={ROCKER_ANGLE_RANGE_DEG.max}
-                step={ROCKER_ANGLE_RANGE_DEG.step}
-                onValueChange={(v) =>
-                  onChangeRocker({
-                    tailAngle: degrees(clampFinite(v, ROCKER_ANGLE_RANGE_DEG.min, ROCKER_ANGLE_RANGE_DEG.max)),
-                  })
-                }
-              />
-            </div>
-
-            <SliderRow
-              label={`Tail Rocker — ${formatMark(rocker.tailLift, system)}`}
-              value={tailLiftSlider.value}
-              min={tailLiftSlider.min}
-              max={tailLiftSlider.max}
-              step={tailLiftSlider.step}
-              onValueChange={(v) => onChangeRocker({ tailLift: tailLiftSlider.toMm(v) })}
-            />
-
-            {/* Read-only, derived off the built curve — a shaper sees the two standard station
-                figures without being able to force them (they were the abrupt-kink source before
-                260829-rda). The station name comes from stationLabel so the sidebar, the datasheet
-                and the viewer can never disagree about where the measuring station is. */}
-            <div className="flex items-center justify-between border-t border-surf-line-faint pt-2.5 text-[10px] text-surf-ink-muted font-normal">
-              <span>Nose @ {stationLabel(system)} — {formatMark(geometry.noseLiftAt12in, system)}</span>
-              <span>Tail @ {stationLabel(system)} — {formatMark(geometry.tailLiftAt12in, system)}</span>
+            <div className="mt-2 text-xs text-surf-ink-muted font-normal">
+              The board&apos;s one center thickness — Rails and Volume read it too.
             </div>
           </div>
         )}
       </div>
+
+      <div>
+        <SectionHeading open={sectionOpen.blank} onToggle={() => onToggleSectionOpen("blank")}>
+          Blank
+        </SectionHeading>
+        {sectionOpen.blank && (
+          <div className="pt-3">
+            <BlankPicker catalog={blanks} />
+          </div>
+        )}
+      </div>
+
+      <div>
+        <SectionHeading open={sectionOpen.boardOnBlank} onToggle={() => onToggleSectionOpen("boardOnBlank")}>
+          Board on Blank
+        </SectionHeading>
+        {sectionOpen.boardOnBlank && (
+          <div className="pt-3">
+            <BoardOnBlankSection />
+          </div>
+        )}
+      </div>
+
+      {!blank && (
+        <div>
+          <SectionHeading open={sectionOpen.rocker} onToggle={() => onToggleSectionOpen("rocker")}>
+            Rocker
+          </SectionHeading>
+          {sectionOpen.rocker && (
+            <div className="flex flex-col gap-3.5 pt-3">
+              <div className="text-xs text-surf-ink-muted font-normal">
+                Hand-set until you pick a blank — measured up from a flat surface with the board
+                bottom-down.
+              </div>
+
+              <SliderRow
+                label={`Nose Tip — ${formatMark(rocker.noseTip, system)}`}
+                value={rockerNoseTipSlider.value}
+                min={rockerNoseTipSlider.min}
+                max={rockerNoseTipSlider.max}
+                step={rockerNoseTipSlider.step}
+                onValueChange={(v) => onChangeRocker({ noseTip: rockerNoseTipSlider.toMm(v) })}
+              />
+
+              <SliderRow
+                label={`Nose @ ${station} — ${formatMark(rocker.nose12, system)}`}
+                value={rockerNose12Slider.value}
+                min={rockerNose12Slider.min}
+                max={rockerNose12Slider.max}
+                step={rockerNose12Slider.step}
+                onValueChange={(v) => onChangeRocker({ nose12: rockerNose12Slider.toMm(v) })}
+              />
+
+              <SliderRow
+                label={`Tail @ ${station} — ${formatMark(rocker.tail12, system)}`}
+                value={rockerTail12Slider.value}
+                min={rockerTail12Slider.min}
+                max={rockerTail12Slider.max}
+                step={rockerTail12Slider.step}
+                onValueChange={(v) => onChangeRocker({ tail12: rockerTail12Slider.toMm(v) })}
+              />
+
+              <SliderRow
+                label={`Tail Tip — ${formatMark(rocker.tailTip, system)}`}
+                value={rockerTailTipSlider.value}
+                min={rockerTailTipSlider.min}
+                max={rockerTailTipSlider.max}
+                step={rockerTailTipSlider.step}
+                onValueChange={(v) => onChangeRocker({ tailTip: rockerTailTipSlider.toMm(v) })}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <div>
         <SectionHeading open={sectionOpen.thickness} onToggle={() => onToggleSectionOpen("thickness")}>
@@ -250,50 +302,80 @@ export function RockerControls({
         </SectionHeading>
         {sectionOpen.thickness && (
           <div className="flex flex-col gap-3.5 pt-3">
-            <SliderRow
-              label={`Nose Tip — ${formatMark(foil.noseTip, system)}`}
-              value={noseTipSlider.value}
-              min={noseTipSlider.min}
-              max={noseTipSlider.max}
-              step={noseTipSlider.step}
-              onValueChange={(v) => onChangeFoil({ noseTip: noseTipSlider.toMm(v) })}
+            <div className="text-xs text-surf-ink-muted font-normal">
+              {blank
+                ? `Your blank's own foil, scaled down to your center. Set the tips; fine-tune the ${station} stations if you need to.`
+                : "Hand-set until you pick a blank."}
+            </div>
+
+            <ThicknessRow
+              label="Nose Tip"
+              value={foil.noseTip}
+              system={system}
+              onChange={(next) => onChangeFoil({ noseTip: next })}
             />
 
-            <SliderRow
-              label={`Nose @ ${stationLabel(system)} — ${formatMark(foil.nose12, system)}`}
-              value={nose12Slider.value}
-              min={nose12Slider.min}
-              max={nose12Slider.max}
-              step={nose12Slider.step}
-              onValueChange={(v) => onChangeFoil({ nose12: nose12Slider.toMm(v) })}
+            {blank && view ? (
+              <>
+                <FineTuneRow
+                  label={`Nose @ ${station}`}
+                  finalThickness={sideProfile.effectiveFoil.nose12}
+                  derived={view.derived12.nose12}
+                  offset={blank.nose12Offset}
+                  system={system}
+                  onChange={(next) => onFineTune({ nose12Offset: next })}
+                />
+                <FineTuneRow
+                  label={`Tail @ ${station}`}
+                  finalThickness={sideProfile.effectiveFoil.tail12}
+                  derived={view.derived12.tail12}
+                  offset={blank.tail12Offset}
+                  system={system}
+                  onChange={(next) => onFineTune({ tail12Offset: next })}
+                />
+              </>
+            ) : (
+              <>
+                <ThicknessRow
+                  label={`Nose @ ${station}`}
+                  value={foil.nose12}
+                  system={system}
+                  onChange={(next) => onChangeFoil({ nose12: next })}
+                />
+                <ThicknessRow
+                  label={`Tail @ ${station}`}
+                  value={foil.tail12}
+                  system={system}
+                  onChange={(next) => onChangeFoil({ tail12: next })}
+                />
+              </>
+            )}
+
+            <ThicknessRow
+              label="Tail Tip"
+              value={foil.tailTip}
+              system={system}
+              onChange={(next) => onChangeFoil({ tailTip: next })}
             />
 
-            <SliderRow
-              label={`Center — ${formatMark(foil.center, system)}`}
-              value={centerSlider.value}
-              min={centerSlider.min}
-              max={centerSlider.max}
-              step={centerSlider.step}
-              onValueChange={(v) => onChangeFoil({ center: centerSlider.toMm(v) })}
-            />
-
-            <SliderRow
-              label={`Tail @ ${stationLabel(system)} — ${formatMark(foil.tail12, system)}`}
-              value={tail12Slider.value}
-              min={tail12Slider.min}
-              max={tail12Slider.max}
-              step={tail12Slider.step}
-              onValueChange={(v) => onChangeFoil({ tail12: tail12Slider.toMm(v) })}
-            />
-
-            <SliderRow
-              label={`Tail Tip — ${formatMark(foil.tailTip, system)}`}
-              value={tailTipSlider.value}
-              min={tailTipSlider.min}
-              max={tailTipSlider.max}
-              step={tailTipSlider.step}
-              onValueChange={(v) => onChangeFoil({ tailTip: tailTipSlider.toMm(v) })}
-            />
+            {blank && (
+              // Stays in place when there is nothing to reset — dimmed and inert, so the rows
+              // above never shift. No confirmation: undo brings the tweaks back.
+              <button
+                type="button"
+                aria-disabled={noTweak ? "true" : undefined}
+                tabIndex={noTweak ? -1 : undefined}
+                onClick={() => {
+                  if (!noTweak) onResetFineTune();
+                }}
+                className={cn(
+                  "focus-ring-accent cursor-pointer self-start text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center",
+                  noTweak && "pointer-events-none opacity-40",
+                )}
+              >
+                ↺ Reset Fine-Tune
+              </button>
+            )}
           </div>
         )}
       </div>

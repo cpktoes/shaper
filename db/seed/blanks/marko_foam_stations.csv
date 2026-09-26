@@ -1,0 +1,213 @@
+vendor,blank_name,station,station_in_from_tail,rocker_in,thickness_in,width_in,length_in,deck_length_in,volume_l,catalog_slug,pdf_page,flag
+Marko Foam,Wakesurf Regular,T0,0.0,0.35,2.4,15.98,62.5,,,molded,19,
+Marko Foam,Wakesurf Regular,T12,12.0,0.06,2.71,21.27,62.5,,,molded,19,
+Marko Foam,Wakesurf Regular,T24,24.0,,,22.73,62.5,,,molded,19,"moved from drawn position (27"" from tail) to the 12"" grid"
+Marko Foam,Wakesurf Regular,C,31.25,0.02,2.75,,62.5,,,molded,19,
+Marko Foam,Wakesurf Regular,N12,50.5,0.65,2.42,18.01,62.5,,,molded,19,
+Marko Foam,Wakesurf Regular,N0,62.5,2.74,1.55,7.99,62.5,,,molded,19,
+Marko Foam,"5'3"" Foil",T0,0.0,0.35,3.88,15.98,62.5,,,molded,20,only thickness differs
+Marko Foam,"5'3"" Foil",T12,12.0,0.06,4.17,21.27,62.5,,,molded,20,only thickness differs
+Marko Foam,"5'3"" Foil",T24,24.0,,,22.73,62.5,,,molded,20,"moved from drawn position (27"" from tail) to the 12"" grid; only thickness differs"
+Marko Foam,"5'3"" Foil",C,31.25,0.02,4.25,,62.5,,,molded,20,only thickness differs
+Marko Foam,"5'3"" Foil",N12,50.5,0.65,3.87,18.01,62.5,,,molded,20,only thickness differs
+Marko Foam,"5'3"" Foil",N0,62.5,2.74,2.79,7.99,62.5,,,molded,20,only thickness differs; thick version of Wakesurf Regular (same outline and rocker)
+Marko Foam,"6'0"" M-Regular",T0,0.0,1.74,1.05,10.89,72.04,,,molded,21,
+Marko Foam,"6'0"" M-Regular",T12,12.0,0.56,2.23,18.54,72.04,,,molded,21,
+Marko Foam,"6'0"" M-Regular",T24,24.0,0.07,2.77,22.4,72.04,,,molded,21,
+Marko Foam,"6'0"" M-Regular",C,36.02,0.0,2.92,23.98,72.04,,,molded,21,
+Marko Foam,"6'0"" M-Regular",N24,48.04,0.24,2.77,23.36,72.04,,,molded,21,
+Marko Foam,"6'0"" M-Regular",N12,60.04,1.32,2.17,19.78,72.04,,,molded,21,
+Marko Foam,"6'0"" M-Regular",N0,72.04,4.12,1.06,5.6,72.04,,,molded,21,
+Marko Foam,"6'0"" M-Thick",T0,0.0,1.74,1.43,10.89,72.04,,,molded,22,
+Marko Foam,"6'0"" M-Thick",T12,12.0,0.56,2.6,18.54,72.04,,,molded,22,
+Marko Foam,"6'0"" M-Thick",T24,24.0,0.07,3.11,22.4,72.04,,,molded,22,
+Marko Foam,"6'0"" M-Thick",C,36.02,0.0,3.3,23.98,72.04,,,molded,22,
+Marko Foam,"6'0"" M-Thick",N24,48.04,0.24,3.15,23.36,72.04,,,molded,22,
+Marko Foam,"6'0"" M-Thick",N12,60.04,1.32,2.55,19.78,72.04,,,molded,22,
+Marko Foam,"6'0"" M-Thick",N0,72.04,4.12,1.43,5.6,72.04,,,molded,22,
+Marko Foam,"6'4"" TP",T0,0.0,2.57,1.19,7.11,76.0,,,molded,23,
+Marko Foam,"6'4"" TP",T12,12.0,0.95,2.26,16.11,76.0,,,molded,23,
+Marko Foam,"6'4"" TP",T24,24.0,0.23,2.77,20.18,76.0,,,molded,23,
+Marko Foam,"6'4"" TP",C,38.0,0.0,2.98,21.63,76.0,,,molded,23,
+Marko Foam,"6'4"" TP",N24,52.0,0.35,2.86,19.9,76.0,,,molded,23,
+Marko Foam,"6'4"" TP",N12,64.0,1.54,2.43,14.85,76.0,,,molded,23,
+Marko Foam,"6'4"" TP",N0,76.0,5.4,1.16,3.55,76.0,,,molded,23,
+Marko Foam,"6'4"" TP Thick",T0,0.0,2.57,1.59,7.11,76.0,,,molded,24,
+Marko Foam,"6'4"" TP Thick",T12,12.0,0.95,2.57,16.11,76.0,,,molded,24,
+Marko Foam,"6'4"" TP Thick",T24,24.0,0.23,3.12,20.18,76.0,,,molded,24,
+Marko Foam,"6'4"" TP Thick",C,38.0,0.0,3.37,21.63,76.0,,,molded,24,
+Marko Foam,"6'4"" TP Thick",N24,52.0,0.35,3.22,19.9,76.0,,,molded,24,
+Marko Foam,"6'4"" TP Thick",N12,64.0,1.54,2.75,14.85,76.0,,,molded,24,"the 6'4"" TP page (same mold rocker otherwise) has 1.54, likely a catalog typo; rocker set to 1.54 to match the 6'4"" TP (same mold rocker); catalog prints 0.54"
+Marko Foam,"6'4"" TP Thick",N0,76.0,5.4,1.54,3.55,76.0,,,molded,24,
+Marko Foam,"6'6"" M",T0,0.0,1.88,1.64,10.89,78.05,,,molded,25,
+Marko Foam,"6'6"" M",T12,12.0,0.68,2.76,18.13,78.05,,,molded,25,
+Marko Foam,"6'6"" M",T24,24.0,0.12,3.27,21.96,78.05,,,molded,25,
+Marko Foam,"6'6"" M",C,39.02,0.0,3.4,23.98,78.05,,,molded,25,
+Marko Foam,"6'6"" M",N24,54.05,0.37,3.2,23.08,78.05,,,molded,25,
+Marko Foam,"6'6"" M",N12,66.05,1.59,2.62,19.23,78.05,,,molded,25,
+Marko Foam,"6'6"" M",N0,78.05,4.46,1.59,5.6,78.05,,,molded,25,
+Marko Foam,"6'9"" Regular",T0,0.0,2.73,1.23,7.46,80.94,,,molded,26,
+Marko Foam,"6'9"" Regular",T12,12.0,1.09,2.23,16.04,80.94,,,molded,26,
+Marko Foam,"6'9"" Regular",T24,24.0,0.31,2.77,20.2,80.94,,,molded,26,
+Marko Foam,"6'9"" Regular",C,40.47,0.0,3.07,22.0,80.94,,,molded,26,
+Marko Foam,"6'9"" Regular",N24,56.94,0.45,2.88,19.82,80.94,,,molded,26,
+Marko Foam,"6'9"" Regular",N12,68.94,1.73,2.41,14.66,80.94,,,molded,26,
+Marko Foam,"6'9"" Regular",N0,80.94,5.6,1.22,3.61,80.94,,,molded,26,
+Marko Foam,"6'9"" Thick",T0,0.0,2.73,1.61,7.45,80.94,,,molded,27,
+Marko Foam,"6'9"" Thick",T12,12.0,1.1,2.61,16.04,80.94,,,molded,27,
+Marko Foam,"6'9"" Thick",T24,24.0,0.31,3.14,20.2,80.94,,,molded,27,
+Marko Foam,"6'9"" Thick",C,40.47,0.0,3.45,22.0,80.94,,,molded,27,
+Marko Foam,"6'9"" Thick",N24,56.94,0.45,3.26,19.82,80.94,,,molded,27,
+Marko Foam,"6'9"" Thick",N12,68.94,1.73,2.79,14.67,80.94,,,molded,27,
+Marko Foam,"6'9"" Thick",N0,80.94,5.6,1.63,3.61,80.94,,,molded,27,
+Marko Foam,"7'2"" M Regular",T0,0.0,2.11,1.7,10.93,86.5,,,molded,28,
+Marko Foam,"7'2"" M Regular",T12,12.0,0.88,2.83,17.67,86.5,,,molded,28,
+Marko Foam,"7'2"" M Regular",T24,24.0,0.24,3.37,21.47,86.5,,,molded,28,
+Marko Foam,"7'2"" M Regular",C,43.25,0.0,3.6,24.1,86.5,,,molded,28,
+Marko Foam,"7'2"" M Regular",N24,62.5,0.64,3.31,23.12,86.5,,,molded,28,
+Marko Foam,"7'2"" M Regular",N12,74.5,2.03,2.75,19.28,86.5,,,molded,28,
+Marko Foam,"7'2"" M Regular",N0,86.5,5.13,1.63,7.83,86.5,,,molded,28,
+Marko Foam,"7'2"" M Thick",T0,0.0,2.11,2.21,10.93,86.5,,,molded,29,
+Marko Foam,"7'2"" M Thick",T12,12.0,0.88,3.34,17.67,86.5,,,molded,29,
+Marko Foam,"7'2"" M Thick",T24,24.0,0.24,3.88,21.47,86.5,,,molded,29,
+Marko Foam,"7'2"" M Thick",C,43.25,0.0,4.11,24.1,86.5,,,molded,29,
+Marko Foam,"7'2"" M Thick",N24,62.5,0.64,3.82,23.12,86.5,,,molded,29,
+Marko Foam,"7'2"" M Thick",N12,74.5,2.03,3.25,19.28,86.5,,,molded,29,
+Marko Foam,"7'2"" M Thick",N0,86.5,5.13,2.13,7.83,86.5,,,molded,29,
+Marko Foam,"7'5"" Machine All",T0,0.0,2.875,1.62,7.0,89.0,,,molded,30,
+Marko Foam,"7'5"" Machine All",T12,12.0,1.32,2.625,16.5,89.0,,,molded,30,
+Marko Foam,"7'5"" Machine All",T24,24.0,0.49,3.25,20.8,89.0,,,molded,30,
+Marko Foam,"7'5"" Machine All",C,44.5,0.0,3.51,23.5,89.0,,,molded,30,
+Marko Foam,"7'5"" Machine All",N24,65.0,0.52,3.125,22.125,89.0,,,molded,30,
+Marko Foam,"7'5"" Machine All",N12,77.0,1.74,2.6,18.5,89.0,,,molded,30,
+Marko Foam,"7'5"" Machine All",N0,89.0,4.75,1.73,0.0,89.0,,,molded,30,"width 0: rounded nose, not printed in catalog"
+Marko Foam,"7'6"" Thick",T0,0.0,2.74,1.65,1.99,90.25,,,molded,31,
+Marko Foam,"7'6"" Thick",T12,12.0,1.34,2.68,14.32,90.25,,,molded,31,
+Marko Foam,"7'6"" Thick",T24,24.0,0.51,3.25,18.56,90.25,,,molded,31,
+Marko Foam,"7'6"" Thick",C,45.12,0.0,3.51,21.36,90.25,,,molded,31,
+Marko Foam,"7'6"" Thick",N24,66.25,0.55,3.11,19.91,90.25,,,molded,31,
+Marko Foam,"7'6"" Thick",N12,78.25,1.7,2.56,15.68,90.25,,,molded,31,
+Marko Foam,"7'6"" Thick",N0,90.25,4.9,1.32,0.0,90.25,,,molded,31,"width 0: rounded nose, not printed in catalog"
+Marko Foam,"8'5"" Thick",T0,0.0,3.03,1.85,13.46,101.72,,,molded,32,
+Marko Foam,"8'5"" Thick",T12,12.0,1.46,2.66,18.77,101.72,,,molded,32,
+Marko Foam,"8'5"" Thick",T24,24.0,0.62,3.19,21.8,101.72,,,molded,32,
+Marko Foam,"8'5"" Thick",T36,36.0,0.18,3.58,23.59,101.72,,,molded,32,
+Marko Foam,"8'5"" Thick",C,50.86,0.0,3.81,24.6,101.72,,,molded,32,
+Marko Foam,"8'5"" Thick",N36,65.72,0.2,3.69,24.56,101.72,,,molded,32,
+Marko Foam,"8'5"" Thick",N24,77.72,0.77,3.36,23.47,101.72,,,molded,32,
+Marko Foam,"8'5"" Thick",N12,89.72,1.88,2.82,20.35,101.72,,,molded,32,
+Marko Foam,"8'5"" Thick",N0,101.72,4.42,1.9,0.0,101.72,,,molded,32,"width 0: rounded nose, not printed in catalog"
+Marko Foam,"9'1"" Machine All",T0,0.0,3.2,1.92,8.18,109.68,,,molded,33,
+Marko Foam,"9'1"" Machine All",T12,12.0,1.6,2.74,16.2,109.68,,,molded,33,
+Marko Foam,"9'1"" Machine All",T24,24.0,0.74,3.26,20.25,109.68,,,molded,33,
+Marko Foam,"9'1"" Machine All",T36,36.0,0.26,3.63,22.46,109.68,,,molded,33,
+Marko Foam,"9'1"" Machine All",C,54.84,0.0,3.8,24.29,109.68,,,molded,33,
+Marko Foam,"9'1"" Machine All",N48,61.68,0.05,3.78,24.41,109.68,,,molded,33,
+Marko Foam,"9'1"" Machine All",N36,73.68,0.34,3.65,24.07,109.68,,,molded,33,
+Marko Foam,"9'1"" Machine All",N24,85.68,1.02,3.29,22.92,109.68,,,molded,33,
+Marko Foam,"9'1"" Machine All",N12,97.68,2.2,2.8,19.86,109.68,,,molded,33,
+Marko Foam,"9'1"" Machine All",N0,109.68,4.7,1.9,0.0,109.68,,,molded,33,"width 0: rounded nose, not printed in catalog"
+Marko Foam,"10'2"" M",T0,0.0,4.55,3.73,25.0,122.04,,,molded,34,
+Marko Foam,"10'2"" M",T24,24.0,0.61,4.23,25.0,122.04,,,molded,34,"rectangular block blank: 25"" wide everywhere"
+Marko Foam,"10'2"" M",C,61.02,0.21,4.5,25.0,122.04,,,molded,34,"rectangular block blank: 25"" wide everywhere"
+Marko Foam,"10'2"" M",N24,98.04,1.89,4.41,25.0,122.04,,,molded,34,"rectangular block blank: 25"" wide everywhere"
+Marko Foam,"10'2"" M",N0,122.04,4.98,3.3,25.0,122.04,,,molded,34,"rectangular block blank: 25"" wide everywhere"
+Marko Foam,"10'2"" M Thick",T0,0.0,4.58,4.74,25.0,122.0,,,molded,35,
+Marko Foam,"10'2"" M Thick",T24,24.0,0.61,5.23,25.0,122.0,,,molded,35,"rectangular block blank: 25"" wide everywhere"
+Marko Foam,"10'2"" M Thick",C,61.0,0.21,5.5,25.0,122.0,,,molded,35,"rectangular block blank: 25"" wide everywhere"
+Marko Foam,"10'2"" M Thick",N24,98.0,1.89,5.41,25.0,122.0,,,molded,35,"rectangular block blank: 25"" wide everywhere"
+Marko Foam,"10'2"" M Thick",N0,122.0,4.97,4.32,25.0,122.0,,,molded,35,"rectangular block blank: 25"" wide everywhere"
+Marko Foam,"9'6"" MK",T0,0.0,3.38,1.7,10.64,114.0,,,block-cut,36,
+Marko Foam,"9'6"" MK",T12,12.0,1.76,2.5,16.85,114.0,,,block-cut,36,
+Marko Foam,"9'6"" MK",T24,24.0,0.84,2.95,19.98,114.0,,,block-cut,36,
+Marko Foam,"9'6"" MK",C,57.0,0.0,3.5,,114.0,,,block-cut,36,
+Marko Foam,"9'6"" MK",N48,66.0,0.08,3.45,24.0,114.0,,,block-cut,36,
+Marko Foam,"9'6"" MK",N24,90.0,1.13,2.99,22.4,114.0,,,block-cut,36,
+Marko Foam,"9'6"" MK",N12,102.0,2.36,2.54,19.21,114.0,,,block-cut,36,
+Marko Foam,"9'6"" MK",N0,114.0,4.94,1.72,0.0,114.0,,,block-cut,36,"width 0: rounded nose, not printed in catalog"
+Marko Foam,"10'0"" MK",T0,0.0,3.72,2.01,9.25,121.0,,,block-cut,37,
+Marko Foam,"10'0"" MK",T12,12.0,2.06,2.91,17.84,121.0,,,block-cut,37,
+Marko Foam,"10'0"" MK",T24,24.0,1.07,3.43,21.79,121.0,,,block-cut,37,
+Marko Foam,"10'0"" MK",T48,48.0,0.13,4.05,25.34,121.0,,,block-cut,37,"moved from drawn position (46"" from tail) to the 12"" grid"
+Marko Foam,"10'0"" MK",C,60.5,0.0,4.13,26.0,121.0,,,block-cut,37,"width 26.00 (widest point, drawn about 7"" forward of center) assigned to center"
+Marko Foam,"10'0"" MK",N48,73.0,0.19,4.05,25.96,121.0,,,block-cut,37,"moved from drawn position (68"" from tail) to the 12"" grid; moved from drawn position (75"" from tail) to the 12"" grid"
+Marko Foam,"10'0"" MK",N24,97.0,1.43,3.49,24.01,121.0,,,block-cut,37,
+Marko Foam,"10'0"" MK",N12,109.0,2.77,2.98,20.49,121.0,,,block-cut,37,
+Marko Foam,"10'0"" MK",N0,121.0,5.43,2.04,0.0,121.0,,,block-cut,37,"width 0: rounded nose, not printed in catalog"
+Marko Foam,"10'10"" MK",T0,0.0,3.25,2.19,9.25,132.0,,,block-cut,38,
+Marko Foam,"10'10"" MK",T12,12.0,1.83,3.06,17.39,132.0,,,block-cut,38,
+Marko Foam,"10'10"" MK",T24,24.0,0.98,3.6,21.28,132.0,,,block-cut,38,
+Marko Foam,"10'10"" MK",T48,48.0,0.14,4.31,25.0,132.0,,,block-cut,38,
+Marko Foam,"10'10"" MK",C,66.0,0.0,4.5,26.0,132.0,,,block-cut,38,"width 26.0 (widest point, drawn about 6"" forward of center) assigned to center"
+Marko Foam,"10'10"" MK",N48,84.0,0.23,4.36,25.87,132.0,,,block-cut,38,
+Marko Foam,"10'10"" MK",N24,108.0,1.49,3.74,23.62,132.0,,,block-cut,38,
+Marko Foam,"10'10"" MK",N12,120.0,2.8,3.2,20.0,132.0,,,block-cut,38,
+Marko Foam,"10'10"" MK",N0,132.0,5.38,2.23,0.0,132.0,,,block-cut,38,"width 0: rounded nose, not printed in catalog"
+Marko Foam,"8'0"" Gun",T0,0.0,2.33,2.1,6.35,96.0,,,block-cut,39,
+Marko Foam,"8'0"" Gun",T12,12.0,1.75,2.64,13.62,96.0,,,block-cut,39,"moved from drawn position (10"" from tail) to the 12"" grid"
+Marko Foam,"8'0"" Gun",T24,24.0,0.89,3.26,19.55,96.0,,,block-cut,39,"moved from drawn position (20"" from tail) to the 12"" grid"
+Marko Foam,"8'0"" Gun",T36,36.0,0.58,3.5,21.26,96.0,,,block-cut,39,"moved from drawn position (31"" from tail) to the 12"" grid"
+Marko Foam,"8'0"" Gun",C,48.0,0.0,4.0,24.0,96.0,,,block-cut,39,
+Marko Foam,"8'0"" Gun",N36,60.0,1.01,3.36,21.18,96.0,,,block-cut,39,"moved from drawn position (65"" from tail) to the 12"" grid"
+Marko Foam,"8'0"" Gun",N24,72.0,1.69,3.04,19.22,96.0,,,block-cut,39,"moved from drawn position (76"" from tail) to the 12"" grid"
+Marko Foam,"8'0"" Gun",N12,84.0,3.97,2.17,12.62,96.0,,,block-cut,39,"moved from drawn position (86"" from tail) to the 12"" grid"
+Marko Foam,"8'0"" Gun",N0,96.0,6.17,1.41,5.77,96.0,,,block-cut,39,
+Marko Foam,"9'6"" Gun",T0,0.0,2.73,2.37,6.35,116.0,,,block-cut,40,
+Marko Foam,"9'6"" Gun",T12,12.0,1.64,3.16,16.08,116.0,,,block-cut,40,
+Marko Foam,"9'6"" Gun",T24,24.0,0.88,3.46,20.14,116.0,,,block-cut,40,
+Marko Foam,"9'6"" Gun",T36,36.0,0.36,4.41,23.63,116.0,,,block-cut,40,
+Marko Foam,"9'6"" Gun",C,58.0,0.0,4.5,24.0,116.0,,,block-cut,40,
+Marko Foam,"9'6"" Gun",N36,80.0,0.58,4.43,23.78,116.0,,,block-cut,40,
+Marko Foam,"9'6"" Gun",N24,92.0,1.64,3.65,19.9,116.0,,,block-cut,40,
+Marko Foam,"9'6"" Gun",N12,104.0,3.49,2.93,15.34,116.0,,,block-cut,40,
+Marko Foam,"9'6"" Gun",N0,116.0,7.25,1.6,5.77,116.0,,,block-cut,40,
+Marko Foam,"10'6"" Gun",T0,0.0,2.45,2.63,6.49,126.0,,,block-cut,41,
+Marko Foam,"10'6"" Gun",T12,12.0,1.54,3.39,15.97,126.0,,,block-cut,41,
+Marko Foam,"10'6"" Gun",T24,24.0,0.88,4.0,20.05,126.0,,,block-cut,41,"moved from drawn position (27"" from tail) to the 12"" grid"
+Marko Foam,"10'6"" Gun",T36,36.0,0.12,4.8,23.84,126.0,,,block-cut,41,"moved from drawn position (40"" from tail) to the 12"" grid"
+Marko Foam,"10'6"" Gun",C,63.0,0.0,5.0,24.5,126.0,,,block-cut,41,
+Marko Foam,"10'6"" Gun",N36,90.0,0.25,4.84,23.99,126.0,,,block-cut,41,"moved from drawn position (86"" from tail) to the 12"" grid"
+Marko Foam,"10'6"" Gun",N24,102.0,1.93,3.87,19.73,126.0,,,block-cut,41,"moved from drawn position (99"" from tail) to the 12"" grid"
+Marko Foam,"10'6"" Gun",N12,114.0,3.69,3.1,15.17,126.0,,,block-cut,41,"moved from drawn position (112"" from tail) to the 12"" grid"
+Marko Foam,"10'6"" Gun",N0,126.0,7.02,1.79,5.89,126.0,,,block-cut,41,
+Marko Foam,"8'0"" MK-SUP-STD",T0,0.0,3.21,2.67,14.78,97.0,,,sup,44,
+Marko Foam,"8'0"" MK-SUP-STD",T12,12.0,1.58,4.11,25.12,97.0,,,sup,44,
+Marko Foam,"8'0"" MK-SUP-STD",T24,24.0,0.63,4.96,29.86,97.0,,,sup,44,
+Marko Foam,"8'0"" MK-SUP-STD",C,48.5,0.0,5.5,33.0,97.0,,,sup,44,"moved from drawn position (52"" from tail) to the 12"" grid"
+Marko Foam,"8'0"" MK-SUP-STD",N24,73.0,0.66,4.91,31.36,97.0,,,sup,44,
+Marko Foam,"8'0"" MK-SUP-STD",N12,85.0,1.92,3.98,27.19,97.0,,,sup,44,
+Marko Foam,"8'0"" MK-SUP-STD",N0,97.0,4.94,2.44,0.0,97.0,,,sup,44,"width 0: rounded nose, not printed in catalog"
+Marko Foam,"9'0"" MK-SUP-STD",T0,0.0,3.6,,14.6,109.0,,,sup,45,thickness illegible in catalog
+Marko Foam,"9'0"" MK-SUP-STD",T12,12.0,1.9,,25.19,109.0,,,sup,45,thickness illegible in catalog
+Marko Foam,"9'0"" MK-SUP-STD",T24,24.0,,,29.68,109.0,,,sup,45,thickness illegible in catalog
+Marko Foam,"9'0"" MK-SUP-STD",T36,36.0,0.3,,31.85,109.0,,,sup,45,thickness illegible in catalog
+Marko Foam,"9'0"" MK-SUP-STD",C,54.5,0.0,,33.0,109.0,,,sup,45,"thickness illegible in catalog; moved from drawn position (58"" from tail) to the 12"" grid"
+Marko Foam,"9'0"" MK-SUP-STD",N36,73.0,,,32.75,109.0,,,sup,45,thickness illegible in catalog
+Marko Foam,"9'0"" MK-SUP-STD",N24,85.0,,,31.71,109.0,,,sup,45,thickness illegible in catalog
+Marko Foam,"9'0"" MK-SUP-STD",N12,97.0,,,28.28,109.0,,,sup,45,thickness illegible in catalog
+Marko Foam,"9'0"" MK-SUP-STD",N0,109.0,5.55,,0.0,109.0,,,sup,45,"width 0: rounded nose, not printed in catalog; thickness illegible in catalog"
+Marko Foam,"10'0"" MK-SUP-STD",T0,0.0,3.98,,14.6,121.0,,,sup,46,thickness illegible in catalog
+Marko Foam,"10'0"" MK-SUP-STD",T12,12.0,2.28,,24.53,121.0,,,sup,46,thickness illegible in catalog
+Marko Foam,"10'0"" MK-SUP-STD",T36,36.0,0.49,,31.36,121.0,,,sup,46,thickness illegible in catalog
+Marko Foam,"10'0"" MK-SUP-STD",C,60.5,0.0,,33.0,121.0,,,sup,46,"thickness illegible in catalog; moved from drawn position (64"" from tail) to the 12"" grid"
+Marko Foam,"10'0"" MK-SUP-STD",N36,85.0,0.45,,32.41,121.0,,,sup,46,thickness illegible in catalog
+Marko Foam,"10'0"" MK-SUP-STD",N12,109.0,2.65,3.6,27.2,121.0,,,sup,46,"thickness: prints ""3.6"", other labels on this page are missing digits so this may be truncated"
+Marko Foam,"10'0"" MK-SUP-STD",N0,121.0,5.63,,0.0,121.0,,,sup,46,"width 0: rounded nose, not printed in catalog; thickness illegible in catalog"
+Marko Foam,"11'0"" MK-SUP-STD",T0,0.0,4.33,,14.6,133.0,,,sup,47,thickness illegible in catalog
+Marko Foam,"11'0"" MK-SUP-STD",T12,12.0,2.62,,23.94,133.0,,,sup,47,thickness illegible in catalog
+Marko Foam,"11'0"" MK-SUP-STD",T24,24.0,1.45,,28.42,133.0,,,sup,47,thickness illegible in catalog
+Marko Foam,"11'0"" MK-SUP-STD",T48,48.0,0.24,,32.21,133.0,,,sup,47,thickness illegible in catalog
+Marko Foam,"11'0"" MK-SUP-STD",C,66.5,0.0,,33.0,133.0,,,sup,47,"thickness illegible in catalog; width 33.0 (widest point, drawn about 6"" forward of center) assigned to center"
+Marko Foam,"11'0"" MK-SUP-STD",N48,85.0,0.18,,32.8,133.0,,,sup,47,thickness illegible in catalog
+Marko Foam,"11'0"" MK-SUP-STD",N24,109.0,1.3,,30.54,133.0,,,sup,47,thickness illegible in catalog
+Marko Foam,"11'0"" MK-SUP-STD",N12,121.0,2.66,,26.61,133.0,,,sup,47,thickness illegible in catalog
+Marko Foam,"11'0"" MK-SUP-STD",N0,133.0,5.28,,0.0,133.0,,,sup,47,"width 0: rounded nose, not printed in catalog; thickness illegible in catalog"
+Marko Foam,"12'0"" MK-SUP-STD",T0,0.0,4.28,,14.72,145.0,,,sup,48,thickness illegible in catalog
+Marko Foam,"12'0"" MK-SUP-STD",T12,12.0,2.7,,23.6,145.0,,,sup,48,thickness illegible in catalog
+Marko Foam,"12'0"" MK-SUP-STD",T24,24.0,1.6,,28.07,145.0,,,sup,48,thickness illegible in catalog
+Marko Foam,"12'0"" MK-SUP-STD",T48,48.0,0.36,,32.1,145.0,,,sup,48,thickness illegible in catalog
+Marko Foam,"12'0"" MK-SUP-STD",C,72.5,0.0,,33.25,145.0,,,sup,48,"thickness illegible in catalog; moved from drawn position (78"" from tail) to the 12"" grid"
+Marko Foam,"12'0"" MK-SUP-STD",N48,97.0,0.3,,32.91,145.0,,,sup,48,thickness illegible in catalog
+Marko Foam,"12'0"" MK-SUP-STD",N24,121.0,1.61,,30.35,145.0,,,sup,48,thickness illegible in catalog
+Marko Foam,"12'0"" MK-SUP-STD",N12,133.0,3.08,,26.26,145.0,,,sup,48,thickness illegible in catalog
+Marko Foam,"12'0"" MK-SUP-STD",N0,145.0,5.78,,0.0,145.0,,,sup,48,"width 0: rounded nose, not printed in catalog; thickness illegible in catalog"

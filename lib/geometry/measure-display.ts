@@ -105,6 +105,24 @@ export function formatSignedDim(value: Mm, system: UnitsSystem): string {
 }
 
 /**
+ * A signed marks-family value — imperial `+1/16"` / `-1/8"` / `0"`, metric `+2 mm` / `-2 mm` /
+ * `0 mm` — for an amount a shaper nudged a station by, where the direction is half the meaning:
+ * the THICKNESS section's "Tweak" hint under each 12" thickness (D-11). Imperial delegates to
+ * `formatSignedInchesFraction`. The metric branch takes its sign from what was PRINTED, exactly as
+ * `formatSignedDim` does: format the whole millimetres first, print an unsigned `0 mm` when that
+ * comes back `0` or `-0`, otherwise prefix an ASCII `+` when there is no leading `-`. Never a
+ * typographic minus.
+ */
+export function formatSignedMark(value: Mm, system: UnitsSystem): string {
+  if (system === "metric") {
+    const printed = formatWholeMm(value);
+    if (printed === "0" || printed === "-0") return "0 mm";
+    return printed.startsWith("-") ? `${printed} mm` : `+${printed} mm`;
+  }
+  return formatSignedInchesFraction(value);
+}
+
+/**
  * A board's total length: imperial `formatFeetInches` (`6'2"`), metric `formatCentimetres` plus
  * `cm` (`188.0 cm`). There is no metric equivalent of the feet-and-inches / total-inches dual
  * form the outline viewer's length callout shows in Imperial — that composition stays local to

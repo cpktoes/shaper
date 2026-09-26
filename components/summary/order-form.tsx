@@ -205,8 +205,7 @@ export function OrderForm() {
   const {
     outline,
     outlineGeometry,
-    rocker,
-    foil,
+    sideProfile,
     railBands,
     finPlacement,
     effectiveFins,
@@ -414,7 +413,15 @@ export function OrderForm() {
                   >
                     <div className="flex min-h-0 flex-1 items-stretch px-1.5 py-1">
                       <div className="relative min-h-0 min-w-0 flex-1">
-                        <RockerViewer rocker={rocker} foil={foil} length={outline.length} callouts="compact" fitToBoard boardFill={false} />
+                        {/* The store's one side profile (Pattern 5) — the same one the ROCKER
+                            screen draws, so the printed rocker and foil can never disagree with it.
+                            Never a blank: this box draws the board alone. */}
+                        <RockerViewer
+                          profile={sideProfile}
+                          callouts="compact"
+                          fitToBoard
+                          boardFill={false}
+                        />
                       </div>
                     </div>
                   </FormBox>

@@ -43,6 +43,12 @@ export default defineConfig({
       // blocks a push. On a signed-out request the app only needs it to be a non-empty string.
       CLERK_SECRET_KEY: "sk_live_fake-not-a-secret-for-playwright-only",
       DATABASE_URL: "postgresql://user:pass@localhost:5432/shaper",
+      // This suite has no database (the DATABASE_URL above is a deliberate non-secret that points
+      // nowhere), so without this the ROCKER blank list would always say "The blank catalog didn't
+      // load". With it, lib/db/blanks.ts reads the committed catalogue CSVs under db/seed/blanks/
+      // through the same tested reader the database seed uses, so the list a browser test sees is
+      // the list the database holds. Test-only: never set this in Vercel or in any .env file.
+      SHAPER_BLANKS_SOURCE: "seed-csv",
     },
   },
   use: {

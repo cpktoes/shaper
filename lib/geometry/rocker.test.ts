@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { BOARD_LENGTH_RANGE_IN } from "./board";
 import { MEASURE_STATION_MM } from "./outline";
+import { preparePchip, pchipMinimum } from "./pchip";
+import { BOARD_PRESETS } from "./presets";
 import {
+  bezierToFiveStations,
   buildRocker,
+  DEFAULT_FALLBACK_ROCKER,
   DEFAULT_ROCKER_SPEC,
-  migrateLegacyRocker,
+  fallbackRockerPoints,
+  type FiveStationRocker,
   ROCKER_ANGLE_RANGE_DEG,
   ROCKER_FLATNESS_RANGE,
   ROCKER_LIFT_RANGE_IN,
@@ -13,7 +18,7 @@ import {
   sampleRocker,
   type RockerSpec,
 } from "./rocker";
-import { inchesToMm, mm, mmToInches, degrees } from "./units";
+import { inchesToMm, mm, mmToInches, degrees, type Mm } from "./units";
 
 const LENGTH = inchesToMm(72);
 
@@ -240,37 +245,6 @@ describe("control-does-what-its-label-says properties", () => {
   // assertions above are what pin the angle control.
 });
 
-describe("migrateLegacyRocker", () => {
-  it("carries the legacy noseTip/tailTip through unchanged, and the six shape controls come from DEFAULT_ROCKER_SPEC", () => {
-    const legacy = {
-      noseTip: inchesToMm(5).valueOf(),
-      nose12: inchesToMm(1.5).valueOf(),
-      tail12: inchesToMm(0.5).valueOf(),
-      tailTip: inchesToMm(2.25).valueOf(),
-    };
-    const migrated = migrateLegacyRocker(legacy);
-    expect(migrated.noseLift).toBe(legacy.noseTip);
-    expect(migrated.tailLift).toBe(legacy.tailTip);
-    expect(migrated.noseAngle).toBe(DEFAULT_ROCKER_SPEC.noseAngle);
-    expect(migrated.tailAngle).toBe(DEFAULT_ROCKER_SPEC.tailAngle);
-    expect(migrated.noseSmoothness).toBe(DEFAULT_ROCKER_SPEC.noseSmoothness);
-    expect(migrated.tailSmoothness).toBe(DEFAULT_ROCKER_SPEC.tailSmoothness);
-    expect(migrated.noseFlatness).toBe(DEFAULT_ROCKER_SPEC.noseFlatness);
-    expect(migrated.tailFlatness).toBe(DEFAULT_ROCKER_SPEC.tailFlatness);
-  });
-
-  it("builds a curve that passes the no-fold-back and non-negative assertions", () => {
-    const migrated = migrateLegacyRocker({
-      noseTip: inchesToMm(6).valueOf(),
-      nose12: inchesToMm(2).valueOf(),
-      tail12: inchesToMm(0.75).valueOf(),
-      tailTip: inchesToMm(3).valueOf(),
-    });
-    assertNoFoldBack(migrated);
-    assertNeverNegative(migrated);
-  });
-});
-
 describe("rockerStationPositions", () => {
   it("returns five positions in ascending station order for any board length in BOARD_LENGTH_RANGE_IN", () => {
     for (const lengthIn of [BOARD_LENGTH_RANGE_IN.min, 72, BOARD_LENGTH_RANGE_IN.max]) {
@@ -291,5 +265,165 @@ describe("DEFAULT_ROCKER_SPEC's derived 12in figures land within 1/4in of today'
     const geometry = buildRocker(DEFAULT_ROCKER_SPEC, LENGTH);
     expect(Math.abs(mmToInches(geometry.noseLiftAt12in) - 1.25)).toBeLessThanOrEqual(0.25);
     expect(Math.abs(mmToInches(geometry.tailLiftAt12in) - 0.375)).toBeLessThanOrEqual(0.25);
+  });
+});
+
+describe("the five-station fallback (D-14)", () => {
+  const KEYS = ["tailTip", "tail12", "nose12", "noseTip"] as const;
+
+  it("DEFAULT_FALLBACK_ROCKER is the Phase-4 figures the Bezier defaults were solved to match", () => {
+    expect(DEFAULT_FALLBACK_ROCKER).toEqual({
+      noseTip: inchesToMm(4.5),
+      nose12: inchesToMm(1.25),
+      tail12: inchesToMm(0.375),
+      tailTip: inchesToMm(2),
+    });
+  });
+
+  it("puts five points at rockerStationPositions, with the centre at exactly 0", () => {
+    for (const lengthIn of [BOARD_LENGTH_RANGE_IN.min, 72, BOARD_LENGTH_RANGE_IN.max]) {
+      const length = inchesToMm(lengthIn);
+      const points = fallbackRockerPoints(DEFAULT_FALLBACK_ROCKER, length);
+      const positions = rockerStationPositions(length);
+      expect(points).toHaveLength(5);
+      positions.forEach(({ key, station }, i) => {
+        expect(points[i].x).toBe(station);
+        expect(points[i].y).toBe(key === "center" ? 0 : DEFAULT_FALLBACK_ROCKER[key]);
+      });
+    }
+  });
+
+  it("a prepared pchip through the points reads each typed lift exactly at its station and 0 at the centre", () => {
+    const rocker: FiveStationRocker = {
+      noseTip: inchesToMm(5.25),
+      nose12: inchesToMm(1.5),
+      tail12: inchesToMm(0.5),
+      tailTip: inchesToMm(2.125),
+    };
+    for (const lengthIn of [BOARD_LENGTH_RANGE_IN.min, 72, BOARD_LENGTH_RANGE_IN.max]) {
+      const length = inchesToMm(lengthIn);
+      const curve = preparePchip(fallbackRockerPoints(rocker, length));
+      for (const { key, station } of rockerStationPositions(length)) {
+        expect(curve.sample(station)).toBe(key === "center" ? 0 : rocker[key]);
+      }
+    }
+  });
+
+  it("is never negative on a 1/8in sweep, and its minimum is exactly 0, for any lifts inside ROCKER_LIFT_RANGE_IN", () => {
+    const grid = [
+      ROCKER_LIFT_RANGE_IN.min,
+      ROCKER_LIFT_RANGE_IN.step,
+      1,
+      4.5,
+      ROCKER_LIFT_RANGE_IN.max,
+    ];
+    const step = inchesToMm(0.125);
+    let lowest = Infinity;
+    const minima: number[] = [];
+    for (const lengthIn of [BOARD_LENGTH_RANGE_IN.min, 72, BOARD_LENGTH_RANGE_IN.max]) {
+      const length = inchesToMm(lengthIn);
+      for (const tailTip of grid) {
+        for (const tail12 of grid) {
+          for (const nose12 of grid) {
+            for (const noseTip of grid) {
+              const rocker: FiveStationRocker = {
+                tailTip: inchesToMm(tailTip),
+                tail12: inchesToMm(tail12),
+                nose12: inchesToMm(nose12),
+                noseTip: inchesToMm(noseTip),
+              };
+              const curve = preparePchip(fallbackRockerPoints(rocker, length));
+              for (let s = 0; s <= length; s += step) lowest = Math.min(lowest, curve.sample(s));
+              lowest = Math.min(lowest, curve.sample(length));
+              minima.push(pchipMinimum(curve, 0, length));
+            }
+          }
+        }
+      }
+    }
+    expect(lowest).toBeGreaterThanOrEqual(0);
+    expect(minima.every((minimum) => minimum === 0)).toBe(true);
+  });
+
+  it("carries only the four typed lifts — the centre is implied, never stored", () => {
+    expect(Object.keys(DEFAULT_FALLBACK_ROCKER).sort()).toEqual([...KEYS].sort());
+  });
+});
+
+describe("bezierToFiveStations (the version-3 migration)", () => {
+  function expectMatchesBezier(spec: RockerSpec, length: Mm) {
+    const geometry = buildRocker(spec, length);
+    const five = bezierToFiveStations(spec, length);
+    for (const { key, station } of rockerStationPositions(length)) {
+      if (key === "center") continue;
+      expect(five[key]).toBe(sampleRocker(geometry, station));
+    }
+    expect(Object.keys(five).sort()).toEqual(["nose12", "noseTip", "tail12", "tailTip"]);
+  }
+
+  it("reads DEFAULT_ROCKER_SPEC on a 72in board as the old curve's own values at the four stations", () => {
+    expectMatchesBezier(DEFAULT_ROCKER_SPEC, inchesToMm(72));
+  });
+
+  it("reads every preset's captured Bezier rocker at its own length", () => {
+    // The presets retired these blocks in 11-10 (D-03: a preset now names a blank), but a board
+    // saved from a preset before Phase 11 still carries one, so the migration keeps being tested on
+    // the four real captured curves — frozen here exactly as `presets.ts` last carried them. They
+    // are migration INPUTS, not expected figures; the expectations are read off `buildRocker`.
+    const RETIRED_PRESET_ROCKERS: Record<(typeof BOARD_PRESETS)[number]["id"], RockerSpec> = {
+      shortboard: {
+        noseLift: inchesToMm(5.5),
+        tailLift: inchesToMm(2.0625),
+        noseAngle: degrees(30),
+        tailAngle: degrees(26),
+        noseSmoothness: 49,
+        tailSmoothness: 100,
+        noseFlatness: 50,
+        tailFlatness: 44.5,
+      },
+      fish: {
+        noseLift: inchesToMm(4.625),
+        tailLift: inchesToMm(1.9375),
+        noseAngle: degrees(30),
+        tailAngle: degrees(9),
+        noseSmoothness: 54.5,
+        tailSmoothness: 34,
+        noseFlatness: 51,
+        tailFlatness: 16,
+      },
+      midlength: {
+        noseLift: inchesToMm(5.375),
+        tailLift: inchesToMm(2.3125),
+        noseAngle: degrees(28),
+        tailAngle: degrees(30),
+        noseSmoothness: 27,
+        tailSmoothness: 80,
+        noseFlatness: 10,
+        tailFlatness: 0,
+      },
+      longboard: {
+        noseLift: inchesToMm(4.3125),
+        tailLift: inchesToMm(3.25),
+        noseAngle: degrees(12),
+        tailAngle: degrees(11),
+        noseSmoothness: 23,
+        tailSmoothness: 65,
+        noseFlatness: 0,
+        tailFlatness: 28,
+      },
+    };
+    for (const preset of BOARD_PRESETS) {
+      expectMatchesBezier(RETIRED_PRESET_ROCKERS[preset.id], preset.outline.length);
+    }
+  });
+
+  it("keeps the tips exactly and reads the 12in stations as the curve's own derived figures", () => {
+    const length = inchesToMm(72);
+    const geometry = buildRocker(DEFAULT_ROCKER_SPEC, length);
+    const five = bezierToFiveStations(DEFAULT_ROCKER_SPEC, length);
+    expect(five.noseTip).toBe(DEFAULT_ROCKER_SPEC.noseLift);
+    expect(five.tailTip).toBe(DEFAULT_ROCKER_SPEC.tailLift);
+    expect(five.nose12).toBe(geometry.noseLiftAt12in);
+    expect(five.tail12).toBe(geometry.tailLiftAt12in);
   });
 });

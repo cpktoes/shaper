@@ -16,7 +16,7 @@ import {
 } from "./preset-source";
 import { BOARD_PRESETS } from "./presets";
 import { DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "./rail-bands";
-import { DEFAULT_ROCKER_SPEC, ROCKER_LIFT_RANGE_IN, type RockerSpec } from "./rocker";
+import { ROCKER_LIFT_RANGE_IN } from "./rocker";
 import { degrees, inchesToMm, mm } from "./units";
 
 /**
@@ -95,60 +95,53 @@ describe("formatPresetInches", () => {
 });
 
 describe("preset source blocks", () => {
-  /** The rocker and foil the founder captured on 2026-09-14 (presets.ts's `shortboard` block) — as
-   * a literal here rather than read from `BOARD_PRESETS`, so a later recapture of the Shortboard
-   * cannot change what this test pins: the FORM of the paste, sixteenths and all. */
-  const captured: { rocker: RockerSpec; foil: FoilSpec } = {
-    rocker: {
-      noseLift: inchesToMm(5.5),
-      tailLift: inchesToMm(2.0625),
-      noseAngle: degrees(30),
-      tailAngle: degrees(26),
-      noseSmoothness: 49,
-      tailSmoothness: 100,
-      noseFlatness: 50,
-      tailFlatness: 44.5,
-    },
-    foil: {
-      noseTip: inchesToMm(0.4375),
-      nose12: inchesToMm(1.375),
-      center: inchesToMm(2.25),
-      tail12: inchesToMm(1.5625),
-      tailTip: inchesToMm(0.9375),
-    },
+  /** The foil the founder captured on 2026-09-14 (presets.ts's `shortboard` block) — as a literal
+   * here rather than read from `BOARD_PRESETS`, so a later recapture of the Shortboard cannot
+   * change what this test pins: the FORM of the paste, sixteenths and all. */
+  const capturedFoil: Pick<FoilSpec, "noseTip" | "center" | "tailTip"> = {
+    noseTip: inchesToMm(0.4375),
+    center: inchesToMm(2.25),
+    tailTip: inchesToMm(0.9375),
   };
 
-  it("the 2026-09-14 Shortboard rocker and foil print in presets.ts's own authoring form, exact sixteenths and all", () => {
-    expect(buildRockerPresetSource(captured.rocker, captured.foil)).toBe(
+  it("the ROCKER capture prints the foil's centre and tips in presets.ts's own authoring form, exact sixteenths and all", () => {
+    const blank = { vendor: "Marko Foam", name: `6'0" M-Regular`, placement: inchesToMm(-0.5625) };
+    expect(buildRockerPresetSource({ foil: capturedFoil, blank })).toBe(
       [
-        "rocker: {",
-        "  noseLift: inchesToMm(5.5),",
-        "  tailLift: inchesToMm(2.0625),",
-        "  noseAngle: degrees(30),",
-        "  tailAngle: degrees(26),",
-        "  noseSmoothness: 49,",
-        "  tailSmoothness: 100,",
-        "  noseFlatness: 50,",
-        "  tailFlatness: 44.5,",
-        "},",
         "foil: {",
         "  noseTip: inchesToMm(0.4375),",
-        "  nose12: inchesToMm(1.375),",
         "  center: inchesToMm(2.25),",
-        "  tail12: inchesToMm(1.5625),",
         "  tailTip: inchesToMm(0.9375),",
         "},",
+        `blank: { vendor: "Marko Foam", name: "6'0\\" M-Regular", placement: inchesToMm(-0.5625) },`,
       ].join("\n"),
     );
-    expect(pasteBlock(buildRockerPresetSource(captured.rocker, captured.foil))).toStrictEqual(captured);
+    expect(pasteBlock(buildRockerPresetSource({ foil: capturedFoil, blank }))).toStrictEqual({ foil: capturedFoil, blank });
+  });
+
+  it("with no blank picked, the capture says so in a comment and pastes back as the foil alone", () => {
+    const source = buildRockerPresetSource({ foil: capturedFoil, blank: null });
+    expect(source.split("\n").at(-1)).toBe("// blank: none picked — this preset would keep its provisional pick");
+    expect(pasteBlock(source)).toStrictEqual({ foil: capturedFoil });
+  });
+
+  it("a blank name carrying quotes, backslashes and an apostrophe pastes back exactly", () => {
+    const blank = { vendor: `US "Blanks"`, name: `11'2"A SUP \\ EPS`, placement: inchesToMm(0) };
+    expect(pasteBlock(buildRockerPresetSource({ foil: capturedFoil, blank }))).toStrictEqual({ foil: capturedFoil, blank });
+  });
+
+  it("every placement on the 1/16\" grid, a foot either way, pastes back as the very same stored number", () => {
+    for (const inches of sliderPositions({ min: -12, max: 12, step: 0.0625 })) {
+      const blank = { vendor: "Marko Foam", name: "6'0\" M-Regular", placement: inchesToMm(inches) };
+      const pasted = pasteBlock(buildRockerPresetSource({ foil: capturedFoil, blank })) as { blank: typeof blank };
+      expect(pasted.blank.placement).toBe(blank.placement);
+    }
   });
 
   it.each(BOARD_PRESETS)("$id: all four blocks, pasted back the way presets.ts reads them, give the same spec to the last bit", (preset) => {
     expect(pasteBlock(buildOutlinePresetSource(preset.outline))).toStrictEqual({ outline: preset.outline });
-    expect(pasteBlock(buildRockerPresetSource(preset.rocker, preset.foil))).toStrictEqual({
-      rocker: preset.rocker,
-      foil: preset.foil,
-    });
+    const foil = { noseTip: preset.foil.noseTip, center: preset.foil.center, tailTip: preset.foil.tailTip };
+    expect(pasteBlock(buildRockerPresetSource({ foil, blank: null }))).toStrictEqual({ foil });
     expect(pasteBlock(buildRailsPresetSource(preset.rails))).toStrictEqual({ rails: preset.rails });
     expect(pasteBlock(buildFinsPresetSource(preset.fins))).toStrictEqual({ fins: preset.fins });
   });
@@ -158,10 +151,8 @@ describe("preset source blocks", () => {
       const outline: OutlineSpec = { ...DEFAULT_BOARD_SPEC.outline, tail: tailPreset.tail };
       expect(pasteBlock(buildOutlinePresetSource(outline))).toStrictEqual({ outline });
     }
-    expect(pasteBlock(buildRockerPresetSource(DEFAULT_ROCKER_SPEC, DEFAULT_FOIL_SPEC))).toStrictEqual({
-      rocker: DEFAULT_ROCKER_SPEC,
-      foil: DEFAULT_FOIL_SPEC,
-    });
+    const foil = { noseTip: DEFAULT_FOIL_SPEC.noseTip, center: DEFAULT_FOIL_SPEC.center, tailTip: DEFAULT_FOIL_SPEC.tailTip };
+    expect(pasteBlock(buildRockerPresetSource({ foil, blank: null }))).toStrictEqual({ foil });
     expect(pasteBlock(buildRailsPresetSource(DEFAULT_RAIL_BAND_SPEC))).toStrictEqual({ rails: DEFAULT_RAIL_BAND_SPEC });
     expect(pasteBlock(buildFinsPresetSource(DEFAULT_FIN_PLACEMENT_SPEC))).toStrictEqual({ fins: DEFAULT_FIN_PLACEMENT_SPEC });
   });
@@ -174,7 +165,6 @@ describe("preset source blocks", () => {
       widePointOffset: inchesToMm(-1.0625),
       tail: { kind: "swallow", endWidth: inchesToMm(8.0625), crotchDepth: inchesToMm(3.1875) },
     };
-    const rocker: RockerSpec = { ...DEFAULT_ROCKER_SPEC, noseLift: inchesToMm(5.1875), tailLift: inchesToMm(2.0625) };
     const foil: FoilSpec = {
       noseTip: inchesToMm(0.4375),
       nose12: inchesToMm(1.4375),
@@ -205,7 +195,9 @@ describe("preset source blocks", () => {
     };
 
     expect(pasteBlock(buildOutlinePresetSource(outline))).toStrictEqual({ outline });
-    expect(pasteBlock(buildRockerPresetSource(rocker, foil))).toStrictEqual({ rocker, foil });
+    const blank = { vendor: "Arctic Foam", name: `6'4" S`, placement: inchesToMm(1.1875) };
+    const captured = { noseTip: foil.noseTip, center: foil.center, tailTip: foil.tailTip };
+    expect(pasteBlock(buildRockerPresetSource({ foil: captured, blank }))).toStrictEqual({ foil: captured, blank });
     expect(pasteBlock(buildRailsPresetSource(rails))).toStrictEqual({ rails });
     expect(pasteBlock(buildFinsPresetSource(fins))).toStrictEqual({ fins });
     expect(buildFinsPresetSource(fins)).toContain("quadRearOffRailOverride: inchesToMm(1.1875),");

@@ -14,8 +14,12 @@
  * in isolation exactly like every other module under lib/geometry/.
  */
 
+import type { BoardBlank } from "./blank";
+import { prepareBlank } from "./blank-fit";
 import type { OutlineSpec } from "./board";
+import { buildBoardProfile } from "./board-profile";
 import type { FoilSpec } from "./foil";
+import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
 import { buildOutline, sampleOutline } from "./outline";
 import { computeRailBands, type RailBandSpec, type RailBandsOutput } from "./rail-bands";
@@ -109,6 +113,11 @@ export interface DesignSummaryFields {
   foil: FoilSpec;
   railsImportFoilThickness: boolean;
   volume: VolumeSpec;
+  /** The hand-set rocker (D-14). Absent reads as `DEFAULT_FALLBACK_ROCKER`; it only shapes the
+   * bottom, never the thickness, so it never moves the litres. */
+  rocker?: FiveStationRocker;
+  /** The board's own copy of its blank (D-01), or null/absent for a hand-set board. */
+  blank?: BoardBlank | null;
 }
 
 /**
@@ -137,14 +146,37 @@ export interface DesignSummary {
 }
 
 /**
- * Composes `buildOutline` -> `deriveEffectiveRails` -> `computeRailBands` -> the three
- * derivations above -> `computeVolume` and `computeCrossSectionVolume` -> `deriveQuotedVolumeLitres`,
- * so a rack card's summary numbers are produced by the exact same pipeline the RAILS and Volume
- * screens show, not a second parallel calculation that could drift from either.
+ * Composes `buildOutline` -> `buildBoardProfile` -> `deriveEffectiveRails` -> `computeRailBands` ->
+ * the three derivations above -> `computeVolume` and `computeCrossSectionVolume` ->
+ * `deriveQuotedVolumeLitres`, so a rack card's summary numbers are produced by the exact same
+ * pipeline the RAILS and Volume screens show, not a second parallel calculation that could drift
+ * from either.
+ *
+ * The side profile is built exactly as the design store builds it (Pattern 5): for a board in a
+ * blank, from the board's OWN copy of that blank's catalogue rows (D-01 — a rack card never reads
+ * the catalogue, so a later catalogue correction can never move a saved board's numbers), with the
+ * RAILS thicknesses read off the blank-scaled foil and the litres integrated along its dense
+ * thickness curve; for a hand-set board, from the stored foil through the five-station curve,
+ * which is exactly what it always was. So a rack card, a preset card and the VOLUME screen quote
+ * one litres figure for the same board.
  */
 export function summarizeDesign(fields: DesignSummaryFields): DesignSummary {
   const outlineGeometry = buildOutline(fields.outline);
-  const effectiveRails = deriveEffectiveRails(fields.rails, fields.foil, fields.railsImportFoilThickness);
+  const { blank } = fields;
+  const profile = buildBoardProfile({
+    length: fields.outline.length,
+    rocker: fields.rocker ?? DEFAULT_FALLBACK_ROCKER,
+    foil: fields.foil,
+    blank: blank
+      ? {
+          prepared: prepareBlank(blank.copy),
+          placement: blank.placement,
+          nose12Offset: blank.nose12Offset,
+          tail12Offset: blank.tail12Offset,
+        }
+      : null,
+  });
+  const effectiveRails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
   const railBands = computeRailBands(effectiveRails);
   const templateValues = deriveTemplateValues(fields.outline, outlineGeometry);
   const railValues = deriveRailValues(railBands);
@@ -152,7 +184,8 @@ export function summarizeDesign(fields: DesignSummaryFields): DesignSummary {
   const volumeResult = computeVolume(effectiveVolume, templateValues, railValues);
   const crossSectionVolume = computeCrossSectionVolume({
     halfWidthAt: (station) => sampleOutline(outlineGeometry, station),
-    foil: fields.foil,
+    foil: profile.effectiveFoil,
+    thicknessAt: profile.thicknessAt,
     rails: effectiveRails,
     length: fields.outline.length,
   });

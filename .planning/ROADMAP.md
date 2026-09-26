@@ -13,7 +13,7 @@ Shaper started from a working prototype (built in Claude Design) that already pr
 - ✅ **v1.0 — the design tool, in inches** — Phases 1–4 (shipped 2026-08-29)
 - ✅ **v1.1 — Imperial vs Metric** — Phases 5–7 (shipped 2026-09-06)
 - ✅ **v1.2 — Rails Finished, Phone Ready** — Phases 8–10 (shipped 2026-09-12)
-- ⏭ **next** — to be defined by `/gsd-new-milestone` (phase numbering continues at 11)
+- 🚧 **v1.3 — Rocker from Real Blanks** — Phase 11 (opened 2026-09-25 on branch `rocker-blanks`; context gathered, not yet planned)
 
 ## Phases
 
@@ -42,6 +42,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8: The Rails Screen, Finished** - The INSTRUCTIONS tab with its named example rail and Flat/Domed toggle, "View Full Sized" at 1:1, the plan and side reference view, and an option to fold the instructions sheet into what gets printed (completed 2026-09-08)
 - [x] **Phase 9: The Design Screens on a Phone** - One shared screen shell stacks the five design screens for a narrow screen, with finger-sized controls and outline, rocker and foil points a thumb can drag (completed 2026-09-09)
 - [x] **Phase 10: The Whole App on a Phone** - Sign-in, presets, the rack and the summary reflowed and touch-sized, with the whole trip walked end to end on real phones (completed 2026-09-12)
+
+**Milestone v1.3 — Rocker from Real Blanks (in progress)**
+
+- [ ] **Phase 11: Rocker from Real Blanks** - The ROCKER screen sets rocker, thickness and foil from a real blank the shaper picks and slides the board along, with the fit checked at every point, the four rocker numbers live and every blank that won't fit shown with why; blank data seeded from the three vendor catalogues
 
 ## Phase Details
 
@@ -108,12 +112,62 @@ decision (D-12) and is recorded as such. Full phase detail archived in
 [`.planning/milestones/v1.2-MILESTONE-AUDIT.md`](milestones/v1.2-MILESTONE-AUDIT.md); phase
 artifacts in [`.planning/milestones/v1.2-phases/`](milestones/v1.2-phases/).
 
+### Milestone v1.3: Rocker from Real Blanks (Phase 11, in progress)
+
+Opened 2026-09-25 on branch `rocker-blanks` from the founder's written brief, which is locked as the phase's spec. The ROCKER screen stops being a hand-drawn curve: a shaper sets a target centre thickness, picks a real blank that fits from the US Blanks, Arctic Foam and Marko Foam catalogues (162 blanks seeded from `db/seed/blanks/`), slides the board along it, and the board's rocker, thickness and foil are read off where it sits in that foam. Requirements and decisions live in the phase directory; nothing lands on `main` until the founder approves the plan.
+
+### Phase 11: Rocker from Real Blanks
+
+**Goal:** A shaper sets a target centre thickness, picks a real blank that fits, slides the board along it, and the board's rocker, thickness and foil are read off where it sits in that foam — the four rocker numbers and the foam to remove shown live, every blank that won't fit shown with why, and a foil that matches the shaper's centre and tip thicknesses; the four named geometry tests land before any UI.
+**Requirements**: locked in `.planning/phases/11-rocker-from-real-blanks/11-SPEC.md` (16 requirements); decisions in `11-CONTEXT.md` (D-01–D-20)
+**Depends on:** Phase 10
+**Success criteria:** the brief's DONE WHEN — pick a blank, slide the board along it, watch the four rocker numbers change live, see which blanks don't fit and why, and get a foil that matches the centre and tip thicknesses — plus the four named tests green before the UI, the seed re-runnable, and every older saved board reopening
+**Plans:** 12/13 plans executed in 7 waves
+
+Plans:
+
+**Wave 1**
+
+- [x] 11-01-PLAN.md — The blank maths, proven against the catalogues first: pchip, the catalogue reader, levelling, the board sitting on the blank, the scaled foil and the fit check — with the brief's four named tests (R3 R4 R7 R8 R9 R10 R11 R12 R13 R14 R16)
+- [x] 11-02-PLAN.md — Two building blocks: a signed "+1/16"" figure for fine-tunes, and the storage rules for the five fit and tip defaults (R2 R5 R15)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 11-03-PLAN.md — Judge every blank for a board (fits, won't fit and why, where the slider lands, the closest blank that fits) and word the reasons in inches and millimetres (R2 R6 R12 R15)
+- [x] 11-04-PLAN.md — One side profile every screen reads; the hand-set five-station rocker; the foil moves onto pchip (litres move by a hair) (R4 R5 R10 R13 R14)
+- [x] 11-05-PLAN.md — The blank catalogue in the database: table, migration, a read that can't break the page, and a re-runnable seed of all 162 blanks (R7 R8 R9)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 11-06-PLAN.md — The five fit and tip defaults saved on the account: columns, migration, server read, one save action (R2 R5 R12)
+- [x] 11-07-PLAN.md — The drawing: the board inside its blank with the foam shaded, measuring points, nothing to drag; the old drag code and old spline retired (R4 R15)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 11-08-PLAN.md — "Fit & Tip Defaults" in the gear menu, on desktop and phone (R2 R5 R15)
+- [x] 11-09-PLAN.md — Saved boards move to version 4 (the blank travels with the board); the store learns about blanks; four hand-set rocker sliders; the DATASHEET shows the blank beside the board (R1 R4 R5 R6 R14)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 11-10-PLAN.md — How a new board starts: presets open in real (provisional) blanks, an untouched board follows the tip defaults, and every litres figure agrees (R5 R13 R14)
+- [x] 11-11-PLAN.md — The ROCKER sidebar in the brief's order: centre thickness, the blank list and search, the flag and the offer, the placement slider with live numbers, tips and the 12" fine-tune (R1 R2 R3 R4 R5 R6 R12 R14 R15)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [x] 11-12-PLAN.md — Browser proof on both phones and the desktop (no network requests while sliding), then the ROCKER and VOLUME screenshots re-recorded once (R3 R4 R6 R14 R15 R16)
+
+**Wave 7** *(blocked on Wave 6 completion — a founder step after the merge is live)*
+
+- [ ] 11-13-PLAN.md — Migrate production and load the blanks from this branch, then merge and deploy, then check the live site (a founder checkpoint; order amended after code review CR-01) (R7 R8 R9)
+
+Cross-cutting constraints: geometry pure and tested under `lib/geometry/` before any screen changes (R16); every conversion through `lib/geometry/units.ts` and every displayed number through `measure-display.ts` (R15); no new dependency and no package.json change (D-20); development-branch migrations inside the plans, production only after the deploy (CLAUDE.md Database); the ROCKER and VOLUME desktop baselines re-recorded once in 11-12, TEMPLATE/RAILS/FINS byte-identical.
+
 ---
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 6 → 7 (v1.1, complete) → 8 → 9 → 10 (v1.2, complete)
+Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 6 → 7 (v1.1, complete) → 8 → 9 → 10 (v1.2, complete) → 11 (v1.3, in progress)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -127,3 +181,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
+| 11. Rocker from Real Blanks | 12/13 | In Progress|  |

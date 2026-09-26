@@ -15,10 +15,17 @@
  *    five-station blank-datasheet model from CONTEXT.md D-05 instead: thickness is defined at
  *    all five stations, including both tips, so a drawn board never comes to a knife edge and the
  *    real tip thicknesses finally replace `volume.ts`'s hard-coded 1/2"/3/8" tip assumptions.
+ * 2. ONE MONOTONE SAMPLER (Phase 11 D-13). The curve through the five stations is now drawn with
+ *    textbook pchip (`lib/geometry/pchip.ts`) — the app's one monotone sampler, the same one a
+ *    real foam blank's rocker, thickness and width go through — instead of the older
+ *    Fritsch–Carlson sampler with its circle-of-radius-three clamp. So a hand-set deck and a deck
+ *    read off a blank are the same maths. Every station still reads its own thickness exactly;
+ *    only the curve between stations moved, by a hair (the default board's cross-section volume
+ *    went from about 29.79 L to 29.94 L).
  */
 
+import { preparePchip, type SplinePoint } from "./pchip";
 import { rockerStationPositions } from "./rocker";
-import { type SplinePoint, sampleMonotoneSpline } from "./monotone-spline";
 import { type Mm, inchesToMm, mm } from "./units";
 
 export type FoilStationKey = "tailTip" | "tail12" | "center" | "nose12" | "noseTip";
@@ -82,14 +89,15 @@ export function foilStationPoints(
 }
 
 /**
- * Samples the deck's thickness at an arbitrary station. Rebuilds the five spline points fresh
- * from `foilStationPoints` and evaluates `sampleMonotoneSpline` — nothing derived is cached, the
- * same posture `sampleRocker` takes.
+ * Samples the board's thickness at an arbitrary station: pchip through the five points from
+ * `foilStationPoints` (D-13). Fitted fresh on every call — five points, cheap — so nothing derived
+ * is cached. Anything that samples the same foil many times (the side profile,
+ * `lib/geometry/board-profile.ts`) prepares the identical curve once instead.
  */
 export function sampleFoil(spec: FoilSpec, length: Mm, station: Mm): Mm {
   const points: SplinePoint[] = foilStationPoints(spec, length).map((p) => ({
     x: p.station,
     y: p.thickness,
   }));
-  return mm(sampleMonotoneSpline(points, station));
+  return mm(preparePchip(points).sample(station));
 }

@@ -36,7 +36,7 @@ import { CardMetadataLine } from "@/components/setup/card-metadata-line";
 import { CardThumbnail } from "@/components/setup/card-thumbnail";
 import { RackCardMenu } from "@/components/setup/rack-card-menu";
 import { buildOutline } from "@/lib/geometry/outline";
-import { summarizeDesign } from "@/lib/geometry/design";
+import { summarizeDesign, type DesignSummary } from "@/lib/geometry/design";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 import { cn } from "@/lib/utils";
 
@@ -82,6 +82,20 @@ function formatLastTouched(date: Date): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+/**
+ * A card's four numbers, or null when they can't be worked out from this board — logged, so the
+ * card is dropped instead of a throw during render taking the whole setup screen down (WR-05; the
+ * server already drops such a saved board through `rackModelsFromRows`, this is belt and braces).
+ */
+function summarizeForCard(label: string, fields: Parameters<typeof summarizeDesign>[0]): DesignSummary | null {
+  try {
+    return summarizeDesign(fields);
+  } catch (error) {
+    console.error(`Shaper: dropped the rack card for ${label} — its numbers could not be worked out`, error);
+    return null;
+  }
+}
+
 export function BoardRackCard(props: BoardRackCardProps) {
   // Called unconditionally regardless of variant (React's rules of hooks) — only the
   // "in-progress" branch below reads from it, since a "saved" card's numbers come from its own
@@ -90,9 +104,20 @@ export function BoardRackCard(props: BoardRackCardProps) {
 
   if (props.variant === "in-progress") {
     const { onSelect, className } = props;
-    const { outline, rails, foil, railsImportFoilThickness, volume, boardName } = design;
+    const { outline, rails, foil, rocker, blank, railsImportFoilThickness, volume, boardName } = design;
     const geometry = buildOutline(outline);
-    const summary = summarizeDesign({ outline, rails, foil, railsImportFoilThickness, volume });
+    // The rocker and the board's own copy of its blank go in too (D-01), so this card builds the
+    // same side profile the VOLUME screen does and quotes the same litres for a board in a blank.
+    const summary = summarizeForCard("the board in progress", {
+      outline,
+      rails,
+      foil,
+      rocker,
+      blank,
+      railsImportFoilThickness,
+      volume,
+    });
+    if (!summary) return null;
     const displayName = boardName.trim().length > 0 ? boardName : "Untitled Board";
 
     return (
@@ -121,8 +146,9 @@ export function BoardRackCard(props: BoardRackCardProps) {
     onDelete = () => {},
     duplicateError = null,
   } = props;
+  const summary = summarizeForCard(`saved board ${model.id}`, model.snapshot);
+  if (!summary) return null;
   const geometry = buildOutline(model.snapshot.outline);
-  const summary = summarizeDesign(model.snapshot);
   const lastTouched = formatLastTouched(model.updatedAt);
 
   return (

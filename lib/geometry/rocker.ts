@@ -46,10 +46,20 @@
  *    for longer before easing toward the centre (a smooth, gradual entry); a LONG handle at low
  *    smoothness pulls the control point far from the peak, concentrating the rise into a sharp,
  *    late kick right at the tip.
+ * 3. THE BEZIER IS MIGRATION-ONLY AS OF PHASE 11 (D-01, D-14). The live rocker is now either a
+ *    real foam blank's own rocker (`lib/geometry/blank-fit.ts`, D-01) or, for a board with no
+ *    blank, the five-station hand-set fallback (`FiveStationRocker` below), drawn through pchip.
+ *    The three-knot Bezier above — `RockerSpec`, `DEFAULT_ROCKER_SPEC`, `buildRocker` and
+ *    `sampleRocker` — survives ONLY to convert boards saved before snapshot version 4 into five
+ *    stations (`bezierToFiveStations`), so a board reopens looking exactly as it was saved. It is
+ *    no longer drawn anywhere once plan 11-09 switches the store over. The founder chose the five
+ *    typed stations knowing that deviation 1's 12" kink can come back with hand-typed values
+ *    (quick task 260829-rda); do not swap the fallback back to the Bezier without asking.
  */
 
 import type { BezierSegment, Point2D } from "./board";
 import { HANDLE_CAP, MEASURE_STATION_MM, OVERSHOOT, railMult } from "./outline";
+import type { SplinePoint } from "./pchip";
 import { type Degrees, type Mm, degrees, inchesToMm, mm } from "./units";
 
 export type RockerStationKey = "tailTip" | "tail12" | "center" | "nose12" | "noseTip";
@@ -112,8 +122,9 @@ export interface RockerSpec {
   tailFlatness: number;
 }
 
-/** Inch-domain bounds every rocker slider, drag solve and typed field shares. One definition,
- * imported everywhere, never restated. Now bounds the two tip lifts only. */
+/** Inch-domain bounds every rocker slider and typed field shares. One definition, imported
+ * everywhere, never restated. Bounds the four hand-set fallback stations (D-14) — nose tip, nose
+ * 12", tail 12" and tail tip. */
 export const ROCKER_LIFT_RANGE_IN = { min: 0, max: 9, step: 0.0625 } as const;
 /** Inch-domain bounds for the nose/tail angle sliders. */
 export const ROCKER_ANGLE_RANGE_DEG = { min: 0, max: 60, step: 1 } as const;
@@ -345,27 +356,68 @@ export function rockerStationPositions(length: Mm): { key: RockerStationKey; sta
 }
 
 /**
- * Migrates a saved design's legacy four-lift rocker object (`noseTip`/`nose12`/`tail12`/
- * `tailTip`) into the current eight-field `RockerSpec`. The tip lifts carry over exactly — a
- * shaper's saved nose-tip and tail-tip rocker never change. The two 12" numbers are dropped
- * because they are no longer stored: they are measured off the curve now, which is the entire
- * point of this migration. The six shape controls come from `DEFAULT_ROCKER_SPEC`, since a legacy
- * snapshot never recorded any curve shape beyond the four lift points.
+ * The hand-set fallback rocker (D-14) — what a board with no blank picked carries. Four typed
+ * lifts; the centre is implied 0 (the rocker's flat reference) and never stored. The curve is
+ * drawn through all five stations with pchip (`lib/geometry/pchip.ts`), the same no-overshoot
+ * sampler a real blank's rocker uses, via `fallbackRockerPoints`.
+ *
+ * This is the founder's explicit choice over the three-knot Bezier (deviation 3 in this file's
+ * header), made knowing quick task 260829-rda's finding that forcing a curve through a typed 12"
+ * station can put a visible kink there. Do not replace it without asking.
  */
-export function migrateLegacyRocker(legacy: {
-  noseTip: number;
-  nose12: number;
-  tail12: number;
-  tailTip: number;
-}): RockerSpec {
+export interface FiveStationRocker {
+  noseTip: Mm;
+  nose12: Mm;
+  tail12: Mm;
+  tailTip: Mm;
+}
+
+/**
+ * A new board's hand-set rocker, authored through `inchesToMm()`: nose tip 4 1/2", nose 12"
+ * 1 1/4", tail 12" 3/8", tail tip 2". These are the Phase-4 figures `DEFAULT_ROCKER_SPEC`'s own
+ * comment says its Bezier shape controls were solved to derive (its 12" read-outs land at about
+ * 1.2503" and 0.3751"), with the same two tip lifts — so a new board's rocker reads the same four
+ * numbers it always has.
+ */
+export const DEFAULT_FALLBACK_ROCKER: FiveStationRocker = {
+  noseTip: inchesToMm(4.5),
+  nose12: inchesToMm(1.25),
+  tail12: inchesToMm(0.375),
+  tailTip: inchesToMm(2),
+};
+
+/**
+ * The five knots the fallback rocker is drawn through, tail to nose, at `rockerStationPositions`'
+ * own five stations (never restated here), with the centre at exactly 0. Feed these to
+ * `preparePchip`: the curve then reads each typed lift exactly at its station, and — pchip being
+ * monotone between knots and every typed lift being at least 0 — it never dips below the centre's
+ * 0, so its lowest point is exactly 0.
+ */
+export function fallbackRockerPoints(rocker: FiveStationRocker, length: Mm): SplinePoint[] {
+  return rockerStationPositions(length).map(({ key, station }) => ({
+    x: station,
+    y: key === "center" ? 0 : rocker[key],
+  }));
+}
+
+/**
+ * Converts a version-3 saved board's three-knot Bezier rocker into the five-station fallback
+ * (Phase 11, the v3 -> v4 migration input): the old curve is built at the board's own length and
+ * read at `rockerStationPositions`, so the reopened board carries the very four numbers its old
+ * curve showed at nose tip, nose 12", tail 12" and tail tip. The tips come back exactly as saved
+ * (the Bezier passes through them); the 12" figures are the curve's own derived read-outs.
+ */
+export function bezierToFiveStations(spec: RockerSpec, length: Mm): FiveStationRocker {
+  const geometry = buildRocker(spec, length);
+  const lifts = new Map<RockerStationKey, Mm>();
+  for (const { key, station } of rockerStationPositions(length)) {
+    lifts.set(key, sampleRocker(geometry, station));
+  }
+  const read = (key: keyof FiveStationRocker): Mm => lifts.get(key) ?? mm(0);
   return {
-    noseLift: mm(legacy.noseTip),
-    tailLift: mm(legacy.tailTip),
-    noseAngle: DEFAULT_ROCKER_SPEC.noseAngle,
-    tailAngle: DEFAULT_ROCKER_SPEC.tailAngle,
-    noseSmoothness: DEFAULT_ROCKER_SPEC.noseSmoothness,
-    tailSmoothness: DEFAULT_ROCKER_SPEC.tailSmoothness,
-    noseFlatness: DEFAULT_ROCKER_SPEC.noseFlatness,
-    tailFlatness: DEFAULT_ROCKER_SPEC.tailFlatness,
+    noseTip: read("noseTip"),
+    nose12: read("nose12"),
+    tail12: read("tail12"),
+    tailTip: read("tailTip"),
   };
 }

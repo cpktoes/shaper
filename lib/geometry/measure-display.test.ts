@@ -12,6 +12,7 @@ import {
   formatMark,
   formatMarkBare,
   formatSignedDim,
+  formatSignedMark,
   measureSlider,
   stationLabel,
   columnUnitSuffix,
@@ -29,6 +30,7 @@ import {
   formatInchesFraction,
   formatSignedInchesFraction,
   formatTenthMm,
+  formatWholeMm,
   inchesToMm,
   mm,
   mmToCentimetres,
@@ -114,6 +116,53 @@ describe("formatSignedDim", () => {
     const negative = formatSignedDim(mm(-25), "metric");
     expect(positive.startsWith("+")).toBe(true);
     expect(negative.charCodeAt(0)).toBe("-".charCodeAt(0));
+  });
+});
+
+describe("formatSignedMark", () => {
+  it("imperial branch is formatSignedInchesFraction, for a nudge up, a nudge down and no nudge", () => {
+    for (const value of [inchesToMm(1 / 16), inchesToMm(-1 / 8), mm(0)]) {
+      expect(formatSignedMark(value, "imperial")).toBe(formatSignedInchesFraction(value));
+    }
+    // The THICKNESS section's "Tweak" hint reads exactly this (11-UI-SPEC copy table).
+    expect(formatSignedMark(inchesToMm(1 / 16), "imperial")).toBe('+1/16"');
+  });
+
+  it("metric prefixes a positive whole-millimetre mark with an ASCII +", () => {
+    const nudge = inchesToMm(1 / 16);
+    expect(formatSignedMark(nudge, "metric")).toBe(`+${formatWholeMm(nudge)} mm`);
+    // The copy table's pairing: +1/16" reads +2 mm in Metric.
+    expect(formatSignedMark(nudge, "metric")).toBe("+2 mm");
+  });
+
+  it("metric keeps the minus on a negative mark rather than doubling it", () => {
+    const nudge = inchesToMm(-1 / 16);
+    expect(formatSignedMark(nudge, "metric")).toBe(`${formatWholeMm(nudge)} mm`);
+    expect(formatSignedMark(nudge, "metric")).toBe("-2 mm");
+  });
+
+  it("metric leaves zero unsigned, mirroring imperial's unsigned 0\"", () => {
+    expect(formatSignedMark(mm(0), "metric")).toBe("0 mm");
+  });
+
+  it("metric signs off the PRINTED value, so a hair off zero prints an unsigned 0 mm", () => {
+    // 0.4 mm and -0.4 mm both round to zero at whole-millimetre precision.
+    expect(formatSignedMark(mm(0.4), "metric")).toBe("0 mm");
+    expect(formatSignedMark(mm(-0.4), "metric")).toBe("0 mm");
+  });
+
+  it("uses ASCII +/-, never a typographic minus", () => {
+    const positive = formatSignedMark(inchesToMm(1 / 16), "metric");
+    const negative = formatSignedMark(inchesToMm(-1 / 16), "metric");
+    expect(positive.startsWith("+")).toBe(true);
+    expect(negative.charCodeAt(0)).toBe("-".charCodeAt(0));
+    expect(formatSignedMark(inchesToMm(-1 / 8), "imperial").charCodeAt(0)).toBe("-".charCodeAt(0));
+  });
+
+  it("R15: a thickness of 2.374 in reads 2 3/8\" while the stored value keeps full precision", () => {
+    const stored = inchesToMm(2.374);
+    expect(formatMark(stored, "imperial")).toBe('2 3/8"');
+    expect(stored.toFixed(4)).toBe("60.2996");
   });
 });
 

@@ -11,7 +11,11 @@ import {
   type VolumeSpec,
   type VolumeTemplateValues,
 } from "./volume";
-import { DEFAULT_FOIL_SPEC, type FoilSpec } from "./foil";
+import { readSeedCatalog } from "@/lib/blanks/seed-files";
+import { prepareBlank } from "./blank-fit";
+import { buildBlankProfile, buildFallbackProfile } from "./board-profile";
+import { DEFAULT_FOIL_SPEC, foilStationPoints, sampleFoil, type FoilSpec } from "./foil";
+import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
 import {
   computeRailBands,
   DEFAULT_RAIL_BAND_SPEC,
@@ -19,7 +23,7 @@ import {
   type RailFamily,
   type RailSectionSpec,
 } from "./rail-bands";
-import { sampleMonotoneSpline, type SplinePoint } from "./monotone-spline";
+import { samplePchip, type SplinePoint } from "./pchip";
 import { cubicMmToLitres, formatInchesFraction, inchesToMm, MM_PER_INCH, type Mm, mm, mmToInches } from "./units";
 import golden from "./__fixtures__/prototype-volume-golden.json";
 import blankDatasheet from "./__fixtures__/blank-datasheet-golden.json";
@@ -502,7 +506,7 @@ describe("blank-datasheet validation (D-14)", () => {
     { x: blankLength - MEASURE_STATION_MM, y: inchesToMm(nose12WidthIn) / 2 },
     { x: blankLength, y: inchesToMm(noseTipWidthIn) / 2 },
   ];
-  const blankHalfWidthAt = (station: Mm): Mm => mm(sampleMonotoneSpline(halfWidthPoints, station));
+  const blankHalfWidthAt = (station: Mm): Mm => mm(samplePchip(halfWidthPoints, station));
 
   // A blank is uncut foam with square-ish edges, so pick the fullest rail treatment the calculator
   // can produce: full deck (deckPercent 100, undomed), no corner cut removed AND a single tuck
@@ -544,11 +548,13 @@ describe("blank-datasheet validation (D-14)", () => {
   // Measured by running this suite: Family 1 produced the largest centre-station cross-section
   // (deckPercent 100, removeCornerCut true, singleTuck true) at 53104.7 mm2 — the fullest of the
   // five families, as expected since Family 1 is this calculator's boxiest rail profile. Using
-  // Family 1 for the whole board, the computed volume is 77.95 L against the datasheet's stated
-  // 77.17 L — a 1.01% deviation, comfortably inside the 10% bar. The remaining gap is exactly what
-  // the 10% tolerance exists for: the app's boxiest rail band is still a shaped rail rather than a
-  // blank's true square edge, and the plan curve between the five quoted widths is a monotone
-  // spline rather than the blank's true outline curve.
+  // Family 1 for the whole board, the computed volume is 78.85 L against the datasheet's stated
+  // 77.17 L — a 2.17% deviation, comfortably inside the 10% bar. (Re-measured in Phase 11 plan
+  // 11-04, when the foil and this test's plan curve moved onto pchip; it read 77.95 L, 1.01%, on
+  // the older Fritsch–Carlson sampler.) The remaining gap is exactly what the 10% tolerance exists
+  // for: the app's boxiest rail band is still a shaped rail rather than a blank's true square edge,
+  // and the plan curve between the five quoted widths is a pchip curve rather than the blank's true
+  // outline curve.
   it("lands within 10% of the Arctic Foam 7'3\" SBF's stated 77.17 L using the fullest rail treatment", () => {
     const result = computeCrossSectionVolume({
       halfWidthAt: blankHalfWidthAt,
@@ -560,5 +566,92 @@ describe("blank-datasheet validation (D-14)", () => {
     // Do NOT widen this tolerance if it fails — a figure that far off means the method needs
     // fixing, not the bar.
     expect(deviation).toBeLessThan(0.1);
+  });
+});
+
+describe("thicknessAt — one thickness curve for every board", () => {
+  const outline = DEFAULT_BOARD_SPEC.outline;
+  const length = outline.length;
+  const outlineGeometry = buildOutline(outline);
+  const halfWidthAt = (station: Mm) => sampleOutline(outlineGeometry, station);
+  const foil = DEFAULT_FOIL_SPEC;
+  const rails = DEFAULT_RAIL_BAND_SPEC;
+
+  it("sampleFoil is pchip through the five foil stations, everywhere along the board (D-13)", () => {
+    const points: SplinePoint[] = foilStationPoints(foil, length).map((p) => ({ x: p.station, y: p.thickness }));
+    const mismatches: number[] = [];
+    for (let s = 0; s <= length; s += inchesToMm(0.125)) {
+      if (sampleFoil(foil, length, mm(s)) !== samplePchip(points, s)) mismatches.push(s);
+    }
+    expect(mismatches).toEqual([]);
+    for (const { station, thickness } of foilStationPoints(foil, length)) {
+      expect(sampleFoil(foil, length, station)).toBe(thickness);
+    }
+  });
+
+  it("with no thicknessAt, integrates exactly what sampleFoil and the hand-set side profile draw", () => {
+    const plain = computeCrossSectionVolume({ halfWidthAt, foil, rails, length });
+    const viaSampleFoil = computeCrossSectionVolume({
+      halfWidthAt,
+      foil,
+      rails,
+      length,
+      thicknessAt: (s) => sampleFoil(foil, length, s),
+    });
+    const viaProfile = computeCrossSectionVolume({
+      halfWidthAt,
+      foil,
+      rails,
+      length,
+      thicknessAt: buildFallbackProfile(DEFAULT_FALLBACK_ROCKER, foil, length).thicknessAt,
+    });
+    expect(viaSampleFoil.volumeMm3).toBe(plain.volumeMm3);
+    expect(viaProfile.volumeMm3).toBe(plain.volumeMm3);
+  });
+
+  it("integrates a blank-derived foil as drawn, not re-splined from its five stations", () => {
+    const record = readSeedCatalog().find((b) => b.vendor === "Marko Foam" && b.name === `6'0" M-Regular`);
+    if (!record) throw new Error(`Marko Foam 6'0" M-Regular is not in the seeded catalogue`);
+    const boardLength = inchesToMm(70);
+    const boardGeometry = buildOutline({ ...outline, length: boardLength });
+    const boardHalfWidthAt = (station: Mm) => sampleOutline(boardGeometry, station);
+    const profile = buildBlankProfile(
+      prepareBlank(record),
+      {
+        length: boardLength,
+        centerThickness: foil.center,
+        noseTip: foil.noseTip,
+        tailTip: foil.tailTip,
+        nose12Offset: mm(0),
+        tail12Offset: mm(0),
+      },
+      mm(0),
+    );
+
+    const dense = computeCrossSectionVolume({
+      halfWidthAt: boardHalfWidthAt,
+      foil: profile.effectiveFoil,
+      rails,
+      length: boardLength,
+      thicknessAt: profile.thicknessAt,
+    });
+    const resplined = computeCrossSectionVolume({
+      halfWidthAt: boardHalfWidthAt,
+      foil: profile.effectiveFoil,
+      rails,
+      length: boardLength,
+    });
+
+    expect(dense.volumeMm3).not.toBe(resplined.volumeMm3);
+    // Station by station, what was integrated is the profile's own curve: a board station where
+    // the two thicknesses differ gives a different cross-section.
+    const h = boardLength / SIMPSON_PANEL_COUNT;
+    const differing = dense.stationAreas.filter((area, i) => {
+      const station = mm(i * h);
+      const drawn = profile.thicknessAt(station);
+      const resplinedThickness = sampleFoil(profile.effectiveFoil, boardLength, station);
+      return drawn !== resplinedThickness && area !== resplined.stationAreas[i];
+    });
+    expect(differing.length).toBeGreaterThan(0);
   });
 });

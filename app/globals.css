@@ -747,6 +747,13 @@
      handles — so it carries the accent like everything else interactive. */
   --outline-construction: var(--surf-accent-ink);
   --outline-station-line: color-mix(in srgb, var(--surf-ink-muted) 36%, transparent); /* faint: stringer, stations, leaders, extension lines — 36% of the muted token keeps the construction lines behind the board outline */
+  /* The ROCKER drawing's blank (Phase 11, D-15) — two weights of the same muted ink, no new hue.
+     The blank is a real object, not a reference line, so its outline is solid (never dashed) and
+     heavier than the station lines above, yet still well behind the board's own 2px ink outline.
+     The shade fills the blank's side silhouette; the board paints over it opaquely, so the only
+     shade left showing is the foam to come off. */
+  --outline-blank-line: color-mix(in srgb, var(--surf-ink-muted) 60%, transparent); /* the blank's side silhouette — solid, 1px */
+  --outline-foam-shade: color-mix(in srgb, var(--surf-ink-muted) 24%, transparent); /* the foam to come off */
   --outline-ink: var(--surf-ink);
 
   /* Callout-system tokens (sketches 001-004, see .planning/sketches/MANIFEST.md).

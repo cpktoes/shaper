@@ -1,0 +1,256 @@
+/**
+ * The board's side profile (Phase 11, Pattern 5) — ONE description of the board seen from the
+ * side, whether it sits in a real foam blank or is still hand-set, read by every consumer: the
+ * ROCKER drawing, the DATASHEET, RAILS (through `effectiveFoil`), the cross-section volume
+ * (through `thicknessAt`) and the Summary.
+ *
+ * - A board with no blank (D-14) draws its rocker through the five hand-set stations and its foil
+ *   through the five stored thicknesses, both on pchip. Its `effectiveFoil` is the stored foil
+ *   exactly and its `stationRocker` the typed rocker exactly, so nothing RAILS shows moves for a
+ *   board without a blank.
+ * - A board in a blank (D-01, D-10–D-18) reads its rocker and foil off `boardOnBlank`, and also
+ *   carries the blank's own silhouette in the board's coordinates, the foam to come off at each
+ *   station and the blank's own numbers under each station (the DATASHEET's blank rows).
+ *
+ * In both, the deck is DERIVED (R10): `deckAt(s)` is exactly `rockerAt(s) + thicknessAt(s)`, never
+ * a third interpolated curve. Every curve is prepared once when the profile is built and only
+ * sampled afterwards (R14); a blank is prepared once per blank copy (`prepareBlank`) before it
+ * gets here, so building a profile never refits the catalogue's raw stations.
+ *
+ * Stations are measured from the board's tail tip (0) to its nose tip (`length`), in millimetres.
+ *
+ * No React/browser/database import — pure geometry, unit-tested in board-profile.test.ts, per
+ * CLAUDE.md Rule 1.
+ */
+import type { BlankRecord } from "./blank";
+import {
+  boardOnBlank,
+  levelCurve,
+  type BoardOnBlank,
+  type BoardOnBlankInput,
+  type PreparedBlank,
+} from "./blank-fit";
+import { type FoilSpec, type FoilStationKey, foilStationPoints } from "./foil";
+import { preparePchip } from "./pchip";
+import { type FiveStationRocker, fallbackRockerPoints, rockerStationPositions } from "./rocker";
+import { type Mm, mm } from "./units";
+
+/** A board's blank as the side view and the DATASHEET need it — every station in the BOARD's
+ * coordinates (0 = the board's tail tip). */
+export interface BlankSideView {
+  /** The blank the board sits in (the prepared blank's private copy of it). */
+  record: BlankRecord;
+  /** The placement actually used — the requested one clamped into range on read. */
+  placement: Mm;
+  /** The board laid on the blank, for anything that needs a curve this view doesn't carry. */
+  onBlank: BoardOnBlank;
+  /** Where the blank's tail tip falls in board coordinates (negative when it overhangs the tail). */
+  start: Mm;
+  /** Where the blank's nose tip falls in board coordinates: `start` + the blank's length. */
+  end: Mm;
+  /** The blank's bottom, levelled exactly as the board's rocker is — so along the board it IS the
+   * board's bottom. */
+  bottomAt(s: Mm): Mm;
+  /** The blank's deck: its bottom plus its own thickness there. */
+  deckAt(s: Mm): Mm;
+  /** The blank-scaled 12" thicknesses before any fine-tune (D-11). */
+  derived12: { nose12: Mm; tail12: Mm };
+  /** Foam to come off at each of the board's five stations: the blank's thickness there minus the
+   * board's (R4). Below zero means the board pokes out of the blank there. */
+  foamOff: Record<FoilStationKey, Mm>;
+  /** The blank's own rocker (levelled on the blank's own low point), thickness and full width at
+   * the point under each of the board's five stations — the DATASHEET's blank rows (D-16). */
+  blankAtStations: Record<FoilStationKey, { rocker: Mm; thickness: Mm; width: Mm }>;
+  /** Every station the catalogue measured for rocker and for thickness, tail to nose, in board
+   * coordinates — the measuring-points overlay's blank dots (D-15). */
+  measuredStations: { rocker: Mm[]; thickness: Mm[] };
+}
+
+/** The one side profile every screen reads (Pattern 5). */
+export interface BoardSideProfile {
+  length: Mm;
+  /** The board's bottom rocker, levelled so its lowest point reads 0. */
+  rockerAt(s: Mm): Mm;
+  /** The board's final thickness. */
+  thicknessAt(s: Mm): Mm;
+  /** The deck: exactly `rockerAt(s) + thicknessAt(s)` (R10). */
+  deckAt(s: Mm): Mm;
+  /** The board's five stations, tail to nose. */
+  stations: { key: FoilStationKey; station: Mm }[];
+  /** The rocker at the five stations. */
+  stationRocker: Record<FoilStationKey, Mm>;
+  /** The thickness at the five stations — what RAILS reads. */
+  effectiveFoil: FoilSpec;
+  /** The blank the board sits in, or null for a hand-set board. */
+  blank: BlankSideView | null;
+}
+
+function stationRecord<T>(
+  stations: { key: FoilStationKey; station: Mm }[],
+  read: (station: Mm) => T,
+): Record<FoilStationKey, T> {
+  const out = {} as Record<FoilStationKey, T>;
+  for (const { key, station } of stations) out[key] = read(station);
+  return out;
+}
+
+/**
+ * The hand-set profile (D-14): the rocker through the five typed stations (levelled over the
+ * board, which leaves it untouched — every typed lift is at least the centre's 0, so the curve's
+ * lowest point is already exactly 0), the foil through the five stored thicknesses, both pchip.
+ */
+export function buildFallbackProfile(rocker: FiveStationRocker, foil: FoilSpec, length: Mm): BoardSideProfile {
+  const rockerCurve = levelCurve(preparePchip(fallbackRockerPoints(rocker, length)), 0, length);
+  const foilCurve = preparePchip(
+    foilStationPoints(foil, length).map((point) => ({ x: point.station, y: point.thickness })),
+  );
+  const rockerAt = (s: Mm) => mm(rockerCurve.sample(s));
+  const thicknessAt = (s: Mm) => mm(foilCurve.sample(s));
+
+  return {
+    length,
+    rockerAt,
+    thicknessAt,
+    deckAt: (s) => mm(rockerAt(s) + thicknessAt(s)),
+    stations: rockerStationPositions(length),
+    stationRocker: {
+      tailTip: rocker.tailTip,
+      tail12: rocker.tail12,
+      center: mm(0),
+      nose12: rocker.nose12,
+      noseTip: rocker.noseTip,
+    },
+    effectiveFoil: { ...foil },
+    blank: null,
+  };
+}
+
+/**
+ * The profile of a board laid on a prepared blank at `placement` (clamped on read, never written
+ * back). Rocker and thickness come straight from `boardOnBlank`, sampled densely wherever they are
+ * read — never re-splined from five stations (Anti-Patterns). The five station numbers are read
+ * off those same curves.
+ */
+export function buildBlankProfile(
+  prepared: PreparedBlank,
+  board: BoardOnBlankInput,
+  placement: Mm,
+): BoardSideProfile {
+  const onBlank = boardOnBlank(prepared, board, placement);
+  const length = board.length;
+  const stations = rockerStationPositions(length);
+  const rockerAt = (s: Mm) => mm(onBlank.rockerAt(s));
+  const thicknessAt = (s: Mm) => mm(onBlank.thicknessAt(s));
+
+  const start = mm(length / 2 - prepared.lengthMm / 2 - onBlank.placement);
+  const measured = (pick: (station: BlankRecord["stations"][number]) => Mm | null) =>
+    prepared.record.stations.filter((station) => pick(station) !== null).map((station) => mm(start + station.fromTailMm));
+
+  // The board's rocker is the blank's rocker less the crop's own low point — the same curve, so
+  // the blank's bottom under the board is read through it, and the two coincide to the last bit
+  // (equal to `blankRockerAt(s) − cropMinimum`, Pattern 3, up to float rounding).
+  const bottomAt = (s: Mm) => mm(onBlank.rockerAt(s));
+  const tail12 = stations.find((station) => station.key === "tail12")!.station;
+  const nose12 = stations.find((station) => station.key === "nose12")!.station;
+
+  const blank: BlankSideView = {
+    record: prepared.record,
+    placement: onBlank.placement,
+    onBlank,
+    start,
+    end: mm(start + prepared.lengthMm),
+    bottomAt,
+    deckAt: (s) => mm(bottomAt(s) + onBlank.blankThicknessAt(s)),
+    derived12: {
+      nose12: mm(onBlank.derivedThicknessAt(nose12)),
+      tail12: mm(onBlank.derivedThicknessAt(tail12)),
+    },
+    foamOff: stationRecord(stations, (s) => mm(onBlank.blankThicknessAt(s) - thicknessAt(s))),
+    blankAtStations: stationRecord(stations, (s) => ({
+      rocker: mm(onBlank.blankRockerAt(s)),
+      thickness: mm(onBlank.blankThicknessAt(s)),
+      width: mm(onBlank.blankWidthAt(s)),
+    })),
+    measuredStations: {
+      rocker: measured((station) => station.rockerMm),
+      thickness: measured((station) => station.thicknessMm),
+    },
+  };
+
+  return {
+    length,
+    rockerAt,
+    thicknessAt,
+    deckAt: (s) => mm(rockerAt(s) + thicknessAt(s)),
+    stations,
+    stationRocker: stationRecord(stations, rockerAt),
+    effectiveFoil: stationRecord(stations, thicknessAt),
+    blank,
+  };
+}
+
+/**
+ * What "Remove This Blank" (UI-SPEC §7) leaves behind: the hand-set rocker and foil seeded from the
+ * board's profile as it is on screen at that moment, so the five station numbers do not move.
+ *
+ * - Rocker: the four lifts are the profile's rocker at those stations LESS its centre rocker. The
+ *   hand-set rocker's centre is 0 by definition (D-14), and a board in a blank can have a non-zero
+ *   centre rocker (its crop's low point need not sit at the centre, e.g. at an off-centre
+ *   placement), so each lift is rebased on the centre rather than copied — the board keeps the
+ *   same shape at the five stations, with its centre as the zero.
+ * - Foil: the two 12" thicknesses are the profile's FINAL ones (blank-derived plus any fine-tune),
+ *   read off `effectiveFoil`. The centre and both tips stay the stored foil's own — they already
+ *   are what the blank profile reads there, and `foil.center` stays the one stored centre.
+ *
+ * Between the stations the hand-set curve is pchip through these five numbers, not the blank's
+ * dense curve, so the drawing between stations (and the litres, a little) can move. That is what
+ * the sidebar's hint says.
+ */
+export function handSetFromProfile(
+  profile: BoardSideProfile,
+  foil: FoilSpec,
+): { rocker: FiveStationRocker; foil: FoilSpec } {
+  const { stationRocker, effectiveFoil } = profile;
+  const centre = stationRocker.center;
+  return {
+    rocker: {
+      noseTip: mm(stationRocker.noseTip - centre),
+      nose12: mm(stationRocker.nose12 - centre),
+      tail12: mm(stationRocker.tail12 - centre),
+      tailTip: mm(stationRocker.tailTip - centre),
+    },
+    foil: { ...foil, nose12: effectiveFoil.nose12, tail12: effectiveFoil.tail12 },
+  };
+}
+
+/** What `buildBoardProfile` needs: the board's hand-set rocker and stored foil, and its blank. */
+export interface BoardProfileInput {
+  length: Mm;
+  /** The hand-set rocker — used only when there is no blank. */
+  rocker: FiveStationRocker;
+  /** The stored foil. With a blank, only `center` and the two tips are read. */
+  foil: FoilSpec;
+  blank: { prepared: PreparedBlank; placement: Mm; nose12Offset: Mm; tail12Offset: Mm } | null;
+}
+
+/**
+ * The board's side profile, whichever kind of board it is. With a blank, the foil's centre is the
+ * target thickness and its two tips the tip settings; the foil's stored 12" values are the
+ * hand-set fallback's own and are ignored while a blank is picked.
+ */
+export function buildBoardProfile(input: BoardProfileInput): BoardSideProfile {
+  const { length, rocker, foil, blank } = input;
+  if (!blank) return buildFallbackProfile(rocker, foil, length);
+  return buildBlankProfile(
+    blank.prepared,
+    {
+      length,
+      centerThickness: foil.center,
+      noseTip: foil.noseTip,
+      tailTip: foil.tailTip,
+      nose12Offset: blank.nose12Offset,
+      tail12Offset: blank.tail12Offset,
+    },
+    blank.placement,
+  );
+}
