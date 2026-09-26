@@ -45,6 +45,16 @@ function pickedCard(page: Page): Locator {
 async function openRocker(page: Page) {
   await page.goto("/design/rocker");
   await expect(blankList(page)).toBeVisible({ timeout: 30_000 });
+  // The list streams in server-rendered, inside its own Suspense boundary, and becomes live only
+  // once React hydrates that boundary. A keystroke or tap before then is lost (WebKit showed it: a
+  // search typed too early came back empty), so wait until React owns the first row and the box.
+  await page.waitForFunction(() => {
+    const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+    return (
+      owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
+      owned(document.querySelector('input[aria-label="Search blanks"]'))
+    );
+  });
 }
 
 /** Picks the first fitting blank and returns its name as the page shows it. */
@@ -76,10 +86,13 @@ test.describe("ROCKER — a real blank from the list", () => {
 
     await search.fill("Marko");
     const rows = blankList(page).locator("li[data-group] button");
-    await expect(rows.first()).toBeVisible();
-    const labels = await rows.evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label") ?? ""));
-    expect(labels.length).toBeGreaterThan(0);
-    for (const label of labels) expect(label).toContain("Marko");
+    // Polled: the list is already on screen before the keystrokes land, so wait for the filter.
+    await expect
+      .poll(async () => {
+        const labels = await rows.evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label") ?? ""));
+        return labels.length > 0 && labels.every((label) => label.includes("Marko"));
+      })
+      .toBe(true);
 
     await search.fill("zzz");
     await expect(page.getByText('No blanks match "zzz".')).toBeVisible();
@@ -118,13 +131,92 @@ test.describe("ROCKER — a real blank from the list", () => {
   });
 });
 
+/** The page's first control: the board's one centre thickness, typed. */
+async function typeCenterThickness(page: Page, value: string) {
+  const field = page.getByRole("textbox", { name: "Center Thickness" });
+  await field.click();
+  await field.fill(value);
+  await field.press("Enter");
+}
+
 /**
  * Raises the board's one centre thickness from the default 2 1/2" to 3 1/2" — thicker than the
  * shortest fitting blank can carry with the default spare thickness, so that pick stops fitting.
  */
 async function raiseCenterThickness(page: Page) {
-  const center = page.getByText(/^Center — /).locator("xpath=..").getByRole("slider");
-  await center.focus();
-  for (let i = 0; i < 16; i++) await center.press("ArrowRight");
-  await expect(page.getByText('Center — 3 1/2"')).toBeVisible();
+  await typeCenterThickness(page, "3 1/2");
+  await expect(page.getByRole("textbox", { name: "Center Thickness" })).toHaveValue('3 1/2"');
 }
+
+/** A `SliderRow`'s slider, found by the start of its label line. */
+function sliderUnder(page: Page, label: RegExp): Locator {
+  return page.getByText(label).locator("xpath=..").getByRole("slider");
+}
+
+test.describe("ROCKER — centre, placement, live numbers and the 12\" fine-tune", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissChrome(page);
+  });
+
+  test("the placement slider waits for a blank, then slides the board toward the nose with no network request", async ({
+    page,
+  }) => {
+    await openRocker(page);
+    await expect(page.getByText("Placement — pick a blank first")).toBeVisible();
+    await expect(page.locator("[data-readouts]")).toHaveCount(0);
+
+    await pickFirstFittingBlank(page);
+    await expect(page.getByText("Placement — centered")).toBeVisible();
+    const readouts = page.locator("[data-readouts]");
+    await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
+    const noseTipBefore = await readouts.locator('[data-readout-row="noseTip"]').innerText();
+
+    // R14: sliding the board samples the prepared fit in the browser — nothing goes to the server.
+    const origin = new URL(page.url()).origin;
+    let requests = 0;
+    page.on("request", (request) => {
+      if (request.url().startsWith(origin)) requests += 1;
+    });
+
+    const placement = sliderUnder(page, /^Placement — /);
+    await placement.focus();
+    await placement.press("ArrowLeft");
+    await placement.press("ArrowLeft");
+    await expect(page.getByText(/^Placement — .+ toward nose$/)).toBeVisible();
+    await expect(readouts.locator('[data-readout-row="noseTip"]')).not.toHaveText(noseTipBefore);
+    await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
+    expect(requests).toBe(0);
+  });
+
+  test("a 12\" fine-tune reads From blank and Tweak, and Reset Fine-Tune brings back No tweak", async ({ page }) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    // With a blank picked the hand-set ROCKER section steps aside (the rocker comes off the blank).
+    await expect(page.getByRole("button", { name: /^Rocker\s*[▾▸]$/ })).toHaveCount(0);
+
+    const nose12Row = page.getByText(/^Nose @ 12" — /).locator("xpath=..");
+    await expect(nose12Row).toContainText("From blank ");
+    await expect(nose12Row).toContainText("No tweak");
+    const reset = page.getByRole("button", { name: "↺ Reset Fine-Tune" });
+    await expect(reset).toHaveAttribute("aria-disabled", "true");
+
+    await nose12Row.getByRole("slider").focus();
+    await nose12Row.getByRole("slider").press("ArrowRight");
+    await expect(nose12Row).toContainText('Tweak +1/16"');
+    await expect(reset).not.toHaveAttribute("aria-disabled", "true");
+
+    await reset.click();
+    await expect(nose12Row).toContainText("No tweak");
+    await expect(reset).toHaveAttribute("aria-disabled", "true");
+  });
+
+  test("Center Thickness is the board's one centre — RAILS reads the typed value", async ({ page }) => {
+    await openRocker(page);
+    await typeCenterThickness(page, "2 3/4");
+    await expect(page.getByRole("textbox", { name: "Center Thickness" })).toHaveValue('2 3/4"');
+
+    await page.getByRole("link", { name: "RAILS", exact: true }).filter({ visible: true }).first().click();
+    await expect(page).toHaveURL(/\/design\/rails/);
+    await expect(page.getByText('Board Thickness — 2 3/4"')).toBeVisible();
+  });
+});

@@ -360,6 +360,8 @@ describe("the design screens read every measurement through the display boundary
     { file: "components/rocker/blank-picker.tsx", converted: true },
     // 11-11 (R15): the fit flag and its offer — reasons, floor shortfalls and the offer's length.
     { file: "components/rocker/blank-flag.tsx", converted: true },
+    // 11-11 (R3, R4, R15): the placement slider and the live rocker / foam-off readouts.
+    { file: "components/rocker/board-on-blank.tsx", converted: true },
   ];
 
   const OUT_OF_SCOPE_UNITS_FILES: { file: string; reason: string }[] = [

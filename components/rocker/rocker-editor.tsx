@@ -83,13 +83,26 @@ const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
 ];
 
 export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }) {
-  const { rocker, updateRocker, foil, updateFoil, blank, sideProfile, outline, outlineGeometry } = useDesign();
+  const {
+    rocker,
+    updateRocker,
+    foil,
+    updateFoil,
+    blank,
+    sideProfile,
+    outline,
+    outlineGeometry,
+    setFineTune,
+    resetFineTune,
+  } = useDesign();
   const { system } = useUnits();
   // The drawing and the DATASHEET both read the store's ONE side profile (Phase 11, Pattern 5) —
   // the same object RAILS and VOLUME read — built from the board's blank when one is picked and
   // from the four hand-set rocker stations when not (D-14). Nothing here builds a curve of its own.
   const [sectionOpen, setSectionOpen] = useState<Record<RockerControlsSectionKey, boolean>>({
+    center: true,
     blank: true,
+    boardOnBlank: true,
     rocker: true,
     thickness: true,
   });
@@ -193,8 +206,12 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
             blanks={blanks}
             rocker={rocker}
             foil={foil}
+            blank={blank}
+            sideProfile={sideProfile}
             onChangeRocker={updateRocker}
             onChangeFoil={updateFoil}
+            onFineTune={setFineTune}
+            onResetFineTune={resetFineTune}
             sectionOpen={sectionOpen}
             onToggleSectionOpen={toggleSection}
           />
