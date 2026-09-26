@@ -122,7 +122,7 @@ Opened 2026-09-25 on branch `rocker-blanks` from the founder's written brief, wh
 **Requirements**: locked in `.planning/phases/11-rocker-from-real-blanks/11-SPEC.md` (16 requirements); decisions in `11-CONTEXT.md` (D-01–D-20)
 **Depends on:** Phase 10
 **Success criteria:** the brief's DONE WHEN — pick a blank, slide the board along it, watch the four rocker numbers change live, see which blanks don't fit and why, and get a foil that matches the centre and tip thicknesses — plus the four named tests green before the UI, the seed re-runnable, and every older saved board reopening
-**Plans:** 11/13 plans executed in 7 waves
+**Plans:** 12/13 plans executed in 7 waves
 
 Plans:
 
@@ -154,7 +154,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 11-12-PLAN.md — Browser proof on both phones and the desktop (no network requests while sliding), then the ROCKER and VOLUME screenshots re-recorded once (R3 R4 R6 R14 R15 R16)
+- [x] 11-12-PLAN.md — Browser proof on both phones and the desktop (no network requests while sliding), then the ROCKER and VOLUME screenshots re-recorded once (R3 R4 R6 R14 R15 R16)
 
 **Wave 7** *(blocked on Wave 6 completion — a founder step after the merge is live)*
 
@@ -181,4 +181,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
-| 11. Rocker from Real Blanks | 11/13 | In Progress|  |
+| 11. Rocker from Real Blanks | 12/13 | In Progress|  |
