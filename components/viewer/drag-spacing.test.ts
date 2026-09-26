@@ -1,13 +1,14 @@
 /**
  * The committed measurement behind the phone hit-zone radii (D-15, PHON-04) — not a one-off script
  * run once at planning time, but a test that re-derives the numbers on every `npm test` and fails
- * loudly if the outline/rocker geometry, either viewer's own frame constants, or the locked radii
+ * loudly if the outline geometry, the outline viewer's own frame constants, or the locked radius
  * below ever drift into overlap.
  *
- * The question this file answers: on a real phone, at TEMPLATE and ROCKER's shared 66dvh pinned
- * ceiling (UI-SPEC's own "Thumb drag" table, D-18), how far apart do the outline's five drag points
- * and the rocker's four curve handles actually land on screen — and does a 44px-diameter (22px
- * radius) touch target still fit between the closest pair without the two circles overlapping?
+ * The question this file answers: on a real phone, at TEMPLATE's 66dvh pinned ceiling (UI-SPEC's
+ * own "Thumb drag" table, D-18), how far apart do the outline's five drag points actually land on
+ * screen — and does a 44px-diameter (22px radius) touch target still fit between the closest pair
+ * without the two circles overlapping? (It asked the same of the rocker's four curve handles until
+ * Phase 11 retired them — see the last paragraph of this comment.)
  *
  * Two devices, both from the UI-SPEC's own reference set: an iPhone SE (375x667, the narrowest
  * phone this app targets) and an iPhone 14 (390x844, a taller/wider one). The pinned area's own
@@ -21,22 +22,22 @@
  *
  * The outline case uses the tightest realistic board a shaper can build — the shortest length paired
  * with the widest widepoint (`BOARD_LENGTH_RANGE_IN`/`WIDEPOINT_WIDTH_RANGE_IN`) — because a short,
- * wide board is what pulls the five drag points closest together on screen. The rocker case has no
- * equivalent "tightest" board (its four handles' spacing does not depend on length or widepoint the
- * same way), so it uses the default board, exactly as `rocker-editor.tsx` renders it.
+ * wide board is what pulls the five drag points closest together on screen.
+ *
+ * The rocker half of this file retired with D-14 (Phase 11): the rocker drawing's four curve
+ * handles went with the three-knot Bezier they steered, so there is nothing on that drawing to
+ * space any more. Its describe below now proves exactly that, and that the touch target which
+ * replaces them — the thumb of the sidebar's placement slider — carries the shared slider thumb's
+ * own 44px touch ring.
  */
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, WIDEPOINT_WIDTH_RANGE_IN, type OutlineSpec } from "@/lib/geometry/board";
-import { FOIL_THICKNESS_RANGE_IN } from "@/lib/geometry/foil";
 import { buildOutline } from "@/lib/geometry/outline";
 import { OUTLINE_DRAG_HIT_COARSE_PX, OUTLINE_DRAG_HIT_PX, outlineDragPoints } from "@/lib/geometry/outline-drag";
-import { ROCKER_LIFT_RANGE_IN, buildRocker } from "@/lib/geometry/rocker";
-import { SIDE_PROFILE_DRAG_HIT_COARSE_PX, SIDE_PROFILE_DRAG_HIT_PX, sideProfileDragPoints } from "@/lib/geometry/rocker-drag";
 import { MM_PER_INCH, inchesToMm, mmToInches } from "@/lib/geometry/units";
 import { outlineViewFrame } from "@/components/viewer/callout-primitives";
-import { rockerViewLayout } from "@/components/rocker/rocker-view-frame";
 
 /**
  * `outline-viewer.tsx` keeps its own frame constants module-private (`VIEW_W`/`VIEW_H`/`PAD_Y`),
@@ -79,21 +80,14 @@ function outlineFrame(spec: OutlineSpec) {
   return { geometry, scale, frame };
 }
 
-/** The rocker's own worst-case deck reserve — mirrors `rocker-viewer.tsx`'s `worstCaseDeckIn`,
- * which is what `stationRails: "full"` (the editor's own mode) always uses. */
-const ROCKER_MAX_DECK_IN = ROCKER_LIFT_RANGE_IN.max + FOIL_THICKNESS_RANGE_IN.max;
-const ROCKER_LENGTH_IN = mmToInches(DEFAULT_BOARD_SPEC.outline.length);
-/** The exact inputs `rocker-editor.tsx` passes for its VIEWER tab, forced to `orientation:
- * "vertical"` — D-09's nose-up reading is what a portrait phone renders, not the editor's own
- * default `"horizontal"` starting state. */
-const ROCKER_LAYOUT = rockerViewLayout({
-  lengthIn: ROCKER_LENGTH_IN,
-  maxDeckIn: ROCKER_MAX_DECK_IN,
-  orientation: "vertical",
-  fitToBoard: true,
-  stationRails: "full",
-});
-const ROCKER_GEOMETRY = buildRocker(DEFAULT_BOARD_SPEC.rocker, DEFAULT_BOARD_SPEC.outline.length);
+/** The rocker drawing's own source and the shared slider's, read as text rather than imported —
+ * the same idiom `outline-viewer.tsx`'s constants use above (the React-heavy modules cannot load in
+ * this suite's `node` environment). Comments are stripped from the rocker viewer so its header's
+ * own history of the retired handles can never satisfy or break a check. */
+const ROCKER_VIEWER_CODE = readFileSync(new URL("../rocker/rocker-viewer.tsx", import.meta.url), "utf8")
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/(^|[^:"'])\/\/.*$/gm, "$1");
+const SLIDER_SOURCE = readFileSync(new URL("../ui/slider.tsx", import.meta.url), "utf8");
 
 interface Spaced {
   target: string;
@@ -133,8 +127,8 @@ const PHONE_DEVICES: PhoneDevice[] = [
  * not to whatever space the shell's top/bottom bars leave behind — at both device heights measured
  * here, 66% of the raw device height sits comfortably inside that remaining space, so the raw
  * percentage is what actually renders. Cross-checked: the same rule at the UI-SPEC's illustrative
- * 45dvh figure (`0.45 * 667 = 300.15`) reproduces a ~182px-wide rocker drawing against this file's
- * own frame maths, matching the UI-SPEC's own quoted "~181px wide on a 375px iPhone SE" to within a
+ * 45dvh figure (`0.45 * 667 = 300.15`) reproduced a ~182px-wide rocker drawing against the rocker
+ * frame maths this file carried until Phase 11, matching the UI-SPEC's own quoted "~181px wide on a 375px iPhone SE" to within a
  * couple of pixels. */
 const PINNED_AREA_CEILING = 0.66;
 /** The phone shell's own `p-2` inset, both sides, on the pinned area's width. */
@@ -199,31 +193,18 @@ describe("outline: phone hit-zone spacing at the tightest realistic board", () =
   }
 });
 
-describe("rocker: phone hit-zone spacing at the default board, nose-up", () => {
-  const points: Spaced[] = sideProfileDragPoints(ROCKER_GEOMETRY).map((p) => ({
-    target: p.target,
-    station: p.point.station,
-    other: p.point.height,
-  }));
-  const closest = closestPairMm(points);
+describe("rocker: nothing on the drawing to space — the placement slider's thumb is the touch target now", () => {
+  it("the rocker drawing has no drag targets, no hit circles and no hit radius to space", () => {
+    expect(ROCKER_VIEWER_CODE).not.toContain("data-drag-target");
+    expect(ROCKER_VIEWER_CODE).not.toMatch(/SIDE_PROFILE_DRAG_HIT(_COARSE)?_PX|hitRadius/);
+    expect(ROCKER_VIEWER_CODE).not.toMatch(/onPointer(Down|Move|Up|Cancel)/);
+  });
 
-  for (const device of PHONE_DEVICES) {
-    it(`${device.name}: the closest pair of the four curve handles clears twice the coarse radius`, () => {
-      const box = pinnedBox(device);
-      const fit = fitScale(box, ROCKER_LAYOUT);
-      const perMm = pxPerMm(ROCKER_LAYOUT.scale, fit);
-      const closestPx = closest.mm * perMm;
-      // eslint-disable-next-line no-console
-      console.log(
-        `[rocker/${device.name}] render scale ${perMm.toFixed(4)}px/mm ` +
-          `(frame ${ROCKER_LAYOUT.width.toFixed(1)}x${ROCKER_LAYOUT.height.toFixed(1)} user units, ` +
-          `pinned box ${box.width.toFixed(1)}x${box.height.toFixed(1)}px, fit ${fit.toFixed(4)}); ` +
-          `closest pair ${closest.a}/${closest.b} = ${closest.mm.toFixed(1)}mm = ${closestPx.toFixed(1)}px ` +
-          `(needs > ${2 * SIDE_PROFILE_DRAG_HIT_COARSE_PX})`,
-      );
-      expect(closestPx).toBeGreaterThan(2 * SIDE_PROFILE_DRAG_HIT_COARSE_PX);
-    });
-  }
+  it("the shared slider thumb (which the placement slider uses) carries its 44px touch ring on a coarse pointer", () => {
+    // `-inset-4` grows the thumb's own hit area 16px on every side on a touch device — a 44px
+    // target around the visible thumb, the same ring every slider in the app already has.
+    expect(SLIDER_SOURCE).toContain("coarse:after:-inset-4");
+  });
 });
 
 describe("desktop: the existing 15px radius never overlaps (PHON-05 — nothing wired yet, but the numbers already hold)", () => {
@@ -243,27 +224,11 @@ describe("desktop: the existing 15px radius never overlaps (PHON-05 — nothing 
       expect(closestPx).toBeGreaterThan(2 * OUTLINE_DRAG_HIT_PX);
     }
   });
-
-  it("rocker: default board", () => {
-    const points: Spaced[] = sideProfileDragPoints(ROCKER_GEOMETRY).map((p) => ({
-      target: p.target,
-      station: p.point.station,
-      other: p.point.height,
-    }));
-    const closest = closestPairMm(points);
-    const closestPx = closest.mm * pxPerMm(ROCKER_LAYOUT.scale, 1);
-    expect(closestPx).toBeGreaterThan(2 * SIDE_PROFILE_DRAG_HIT_PX);
-  });
 });
 
 describe("the locked coarse radii stay inside the UI-SPEC's 18-22px band", () => {
   it("outline", () => {
     expect(OUTLINE_DRAG_HIT_COARSE_PX).toBeGreaterThanOrEqual(18);
     expect(OUTLINE_DRAG_HIT_COARSE_PX).toBeLessThanOrEqual(22);
-  });
-
-  it("rocker", () => {
-    expect(SIDE_PROFILE_DRAG_HIT_COARSE_PX).toBeGreaterThanOrEqual(18);
-    expect(SIDE_PROFILE_DRAG_HIT_COARSE_PX).toBeLessThanOrEqual(22);
   });
 });

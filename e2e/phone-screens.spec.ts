@@ -66,7 +66,7 @@ test.describe("ROCKER on a phone — the board stands up, narrower than full wid
     await dismissSignInBanner(page);
   });
 
-  test("the drawing is pinned above the controls, within the 66dvh ceiling, handles already show, rotate is gone", async ({
+  test("the drawing is pinned above the controls, within the 66dvh ceiling, nothing on it to drag, measuring points start off, rotate is gone", async ({
     page,
   }) => {
     await page.goto("/design/rocker");
@@ -94,11 +94,13 @@ test.describe("ROCKER on a phone — the board stands up, narrower than full wid
     // D-05/D-11: turning the phone does the rotate button's job, so it is absent here.
     await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeHidden();
 
-    // D-02: the construction overlay (the four curve handles) is on by default on a touch
-    // device — present the moment the screen opens, before any tap.
-    const dragTargets = page.locator("[data-drag-target]");
-    await expect(dragTargets.first()).toBeVisible();
-    expect(await dragTargets.count()).toBeGreaterThan(0);
+    // Phase 11 (D-14): the drawing is read-only — its old curve handles retired with the Bezier
+    // they steered, so there is nothing on it to drag. The toolbar's measuring-points toggle is
+    // OFF by default on every pointer, a touch device included (UI-SPEC section 10): the old
+    // "on for a touch device" default existed only so a thumb could find the handles.
+    await expect(page.locator("[data-board-silhouette='profile']")).toBeVisible();
+    expect(await page.locator("[data-drag-target]").count()).toBe(0);
+    await expect(page.getByRole("button", { name: "Show measuring points" })).toBeVisible();
   });
 });
 
