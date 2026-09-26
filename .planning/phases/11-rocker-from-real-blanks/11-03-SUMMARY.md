@@ -123,3 +123,8 @@ None. There are no new endpoints or storage. The search loops are bounded by the
 ## TDD Gate Compliance
 
 Each task has a `test(...)` RED commit followed by a `feat(...)` GREEN commit. Each RED failed for the right reason: `catalogueExtremes`, `nearestFit` and `nearestFittingPlacement` weren't functions, and `blank-reasons.ts` didn't exist. No refactor commits were needed.
+
+## Self-Check: PASSED
+
+- All four plan files and this SUMMARY exist in the worktree.
+- Commits `53dcce4`, `b5884d7`, `f6ace33`, `8252e1b`, `c38f4d7` and `772b860` are all present in `git log`.
