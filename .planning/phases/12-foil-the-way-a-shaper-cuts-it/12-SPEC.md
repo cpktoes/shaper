@@ -3,7 +3,7 @@
 **Created:** 2026-09-26
 **Ambiguity score:** 0.10 (gate: ≤ 0.20) — the requirements below are the founder's brief of 2026-09-26 as close to verbatim as the template allows; the seven points in the Ambiguity Report were settled the same day in the four-area discussion recorded in `12-CONTEXT.md` (D-01–D-12), and each requirement below points at the decision that sharpened it
 **Requirements:** 6 locked from the brief, plus 5 carried constraints
-**Source:** the founder's message of 2026-09-26, captured verbatim in `.planning/todos/pending/2026-09-26-foil-the-way-a-shaper-cuts-it-deck-skin-parallel-bottom-pin-deck-tips.md` and folded into this phase
+**Source:** the founder's message of 2026-09-26, captured verbatim in `.planning/todos/completed/2026-09-26-foil-the-way-a-shaper-cuts-it-deck-skin-parallel-bottom-pin-deck-tips.md` and folded into this phase
 
 ## Goal
 

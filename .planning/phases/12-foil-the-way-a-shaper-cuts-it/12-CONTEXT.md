@@ -53,7 +53,7 @@ Downstream agents MUST read `12-SPEC.md` before planning or implementing. Requir
 - How the retiring Extra Center Thickness column leaves: stop reading it in this phase's code, remove the column only after the deploy (CLAUDE.md expand/contract); the account read must tolerate its absence either way.
 
 ### Folded Todos
-- **Foil the way a shaper cuts it — deck skin, parallel bottom, pin-deck tip thinning** (`.planning/todos/pending/2026-09-26-foil-the-way-a-shaper-cuts-it-deck-skin-parallel-bottom-pin-deck-tips.md`): the founder's verbatim brief that became this phase; its five rules are the spec's requirements and its open questions were this discussion's agenda (all settled above).
+- **Foil the way a shaper cuts it — deck skin, parallel bottom, pin-deck tip thinning** (`.planning/todos/completed/2026-09-26-foil-the-way-a-shaper-cuts-it-deck-skin-parallel-bottom-pin-deck-tips.md`): the founder's verbatim brief that became this phase; its five rules are the spec's requirements and its open questions were this discussion's agenda (all settled above).
 
 </decisions>
 
@@ -64,7 +64,7 @@ Downstream agents MUST read `12-SPEC.md` before planning or implementing. Requir
 
 ### This phase's requirements and brief
 - `.planning/phases/12-foil-the-way-a-shaper-cuts-it/12-SPEC.md` — Locked requirements — MUST read before planning; the founder's six sentences, carried constraints, boundaries, acceptance criteria, and the Ambiguity Report now pointing at the decisions above
-- `.planning/todos/pending/2026-09-26-foil-the-way-a-shaper-cuts-it-deck-skin-parallel-bottom-pin-deck-tips.md` — the brief verbatim, with the orchestrator's first reading and open questions
+- `.planning/todos/completed/2026-09-26-foil-the-way-a-shaper-cuts-it-deck-skin-parallel-bottom-pin-deck-tips.md` — the brief verbatim, with the orchestrator's first reading and open questions
 
 ### Phase 11, the model being replaced and the machinery being reused
 - `.planning/milestones/v1.3-phases/11-rocker-from-real-blanks/11-CONTEXT.md` — D-01–D-20: the blank copied into the board (D-01), fallback (D-02, D-14), presets (D-03), the two floors (D-04), width margin (D-05), flags and offers (D-06, D-07), slider range (D-08), account defaults (D-09, D-19), the proportional foil (D-10, D-17, D-18 — superseded here), fine-tunes (D-11), one stored centre (D-12), pchip (D-13), the drawing (D-15), the DATASHEET (D-16), tooling (D-20)
