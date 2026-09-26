@@ -76,8 +76,10 @@ import { useOrderFormPreviewScale } from "./use-preview-scale";
 import { useOrderFormPrintFit } from "./use-print-fit";
 import { dimensionValueFitClass } from "./dimension-fit";
 import { cn } from "@/lib/utils";
+import { buildFallbackProfile } from "@/lib/geometry/board-profile";
 import { FIN_SETUPS, FIN_SYSTEMS, type FinSystem } from "@/lib/geometry/fins";
 import type { RailSectionKey } from "@/lib/geometry/rail-bands";
+import { bezierToFiveStations } from "@/lib/geometry/rocker";
 import {
   formatDim,
   formatDimBare,
@@ -414,7 +416,16 @@ export function OrderForm() {
                   >
                     <div className="flex min-h-0 flex-1 items-stretch px-1.5 py-1">
                       <div className="relative min-h-0 min-w-0 flex-1">
-                        <RockerViewer rocker={rocker} foil={foil} length={outline.length} callouts="compact" fitToBoard boardFill={false} />
+                        {/* The board's side profile, never a blank — this box draws the board
+                            alone. Transitional until plan 11-09 gives the store its own side
+                            profile: built from the saved curve with the same permanent conversion
+                            an older board uses when it reopens (`bezierToFiveStations`). */}
+                        <RockerViewer
+                          profile={buildFallbackProfile(bezierToFiveStations(rocker, outline.length), foil, outline.length)}
+                          callouts="compact"
+                          fitToBoard
+                          boardFill={false}
+                        />
                       </div>
                     </div>
                   </FormBox>

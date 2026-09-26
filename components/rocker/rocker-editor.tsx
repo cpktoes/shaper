@@ -10,11 +10,12 @@
  * treatment the Template screen's own toolbar uses. Task 2 added the second tab: DATASHEET, the
  * D-07 full five-station table with typed imperial entry. Two tabs rather than one split view,
  * because the drawing wants full panel height and the table wants full panel width — the toolbar
- * stays inside the VIEWER tab only. Task 3 adds a second toolbar button — the construction-lines
- * toggle — that reveals `RockerViewer`'s construction overlay and its two tip drag targets (quick
- * task 260829-snm reduced this from nine drag targets to two, and the patch is now handed
- * straight to `updateRocker` — one mutator, since a tip drag can only ever touch the rocker
- * spec). 04-05 Task 1 adds a third affordance: below `RockerControls`, a
+ * stays inside the VIEWER tab only. Task 3 added a second toolbar button — then the construction-
+ * lines toggle, which revealed `RockerViewer`'s construction overlay and its drag handles. Phase
+ * 11 (D-14) retired the handles with the Bezier they steered: the drawing is read-only now and
+ * the same button, in the same slot, is the measuring-points toggle — plain dots at the board's
+ * five stations (and a blank's measured stations), off by default on every pointer.
+ * 04-05 Task 1 adds a third affordance: below `RockerControls`, a
  * development-only "Copy preset values" button mirroring the Template screen's own capture
  * affordance (`outline-editor.tsx`) — it reads the live `rocker`/`foil` back out as pasteable
  * `lib/geometry/presets.ts` source, gated on `process.env.NODE_ENV === "development"` so the
@@ -67,8 +68,9 @@ import * as ViewerMedia from "@/components/design/use-viewer-media";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
 import { RotateBoardIcon, ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
+import { buildFallbackProfile } from "@/lib/geometry/board-profile";
 import { buildRockerPresetSource } from "@/lib/geometry/preset-source";
-import { buildRocker } from "@/lib/geometry/rocker";
+import { bezierToFiveStations, buildRocker } from "@/lib/geometry/rocker";
 import { RockerControls, type RockerControlsSectionKey } from "./rocker-controls";
 import { RockerDatasheet } from "./rocker-datasheet";
 import { RockerViewer } from "./rocker-viewer";
@@ -81,9 +83,16 @@ const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
 
 export function RockerEditor() {
   const { rocker, updateRocker, foil, updateFoil, outline, outlineGeometry } = useDesign();
-  // Built once per render and passed to the controls, the datasheet and the viewer, so the curve
-  // is derived in exactly one place per render (quick task 260829-rda).
+  // Transitional until plan 11-09 gives the store its own side profile: the sidebar's controls and
+  // the DATASHEET still take the saved Bezier's geometry this wave, so it is built once per render
+  // for them alone (quick task 260829-rda's one-build-per-render rule). The drawing no longer
+  // reads it.
   const geometry = buildRocker(rocker, outline.length);
+  // The drawing's one side profile (Phase 11, D-14/D-15). Transitional until 11-09's store
+  // profile: built from the saved curve with the same permanent conversion an older board uses
+  // when it reopens (`bezierToFiveStations`), so the drawing shows the four rocker numbers the old
+  // curve read at its tips and 12" stations. No blank is passed yet — 11-11 adds that.
+  const profile = buildFallbackProfile(bezierToFiveStations(rocker, outline.length), foil, outline.length);
   const [sectionOpen, setSectionOpen] = useState<Record<RockerControlsSectionKey, boolean>>({
     rocker: true,
     thickness: true,
@@ -94,25 +103,24 @@ export function RockerEditor() {
    * on a fine pointer (D-10); on a coarse pointer `boardOrientation` below ignores it entirely in
    * favour of the device's own orientation (D-09/D-18). */
   const [orientation, setOrientation] = useState<ViewerOrientation>("horizontal");
-  /** D-02's construction-overlay default, as an explicit override rather than the overlay's own
-   * on/off flag — the same `constructionOverride ?? coarsePointer` shape `outline-editor.tsx`
-   * uses: `null` means "no explicit choice yet, use the pointer-driven default"; `true`/`false`
-   * means the shaper (or wide view, below) has said so directly. A plain computed value, never a
-   * second piece of state kept in sync by an effect or a render-time setState — this codebase's
-   * lint config rejects both. */
-  const [constructionOverride, setConstructionOverride] = useState<boolean | null>(null);
+  /** The measuring points' on/off, as an explicit override rather than the overlay's own flag —
+   * the same override shape `outline-editor.tsx` uses: `null` means "no explicit choice yet, use
+   * the default"; `true`/`false` means the shaper (or wide view, below) has said so directly. A
+   * plain computed value, never a second piece of state kept in sync by an effect or a
+   * render-time setState — this codebase's lint config rejects both. */
+  const [measuringPointsOverride, setMeasuringPointsOverride] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<RockerTab>("viewer");
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
   /** Wide view hides the `aside` below so `main` gets the full window width. Local view state, not
    * design data, deliberately not persisted — a reload always comes back with the sidebar showing.
-   * `preWideViewConstruction` remembers whatever the construction overlay was showing before wide
-   * view forced it on, so leaving wide view restores it rather than leaving the shaper on a
+   * `preWideViewMeasuringPoints` remembers whether the measuring points were showing before wide
+   * view forced them on, so leaving wide view restores that rather than leaving the shaper on a
    * setting they never chose. Both are set together inside the click handler below, not from a
    * render-time effect — this codebase's lint config rejects setting state during render, and
    * doing so caused a real bug in plan 02-05. Mirrors `outline-editor.tsx`'s own `wideView`/
    * `preWideViewConstruction` pair. */
   const [wideView, setWideView] = useState(false);
-  const [preWideViewConstruction, setPreWideViewConstruction] = useState(false);
+  const [preWideViewMeasuringPoints, setPreWideViewMeasuringPoints] = useState(false);
 
   // D-09/D-10/D-18: on a coarse (touch) pointer only, the board follows the phone's own
   // orientation — nose-up in portrait, flat in landscape — computed fresh every render, never
@@ -127,26 +135,27 @@ export function RockerEditor() {
       : "horizontal"
     : orientation;
 
-  // D-02: the construction overlay — the four Bezier handles, their chords and the three knot
-  // dots — starts ON for a touch device instead of desktop's off-by-default-behind-the-toggle,
-  // and stays whatever the shaper last chose once they have tapped the toggle at least once.
-  const showConstruction = constructionOverride ?? coarsePointer;
+  // The measuring points start OFF on every pointer (Phase 11 UI-SPEC section 10). The old
+  // construction overlay started on for a touch device only so a thumb could find its drag
+  // handles; with nothing left to drag (D-14) there is no reason for a phone to differ. Stays
+  // whatever the shaper last chose once they have tapped the toggle at least once.
+  const showMeasuringPoints = measuringPointsOverride ?? false;
 
   function toggleSection(key: RockerControlsSectionKey) {
     setSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function handleToggleConstruction() {
-    setConstructionOverride(!showConstruction);
+  function handleToggleMeasuringPoints() {
+    setMeasuringPointsOverride(!showMeasuringPoints);
   }
 
   function handleToggleWideView() {
     if (wideView) {
-      setConstructionOverride(preWideViewConstruction);
+      setMeasuringPointsOverride(preWideViewMeasuringPoints);
       setWideView(false);
     } else {
-      setPreWideViewConstruction(showConstruction);
-      setConstructionOverride(true);
+      setPreWideViewMeasuringPoints(showMeasuringPoints);
+      setMeasuringPointsOverride(true);
       setWideView(true);
     }
   }
@@ -217,9 +226,9 @@ export function RockerEditor() {
                   <RotateBoardIcon className="size-6" />
                 </ViewerToolbarButton>
                 <ViewerToolbarButton
-                  onClick={handleToggleConstruction}
-                  pressed={showConstruction}
-                  label={showConstruction ? "Hide construction lines" : "Show construction lines"}
+                  onClick={handleToggleMeasuringPoints}
+                  pressed={showMeasuringPoints}
+                  label={showMeasuringPoints ? "Hide measuring points" : "Show measuring points"}
                 >
                   <LocateFixedIcon className="size-6" />
                 </ViewerToolbarButton>
@@ -244,12 +253,9 @@ export function RockerEditor() {
                 </ViewerToolbarButton>
               </ViewerToolbar>
               <RockerViewer
-                rocker={rocker}
-                foil={foil}
-                length={outline.length}
+                profile={profile}
                 orientation={boardOrientation}
-                showConstruction={showConstruction}
-                onDrag={updateRocker}
+                showMeasuringPoints={showMeasuringPoints}
                 fitToBoard
               />
             </div>

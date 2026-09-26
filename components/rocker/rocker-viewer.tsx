@@ -1,26 +1,61 @@
 "use client";
 
 /**
- * Rocker/foil side-profile viewer.
+ * Rocker/foil side-profile viewer — a read-only drawing of ONE side profile (Phase 11).
+ *
+ * The drawing builds no curve of its own. It is handed the board's side profile
+ * (`BoardSideProfile`, `lib/geometry/board-profile.ts`) and draws exactly that: the bottom is the
+ * profile's rocker, the deck is its rocker plus its thickness (`deckAt`, R10), both sampled at
+ * `SAMPLES` points along the board. How densely a curve is sampled is a drawing parameter only
+ * (R15) — a curve that looks faceted gets more samples here, never a different interpolation.
  *
  * Drawn horizontal, nose on the LEFT by default (D-03) — this screen's own default, unlike the
  * outline viewer's vertical default. All SVG geometry comes from numbers computed in
  * `lib/geometry`, written into JSX attributes; never string-built markup, and never raw HTML
- * injection (threat T-QO-01, same posture as `outline-viewer.tsx`).
+ * injection (threat T-QO-01, same posture as `outline-viewer.tsx`). The blank's vendor and name
+ * reach this component only as the drawing's accessible name, a plain React attribute value
+ * (threat T-11-21).
  *
  * The board draws as one closed, solid shape — deck-over-bottom construction (D-01): the bottom
- * curve is the rocker line, and the deck curve is the rocker line plus the foil thickness at each
- * sampled station, closed at both tips so the two curves read as a single board silhouette.
+ * curve and the deck curve, closed at both tips so the two read as a single board silhouette.
+ *
+ * The blank (D-15): when the ROCKER editor also hands this component the board's blank
+ * (`blank`, a `BlankSideView`), the blank's own side silhouette draws BEHIND the board — filled
+ * with the faint `--outline-foam-shade` wash and outlined with a solid 1px `--outline-blank-line`
+ * (solid because the blank is a real object; dashes mean reference lines in this app). The board's
+ * own fill is opaque, so the only shade left visible is the foam to come off: above the deck and
+ * past each tip, never under the bottom, because along the board the blank's bottom IS the board's
+ * bottom. The frame then fits the whole blank rather than the board alone
+ * (`rocker-view-frame.ts`'s `blankSpanIn` / `boardOffsetX`), so the board draws slightly smaller
+ * inside it; the rails, cards and titles stay on the board's own five stations. Nothing else is
+ * added to the drawing for a blank: a thickness failure shows as the board poking through the
+ * blank's line, width failures are not drawn at all, and no warning colour appears here. The
+ * Summary order form never passes a blank, so its compact box draws the board alone as before.
+ *
+ * Nothing on the drawing is draggable any more (D-14). The three-knot Bezier that the old tip
+ * handles, construction lines and drag readout card used to steer is no longer a live rocker, so
+ * all of that retired with it; shaping happens in the sidebar. What the toolbar's
+ * measuring-points toggle shows instead (`showMeasuringPoints`) is plain dots: the board's five
+ * stations on its bottom and its deck and, with a blank, every station the catalogue measured on
+ * the blank's own bottom and deck.
  *
  * Drafting grammar, per `.planning/sketches/MANIFEST.md` and quick task 260829-uue: each
  * station's read-outs split across TWO rails, one on each side of the board — a rocker rail below
  * the baseline (the bottom curve it measures) and a thickness rail above the deck curve (the deck
  * it measures) — drawn in the TEMPLATE screen's own two-part grammar (`callout-primitives.tsx`):
- * a filled card (`CalloutChipFrame`) for a figure the shaper sets with its own slider, and a plain
- * reading — no card, a 45-degree `DimensionTick` on the curve instead — for a figure measured off
- * the drawn curve. On the rocker rail only the two tips are inputs; all five thickness figures
- * are. Every read-out, either kind, is leadered from its own rail to the exact point on the curve
- * it measures. That is the `"full"` grammar (`callouts="full"`, the default).
+ * a filled card (`CalloutChipFrame`) for a figure the shaper sets, and a plain reading — no card,
+ * a 45-degree `DimensionTick` on the curve instead — for a figure computed for them. Which is
+ * which depends on whether the board sits in a blank (UI-SPEC section 9):
+ *
+ * - No blank: the four rocker figures (both tips, both 12" stations) are cards — the shaper types
+ *   all four — and all five thickness figures are cards.
+ * - In a blank: all four rocker figures are readings (the blank decides them), the Center, Nose Tip
+ *   and Tail Tip thickness are cards (the shaper sets them) and the two 12" thicknesses are
+ *   readings (the blank derives them, whatever the fine-tune).
+ *
+ * The Center rocker is always a muted em-dash reading: it is the rocker's own zero reference, not
+ * a measurement. Every read-out, either kind, is leadered from its own rail to the exact point on
+ * the curve it measures. That is the `"full"` grammar (`callouts="full"`, the default).
  *
  * Each rail also carries its own title (quick task 260830-2dy, words in `RAIL_LABEL_TEXTS`):
  * `Thickness` for the deck rail, `Rocker` for the bottom one — the same two words the sidebar's
@@ -45,69 +80,27 @@
  * Orientation (D-03): the toolbar's rotate-in-place button flips this viewer between "horizontal"
  * (the default, nose left) and "vertical" (nose up, so the five stations read top-to-bottom the
  * way a blank datasheet's columns do) — the OPPOSITE of the Template viewer's own default. Every
- * physical element (the baseline, the board silhouette, the station tick lines) is drawn once in
- * the canonical horizontal coordinate space and lives inside one rotated `<g>`, per the technique
- * quick task 260825-vot proved on the outline viewer — no projector call site is ever duplicated
- * for the second orientation. Only the label TEXT counter-rotates (`Upright` below), so it always
- * reads upright on screen regardless of which way the board is turned.
- *
- * Construction-line overlay and control-point dragging (quick task 260829-t47, on top of
- * 260829-snm's own move from seven grab points to two): when `showConstruction` is on, the
- * drawing gains the same construction-line grammar the TEMPLATE viewer already draws — one line,
- * from `geometry.handles`, out of each curve point to the handle that steers the curve there.
- * There are always four lines: the rocker curve is two Bezier segments joined at the centre, and
- * each segment has a steering handle at both of its ends. The three KNOTS — tail tip, centre,
- * nose tip — draw as small plain dots: "this shows you the shape, you cannot grab it." Both tips
- * are fixed because a tip's own rocker is a headline number set from its slider and its typed
- * DATASHEET cell, not something to eyeball by dragging; the centre is the curve's own zero by
- * definition. The four HANDLE TERMINI — the far end of each steering line — are the drawing's
- * only grab targets, when `onDrag` is also given: `sideProfileDragPoints` enumerates them in
- * `geometry.handles`' own order, the same three-part accent treatment `outline-viewer.tsx`'s drag
- * targets use, counter-scaled to a constant on-screen size. Dragging the tail or nose tip's own
- * handle sets that tip's Angle and Smoothness together; dragging either of the two centre handles
- * sets that side's Flatness alone, and moving it off its own station-only tangent carries no
- * information (the constrained-axis behaviour `rocker-drag.ts`'s own tests pin down). Pointer
- * handling converts a screen event to board coordinates through the rotated content group's own
- * `getScreenCTM`, the technique that already makes dragging work in both orientations on the
- * Template screen, then calls `solveSideProfileDrag` (passed the live geometry) and hands the
- * patch straight up — the caller (`rocker-editor.tsx`) passes it straight to `updateRocker`.
+ * physical element (the baseline, the blank and board silhouettes, the station tick lines) is
+ * drawn once in the canonical horizontal coordinate space and lives inside one rotated `<g>`, per
+ * the technique quick task 260825-vot proved on the outline viewer — no projector call site is
+ * ever duplicated for the second orientation. Only the label TEXT counter-rotates (`Upright`
+ * below), so it always reads upright on screen regardless of which way the board is turned.
  */
 
-import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useRef } from "react";
 import {
-  CALLOUT_CHAR_PX,
   CALLOUT_PX,
   CalloutChipFrame,
   DimensionTick,
-  useSvgClientSize,
   useSvgFitScale,
   type ViewerOrientation,
 } from "@/components/viewer/callout-primitives";
 import { useUnits } from "@/components/units-provider";
-import { useCoarsePointer } from "@/components/design/use-viewer-media";
-import { FOIL_THICKNESS_RANGE_IN, sampleFoil, type FoilSpec } from "@/lib/geometry/foil";
+import type { BlankSideView, BoardSideProfile } from "@/lib/geometry/board-profile";
+import { FOIL_THICKNESS_RANGE_IN, type FoilStationKey } from "@/lib/geometry/foil";
 import { formatMark, stationLabel } from "@/lib/geometry/measure-display";
-import {
-  nearestSideProfileDragTarget,
-  sideProfileDragPoints,
-  SIDE_PROFILE_DRAG_HIT_COARSE_PX,
-  SIDE_PROFILE_DRAG_HIT_PX,
-  solveSideProfileDrag,
-  type SideProfileDragPoint,
-  type SideProfileDragTarget,
-} from "@/lib/geometry/rocker-drag";
-import { buildRocker, ROCKER_LIFT_RANGE_IN, sampleRocker, type RockerSpec } from "@/lib/geometry/rocker";
-import { inchesToMm, mm, type Mm, mmToInches } from "@/lib/geometry/units";
-import {
-  nextSelection,
-  remoteDragPoint,
-  type DragSelectionEvent,
-} from "@/components/viewer/drag-selection";
-import {
-  boardSection,
-  placeReadoutClearOfBoard,
-  type Rect as ReadoutRect,
-} from "@/components/viewer/readout-placement";
+import { ROCKER_LIFT_RANGE_IN } from "@/lib/geometry/rocker";
+import { mm, type Mm, mmToInches } from "@/lib/geometry/units";
 import {
   cardPinScale,
   COMPACT_BASELINE_DASH,
@@ -121,45 +114,42 @@ import {
   RAIL_LABEL_TEXTS,
   type RockerCardType,
   type RockerCompactRow,
+  type RockerViewLayoutInput,
   rockerViewLayout,
 } from "./rocker-view-frame";
 
 /**
- * Drag-target and construction-marker sizing, in CSS pixels — copied from `outline-viewer.tsx`'s
- * own constants (a grab handle or a marker dot is a UI affordance, not board geometry, so it
- * holds a constant on-screen size rather than scaling with the drawing). Divided by the live fit
- * scale at render.
+ * Measuring-point dot radius, in CSS pixels — a marker is a UI affordance, not board geometry, so
+ * it holds a constant on-screen size rather than scaling with the drawing (the same size the
+ * construction overlay's plain knot dots always drew at). Divided by the live fit scale at render.
  */
-const DRAG_TARGET_OUTER_PX = 7;
-const DRAG_TARGET_RING_PX = 1.6;
-const DRAG_TARGET_CORE_PX = 2.6;
-/** Fixed reference knots and construction-line termini — deliberately plain, so only grabbable
- * points look grabbable. */
 const KNOT_DOT_PX = 3;
-/** The picked-point halo ring (D-07, 260909-ktq) — copied from `outline-viewer.tsx`'s own
- * constant: one extra concentric circle, drawn only around whichever handle is currently picked.
- * Only ever drawn on a touch pick, so a mouse-driven desktop screenshot cannot change. */
-const DRAG_SELECTED_HALO_PX = 11;
-/**
- * The drag readout chip (D-17), in CSS pixels — copied from `outline-viewer.tsx`'s own constants
- * (the same card, the same sizing rules): the small card that reads a slider row back while a
- * finger drags the control-point handle that drives it. `READOUT_GAP_PX` is the standing
- * clearance between the touched point and the chip's own bottom edge; `READOUT_ROW_PX`/
- * `READOUT_PAD_PX` size the card to however many driven fields the touched target owns (one or
- * two).
- */
-const READOUT_GAP_PX = 24;
-const READOUT_ROW_PX = 18;
-const READOUT_PAD_PX = 8;
+/** The blank silhouette's outline, in CSS pixels — screen-pinned like the dots above, so the
+ * blank's line stays a faint hairline behind the board's own 2-unit outline at any panel size. */
+const BLANK_LINE_PX = 1;
 
-/** Curve sampling density — enough to read as smooth at this frame's scale, well past the five
- * knots the monotone splines are built from. */
+/** Board sampling density — enough to read as smooth at this frame's scale, well past the five
+ * stations the profile's curves are built through. A drawing parameter only (R15). */
 const SAMPLES = 60;
+/** Blank silhouette sampling density, along the blank's own length — denser than the board's
+ * because the blank is longer and its catalogue curve carries more stations. A drawing parameter
+ * only (R15): raising it never changes how the blank's curves are interpolated. */
+const BLANK_SAMPLES = 120;
 
 export interface RockerViewerProps {
-  rocker: RockerSpec;
-  foil: FoilSpec;
-  length: Mm;
+  /**
+   * The board's one side profile (`lib/geometry/board-profile.ts`, Pattern 5) — the drawing's only
+   * source for the board's shape and for every number on its rails. The drawing never builds a
+   * curve of its own.
+   */
+  profile: BoardSideProfile;
+  /**
+   * The blank the board sits in, drawn behind it with the foam to come off shaded (D-15). Only the
+   * ROCKER editor passes this; the Summary order form never does, so its compact box keeps
+   * drawing the board alone. Omitted, the drawing is the board on its dashed baseline with
+   * nothing behind it — no empty-blank outline, no placeholder, no prompt.
+   */
+  blank?: BlankSideView;
   /**
    * Which rail grammar this viewer draws (04-05 Task 2, widened to a third mode by quick task
    * 260829-vus) — mirrors `RockerStationRails` in `rocker-view-frame.ts`, passed straight through
@@ -168,38 +158,29 @@ export interface RockerViewerProps {
    * board-length label, leaving only the closed board shape and baseline — mirrors
    * `outline-viewer.tsx`'s `hideCallouts`. `"compact"` draws the Summary order form's own
    * bare-value rails instead: five thickness readings above the board, four rocker readings
-   * below, no card surface and no station name (this plan's `<design_decision>` section 2).
+   * below, no card surface and no station name.
    *
-   * Whichever non-`"full"` mode is chosen, no `onDrag` is ever passed to that consumer, so the
-   * construction overlay's drag targets are already absent regardless of this prop (`dragTargets`
-   * is built only `onDrag ? ... : []`). This prop also decides whether the layout module reserves
-   * a band on either side of the board at all (`stationRails`, quick task 260829-uue) — a
-   * consumer that never draws a rail is not paying for the band that rail would need.
+   * This prop also decides whether the layout module reserves a band on either side of the board
+   * at all (`stationRails`, quick task 260829-uue) — a consumer that never draws a rail is not
+   * paying for the band that rail would need.
    */
   callouts?: "full" | "compact" | "none";
   /** D-03: `"horizontal"` (nose left, the default) or `"vertical"` (nose up, stations read
    * top-to-bottom). Driven by the toolbar's rotate button, never persisted. */
   orientation?: ViewerOrientation;
-  /** Draws the four construction lines and their plain marker dots (plus, when `onDrag` is also
-   * given, the two tip drag targets and faint station lines) when true. Defaults to `false`. */
-  showConstruction?: boolean;
-  /**
-   * Direct manipulation: called with the rocker-spec patch a dragged tip implies, on every
-   * pointer move. Omitted means no hit targets and no handlers at all — a consumer with no
-   * design-state mutator (a future Summary rocker box) renders exactly the same as before this
-   * prop existed. The solve itself lives in `lib/geometry/rocker-drag.ts`; this component only
-   * converts screen coordinates into board coordinates and passes the result up.
-   */
-  onDrag?: (patch: Partial<RockerSpec>) => void;
+  /** Draws the measuring points when true: the board's five stations as plain dots on its bottom
+   * and its deck, and, with a blank, every station the catalogue measured as dots on the blank's
+   * own bottom and deck. Nothing in it is draggable. Defaults to `false`. */
+  showMeasuringPoints?: boolean;
   /**
    * The frame's scale rule (`rocker-view-frame.ts`'s `RockerViewLayoutInput.fitToBoard`): `true`
-   * scales every board's own length to fill the drawing's long axis, so a short board no longer
-   * draws small with blank space beside it. Defaults to `false`, which keeps the fixed
-   * range-derived frame every board has always shared. A per-consumer choice, not an editor-only
-   * one (quick task 260829-uue) — `components/rocker/rocker-editor.tsx` passes `true` so a
-   * shaper's own board fills the editor panel, and `components/summary/order-form.tsx` now opts
-   * in too, for the same reason on the printed sheet: its own frame carries no card rail to size
-   * around (`callouts="compact"` is already set there), so nothing about the print path's
+   * scales every board's own length (or, with a blank, the blank's) to fill the drawing's long
+   * axis, so a short board no longer draws small with blank space beside it. Defaults to `false`,
+   * which keeps the fixed range-derived frame every board has always shared. A per-consumer choice,
+   * not an editor-only one (quick task 260829-uue) — `components/rocker/rocker-editor.tsx` passes
+   * `true` so a shaper's own board fills the editor panel, and `components/summary/order-form.tsx`
+   * opts in too, for the same reason on the printed sheet: its own frame carries no card rail to
+   * size around (`callouts="compact"` is already set there), so nothing about the print path's
    * stability depends on this staying fixed the way `outline-viewer.tsx`'s `fixedFrame` still does.
    */
   fitToBoard?: boolean;
@@ -425,7 +406,7 @@ function RailTitle({
 /**
  * A bare compact reading (quick task 260829-vus, `callouts="compact"` only): no card surface, no
  * station name — position (which of the five stations) and side (deck = thickness, bottom =
- * rocker) carry what a card's own name text used to (this plan's `<design_decision>` section 2).
+ * rocker) carry what a card's own name text used to.
  *
  * `textX` is wherever `compactRailReadingXs`' separation sweep placed this reading, which may not
  * be `stationX` (the point it actually measures) — so the leader doglegs, `(textX, leaderStartY)`
@@ -481,84 +462,86 @@ function CompactReading({
   );
 }
 
+/** A closed silhouette path: the bottom curve in the order given, then the deck curve back the
+ * other way, then an implicit closing edge — the deck-over-bottom construction (D-01). */
+function closedProfilePath(bottom: { x: number; y: number }[], deck: { x: number; y: number }[]): string {
+  return [
+    `M ${bottom[0].x.toFixed(2)} ${bottom[0].y.toFixed(2)}`,
+    ...bottom.slice(1).map((p) => `L ${p.x.toFixed(2)} ${p.y.toFixed(2)}`),
+    ...deck
+      .slice()
+      .reverse()
+      .map((p) => `L ${p.x.toFixed(2)} ${p.y.toFixed(2)}`),
+    "Z",
+  ].join(" ");
+}
+
 export function RockerViewer({
-  rocker,
-  foil,
-  length,
+  profile,
+  blank,
   callouts = "full",
   orientation = "horizontal",
-  showConstruction = false,
-  onDrag,
+  showMeasuringPoints = false,
   fitToBoard = false,
   boardFill = true,
 }: RockerViewerProps) {
   const { system } = useUnits();
   const vertical = orientation === "vertical";
-  const coarsePointer = useCoarsePointer();
   const svgRef = useRef<SVGSVGElement>(null);
-  /** The content group carrying the rotation, in vertical — see `toBoardPoint` below for why the
-   * drag matrix must be read off this instead of the SVG root. */
-  const contentRef = useRef<SVGGElement>(null);
-  /** The active gesture, if any. A ref, not state: it changes on pointerdown and is read on
-   * pointermove, and re-rendering for it would be a wasted pass. Mirrors
-   * `outline-viewer.tsx`'s own gesture record exactly (260909-ktq) — see that file's comment for
-   * the full reasoning on `pointStart` never being re-read live. A mouse or pen only ever sets
-   * `target`/`pointStart`/`fingerStart`/`fingerClientStart` with `remote: false` (PHON-05). */
-  const draggingRef = useRef<{
-    target: SideProfileDragTarget;
-    remote: boolean;
-    pointStart: SideProfileDragPoint;
-    fingerStart: SideProfileDragPoint;
-    fingerClientStart: { x: number; y: number };
-    maxTravelPx: number;
-  } | null>(null);
-  /** Which control point a TOUCH gesture is dragging, if any — state, not a ref, so the drag
-   * readout chip (09-07 Task 2) re-renders when this starts and stops. Stays `null` for a mouse
-   * or pen at every viewport width (D-17, PHON-05): only `handlePointerDown`'s own `pointerType
-   * === "touch"` check ever sets it. */
-  const [touchDragTarget, setTouchDragTarget] = useState<SideProfileDragTarget | null>(null);
-  /** Which handle is PICKED (260909-ktq, D-02): set by a touch tap or a touch drag-start, and it
-   * survives a lift — that is what lets a shaper drag a handle directly once and then keep
-   * shaping it from anywhere else on the drawing. Drives the halo ring and the `data-selected`
-   * hook. Stays `null` for a mouse or pen at every viewport width (PHON-05). */
-  const [selectedTarget, setSelectedTarget] = useState<SideProfileDragTarget | null>(null);
-  /** The finger's own live board position during a touch gesture (260909-ktq, D-06) — the drag
-   * readout chip's anchor, so the card follows the THUMB rather than the point. `null` whenever no
-   * touch gesture is live. */
-  const [touchFingerBoard, setTouchFingerBoard] = useState<SideProfileDragPoint | null>(null);
+  const { length } = profile;
   const lengthIn = mmToInches(length);
-  // Built once per render and shared by the sampling loop, the drag-target enumerator and the
-  // solver below, the same posture `rocker-editor.tsx` takes building it once for the controls,
-  // the datasheet and this viewer to all share.
-  const geometry = buildRocker(rocker, length);
 
-  // Pure-inches sampling, no projection — split out from the drawing loop below so the deck
-  // envelope (`"compact"` mode's own `maxDeckIn`) can be derived BEFORE the layout, and therefore
-  // the scale, is built.
-  const samples: { stationIn: number; rockerLiftIn: number; thicknessIn: number }[] = [];
+  // The board, sampled in pure inches with no projection yet — split out from the drawing below so
+  // the deck envelope (`"compact"` mode's own `maxDeckIn`) can be derived BEFORE the layout, and
+  // therefore the scale, is built. The deck is the profile's own `deckAt` — rocker plus thickness,
+  // never a third curve (R10).
+  const samples: { stationIn: number; rockerLiftIn: number; deckIn: number }[] = [];
   for (let i = 0; i <= SAMPLES; i++) {
-    const stationIn = (lengthIn * i) / SAMPLES;
-    const stationMm = inchesToMm(stationIn);
+    const station = mm((length * i) / SAMPLES);
     samples.push({
-      stationIn,
-      rockerLiftIn: mmToInches(sampleRocker(geometry, stationMm)),
-      thicknessIn: mmToInches(sampleFoil(foil, length, stationMm)),
+      stationIn: mmToInches(station),
+      rockerLiftIn: mmToInches(profile.rockerAt(station)),
+      deckIn: mmToInches(profile.deckAt(station)),
     });
   }
+
+  // The blank's own side silhouette (D-15), sampled along the blank from its tail tip to its nose
+  // tip in the board's own coordinates — so it may run past either end of the board. Its bottom is
+  // levelled exactly as the board's rocker is, so along the board the two bottoms are one line.
+  const blankSamples: { stationIn: number; bottomIn: number; deckIn: number }[] = [];
+  if (blank) {
+    for (let i = 0; i <= BLANK_SAMPLES; i++) {
+      const station = mm(blank.start + ((blank.end - blank.start) * i) / BLANK_SAMPLES);
+      blankSamples.push({
+        stationIn: mmToInches(station),
+        bottomIn: mmToInches(blank.bottomAt(station)),
+        deckIn: mmToInches(blank.deckAt(station)),
+      });
+    }
+  }
+  // How far the blank reaches past the board and how high and low it sits — the frame fits all of
+  // it (`rocker-view-frame.ts` owns what that does to the scale and frame, Rule 1).
+  const blankSpanIn: RockerViewLayoutInput["blankSpanIn"] = blank
+    ? {
+        tailOverhangIn: mmToInches(mm(Math.max(0, -blank.start))),
+        noseOverhangIn: mmToInches(mm(Math.max(0, blank.end - length))),
+        lowestBottomIn: Math.min(...blankSamples.map((s) => s.bottomIn)),
+        highestDeckIn: Math.max(...blankSamples.map((s) => s.deckIn)),
+      }
+    : undefined;
 
   // The tallest a drawn board can ever get: the highest rocker lift plus the thickest foil, so
   // the deck curve can never be clipped by the frame regardless of what a shaper dials in. Every
   // mode but `"compact"` reserves this constant on the frame's cross axis regardless of the
   // board actually loaded (`rocker-view-frame.ts`'s own `maxDeckIn` contract).
   const worstCaseDeckIn = ROCKER_LIFT_RANGE_IN.max + FOIL_THICKNESS_RANGE_IN.max;
-  // `"compact"` reserves only the LOADED board's own deck envelope instead (this plan's
-  // `<design_decision>` section 3) — the order form's box is short and wide, so an empty reserved
-  // unit comes straight out of the printed type. Falls back to the worst-case constant on a
-  // corrupt/non-finite envelope (threat T-VUS-01), mirroring `rocker-view-frame.ts`'s own
-  // `resolveEffectiveLengthIn` fallback.
+  // `"compact"` reserves only the LOADED board's own deck envelope instead — the order form's box
+  // is short and wide, so an empty reserved unit comes straight out of the printed type. Falls
+  // back to the worst-case constant on a corrupt/non-finite envelope (threat T-VUS-01), mirroring
+  // `rocker-view-frame.ts`'s own `resolveEffectiveLengthIn` fallback.
   let maxDeckIn = worstCaseDeckIn;
   if (callouts === "compact") {
-    const deckEnvelopeIn = Math.max(...samples.map((s) => s.rockerLiftIn + s.thicknessIn));
+    const deckEnvelopeIn = Math.max(...samples.map((s) => s.deckIn));
     maxDeckIn = Number.isFinite(deckEnvelopeIn) && deckEnvelopeIn > 0 ? deckEnvelopeIn : worstCaseDeckIn;
   }
 
@@ -567,15 +550,16 @@ export function RockerViewer({
   // every frame extent (`width`/`height`, and therefore `viewBox`) is reserved at the pin's own
   // CEILING (`maxCardPinScale`), never at the live card scale (`rocker-view-frame.ts`'s own
   // T-03J-02 note) — so this pass hands `useSvgFitScale` the exact same numbers the drawing pass
-  // below will, whatever card scale that second pass resolves to (Task 2's own frame-invariance
-  // suite pins this equality by test).
-  const framePass = rockerViewLayout({ lengthIn, maxDeckIn, orientation, fitToBoard, stationRails: callouts });
+  // below will, whatever card scale that second pass resolves to.
+  const framePass = rockerViewLayout({
+    lengthIn,
+    maxDeckIn,
+    orientation,
+    fitToBoard,
+    stationRails: callouts,
+    blankSpanIn,
+  });
   const fitScale = useSvgFitScale(svgRef, framePass.width, framePass.height);
-  // The svg's own rendered client size (quick task 260909-oge), measured the same way
-  // `fitScale` is — a `useLayoutEffect`, never a ref read during render — so the drag readout
-  // chip's placement bounds below can use a plain number. Called unconditionally, every render,
-  // even though it is only ever READ inside the touch-drag block further down.
-  const svgClientSize = useSvgClientSize(svgRef);
   // The card-pin scale (quick task 260830-03j): 1 (unpinned) whenever this call's own
   // `stationRails` never draws a card at all (`cardPinScale`/`maxCardPinScale`'s own ceiling
   // forces that), so the Summary order form's `"compact"`/`"none"` paths are unaffected no matter
@@ -583,10 +567,17 @@ export function RockerViewer({
   const cardScale = cardPinScale(fitScale, CALLOUT_PX.value, orientation);
 
   // The drawing pass: the one place the drawing's scale and frame are decided
-  // (`rocker-view-frame.ts`) — `scale`, `viewH`, `baselineY` and the frame below all come from
-  // here, so `pxX`/`pxY` and the drag inverse can never solve against a different scale than the
-  // drawing was made with.
-  const layout = rockerViewLayout({ lengthIn, maxDeckIn, orientation, fitToBoard, stationRails: callouts, cardScale });
+  // (`rocker-view-frame.ts`) — `scale`, `baselineY`, `boardOffsetX` and the frame below all come
+  // from here, so every curve, card and dot is projected at one scale.
+  const layout = rockerViewLayout({
+    lengthIn,
+    maxDeckIn,
+    orientation,
+    fitToBoard,
+    stationRails: callouts,
+    cardScale,
+    blankSpanIn,
+  });
   const {
     scale,
     baselineY,
@@ -603,119 +594,77 @@ export function RockerViewer({
     deckLabelY,
     bottomLabelY,
     labelStationX,
+    boardOffsetX,
   } = layout;
 
-  // Nose on the left: station = length (nose tip) draws at the frame's left pad; station = 0
-  // (tail tip) draws further right. A shorter board's tail simply lands further left, leaving
-  // blank frame on the right rather than changing scale.
-  const pxX = (stationIn: number) => PAD_X + (lengthIn - stationIn) * scale;
+  // Nose on the left: station = length (nose tip) draws `boardOffsetX` in from the frame's left pad
+  // (0 without a blank; the blank's nose overhang with one, so the blank's own nose lands on the
+  // pad); station = 0 (tail tip) draws further right.
+  const pxX = (stationIn: number) => PAD_X + boardOffsetX + (lengthIn - stationIn) * scale;
   const pxY = (heightIn: number) => baselineY - heightIn * scale;
 
-  // The same pure-inches samples above, now projected exactly as before this task.
-  const bottomPoints: { x: number; y: number }[] = samples.map((s) => ({
-    x: pxX(s.stationIn),
-    y: pxY(s.rockerLiftIn),
-  }));
-  const deckPoints: { x: number; y: number }[] = samples.map((s) => ({
-    x: pxX(s.stationIn),
-    y: pxY(s.rockerLiftIn + s.thicknessIn),
-  }));
-
-  // One closed shape: the bottom curve tail-to-nose, a vertical edge closing the nose tip, the
-  // deck curve nose-to-tail, and an implicit closing edge back to the start at the tail tip —
-  // the deck-over-bottom construction (D-01) drawn as a single solid board silhouette, the same
-  // way `outline-viewer.tsx`'s own board path closes plan-view left and right halves.
-  const boardPath = [
-    `M ${bottomPoints[0].x.toFixed(2)} ${bottomPoints[0].y.toFixed(2)}`,
-    ...bottomPoints.slice(1).map((p) => `L ${p.x.toFixed(2)} ${p.y.toFixed(2)}`),
-    ...deckPoints
-      .slice()
-      .reverse()
-      .map((p) => `L ${p.x.toFixed(2)} ${p.y.toFixed(2)}`),
-    "Z",
-  ].join(" ");
+  // One closed shape: the bottom curve tail-to-nose, the deck curve nose-to-tail, closed at both
+  // tips — drawn as a single solid board silhouette, the same way `outline-viewer.tsx`'s own
+  // board path closes plan-view left and right halves.
+  const boardPath = closedProfilePath(
+    samples.map((s) => ({ x: pxX(s.stationIn), y: pxY(s.rockerLiftIn) })),
+    samples.map((s) => ({ x: pxX(s.stationIn), y: pxY(s.deckIn) })),
+  );
+  // The blank's silhouette, built the same way along the blank's own length.
+  const blankPath = blank
+    ? closedProfilePath(
+        blankSamples.map((s) => ({ x: pxX(s.stationIn), y: pxY(s.bottomIn) })),
+        blankSamples.map((s) => ({ x: pxX(s.stationIn), y: pxY(s.deckIn) })),
+      )
+    : null;
 
   const noseX = pxX(lengthIn);
   const tailX = pxX(0);
 
-  /** Sampled at the same `stationIn` the drawing loop above already samples, so a card and the
-   * curve it leaders to can never disagree about where that station's point sits. `rockerKind`
-   * names the founder's own split (planner finding 9), visible here in one place: the two tips
-   * have their own sliders and get a card; the other three rocker figures are measured off the
-   * drawn curve and get a plain reading. Every thickness figure is a slider, so the deck side
-   * needs no such field — it is a card at all five stations. */
-  const stationInputs: {
-    key: string;
-    name: string;
-    stationIn: number;
-    rockerValue: string | null;
-    thicknessValue: string;
-    rockerKind: "input" | "derived";
-  }[] = [
-    {
-      key: "tailTip",
-      name: "Tail Tip",
-      stationIn: 0,
-      rockerValue: formatMark(rocker.tailLift, system),
-      thicknessValue: formatMark(foil.tailTip, system),
-      rockerKind: "input",
-    },
-    {
-      key: "tail12",
-      name: `Tail @ ${stationLabel(system)}`,
-      stationIn: 12,
-      rockerValue: formatMark(geometry.tailLiftAt12in, system),
-      thicknessValue: formatMark(foil.tail12, system),
-      rockerKind: "derived",
-    },
-    {
-      key: "center",
-      name: "Center",
-      stationIn: lengthIn / 2,
-      rockerValue: null,
-      thicknessValue: formatMark(foil.center, system),
-      rockerKind: "derived",
-    },
-    {
-      key: "nose12",
-      name: `Nose @ ${stationLabel(system)}`,
-      stationIn: lengthIn - 12,
-      rockerValue: formatMark(geometry.noseLiftAt12in, system),
-      thicknessValue: formatMark(foil.nose12, system),
-      rockerKind: "derived",
-    },
-    {
-      key: "noseTip",
-      name: "Nose Tip",
-      stationIn: lengthIn,
-      rockerValue: formatMark(rocker.noseLift, system),
-      thicknessValue: formatMark(foil.noseTip, system),
-      rockerKind: "input",
-    },
-  ];
-  const stations = stationInputs.map((s) => {
-    const stationMm = inchesToMm(s.stationIn);
-    const rockerHeightIn = mmToInches(sampleRocker(geometry, stationMm));
-    const deckHeightIn = rockerHeightIn + mmToInches(sampleFoil(foil, length, stationMm));
-    return { ...s, rockerHeightIn, deckHeightIn };
+  /** The five stations' rail entries, read straight off the profile — the same numbers RAILS and
+   * the DATASHEET read, never re-derived here. `rockerKind`/`thicknessKind` pick a card (a number
+   * the shaper sets) or a plain reading (one computed for them) per UI-SPEC section 9, and depend
+   * on whether the board sits in a blank at all (`profile.blank`), not on whether this drawing was
+   * handed the blank's silhouette to draw. */
+  const inBlank = profile.blank !== null;
+  const stationNames: Record<FoilStationKey, string> = {
+    tailTip: "Tail Tip",
+    tail12: `Tail @ ${stationLabel(system)}`,
+    center: "Center",
+    nose12: `Nose @ ${stationLabel(system)}`,
+    noseTip: "Nose Tip",
+  };
+  const stations = profile.stations.map(({ key, station }) => {
+    const twelve = key === "tail12" || key === "nose12";
+    return {
+      key,
+      name: stationNames[key],
+      stationIn: mmToInches(station),
+      // The Center rocker is the curve's own zero reference, never printed as a number.
+      rockerValue: key === "center" ? null : formatMark(profile.stationRocker[key], system),
+      thicknessValue: formatMark(profile.effectiveFoil[key], system),
+      rockerKind: (key !== "center" && !inBlank ? "input" : "derived") as "input" | "derived",
+      thicknessKind: (inBlank && twelve ? "derived" : "input") as "input" | "derived",
+      rockerHeightIn: mmToInches(profile.rockerAt(station)),
+      deckHeightIn: mmToInches(profile.deckAt(station)),
+    };
   });
 
   // `"compact"` mode's two reading rows (quick task 260829-vus). `pxX` puts the nose at the
   // frame's left, so ascending x runs nose to tail — the reverse of `stations`' own tail-to-nose
-  // build order above. Every band depth, row baseline, type size and x position these lists hand
-  // to `CompactReading` comes off `layout`/`compactRailReadingXs`; nothing here is computed
-  // that this component doesn't already need to project the curve itself (Rule 1).
+  // order above. Every band depth, row baseline, type size and x position these lists hand to
+  // `CompactReading` comes off `layout`/`compactRailReadingXs`; nothing here is computed that this
+  // component doesn't already need to project the curve itself (Rule 1).
   const ascendingStations = [...stations].reverse();
-  // Deck row: all five stations (D-01 — every thickness figure is a slider-set input).
+  // Deck row: all five stations.
   const compactDeckList = ascendingStations.map((s) => ({
     stationX: pxX(s.stationIn),
     width: compactValueWidth(s.thicknessValue),
   }));
   const compactDeckXs = compactRailReadingXs(layout, compactDeckList);
-  // Bottom row: all four rocker figures (D-02) — tips and @ 12" alike — on ONE shared baseline,
-  // through ONE sweep, so the separation between a tip and its 12in neighbour is the sweep's own
-  // guarantee rather than a staggered second row's. The centre station's own rocker figure — the
-  // curve's own zero — is deliberately absent.
+  // Bottom row: all four rocker figures — tips and @ 12" alike — on ONE shared baseline, through
+  // ONE sweep. The centre station's own rocker figure — the curve's own zero — is deliberately
+  // absent.
   const compactBottomStations = ascendingStations.filter((s) => s.rockerValue !== null);
   const compactBottomList = compactBottomStations.map((s) => ({
     stationX: pxX(s.stationIn),
@@ -724,347 +673,35 @@ export function RockerViewer({
   const compactBottomXs = compactRailReadingXs(layout, compactBottomList);
 
   // The viewBox string comes straight off the layout — the one place this drawing's frame is
-  // decided. The vertical frame is built from its own rotated content (the nose card's near edge
-  // to the tail card's far edge on the long axis, the card rail's own outer edge to the baseline
-  // on the cross axis), NOT a transposition of the horizontal frame — the defect quick task
-  // 260825-w8d fixed on the outline viewer. `fitScale` itself was already measured against the
-  // frame pass above, before this (drawing-pass) layout even existed.
+  // decided. The vertical frame is built from its own rotated content, NOT a transposition of the
+  // horizontal frame — the defect quick task 260825-w8d fixed on the outline viewer.
   const { viewBox } = layout;
-  /** User units per CSS pixel — what the px-denominated drag-target sizes above are drawn in. */
+  /** User units per CSS pixel — what the px-denominated dot radius and blank line are drawn in. */
   const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
 
-  /**
-   * One hit radius drives both what is drawn (the hit circles below) and what the delegated pick
-   * tests against — never two numbers that could drift apart (RESEARCH.md Pitfall 2's own
-   * warning). `SIDE_PROFILE_DRAG_HIT_COARSE_PX` is the 09-06 measured phone radius; a fine
-   * pointer keeps the historic 15px unchanged (PHON-05). Converted once, here, from CSS px to
-   * board millimetres at THIS render's own scale, since `nearestSideProfileDragTarget` takes
-   * millimetres — it never sees a pixel.
-   */
-  const hitRadiusPx = coarsePointer ? SIDE_PROFILE_DRAG_HIT_COARSE_PX : SIDE_PROFILE_DRAG_HIT_PX;
-  const hitRadiusUserUnits = hitRadiusPx * handleUnit;
-  const hitRadiusMm = inchesToMm(hitRadiusUserUnits / scale);
+  // The measuring points: the board's five stations on its bottom and its deck, and with a blank,
+  // every station the catalogue measured — rocker stations on the blank's bottom, thickness
+  // stations on its deck (each attribute's own list, so a width-only station draws nothing here).
+  const boardPoints = stations.flatMap((s) => [
+    { cx: pxX(s.stationIn), cy: pxY(s.rockerHeightIn) },
+    { cx: pxX(s.stationIn), cy: pxY(s.deckHeightIn) },
+  ]);
+  const blankPoints = blank
+    ? [
+        ...blank.measuredStations.rocker.map((station) => ({
+          cx: pxX(mmToInches(station)),
+          cy: pxY(mmToInches(blank.bottomAt(station))),
+        })),
+        ...blank.measuredStations.thickness.map((station: Mm) => ({
+          cx: pxX(mmToInches(station)),
+          cy: pxY(mmToInches(blank.deckAt(station))),
+        })),
+      ]
+    : [];
 
-  // Grabbable points, in the same canonical space pxX/pxY draw everything else in. Only built
-  // when a drag handler is present, so a consumer with no `onDrag` renders exactly what it did
-  // before this prop existed. Kept in its raw (board-mm) shape too — `dragPointsAt` — so the
-  // delegated pick below and this view-space mapping read the exact same four points, never two
-  // separately-derived copies.
-  const dragPointsAt = onDrag ? sideProfileDragPoints(geometry) : [];
-  const dragTargets = dragPointsAt.map((d) => ({
-    target: d.target,
-    cx: pxX(mmToInches(d.point.station)),
-    cy: pxY(mmToInches(d.point.height)),
-  }));
-
-  /**
-   * The drag readout chip's own box (D-17) — mirrors `outline-viewer.tsx`'s own build exactly.
-   * `null` whenever no touch drag is live, which is what keeps the chip absent for a mouse at
-   * every viewport width (PHON-05): only `handlePointerDown`'s own `pointerType === "touch"`
-   * check ever sets `touchDragTarget`.
-   *
-   * Anchored on the FINGER, not the handle (260909-ktq, D-06): `touchFingerBoard` is projected
-   * through the same `pxX`/`pxY` the drag targets themselves use, so it lands in exactly the
-   * content-group pixel the finger is touching — during a direct drag that is where the handle
-   * already is, so nothing looks different; during a remote drag it rides out to the thumb,
-   * wherever on the drawing that is.
-   *
-   * Sized and positioned entirely in rendered viewBox space (`toViewBoxPoint` below), the same
-   * space `viewBox`'s own four numbers describe — so the clamp below ("never clipped by the
-   * drawing's own edge") is an exact bounds check, not an approximation across two coordinate
-   * spaces. `CALLOUT_CHAR_PX` is calibrated in the same screen-px terms `CALLOUT_PX` is
-   * (`callout-primitives.tsx`'s own doc comment), so both are multiplied by `handleUnit` once, at
-   * the end, the same conversion `cardPinScale` performs above.
-   */
-  let readoutChip:
-    | { lines: { label: string; value: string }[]; x: number; y: number; width: number; height: number }
-    | null = null;
-  if (touchDragTarget && touchFingerBoard) {
-    const lines = rockerReadoutLines(touchDragTarget);
-    const longestChars = Math.max(...lines.map((l) => `${l.label} — ${l.value}`.length));
-    const widthPx = Math.max(CALLOUT_PX.chipW, longestChars * CALLOUT_CHAR_PX + READOUT_PAD_PX * 2);
-    const heightPx = lines.length * READOUT_ROW_PX + READOUT_PAD_PX * 2;
-    const width = widthPx * handleUnit;
-    const height = heightPx * handleUnit;
-    const [vbMinX, vbMinY, vbWidth, vbHeight] = viewBox.split(" ").map(Number);
-    const fingerCx = pxX(mmToInches(touchFingerBoard.station));
-    const fingerCy = pxY(mmToInches(touchFingerBoard.height));
-    const anchor = toViewBoxPoint(fingerCx, fingerCy);
-    let boxBottom = anchor.y - READOUT_GAP_PX * handleUnit;
-    let boxTop = boxBottom - height;
-    let boxLeft = anchor.x - width / 2;
-    let boxRight = boxLeft + width;
-    if (boxLeft < vbMinX) {
-      boxLeft = vbMinX;
-      boxRight = boxLeft + width;
-    }
-    if (boxRight > vbMinX + vbWidth) {
-      boxRight = vbMinX + vbWidth;
-      boxLeft = boxRight - width;
-    }
-    if (boxTop < vbMinY) {
-      boxTop = vbMinY;
-      boxBottom = boxTop + height;
-    }
-    if (boxBottom > vbMinY + vbHeight) {
-      boxBottom = vbMinY + vbHeight;
-      boxTop = boxBottom - height;
-    }
-
-    // Keep the card clear of the side profile too (quick task 260909-oge) — a mirror of
-    // `outline-viewer.tsx`'s own wiring. `bottomPoints[i]`/`deckPoints[i]` already share a
-    // station by construction, so each pair, mapped into rendered space through the same
-    // `toViewBoxPoint` the chip's own anchor uses, is one cross-section of the board.
-    // `alongAxis` is `"y"` in vertical (the rotated content group sends the board's long axis
-    // onto rendered y) and `"x"` in horizontal, the identity map — the opposite pairing from
-    // `outline-viewer.tsx`, because this drawing's own rotation runs the other way.
-    const boardSections = bottomPoints.map((bp, i) => {
-      const dp = deckPoints[i];
-      const edgeA = toViewBoxPoint(bp.x, bp.y);
-      const edgeB = toViewBoxPoint(dp.x, dp.y);
-      return boardSection(edgeA, edgeB, vertical ? "y" : "x");
-    });
-
-    // The card may use the whole VISIBLE drawing, not just the viewBox (D-07) — load-bearing
-    // here, not a nicety: measured on a Pixel 7, the card is 309.47 units wide, the gap beside
-    // the profile inside the viewBox is 289.09 units (it does not fit) and the gap inside the
-    // visible drawing is 354.59 (it fits, with 45.12 units — about 23 screen px — to spare).
-    // Never "tidy" this back to the four viewBox numbers; it would quietly break this screen.
-    let placementBounds: ReadoutRect = { x: vbMinX, y: vbMinY, width: vbWidth, height: vbHeight };
-    if (fitScale > 0 && svgClientSize.width > 0 && svgClientSize.height > 0) {
-      const drawnW = svgClientSize.width / fitScale;
-      const drawnH = svgClientSize.height / fitScale;
-      const vbCenterX = vbMinX + vbWidth / 2;
-      const vbCenterY = vbMinY + vbHeight / 2;
-      placementBounds = {
-        x: vbCenterX - drawnW / 2,
-        y: vbCenterY - drawnH / 2,
-        width: drawnW,
-        height: drawnH,
-      };
-    }
-
-    const placed = placeReadoutClearOfBoard(
-      { x: boxLeft, y: boxTop, width, height },
-      { alongAxis: vertical ? "y" : "x", sections: boardSections },
-      READOUT_GAP_PX * handleUnit,
-      placementBounds,
-      anchor,
-    );
-
-    readoutChip = { lines, x: placed.x, y: placed.y, width, height };
-  }
-
-  // The construction overlay: one line per handle (four, always — two Bezier segments each with a
-  // handle at both ends), from `geometry.handles`. Every coordinate comes straight off
-  // `buildRocker`'s own knots/handles, in the same canonical space pxX/pxY draw everything else
-  // in — no formula added here, only projection.
-  const constructionLines = geometry.handles.map((h) => ({
-    x1: pxX(mmToInches(h.from.x)),
-    y1: pxY(mmToInches(h.from.y)),
-    x2: pxX(mmToInches(h.to.x)),
-    y2: pxY(mmToInches(h.to.y)),
-  }));
-  // Plain dots: all three knots — tail tip, centre, nose tip. Fixed, ungrabbable, showing the
-  // shape only; the four handle termini below are the drawing's only grab targets now.
-  const constructionDots = geometry.knots.map((k) => ({
-    cx: pxX(mmToInches(k.point.x)),
-    cy: pxY(mmToInches(k.point.y)),
-  }));
-
-  /** Screen point -> board coordinates: undo the SVG transform, then invert pxX/pxY.
-   *
-   * The matrix comes off the content group, not the SVG root, falling back to the root only if
-   * the group ref is not yet attached — the same reasoning `outline-viewer.tsx`'s own
-   * `toBoardPoint` uses. In vertical the content group carries `rotate(90)`; reading the CTM off
-   * it (rather than the un-rotated root) means the inversion below always lands back in the
-   * canonical (horizontal) space pxX/pxY were written for, correct in both orientations.
-   */
-  function toBoardPoint(event: ReactPointerEvent<SVGElement>): SideProfileDragPoint | null {
-    const el = contentRef.current ?? svgRef.current;
-    const ctm = el?.getScreenCTM();
-    if (!el || !ctm) return null;
-    const local = new DOMPoint(event.clientX, event.clientY).matrixTransform(ctm.inverse());
-    const stationIn = lengthIn - (local.x - PAD_X) / scale;
-    const heightIn = (baselineY - local.y) / scale;
-    return { station: inchesToMm(stationIn), height: inchesToMm(heightIn) };
-  }
-
-  /**
-   * Every move writes the spec and the redraw arrives back through props — nothing here is
-   * cached across renders, which is what keeps the sliders and the datasheet cells in step with
-   * the drawing mid-drag.
-   *
-   * A DIRECT gesture (thumb, mouse, or pen on the handle itself) passes the finger's own board
-   * point straight through, exactly as it always has. A REMOTE gesture (260909-ktq, D-03: a touch
-   * picked a handle, then moved from elsewhere on the drawing) instead asks `remoteDragPoint` for
-   * the picked handle's OWN board position at touch-down plus the finger's travel since then —
-   * never the finger's own live position, which would teleport the handle onto wherever the thumb
-   * happens to be. `remoteDragPoint` is axis-neutral, so the mapping into/out of it here is
-   * `{x: station, y: height}` — the outline viewer's own mapping is `{x: station, y: halfWidth}`.
-   */
-  function handleDragMove(event: ReactPointerEvent<SVGElement>) {
-    const gesture = draggingRef.current;
-    if (!gesture || !onDrag) return;
-    const boardPoint = toBoardPoint(event);
-    if (!boardPoint) return;
-
-    gesture.maxTravelPx = Math.max(
-      gesture.maxTravelPx,
-      Math.hypot(
-        event.clientX - gesture.fingerClientStart.x,
-        event.clientY - gesture.fingerClientStart.y,
-      ),
-    );
-
-    const dragTo = gesture.remote
-      ? (() => {
-          const moved = remoteDragPoint(
-            { x: gesture.pointStart.station, y: gesture.pointStart.height },
-            { x: gesture.fingerStart.station, y: gesture.fingerStart.height },
-            { x: boardPoint.station, y: boardPoint.height },
-          );
-          return { station: mm(moved.x), height: mm(moved.y) };
-        })()
-      : boardPoint;
-
-    onDrag(solveSideProfileDrag(geometry, gesture.target, dragTo));
-
-    // The readout chip (D-06/D-17) follows the finger, so this is set on every move a touch makes
-    // — direct or remote — and never for a mouse or pen (PHON-05).
-    if (event.pointerType === "touch") setTouchFingerBoard(boardPoint);
-  }
-
-  /**
-   * The one delegated drag-start pick (D-15, RESEARCH.md Pitfall 2): a press anywhere on the
-   * drawing converts to board coordinates and asks `nearestSideProfileDragTarget` which of the
-   * four curve handles, if any, is within reach — never which hit-circle happened to catch the
-   * browser's own (paint-order) hit-test. One pointer path for both a mouse and a touch (D-16): a
-   * gesture starts on pointer-down with no movement threshold, because the drawing is pinned
-   * inside the phone shell and can never be mistaken for a page scroll.
-   *
-   * A mouse or pen (260909-ktq, PHON-05) keeps today's path byte-for-byte: no hit, nothing
-   * happens; a hit starts a direct drag exactly as it always has. It never reaches `nextSelection`
-   * and never sets `selectedTarget` or `touchFingerBoard` — picking, the halo ring and the readout
-   * chip following the finger are touch-only.
-   *
-   * A touch asks `nextSelection` what the press means: a hit always picks that handle and starts
-   * a direct drag (D-02, D-04 — even mid-pick, a newly touched handle wins); empty canvas with a
-   * handle already picked starts a remote drag on it (D-03); empty canvas with nothing picked does
-   * nothing at all, and takes no pointer capture — exactly as it always has (D-05).
-   */
-  function handlePointerDown(event: ReactPointerEvent<SVGElement>) {
-    if (!onDrag) return;
-    const boardPoint = toBoardPoint(event);
-    if (!boardPoint) return;
-    const hit = nearestSideProfileDragTarget(dragPointsAt, boardPoint, hitRadiusMm);
-
-    if (event.pointerType !== "touch") {
-      if (!hit) return;
-      event.preventDefault();
-      draggingRef.current = {
-        target: hit,
-        remote: false,
-        pointStart: boardPoint,
-        fingerStart: boardPoint,
-        fingerClientStart: { x: event.clientX, y: event.clientY },
-        maxTravelPx: 0,
-      };
-      event.currentTarget.setPointerCapture(event.pointerId);
-      return;
-    }
-
-    const decision = nextSelection({ selected: selectedTarget, mode: "idle" }, { type: "touchDown", hit });
-    if (decision.mode === "idle" || decision.selected === null) return;
-
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const remote = decision.mode === "remote";
-    // A remote gesture's `pointStart` is the picked handle's own entry in `dragPointsAt` — the
-    // same array the pick itself was made against, so there is one source of truth for where the
-    // handles are. A direct gesture's `pointStart` is unused (`dragTo` takes the finger's live
-    // point in that branch of `handleDragMove`), so the finger's own board point stands in for it.
-    const pointStart = remote
-      ? (dragPointsAt.find((d) => d.target === decision.selected)?.point ?? boardPoint)
-      : boardPoint;
-    draggingRef.current = {
-      target: decision.selected,
-      remote,
-      pointStart,
-      fingerStart: boardPoint,
-      fingerClientStart: { x: event.clientX, y: event.clientY },
-      maxTravelPx: 0,
-    };
-    setSelectedTarget(decision.selected);
-    setTouchDragTarget(decision.selected);
-    setTouchFingerBoard(boardPoint);
-  }
-
-  /**
-   * Split from a genuine lift (260909-ktq): a lift asks `nextSelection` whether the gesture was a
-   * tap on empty space (releases the pick, D-05) or a drag (the pick survives, D-02); a cancelled
-   * gesture always leaves the pick exactly where it was (D-05). Both clear the live gesture,
-   * the readout chip's own state, and pointer capture exactly as before. A mouse or pen never
-   * reaches `nextSelection` (PHON-05).
-   */
-  function handleDragEnd(event: ReactPointerEvent<SVGElement>, cancelled: boolean) {
-    const gesture = draggingRef.current;
-    if (gesture && event.pointerType === "touch") {
-      const dragEvent: DragSelectionEvent<SideProfileDragTarget> = cancelled
-        ? { type: "cancel" }
-        : { type: "touchUp", travelPx: gesture.maxTravelPx };
-      const result = nextSelection(
-        { selected: selectedTarget, mode: gesture.remote ? "remote" : "direct" },
-        dragEvent,
-      );
-      setSelectedTarget(result.selected);
-    }
-    draggingRef.current = null;
-    if (touchDragTarget !== null) setTouchDragTarget(null);
-    if (touchFingerBoard !== null) setTouchFingerBoard(null);
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-  }
-
-  /**
-   * The readout chip's own words (D-17): the same `label — value` composition
-   * `rocker-controls.tsx` already bakes into its own slider labels, for the field or fields the
-   * touched handle drives, read off the live `rocker` spec (never the raw pointer position), so a
-   * handle clamped against its own angle/smoothness/flatness range shows the clamped value, not a
-   * stale pre-clamp number.
-   */
-  function rockerReadoutLines(target: SideProfileDragTarget): { label: string; value: string }[] {
-    switch (target) {
-      case "tailTipHandle":
-        return [
-          { label: "Tail Angle", value: `${rocker.tailAngle}°` },
-          { label: "Tail Smoothness", value: `${rocker.tailSmoothness}%` },
-        ];
-      case "noseTipHandle":
-        return [
-          { label: "Nose Angle", value: `${rocker.noseAngle}°` },
-          { label: "Nose Smoothness", value: `${rocker.noseSmoothness}%` },
-        ];
-      case "tailFlatHandle":
-        return [{ label: "Tail Flatness", value: `${rocker.tailFlatness}%` }];
-      case "noseFlatHandle":
-        return [{ label: "Nose Flatness", value: `${rocker.noseFlatness}%` }];
-    }
-  }
-
-  /**
-   * A point drawn in this viewer's canonical (pre-rotation) space, mapped to where it lands in
-   * the outer, rendered viewBox space — the exact inverse of the content group's own `rotate(90)`
-   * in vertical (identity in horizontal). `rotate(90)` (about the origin, so this is a pure
-   * linear map with no translation to account for) sends canonical `(x, y)` to rendered
-   * `(-y, x)`. Used only to place the readout chip, which is drawn OUTSIDE the rotated content
-   * group (a plain sibling `<g>`) so its text is always screen-upright with no counter-rotation
-   * of its own to get wrong.
-   */
-  function toViewBoxPoint(x: number, y: number): { x: number; y: number } {
-    return vertical ? { x: -y, y: x } : { x, y };
-  }
+  const ariaLabel = blank
+    ? `Side profile of the board inside the ${blank.record.vendor} ${blank.record.name} blank, with the foam to come off shaded`
+    : "Side profile of the board, showing the rocker line and deck thickness";
 
   return (
     <svg
@@ -1076,29 +713,21 @@ export function RockerViewer({
       // drawing inside it, or a fixed-size panel (the Summary order form's rocker box) inflates
       // to the drawing's own aspect ratio instead of holding still. The immediate parent supplies
       // both `relative` and a definite size in every consumer of this component.
-      // `touch-none` here too, not only on the hit circles: a real touch drag routinely moves
-      // past the original circle's own small radius (pointer capture is what keeps the SAME
-      // target receiving those moves), and once a touch strays onto a part of the SVG with no
-      // `touch-action: none` of its own the browser can still hand the gesture to native
-      // scrolling — cancelling the drag with a `pointercancel` even though `preventDefault()` was
-      // already called on the pointerdown. Confirmed with a real (CDP) touch drag, not assumed.
-      // `select-none` is the defensive iOS long-press callout suppression (PHON-04, RESEARCH.md
-      // Pitfall 3): the SVG text drawn near a drag point can start a selection too, not only the
-      // hit circles themselves — both places get the same suppression.
-      className="absolute inset-0 block h-full w-full select-none touch-none"
+      // No `touch-none` any more: it was here only so a finger dragging a handle could not be
+      // handed to native scrolling (D-14 retired the handles). A drawing with nothing to drag
+      // should let a thumb scroll a short screen's drawing column like any other picture.
+      // `select-none` and the iOS long-press callout suppression stay: a long press on the
+      // drawing's labels should not start a text selection.
+      className="absolute inset-0 block h-full w-full select-none"
       style={{ WebkitTouchCallout: "none" }}
       role="img"
-      aria-label="Side profile of the board, showing the rocker line and deck thickness"
-      onPointerDown={showConstruction && onDrag ? handlePointerDown : undefined}
-      onPointerMove={onDrag ? handleDragMove : undefined}
-      onPointerUp={onDrag ? (event) => handleDragEnd(event, false) : undefined}
-      onPointerCancel={onDrag ? (event) => handleDragEnd(event, true) : undefined}
+      aria-label={ariaLabel}
     >
       {/* Every child below is drawn in the canonical (horizontal, nose-left) coordinate space,
           untouched — the rotation lives on this ONE group, so pxX/pxY and their call sites keep
           drawing the layout they always drew. React omits an `undefined` attribute, so in
           horizontal this is a plain pass-through container with no transform. */}
-      <g ref={contentRef} transform={vertical ? "rotate(90)" : undefined}>
+      <g transform={vertical ? "rotate(90)" : undefined}>
         {/* The flat surface the board sits on — the rocker's own zero reference, bottom-up — drawn
             faint and dashed, spanning only the drawn board's own length. Compact draws it at its
             own heavier stroke and longer dash (`COMPACT_BASELINE_*`): the 1-unit line washes out
@@ -1113,6 +742,19 @@ export function RockerViewer({
           strokeWidth={callouts === "compact" ? COMPACT_BASELINE_WIDTH : 1}
           strokeDasharray={callouts === "compact" ? COMPACT_BASELINE_DASH : "4 3"}
         />
+        {/* The blank (D-15), after the baseline and before the board: the faint foam wash inside a
+            solid 1px line. The board paints over it next, so only the foam to come off stays
+            shaded. */}
+        {blankPath && (
+          <path
+            data-blank-silhouette
+            d={blankPath}
+            fill="var(--outline-foam-shade)"
+            stroke="var(--outline-blank-line)"
+            strokeWidth={BLANK_LINE_PX * handleUnit}
+            strokeLinejoin="round"
+          />
+        )}
         <path
           data-board-silhouette="profile"
           d={boardPath}
@@ -1130,26 +772,39 @@ export function RockerViewer({
               const rockerCurveY = pxY(s.rockerHeightIn);
               return (
                 <g key={s.key}>
-                  {/* Deck side: every thickness figure has its own slider, so every station
-                      draws as a card. */}
-                  <StationCard
-                    x={x}
-                    rail={deckRailY}
-                    tickEnd={deckTickEndY}
-                    curveY={deckCurveY}
-                    cardDy={cardDy}
-                    cardWidth={cardWidth}
-                    cardHeight={cardHeight}
-                    vertical={vertical}
-                    name={s.name}
-                    value={s.thicknessValue}
-                    type={cardType}
-                  />
-                  {/* Bottom side: a card at the two tips (their own sliders), a plain reading
-                      everywhere else — measured off the drawn curve rather than set directly.
-                      The centre keeps its em-dash, now as a plain reading rather than a card, in
-                      the muted label colour — it stands in for a value that is zero by
-                      construction rather than one that was measured. */}
+                  {/* Deck side: a card for a thickness the shaper sets, a plain reading for one
+                      the blank derives. */}
+                  {s.thicknessKind === "input" ? (
+                    <StationCard
+                      x={x}
+                      rail={deckRailY}
+                      tickEnd={deckTickEndY}
+                      curveY={deckCurveY}
+                      cardDy={cardDy}
+                      cardWidth={cardWidth}
+                      cardHeight={cardHeight}
+                      vertical={vertical}
+                      name={s.name}
+                      value={s.thicknessValue}
+                      type={cardType}
+                    />
+                  ) : (
+                    <StationReadout
+                      x={x}
+                      rail={deckRailY}
+                      tickEnd={deckTickEndY}
+                      curveY={deckCurveY}
+                      cardDy={cardDy}
+                      vertical={vertical}
+                      name={s.name}
+                      value={s.thicknessValue}
+                      type={cardType}
+                    />
+                  )}
+                  {/* Bottom side: a card for a rocker figure the shaper types, a plain reading for
+                      one the blank decides. The centre keeps its em-dash as a plain reading in the
+                      muted label colour — it stands in for a value that is zero by construction
+                      rather than one that was measured. */}
                   {s.rockerKind === "input" ? (
                     <StationCard
                       x={x}
@@ -1222,120 +877,33 @@ export function RockerViewer({
           </>
         )}
 
-        {showConstruction && (
-          <>
-            {/* The construction lines: one per handle, out of each curve point toward the handle
-                that steers the curve there — always four, since the rocker curve is two Bezier
-                segments joined at the centre and each segment has a handle at both of its ends. */}
-            {constructionLines.map((cl, i) => (
-              <line
-                key={`construction-line-${i}`}
-                x1={cl.x1}
-                y1={cl.y1}
-                x2={cl.x2}
-                y2={cl.y2}
-                stroke="var(--outline-construction)"
-                strokeWidth={1.5}
+        {/* The measuring points: plain dots, nothing to grab. The blank's measured stations draw
+            first in the blank's own line colour, then the board's five stations in ink on top. */}
+        {showMeasuringPoints && (
+          <g data-measuring-points pointerEvents="none">
+            {blankPoints.map((p, i) => (
+              <circle
+                key={`blank-point-${i}`}
+                cx={p.cx}
+                cy={p.cy}
+                r={KNOT_DOT_PX * handleUnit}
+                fill="var(--outline-blank-line)"
+                pointerEvents="none"
               />
             ))}
-            {/* Plain marker dots: the three knots — tail tip, centre, nose tip. Deliberately
-                plain, not a grab target: these show the shape, they are not draggable. A tip's
-                own rocker is set from its slider and its typed DATASHEET cell instead. */}
-            {constructionDots.map((dt, i) => (
+            {boardPoints.map((p, i) => (
               <circle
-                key={`construction-dot-${i}`}
-                cx={dt.cx}
-                cy={dt.cy}
+                key={`board-point-${i}`}
+                cx={p.cx}
+                cy={p.cy}
                 r={KNOT_DOT_PX * handleUnit}
                 fill="var(--outline-ink)"
+                pointerEvents="none"
               />
             ))}
-            {/* The drag targets themselves: board-fill disc, accent ring, warning core — the same
-                three-part treatment `outline-viewer.tsx` draws its own drag targets with, plus,
-                for whichever handle is picked (260909-ktq, D-07), a halo ring drawn one size
-                further out. The four control-point handle termini appear here — the two tip
-                knots and the centre knot are never among them. pointer-events:none throughout —
-                the transparent hit circles below own every pointer interaction. */}
-            {dragTargets.map((d) => (
-              <g key={`target-${d.target}`} pointerEvents="none">
-                {d.target === selectedTarget && (
-                  <circle
-                    cx={d.cx}
-                    cy={d.cy}
-                    r={DRAG_SELECTED_HALO_PX * handleUnit}
-                    fill="none"
-                    stroke="var(--color-surf-accent-ink)"
-                    strokeWidth={DRAG_TARGET_RING_PX * handleUnit}
-                  />
-                )}
-                <circle
-                  cx={d.cx}
-                  cy={d.cy}
-                  r={DRAG_TARGET_OUTER_PX * handleUnit}
-                  fill="var(--outline-board-fill)"
-                  stroke="var(--color-surf-accent-ink)"
-                  strokeWidth={DRAG_TARGET_RING_PX * handleUnit}
-                />
-                <circle cx={d.cx} cy={d.cy} r={DRAG_TARGET_CORE_PX * handleUnit} fill="var(--color-surf-warning)" />
-              </g>
-            ))}
-            {/* Transparent grab areas, last so they sit above everything they cover. No press
-                handler of their own — the root `<svg>`'s one delegated handler owns every
-                drag-start pick (D-15); these circles are the visual/cursor affordance and the
-                `data-drag-target` test hook only. `touch-action:none` stops a touch drag
-                scrolling the page instead of shaping the board; `select-none` plus the inline
-                `WebkitTouchCallout` suppression stop iOS's long-press text-selection popup
-                (PHON-04, RESEARCH.md Pitfall 3) from interrupting a drag mid-gesture.
-                `data-selected` (260909-ktq) is `undefined` — not `"false"` — when the handle is
-                not picked, so React omits it entirely and the phone specs that count
-                `[data-drag-target]` elements stay exact. */}
-            {dragTargets.map((d) => (
-              <circle
-                key={`hit-${d.target}`}
-                data-drag-target={d.target}
-                data-selected={d.target === selectedTarget ? "true" : undefined}
-                cx={d.cx}
-                cy={d.cy}
-                r={hitRadiusUserUnits}
-                fill="transparent"
-                className="cursor-grab touch-none select-none active:cursor-grabbing"
-                style={{ WebkitTouchCallout: "none" }}
-              />
-            ))}
-          </>
+          </g>
         )}
       </g>
-      {/* The drag readout chip (D-17): a sibling of the rotated content group above, not a
-          child of it, so its box and text are always drawn screen-upright in the outer viewBox
-          space directly — no counter-rotation needed. Touch-only (`readoutChip` is `null` for a
-          mouse at every viewport width, PHON-05); `pointerEvents="none"` so it can never itself
-          swallow the pointermove that is still steering the drag underneath it. */}
-      {readoutChip && (
-        <g data-readout-chip={touchDragTarget} pointerEvents="none">
-          <CalloutChipFrame x={readoutChip.x} y={readoutChip.y} width={readoutChip.width} height={readoutChip.height} />
-          {readoutChip.lines.map((line, i) => (
-            <text
-              key={line.label}
-              x={readoutChip.x + readoutChip.width / 2}
-              y={readoutChip.y + READOUT_PAD_PX * handleUnit + READOUT_ROW_PX * handleUnit * (i + 0.75)}
-              textAnchor="middle"
-            >
-              <tspan
-                style={{ fontSize: CALLOUT_PX.name * handleUnit, fontWeight: 700, fontFamily: "var(--font-body)" }}
-                fill="var(--outline-callout-label)"
-              >
-                {line.label} —{" "}
-              </tspan>
-              <tspan
-                style={{ fontSize: CALLOUT_PX.value * handleUnit, fontWeight: 700, fontFamily: "var(--font-body)" }}
-                fill="var(--color-surf-accent-ink)"
-              >
-                {line.value}
-              </tspan>
-            </text>
-          ))}
-        </g>
-      )}
     </svg>
   );
 }
