@@ -26,7 +26,6 @@ import type { OutlineSpec } from "./board";
 import type { FinAdvancedSpec, FinPlacementSpec } from "./fins";
 import type { FoilSpec } from "./foil";
 import type { RailBandSpec, RailSectionSpec } from "./rail-bands";
-import type { RockerSpec } from "./rocker";
 import { inchesToMm, mmToInches, type Mm } from "./units";
 
 /** The most decimal places `formatPresetInches` will print — its comment says why six. */
@@ -93,30 +92,35 @@ export function buildOutlinePresetSource(spec: OutlineSpec): string {
   ].join("\n");
 }
 
-/** Builds a pasteable `BoardPreset["rocker"]`/`["foil"]` source block from the live rocker and
- * foil specs — the ROCKER screen's capture (`components/rocker/rocker-editor.tsx`). Emits the
- * eight-field `RockerSpec` shape (quick task 260829-rda), the two lifts and two angles authored
- * through `inchesToMm()`/`degrees()` the way `presets.ts` itself authors them, so the capture
- * round-trips straight into that file. */
-export function buildRockerPresetSource(rocker: RockerSpec, foil: FoilSpec): string {
+/** What the ROCKER screen's capture reads: the foil's centre and two tips (the board's own stored
+ * values — the 12" stations are the blank's, D-10/D-11), and the picked blank's identity and
+ * placement, or `null` when the board is still hand-set. */
+export interface RockerPresetSourceInput {
+  foil: Pick<FoilSpec, "noseTip" | "center" | "tailTip">;
+  blank: { vendor: string; name: string; placement: Mm } | null;
+}
+
+/**
+ * Builds the ROCKER screen's capture (`components/rocker/rocker-editor.tsx`) — the D-03 line the
+ * founder pastes into `presets.ts` once a preset has been set up on screen in its real blank: a
+ * `foil` block of the three thicknesses a preset still owns (centre and tips, exact sixteenths
+ * through `formatPresetInches`), then either the `blank` line naming the vendor and blank (each a
+ * JSON string, so a name such as `6'0" M-Regular` pastes back intact) with its placement through
+ * `inchesToMm()`, or — with no blank picked — a comment saying so, since a preset keeps its
+ * provisional pick until one is captured. The rocker itself is no longer captured: with a blank it
+ * is the blank's own.
+ */
+export function buildRockerPresetSource(input: RockerPresetSourceInput): string {
+  const { foil, blank } = input;
   return [
-    "rocker: {",
-    `  noseLift: inchesToMm(${formatPresetInches(rocker.noseLift)}),`,
-    `  tailLift: inchesToMm(${formatPresetInches(rocker.tailLift)}),`,
-    `  noseAngle: degrees(${rocker.noseAngle}),`,
-    `  tailAngle: degrees(${rocker.tailAngle}),`,
-    `  noseSmoothness: ${rocker.noseSmoothness},`,
-    `  tailSmoothness: ${rocker.tailSmoothness},`,
-    `  noseFlatness: ${rocker.noseFlatness},`,
-    `  tailFlatness: ${rocker.tailFlatness},`,
-    "},",
     "foil: {",
     `  noseTip: inchesToMm(${formatPresetInches(foil.noseTip)}),`,
-    `  nose12: inchesToMm(${formatPresetInches(foil.nose12)}),`,
     `  center: inchesToMm(${formatPresetInches(foil.center)}),`,
-    `  tail12: inchesToMm(${formatPresetInches(foil.tail12)}),`,
     `  tailTip: inchesToMm(${formatPresetInches(foil.tailTip)}),`,
     "},",
+    blank
+      ? `blank: { vendor: ${JSON.stringify(blank.vendor)}, name: ${JSON.stringify(blank.name)}, placement: inchesToMm(${formatPresetInches(blank.placement)}) },`
+      : "// blank: none picked — this preset would keep its provisional pick",
   ].join("\n");
 }
 

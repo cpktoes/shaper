@@ -17,7 +17,7 @@
  * five stations (and a blank's measured stations), off by default on every pointer.
  * 04-05 Task 1 adds a third affordance: below `RockerControls`, a
  * development-only "Copy preset values" button mirroring the Template screen's own capture
- * affordance (`outline-editor.tsx`) — it reads the live `rocker`/`foil` back out as pasteable
+ * affordance (`outline-editor.tsx`) — it reads the live foil and picked blank back out as pasteable
  * `lib/geometry/presets.ts` source, gated on `process.env.NODE_ENV === "development"` so the
  * bundler dead-code-eliminates it from production, the same D-03 tuning loop the outline presets
  * were captured through.
@@ -68,9 +68,7 @@ import * as ViewerMedia from "@/components/design/use-viewer-media";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
 import { RotateBoardIcon, ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
-import { buildFallbackProfile } from "@/lib/geometry/board-profile";
 import { buildRockerPresetSource } from "@/lib/geometry/preset-source";
-import { bezierToFiveStations, buildRocker } from "@/lib/geometry/rocker";
 import { RockerControls, type RockerControlsSectionKey } from "./rocker-controls";
 import { RockerDatasheet } from "./rocker-datasheet";
 import { RockerViewer } from "./rocker-viewer";
@@ -82,17 +80,10 @@ const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
 ];
 
 export function RockerEditor() {
-  const { rocker, updateRocker, foil, updateFoil, outline, outlineGeometry } = useDesign();
-  // Transitional until plan 11-09 gives the store its own side profile: the sidebar's controls and
-  // the DATASHEET still take the saved Bezier's geometry this wave, so it is built once per render
-  // for them alone (quick task 260829-rda's one-build-per-render rule). The drawing no longer
-  // reads it.
-  const geometry = buildRocker(rocker, outline.length);
-  // The drawing's one side profile (Phase 11, D-14/D-15). Transitional until 11-09's store
-  // profile: built from the saved curve with the same permanent conversion an older board uses
-  // when it reopens (`bezierToFiveStations`), so the drawing shows the four rocker numbers the old
-  // curve read at its tips and 12" stations. No blank is passed yet — 11-11 adds that.
-  const profile = buildFallbackProfile(bezierToFiveStations(rocker, outline.length), foil, outline.length);
+  const { rocker, updateRocker, foil, updateFoil, blank, sideProfile, outlineGeometry } = useDesign();
+  // The drawing and the DATASHEET both read the store's ONE side profile (Phase 11, Pattern 5) —
+  // the same object RAILS and VOLUME read — built from the board's blank when one is picked and
+  // from the four hand-set rocker stations when not (D-14). Nothing here builds a curve of its own.
   const [sectionOpen, setSectionOpen] = useState<Record<RockerControlsSectionKey, boolean>>({
     rocker: true,
     thickness: true,
@@ -160,9 +151,14 @@ export function RockerEditor() {
     }
   }
 
-  /** `outline-editor.tsx`'s `handleCopyPreset`, copied verbatim for the rocker/foil pair. */
+  /** `outline-editor.tsx`'s `handleCopyPreset`, copied verbatim for the side profile's capture
+   * line (D-03): the foil's centre and tips, and the picked blank with its placement — what the
+   * founder pastes into `presets.ts`. */
   function handleCopyPreset() {
-    const text = buildRockerPresetSource(rocker, foil);
+    const text = buildRockerPresetSource({
+      foil,
+      blank: blank ? { vendor: blank.copy.vendor, name: blank.copy.name, placement: blank.placement } : null,
+    });
     console.log(text);
     setJustCopiedPreset(true);
     navigator.clipboard.writeText(text).catch(() => {
@@ -188,7 +184,6 @@ export function RockerEditor() {
           <RockerControls
             rocker={rocker}
             foil={foil}
-            geometry={geometry}
             onChangeRocker={updateRocker}
             onChangeFoil={updateFoil}
             sectionOpen={sectionOpen}
@@ -253,7 +248,8 @@ export function RockerEditor() {
                 </ViewerToolbarButton>
               </ViewerToolbar>
               <RockerViewer
-                profile={profile}
+                profile={sideProfile}
+                blank={sideProfile.blank ?? undefined}
                 orientation={boardOrientation}
                 showMeasuringPoints={showMeasuringPoints}
                 fitToBoard
@@ -261,11 +257,10 @@ export function RockerEditor() {
             </div>
           ) : (
             <RockerDatasheet
+              profile={sideProfile}
               rocker={rocker}
               foil={foil}
-              geometry={geometry}
               outlineGeometry={outlineGeometry}
-              length={outline.length}
               onChangeRocker={updateRocker}
               onChangeFoil={updateFoil}
             />

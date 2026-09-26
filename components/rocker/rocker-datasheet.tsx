@@ -1,52 +1,68 @@
 "use client";
 
 /**
- * The D-07 full datasheet view: five stations across, width/thickness/rocker down — the ROCKER
- * screen's own blank datasheet, ready to hold beside a real foam blank when ordering.
+ * The ROCKER screen's DATASHEET (D-07, Phase 11 D-16): five stations across, the board's numbers
+ * down — the sheet a shaper holds beside a real foam blank, or takes to the supplier.
  *
- * Width is read-only, derived from the drawn outline through `sampleOutline` — it belongs to the
- * Template screen and is never typed here (D-07). Thickness stays a typed field, so a shaper can
- * copy a real blank's spec sheet straight in — now `MeasureField` (`components/design/
- * measure-field.tsx`) in bare mode (D-12), the app's one typed measurement control, with the prior
- * datasheet-only typed control retired. The rocker row (quick task 260829-rda): the Nose Tip /
- * Tail Tip cells stay typed, writing `noseLift`/
- * `tailLift`; the Nose @ station / Tail @ station cells and the Center cell are now ALL read-only
- * derived text — width, the two station rockers and the centre are every one of them
- * derived-and-never-typed, read straight off the `RockerGeometry` prop rather than a stored
- * per-station value.
+ * Everything on it is read off the store's ONE side profile (`BoardSideProfile`, Pattern 5), the
+ * same object the drawing, RAILS and VOLUME read, so the sheet can never disagree with them. Two
+ * states:
  *
- * Metric (D-01, D-03, D-10, D-12): the two station column headers name their station through
- * `stationLabel(system)` — the honest `30.5 cm` conversion, never a hand-typed `30 cm` — and the
- * row labels gain their family's unit suffix (`Width (cm)`, `Thickness (mm)`, `Rocker (mm)`)
- * through `columnUnitSuffix`, so the bare cells beneath them never need their own unit mark.
- * Imperial stays byte-identical: headers, labels and cells all read exactly as they did before
- * this plan.
+ * - NO BLANK (D-14, the hand-set fallback) — three rows. Width is read-only, derived from the drawn
+ *   outline through `sampleOutline` (it belongs to the Template screen, D-07). Thickness is typed at
+ *   all five stations. Rocker is typed at Nose Tip, Nose @ 12", Tail @ 12" and Tail Tip — the four
+ *   hand-set stations, reversing quick task 260829-rda's read-only 12" cells — with Center a
+ *   read-only 0, the flat the rocker is measured up from (Phase 4 D-06/D-07).
+ * - A BLANK PICKED (D-16) — three blocks, eight rows: the blank's own Rocker, Thickness and Width
+ *   under each of the board's five stations (read-only, from the board's own copy of the blank —
+ *   never the blank table); YOUR BOARD's Rocker (read-only, the re-levelled curve), Thickness
+ *   (typed at Nose Tip, Center and Tail Tip — the values the sidebar writes — and read-only at the
+ *   two 12" stations, whose fine-tune lives in the sidebar) and Width (read-only); and Foam Off, the
+ *   blank's thickness less the board's, under a heavier rule, with a negative value (the board pokes
+ *   out of the blank there) in warning ink. Under the table: the catalogue footnote and one line per
+ *   catalogue flag on the blank, verbatim.
+ *
+ * Typed cells are the app's one typed measurement control, `MeasureField`, in bare mode (D-12),
+ * with its bounds taken from the matching slider's `measureSlider` range through `typedFieldBounds`
+ * so a field and its slider can never disagree. Every number is formatted through
+ * `measure-display.ts`: cells read bare, and in Metric the row label carries the unit
+ * (`columnUnitSuffix`, D-10). The two station headers name their station through
+ * `stationLabel(system)` — the honest `30.5 cm` conversion, never a hand-typed `30 cm`.
+ *
+ * On a phone the table scrolls sideways inside its box (Phase 9 D-04) and its label column is
+ * sticky, so a row keeps its name mid-scroll (UI-SPEC §11); on a desktop nothing scrolls. Catalogue
+ * text (vendor, name, flags) is rendered as React text only.
  */
 
+import type { ReactNode } from "react";
 import { MeasureField } from "@/components/design/measure-field";
 import { useUnits } from "@/components/units-provider";
+import type { BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec, type FoilStationKey } from "@/lib/geometry/foil";
-import { columnUnitSuffix, formatDimBare, formatMarkBare, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
-import { sampleOutline, type OutlineGeometry } from "@/lib/geometry/outline";
 import {
-  ROCKER_LIFT_RANGE_IN,
-  rockerStationPositions,
-  type RockerGeometry,
-  type RockerSpec,
-} from "@/lib/geometry/rocker";
+  columnUnitSuffix,
+  formatDimBare,
+  formatMarkBare,
+  measureSlider,
+  stationLabel,
+  typedFieldBounds,
+} from "@/lib/geometry/measure-display";
+import { sampleOutline, type OutlineGeometry } from "@/lib/geometry/outline";
+import { ROCKER_LIFT_RANGE_IN, type FiveStationRocker } from "@/lib/geometry/rocker";
 import { mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 
 interface RockerDatasheetProps {
-  rocker: RockerSpec;
+  /** The store's one side profile — every read-only number on the sheet comes from here. */
+  profile: BoardSideProfile;
+  /** The hand-set rocker (D-14) — what the fallback's typed Rocker row edits. */
+  rocker: FiveStationRocker;
   foil: FoilSpec;
-  geometry: RockerGeometry;
   outlineGeometry: OutlineGeometry;
-  length: Mm;
-  onChangeRocker: (patch: Partial<RockerSpec>) => void;
+  onChangeRocker: (patch: Partial<FiveStationRocker>) => void;
   onChangeFoil: (patch: Partial<FoilSpec>) => void;
 }
 
-/** Nose-to-tail reading order, matching Task 1's thickness sliders and the UI spec's fixed
+/** Nose-to-tail reading order, matching the sidebar's thickness sliders and the UI spec's fixed
  * column headings. The two station names (`nose12`/`tail12`) are composed through
  * `stationLabel(system)` (D-03) rather than hand-typed, so the sidebar, this datasheet and the
  * viewer can never disagree about where the measuring station is. */
@@ -60,136 +76,228 @@ function datasheetStations(system: UnitsSystem): { key: FoilStationKey; name: st
   ];
 }
 
+/** The label column: sticky on a sideways-scrolling phone so a row keeps its name (UI-SPEC §11),
+ * painted in the panel colour so the scrolled cells pass beneath it. */
+const LABEL_CELL = "sticky left-0 z-10 bg-surf-panel min-w-0 flex-[1.1]";
+const READ_ONLY_CELL = "min-w-0 flex-1 text-right text-sm text-surf-ink-muted font-normal";
+
+/** One table row: its label cell and one cell per station. `typed` rows keep the full-ink label,
+ * read-only rows the muted one (`rocker-datasheet.tsx`'s existing treatment). */
+function Row({
+  label,
+  typed,
+  className = "border-b border-surf-line-faint",
+  children,
+}: {
+  label: string;
+  typed: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={`flex items-center gap-2 py-1.5 ${className}`}>
+      <div className={`${LABEL_CELL} text-sm font-normal ${typed ? "text-surf-ink" : "text-surf-ink-muted"}`}>
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** A group label spanning the table (`BLANK — …`, `YOUR BOARD`), sticky-left with the label column
+ * and wrapping for a long blank name. */
+function GroupLabel({ children }: { children: ReactNode }) {
+  return (
+    <div className="sticky left-0 z-10 bg-surf-panel w-fit max-w-full pt-2 pb-1 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
+      {children}
+    </div>
+  );
+}
+
 export function RockerDatasheet({
+  profile,
   rocker,
   foil,
-  geometry,
   outlineGeometry,
-  length,
   onChangeRocker,
   onChangeFoil,
 }: RockerDatasheetProps) {
   const { system } = useUnits();
-  // The one definition of where the five stations sit — reused here rather than re-deriving
-  // station positions for the width row's outline sampling.
-  const stationPositions = rockerStationPositions(length);
-  const stationMmByKey = Object.fromEntries(
-    stationPositions.map((p) => [p.key, p.station]),
-  ) as Record<FoilStationKey, Mm>;
   const stations = datasheetStations(system);
+  // The one definition of where the five stations sit — the profile's own, never re-derived.
+  const stationMm = Object.fromEntries(profile.stations.map((p) => [p.key, p.station])) as Record<FoilStationKey, Mm>;
+  const blank = profile.blank;
+
+  const markSuffix = columnUnitSuffix("mark", system);
+  const dimSuffix = columnUnitSuffix("dim", system);
+
+  /** A bare, read-only marks-family cell. */
+  const markCell = (key: FoilStationKey, value: Mm) => (
+    <div key={key} className={READ_ONLY_CELL}>
+      {formatMarkBare(value, system)}
+    </div>
+  );
+
+  /** A typed marks-family cell: bare `MeasureField`, bounded by its matching slider's range. */
+  const typedMarkCell = (
+    key: FoilStationKey,
+    value: Mm,
+    rangeIn: { min: number; max: number; step: number },
+    label: string,
+    onCommit: (next: Mm) => void,
+  ) => {
+    const bounds = typedFieldBounds(measureSlider(value, rangeIn, rangeIn.step, 1, system), "mark", system);
+    return (
+      <div key={key} className="flex min-w-0 flex-1 justify-end">
+        <MeasureField
+          value={value}
+          onCommit={onCommit}
+          label={label}
+          family="mark"
+          min={bounds.min}
+          max={bounds.max}
+          system={system}
+          bare
+        />
+      </div>
+    );
+  };
+
+  /** The board's width at each station — read-only, from the drawn outline (D-07). */
+  const widthRow = (
+    <Row label={`Width${dimSuffix}`} typed={false}>
+      {stations.map((s) => (
+        <div key={s.key} className={READ_ONLY_CELL}>
+          {formatDimBare(mm(sampleOutline(outlineGeometry, stationMm[s.key]) * 2), system)}
+        </div>
+      ))}
+    </Row>
+  );
+
+  const header = (
+    <div className="mb-2 flex gap-2 border-b-2 border-surf-line-faint pb-2">
+      <div className={LABEL_CELL} />
+      {stations.map((s) => (
+        <div
+          key={s.key}
+          className="min-w-0 flex-1 text-right text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold"
+        >
+          {s.name}
+        </div>
+      ))}
+    </div>
+  );
+
+  const flagged = blank ? blank.record.stations.filter((station) => station.flag !== null) : [];
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
       <div className="text-sm text-surf-ink-muted font-normal">
-        Your board&apos;s own blank datasheet — hold it beside a real foam blank when you order.
+        {blank
+          ? "Your blank's numbers beside your board's, at the board's five stations — take it to the supplier."
+          : "Your board's own blank datasheet — hold it beside a real foam blank when you order."}
       </div>
       {/* D-04: the box scrolls sideways on a narrow phone instead of re-stacking a single column
           per row, keeping every column. The trailing fade (24px, toward --surf-panel — the card
           this datasheet always sits inside, per TabbedPanel) is the "there's more, keep going"
-          hint, chosen over a caption so nothing needs re-authoring per unit system (UI-SPEC,
-          "Sideways-scrolling data tables"). Constant, not scroll-position-driven: on a fixed,
-          five-station table the box either scrolls or it doesn't per viewport, so a static hint
-          is enough and needs no extra scroll-tracking state. */}
+          hint. Constant, not scroll-position-driven: on a fixed, five-station table the box
+          either scrolls or it doesn't per viewport. */}
       <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]">
         <div className="min-w-[540px]">
-          <div className="mb-2 flex gap-2 border-b-2 border-surf-line-faint pb-2">
-            <div className="min-w-0 flex-[1.1]" />
-            {stations.map((s) => (
-              <div
-                key={s.key}
-                className="min-w-0 flex-1 text-right text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold"
-              >
-                {s.name}
-              </div>
-            ))}
-          </div>
+          {header}
 
-          {/* Width — read-only, derived from the drawn outline (D-07). Never typed here; it
-              belongs to the Template screen. Metric row label gains " (cm)"; cells read a bare
-              one-decimal centimetre figure (D-10). */}
-          <div className="flex items-center gap-2 border-b border-surf-line-faint py-1.5">
-            <div className="min-w-0 flex-[1.1] text-sm text-surf-ink-muted font-normal">
-              Width{columnUnitSuffix("dim", system)}
-            </div>
-            {stations.map((s) => {
-              const halfWidth = sampleOutline(outlineGeometry, stationMmByKey[s.key]);
-              return (
-                <div key={s.key} className="min-w-0 flex-1 text-right text-sm text-surf-ink-muted font-normal">
-                  {formatDimBare(mm(halfWidth * 2), system)}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Thickness — typed, D-06/D-12. Metric row label gains " (mm)"; the typed cell reads
-              bare because the row label already carries the unit. */}
-          <div className="flex items-center gap-2 border-b border-surf-line-faint py-1.5">
-            <div className="min-w-0 flex-[1.1] text-sm text-surf-ink font-normal">
-              Thickness{columnUnitSuffix("mark", system)}
-            </div>
-            {stations.map((s) => {
-              const bounds = measureSlider(foil[s.key], FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
-              return (
-                <div key={s.key} className="flex min-w-0 flex-1 justify-end">
-                  <MeasureField
-                    value={foil[s.key]}
-                    onCommit={(next) => onChangeFoil({ [s.key]: next })}
-                    label={`Thickness — ${s.name}`}
-                    family="mark"
-                    min={bounds.min}
-                    max={bounds.max}
-                    system={system}
-                    bare
-                  />
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Rocker — the Nose Tip / Tail Tip cells stay typed (D-06/D-12); the Nose/Tail station
-              cells and the Center cell are all read-only derived text (quick task 260829-rda):
-              the two station figures are measured off the built curve, and the center is the
-              curve's own fixed zero. Metric row label gains " (mm)"; every cell reads bare. */}
-          <div className="flex items-center gap-2 py-1.5">
-            <div className="min-w-0 flex-[1.1] text-sm text-surf-ink font-normal">
-              Rocker{columnUnitSuffix("mark", system)}
-            </div>
-            {stations.map((s) => {
-              if (s.key === "center") {
-                return (
-                  <div key={s.key} className="min-w-0 flex-1 text-right text-sm text-surf-ink-muted font-normal">
-                    {formatMarkBare(mm(0), system)}
+          {blank ? (
+            <>
+              <GroupLabel>{`BLANK — ${blank.record.vendor} ${blank.record.name}`.toUpperCase()}</GroupLabel>
+              <Row label={`Rocker${markSuffix}`} typed={false}>
+                {stations.map((s) => markCell(s.key, blank.blankAtStations[s.key].rocker))}
+              </Row>
+              <Row label={`Thickness${markSuffix}`} typed={false}>
+                {stations.map((s) => markCell(s.key, blank.blankAtStations[s.key].thickness))}
+              </Row>
+              <Row label={`Width${dimSuffix}`} typed={false}>
+                {stations.map((s) => (
+                  <div key={s.key} className={READ_ONLY_CELL}>
+                    {formatDimBare(blank.blankAtStations[s.key].width, system)}
                   </div>
-                );
-              }
-              if (s.key === "nose12" || s.key === "tail12") {
-                const derived = s.key === "nose12" ? geometry.noseLiftAt12in : geometry.tailLiftAt12in;
-                return (
-                  <div key={s.key} className="min-w-0 flex-1 text-right text-sm text-surf-ink-muted font-normal">
-                    {formatMarkBare(derived, system)}
-                  </div>
-                );
-              }
-              const field = s.key === "noseTip" ? "noseLift" : "tailLift";
-              const bounds = measureSlider(rocker[field], ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
-              return (
-                <div key={s.key} className="flex min-w-0 flex-1 justify-end">
-                  <MeasureField
-                    value={rocker[field]}
-                    onCommit={(next) => onChangeRocker({ [field]: next })}
-                    label={`Rocker — ${s.name}`}
-                    family="mark"
-                    min={bounds.min}
-                    max={bounds.max}
-                    system={system}
-                    bare
-                  />
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </Row>
+
+              <GroupLabel>YOUR BOARD</GroupLabel>
+              <Row label={`Rocker${markSuffix}`} typed={false}>
+                {stations.map((s) => markCell(s.key, profile.stationRocker[s.key]))}
+              </Row>
+              {/* Thickness: the centre and the two tips are the board's own stored values, typed
+                  here exactly as the sidebar sets them; the 12" stations are the blank-scaled
+                  result plus any fine-tune, read-only (the fine-tune lives in the sidebar). */}
+              <Row label={`Thickness${markSuffix}`} typed>
+                {stations.map((s) =>
+                  s.key === "nose12" || s.key === "tail12"
+                    ? markCell(s.key, profile.effectiveFoil[s.key])
+                    : typedMarkCell(s.key, foil[s.key], FOIL_THICKNESS_RANGE_IN, `Thickness — ${s.name}`, (next) =>
+                        onChangeFoil({ [s.key]: next }),
+                      ),
+                )}
+              </Row>
+              {widthRow}
+
+              <Row label={`Foam Off${markSuffix}`} typed={false} className="border-t-2 border-surf-line-faint">
+                {stations.map((s) => {
+                  const value = blank.foamOff[s.key];
+                  const printed = formatMarkBare(value, system);
+                  // A value that prints as zero reads as zero, never as a warning "-0".
+                  const isZero = /^-?0"?$/.test(printed);
+                  const pokesOut = value < 0 && !isZero;
+                  return (
+                    <div
+                      key={s.key}
+                      className={`min-w-0 flex-1 text-right text-sm font-normal ${pokesOut ? "text-surf-warning-ink" : "text-surf-ink-muted"}`}
+                    >
+                      {isZero ? formatMarkBare(mm(0), system) : printed}
+                    </div>
+                  );
+                })}
+              </Row>
+            </>
+          ) : (
+            <>
+              {widthRow}
+
+              {/* Thickness — typed at all five stations (D-06/D-12). */}
+              <Row label={`Thickness${markSuffix}`} typed>
+                {stations.map((s) =>
+                  typedMarkCell(s.key, foil[s.key], FOIL_THICKNESS_RANGE_IN, `Thickness — ${s.name}`, (next) =>
+                    onChangeFoil({ [s.key]: next }),
+                  ),
+                )}
+              </Row>
+
+              {/* Rocker — typed at the four hand-set stations (D-14); the centre is the flat the
+                  rocker is measured up from, always a read-only 0. */}
+              <Row label={`Rocker${markSuffix}`} typed className="">
+                {stations.map((s) =>
+                  s.key === "center"
+                    ? markCell(s.key, mm(0))
+                    : typedMarkCell(s.key, rocker[s.key], ROCKER_LIFT_RANGE_IN, `Rocker — ${s.name}`, (next) =>
+                        onChangeRocker({ [s.key]: next }),
+                      ),
+                )}
+              </Row>
+            </>
+          )}
         </div>
       </div>
+
+      {blank && (
+        <div className="flex flex-col gap-1 text-xs text-surf-ink-muted font-normal">
+          <p>
+            {`From the ${blank.record.vendor} catalog, page ${blank.record.pdfPage}. Station names are the catalog's own — T12 is 12 inches from the tail, N12 is 12 inches from the nose.`}
+          </p>
+          {flagged.map((station, index) => (
+            <p key={`${index}-${station.label}`}>{`At ${station.label}: ${station.flag}`}</p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
