@@ -439,6 +439,15 @@ export interface CrossSectionVolumeInput {
   foil: FoilSpec;
   rails: RailBandSpec;
   length: Mm;
+  /**
+   * The board's thickness at any station (Phase 11, Pattern 5). A foil read off a real blank must
+   * be integrated densely, exactly as drawn — re-splining its five sampled stations is NOT the
+   * blank's curve between them — so the store passes the side profile's own `thicknessAt`
+   * (`lib/geometry/board-profile.ts`). Absent, it defaults to `sampleFoil` through `foil`'s five
+   * stations, which is exactly what a hand-set board's profile draws. `foil` still places the
+   * three rail-band anchors either way (their positions depend on length only).
+   */
+  thicknessAt?: (station: Mm) => Mm;
 }
 
 /** `stationAreas` are full (both-rails) cross-section areas in square millimetres, nose-to-tail —
@@ -526,6 +535,7 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  */
 export function computeCrossSectionVolume(input: CrossSectionVolumeInput): CrossSectionVolumeResult {
   const { halfWidthAt, foil, rails, length } = input;
+  const thicknessAt = input.thicknessAt ?? ((station: Mm) => sampleFoil(foil, length, station));
 
   const anchors = foilStationPoints(foil, length);
   const tailAnchor = anchors[1]; // tail12
@@ -551,7 +561,7 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
       continue;
     }
 
-    const thickness = sampleFoil(foil, length, station);
+    const thickness = thicknessAt(station);
 
     const deckPercent = blendContinuous(
       station,

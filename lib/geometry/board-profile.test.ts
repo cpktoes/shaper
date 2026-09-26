@@ -1,0 +1,275 @@
+import { describe, expect, it } from "vitest";
+import { readSeedCatalog } from "@/lib/blanks/seed-files";
+import type { BlankRecord } from "./blank";
+import { boardOnBlank, placementRange, prepareBlank, type BoardOnBlankInput } from "./blank-fit";
+import {
+  buildBlankProfile,
+  buildBoardProfile,
+  buildFallbackProfile,
+  type BoardSideProfile,
+} from "./board-profile";
+import { DEFAULT_FOIL_SPEC, foilStationPoints, sampleFoil, type FoilStationKey } from "./foil";
+import { MEASURE_STATION_MM } from "./outline";
+import { preparePchip } from "./pchip";
+import { DEFAULT_FALLBACK_ROCKER, rockerStationPositions } from "./rocker";
+import { inchesToMm, mm, type Mm } from "./units";
+
+// Every blank figure below is read from the committed CSVs through the tested reader, and every
+// expected number is computed by the functions under test — never typed (CLAUDE.md Rule 1).
+const CATALOG = readSeedCatalog();
+const MARKO_VENDOR = "Marko Foam";
+const M_REGULAR = `6'0" M-Regular`;
+const KEYS: FoilStationKey[] = ["tailTip", "tail12", "center", "nose12", "noseTip"];
+
+function findBlank(vendor: string, name: string): BlankRecord {
+  const blank = CATALOG.find((b) => b.vendor === vendor && b.name === name);
+  if (!blank) throw new Error(`${vendor} ${name} is not in the seeded catalogue`);
+  return blank;
+}
+
+const BOARD_LENGTH = inchesToMm(70);
+
+function boardInput(overrides: Partial<BoardOnBlankInput> = {}): BoardOnBlankInput {
+  return {
+    length: BOARD_LENGTH,
+    centerThickness: inchesToMm(2.5),
+    noseTip: inchesToMm(0.3125),
+    tailTip: inchesToMm(0.25),
+    nose12Offset: mm(0),
+    tail12Offset: mm(0),
+    ...overrides,
+  };
+}
+
+/** `count + 1` evenly spaced stations from tail tip to nose tip. */
+function sweep(length: Mm, count: number): Mm[] {
+  const out: Mm[] = [];
+  for (let i = 0; i <= count; i++) out.push(mm((length * i) / count));
+  return out;
+}
+
+function expectDeckIsDerived(profile: BoardSideProfile) {
+  // R10: the deck is rocker + thickness at every point, never a third interpolated curve.
+  const mismatches = sweep(profile.length, 199).filter(
+    (s) => profile.deckAt(s) !== profile.rockerAt(s) + profile.thicknessAt(s),
+  );
+  expect(mismatches).toEqual([]);
+}
+
+describe("the fallback profile — a board with no blank (D-14)", () => {
+  const length = inchesToMm(72);
+  const profile = buildFallbackProfile(DEFAULT_FALLBACK_ROCKER, DEFAULT_FOIL_SPEC, length);
+
+  it("carries the stored foil exactly, so RAILS numbers do not move for a board without a blank", () => {
+    for (const key of KEYS) expect(profile.effectiveFoil[key]).toBe(DEFAULT_FOIL_SPEC[key]);
+    expect(profile.effectiveFoil).not.toBe(DEFAULT_FOIL_SPEC);
+  });
+
+  it("reads the typed rocker exactly at the five stations, centre 0", () => {
+    expect(profile.stationRocker).toEqual({ ...DEFAULT_FALLBACK_ROCKER, center: 0 });
+    for (const { key, station } of profile.stations) {
+      expect(profile.rockerAt(station)).toBe(profile.stationRocker[key]);
+    }
+  });
+
+  it("lists the five stations where rockerStationPositions puts them", () => {
+    expect(profile.stations).toEqual(rockerStationPositions(length));
+    expect(profile.length).toBe(length);
+  });
+
+  it("draws the foil through the five stored thicknesses on the one pchip sampler", () => {
+    const curve = preparePchip(
+      foilStationPoints(DEFAULT_FOIL_SPEC, length).map((p) => ({ x: p.station, y: p.thickness })),
+    );
+    const mismatches = sweep(length, 72).filter((s) => profile.thicknessAt(s) !== curve.sample(s));
+    expect(mismatches).toEqual([]);
+  });
+
+  it("reads exactly what sampleFoil reads, on a 1in sweep", () => {
+    const mismatches = sweep(length, 72).filter(
+      (s) => profile.thicknessAt(s) !== sampleFoil(DEFAULT_FOIL_SPEC, length, s),
+    );
+    expect(mismatches).toEqual([]);
+  });
+
+  it("has no blank", () => {
+    expect(profile.blank).toBeNull();
+  });
+
+  it("derives the deck as rocker + thickness at 200 stations (R10)", () => {
+    expectDeckIsDerived(profile);
+  });
+});
+
+describe("the blank profile — a board sitting in a real blank", () => {
+  const record = findBlank(MARKO_VENDOR, M_REGULAR);
+  const prepared = prepareBlank(record);
+  const L = BOARD_LENGTH;
+  const board = boardInput();
+  const profile = buildBlankProfile(prepared, board, mm(0));
+  const view = profile.blank!;
+
+  it("hits the target centre and both tip settings", () => {
+    expect(view).not.toBeNull();
+    expect(profile.thicknessAt(mm(L / 2))).toBeCloseTo(board.centerThickness, 9);
+    expect(profile.thicknessAt(mm(0))).toBe(board.tailTip);
+    expect(profile.thicknessAt(L)).toBe(board.noseTip);
+  });
+
+  it("reads rocker and thickness straight off boardOnBlank — never re-splined from five stations", () => {
+    const onBlank = boardOnBlank(prepared, board, mm(0));
+    const mismatches = sweep(L, 199).filter(
+      (s) => profile.rockerAt(s) !== onBlank.rockerAt(s) || profile.thicknessAt(s) !== onBlank.thicknessAt(s),
+    );
+    expect(mismatches).toEqual([]);
+  });
+
+  it("reads stationRocker and effectiveFoil off the profile's own curves at the five stations", () => {
+    for (const { key, station } of profile.stations) {
+      expect(profile.stationRocker[key]).toBe(profile.rockerAt(station));
+      expect(profile.effectiveFoil[key]).toBe(profile.thicknessAt(station));
+    }
+  });
+
+  it("derives the deck as rocker + thickness at 200 stations (R10)", () => {
+    expectDeckIsDerived(profile);
+  });
+
+  it("gives the foam to come off at each station — at the centre, the blank under the board's centre less the target (R4, D-18)", () => {
+    expect(view.foamOff.center).toBeCloseTo(view.onBlank.blankThicknessAt(L / 2) - inchesToMm(2.5), 9);
+    for (const { key, station } of profile.stations) {
+      expect(view.foamOff[key]).toBe(view.onBlank.blankThicknessAt(station) - profile.thicknessAt(station));
+    }
+  });
+
+  it("holds the blank-scaled 12in thicknesses before any fine-tune (R5, D-11)", () => {
+    expect(view.derived12.nose12).toBe(view.onBlank.derivedThicknessAt(L - MEASURE_STATION_MM));
+    expect(view.derived12.tail12).toBe(view.onBlank.derivedThicknessAt(MEASURE_STATION_MM));
+  });
+
+  it("places the blank's silhouette in the board's own coordinates", () => {
+    const Lb = prepared.lengthMm;
+    expect(view.start).toBe(L / 2 - Lb / 2 - view.placement);
+    expect(view.end).toBe(view.start + Lb);
+    expect(view.record.name).toBe(M_REGULAR);
+  });
+
+  it("lays the board's bottom on the blank's bottom, and the blank's deck is never below its bottom", () => {
+    const along = sweep(L, 199).filter((s) => view.bottomAt(s) !== profile.rockerAt(s));
+    expect(along).toEqual([]);
+    const wholeBlank = sweep(mm(view.end - view.start), 400).map((d) => mm(view.start + d));
+    // bottomAt is the blank's import-levelled rocker less the crop's low point (Pattern 3).
+    const formula = wholeBlank.filter(
+      (s) => Math.abs(view.bottomAt(s) - (view.onBlank.blankRockerAt(s) - view.onBlank.cropMinimum)) > 1e-9,
+    );
+    expect(formula).toEqual([]);
+    const inverted = wholeBlank.filter((s) => view.deckAt(s) < view.bottomAt(s));
+    expect(inverted).toEqual([]);
+    const deckFormula = wholeBlank.filter(
+      (s) => view.deckAt(s) !== view.bottomAt(s) + view.onBlank.blankThicknessAt(s),
+    );
+    expect(deckFormula).toEqual([]);
+  });
+
+  it("carries every station the catalogue measured for rocker and for thickness, in board coordinates", () => {
+    const rockerCells = record.stations.filter((s) => s.rockerMm !== null);
+    const thicknessCells = record.stations.filter((s) => s.thicknessMm !== null);
+    expect(view.measuredStations.rocker).toHaveLength(rockerCells.length);
+    expect(view.measuredStations.thickness).toHaveLength(thicknessCells.length);
+    rockerCells.forEach((cell, i) => {
+      expect(view.measuredStations.rocker[i]).toBe(view.start + cell.fromTailMm);
+    });
+    thicknessCells.forEach((cell, i) => {
+      expect(view.measuredStations.thickness[i]).toBe(view.start + cell.fromTailMm);
+    });
+  });
+
+  it("gives the blank's own numbers under each of the board's five stations — the DATASHEET's blank rows (D-16)", () => {
+    const Lb = prepared.lengthMm;
+    const u = (s: number) => s + (Lb - L) / 2 + view.placement;
+    expect(view.blankAtStations.center.rocker).toBe(prepared.rocker.sample(u(L / 2)));
+    for (const { key, station } of profile.stations) {
+      expect(view.blankAtStations[key].rocker).toBe(view.onBlank.blankRockerAt(station));
+      expect(view.blankAtStations[key].thickness).toBe(view.onBlank.blankThicknessAt(station));
+      expect(view.blankAtStations[key].width).toBe(view.onBlank.blankWidthAt(station));
+    }
+  });
+});
+
+describe("the 12in fine-tune survives a placement change (R5, D-11)", () => {
+  const prepared = prepareBlank(findBlank(MARKO_VENDOR, M_REGULAR));
+  const offset = inchesToMm(1 / 16);
+  const board = boardInput({ nose12Offset: offset });
+  const { max } = placementRange(prepared.lengthMm, BOARD_LENGTH);
+
+  it("reads derived + offset at nose 12in at placement 0 and at the range's far end", () => {
+    expect(max).toBeGreaterThan(0);
+    for (const placement of [mm(0), max]) {
+      const profile = buildBlankProfile(prepared, board, placement);
+      const view = profile.blank!;
+      expect(view.placement).toBe(placement);
+      expect(profile.effectiveFoil.nose12).toBeCloseTo(view.derived12.nose12 + offset, 9);
+      expect(profile.effectiveFoil.tail12).toBeCloseTo(view.derived12.tail12, 9);
+    }
+  });
+});
+
+describe("placement is clamped on read and nothing passed in is changed", () => {
+  const record = findBlank(MARKO_VENDOR, M_REGULAR);
+  const prepared = prepareBlank(record);
+  const board = boardInput();
+  const { min, max } = placementRange(prepared.lengthMm, BOARD_LENGTH);
+
+  it("pulls a placement past either end back to that end", () => {
+    expect(buildBlankProfile(prepared, board, mm(max + inchesToMm(3))).blank!.placement).toBe(max);
+    expect(buildBlankProfile(prepared, board, mm(min - inchesToMm(3))).blank!.placement).toBe(min);
+  });
+
+  it("does not mutate the board input, the prepared blank or its record", () => {
+    const boardBefore = structuredClone(board);
+    const recordBefore = structuredClone(prepared.record);
+    buildBlankProfile(prepared, board, mm(max + inchesToMm(3)));
+    expect(board).toEqual(boardBefore);
+    expect(prepared.record).toEqual(recordBefore);
+  });
+});
+
+describe("buildBoardProfile — one entry point for both kinds of board", () => {
+  const prepared = prepareBlank(findBlank(MARKO_VENDOR, M_REGULAR));
+  const foil = { ...DEFAULT_FOIL_SPEC, center: inchesToMm(2.5) };
+
+  it("builds the fallback when there is no blank", () => {
+    const profile = buildBoardProfile({ length: BOARD_LENGTH, rocker: DEFAULT_FALLBACK_ROCKER, foil, blank: null });
+    const expected = buildFallbackProfile(DEFAULT_FALLBACK_ROCKER, foil, BOARD_LENGTH);
+    expect(profile.blank).toBeNull();
+    expect(profile.effectiveFoil).toEqual(expected.effectiveFoil);
+    expect(profile.stationRocker).toEqual(expected.stationRocker);
+  });
+
+  it("with a blank, feeds the foil's centre and tips and the two offsets into the blank profile", () => {
+    const nose12Offset = inchesToMm(1 / 16);
+    const tail12Offset = inchesToMm(-1 / 32);
+    const profile = buildBoardProfile({
+      length: BOARD_LENGTH,
+      rocker: DEFAULT_FALLBACK_ROCKER,
+      foil,
+      blank: { prepared, placement: mm(0), nose12Offset, tail12Offset },
+    });
+    const expected = buildBlankProfile(
+      prepared,
+      {
+        length: BOARD_LENGTH,
+        centerThickness: foil.center,
+        noseTip: foil.noseTip,
+        tailTip: foil.tailTip,
+        nose12Offset,
+        tail12Offset,
+      },
+      mm(0),
+    );
+    expect(profile.blank).not.toBeNull();
+    expect(profile.effectiveFoil).toEqual(expected.effectiveFoil);
+    expect(profile.stationRocker).toEqual(expected.stationRocker);
+    expect(profile.blank!.foamOff).toEqual(expected.blank!.foamOff);
+  });
+});
