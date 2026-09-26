@@ -19,6 +19,16 @@
  * design, it never computes one. The prototype's `seed`/`seedVersion`/`applySeed`/`onSync`
  * message-passing machinery existed only because its screens were separate documents, and has no
  * analogue here.
+ *
+ * The side profile (Phase 11, Pattern 5). The store builds ONE description of the board seen from
+ * the side — `sideProfile`, from `buildBoardProfile` in `lib/geometry/board-profile.ts` — and every
+ * consumer reads it: RAILS through `effectiveRails` (its three thickness stations), VOLUME through
+ * the cross-section integration (its dense thickness curve), and the ROCKER drawing, DATASHEET and
+ * Summary order form directly. A board with no blank builds it from the five hand-set rocker
+ * stations and the stored foil (D-14), so nothing RAILS shows moves for such a board; a board in a
+ * blank builds it from the board's own copy of that blank's catalogue rows (D-01), prepared once
+ * per copy. The copy lives on the board itself (`blank`), never looked up again, so a later
+ * catalogue correction can never move a saved board.
  */
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
@@ -32,8 +42,11 @@ import {
 } from "@/lib/models/autosave";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec, type Point2D } from "@/lib/geometry/board";
 import { buildOutline, sampleOutline, type OutlineGeometry } from "@/lib/geometry/outline";
-import type { RockerSpec } from "@/lib/geometry/rocker";
+import { bezierToFiveStations, type FiveStationRocker } from "@/lib/geometry/rocker";
 import type { FoilSpec } from "@/lib/geometry/foil";
+import type { BlankRecord, BoardBlank } from "@/lib/geometry/blank";
+import { prepareBlank, type PreparedBlank } from "@/lib/geometry/blank-fit";
+import { buildBoardProfile, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import type { BoardPreset } from "@/lib/geometry/presets";
 import {
   deriveEffectiveRails,
@@ -67,7 +80,7 @@ import {
   type VolumeSpec,
   type VolumeTemplateValues,
 } from "@/lib/geometry/volume";
-import { type Litres, inchesToMm, mm } from "@/lib/geometry/units";
+import { type Litres, type Mm, inchesToMm, mm } from "@/lib/geometry/units";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 import {
   canRedo,
@@ -81,7 +94,7 @@ import {
   type DesignHistory,
 } from "@/lib/design-history";
 
-/** What one undo/redo step holds — `DesignSnapshotFields` (D-11's ten-field saved-board shape)
+/** What one undo/redo step holds — `DesignSnapshotFields` (D-11's eleven-field saved-board shape)
  * minus `boardName`. The exclusion is deliberate and structural, not a special case bolted onto
  * one mutator: `boardName` is a text box, and a text box's own undo belongs to the browser
  * (`isTextEntryTarget` below is what actually enforces that at the keyboard), so it is simply
@@ -92,7 +105,9 @@ type DesignHistorySnapshot = Omit<DesignSnapshotFields, "boardName">;
 
 interface DesignState {
   outline: OutlineSpec;
-  rocker: RockerSpec;
+  /** The hand-set fallback rocker (D-14): four typed lifts, the centre always 0. What the board's
+   * rocker IS while no blank is picked; kept, unread, while one is. */
+  rocker: FiveStationRocker;
   foil: FoilSpec;
   rails: RailBandSpec;
   fins: FinPlacementSpec;
@@ -114,6 +129,13 @@ interface DesignState {
    * choice, not a placement input — no calculated number depends on it — so it sits here as a
    * plain stored value rather than inside `fins`. Read only by the summary's order form. */
   finSystem: FinSystem;
+  /** The board's foam blank (D-01): the blank's own catalogue rows, copied BY VALUE when it was
+   * picked (so a later catalogue correction can never move this board), where the board sits on it
+   * (`placement`, board centre relative to blank centre, positive toward the nose) and the two
+   * signed 12" fine-tunes (D-11). `null` means the hand-set fallback — five typed rocker stations
+   * and the stored foil (D-02). Changed only by the shaper's own pick, slide, fine-tune, reset or
+   * removal (R6): no other edit ever clears it. */
+  blank: BoardBlank | null;
   /** The row in Postgres a Save writes over (D-09) — null means this board has never been
    * saved. Set by `markSaved` after the shaper's own first, manual `saveModel` succeeds, by
    * `applyModel` when a rack card is opened, and cleared back to null by `setModelId(null)` when
@@ -123,7 +145,8 @@ interface DesignState {
    * save never stores a reference to its own row. */
   modelId: string | null;
   /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,
-   * `updateRocker`, `updateFoil`, `updateRailSection`, `toggleTailHardEdge`, `updateFins`,
+   * `updateRocker`, `updateFoil`, the five blank moves (`pickBlank`, `setPlacement`, `setFineTune`,
+   * `resetFineTune`, `removeBlank`), `updateRailSection`, `toggleTailHardEdge`, `updateFins`,
    * `updateVolume`, `setFinsImportTemplate`, `toggleRailsImportFoilThickness`, `setBoardName` or
    * `setFinSystem` — never derived by
    * comparing state against its default — a user who drags a slider back to its default value
@@ -157,6 +180,7 @@ const DEFAULT_DESIGN_STATE: DesignState = {
   railsImportFoilThickness: true,
   boardName: "",
   finSystem: "fcs2",
+  blank: null,
   modelId: null,
   boardStarted: false,
   dirty: false,
@@ -171,7 +195,9 @@ interface FinTailOutline {
 interface DesignContextValue {
   // Raw stored specs — the single place each screen's sidebar writes to.
   outline: OutlineSpec;
-  rocker: RockerSpec;
+  /** The hand-set fallback rocker (D-14) — see `DesignState.rocker`. Draw from `sideProfile`, not
+   * from this: with a blank picked, the drawn rocker is the blank's. */
+  rocker: FiveStationRocker;
   foil: FoilSpec;
   rails: RailBandSpec;
   fins: FinPlacementSpec;
@@ -181,13 +207,15 @@ interface DesignContextValue {
   railsImportFoilThickness: boolean;
   boardName: string;
   finSystem: FinSystem;
+  /** The board's blank, by value, or null for the hand-set fallback — see `DesignState.blank`. */
+  blank: BoardBlank | null;
   modelId: string | null;
   /** True once a board has been applied or edited this session — gates the setup screen's
    * replace-board confirm dialog (D-07). See `DesignState.boardStarted`'s doc comment for why
    * this is a flag set on write, not a derived default-comparison. */
   hasBoardInProgress: boolean;
   /** The subset of state a snapshot holds (D-11) — outline, rocker, foil, rails, fins, volume,
-   * finsImportTemplate, railsImportFoilThickness, boardName, finSystem — assembled once here so a
+   * finsImportTemplate, railsImportFoilThickness, boardName, finSystem, blank — assembled once here so a
    * caller building a save never has to remember the field list by hand or risk silently dropping
    * one. */
   designSnapshotFields: DesignSnapshotFields;
@@ -216,8 +244,26 @@ interface DesignContextValue {
   redoEdit: () => void;
 
   updateOutline: (patch: Partial<OutlineSpec>) => void;
-  updateRocker: (patch: Partial<RockerSpec>) => void;
+  /** Sets one or more of the four hand-set rocker stations (D-14). Never touches the blank. */
+  updateRocker: (patch: Partial<FiveStationRocker>) => void;
   updateFoil: (patch: Partial<FoilSpec>) => void;
+  /** Puts the board in `record` at `placement` (D-01): the record is kept as the board's own copy.
+   * Switching from one blank to another keeps the existing 12" fine-tunes (D-11); a first pick
+   * starts them at 0. One undo step. */
+  pickBlank: (record: BlankRecord, placement: Mm) => void;
+  /** Slides the board along its blank. Stored as given and clamped on read by the side profile,
+   * never written back; a drag of the slider coalesces into one undo step like every slider. A no-op
+   * with no blank picked. */
+  setPlacement: (placement: Mm) => void;
+  /** Sets one or both signed 12" fine-tunes (D-11), added to the blank-scaled thickness at that
+   * station. Coalesces per field like a slider. A no-op with no blank picked. */
+  setFineTune: (patch: Partial<{ nose12Offset: Mm; tail12Offset: Mm }>) => void;
+  /** Clears both 12" fine-tunes back to 0 (D-11). One undo step. A no-op with no blank picked. */
+  resetFineTune: () => void;
+  /** "Remove This Blank" (D-02, UI-SPEC §7): goes back to the hand-set rocker, seeding its four
+   * stations and the foil's two 12" thicknesses from the CURRENT side profile so the drawing does
+   * not jump. One undo step brings the blank back. */
+  removeBlank: () => void;
   /** Applies a board-type preset (components/setup/setup-screen.tsx) by replacing outline, rails
    * and fins wholesale — a preset is a complete spec, not a patch, so none of the three merges
    * against whatever was there before. Every other field (volume, finsImportTemplate, boardName)
@@ -265,6 +311,14 @@ interface DesignContextValue {
 
   // Derived values.
   outlineGeometry: OutlineGeometry;
+  /** The board's blank fitted once (`prepareBlank`) — every curve prepared a single time per blank
+   * copy (R14), so sliding or fine-tuning never refits the catalogue's stations. Null with no blank. */
+  preparedBlank: PreparedBlank | null;
+  /** THE side profile (Pattern 5): the board's rocker, thickness and deck, its five station
+   * numbers, and — with a blank — the blank's own silhouette, foam to come off and numbers under
+   * each station. RAILS, VOLUME, the ROCKER drawing, the DATASHEET and the Summary all read this
+   * one object; never re-spline its five stations for drawing or integration. */
+  sideProfile: BoardSideProfile;
   /** `rails` with the three thickness stations replaced by the foil's matching stations when
    * `railsImportFoilThickness` is on (D-09) — see `deriveEffectiveRails`'s doc comment in
    * `lib/geometry/design.ts`. `railBands` below is computed from this, never from raw `rails`
@@ -285,7 +339,7 @@ interface DesignContextValue {
   effectiveVolume: VolumeSpec;
   volumeResult: VolumeResult;
   /** The accurate cross-section litres figure (CONTEXT.md D-13) — real cross-sections taken along
-   * the designed board's own length using `state.foil` and `effectiveRails`, integrated with
+   * the designed board's own length using `sideProfile`'s thickness and `effectiveRails`, integrated with
    * Simpson's rule. Computed unconditionally (not just when importing), so `quotedVolumeLitres`
    * can switch to it instantly the moment the import toggles come back on. */
   crossSectionVolume: CrossSectionVolumeResult;
@@ -349,6 +403,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       finsImportTemplate: state.finsImportTemplate,
       railsImportFoilThickness: state.railsImportFoilThickness,
       finSystem: state.finSystem,
+      blank: state.blank,
     }),
     [
       state.outline,
@@ -360,6 +415,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       state.finsImportTemplate,
       state.railsImportFoilThickness,
       state.finSystem,
+      state.blank,
     ],
   );
 
@@ -429,7 +485,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, outline: { ...prev.outline, ...patch }, boardStarted: true, dirty: true }));
   };
 
-  const updateRocker = (patch: Partial<RockerSpec>) => {
+  const updateRocker = (patch: Partial<FiveStationRocker>) => {
     noteEdit(`rocker:${patchKey(patch)}`);
     setState((prev) => ({ ...prev, rocker: { ...prev.rocker, ...patch }, boardStarted: true, dirty: true }));
   };
@@ -455,10 +511,13 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setState(() => ({
       ...DEFAULT_DESIGN_STATE,
       outline: preset.outline,
-      rocker: preset.rocker,
+      // Presets still carry their tuned Bezier curves this wave; read at the preset's own five
+      // stations exactly as a version-3 save reopens. 11-10 gives every preset a real blank instead.
+      rocker: bezierToFiveStations(preset.rocker, preset.outline.length),
       foil: preset.foil,
       rails: preset.rails,
       fins: preset.fins,
+      blank: null,
       boardStarted: true,
       dirty: true,
     }));
@@ -488,6 +547,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       railsImportFoilThickness: snapshot.railsImportFoilThickness,
       boardName: snapshot.boardName,
       finSystem: snapshot.finSystem,
+      blank: snapshot.blank,
       modelId: id,
       boardStarted: true,
     }));
@@ -569,12 +629,41 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   const outlineGeometry = useMemo(() => buildOutline(state.outline), [state.outline]);
 
+  // The blank is fitted ONCE per blank copy (R14): keyed on the copy's own identity, which only
+  // changes when a different blank is picked (or a board is opened) — sliding the placement or
+  // fine-tuning a 12" station reuses the same prepared curves.
+  const blankCopy = state.blank?.copy ?? null;
+  const preparedBlank = useMemo(() => (blankCopy ? prepareBlank(blankCopy) : null), [blankCopy]);
+
+  // THE side profile (Pattern 5) — see the file header. Placement is clamped on read inside the
+  // profile, never written back into state.
+  const sideProfile = useMemo(
+    () =>
+      buildBoardProfile({
+        length: state.outline.length,
+        rocker: state.rocker,
+        foil: state.foil,
+        blank:
+          preparedBlank && state.blank
+            ? {
+                prepared: preparedBlank,
+                placement: state.blank.placement,
+                nose12Offset: state.blank.nose12Offset,
+                tail12Offset: state.blank.tail12Offset,
+              }
+            : null,
+      }),
+    [state.outline.length, state.rocker, state.foil, preparedBlank, state.blank],
+  );
+
   // Derived-value equivalent of D-09's link: never an effect that mirrors the foil into
   // state.rails (that would let the two thicknesses drift apart), just a memo the RAILS screen's
-  // own render reads. See deriveEffectiveRails's doc comment in lib/geometry/design.ts.
+  // own render reads. See deriveEffectiveRails's doc comment in lib/geometry/design.ts. Reads the
+  // side profile's foil: for a hand-set board that is the stored foil exactly (so RAILS never
+  // moves for one), for a board in a blank it is the blank-derived thickness at the three stations.
   const effectiveRails = useMemo(
-    () => deriveEffectiveRails(state.rails, state.foil, state.railsImportFoilThickness),
-    [state.rails, state.foil, state.railsImportFoilThickness],
+    () => deriveEffectiveRails(state.rails, sideProfile.effectiveFoil, state.railsImportFoilThickness),
+    [state.rails, sideProfile.effectiveFoil, state.railsImportFoilThickness],
   );
   const railBands = useMemo(() => computeRailBands(effectiveRails), [effectiveRails]);
 
@@ -644,17 +733,89 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   // The accurate path (D-13): real cross-sections along the board's own length, using the same
   // half-width sampler pattern `lib/geometry/design.ts`'s `summarizeDesign` builds, so a rack
-  // card's number and this screen's number can never drift apart.
+  // card's number and this screen's number can never drift apart. The thickness is the side
+  // profile's own dense curve (Pattern 5) — with a blank, the blank's scaled foil exactly as drawn,
+  // never re-splined through five stations.
   const crossSectionVolume = useMemo(
     () =>
       computeCrossSectionVolume({
         halfWidthAt: (station) => sampleOutline(outlineGeometry, station),
-        foil: state.foil,
+        foil: sideProfile.effectiveFoil,
+        thicknessAt: sideProfile.thicknessAt,
         rails: effectiveRails,
         length: state.outline.length,
       }),
-    [outlineGeometry, state.foil, effectiveRails, state.outline.length],
+    [outlineGeometry, sideProfile, effectiveRails, state.outline.length],
   );
+
+  // The blank moves (D-01, D-02, D-11). Each notes its edit first and marks the board started and
+  // dirty, like every mutator above, so undo, autosave and the replace-board prompt all see them.
+
+  // A discrete choice, not a slider — noteEdit(null), so each pick is its own undo step.
+  const pickBlank = (record: BlankRecord, placement: Mm) => {
+    noteEdit(null);
+    setState((prev) => ({
+      ...prev,
+      blank: {
+        copy: record,
+        placement,
+        // Switching blanks keeps the shaper's fine-tunes (D-11); a first pick starts at 0.
+        nose12Offset: prev.blank?.nose12Offset ?? mm(0),
+        tail12Offset: prev.blank?.tail12Offset ?? mm(0),
+      },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
+  // A slider — one coalescing key, so a whole drag is one undo step.
+  const setPlacement = (placement: Mm) => {
+    if (!state.blank) return;
+    noteEdit("blank:placement");
+    setState((prev) => (prev.blank ? { ...prev, blank: { ...prev.blank, placement }, boardStarted: true, dirty: true } : prev));
+  };
+
+  // Sliders — keyed per field, like every patch-shaped mutator.
+  const setFineTune = (patch: Partial<{ nose12Offset: Mm; tail12Offset: Mm }>) => {
+    if (!state.blank) return;
+    noteEdit(`blank:offset:${patchKey(patch)}`);
+    setState((prev) => (prev.blank ? { ...prev, blank: { ...prev.blank, ...patch }, boardStarted: true, dirty: true } : prev));
+  };
+
+  // A discrete button — noteEdit(null).
+  const resetFineTune = () => {
+    if (!state.blank) return;
+    noteEdit(null);
+    setState((prev) =>
+      prev.blank
+        ? { ...prev, blank: { ...prev.blank, nose12Offset: mm(0), tail12Offset: mm(0) }, boardStarted: true, dirty: true }
+        : prev,
+    );
+  };
+
+  // "Remove This Blank" (UI-SPEC §7). Reads the side profile as it is on screen RIGHT NOW (this
+  // render's `sideProfile`) and seeds the hand-set rocker's four stations and the foil's two 12"
+  // thicknesses from it, so the drawing does not jump when the blank goes. The centre thickness and
+  // tips are already the board's own stored values. All three fields change in one setState, so a
+  // single undo brings the blank — and the old hand-set values — back together.
+  const removeBlank = () => {
+    if (!state.blank) return;
+    noteEdit(null);
+    const { stationRocker, effectiveFoil } = sideProfile;
+    setState((prev) => ({
+      ...prev,
+      rocker: {
+        noseTip: stationRocker.noseTip,
+        nose12: stationRocker.nose12,
+        tail12: stationRocker.tail12,
+        tailTip: stationRocker.tailTip,
+      },
+      foil: { ...prev.foil, nose12: effectiveFoil.nose12, tail12: effectiveFoil.tail12 },
+      blank: null,
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
 
   const quotedVolumeLitres = useMemo(
     () => deriveQuotedVolumeLitres(volumeResult, crossSectionVolume, volumeResult.importingTemplate),
@@ -733,6 +894,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       railsImportFoilThickness: state.railsImportFoilThickness,
       boardName: state.boardName,
       finSystem: state.finSystem,
+      blank: state.blank,
     }),
     [
       state.outline,
@@ -745,6 +907,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       state.railsImportFoilThickness,
       state.boardName,
       state.finSystem,
+      state.blank,
     ],
   );
 
@@ -830,8 +993,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn, state.modelId, state.dirty, saveInFlight, designSnapshotFields]);
 
-  /** Steps the board back one entry, or does nothing on an empty past. Spreading exactly the nine
-   * `DesignHistorySnapshot` fields into state — never the whole state object — is exactly why
+  /** Steps the board back one entry, or does nothing on an empty past. Spreading exactly the ten
+   * `DesignHistorySnapshot` fields (the blank among them) into state — never the whole state object — is exactly why
    * `modelId`, `saveStatus` and `boardName` are left untouched by an undo. `dirty: true` is
    * deliberate, not an oversight: taking a change back IS a change, and the existing autosave
    * effect should write the undone board to the shaper's account exactly as it would any other
@@ -889,6 +1052,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     railsImportFoilThickness: state.railsImportFoilThickness,
     boardName: state.boardName,
     finSystem: state.finSystem,
+    blank: state.blank,
     modelId: state.modelId,
     hasBoardInProgress: state.boardStarted,
     designSnapshotFields,
@@ -902,6 +1066,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     updateOutline,
     updateRocker,
     updateFoil,
+    pickBlank,
+    setPlacement,
+    setFineTune,
+    resetFineTune,
+    removeBlank,
     applyPreset,
     applyModel,
     updateRailSection,
@@ -917,6 +1086,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     toggleImportTemplateDimensions,
     toggleImportRailThickness,
     outlineGeometry,
+    preparedBlank,
+    sideProfile,
     effectiveRails,
     railBands,
     templateValues,
