@@ -52,7 +52,16 @@ function prepareCatalogue(records: readonly BlankRecord[]): PreparedCatalogue {
   const recordOf = new Map<PreparedBlank, BlankRecord>();
   for (const record of records) {
     if (!isPickable(record)) continue;
-    const blank = prepareBlank(record);
+    // Belt and braces (WR-04): the server read already drops a row the maths can't fit, but one
+    // blank that still throws here must cost only its own line in the list, never the whole
+    // ROCKER screen — this runs during render, and a throw would take the page down.
+    let blank: PreparedBlank;
+    try {
+      blank = prepareBlank(record);
+    } catch (error) {
+      console.warn(`Shaper: skipped a blank that can't be drawn: ${record.vendor} ${record.name}`, error);
+      continue;
+    }
     prepared.push(blank);
     recordOf.set(blank, record);
   }

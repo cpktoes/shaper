@@ -88,6 +88,7 @@ describe("blankRecordToRow / blankRowToRecord", () => {
 describe("loadPickableBlanks", () => {
   beforeEach(() => {
     vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -151,6 +152,46 @@ describe("loadPickableBlanks", () => {
       readRows: async () => [...broken, good] as BlankReadRow[],
     });
     expect(result).toEqual({ status: "ok", blanks: [pickable[0]] });
+  });
+
+  it("drops a blank whose stations are out of order or repeated, keeps the rest, and warns naming it (WR-04)", async () => {
+    vi.stubEnv("SHAPER_BLANKS_SOURCE", "");
+    const [first, second, ...rest] = pickable;
+    const firstRow = storedRow(first);
+    // Two stations swapped: still station-shaped and finite, but no longer tail to nose.
+    const swapped = [...firstRow.stations];
+    [swapped[1], swapped[2]] = [swapped[2], swapped[1]];
+    const outOfOrder = { ...firstRow, stations: swapped };
+    // A station repeated at the same distance from the tail.
+    const secondRow = storedRow(second);
+    const repeated = {
+      ...secondRow,
+      stations: [secondRow.stations[0], { ...secondRow.stations[1], fromTailMm: secondRow.stations[0].fromTailMm }, ...secondRow.stations.slice(2)],
+    };
+    const result = await loadPickableBlanks({
+      readRows: async () => [outOfOrder, repeated, ...rest.map(storedRow)] as BlankReadRow[],
+    });
+    expect(result).toEqual({ status: "ok", blanks: rest });
+    const warnings = vi.mocked(console.warn).mock.calls.map((call) => String(call[0]));
+    expect(warnings.some((line) => line.includes(`${first.vendor} ${first.name}`))).toBe(true);
+    expect(warnings.some((line) => line.includes(`${second.vendor} ${second.name}`))).toBe(true);
+    expect(warnings.length).toBe(2);
+  });
+
+  it("is unavailable when every blank has its stations out of order (WR-04)", async () => {
+    vi.stubEnv("SHAPER_BLANKS_SOURCE", "");
+    const rows = pickable.map((record) => {
+      const row = storedRow(record);
+      return { ...row, stations: [...row.stations].reverse() };
+    });
+    await expect(loadPickableBlanks({ readRows: async () => rows })).resolves.toEqual({ status: "unavailable" });
+    expect(console.warn).toHaveBeenCalledTimes(pickable.length);
+  });
+
+  it("warns about nothing for the committed catalogue — every seeded blank is well-formed", async () => {
+    vi.stubEnv("SHAPER_BLANKS_SOURCE", "");
+    await loadPickableBlanks({ readRows: async () => catalog.map(storedRow) });
+    expect(console.warn).not.toHaveBeenCalled();
   });
 
   it("is unavailable when every row is malformed", async () => {

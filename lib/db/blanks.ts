@@ -21,7 +21,7 @@
  */
 
 import path from "node:path";
-import { isPickable } from "@/lib/blanks/catalog";
+import { isPickable, isWellFormedBlankRecord } from "@/lib/blanks/catalog";
 import type { BlankRecord, BlankStation } from "@/lib/geometry/blank";
 import { litres, mm, type Mm } from "@/lib/geometry/units";
 import { blanks, type BlankRow } from "./schema";
@@ -98,9 +98,13 @@ function isStation(value: unknown): boolean {
 }
 
 /**
- * A stored row the maths can safely read: every column the right kind, and `stations` a list of
- * station-shaped objects with finite-or-null numbers. The `stations` column is jsonb, so the
- * database itself promises nothing about its contents — a row that fails is dropped, not shown.
+ * A stored row the maths can safely read: every column the right kind, `stations` a list of
+ * station-shaped objects with finite-or-null numbers, AND the same shape rule a saved board's own
+ * copy of a blank is held to (`isWellFormedBlankRecord` in `lib/blanks/catalog.ts`, which the saved-
+ * board parser builds on, so the two untrusted-input boundaries can't drift apart) — bounded, and stations strictly from
+ * tail to nose, because the blank's curves can't be fitted through a repeated or backward station.
+ * The `stations` column is jsonb, so the database itself promises nothing about its contents — a
+ * row that fails is dropped, with a server-side warning naming it, never shown (WR-04).
  */
 function isUsableRow(value: unknown): value is BlankReadRow {
   if (typeof value !== "object" || value === null) return false;
@@ -114,8 +118,28 @@ function isUsableRow(value: unknown): value is BlankReadRow {
     isFiniteOrNull(row.deckLengthMm) &&
     isFiniteOrNull(row.volumeLitres) &&
     Array.isArray(row.stations) &&
-    row.stations.every(isStation)
+    row.stations.every(isStation) &&
+    isWellFormedBlankRecord(row)
   );
+}
+
+/** The blank's own name for the warning, as far as the row lets us read one. */
+function describeRow(value: unknown): string {
+  if (typeof value !== "object" || value === null) return "an unreadable row";
+  const row = value as Record<string, unknown>;
+  const vendor = typeof row.vendor === "string" ? row.vendor : "an unknown vendor";
+  const name = typeof row.name === "string" ? row.name : "an unnamed blank";
+  return `${vendor} ${name}`;
+}
+
+/** The rows that pass `isUsableRow`, as records; each one dropped is named in a server-side warning. */
+function usableRecords(rows: readonly unknown[]): BlankRecord[] {
+  const records: BlankRecord[] = [];
+  for (const row of rows) {
+    if (isUsableRow(row)) records.push(blankRowToRecord(row));
+    else console.warn(`Shaper: dropped a blank catalogue row that can't be drawn: ${describeRow(row)}`);
+  }
+  return records;
 }
 
 /** Every stored blank, every column named — at most one row per catalogue blank. */
@@ -154,10 +178,10 @@ export async function loadPickableBlanks(
       // given its directory from the working directory: inside the Next server bundle
       // `import.meta.url` points at the built chunk, not the source file.
       const { readSeedCatalog } = await import("@/lib/blanks/seed-files");
-      records = readSeedCatalog(path.join(process.cwd(), "db", "seed", "blanks"));
+      records = usableRecords(readSeedCatalog(path.join(process.cwd(), "db", "seed", "blanks")));
     } else {
       const rows: unknown[] = await (options.readRows ?? readBlankRows)();
-      records = rows.filter(isUsableRow).map(blankRowToRecord);
+      records = usableRecords(rows);
     }
     const pickable = records.filter(isPickable);
     // No usable blank at all is a catalogue that didn't load, not "no blank is long enough".

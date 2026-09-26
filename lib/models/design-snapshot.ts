@@ -55,7 +55,7 @@
  */
 
 import { z } from "zod";
-import { isPickable } from "@/lib/blanks/catalog";
+import { blankRecordShapeSchema, isPickable } from "@/lib/blanks/catalog";
 import type { BlankRecord, BoardBlank } from "@/lib/geometry/blank";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec } from "@/lib/geometry/board";
 import {
@@ -123,59 +123,19 @@ const bezierV3RockerSchema = z.object({
  * five-station shape listed first so current saves take the fast path. */
 const rockerSpecSchema = z.union([fiveStationRockerSchema, bezierV3RockerSchema]);
 
-/** A blank's longest identity string (vendor, name, catalogue slug). The longest in the seeded
- * catalogues is well under half this. */
-const BLANK_TEXT_MAX = 120;
-/** A catalogue flag's longest text. The longest seeded flag is 262 characters. */
-const BLANK_FLAG_MAX = 400;
-/** A blank's most stations. The seeded catalogues print 5 to 15. */
-const BLANK_STATIONS_MAX = 32;
-/** A station label's longest text (`T12`, `N0`, `C`, …). */
-const BLANK_LABEL_MAX = 16;
-/** The longest blank (and the furthest station from its tail) the parser accepts, in mm (~16'5"). */
-const BLANK_LENGTH_MAX_MM = 5000;
-/** The widest range a station's rocker, thickness or width may take, in mm either side of zero. */
-const BLANK_VALUE_MAX_MM = 1000;
 /** How far the board's centre may sit from the blank's centre, in mm either way. */
 const BLANK_PLACEMENT_MAX_MM = 4000;
 /** The largest 12" fine-tune either way, in mm (~2"). */
 const BLANK_OFFSET_MAX_MM = 50;
 
-const blankValueSchema = z.number().min(-BLANK_VALUE_MAX_MM).max(BLANK_VALUE_MAX_MM).nullable();
-
-/** One catalogue station, bounded (rule 4). An empty catalogue cell is `null`, never 0 (R10). */
-const blankStationSchema = z.object({
-  label: z.string().max(BLANK_LABEL_MAX),
-  fromTailMm: z.number().min(0).max(BLANK_LENGTH_MAX_MM),
-  rockerMm: blankValueSchema,
-  thicknessMm: blankValueSchema,
-  widthMm: blankValueSchema,
-  flag: z.string().max(BLANK_FLAG_MAX).nullable(),
+/** The board's own copy of its blank's catalogue record (D-01): well-formed by the ONE blank shape
+ * rule in `lib/blanks/catalog.ts` (`blankRecordShapeSchema` — bounded, stations strictly tail to
+ * nose; the catalogue read holds every row to the same rule), and one the blank list could have
+ * offered (`isPickable`). */
+// The cast is the same deliberate brand bridge as rule 1: every field was just validated.
+const blankRecordSchema = blankRecordShapeSchema.refine((record) => isPickable(record as BlankRecord), {
+  message: "this blank is missing a thickness the board's foil needs (not pickable)",
 });
-
-/** The board's own copy of its blank's catalogue record (D-01), bounded (rule 4). Stations must run
- * strictly tail to nose — the blank's curves are fitted through them in that order and could not be
- * drawn otherwise — and the copy must be one the blank list could have offered (`isPickable`). */
-const blankRecordSchema = z
-  .object({
-    vendor: z.string().max(BLANK_TEXT_MAX),
-    name: z.string().max(BLANK_TEXT_MAX),
-    catalogSlug: z.string().max(BLANK_TEXT_MAX),
-    pdfPage: z.number().int().min(0).max(10000),
-    lengthMm: z.number().gt(0).max(BLANK_LENGTH_MAX_MM),
-    deckLengthMm: z.number().min(0).max(BLANK_LENGTH_MAX_MM).nullable(),
-    volumeLitres: z.number().min(0).max(1000).nullable(),
-    stations: z.array(blankStationSchema).min(2).max(BLANK_STATIONS_MAX),
-  })
-  .refine(
-    (record) =>
-      record.stations.every((station, i) => i === 0 || station.fromTailMm > record.stations[i - 1].fromTailMm),
-    { message: "a blank's stations must run strictly from tail to nose" },
-  )
-  // The cast is the same deliberate brand bridge as rule 1: every field was just validated.
-  .refine((record) => isPickable(record as BlankRecord), {
-    message: "this blank is missing a thickness the board's foil needs (not pickable)",
-  });
 
 /** A board's blank (D-01): its catalogue copy, where the board sits on it (positive toward the
  * nose, D-08) and the two 12" fine-tunes (D-11). It carries no board centre thickness — that stays

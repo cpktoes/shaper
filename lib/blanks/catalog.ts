@@ -11,6 +11,7 @@
  * No React/browser/database import — the same mapping serves the seed script, the tests, the
  * browser-test fallback and the preset generator (see `seed-files.ts`).
  */
+import { z } from "zod";
 import type { BlankRecord, BlankStation } from "@/lib/geometry/blank";
 import { inchesToMm, litres, type Mm } from "@/lib/geometry/units";
 
@@ -149,4 +150,63 @@ export function isPickable(record: BlankRecord): boolean {
   const count = (pick: (station: BlankStation) => Mm | null) =>
     stations.filter((station) => pick(station) !== null).length;
   return count((station) => station.rockerMm) >= 2 && count((station) => station.widthMm) >= 2;
+}
+
+/* -- the one shape rule for an untrusted blank (WR-04) --------------------------------------- */
+
+/** A blank's longest identity string (vendor, name, catalogue slug). The longest in the seeded
+ * catalogues is well under half this. */
+const BLANK_TEXT_MAX = 120;
+/** A catalogue flag's longest text. The longest seeded flag is 262 characters. */
+const BLANK_FLAG_MAX = 400;
+/** A blank's most stations. The seeded catalogues print 5 to 15. */
+const BLANK_STATIONS_MAX = 32;
+/** A station label's longest text (`T12`, `N0`, `C`, …). */
+const BLANK_LABEL_MAX = 16;
+/** The longest blank (and the furthest station from its tail) the parser accepts, in mm (~16'5"). */
+const BLANK_LENGTH_MAX_MM = 5000;
+/** The widest range a station's rocker, thickness or width may take, in mm either side of zero. */
+const BLANK_VALUE_MAX_MM = 1000;
+const blankValueSchema = z.number().min(-BLANK_VALUE_MAX_MM).max(BLANK_VALUE_MAX_MM).nullable();
+
+/** One catalogue station, bounded. An empty catalogue cell is `null`, never 0 (R10). */
+const blankStationSchema = z.object({
+  label: z.string().max(BLANK_LABEL_MAX),
+  fromTailMm: z.number().min(0).max(BLANK_LENGTH_MAX_MM),
+  rockerMm: blankValueSchema,
+  thicknessMm: blankValueSchema,
+  widthMm: blankValueSchema,
+  flag: z.string().max(BLANK_FLAG_MAX).nullable(),
+});
+
+/** A catalogue blank record, bounded, whose stations run strictly tail to nose — the blank's
+ * curves are fitted through them in that order and could not be drawn otherwise (pchip throws on a
+ * repeated or backward station). The ONE shape rule for a blank from anywhere untrusted: a saved
+ * board's copy (`lib/models/design-snapshot.ts` adds `isPickable` on top) and every row the
+ * catalogue read hands the ROCKER page (`lib/db/blanks.ts`, through `isWellFormedBlankRecord`). */
+export const blankRecordShapeSchema = z
+  .object({
+    vendor: z.string().max(BLANK_TEXT_MAX),
+    name: z.string().max(BLANK_TEXT_MAX),
+    catalogSlug: z.string().max(BLANK_TEXT_MAX),
+    pdfPage: z.number().int().min(0).max(10000),
+    lengthMm: z.number().gt(0).max(BLANK_LENGTH_MAX_MM),
+    deckLengthMm: z.number().min(0).max(BLANK_LENGTH_MAX_MM).nullable(),
+    volumeLitres: z.number().min(0).max(1000).nullable(),
+    stations: z.array(blankStationSchema).min(2).max(BLANK_STATIONS_MAX),
+  })
+  .refine(
+    (record) =>
+      record.stations.every((station, i) => i === 0 || station.fromTailMm > record.stations[i - 1].fromTailMm),
+    { message: "a blank's stations must run strictly from tail to nose" },
+  );
+
+/**
+ * True when `value` is a blank record the blank maths can safely fit: every field the right kind,
+ * finite and inside its bounds, and its stations strictly tail to nose. Says nothing about whether
+ * the blank is pickable — the catalogue read applies `isPickable` itself, separately, because a
+ * well-formed blank nobody can pick (a SUP blank) is not a broken row.
+ */
+export function isWellFormedBlankRecord(value: unknown): value is BlankRecord {
+  return blankRecordShapeSchema.safeParse(value).success;
 }
