@@ -74,9 +74,11 @@ describe("design-store.tsx — the blank rides in every hand-written field list 
     expect(deps).toMatch(/\bstate\.blank\b/);
   });
 
-  it("applyModel restores the saved blank, and applyPreset resets it", () => {
+  it("applyModel restores the saved blank, and applyPreset rebuilds the board from the preset's one mapping (its blank included)", () => {
     expect(handler("applyModel")).toMatch(/\bblank:\s*snapshot\.blank\b/);
-    expect(handler("applyPreset")).toMatch(/\bblank:\s*null\b/);
+    // D-03: a preset opens in its blank — the whole board comes from presetDesignFields, spread over
+    // DEFAULT_DESIGN_STATE so every field a preset does not set (new ones included) resets safely.
+    expect(handler("applyPreset")).toMatch(/\.\.\.DEFAULT_DESIGN_STATE,\s*\.\.\.presetDesignFields\(preset\)/);
   });
 
   it("DEFAULT_DESIGN_STATE starts with no blank and still carries the defaults presetSummary assumes", () => {
@@ -150,7 +152,86 @@ describe("design-store.tsx — nothing but the shaper's own pick or removal chan
     }
   });
 
-  it("the store never reads the fit-defaults provider (11-10 wires D-19)", () => {
-    expect(SOURCE).not.toContain("useFitDefaults");
+});
+
+describe("design-store.tsx — an untouched new board follows the live tip defaults, until its first edit (D-19)", () => {
+  /** Every handler that edits the board — the first of any of them bakes the tips in. */
+  const STARTS_THE_BOARD = [
+    "updateOutline",
+    "updateRocker",
+    "updateFoil",
+    "updateRailSection",
+    "toggleTailHardEdge",
+    "updateFins",
+    "updateVolume",
+    "setFinsImportTemplate",
+    "toggleRailsImportFoilThickness",
+    "setBoardName",
+    "setFinSystem",
+    "pickBlank",
+    "setPlacement",
+    "setFineTune",
+    "resetFineTune",
+    "removeBlank",
+    "toggleImportTemplateDimensions",
+    "toggleImportRailThickness",
+    "markSaved",
+  ];
+
+  it("reads the gear menu's tip defaults through useFitDefaults", () => {
+    expect(SOURCE).toMatch(/import \{ useFitDefaults \} from "@\/components\/fit-defaults-provider"/);
+    expect(SOURCE).toMatch(/=\s*useFitDefaults\(\)/);
+  });
+
+  it("the foil every consumer reads is the stored foil once started, else the stored foil with the live tips", () => {
+    const { object, deps } = memo("foil");
+    expect(object).toMatch(/state\.boardStarted\s*\?\s*state\.foil\s*:/);
+    expect(object).toMatch(/noseTip:\s*liveNoseTip/);
+    expect(object).toMatch(/tailTip:\s*liveTailTip/);
+    expect(deps).toMatch(/state\.boardStarted/);
+    expect(deps).toMatch(/liveNoseTip/);
+    expect(deps).toMatch(/liveTailTip/);
+  });
+
+  it("the undo snapshot, the save snapshot and the side profile read that foil, never state.foil", () => {
+    for (const name of ["historySnapshot", "designSnapshotFields", "sideProfile"]) {
+      const { object, deps } = memo(name);
+      expect(object, name).not.toMatch(/state\.foil\b/);
+      expect(deps, name).not.toMatch(/state\.foil\b/);
+      expect(deps, name).toMatch(/\bfoil\b/);
+    }
+    expect(SOURCE).not.toMatch(/\n    foil: state\.foil,/);
+  });
+
+  it("every edit starts from startedFrom(…), so the first one bakes the live tips into the board's own", () => {
+    for (const name of STARTS_THE_BOARD) {
+      expect(handler(name), name).toContain("startedFrom(");
+    }
+  });
+
+  it("no handler that sets state skips startedFrom except opening a preset or a saved board, the save bookkeeping and undo", () => {
+    const exempt = new Set(["applyPreset", "applyModel", "setModelId", "performSave", "undoEdit", "redoEdit"]);
+    for (const { name, body } of allHandlers()) {
+      if (exempt.has(name)) continue;
+      expect(body, `${name} edits the board without startedFrom`).toContain("startedFrom(");
+    }
+  });
+
+  it("opening a preset or a saved board sets its own tips, so neither calls startedFrom", () => {
+    for (const name of ["applyPreset", "applyModel"]) {
+      expect(handler(name), name).not.toContain("startedFrom(");
+    }
+  });
+
+  it("markSaved starts the board (a saved board never follows a live setting, D-09)", () => {
+    expect(handler("markSaved")).toMatch(/boardStarted:\s*true/);
+  });
+
+  it("startedFrom only ever touches the two tips, and only on an unstarted board", () => {
+    const start = SOURCE.indexOf("function startedFrom(");
+    expect(start).toBeGreaterThanOrEqual(0);
+    const body = balancedFrom(SOURCE, SOURCE.indexOf("{", start));
+    expect(body).toMatch(/if \(prev\.boardStarted\) return prev;/);
+    expect(body).toMatch(/foil:\s*\{\s*\.\.\.prev\.foil,\s*noseTip:\s*liveTips\.noseTip,\s*tailTip:\s*liveTips\.tailTip\s*\}/);
   });
 });

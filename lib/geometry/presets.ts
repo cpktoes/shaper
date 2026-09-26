@@ -2,9 +2,11 @@
  * Board-type presets — the roster shown on the setup screen (D-01/D-02).
  *
  * Pure TypeScript, no UI/browser/database imports — same tier as `board.ts`.
- * Each preset is a complete spec — `outline`, `rocker`, `foil`, `rails`, `fins` — not a patch,
- * so `applyPreset` (components/design/design-store.tsx) can overwrite the
- * store's board wholesale without merging against whatever was there before.
+ * Each preset is a complete spec — `outline`, `foil`, `rails`, `fins` and (since Phase 11) a foam
+ * blank — not a patch, so `applyPreset` (components/design/design-store.tsx) can overwrite the
+ * store's board wholesale without merging against whatever was there before. The board a preset
+ * opens as is built by ONE pure mapping, `presetDesignFields` in `lib/blanks/preset-blanks.ts`,
+ * which both `applyPreset` and the preset card's numbers (`presetSummary`) read.
  *
  * D-03 tuning status (2026-08-21): `midlength` and `longboard` outlines carry
  * the shaper's own values, captured from the live outline editor via the
@@ -78,6 +80,26 @@
  * `DEFAULT_FIN_PLACEMENT_SPEC` are no longer imported here — they remain the design store's own
  * starting values for a board that begins without a preset, but no preset carries them.
  *
+ * Blank picks (Phase 11, D-03, 2026-09-26): the four `rocker` blocks retired. A preset no longer
+ * carries a hand-drawn rocker: it names a real foam blank and where the board sits on it, and its
+ * rocker is that blank's own. Its foil keeps only the centre and the two tips (`PresetFoil`) — the
+ * typed nose 12" and tail 12" thicknesses went too, because with a blank the foil between centre
+ * and tips is the blank's own shape scaled to the centre (D-10), not five typed numbers. Every
+ * preset's blank is, for now, a PROVISIONAL pick: `scripts/generate-preset-blanks.ts` chose it by
+ * the app's own rule (the fitting blank whose length is closest to the preset's own length, ties to
+ * less spare centre foam, at its fitting placement closest to centre, with the default fit
+ * settings and the preset's own centre and tips) and stored that blank's catalogue rows in
+ * `lib/blanks/preset-blanks.generated.json`, so the setup screen can open a preset in its blank
+ * without the catalogue database. The founder replaces a pick the same way outlines and rockers
+ * were captured: set the board up on the ROCKER screen in the blank they want, press the
+ * development-only "Copy preset values" button, paste its `blank: { … }` line into that preset
+ * below (a captured pick always wins over the rule), and re-run the generator:
+ *
+ *   npx --no-install tsx --tsconfig ./tsconfig.json scripts/generate-preset-blanks.ts
+ *
+ * Until then each preset carries a `// blank: provisional pick` comment. This file never imports
+ * the generated JSON — the generator imports this file.
+ *
  * Any future change to any preset field should go through the matching
  * capture loop rather than being hand-edited. Every length/width/offset is
  * authored via `inchesToMm()` and every angle via `degrees()` — never a bare
@@ -90,23 +112,34 @@ import type { OutlineSpec } from "./board";
 import type { FinPlacementSpec } from "./fins";
 import type { FoilSpec } from "./foil";
 import type { RailBandSpec } from "./rail-bands";
-import type { RockerSpec } from "./rocker";
-import { degrees, inchesToMm } from "./units";
+import { degrees, inchesToMm, type Mm } from "./units";
 
-// Each preset's rocker block keeps its own noseLift/tailLift exactly as before this task, and
-// carries six shape controls solved (not hand-guessed) so the derived 12" figures land within a
-// hundredth of an inch of the preset's own prior stored 12" numbers — see each block's own
-// comment for the figures it was solved against. Since 2026-09-14 every block is shaper-captured
-// rather than solved — see each block's own comment; the sentence above describes the 260829-rda
-// state, kept for the record.
+/**
+ * The three foil thicknesses a preset still owns (D-03, D-10): the centre the blank is scaled to
+ * and the two tip settings. The 12" thicknesses are derived from the blank.
+ */
+export type PresetFoil = Pick<FoilSpec, "noseTip" | "center" | "tailTip">;
+
+/**
+ * A captured blank pick — exactly the `blank: { … }` line the ROCKER screen's development-only
+ * "Copy preset values" button prints (`buildRockerPresetSource`). When present it wins over the
+ * provisional pick the generator would otherwise make.
+ */
+export interface PresetBlankCapture {
+  vendor: string;
+  name: string;
+  /** Board centre relative to the blank centre, positive toward the nose. */
+  placement: Mm;
+}
 
 export interface BoardPreset {
   id: "shortboard" | "fish" | "midlength" | "longboard";
   name: string;
   descriptor: string;
   outline: OutlineSpec;
-  rocker: RockerSpec;
-  foil: FoilSpec;
+  foil: PresetFoil;
+  /** A captured blank pick; absent while the preset uses its provisional pick (see the header). */
+  blank?: PresetBlankCapture;
   rails: RailBandSpec;
   fins: FinPlacementSpec;
 }
@@ -134,23 +167,13 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
     // affordance printed inches rounded to three decimals (2.063, 0.438, 1.563, 0.938), so those
     // four were written here by hand as the exact sixteenths the sliders hold (2.0625, 0.4375,
     // 1.5625, 0.9375); later that day it learned to print the exact sixteenth itself
-    // (`lib/geometry/preset-source.ts`), so a recapture pastes in as-is. Derived
-    // nose12 ≈ 1.80", tail12 ≈ 0.94" — the figures presets.test.ts checks this block against.
-    rocker: {
-      noseLift: inchesToMm(5.5),
-      tailLift: inchesToMm(2.0625),
-      noseAngle: degrees(30),
-      tailAngle: degrees(26),
-      noseSmoothness: 49,
-      tailSmoothness: 100,
-      noseFlatness: 50,
-      tailFlatness: 44.5,
-    },
+    // (`lib/geometry/preset-source.ts`), so a recapture pastes in as-is. Since Phase 11 (D-03) the
+    // captured rocker block and the nose 12" / tail 12" thicknesses are retired: the rocker and
+    // 12" foil come from this preset's blank, the centre and tips below are what it keeps.
+    // blank: provisional pick — see lib/blanks/preset-blanks.generated.json
     foil: {
       noseTip: inchesToMm(0.4375),
-      nose12: inchesToMm(1.375),
       center: inchesToMm(2.25),
-      tail12: inchesToMm(1.5625),
       tailTip: inchesToMm(0.9375),
     },
     // Shaper-captured 2026-09-14 from the Rails and Fins screens' development-only "Copy preset
@@ -245,22 +268,11 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
       tailFullness: 15,
       tail: { kind: "swallow", endWidth: inchesToMm(10), crotchDepth: inchesToMm(2.75) },
     },
-    // Derived nose12 ≈ 1.40", tail12 ≈ 0.66" — the figures presets.test.ts checks this block against.
-    rocker: {
-      noseLift: inchesToMm(4.625),
-      tailLift: inchesToMm(1.9375),
-      noseAngle: degrees(30),
-      tailAngle: degrees(9),
-      noseSmoothness: 54.5,
-      tailSmoothness: 34,
-      noseFlatness: 51,
-      tailFlatness: 16,
-    },
+    // Rocker and 12" foil retired (Phase 11, D-03) — they come from this preset's blank.
+    // blank: provisional pick — see lib/blanks/preset-blanks.generated.json
     foil: {
       noseTip: inchesToMm(0.6875),
-      nose12: inchesToMm(1.6875),
       center: inchesToMm(2.5),
-      tail12: inchesToMm(1.75),
       tailTip: inchesToMm(0.75),
     },
     // Rails: nose ratio 55/45, centre and tail rails on family 2 (the boxy side), nose stays 3; fins:
@@ -354,22 +366,11 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
       tailFullness: 46.75,
       tail: { kind: "round" },
     },
-    // Derived nose12 ≈ 2.05", tail12 ≈ 1.23" — the figures presets.test.ts checks this block against.
-    rocker: {
-      noseLift: inchesToMm(5.375),
-      tailLift: inchesToMm(2.3125),
-      noseAngle: degrees(28),
-      tailAngle: degrees(30),
-      noseSmoothness: 27,
-      tailSmoothness: 80,
-      noseFlatness: 10,
-      tailFlatness: 0,
-    },
+    // Rocker and 12" foil retired (Phase 11, D-03) — they come from this preset's blank.
+    // blank: provisional pick — see lib/blanks/preset-blanks.generated.json
     foil: {
       noseTip: inchesToMm(0.625),
-      nose12: inchesToMm(1.625),
       center: inchesToMm(2.75),
-      tail12: inchesToMm(1.75),
       tailTip: inchesToMm(0.75),
     },
     // Rails: nose and centre on family 2 (nose ratio 50/50), tail on 3, deck profile eased off 100
@@ -462,22 +463,11 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
       tailFullness: 46.75,
       tail: { kind: "squash", endWidth: inchesToMm(8.5) },
     },
-    // Derived nose12 ≈ 2.29", tail12 ≈ 1.80" — the figures presets.test.ts checks this block against.
-    rocker: {
-      noseLift: inchesToMm(4.3125),
-      tailLift: inchesToMm(3.25),
-      noseAngle: degrees(12),
-      tailAngle: degrees(11),
-      noseSmoothness: 23,
-      tailSmoothness: 65,
-      noseFlatness: 0,
-      tailFlatness: 28,
-    },
+    // Rocker and 12" foil retired (Phase 11, D-03) — they come from this preset's blank.
+    // blank: provisional pick — see lib/blanks/preset-blanks.generated.json
     foil: {
       noseTip: inchesToMm(0.875),
-      nose12: inchesToMm(1.625),
       center: inchesToMm(3),
-      tail12: inchesToMm(1.75),
       tailTip: inchesToMm(0.875),
     },
     // Rails: symmetrical 50/50 rails on family 3 at the nose and centre, a symmetrical 45/55 tail

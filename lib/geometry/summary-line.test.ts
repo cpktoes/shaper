@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { BOARD_PRESETS } from "./presets";
 import { summarizeDesign, type DesignSummary } from "./design";
 import { DEFAULT_VOLUME_SPEC } from "./volume";
@@ -8,11 +9,10 @@ import { formatDimsExample, formatSummaryLine, presetSummary } from "./summary-l
 
 const shortboard = BOARD_PRESETS.find((p) => p.id === "shortboard")!;
 
-/** A fixed summary to exercise the string composition against known numbers. */
+/** A fixed summary to exercise the string composition against known numbers — the Shortboard
+ * exactly as `applyPreset` opens it (its blank included), built independently of `presetSummary`. */
 const FIXED_SUMMARY: DesignSummary = summarizeDesign({
-  outline: shortboard.outline,
-  rails: shortboard.rails,
-  foil: shortboard.foil,
+  ...presetDesignFields(shortboard),
   railsImportFoilThickness: true,
   volume: DEFAULT_VOLUME_SPEC,
 });
@@ -64,6 +64,23 @@ describe("presetSummary", () => {
   it("returns the same DesignSummary applyPreset's state would produce", () => {
     const summary = presetSummary(shortboard);
     expect(summary).toEqual(FIXED_SUMMARY);
+  });
+
+  it.each(BOARD_PRESETS)("$id: equals summarizeDesign over the very fields applyPreset opens the board with — its blank included", (preset) => {
+    const opened = summarizeDesign({
+      ...presetDesignFields(preset),
+      railsImportFoilThickness: true,
+      volume: DEFAULT_VOLUME_SPEC,
+    });
+    expect(presetSummary(preset)).toEqual(opened);
+    // The preset opens in a blank, so its card's litres are the blank's, not the hand-set foil's.
+    const handSet = summarizeDesign({
+      ...presetDesignFields(preset),
+      blank: null,
+      railsImportFoilThickness: true,
+      volume: DEFAULT_VOLUME_SPEC,
+    });
+    expect(presetSummary(preset).volumeLitres).not.toBe(handSet.volumeLitres);
   });
 
   it("every preset in BOARD_PRESETS produces a real summary with all four numbers", () => {

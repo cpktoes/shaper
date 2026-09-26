@@ -1,18 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { computeFinPlacement, DEFAULT_FIN_PLACEMENT_SPEC } from "./fins";
-import { FOIL_THICKNESS_RANGE_IN, sampleFoil } from "./foil";
+import { presetDesignFields } from "@/lib/blanks/preset-blanks";
+import { prepareBlank } from "./blank-fit";
+import { buildBoardProfile } from "./board-profile";
+import { FOIL_THICKNESS_RANGE_IN } from "./foil";
 import { buildOutline } from "./outline";
-import { BOARD_PRESETS } from "./presets";
+import { BOARD_PRESETS, type BoardPreset } from "./presets";
 import { computeRailBands, DEFAULT_RAIL_BAND_SPEC } from "./rail-bands";
-import {
-  buildRocker,
-  ROCKER_ANGLE_RANGE_DEG,
-  ROCKER_FLATNESS_RANGE,
-  ROCKER_LIFT_RANGE_IN,
-  ROCKER_SMOOTHNESS_RANGE,
-  sampleRocker,
-} from "./rocker";
-import { inchesToMm, mmToInches } from "./units";
+import { inchesToMm, mm, mmToInches } from "./units";
 
 describe("BOARD_PRESETS", () => {
   it("has exactly 4 entries with the four unique board-type ids", () => {
@@ -165,78 +160,76 @@ describe("BOARD_PRESETS", () => {
     }
   });
 
-  it.each(BOARD_PRESETS)("$id: carries a rocker with all eight fields and a foil with all five thickness keys, each finite", (preset) => {
-    for (const key of [
-      "noseLift",
-      "tailLift",
-      "noseAngle",
-      "tailAngle",
-      "noseSmoothness",
-      "tailSmoothness",
-      "noseFlatness",
-      "tailFlatness",
-    ] as const) {
-      expect(Number.isFinite(preset.rocker[key])).toBe(true);
-    }
-    for (const key of ["noseTip", "nose12", "center", "tail12", "tailTip"] as const) {
+
+  // Phase 11 (D-03): a preset's rocker and 12" foil are no longer typed — they come from its blank.
+  // The checks below are the retired Bezier/foil-ordering checks re-expressed through the side
+  // profile a preset actually opens with (`presetDesignFields` -> `buildBoardProfile`), the same
+  // profile the store builds. Every expected number is the preset's own setting or is read off the
+  // profile; none is typed.
+
+  it.each(BOARD_PRESETS)("$id: its foil carries exactly the three thicknesses a preset owns — centre and tips — each inside FOIL_THICKNESS_RANGE_IN", (preset) => {
+    expect(Object.keys(preset.foil).sort()).toEqual(["center", "noseTip", "tailTip"]);
+    for (const key of ["noseTip", "center", "tailTip"] as const) {
       expect(Number.isFinite(preset.foil[key])).toBe(true);
+      const thickness = mmToInches(preset.foil[key]);
+      expect(thickness).toBeGreaterThanOrEqual(FOIL_THICKNESS_RANGE_IN.min);
+      expect(thickness).toBeLessThanOrEqual(FOIL_THICKNESS_RANGE_IN.max);
+    }
+    expect("rocker" in preset).toBe(false);
+  });
+
+  it.each(BOARD_PRESETS)("$id: R13 — the side profile's tips equal its tip settings and its centre equals its centre", (preset) => {
+    const { profile } = presetProfile(preset);
+    const L = preset.outline.length;
+    expect(profile.thicknessAt(mm(0))).toBeCloseTo(preset.foil.tailTip, 9);
+    expect(profile.thicknessAt(L)).toBeCloseTo(preset.foil.noseTip, 9);
+    expect(profile.thicknessAt(mm(L / 2))).toBeCloseTo(preset.foil.center, 9);
+    expect(profile.effectiveFoil.tailTip).toBeCloseTo(preset.foil.tailTip, 9);
+    expect(profile.effectiveFoil.noseTip).toBeCloseTo(preset.foil.noseTip, 9);
+    expect(profile.effectiveFoil.center).toBeCloseTo(preset.foil.center, 9);
+  });
+
+  it.each(BOARD_PRESETS)("$id: both 12in thicknesses sit between their tip and the centre — the centre is the thickest station", (preset) => {
+    const { effectiveFoil } = presetProfile(preset).profile;
+    expect(effectiveFoil.nose12).toBeGreaterThan(preset.foil.noseTip);
+    expect(effectiveFoil.nose12).toBeLessThan(preset.foil.center);
+    expect(effectiveFoil.tail12).toBeGreaterThan(preset.foil.tailTip);
+    expect(effectiveFoil.tail12).toBeLessThan(preset.foil.center);
+  });
+
+  it.each(BOARD_PRESETS)("$id: R13 — no negative thickness and no rocker below the flat anywhere on a 1/4in sweep", (preset) => {
+    const { profile } = presetProfile(preset);
+    const L = preset.outline.length;
+    const step = inchesToMm(0.25);
+    for (let s = 0; s <= L + 1e-9; s += step) {
+      const station = mm(Math.min(s, L));
+      expect(Number.isFinite(profile.thicknessAt(station))).toBe(true);
+      expect(profile.thicknessAt(station)).toBeGreaterThan(0);
+      expect(profile.rockerAt(station)).toBeGreaterThanOrEqual(-1e-9);
     }
   });
 
-  it.each(BOARD_PRESETS)(
-    "$id: nose/tail lift sit inside ROCKER_LIFT_RANGE_IN, angle inside ROCKER_ANGLE_RANGE_DEG, smoothness/flatness inside their own 0-100 ranges, and every foil thickness inside FOIL_THICKNESS_RANGE_IN",
-    (preset) => {
-      for (const key of ["noseLift", "tailLift"] as const) {
-        const lift = mmToInches(preset.rocker[key]);
-        expect(lift).toBeGreaterThanOrEqual(ROCKER_LIFT_RANGE_IN.min);
-        expect(lift).toBeLessThanOrEqual(ROCKER_LIFT_RANGE_IN.max);
-      }
-      for (const key of ["noseAngle", "tailAngle"] as const) {
-        expect(preset.rocker[key]).toBeGreaterThanOrEqual(ROCKER_ANGLE_RANGE_DEG.min);
-        expect(preset.rocker[key]).toBeLessThanOrEqual(ROCKER_ANGLE_RANGE_DEG.max);
-      }
-      for (const key of ["noseSmoothness", "tailSmoothness"] as const) {
-        expect(preset.rocker[key]).toBeGreaterThanOrEqual(ROCKER_SMOOTHNESS_RANGE.min);
-        expect(preset.rocker[key]).toBeLessThanOrEqual(ROCKER_SMOOTHNESS_RANGE.max);
-      }
-      for (const key of ["noseFlatness", "tailFlatness"] as const) {
-        expect(preset.rocker[key]).toBeGreaterThanOrEqual(ROCKER_FLATNESS_RANGE.min);
-        expect(preset.rocker[key]).toBeLessThanOrEqual(ROCKER_FLATNESS_RANGE.max);
-      }
-      for (const key of ["noseTip", "nose12", "center", "tail12", "tailTip"] as const) {
-        const thickness = mmToInches(preset.foil[key]);
-        expect(thickness).toBeGreaterThanOrEqual(FOIL_THICKNESS_RANGE_IN.min);
-        expect(thickness).toBeLessThanOrEqual(FOIL_THICKNESS_RANGE_IN.max);
-      }
-    },
-  );
-
-  it.each(BOARD_PRESETS)("$id: nose-tip lift exceeds tail-tip lift — every board carries more nose rocker than tail rocker", (preset) => {
-    expect(preset.rocker.noseLift).toBeGreaterThan(preset.rocker.tailLift);
+  it.each(BOARD_PRESETS)("$id: positive rocker at both tips, and each 12in lift is above the flat and below its own tip's", (preset) => {
+    const { stationRocker } = presetProfile(preset).profile;
+    expect(stationRocker.noseTip).toBeGreaterThan(0);
+    expect(stationRocker.tailTip).toBeGreaterThan(0);
+    expect(stationRocker.nose12).toBeGreaterThan(0);
+    expect(stationRocker.nose12).toBeLessThan(stationRocker.noseTip);
+    expect(stationRocker.tail12).toBeGreaterThan(0);
+    expect(stationRocker.tail12).toBeLessThan(stationRocker.tailTip);
   });
 
-  it.each(BOARD_PRESETS)(
-    "$id: the derived nose-12in lift exceeds the derived tail-12in lift, and both are below their own tip's lift",
-    (preset) => {
-      const geometry = buildRocker(preset.rocker, preset.outline.length);
-      expect(geometry.noseLiftAt12in).toBeGreaterThan(geometry.tailLiftAt12in);
-      expect(geometry.noseLiftAt12in).toBeLessThan(preset.rocker.noseLift);
-      expect(geometry.tailLiftAt12in).toBeLessThan(preset.rocker.tailLift);
-    },
-  );
-
-  it.each(BOARD_PRESETS)("$id: the centre is the thickest foil station, and each tip is thinner than the 12in station beside it", (preset) => {
-    expect(preset.foil.center).toBeGreaterThan(preset.foil.nose12);
-    expect(preset.foil.center).toBeGreaterThan(preset.foil.tail12);
-    expect(preset.foil.noseTip).toBeLessThan(preset.foil.nose12);
-    expect(preset.foil.tailTip).toBeLessThan(preset.foil.tail12);
+  it.each(BOARD_PRESETS)("$id: every board carries more nose rocker than tail rocker, at the tips and at 12in", (preset) => {
+    const { stationRocker } = presetProfile(preset).profile;
+    expect(stationRocker.noseTip).toBeGreaterThan(stationRocker.tailTip);
+    expect(stationRocker.nose12).toBeGreaterThan(stationRocker.tail12);
   });
 
-  it("the four presets differ from one another: no two share an identical rocker object or an identical foil object", () => {
-    const rockers = BOARD_PRESETS.map((p) => JSON.stringify(p.rocker));
+  it("the four presets differ from one another: no two share a foil or a side profile's station rocker", () => {
     const foils = BOARD_PRESETS.map((p) => JSON.stringify(p.foil));
-    expect(new Set(rockers).size).toBe(rockers.length);
+    const rockers = BOARD_PRESETS.map((p) => JSON.stringify(presetProfile(p).profile.stationRocker));
     expect(new Set(foils).size).toBe(foils.length);
+    expect(new Set(rockers).size).toBe(rockers.length);
   });
 
   it("the Fish's centre thickness divided by its length exceeds the Shortboard's — a fish is proportionally thicker", () => {
@@ -247,54 +240,26 @@ describe("BOARD_PRESETS", () => {
     expect(fishRatio).toBeGreaterThan(shortboardRatio);
   });
 
-  it.each(BOARD_PRESETS)(
-    "$id: the built rocker curve and sampleFoil run over the preset at its own length without a fold-back or a negative thickness",
-    (preset) => {
-      const { length } = preset.outline;
-      const geometry = buildRocker(preset.rocker, length);
-      const samples = 40;
-      // The rocker line dips to zero at the centre by construction — it is a V shape from the
-      // tail tip down to zero and back up to the nose tip, not monotone across the whole board —
-      // so "no fold-back" here means every sample stays finite and inside a sane envelope (no
-      // curve overshoot past the drafted lift plus a small tolerance), not that lift is
-      // non-decreasing across the whole board.
-      const maxLiftIn = Math.max(mmToInches(preset.rocker.noseLift), mmToInches(preset.rocker.tailLift));
-      for (let i = 0; i <= samples; i++) {
-        const stationIn = (mmToInches(length) * i) / samples;
-        const station = inchesToMm(stationIn);
-        const rockerIn = mmToInches(sampleRocker(geometry, station));
-        const foilIn = mmToInches(sampleFoil(preset.foil, length, station));
-        expect(Number.isFinite(rockerIn)).toBe(true);
-        expect(Number.isFinite(foilIn)).toBe(true);
-        expect(foilIn).toBeGreaterThan(0);
-        expect(rockerIn).toBeGreaterThanOrEqual(-1e-6);
-        expect(rockerIn).toBeLessThanOrEqual(maxLiftIn + 1e-6);
-      }
-    },
-  );
-
-  it.each(BOARD_PRESETS)(
-    "$id: derived 12in figures sit within 1/4in of the figures recorded in its rocker block's own comment",
-    (preset) => {
-      const geometry = buildRocker(preset.rocker, preset.outline.length);
-      // Every preset's block comment records two 12" figures — the prior stored pair a solved
-      // block was matched to, or a captured block's own derived pair — re-derive them from that
-      // same comment via the preset id, so this test can't silently drift from the comment it is
-      // meant to be checking.
-      const priorFigures: Record<string, { nose12: number; tail12: number }> = {
-        // Shaper-captured 2026-09-14, not solved against a prior pair: the captured curve's own
-        // derived figures, as its block comment records them.
-        shortboard: { nose12: 1.8, tail12: 0.94 },
-        // Likewise shaper-captured 2026-09-14.
-        fish: { nose12: 1.4, tail12: 0.66 },
-        // Likewise shaper-captured 2026-09-14.
-        midlength: { nose12: 2.05, tail12: 1.23 },
-        // Likewise shaper-captured 2026-09-14.
-        longboard: { nose12: 2.29, tail12: 1.8 },
-      };
-      const prior = priorFigures[preset.id];
-      expect(Math.abs(mmToInches(geometry.noseLiftAt12in) - prior.nose12)).toBeLessThanOrEqual(0.25);
-      expect(Math.abs(mmToInches(geometry.tailLiftAt12in) - prior.tail12)).toBeLessThanOrEqual(0.25);
-    },
-  );
+  it.each(BOARD_PRESETS)("$id: opens in a blank, never as a hand-set board", (preset) => {
+    const { profile, fields } = presetProfile(preset);
+    expect(profile.blank).not.toBeNull();
+    expect(profile.blank!.record).toEqual(fields.blank.copy);
+  });
 });
+
+/** The side profile a preset opens with — exactly what the store builds from `presetDesignFields`. */
+function presetProfile(preset: BoardPreset) {
+  const fields = presetDesignFields(preset);
+  const profile = buildBoardProfile({
+    length: fields.outline.length,
+    rocker: fields.rocker,
+    foil: fields.foil,
+    blank: {
+      prepared: prepareBlank(fields.blank.copy),
+      placement: fields.blank.placement,
+      nose12Offset: fields.blank.nose12Offset,
+      tail12Offset: fields.blank.tail12Offset,
+    },
+  });
+  return { fields, profile };
+}

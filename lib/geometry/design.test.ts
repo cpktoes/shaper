@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { isPickable } from "@/lib/blanks/catalog";
+import { presetDesignFields } from "@/lib/blanks/preset-blanks";
+import { readSeedCatalog } from "@/lib/blanks/seed-files";
+import type { BoardBlank } from "./blank";
+import { prepareBlank } from "./blank-fit";
+import type { OutlineSpec } from "./board";
+import { buildBoardProfile } from "./board-profile";
 import { BOARD_PRESETS } from "./presets";
 import { buildOutline, sampleOutline } from "./outline";
 import { computeRailBands, DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "./rail-bands";
+import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "./foil";
 import { computeCrossSectionVolume, computeVolume, DEFAULT_VOLUME_SPEC } from "./volume";
 import { inchesToMm, mm } from "./units";
@@ -381,7 +389,7 @@ describe("summarizeDesign's litres respond to foil, not rocker (VOL-01/D-11)", (
   });
 
   it.each(BOARD_PRESETS)(
-    "$id: has no rocker field to change — DesignSummaryFields structurally excludes rocker (mirrors deriveEffectiveRails' D-11 proof), so identical calls reproduce identical litres",
+    "$id: identical calls reproduce identical litres, and a hand-set board's litres ignore its rocker (D-11: rocker never reaches thickness)",
     (preset) => {
       const fields = {
         outline: preset.outline,
@@ -393,8 +401,139 @@ describe("summarizeDesign's litres respond to foil, not rocker (VOL-01/D-11)", (
       const first = summarizeDesign(fields);
       const second = summarizeDesign(fields);
       expect(second.volumeLitres).toBe(first.volumeLitres);
+      // Phase 11: the summary now takes the board's rocker too (it builds the side profile), but
+      // with no blank the rocker only shapes the bottom — never the thickness or the litres.
+      const lifted = summarizeDesign({
+        ...fields,
+        rocker: { ...DEFAULT_FALLBACK_ROCKER, noseTip: mm(DEFAULT_FALLBACK_ROCKER.noseTip + inchesToMm(2)) },
+        blank: null,
+      });
+      expect(lifted.volumeLitres).toBe(first.volumeLitres);
     },
   );
+});
+
+// Phase 11 (D-01 across screens): a board in a blank is summarised from the SAME side profile the
+// store builds — from the board's own copy of its blank — so a rack card, a preset card and the
+// VOLUME screen quote one litres figure. Every expectation below is recomputed through the same
+// functions the store calls; nothing is typed.
+describe("summarizeDesign for a board sitting in a blank (D-01, 11-10)", () => {
+  const catalogue = readSeedCatalog().filter(isPickable);
+
+  /** What the store computes for these fields: its side profile, effective rails and quoted litres. */
+  function asTheStoreComputes(fields: {
+    outline: OutlineSpec;
+    rails: RailBandSpec;
+    foil: FoilSpec;
+    rocker: FiveStationRocker;
+    blank: BoardBlank;
+    railsImportFoilThickness: boolean;
+    volume: typeof DEFAULT_VOLUME_SPEC;
+  }) {
+    const outlineGeometry = buildOutline(fields.outline);
+    const profile = buildBoardProfile({
+      length: fields.outline.length,
+      rocker: fields.rocker,
+      foil: fields.foil,
+      blank: {
+        prepared: prepareBlank(fields.blank.copy),
+        placement: fields.blank.placement,
+        nose12Offset: fields.blank.nose12Offset,
+        tail12Offset: fields.blank.tail12Offset,
+      },
+    });
+    const effectiveRails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    const templateValues = deriveTemplateValues(fields.outline, outlineGeometry);
+    const railValues = deriveRailValues(computeRailBands(effectiveRails));
+    const estimator = computeVolume(deriveEffectiveVolume(fields.volume, templateValues, railValues), templateValues, railValues);
+    const crossSection = computeCrossSectionVolume({
+      halfWidthAt: (s) => sampleOutline(outlineGeometry, s),
+      foil: profile.effectiveFoil,
+      thicknessAt: profile.thicknessAt,
+      rails: effectiveRails,
+      length: fields.outline.length,
+    });
+    return { profile, crossSection, quoted: deriveQuotedVolumeLitres(estimator, crossSection, estimator.importingTemplate) };
+  }
+
+  /** Every preset in its own blank, plus the same board slid and fine-tuned — a spread of real cases. */
+  const CASES = BOARD_PRESETS.flatMap((preset) => {
+    const fields = { ...presetDesignFields(preset), railsImportFoilThickness: true, volume: DEFAULT_VOLUME_SPEC };
+    const moved = {
+      ...fields,
+      blank: {
+        ...fields.blank,
+        placement: inchesToMm(0.5),
+        nose12Offset: inchesToMm(1 / 8),
+        tail12Offset: inchesToMm(-1 / 16),
+      },
+    };
+    return [
+      { label: `${preset.id} as opened`, fields },
+      { label: `${preset.id} slid 1/2in and fine-tuned`, fields: moved },
+    ];
+  });
+
+  it.each(CASES)("$label: the litres are exactly the store's cross-section litres from the blank's side profile", ({ fields }) => {
+    const summary = summarizeDesign(fields);
+    const store = asTheStoreComputes(fields);
+    expect(summary.volumeLitres).toBe(store.quoted);
+    expect(summary.volumeLitres).toBe(store.crossSection.volumeLitres);
+  });
+
+  it.each(CASES)("$label: the thickness quoted is the board's centre (the blank is scaled to it)", ({ fields }) => {
+    expect(summarizeDesign(fields).centerThickness).toBeCloseTo(fields.foil.center, 9);
+  });
+
+  it.each(BOARD_PRESETS)("$id: a board in a blank does not quote the hand-set five-station litres", (preset) => {
+    const fields = { ...presetDesignFields(preset), railsImportFoilThickness: true, volume: DEFAULT_VOLUME_SPEC };
+    const inBlank = summarizeDesign(fields).volumeLitres;
+    const handSet = summarizeDesign({ ...fields, blank: null }).volumeLitres;
+    expect(inBlank).not.toBe(handSet);
+  });
+
+  it("reads the board's own copy of its blank, never the catalogue: a copy with a thicker blank changes the litres", () => {
+    const shortboard = BOARD_PRESETS.find((preset) => preset.id === "shortboard")!;
+    const fields = { ...presetDesignFields(shortboard), railsImportFoilThickness: true, volume: DEFAULT_VOLUME_SPEC };
+    const copy = fields.blank.copy;
+    // A doctored copy: every thickness 10% up except at the centre station, so the centre-scaled
+    // foil fills out between the stations and the litres must move.
+    const doctored = {
+      ...copy,
+      stations: copy.stations.map((station) =>
+        station.label === "C" || station.thicknessMm === null
+          ? station
+          : { ...station, thicknessMm: mm(station.thicknessMm * 1.1) },
+      ),
+    };
+    const original = summarizeDesign(fields).volumeLitres;
+    const changed = summarizeDesign({ ...fields, blank: { ...fields.blank, copy: doctored } }).volumeLitres;
+    expect(changed).toBeGreaterThan(original);
+    expect(catalogue.some((record) => record.vendor === copy.vendor && record.name === copy.name)).toBe(true);
+  });
+
+  it("a snapshot without rocker or blank (every board saved before Phase 11 read this way) is summarised exactly as before", () => {
+    // `rocker` and `blank` absent: the hand-set profile from the stored foil, whose thickness is
+    // `sampleFoil` exactly — the same litres computeCrossSectionVolume gives with no thicknessAt.
+    for (const preset of BOARD_PRESETS) {
+      const fields = {
+        outline: preset.outline,
+        rails: preset.rails,
+        foil: DEFAULT_FOIL_SPEC,
+        railsImportFoilThickness: true,
+        volume: DEFAULT_VOLUME_SPEC,
+      };
+      const outlineGeometry = buildOutline(fields.outline);
+      const effectiveRails = deriveEffectiveRails(fields.rails, fields.foil, true);
+      const crossSection = computeCrossSectionVolume({
+        halfWidthAt: (s) => sampleOutline(outlineGeometry, s),
+        foil: fields.foil,
+        rails: effectiveRails,
+        length: fields.outline.length,
+      });
+      expect(summarizeDesign(fields).volumeLitres).toBe(crossSection.volumeLitres);
+    }
+  });
 });
 
 describe("computeVolume method disclosure (transparency prohibition)", () => {

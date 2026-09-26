@@ -8,6 +8,7 @@
  * every other module under `lib/geometry/`.
  */
 
+import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { summarizeDesign, type DesignSummary } from "./design";
 import type { BoardPreset } from "./presets";
 import { formatCentimetres, formatFeetInches, formatInchesFraction, type UnitsSystem } from "./units";
@@ -65,18 +66,18 @@ export function formatDimsExample(summary: DesignSummary, system: UnitsSystem): 
  * The `DesignSummary` a preset card shows — the exact numbers a shaper would get by clicking
  * that preset, not a second, divergent computation (D-13). `applyPreset`
  * (`components/design/design-store.tsx`) rebuilds the store as `{ ...DEFAULT_DESIGN_STATE,
- * outline, rocker, foil, rails, fins, boardStarted: true, dirty: true }` — every field it does
- * not explicitly set (crucially `railsImportFoilThickness: true` and `volume:
- * DEFAULT_VOLUME_SPEC`) comes from `DEFAULT_DESIGN_STATE`. This function mirrors that exactly,
- * so a preset card's dims line and a freshly-applied preset's rack card always agree. Guarded
- * by a source-contract test in `summary-line.test.ts` that reads `design-store.tsx` itself and
- * fails if either default field it assumes ever changes.
+ * ...presetDesignFields(preset), boardStarted: true, dirty: true }` — the preset's outline, foil,
+ * rails, fins, hand-set rocker and its blank (D-03) from ONE pure mapping
+ * (`lib/blanks/preset-blanks.ts`), and every field that mapping does not set (crucially
+ * `railsImportFoilThickness: true` and `volume: DEFAULT_VOLUME_SPEC`) from `DEFAULT_DESIGN_STATE`.
+ * This function spreads the same mapping, so a preset card's numbers — its litres built from the
+ * same side profile, in the same blank — and a freshly-applied preset's rack card and VOLUME screen
+ * always agree. Guarded by a source-contract test in `summary-line.test.ts` that reads
+ * `design-store.tsx` itself and fails if either default field it assumes ever changes.
  */
 export function presetSummary(preset: BoardPreset): DesignSummary {
   return summarizeDesign({
-    outline: preset.outline,
-    rails: preset.rails,
-    foil: preset.foil,
+    ...presetDesignFields(preset),
     railsImportFoilThickness: true,
     volume: DEFAULT_VOLUME_SPEC,
   });
