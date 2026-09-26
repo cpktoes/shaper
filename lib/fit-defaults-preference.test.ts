@@ -91,6 +91,12 @@ describe("fit-defaults preference boundary", () => {
       }
     });
 
+    it("forgives float noise on a bound, snapping it back inside the range", () => {
+      const noisyMax = inchesToMm(12) + 1e-9;
+      expect(parseFitDefaultValue("extraLength", noisyMax)).toBe(inchesToMm(12));
+      expect(parseFitDefaultValue("widthMargin", -1e-9)).toBe(0);
+    });
+
     it("returns null for a tip thinner than 1/8\"", () => {
       expect(parseFitDefaultValue("noseTipThickness", inchesToMm(1 / 16))).toBeNull();
       expect(parseFitDefaultValue("tailTipThickness", inchesToMm(1 / 16))).toBeNull();
