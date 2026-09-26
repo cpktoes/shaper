@@ -602,14 +602,32 @@ async function profilePointAt(page: Page, fraction: number): Promise<{ x: number
  */
 async function settledProfileD(page: Page): Promise<string> {
   const path = page.locator(PROFILE);
+  // Post-merge fix (wave 3, 2026-09-26): two agreeing reads a frame apart were not enough. On the
+  // main checkout's dev server the first paint is the server's flat board; hydration then applies
+  // the phone's own orientation and the whole frame moves down (the drawn path's `d` shifted 97
+  // units in y with identical x in every failing run), so a "before" read taken in that window
+  // made an unchanged drawing look changed. Wait for the app's own signal that hydration has
+  // turned the board — the content group's `rotate(90)` — whenever the viewport is portrait (the
+  // android project is 412x839), then demand ten stable frames, the same bar
+  // `settledDrawingColumn` in e2e/phone-rails.spec.ts sets.
+  const viewport = page.viewportSize();
+  if (viewport && viewport.height > viewport.width) {
+    await page
+      .locator('svg:has([data-board-silhouette="profile"]) g[transform="rotate(90)"]')
+      .first()
+      .waitFor({ state: "attached", timeout: 15_000 })
+      .catch(() => {
+        throw new Error("the phone never turned the rocker drawing nose-up after hydration");
+      });
+  }
   let previous = await path.getAttribute("d");
-  for (let attempt = 0; attempt < 40; attempt++) {
-    await page.evaluate(
-      () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 100)))),
-    );
+  let steady = 0;
+  for (let attempt = 0; attempt < 120; attempt++) {
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 16))));
     const next = await path.getAttribute("d");
-    if (next !== null && next === previous) return next;
+    steady = next !== null && next === previous ? steady + 1 : 0;
     previous = next;
+    if (steady >= 10 && next !== null) return next;
   }
   throw new Error("the rocker profile never settled");
 }
