@@ -56,11 +56,23 @@ branch — pull it, never hand-edit it to hold a production URL. If the developm
 ever gets messy from local experiments, Neon's "Reset from parent" brings it back to a
 clean copy of production at any time.
 
-**Always push code before migrating production.** When a change touches both the code and
-the shape of the database, push to `main`, let Vercel finish deploying it, and only then
-run `npm run db:migrate:prod` — the deployed site has to already understand a new column
-before that column exists, or the live site ends up reading a database it wasn't built
-for. Never migrate production ahead of the code.
+**Additive changes migrate production first; removals wait for the deploy.** Two different
+orders, and getting them the wrong way round breaks the live site both times:
+
+- **Adding a table or a nullable column (the common case): run `npm run db:migrate:prod`
+  BEFORE the code that uses it ships**, from the branch that carries the migration. The old,
+  still-deployed code never mentions the new table or column, so it keeps working; the new
+  code finds everything in place the moment it deploys. The reverse order is not safe here,
+  because Drizzle names every column of a table on every insert — so a deploy that adds a
+  nullable column to `user_preferences` would break the Imperial/Metric and print-option
+  saves for every signed-in shaper until the migration ran, and the migration would then
+  revert those picks. (Found by Phase 11's code review, 2026-09-26; rule amended by the founder.)
+- **Removing or renaming a table or column: push to `main`, let Vercel finish deploying,
+  and only then migrate** — the deployed code must have stopped reading the old shape
+  before it disappears, or the live site reads a database it wasn't built for.
+
+Either way the development branch is migrated during the work itself, so what production
+receives has already been applied and re-applied at least once.
 
 ## Rule 1 — geometry math lives in `lib/geometry/`, pure and tested
 

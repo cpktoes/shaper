@@ -158,7 +158,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion — a founder step after the merge is live)*
 
-- [ ] 11-13-PLAN.md — After the merge is live on Vercel: migrate production and load the blanks (a founder checkpoint) (R7 R8 R9)
+- [ ] 11-13-PLAN.md — Migrate production and load the blanks from this branch, then merge and deploy, then check the live site (a founder checkpoint; order amended after code review CR-01) (R7 R8 R9)
 
 Cross-cutting constraints: geometry pure and tested under `lib/geometry/` before any screen changes (R16); every conversion through `lib/geometry/units.ts` and every displayed number through `measure-display.ts` (R15); no new dependency and no package.json change (D-20); development-branch migrations inside the plans, production only after the deploy (CLAUDE.md Database); the ROCKER and VOLUME desktop baselines re-recorded once in 11-12, TEMPLATE/RAILS/FINS byte-identical.
 

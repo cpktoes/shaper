@@ -219,7 +219,7 @@ SPEC's reference case (Marko 6'0" M-Regular: 72.04" long, 2.92" at the center; n
 | Search with no match | No blanks match "{query}". **Clear Search** | same |
 | Loading (list region only) | Loading blanks… | same |
 | Picked card actions | **Change Blank** (while the list is open: **Keep This Blank**) · **Remove This Blank** | same |
-| Remove hint (under the picked card, 12px muted) | Removing it keeps the rocker and foil exactly as they are now, for you to set by hand. | same |
+| Remove hint (under the picked card, 12px muted) | Removing it keeps the rocker and foil at the five stations and re-draws the curve through them, for you to set by hand. | same |
 | Section heading 3 | **BOARD ON BLANK** | same |
 | Placement label | Placement — 1/2" toward nose · Placement — centered · Placement — 1/4" toward tail | Placement — 13 mm toward nose · Placement — centered |
 | Placement end hints | Toward the nose · Toward the tail | same |
@@ -321,7 +321,7 @@ CONTEXT names the three fit defaults but not the tips.
 
 ### Why nothing here asks first
 
-- **Remove This Blank** changes nothing on the board at the moment it runs — the rocker and foil are
+- **Remove This Blank** keeps the five stations exactly at the moment it runs (code review WR-01, 2026-09-26: between the stations the curve is re-drawn through those five points, so the drawn curve and the litres can move a hair) — the rocker and foil are
   sampled into the five hand-set stations exactly as they stand — and it is one undo step on the
   app's existing Cmd/Ctrl+Z and the phone's `PhoneUndoBar`. Re-picking the blank from the list
   brings it back.
@@ -607,7 +607,7 @@ Under **THICKNESS**, four `SliderRow`s, nose to tail, `gap-3.5` as today:
   `(researcher's choice — founder may overrule)`
 - What it does: the five fallback rocker stations are seeded by sampling the board's current
   rocker at the five stations, and the five thickness stations by sampling the current final foil
-  (derived plus offsets). The drawing does not visibly move at the moment of removal; the blank
+  (derived plus offsets). The five stations do not move at the moment of removal, the curve between them is re-drawn through those points (a hair may move — WR-01); the blank
   silhouette and foam shade disappear, the cards on the rails change kind (below), and the sidebar
   switches to its fallback column. The seeding by sampling follows D-02/D-14's migration rule,
   applied to a live removal — a planner's assumption CONTEXT does not settle outright.
