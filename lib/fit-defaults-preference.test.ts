@@ -9,8 +9,13 @@ import {
   FIT_DEFAULTS_KEYS,
   FIT_DEFAULTS_RANGE_IN,
   FIT_DEFAULTS_STORAGE_KEY,
+  FIT_DEFAULTS_COLUMNS,
   decideFitDefaultsHandoff,
   fitDefaultsCookieString,
+  fitDefaultsInsertColumns,
+  fitDefaultsUpdateSet,
+  mergeFitDefaultsPatch,
+  parseFitDefaultsPatch,
   parseFitDefaultValue,
   parseFitDefaultsCookieValue,
   parseFitDefaultsPreference,
@@ -225,8 +230,8 @@ describe("fit-defaults preference boundary", () => {
       const merged = { ...FIVE_NULLS, extraLength: inchesToMm(3), widthMargin: inchesToMm(2) };
       expect(result.preference).toEqual(merged);
       expect(result.adoptIntoBrowser).toEqual(merged);
-      expect(result.promoteToAccount).toEqual(merged);
-      expect(result.promoteToAccount?.widthMargin).toBe(inchesToMm(2));
+      // Only the field the account lacked is promoted — never the account's own length (WR-02).
+      expect(result.promoteToAccount).toEqual({ widthMargin: inchesToMm(2) });
     });
 
     it("signed in: the account wins a field both sides chose, and nothing is promoted for it", () => {
@@ -259,6 +264,59 @@ describe("fit-defaults preference boundary", () => {
         adoptIntoBrowser: null,
         promoteToAccount: null,
       });
+    });
+  });
+
+  describe("saving a change, not the whole preference (WR-02)", () => {
+    it("parseFitDefaultsPatch keeps exactly the keys sent, each through the allow-list", () => {
+      expect(parseFitDefaultsPatch({ widthMargin: inchesToMm(2) })).toEqual({ widthMargin: inchesToMm(2) });
+      expect(parseFitDefaultsPatch({ noseTipThickness: null })).toEqual({ noseTipThickness: null });
+      expect(parseFitDefaultsPatch({ ...FIVE_NULLS })).toEqual(FIVE_NULLS);
+      expect(parseFitDefaultsPatch({})).toEqual({});
+    });
+
+    it("parseFitDefaultsPatch rejects the whole call for an unknown key or any bad value", () => {
+      for (const bad of [
+        null,
+        "x",
+        [inchesToMm(1)],
+        { widthMargin: inchesToMm(1), units: "metric" },
+        { clerkUserId: "someone-else" },
+        { widthMargin: inchesToMm(1), extraLength: inchesToMm(500) },
+        { noseTipThickness: Number.NaN },
+        { tailTipThickness: "0.25" },
+        { extraLength: undefined },
+      ]) {
+        expect(parseFitDefaultsPatch(bad), JSON.stringify(bad)).toBeNull();
+      }
+    });
+
+    it("mergeFitDefaultsPatch changes only the keys the patch carries", () => {
+      const stored = { ...FIVE_NULLS, extraLength: inchesToMm(3), widthMargin: inchesToMm(2) };
+      expect(mergeFitDefaultsPatch(stored, { noseTipThickness: inchesToMm(0.5) })).toEqual({
+        ...stored,
+        noseTipThickness: inchesToMm(0.5),
+      });
+      expect(mergeFitDefaultsPatch(stored, { widthMargin: null })).toEqual({ ...stored, widthMargin: null });
+      expect(mergeFitDefaultsPatch(stored, {})).toEqual(stored);
+    });
+
+    it("fitDefaultsUpdateSet names only the patched column and updatedAt", () => {
+      const now = new Date(0);
+      expect(fitDefaultsUpdateSet({ widthMargin: inchesToMm(2) }, now)).toEqual({
+        [FIT_DEFAULTS_COLUMNS.widthMargin]: inchesToMm(2),
+        updatedAt: now,
+      });
+      expect(Object.keys(fitDefaultsUpdateSet({ ...FIVE_NULLS }, now)).sort()).toEqual(
+        [...Object.values(FIT_DEFAULTS_COLUMNS), "updatedAt"].sort(),
+      );
+    });
+
+    it("fitDefaultsInsertColumns fills every absent setting with null on a first-time insert", () => {
+      const columns = fitDefaultsInsertColumns({ tailTipThickness: inchesToMm(0.375) });
+      for (const key of FIT_DEFAULTS_KEYS) {
+        expect(columns[FIT_DEFAULTS_COLUMNS[key]]).toBe(key === "tailTipThickness" ? inchesToMm(0.375) : null);
+      }
     });
   });
 });

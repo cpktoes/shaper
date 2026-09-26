@@ -14,7 +14,8 @@
  *
  * The sign-in handoff is decided PER FIELD through the generic `decidePreferenceHandoff`
  * (11-RESEARCH.md assumption A7), so a tip chosen on one device and a margin chosen on another
- * both survive — neither device's pick overwrites the other's.
+ * both survive — neither device's pick overwrites the other's. Every later save carries only the
+ * fields it changed (`FitDefaultsPatch`), so that stays true after sign-in too.
  *
  * Every default and bound is authored in inches and converted through `inchesToMm`; nothing here
  * is typed in millimetres. No React, browser global or database import — as pure as its siblings.
@@ -120,6 +121,86 @@ export function parseFitDefaultsPreference(value: unknown): FitDefaultsPreferenc
   return result;
 }
 
+/**
+ * A change to some of the five settings — only the keys present are changed; an absent key is left
+ * exactly as it is wherever it is stored (the browser, or the account row). `null` for a present
+ * key means "return this one to not chosen". This is what a save sends, so a pick made on one
+ * device never overwrites a setting another device chose and this one never touched.
+ */
+export type FitDefaultsPatch = Partial<Record<FitDefaultsKey, Mm | null>>;
+
+/**
+ * Reads an untrusted patch (a Server Action's input) through the same allow-list as a whole
+ * preference, but all-or-nothing: `null` — reject the whole call — when it is not a plain object,
+ * when it carries any key that is not one of the five, or when any present value is neither `null`
+ * nor a finite number of millimetres inside that setting's bounds. Otherwise the patch with every
+ * present value snapped onto its range, and no key it didn't carry.
+ */
+export function parseFitDefaultsPatch(value: unknown): FitDefaultsPatch | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const sent = value as Record<string, unknown>;
+  const allowed = new Set<string>(FIT_DEFAULTS_KEYS);
+  const patch: FitDefaultsPatch = {};
+  for (const key of Object.keys(sent)) {
+    if (!allowed.has(key)) return null;
+    const fitKey = key as FitDefaultsKey;
+    const raw = sent[fitKey];
+    if (raw === null) {
+      patch[fitKey] = null;
+      continue;
+    }
+    const parsed = parseFitDefaultValue(fitKey, raw);
+    if (parsed === null) return null;
+    patch[fitKey] = parsed;
+  }
+  return patch;
+}
+
+/** A preference with a patch laid over it: the patch's keys changed, every other key kept. */
+export function mergeFitDefaultsPatch(current: FitDefaultsPreference, patch: FitDefaultsPatch): FitDefaultsPreference {
+  const next = { ...current };
+  for (const key of FIT_DEFAULTS_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(patch, key)) next[key] = patch[key] ?? null;
+  }
+  return next;
+}
+
+/** Each setting's account column, by the `user_preferences` table's own property name in
+ * `lib/db/schema.ts` (no database import here — just the names). */
+export const FIT_DEFAULTS_COLUMNS = {
+  extraLength: "extraLengthMm",
+  extraCenterThickness: "extraCenterThicknessMm",
+  widthMargin: "widthMarginMm",
+  noseTipThickness: "noseTipThicknessMm",
+  tailTipThickness: "tailTipThicknessMm",
+} as const satisfies Record<FitDefaultsKey, string>;
+
+type FitDefaultsColumn = (typeof FIT_DEFAULTS_COLUMNS)[FitDefaultsKey];
+
+/**
+ * The account columns an upsert's UPDATE sets for a patch: ONLY the columns for keys the patch
+ * carries, plus `updatedAt`. An absent key is never named, so the update can't touch it.
+ */
+export function fitDefaultsUpdateSet(
+  patch: FitDefaultsPatch,
+  now: Date,
+): Partial<Record<FitDefaultsColumn, Mm | null>> & { updatedAt: Date } {
+  const set: Partial<Record<FitDefaultsColumn, Mm | null>> & { updatedAt: Date } = { updatedAt: now };
+  for (const key of FIT_DEFAULTS_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(patch, key)) set[FIT_DEFAULTS_COLUMNS[key]] = patch[key] ?? null;
+  }
+  return set;
+}
+
+/** The five columns a first-time INSERT writes for a patch: each present key's value, every
+ * absent key `null` ("not chosen"). */
+export function fitDefaultsInsertColumns(patch: FitDefaultsPatch): Record<FitDefaultsColumn, Mm | null> {
+  const full = mergeFitDefaultsPatch(EMPTY_FIT_DEFAULTS_PREFERENCE, patch);
+  const columns = {} as Record<FitDefaultsColumn, Mm | null>;
+  for (const key of FIT_DEFAULTS_KEYS) columns[FIT_DEFAULTS_COLUMNS[key]] = full[key];
+  return columns;
+}
+
 /** Fills every setting nobody chose from `DEFAULT_FIT_DEFAULTS`. */
 export function resolveFitDefaults(pref: FitDefaultsPreference): FitDefaults {
   const result = { ...DEFAULT_FIT_DEFAULTS };
@@ -194,10 +275,11 @@ export interface FitDefaultsHandoff {
   /** The merged preference, to be written into the browser — non-null when any field took the
    * account's value. */
   adoptIntoBrowser: FitDefaultsPreference | null;
-  /** The merged preference, to be written to the account — non-null when any field carried an
-   * explicit browser pick into an account that had none for it. A field the account already held
-   * is never overwritten, because the merged preference carries the account's own value for it. */
-  promoteToAccount: FitDefaultsPreference | null;
+  /** A patch of ONLY the fields that carry an explicit browser pick into an account that had none
+   * for them — non-null when there is at least one. A field the account already held is never in
+   * it, so the promotion can't overwrite it (not even with its own value, which another device
+   * may have changed since this page was rendered). */
+  promoteToAccount: FitDefaultsPatch | null;
 }
 
 /**
@@ -215,6 +297,7 @@ export function decideFitDefaultsHandoff(input: {
   const browser = input.browser ?? EMPTY_FIT_DEFAULTS_PREFERENCE;
   const preference = { ...EMPTY_FIT_DEFAULTS_PREFERENCE };
   let anyAdopted = false;
+  const promoted: FitDefaultsPatch = {};
   let anyPromoted = false;
   for (const key of FIT_DEFAULTS_KEYS) {
     const result = decidePreferenceHandoff<Mm | null>({
@@ -225,11 +308,14 @@ export function decideFitDefaultsHandoff(input: {
     });
     preference[key] = result.value;
     if (result.adoptIntoBrowser !== null) anyAdopted = true;
-    if (result.promoteToAccount !== null) anyPromoted = true;
+    if (result.promoteToAccount !== null) {
+      promoted[key] = result.value;
+      anyPromoted = true;
+    }
   }
   return {
     preference,
     adoptIntoBrowser: anyAdopted ? { ...preference } : null,
-    promoteToAccount: anyPromoted ? { ...preference } : null,
+    promoteToAccount: anyPromoted ? promoted : null,
   };
 }

@@ -17,48 +17,38 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db/client";
 import { userPreferences } from "@/lib/db/schema";
 import {
-  EMPTY_FIT_DEFAULTS_PREFERENCE,
-  FIT_DEFAULTS_KEYS,
-  parseFitDefaultValue,
-  type FitDefaultsPreference,
+  fitDefaultsInsertColumns,
+  fitDefaultsUpdateSet,
+  parseFitDefaultsPatch,
+  type FitDefaultsPatch,
 } from "@/lib/fit-defaults-preference";
 
 /**
- * Upserts all five of the shaper's fit and tip defaults at once. `values` arrives over the wire
- * from a client component, so it is checked field by field: each must be `null` ("not chosen") or
- * a finite number of millimetres inside that setting's bounds (`parseFitDefaultValue`). If any
- * field fails — including a field that is missing altogether — or `values` is not an object at
- * all, nothing is written: a crafted call can't put arbitrary content into these columns, and a
- * half-valid call can't write half a preference.
+ * Saves a CHANGE to the shaper's fit and tip defaults: only the settings `patch` carries are
+ * written; a setting it does not carry is never touched, so a pick made on one device can't wipe a
+ * setting chosen on another (WR-02). Restore Defaults sends all five as `null` on purpose.
+ *
+ * `patch` arrives over the wire from a client component, so it is checked whole before anything
+ * is written (`parseFitDefaultsPatch`): if it is not an object, names any key that is not one of
+ * the five settings, or carries a value that is neither `null` nor a finite number of millimetres
+ * inside that setting's bounds, nothing is written at all — a crafted call can't put arbitrary
+ * content into these columns, and a half-valid call can't write half a change.
+ *
+ * The UPDATE of an existing row sets only the present columns plus `updatedAt`
+ * (`fitDefaultsUpdateSet`); a first-time INSERT fills every absent setting with `null`
+ * ("not chosen").
  */
-export async function saveFitDefaultsPreference(values: FitDefaultsPreference): Promise<void> {
+export async function saveFitDefaultsPreference(patch: FitDefaultsPatch): Promise<void> {
   const { userId } = await auth();
   if (!userId) return;
 
-  if (typeof values !== "object" || values === null || Array.isArray(values)) return;
-  const sent = values as Record<string, unknown>;
-
-  const parsed: FitDefaultsPreference = { ...EMPTY_FIT_DEFAULTS_PREFERENCE };
-  for (const key of FIT_DEFAULTS_KEYS) {
-    const value = Object.prototype.hasOwnProperty.call(sent, key) ? sent[key] : undefined;
-    if (value === null) continue;
-    const valid = parseFitDefaultValue(key, value);
-    if (valid === null) return;
-    parsed[key] = valid;
-  }
-
-  const columns = {
-    extraLengthMm: parsed.extraLength,
-    extraCenterThicknessMm: parsed.extraCenterThickness,
-    widthMarginMm: parsed.widthMargin,
-    noseTipThicknessMm: parsed.noseTipThickness,
-    tailTipThicknessMm: parsed.tailTipThickness,
-  };
+  const parsed = parseFitDefaultsPatch(patch);
+  if (parsed === null || Object.keys(parsed).length === 0) return;
 
   await db.insert(userPreferences)
-    .values({ clerkUserId: userId, ...columns })
+    .values({ clerkUserId: userId, ...fitDefaultsInsertColumns(parsed) })
     .onConflictDoUpdate({
       target: userPreferences.clerkUserId,
-      set: { ...columns, updatedAt: new Date() },
+      set: fitDefaultsUpdateSet(parsed, new Date()),
     });
 }

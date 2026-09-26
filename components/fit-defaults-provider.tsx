@@ -37,12 +37,14 @@ import {
   EMPTY_FIT_DEFAULTS_PREFERENCE,
   FIT_DEFAULTS_STORAGE_KEY,
   fitDefaultsCookieString,
+  mergeFitDefaultsPatch,
   parseFitDefaultsPreference,
   resolveFitDefaults,
   toFitSettings,
   type FitDefaults,
   type FitDefaultsHandoff,
   type FitDefaultsKey,
+  type FitDefaultsPatch,
   type FitDefaultsPreference,
 } from "@/lib/fit-defaults-preference";
 import { createPreferenceWriteQueue, type PreferenceWriteQueue } from "@/lib/preference-handoff";
@@ -162,11 +164,24 @@ export function FitDefaultsProvider({
   // lib/preference-handoff.ts's `createPreferenceWriteQueue`, pure and unit-tested. This provider
   // only supplies the real Server Action and real timers. Signed out, the action resolves quietly
   // without writing anything — a signed-out shaper's defaults live in the browser alone.
-  const writeQueueRef = useRef<PreferenceWriteQueue<FitDefaultsPreference> | null>(null);
-  function getWriteQueue(): PreferenceWriteQueue<FitDefaultsPreference> {
+  //
+  // Each save is a PATCH of only the settings changed (WR-02), never the whole five — so a save
+  // from this tab can't wipe a setting another device chose and this tab never touched. Because
+  // the queue keeps only the LAST value asked for, patches made while a save is in flight are
+  // gathered into `unsavedPatchRef` and the queue always carries all of them together; a key
+  // leaves the gathered patch once a save carrying that exact value has succeeded.
+  const unsavedPatchRef = useRef<FitDefaultsPatch>({});
+  const writeQueueRef = useRef<PreferenceWriteQueue<FitDefaultsPatch> | null>(null);
+  function getWriteQueue(): PreferenceWriteQueue<FitDefaultsPatch> {
     if (writeQueueRef.current === null) {
-      writeQueueRef.current = createPreferenceWriteQueue<FitDefaultsPreference>({
-        save: saveFitDefaultsPreference,
+      writeQueueRef.current = createPreferenceWriteQueue<FitDefaultsPatch>({
+        save: async (sent) => {
+          await saveFitDefaultsPreference(sent);
+          const unsaved = unsavedPatchRef.current;
+          for (const key of Object.keys(sent) as FitDefaultsKey[]) {
+            if (Object.prototype.hasOwnProperty.call(unsaved, key) && unsaved[key] === sent[key]) delete unsaved[key];
+          }
+        },
         setTimer: (callback, delayMs) => setTimeout(callback, delayMs),
         clearTimer: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
       });
@@ -174,8 +189,9 @@ export function FitDefaultsProvider({
     return writeQueueRef.current;
   }
 
-  const scheduleAccountWrite = useCallback((next: FitDefaultsPreference) => {
-    getWriteQueue().request(next);
+  const scheduleAccountWrite = useCallback((patch: FitDefaultsPatch) => {
+    unsavedPatchRef.current = { ...unsavedPatchRef.current, ...patch };
+    getWriteQueue().request({ ...unsavedPatchRef.current });
   }, []);
 
   // Cancels any pending retry timer on unmount — nothing should keep firing after the provider
@@ -186,9 +202,13 @@ export function FitDefaultsProvider({
     };
   }, []);
 
-  /** Writes, applies at once and saves in the background — shared by both setters. */
+  /** Lays `patch` over what the browser holds, applies it at once and saves ONLY the patch in the
+   * background — shared by both setters. */
   const commit = useCallback(
-    (next: FitDefaultsPreference) => {
+    (patch: FitDefaultsPatch) => {
+      // Read fresh from the store rather than from this render's `preference`, so two commits in
+      // the same tick (a blur that lands just before an Enter) each build on the other.
+      const next = mergeFitDefaultsPatch(parseStoredRaw(getSnapshot()), patch);
       writeToBrowser(next);
       // A committed value always wins immediately, reconciled or not — `getSnapshot` must reflect
       // it on the very next read, so this flips before the emit below (mirrors WR-02).
@@ -196,21 +216,20 @@ export function FitDefaultsProvider({
       // Emitted synchronously, on the commit itself, so the new value is on screen before the
       // account write below even starts — that write can never block, delay or revert it.
       emitPreferenceChange();
-      scheduleAccountWrite(next);
+      scheduleAccountWrite(patch);
     },
-    [scheduleAccountWrite],
+    [scheduleAccountWrite, getSnapshot],
   );
 
+  // One setting: only that key is sent, so the account's other four stay as they are.
   const setDefault = useCallback(
     (key: FitDefaultsKey, value: Mm | null) => {
-      // Read fresh from the store rather than from this render's `preference`, so two commits in
-      // the same tick (a blur that lands just before an Enter) each build on the other.
-      const current = parseStoredRaw(getSnapshot());
-      commit({ ...current, [key]: value });
+      commit({ [key]: value });
     },
-    [commit, getSnapshot],
+    [commit],
   );
 
+  // An intentional wipe: all five sent as `null` explicitly.
   const restoreDefaults = useCallback(() => {
     commit({ ...EMPTY_FIT_DEFAULTS_PREFERENCE });
   }, [commit]);
@@ -231,8 +250,8 @@ export function FitDefaultsProvider({
   }, [handoff.adoptIntoBrowser]);
 
   // Promotes a browser's explicit picks into an account that has none for them — a field the
-  // account already held is never overwritten (`decideFitDefaultsHandoff` carries the account's
-  // own value for it). Fires once on mount, guarded by a ref so a re-render can't fire it twice,
+  // account already held is never overwritten (`decideFitDefaultsHandoff`'s patch carries only
+  // the fields the account lacked). Fires once on mount, guarded by a ref so a re-render can't fire it twice,
   // through the same write-and-retry queue a commit uses. Never fires for a default nobody chose.
   const promotedRef = useRef(false);
   useEffect(() => {
