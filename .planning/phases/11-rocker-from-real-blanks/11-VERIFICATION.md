@@ -1,15 +1,14 @@
 ---
 phase: 11-rocker-from-real-blanks
-verified: 2026-09-26T19:30:00Z
+verified: "2026-09-26T20:55:21Z"
 status: passed
 score: 16/16 requirements traced and verified; 0 gaps found; 1 accepted deviation (WR-05); 1 policy-resolved item (CR-01)
 behavior_unverified: 0
 overrides_applied: 0
-deferred:
+deferred: []
 
-  - truth: "Production migration, production seed, and the six live-site checks (11-13)"
-    addressed_in: "Founder's own step (11-13-PLAN.md, gate=blocking-human)"
-    evidence: ".continue-here.md records the precondition as not yet met (rocker-blanks not merged to main); the phase brief explicitly instructs the verifier to treat 11-13's must_haves as pending, not as gaps"
+# 11-13 (production migration, seed and the six live checks) was deferred in the original report and completed on 2026-09-26 — see the addendum "Plan 11-13 verified" below.
+
 human_verification:
 
   - test: "On a desktop, open a new board from the Shortboard preset, go to ROCKER, set a Center Thickness, pick a different blank from the list, and slide the board along it."
@@ -170,3 +169,15 @@ _Verifier: Claude (gsd-verifier)_
 - **Browser coverage, verified by the orchestrator's own run:** the full Playwright suite (`npm run test:e2e` — both phones and the desktop, Turbopack dev server on port 3100) ran on HEAD `c0727ec`, after the seven review fixes: 293 passed, 0 failed, 241 skipped (the usual cross-project skips), 8.2 min. The two re-recorded desktop baselines (ROCKER, VOLUME) matched.
 - **Verifier claims reproduced by hand:** the four R16 test titles are present verbatim in `lib/geometry/blank-fit.test.ts`; `git merge-base --is-ancestor 04b3b08 48b258d` confirms the four tests landed before the first `components/` commit; `npm run build`, `npx vitest run` (73 files, 2865 passed, 2 skipped) and `npm run lint` (0 errors) were green on the same HEAD.
 - **One human item added** at the top of `human_verification`: the phase's own DONE WHEN walked through on a desktop by the founder. The verifier's six items each check one piece; none walks the whole flow.
+
+## Addendum — Plan 11-13 verified (2026-09-26T20:55:21Z)
+
+The production step ran with the founder present on 2026-09-26, in the expand-first order CLAUDE.md now requires (additive migration before the deploy). Every must-have of 11-13-PLAN.md is met, with the evidence recorded in 11-13-SUMMARY.md:
+
+- **Production migrated from the branch:** `npm run db:migrate:prod` in the founder's Terminal; a read-only proof afterwards read `migrations recorded: 6`, `blanks table: blanks`, and the five fit-default columns on `user_preferences` (`extra_length_mm, extra_center_thickness_mm, width_margin_mm, nose_tip_thickness_mm, tail_tip_thickness_mm`).
+- **Production seeded and checked:** the seed wrote `blanks: 162 (US Blanks 101, Arctic Foam 33, Marko Foam 28); pickable: 158`; `--check` read `matching the catalogue CSVs exactly: 162 of 162`; the proof after read `blanks rows: 162`. The pulled settings file was gone afterwards (only `.env.local` remains).
+- **Merged and deployed:** `rocker-blanks` merged into `main` as 2d05668 and pushed; Vercel production deployment `shaper-1fxpecnkh` built in 37 s and went Ready; the live ROCKER page served the new build 80 s after the push.
+- **Live check 4:** www.shaperassistant.com/design/rocker lists the blanks (no "didn't load" banner, no console errors); picking Marko Foam 6'4" TP drew the board in the blank at "Placement — centered" with the blank's own rocker numbers; four nudges read "1/4\" toward tail" and the nose tip moved from 4 9/16" to 4 7/16".
+- **Live checks 5 and 6 (founder, real account):** Fit & Tip Defaults followed the account to a second browser and survived an Imperial/Metric flip and reload; a board saved before this phase opened from the rack unchanged, hand-set rocker, no blank. Founder's verdict: "Both pass".
+
+Score after this addendum: 16/16 requirements traced and verified, 13/13 plans complete, 0 gaps, 0 deferred.

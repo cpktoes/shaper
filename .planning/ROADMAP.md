@@ -122,7 +122,7 @@ Opened 2026-09-25 on branch `rocker-blanks` from the founder's written brief, wh
 **Requirements**: locked in `.planning/phases/11-rocker-from-real-blanks/11-SPEC.md` (16 requirements); decisions in `11-CONTEXT.md` (D-01–D-20)
 **Depends on:** Phase 10
 **Success criteria:** the brief's DONE WHEN — pick a blank, slide the board along it, watch the four rocker numbers change live, see which blanks don't fit and why, and get a foil that matches the centre and tip thicknesses — plus the four named tests green before the UI, the seed re-runnable, and every older saved board reopening
-**Plans:** 12/13 plans executed in 7 waves
+**Plans:** 13/13 plans complete
 
 Plans:
 
@@ -158,7 +158,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion — a founder step after the merge is live)*
 
-- [ ] 11-13-PLAN.md — Migrate production and load the blanks from this branch, then merge and deploy, then check the live site (a founder checkpoint; order amended after code review CR-01) (R7 R8 R9)
+- [x] 11-13-PLAN.md — Migrate production and load the blanks from this branch, then merge and deploy, then check the live site (a founder checkpoint; order amended after code review CR-01) (R7 R8 R9)
 
 Cross-cutting constraints: geometry pure and tested under `lib/geometry/` before any screen changes (R16); every conversion through `lib/geometry/units.ts` and every displayed number through `measure-display.ts` (R15); no new dependency and no package.json change (D-20); development-branch migrations inside the plans, production only after the deploy (CLAUDE.md Database); the ROCKER and VOLUME desktop baselines re-recorded once in 11-12, TEMPLATE/RAILS/FINS byte-identical.
 
@@ -181,4 +181,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
-| 11. Rocker from Real Blanks | 12/13 | In Progress|  |
+| 11. Rocker from Real Blanks | 13/13 | Complete    | 2026-09-26 |

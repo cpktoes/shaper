@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Rocker from Real Blanks
-status: executing
-stopped_at: Phase 11 — UAT complete (7 of 7 passed; 2 follow-ups filed as todos), verification passed, security verified (43 of 43 threats closed); the phase completes when the founder runs plan 11-13 (production migrate → seed → merge → deploy → live checks) per .continue-here.md, then /gsd-execute-phase 11
-last_updated: "2026-09-26T20:17:24.235Z"
+status: completed
+stopped_at: Phase 11 complete and live (2026-09-26) — 13/13 plans, UAT 7/7, verification passed, security verified, production migrated and seeded, main deployed (2d05668). Milestone v1.3 has no further phases; next is /gsd-complete-milestone v1.3
+last_updated: "2026-09-26T20:56:00.584Z"
 last_activity: 2026-09-26
-last_activity_desc: Phase 11 UAT passed 7/7 on the branch, verification passed, SECURITY.md verified; two follow-up todos (manufacturer tick-boxes, smoother drawn curve); production step 11-13 still parked
+last_activity_desc: "Phase 11 completed: production step 11-13 run with the founder (migrate, seed 162 blanks, merge, deploy), six live checks passed on www.shaperassistant.com; phase and milestone v1.3 ready to close"
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 13
-  completed_plans: 12
-  percent: 0
+  completed_plans: 13
+  percent: 100
 current_phase: 11
 current_phase_name: Rocker from Real Blanks
 ---
@@ -30,14 +30,14 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 
 **v1.2 — Rails Finished, Phone Ready: SHIPPED 2026-09-12.** Phases 8–10 complete and verified; audit passed 18/18. Archived under .planning/milestones/ (v1.2-ROADMAP.md, v1.2-REQUIREMENTS.md, v1.2-MILESTONE-AUDIT.md, v1.2-phases/). REQUIREMENTS.md removed pending the next milestone's definition.
 
-Status: Executing Phase 11
-Last activity: 2026-09-26 — Phase 11: UAT passed 7/7 on rocker-blanks, verification passed, security verified; production step 11-13 parked in .continue-here.md — run it, then /gsd-execute-phase 11 closes the phase
+Status: All phases complete
+Last activity: 2026-09-26 — Phase 11 complete
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 72
+- Total plans completed: 85
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -55,6 +55,7 @@ Last activity: 2026-09-26 — Phase 11: UAT passed 7/7 on rocker-blanks, verific
 | 08 | 9 | - | - |
 | 9 | 9 | - | - |
 | 10 | 11 | - | - |
+| 11 | 13 | - | - |
 
 **Recent Trend:**
 
@@ -84,6 +85,11 @@ Last activity: 2026-09-26 — Phase 11: UAT passed 7/7 on rocker-blanks, verific
 ## Accumulated Context
 
 ### Decisions
+
+- [Phase 11]: Additive database changes migrate production BEFORE the deploy; removals wait for it (CLAUDE.md Database, amended after code review CR-01: Drizzle names every column on insert)
+- [Phase 11]: Rocker and thickness curves use PCHIP (SciPy parity, no overshoot at the nose), never a plain cubic spline; the interpolation is not changed to cure a faceted drawing (R10/R15)
+- [Phase 11]: The foil scales the blank's thickness profile to the centre thickness with tips eased into the tip settings (D-17); the blank's thickness ratio is read under the board's centre (D-18); an untouched board follows the live tip defaults until first edited (D-19)
+- [Phase 11]: The production step is run with the founder present in his own terminal (migrate → proof → seed → check → proof), then merge, push and live checks
 
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
@@ -341,7 +347,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-26T20:17:24.206Z
+Last session: 2026-09-26T20:56:00.554Z
 Stopped at: Phase 11 planned — 13 plans awaiting the founder's approval
 Resume file: .planning/phases/11-rocker-from-real-blanks/11-01-PLAN.md
 Next action: `/gsd-plan-phase 10` - context and design contract are both in place.
