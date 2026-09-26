@@ -44,6 +44,7 @@ import { DEFAULT_BOARD_SPEC, type OutlineSpec, type Point2D } from "@/lib/geomet
 import { buildOutline, sampleOutline, type OutlineGeometry } from "@/lib/geometry/outline";
 import type { FiveStationRocker } from "@/lib/geometry/rocker";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
+import { useFitDefaults } from "@/components/fit-defaults-provider";
 import type { FoilSpec } from "@/lib/geometry/foil";
 import type { BlankRecord, BoardBlank } from "@/lib/geometry/blank";
 import { prepareBlank, type PreparedBlank } from "@/lib/geometry/blank-fit";
@@ -148,11 +149,12 @@ interface DesignState {
   /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,
    * `updateRocker`, `updateFoil`, the five blank moves (`pickBlank`, `setPlacement`, `setFineTune`,
    * `resetFineTune`, `removeBlank`), `updateRailSection`, `toggleTailHardEdge`, `updateFins`,
-   * `updateVolume`, `setFinsImportTemplate`, `toggleRailsImportFoilThickness`, `setBoardName` or
-   * `setFinSystem` — never derived by
+   * `updateVolume`, `setFinsImportTemplate`, `toggleRailsImportFoilThickness`, `setBoardName`,
+   * `setFinSystem`, the two VOLUME import toggles or `markSaved` — never derived by
    * comparing state against its default — a user who drags a slider back to its default value
    * has still started a board. Backs `hasBoardInProgress` on the setup screen's replace-board
-   * confirmation (D-07). */
+   * confirmation (D-07). Also the D-19 switch: while false, the board's foil tips are the gear
+   * menu's live tip defaults (see `startedFrom`); the edit that sets it true bakes them in. */
   boardStarted: boolean;
   /** True when the store's snapshot fields disagree with the row `modelId` points at — set by
    * exactly the same mutators that set `boardStarted` true, because a fresh edit is exactly the
@@ -187,6 +189,26 @@ const DEFAULT_DESIGN_STATE: DesignState = {
   dirty: false,
   saveStatus: "idle",
 };
+
+/** The gear menu's two tip defaults (Fit & Tip Defaults, 11-08), as a new board's foil tips. */
+interface LiveTips {
+  noseTip: Mm;
+  tailTip: Mm;
+}
+
+/**
+ * D-19: a brand-new board nobody has edited shows the LIVE tip defaults from the gear menu — change
+ * Nose Tip Thickness there and an untouched board's nose tip follows at once. The first edit of
+ * any kind is what makes the board the shaper's own: every design mutator's updater starts from
+ * `startedFrom(prev, liveTips)`, which, on a board not yet started, bakes the current live tips
+ * into its stored foil — so from that edit on the board keeps its own tips and never depends on a
+ * live setting again (D-09). A board already started (edited, saved, opened from the rack or
+ * started from a preset, whose tips are its own) comes back untouched. Pure: no hooks, no refs.
+ */
+function startedFrom(prev: DesignState, liveTips: LiveTips): DesignState {
+  if (prev.boardStarted) return prev;
+  return { ...prev, foil: { ...prev.foil, noseTip: liveTips.noseTip, tailTip: liveTips.tailTip } };
+}
 
 interface FinTailOutline {
   points: Point2D[];
@@ -391,13 +413,34 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // to Postgres, and cleared by applyPreset/applyModel below whenever the board itself changes.
   const [history, setHistory] = useState<DesignHistory<DesignHistorySnapshot>>(emptyHistory);
 
+  // D-19: the gear menu's tip defaults, live. While the board is unstarted its foil's two tips ARE
+  // these (the derived `foil` below); the first edit bakes them in through `startedFrom`. The ref
+  // is what every mutator's updater reads, kept current after each commit so a handler always bakes
+  // the tips the screen is showing.
+  const { defaults: fitDefaults } = useFitDefaults();
+  const liveNoseTip = fitDefaults.noseTipThickness;
+  const liveTailTip = fitDefaults.tailTipThickness;
+  const liveTipsRef = useRef<LiveTips>({ noseTip: liveNoseTip, tailTip: liveTailTip });
+  useEffect(() => {
+    liveTipsRef.current = { noseTip: liveNoseTip, tailTip: liveTailTip };
+  }, [liveNoseTip, liveTailTip]);
+
+  // The board's foil as every consumer sees it: the stored foil once the board is started, and —
+  // for a new board nobody has touched — the stored foil with the live tip defaults (D-19). Read
+  // this, never `state.foil`, anywhere a foil leaves the store (context value, side profile, undo
+  // snapshot, save snapshot).
+  const foil: FoilSpec = useMemo(
+    () => (state.boardStarted ? state.foil : { ...state.foil, noseTip: liveNoseTip, tailTip: liveTailTip }),
+    [state.boardStarted, state.foil, liveNoseTip, liveTailTip],
+  );
+
   // Deliberately NOT listing state.boardName — see DesignHistorySnapshot's own doc comment above
   // for why that omission is structural rather than a special case.
   const historySnapshot: DesignHistorySnapshot = useMemo(
     () => ({
       outline: state.outline,
       rocker: state.rocker,
-      foil: state.foil,
+      foil,
       rails: state.rails,
       fins: state.fins,
       volume: state.volume,
@@ -409,7 +452,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     [
       state.outline,
       state.rocker,
-      state.foil,
+      foil,
       state.rails,
       state.fins,
       state.volume,
@@ -483,17 +526,20 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   const updateOutline = (patch: Partial<OutlineSpec>) => {
     noteEdit(`outline:${patchKey(patch)}`);
-    setState((prev) => ({ ...prev, outline: { ...prev.outline, ...patch }, boardStarted: true, dirty: true }));
+    setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), outline: { ...prev.outline, ...patch }, boardStarted: true, dirty: true }));
   };
 
   const updateRocker = (patch: Partial<FiveStationRocker>) => {
     noteEdit(`rocker:${patchKey(patch)}`);
-    setState((prev) => ({ ...prev, rocker: { ...prev.rocker, ...patch }, boardStarted: true, dirty: true }));
+    setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), rocker: { ...prev.rocker, ...patch }, boardStarted: true, dirty: true }));
   };
 
   const updateFoil = (patch: Partial<FoilSpec>) => {
     noteEdit(`foil:${patchKey(patch)}`);
-    setState((prev) => ({ ...prev, foil: { ...prev.foil, ...patch }, boardStarted: true, dirty: true }));
+    setState((current) => {
+      const prev = startedFrom(current, liveTipsRef.current);
+      return { ...prev, foil: { ...prev.foil, ...patch }, boardStarted: true, dirty: true };
+    });
   };
 
   // A preset is a complete spec, not a patch (see BoardPreset's own doc comment) — every field
@@ -548,7 +594,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const updateRailSection = (key: RailSectionKey, patch: Partial<RailSectionSpec>) => {
     noteEdit(`rails:${key}:${patchKey(patch)}`);
     setState((prev) => ({
-      ...prev,
+      ...startedFrom(prev, liveTipsRef.current),
       rails: { ...prev.rails, [key]: { ...prev.rails[key], ...patch } },
       boardStarted: true,
       dirty: true,
@@ -560,7 +606,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const toggleTailHardEdge = () => {
     noteEdit(null);
     setState((prev) => ({
-      ...prev,
+      ...startedFrom(prev, liveTipsRef.current),
       rails: { ...prev.rails, tailHardEdge: !prev.rails.tailHardEdge },
       boardStarted: true,
       dirty: true,
@@ -569,18 +615,18 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   const updateFins = (patch: Partial<FinPlacementSpec>) => {
     noteEdit(`fins:${patchKey(patch)}`);
-    setState((prev) => ({ ...prev, fins: { ...prev.fins, ...patch }, boardStarted: true, dirty: true }));
+    setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), fins: { ...prev.fins, ...patch }, boardStarted: true, dirty: true }));
   };
 
   const updateVolume = (patch: Partial<VolumeSpec>) => {
     noteEdit(`volume:${patchKey(patch)}`);
-    setState((prev) => ({ ...prev, volume: { ...prev.volume, ...patch }, boardStarted: true, dirty: true }));
+    setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), volume: { ...prev.volume, ...patch }, boardStarted: true, dirty: true }));
   };
 
   // A discrete switch — see toggleTailHardEdge's comment above for why noteEdit(null).
   const setFinsImportTemplate = (next: boolean) => {
     noteEdit(null);
-    setState((prev) => ({ ...prev, finsImportTemplate: next, boardStarted: true, dirty: true }));
+    setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), finsImportTemplate: next, boardStarted: true, dirty: true }));
   };
 
   // A plain flip, mirroring setFinsImportTemplate exactly. Copies nothing into or out of
@@ -590,19 +636,19 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // A discrete switch — see toggleTailHardEdge's comment above for why noteEdit(null).
   const toggleRailsImportFoilThickness = () => {
     noteEdit(null);
-    setState((prev) => ({ ...prev, railsImportFoilThickness: !prev.railsImportFoilThickness, boardStarted: true, dirty: true }));
+    setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), railsImportFoilThickness: !prev.railsImportFoilThickness, boardStarted: true, dirty: true }));
   };
 
   // No noteEdit call: boardName is deliberately absent from historySnapshot (see
   // DesignHistorySnapshot's doc comment), so recording a pending key here would do nothing but
   // confuse the next real edit's coalescing — do not "fix" this by adding one.
   const setBoardName = (next: string) =>
-    setState((prev) => ({ ...prev, boardName: next, boardStarted: true, dirty: true }));
+    setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), boardName: next, boardStarted: true, dirty: true }));
 
   // A discrete switch — see toggleTailHardEdge's comment above for why noteEdit(null).
   const setFinSystem = (next: FinSystem) => {
     noteEdit(null);
-    setState((prev) => ({ ...prev, finSystem: next, boardStarted: true, dirty: true }));
+    setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), finSystem: next, boardStarted: true, dirty: true }));
   };
 
   // Not a design-mutating action — pointing the store at a different (or no) saved row doesn't
@@ -615,9 +661,19 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // run performSave/requestSave itself. Setting saveStatus "saved" here, not just modelId, is
   // what lets the nav show "Saved" on the very next render instead of falling back through the
   // plain "Save" button (modelId was null) or an unset "idle" status. No noteEdit call: bookkeeping
-  // (modelId, boardName, saveStatus), not a design change — nothing here touches historySnapshot.
+  // (modelId, boardName, saveStatus), not a design change. A save does start the board, though
+  // (D-19): an untouched board saved with the live tip defaults keeps those tips from here on —
+  // `startedFrom` bakes exactly the tips the saved snapshot carried, so the undo snapshot's values
+  // do not change and no step is recorded.
   const markSaved = (id: string, name: string) =>
-    setState((prev) => ({ ...prev, modelId: id, boardName: name, dirty: false, saveStatus: "saved" }));
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      modelId: id,
+      boardName: name,
+      boardStarted: true,
+      dirty: false,
+      saveStatus: "saved",
+    }));
 
   const outlineGeometry = useMemo(() => buildOutline(state.outline), [state.outline]);
 
@@ -634,7 +690,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       buildBoardProfile({
         length: state.outline.length,
         rocker: state.rocker,
-        foil: state.foil,
+        foil,
         blank:
           preparedBlank && state.blank
             ? {
@@ -645,7 +701,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
               }
             : null,
       }),
-    [state.outline.length, state.rocker, state.foil, preparedBlank, state.blank],
+    [state.outline.length, state.rocker, foil, preparedBlank, state.blank],
   );
 
   // Derived-value equivalent of D-09's link: never an effect that mirrors the foil into
@@ -747,7 +803,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const pickBlank = (record: BlankRecord, placement: Mm) => {
     noteEdit(null);
     setState((prev) => ({
-      ...prev,
+      ...startedFrom(prev, liveTipsRef.current),
       blank: {
         copy: record,
         placement,
@@ -764,25 +820,32 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const setPlacement = (placement: Mm) => {
     if (!state.blank) return;
     noteEdit("blank:placement");
-    setState((prev) => (prev.blank ? { ...prev, blank: { ...prev.blank, placement }, boardStarted: true, dirty: true } : prev));
+    setState((current) => {
+      const prev = startedFrom(current, liveTipsRef.current);
+      return prev.blank ? { ...prev, blank: { ...prev.blank, placement }, boardStarted: true, dirty: true } : current;
+    });
   };
 
   // Sliders — keyed per field, like every patch-shaped mutator.
   const setFineTune = (patch: Partial<{ nose12Offset: Mm; tail12Offset: Mm }>) => {
     if (!state.blank) return;
     noteEdit(`blank:offset:${patchKey(patch)}`);
-    setState((prev) => (prev.blank ? { ...prev, blank: { ...prev.blank, ...patch }, boardStarted: true, dirty: true } : prev));
+    setState((current) => {
+      const prev = startedFrom(current, liveTipsRef.current);
+      return prev.blank ? { ...prev, blank: { ...prev.blank, ...patch }, boardStarted: true, dirty: true } : current;
+    });
   };
 
   // A discrete button — noteEdit(null).
   const resetFineTune = () => {
     if (!state.blank) return;
     noteEdit(null);
-    setState((prev) =>
-      prev.blank
+    setState((current) => {
+      const prev = startedFrom(current, liveTipsRef.current);
+      return prev.blank
         ? { ...prev, blank: { ...prev.blank, nose12Offset: mm(0), tail12Offset: mm(0) }, boardStarted: true, dirty: true }
-        : prev,
-    );
+        : current;
+    });
   };
 
   // "Remove This Blank" (UI-SPEC §7). Reads the side profile as it is on screen RIGHT NOW (this
@@ -794,19 +857,22 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     if (!state.blank) return;
     noteEdit(null);
     const { stationRocker, effectiveFoil } = sideProfile;
-    setState((prev) => ({
-      ...prev,
-      rocker: {
-        noseTip: stationRocker.noseTip,
-        nose12: stationRocker.nose12,
-        tail12: stationRocker.tail12,
-        tailTip: stationRocker.tailTip,
-      },
-      foil: { ...prev.foil, nose12: effectiveFoil.nose12, tail12: effectiveFoil.tail12 },
-      blank: null,
-      boardStarted: true,
-      dirty: true,
-    }));
+    setState((current) => {
+      const prev = startedFrom(current, liveTipsRef.current);
+      return {
+        ...prev,
+        rocker: {
+          noseTip: stationRocker.noseTip,
+          nose12: stationRocker.nose12,
+          tail12: stationRocker.tail12,
+          tailTip: stationRocker.tailTip,
+        },
+        foil: { ...prev.foil, nose12: effectiveFoil.nose12, tail12: effectiveFoil.tail12 },
+        blank: null,
+        boardStarted: true,
+        dirty: true,
+      };
+    });
   };
 
   const quotedVolumeLitres = useMemo(
@@ -820,7 +886,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // toggles) for why noteEdit(null).
   const toggleImportTemplateDimensions = () => {
     noteEdit(null);
-    setState((prev) => {
+    setState((current) => {
+      const prev = startedFrom(current, liveTipsRef.current);
       const next = !prev.volume.importTemplateDimensions;
       if (next) {
         return {
@@ -851,7 +918,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const toggleImportRailThickness = () => {
     if (!state.volume.importTemplateDimensions) return;
     noteEdit(null);
-    setState((prev) => {
+    setState((current) => {
+      const prev = startedFrom(current, liveTipsRef.current);
       const next = !prev.volume.importRailThickness;
       if (next) {
         return {
@@ -878,7 +946,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     () => ({
       outline: state.outline,
       rocker: state.rocker,
-      foil: state.foil,
+      foil,
       rails: state.rails,
       fins: state.fins,
       volume: state.volume,
@@ -891,7 +959,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     [
       state.outline,
       state.rocker,
-      state.foil,
+      foil,
       state.rails,
       state.fins,
       state.volume,
@@ -1036,7 +1104,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const value: DesignContextValue = {
     outline: state.outline,
     rocker: state.rocker,
-    foil: state.foil,
+    foil,
     rails: state.rails,
     fins: state.fins,
     volume: state.volume,
