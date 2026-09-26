@@ -369,7 +369,7 @@ describe("the board's foil, scaled from the blank (D-10, D-17, D-18, D-11)", () 
       const lengths = [record.lengthMm, Math.max(record.lengthMm - inchesToMm(6), inchesToMm(BOARD_LENGTH_RANGE_IN.min))];
       for (const length of lengths) {
         const range = placementRange(record.lengthMm, mm(length));
-        for (let c = inchesToMm(1.75); c <= blankPrepared.centerThicknessMm - inchesToMm(3 / 8) + 1e-9; c += quarter) {
+        for (let c: number = inchesToMm(1.75); c <=blankPrepared.centerThicknessMm - inchesToMm(3 / 8) + 1e-9; c += quarter) {
           const input = defaultBoard(record, length, c);
           for (const p of [range.min, mm(0), range.max]) {
             boards++;
