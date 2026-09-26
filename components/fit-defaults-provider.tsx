@@ -32,6 +32,7 @@ import {
   type ReactNode,
 } from "react";
 import { saveFitDefaultsPreference } from "@/app/actions/fit-defaults";
+import { FitDefaultsDialog } from "@/components/fit-defaults-dialog";
 import {
   EMPTY_FIT_DEFAULTS_PREFERENCE,
   FIT_DEFAULTS_STORAGE_KEY,
@@ -262,10 +263,12 @@ export function FitDefaultsProvider({
     };
   }, [preference, setDefault, restoreDefaults, openDialog]);
 
-  // `dialogOpen` is read by the dialog Task 2 renders here; until then it only records the call.
-  void dialogOpen;
-
-  return <FitDefaultsContext.Provider value={value}>{children}</FitDefaultsContext.Provider>;
+  return (
+    <FitDefaultsContext.Provider value={value}>
+      {children}
+      <FitDefaultsDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+    </FitDefaultsContext.Provider>
+  );
 }
 
 export function useFitDefaults(): FitDefaultsContextValue {
