@@ -8,10 +8,15 @@
  * placement — the board's centre relative to the blank's centre, positive toward the nose. At
  * L = Lb and p = 0 that is u = s exactly, so the board IS the blank.
  *
+ * Judging the catalogue (11-03): the two floors that hide a blank (D-04), the best-placement
+ * search that decides whether a blank fits anywhere along its length (D-07), the list's two groups
+ * (D-06), the "closest blank that fits" offer and the "Move to Where It Fits" rescue (D-08).
+ *
  * No React/browser/database import — pure geometry, unit-tested in blank-fit.test.ts, per
  * CLAUDE.md Rule 1. Every length is millimetres.
  */
-import type { BlankRecord, BlankShortfall, BlankStation, FitResult } from "./blank";
+import { isPickable } from "../blanks/catalog";
+import type { BlankRecord, BlankShortfall, BlankStation, FitResult, FitSettings } from "./blank";
 import { MEASURE_STATION_MM } from "./outline";
 import { pchipMinimum, preparePchip, type PreparedPchip } from "./pchip";
 import { rockerStationPositions } from "./rocker";
@@ -329,4 +334,313 @@ export function fitAt(
     if (half > 0) consider("wide", s, 2 * half + widthMargin - onBlank.blankWidthAt(s));
   }
   return { fits: worst.amount <= FIT_EPSILON_MM, worst };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Judging the catalogue (D-04, D-06, D-07, D-08)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Everything about the board a verdict depends on — and nothing about the slider. A verdict never
+ * takes a placement (R14): it is recomputed only when the board's dims, centre, tips, fine-tunes
+ * or the shaper's settings change.
+ */
+export interface BoardFitContext {
+  board: BoardOnBlankInput;
+  /** The board outline's HALF-width at a station (what `sampleOutline` returns). */
+  halfWidthAt: (station: Mm) => Mm;
+  widePointStation: Mm;
+}
+
+/**
+ * One blank judged for one board (D-07). For a fitting blank, `placement` is the fitting placement
+ * closest to centre — where the slider lands when the blank is picked — and `worst` is the
+ * tightest place there. For a blank that fits nowhere, `placement` is where its worst shortfall is
+ * smallest (its "nearly fits" reading) and `worst` is that shortfall: the station and amount the
+ * reason line reports (D-06).
+ */
+export interface BlankVerdict {
+  prepared: PreparedBlank;
+  fits: boolean;
+  placement: Mm;
+  worst: BlankShortfall;
+}
+
+/** The list (D-06): both groups by length then name, and why it is empty when it is. */
+export interface BlankListResult {
+  fits: BlankVerdict[];
+  wontFit: BlankVerdict[];
+  /**
+   * Null when anything is listed. Otherwise `length` when no pickable blank is long enough (the
+   * first obstacle, reported even if the centre floor fails too), `thickness` when none is thick
+   * enough at its centre, and `both` when each floor alone leaves blanks but no blank passes both.
+   */
+  emptyReason: null | "length" | "thickness" | "both";
+}
+
+/**
+ * The floors compare in millimetres with this much slack, so a board typed to exactly a blank's
+ * length less Extra Length is not flipped off the list by float noise from the inch conversion
+ * (Pitfall 6).
+ */
+export const FLOOR_EPSILON_MM = 1e-6;
+
+/** The fine step of every placement search: the imperial slider's own 1/16". */
+const PLACEMENT_STEP_MM = inchesToMm(1 / 16);
+/** The coarse search step (1/4") in fine steps. */
+const COARSE_STEPS = 4;
+
+/**
+ * The two floors that hide a blank from the list (D-04): the blank must be at least Extra Length
+ * longer than the board, and its own centre-station thickness (D-18: the floor keeps the printed
+ * `C` value) at least Extra Center Thickness thicker than the target centre. Both amounts come
+ * from `settings` — never a literal here. A failed floor reports by how much it is short.
+ */
+export function floorCheck(
+  prepared: PreparedBlank,
+  boardLength: Mm,
+  centerThickness: Mm,
+  settings: FitSettings,
+): { passes: boolean; lengthShortBy: Mm | null; centerShortBy: Mm | null } {
+  const lengthShort = boardLength + settings.extraLength - prepared.lengthMm;
+  const centerShort = centerThickness + settings.extraCenterThickness - prepared.centerThicknessMm;
+  const lengthShortBy = lengthShort > FLOOR_EPSILON_MM ? mm(lengthShort) : null;
+  const centerShortBy = centerShort > FLOOR_EPSILON_MM ? mm(centerShort) : null;
+  return { passes: lengthShortBy === null && centerShortBy === null, lengthShortBy, centerShortBy };
+}
+
+/**
+ * The board's outline is sampled at the same stations for every placement and every blank, so its
+ * half-width is worked out once per station and reused (11-RESEARCH.md: "width does not depend on
+ * placement or centre").
+ */
+function memoiseHalfWidth(halfWidthAt: (station: Mm) => Mm): (station: Mm) => Mm {
+  const cache = new Map<number, Mm>();
+  return (station: Mm) => {
+    let value = cache.get(station);
+    if (value === undefined) {
+      value = halfWidthAt(station);
+      cache.set(station, value);
+    }
+    return value;
+  };
+}
+
+/** Placement `index` fine steps from centre, positive toward the nose; never a negative zero. */
+function placementAt(index: number): Mm {
+  return mm(index === 0 ? 0 : index * PLACEMENT_STEP_MM);
+}
+
+/** The first and last fine-step index inside the slider's range (the range is symmetric). */
+function placementIndexRange(prepared: PreparedBlank, boardLength: Mm): { lo: number; hi: number } {
+  const { min, max } = placementRange(prepared.lengthMm, boardLength);
+  const lo = Math.ceil(min / PLACEMENT_STEP_MM - 1e-9);
+  const hi = Math.floor(max / PLACEMENT_STEP_MM + 1e-9);
+  return { lo: lo === 0 ? 0 : lo, hi: hi === 0 ? 0 : hi };
+}
+
+/**
+ * Placement `index` fine steps from centre for this blank, clamped into its range exactly as
+ * `boardOnBlank` would read it — so the outermost step, which can sit a float's width past the
+ * range end, is stored as the placement the fit was actually checked at.
+ */
+function blankPlacementAt(prepared: PreparedBlank, boardLength: Mm, index: number): Mm {
+  return clampPlacement(placementAt(index), prepared.lengthMm, boardLength);
+}
+
+/** The fit check for one blank at placement indices, each worked out once. */
+function fitterFor(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitSettings) {
+  const results = new Map<number, FitResult>();
+  return (index: number): FitResult => {
+    let result = results.get(index);
+    if (result === undefined) {
+      result = fitAt(
+        boardOnBlank(prepared, ctx.board, blankPlacementAt(prepared, ctx.board.length, index)),
+        ctx.halfWidthAt,
+        ctx.widePointStation,
+        settings.widthMargin,
+      );
+      results.set(index, result);
+    }
+    return result;
+  };
+}
+
+/** The search itself, on a context whose half-width is already memoised. */
+function judgeWith(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitSettings): BlankVerdict {
+  const { lo, hi } = placementIndexRange(prepared, ctx.board.length);
+  const fitAtIndex = fitterFor(prepared, ctx, settings);
+  const verdict = (index: number): BlankVerdict => {
+    const { fits, worst } = fitAtIndex(index);
+    return { prepared, fits, placement: blankPlacementAt(prepared, ctx.board.length, index), worst };
+  };
+
+  // Coarse: 0, then 1/4" steps outward, the nose side first at each distance, then the outermost
+  // 1/16" placement each side when the range does not end on a quarter inch.
+  const coarse: number[] = [0];
+  for (let k = COARSE_STEPS; k <= hi; k += COARSE_STEPS) coarse.push(k, -k);
+  if (hi % COARSE_STEPS !== 0) coarse.push(hi, lo);
+
+  const firstFit = coarse.find((index) => fitAtIndex(index).fits);
+  if (firstFit !== undefined) {
+    if (firstFit === 0) return verdict(0);
+    // Refine back toward centre in 1/16" steps: every placement nearer centre than the last coarse
+    // step that failed, from the nearest outward, nose side first — the first that fits is the
+    // fitting placement closest to centre on the coarse search's terms.
+    const reach = Math.abs(firstFit);
+    const from = Math.ceil(reach / COARSE_STEPS) * COARSE_STEPS - COARSE_STEPS + 1;
+    for (let distance = from; distance <= reach; distance++) {
+      for (const index of [distance, -distance]) {
+        if (index >= lo && index <= hi && fitAtIndex(index).fits) return verdict(index);
+      }
+    }
+    return verdict(firstFit);
+  }
+
+  // Nothing fits: the coarse placement with the smallest worst shortfall (the nearer centre on a
+  // tie), refined 1/16" either side up to the neighbouring coarse steps.
+  let best = coarse[0];
+  for (const index of coarse) {
+    if (fitAtIndex(index).worst.amount < fitAtIndex(best).worst.amount) best = index;
+  }
+  const centre = best;
+  for (let step = 1; step < COARSE_STEPS; step++) {
+    for (const index of [centre + step, centre - step]) {
+      if (index < lo || index > hi) continue;
+      if (fitAtIndex(index).worst.amount < fitAtIndex(best).worst.amount) best = index;
+    }
+  }
+  return verdict(best);
+}
+
+/**
+ * Judges one blank for one board at its best placement (D-07): it fits if any placement in the
+ * slider's range fits, searched 1/4" at a time outward from centre (both ways, nose first) and
+ * refined back toward centre 1/16" at a time. A blank that fits nowhere is read where its worst
+ * shortfall is smallest. Every try is `fitAt` on a `boardOnBlank` of the prepared blank — no
+ * refit of the raw stations. Bounded by the placement range and fixed steps (T-11-07).
+ *
+ * Takes no placement: the slider cannot change a verdict (R14).
+ */
+export function judgeBlank(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitSettings): BlankVerdict {
+  return judgeWith(prepared, { ...ctx, halfWidthAt: memoiseHalfWidth(ctx.halfWidthAt) }, settings);
+}
+
+/** Shortest first; the same length by name, then vendor, so the order never depends on input. */
+function byLengthThenName(a: BlankVerdict, b: BlankVerdict): number {
+  const ra = a.prepared.record;
+  const rb = b.prepared.record;
+  if (a.prepared.lengthMm !== b.prepared.lengthMm) return a.prepared.lengthMm - b.prepared.lengthMm;
+  if (ra.name !== rb.name) return ra.name < rb.name ? -1 : 1;
+  if (ra.vendor !== rb.vendor) return ra.vendor < rb.vendor ? -1 : 1;
+  return 0;
+}
+
+/**
+ * The blank list for a board (D-04, D-06): pickable blanks only; a blank failing either floor is
+ * hidden; the rest are judged (`judgeBlank`) into FITS and WON'T FIT, each ordered by length then
+ * name. An empty list says which floor emptied it. Takes no placement (R14).
+ */
+export function listBlanks(
+  prepared: readonly PreparedBlank[],
+  ctx: BoardFitContext,
+  settings: FitSettings,
+): BlankListResult {
+  const shared: BoardFitContext = { ...ctx, halfWidthAt: memoiseHalfWidth(ctx.halfWidthAt) };
+  const fits: BlankVerdict[] = [];
+  const wontFit: BlankVerdict[] = [];
+  let anyLongEnough = false;
+  let anyThickEnough = false;
+  for (const blank of prepared) {
+    if (!isPickable(blank.record)) continue;
+    const floor = floorCheck(blank, ctx.board.length, ctx.board.centerThickness, settings);
+    if (floor.lengthShortBy === null) anyLongEnough = true;
+    if (floor.centerShortBy === null) anyThickEnough = true;
+    if (!floor.passes) continue;
+    const verdict = judgeWith(blank, shared, settings);
+    (verdict.fits ? fits : wontFit).push(verdict);
+  }
+  fits.sort(byLengthThenName);
+  wontFit.sort(byLengthThenName);
+  let emptyReason: BlankListResult["emptyReason"] = null;
+  if (fits.length === 0 && wontFit.length === 0) {
+    emptyReason = !anyLongEnough ? "length" : !anyThickEnough ? "thickness" : "both";
+  }
+  return { fits, wontFit, emptyReason };
+}
+
+/**
+ * The offer beside a flag (D-08, R6): of the fitting verdicts, the blank of ANY vendor whose length
+ * is closest to the current blank's; on a tie, the one with less spare foam at the centre (its
+ * centre-station thickness minus the target). Never the current blank itself (matched by vendor and
+ * name), never a verdict that does not fit, and null when nothing is left to offer (F5).
+ */
+export function nearestFit(
+  current: Pick<BlankRecord, "vendor" | "name" | "lengthMm">,
+  fits: readonly BlankVerdict[],
+  targetCenter: Mm,
+): BlankVerdict | null {
+  let best: BlankVerdict | null = null;
+  let bestGap = Infinity;
+  let bestSpare = Infinity;
+  for (const verdict of fits) {
+    const { record } = verdict.prepared;
+    if (!verdict.fits) continue;
+    if (record.vendor === current.vendor && record.name === current.name) continue;
+    const gap = Math.abs(verdict.prepared.lengthMm - current.lengthMm);
+    const spare = verdict.prepared.centerThicknessMm - targetCenter;
+    const closer = gap < bestGap - FLOOR_EPSILON_MM;
+    const tiedButLeaner = Math.abs(gap - bestGap) <= FLOOR_EPSILON_MM && spare < bestSpare - FLOOR_EPSILON_MM;
+    if (best === null || closer || tiedButLeaner) {
+      best = verdict;
+      bestGap = gap;
+      bestSpare = spare;
+    }
+  }
+  return best;
+}
+
+/**
+ * "Move to Where It Fits" (11-UI-SPEC F2): the fitting placement on this blank nearest to `from`.
+ * `from` is clamped into the slider's range first and returned as it is when the board already fits
+ * there; otherwise every 1/16" placement in the range is tried nearest-first (the nose side first
+ * at an equal distance) and the first that fits is returned. Null when the board fits nowhere on
+ * this blank. The candidates include every placement `judgeBlank` tries, so a blank judged to fit
+ * always has somewhere to move to. Bounded by the placement range (T-11-07).
+ */
+export function nearestFittingPlacement(
+  prepared: PreparedBlank,
+  ctx: BoardFitContext,
+  settings: FitSettings,
+  from: Mm,
+): Mm | null {
+  const L = ctx.board.length;
+  const halfWidthAt = memoiseHalfWidth(ctx.halfWidthAt);
+  const fitsAt = (placement: Mm) =>
+    fitAt(boardOnBlank(prepared, ctx.board, placement), halfWidthAt, ctx.widePointStation, settings.widthMargin)
+      .fits;
+
+  const start = clampPlacement(from, prepared.lengthMm, L);
+  if (fitsAt(start)) return start;
+
+  const { lo, hi } = placementIndexRange(prepared, L);
+  const candidates: Mm[] = [];
+  for (let index = lo; index <= hi; index++) candidates.push(blankPlacementAt(prepared, L, index));
+  candidates.sort((a, b) => Math.abs(a - start) - Math.abs(b - start) || b - a);
+  return candidates.find(fitsAt) ?? null;
+}
+
+/**
+ * The longest pickable blank and the thickest pickable centre — the catalogue's best, which the
+ * empty-list messages name (E1, E2). Both 0 for a catalogue with no pickable blank.
+ */
+export function catalogueExtremes(prepared: readonly PreparedBlank[]): { longest: Mm; thickestCenter: Mm } {
+  let longest = 0;
+  let thickestCenter = 0;
+  for (const blank of prepared) {
+    if (!isPickable(blank.record)) continue;
+    longest = Math.max(longest, blank.lengthMm);
+    thickestCenter = Math.max(thickestCenter, blank.centerThicknessMm);
+  }
+  return { longest: mm(longest), thickestCenter: mm(thickestCenter) };
 }
