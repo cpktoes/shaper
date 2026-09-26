@@ -96,11 +96,15 @@ describe("Input (components/ui/input.tsx) — the shared field's two touch rules
     }
   });
 
-  it("edge case: exactly the three known consumers of Input exist — a fourth would be a deliberate decision, not an accident (WR-02)", () => {
+  it("edge case: exactly the four known consumers of Input exist — a fifth would be a deliberate decision, not an accident (WR-02)", () => {
     const consumers = [
       "components/design/measure-field.tsx",
       "components/setup/rename-dialog.tsx",
       "components/setup/board-name-prompt.tsx",
+      // Phase 11 (11-11), deliberately: the ROCKER blank list's search box. The UI-SPEC chose the
+      // installed Input over a Command palette (no new dependency); it keeps Input's own 44px /
+      // 16px touch rules, which is what this file protects.
+      "components/rocker/blank-picker.tsx",
     ];
 
     // Built from parts, never one literal, so this test file can never match its own search

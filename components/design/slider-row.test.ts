@@ -44,6 +44,12 @@ const ALLOWLIST: { file: string; count: number; reason: string }[] = [
       "Board Length's middle row sits between the label and the slider and branches per system — the feet/inches Select combo in Imperial, one typed centimetre field in Metric (D-08) — a shape SliderRow has no slot for either way.",
   },
   {
+    file: ROCKER_PATH,
+    count: 1,
+    reason:
+      "Center Thickness carries a typed field on its label line beside the slider — the Board Length hand-rolled shape, compacted to one line (11-UI-SPEC §1).",
+  },
+  {
     file: RAILS_PATH,
     count: 4,
     reason:

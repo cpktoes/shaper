@@ -5,12 +5,15 @@ import type { BlankRecord, BlankShortfall } from "./blank";
 import { placementRange } from "./blank-fit";
 import {
   blankRowMeta,
+  blankRowVolume,
+  boardLine,
   emptyListMessage,
   FLAG_HEADLINES,
   floorShortfallMessage,
   formatPlacement,
   formatShortfall,
   listIntro,
+  matchesBlankSearch,
   NOTHING_FITS_SENTENCE,
   offerLine,
   placementSlider,
@@ -18,7 +21,7 @@ import {
 } from "./blank-reasons";
 import { formatDim, formatLength, formatMark, stationLabel } from "./measure-display";
 import { MEASURE_STATION_MM } from "./outline";
-import { inchesToMm, mm, mmToInches, UNITS_SYSTEMS, type Mm, type UnitsSystem } from "./units";
+import { inchesToMm, litres, mm, mmToInches, UNITS_SYSTEMS, type Mm, type UnitsSystem } from "./units";
 
 // Expected strings are either the 11-UI-SPEC Copywriting Contract's own examples (checked against
 // the app's formatters when the contract was written) or composed here from those same formatters —
@@ -330,5 +333,76 @@ describe("the flag's fixed copy", () => {
       notHere: "Doesn't fit at this placement",
     });
     expect(NOTHING_FITS_SENTENCE).toBe("No blank in the three catalogs fits this board right now.");
+  });
+});
+
+describe("matchesBlankSearch — the list's search box (11-UI-SPEC §2 state B)", () => {
+  const sixTwo = { vendor: "Marko Foam", name: `6'2" M-Regular` };
+  const bracketed = { vendor: "US Blanks", name: "7'0 (EPS) [SUP]*" };
+
+  it("an empty or all-space query matches every blank", () => {
+    expect(matchesBlankSearch(sixTwo, "")).toBe(true);
+    expect(matchesBlankSearch(sixTwo, "   ")).toBe(true);
+  });
+
+  it("is a case-insensitive substring over vendor and name together", () => {
+    expect(matchesBlankSearch(sixTwo, "marko")).toBe(true);
+    expect(matchesBlankSearch(sixTwo, "MAR")).toBe(true);
+    expect(matchesBlankSearch(sixTwo, "foam 6'2")).toBe(true);
+    expect(matchesBlankSearch(sixTwo, "m-reg")).toBe(true);
+    expect(matchesBlankSearch(sixTwo, "arctic")).toBe(false);
+    expect(matchesBlankSearch(sixTwo, "zzz")).toBe(false);
+  });
+
+  it("folds an iPhone's curly quotes to straight ones, in the query and in the name", () => {
+    expect(matchesBlankSearch(sixTwo, "6’2")).toBe(true); // 6’2
+    expect(matchesBlankSearch(sixTwo, "6‘2")).toBe(true); // 6‘2
+    expect(matchesBlankSearch(sixTwo, "6'2”")).toBe(true); // 6'2”
+    expect(matchesBlankSearch(sixTwo, "6'2“")).toBe(true); // 6'2“
+    expect(matchesBlankSearch({ vendor: "Marko Foam", name: "6’2” M-Regular" }, `6'2"`)).toBe(true);
+  });
+
+  it("reads regular-expression characters as plain text and never throws", () => {
+    for (const query of ["(", "*", "[", "(eps)", "[sup]*", ".*", "\\", "?", "+", "{2}", "^", "$", "|"]) {
+      expect(() => matchesBlankSearch(bracketed, query)).not.toThrow();
+    }
+    expect(matchesBlankSearch(bracketed, "(eps)")).toBe(true);
+    expect(matchesBlankSearch(bracketed, "[sup]*")).toBe(true);
+    expect(matchesBlankSearch(bracketed, ".*")).toBe(false);
+    expect(matchesBlankSearch(sixTwo, "(")).toBe(false);
+    expect(matchesBlankSearch(sixTwo, "*")).toBe(false);
+  });
+});
+
+describe("blankRowVolume — the volume at the end of a row's first line", () => {
+  it("reads one decimal and L, the same in both systems", () => {
+    expect(blankRowVolume({ volumeLitres: litres(34) })).toBe("34.0 L");
+    expect(blankRowVolume({ volumeLitres: litres(47.04) })).toBe("47.0 L");
+  });
+
+  it("is null when the catalogue prints no volume, so nothing takes its place", () => {
+    expect(blankRowVolume({ volumeLitres: null })).toBeNull();
+  });
+});
+
+describe("boardLine — the board's size under the ROCKER subtitle", () => {
+  it("reads the UI-SPEC's own example in both systems (metric carries its unit once, at the end)", () => {
+    expect(boardLine(inchesToMm(70), inchesToMm(19.5), "imperial")).toBe(
+      `Length and width from TEMPLATE: 5'10" × 19 1/2"`,
+    );
+    expect(boardLine(inchesToMm(70), inchesToMm(19.5), "metric")).toBe(
+      "Length and width from TEMPLATE: 177.8 × 49.5 cm",
+    );
+  });
+
+  it("uses the board-length and width formatters, never its own numbers", () => {
+    const length = inchesToMm(74.25);
+    const width = inchesToMm(20.375);
+    expect(boardLine(length, width, "imperial")).toBe(
+      `Length and width from TEMPLATE: ${formatLength(length, "imperial")} × ${formatDim(width, "imperial")}`,
+    );
+    expect(boardLine(length, width, "metric")).toBe(
+      `Length and width from TEMPLATE: ${formatLength(length, "metric").replace(/ cm$/, "")} × ${formatDim(width, "metric")}`,
+    );
   });
 });
