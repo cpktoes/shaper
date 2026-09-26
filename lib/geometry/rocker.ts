@@ -122,8 +122,9 @@ export interface RockerSpec {
   tailFlatness: number;
 }
 
-/** Inch-domain bounds every rocker slider, drag solve and typed field shares. One definition,
- * imported everywhere, never restated. Now bounds the two tip lifts only. */
+/** Inch-domain bounds every rocker slider and typed field shares. One definition, imported
+ * everywhere, never restated. Bounds the four hand-set fallback stations (D-14) — nose tip, nose
+ * 12", tail 12" and tail tip. */
 export const ROCKER_LIFT_RANGE_IN = { min: 0, max: 9, step: 0.0625 } as const;
 /** Inch-domain bounds for the nose/tail angle sliders. */
 export const ROCKER_ANGLE_RANGE_DEG = { min: 0, max: 60, step: 1 } as const;
@@ -418,31 +419,5 @@ export function bezierToFiveStations(spec: RockerSpec, length: Mm): FiveStationR
     nose12: read("nose12"),
     tail12: read("tail12"),
     tailTip: read("tailTip"),
-  };
-}
-
-/**
- * Migrates a saved design's legacy four-lift rocker object (`noseTip`/`nose12`/`tail12`/
- * `tailTip`) into the current eight-field `RockerSpec`. The tip lifts carry over exactly — a
- * shaper's saved nose-tip and tail-tip rocker never change. The two 12" numbers are dropped
- * because they are no longer stored: they are measured off the curve now, which is the entire
- * point of this migration. The six shape controls come from `DEFAULT_ROCKER_SPEC`, since a legacy
- * snapshot never recorded any curve shape beyond the four lift points.
- */
-export function migrateLegacyRocker(legacy: {
-  noseTip: number;
-  nose12: number;
-  tail12: number;
-  tailTip: number;
-}): RockerSpec {
-  return {
-    noseLift: mm(legacy.noseTip),
-    tailLift: mm(legacy.tailTip),
-    noseAngle: DEFAULT_ROCKER_SPEC.noseAngle,
-    tailAngle: DEFAULT_ROCKER_SPEC.tailAngle,
-    noseSmoothness: DEFAULT_ROCKER_SPEC.noseSmoothness,
-    tailSmoothness: DEFAULT_ROCKER_SPEC.tailSmoothness,
-    noseFlatness: DEFAULT_ROCKER_SPEC.noseFlatness,
-    tailFlatness: DEFAULT_ROCKER_SPEC.tailFlatness,
   };
 }

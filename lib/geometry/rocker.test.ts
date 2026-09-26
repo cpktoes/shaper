@@ -10,7 +10,6 @@ import {
   DEFAULT_ROCKER_SPEC,
   fallbackRockerPoints,
   type FiveStationRocker,
-  migrateLegacyRocker,
   ROCKER_ANGLE_RANGE_DEG,
   ROCKER_FLATNESS_RANGE,
   ROCKER_LIFT_RANGE_IN,
@@ -244,37 +243,6 @@ describe("control-does-what-its-label-says properties", () => {
   // the angle steepens (rockerTipHandleMaxLength's OVERSHOOT branch), so angle and handle length
   // pull against each other and the relationship is not guaranteed monotone. The tangent-direction
   // assertions above are what pin the angle control.
-});
-
-describe("migrateLegacyRocker", () => {
-  it("carries the legacy noseTip/tailTip through unchanged, and the six shape controls come from DEFAULT_ROCKER_SPEC", () => {
-    const legacy = {
-      noseTip: inchesToMm(5).valueOf(),
-      nose12: inchesToMm(1.5).valueOf(),
-      tail12: inchesToMm(0.5).valueOf(),
-      tailTip: inchesToMm(2.25).valueOf(),
-    };
-    const migrated = migrateLegacyRocker(legacy);
-    expect(migrated.noseLift).toBe(legacy.noseTip);
-    expect(migrated.tailLift).toBe(legacy.tailTip);
-    expect(migrated.noseAngle).toBe(DEFAULT_ROCKER_SPEC.noseAngle);
-    expect(migrated.tailAngle).toBe(DEFAULT_ROCKER_SPEC.tailAngle);
-    expect(migrated.noseSmoothness).toBe(DEFAULT_ROCKER_SPEC.noseSmoothness);
-    expect(migrated.tailSmoothness).toBe(DEFAULT_ROCKER_SPEC.tailSmoothness);
-    expect(migrated.noseFlatness).toBe(DEFAULT_ROCKER_SPEC.noseFlatness);
-    expect(migrated.tailFlatness).toBe(DEFAULT_ROCKER_SPEC.tailFlatness);
-  });
-
-  it("builds a curve that passes the no-fold-back and non-negative assertions", () => {
-    const migrated = migrateLegacyRocker({
-      noseTip: inchesToMm(6).valueOf(),
-      nose12: inchesToMm(2).valueOf(),
-      tail12: inchesToMm(0.75).valueOf(),
-      tailTip: inchesToMm(3).valueOf(),
-    });
-    assertNoFoldBack(migrated);
-    assertNeverNegative(migrated);
-  });
 });
 
 describe("rockerStationPositions", () => {
