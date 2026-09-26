@@ -69,4 +69,62 @@ test.describe("ROCKER — a real blank from the list", () => {
     await pickFirstFittingBlank(page);
     await expect(page.locator("[data-blank-silhouette]")).toBeVisible();
   });
+
+  test("the search narrows the list, says when nothing matches, and Clear Search brings it back", async ({ page }) => {
+    await openRocker(page);
+    const search = page.getByRole("searchbox", { name: "Search blanks" });
+
+    await search.fill("Marko");
+    const rows = blankList(page).locator("li[data-group] button");
+    await expect(rows.first()).toBeVisible();
+    const labels = await rows.evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label") ?? ""));
+    expect(labels.length).toBeGreaterThan(0);
+    for (const label of labels) expect(label).toContain("Marko");
+
+    await search.fill("zzz");
+    await expect(page.getByText('No blanks match "zzz".')).toBeVisible();
+    await expect(blankList(page)).toHaveCount(0);
+    await page.getByRole("button", { name: "Clear Search" }).click();
+    await expect(search).toHaveValue("");
+    await expect(firstFittingRow(page)).toBeVisible();
+  });
+
+  test("a pick that stops fitting stays picked, with a flag and the closest blank that does fit", async ({ page }) => {
+    await openRocker(page);
+    const name = await pickFirstFittingBlank(page);
+    await expect(page.locator("[data-blank-flag]")).toHaveCount(0);
+
+    await raiseCenterThickness(page);
+
+    const flag = page.locator("[data-blank-flag]");
+    await expect(flag).toContainText("This blank doesn't fit your board");
+    // Never cleared on its own (D-08): the same blank is still the board's blank.
+    await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(name);
+
+    const offer = flag.locator("[data-blank-offer]");
+    await expect(offer).toHaveText(/^Closest blank that fits: /);
+    const offerText = await offer.innerText();
+
+    await flag.getByRole("button", { name: "Switch to This Blank" }).click();
+    const switchedTo = (await pickedCard(page).locator("[data-blank-name]").innerText()).trim();
+    expect(switchedTo).not.toBe(name);
+    expect(offerText).toContain(` ${switchedTo}, `);
+    await expect(page.locator("[data-blank-flag]")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Remove This Blank" }).click();
+    await expect(page.getByText("Hand-set until you pick a blank").first()).toBeVisible();
+    await expect(page.locator("[data-blank-silhouette]")).toHaveCount(0);
+    await expect(pickedCard(page)).toHaveCount(0);
+  });
 });
+
+/**
+ * Raises the board's one centre thickness from the default 2 1/2" to 3 1/2" — thicker than the
+ * shortest fitting blank can carry with the default spare thickness, so that pick stops fitting.
+ */
+async function raiseCenterThickness(page: Page) {
+  const center = page.getByText(/^Center — /).locator("xpath=..").getByRole("slider");
+  await center.focus();
+  for (let i = 0; i < 16; i++) await center.press("ArrowRight");
+  await expect(page.getByText('Center — 3 1/2"')).toBeVisible();
+}

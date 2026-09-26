@@ -358,6 +358,8 @@ describe("the design screens read every measurement through the display boundary
     // 11-11 (R15): the ROCKER sidebar's blank list and picked card. Every number in it arrives
     // through `lib/geometry/blank-reasons.ts`'s sentences, which print through the boundary.
     { file: "components/rocker/blank-picker.tsx", converted: true },
+    // 11-11 (R15): the fit flag and its offer — reasons, floor shortfalls and the offer's length.
+    { file: "components/rocker/blank-flag.tsx", converted: true },
   ];
 
   const OUT_OF_SCOPE_UNITS_FILES: { file: string; reason: string }[] = [

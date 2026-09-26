@@ -63,12 +63,14 @@ import { useState } from "react";
 import type { BlankCatalogResult } from "@/lib/db/blanks";
 import { LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
+import { useUnits } from "@/components/units-provider";
 import { Button } from "@/components/ui/button";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import * as ViewerMedia from "@/components/design/use-viewer-media";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
 import { RotateBoardIcon, ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
+import { boardLine } from "@/lib/geometry/blank-reasons";
 import { buildRockerPresetSource } from "@/lib/geometry/preset-source";
 import { RockerControls, type RockerControlsSectionKey } from "./rocker-controls";
 import { RockerDatasheet } from "./rocker-datasheet";
@@ -81,7 +83,8 @@ const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
 ];
 
 export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }) {
-  const { rocker, updateRocker, foil, updateFoil, blank, sideProfile, outlineGeometry } = useDesign();
+  const { rocker, updateRocker, foil, updateFoil, blank, sideProfile, outline, outlineGeometry } = useDesign();
+  const { system } = useUnits();
   // The drawing and the DATASHEET both read the store's ONE side profile (Phase 11, Pattern 5) —
   // the same object RAILS and VOLUME read — built from the board's blank when one is picked and
   // from the four hand-set rocker stations when not (D-14). Nothing here builds a curve of its own.
@@ -180,6 +183,9 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
             </div>
             <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
               Pick a real blank, slide your board along it, and read the rocker and foil off the foam.
+            </div>
+            <div className="mt-0.5 text-xs text-surf-ink-muted font-normal">
+              {boardLine(outline.length, outline.widePointWidth, system)}
             </div>
           </div>
 

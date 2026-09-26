@@ -15,7 +15,15 @@
  * Pure — no React, browser or database import (CLAUDE.md Rule 1).
  */
 import type { BlankRecord, BlankShortfall, FitSettings } from "./blank";
-import { formatDim, formatLength, formatMark, measureSlider, stationLabel, type MeasureSliderView } from "./measure-display";
+import {
+  formatDim,
+  formatDimBare,
+  formatLength,
+  formatMark,
+  measureSlider,
+  stationLabel,
+  type MeasureSliderView,
+} from "./measure-display";
 import { MEASURE_STATION_MM } from "./outline";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "./units";
 
@@ -209,6 +217,42 @@ export function blankRowMeta(
   const head = `${record.vendor} · ${formatLength(record.lengthMm, system)}`;
   const centre = record.stations.find((station) => station.label === "C")?.thicknessMm ?? null;
   return centre === null ? head : `${head} · ${formatMark(centre, system)} center`;
+}
+
+/** Curly quotes an iPhone types (’ ‘ ” “) folded to straight ones, so `6’2` finds `6'2"`. */
+function foldQuotes(text: string): string {
+  return text.replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+}
+
+/**
+ * The list's search (11-UI-SPEC §2 state B): a case-insensitive substring over `{vendor} {name}`,
+ * curly quotes folded to straight ones on both sides first. An empty (or all-space) query matches
+ * every blank. Plain `String.prototype.includes` — the shaper's text is never turned into a
+ * regular expression, so `(`, `*` or `[` are read literally and can never throw (T-11-31).
+ */
+export function matchesBlankSearch(record: Pick<BlankRecord, "vendor" | "name">, query: string): boolean {
+  const needle = foldQuotes(query.trim()).toLowerCase();
+  if (needle === "") return true;
+  return foldQuotes(`${record.vendor} ${record.name}`).toLowerCase().includes(needle);
+}
+
+/**
+ * A row's volume, where the catalogue prints one: `34.0 L` — one decimal, read the same in both
+ * systems (CLAUDE.md Rule 2). Null when the catalogue has no volume, so nothing takes its place.
+ */
+export function blankRowVolume(record: Pick<BlankRecord, "volumeLitres">): string | null {
+  return record.volumeLitres === null ? null : `${record.volumeLitres.toFixed(1)} L`;
+}
+
+/**
+ * The line under the ROCKER subtitle: `Length and width from TEMPLATE: 5'10" × 19 1/2"`, and in
+ * Metric `… 177.8 × 49.5 cm` — the unit carried once, at the end of the line (the house rule for
+ * running text). The length reads through `formatLength` (the same formatter a blank's length reads
+ * through, so the two compare directly), the width through `formatDim`.
+ */
+export function boardLine(length: Mm, width: Mm, system: UnitsSystem): string {
+  const lengthText = system === "metric" ? formatDimBare(length, system) : formatLength(length, system);
+  return `Length and width from TEMPLATE: ${lengthText} × ${formatDim(width, system)}`;
 }
 
 /** The offer beside a flag: `Closest blank that fits: {vendor} {name}, {length}`. */
