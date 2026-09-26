@@ -90,9 +90,11 @@ export function BoardRackCard(props: BoardRackCardProps) {
 
   if (props.variant === "in-progress") {
     const { onSelect, className } = props;
-    const { outline, rails, foil, railsImportFoilThickness, volume, boardName } = design;
+    const { outline, rails, foil, rocker, blank, railsImportFoilThickness, volume, boardName } = design;
     const geometry = buildOutline(outline);
-    const summary = summarizeDesign({ outline, rails, foil, railsImportFoilThickness, volume });
+    // The rocker and the board's own copy of its blank go in too (D-01), so this card builds the
+    // same side profile the VOLUME screen does and quotes the same litres for a board in a blank.
+    const summary = summarizeDesign({ outline, rails, foil, rocker, blank, railsImportFoilThickness, volume });
     const displayName = boardName.trim().length > 0 ? boardName : "Untitled Board";
 
     return (

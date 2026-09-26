@@ -66,6 +66,23 @@ describe("presetSummary", () => {
     expect(summary).toEqual(FIXED_SUMMARY);
   });
 
+  it.each(BOARD_PRESETS)("$id: equals summarizeDesign over the very fields applyPreset opens the board with — its blank included", (preset) => {
+    const opened = summarizeDesign({
+      ...presetDesignFields(preset),
+      railsImportFoilThickness: true,
+      volume: DEFAULT_VOLUME_SPEC,
+    });
+    expect(presetSummary(preset)).toEqual(opened);
+    // The preset opens in a blank, so its card's litres are the blank's, not the hand-set foil's.
+    const handSet = summarizeDesign({
+      ...presetDesignFields(preset),
+      blank: null,
+      railsImportFoilThickness: true,
+      volume: DEFAULT_VOLUME_SPEC,
+    });
+    expect(presetSummary(preset).volumeLitres).not.toBe(handSet.volumeLitres);
+  });
+
   it("every preset in BOARD_PRESETS produces a real summary with all four numbers", () => {
     for (const preset of BOARD_PRESETS) {
       const summary = presetSummary(preset);
