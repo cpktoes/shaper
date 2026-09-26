@@ -13,7 +13,12 @@
  *
  * Every run ends with a read-only count of what the table now holds:
  *   blanks: <total> (US Blanks <n>, Arctic Foam <n>, Marko Foam <n>); pickable: <n>
- * and checks that every stored blank reads back exactly as its CSV rows (exit 1 if one does not).
+ * then exits 1, with one plain line saying what was expected and what was found, when the table
+ * is empty, when its total differs from the catalogue's own count (read through `readSeedCatalog`,
+ * never a typed number), or when any one vendor's count differs from that vendor's count in the
+ * catalogue — so `--check` fails on an unseeded or half-seeded table, not only on a wrong row.
+ * Finally it checks that every stored blank reads back exactly as its CSV rows (exit 1 if one does
+ * not).
  *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
@@ -105,6 +110,26 @@ async function main(): Promise<void> {
     `blanks: ${stored.length} (US Blanks ${perVendor("US Blanks")}, Arctic Foam ${perVendor("Arctic Foam")}, Marko Foam ${perVendor("Marko Foam")}); pickable: ${stored.filter(isPickable).length}`,
   );
 
+  // The counts first: an empty or short table fails here, in --check mode too (WR-03). Every
+  // expected number is counted from the catalogue itself.
+  const vendors = [...new Set([...catalog, ...stored].map((record) => record.vendor))];
+  const vendorMismatches = vendors
+    .map((vendor) => ({
+      vendor,
+      expected: catalog.filter((record) => record.vendor === vendor).length,
+      found: perVendor(vendor),
+    }))
+    .filter(({ expected, found }) => expected !== found);
+  if (stored.length === 0 || stored.length !== catalog.length || vendorMismatches.length > 0) {
+    const byVendor = vendorMismatches.map(({ vendor, expected, found }) => `${vendor} expected ${expected}, found ${found}`);
+    console.error(
+      `The blanks table does not hold the whole catalogue: expected ${catalog.length} blanks, found ${stored.length}` +
+        (byVendor.length > 0 ? ` (${byVendor.join("; ")})` : "") +
+        ".",
+    );
+    process.exitCode = 1;
+  }
+
   // Every stored blank must read back exactly as the CSVs give it — every station value at full
   // precision, every empty cell still null.
   const expected = new Map(catalog.map((record) => [`${record.vendor}\u0000${record.name}`, record]));
@@ -121,7 +146,9 @@ async function main(): Promise<void> {
       console.error(`  differs from (or is not in) the CSVs: ${record.vendor} ${record.name}`);
     }
     process.exitCode = 1;
-  } else if (missing > 0 && !checkOnly) {
+  }
+  if (missing > 0) {
+    console.error(`  ${missing} catalogue blank(s) are not in the table`);
     process.exitCode = 1;
   }
 }
