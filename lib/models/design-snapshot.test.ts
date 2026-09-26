@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import type { BlankRecord, BoardBlank } from "@/lib/geometry/blank";
-import { DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
+import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
+import { summarizeDesign } from "@/lib/geometry/design";
+import { MEASURE_STATION_MM } from "@/lib/geometry/outline";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
@@ -18,7 +20,9 @@ import { degrees, inchesToMm, mm } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
 import {
   DESIGN_SNAPSHOT_VERSION,
+  SNAPSHOT_BOARD_LENGTH_MM,
   boardBlankSchema,
+  isBoardLengthInRange,
   buildSnapshot,
   designSnapshotSchema,
   parseSnapshot,
@@ -387,5 +391,67 @@ describe("design-snapshot", () => {
     const snapshot = buildSnapshot(FIXTURES[0]);
     const wire = JSON.parse(JSON.stringify(snapshot));
     expect(() => designSnapshotSchema.parse(wire)).not.toThrow();
+  });
+
+  describe("a saved board's length is bounded, and a blank outside the range is dropped (WR-05)", () => {
+    /** A version-4 wire snapshot of FIXTURES[0] in Marko M-Regular, at `length` mm. */
+    function wireAtLength(length: number) {
+      const wire = wireWithBlank();
+      (wire.design.outline as Record<string, unknown>).length = length;
+      return wire;
+    }
+
+    it("the reject bounds keep every accepted board long enough for its five stations to run in order", () => {
+      expect(SNAPSHOT_BOARD_LENGTH_MM.min / 2).toBeGreaterThan(MEASURE_STATION_MM);
+      expect(SNAPSHOT_BOARD_LENGTH_MM.min).toBeLessThan(inchesToMm(BOARD_LENGTH_RANGE_IN.min));
+      expect(SNAPSHOT_BOARD_LENGTH_MM.max).toBeGreaterThan(inchesToMm(BOARD_LENGTH_RANGE_IN.max));
+    });
+
+    it("the reviewer's crafted 500 mm board in a blank is rejected as invalid — far below the range, too short to draw", () => {
+      expect(500).toBeLessThan(SNAPSHOT_BOARD_LENGTH_MM.min);
+      expect(() => parseSnapshot(wireAtLength(500))).toThrow();
+      // And the same board WITHOUT its blank is rejected too: its five stations can't be ordered.
+      const handSet = wireAtLength(500);
+      handSet.design.blank = null as never;
+      expect(() => parseSnapshot(handSet)).toThrow();
+    });
+
+    it("a length far above the range is rejected as invalid", () => {
+      expect(() => parseSnapshot(wireAtLength(SNAPSHOT_BOARD_LENGTH_MM.max + 1))).toThrow();
+    });
+
+    for (const [label, length] of [
+      ["a quarter shorter than the shortest board", inchesToMm(BOARD_LENGTH_RANGE_IN.min * 0.75)],
+      ["a quarter longer than the longest board", inchesToMm(BOARD_LENGTH_RANGE_IN.max * 1.25)],
+    ] as const) {
+      it(`a board in a blank ${label} reopens hand-set (no blank), and summarizing it does not throw`, () => {
+        expect(isBoardLengthInRange(length)).toBe(false);
+        const parsed = parseSnapshot(wireAtLength(length));
+        expect(parsed.blank).toBeNull();
+        expect(parsed.outline.length).toBe(length);
+        expect(() => summarizeDesign(parsed)).not.toThrow();
+      });
+    }
+
+    it("a board in a blank at either end of the range keeps its blank, within a millimetre of round-trip slack", () => {
+      for (const length of [
+        inchesToMm(BOARD_LENGTH_RANGE_IN.min),
+        inchesToMm(BOARD_LENGTH_RANGE_IN.max),
+        inchesToMm(BOARD_LENGTH_RANGE_IN.min) - 0.5,
+        inchesToMm(BOARD_LENGTH_RANGE_IN.max) + 0.5,
+      ]) {
+        expect(isBoardLengthInRange(length)).toBe(true);
+        const parsed = parseSnapshot(wireAtLength(length));
+        expect(parsed.blank?.copy).toEqual(MARKO);
+        expect(() => summarizeDesign(parsed)).not.toThrow();
+      }
+    });
+
+    it("every preset's board in a blank round-trips unchanged", () => {
+      for (const fixture of FIXTURES) {
+        const fields: DesignSnapshotFields = { ...fixture, blank: boardBlank() };
+        expect(roundTrip(fields)).toEqual(fields);
+      }
+    });
   });
 });

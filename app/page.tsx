@@ -5,7 +5,7 @@ import { SetupScreen } from "@/components/setup/setup-screen";
 import type { SavedModel } from "@/components/setup/board-rack-card";
 import { PhoneTabBar } from "@/components/design/phone-tab-bar";
 import { listModels } from "@/lib/db/queries";
-import { parseSnapshot } from "@/lib/models/design-snapshot";
+import { rackModelsFromRows } from "@/lib/models/rack-models";
 
 export const metadata: Metadata = {
   title: "Shaper Assistant — Start a New Board",
@@ -69,17 +69,11 @@ async function BoardRackData({ userId }: { userId: string }) {
     rows = [];
   }
 
-  models = rows.flatMap((row) => {
-    try {
-      return [{ id: row.id, name: row.name, snapshot: parseSnapshot(row.snapshot), updatedAt: row.updatedAt }];
-    } catch (error) {
-      // One corrupt snapshot omits a single card instead of breaking the page. Logged so a
-      // missing board is discoverable by whoever can read the server log, even though the
-      // shaper themself has no way to see this line (this plan's prohibition).
-      console.error(`Shaper: dropped unparsable saved board ${row.id}`, error);
-      return [];
-    }
-  });
+  // One corrupt snapshot — one that doesn't parse, or whose card numbers can't be worked out —
+  // omits a single card instead of breaking the page. Logged so a missing board is discoverable
+  // by whoever can read the server log, even though the shaper themself has no way to see this
+  // line (this plan's prohibition).
+  models = rackModelsFromRows(rows);
 
   return <SetupScreen models={models} />;
 }

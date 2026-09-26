@@ -45,6 +45,9 @@
  *      400, every number finite and inside a sane range, stations strictly tail-to-nose, placement
  *      within ±4000 mm, each fine-tune within ±50 mm, and the copy must pass the same pickable rule
  *      (`isPickable`) the blank list uses. `app/design/actions.ts` re-parses every save through here.
+ *    - The board's LENGTH is bounded too (WR-05): a length more than a factor of two outside the
+ *      app's own 60"-120" range rejects the snapshot, and a blank on a board outside that range
+ *      (but not that far) is dropped, so the board reopens hand-set instead of crashing the rack.
  *    - `foil.center` stays the board's ONE stored centre thickness (D-12); the blank carries no
  *      board centre of its own.
  *
@@ -57,7 +60,7 @@
 import { z } from "zod";
 import { blankRecordShapeSchema, isPickable } from "@/lib/blanks/catalog";
 import type { BlankRecord, BoardBlank } from "@/lib/geometry/blank";
-import { DEFAULT_BOARD_SPEC, type OutlineSpec } from "@/lib/geometry/board";
+import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, type OutlineSpec } from "@/lib/geometry/board";
 import {
   DEFAULT_FIN_PLACEMENT_SPEC,
   type FinPlacementSpec,
@@ -71,6 +74,7 @@ import {
   type FiveStationRocker,
   type RockerSpec,
 } from "@/lib/geometry/rocker";
+import { inchesToMm } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC, type VolumeSpec } from "@/lib/geometry/volume";
 
 export const DESIGN_SNAPSHOT_VERSION = 4;
@@ -83,8 +87,36 @@ const tailShapeSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("swallow"), endWidth: z.number(), crotchDepth: z.number() }),
 ]);
 
+/**
+ * The board lengths a saved board can hold at all (WR-05): anything more than a factor of two
+ * outside the app's own board-length range (`BOARD_LENGTH_RANGE_IN`, 60"-120", so 30"-240") is not
+ * a board this app ever drew, and the snapshot is rejected as invalid. The lower end also keeps
+ * every board long enough for its five stations to run in order (tail tip, tail 12", centre,
+ * nose 12", nose tip — the centre must sit past the 12" station), which the side profile needs to
+ * be drawn at all; `design-snapshot.test.ts` checks that still holds.
+ */
+export const SNAPSHOT_BOARD_LENGTH_MM = {
+  min: inchesToMm(BOARD_LENGTH_RANGE_IN.min / 2),
+  max: inchesToMm(BOARD_LENGTH_RANGE_IN.max * 2),
+} as const;
+
+/** Float slack when deciding whether a saved board's length is inside the app's own range. */
+const BOARD_LENGTH_TOLERANCE_MM = 1;
+
+/**
+ * Whether a board's length is inside the app's own board-length range (60"-120"), give or take a
+ * millimetre of round-trip slack — the only boards the blank maths is built for. A saved board in
+ * a blank whose length is outside it reopens hand-set instead (see `parseSnapshot`).
+ */
+export function isBoardLengthInRange(length: number): boolean {
+  return (
+    length >= inchesToMm(BOARD_LENGTH_RANGE_IN.min) - BOARD_LENGTH_TOLERANCE_MM &&
+    length <= inchesToMm(BOARD_LENGTH_RANGE_IN.max) + BOARD_LENGTH_TOLERANCE_MM
+  );
+}
+
 const outlineSpecSchema = z.object({
-  length: z.number(),
+  length: z.number().min(SNAPSHOT_BOARD_LENGTH_MM.min).max(SNAPSHOT_BOARD_LENGTH_MM.max),
   widePointWidth: z.number(),
   widePointOffset: z.number(),
   tailRailLength: z.number(),
@@ -317,6 +349,9 @@ export function parseSnapshot(value: unknown): DesignSnapshotFields {
     railsImportFoilThickness: design.railsImportFoilThickness ?? true,
     boardName: design.boardName ?? "",
     finSystem: (design.finSystem ?? "fcs2") as FinSystem,
-    blank: (design.blank ?? null) as BoardBlank | null,
+    // Tolerate and migrate (WR-05): a blank on a board whose length is outside the app's own
+    // range is dropped, so the board reopens hand-set rather than crashing every screen that lays
+    // it on its blank (the blank maths is only built for boards in that range).
+    blank: (design.blank && isBoardLengthInRange(outline.length) ? design.blank : null) as BoardBlank | null,
   };
 }
