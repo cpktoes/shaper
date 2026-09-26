@@ -142,7 +142,7 @@ Opened 2026-09-26 on branch `foil-real-shaping`, the same day v1.3 shipped, from
 ### Phase 12: Foil the Way a Shaper Cuts It
 
 **Goal:** A shaper's board is cut from its blank the way a planer actually works: a constant deck skin comes off first, parallel to the blank's deck; the centre thickness sets the board's bottom under that deck, and the gap down to the blank's bottom reads as the foam to remove and as planer passes; the board's bottom parallels the blank's rocker so the four rocker numbers are the blank's own and each 12" station's thickness falls out of it; the tips are thinned last, only inside the last 12", with the deck pinned (default, the bottom rises and tip rocker grows) or the bottom pinned (the deck drops) — the curve through the 12" stations fixed before thinning and still nudged by the fine-tune adjusters. Every printed number stays a number a shaper would cut to, and every board saved under the Phase 11 model still opens.
-**Requirements**: R1–R11 locked in `.planning/phases/12-foil-the-way-a-shaper-cuts-it/12-SPEC.md` (six from the founder's brief, five carried constraints); decisions D-01–D-12 in `12-CONTEXT.md`; UI contract in `12-UI-SPEC.md`
+**Requirements**: R1–R11 locked in `.planning/phases/12-foil-the-way-a-shaper-cuts-it/12-SPEC.md` (six from the founder's brief, five carried constraints); decisions D-01–D-20 in `12-CONTEXT.md`; UI contract in `12-UI-SPEC.md`
 **Depends on:** Phase 11
 **Plans:** 0 plans
 

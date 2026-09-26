@@ -1,7 +1,7 @@
 # Phase 12: Foil the Way a Shaper Cuts It — Specification
 
 **Created:** 2026-09-26
-**Ambiguity score:** 0.10 (gate: ≤ 0.20) — the requirements below are the founder's brief of 2026-09-26 as close to verbatim as the template allows; the seven points in the Ambiguity Report were settled the same day in the four-area discussion recorded in `12-CONTEXT.md` (D-01–D-12), and each requirement below points at the decision that sharpened it
+**Ambiguity score:** 0.05 (gate: ≤ 0.20) — the requirements below are the founder's brief of 2026-09-26 as close to verbatim as the template allows; the seven points in the Ambiguity Report were settled the same day in the four-area discussion recorded in `12-CONTEXT.md` (D-01–D-12), and each requirement below points at the decision that sharpened it
 **Requirements:** 6 locked from the brief, plus 5 carried constraints
 **Source:** the founder's message of 2026-09-26, captured verbatim in `.planning/todos/completed/2026-09-26-foil-the-way-a-shaper-cuts-it-deck-skin-parallel-bottom-pin-deck-tips.md` and folded into this phase
 
@@ -23,17 +23,17 @@ The founder's words are quoted; the sentence after each quote is the requirement
 
 3. **The board's bottom parallels the blank's bottom rocker; the 12" stations are presented.** *"The boards bottom curve should parallel the blanks bottom rocker, and 12" stations presented."* — The board's bottom curve is the blank's bottom rocker raised by that same gap at every station, so the four rocker numbers are the blank's own at that placement, and each 12" station's thickness follows and is shown.
 
-4. **Tip thicknesses, with a pin-deck or bottom choice.** *"The user then inputs a nose tip and tail tip thickness with a pin deck or bottom selection - when pin deck is chosen (default) additional thickness is removed from the bottom of the board (increasing the rocker), and when bottom is chosen thickness is removed from the deck."* — The shaper's nose tip and tail tip thicknesses are reached by removing extra foam at the tips, with a choice per board: pin deck (default) keeps the deck and lifts the bottom toward the tip target, so the tip rocker grows; bottom keeps the bottom and drops the deck toward it. *Sharpened by D-04/D-05/D-06: an account default plus a per-board setting on ROCKER; the thinning eases in with no kink at the 12" station; the four rocker numbers are the board's own with the blank's beside them.*
+4. **Tip thicknesses, with a pin-deck or bottom choice.** *"The user then inputs a nose tip and tail tip thickness with a pin deck or bottom selection - when pin deck is chosen (default) additional thickness is removed from the bottom of the board (increasing the rocker), and when bottom is chosen thickness is removed from the deck."* — The shaper's nose tip and tail tip thicknesses are reached by removing extra foam at the tips, with a choice per board: pin deck (default) keeps the deck and lifts the bottom toward the tip target, so the tip rocker grows; bottom keeps the bottom and drops the deck toward it. *(Planning note 2026-09-26, D-16: a tip is always made as thick as set even when the parallel foil is thinner there; the thinning is then negative, the tip rocker falls under Pin deck, and the fit check guards the rest.)* *Sharpened by D-04/D-05/D-06: an account default plus a per-board setting on ROCKER; the thinning eases in with no kink at the 12" station; the four rocker numbers are the board's own with the blank's beside them.*
 
 5. **The bottom curve through the 12" stations is fixed before tip thinning; thinning touches only the last 12".** *"In both cases, The overall new bottom curve should be calculated using the 12" station values from BEFORE the tips were thinned (i.e. tip thinning only affects foil in the last 12")."* — Whatever the pin choice, the bottom curve is computed from the 12" station values as they stand before thinning; thinning reshapes the curve only between each 12" station and its tip.
 
-6. **Fine-tune adjusters on the 12" stations.** *"However fine tune adjusters should allow the user to adjust the 12" station value slightly."* — The existing fine-tune adjusters still nudge the nose 12" and tail 12" station values slightly, on top of the derived numbers. *Sharpened by D-07: on a board saved under Phase 11 the two fine-tunes also absorb the residual so its five station numbers do not move.*
+6. **Fine-tune adjusters on the 12" stations.** *"However fine tune adjusters should allow the user to adjust the 12" station value slightly."* — The existing fine-tune adjusters still nudge the nose 12" and tail 12" station values slightly, on top of the derived numbers. *(Planning note 2026-09-26, D-13: the shaper chooses per board whether a fine-tune moves the deck (default) or the bottom, independent of Tip Style.)* *Sharpened by D-07: on a board saved under Phase 11 the two fine-tunes also absorb the residual so its five station numbers do not move.*
 
 Carried constraints (from CLAUDE.md and Phase 11, not re-decided here):
 
 7. **Geometry first, pure and tested.** Every formula lives in `lib/geometry/`, has unit tests with expected values from fixtures or the catalogue CSVs read through the tested reader, and the named geometry tests land before any screen changes (as Phase 11's R16).
 8. **Units through `lib/geometry/units.ts` / `measure-display.ts`.** Skin, gap and passes read as marks (1/16" in Imperial, whole mm in Metric); litres the same in both.
-9. **Every saved board still opens.** Boards saved under Phase 11's model (snapshot version 4) and earlier reopen without error and without silent change to what they show; how their numbers carry across is a decision of this phase.
+9. **Every saved board still opens.** Boards saved under Phase 11's model (snapshot version 4) and earlier reopen without error and without silent change to what they show; how their numbers carry across is a decision of this phase. *(Planning note 2026-09-26, D-07/D-14: the five station numbers are kept by the fine-tunes; a carried-over board may open flagged "doesn't fit" under the new floor — a stated decision, not a silent change.)*
 10. **PCHIP stays the app's one curve sampler** (D-13); the interpolation is not changed to prettify a drawing (the drawn-curve smoothness is a separate todo).
 11. **No new dependency, no package.json change** (D-20); nothing lands on `main` until the founder approves the plan.
 
@@ -62,15 +62,42 @@ Carried constraints (from CLAUDE.md and Phase 11, not re-decided here):
 
 ## Edge Coverage
 
-To be filled from the discussion and research: a skin or gap that goes negative (the board does not fit), a blank thinner than centre thickness + skin at the centre, tip thinning larger than the station thickness allows, a board placed so a 12" station falls off the blank, presets whose provisional blank no longer fits under the new model.
+**Coverage:** 12/12 applicable edges resolved · 0 unresolved
+
+Filled from the planning research of 2026-09-26 (every measured figure names its script in `12-RESEARCH.md`, "How every number in this report was produced"). ✅ = an explicit acceptance criterion a test asserts; 🧪 = a backstop the plan holds out as a held-out check.
+
+| Category | Requirement | Status | Resolution / Reason |
+|----------|-------------|--------|---------------------|
+| Skin goes negative somewhere (a positive tweak larger than the skin; Bottom style with negative thinning) | R1, R6 | ✅ covered | deck above the blank's deck → "too thin {where}" from the fit check; unit test |
+| Gap goes negative (the blank under the board's centre is thinner than target + skin) | R2, R12-old | ✅ covered | bottom below the blank everywhere → not a fit; 34 of 3,906 slider-end placements in the sweep; unit test |
+| Blank thinner than centre + skin + one pass at its printed centre | D-10 | ✅ covered | hidden by the list floor; F4 if already picked; unit + e2e |
+| Less than one pass under the board's centre at its placement | D-15 | ✅ covered | F2 "Doesn't fit at this placement" / "{amount} too thin at the center"; unit test |
+| Tip thinning larger than the station thickness allows | R4 | ✅ covered | the tip still equals its setting; inside the window the eased curve may sit ≤ 0.138 mm under the setting (the Phase 11 guard retires); unit test |
+| Tip setting thicker than the parallel foil (negative thinning) | R4, D-16 | ✅ covered | Pin deck: the tip rocker falls; Bottom: the deck rises and the board fails the fit beyond the skin (the Shortboard by 3/16"); unit test |
+| A 12" station falls off the blank | R3 | ✅ covered | blank thickness reads 0 off the foam (Phase 11 Pitfall 8, kept) → not a fit; existing unit test |
+| A preset whose provisional blank no longer fits | D-08, D-17 | ✅ covered | none under Pin deck (the presets' own style); `preset-blanks.test.ts` proves the picks and the generated JSON unchanged |
+| The derived foil runs out at a very thin centre | D-18 | ✅ covered | under 1/8" anywhere is not a fit, with its own reason; 43 of 527 fits at 1", 0 at 2" and above; unit test |
+| A carried-over tweak beyond ±1/4" | R9, D-14, D-20 | 🧪 backstop | 21–39% of the sweep; the UI contract's §10 display rule (true value shown, thumb pinned, a drag replaces, undo restores); a held-out visual check on a fixture beyond the reach |
+| A carried-over value beyond the schema bound | R9 | ✅ covered | clamped to ±50 mm so it re-parses (not reached in the sweep, max 27.1 mm); unit test |
+| A stale pre-deploy tab saves a version-4-shaped blank | R9, D-14 | ✅ covered | carried over on the server by shape (no `tipStyle` on the blank), never by the version number; unit test |
 
 ## Prohibitions (must-NOT)
 
-- MUST NOT derive the foil by proportional scaling once this phase lands (that is the model being replaced) — unless the discussion decides to keep it as a fallback, in which case the decision says where.
-- MUST NOT let tip thinning change any number at or inside the 12" stations (R5).
-- MUST NOT change the interpolation to cure a drawing (D-13, R10 of Phase 11).
-- MUST NOT rewrite a saved board silently.
-- MUST NOT hand-transcribe an expected number into a test.
+**Coverage:** 11/11 applicable prohibitions resolved · 0 unresolved
+
+| Prohibition (must-NOT statement) | Requirement | Status | Verification / Reason |
+|----------------------------------|-------------|--------|------------------------|
+| MUST NOT derive the foil by proportional scaling anywhere but inside the D-14 carry-over | R3, R13-old | resolved | test (the carry-over is pinned by the `v1.3` golden fixture) + grep |
+| MUST NOT let tip thinning change any number at or inside the 12" stations | R5 | resolved | test |
+| MUST NOT level the rocker on the thinned bottom | R3, D-06 | resolved | test (rocker equals the golden Phase 11 rocker away from the tips) |
+| MUST NOT move a fine-tune on a surface the shaper did not choose | R6, D-13 | resolved | test |
+| MUST NOT decide a version-4 blank by the envelope's version number alone | R9, D-14 | resolved | test (shape-triggered carry-over) |
+| MUST NOT rewrite a saved board silently | R9 | resolved | test (every version 1–4 fixture reopens; a carried-over board's numbers are explained by D-14) |
+| MUST NOT change the interpolation to cure a drawing | R10 | resolved | judgment (`pchip.ts` byte-identical) |
+| MUST NOT generate or run a DROP of `extra_center_thickness_mm` in this phase's migration run | R11, D-19 | resolved | judgment (plan review) |
+| MUST NOT add a dependency or change `package.json` | R11 | resolved | git diff |
+| MUST NOT hand-transcribe an expected number into a test | R7 | resolved | judgment (repo rule) |
+| MUST NOT copy the UI contract's illustrative numbers into a test (its Metric reference case was wrong until corrected) | R7 | resolved | judgment |
 
 ## Ambiguity Report
 
@@ -86,7 +113,10 @@ All seven points were settled in the discussion of 2026-09-26 (`12-CONTEXT.md`):
 
 Also decided: list order unchanged (**D-11**); the hand-set fallback unchanged (**D-12**).
 
+Settled from the planning research (2026-09-26): the fine-tune surface (**D-13**), the literal carry-over (**D-14**), one pass at the placement (**D-15**), thick tip settings (**D-16**), presets' own skin and style (**D-17**), the foil running out (**D-18**), the retired column (**D-19**), the slider range (**D-20**).
+
 ## Interview Log
 
 - 2026-09-26 — the founder's brief, in his words, captured as a todo right after the v1.3 UAT; folded into this phase the same day.
 - 2026-09-26 — `/gsd-discuss-phase 12`: the brief locked as this spec; four areas discussed (deck skin & planer passes; tip thinning & the pin choice; older boards, presets & litres; fit check & the blank list); two free-text answers reshaped the model — the pin choice became an account default plus a per-board setting, and the centre floor became one deck pass plus one bottom pass with Planer Max Depth replacing Extra Center Thickness.
+- 2026-09-26 — planning research (`12-RESEARCH.md`): the skin cancels out of thickness and rocker (it only splits the foam between deck and bottom passes); the ease has no kink; the D-07 residual measured on the development database and a 7,913-case sweep; eight open points answered — four by the founder (D-13, D-14, D-15, D-16), four by adopting the research (D-17–D-20).

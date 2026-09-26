@@ -24,6 +24,8 @@ reviewed_at: 2026-09-26
 > claim about existing code was read from the file on 2026-09-26 and is cited `path:line`. Product
 > strings use the product's American spelling (`Center`, `catalog`); prose here is British.
 > Anything this document does not mention is exactly as the Phase 11 contract left it.
+>
+> **Amended 2026-09-26 after the planning research** (the checker's 6/6 verdict predates these; each is a founder ruling or a factual fix, none a new visual system): the Metric reference case corrected to `7 mm` (1/8" is 3.175 mm); the Tip Style hint softened for a falling tip rocker (D-16); a new §5a "Fine-tune off: Deck / Bottom" toggle (D-13); §8's one-pass-at-placement and foil-runs-out reasons (D-15, D-18); §10's note that carried-over boards may open flagged (D-14); surface E13 added to UI Considerations.
 
 ---
 
@@ -190,8 +192,8 @@ the board, as the deck band the Phase 11 contract already measured.
 2 15/16" / 74 mm at the center, with a 2 1/2" / 64 mm Center Thickness, the default 1/8" / 3 mm
 Deck Skin and the default 1/8" / 3 mm Planer Max Depth. The foam off the bottom at the center is
 2.92 − 0.125 − 2.5 = 0.295", which prints `5/16"` and counts `3 passes` (5/16 ÷ 1/8 = 2.5, rounded
-up). In Metric it is 74.2 − 3.2 − 63.5 = 7.5 mm, which prints `8 mm` and counts `3 passes`
-(8 ÷ 3 = 2.67, rounded up). The planner renders live values; these examples are illustrative.
+up). In Metric it is 74.17 − 3.18 − 63.5 = 7.49 mm, which prints `7 mm` and counts `3 passes`
+(7 ÷ 3 = 2.33, rounded up). *(Corrected 2026-09-26 after the planning research; an earlier draft rounded 1/8" to 3.2 mm and printed 8 mm.)* The planner renders live values; these examples are illustrative.
 
 ### Headline elements (template rows)
 
@@ -212,7 +214,7 @@ up). In Metric it is 74.2 − 3.2 − 63.5 = 7.5 mm, which prints `8 mm` and cou
 | Deck Skin hint (left hint), Tip Style = Pin deck | Off the deck at every station | same |
 | Deck Skin hint (left hint), Tip Style = Bottom | Off the deck — more at the tips | same |
 | Readouts headers (third changes) | **STATION** · **ROCKER** · **OFF BOTTOM** | same |
-| Readouts rows (nose to tail; the rocker column is unchanged in form) | Nose Tip · Nose @ 12" · Center · Tail @ 12" · Tail Tip, each with its rocker and its foam off the bottom, e.g. Center `0"` · `5/16"` | Nose Tip · Nose @ 30.5 cm · Center · Tail @ 30.5 cm · Tail Tip, e.g. Center `0 mm` · `8 mm` |
+| Readouts rows (nose to tail; the rocker column is unchanged in form) | Nose Tip · Nose @ 12" · Center · Tail @ 12" · Tail Tip, each with its rocker and its foam off the bottom, e.g. Center `0"` · `5/16"` | Nose Tip · Nose @ 30.5 cm · Center · Tail @ 30.5 cm · Tail Tip, e.g. Center `0 mm` · `7 mm` |
 | **Passes line**, label (Meta, muted) | Planer passes at the center | same |
 | Passes line, value (Meta emphasis) | 3 passes (1 → `1 pass`; zero or less → `0 passes`, muted) | 3 passes |
 | Passes hint (Meta, muted) | At 1/8" a pass — your Planer Max Depth. | At 3 mm a pass — your Planer Max Depth. |
@@ -223,9 +225,13 @@ up). In Metric it is 74.2 − 3.2 − 63.5 = 7.5 mm, which prints `8 mm` and cou
 |---------|----------|--------|
 | Intro (replaces `rocker-controls.tsx:307`) | Deck and bottom follow your blank's; the tips are thinned in the last 12". Set the tips, and fine-tune the 12" stations if you need to. | …thinned in the last 30.5 cm. Set the tips, and fine-tune the 30.5 cm stations if you need to. |
 | Tip rows, 12" fine-tune rows, their hints, ↺ Reset Fine-Tune | Unchanged copy (`rocker-controls.tsx:150-157,376`). "From blank {value}" now reads the new derivation (blank − skin − gap at the 12" station). | same |
+| **Fine-tune off** label (D-13) | Fine-tune off | same |
+| Fine-tune off options | **Deck** · **Bottom** | same |
+| Fine-tune off hint, Deck selected | Tweaks add or take foam on the deck; the rocker stays the blank's. | same |
+| Fine-tune off hint, Bottom selected | Tweaks move the bottom, so the rocker re-levels and its numbers can shift. | same |
 | **Tip Style** label | Tip Style | same |
 | Tip Style options | **Pin deck** · **Bottom** | same |
-| Tip Style hint, Pin deck selected | The deck stays put and the extra comes off the bottom, so the tip rocker grows. | same |
+| Tip Style hint, Pin deck selected | The deck stays put and the extra comes off the bottom, so the tip rocker grows — or falls, if the tip needs more foam than the cut leaves. | same |
 | Tip Style hint, Bottom selected | The bottom stays put and the extra comes off the deck, so the rocker stays the blank's own. | same |
 
 `Tip Style` as the name `(Claude's discretion — founder may overrule)`: the founder's two options
@@ -487,8 +493,11 @@ Every touch size below is `coarse:`. No new rule reads width or height.
 - **What a tap does:**
   - It re-derives the last 12" at each end, and nothing at or inside the 12" stations moves (SPEC
     R5, "Changing the pin choice … leaves every number at and inside the 12" stations unchanged").
-  - Under Pin deck the tip rocker readouts rise and the OFF BOTTOM tips grow. Under Bottom the tip
-    rocker returns to the blank's and the DATASHEET Deck tips grow. The Deck Skin hint switches.
+  - Under Pin deck the tip rocker readouts rise and the OFF BOTTOM tips grow — or, when a tip setting
+    is thicker than the parallel foil there (D-16), the bottom drops at that tip and its rocker falls;
+    if it would drop below the blank's bottom the board reads as not fitting. Under Bottom the tip
+    rocker returns to the blank's and the DATASHEET Deck tips grow, and a tip that needs more foam than
+    the cut leaves reads as not fitting. The Deck Skin hint switches.
   - It re-checks the flag, and it is one undo step. Tapping the option that is already selected does
     nothing.
 
@@ -500,6 +509,26 @@ Every touch size below is `coarse:`. No new rule reads width or height.
   shows the final value (derived + tweak).
 - The tips stay absolute sliders over `FOIL_THICKNESS_RANGE_IN`. They are what the thinning eases
   to.
+
+### 5a. Fine-tune off: Deck / Bottom (D-13 — added 2026-09-26 from the planning research)
+
+- **What it is:** a per-board choice of which surface a 12" fine-tune moves, independent of Tip
+  Style. Deck (default) adds or takes foam on the deck at that station, so the rocker never moves and
+  a tweak larger than the skin is honestly flagged "too thin there". Bottom moves the bottom, so the
+  bottom curve re-levels on its own low point and every rocker number can shift — the readouts and the
+  DATASHEET show it as it happens (D-06), no extra copy.
+- **Where:** in THICKNESS, directly under the two 12" fine-tune rows and above ↺ Reset Fine-Tune,
+  blank picked only, so it sits with the rows it governs. Tip Style stays last (§4).
+- **Shape:** the same anatomy as Tip Style — label "Fine-tune off" (Control label treatment), a
+  `TwoOptionToggle` with `options={["deck", "bottom"]}` and `labels={["Deck", "Bottom"]}` at its
+  natural width, `ariaLabel="Fine-tune off"`, then the selected option's one-line hint (Meta, muted).
+  The pair is narrower than Tip Style's (`Deck` is shorter than `Pin deck`), so every width in §12 holds.
+- **Value:** stored on the board with the blank (like the skin and the Tip Style); a new board starts
+  on Deck; no account default this phase (founder's ruling — it can be added later). Switching blanks
+  keeps it; Remove This Blank takes it away with the blank and one undo brings it back.
+- **What a tap does:** re-derives both 12" stations' curves with the existing tweak amounts on the
+  chosen surface; nothing else moves at or inside the stations except, under Bottom, the rocker
+  numbers the re-levelling changes. One undo step; tapping the selected option does nothing.
 
 ### 6. The Fit & Tip Defaults dialog and the menu row (D-01, D-03, D-04, D-10)
 
@@ -587,6 +616,13 @@ Every touch size below is `coarse:`. No new rule reads width or height.
 - **The copy** is in the Copywriting table: the list intro, F4, E2 and E3. F1, F2, F3, F5, E1, E4,
   E5 and the offer are unchanged. **Change Fit Rules** still opens the dialog. That is where Planer
   Max Depth and the Deck Skin default live, so both ways out named by E2 are one tap away.
+- **One pass at the placement (D-15):** the fit check also requires one Planer Max Depth of foam
+  under the board's centre where it sits; a failure is Phase 11's F2 ("Doesn't fit at this placement",
+  "{amount} too thin at the center"), no new sentence.
+- **The foil runs out (D-18)** `(Claude's discretion — founder may overrule)`: a board that would be
+  under 1/8" thick anywhere reads as not fitting, with its own reason line: "Less than 1/8" would be
+  left {where} — this blank is too thick for a {center} center." (Metric: "Less than 3 mm …").
+  Reachable only at centres of 1 1/2" or less.
 - **What F4 means now:** it fires when a picked blank no longer leaves room for the skin plus one
   bottom pass at the center — for example after a thicker Center Thickness, a thicker Deck Skin or a
   deeper Planer Max Depth. The flag keeps the pick (Phase 11 D-08).
@@ -617,6 +653,9 @@ Every touch size below is `coarse:`. No new rule reads width or height.
 
 ### 10. Older boards (D-07)
 
+- **Carried-over boards may open flagged (D-14, the founder's ruling):** with the default skin, many
+  Phase 11 boards no longer fit under the new floor and their tip rockers move under Pin deck. The
+  existing flag and offer (F1/F2/F4) say so; nothing new is added.
 - **No migration dialog, banner, toast or badge** (the Phase 11 contract §14 rule, kept). A board
   saved under Phase 11 opens with its five station numbers exactly as saved, its Deck Skin at the
   default, its Tip Style at the account default, and the curve between stations following the new
@@ -711,7 +750,7 @@ reads height.
 
 ## UI Considerations
 
-**60 considerations across 12 surfaces — 60 resolved, 0 open** (58 answered explicitly by this contract, 2 held out as a visual check).
+**65 considerations across 13 surfaces — 65 resolved, 0 open** (63 answered explicitly by this contract, 2 held out as a visual check).
 
 Produced by `gsd-core/bin/lib/ui-consideration-probe.cjs` from the twelve surfaces the researcher
 listed (E01–E12), with element kinds authored deliberately rather than inferred from prose (the
@@ -867,6 +906,18 @@ _Kinds: static-content_
 |---|---|---|
 | **Overflow / truncation** | The fallback column is exactly the Phase 11 column with nothing added (§11), whose widths the Phase 11 contract measured (its §8 and §15). | ✅ covered |
 | **Long text** | The only changed text without a blank is the list intro, running text that wraps; no new string appears in the fallback (§11). | ✅ covered |
+
+### Fine-tune off toggle (Deck / Bottom)
+
+_Kinds: interactive-control, form_
+
+| State | How it resolves | |
+|---|---|---|
+| **Empty / no data** | Never empty: one pill is always selected — Deck by default, saved with the board on the blank — and the control is hidden without a blank (§5a, §11). | ✅ covered |
+| **Loading / in-flight** | No loading state: store state painted with the page; nothing is fetched (§5a). | ✅ covered |
+| **Error / failure** | A tap cannot fail: a local state change and one undo step; under Bottom the rocker re-levels and the readouts show the shift, which is the chosen behaviour, not an error (§5a, D-13). | ✅ covered |
+| **Partial / incomplete** | Two options with exactly one active (`aria-pressed`); no in-between state (§5a). | ✅ covered |
+| **Long text** | Fixed labels 'Deck' and 'Bottom', a narrower pair than Tip Style's 110.5px; the one-line hint wraps at 12px within the 260px floor as §12 allows. | ✅ covered |
 
 ---
 
