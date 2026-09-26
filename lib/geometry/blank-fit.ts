@@ -570,6 +570,67 @@ export function listBlanks(
 }
 
 /**
+ * The offer beside a flag (D-08, R6): of the fitting verdicts, the blank of ANY vendor whose length
+ * is closest to the current blank's; on a tie, the one with less spare foam at the centre (its
+ * centre-station thickness minus the target). Never the current blank itself (matched by vendor and
+ * name), never a verdict that does not fit, and null when nothing is left to offer (F5).
+ */
+export function nearestFit(
+  current: Pick<BlankRecord, "vendor" | "name" | "lengthMm">,
+  fits: readonly BlankVerdict[],
+  targetCenter: Mm,
+): BlankVerdict | null {
+  let best: BlankVerdict | null = null;
+  let bestGap = Infinity;
+  let bestSpare = Infinity;
+  for (const verdict of fits) {
+    const { record } = verdict.prepared;
+    if (!verdict.fits) continue;
+    if (record.vendor === current.vendor && record.name === current.name) continue;
+    const gap = Math.abs(verdict.prepared.lengthMm - current.lengthMm);
+    const spare = verdict.prepared.centerThicknessMm - targetCenter;
+    const closer = gap < bestGap - FLOOR_EPSILON_MM;
+    const tiedButLeaner = Math.abs(gap - bestGap) <= FLOOR_EPSILON_MM && spare < bestSpare - FLOOR_EPSILON_MM;
+    if (best === null || closer || tiedButLeaner) {
+      best = verdict;
+      bestGap = gap;
+      bestSpare = spare;
+    }
+  }
+  return best;
+}
+
+/**
+ * "Move to Where It Fits" (11-UI-SPEC F2): the fitting placement on this blank nearest to `from`.
+ * `from` is clamped into the slider's range first and returned as it is when the board already fits
+ * there; otherwise every 1/16" placement in the range is tried nearest-first (the nose side first
+ * at an equal distance) and the first that fits is returned. Null when the board fits nowhere on
+ * this blank. The candidates include every placement `judgeBlank` tries, so a blank judged to fit
+ * always has somewhere to move to. Bounded by the placement range (T-11-07).
+ */
+export function nearestFittingPlacement(
+  prepared: PreparedBlank,
+  ctx: BoardFitContext,
+  settings: FitSettings,
+  from: Mm,
+): Mm | null {
+  const L = ctx.board.length;
+  const halfWidthAt = memoiseHalfWidth(ctx.halfWidthAt);
+  const fitsAt = (placement: Mm) =>
+    fitAt(boardOnBlank(prepared, ctx.board, placement), halfWidthAt, ctx.widePointStation, settings.widthMargin)
+      .fits;
+
+  const start = clampPlacement(from, prepared.lengthMm, L);
+  if (fitsAt(start)) return start;
+
+  const { lo, hi } = placementIndexRange(prepared, L);
+  const candidates: Mm[] = [];
+  for (let index = lo; index <= hi; index++) candidates.push(blankPlacementAt(prepared, L, index));
+  candidates.sort((a, b) => Math.abs(a - start) - Math.abs(b - start) || b - a);
+  return candidates.find(fitsAt) ?? null;
+}
+
+/**
  * The longest pickable blank and the thickest pickable centre — the catalogue's best, which the
  * empty-list messages name (E1, E2). Both 0 for a catalogue with no pickable blank.
  */
