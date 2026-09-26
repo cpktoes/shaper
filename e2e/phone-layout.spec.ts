@@ -413,7 +413,7 @@ test.describe("phone controls — every slider sits in its own section", () => {
     await dismissSignInBanner(page);
   });
 
-  test("Width and Nose Angle are on screen the moment the page opens, with no Fine adjust row anywhere", async ({
+  test("Width and the hand-set rocker are on screen the moment the page opens, with no Fine adjust row anywhere", async ({
     page,
   }) => {
     await page.goto("/design/outline");
@@ -437,7 +437,11 @@ test.describe("phone controls — every slider sits in its own section", () => {
     await page.goto("/design/rocker");
 
     await expect(page.getByRole("button", { name: "Fine adjust" })).toHaveCount(0);
-    await expect(page.getByText(/^Nose Angle — /)).toBeVisible();
+    // The hand-set rocker's Nose Tip row (Phase 11, D-14), looked for inside the ROCKER section
+    // alone — the THICKNESS section below has a Nose Tip row of its own, which must not be what
+    // satisfies this. The section is the heading button's own parent.
+    const rockerSection = page.getByRole("button", { name: /^Rocker\s*[▾▸]$/ }).locator("xpath=..");
+    await expect(rockerSection.getByText(/^Nose Tip — /)).toBeVisible();
   });
 });
 

@@ -6,20 +6,19 @@
  * units boundary (lib/geometry/units.ts) when converting a control value
  * in or a label out.
  *
- * `rocker`/`foil` (04-01): `RockerSpec`/`FoilSpec` live in `./rocker`/`./foil`, not here — this
- * file stays types-only, importing the types rather than redefining them, following the same
- * numbered-deviation convention `lib/geometry/volume.ts` uses. `FoilSpec` (`./foil`) still
- * carries CONTEXT.md D-05's five-station blank-datasheet model (nose tip, nose 12", centre,
- * tail 12", tail tip, all typed). `RockerSpec` (`./rocker`) no longer does: quick task 260829-rda
- * replaced D-05's five fixed rocker stations with a three-knot, two-Bezier curve — the same
- * tail-pod/widepoint/nose-tip construction `outline.ts` uses — because forcing the curve through
- * the two 12" stations produced an abrupt, kinked rocker line. `RockerSpec` now carries a lift,
- * an angle and a smoothness at each tip plus a flatness at the centre per side; the two 12"
- * figures are derived from the built curve rather than stored.
+ * `rocker`/`foil` (04-01): `FiveStationRocker`/`FoilSpec` live in `./rocker`/`./foil`, not here —
+ * this file stays types-only, importing the types rather than redefining them, following the same
+ * numbered-deviation convention `lib/geometry/volume.ts` uses. `FoilSpec` (`./foil`) carries
+ * CONTEXT.md D-05's five-station blank-datasheet model (nose tip, nose 12", centre, tail 12", tail
+ * tip, all typed). As of Phase 11 (D-14) the rocker is back on five stations too: a board with no
+ * blank carries the hand-set `FiveStationRocker` (four typed lifts, the centre always 0), drawn
+ * through pchip; a board in a blank reads its rocker off the blank itself (D-01) and keeps this
+ * value only as its fallback. The three-knot Bezier `RockerSpec` (quick task 260829-rda) survives
+ * only to migrate boards saved before snapshot version 4.
  */
 
 import { type Degrees, type Mm, degrees, inchesToMm } from "./units";
-import { DEFAULT_ROCKER_SPEC, type RockerSpec } from "./rocker";
+import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "./foil";
 
 /** Generic 2D point in millimetres. */
@@ -108,7 +107,7 @@ export const WIDEPOINT_WIDTH_RANGE_IN = { min: 16, max: 25 } as const;
  */
 export interface BoardSpec {
   outline: OutlineSpec;
-  rocker: RockerSpec;
+  rocker: FiveStationRocker;
   foil: FoilSpec;
 }
 
@@ -125,7 +124,7 @@ export const DEFAULT_BOARD_SPEC: BoardSpec = {
     tailFullness: 50.5,
     tail: { kind: "squash", endWidth: inchesToMm(4) },
   },
-  rocker: DEFAULT_ROCKER_SPEC,
+  rocker: DEFAULT_FALLBACK_ROCKER,
   foil: DEFAULT_FOIL_SPEC,
 };
 

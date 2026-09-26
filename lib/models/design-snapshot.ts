@@ -3,12 +3,12 @@
  *
  * The single place a design is validated on its way into and out of the database — the model
  * boundary equivalent of `lib/geometry/units.ts`'s unit boundary. `DesignSnapshotFields` is the
- * same ten-field object `design-store.tsx` calls `designSnapshotFields`: outline, rocker, foil,
- * rails, fins, volume, finsImportTemplate, railsImportFoilThickness, boardName, finSystem (D-11 —
- * the whole `DesignState`, minus `modelId` and `boardStarted`, which are session bookkeeping, not
- * board design).
+ * same eleven-field object `design-store.tsx` calls `designSnapshotFields`: outline, rocker, foil,
+ * rails, fins, volume, finsImportTemplate, railsImportFoilThickness, boardName, finSystem and
+ * blank (D-11 — the whole `DesignState`, minus `modelId`, `boardStarted` and `dirty`, which are
+ * session bookkeeping, not board design).
  *
- * Three rules govern this file:
+ * Four rules govern this file:
  *
  * 1. The branded `Mm`/`Degrees`/`Litres` types (lib/geometry/units.ts) are plain numbers at
  *    runtime, so every one of them is validated here as `z.number()` — never re-branded at the
@@ -21,24 +21,42 @@
  *    each one from its matching geometry module's own DEFAULT_* constant (`DEFAULT_ROCKER_SPEC`,
  *    `DEFAULT_FOIL_SPEC`) rather than rejecting the row. A board saved before this phase just
  *    reopens with a sensible default side profile (D-15) — no migration, no error.
- * 3. Version 3 (quick task 260829-rda) extends rule 2 from backfill to MIGRATION: `rocker.ts`'s
- *    `RockerSpec` changed SHAPE, not just gained an optional field — a version-2 snapshot's
- *    rocker is the old four-lift object (`noseTip`/`nose12`/`tail12`/`tailTip`), which the
- *    current eight-field shape cannot simply be missing-and-defaulted onto (the fields that ARE
- *    present don't match the new shape's fields at all). `rockerSpecSchema` below is a
- *    `z.union` of the current shape and the legacy one; `parseSnapshot` detects which one parsed
- *    (by the presence of `nose12`, a field only the legacy shape has) and runs a legacy match
- *    through `migrateLegacyRocker` (`lib/geometry/rocker.ts`) — carrying the tip lifts through
- *    exactly and filling the six new shape controls from `DEFAULT_ROCKER_SPEC`, since a legacy
- *    snapshot never recorded any curve shape beyond its four lift points.
+ * 3. Version 3 (quick task 260829-rda) extended rule 2 from backfill to MIGRATION: the rocker
+ *    changed SHAPE to an eight-field Bezier, and a version-2 four-lift rocker was converted onto it
+ *    on read (its tip lifts carried over, the shape controls defaulted). Rule 4 below supersedes
+ *    that conversion: the four-lift shape is current again, and a version-3 Bezier is now the one
+ *    read back as five stations.
+ * 4. Version 4 (Phase 11, D-01/D-14) changes the rocker's shape back to five stations and adds the
+ *    board's blank.
+ *    - The ROCKER is the hand-set fallback `FiveStationRocker` — `noseTip`, `nose12`, `tail12`,
+ *      `tailTip`, the centre always 0. That is exactly version 2's four-lift shape, so a version-2
+ *      rocker parses as today's value unchanged. A version-3 eight-field Bezier (detected by
+ *      `noseLift`, a field only it has) is built at the board's own length and read at the five
+ *      stations (`bezierToFiveStations`), so it reopens showing the very numbers its old curve
+ *      showed. A version-1 snapshot (no rocker key at all) reads the default Bezier the same way,
+ *      because that is the curve version 3 drew for such a board (11-RESEARCH.md A5). The Bezier
+ *      builder survives in `lib/geometry/rocker.ts` only for this migration.
+ *    - The BLANK is `null` (no blank — the hand-set fallback, D-02) or the board's own copy of its
+ *      blank's catalogue rows, carried BY VALUE (D-01) so a later catalogue correction can never
+ *      move a saved board, plus the placement and the two 12" fine-tunes. Absent means `null`.
+ *    - A saved snapshot is untrusted input — a saved row and the browser both feed this parser, and
+ *      the blank copy brings an array and free text with it — so the blank is validated for SIZE as
+ *      well as shape: at most 32 stations, identity strings at most 120 characters, a flag at most
+ *      400, every number finite and inside a sane range, stations strictly tail-to-nose, placement
+ *      within ±4000 mm, each fine-tune within ±50 mm, and the copy must pass the same pickable rule
+ *      (`isPickable`) the blank list uses. `app/design/actions.ts` re-parses every save through here.
+ *    - `foil.center` stays the board's ONE stored centre thickness (D-12); the blank carries no
+ *      board centre of its own.
  *
- * Imports only from lib/geometry/* and the validation library — never the ORM layer or the auth
- * SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
+ * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
+ * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
  * 1's spirit: nothing database- or auth-shaped belongs beside a geometry-adjacent boundary
  * module.
  */
 
 import { z } from "zod";
+import { isPickable } from "@/lib/blanks/catalog";
+import type { BlankRecord, BoardBlank } from "@/lib/geometry/blank";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec } from "@/lib/geometry/board";
 import {
   DEFAULT_FIN_PLACEMENT_SPEC,
@@ -47,10 +65,15 @@ import {
 } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "@/lib/geometry/rail-bands";
-import { DEFAULT_ROCKER_SPEC, migrateLegacyRocker, type RockerSpec } from "@/lib/geometry/rocker";
+import {
+  DEFAULT_ROCKER_SPEC,
+  bezierToFiveStations,
+  type FiveStationRocker,
+  type RockerSpec,
+} from "@/lib/geometry/rocker";
 import { DEFAULT_VOLUME_SPEC, type VolumeSpec } from "@/lib/geometry/volume";
 
-export const DESIGN_SNAPSHOT_VERSION = 3;
+export const DESIGN_SNAPSHOT_VERSION = 4;
 
 const tailShapeSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("pin") }),
@@ -73,19 +96,19 @@ const outlineSpecSchema = z.object({
   tail: tailShapeSchema,
 });
 
-/** The legacy four-lift rocker shape (pre-260829-rda) — kept so an already-saved board's rocker
- * still parses. `nose12`/`tail12` are what `parseSnapshot` uses to detect this shape (the current
- * shape has neither field). */
-const legacyRockerSpecSchema = z.object({
+/** The five-station hand-set rocker (version 4, D-14) — four typed lifts, the centre always 0 and
+ * never stored. The very same shape version 2 saved, so a version-2 rocker needs no conversion. */
+const fiveStationRockerSchema = z.object({
   noseTip: z.number(),
   nose12: z.number(),
   tail12: z.number(),
   tailTip: z.number(),
 });
 
-/** The current eight-field rocker shape. Plain `z.number()`/`z.degrees` per branded field, never
- * re-branded at the Zod layer — same posture as `outlineSpecSchema` above. */
-const currentRockerSpecSchema = z.object({
+/** Version 3's eight-field Bezier rocker (quick task 260829-rda) — kept so a board saved under
+ * version 3 still parses; `parseSnapshot` reads it back as five stations. Plain `z.number()` per
+ * branded field, never re-branded at the Zod layer — same posture as `outlineSpecSchema` above. */
+const bezierV3RockerSchema = z.object({
   noseLift: z.number(),
   tailLift: z.number(),
   noseAngle: z.number(),
@@ -96,9 +119,73 @@ const currentRockerSpecSchema = z.object({
   tailFlatness: z.number(),
 });
 
-/** The current shape has no field the legacy shape also requires (and vice versa), so this union
- * is unambiguous in either order — current listed first so today's saves take the fast path. */
-const rockerSpecSchema = z.union([currentRockerSpecSchema, legacyRockerSpecSchema]);
+/** The two shapes share no field name, so the union is unambiguous in either order — today's
+ * five-station shape listed first so current saves take the fast path. */
+const rockerSpecSchema = z.union([fiveStationRockerSchema, bezierV3RockerSchema]);
+
+/** A blank's longest identity string (vendor, name, catalogue slug). The longest in the seeded
+ * catalogues is well under half this. */
+const BLANK_TEXT_MAX = 120;
+/** A catalogue flag's longest text. The longest seeded flag is 262 characters. */
+const BLANK_FLAG_MAX = 400;
+/** A blank's most stations. The seeded catalogues print 5 to 15. */
+const BLANK_STATIONS_MAX = 32;
+/** A station label's longest text (`T12`, `N0`, `C`, …). */
+const BLANK_LABEL_MAX = 16;
+/** The longest blank (and the furthest station from its tail) the parser accepts, in mm (~16'5"). */
+const BLANK_LENGTH_MAX_MM = 5000;
+/** The widest range a station's rocker, thickness or width may take, in mm either side of zero. */
+const BLANK_VALUE_MAX_MM = 1000;
+/** How far the board's centre may sit from the blank's centre, in mm either way. */
+const BLANK_PLACEMENT_MAX_MM = 4000;
+/** The largest 12" fine-tune either way, in mm (~2"). */
+const BLANK_OFFSET_MAX_MM = 50;
+
+const blankValueSchema = z.number().min(-BLANK_VALUE_MAX_MM).max(BLANK_VALUE_MAX_MM).nullable();
+
+/** One catalogue station, bounded (rule 4). An empty catalogue cell is `null`, never 0 (R10). */
+const blankStationSchema = z.object({
+  label: z.string().max(BLANK_LABEL_MAX),
+  fromTailMm: z.number().min(0).max(BLANK_LENGTH_MAX_MM),
+  rockerMm: blankValueSchema,
+  thicknessMm: blankValueSchema,
+  widthMm: blankValueSchema,
+  flag: z.string().max(BLANK_FLAG_MAX).nullable(),
+});
+
+/** The board's own copy of its blank's catalogue record (D-01), bounded (rule 4). Stations must run
+ * strictly tail to nose — the blank's curves are fitted through them in that order and could not be
+ * drawn otherwise — and the copy must be one the blank list could have offered (`isPickable`). */
+const blankRecordSchema = z
+  .object({
+    vendor: z.string().max(BLANK_TEXT_MAX),
+    name: z.string().max(BLANK_TEXT_MAX),
+    catalogSlug: z.string().max(BLANK_TEXT_MAX),
+    pdfPage: z.number().int().min(0).max(10000),
+    lengthMm: z.number().gt(0).max(BLANK_LENGTH_MAX_MM),
+    deckLengthMm: z.number().min(0).max(BLANK_LENGTH_MAX_MM).nullable(),
+    volumeLitres: z.number().min(0).max(1000).nullable(),
+    stations: z.array(blankStationSchema).min(2).max(BLANK_STATIONS_MAX),
+  })
+  .refine(
+    (record) =>
+      record.stations.every((station, i) => i === 0 || station.fromTailMm > record.stations[i - 1].fromTailMm),
+    { message: "a blank's stations must run strictly from tail to nose" },
+  )
+  // The cast is the same deliberate brand bridge as rule 1: every field was just validated.
+  .refine((record) => isPickable(record as BlankRecord), {
+    message: "this blank is missing a thickness the board's foil needs (not pickable)",
+  });
+
+/** A board's blank (D-01): its catalogue copy, where the board sits on it (positive toward the
+ * nose, D-08) and the two 12" fine-tunes (D-11). It carries no board centre thickness — that stays
+ * `foil.center` (D-12). */
+export const boardBlankSchema = z.object({
+  copy: blankRecordSchema,
+  placement: z.number().min(-BLANK_PLACEMENT_MAX_MM).max(BLANK_PLACEMENT_MAX_MM),
+  nose12Offset: z.number().min(-BLANK_OFFSET_MAX_MM).max(BLANK_OFFSET_MAX_MM),
+  tail12Offset: z.number().min(-BLANK_OFFSET_MAX_MM).max(BLANK_OFFSET_MAX_MM),
+});
 
 /** Five thickness values, including both tips (D-05) — `foilSpecSchema`'s only structural
  * difference from `rockerSpecSchema` is the extra `center` field. */
@@ -186,21 +273,24 @@ const designFieldsSchema = z
     railsImportFoilThickness: z.boolean(),
     boardName: z.string(),
     finSystem: finSystemSchema,
+    blank: boardBlankSchema.nullable(),
   })
   .partial();
 
-/** A Zod object with a numeric `version` and a `design` object mirroring the nine snapshot
+/** A Zod object with a numeric `version` and a `design` object mirroring the eleven snapshot
  * fields (see the module doc-comment for the tolerance rule this schema enforces). */
 export const designSnapshotSchema = z.object({
   version: z.number(),
   design: designFieldsSchema,
 });
 
-/** The nine fields a save captures (D-11) — everything `DesignState` holds except `modelId` and
- * `boardStarted`, which are session bookkeeping, not board design. */
+/** The eleven fields a save captures (D-11) — everything `DesignState` holds except `modelId`,
+ * `boardStarted` and `dirty`, which are session bookkeeping, not board design. */
 export interface DesignSnapshotFields {
   outline: OutlineSpec;
-  rocker: RockerSpec;
+  /** The hand-set fallback rocker (D-14). Kept while a blank is picked, as the rocker the board
+   * returns to only if the shaper removes the blank (which re-seeds it from the drawn curve). */
+  rocker: FiveStationRocker;
   foil: FoilSpec;
   rails: RailBandSpec;
   fins: FinPlacementSpec;
@@ -213,6 +303,8 @@ export interface DesignSnapshotFields {
   railsImportFoilThickness: boolean;
   boardName: string;
   finSystem: FinSystem;
+  /** The board's blank, by value (D-01), or `null` for the hand-set fallback (D-02). */
+  blank: BoardBlank | null;
 }
 
 export interface DesignSnapshot {
@@ -225,35 +317,37 @@ export function buildSnapshot(fields: DesignSnapshotFields): DesignSnapshot {
   return { version: DESIGN_SNAPSHOT_VERSION, design: fields };
 }
 
-/** True when a parsed rocker object is the legacy four-lift shape — detected by the presence of
- * `nose12`, a field only that shape has (the current shape has no field in common with it). */
-function isLegacyRocker(rocker: unknown): rocker is { noseTip: number; nose12: number; tail12: number; tailTip: number } {
-  return typeof rocker === "object" && rocker !== null && "nose12" in rocker;
+/** True when a parsed rocker object is version 3's eight-field Bezier — detected by `noseLift`, a
+ * field only that shape has (the five-station shape has no field in common with it). */
+function isBezierV3Rocker(rocker: object): boolean {
+  return "noseLift" in rocker;
 }
 
 /**
  * Validates and unwraps a stored (or incoming) snapshot back into usable design fields, filling
  * any field an older version omitted from the matching geometry module's own DEFAULT_* constant.
- * A rocker object in the legacy four-lift shape is migrated through `migrateLegacyRocker` rather
- * than backfilled — see rule 3 in the module doc-comment. Throws (via Zod) on a structurally
- * wrong value rather than half-accepting it.
+ * The rocker is always returned as five stations — a version-3 Bezier or a missing rocker is read
+ * at the board's own five stations (rule 4). Throws (via Zod) on a structurally wrong or oversized
+ * value rather than half-accepting it.
  */
 export function parseSnapshot(value: unknown): DesignSnapshotFields {
   const parsed = designSnapshotSchema.parse(value);
   const design = parsed.design;
 
-  const rocker = design.rocker
-    ? isLegacyRocker(design.rocker)
-      ? migrateLegacyRocker(design.rocker)
-      : (design.rocker as RockerSpec)
-    : DEFAULT_ROCKER_SPEC;
+  // The outline first: an older rocker is read at the board's OWN length.
+  const outline = (design.outline ?? DEFAULT_BOARD_SPEC.outline) as OutlineSpec;
+  const rocker: FiveStationRocker = !design.rocker
+    ? bezierToFiveStations(DEFAULT_ROCKER_SPEC, outline.length)
+    : isBezierV3Rocker(design.rocker)
+      ? bezierToFiveStations(design.rocker as RockerSpec, outline.length)
+      : (design.rocker as FiveStationRocker);
 
   // The cast below is the one deliberate bridge from "validated plain numbers" back to the
   // branded Mm/Degrees/Litres types real design state is built from — see rule 1 in the module
   // doc-comment. Each field was validated shape-for-shape above; only the numeric brand is
   // erased at runtime and restored here.
   return {
-    outline: (design.outline ?? DEFAULT_BOARD_SPEC.outline) as OutlineSpec,
+    outline,
     rocker,
     foil: (design.foil ?? DEFAULT_FOIL_SPEC) as FoilSpec,
     rails: (design.rails ?? DEFAULT_RAIL_BAND_SPEC) as RailBandSpec,
@@ -263,5 +357,6 @@ export function parseSnapshot(value: unknown): DesignSnapshotFields {
     railsImportFoilThickness: design.railsImportFoilThickness ?? true,
     boardName: design.boardName ?? "",
     finSystem: (design.finSystem ?? "fcs2") as FinSystem,
+    blank: (design.blank ?? null) as BoardBlank | null,
   };
 }
