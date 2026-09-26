@@ -17,6 +17,27 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 
 ## Current State
 
+**Shipped: v1.3 — Rocker from Real Blanks** (2026-09-26, Phase 11, 13 plans)
+
+The ROCKER screen stopped being a hand-drawn curve. A shaper sets a target centre thickness, picks a
+real foam blank that fits from the US Blanks, Arctic Foam and Marko Foam catalogues (162 blanks in the
+database, 158 pickable), slides the board along it, and reads the board's rocker, thickness and foil
+off where it sits in that foam: the four rocker numbers and the foam to remove live on every move,
+every blank that won't fit listed with a plain reason and the closest blank that fits offered, tip
+thicknesses as settings with 12" fine-tunes, and the board drawn inside its blank with the foam to be
+planed shaded. Five Fit & Tip Defaults live in the gear menu and follow the shaper's account. Saved
+boards moved to version 4 with the blank travelling with the board; every board saved before the phase
+reopens hand-set with four rocker sliders; presets start in real (provisional) blanks.
+
+Underneath: PCHIP interpolation with SciPy parity (no overshoot near the nose), levelling to exactly 0,
+a fit check at every point, and the brief's four named geometry tests green before any UI. Production
+was migrated and seeded BEFORE the deploy, under the database rule the phase's code review amended
+(Drizzle names every column on insert). Verified 16/16 with no gaps, walked 7/7 by the founder,
+43/43 threats closed, six live checks on www.shaperassistant.com.
+
+<details>
+<summary>Earlier narrative — v1.2 phases 8–10 as they landed</summary>
+
 **Phase 10 complete (2026-09-12, 11 plans): the whole app on a phone.** The rack’s dialogs, the account controls and the home screen were sized for a thumb, then the app was put in the founder’s hands on a real iPhone — twice. The first walk found what no emulator could: a phone held sideways is ~844 dots wide, not the emulator’s 750, so it crossed the 820px layout switch. A round of fixes tried to make a sideways phone stay a phone; the founder, phone in hand, said it was better as a normal browser, and that stands (D-10). The second walk passed all ten steps on the iPhone and found one thing — the drawing column didn’t scroll on a short screen — fixed the same day and pinned by a test that measures a real scroll. The board card’s picture now has a floor it can never fall below; the RAILS instructions page dropped its sliders on an upright phone; three code-review rounds fixed every finding that could reach a shaper. The Android phone was not walked, by the founder’s explicit call, so PHON-10 closes on the iPhone’s evidence alone.
 
 **In progress: v1.2 — Rails Finished, Phone Ready.** Phase 9 complete (2026-09-09, 9 plans): the
@@ -46,6 +67,8 @@ numbers collided on the small example rail, US Letter printed blank pages around
 were closed by three gap plans and re-measured with headless Chrome. Phase 9, the design screens
 on a phone, is next.
 
+</details>
+
 **Shipped: v1.1 — Imperial vs Metric** (2026-09-06, Phases 5–7, 21 plans)
 
 A shaper picks Imperial or Metric from the gear menu and the whole app follows: the setup screen's
@@ -65,27 +88,20 @@ Before that, **v1.0 — the design tool, in inches** (2026-08-29, Phases 1–4):
 prototype ported into a real Next.js app and live on Vercel, with accounts and saved designs,
 verified geometry math, live volume, printable full-size templates, and the rocker and foil editors.
 
-Archives: [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-phases/)
+Archives: [v1.3](milestones/v1.3-ROADMAP.md) · [v1.2](milestones/v1.2-ROADMAP.md) · [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-phases/)
 
-## Current Milestone: v1.2 Rails Finished, Phone Ready
+## Current Milestone
 
-**Goal:** Finish the rails screen the prototype always had, and make the whole app something a shaper can actually use on a phone.
-
-**Target features:**
-- The rails screen's third tab, INSTRUCTIONS ("Understanding Rail Markings") — a live example rail with every mark named by a callout, and a Flat / Domed toggle, ported from the prototype
-- An "Include Rail Band Instructions in Print" option that folds that sheet into printed output, in the shaper's chosen system
-- "View Full Sized" — the rail cross-section at 1:1 on screen, to hold against the foam; standard-screen assumption, same as the prototype, with no calibration step
-- A board-outline plan and side reference view on the rails screen, with legend checkboxes, showing where each rail section sits along the board
-- Every screen works on a phone, end to end: sign in, pick a preset, open a saved board from the rack, shape it across all five design screens, save it, read the summary
-- Touch-first, not merely unbroken: finger-sized sliders and buttons, viewers that fill the screen, and drag handles that work under a thumb
-
-**Key context:** No new geometry math: the prototype passes a `halveDeckMark1` flag when computing the INSTRUCTIONS example rail, but its `computeSection` never reads it (verified 2026-09-07 — the flag appears once, at the call site on `Rails.dc.html` line 1359, and not in the parameter list on line 704), so the existing `computeRailSection` already produces the example rail exactly as the prototype drew it. The page's background artwork moves from `reference/project/assets/rail-bands-plan-bg.png` into `public/`. The design screens have zero responsive breakpoints today, so phone layout is built from scratch across effectively every screen, including touch drag on the outline, rocker and foil editors. Everything new reads the shaper's chosen units under the v1.1 dims-in-cm / marks-in-mm split. The board-outline plan view was originally blocked by the rails screen owning its own state; the shared design store from Phase 1 removed that blocker.
+_None open — v1.3 shipped 2026-09-26. The next milestone is defined by `/gsd-new-milestone` (or a phase
+added for `/gsd-discuss-phase`); the front-runner is the founder's foil-from-real-shaping model below._
 
 <details>
-<summary>Carried forward — not in v1.2</summary>
+<summary>Carried forward — not yet scheduled</summary>
 
 - **Free/paid tier gating** (Clerk Billing) — build-guide milestones M4–M5, waiting on real shapers using the free version so it's clear what's worth paying for. The first candidate feature is branding the order form with a shaper's own logo and contact details (todo, 2026-09-06)
 - **Public sharing / model gallery** — build-guide milestone M6
+- **Foil the way a shaper cuts it** — deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, and tip thinning in the last 12" with a pin-deck or bottom choice (todo 2026-09-26, the front-runner for v1.4)
+- **Blank manufacturer tick-boxes** in settings and **a smoother-looking drawn rocker curve** that leaves every PCHIP number alone (todos 2026-09-26)
 - **Retroactive coverage on v1.1** — a security pass for Phase 5 (it added a database table and a server action) and Nyquist validation for Phases 5–7, none of which was run
 
 </details>
@@ -115,6 +131,8 @@ Archives: [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-ph
 - [x] User can shape a board on the five design screens from a phone — stacked layout, thumb-sized controls, outline and rocker points that drag under a finger, drawings that use the full width — with desktop mouse and keyboard behaviour unchanged, all proven by Playwright on iPhone and Android profiles — Validated in Phase 9: The Design Screens on a Phone (PHON-01…06, TEST-01; UAT 7/7 after two gap plans; security 47/47)
 - ✓ User can do everything else the app does from a phone — sign-in, the rack, the summary — with the whole trip proven in a shaper's hand on a real iPhone (Android walk skipped by founder decision D-12) — v1.2, Phase 10: The Whole App on a Phone (2026-09-12)
 
+- ✓ User can set a target centre thickness, pick a real blank that fits, slide the board along it and read the board's rocker, thickness and foil off the foam — every blank that won't fit shown with why, five Fit & Tip Defaults saved on the account, older boards reopening hand-set — v1.3, Phase 11: Rocker from Real Blanks (2026-09-26; the spec's sixteen requirements R1–R16 verified 16/16, UAT 7/7, security 43/43, six live checks)
+
 ### Active
 
 _(none — the next milestone's requirements are defined by `/gsd-new-milestone`)_
@@ -128,6 +146,8 @@ _(none — the next milestone's requirements are defined by `/gsd-new-milestone`
 - Public sharing / model gallery — deferred alongside billing (build guide milestone M6)
 
 ## Context
+
+**After v1.3 (2026-09-26):** 2,865 unit tests (Vitest) and 293 browser tests (Playwright) green; 162 real blanks (158 pickable) in the database, seeded from three vendor CSVs; the ROCKER screen reads rocker, thickness and foil off a real blank; no new runtime dependency (D-20); live at shaperassistant.com. Three todos filed at close (manufacturer tick-boxes; a smoother drawn curve without changing the numbers; the foil-from-real-shaping model).
 
 **After v1.2 (2026-09-12):** 2,463 unit tests (Vitest) and 225 browser tests (Playwright: iPhone, Android, desktop projects, five desktop screenshot baselines) green; the whole app usable on a phone; live at shaperassistant.com. Open backlog and deferred bookkeeping are listed in STATE.md's Deferred Items.
 
@@ -190,6 +210,11 @@ templates ("the math is right").
 | Real-device sweeps are the only evidence a phone requirement gets; automated tests are never allowed to stand in for them | Emulators missed the 844px sideways width, the iOS long-press callout and Safari's toolbar; the founder's hands found every real defect in phase 10 | ✓ Good |
 | PHON-10 closed on one phone by explicit founder decision (D-12), recorded in the requirement row, the summary and the verification | The consequence was stated at the moment of choosing; nothing claims the Android walk happened | ⚠️ Revisit — walk Android if a future milestone touches the phone |
 | Code review runs between the last code wave and the human checkpoint, and each review's findings are fixed in the same round | Three rounds in phase 10 each caught a real defect in the round's own fixes (one a same-wave gate dependency the orchestrator introduced) | ✓ Good |
+| Additive database changes migrate production BEFORE the deploy; removals wait for it | Drizzle names every column on insert, so deploying a new nullable column ahead of its migration breaks every existing save on that table (code review CR-01, 2026-09-26) — supersedes the v1.0 "code deploys before production migrates" row above for additive changes | ✓ Good — exercised at the v1.3 production step |
+| Rocker and thickness curves interpolate with PCHIP, never a plain cubic spline, and the interpolation is never changed to prettify a drawing | Nose rocker jumps hard near the tip; a cubic spline overshoots there and prints numbers a shaper cannot trust (R10, R15, D-13) | ✓ Good for the numbers; ⚠️ Revisit the drawn curve only — the founder finds it a little sharp (todo 2026-09-26) |
+| The foil scales the blank's thickness profile to the centre thickness with tips eased into the tip settings; the blank's ratio is read under the board's centre | Fits inside the foam and matches the shaper's centre and tips (D-17, D-18) | ✓ Working — the founder's real-shaping model (deck skin, parallel bottom, pin-deck thinning) is the candidate to replace it |
+| Presets open in real blanks chosen by rule and marked provisional | Real blanks carry fuller foil than the old typed numbers (preset litres rose 2–5 L); the founder replaces the picks through the preset-copy workflow | ⚠️ Revisit — the founder's own picks pending |
+| The production step runs with the founder present, in his own terminal, with a read-only proof before and after the seed | drizzle prints success without naming what it applied; the founder's production credentials never enter the assistant's sandbox | ✓ Good |
 
 ## Evolution
 
@@ -209,4 +234,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-12 after v1.2 milestone*
+*Last updated: 2026-09-26 after v1.3 milestone*

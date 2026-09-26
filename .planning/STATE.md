@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Rocker from Real Blanks
-status: completed
-stopped_at: Phase 11 complete and live (2026-09-26) — 13/13 plans, UAT 7/7, verification passed, security verified, production migrated and seeded, main deployed (2d05668). Milestone v1.3 has no further phases; next is /gsd-complete-milestone v1.3
-last_updated: "2026-09-26T20:56:00.584Z"
+status: Awaiting next milestone
+stopped_at: v1.3 shipped and archived 2026-09-26 — awaiting the next milestone; candidate: the foil-from-real-shaping model (deck skin, parallel bottom, pin-deck tip thinning; todo 2026-09-26)
+last_updated: "2026-09-26T21:30:48.631Z"
 last_activity: 2026-09-26
-last_activity_desc: "Phase 11 completed: production step 11-13 run with the founder (migrate, seed 162 blanks, merge, deploy), six live checks passed on www.shaperassistant.com; phase and milestone v1.3 ready to close"
+last_activity_desc: "v1.3 Rocker from Real Blanks archived: 1 phase, 13 plans, verification 16/16, UAT 7/7, security 43/43, live at shaperassistant.com; 17 bookkeeping artifacts acknowledged as deferred"
 progress:
   total_phases: 1
   completed_phases: 1
@@ -21,17 +21,17 @@ current_phase_name: Rocker from Real Blanks
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-12)
+See: .planning/PROJECT.md (updated 2026-09-26)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 11 — Rocker from Real Blanks
+**Current focus:** Awaiting the next milestone — front-runner: the foil-from-real-shaping model (todo 2026-09-26), to be opened with `/gsd-new-milestone` or a phase added for `/gsd-discuss-phase`
 
 ## Current Position
 
-**v1.2 — Rails Finished, Phone Ready: SHIPPED 2026-09-12.** Phases 8–10 complete and verified; audit passed 18/18. Archived under .planning/milestones/ (v1.2-ROADMAP.md, v1.2-REQUIREMENTS.md, v1.2-MILESTONE-AUDIT.md, v1.2-phases/). REQUIREMENTS.md removed pending the next milestone's definition.
+**v1.3 — Rocker from Real Blanks: SHIPPED 2026-09-26.** Phase 11 complete and verified (16/16, 0 gaps), UAT 7/7 with the founder, security 43/43, production migrated and seeded before the deploy, six live checks passed on www.shaperassistant.com. Archived under .planning/milestones/ (v1.3-ROADMAP.md, v1.3-REQUIREMENTS.md, v1.3-phases/). REQUIREMENTS.md absent pending the next milestone's definition.
 
-Status: All phases complete
-Last activity: 2026-09-26 — Phase 11 complete
+Status: Awaiting next milestone
+Last activity: 2026-09-26 — v1.3 archived
 
 ## Performance Metrics
 
@@ -278,6 +278,29 @@ Recent decisions affecting current work:
 | 112 | Browser tabs, bookmarks and history now show a shortboard outline with its stringer, turned 45° nose-up, instead of the placeholder triangle the app started with; drawn fresh after the founder's Flaticon reference (no attribution owed), filled white and outlined in the site's daylight ink so it shows on light and dark tab bars, with the same board on a white tile for an iPhone home screen (app/icon.svg, plus favicon.ico and apple-icon.png rendered from it) | 2026-09-16 | 154fdef | — |
 
 ## Deferred Items
+
+### Acknowledged at the v1.3 close (2026-09-26)
+
+Seventeen open artifacts acknowledged and deferred, per the founder's choice at milestone close. The
+seven debug sessions and the five quick-task records are shipped work from earlier milestones whose
+bookkeeping was never closed (carried forward from the v1.2 acknowledgement, plus one 260914 record);
+the todos are backlog for the next milestone.
+
+| Category | Item | Status |
+|----------|------|--------|
+| debug | fin-placement-numbers-in-cm, keyboard-focus-invisible-on-sliders, metric-axis-labels-instructions-card, order-form-letter-blank-pages, phone-print-button-does-nothing, typed-length-box-too-narrow, view-full-sized-print-offset | diagnosed — fixes shipped in v1.1/v1.2 (see the v1.2 table below) |
+| quick_task | 260818*-rebuild-volume* | record missing (carried forward) |
+| quick_task | 260910-2ny, 260910-jfp, 260910-kz2 | incomplete records; work shipped and tested (carried forward) |
+| quick_task | 260914-rj0-the-rear-fin-and-centre-fin-heights-on-t | status unknown to the scanner; work shipped 2026-09-14 |
+| todo | 2026-08-19-add-finished-board-photo-uploads-with-ratings | pending — backlog |
+| todo | 2026-08-19-mobile-phone-width-layout-polish | pending — largely superseded by v1.2; review before scheduling |
+| todo | 2026-08-21-fins-imported-template-width-branch | pending — backlog |
+| todo | 2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes | pending — backlog |
+| todo | 2026-09-06-brand-the-order-form-for-paid-shapers | pending — waits on the paid tier |
+| todo | 2026-09-14-live-pointer-coordinates-on-the-template-and-rocker-curves | pending — backlog |
+| todo | 2026-09-26-blank-manufacturer-tick-boxes-in-settings | pending — filed this milestone |
+| todo | 2026-09-26-smoother-drawn-rocker-curve-without-changing-the-numbers | pending — filed this milestone |
+| todo | 2026-09-26-foil-the-way-a-shaper-cuts-it-deck-skin-parallel-bottom-pin-deck-tips | pending — front-runner for the next milestone |
 
 ### Acknowledged at the v1.2 close (2026-09-12)
 
