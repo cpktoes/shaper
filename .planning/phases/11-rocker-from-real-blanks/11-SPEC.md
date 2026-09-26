@@ -77,7 +77,7 @@ Today the ROCKER screen (`components/rocker/*`, `app/design/rocker/page.tsx`) dr
 
 13. **Foil**: Scale the blank's thickness profile proportionally down to the board's centre thickness, with a minimum at the tips. Never subtract a constant — it drives the nose and tail negative.
     - Current: five typed stations.
-    - Target: board thickness(x) = blank thickness(x) × (target centre ÷ blank centre), never below the tip setting at the ends (D-10).
+    - Target: board thickness(x) = blank thickness(x) × (target centre ÷ blank centre), never below the tip setting at the ends (D-10). *(Planning note 2026-09-26: D-17 — the tips equal the setting through an ease-in from each 12 in station, the never-below guard stays; D-18 — "blank centre" in the ratio is the blank's thickness under the board's centre, so the centre equals the target at every placement.)*
     - Acceptance: no negative thickness anywhere for any seeded blank at any placement; thickness at centre equals the target; the tips are never below the setting.
 
 14. **Performance — client-side**: All slider math runs client-side. Curves are fitted once when a blank is picked, then sampled on each slider move. No server round trip.
@@ -88,7 +88,7 @@ Today the ROCKER screen (`components/rocker/*`, `app/design/rocker/page.tsx`) dr
 15. **Display**: Readouts snap to the nearest 1/16 in (shapers read 2 3/8 in, not 2.374) — whole mm in Metric, per CLAUDE.md Rule 2. Decimals stay in the math. If a curve looks faceted, sample it more densely for drawing; never change the interpolation. The site's aesthetic is maintained.
     - Current: `formatMark` already renders 1/16 in and whole mm.
     - Target: every new number passes through `lib/geometry/measure-display.ts`; stored values keep full precision; drawing density is a drawing parameter only.
-    - Acceptance: a value of 2.374 in displays as 2 3/8 in and is stored as 60.2996 mm; the units-isolation ledger passes for every new file; the desktop baseline screenshots for the other screens are unchanged.
+    - Acceptance: a value of 2.374 in displays as 2 3/8 in and is stored as 60.2996 mm; the units-isolation ledger passes for every new file; the desktop baseline screenshots for the other screens are unchanged. *(Planning note 2026-09-26: one measured exception — the VOLUME baseline prints litres to two decimals and pchip moves the default board 29.79 → 29.94 L (D-13, "litres move by a hair"), so it is re-recorded once by script beside the ROCKER baseline; TEMPLATE, RAILS and FINS stay unchanged.)*
 
 16. **Tests before UI**: (a) a board exactly as long as the blank at placement 0 reproduces the catalogue rocker at the tips and 12 in stations — Marko 6'0" M-Regular: nose 4.12, nose 12 in 1.32, tail 12 in 0.56, tail 1.74; (b) PCHIP never overshoots between two stations on any seeded blank; (c) leveling puts the curve's minimum at exactly 0; (d) the fit check rejects a board thicker than the blank near the nose even when the centre fits.
     - Current: none exist.

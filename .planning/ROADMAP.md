@@ -119,7 +119,7 @@ Opened 2026-09-25 on branch `rocker-blanks` from the founder's written brief, wh
 ### Phase 11: Rocker from Real Blanks
 
 **Goal:** A shaper sets a target centre thickness, picks a real blank that fits, slides the board along it, and the board's rocker, thickness and foil are read off where it sits in that foam — the four rocker numbers and the foam to remove shown live, every blank that won't fit shown with why, and a foil that matches the shaper's centre and tip thicknesses; the four named geometry tests land before any UI.
-**Requirements**: locked in `.planning/phases/11-rocker-from-real-blanks/11-SPEC.md` (16 requirements); decisions in `11-CONTEXT.md` (D-01–D-16)
+**Requirements**: locked in `.planning/phases/11-rocker-from-real-blanks/11-SPEC.md` (16 requirements); decisions in `11-CONTEXT.md` (D-01–D-20)
 **Depends on:** Phase 10
 **Success criteria:** the brief's DONE WHEN — pick a blank, slide the board along it, watch the four rocker numbers change live, see which blanks don't fit and why, and get a foil that matches the centre and tip thicknesses — plus the four named tests green before the UI, the seed re-runnable, and every older saved board reopening
 **Plans:** 0 plans

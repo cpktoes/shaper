@@ -391,8 +391,11 @@ brief, this section is the one to trust.
   toolbar buttons — still three after this phase. `e2e/touch-sizing.spec.ts:75` loops only
   `/design/outline` and `/design/volume` — add `/design/rocker` to that loop. `e2e/touch-drag.spec.ts:570`
   onwards drags rocker handles — rewritten for the placement slider, not deleted.
-  `e2e/desktop-baseline.spec.ts:62` holds the ROCKER baseline, which is re-recorded once on purpose;
-  the other four must not move.
+  `e2e/desktop-baseline.spec.ts:62` holds the ROCKER baseline, which is re-recorded once on purpose,
+  and `:74` holds the VOLUME baseline, which is re-recorded once too (planning research, 2026-09-26:
+  the pchip swap moves the default board from 29.79 to 29.94 L and the VOLUME card prints two
+  decimals, `components/volume/volume-calculation-card.tsx:136,181` — only those two figures may
+  differ in the diff); TEMPLATE, RAILS and FINS must not move.
 
 ---
 
@@ -814,13 +817,15 @@ bottom-right corner on every screen; nothing new is placed specially for it.
 `e2e/touch-sizing.spec.ts` loop; the placement slider's touch drag with zero network requests; the
 rewritten rocker drag specs (`touch-drag.spec.ts`, `phone-trip.spec.ts`) move to the new controls;
 the viewer's two new drawing weights are asserted present with a blank and absent without; the
-reason formatter and `formatSignedMark` get unit tests in both systems; the ROCKER desktop baseline
-is re-recorded once, deliberately.
+reason formatter and `formatSignedMark` get unit tests in both systems; the ROCKER and VOLUME
+desktop baselines are re-recorded once, deliberately (VOLUME for its two litres figures only).
 
 ### Desktop and other screens untouched
 
 - **TEMPLATE, RAILS, FINS, VOLUME, SUMMARY and the setup screen draw exactly what they draw today.**
-  Their desktop baselines under `e2e/desktop-baseline.spec.ts-snapshots/` must not move. RAILS and
+  Their desktop baselines under `e2e/desktop-baseline.spec.ts-snapshots/` must not move — with one
+  exception settled at planning (2026-09-26): VOLUME's two litres figures move with the pchip swap
+  (D-13) and that baseline is re-recorded once, every other pixel identical. RAILS and
   VOLUME keep reading the centre through their links; the order form's compact rocker box keeps
   drawing the built geometry, with no blank, no shade and no new colour.
 - **The one change visible outside ROCKER is the gear menu's new BLANKS group,** which appears in
