@@ -1558,6 +1558,219 @@ describe("rockerViewLayout — the print path cannot be reached by the card-pin 
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// The blank behind the board (Phase 11, D-15). With `blankSpanIn` the frame fits the whole
+// blank; without it — every consumer but the ROCKER editor with a blank picked, the Summary order
+// form included — nothing moves.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+const ALL_RAILS: RockerStationRails[] = ["full", "compact", "none"];
+const SPAN_LENGTHS_IN = [60, 78, 120];
+
+/** A few blanks' reach past the board: small and large overhangs, a blank deck taller than the
+ * board's worst case, and a blank bottom that dips below the board's baseline. */
+const SPANS = [
+  { tailOverhangIn: 1.5, noseOverhangIn: 2.5, lowestBottomIn: 0, highestDeckIn: 9 },
+  { tailOverhangIn: 6, noseOverhangIn: 0, lowestBottomIn: -0.75, highestDeckIn: 16 },
+  { tailOverhangIn: 0, noseOverhangIn: 8, lowestBottomIn: 0.2, highestDeckIn: 4 },
+];
+
+/** A canonical (nose-left) point, mapped to where it lands in the rendered frame — identity
+ * nose-left, the content group's `rotate(90)` nose-up: `(x, y)` to `(-y, x)`. */
+function rendered(orientation: RockerViewOrientation, x: number, y: number): { x: number; y: number } {
+  return orientation === "vertical" ? { x: -y, y: x } : { x, y };
+}
+
+function expectInsideFrame(layout: ReturnType<typeof rockerViewLayout>, p: { x: number; y: number }) {
+  const eps = 1e-9;
+  expect(p.x).toBeGreaterThanOrEqual(layout.minX - eps);
+  expect(p.x).toBeLessThanOrEqual(layout.minX + layout.width + eps);
+  expect(p.y).toBeGreaterThanOrEqual(layout.minY - eps);
+  expect(p.y).toBeLessThanOrEqual(layout.minY + layout.height + eps);
+}
+
+describe("rockerViewLayout — without a blank nothing moves (blankSpanIn absent)", () => {
+  it("deep-equals the layout with blankSpanIn: undefined, and with an all-zero span, and has boardOffsetX === 0 — every orientation, rail grammar, scale rule and length", () => {
+    for (const orientation of ORIENTATIONS) {
+      for (const stationRails of ALL_RAILS) {
+        for (const fitToBoard of [true, false]) {
+          for (const lengthIn of SPAN_LENGTHS_IN) {
+            const base = { lengthIn, maxDeckIn: MAX_DECK_IN, orientation, fitToBoard, stationRails };
+            const without = rockerViewLayout(base);
+            expect(without.boardOffsetX).toBe(0);
+            expect(rockerViewLayout({ ...base, blankSpanIn: undefined })).toEqual(without);
+            expect(
+              rockerViewLayout({
+                ...base,
+                blankSpanIn: { tailOverhangIn: 0, noseOverhangIn: 0, lowestBottomIn: 0, highestDeckIn: 0 },
+              }),
+            ).toEqual(without);
+          }
+        }
+      }
+    }
+  });
+
+  it("resolves a negative or non-finite span to 0 — a corrupt blank can never blank the drawing (T-11-22)", () => {
+    for (const orientation of ORIENTATIONS) {
+      const base = { lengthIn: 72, maxDeckIn: MAX_DECK_IN, orientation, fitToBoard: true, stationRails: "full" as const };
+      const corrupt = rockerViewLayout({
+        ...base,
+        blankSpanIn: {
+          tailOverhangIn: -3,
+          noseOverhangIn: Number.NaN,
+          lowestBottomIn: Number.POSITIVE_INFINITY,
+          highestDeckIn: -2,
+        },
+      });
+      expect(corrupt).toEqual(rockerViewLayout(base));
+      const nanBottom = rockerViewLayout({
+        ...base,
+        blankSpanIn: { tailOverhangIn: 0, noseOverhangIn: 0, lowestBottomIn: Number.NaN, highestDeckIn: Number.NaN },
+      });
+      expect(nanBottom).toEqual(rockerViewLayout(base));
+    }
+  });
+});
+
+describe("rockerViewLayout — with a blank the whole blank is in the frame", () => {
+  it("projects the blank's tail end, nose end, lowest bottom and highest deck inside the frame, both orientations, every rail grammar", () => {
+    for (const orientation of ORIENTATIONS) {
+      for (const stationRails of ALL_RAILS) {
+        for (const lengthIn of SPAN_LENGTHS_IN) {
+          for (const span of SPANS) {
+            const layout = rockerViewLayout({
+              lengthIn,
+              maxDeckIn: MAX_DECK_IN,
+              orientation,
+              fitToBoard: true,
+              stationRails,
+              blankSpanIn: span,
+            });
+            const pxX = (stationIn: number) => PAD_X + layout.boardOffsetX + (lengthIn - stationIn) * layout.scale;
+            const pxY = (heightIn: number) => layout.baselineY - heightIn * layout.scale;
+            // Compact is horizontal-only by contract, whatever orientation is passed.
+            const drawn: RockerViewOrientation = stationRails === "compact" ? "horizontal" : orientation;
+            const noseEndX = pxX(lengthIn + span.noseOverhangIn);
+            const tailEndX = pxX(-span.tailOverhangIn);
+            for (const x of [noseEndX, tailEndX]) {
+              for (const y of [pxY(span.lowestBottomIn), pxY(span.highestDeckIn), layout.baselineY]) {
+                expectInsideFrame(layout, rendered(drawn, x, y));
+              }
+            }
+            // The blank's nose lands on PAD_X; with fitToBoard its whole length fills the drawing
+            // area the board alone used to fill.
+            expect(noseEndX).toBeCloseTo(PAD_X, 9);
+            expect(tailEndX - noseEndX).toBeCloseTo(VIEW_W - PAD_X * 2, 9);
+            expect(layout.boardOffsetX).toBeCloseTo(span.noseOverhangIn * layout.scale, 12);
+          }
+        }
+      }
+    }
+  });
+
+  it("keeps the whole blank in view on the fixed (not fit-to-board) frame too, shrinking only when it would not fit", () => {
+    for (const orientation of ORIENTATIONS) {
+      const layout = rockerViewLayout({
+        lengthIn: 120,
+        maxDeckIn: MAX_DECK_IN,
+        orientation,
+        fitToBoard: false,
+        stationRails: "full",
+        blankSpanIn: { tailOverhangIn: 3, noseOverhangIn: 3, lowestBottomIn: 0, highestDeckIn: 10 },
+      });
+      const pxX = (stationIn: number) => PAD_X + layout.boardOffsetX + (120 - stationIn) * layout.scale;
+      expect(pxX(-3) - pxX(123)).toBeLessThanOrEqual(VIEW_W - PAD_X * 2 + 1e-9);
+      expectInsideFrame(layout, rendered(orientation, pxX(-3), layout.baselineY));
+      expectInsideFrame(layout, rendered(orientation, pxX(123), layout.baselineY));
+    }
+  });
+
+  it("keeps every board station card inside the frame, on both rails, with the blank's overhang shifting them", () => {
+    for (const orientation of ORIENTATIONS) {
+      for (const lengthIn of SPAN_LENGTHS_IN) {
+        for (const span of SPANS) {
+          const layout = rockerViewLayout({
+            lengthIn,
+            maxDeckIn: MAX_DECK_IN,
+            orientation,
+            fitToBoard: true,
+            stationRails: "full",
+            cardScale: maxCardPinScale(orientation),
+            blankSpanIn: span,
+          });
+          const pxX = (stationIn: number) => PAD_X + layout.boardOffsetX + (lengthIn - stationIn) * layout.scale;
+          for (const side of SIDES) {
+            for (const s of stationsIn(lengthIn)) {
+              const card = stationCardRect(layout, pxX(s), orientation, side);
+              expectInsideFrame(layout, { x: card.x, y: card.y });
+              expectInsideFrame(layout, { x: card.x + card.width, y: card.y + card.height });
+            }
+          }
+        }
+      }
+    }
+  });
+});
+
+describe("rockerViewLayout — with a blank the rails stay on the board's own five stations", () => {
+  it("at the same scale, every rail anchor is unchanged and every station-axis anchor moves by exactly boardOffsetX", () => {
+    // The fixed frame keeps its shared scale while the blank fits (78in plus 4in of overhang is
+    // well inside the 120in the fixed scale is built for), so the two layouts below share one
+    // scale and any difference between them is the blank's own doing.
+    const span = { tailOverhangIn: 1.5, noseOverhangIn: 2.5, lowestBottomIn: 0, highestDeckIn: 9 };
+    for (const orientation of ORIENTATIONS) {
+      const base = {
+        lengthIn: 78,
+        maxDeckIn: MAX_DECK_IN,
+        orientation,
+        fitToBoard: false,
+        stationRails: "full" as const,
+        cardScale: maxCardPinScale(orientation),
+      };
+      const without = rockerViewLayout(base);
+      const withBlank = rockerViewLayout({ ...base, blankSpanIn: span });
+
+      expect(withBlank.scale).toBe(without.scale);
+      expect(withBlank.boardOffsetX).toBeCloseTo(span.noseOverhangIn * without.scale, 12);
+      expect(withBlank.boardOffsetX).toBeGreaterThan(0);
+      const railAnchors = [
+        "baselineY",
+        "tickEndY",
+        "railY",
+        "deckTickEndY",
+        "deckRailY",
+        "cardDy",
+        "cardWidth",
+        "cardHeight",
+        "deckLabelY",
+        "bottomLabelY",
+      ] as const;
+      for (const key of railAnchors) {
+        expect(withBlank[key]).toBe(without[key]);
+      }
+      expect(withBlank.cardType).toEqual(without.cardType);
+      expect(withBlank.labelStationX).toBeCloseTo(without.labelStationX + withBlank.boardOffsetX, 9);
+
+      // A station card's rect moves along the station axis by boardOffsetX and nowhere else.
+      for (const side of SIDES) {
+        for (const s of stationsIn(78)) {
+          const x = PAD_X + (78 - s) * without.scale;
+          const before = stationCardRect(without, x, orientation, side);
+          const after = stationCardRect(withBlank, x + withBlank.boardOffsetX, orientation, side);
+          if (orientation === "horizontal") {
+            expect(after.x).toBeCloseTo(before.x + withBlank.boardOffsetX, 9);
+            expect(after.y).toBe(before.y);
+          } else {
+            expect(after.x).toBe(before.x);
+            expect(after.y).toBeCloseTo(before.y + withBlank.boardOffsetX, 9);
+          }
+        }
+      }
+    }
+  });
+});
+
 describe("rockerViewLayout — cards never collide at the ceiling scale (mirrors the non-overlap and vertical-containment suites above)", () => {
   it("keeps a positive gutter between adjacent cards along the station axis, and every card fully inside the frame on both axes, at cardScale = maxCardPinScale('vertical')", () => {
     const ceiling = maxCardPinScale("vertical");

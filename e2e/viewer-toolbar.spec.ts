@@ -122,10 +122,11 @@ test.describe("phone, upright — the corner icons pack tight with no gap where 
 
     const { rowBox, buttons } = await measureToolbar(page);
     expect(buttons.length).toBe(1);
-    // The construction overlay is on by default on a touch device, so the surviving button's
-    // label reads "Hide construction lines" — matched by pattern, not the whole string, so this
-    // is not also a test of that default.
-    expect(buttons[0].name).toMatch(/construction lines$/);
+    // The surviving button is the measuring-points toggle (Phase 11 — it replaced the construction
+    // lines toggle in the same slot). Its label reads "Show measuring points" or "Hide measuring
+    // points" — matched by pattern, not the whole string, so this is not also a test of its
+    // default (phone-screens.spec.ts owns that).
+    expect(buttons[0].name).toMatch(/measuring points$/);
     assertCornerFlush(rowBox, buttons[0]);
     assertRowWidthMatchesVisibleButtons(rowBox, buttons);
     assertButtonsContiguous(buttons);
