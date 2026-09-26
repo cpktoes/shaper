@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Rocker from Real Blanks
-status: Awaiting next milestone
-stopped_at: v1.3 shipped and archived 2026-09-26 — awaiting the next milestone; candidate: the foil-from-real-shaping model (deck skin, parallel bottom, pin-deck tip thinning; todo 2026-09-26)
+milestone: v1.4
+milestone_name: Foil the Way a Shaper Cuts It
+status: discussing
+stopped_at: v1.4 opened 2026-09-26 on branch foil-real-shaping — Phase 12 (Foil the Way a Shaper Cuts It) awaiting /gsd-discuss-phase 12; no code before the founder approves a plan
 last_updated: "2026-09-26T21:30:48.631Z"
 last_activity: 2026-09-26
-last_activity_desc: "v1.3 Rocker from Real Blanks archived: 1 phase, 13 plans, verification 16/16, UAT 7/7, security 43/43, live at shaperassistant.com; 17 bookkeeping artifacts acknowledged as deferred"
+last_activity_desc: "v1.3 archived and tagged; v1.4 opened with Phase 12 from the founder's foil-from-real-shaping brief (todo 2026-09-26), discussion next"
 progress:
   total_phases: 1
-  completed_phases: 1
-  total_plans: 13
-  completed_plans: 13
-  percent: 100
-current_phase: 11
-current_phase_name: Rocker from Real Blanks
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
+current_phase: 12
+current_phase_name: Foil the Way a Shaper Cuts It
 ---
 
 # Project State
@@ -24,14 +24,14 @@ current_phase_name: Rocker from Real Blanks
 See: .planning/PROJECT.md (updated 2026-09-26)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Awaiting the next milestone — front-runner: the foil-from-real-shaping model (todo 2026-09-26), to be opened with `/gsd-new-milestone` or a phase added for `/gsd-discuss-phase`
+**Current focus:** v1.4 — Phase 12, Foil the Way a Shaper Cuts It (branch `foil-real-shaping`): discussion, then research and planning; no code until the founder approves the plan
 
 ## Current Position
 
-**v1.3 — Rocker from Real Blanks: SHIPPED 2026-09-26.** Phase 11 complete and verified (16/16, 0 gaps), UAT 7/7 with the founder, security 43/43, production migrated and seeded before the deploy, six live checks passed on www.shaperassistant.com. Archived under .planning/milestones/ (v1.3-ROADMAP.md, v1.3-REQUIREMENTS.md, v1.3-phases/). REQUIREMENTS.md absent pending the next milestone's definition.
+**v1.4 — Foil the Way a Shaper Cuts It: OPENED 2026-09-26 on branch `foil-real-shaping`.** Phase 12 added from the founder's brief (todo 2026-09-26: deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, tip thinning in the last 12" with a pin-deck or bottom choice, fine-tunes on the 12" stations). v1.3 shipped the same day and is archived under .planning/milestones/.
 
-Status: Awaiting next milestone
-Last activity: 2026-09-26 — v1.3 archived
+Status: Discussing Phase 12
+Last activity: 2026-09-26 — Phase 12 opened for discussion
 
 ## Performance Metrics
 
