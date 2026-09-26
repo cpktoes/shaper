@@ -15,6 +15,7 @@ const ACTIONS_PATH = join(REPO_ROOT, "app/design/actions.ts");
 const QUERIES_PATH = join(REPO_ROOT, "lib/db/queries.ts");
 const UNITS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/units.ts");
 const PRINT_INSTRUCTIONS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/print-instructions.ts");
+const FIT_DEFAULTS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/fit-defaults.ts");
 const BLANKS_READ_PATH = join(REPO_ROOT, "lib/db/blanks.ts");
 const SCHEMA_PATH = join(REPO_ROOT, "lib/db/schema.ts");
 
@@ -64,12 +65,14 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
   const queriesSource = stripComments(readFileSync(QUERIES_PATH, "utf8"));
   const unitsActionsSource = stripComments(readFileSync(UNITS_ACTIONS_PATH, "utf8"));
   const printInstructionsActionsSource = stripComments(readFileSync(PRINT_INSTRUCTIONS_ACTIONS_PATH, "utf8"));
+  const fitDefaultsActionsSource = stripComments(readFileSync(FIT_DEFAULTS_ACTIONS_PATH, "utf8"));
 
-  it("every exported async function in app/design/actions.ts, app/actions/units.ts and app/actions/print-instructions.ts awaits auth() before any database call", () => {
+  it("every exported async function in app/design/actions.ts, app/actions/units.ts, app/actions/print-instructions.ts and app/actions/fit-defaults.ts awaits auth() before any database call", () => {
     const fns = [
       ...exportedAsyncFunctions(actionsSource),
       ...exportedAsyncFunctions(unitsActionsSource),
       ...exportedAsyncFunctions(printInstructionsActionsSource),
+      ...exportedAsyncFunctions(fitDefaultsActionsSource),
     ];
     expect(fns.length).toBeGreaterThan(0);
     for (const fn of fns) {
@@ -91,6 +94,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
       ...exportedFunctionSignatures(queriesSource),
       ...exportedFunctionSignatures(unitsActionsSource),
       ...exportedFunctionSignatures(printInstructionsActionsSource),
+      ...exportedFunctionSignatures(fitDefaultsActionsSource),
     ];
     expect(signatures.length).toBeGreaterThan(0);
     const offenders = signatures.filter((fn) => /userId|ownerId|clerkUserId/.test(fn.params));
@@ -118,12 +122,19 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
     expect(fns).toEqual(["savePrintRailInstructionsPreference"]);
   });
 
+  it("app/actions/fit-defaults.ts exports exactly the expected action and no others", () => {
+    // Mirrors the assertion above for app/actions/print-instructions.ts (Phase 11, D-09).
+    const fns = exportedAsyncFunctions(fitDefaultsActionsSource).map((fn) => fn.name).sort();
+    expect(fns).toEqual(["saveFitDefaultsPreference"]);
+  });
+
   it("every Drizzle statement touching an owned table constrains on the owning-user column", () => {
     for (const [label, source] of [
       ["app/design/actions.ts", actionsSource],
       ["lib/db/queries.ts", queriesSource],
       ["app/actions/units.ts", unitsActionsSource],
       ["app/actions/print-instructions.ts", printInstructionsActionsSource],
+      ["app/actions/fit-defaults.ts", fitDefaultsActionsSource],
     ] as const) {
       // Split on each db.<verb>( call so every statement is inspected against the text between
       // it and the NEXT db call (or end of source) — the statement's own where/values clause.

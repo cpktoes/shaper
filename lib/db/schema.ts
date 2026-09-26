@@ -20,6 +20,16 @@
  * `.default()`. This is not a users table by another name: it holds per-user *preferences*, not
  * identity — Clerk still owns that.
  *
+ * Phase 11 (D-09) adds five more columns to the same row: the shaper's fit and tip defaults —
+ * Extra Length, Extra Center Thickness and Width Margin (the three rules that decide which real
+ * blanks a board fits into, D-04/D-05), and the Nose and Tail Tip thicknesses a new board starts
+ * from. All five are millimetres, stored as `double precision`, and all five are nullable with no
+ * default for the same reason as `units`: "this shaper hasn't chosen" is a real state, and the app
+ * shows the standard default until they do. Every read of these columns goes through
+ * `lib/fit-defaults-preference.ts`'s allow-list, and every read of this table selects only the
+ * columns it needs — so the existing units and print reads never ask for a column that a
+ * not-yet-migrated database doesn't have.
+ *
  * `blanks` (Phase 11) holds the three vendor foam-blank catalogues — one row per blank, public
  * catalogue data that belongs to no shaper, so it has no owner column at all and is read through
  * its own file (`lib/db/blanks.ts`), never through the owner-scoped `queries.ts`. It stores the
@@ -67,6 +77,11 @@ export const userPreferences = pgTable("user_preferences", {
   clerkUserId: text("clerk_user_id").primaryKey(),
   units: text("units"),
   printRailInstructions: boolean("print_rail_instructions"),
+  extraLengthMm: doublePrecision("extra_length_mm"),
+  extraCenterThicknessMm: doublePrecision("extra_center_thickness_mm"),
+  widthMarginMm: doublePrecision("width_margin_mm"),
+  noseTipThicknessMm: doublePrecision("nose_tip_thickness_mm"),
+  tailTipThicknessMm: doublePrecision("tail_tip_thickness_mm"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -13,6 +13,7 @@ import { db } from "./client";
 import { models, userPreferences } from "./schema";
 import { parseUnitsPreference } from "@/lib/units-preference";
 import { parsePrintRailInstructionsPreference } from "@/lib/print-instructions-preference";
+import { parseFitDefaultValue, type FitDefaultsPreference } from "@/lib/fit-defaults-preference";
 import type { UnitsSystem } from "@/lib/geometry/units";
 
 export interface ListedModel {
@@ -72,4 +73,36 @@ export async function readPrintRailInstructionsPreference(clerkId: string): Prom
     .from(userPreferences)
     .where(eq(userPreferences.clerkUserId, clerkId));
   return parsePrintRailInstructionsPreference(row?.printRailInstructions ?? null);
+}
+
+/**
+ * A shaper's five saved fit and tip defaults (D-09) — Extra Length, Extra Center Thickness, Width
+ * Margin, Nose Tip and Tail Tip, in millimetres — with `null` for each one they haven't chosen.
+ * A missing row reads as five nulls; each column is run through `parseFitDefaultValue`'s
+ * allow-list (finite, inside that setting's bounds), so a hand-edited or drifted value reads as
+ * "not chosen" and the standard default shows instead.
+ *
+ * Selects exactly these five columns and nothing else — a projection, never the whole row — so
+ * this read and the units/print reads above each ask only for the columns they use.
+ *
+ * Read-only contract, same register as `listModels`: one `select`, no counters, no last-seen
+ * stamp, no write of any kind.
+ */
+export async function readFitDefaultsPreference(clerkId: string): Promise<FitDefaultsPreference> {
+  const [row] = await db.select({
+      extraLengthMm: userPreferences.extraLengthMm,
+      extraCenterThicknessMm: userPreferences.extraCenterThicknessMm,
+      widthMarginMm: userPreferences.widthMarginMm,
+      noseTipThicknessMm: userPreferences.noseTipThicknessMm,
+      tailTipThicknessMm: userPreferences.tailTipThicknessMm,
+    })
+    .from(userPreferences)
+    .where(eq(userPreferences.clerkUserId, clerkId));
+  return {
+    extraLength: parseFitDefaultValue("extraLength", row?.extraLengthMm ?? null),
+    extraCenterThickness: parseFitDefaultValue("extraCenterThickness", row?.extraCenterThicknessMm ?? null),
+    widthMargin: parseFitDefaultValue("widthMargin", row?.widthMarginMm ?? null),
+    noseTipThickness: parseFitDefaultValue("noseTipThickness", row?.noseTipThicknessMm ?? null),
+    tailTipThickness: parseFitDefaultValue("tailTipThickness", row?.tailTipThicknessMm ?? null),
+  };
 }
