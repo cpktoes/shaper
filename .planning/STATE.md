@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Foil the Way a Shaper Cuts It
 status: discussing
-stopped_at: Phase 12 context gathered
-last_updated: "2026-09-26T22:26:58.327Z"
+stopped_at: Phase 12 UI-SPEC approved
+last_updated: "2026-09-26T22:52:20.579Z"
 last_activity: 2026-09-26
 last_activity_desc: v1.3 archived and tagged; v1.4 opened with Phase 12 from the founder's foil-from-real-shaping brief (todo 2026-09-26), discussion next
 progress:
@@ -370,9 +370,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-26T22:26:58.291Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-foil-the-way-a-shaper-cuts-it/12-CONTEXT.md
+Last session: 2026-09-26T22:52:20.545Z
+Stopped at: Phase 12 UI-SPEC approved
+Resume file: .planning/phases/12-foil-the-way-a-shaper-cuts-it/12-UI-SPEC.md
 Next action: `/gsd-plan-phase 10` - context and design contract are both in place.
 
 ## Operator Next Steps
