@@ -122,7 +122,7 @@ Opened 2026-09-25 on branch `rocker-blanks` from the founder's written brief, wh
 **Requirements**: locked in `.planning/phases/11-rocker-from-real-blanks/11-SPEC.md` (16 requirements); decisions in `11-CONTEXT.md` (D-01–D-20)
 **Depends on:** Phase 10
 **Success criteria:** the brief's DONE WHEN — pick a blank, slide the board along it, watch the four rocker numbers change live, see which blanks don't fit and why, and get a foil that matches the centre and tip thicknesses — plus the four named tests green before the UI, the seed re-runnable, and every older saved board reopening
-**Plans:** 7/13 plans executed in 7 waves
+**Plans:** 9/13 plans executed in 7 waves
 
 Plans:
 
@@ -144,8 +144,8 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 11-08-PLAN.md — "Fit & Tip Defaults" in the gear menu, on desktop and phone (R2 R5 R15)
-- [ ] 11-09-PLAN.md — Saved boards move to version 4 (the blank travels with the board); the store learns about blanks; four hand-set rocker sliders; the DATASHEET shows the blank beside the board (R1 R4 R5 R6 R14)
+- [x] 11-08-PLAN.md — "Fit & Tip Defaults" in the gear menu, on desktop and phone (R2 R5 R15)
+- [x] 11-09-PLAN.md — Saved boards move to version 4 (the blank travels with the board); the store learns about blanks; four hand-set rocker sliders; the DATASHEET shows the blank beside the board (R1 R4 R5 R6 R14)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -181,4 +181,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 8. The Rails Screen, Finished | 9/9 | Complete    | 2026-09-08 |
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
-| 11. Rocker from Real Blanks | 7/13 | In Progress|  |
+| 11. Rocker from Real Blanks | 9/13 | In Progress|  |
