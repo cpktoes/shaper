@@ -48,7 +48,7 @@ import { useFitDefaults } from "@/components/fit-defaults-provider";
 import type { FoilSpec } from "@/lib/geometry/foil";
 import type { BlankRecord, BoardBlank } from "@/lib/geometry/blank";
 import { prepareBlank, type PreparedBlank } from "@/lib/geometry/blank-fit";
-import { buildBoardProfile, type BoardSideProfile } from "@/lib/geometry/board-profile";
+import { buildBoardProfile, handSetFromProfile, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import type { BoardPreset } from "@/lib/geometry/presets";
 import {
   deriveEffectiveRails,
@@ -849,25 +849,23 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   };
 
   // "Remove This Blank" (UI-SPEC §7). Reads the side profile as it is on screen RIGHT NOW (this
-  // render's `sideProfile`) and seeds the hand-set rocker's four stations and the foil's two 12"
-  // thicknesses from it, so the drawing does not jump when the blank goes. The centre thickness and
-  // tips are already the board's own stored values. All three fields change in one setState, so a
-  // single undo brings the blank — and the old hand-set values — back together.
+  // render's `sideProfile`) and seeds the hand-set rocker's four stations (rebased on the centre
+  // rocker, whose hand-set value is 0 by definition) and the foil's two final 12" thicknesses from
+  // it through `handSetFromProfile`, so the five station numbers do not move when the blank goes;
+  // the curve between them is redrawn through them. The centre thickness and tips are already the
+  // board's own stored values. All three fields change in one setState, so a single undo brings
+  // the blank — and the old hand-set values — back together.
   const removeBlank = () => {
     if (!state.blank) return;
     noteEdit(null);
-    const { stationRocker, effectiveFoil } = sideProfile;
+    const profileNow = sideProfile;
     setState((current) => {
       const prev = startedFrom(current, liveTipsRef.current);
+      const handSet = handSetFromProfile(profileNow, prev.foil);
       return {
         ...prev,
-        rocker: {
-          noseTip: stationRocker.noseTip,
-          nose12: stationRocker.nose12,
-          tail12: stationRocker.tail12,
-          tailTip: stationRocker.tailTip,
-        },
-        foil: { ...prev.foil, nose12: effectiveFoil.nose12, tail12: effectiveFoil.tail12 },
+        rocker: handSet.rocker,
+        foil: handSet.foil,
         blank: null,
         boardStarted: true,
         dirty: true,

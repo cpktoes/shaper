@@ -189,6 +189,40 @@ export function buildBlankProfile(
   };
 }
 
+/**
+ * What "Remove This Blank" (UI-SPEC §7) leaves behind: the hand-set rocker and foil seeded from the
+ * board's profile as it is on screen at that moment, so the five station numbers do not move.
+ *
+ * - Rocker: the four lifts are the profile's rocker at those stations LESS its centre rocker. The
+ *   hand-set rocker's centre is 0 by definition (D-14), and a board in a blank can have a non-zero
+ *   centre rocker (its crop's low point need not sit at the centre, e.g. at an off-centre
+ *   placement), so each lift is rebased on the centre rather than copied — the board keeps the
+ *   same shape at the five stations, with its centre as the zero.
+ * - Foil: the two 12" thicknesses are the profile's FINAL ones (blank-derived plus any fine-tune),
+ *   read off `effectiveFoil`. The centre and both tips stay the stored foil's own — they already
+ *   are what the blank profile reads there, and `foil.center` stays the one stored centre.
+ *
+ * Between the stations the hand-set curve is pchip through these five numbers, not the blank's
+ * dense curve, so the drawing between stations (and the litres, a little) can move. That is what
+ * the sidebar's hint says.
+ */
+export function handSetFromProfile(
+  profile: BoardSideProfile,
+  foil: FoilSpec,
+): { rocker: FiveStationRocker; foil: FoilSpec } {
+  const { stationRocker, effectiveFoil } = profile;
+  const centre = stationRocker.center;
+  return {
+    rocker: {
+      noseTip: mm(stationRocker.noseTip - centre),
+      nose12: mm(stationRocker.nose12 - centre),
+      tail12: mm(stationRocker.tail12 - centre),
+      tailTip: mm(stationRocker.tailTip - centre),
+    },
+    foil: { ...foil, nose12: effectiveFoil.nose12, tail12: effectiveFoil.tail12 },
+  };
+}
+
 /** What `buildBoardProfile` needs: the board's hand-set rocker and stored foil, and its blank. */
 export interface BoardProfileInput {
   length: Mm;

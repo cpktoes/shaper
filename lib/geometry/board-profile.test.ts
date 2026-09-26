@@ -6,8 +6,12 @@ import {
   buildBlankProfile,
   buildBoardProfile,
   buildFallbackProfile,
+  handSetFromProfile,
   type BoardSideProfile,
 } from "./board-profile";
+import { presetDesignFields } from "@/lib/blanks/preset-blanks";
+import { DEFAULT_BOARD_SPEC } from "./board";
+import { BOARD_PRESETS } from "./presets";
 import { DEFAULT_FOIL_SPEC, foilStationPoints, sampleFoil, type FoilStationKey } from "./foil";
 import { MEASURE_STATION_MM } from "./outline";
 import { preparePchip } from "./pchip";
@@ -271,5 +275,76 @@ describe("buildBoardProfile — one entry point for both kinds of board", () => 
     expect(profile.effectiveFoil).toEqual(expected.effectiveFoil);
     expect(profile.stationRocker).toEqual(expected.stationRocker);
     expect(profile.blank!.foamOff).toEqual(expected.blank!.foamOff);
+  });
+});
+
+describe("Remove This Blank keeps the five stations exactly (WR-01)", () => {
+  // Every board below sits in Marko 6'0" M-Regular at placement 0 and 1/2" toward the nose, with a
+  // pair of non-zero 12" fine-tunes so the FINAL foil (derived + offset) is what is recorded. The
+  // four presets also sit in their own blanks at their own placement (and 1/2" off it).
+  const marko = findBlank(MARKO_VENDOR, M_REGULAR);
+  const halfInch = inchesToMm(0.5);
+  const cases: { label: string; length: Mm; foil: typeof DEFAULT_FOIL_SPEC; record: BlankRecord; placement: Mm }[] = [];
+  for (const preset of BOARD_PRESETS) {
+    const fields = presetDesignFields(preset);
+    for (const extra of [0, halfInch]) {
+      cases.push({ label: `${preset.name} in M-Regular +${extra}mm`, length: fields.outline.length, foil: fields.foil, record: marko, placement: mm(extra) });
+      cases.push({
+        label: `${preset.name} in its own blank +${extra}mm`,
+        length: fields.outline.length,
+        foil: fields.foil,
+        record: fields.blank.copy,
+        placement: mm(fields.blank.placement + extra),
+      });
+    }
+  }
+  for (const extra of [0, halfInch]) {
+    cases.push({
+      label: `default board in M-Regular +${extra}mm`,
+      length: DEFAULT_BOARD_SPEC.outline.length,
+      foil: DEFAULT_FOIL_SPEC,
+      record: marko,
+      placement: mm(extra),
+    });
+  }
+
+  const results = cases.map((c) => {
+    const onBlank = buildBoardProfile({
+      length: c.length,
+      rocker: DEFAULT_FALLBACK_ROCKER,
+      foil: c.foil,
+      blank: { prepared: prepareBlank(c.record), placement: c.placement, nose12Offset: inchesToMm(1 / 16), tail12Offset: inchesToMm(-1 / 32) },
+    });
+    const handSet = handSetFromProfile(onBlank, c.foil);
+    const after = buildBoardProfile({ length: c.length, rocker: handSet.rocker, foil: handSet.foil, blank: null });
+    return { c, onBlank, handSet, after };
+  });
+
+  it("covers at least one board whose centre rocker is not zero, so the rebase is really exercised", () => {
+    expect(results.some(({ onBlank }) => Math.abs(onBlank.stationRocker.center) > 1e-3)).toBe(true);
+  });
+
+  it.each(results.map((r) => [r.c.label, r] as const))("%s: thickness at all five stations is unchanged", (_label, r) => {
+    for (const { station } of r.onBlank.stations) {
+      expect(Math.abs(r.after.thicknessAt(station) - r.onBlank.thicknessAt(station))).toBeLessThan(1e-6);
+    }
+  });
+
+  it.each(results.map((r) => [r.c.label, r] as const))(
+    "%s: rocker at the four non-centre stations is the old rocker less the old centre rocker; the centre reads 0",
+    (_label, r) => {
+      const centre = r.onBlank.rockerAt(mm(r.c.length / 2));
+      for (const { key, station } of r.onBlank.stations) {
+        const expected = key === "center" ? 0 : r.onBlank.rockerAt(station) - centre;
+        expect(Math.abs(r.after.rockerAt(station) - expected)).toBeLessThan(1e-6);
+        expect(Math.abs(r.after.stationRocker[key] - expected)).toBeLessThan(1e-6);
+      }
+    },
+  );
+
+  it.each(results.map((r) => [r.c.label, r] as const))("%s: foil.center stays the one stored centre", (_label, r) => {
+    expect(r.handSet.foil.center).toBe(r.c.foil.center);
+    expect(r.handSet.foil.noseTip).toBe(r.c.foil.noseTip);
+    expect(r.handSet.foil.tailTip).toBe(r.c.foil.tailTip);
   });
 });

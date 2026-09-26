@@ -144,6 +144,15 @@ describe("design-store.tsx — nothing but the shaper's own pick or removal chan
     }
   });
 
+  it("Remove This Blank seeds the hand-set rocker and foil through the tested handSetFromProfile (WR-01)", () => {
+    // The five-station guarantee itself is proven in lib/geometry/board-profile.test.ts; this pins
+    // that the store's move delegates to that pure function rather than copying stations inline.
+    const body = handler("removeBlank");
+    expect(body).toMatch(/handSetFromProfile\(\s*profileNow,\s*prev\.foil\s*\)/);
+    expect(body).toMatch(/rocker:\s*handSet\.rocker/);
+    expect(body).toMatch(/foil:\s*handSet\.foil/);
+  });
+
   it("undo and redo restore the blank only through the history snapshot, never by name", () => {
     for (const name of ["undoEdit", "redoEdit"]) {
       const body = handler(name);

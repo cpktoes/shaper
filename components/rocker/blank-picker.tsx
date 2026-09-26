@@ -333,7 +333,7 @@ export function BlankPicker({ catalog }: { catalog: Promise<BlankCatalogResult> 
         </button>
       </div>
       <div className="text-xs text-surf-ink-muted">
-        Removing it keeps the rocker and foil exactly as they are now, for you to set by hand.
+        Removing it keeps the rocker and foil at the five stations and re-draws the curve through them, for you to set by hand.
       </div>
 
       {listOpen && <BlankBrowser catalog={catalog} onPicked={() => setListOpen(false)} />}
