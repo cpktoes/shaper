@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
+import { DEFAULT_BLANK_CUT } from "@/lib/geometry/blank";
 import { DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
 import { summarizeDesign } from "@/lib/geometry/design";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
@@ -26,7 +27,7 @@ const FIELDS: DesignSnapshotFields = {
   railsImportFoilThickness: true,
   boardName: "rack test",
   finSystem: "fcs2",
-  blank: { copy: MARKO, placement: mm(0), nose12Offset: mm(0), tail12Offset: mm(0) },
+  blank: { copy: MARKO, placement: mm(0), nose12Offset: mm(0), tail12Offset: mm(0), ...DEFAULT_BLANK_CUT },
 };
 
 function row(id: string, fields: DesignSnapshotFields): RackRow {

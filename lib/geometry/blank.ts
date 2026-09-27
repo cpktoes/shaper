@@ -1,12 +1,13 @@
 /**
  * Foam blank types (Phase 11) — the shapes a vendor's catalogue blank and a board's chosen blank
- * take everywhere in the app. Types only: the maths lives in `lib/geometry/blank-fit.ts`, the
- * catalogue reading in `lib/blanks/`.
+ * take everywhere in the app — plus the one out-of-the-box cut a board is made with (Phase 12).
+ * Types and that one constant only: the maths lives in `lib/geometry/blank-fit.ts`, the catalogue
+ * reading in `lib/blanks/`.
  *
  * Every length is millimetres (CLAUDE.md Rule 2) — the catalogues print inches, and they are
  * converted once, at the units boundary, when the CSV is read.
  */
-import type { Litres, Mm } from "./units";
+import { inchesToMm, type Litres, type Mm } from "./units";
 
 /**
  * One measured station on a blank, exactly as the catalogue printed it. An empty catalogue cell is
@@ -48,19 +49,59 @@ export interface BlankRecord {
 }
 
 /**
+ * Where the tip thinning comes off (Phase 12 D-04): `pinDeck` takes it off the bottom, so the tip
+ * rocker grows (or falls, when the tip needs more foam than the cut leaves — D-16); `bottom` takes
+ * it off the deck, so the rocker stays the blank's own.
+ */
+export type TipStyle = "pinDeck" | "bottom";
+
+/**
+ * Which surface a 12" fine-tune moves (Phase 12 D-13), chosen per board independently of the Tip
+ * Style: on the `deck` the rocker never moves; on the `bottom` the bottom re-levels on its own low
+ * point, so every rocker number can shift.
+ */
+export type FineTuneSurface = "deck" | "bottom";
+
+/** How a board is cut from its blank (Phase 12): the deck skin, the Tip Style, the fine-tune surface. */
+export interface BlankCut {
+  /** Foam planed off the blank's deck everywhere (D-01, D-02). */
+  deckSkin: Mm;
+  tipStyle: TipStyle;
+  fineTuneSurface: FineTuneSurface;
+}
+
+/**
+ * The cut a board has out of the box: a 1/8" deck skin — about one planer pass (Phase 12 D-02) —
+ * Pin deck tips (D-04), fine-tunes on the Deck (D-13). A preset opens with exactly this cut rather
+ * than the account's default (D-17), and a board carried over from Phase 11 takes its skin from
+ * here (D-07/D-14).
+ */
+export const DEFAULT_BLANK_CUT: BlankCut = {
+  deckSkin: inchesToMm(1 / 8),
+  tipStyle: "pinDeck",
+  fineTuneSurface: "deck",
+};
+
+/**
  * A board's chosen blank (D-01): the board carries its blank's rows BY VALUE, so a later catalogue
- * correction can never silently move a saved board, plus where the board sits on it and the two
- * 12" fine-tunes.
+ * correction can never silently move a saved board, plus where the board sits on it, the two
+ * 12" fine-tunes and (Phase 12) how it is cut from the blank.
  */
 export interface BoardBlank {
   /** The blank's record exactly as it was when picked. */
   copy: BlankRecord;
   /** Board centre relative to the blank centre, positive toward the nose (D-08). */
   placement: Mm;
-  /** Signed fine-tune added to the derived thickness at the nose 12" station (D-11). */
+  /** Signed fine-tune at the nose 12" station, on the board's fine-tune surface (D-11, D-13). */
   nose12Offset: Mm;
-  /** Signed fine-tune added to the derived thickness at the tail 12" station (D-11). */
+  /** Signed fine-tune at the tail 12" station, on the board's fine-tune surface (D-11, D-13). */
   tail12Offset: Mm;
+  /** The board's own deck skin (Phase 12 D-01); optional until 12-09. */
+  deckSkin?: Mm;
+  /** The board's own Tip Style (Phase 12 D-04); optional until 12-09. */
+  tipStyle?: TipStyle;
+  /** The board's own fine-tune surface (Phase 12 D-13); optional until 12-09. */
+  fineTuneSurface?: FineTuneSurface;
 }
 
 /** The shaper's fit settings (the third account preference, D-09). */

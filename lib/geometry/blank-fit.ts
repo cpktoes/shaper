@@ -8,6 +8,14 @@
  * placement — the board's centre relative to the blank's centre, positive toward the nose. At
  * L = Lb and p = 0 that is u = s exactly, so the board IS the blank.
  *
+ * How a board is cut from its blank (Phase 12): the way a planer takes foam off. A constant deck
+ * skin comes off the top, so the board's deck is the blank's deck lowered by the skin; the bottom
+ * is planed flat down until the centre reads the target, so the board's bottom is the blank's
+ * bottom raised by one constant centre gap and the rocker is the blank's own; and the tips are
+ * thinned last, eased in over the last 12" at each end, off the bottom (Pin deck) or off the deck
+ * (Bottom). Phase 11 scaled the blank's thickness by one ratio instead; that formula survives only
+ * in `phase11-foil.ts`, to carry Phase 11's saved boards across.
+ *
  * Judging the catalogue (11-03): the two floors that hide a blank (D-04), the best-placement
  * search that decides whether a blank fits anywhere along its length (D-07), the list's two groups
  * (D-06), the "closest blank that fits" offer and the "Move to Where It Fits" rescue (D-08).
@@ -16,7 +24,17 @@
  * CLAUDE.md Rule 1. Every length is millimetres.
  */
 import { isPickable } from "../blanks/catalog";
-import type { BlankRecord, BlankShortfall, BlankStation, FitResult, FitSettings } from "./blank";
+import {
+  DEFAULT_BLANK_CUT,
+  type BlankCut,
+  type BlankRecord,
+  type BlankShortfall,
+  type BlankStation,
+  type FineTuneSurface,
+  type FitResult,
+  type FitSettings,
+  type TipStyle,
+} from "./blank";
 import { MEASURE_STATION_MM } from "./outline";
 import { pchipMinimum, preparePchip, type PreparedPchip } from "./pchip";
 import { rockerStationPositions } from "./rocker";
@@ -96,7 +114,7 @@ function attributeCurve(
  * nothing the prepared blank returns.
  *
  * Throws if the blank has no thickness at its `C` station — such a blank is not pickable
- * (`isPickable`), because the board's foil is scaled from that centre.
+ * (`isPickable`), because the list's centre floor reads that printed centre (D-04).
  */
 export function prepareBlank(record: BlankRecord): PreparedBlank {
   const copy: BlankRecord = {
@@ -158,6 +176,31 @@ export interface BoardOnBlankInput {
   nose12Offset: Mm;
   /** Signed fine-tune at the tail 12" station (D-11). */
   tail12Offset: Mm;
+  /** The board's deck skin (Phase 12 D-01); optional until 12-09 — see `cutOf`. */
+  deckSkin?: Mm;
+  /** The board's Tip Style (Phase 12 D-04); optional until 12-09 — see `cutOf`. */
+  tipStyle?: TipStyle;
+  /** The board's fine-tune surface (Phase 12 D-13); optional until 12-09 — see `cutOf`. */
+  fineTuneSurface?: FineTuneSurface;
+}
+
+/**
+ * The board's full cut, each missing field read from the out-of-the-box cut in `blank.ts`.
+ * TRANSITIONAL: it exists only while the screens cannot yet pass every board's own cut (Phase 12
+ * R7 lands the geometry before any screen changes); plan 12-09 makes the three fields required and
+ * deletes this function. It is the ONE place a missing field is filled.
+ */
+export function cutOf(board: {
+  deckSkin?: Mm;
+  tipStyle?: TipStyle;
+  fineTuneSurface?: FineTuneSurface;
+}): BlankCut {
+  const fallback = DEFAULT_BLANK_CUT;
+  return {
+    deckSkin: board.deckSkin ?? fallback.deckSkin,
+    tipStyle: board.tipStyle ?? fallback.tipStyle,
+    fineTuneSurface: board.fineTuneSurface ?? fallback.fineTuneSurface,
+  };
 }
 
 /**
@@ -169,11 +212,22 @@ export interface BoardOnBlank {
   board: BoardOnBlankInput;
   /** The placement actually used — the requested one clamped into range (Pitfall 8). */
   placement: Mm;
-  /** Target centre ÷ the blank's thickness under the board's centre (D-18). */
-  ratio: number;
+  /** The cut the board was derived with — its own, or the out-of-the-box one where it has none. */
+  cut: BlankCut;
+  /**
+   * The foam planed off the bottom at the board's centre (Phase 12 D-03): the blank's thickness
+   * under the board's centre less the deck skin less the target centre. Below zero means the
+   * blank is too thin there for this centre and skin.
+   */
+  centerGap: number;
   /** The crop's own low point, as a height above the blank's levelled low point. */
   cropMinimum: number;
-  /** The board's bottom rocker, re-levelled so the board's own low point is 0. */
+  /**
+   * The board's bottom rocker, levelled on the un-thinned bottom so it is the blank's own rocker
+   * wherever there is no Pin deck thinning (R3, R5). Under Pin deck the tip thinning lifts it
+   * (or drops it, when the thinning is negative — D-16). A fine-tune on the Bottom (D-13) lowers
+   * it by the tweak and the whole curve re-levels on its own low point.
+   */
   rockerAt(s: number): number;
   /** The blank's import-levelled rocker under board station `s`. */
   blankRockerAt(s: number): number;
@@ -181,34 +235,59 @@ export interface BoardOnBlank {
   blankThicknessAt(s: number): number;
   /** The blank's full width under board station `s`; 0 where the board runs past the blank. */
   blankWidthAt(s: number): number;
-  /** The blank's foil scaled by `ratio`, eased into the tip settings (D-10, D-17) — no fine-tune. */
+  /**
+   * The signed tip thinning at `s` (D-05, D-16): 0 at and inside both 12" stations, the un-thinned
+   * tip thickness less the tip setting at each tip, eased between. Negative where a tip setting is
+   * thicker than the parallel foil there.
+   */
+  tipThinningAt(s: number): number;
+  /**
+   * The board's thickness before any fine-tune: the blank's thickness less the skin and the centre
+   * gap (so the centre is the target), less the tip thinning — each tip reads its setting exactly.
+   */
   derivedThicknessAt(s: number): number;
-  /** The board's final thickness: derived plus the 12" fine-tunes (D-11). */
+  /** The board's final thickness: derived plus the 12" fine-tunes (D-11), on either surface. */
   thicknessAt(s: number): number;
+  /**
+   * Foam off the deck at `s`: the skin, plus the tip thinning under Bottom, less a fine-tune on the
+   * Deck. Below zero means the board's deck rises above the blank's deck there.
+   */
+  deckOffAt(s: number): number;
+  /**
+   * Foam off the bottom at `s`: the centre gap, plus the tip thinning under Pin deck, less a
+   * fine-tune on the Bottom. Below zero means the board's bottom drops below the blank's there.
+   */
+  bottomOffAt(s: number): number;
 }
 
-/** 0 at w = 0, 1 at w = 1, flat at both ends — so the ease joins the scaled foil smoothly. */
+/** 0 at w = 0, 1 at w = 1, flat at both ends — so the tip ease joins the 12" station with no kink. */
 function smoothstep(w: number): number {
   const t = Math.min(1, Math.max(0, w));
   return t * t * (3 - 2 * t);
 }
 
 /**
- * Lays a board on a prepared blank and derives its rocker and foil.
+ * Lays a board on a prepared blank and derives its rocker and foil the way a planer cuts it.
  *
- * - Rocker: the blank's levelled rocker under the board, levelled again over the crop (R11).
- * - Foil (D-10, D-18): the blank's own thickness times `ratio` = target centre ÷ the blank's
- *   thickness under the board's centre, so the centre equals the target at every placement.
- *   Never a subtracted constant.
- * - Tips (D-17): between each 12" station and its tip the scaled foil eases into the tip setting
- *   with a smoothstep weight w that is 0 at the 12" station and 1 at the tip:
- *   t = scaled − scaledAtTip·w + tipSetting·w, so the tip EQUALS its setting, the 12" station
- *   stays purely blank-scaled, and the curve is continuous. Inside each tip window only, a
- *   never-below guard holds the thickness at or above the tip setting; outside the windows there
- *   is no guard, so the centre stays exactly the target.
- * - Fine-tunes (D-11): a signed offset added through a three-knot pchip hump per half — 0 at the
- *   tip, the offset at the 12" station, 0 at the centre — so tips and centre stay exact and the
- *   12" reading is derived + offset. The same tip-window guard applies after it.
+ * - Deck (R1): the blank's deck less the deck skin, everywhere.
+ * - Bottom (R2, D-03): planed parallel to the blank's bottom, the centre gap above it, where
+ *   centre gap = the blank's thickness under the board's centre − skin − target centre. So the
+ *   thickness is the blank's less (skin + gap) — the blank's less (its thickness under the board's
+ *   centre − the target), the skin cancelling out — and the centre equals the target at every
+ *   placement (R3).
+ * - Rocker (R3, R5): the blank's levelled rocker under the board, levelled again over the crop
+ *   (R11). The gap is one constant, so levelling the un-thinned bottom gives exactly that curve.
+ * - Tips (D-05, D-06, D-16): one signed thinning per tip — the un-thinned tip thickness less the tip
+ *   setting — weighted by a smoothstep that is 0 (and flat) at the 12" station and 1 at the tip. It
+ *   comes off the bottom under Pin deck (lifting the tip rocker) or the deck under Bottom. The
+ *   thickness is written unthinned − unthinnedAtTip·w + tipSetting·w, so the two first terms cancel
+ *   at the tip and it reads its setting to the last bit. Nothing at or inside a 12" station moves.
+ * - Fine-tunes (D-11, D-13): a signed offset through a three-knot pchip hump per half — 0 at the
+ *   tip, the offset at the 12" station, 0 at the centre — added to the thickness and taken off the
+ *   surface the board chose. On the Deck the rocker never moves. On the Bottom the bottom drops by
+ *   the hump and the rocker re-levels on its own low point, found over every 1/16" plus the five
+ *   stations and every blank rocker knot under the board: exact when both tweaks are zero,
+ *   otherwise within 1e-3 mm of the true low point — far under one printed step.
  *
  * The placement is clamped on read (never written back). Where the board runs past either end of
  * the blank, the blank's thickness and width read 0, so the fit fails instead of lying (Pitfall 8).
@@ -218,6 +297,7 @@ export function boardOnBlank(
   board: BoardOnBlankInput,
   placement: Mm,
 ): BoardOnBlank {
+  const cut = cutOf(board);
   const L = board.length;
   const Lb = prepared.lengthMm;
   const p = clampPlacement(placement, Lb, L);
@@ -236,33 +316,35 @@ export function boardOnBlank(
     return onFoam(x) ? prepared.width.sample(x) : 0;
   };
 
-  const underCentre = blankThicknessAt(L / 2);
-  const ratio = underCentre > 0 ? board.centerThickness / underCentre : 0;
-  const scaledTail = ratio * blankThicknessAt(0);
-  const scaledNose = ratio * blankThicknessAt(L);
   const W = TIP_EASE_WINDOW_MM;
+  const underCentre = blankThicknessAt(L / 2);
+  const centerGap = underCentre - cut.deckSkin - board.centerThickness;
+  // Skin + gap: all the foam the parallel cut takes off, whatever the skin.
+  const drop = underCentre - board.centerThickness;
+  const unthinned = (s: number) => blankThicknessAt(s) - drop;
+  const tailUn = unthinned(0);
+  const noseUn = unthinned(L);
 
-  /** The tip-window never-below guard, applied to any thickness at `s`. */
-  const guard = (s: number, value: number) => {
-    let out = value;
-    if (s <= W) out = Math.max(out, board.tailTip);
-    if (s >= L - W) out = Math.max(out, board.noseTip);
-    return out;
+  const tipThinningAt = (s: number) => {
+    let thinning = 0;
+    if (s < W) thinning += (tailUn - board.tailTip) * smoothstep(1 - s / W);
+    if (s > L - W) thinning += (noseUn - board.noseTip) * smoothstep(1 - (L - s) / W);
+    return thinning;
   };
 
   const derivedThicknessAt = (s: number) => {
-    let value = ratio * blankThicknessAt(s);
-    // Written as scaled − scaledAtTip·w + tip·w so that at the tip (w = 1, scaled = scaledAtTip)
-    // the first two terms cancel exactly and the tip reads its setting to the last bit.
+    let value = unthinned(s);
+    // Written as unthinned − unthinnedAtTip·w + tip·w so that at the tip (w = 1) the first two
+    // terms cancel exactly and the tip reads its setting to the last bit.
     if (s < W) {
       const w = smoothstep(1 - s / W);
-      value = value - scaledTail * w + board.tailTip * w;
+      value = value - tailUn * w + board.tailTip * w;
     }
     if (s > L - W) {
       const w = smoothstep(1 - (L - s) / W);
-      value = value - scaledNose * w + board.noseTip * w;
+      value = value - noseUn * w + board.noseTip * w;
     }
-    return guard(s, value);
+    return value;
   };
 
   const tailHump = preparePchip([
@@ -277,27 +359,60 @@ export function boardOnBlank(
   ]);
   const offsetAt = (s: number) => (s <= L / 2 ? tailHump.sample(s) : noseHump.sample(s));
 
+  const pinDeck = cut.tipStyle === "pinDeck";
+  const onDeck = cut.fineTuneSurface === "deck";
+
+  // The un-thinned bottom, as a rocker height: the crop itself, less a Bottom fine-tune (which
+  // lowers the bottom by the tweak), re-levelled on its own low point.
+  const untuned = (s: number) => crop.sample(u(s));
+  let rockerAt: (s: number) => number;
+  if (onDeck) {
+    rockerAt = pinDeck ? (s) => untuned(s) + tipThinningAt(s) : untuned;
+  } else {
+    const tuned = (s: number) => untuned(s) - offsetAt(s);
+    let level = 0;
+    if (board.nose12Offset !== 0 || board.tail12Offset !== 0) {
+      const candidates = [0, W, L / 2, L - W, L];
+      const step = inchesToMm(1 / 16);
+      for (let s = 0; s < L; s += step) candidates.push(s);
+      const tailOnBlank = u(0);
+      for (const knot of prepared.rocker.curve.xs) {
+        const s = knot - tailOnBlank;
+        if (s > 0 && s < L) candidates.push(s);
+      }
+      level = Math.min(...candidates.map(tuned));
+    }
+    rockerAt = pinDeck ? (s) => tuned(s) - level + tipThinningAt(s) : (s) => tuned(s) - level;
+  }
+
   return {
     prepared,
     board,
     placement: p,
-    ratio,
+    cut,
+    centerGap,
     cropMinimum: crop.minimum - prepared.rocker.minimum,
-    rockerAt: (s) => crop.sample(u(s)),
+    rockerAt,
     blankRockerAt: (s) => prepared.rocker.sample(u(s)),
     blankThicknessAt,
     blankWidthAt,
+    tipThinningAt,
     derivedThicknessAt,
-    thicknessAt: (s) => guard(s, derivedThicknessAt(s) + offsetAt(s)),
+    thicknessAt: (s) => derivedThicknessAt(s) + offsetAt(s),
+    deckOffAt: (s) => cut.deckSkin + (pinDeck ? 0 : tipThinningAt(s)) - (onDeck ? offsetAt(s) : 0),
+    bottomOffAt: (s) => centerGap + (pinDeck ? tipThinningAt(s) : 0) - (onDeck ? 0 : offsetAt(s)),
   };
 }
 
 /**
- * Does the board fit inside its blank? (R12, D-05)
+ * Does the board fit inside its blank? (R12, D-05, Phase 12 D-09)
  *
  * Samples every `FIT_SAMPLE_STEP_MM` from tail tip to nose tip, plus the five board stations and
- * the widepoint. At each: the THIN amount is the board's final thickness minus the blank's
- * thickness there; and, only where the board itself has width (`halfWidthAt(s) > 0`), the WIDE
+ * the widepoint. At each: the THIN amount is how far the board pokes out of the blank through
+ * either surface — the smaller of the foam off the deck and the foam off the bottom, negated — so a
+ * deck above the blank's deck and a bottom below the blank's bottom both fail (D-09), and together
+ * they cover a board thicker than the blank; and, only where the board itself has width
+ * (`halfWidthAt(s) > 0`), the WIDE
  * amount is the board's full width plus `widthMargin` minus the blank's width. Width is never
  * checked where the board has none — a rounded-nose blank is 0 wide at its very tip by design, and
  * the board's own outline reaches 0 there too.
@@ -320,16 +435,13 @@ export function fitAt(
   for (const { station } of rockerStationPositions(L)) stations.push(station);
   stations.push(Math.min(L, Math.max(0, widePointStation)));
 
-  let worst: BlankShortfall = {
-    kind: "thin",
-    station: mm(0),
-    amount: mm(onBlank.thicknessAt(0) - onBlank.blankThicknessAt(0)),
-  };
+  const thinBy = (s: number) => Math.max(-onBlank.deckOffAt(s), -onBlank.bottomOffAt(s));
+  let worst: BlankShortfall = { kind: "thin", station: mm(0), amount: mm(thinBy(0)) };
   const consider = (kind: BlankShortfall["kind"], station: number, amount: number) => {
     if (amount > worst.amount) worst = { kind, station: mm(station), amount: mm(amount) };
   };
   for (const s of stations) {
-    consider("thin", s, onBlank.thicknessAt(s) - onBlank.blankThicknessAt(s));
+    consider("thin", s, thinBy(s));
     const half = halfWidthAt(mm(s));
     if (half > 0) consider("wide", s, 2 * half + widthMargin - onBlank.blankWidthAt(s));
   }
