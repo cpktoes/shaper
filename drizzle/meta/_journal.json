@@ -43,6 +43,13 @@
       "when": 1790436867084,
       "tag": "0005_fit_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790472527082,
+      "tag": "0006_deck_skin_planer_tip_style",
+      "breakpoints": true
     }
   ]
 }
