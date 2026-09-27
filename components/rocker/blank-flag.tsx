@@ -17,6 +17,10 @@
  *   to This Blank. F5 — when no blank in any catalogue fits — says so and offers Change Fit Rules
  *   (the gear menu's Fit & Tip Defaults dialog) instead. With the catalogue unavailable there is
  *   no offer line at all; the flag's headline and reason never wait for the catalogue.
+ * - Ahead of all of these: a 12" fine-tune on the Deck bigger than the board's Deck Skin
+ *   (`tweakExceedsDeckSkin`, D-13) fits no blank anywhere, and nothing in Fit & Tip Defaults can
+ *   change that — so the flag names the fixes on ROCKER and offers ↺ Reset Fine-Tune, never
+ *   Change Fit Rules.
  *
  * Checked on every change, slider moves included — it is one sample of one prepared blank at one
  * placement (`fitAt`), never a list verdict and never a network request (R14). The "does it fit
@@ -41,6 +45,7 @@ import {
   judgeBlank,
   nearestFit,
   nearestFittingPlacement,
+  tweakExceedsDeckSkin,
   type BoardFitContext,
   type PreparedBlank,
 } from "@/lib/geometry/blank-fit";
@@ -51,18 +56,29 @@ import {
   formatShortfall,
   NOTHING_FITS_SENTENCE,
   offerLine,
+  tweakOverSkinLine,
 } from "@/lib/geometry/blank-reasons";
 import { sampleOutline } from "@/lib/geometry/outline";
-import type { Mm } from "@/lib/geometry/units";
+import { mm, type Mm } from "@/lib/geometry/units";
 import { useBlankList, useBoardCut, useCenterFloorRules } from "./use-blank-list";
 
 /** A full-width button on a phone, its natural width on desktop. */
 const ACTION_CLASS = "mt-1 self-start max-shell:w-full max-shell:self-stretch";
 
-/** The warning-outlined block every flag state shares. */
-function FlagBlock({ headline, body, children }: { headline: string; body: string; children?: ReactNode }) {
+/** The warning-outlined block every flag state shares. `flag` names the state for a stable hook. */
+function FlagBlock({
+  headline,
+  body,
+  flag,
+  children,
+}: {
+  headline: string;
+  body: string;
+  flag?: string;
+  children?: ReactNode;
+}) {
   return (
-    <div role="status" data-blank-flag className="flex flex-col gap-1 rounded-md border border-surf-warning-ink p-2">
+    <div role="status" data-blank-flag data-flag={flag} className="flex flex-col gap-1 rounded-md border border-surf-warning-ink p-2">
       <div className="flex items-start gap-1">
         <TriangleAlertIcon aria-hidden className="size-4 shrink-0 text-surf-warning-ink" />
         <span className="text-xs font-semibold text-surf-warning-ink">{headline}</span>
@@ -129,7 +145,7 @@ function PickedBlankFlag({
   tail12Offset: Mm;
 }) {
   const { system } = useUnits();
-  const { outline, outlineGeometry, foil, setPlacement } = useDesign();
+  const { outline, outlineGeometry, foil, setPlacement, resetFineTune } = useDesign();
   const { settings } = useFitDefaults();
   const { extraLength, planerMaxDepth, widthMargin } = settings;
   // The picked board's own cut (its blank's Deck Skin, Tip Style and fine-tune surface), and the
@@ -184,6 +200,22 @@ function PickedBlankFlag({
       <Offer catalog={catalog} current={prepared.record} />
     </Suspense>
   );
+
+  // A Deck fine-tune bigger than the Deck Skin: no blank anywhere can take it, and only ROCKER's own
+  // controls can fix it — so the one way out offered is ↺ Reset Fine-Tune, never Change Fit Rules.
+  if (tweakExceedsDeckSkin(ctx.board)) {
+    return (
+      <FlagBlock
+        flag="tweak-over-skin"
+        headline={FLAG_HEADLINES.doesNotFit}
+        body={`${tweakOverSkinLine(mm(Math.max(nose12Offset, tail12Offset)), deckSkin, system)}.`}
+      >
+        <Button variant="outline" className={ACTION_CLASS} onClick={resetFineTune}>
+          ↺ Reset Fine-Tune
+        </Button>
+      </FlagBlock>
+    );
+  }
 
   // F3 / F4: the blank no longer passes a floor.
   if (floor.lengthShortBy !== null) {

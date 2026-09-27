@@ -592,7 +592,7 @@ function fitterFor(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitS
  * is what lets the list and the flag say so at once instead of confirming it one placement at a
  * time (a full catalogue scan ran 1.3 s in Node and about 40 s on WebKit per keystroke — 12-08).
  */
-function cannotFitAnywhere(board: BoardOnBlankInput): boolean {
+export function tweakExceedsDeckSkin(board: BoardOnBlankInput): boolean {
   if (board.fineTuneSurface !== "deck") return false;
   return Math.max(board.nose12Offset, board.tail12Offset) - board.deckSkin > FIT_EPSILON_MM;
 }
@@ -607,7 +607,7 @@ function judgeWith(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitS
   };
   // A board no blank can take anywhere is read once, at the centre placement (its worst there is
   // the same over-skin shortfall every placement shows), not searched.
-  if (cannotFitAnywhere(ctx.board)) return verdict(0);
+  if (tweakExceedsDeckSkin(ctx.board)) return verdict(0);
 
 
   // Coarse: 0, then 1/4" steps outward, the nose side first at each distance, then the outermost
@@ -755,7 +755,7 @@ export function nearestFittingPlacement(
   const fitsAt = (placement: Mm) =>
     fitAt(boardOnBlank(prepared, ctx.board, placement), halfWidthAt, ctx.widePointStation, settings).fits;
 
-  if (cannotFitAnywhere(ctx.board)) return null;
+  if (tweakExceedsDeckSkin(ctx.board)) return null;
   const start = clampPlacement(from, prepared.lengthMm, L);
   if (fitsAt(start)) return start;
 

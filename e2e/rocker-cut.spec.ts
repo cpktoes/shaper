@@ -75,6 +75,18 @@ function deckSkinLabel(page: Page): Locator {
   return page.getByText(/^Deck Skin — /);
 }
 
+/**
+ * An Imperial mark as the page prints it — `1/8"`, `+3/16"`, `-1/16"`, `1 1/4"`, `0"` — read back to
+ * inches, so a test can compare two values it read off the page without typing either.
+ */
+function readInches(text: string): number {
+  const match = text.match(/([+-]?)(?:(\d+) )?(?:(\d+)\/(\d+)|(\d+))"/);
+  if (!match) throw new Error(`no inch mark in "${text}"`);
+  const [, sign, whole, num, den, bare] = match;
+  const value = bare !== undefined ? Number(bare) : Number(whole ?? 0) + Number(num) / Number(den);
+  return sign === "-" ? -value : value;
+}
+
 /** A named two-way pill pair (`TwoOptionToggle` with an `ariaLabel`). */
 function pillGroup(page: Page, name: string): Locator {
   return page.getByRole("group", { name });
@@ -312,6 +324,50 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await undoOnce(page, testInfo.project.name);
     await expect(pill(page, "Fine-tune off", "Deck")).toHaveAttribute("aria-pressed", "true");
     await expect.poll(async () => (await rockerCells.allTextContents()).join("|")).toBe(rockerBefore.join("|"));
+  });
+
+  test(`a 12" fine-tune on the Deck bigger than the Deck Skin says why nothing fits and offers Reset Fine-Tune, not Change Fit Rules`, async ({
+    page,
+  }) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    await expect(pill(page, "Fine-tune off", "Deck")).toHaveAttribute("aria-pressed", "true");
+
+    // The board's own Deck Skin, read off its label.
+    const skin = readInches(await deckSkinLabel(page).innerText());
+    const flag = page.locator('[data-flag="tweak-over-skin"]');
+    await expect(flag).toHaveCount(0);
+
+    // Nudge Nose @ 12" UP one step at a time until its tweak reads more than the skin (at the
+    // default 1/8" skin that is three 1/16" steps). Each step waits for the row to change.
+    const nose12Row = page.getByText(/^Nose @ 12" — /).locator("xpath=..");
+    const nose12 = nose12Row.getByRole("slider");
+    await nose12.focus();
+    let tweak = 0;
+    for (let step = 0; step < 12 && tweak <= skin; step++) {
+      const before = await nose12Row.innerText();
+      await nose12.press("ArrowRight");
+      await expect(nose12Row).not.toHaveText(before);
+      await expect(async () => {
+        const hint = (await nose12Row.innerText()).match(/Tweak ([+-][^"]*")/);
+        expect(hint, "the row reads a Tweak").not.toBeNull();
+        tweak = readInches(hint![1]);
+      }).toPass();
+    }
+    expect(tweak).toBeGreaterThan(skin);
+
+    // The flag names the cause and the one way out that can fix it.
+    await expect(flag).toBeVisible();
+    await expect(flag).toContainText("more than this board's");
+    const reset = flag.getByRole("button", { name: "↺ Reset Fine-Tune" });
+    await expect(reset).toHaveCount(1);
+    await expect(flag.getByRole("button", { name: "Change Fit Rules" })).toHaveCount(0);
+
+    await reset.click();
+    await expect(flag).toHaveCount(0);
+    await expect(nose12Row).toContainText("No tweak");
+    // Never clears the pick.
+    await expect(pickedCard(page)).toHaveCount(1);
   });
 
   test("with no blank there is no Tip Style and no Fine-tune off", async ({ page }) => {

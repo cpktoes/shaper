@@ -20,9 +20,10 @@ import {
   offerLine,
   placementSlider,
   REASON_SNAP_MM,
+  tweakOverSkinLine,
 } from "./blank-reasons";
 import { DEFAULT_BOARD_SPEC } from "./board";
-import { formatDim, formatLength, formatMark, stationLabel } from "./measure-display";
+import { formatDim, formatLength, formatMark, formatSignedMark, stationLabel } from "./measure-display";
 import { BOARD_PRESETS } from "./presets";
 import { MEASURE_STATION_MM } from "./outline";
 import { inchesToMm, litres, mm, mmToInches, UNITS_SYSTEMS, type Mm, type UnitsSystem } from "./units";
@@ -172,6 +173,37 @@ describe("formatShortfall — the foil runs out (D-18)", () => {
         expect(formatShortfall(shortfall(kind, station, over), thinCentre, system)).not.toContain("center");
       }
     });
+  });
+});
+
+describe("tweakOverSkinLine — a Deck fine-tune bigger than the Deck Skin (D-13)", () => {
+  const tweak = inchesToMm(3 / 16);
+  const skin = inchesToMm(1 / 8);
+
+  for (const system of UNITS_SYSTEMS) {
+    it(`names the tweak, the board's own skin and the three fixes on ROCKER (${system})`, () => {
+      expect(tweakOverSkinLine(tweak, skin, system)).toBe(
+        `Your ${formatSignedMark(tweak, system)} fine-tune is more than this board's ` +
+          `${formatMark(skin, system)} Deck Skin, so the deck would sit above any blank's deck there. ` +
+          `Raise the Deck Skin, reset the fine-tune, or take it off the Bottom`,
+      );
+    });
+
+    it(`ends without a full stop, so the flag adds one (${system})`, () => {
+      expect(tweakOverSkinLine(tweak, skin, system).endsWith(".")).toBe(false);
+    });
+  }
+
+  it("reads the Imperial marks as the shaper sees them on the sliders", () => {
+    const line = tweakOverSkinLine(tweak, skin, "imperial");
+    expect(line).toContain(`Your ${formatSignedMark(tweak, "imperial")} fine-tune`);
+    expect(formatSignedMark(tweak, "imperial")).toBe('+3/16"');
+    expect(formatMark(skin, "imperial")).toBe('1/8"');
+  });
+
+  it("reads the Metric marks in whole millimetres", () => {
+    const line = tweakOverSkinLine(tweak, skin, "metric");
+    expect(line).toMatch(/^Your \+\d+ mm fine-tune is more than this board's \d+ mm Deck Skin,/);
   });
 });
 

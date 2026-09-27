@@ -21,6 +21,7 @@ import {
   formatDimBare,
   formatLength,
   formatMark,
+  formatSignedMark,
   measureSlider,
   stationLabel,
   type MeasureSliderView,
@@ -110,6 +111,23 @@ export function formatShortfall(
   }
   const what = shortfall.kind === "wide" ? "too wide" : "too thin";
   return `${formatAmount(shortfall.amount, system)} ${what} ${where}`;
+}
+
+/**
+ * The flag body for a board whose 12" fine-tune on the Deck is bigger than its Deck Skin
+ * (`tweakExceedsDeckSkin`, Phase 12 D-13): no blank anywhere can take it, and nothing in the Fit &
+ * Tip Defaults dialog changes that, so the sentence names the three fixes that do — all on ROCKER:
+ * `Your +3/16" fine-tune is more than this board's 1/8" Deck Skin, so the deck would sit above any
+ * blank's deck there. Raise the Deck Skin, reset the fine-tune, or take it off the Bottom`. `tweak`
+ * is the larger of the two 12" offsets; `skin` is the board's own Deck Skin. No full stop at the end —
+ * the flag adds one, as it does for every reason line here.
+ */
+export function tweakOverSkinLine(tweak: Mm, skin: Mm, system: UnitsSystem): string {
+  return (
+    `Your ${formatSignedMark(tweak, system)} fine-tune is more than this board's ` +
+    `${formatMark(skin, system)} Deck Skin, so the deck would sit above any blank's deck there. ` +
+    `Raise the Deck Skin, reset the fine-tune, or take it off the Bottom`
+  );
 }
 
 /**

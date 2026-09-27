@@ -35,6 +35,7 @@ import {
   placementRange,
   prepareBlank,
   TIP_EASE_WINDOW_MM,
+  tweakExceedsDeckSkin,
   type BlankListResult,
   type BlankVerdict,
   type BoardFitContext,
@@ -1550,6 +1551,22 @@ describe("a Deck fine-tune bigger than the Deck Skin fits nowhere, and is read a
   it("a tweak exactly the skin is not over it — the list still fits", () => {
     const result = listBlanks(PREPARED_ALL, overSkin("deck", mm(0)), DEFAULT_SETTINGS);
     expect(result.fits.length).toBeGreaterThan(100);
+  });
+
+  it("tweakExceedsDeckSkin: true for a Deck tweak 1/16\" past the skin at either 12\" station, false at the skin, on the Bottom or for a negative tweak", () => {
+    const board = defaultContext(72, 2.5).board;
+    const skin = board.deckSkin;
+    const over = mm(skin + SIXTEENTH_MM);
+    // Nose or tail, on the Deck: over the skin.
+    expect(tweakExceedsDeckSkin({ ...board, fineTuneSurface: "deck", nose12Offset: over, tail12Offset: mm(0) })).toBe(true);
+    expect(tweakExceedsDeckSkin({ ...board, fineTuneSurface: "deck", nose12Offset: mm(0), tail12Offset: over })).toBe(true);
+    // Exactly the skin is not over it.
+    expect(tweakExceedsDeckSkin({ ...board, fineTuneSurface: "deck", nose12Offset: skin, tail12Offset: skin })).toBe(false);
+    // The same tweak on the Bottom never lifts the deck.
+    expect(tweakExceedsDeckSkin({ ...board, fineTuneSurface: "bottom", nose12Offset: over, tail12Offset: over })).toBe(false);
+    // A negative tweak takes foam away — never over the skin.
+    const under = mm(-(skin + SIXTEENTH_MM));
+    expect(tweakExceedsDeckSkin({ ...board, fineTuneSurface: "deck", nose12Offset: under, tail12Offset: under })).toBe(false);
   });
 
   it("judges the whole catalogue in under 250 ms when nothing fits (12-08 measured 1.3 s in Node, ~40 s on WebKit)", () => {
