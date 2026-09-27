@@ -609,7 +609,6 @@ function judgeWith(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitS
   // the same over-skin shortfall every placement shows), not searched.
   if (tweakExceedsDeckSkin(ctx.board)) return verdict(0);
 
-
   // Coarse: 0, then 1/4" steps outward, the nose side first at each distance, then the outermost
   // 1/16" placement each side when the range does not end on a quarter inch.
   const coarse: number[] = [0];
