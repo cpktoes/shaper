@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import golden from "./__fixtures__/phase11-foil-golden.json";
-import type { BlankRecord } from "./blank";
-import { prepareBlank } from "./blank-fit";
-import { phase11TwelveInch, type Phase11Board } from "./phase11-foil";
+import { DEFAULT_BLANK_CUT, type BlankRecord, type TipStyle } from "./blank";
+import { boardOnBlank, prepareBlank, TIP_EASE_WINDOW_MM } from "./blank-fit";
+import { carryPhase11Blank, phase11TwelveInch, type Phase11Board } from "./phase11-foil";
 import { mm } from "./units";
 
 // Every expected number below is Phase 11's own output, recorded in the generated fixture by
@@ -63,5 +63,42 @@ describe("Phase 11's 12\" formula, kept for the carry-over (D-14)", () => {
     expect(plus.thicknessMm.tail12).toBeGreaterThan(plus.tailTipMm);
     // The inner guard binds when the un-tweaked 12" value is held at the tip setting itself.
     expect(plus.derived12Mm.tail12).toBe(plus.tailTipMm);
+  });
+});
+
+describe("carrying a Phase 11 board across to the new cut (D-07, D-14)", () => {
+  const W = TIP_EASE_WINDOW_MM;
+  const tipStyles: TipStyle[] = ["pinDeck", "bottom"];
+
+  it("sets each 12\" fine-tune to Phase 11's 12\" thickness less the new cut's, with the default skin, the given Tip Style and fine-tunes on the Deck", () => {
+    for (const entry of golden.cases) {
+      const prepared = prepareBlank(recordOf(entry));
+      const board = boardOf(entry);
+      const placement = mm(entry.placementMm);
+      for (const tipStyle of tipStyles) {
+        const carried = carryPhase11Blank(prepared, board, placement, tipStyle);
+        expect(carried.deckSkin).toBe(DEFAULT_BLANK_CUT.deckSkin);
+        expect(carried.tipStyle).toBe(tipStyle);
+        expect(carried.fineTuneSurface).toBe("deck");
+        const untuned = boardOnBlank(
+          prepared,
+          { ...board, ...DEFAULT_BLANK_CUT, tipStyle, nose12Offset: mm(0), tail12Offset: mm(0) },
+          placement,
+        );
+        const L = board.length;
+        expect(carried.nose12Offset, entry.label).toBeCloseTo(
+          phase11TwelveInch(prepared, board, placement, "nose12") - untuned.derivedThicknessAt(L - W),
+          9,
+        );
+        expect(carried.tail12Offset, entry.label).toBeCloseTo(
+          phase11TwelveInch(prepared, board, placement, "tail12") - untuned.derivedThicknessAt(W),
+          9,
+        );
+        // And with those fine-tunes on, the new cut reads Phase 11's 12" thicknesses exactly.
+        const tuned = boardOnBlank(prepared, { ...board, ...carried }, placement);
+        expect(tuned.thicknessAt(W), entry.label).toBeCloseTo(entry.thicknessMm.tail12, 9);
+        expect(tuned.thicknessAt(L - W), entry.label).toBeCloseTo(entry.thicknessMm.nose12, 9);
+      }
+    }
   });
 });

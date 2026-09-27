@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
-import type { BlankRecord, BoardBlank } from "@/lib/geometry/blank";
+import golden from "@/lib/geometry/__fixtures__/phase11-foil-golden.json";
+import { DEFAULT_BLANK_CUT, type BlankRecord, type BoardBlank, type TipStyle } from "@/lib/geometry/blank";
+import { prepareBlank } from "@/lib/geometry/blank-fit";
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
+import { buildBoardProfile } from "@/lib/geometry/board-profile";
+import { formatMark } from "@/lib/geometry/measure-display";
+import { carryPhase11Blank } from "@/lib/geometry/phase11-foil";
 import { summarizeDesign } from "@/lib/geometry/design";
 import { MEASURE_STATION_MM } from "@/lib/geometry/outline";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
@@ -16,12 +21,13 @@ import {
   type FiveStationRocker,
   type RockerSpec,
 } from "@/lib/geometry/rocker";
-import { degrees, inchesToMm, mm } from "@/lib/geometry/units";
+import { degrees, inchesToMm, mm, UNITS_SYSTEMS } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
 import {
   DESIGN_SNAPSHOT_VERSION,
   SNAPSHOT_BOARD_LENGTH_MM,
   boardBlankSchema,
+  hasPhase11Blank,
   isBoardLengthInRange,
   buildSnapshot,
   designSnapshotSchema,
@@ -102,9 +108,60 @@ const MARKO: BlankRecord = (() => {
   return record;
 })();
 
+/** A version-5 blank: the board's copy, placement, two fine-tunes and its cut (rule 5). */
 function boardBlank(copy: BlankRecord = MARKO): BoardBlank {
-  return { copy, placement: inchesToMm(0.5), nose12Offset: mm(-1.5), tail12Offset: mm(2) };
+  return { copy, placement: inchesToMm(0.5), nose12Offset: mm(-1.5), tail12Offset: mm(2), ...DEFAULT_BLANK_CUT };
 }
+
+type GoldenCase = (typeof golden.cases)[number];
+
+/** A version-4 envelope for one golden case, exactly as Phase 11 saved such a board: no cut on the
+ * blank. Built from the case's own inputs and the catalogue record — never typed numbers. */
+function phase11Envelope(entry: GoldenCase, version = 4) {
+  const copy = CATALOG.find((blank) => blank.vendor === entry.vendor && blank.name === entry.name);
+  if (!copy) throw new Error(`${entry.vendor} ${entry.name} is not in the seeded catalogue`);
+  return JSON.parse(
+    JSON.stringify({
+      version,
+      design: {
+        outline: { ...DEFAULT_BOARD_SPEC.outline, length: entry.boardLengthMm },
+        foil: {
+          ...DEFAULT_FOIL_SPEC,
+          center: entry.centerThicknessMm,
+          noseTip: entry.noseTipMm,
+          tailTip: entry.tailTipMm,
+        },
+        blank: {
+          copy,
+          placement: entry.placementMm,
+          nose12Offset: entry.nose12OffsetMm,
+          tail12Offset: entry.tail12OffsetMm,
+        },
+      },
+    }),
+  );
+}
+
+/** The side profile of a parsed board, built from the parsed fields and the parsed blank's own cut. */
+function profileOf(parsed: DesignSnapshotFields) {
+  const blank = parsed.blank!;
+  return buildBoardProfile({
+    length: parsed.outline.length,
+    rocker: parsed.rocker,
+    foil: parsed.foil,
+    blank: {
+      prepared: prepareBlank(blank.copy),
+      placement: blank.placement,
+      nose12Offset: blank.nose12Offset,
+      tail12Offset: blank.tail12Offset,
+      deckSkin: blank.deckSkin,
+      tipStyle: blank.tipStyle,
+      fineTuneSurface: blank.fineTuneSurface,
+    },
+  });
+}
+
+const STATION_KEYS = ["tailTip", "tail12", "center", "nose12", "noseTip"] as const;
 
 /** Round-trips a fixture exactly the way a save and a reopen would: build, serialize over the
  * wire/DB boundary as JSON, then parse it back. */
@@ -152,8 +209,8 @@ describe("design-snapshot", () => {
     expect(snapshot.version).toBe(DESIGN_SNAPSHOT_VERSION);
   });
 
-  it("DESIGN_SNAPSHOT_VERSION is 4", () => {
-    expect(DESIGN_SNAPSHOT_VERSION).toBe(4);
+  it("DESIGN_SNAPSHOT_VERSION is 5", () => {
+    expect(DESIGN_SNAPSHOT_VERSION).toBe(5);
   });
 
   it("DEFAULT_BOARD_SPEC's rocker is the five-station hand-set default", () => {
@@ -261,20 +318,181 @@ describe("design-snapshot", () => {
       expect(parseSnapshot(wire).blank).toBeNull();
     });
 
-    it("version 4 with a real catalogue blank round-trips deep-equal, copy and all (D-01)", () => {
-      const fields: DesignSnapshotFields = { ...FIXTURES[0], rocker: DISTINCT_ROCKER, blank: boardBlank() };
-      const result = roundTrip(fields);
-      expect(result).toEqual(fields);
-      expect(result.blank?.copy).toEqual(MARKO);
+    it("a version-5 blank round-trips deep-equal, copy and cut and all (D-01, rule 5)", () => {
+      for (const cut of [
+        DEFAULT_BLANK_CUT,
+        { deckSkin: inchesToMm(3 / 16), tipStyle: "bottom", fineTuneSurface: "bottom" } as const,
+      ]) {
+        const fields: DesignSnapshotFields = {
+          ...FIXTURES[0],
+          rocker: DISTINCT_ROCKER,
+          blank: { ...boardBlank(), ...cut },
+        };
+        const result = roundTrip(fields);
+        expect(result).toEqual(fields);
+        expect(result.blank?.copy).toEqual(MARKO);
+      }
+    });
+
+    it("every version-4 board with a blank reopens with its five station numbers exactly as Phase 11 showed them", () => {
+      for (const entry of golden.cases) {
+        const parsed = parseSnapshot(phase11Envelope(entry), { tipStyle: "pinDeck" });
+        const blank = parsed.blank!;
+        expect(blank, entry.label).not.toBeNull();
+        expect(blank.deckSkin).toBe(DEFAULT_BLANK_CUT.deckSkin);
+        expect(blank.tipStyle).toBe("pinDeck");
+        expect(blank.fineTuneSurface).toBe("deck");
+        const profile = profileOf(parsed);
+        for (const key of STATION_KEYS) {
+          const shown = profile.effectiveFoil[key];
+          const saved = mm(entry.thicknessMm[key]);
+          expect(shown, `${entry.label} ${key}`).toBeCloseTo(saved, 9);
+          for (const system of UNITS_SYSTEMS) {
+            expect(formatMark(shown, system), `${entry.label} ${key} ${system}`).toBe(formatMark(saved, system));
+          }
+        }
+        // Re-saving and reopening the carried board changes nothing — no second carry-over.
+        expect(roundTrip(parsed), entry.label).toEqual(parsed);
+      }
+    });
+
+    it("a version-4 board carried over under Bottom keeps the same five thicknesses — Tip Style never moves a 12\" number", () => {
+      for (const entry of golden.cases) {
+        const pin = profileOf(parseSnapshot(phase11Envelope(entry), { tipStyle: "pinDeck" }));
+        const parsed = parseSnapshot(phase11Envelope(entry), { tipStyle: "bottom" });
+        expect(parsed.blank!.tipStyle).toBe("bottom");
+        const bottom = profileOf(parsed);
+        for (const key of STATION_KEYS) {
+          expect(bottom.effectiveFoil[key], `${entry.label} ${key}`).toBeCloseTo(entry.thicknessMm[key], 9);
+          expect(bottom.effectiveFoil[key]).toBeCloseTo(pin.effectiveFoil[key], 9);
+        }
+      }
+    });
+
+    it("a carried-over board with no Tip Style passed in takes the out-of-the-box one", () => {
+      const parsed = parseSnapshot(phase11Envelope(golden.cases[0]));
+      expect(parsed.blank!.tipStyle).toBe(DEFAULT_BLANK_CUT.tipStyle);
+      expect(parsed.blank!.deckSkin).toBe(DEFAULT_BLANK_CUT.deckSkin);
+      expect(parsed.blank!.fineTuneSurface).toBe(DEFAULT_BLANK_CUT.fineTuneSurface);
     });
   });
 
-  it("R1 / D-12: version 4 adds exactly one top-level key, and the blank carries no board centre of its own", () => {
+  describe("the carry-over is decided by the blank's shape, never the version number (rule 5, Pitfall 5)", () => {
+    it("a blank with no cut stamped version 5 (a tab left open across the deploy) is carried over like a version-4 one", () => {
+      // A golden case with a non-zero residual, so a carry-over is visible in the offsets.
+      const entry = golden.cases.find((c) => c.label === "dev-board")!;
+      const asV4 = parseSnapshot(phase11Envelope(entry, 4), { tipStyle: "pinDeck" });
+      const asV5 = parseSnapshot(phase11Envelope(entry, 5), { tipStyle: "pinDeck" });
+      expect(asV5).toEqual(asV4);
+      expect(asV5.blank!.nose12Offset).not.toBe(entry.nose12OffsetMm);
+      expect(asV5.blank!.tail12Offset).not.toBe(entry.tail12OffsetMm);
+    });
+
+    it("a blank that already carries its cut is returned as stored, even stamped version 4", () => {
+      const fields: DesignSnapshotFields = { ...FIXTURES[0], blank: boardBlank() };
+      const wire = JSON.parse(JSON.stringify(buildSnapshot(fields)));
+      wire.version = 4;
+      expect(parseSnapshot(wire, { tipStyle: "bottom" }).blank).toEqual(fields.blank);
+    });
+
+    it("hasPhase11Blank reads the blank's shape only", () => {
+      const entry = golden.cases[0];
+      expect(hasPhase11Blank(phase11Envelope(entry, 4))).toBe(true);
+      expect(hasPhase11Blank(phase11Envelope(entry, 5))).toBe(true);
+      const withCut = JSON.parse(JSON.stringify(buildSnapshot({ ...FIXTURES[0], blank: boardBlank() })));
+      expect(hasPhase11Blank(withCut)).toBe(false);
+      expect(hasPhase11Blank({ ...withCut, version: 4 })).toBe(false);
+      expect(hasPhase11Blank(JSON.parse(JSON.stringify(buildSnapshot(FIXTURES[0]))))).toBe(false);
+      for (const value of [null, undefined, "x", 4, [], {}, { design: null }, { design: { blank: "x" } }]) {
+        expect(hasPhase11Blank(value)).toBe(false);
+      }
+    });
+
+    it("a carried tweak beyond the ±50 mm bound is clamped to it, and the board re-parses", () => {
+      // A thin centre in a thick blank at full length, with a large saved tail tweak: Phase 11's
+      // 12" thickness then sits far above the new cut's, so the raw residual passes the bound.
+      const length = MARKO.lengthMm;
+      const board = {
+        length,
+        centerThickness: inchesToMm(1),
+        noseTip: inchesToMm(5 / 16),
+        tailTip: inchesToMm(1 / 4),
+        nose12Offset: mm(0),
+        tail12Offset: mm(45),
+      };
+      const raw = carryPhase11Blank(prepareBlank(MARKO), board, mm(0), "pinDeck");
+      expect(raw.tail12Offset).toBeGreaterThan(50);
+      const wire = JSON.parse(
+        JSON.stringify({
+          version: 4,
+          design: {
+            outline: { ...DEFAULT_BOARD_SPEC.outline, length },
+            foil: { ...DEFAULT_FOIL_SPEC, center: board.centerThickness, noseTip: board.noseTip, tailTip: board.tailTip },
+            blank: { copy: MARKO, placement: 0, nose12Offset: 0, tail12Offset: 45 },
+          },
+        }),
+      );
+      const parsed = parseSnapshot(wire);
+      expect(parsed.blank!.tail12Offset).toBe(50);
+      expect(() => roundTrip(parsed)).not.toThrow();
+      expect(roundTrip(parsed)).toEqual(parsed);
+    });
+  });
+
+  it("R1 / D-12: the snapshot has one blank key, and the blank carries its cut but no board centre of its own", () => {
     const snapshot = buildSnapshot({ ...FIXTURES[0], blank: boardBlank() });
     expect(Object.keys(snapshot.design).sort()).toEqual([...V3_KEYS, "blank"].sort());
     expect(Object.keys(snapshot.design.blank!).sort()).toEqual(
-      ["copy", "nose12Offset", "placement", "tail12Offset"].sort(),
+      ["copy", "deckSkin", "fineTuneSurface", "nose12Offset", "placement", "tail12Offset", "tipStyle"].sort(),
     );
+  });
+
+  describe("a malformed cut on a version-5 blank is rejected (rule 5 — untrusted input)", () => {
+    const CUT_KEYS = ["deckSkin", "tipStyle", "fineTuneSurface"] as const;
+
+    it("a blank carrying only one or two of its three cut fields is rejected", () => {
+      for (let mask = 1; mask < 7; mask++) {
+        const wire = wireWithBlank();
+        CUT_KEYS.forEach((key, i) => {
+          if (!(mask & (1 << i))) delete wire.design.blank[key];
+        });
+        expect(() => parseSnapshot(wire), `kept ${mask}`).toThrow();
+      }
+    });
+
+    it("an unknown Tip Style or fine-tune surface is rejected", () => {
+      const sideways = wireWithBlank();
+      sideways.design.blank.tipStyle = "sideways";
+      expect(() => parseSnapshot(sideways)).toThrow();
+      const rail = wireWithBlank();
+      rail.design.blank.fineTuneSurface = "rail";
+      expect(() => parseSnapshot(rail)).toThrow();
+    });
+
+    it("a deck skin under 0 or over 50 mm is rejected", () => {
+      for (const deckSkin of [51, -1]) {
+        const wire = wireWithBlank();
+        wire.design.blank.deckSkin = deckSkin;
+        expect(() => parseSnapshot(wire), `${deckSkin}`).toThrow();
+      }
+      for (const deckSkin of [0, 50]) {
+        const wire = wireWithBlank();
+        wire.design.blank.deckSkin = deckSkin;
+        expect(() => parseSnapshot(wire), `${deckSkin}`).not.toThrow();
+      }
+    });
+
+    it("each Tip Style and fine-tune surface the app offers parses", () => {
+      const styles: TipStyle[] = ["pinDeck", "bottom"];
+      for (const tipStyle of styles) {
+        for (const fineTuneSurface of ["deck", "bottom"] as const) {
+          const wire = wireWithBlank();
+          wire.design.blank.tipStyle = tipStyle;
+          wire.design.blank.fineTuneSurface = fineTuneSurface;
+          expect(parseSnapshot(wire).blank).toMatchObject({ tipStyle, fineTuneSurface });
+        }
+      }
+    });
   });
 
   it("every pickable blank in the seeded catalogues passes the bounded blank schema", () => {
