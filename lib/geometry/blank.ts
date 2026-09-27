@@ -108,8 +108,13 @@ export interface BoardBlank {
 export interface FitSettings {
   /** How much longer than the board a blank must be to be listed. */
   extraLength: Mm;
-  /** How much thicker than the target centre a blank's centre must be to be listed. */
-  extraCenterThickness: Mm;
+  /**
+   * How deep the shaper's planer cuts in one pass (Phase 12 D-03). Half of the centre floor
+   * (D-10): a blank is listed only when its printed centre is at least the target centre plus the
+   * board's Deck Skin plus one pass of this depth — room for one deck pass and at least one bottom
+   * pass. It replaced Phase 11's Extra Center Thickness.
+   */
+  planerMaxDepth: Mm;
   /** How much narrower than the blank the board must be at every station (D-05; default 1"). */
   widthMargin: Mm;
 }

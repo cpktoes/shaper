@@ -8,7 +8,8 @@
  * block says why, with the station and the amount, and offers exactly one way out:
  *
  * - F3 / F4 — the blank no longer passes a floor (too short for the spare length asked for, or too
- *   thin at the centre for the spare thickness asked for): the offer.
+ *   thin at the centre to leave room for the board's Deck Skin and one bottom pass of the Planer
+ *   Max Depth — Phase 12 D-10): the offer.
  * - F2 — it fits somewhere else along the blank, just not where the board sits now: Move to Where
  *   It Fits, which slides the board to the fitting placement nearest to where it is.
  * - F1 — it fits nowhere along the blank: the offer.
@@ -53,7 +54,7 @@ import {
 } from "@/lib/geometry/blank-reasons";
 import { sampleOutline } from "@/lib/geometry/outline";
 import type { Mm } from "@/lib/geometry/units";
-import { useBlankList } from "./use-blank-list";
+import { useBlankList, useBoardCut, useCenterFloorRules } from "./use-blank-list";
 
 /** A full-width button on a phone, its natural width on desktop. */
 const ACTION_CLASS = "mt-1 self-start max-shell:w-full max-shell:self-stretch";
@@ -130,7 +131,11 @@ function PickedBlankFlag({
   const { system } = useUnits();
   const { outline, outlineGeometry, foil, setPlacement } = useDesign();
   const { settings } = useFitDefaults();
-  const { extraLength, extraCenterThickness, widthMargin } = settings;
+  const { extraLength, planerMaxDepth, widthMargin } = settings;
+  // The picked board's own cut (its blank's Deck Skin, Tip Style and fine-tune surface), and the
+  // rules the F4 sentence quotes — the same numbers the floor below is checked with (D-10).
+  const { deckSkin, tipStyle, fineTuneSurface } = useBoardCut();
+  const rules = useCenterFloorRules();
 
   // Everything about the board the "fits anywhere?" search depends on — never the placement.
   const ctx = useMemo<BoardFitContext>(
@@ -142,17 +147,31 @@ function PickedBlankFlag({
         tailTip: foil.tailTip,
         nose12Offset,
         tail12Offset,
+        deckSkin,
+        tipStyle,
+        fineTuneSurface,
       },
       halfWidthAt: (station: Mm) => sampleOutline(outlineGeometry, station),
       widePointStation: outlineGeometry.widePointStation,
     }),
-    [outline.length, outlineGeometry, foil.center, foil.noseTip, foil.tailTip, nose12Offset, tail12Offset],
+    [
+      outline.length,
+      outlineGeometry,
+      foil.center,
+      foil.noseTip,
+      foil.tailTip,
+      nose12Offset,
+      tail12Offset,
+      deckSkin,
+      tipStyle,
+      fineTuneSurface,
+    ],
   );
-  const floor = floorCheck(prepared, outline.length, foil.center, settings);
+  const floor = floorCheck(prepared, ctx.board, settings);
   // D-07: judged on the board and the rules only, so a slider move never re-runs the search.
   const verdict = useMemo(
-    () => (floor.passes ? judgeBlank(prepared, ctx, { extraLength, extraCenterThickness, widthMargin }) : null),
-    [floor.passes, prepared, ctx, extraLength, extraCenterThickness, widthMargin],
+    () => (floor.passes ? judgeBlank(prepared, ctx, { extraLength, planerMaxDepth, widthMargin }) : null),
+    [floor.passes, prepared, ctx, extraLength, planerMaxDepth, widthMargin],
   );
 
   const board = { length: outline.length, widePointStation: outlineGeometry.widePointStation };
@@ -167,7 +186,7 @@ function PickedBlankFlag({
     return (
       <FlagBlock
         headline={FLAG_HEADLINES.doesNotFit}
-        body={floorShortfallMessage("length", floor.lengthShortBy, extraLength, system)}
+        body={floorShortfallMessage("length", floor.lengthShortBy, rules, system)}
       >
         {offer}
       </FlagBlock>
@@ -177,7 +196,7 @@ function PickedBlankFlag({
     return (
       <FlagBlock
         headline={FLAG_HEADLINES.doesNotFit}
-        body={floorShortfallMessage("center", floor.centerShortBy, extraCenterThickness, system)}
+        body={floorShortfallMessage("center", floor.centerShortBy, rules, system)}
       >
         {offer}
       </FlagBlock>
@@ -196,7 +215,7 @@ function PickedBlankFlag({
           variant="outline"
           className={ACTION_CLASS}
           onClick={() => {
-            const to = nearestFittingPlacement(prepared, ctx, { extraLength, extraCenterThickness, widthMargin }, placement);
+            const to = nearestFittingPlacement(prepared, ctx, { extraLength, planerMaxDepth, widthMargin }, placement);
             if (to !== null) setPlacement(to);
           }}
         >
