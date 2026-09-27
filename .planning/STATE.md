@@ -4,7 +4,7 @@ milestone: v1.4
 milestone_name: Foil the Way a Shaper Cuts It
 status: shipped — UAT pending
 stopped_at: Phase 12 SHIPPED 2026-09-27 — production migrated first (0006), foil-real-shaping merged into main (125a90f), deployed and walked live; all 10 plans have SUMMARYs; phase.complete waits on /gsd-verify-work 12 (5 of 8 UAT checks pending: real-phone thumb walks, four themes, a carried-over tweak beyond 1/4in, the ROCKER baseline picture) and /gsd-secure-phase 12
-last_updated: "2026-09-27T06:22:54.953Z"
+last_updated: "2026-09-27T07:09:30.316Z"
 last_activity: 2026-09-26
 last_activity_desc: "Phase 12 shipped to www.shaperassistant.com: migration 0006 on production before the merge, 73 commits merged, deploy Ready in 28 s, live ROCKER / Fit & Tip Defaults / rack checks passed; UAT 3 of 8 recorded, 5 pending"
 progress:
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 **v1.4 — Foil the Way a Shaper Cuts It: OPENED 2026-09-26 on branch `foil-real-shaping`.** Phase 12 added from the founder's brief (todo 2026-09-26: deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, tip thinning in the last 12" with a pin-deck or bottom choice, fine-tunes on the 12" stations). v1.3 shipped the same day and is archived under .planning/milestones/.
 
 Status: Executing Phase 12
-Last activity: 2026-09-26 — Completed quick task 260926-uub: new boards start with a 1/2" nose tip and a 5/8" tail tip
+Last activity: 2026-09-27 — Completed quick task 260926-wkh: the order form's Blank field names the blank picked on ROCKER
 
 ## Performance Metrics
 
@@ -277,6 +277,7 @@ Recent decisions affecting current work:
 | 260914-v2v | On a phone held sideways the rail cross-sections now take the drawing column's full width and the column scrolls, instead of shrinking to fit the screen's height (416 dots wide on a real iPhone, up from 40-dot slivers), and the coloured key sits under the last plot instead of over it; closing a section keeps the rest full width; nothing changes on a computer - the founder's own choice from four measured fitting rules | 2026-09-14 | 05c1ae1 | [260914-v2v-on-a-phone-held-sideways-the-rail-cross-](./quick/260914-v2v-on-a-phone-held-sideways-the-rail-cross-/) |
 | 112 | Browser tabs, bookmarks and history now show a shortboard outline with its stringer, turned 45° nose-up, instead of the placeholder triangle the app started with; drawn fresh after the founder's Flaticon reference (no attribution owed), filled white and outlined in the site's daylight ink so it shows on light and dark tab bars, with the same board on a white tile for an iPhone home screen (app/icon.svg, plus favicon.ico and apple-icon.png rendered from it) | 2026-09-16 | 154fdef | — |
 | 260926-uub | New boards start with a 1/2" nose tip and a 5/8" tail tip (the founder's defaults, replacing 5/16" and 1/4"); Fit & Tip Defaults shows the same pair until a shaper picks their own; presets and saved defaults untouched; ROCKER and VOLUME reference pictures re-recorded, TEMPLATE/RAILS/FINS byte-identical; no blank drops off the default board's list | 2026-09-26 | e1101e3 | [260926-uub-default-tip-thicknesses-become-nose-tip-](./quick/260926-uub-default-tip-thicknesses-become-nose-tip-/) |
+| 260926-wkh | The order form's Shaper Use Only box: the "Blank & Rocker" line is now "Blank", prints the blank picked on ROCKER (maker then name) read-only, stays a ruled line with no blank, and sits on a full-width line of its own above Board # and Price so every catalogue name prints whole (19 of 162 were cut off before) | 2026-09-27 | 59286a7 | [260926-wkh-summary-page-the-blank-and-rocker-sectio](./quick/260926-wkh-summary-page-the-blank-and-rocker-sectio/) |
 
 ## Deferred Items
 
