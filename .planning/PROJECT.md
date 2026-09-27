@@ -17,6 +17,29 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 
 ## Current State
 
+**Shipped: v1.4 — Foil the Way a Shaper Cuts It** (2026-09-27, Phase 12, 10 plans)
+
+The foil is now cut the way a planer works. With a blank picked, a constant deck skin comes off
+first, parallel to the blank's deck (a Fit & Tip Default, 1/8" out of the box, and a per-board value
+on ROCKER); the centre thickness sets the board's bottom under that deck, and the foam down to the
+blank's bottom reads as a depth and as planer passes against a Planer Max Depth setting that replaced
+Extra Center Thickness; the board's bottom parallels the blank's rocker, so the four rocker numbers
+are the blank's own and each 12" station's thickness falls out of it; the tips are thinned last,
+inside the last 12", with the deck pinned or the bottom pinned (Tip Style, a saved default and a
+per-board choice), and a Fine-tune off choice says which surface a 12" tweak moves. The DATASHEET
+shows the foam off the deck and off the bottom at every station and the drawing shades both bands.
+A blank fits only if one deck pass and one bottom pass come off at the centre and nothing runs under
+1/8" thick. Every board saved under Phase 11 reopens with its five station numbers kept exactly, the
+two 12" fine-tunes absorbing the residual.
+
+Underneath: Phase 11's foil pinned in a golden file before anything changed, six named geometry tests
+green before any screen moved, saved boards at version 5 with the carry-over decided by the blank's
+shape rather than its version stamp, and production migrated (0006) before the merge under the
+amended database rule. Verified 11/11, walked 8/8 by the founder on real phones and the live site,
+35/35 threats closed. Five verifier questions (the 1/8" floor at thin tips, the carried-over
+fine-tune greying, a reason line's wording, the loose saved Deck Skin bound, a stale-tab edge) wait
+on the founder and are listed in `12-UAT.md`.
+
 **Shipped: v1.3 — Rocker from Real Blanks** (2026-09-26, Phase 11, 13 plans)
 
 The ROCKER screen stopped being a hand-drawn curve. A shaper sets a target centre thickness, picks a
@@ -92,16 +115,17 @@ Archives: [v1.3](milestones/v1.3-ROADMAP.md) · [v1.2](milestones/v1.2-ROADMAP.m
 
 ## Current Milestone
 
-_None open — v1.3 shipped 2026-09-26. The next milestone is defined by `/gsd-new-milestone` (or a phase
-added for `/gsd-discuss-phase`); the front-runner is the founder's foil-from-real-shaping model below._
+_v1.4 — Foil the Way a Shaper Cuts It — shipped 2026-09-27 (Phase 12, 10 plans; UAT 8/8, security 35/35). Its one
+phase is complete; the milestone closes with `/gsd-complete-milestone v1.4`, and the next one is defined by
+`/gsd-new-milestone`._
 
 <details>
 <summary>Carried forward — not yet scheduled</summary>
 
 - **Free/paid tier gating** (Clerk Billing) — build-guide milestones M4–M5, waiting on real shapers using the free version so it's clear what's worth paying for. The first candidate feature is branding the order form with a shaper's own logo and contact details (todo, 2026-09-06)
 - **Public sharing / model gallery** — build-guide milestone M6
-- **Foil the way a shaper cuts it** — deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, and tip thinning in the last 12" with a pin-deck or bottom choice (todo 2026-09-26, the front-runner for v1.4)
-- **Blank manufacturer tick-boxes** in settings and **a smoother-looking drawn rocker curve** that leaves every PCHIP number alone (todos 2026-09-26)
+- **A smoother-looking drawn rocker curve** that leaves every PCHIP number alone (todo 2026-09-26); the blank-maker tick boxes shipped as quick task 260926-wmf on 2026-09-27
+- **Pages and prints still open** — the Summary should carry the tip thicknesses and the deck and bottom passes, a Contacts page, and a link from a picked blank to its maker's catalogue page (todos 2026-09-26 and 2026-09-27)
 - **Retroactive coverage on v1.1** — a security pass for Phase 5 (it added a database table and a server action) and Nyquist validation for Phases 5–7, none of which was run
 
 </details>
@@ -132,6 +156,8 @@ added for `/gsd-discuss-phase`); the front-runner is the founder's foil-from-rea
 - ✓ User can do everything else the app does from a phone — sign-in, the rack, the summary — with the whole trip proven in a shaper's hand on a real iPhone (Android walk skipped by founder decision D-12) — v1.2, Phase 10: The Whole App on a Phone (2026-09-12)
 
 - ✓ User can set a target centre thickness, pick a real blank that fits, slide the board along it and read the board's rocker, thickness and foil off the foam — every blank that won't fit shown with why, five Fit & Tip Defaults saved on the account, older boards reopening hand-set — v1.3, Phase 11: Rocker from Real Blanks (2026-09-26; the spec's sixteen requirements R1–R16 verified 16/16, UAT 7/7, security 43/43, six live checks)
+
+- ✓ User can cut a board from its blank the way a planer works — a constant deck skin off the deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, the bottom parallel to the blank's rocker so the four rocker numbers are the blank's own, tips thinned last inside the last 12" with a pin-deck or bottom choice, Deck Skin, Planer Max Depth and Tip Style as saved defaults, and every Phase 11 board reopening with its five station numbers kept — v1.4, Phase 12: Foil the Way a Shaper Cuts It (2026-09-27; R1–R11 verified 11/11, UAT 8/8, security 35/35, production migrated before the deploy)
 
 ### Active
 
@@ -212,9 +238,13 @@ templates ("the math is right").
 | Code review runs between the last code wave and the human checkpoint, and each review's findings are fixed in the same round | Three rounds in phase 10 each caught a real defect in the round's own fixes (one a same-wave gate dependency the orchestrator introduced) | ✓ Good |
 | Additive database changes migrate production BEFORE the deploy; removals wait for it | Drizzle names every column on insert, so deploying a new nullable column ahead of its migration breaks every existing save on that table (code review CR-01, 2026-09-26) — supersedes the v1.0 "code deploys before production migrates" row above for additive changes | ✓ Good — exercised at the v1.3 production step |
 | Rocker and thickness curves interpolate with PCHIP, never a plain cubic spline, and the interpolation is never changed to prettify a drawing | Nose rocker jumps hard near the tip; a cubic spline overshoots there and prints numbers a shaper cannot trust (R10, R15, D-13) | ✓ Good for the numbers; ⚠️ Revisit the drawn curve only — the founder finds it a little sharp (todo 2026-09-26) |
-| The foil scales the blank's thickness profile to the centre thickness with tips eased into the tip settings; the blank's ratio is read under the board's centre | Fits inside the foam and matches the shaper's centre and tips (D-17, D-18) | ✓ Working — the founder's real-shaping model (deck skin, parallel bottom, pin-deck thinning) is the candidate to replace it |
+| The foil scales the blank's thickness profile to the centre thickness with tips eased into the tip settings; the blank's ratio is read under the board's centre | Fits inside the foam and matches the shaper's centre and tips (D-17, D-18) | Superseded (v1.4, Phase 12) — replaced by the planer model in the rows below |
 | Presets open in real blanks chosen by rule and marked provisional | Real blanks carry fuller foil than the old typed numbers (preset litres rose 2–5 L); the founder replaces the picks through the preset-copy workflow | ⚠️ Revisit — the founder's own picks pending |
 | The production step runs with the founder present, in his own terminal, with a read-only proof before and after the seed | drizzle prints success without naming what it applied; the founder's production credentials never enter the assistant's sandbox | ✓ Good |
+| A board is cut from its blank the way a planer works: a constant deck skin first, the bottom planed to centre thickness, the tips thinned last inside 12" with the deck or the bottom pinned | The founder's own brief (Phase 12 D-01–D-06, D-10); the foam to remove reads as planer passes, so the DATASHEET's numbers are the numbers a shaper works to | ✓ Working — walked 8/8 on the live site (v1.4) |
+| A board saved under Phase 11 keeps its five station numbers exactly on reopen; the two 12" fine-tunes absorb the residual, and the carry-over is decided by the blank's shape, never the version stamp | Nothing a shaper already cut to may move (R9, D-07, D-14); about nine in ten carried boards open with a fine-tune bigger than the skin, and the flag says so and offers Reset Fine-Tune | ✓ Working — 10 of 10 production boards open; ⚠️ the D-14 greying is a founder question still open |
+| A blank fits only if one deck pass and one bottom pass come off at the centre, and no point runs under 1/8" thick | "One on deck and one on bottom as a minimum" (D-10, D-15, D-18); the too-thin case is reachable only at centres of 1 1/2" or less | ✓ Working; ⚠️ the 1/8" floor at thin tips is a founder question still open |
+| Planer Max Depth replaces Extra Center Thickness as a saved default; the retired column stays declared until its own later DROP | Passes are counted from the printed numbers (D-03); a DROP cannot ride in the same migration run as an additive change (D-19, the CR-01 rule) | ✓ Good — 0006 on production before the deploy; the DROP is its own quick task |
 
 ## Evolution
 
@@ -234,4 +264,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-26 after v1.3 milestone*
+*Last updated: 2026-09-27 after Phase 12 (v1.4 ready to close)*

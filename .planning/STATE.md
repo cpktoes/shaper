@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Foil the Way a Shaper Cuts It
-status: shipped — UAT pending
-stopped_at: Phase 12 SHIPPED 2026-09-27 — production migrated first (0006), foil-real-shaping merged into main (125a90f), deployed and walked live; all 10 plans have SUMMARYs; phase.complete waits on /gsd-verify-work 12 (5 of 8 UAT checks pending: real-phone thumb walks, four themes, a carried-over tweak beyond 1/4in, the ROCKER baseline picture) and /gsd-secure-phase 12
-last_updated: "2026-09-27T17:42:46.859Z"
-last_activity: 2026-09-26
-last_activity_desc: "Phase 12 shipped to www.shaperassistant.com: migration 0006 on production before the merge, 73 commits merged, deploy Ready in 28 s, live ROCKER / Fit & Tip Defaults / rack checks passed; UAT 3 of 8 recorded, 5 pending"
+status: completed
+stopped_at: Phase 12 complete 2026-09-27 — UAT 8/8 walked by the founder, verification passed, security 35/35; milestone v1.4 ready to close with /gsd-complete-milestone v1.4
+last_updated: "2026-09-27T18:15:43.008Z"
+last_activity: 2026-09-27
+last_activity_desc: "Phase 12 complete: the founder walked the last five UAT checks (8 of 8), verification passed, 35 of 35 threats closed; v1.4 ready to close"
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 10
   completed_plans: 10
   percent: 100
@@ -21,23 +21,23 @@ current_phase_name: Foil the Way a Shaper Cuts It
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-26)
+See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 12 — Foil the Way a Shaper Cuts It
+**Current focus:** Close milestone v1.4 (/gsd-complete-milestone v1.4), then define the next one
 
 ## Current Position
 
-**v1.4 — Foil the Way a Shaper Cuts It: OPENED 2026-09-26 on branch `foil-real-shaping`.** Phase 12 added from the founder's brief (todo 2026-09-26: deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, tip thinning in the last 12" with a pin-deck or bottom choice, fine-tunes on the 12" stations). v1.3 shipped the same day and is archived under .planning/milestones/.
+**v1.4 — Foil the Way a Shaper Cuts It: SHIPPED 2026-09-27 — Phase 12 complete (UAT 8/8, verification passed, security 35/35), milestone ready to close.** Opened 2026-09-26 on branch `foil-real-shaping` from the founder's brief (todo 2026-09-26: deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, tip thinning in the last 12" with a pin-deck or bottom choice, fine-tunes on the 12" stations); production carried migration 0006 before the merge (`125a90f`, 2026-09-27) and the live site was walked the same day. v1.3 shipped 2026-09-26 and is archived under .planning/milestones/.
 
-Status: Executing Phase 12
-Last activity: 2026-09-27 — Completed quick task 260927-ef8: a typed 11/16" in an Imperial field now lands as 11/16", not an inch more
+Status: All phases complete
+Last activity: 2026-09-27 — Phase 12 complete: UAT 8/8 walked by the founder, verification passed, security 35/35
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 85
+- Total plans completed: 95
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -56,6 +56,7 @@ Last activity: 2026-09-27 — Completed quick task 260927-ef8: a typed 11/16" in
 | 9 | 9 | - | - |
 | 10 | 11 | - | - |
 | 11 | 13 | - | - |
+| 12 | 10 | - | - |
 
 **Recent Trend:**
 
@@ -86,6 +87,10 @@ Last activity: 2026-09-27 — Completed quick task 260927-ef8: a typed 11/16" in
 
 ### Decisions
 
+- [Phase 12]: A board is cut from its blank the way a planer works — the deck skin first (a saved default and a per-board value), the bottom planed to centre thickness with the foam shown as planer passes against Planer Max Depth, the tips thinned last inside 12" with the deck or the bottom pinned (D-01–D-06, D-10)
+- [Phase 12]: A Phase 11 board keeps its five station numbers exactly on reopen; the two 12" fine-tunes absorb the residual, and the carry-over is decided by the blank's shape, never the version stamp (D-07, D-14; 10 of 10 production boards open)
+- [Phase 12]: A blank fits only with one deck pass and one bottom pass at the centre and nothing under 1/8" thick (D-10, D-15, D-18); Fine-tune off picks the surface a 12" tweak moves (D-13); the ±1/4" slider stays, with a carried-over value shown true and the thumb pinned (D-20)
+- [Phase 12]: extra_center_thickness_mm stays declared and unused until its own later DROP — a DROP cannot ride in the same migration run as an additive change (D-19); production carried 0006 before the merge (12-10)
 - [Phase 11]: Additive database changes migrate production BEFORE the deploy; removals wait for it (CLAUDE.md Database, amended after code review CR-01: Drizzle names every column on insert)
 - [Phase 11]: Rocker and thickness curves use PCHIP (SciPy parity, no overshoot at the nose), never a plain cubic spline; the interpolation is not changed to cure a faceted drawing (R10/R15)
 - [Phase 11]: The foil scales the blank's thickness profile to the centre thickness with tips eased into the tip settings (D-17); the blank's thickness ratio is read under the board's centre (D-18); an untouched board follows the live tip defaults until first edited (D-19)
@@ -159,6 +164,7 @@ Recent decisions affecting current work:
 
 - [Phase 2] .env.example still needs to be created by hand (repo root, three lines: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=, CLERK_SECRET_KEY=, DATABASE_URL=) — the execution sandbox hard-blocks any tool write matching a .env* path, including this values-empty example file
 - [Phase 2] client_secret_*.json (Google OAuth download) still sits in the repo root — gitignored so it can't be committed, but should be moved out of the working tree entirely
+- [Phase 12] Five verifier questions await the founder's decision (12-UAT.md, "Founder Questions"): the 1/8" floor at thin tips (D-18), the D-14 greying of carried-over boards until the fine-tune is reset, the IN-02 reason wording, the loose 0–50 mm saved Deck Skin bound (IN-03), and the stale-tab Restore Defaults edge (IN-04) — decisions, not defects
 
 ### Quick Tasks Completed
 
@@ -375,11 +381,12 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-27T01:02:06.879Z
-Stopped at: Phase 12 UI-SPEC approved
-Resume file: .planning/phases/12-foil-the-way-a-shaper-cuts-it/12-UI-SPEC.md
-Next action: `/gsd-plan-phase 10` - context and design contract are both in place.
+Last session: 2026-09-27T18:19:24.000Z
+Stopped at: Phase 12 complete — UAT 8/8, verification passed, security 35/35; milestone v1.4 ready to close
+Resume file: None
+Next action: `/gsd-complete-milestone v1.4` — archive v1.4, then `/gsd-new-milestone`
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Close milestone v1.4 with /gsd-complete-milestone v1.4 (archive), then start the next with /gsd-new-milestone
+- Answer the five Phase 12 founder questions listed in 12-UAT.md (decisions, not defects)
