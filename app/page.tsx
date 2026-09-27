@@ -5,6 +5,8 @@ import { SetupScreen } from "@/components/setup/setup-screen";
 import type { SavedModel } from "@/components/setup/board-rack-card";
 import { PhoneTabBar } from "@/components/design/phone-tab-bar";
 import { listModels } from "@/lib/db/queries";
+import { resolveCarryOverTipStyle } from "@/lib/fit-defaults-server";
+import { hasPhase11Blank } from "@/lib/models/design-snapshot";
 import { rackModelsFromRows } from "@/lib/models/rack-models";
 
 export const metadata: Metadata = {
@@ -73,7 +75,14 @@ async function BoardRackData({ userId }: { userId: string }) {
   // omits a single card instead of breaking the page. Logged so a missing board is discoverable
   // by whoever can read the server log, even though the shaper themself has no way to see this
   // line (this plan's prohibition).
-  models = rackModelsFromRows(rows);
+  //
+  // A board saved under Phase 11 opens with the shaper's own Tip Style (Phase 12 D-14), looked up
+  // once for the whole rack and only when some row actually holds a Phase 11 blank — decided by
+  // the blank's shape, never the envelope's version number. The lookup fails soft to the cookie's
+  // Tip Style or Pin deck (for instance before production carries the `tip_style` column), so it
+  // can never take the rack down.
+  const tipStyle = rows.some((row) => hasPhase11Blank(row.snapshot)) ? await resolveCarryOverTipStyle() : undefined;
+  models = rackModelsFromRows(rows, undefined, { tipStyle });
 
   return <SetupScreen models={models} />;
 }
