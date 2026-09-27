@@ -13,7 +13,7 @@
  * Node only) — the generator and the tests read the catalogue and hand it in.
  */
 import generated from "./preset-blanks.generated.json";
-import type { BlankRecord, BoardBlank } from "@/lib/geometry/blank";
+import { DEFAULT_BLANK_CUT, type BlankRecord, type BoardBlank } from "@/lib/geometry/blank";
 import { listBlanks, nearestFit, type BoardFitContext, type PreparedBlank } from "@/lib/geometry/blank-fit";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { buildOutline, sampleOutline } from "@/lib/geometry/outline";
@@ -47,7 +47,11 @@ export const PRESET_BLANKS: PresetBlanksModule = generated as unknown as PresetB
 
 /**
  * The board a preset describes, as the fit check reads it: its own length, outline, centre and
- * tips, no fine-tunes.
+ * tips, no fine-tunes, and its own cut (Phase 12, D-17) — `DEFAULT_BLANK_CUT`'s 1/8" deck skin,
+ * Pin deck tips and Deck fine-tunes, never the shaper's account defaults, the same way a preset
+ * keeps its own tips. Otherwise a shaper whose Tip Style default is Bottom would open a new
+ * Shortboard already flagged as not fitting its own blank. Litres follow the new foil (D-08); the
+ * picks stay provisional and unchanged.
  */
 export function presetFitContext(preset: BoardPreset): BoardFitContext {
   const geometry = buildOutline(preset.outline);
@@ -59,6 +63,7 @@ export function presetFitContext(preset: BoardPreset): BoardFitContext {
       tailTip: preset.foil.tailTip,
       nose12Offset: mm(0),
       tail12Offset: mm(0),
+      ...DEFAULT_BLANK_CUT,
     },
     halfWidthAt: (station: Mm) => sampleOutline(geometry, station),
     widePointStation: geometry.widePointStation,
@@ -101,7 +106,9 @@ function moduleRecord(vendor: string, name: string): BlankRecord {
 /**
  * The blank a preset opens in (D-01, D-03): a captured `preset.blank` wins over the generated
  * module's pick; the rows are the module's own record (one stable object per blank, so the store
- * prepares it once); both fine-tunes start at 0.
+ * prepares it once); both fine-tunes start at 0; and the board opens with its own cut,
+ * `DEFAULT_BLANK_CUT` (1/8" skin, Pin deck, fine-tunes on the Deck — D-17), the cut its pick was
+ * judged with in `presetFitContext`, so a preset never follows the shaper's account defaults.
  */
 export function presetBlank(preset: BoardPreset): BoardBlank {
   const chosen = preset.blank
@@ -120,6 +127,7 @@ export function presetBlank(preset: BoardPreset): BoardBlank {
     placement: chosen.placement,
     nose12Offset: mm(0),
     tail12Offset: mm(0),
+    ...DEFAULT_BLANK_CUT,
   };
 }
 
