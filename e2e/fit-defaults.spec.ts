@@ -126,7 +126,7 @@ test.describe("Fit & Tip Defaults — the gear menu's BLANKS row and its dialog"
   test("the row opens the dialog, which shows every group, hint and default", async ({ page }, testInfo) => {
     await page.goto("/design/outline");
     const row = await openMenuRow(page, testInfo.project.name);
-    await expect(row).toContainText("Spare foam and tip thickness");
+    await expect(row).toContainText("Spare foam, planer, skin and tips");
     await row.click();
 
     const dialog = page.getByRole("dialog", { name: "Fit & Tip Defaults" });
