@@ -1,4 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { DEFAULT_FOIL_SPEC } from "../lib/geometry/foil";
+import { formatMark } from "../lib/geometry/measure-display";
 
 /**
  * 11-10: how a new board starts.
@@ -85,7 +87,7 @@ test.describe("a new board", () => {
     const thickness = thicknessSection(page);
     const noseTip = thickness.getByText(/^Nose Tip — /);
     const tailTip = thickness.getByText(/^Tail Tip — /);
-    await expect(noseTip).toHaveText('Nose Tip — 5/16"');
+    await expect(noseTip).toHaveText(`Nose Tip — ${formatMark(DEFAULT_FOIL_SPEC.noseTip, "imperial")}`);
 
     // Nobody has touched this board: a new Nose Tip default shows on it straight away.
     await setNoseTipDefault(page, testInfo.project.name, "3/8");
@@ -97,8 +99,10 @@ test.describe("a new board", () => {
     await page.keyboard.press("ArrowRight");
     await expect(tailTip).not.toHaveText(tailBefore ?? "");
 
-    // From now on the board keeps its own tips: a new default does not reach it.
-    await setNoseTipDefault(page, testInfo.project.name, "1/2");
+    // From now on the board keeps its own tips: a new default does not reach it. 3/4" is neither
+    // the board's own 3/8" nor the out-of-the-box 1/2", so typing it is plainly a new choice
+    // rather than a return to the default.
+    await setNoseTipDefault(page, testInfo.project.name, "3/4");
     await expect(noseTip).toHaveText('Nose Tip — 3/8"');
   });
 

@@ -1,4 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { DEFAULT_FIT_DEFAULTS, FIT_DEFAULTS_MM_KEYS } from "../lib/fit-defaults-preference";
+import { formatMark } from "../lib/geometry/measure-display";
 
 /**
  * 11-08 (D-09): the gear menu's Fit & Tip Defaults row and the dialog it opens, proved in a real
@@ -29,9 +31,12 @@ const FIELD_LABELS = [
   "Tail Tip Thickness",
 ] as const;
 
-/** The decided defaults (Phase 11 D-04/D-05/D-09, Phase 12 D-02/D-03): 1/8" pass, 1/8" skin. */
-const IMPERIAL_DEFAULTS = ['2"', '1/8"', '1"', '1/8"', '5/16"', '1/4"'];
-const METRIC_DEFAULTS = ["51 mm", "3 mm", "25 mm", "3 mm", "8 mm", "6 mm"];
+/** The decided defaults, in the dialog's row order: the fit rules and the 1/8" pass and skin
+ * (Phase 11 D-04/D-05/D-09, Phase 12 D-02/D-03), then the founder's 1/2" nose tip and 5/8" tail tip
+ * (2026-09-26, quick task 260926-uub). Read from `DEFAULT_FIT_DEFAULTS` through the same formatter
+ * the dialog itself uses, so a changed default moves these with it rather than leaving them stale. */
+const IMPERIAL_DEFAULTS = FIT_DEFAULTS_MM_KEYS.map((key) => formatMark(DEFAULT_FIT_DEFAULTS[key], "imperial"));
+const METRIC_DEFAULTS = FIT_DEFAULTS_MM_KEYS.map((key) => formatMark(DEFAULT_FIT_DEFAULTS[key], "metric"));
 
 /** The same dismissals as `touch-sizing.spec.ts`, set before navigation so neither strip ever
  * sits over the menu or the dialog. */

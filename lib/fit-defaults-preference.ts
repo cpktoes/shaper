@@ -71,8 +71,8 @@ export type FitDefaults = Record<FitDefaultsMmKey, Mm> & { tipStyle: TipStyle };
  * What each setting reads when nobody has chosen: a blank must be at least 2" longer than the
  * board (D-04) with 1" of width to spare (D-05), and leave room at the centre for the skin plus one
  * 1/8" planer pass (D-03, D-10); a new board starts with the out-of-the-box cut (a 1/8" Deck Skin,
- * Pin deck — `DEFAULT_BLANK_CUT`) and the foil's own 5/16" nose and 1/4" tail, each imported rather
- * than restated.
+ * Pin deck — `DEFAULT_BLANK_CUT`) and the foil's own nose and tail tips (`DEFAULT_FOIL_SPEC`), each
+ * imported rather than restated.
  */
 export const DEFAULT_FIT_DEFAULTS: FitDefaults = {
   extraLength: inchesToMm(2),

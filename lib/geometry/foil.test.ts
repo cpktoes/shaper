@@ -58,6 +58,11 @@ describe("sampleFoil", () => {
     expect(DEFAULT_FOIL_SPEC.noseTip).toBeGreaterThan(0);
     expect(DEFAULT_FOIL_SPEC.tailTip).toBeGreaterThan(0);
   });
+
+  it('a new board starts with the founder\'s 1/2" nose tip and 5/8" tail tip (2026-09-26)', () => {
+    expect(DEFAULT_FOIL_SPEC.noseTip).toBe(inchesToMm(1 / 2));
+    expect(DEFAULT_FOIL_SPEC.tailTip).toBe(inchesToMm(5 / 8));
+  });
 });
 
 describe("foilStationPoints", () => {

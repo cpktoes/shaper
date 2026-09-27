@@ -1,6 +1,19 @@
 import { expect, test } from "@playwright/test";
 
 /**
+ * RE-RECORDED 2026-09-26 (quick task 260926-uub) — ROCKER and VOLUME only, `rocker-desktop.png` and
+ * `volume-desktop.png`, for the founder's new default tips: a new board now starts with a 1/2" nose
+ * tip and a 5/8" tail tip. On ROCKER the Nose Tip and Tail Tip station labels over the drawing now
+ * read 1/2" and 5/8", and the foil is drawn thicker near both tips. On VOLUME the default board reads
+ * 30.06 L instead of 29.94 L; that picture still passed within tolerance, but it was re-recorded
+ * anyway so it shows the real number. The differences were inspected before re-recording, old
+ * over new: ROCKER changed in exactly two bands, the label row and the drawing near both tips, and
+ * VOLUME only in its litres figure — nothing else moved. TEMPLATE, RAILS and FINS were not
+ * re-recorded and are byte-for-byte what they were (SHA-256 ef4fa37e…c0 outline, 6c2c6b2b…73 rails,
+ * a925ba15…62 fins). The new PNGs were rendered by the webpack dev server (`IS_WEBPACK_TEST=1`,
+ * port 3160) in the 260926-uub worktree on this Mac; if the orchestrator's Turbopack run from the
+ * main checkout disagrees, it may re-record ROCKER and VOLUME once there, as the 12-03 entry says.
+ *
  * RE-RECORDED 2026-09-26 (Phase 12, plan 12-03) — ROCKER only, `rocker-desktop.png`, for the blank
  * list intro's new wording: a blank now needs room at the center for a deck skin and a bottom pass
  * (Phase 12 D-10), so the intro reads "Shortest first. Each is at least 2" longer than your board,

@@ -53,18 +53,17 @@ export const FOIL_THICKNESS_RANGE_IN = { min: 0.125, max: 5, step: 0.0625 } as c
  * all agree by construction, before rocker/foil are even linked to rails (that link is a later
  * plan's job; this file only guarantees the numbers already match).
  *
- * `noseTip` (5/16") and `tailTip` (1/4") are a planner choice, not derived from any cited source:
- * CONTEXT.md's discretion note explicitly defers "tip-thickness defaults for a finished board"
- * (presets set their own in a later plan). Sized thinner than the Arctic Foam 7'3" SBF blank's own
- * 1 1/2"/1 5/8" tips, on the reasoning that a finished, glassed board's foil tip is thinner than a
- * rough blank's — flagged in 04-01's `<planner_assumptions>` for the founder's own sanity check.
+ * `noseTip` and `tailTip` — a 1/2" nose tip and a 5/8" tail tip — are the founder's own choice of
+ * 2026-09-26 (quick task 260926-uub), the numbers he actually shapes to. They replace a thinner
+ * placeholder pair a planner picked in 04-01. Presets set their own tips (Phase 11 D-19), and a
+ * shaper's own Fit & Tip Defaults, once chosen, still win over these for every new board.
  */
 export const DEFAULT_FOIL_SPEC: FoilSpec = {
-  noseTip: inchesToMm(0.3125),
+  noseTip: inchesToMm(0.5),
   nose12: inchesToMm(1.31),
   center: inchesToMm(2.5),
   tail12: inchesToMm(1.56),
-  tailTip: inchesToMm(0.25),
+  tailTip: inchesToMm(0.625),
 };
 
 /**
