@@ -54,6 +54,14 @@ export const FIT_SAMPLE_STEP_MM = inchesToMm(0.25);
 /** Each tip eases into its tip setting over this stretch — tip to 12" station (D-17). */
 export const TIP_EASE_WINDOW_MM = MEASURE_STATION_MM;
 
+/**
+ * The least foam a board may be anywhere, tips included (Phase 12 D-18): a board that would be
+ * thinner than 1/8" somewhere is not a board, so it does not fit — and the reason is that the blank
+ * is too thick for this centre, not too thin. Only a very thin centre in a thick blank gets here
+ * (research: centres of 1 1/2" or less); the tip sliders never go below it.
+ */
+export const MIN_FOIL_THICKNESS_MM = inchesToMm(1 / 8);
+
 /** A board fits when its worst shortfall is no more than this — float noise, not foam. */
 export const FIT_EPSILON_MM = 1e-6;
 
@@ -405,7 +413,7 @@ export function boardOnBlank(
 }
 
 /**
- * Does the board fit inside its blank? (R12, D-05, Phase 12 D-09, D-15)
+ * Does the board fit inside its blank? (R12, D-05, Phase 12 D-09, D-15, D-18)
  *
  * Samples every `FIT_SAMPLE_STEP_MM` from tail tip to nose tip, plus the five board stations and
  * the widepoint. At each: the THIN amount is how far the board pokes out of the blank through
@@ -414,7 +422,9 @@ export function boardOnBlank(
  * they cover a board thicker than the blank; and, only where the board itself has width
  * (`halfWidthAt(s) > 0`), the WIDE amount is the board's full width plus `rules.widthMargin` minus
  * the blank's width. Width is never checked where the board has none — a rounded-nose blank is 0
- * wide at its very tip by design, and the board's own outline reaches 0 there too.
+ * wide at its very tip by design, and the board's own outline reaches 0 there too. And at every
+ * station, tip windows included, the RUNS-OUT amount is how much thinner than
+ * `MIN_FOIL_THICKNESS_MM` the board itself would be there (D-18).
  *
  * One more THIN amount at the board's centre (D-15): at least one pass of the shaper's
  * `rules.planerMaxDepth` must come off the bottom under the board's centre WHERE IT SITS — the
@@ -448,6 +458,7 @@ export function fitAt(
   };
   for (const s of stations) {
     consider("thin", s, thinBy(s));
+    consider("runsOut", s, MIN_FOIL_THICKNESS_MM - onBlank.thicknessAt(s));
     const half = halfWidthAt(mm(s));
     if (half > 0) consider("wide", s, 2 * half + rules.widthMargin - onBlank.blankWidthAt(s));
   }

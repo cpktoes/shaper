@@ -730,7 +730,9 @@ describe("the board's foil, cut from the blank (D-05, D-09, D-13, D-16)", () => 
     }
     expect(checked).toBeGreaterThan(100);
     expect(problems).toEqual([]);
-  });
+    // A whole-catalogue sweep, several lists deep: its own time limit, so a busy machine can't fail
+    // it — the speed guard is "judges the whole catalogue for the default board in under 250 ms".
+  }, 30_000);
 });
 
 describe("the fit check (R12, D-05)", () => {
@@ -1473,6 +1475,9 @@ describe("a board under 1/8\" thick anywhere does not fit (D-18)", () => {
         tips: { noseTip: preset.foil.noseTip, tailTip: preset.foil.tailTip },
       })),
     ];
+    // A FITTING verdict's `worst` is its tightest place with foam to spare, and that can be the
+    // thinnest spot on the board (a negative runs-out amount) — so the rule is on the verdicts that
+    // fail: none of them fails for running out.
     let judged = 0;
     for (const { label, outline, length, tips } of boards) {
       for (let centreIn = 2; centreIn <= 3; centreIn += 1 / 4) {
@@ -1480,7 +1485,9 @@ describe("a board under 1/8\" thick anywhere does not fit (D-18)", () => {
         const list = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
         for (const verdict of [...list.fits, ...list.wontFit]) {
           judged++;
-          expect(verdict.worst.kind, `${label} at ${centreIn}": ${keyOf(verdict.prepared.record)}`).not.toBe("runsOut");
+          const ruledOutForRunningOut = !verdict.fits && verdict.worst.kind === "runsOut";
+          expect(ruledOutForRunningOut, `${label} at ${centreIn}": ${keyOf(verdict.prepared.record)}`).toBe(false);
+          if (verdict.worst.kind === "runsOut") expect(verdict.worst.amount).toBeLessThanOrEqual(FIT_EPSILON_MM);
         }
       }
     }

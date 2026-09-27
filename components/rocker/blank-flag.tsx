@@ -174,7 +174,11 @@ function PickedBlankFlag({
     [floor.passes, prepared, ctx, extraLength, planerMaxDepth, widthMargin],
   );
 
-  const board = { length: outline.length, widePointStation: outlineGeometry.widePointStation };
+  const board = {
+    length: outline.length,
+    widePointStation: outlineGeometry.widePointStation,
+    centerThickness: foil.center,
+  };
   const offer = (
     <Suspense fallback={null}>
       <Offer catalog={catalog} current={prepared.record} />

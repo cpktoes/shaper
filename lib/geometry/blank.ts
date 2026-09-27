@@ -123,9 +123,14 @@ export interface FitSettings {
  * The worst place a board sits on (or pokes out of) its blank. `station` is measured from the
  * board's tail tip; `amount > 0` means it does not fit there by that much, `amount <= 0` is the
  * spare foam at the tightest place.
+ *
+ * `thin`: the board pokes out through the deck or the bottom, or leaves less than one bottom pass
+ * under its centre. `wide`: it is too wide for the blank plus the width margin. `runsOut` (Phase 12
+ * D-18): the board itself would be less than 1/8" thick there — a very thin centre in a thick blank,
+ * where the blank is too thick for this centre rather than too thin.
  */
 export interface BlankShortfall {
-  kind: "thin" | "wide";
+  kind: "thin" | "wide" | "runsOut";
   station: Mm;
   amount: Mm;
 }
