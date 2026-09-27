@@ -25,7 +25,7 @@ reviewed_at: 2026-09-26
 > strings use the product's American spelling (`Center`, `catalog`); prose here is British.
 > Anything this document does not mention is exactly as the Phase 11 contract left it.
 >
-> **Amended 2026-09-26 after the planning research** (the checker's 6/6 verdict predates these; each is a founder ruling or a factual fix, none a new visual system): the Metric reference case corrected to `7 mm` (1/8" is 3.175 mm); the Tip Style hint softened for a falling tip rocker (D-16); a new §5a "Fine-tune off: Deck / Bottom" toggle (D-13); §8's one-pass-at-placement and foil-runs-out reasons (D-15, D-18); §10's note that carried-over boards may open flagged (D-14); surface E13 added to UI Considerations.
+> **Amended 2026-09-26 after the planning research** (the checker's 6/6 verdict predates these; each is a founder ruling or a factual fix, none a new visual system): the Metric reference case corrected to `7 mm` (1/8" is 3.175 mm); the Tip Style hint softened for a falling tip rocker (D-16); a new §5a "Fine-tune off: Deck / Bottom" toggle (D-13); §8's one-pass-at-placement and foil-runs-out reasons (D-15, D-18); §10's note that carried-over boards may open flagged (D-14); surface E13 added to UI Considerations; a negative DATASHEET Deck cell takes warning ink (reachable under D-13/D-16 — noted by the planner).
 
 ---
 
@@ -145,10 +145,12 @@ is ink, and warning ink only when negative.
 - An `OFF BOTTOM` readout below zero (`text-surf-warning-ink`, with its minus sign). This means the
   board would drop below the blank's bottom there.
 - A datasheet **Bottom** cell below zero (same treatment as the retired Foam Off cell,
-  `rocker-datasheet.tsx:249-254`).
+  `rocker-datasheet.tsx:249-254`), and a datasheet **Deck** cell below zero (D-13/D-16).
 - The F4 flag, whose body changes (Copywriting).
-- The **Deck** row can never go negative, because the skin is always at least 1/16" (§6 bounds),
-  so it never takes warning.
+- The **Deck** row CAN go negative since the planning rulings (D-13: a fine-tune larger than the skin on
+  the deck; D-16: negative thinning under Bottom lifts the deck above the blank's), and then takes
+  `text-surf-warning-ink` with its minus sign exactly as a Bottom cell does. *(Amended 2026-09-26 at
+  planning; the first draft said the Deck row could never go negative.)*
 - The passes value never takes warning. When the center gap is zero or negative it reads
   `0 passes` in `text-surf-ink-muted`, and the `OFF BOTTOM` cell above it carries the warning.
 
@@ -585,8 +587,9 @@ Every touch size below is `coarse:`. No new rule reads width or height.
      - **Bottom** (the last row, with no bottom border, the way the fallback's last row drops its
        own): the gap, plus the lift at the two tips under Pin deck.
 - Cells in both rows are `formatMarkBare`, `text-surf-ink-muted` (the read-only cell treatment,
-  `:82`). A value that prints as zero reads as zero. A Bottom value below zero reads in
-  `text-surf-warning-ink`, the retired Foam Off row's rule (`:249-254`), carried over unchanged.
+  `:82`). A value that prints as zero reads as zero. A Bottom or Deck value below zero reads in
+  `text-surf-warning-ink`, the retired Foam Off row's rule (`:249-254`), carried over unchanged
+  (the Deck case became reachable with D-13 and D-16).
 - **The heavier `border-t-2` rule above the old Foam Off row retires.** The FOAM OFF group label now
   does that separating job, exactly as `YOUR BOARD` separates the blank's block from the board's.
 - **Row labels:** "Deck" and "Bottom", with ` (mm)` in Metric. `Bottom (mm)` measures 85.9px, which

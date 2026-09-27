@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Foil the Way a Shaper Cuts It
 status: discussing
-stopped_at: Phase 12 UI-SPEC approved
-last_updated: "2026-09-26T22:52:20.579Z"
+stopped_at: Phase 12 planned 2026-09-26 on branch foil-real-shaping — 10 plans in 5 waves, checker passed first pass; awaiting the founder's approval before /gsd-execute-phase 12 (no code until then)
+last_updated: "2026-09-27T01:02:06.907Z"
 last_activity: 2026-09-26
-last_activity_desc: v1.3 archived and tagged; v1.4 opened with Phase 12 from the founder's foil-from-real-shaping brief (todo 2026-09-26), discussion next
+last_activity_desc: "Phase 12 planned: research (D-13–D-20 rulings), UI contract, 10 plans in 5 waves, plan checker VERIFICATION PASSED; awaiting approval"
 progress:
   total_phases: 1
   completed_phases: 0
-  total_plans: 0
+  total_plans: 10
   completed_plans: 0
   percent: 0
 current_phase: 12
@@ -24,14 +24,14 @@ current_phase_name: Foil the Way a Shaper Cuts It
 See: .planning/PROJECT.md (updated 2026-09-26)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** v1.4 — Phase 12, Foil the Way a Shaper Cuts It (branch `foil-real-shaping`): discussion, then research and planning; no code until the founder approves the plan
+**Current focus:** v1.4 — Phase 12 planned (10 plans, 5 waves) on branch `foil-real-shaping`; the founder reviews the plans, then `/gsd-execute-phase 12`
 
 ## Current Position
 
 **v1.4 — Foil the Way a Shaper Cuts It: OPENED 2026-09-26 on branch `foil-real-shaping`.** Phase 12 added from the founder's brief (todo 2026-09-26: deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, tip thinning in the last 12" with a pin-deck or bottom choice, fine-tunes on the 12" stations). v1.3 shipped the same day and is archived under .planning/milestones/.
 
-Status: Discussing Phase 12
-Last activity: 2026-09-26 — Phase 12 opened for discussion
+Status: Phase 12 planned — ready to execute on approval
+Last activity: 2026-09-26 — Phase 12 planned (10 plans in 5 waves)
 
 ## Performance Metrics
 
@@ -370,7 +370,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-26T22:52:20.545Z
+Last session: 2026-09-27T01:02:06.879Z
 Stopped at: Phase 12 UI-SPEC approved
 Resume file: .planning/phases/12-foil-the-way-a-shaper-cuts-it/12-UI-SPEC.md
 Next action: `/gsd-plan-phase 10` - context and design contract are both in place.
