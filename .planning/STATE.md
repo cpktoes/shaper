@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Foil the Way a Shaper Cuts It
-status: executing
-stopped_at: Phase 12 Wave 4 merged 2026-09-26 (12-08 Tip Style + Fine-tune off on ROCKER, 12-09 FOAM OFF block + cut fields required); over-skin fine-tune freeze fixed on the branch; next: code review, verification, then the founder's Wave 5 checkpoint (12-10)
-last_updated: "2026-09-27T03:46:14.290Z"
+status: awaiting-human
+stopped_at: Phase 12 built, reviewed and verified on branch foil-real-shaping (9 of 10 plans; 11/11 must-haves; full browser suite 332/0) — parked at 12-10, the founder's blocking-human production step (.continue-here.md): migrate 0006 first, then merge, deploy and walk the live site; 12-UAT.md holds 8 human checks for /gsd-verify-work 12
+last_updated: "2026-09-27T04:26:53.874Z"
 last_activity: 2026-09-26
-last_activity_desc: "Phase 12 Wave 4 complete: Tip Style and Fine-tune off pills on ROCKER, DATASHEET FOAM OFF Deck/Bottom rows, the three cut fields required; the over-skin fine-tune freeze 12-08 found is fixed with an exact early exit; build, 2977 unit tests, tsc, lint green"
+last_activity_desc: "Phase 12 executed on the branch: 4 code waves merged, code review (2 warnings fixed), verification 11/11 human_needed, UAT persisted; awaiting the founder's production checkpoint (12-10)"
 progress:
   total_phases: 1
   completed_phases: 0
