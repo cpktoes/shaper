@@ -214,6 +214,7 @@ export function OrderForm() {
     setBoardName,
     finSystem,
     setFinSystem,
+    blank,
   } = useDesign();
   const { system } = useUnits();
   const { rootRef, printOrderForm } = useOrderFormPrintFit();
@@ -241,6 +242,12 @@ export function OrderForm() {
 
   const finSetupLabel =
     FIN_SETUPS.find((s) => s.value === effectiveFins.finSetup)?.label ?? effectiveFins.finSetup;
+
+  // The blank the board was designed on, named the way ROCKER names it — vendor, then the blank's
+  // own name. Read from the board's own copy of the blank, so the shop's record names the blank
+  // these numbers were cut from even if the catalogue is corrected later. No blank, no text: the
+  // field then prints as a ruled line for the shop to write in.
+  const blankLabel = blank ? `${blank.copy.vendor} ${blank.copy.name}` : undefined;
 
   const thicknessDisplay = formatDim(railBands.center.boardThickness, system);
 
@@ -705,8 +712,8 @@ export function OrderForm() {
               {/*
                * The muse keeps this box in the header, where the shop fills it in as the order is
                * taken. It sits here instead because this whole page is the shaper's — the front is
-               * the customer's copy of what they asked for, and the blank number, the price and the
-               * rocker the blank came off are the shop's own record of the job.
+               * the customer's copy of what they asked for, and the blank, the board number and the
+               * price are the shop's own record of the job.
                *
                * It lands at the foot of the page rather than the top on purpose: the tables above
                * are what a shaper reads *while* working the blank, and this is what gets filled in
@@ -717,8 +724,10 @@ export function OrderForm() {
                 className="flex-none bg-(--order-form-shade)"
                 bodyClassName="gap-2 p-2"
               >
-                {/* Board Name is live (the store has carried it since the landscape summary); the
-                    rest of this box is written in by the shop. */}
+                {/* Board Name is live (the store has carried it since the landscape summary). Blank
+                    prints the blank picked on ROCKER when the board has one, and is a ruled line
+                    for the shop to write in when it doesn't. Board # and Price are written in by
+                    the shop. */}
                 <OrderFormField
                   label="Board Name"
                   value={boardName}
@@ -726,7 +735,7 @@ export function OrderForm() {
                   placeholder="Name this board"
                 />
                 <div className="flex gap-6">
-                  <OrderFormField label="Blank &amp; Rocker" className="flex-[1.4]" />
+                  <OrderFormField label="Blank" value={blankLabel} className="flex-[1.4]" />
                   <OrderFormField label="Board #" className="flex-1" />
                   <OrderFormField label="Price" prefix="$" className="flex-1" />
                 </div>
