@@ -206,3 +206,25 @@ deploy) is correctly out of scope for this verification and is not counted here.
 
 _Verified: 2026-09-27T04:30:00Z_
 _Verifier: Claude (gsd-verifier)_
+
+## Orchestrator addendum (2026-09-27, after the verifier returned)
+
+The verifier was told not to run the build or the browser suite (both were the orchestrator's, on port 3100);
+here are those results on the branch at the verified commit range, all after the code-review fixes:
+
+| Check | Result |
+|-------|--------|
+| `npm run build` (main checkout, Turbopack) | passed |
+| `npx tsc --noEmit` | clean |
+| `npx vitest run` | 74 files, 2984 passed, 2 skipped (both pre-existing skips) |
+| `npm run lint` | 0 errors, 11 pre-existing warnings outside the phase |
+| `npm run test:e2e` (full suite: desktop, Android, iPhone) | 332 passed, 0 failed, 244 skipped (the per-device skips), 10.0 min |
+
+The five desktop baseline pictures were byte-identical in every run after 12-03's one permitted ROCKER re-record,
+including under the main checkout's Turbopack server. Earlier full runs on the branch: 293 / 0 after Wave 1,
+299 / 0 after Wave 2, 319 / 1 after Wave 3 (the one failure was Clerk boot traffic inside a "no request"
+window on Android — a timing flake, fixed in df0fa10), 329 / 0 after Wave 4 and the freeze fix d1d96fc.
+
+Plan 12-10 (the founder's production migration, merge, deploy and live walk-through) is a `blocking-human`
+checkpoint and is deliberately outside this verification; the phase is verified on the branch, as that plan's
+own precondition requires. `phase.complete` waits for 12-10.
