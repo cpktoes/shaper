@@ -15,6 +15,9 @@
  * with `missing` in place of any column it did not find, and exits 1 when any of the three new
  * columns is missing or has another type, or when `extra_center_thickness_mm` is gone. Only column
  * names, their types and a count are ever printed — never the connection string, never row data.
+ * When the check itself fails (the database can't be reached, say) it prints one fixed sentence with
+ * the error's kind and code only — never the driver's message, which can name the database host —
+ * unless `--verbose` is added to the command, which appends that message for debugging.
  *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
@@ -96,9 +99,23 @@ async function main(): Promise<void> {
   }
 }
 
+/**
+ * A failure in words that never quote the database driver: its own message can name the database
+ * host (`getaddrinfo ENOTFOUND ep-…neon.tech`), so by default only the error's kind (`name`) and
+ * its `code`, when it has one, are printed. `--verbose` appends the driver's message for debugging.
+ */
+function describeFailure(error: unknown): string {
+  const name = error instanceof Error ? error.name : typeof error;
+  const rawCode =
+    typeof error === "object" && error !== null && "code" in error ? (error as { code: unknown }).code : undefined;
+  const kind = rawCode === undefined || rawCode === null ? name : `${name}, code ${String(rawCode)}`;
+  if (process.argv.includes("--verbose")) {
+    return `(${kind}): ${error instanceof Error ? error.message : String(error)}`;
+  }
+  return `(${kind}). Run again with --verbose to see the database driver's own message.`;
+}
+
 main().catch((error: unknown) => {
-  console.error(
-    `Could not check the user_preferences columns: ${error instanceof Error ? error.message : String(error)}`,
-  );
+  console.error(`Could not check the user_preferences columns ${describeFailure(error)}`);
   process.exitCode = 1;
 });

@@ -23,7 +23,10 @@
  *   carried boards that no longer fit where they sit: f of m
  * and exits 1 when a board does not open (k < N) or a Phase 11 board's five numbers moved (j < m),
  * printing only the failing boards' row ids. Never a snapshot, a board name, a user id or the
- * connection string.
+ * connection string. When the check itself fails (the database can't be reached, say) it prints one
+ * fixed sentence with the error's kind and code only — never the driver's message, which can name
+ * the database host — unless `--verbose` is added to the command, which appends that message for
+ * debugging.
  *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
@@ -202,7 +205,23 @@ async function main(): Promise<void> {
   if (opened < rows.length || kept < phase11Boards) process.exitCode = 1;
 }
 
+/**
+ * A failure in words that never quote the database driver: its own message can name the database
+ * host (`getaddrinfo ENOTFOUND ep-…neon.tech`), so by default only the error's kind (`name`) and
+ * its `code`, when it has one, are printed. `--verbose` appends the driver's message for debugging.
+ */
+function describeFailure(error: unknown): string {
+  const name = error instanceof Error ? error.name : typeof error;
+  const rawCode =
+    typeof error === "object" && error !== null && "code" in error ? (error as { code: unknown }).code : undefined;
+  const kind = rawCode === undefined || rawCode === null ? name : `${name}, code ${String(rawCode)}`;
+  if (process.argv.includes("--verbose")) {
+    return `(${kind}): ${error instanceof Error ? error.message : String(error)}`;
+  }
+  return `(${kind}). Run again with --verbose to see the database driver's own message.`;
+}
+
 main().catch((error: unknown) => {
-  console.error(`Could not check the saved boards: ${error instanceof Error ? error.message : String(error)}`);
+  console.error(`Could not check the saved boards ${describeFailure(error)}`);
   process.exitCode = 1;
 });
