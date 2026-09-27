@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Foil the Way a Shaper Cuts It
 status: executing
-stopped_at: Phase 12 Wave 2 merged 2026-09-26 (12-03 Planer Max Depth replaces Extra Center Thickness, ROCKER baseline re-recorded once); Wave 3 (12-04..12-07) next
-last_updated: "2026-09-27T02:21:26.000Z"
+stopped_at: Phase 12 Wave 3 merged 2026-09-26 (12-04 Tip Style default, 12-05 Deck Skin on ROCKER, 12-06 carry-over + saved-board check, 12-07 fit rules D-15/D-18); Wave 4 (12-08, 12-09) next
+last_updated: "2026-09-27T02:57:08.439Z"
 last_activity: 2026-09-26
-last_activity_desc: "Phase 12 Wave 2 complete: Planer Max Depth replaces Extra Center Thickness from the gear menu to the blank list (12-03); build, 2920 unit tests, tsc, lint green on the branch"
+last_activity_desc: "Phase 12 Wave 3 complete: Tip Style default, Deck Skin/OFF BOTTOM/passes on ROCKER, older boards carry the account Tip Style, one-pass and runs-out fit rules; one post-merge type seam fixed on the branch; build, 2968 unit tests, tsc, lint green"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 10
-  completed_plans: 3
-  percent: 30
+  completed_plans: 7
+  percent: 70
 current_phase: 12
 current_phase_name: Foil the Way a Shaper Cuts It
 ---
