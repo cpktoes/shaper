@@ -144,14 +144,14 @@ Opened 2026-09-26 on branch `foil-real-shaping`, the same day v1.3 shipped, from
 **Goal:** A shaper's board is cut from its blank the way a planer actually works: a constant deck skin comes off first, parallel to the blank's deck; the centre thickness sets the board's bottom under that deck, and the gap down to the blank's bottom reads as the foam to remove and as planer passes; the board's bottom parallels the blank's rocker so the four rocker numbers are the blank's own and each 12" station's thickness falls out of it; the tips are thinned last, only inside the last 12", with the deck pinned (default, the bottom rises and tip rocker grows) or the bottom pinned (the deck drops) — the curve through the 12" stations fixed before thinning and still nudged by the fine-tune adjusters. Every printed number stays a number a shaper would cut to, and every board saved under the Phase 11 model still opens.
 **Requirements**: R1–R11 locked in `.planning/phases/12-foil-the-way-a-shaper-cuts-it/12-SPEC.md` (six from the founder's brief, five carried constraints); decisions D-01–D-20 in `12-CONTEXT.md`; UI contract in `12-UI-SPEC.md`
 **Depends on:** Phase 11
-**Plans:** 10 plans in 5 waves
+**Plans:** 2/10 plans executed in 5 waves
 
 Plans:
 
 **Wave 1**
 
-- [ ] 12-01-PLAN.md — Pin Phase 11's foil in a golden file, then cut the board from its blank the way a planer does (deck skin, bottom gap, eased tips) and carry older boards across — all six named geometry tests before any screen changes (R1 R2 R3 R4 R5 R6 R7 R9 R10 R11)
-- [ ] 12-02-PLAN.md — Add the three new settings columns to the development database with a read-only proof, and teach the app to count planer passes from the printed numbers (R2 R8 R11)
+- [x] 12-01-PLAN.md — Pin Phase 11's foil in a golden file, then cut the board from its blank the way a planer does (deck skin, bottom gap, eased tips) and carry older boards across — all six named geometry tests before any screen changes (R1 R2 R3 R4 R5 R6 R7 R9 R10 R11)
+- [x] 12-02-PLAN.md — Add the three new settings columns to the development database with a read-only proof, and teach the app to count planer passes from the printed numbers (R2 R8 R11)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -195,4 +195,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
 | 11. Rocker from Real Blanks | 13/13 | Complete    | 2026-09-26 |
-| 12. Foil the Way a Shaper Cuts It | 0/10 | Planned |  |
+| 12. Foil the Way a Shaper Cuts It | 2/10 | In Progress|  |

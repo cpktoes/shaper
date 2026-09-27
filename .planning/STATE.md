@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Foil the Way a Shaper Cuts It
 status: executing
-stopped_at: Phase 12 planned 2026-09-26 on branch foil-real-shaping — 10 plans in 5 waves, checker passed first pass; awaiting the founder's approval before /gsd-execute-phase 12 (no code until then)
-last_updated: "2026-09-27T01:25:38.725Z"
+stopped_at: Phase 12 Wave 1 merged 2026-09-26 (12-01 geometry core + golden, 12-02 columns + planer passes); Wave 2 (12-03) next
+last_updated: "2026-09-27T01:50:14.155Z"
 last_activity: 2026-09-26
-last_activity_desc: "Phase 12 planned: research (D-13–D-20 rulings), UI contract, 10 plans in 5 waves, plan checker VERIFICATION PASSED; awaiting approval"
+last_activity_desc: "Phase 12 Wave 1 complete: the planer-style cut with its golden fixture (12-01) and the three settings columns + planer-pass count (12-02); build, 2893 unit tests, tsc and lint green on the branch"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 10
-  completed_plans: 0
-  percent: 0
+  completed_plans: 2
+  percent: 20
 current_phase: 12
 current_phase_name: Foil the Way a Shaper Cuts It
 ---
