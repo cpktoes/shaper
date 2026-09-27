@@ -75,6 +75,16 @@ function deckSkinLabel(page: Page): Locator {
   return page.getByText(/^Deck Skin — /);
 }
 
+/** A named two-way pill pair (`TwoOptionToggle` with an `ariaLabel`). */
+function pillGroup(page: Page, name: string): Locator {
+  return page.getByRole("group", { name });
+}
+
+/** One pill inside a named pair. */
+function pill(page: Page, group: string, label: string): Locator {
+  return pillGroup(page, group).getByRole("button", { name: label, exact: true });
+}
+
 test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the planer passes (Phase 12)", () => {
   test.beforeEach(async ({ page }) => {
     await dismissChrome(page);
@@ -203,6 +213,48 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(otherName);
 
     await expect(deckSkinLabel(page)).toHaveText(ownSkin);
+  });
+
+  test(`a Tip Style tap changes a tip's rocker reading and leaves both 12" readings exactly as they were`, async ({
+    page,
+  }, testInfo) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+
+    // A new board's Tip Style is the account default — Pin deck out of the box (D-04).
+    await expect(pillGroup(page, "Tip Style")).toBeVisible();
+    await expect(pill(page, "Tip Style", "Pin deck")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Tip Style", "Bottom")).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByText(/^The deck stays put and the extra comes off the bottom/)).toBeVisible();
+
+    const readouts = page.locator("[data-readouts]");
+    const row = (key: string) => readouts.locator(`[data-readout-row="${key}"]`);
+    const noseTip = await row("noseTip").textContent();
+    const tailTip = await row("tailTip").textContent();
+    const nose12 = await row("nose12").textContent();
+    const tail12 = await row("tail12").textContent();
+
+    await pill(page, "Tip Style", "Bottom").click();
+    await expect(pill(page, "Tip Style", "Bottom")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Tip Style", "Pin deck")).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByText(/^The bottom stays put and the extra comes off the deck/)).toBeVisible();
+
+    // The last 12" at each end re-derives: at least one tip reads differently...
+    await expect
+      .poll(async () => (await row("noseTip").textContent()) !== noseTip || (await row("tailTip").textContent()) !== tailTip)
+      .toBe(true);
+    // ...and nothing at the 12" stations moves (SPEC R5).
+    expect(await row("nose12").textContent()).toBe(nose12);
+    expect(await row("tail12").textContent()).toBe(tail12);
+    // Under Bottom the Deck Skin's hint says the tips take more off the deck.
+    await expect(page.getByText("Off the deck — more at the tips", { exact: true })).toBeVisible();
+    // Never clears the pick.
+    await expect(pickedCard(page)).toHaveCount(1);
+
+    // One undo step brings Pin deck back.
+    await undoOnce(page, testInfo.project.name);
+    await expect(pill(page, "Tip Style", "Pin deck")).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText("Off the deck at every station", { exact: true })).toBeVisible();
   });
 });
 

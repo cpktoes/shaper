@@ -94,6 +94,7 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
     outlineGeometry,
     setFineTune,
     resetFineTune,
+    setTipStyle,
   } = useDesign();
   const { system } = useUnits();
   // The drawing and the DATASHEET both read the store's ONE side profile (Phase 11, Pattern 5) —
@@ -212,6 +213,7 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
             onChangeFoil={updateFoil}
             onFineTune={setFineTune}
             onResetFineTune={resetFineTune}
+            onTipStyle={setTipStyle}
             sectionOpen={sectionOpen}
             onToggleSectionOpen={toggleSection}
           />
