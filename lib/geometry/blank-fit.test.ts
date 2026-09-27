@@ -29,6 +29,7 @@ import {
   judgeBlank,
   levelCurve,
   listBlanks,
+  MIN_FOIL_THICKNESS_MM,
   nearestFit,
   nearestFittingPlacement,
   placementRange,
@@ -1417,4 +1418,72 @@ describe("one planer pass under the board's centre where it sits (D-15)", () => 
       }
     }
   });
+});
+
+describe("a board under 1/8\" thick anywhere does not fit (D-18)", () => {
+  it("the least foam a board may be anywhere is 1/8\", and a tip set to exactly that still fits", () => {
+    expect(MIN_FOIL_THICKNESS_MM).toBe(inchesToMm(1 / 8));
+    const blank = findBlank(MARKO_VENDOR, M_REGULAR);
+    const prepared = prepareBlank(blank);
+    const L = blank.lengthMm;
+    const board = {
+      ...defaultBoard(blank, L, inchesToMm(2.5)),
+      noseTip: MIN_FOIL_THICKNESS_MM,
+      tailTip: MIN_FOIL_THICKNESS_MM,
+    };
+    const onBlank = boardOnBlank(prepared, board, mm(0));
+    expect(onBlank.thicknessAt(0)).toBe(MIN_FOIL_THICKNESS_MM);
+    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(L / 2), DEFAULT_SETTINGS);
+    expect(result.fits).toBe(true);
+    // The tips are the tightest place, with exactly nothing to spare.
+    expect(result.worst.kind).toBe("runsOut");
+    expect(result.worst.amount).toBe(0);
+
+    // A sixteenth thinner at the tail tip and the check fires there, by exactly that sixteenth.
+    const thinner = boardOnBlank(prepared, { ...board, tailTip: mm(MIN_FOIL_THICKNESS_MM - SIXTEENTH_MM) }, mm(0));
+    const failed = fitAt(thinner, narrowerBy(thinner, inchesToMm(2)), mm(L / 2), DEFAULT_SETTINGS);
+    expect(failed.fits).toBe(false);
+    expect(failed.worst.kind).toBe("runsOut");
+    expect(failed.worst.station).toBe(0);
+    expect(failed.worst.amount).toBeCloseTo(SIXTEENTH_MM, 9);
+  });
+
+  it("a 1\" center on the default board runs out of foam in at least one blank, and says where by how much", () => {
+    const ctx = defaultContext(72, 1);
+    let runsOut = 0;
+    for (const prepared of PREPARED_ALL) {
+      if (!isPickable(prepared.record)) continue;
+      const verdict = judgeBlank(prepared, ctx, DEFAULT_SETTINGS);
+      if (verdict.fits || verdict.worst.kind !== "runsOut") continue;
+      runsOut++;
+      const onBlank = boardOnBlank(prepared, ctx.board, verdict.placement);
+      expect(onBlank.thicknessAt(verdict.worst.station)).toBeCloseTo(MIN_FOIL_THICKNESS_MM - verdict.worst.amount, 9);
+      expect(verdict.worst.amount).toBeGreaterThan(FIT_EPSILON_MM);
+    }
+    expect(runsOut).toBeGreaterThan(0);
+  });
+
+  it("from a 2\" center up, no listed blank is ruled out for running out — the default board and every preset", () => {
+    const boards = [
+      { label: "default", outline: DEFAULT_BOARD_SPEC.outline, length: inchesToMm(72), tips: undefined },
+      ...BOARD_PRESETS.map((preset) => ({
+        label: preset.id,
+        outline: preset.outline,
+        length: preset.outline.length,
+        tips: { noseTip: preset.foil.noseTip, tailTip: preset.foil.tailTip },
+      })),
+    ];
+    let judged = 0;
+    for (const { label, outline, length, tips } of boards) {
+      for (let centreIn = 2; centreIn <= 3; centreIn += 1 / 4) {
+        const ctx = fitContext(outline, length, inchesToMm(centreIn), tips);
+        const list = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+        for (const verdict of [...list.fits, ...list.wontFit]) {
+          judged++;
+          expect(verdict.worst.kind, `${label} at ${centreIn}": ${keyOf(verdict.prepared.record)}`).not.toBe("runsOut");
+        }
+      }
+    }
+    expect(judged).toBeGreaterThan(BOARD_PRESETS.length * 5);
+  }, 120_000);
 });

@@ -3,7 +3,7 @@ import { isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
 import type { BlankRecord, BlankShortfall } from "./blank";
-import { placementRange } from "./blank-fit";
+import { MIN_FOIL_THICKNESS_MM, placementRange } from "./blank-fit";
 import {
   blankRowMeta,
   blankRowVolume,
@@ -33,7 +33,7 @@ import { inchesToMm, litres, mm, mmToInches, UNITS_SYSTEMS, type Mm, type UnitsS
 
 const SETTINGS = toFitSettings(DEFAULT_FIT_DEFAULTS);
 const L = inchesToMm(72);
-const BOARD = { length: L, widePointStation: inchesToMm(35.5) };
+const BOARD = { length: L, widePointStation: inchesToMm(35.5), centerThickness: inchesToMm(2.5) };
 const shortfall = (kind: BlankShortfall["kind"], station: number, amount: number): BlankShortfall => ({
   kind,
   station: mm(station),
@@ -78,7 +78,7 @@ describe("formatShortfall — the reason line (D-06, R12)", () => {
       const station = BOARD.widePointStation - inchesToMm(4);
       expect(read("thin", station)).toBe(`${amount} too thin ${formatDim(mm(station), system)} from the tail`);
       // The widepoint wins over the center when both are within the snap (first match).
-      const both = { length: L, widePointStation: mm(L / 2 - inchesToMm(0.5)) };
+      const both = { ...BOARD, widePointStation: mm(L / 2 - inchesToMm(0.5)) };
       expect(formatShortfall(shortfall("wide", L / 2, eighth), both, system)).toBe(
         `${amount} too wide at the widepoint`,
       );
@@ -128,6 +128,50 @@ describe("formatShortfall — the reason line (D-06, R12)", () => {
   it("the imperial 'under' line reads the UI-SPEC's copy", () => {
     expect(formatShortfall(shortfall("thin", L, 0.01), BOARD, "imperial")).toBe(`under 1/16" too thin at the nose tip`);
     expect(formatShortfall(shortfall("thin", L, 0.01), BOARD, "metric")).toBe("under 1 mm too thin at the nose tip");
+  });
+});
+
+describe("formatShortfall — the foil runs out (D-18)", () => {
+  const centre = inchesToMm(1);
+  const thinCentre = { ...BOARD, centerThickness: centre };
+  const over = inchesToMm(1 / 32);
+
+  describe.each(UNITS_SYSTEMS)("in %s", (system: UnitsSystem) => {
+    const least = formatMark(MIN_FOIL_THICKNESS_MM, system);
+    const tooThick = `this blank is too thick for a ${formatMark(centre, system)} center`;
+    const read = (station: number) => formatShortfall(shortfall("runsOut", station, over), thinCentre, system);
+
+    it("says the blank is too thick for this center, at the place the board would run out, with no full stop", () => {
+      const text = read(L - MEASURE_STATION_MM);
+      expect(text).toBe(`Less than ${least} would be left ${stationLabel(system)} from the nose — ${tooThick}`);
+      expect(text.endsWith(".")).toBe(false);
+    });
+
+    it("names the place with the same vocabulary as every other reason", () => {
+      expect(read(0)).toBe(`Less than ${least} would be left at the tail tip — ${tooThick}`);
+      expect(read(L / 2)).toBe(`Less than ${least} would be left at the center — ${tooThick}`);
+      const fromTail = inchesToMm(18.5);
+      expect(read(fromTail)).toBe(`Less than ${least} would be left ${formatDim(fromTail, system)} from the tail — ${tooThick}`);
+      // Width is never the reason, so the widepoint is never named for it.
+      expect(read(BOARD.widePointStation)).not.toContain("widepoint");
+    });
+
+    it("quotes the board's own center, whatever it is", () => {
+      const other = inchesToMm(1.5);
+      expect(formatShortfall(shortfall("runsOut", L / 2, over), { ...BOARD, centerThickness: other }, system)).toBe(
+        `Less than ${least} would be left at the center — this blank is too thick for a ${formatMark(other, system)} center`,
+      );
+    });
+
+    it("leaves the too-thin and too-wide sentences exactly as they were", () => {
+      for (const kind of ["thin", "wide"] as const) {
+        const station = L - MEASURE_STATION_MM;
+        expect(formatShortfall(shortfall(kind, station, over), thinCentre, system)).toBe(
+          formatShortfall(shortfall(kind, station, over), BOARD, system),
+        );
+        expect(formatShortfall(shortfall(kind, station, over), thinCentre, system)).not.toContain("center");
+      }
+    });
   });
 });
 
