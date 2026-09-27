@@ -23,9 +23,11 @@
  * (`blank`, a `BlankSideView`), the blank's own side silhouette draws BEHIND the board — filled
  * with the faint `--outline-foam-shade` wash and outlined with a solid 1px `--outline-blank-line`
  * (solid because the blank is a real object; dashes mean reference lines in this app). The board's
- * own fill is opaque, so the only shade left visible is the foam to come off: above the deck and
- * past each tip, never under the bottom, because along the board the blank's bottom IS the board's
- * bottom. The frame then fits the whole blank rather than the board alone
+ * own fill is opaque, so the only shade left visible is the foam to come off (Phase 12): the deck
+ * skin above the board, the gap below it (the foam planed off the bottom, which widens toward a tip
+ * lifted under Pin deck, as the deck band does toward a tip thinned under Bottom), and the blank's
+ * leftover past each tip. Both bands are the same shade on purpose — they sit on opposite sides of
+ * the board's own outline, so they can never be confused. The frame then fits the whole blank rather than the board alone
  * (`rocker-view-frame.ts`'s `blankSpanIn` / `boardOffsetX`), so the board draws slightly smaller
  * inside it; the rails, cards and titles stay on the board's own five stations. Nothing else is
  * added to the drawing for a blank: a thickness failure shows as the board poking through the
@@ -700,7 +702,7 @@ export function RockerViewer({
     : [];
 
   const ariaLabel = blank
-    ? `Side profile of the board inside the ${blank.record.vendor} ${blank.record.name} blank, with the foam to come off shaded`
+    ? `Side profile of the board inside the ${blank.record.vendor} ${blank.record.name} blank, with the foam to come off the deck and the bottom shaded`
     : "Side profile of the board, showing the rocker line and deck thickness";
 
   return (
