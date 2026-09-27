@@ -11,7 +11,9 @@ import { parseCsv } from "../lib/blanks/csv";
  * - The board has no blank (a fresh board, or one whose blank was removed on ROCKER): an empty
  *   ruled line the shop writes the blank on by hand.
  * - The board was designed on a blank picked on ROCKER: that blank prints there, read-only, as
- *   vendor then name — the same words ROCKER's own list names it by.
+ *   vendor then name — the same words ROCKER's own list names it by — then where the board's
+ *   centre sits on the blank, in ROCKER's own words (quick 260927-0fq): `— centered` at the
+ *   starting spot, or `— center 1/16" toward nose` and the like once the board has been slid.
  *
  * Like `rocker-blanks.spec.ts`, this runs signed out with no database: `playwright.config.ts` sets
  * `SHAPER_BLANKS_SOURCE=seed-csv` for its own dev server, so ROCKER's list reads the committed
@@ -66,6 +68,30 @@ async function openRocker(page: Page) {
   });
 }
 
+/** The slider sitting under a label — ROCKER's Placement slider shares a parent with its
+ * `Placement — ...` caption. */
+function sliderUnder(page: Page, label: RegExp): Locator {
+  return page.getByText(label).locator("xpath=..").getByRole("slider");
+}
+
+/** Pick the first blank under FITS THIS BOARD and return `vendor name`, read off the row's
+ * accessible name (`Use <vendor> <name>`) before the tap. */
+async function pickFirstFittingBlank(page: Page): Promise<string> {
+  const row = firstFittingRow(page);
+  const ariaLabel = (await row.getAttribute("aria-label")) ?? "";
+  const expected = ariaLabel.replace(/^Use /, "").replace(/, doesn't fit: .*$/, "");
+  expect(expected.length).toBeGreaterThan(0);
+  await row.click();
+  await expect(pickedCard(page)).toBeVisible();
+  return expected;
+}
+
+/** Walk to SUMMARY by the app's own link — a full page load would reset the design in memory. */
+async function goToSummary(page: Page) {
+  await page.getByRole("link", { name: "SUMMARY", exact: true }).filter({ visible: true }).first().click();
+  await expect(page).toHaveURL(/\/design\/summary$/);
+}
+
 /** Every unique `vendor name` in the committed catalogue CSVs — everything the Blank field could
  * ever be asked to print. Read straight from `db/seed/blanks/*.csv` with the same tested reader the
  * seed uses, so no blank name is typed here either. */
@@ -109,20 +135,46 @@ test.describe("Summary — the Shaper Use Only box's Blank field", () => {
     await expect(blankFieldValue(page)).toHaveText(/^\s*$/);
   });
 
-  test("a blank picked on ROCKER prints on the order form as vendor then name", async ({ page }) => {
+  test("a blank picked on ROCKER prints on the order form as vendor, name, then — centered", async ({ page }) => {
     await openRocker(page);
-    const row = firstFittingRow(page);
-    // The row's accessible name is `Use <vendor> <name>` — the same identity the order form prints.
-    const ariaLabel = (await row.getAttribute("aria-label")) ?? "";
-    const expected = ariaLabel.replace(/^Use /, "").replace(/, doesn't fit: .*$/, "");
-    expect(expected.length).toBeGreaterThan(0);
-    await row.click();
-    await expect(pickedCard(page)).toBeVisible();
+    const expected = await pickFirstFittingBlank(page);
+    // A freshly picked blank puts the board's centre at the blank's centre, and ROCKER says so.
+    await expect(page.getByText("Placement — centered", { exact: true })).toBeVisible();
 
-    await page.getByRole("link", { name: "SUMMARY", exact: true }).filter({ visible: true }).first().click();
-    await expect(page).toHaveURL(/\/design\/summary$/);
-    await expect(blankFieldValue(page)).toHaveText(expected);
+    await goToSummary(page);
+    await expect(blankFieldValue(page)).toHaveText(`${expected} — centered`);
   });
+
+  for (const system of ["imperial", "metric"] as const) {
+    test(`after sliding the board along its blank on ROCKER, the Blank line says where its centre sits, in ROCKER's own words (${system})`, async ({
+      page,
+    }) => {
+      if (system === "metric") {
+        await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
+      }
+      await openRocker(page);
+      const expected = await pickFirstFittingBlank(page);
+
+      // One step toward the nose — the slider's left end is the nose. No placement is typed here:
+      // the words are read off ROCKER's own label and must reach the Summary unchanged.
+      const placement = sliderUnder(page, /^Placement — /);
+      await placement.focus();
+      await placement.press("ArrowLeft");
+      const label = page.getByText(/^Placement — .+ toward nose$/);
+      await expect(label).toBeVisible();
+      const words = ((await label.textContent()) ?? "").replace(/^Placement — /, "");
+      if (system === "imperial") {
+        expect(words).toContain('"');
+      } else {
+        // A changed units key must never quietly turn this into a second Imperial run.
+        expect(words).toMatch(/ mm /);
+        expect(words).not.toContain('"');
+      }
+
+      await goToSummary(page);
+      await expect(blankFieldValue(page)).toHaveText(`${expected} — center ${words}`);
+    });
+  }
 
   test("every blank in the catalogue prints whole in the Blank field, on screen and on paper", async ({
     page,
