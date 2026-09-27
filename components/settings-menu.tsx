@@ -24,9 +24,12 @@ import {
   SlidersHorizontalIcon,
   SunIcon,
 } from "lucide-react";
+import { useBlankMakers } from "@/components/blank-makers-provider";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { useTheme } from "@/components/theme-provider";
 import { useUnits } from "@/components/units-provider";
+import { isLastShownMaker } from "@/lib/blank-makers-preference";
+import { KNOWN_BLANK_VENDORS, type BlankVendor } from "@/lib/blanks/vendors";
 import { formatDimsExample, presetSummary } from "@/lib/geometry/summary-line";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import type { UnitsSystem } from "@/lib/geometry/units";
@@ -49,14 +52,18 @@ const MODE_LABEL: Record<ThemeMode, string> = { light: "Light", dark: "Dark" };
 const MODES: ThemeMode[] = ["light", "dark"];
 
 /**
- * The popup's own content — the Units and Theme radio groups, and the Blanks row that opens the
- * fit and tip defaults dialog — factored out of `SettingsMenu` so
+ * The popup's own content — the Units and Theme radio groups, the Blanks row that opens the fit
+ * and tip defaults dialog, and the BLANK MAKERS tick boxes (quick task 260926-wmf) — factored out of `SettingsMenu` so
  * `components/design/phone-menu.tsx` can render the exact same rows inside its own single popup
  * (stacked above the account control) rather than copying the radio groups: one definition, so
  * the two menus can never drift apart. Must render inside a `Menu.Root` (it uses `Menu.RadioGroup`
  * and `Menu.GroupLabel`, which read a context only `Menu.Root` provides) — it owns no
  * `Menu.Trigger`/`Menu.Portal`/`Menu.Popup` of its own, since each caller supplies its own trigger
  * and popup chrome around this shared content.
+ *
+ * Every row is a component that returns its Base UI item DIRECTLY (`ThemeRow`, `UnitsRow`,
+ * `BlankMakerRow`), never wrapped in a DOM node: Base UI registers a group's items by walking its
+ * children, and a wrapper element leaves a row drawn but inert — no click, no keyboard focus.
  */
 export function SettingsMenuContent() {
   const { preference, setPreference, systemTheme } = useTheme();
@@ -157,7 +164,51 @@ export function SettingsMenuContent() {
           </span>
         </Menu.Item>
       </Menu.Group>
+
+      {/* Quick task 260926-wmf: one tick box per blank maker. An unticked maker's blanks leave the
+          ROCKER blank list. All ticked until a shaper chooses; the last ticked maker is locked, so
+          the list can never be emptied. Spaced like Theme under Units. */}
+      <Menu.Group className="mt-1.5">
+        <Menu.GroupLabel className="px-2 pt-1 pb-2 text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase">
+          Blank Makers
+        </Menu.GroupLabel>
+        {KNOWN_BLANK_VENDORS.map((vendor) => (
+          <BlankMakerRow key={vendor} vendor={vendor} />
+        ))}
+      </Menu.Group>
     </>
+  );
+}
+
+/**
+ * One blank maker's tick box. Ticking or unticking applies at once and keeps the menu open, so a
+ * shaper can change several in one visit. The last maker still ticked is disabled with a hint
+ * rather than faded — it stays readable, and stays reachable from the keyboard.
+ */
+function BlankMakerRow({ vendor }: { vendor: BlankVendor }) {
+  const { hidden, setMakerShown } = useBlankMakers();
+  const locked = isLastShownMaker(hidden, vendor);
+  return (
+    <Menu.CheckboxItem
+      checked={!hidden.includes(vendor)}
+      onCheckedChange={(checked) => setMakerShown(vendor, checked)}
+      disabled={locked}
+      closeOnClick={false}
+      label={vendor}
+      className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none select-none coarse:min-h-11 data-highlighted:bg-surf-well data-disabled:cursor-default"
+    >
+      <span className="flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-surf-ink-muted">
+        <Menu.CheckboxItemIndicator render={<span className="flex items-center justify-center" />}>
+          <CheckIcon aria-hidden className="size-3.5 text-surf-accent-ink" />
+        </Menu.CheckboxItemIndicator>
+      </span>
+      <span className="flex-1 leading-tight">
+        <span className="block text-sm text-surf-ink">{vendor}</span>
+        {locked ? (
+          <span className="block text-[11px] text-surf-ink-muted">Keep at least one maker ticked</span>
+        ) : null}
+      </span>
+    </Menu.CheckboxItem>
   );
 }
 
@@ -174,7 +225,9 @@ export function SettingsMenu() {
 
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="end" sideOffset={10} className="isolate z-50">
-          <Menu.Popup className="min-w-64 origin-(--transform-origin) rounded-lg border border-surf-line-faint bg-surf-panel p-1.5 shadow-lg outline-none duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+          {/* Never taller than the room Base UI measures below the gear — past that it scrolls
+              inside itself, so every row (the Blank Makers tick boxes included) stays reachable. */}
+          <Menu.Popup className="max-h-(--available-height) min-w-64 origin-(--transform-origin) overflow-y-auto rounded-lg border border-surf-line-faint bg-surf-panel p-1.5 shadow-lg outline-none duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
             <SettingsMenuContent />
           </Menu.Popup>
         </Menu.Positioner>
