@@ -63,11 +63,6 @@ export interface BlankSideView {
   /** The 12" thicknesses before any fine-tune (D-11): the blank's thickness there less the deck
    * skin and the centre gap (Phase 12 R3). */
   derived12: { nose12: Mm; tail12: Mm };
-  /** The TOTAL foam to come off at each of the board's five stations — deck plus bottom, the
-   * blank's thickness there minus the board's (R4). Below zero means the board pokes out of the
-   * blank there. Kept for its two remaining screen readers until 12-07 moves them to
-   * `foamOffDeck` / `foamOffBottom`. */
-  foamOff: Record<FoilStationKey, Mm>;
   /** Foam off the deck at each of the board's five stations (`BoardOnBlank.deckOffAt`). */
   foamOffDeck: Record<FoilStationKey, Mm>;
   /** Foam off the bottom at each of the board's five stations (`BoardOnBlank.bottomOffAt`). */
@@ -181,7 +176,6 @@ export function buildBlankProfile(
       nose12: mm(onBlank.derivedThicknessAt(nose12)),
       tail12: mm(onBlank.derivedThicknessAt(tail12)),
     },
-    foamOff: stationRecord(stations, (s) => mm(onBlank.blankThicknessAt(s) - thicknessAt(s))),
     foamOffDeck: stationRecord(stations, (s) => mm(onBlank.deckOffAt(s))),
     foamOffBottom: stationRecord(stations, (s) => mm(onBlank.bottomOffAt(s))),
     blankAtStations: stationRecord(stations, (s) => ({
@@ -248,16 +242,15 @@ export interface BoardProfileInput {
   rocker: FiveStationRocker;
   /** The stored foil. With a blank, only `center` and the two tips are read. */
   foil: FoilSpec;
-  /** The board's blank, where it sits, its two fine-tunes and (Phase 12) its cut — the three cut
-   * fields optional until 12-09. */
+  /** The board's blank, where it sits, its two fine-tunes and (Phase 12) its own cut. */
   blank: {
     prepared: PreparedBlank;
     placement: Mm;
     nose12Offset: Mm;
     tail12Offset: Mm;
-    deckSkin?: Mm;
-    tipStyle?: TipStyle;
-    fineTuneSurface?: FineTuneSurface;
+    deckSkin: Mm;
+    tipStyle: TipStyle;
+    fineTuneSurface: FineTuneSurface;
   } | null;
 }
 

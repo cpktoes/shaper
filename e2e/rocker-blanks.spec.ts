@@ -276,17 +276,25 @@ test.describe("ROCKER — the DATASHEET beside a blank, one undo after Remove, a
     await dismissChrome(page);
   });
 
-  test("with a blank picked the DATASHEET shows the blank's block, the board's block, Foam Off and the catalogue footnote", async ({
+  test("with a blank picked the DATASHEET shows the blank's block, the board's block, FOAM OFF off the deck and the bottom, and the catalogue footnote", async ({
     page,
   }) => {
     await openRocker(page);
     await pickFirstFittingBlank(page);
+    // The drawing tells a screen reader both bands are shaded (Phase 12 D-06).
+    await expect(page.getByRole("img", { name: /with the foam to come off the deck and the bottom shaded$/ })).toBeVisible();
     await page.getByRole("tab", { name: "DATASHEET" }).click();
 
     const sheet = page.locator("main");
     await expect(sheet.getByText(/^BLANK — /)).toBeVisible();
     await expect(sheet.getByText("YOUR BOARD", { exact: true })).toBeVisible();
-    await expect(sheet.getByText(/^Foam Off/)).toBeVisible();
+    // The single Foam Off row split into a FOAM OFF block with a Deck row and a Bottom row. Scoped
+    // to the table so the sidebar's Deck Skin row and its Bottom pills are never matched.
+    const table = sheet.locator(".overflow-x-auto").filter({ hasText: "FOAM OFF" });
+    await expect(table.getByText("FOAM OFF", { exact: true })).toBeVisible();
+    await expect(table.getByText(/^Deck( \(mm\))?$/)).toBeVisible();
+    await expect(table.getByText(/^Bottom( \(mm\))?$/)).toBeVisible();
+    await expect(sheet.getByText(/^Foam Off/)).toHaveCount(0);
     await expect(sheet.getByText(/catalog, page \d+/)).toBeVisible();
   });
 

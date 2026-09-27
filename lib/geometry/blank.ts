@@ -96,12 +96,12 @@ export interface BoardBlank {
   nose12Offset: Mm;
   /** Signed fine-tune at the tail 12" station, on the board's fine-tune surface (D-11, D-13). */
   tail12Offset: Mm;
-  /** The board's own deck skin (Phase 12 D-01); optional until 12-09. */
-  deckSkin?: Mm;
-  /** The board's own Tip Style (Phase 12 D-04); optional until 12-09. */
-  tipStyle?: TipStyle;
-  /** The board's own fine-tune surface (Phase 12 D-13); optional until 12-09. */
-  fineTuneSurface?: FineTuneSurface;
+  /** The board's own deck skin (Phase 12 D-01). */
+  deckSkin: Mm;
+  /** The board's own Tip Style (Phase 12 D-04). */
+  tipStyle: TipStyle;
+  /** The board's own fine-tune surface (Phase 12 D-13). */
+  fineTuneSurface: FineTuneSurface;
 }
 
 /** The shaper's fit settings (the third account preference, D-09). */
