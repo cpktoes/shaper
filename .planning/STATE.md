@@ -4,7 +4,7 @@ milestone: v1.4
 milestone_name: Foil the Way a Shaper Cuts It
 status: shipped — UAT pending
 stopped_at: Phase 12 SHIPPED 2026-09-27 — production migrated first (0006), foil-real-shaping merged into main (125a90f), deployed and walked live; all 10 plans have SUMMARYs; phase.complete waits on /gsd-verify-work 12 (5 of 8 UAT checks pending: real-phone thumb walks, four themes, a carried-over tweak beyond 1/4in, the ROCKER baseline picture) and /gsd-secure-phase 12
-last_updated: "2026-09-27T08:07:34.958Z"
+last_updated: "2026-09-27T08:21:29.170Z"
 last_activity: 2026-09-26
 last_activity_desc: "Phase 12 shipped to www.shaperassistant.com: migration 0006 on production before the merge, 73 commits merged, deploy Ready in 28 s, live ROCKER / Fit & Tip Defaults / rack checks passed; UAT 3 of 8 recorded, 5 pending"
 progress:
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-26)
 **v1.4 — Foil the Way a Shaper Cuts It: OPENED 2026-09-26 on branch `foil-real-shaping`.** Phase 12 added from the founder's brief (todo 2026-09-26: deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, tip thinning in the last 12" with a pin-deck or bottom choice, fine-tunes on the 12" stations). v1.3 shipped the same day and is archived under .planning/milestones/.
 
 Status: Executing Phase 12
-Last activity: 2026-09-27 — Completed quick task 260926-wmf: Blank Makers tick boxes; production carries migration 0007
+Last activity: 2026-09-27 — Completed quick task 260927-0fq: the order form's Blank line also says where the board centre sits on the blank
 
 ## Performance Metrics
 
@@ -279,6 +279,7 @@ Recent decisions affecting current work:
 | 260926-uub | New boards start with a 1/2" nose tip and a 5/8" tail tip (the founder's defaults, replacing 5/16" and 1/4"); Fit & Tip Defaults shows the same pair until a shaper picks their own; presets and saved defaults untouched; ROCKER and VOLUME reference pictures re-recorded, TEMPLATE/RAILS/FINS byte-identical; no blank drops off the default board's list | 2026-09-26 | e1101e3 | [260926-uub-default-tip-thicknesses-become-nose-tip-](./quick/260926-uub-default-tip-thicknesses-become-nose-tip-/) |
 | 260926-wkh | The order form's Shaper Use Only box: the "Blank & Rocker" line is now "Blank", prints the blank picked on ROCKER (maker then name) read-only, stays a ruled line with no blank, and sits on a full-width line of its own above Board # and Price so every catalogue name prints whole (19 of 162 were cut off before) | 2026-09-27 | 59286a7 | [260926-wkh-summary-page-the-blank-and-rocker-sectio](./quick/260926-wkh-summary-page-the-blank-and-rocker-sectio/) |
 | 260926-wmf | Blank Makers tick boxes in the gear menu and the phone menu (US Blanks, Arctic Foam, Marko Foam; all on by default; the last one locked): an unticked maker leaves the ROCKER blank list and the closest-fit offer with a one-line note, the picked blank stays; remembered on the account (new nullable column hidden_blank_makers, migration 0007 on development and production) or in the browser signed out; both menus now scroll within the screen | 2026-09-27 | 00aad20 | [260926-wmf-blank-maker-tick-boxes-in-settings-all-o](./quick/260926-wmf-blank-maker-tick-boxes-in-settings-all-o/) |
+| 260927-0fq | The order form's Blank line also says where the board centre sits on the blank, in ROCKER's own words ("US Blanks 6'2\"A — centered", "— center 1/4\" toward tail", Metric in mm); the width test now covers the longest possible note (— center 44 13/16\" toward nose) against every catalogue name | 2026-09-27 | 213ad68 | [260927-0fq-order-form-blank-line-also-says-where-th](./quick/260927-0fq-order-form-blank-line-also-says-where-th/) |
 
 ## Deferred Items
 
