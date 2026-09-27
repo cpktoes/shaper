@@ -111,6 +111,11 @@ test.describe("ROCKER — a real blank from the list", () => {
 
     const flag = page.locator("[data-blank-flag]");
     await expect(flag).toContainText("This blank doesn't fit your board");
+    // F4 (Phase 12 D-10): too thin at the centre now means no room for the board's deck skin and
+    // one bottom pass of the planer.
+    await expect(flag).toContainText("too thin at the center");
+    await expect(flag).toContainText("deck skin");
+    await expect(flag).toContainText("bottom pass");
     // Never cleared on its own (D-08): the same blank is still the board's blank.
     await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(name);
 
@@ -129,6 +134,38 @@ test.describe("ROCKER — a real blank from the list", () => {
     await expect(page.locator("[data-blank-silhouette]")).toHaveCount(0);
     await expect(pickedCard(page)).toHaveCount(0);
   });
+
+  test("with no blank picked, the list intro quotes the Deck Skin default from Fit & Tip Defaults", async ({
+    page,
+  }, testInfo) => {
+    await openRocker(page);
+    const intro = page.getByText(/^Shortest first\./);
+    await expect(intro).toContainText("deck skin");
+    await expect(intro).toContainText("bottom pass");
+
+    // D-01: a board with no blank follows the live account default, and the list's words quote
+    // the skin its verdicts use — so changing the default re-words the intro at once.
+    const trigger =
+      testInfo.project.name === "desktop"
+        ? page.getByRole("button", { name: "Settings" })
+        : page.getByRole("banner").getByRole("button", { name: "Menu" });
+    const row = page.getByRole("menuitem", { name: /Fit & Tip Defaults/ });
+    await expect(async () => {
+      if (!(await row.isVisible())) await trigger.click();
+      await expect(row).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: 20_000 });
+    await row.click();
+    const dialog = page.getByRole("dialog", { name: "Fit & Tip Defaults" });
+    await expect(dialog).toBeVisible();
+    const skin = dialog.getByRole("textbox", { name: "Deck Skin", exact: true });
+    await skin.fill("1/2");
+    await skin.press("Enter");
+    await expect(skin).toHaveValue('1/2"');
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toBeHidden();
+
+    await expect(intro).toContainText('1/2" deck skin');
+  });
 });
 
 /** The page's first control: the board's one centre thickness, typed. */
@@ -141,7 +178,8 @@ async function typeCenterThickness(page: Page, value: string) {
 
 /**
  * Raises the board's one centre thickness from the default 2 1/2" to 3 1/2" — thicker than the
- * shortest fitting blank can carry with the default spare thickness, so that pick stops fitting.
+ * shortest fitting blank can carry with room for the default deck skin and one bottom pass, so that
+ * pick stops fitting.
  */
 async function raiseCenterThickness(page: Page) {
   await typeCenterThickness(page, "3 1/2");
