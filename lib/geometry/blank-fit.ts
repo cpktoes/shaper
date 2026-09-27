@@ -503,19 +503,21 @@ const PLACEMENT_STEP_MM = inchesToMm(1 / 16);
 const COARSE_STEPS = 4;
 
 /**
- * The two floors that hide a blank from the list (D-04): the blank must be at least Extra Length
- * longer than the board, and its own centre-station thickness (D-18: the floor keeps the printed
- * `C` value) at least Extra Center Thickness thicker than the target centre. Both amounts come
- * from `settings` — never a literal here. A failed floor reports by how much it is short.
+ * The two floors that hide a blank from the list (Phase 11 D-04, Phase 12 D-10): the blank must be
+ * at least Extra Length longer than the board, and its own centre-station thickness (Phase 11
+ * D-18: the floor keeps the printed `C` value) must leave room above the target centre for the
+ * board's Deck Skin — one deck pass — plus at least one bottom pass of the shaper's Planer Max
+ * Depth. The amounts come from the board's own cut and `settings` — never a literal here. A failed
+ * floor reports by how much it is short.
  */
 export function floorCheck(
   prepared: PreparedBlank,
-  boardLength: Mm,
-  centerThickness: Mm,
+  board: { length: Mm; centerThickness: Mm; deckSkin?: Mm },
   settings: FitSettings,
 ): { passes: boolean; lengthShortBy: Mm | null; centerShortBy: Mm | null } {
-  const lengthShort = boardLength + settings.extraLength - prepared.lengthMm;
-  const centerShort = centerThickness + settings.extraCenterThickness - prepared.centerThicknessMm;
+  const lengthShort = board.length + settings.extraLength - prepared.lengthMm;
+  const centerShort =
+    board.centerThickness + cutOf(board).deckSkin + settings.planerMaxDepth - prepared.centerThicknessMm;
   const lengthShortBy = lengthShort > FLOOR_EPSILON_MM ? mm(lengthShort) : null;
   const centerShortBy = centerShort > FLOOR_EPSILON_MM ? mm(centerShort) : null;
   return { passes: lengthShortBy === null && centerShortBy === null, lengthShortBy, centerShortBy };
@@ -649,8 +651,9 @@ function byLengthThenName(a: BlankVerdict, b: BlankVerdict): number {
 }
 
 /**
- * The blank list for a board (D-04, D-06): pickable blanks only; a blank failing either floor is
- * hidden; the rest are judged (`judgeBlank`) into FITS and WON'T FIT, each ordered by length then
+ * The blank list for a board (D-04, D-06): pickable blanks only; a blank failing either floor
+ * (`floorCheck` — the centre floor reads the board's own Deck Skin from `ctx.board`, Phase 12
+ * D-10) is hidden; the rest are judged (`judgeBlank`) into FITS and WON'T FIT, each ordered by length then
  * name. An empty list says which floor emptied it. Takes no placement (R14).
  */
 export function listBlanks(
@@ -665,7 +668,7 @@ export function listBlanks(
   let anyThickEnough = false;
   for (const blank of prepared) {
     if (!isPickable(blank.record)) continue;
-    const floor = floorCheck(blank, ctx.board.length, ctx.board.centerThickness, settings);
+    const floor = floorCheck(blank, ctx.board, settings);
     if (floor.lengthShortBy === null) anyLongEnough = true;
     if (floor.centerShortBy === null) anyThickEnough = true;
     if (!floor.passes) continue;

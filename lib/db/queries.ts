@@ -13,7 +13,11 @@ import { db } from "./client";
 import { models, userPreferences } from "./schema";
 import { parseUnitsPreference } from "@/lib/units-preference";
 import { parsePrintRailInstructionsPreference } from "@/lib/print-instructions-preference";
-import { parseFitDefaultValue, type FitDefaultsPreference } from "@/lib/fit-defaults-preference";
+import {
+  parseFitDefaultValue,
+  parseTipStyleValue,
+  type FitDefaultsPreference,
+} from "@/lib/fit-defaults-preference";
 import type { UnitsSystem } from "@/lib/geometry/units";
 
 export interface ListedModel {
@@ -76,14 +80,18 @@ export async function readPrintRailInstructionsPreference(clerkId: string): Prom
 }
 
 /**
- * A shaper's five saved fit and tip defaults (D-09) — Extra Length, Extra Center Thickness, Width
- * Margin, Nose Tip and Tail Tip, in millimetres — with `null` for each one they haven't chosen.
- * A missing row reads as five nulls; each column is run through `parseFitDefaultValue`'s
- * allow-list (finite, inside that setting's bounds), so a hand-edited or drifted value reads as
- * "not chosen" and the standard default shows instead.
+ * A shaper's seven saved fit and tip defaults — Extra Length, Planer Max Depth and Width Margin
+ * (the rules that decide which blanks fit, Phase 12 D-10), and the Deck Skin, Nose Tip, Tail Tip
+ * and Tip Style a new board starts with — with `null` for each one they haven't chosen. The six
+ * numbers are millimetres. A missing row reads as seven nulls; each number column is run through
+ * `parseFitDefaultValue`'s allow-list (finite, inside that setting's bounds) and the Tip Style
+ * through `parseTipStyleValue` (exactly `pinDeck` or `bottom`), so a hand-edited or drifted value
+ * reads as "not chosen" and the standard default shows instead.
  *
- * Selects exactly these five columns and nothing else — a projection, never the whole row — so
- * this read and the units/print reads above each ask only for the columns they use.
+ * Selects exactly these seven columns and nothing else — a projection, never the whole row — so
+ * this read and the units/print reads above each ask only for the columns they use. The retired
+ * `extra_center_thickness_mm` column is no longer read (D-19); it stays in the table, unread and
+ * unwritten, until it is dropped after a deploy.
  *
  * Read-only contract, same register as `listModels`: one `select`, no counters, no last-seen
  * stamp, no write of any kind.
@@ -91,18 +99,22 @@ export async function readPrintRailInstructionsPreference(clerkId: string): Prom
 export async function readFitDefaultsPreference(clerkId: string): Promise<FitDefaultsPreference> {
   const [row] = await db.select({
       extraLengthMm: userPreferences.extraLengthMm,
-      extraCenterThicknessMm: userPreferences.extraCenterThicknessMm,
+      planerMaxDepthMm: userPreferences.planerMaxDepthMm,
       widthMarginMm: userPreferences.widthMarginMm,
+      deckSkinMm: userPreferences.deckSkinMm,
       noseTipThicknessMm: userPreferences.noseTipThicknessMm,
       tailTipThicknessMm: userPreferences.tailTipThicknessMm,
+      tipStyle: userPreferences.tipStyle,
     })
     .from(userPreferences)
     .where(eq(userPreferences.clerkUserId, clerkId));
   return {
     extraLength: parseFitDefaultValue("extraLength", row?.extraLengthMm ?? null),
-    extraCenterThickness: parseFitDefaultValue("extraCenterThickness", row?.extraCenterThicknessMm ?? null),
+    planerMaxDepth: parseFitDefaultValue("planerMaxDepth", row?.planerMaxDepthMm ?? null),
     widthMargin: parseFitDefaultValue("widthMargin", row?.widthMarginMm ?? null),
+    deckSkin: parseFitDefaultValue("deckSkin", row?.deckSkinMm ?? null),
     noseTipThickness: parseFitDefaultValue("noseTipThickness", row?.noseTipThicknessMm ?? null),
     tailTipThickness: parseFitDefaultValue("tailTipThickness", row?.tailTipThicknessMm ?? null),
+    tipStyle: parseTipStyleValue(row?.tipStyle ?? null),
   };
 }

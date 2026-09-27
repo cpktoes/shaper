@@ -6,7 +6,8 @@
  * The page streams the pickable catalogue once per visit; this hook fits every blank once
  * (`prepareBlank`, memoised on the catalogue itself) and judges the whole list (`listBlanks`)
  * against the board. The verdicts depend on the board's length and outline, its centre thickness,
- * its two tips, the two 12" fine-tunes and the shaper's three fit rules — and on NOTHING else.
+ * its two tips, the two 12" fine-tunes, how it is cut from the blank (Deck Skin, Tip Style,
+ * fine-tune surface — Phase 12) and the shaper's three fit rules — and on NOTHING else.
  *
  * The placement is deliberately absent from every dependency list below: a verdict never takes a
  * placement (`judgeBlank` searches every placement itself), so sliding the board along its blank
@@ -20,7 +21,7 @@ import { useMemo } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { isPickable } from "@/lib/blanks/catalog";
-import type { BlankRecord } from "@/lib/geometry/blank";
+import { DEFAULT_BLANK_CUT, type BlankCut, type BlankRecord } from "@/lib/geometry/blank";
 import {
   listBlanks,
   prepareBlank,
@@ -28,6 +29,7 @@ import {
   type BoardFitContext,
   type PreparedBlank,
 } from "@/lib/geometry/blank-fit";
+import type { CenterFloorRules } from "@/lib/geometry/blank-reasons";
 import { sampleOutline } from "@/lib/geometry/outline";
 import { mm, type Mm } from "@/lib/geometry/units";
 
@@ -79,9 +81,39 @@ export interface BlankListState extends PreparedCatalogue {
   board: { length: Mm; widePointStation: Mm };
 }
 
+/**
+ * How the board is cut from its blank, as the verdicts judge it (Phase 12 D-01, D-04, D-13): the
+ * picked blank's own Deck Skin, Tip Style and fine-tune surface; with no blank picked, the live
+ * account defaults for the skin and the Tip Style (so a change in Fit & Tip Defaults re-judges the
+ * list at once, D-09) and the out-of-the-box fine-tune surface. The ONE place the list, its
+ * sentences and the flag read the board's cut from, so they can never disagree.
+ */
+export function useBoardCut(): BlankCut {
+  const { blank } = useDesign();
+  const { defaults } = useFitDefaults();
+  const deckSkin = blank?.deckSkin ?? defaults.deckSkin;
+  const tipStyle = blank?.tipStyle ?? defaults.tipStyle;
+  const fineTuneSurface = blank?.fineTuneSurface ?? DEFAULT_BLANK_CUT.fineTuneSurface;
+  return useMemo(() => ({ deckSkin, tipStyle, fineTuneSurface }), [deckSkin, tipStyle, fineTuneSurface]);
+}
+
+/**
+ * The rules the list's centre floor and every sentence around it quote (D-10): Extra Length, the
+ * Planer Max Depth, and the Deck Skin the verdicts use — the board's own with a blank picked, the
+ * live account default without one. The list intro, the empty-list bodies and the F4 flag all take
+ * their numbers from here and nowhere else.
+ */
+export function useCenterFloorRules(): CenterFloorRules {
+  const { settings } = useFitDefaults();
+  const { deckSkin } = useBoardCut();
+  const { extraLength, planerMaxDepth } = settings;
+  return useMemo(() => ({ extraLength, planerMaxDepth, deckSkin }), [extraLength, planerMaxDepth, deckSkin]);
+}
+
 export function useBlankList(records: readonly BlankRecord[]): BlankListState {
   const { outline, outlineGeometry, foil, blank } = useDesign();
   const { settings } = useFitDefaults();
+  const { deckSkin, tipStyle, fineTuneSurface } = useBoardCut();
 
   const catalogue = useMemo(() => prepareCatalogue(records), [records]);
 
@@ -90,7 +122,8 @@ export function useBlankList(records: readonly BlankRecord[]): BlankListState {
   const nose12Offset = blank?.nose12Offset ?? mm(0);
   const tail12Offset = blank?.tail12Offset ?? mm(0);
 
-  // D-07: no placement in this dependency list, on purpose.
+  // D-07: no placement in this dependency list, on purpose. The cut is in it (Pitfall 8): a new
+  // Deck Skin moves the centre floor, and a new Tip Style moves where the tips come off.
   const ctx = useMemo<BoardFitContext>(
     () => ({
       board: {
@@ -100,18 +133,32 @@ export function useBlankList(records: readonly BlankRecord[]): BlankListState {
         tailTip: foil.tailTip,
         nose12Offset,
         tail12Offset,
+        deckSkin,
+        tipStyle,
+        fineTuneSurface,
       },
       halfWidthAt: (station: Mm) => sampleOutline(outlineGeometry, station),
       widePointStation: outlineGeometry.widePointStation,
     }),
-    [outline.length, outlineGeometry, foil.center, foil.noseTip, foil.tailTip, nose12Offset, tail12Offset],
+    [
+      outline.length,
+      outlineGeometry,
+      foil.center,
+      foil.noseTip,
+      foil.tailTip,
+      nose12Offset,
+      tail12Offset,
+      deckSkin,
+      tipStyle,
+      fineTuneSurface,
+    ],
   );
 
-  const { extraLength, extraCenterThickness, widthMargin } = settings;
+  const { extraLength, planerMaxDepth, widthMargin } = settings;
   // D-07: no placement here either — the list is judged on the board and the three fit rules only.
   const list = useMemo(
-    () => listBlanks(catalogue.prepared, ctx, { extraLength, extraCenterThickness, widthMargin }),
-    [catalogue.prepared, ctx, extraLength, extraCenterThickness, widthMargin],
+    () => listBlanks(catalogue.prepared, ctx, { extraLength, planerMaxDepth, widthMargin }),
+    [catalogue.prepared, ctx, extraLength, planerMaxDepth, widthMargin],
   );
 
   const board = useMemo(

@@ -1,17 +1,17 @@
 "use client";
 
 /**
- * Holds the shaper's five fit and tip defaults (D-09) — Extra Length, Extra Center Thickness and
- * Width Margin (the three rules that decide which real blanks a board fits into), and the Nose and
- * Tail Tip thicknesses a brand-new board starts from — and is the one hook every screen reads them
- * through. The third instance of the provider pattern, after `components/units-provider.tsx` and
+ * Holds the shaper's seven fit and tip defaults — Extra Length, Planer Max Depth and Width Margin
+ * (the three rules that decide which real blanks a board fits into, Phase 12 D-10), and the Deck
+ * Skin, Nose and Tail Tip thicknesses and Tip Style a brand-new board starts from — and is the one
+ * hook every screen reads them through. The third instance of the provider pattern, after `components/units-provider.tsx` and
  * `components/print-instructions-provider.tsx`, and a near copy of the second.
  *
  * Like the other two, these describe how a shaper works, not what a board is: they live outside
  * the design store and outside a saved board's own data, so changing one never marks a board
  * dirty and never rewrites a board already started (every board stores its own tips).
  *
- * The one structural difference from its siblings is the shape of the value: five numbers rather
+ * The one structural difference from its siblings is the shape of the value: seven settings rather
  * than one word or one tick. `useSyncExternalStore` compares snapshots with `Object.is`, so a
  * snapshot function that parsed storage into a fresh object on every call would never compare
  * equal to itself and would re-render forever. The snapshot here is therefore the RAW stored
@@ -43,6 +43,7 @@ import {
   type FitDefaults,
   type FitDefaultsHandoff,
   type FitDefaultsKey,
+  type FitDefaultsMmKey,
   type FitDefaultsPatch,
   type FitDefaultsPreference,
   writeFitDefaultsToBrowser,
@@ -87,8 +88,8 @@ function getStoredRaw(): string | null {
   }
 }
 
-/** Parses a raw stored string through the allow-list; anything unreadable reads as five nulls,
- * which render as the five defaults. Never throws. */
+/** Parses a raw stored string through the allow-list; anything unreadable reads as seven nulls,
+ * which render as the seven defaults. Never throws. */
 function parseStoredRaw(raw: string): FitDefaultsPreference {
   try {
     return parseFitDefaultsPreference(JSON.parse(raw));
@@ -122,9 +123,9 @@ export interface FitDefaultsContextValue {
   defaults: FitDefaults;
   /** Just the three fit rules the blank list filters by. */
   settings: FitSettings;
-  /** Sets one default (or, with `null`, returns it to "not chosen"). Applies at once. */
-  setDefault: (key: FitDefaultsKey, value: Mm | null) => void;
-  /** Returns all five to "not chosen", so every one reads its default again. */
+  /** Sets one number default (or, with `null`, returns it to "not chosen"). Applies at once. */
+  setDefault: (key: FitDefaultsMmKey, value: Mm | null) => void;
+  /** Returns all seven to "not chosen", so every one reads its default again. */
   restoreDefaults: () => void;
   /** Opens the Fit & Tip Defaults dialog, rendered once by this provider. */
   openDialog: () => void;
@@ -167,7 +168,7 @@ export function FitDefaultsProvider({
   // only supplies the real Server Action and real timers. Signed out, the action resolves quietly
   // without writing anything — a signed-out shaper's defaults live in the browser alone.
   //
-  // Each save is a PATCH of only the settings changed (WR-02), never the whole five — so a save
+  // Each save is a PATCH of only the settings changed (WR-02), never the whole seven — so a save
   // from this tab can't wipe a setting another device chose and this tab never touched. Because
   // the queue keeps only the LAST value asked for, patches made while a save is in flight are
   // gathered into `unsavedPatchRef` and the queue always carries all of them together; a key
@@ -223,15 +224,15 @@ export function FitDefaultsProvider({
     [scheduleAccountWrite, getSnapshot],
   );
 
-  // One setting: only that key is sent, so the account's other four stay as they are.
+  // One setting: only that key is sent, so the account's other six stay as they are.
   const setDefault = useCallback(
-    (key: FitDefaultsKey, value: Mm | null) => {
+    (key: FitDefaultsMmKey, value: Mm | null) => {
       commit({ [key]: value });
     },
     [commit],
   );
 
-  // An intentional wipe: all five sent as `null` explicitly.
+  // An intentional wipe: all seven sent as `null` explicitly.
   const restoreDefaults = useCallback(() => {
     commit({ ...EMPTY_FIT_DEFAULTS_PREFERENCE });
   }, [commit]);

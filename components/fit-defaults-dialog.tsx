@@ -5,15 +5,16 @@
  * and rendered once, by `FitDefaultsProvider`, rather than inside the menu: the menu popup unmounts
  * the moment it closes, and a dialog inside it would vanish with it.
  *
- * Five typed marks in two groups. WHICH BLANKS FIT holds the three rules that decide whether a real
- * blank counts as a fit for the board (D-04's extra length and centre thickness, D-05's width
- * margin); NEW BOARDS START WITH holds the nose and tail tip thickness a brand-new board begins
- * from — a board already started keeps its own.
+ * Six typed marks in two groups. WHICH BLANKS FIT holds the three rules that decide whether a real
+ * blank counts as a fit for the board (Phase 11 D-04's extra length, Phase 12 D-03's Planer Max
+ * Depth — which, with the board's Deck Skin, sets the centre floor (D-10) — and D-05's width
+ * margin); NEW BOARDS START WITH holds the Deck Skin and the nose and tail tip thickness a
+ * brand-new board begins from — a board already started keeps its own.
  *
  * Every field commits on blur or Enter and takes effect at once, the same way the Units rows apply
  * as they are picked, so there is no Save and no Cancel: the footer is Restore Defaults (returns
- * all five to "not chosen", so each reads its default again) and Done, which only closes. A setting
- * nobody chose shows its default exactly as if it had been chosen — no "default" tag.
+ * every setting to "not chosen", so each reads its default again) and Done, which only closes. A
+ * setting nobody chose shows its default exactly as if it had been chosen — no "default" tag.
  *
  * Every number reads through the display boundary as a mark (`family="mark"`): whole millimetres
  * in Metric, sixteenths in Imperial (CLAUDE.md Rule 2). Each field's typed bounds come from the
@@ -36,7 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatMark, measureSlider, typedFieldBounds } from "@/lib/geometry/measure-display";
-import { FIT_DEFAULTS_RANGE_IN, type FitDefaultsKey } from "@/lib/fit-defaults-preference";
+import { FIT_DEFAULTS_RANGE_IN, type FitDefaultsMmKey } from "@/lib/fit-defaults-preference";
 import type { Mm } from "@/lib/geometry/units";
 
 /** The menu's own group-label type (settings-menu.tsx), reused for the dialog's two groups. */
@@ -47,32 +48,36 @@ interface FieldCopy {
   hint?: string;
 }
 
-const FIELD_COPY: Record<FitDefaultsKey, FieldCopy> = {
+const FIELD_COPY: Record<FitDefaultsMmKey, FieldCopy> = {
   extraLength: {
     label: "Extra Length",
     hint: "A blank must be at least this much longer than your board.",
   },
-  extraCenterThickness: {
-    label: "Extra Center Thickness",
-    hint: "A blank must be at least this much thicker at the center than your board.",
+  planerMaxDepth: {
+    label: "Planer Max Depth",
+    hint: "How deep your planer cuts in one pass. Passes are counted at this depth, and a blank must leave room for at least one off the bottom at the center.",
   },
   widthMargin: {
     label: "Width Margin",
     hint: "Your board must be at least this much narrower than the blank everywhere, half of it spare on each rail.",
   },
+  deckSkin: {
+    label: "Deck Skin",
+    hint: "Taken off the blank's deck, the same at every station.",
+  },
   noseTipThickness: { label: "Nose Tip Thickness" },
   tailTipThickness: { label: "Tail Tip Thickness" },
 };
 
-const GROUPS: { label: string; hint?: string; keys: FitDefaultsKey[] }[] = [
+const GROUPS: { label: string; hint?: string; keys: FitDefaultsMmKey[] }[] = [
   {
     label: "WHICH BLANKS FIT",
-    keys: ["extraLength", "extraCenterThickness", "widthMargin"],
+    keys: ["extraLength", "planerMaxDepth", "widthMargin"],
   },
   {
     label: "NEW BOARDS START WITH",
-    hint: "Boards you've already started keep their own tips.",
-    keys: ["noseTipThickness", "tailTipThickness"],
+    hint: "Boards you've already started keep their own.",
+    keys: ["deckSkin", "noseTipThickness", "tailTipThickness"],
   },
 ];
 
@@ -91,7 +96,7 @@ export function FitDefaultsDialog({
   // hands back the value it already showed. Storing that would quietly turn a setting nobody
   // chose into a chosen one (and, in Metric, round 2" = 50.8 mm to a stored 51 mm), so only a
   // value that reads differently from the one on screen counts as a change.
-  function commitIfChanged(key: FitDefaultsKey, next: Mm) {
+  function commitIfChanged(key: FitDefaultsMmKey, next: Mm) {
     if (formatMark(next, system) === formatMark(defaults[key], system)) return;
     setDefault(key, next);
   }
@@ -114,8 +119,8 @@ export function FitDefaultsDialog({
         <DialogHeader>
           <DialogTitle className="text-surf-ink">Fit & Tip Defaults</DialogTitle>
           <DialogDescription className="text-xs text-surf-ink-muted">
-            How much spare foam a blank needs before it counts as a fit, and the tip thickness every
-            new board starts with.
+            Which blanks count as a fit, how deep your planer cuts, and what every new board starts
+            with.
           </DialogDescription>
         </DialogHeader>
 

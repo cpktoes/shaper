@@ -14,7 +14,7 @@
  *
  * Pure — no React, browser or database import (CLAUDE.md Rule 1).
  */
-import type { BlankRecord, BlankShortfall, FitSettings } from "./blank";
+import type { BlankRecord, BlankShortfall } from "./blank";
 import {
   formatDim,
   formatDimBare,
@@ -145,26 +145,43 @@ export function placementSlider(
 }
 
 /**
+ * The three rules the list's floors and their sentences quote (Phase 12 D-10): Extra Length, and —
+ * for the centre — the Deck Skin the verdicts use (the board's own, or the account default when no
+ * blank is picked) plus one pass of the shaper's Planer Max Depth. Callers hand in the SAME numbers
+ * the verdicts were judged with, so the words and the list can never disagree.
+ */
+export interface CenterFloorRules {
+  extraLength: Mm;
+  planerMaxDepth: Mm;
+  deckSkin: Mm;
+}
+
+/** `{skin} deck skin and a {pass} bottom pass` — the centre floor, in the shaper's words. */
+function skinAndPass(rules: CenterFloorRules, system: UnitsSystem): string {
+  return `${formatMark(rules.deckSkin, system)} deck skin and a ${formatMark(rules.planerMaxDepth, system)} bottom pass`;
+}
+
+/**
  * The flag body for a picked blank that no longer passes a floor (F3, F4): `It's 1 1/2" too short —
- * you've asked for at least 2" of spare length.` / `It's 1/8" too thin at the center — you've asked
- * for at least 3/8" of spare thickness.` `required` is the shaper's own setting.
+ * you've asked for at least 2" of spare length.` / `It's 1/16" too thin at the center — there isn't
+ * room for your 1/8" deck skin and a 1/8" bottom pass.` Every number but the shortfall comes from
+ * `rules` — the shaper's own settings and the board's own skin.
  */
 export function floorShortfallMessage(
   kind: "length" | "center",
   shortBy: Mm,
-  required: Mm,
+  rules: CenterFloorRules,
   system: UnitsSystem,
 ): string {
   const amount = formatAmount(shortBy, system);
-  const setting = formatMark(required, system);
   return kind === "length"
-    ? `It's ${amount} too short — you've asked for at least ${setting} of spare length.`
-    : `It's ${amount} too thin at the center — you've asked for at least ${setting} of spare thickness.`;
+    ? `It's ${amount} too short — you've asked for at least ${formatMark(rules.extraLength, system)} of spare length.`
+    : `It's ${amount} too thin at the center — there isn't room for your ${skinAndPass(rules, system)}.`;
 }
 
 /**
  * The empty list's heading and body (E1, E2, E3), naming the board's number, the catalogue's best
- * and the setting that ruled every blank out. `kind` is `listBlanks`'s `emptyReason`.
+ * and the rule that ruled every blank out. `kind` is `listBlanks`'s `emptyReason`.
  */
 export function emptyListMessage(
   kind: "length" | "thickness" | "both",
@@ -173,12 +190,11 @@ export function emptyListMessage(
     longest: Mm;
     centre: Mm;
     thickestCenter: Mm;
-    settings: Pick<FitSettings, "extraLength" | "extraCenterThickness">;
+    rules: CenterFloorRules;
   },
   system: UnitsSystem,
 ): { heading: string; body: string } {
-  const extraLength = formatMark(numbers.settings.extraLength, system);
-  const extraCenter = formatMark(numbers.settings.extraCenterThickness, system);
+  const extraLength = formatMark(numbers.rules.extraLength, system);
   if (kind === "length") {
     return {
       heading: "No blank is long enough",
@@ -193,24 +209,26 @@ export function emptyListMessage(
       heading: "No blank is thick enough",
       body:
         `Your center is ${formatMark(numbers.centre, system)} and the thickest blank is ` +
-        `${formatMark(numbers.thickestCenter, system)} at the center, so none leaves the ${extraCenter} of ` +
-        `spare thickness you've asked for. Try a thinner center, or ask for less spare thickness.`,
+        `${formatMark(numbers.thickestCenter, system)} at the center, so none leaves room for a ` +
+        `${skinAndPass(numbers.rules, system)}. Try a thinner center, or change your Deck Skin or Planer Max Depth.`,
     };
   }
   return {
     heading: "No blank passes both rules",
-    body: `Nothing in the three catalogs is both ${extraLength} longer and ${extraCenter} thicker at the center than your board.`,
+    body:
+      `Nothing in the three catalogs is both ${extraLength} longer than your board and thick enough at the ` +
+      `center for a ${skinAndPass(numbers.rules, system)}.`,
   };
 }
 
-/** The line above the list, live from the shaper's two floor settings (D-04). */
-export function listIntro(
-  settings: Pick<FitSettings, "extraLength" | "extraCenterThickness">,
-  system: UnitsSystem,
-): string {
+/**
+ * The line above the list, live from the rules the list is judged by (D-04, D-10). With no blank
+ * picked, the Deck Skin it quotes is the account default (12-UI-SPEC §11).
+ */
+export function listIntro(rules: CenterFloorRules, system: UnitsSystem): string {
   return (
-    `Shortest first. Each is at least ${formatMark(settings.extraLength, system)} longer and ` +
-    `${formatMark(settings.extraCenterThickness, system)} thicker at the center than your board. ` +
+    `Shortest first. Each is at least ${formatMark(rules.extraLength, system)} longer than your board, ` +
+    `with room at the center for a ${skinAndPass(rules, system)}. ` +
     `Greyed blanks don't fit somewhere — the line under each says where.`
   );
 }

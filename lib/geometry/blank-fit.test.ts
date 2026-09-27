@@ -800,6 +800,16 @@ const PREPARED_ALL: PreparedBlank[] = CATALOG.flatMap((blank) => {
 const DEFAULT_SETTINGS: FitSettings = toFitSettings(DEFAULT_FIT_DEFAULTS);
 const SIXTEENTH_MM = inchesToMm(1 / 16);
 const QUARTER_MM = inchesToMm(1 / 4);
+/**
+ * How much a blank's printed centre must stand above the target centre out of the box (Phase 12
+ * D-10): the board's Deck Skin plus one pass of the Planer Max Depth — both read from the defaults.
+ */
+const DEFAULT_CENTRE_FLOOR = mm(DEFAULT_BLANK_CUT.deckSkin + DEFAULT_SETTINGS.planerMaxDepth);
+
+/** The floor check's view of a board: its length, target centre and its own Deck Skin. */
+function floorBoard(length: Mm, centerThickness: Mm, deckSkin: Mm = DEFAULT_BLANK_CUT.deckSkin) {
+  return { length, centerThickness, deckSkin };
+}
 
 /** A board built from an outline at the given length and centre, with the given tips. */
 function fitContext(
@@ -891,10 +901,11 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
     };
     expect(listedKeys(listBlanks(PREPARED_ALL, ctx, longer))).not.toContain(keyOf(mRegular));
 
+    // A planer pass deep enough that M-Regular's centre can't hold the skin and one pass any more.
     const mRegularCentre = prepareBlank(mRegular).centerThicknessMm;
     const thicker: FitSettings = {
       ...DEFAULT_SETTINGS,
-      extraCenterThickness: mm(mRegularCentre - ctx.board.centerThickness + SIXTEENTH_MM),
+      planerMaxDepth: mm(mRegularCentre - ctx.board.centerThickness - DEFAULT_BLANK_CUT.deckSkin + SIXTEENTH_MM),
     };
     expect(listedKeys(listBlanks(PREPARED_ALL, ctx, thicker))).not.toContain(keyOf(mRegular));
   });
@@ -904,24 +915,24 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
     const boundary = prepared.lengthMm - DEFAULT_SETTINGS.extraLength;
     const centre = inchesToMm(2.5);
     for (const length of [boundary, boundary + 1e-9, boundary - 1e-9]) {
-      const check = floorCheck(prepared, mm(length), centre, DEFAULT_SETTINGS);
+      const check = floorCheck(prepared, floorBoard(mm(length), centre), DEFAULT_SETTINGS);
       expect(check.passes).toBe(true);
       expect(check.lengthShortBy).toBeNull();
       const ctx = fitContext(DEFAULT_BOARD_SPEC.outline, mm(length), centre);
       expect(listedKeys(listBlanks([prepared], ctx, DEFAULT_SETTINGS))).toEqual([keyOf(mRegular)]);
     }
-    const tooLong = floorCheck(prepared, mm(boundary + 1), centre, DEFAULT_SETTINGS);
+    const tooLong = floorCheck(prepared, floorBoard(mm(boundary + 1), centre), DEFAULT_SETTINGS);
     expect(tooLong.passes).toBe(false);
     expect(tooLong.lengthShortBy).toBeCloseTo(1, 9);
     const ctx = fitContext(DEFAULT_BOARD_SPEC.outline, mm(boundary + 1), centre);
     expect(listedKeys(listBlanks([prepared], ctx, DEFAULT_SETTINGS))).toEqual([]);
 
     // The centre floor, the same way: exactly on it passes, a millimetre over fails by that much.
-    const centreBoundary = prepared.centerThicknessMm - DEFAULT_SETTINGS.extraCenterThickness;
-    const onCentre = floorCheck(prepared, inchesToMm(60), mm(centreBoundary + 1e-9), DEFAULT_SETTINGS);
+    const centreBoundary = prepared.centerThicknessMm - DEFAULT_CENTRE_FLOOR;
+    const onCentre = floorCheck(prepared, floorBoard(inchesToMm(60), mm(centreBoundary + 1e-9)), DEFAULT_SETTINGS);
     expect(onCentre.passes).toBe(true);
     expect(onCentre.centerShortBy).toBeNull();
-    const overCentre = floorCheck(prepared, inchesToMm(60), mm(centreBoundary + 1), DEFAULT_SETTINGS);
+    const overCentre = floorCheck(prepared, floorBoard(inchesToMm(60), mm(centreBoundary + 1)), DEFAULT_SETTINGS);
     expect(overCentre.passes).toBe(false);
     expect(overCentre.lengthShortBy).toBeNull();
     expect(overCentre.centerShortBy).toBeCloseTo(1, 9);
@@ -933,13 +944,78 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
     const inch = inchesToMm(1);
     const eighth = inchesToMm(1 / 8);
     const length = mm(prepared.lengthMm - DEFAULT_SETTINGS.extraLength + inch);
-    const centre = mm(prepared.centerThicknessMm - DEFAULT_SETTINGS.extraCenterThickness + eighth);
-    const both = floorCheck(prepared, length, centre, DEFAULT_SETTINGS);
+    const centre = mm(prepared.centerThicknessMm - DEFAULT_CENTRE_FLOOR + eighth);
+    const both = floorCheck(prepared, floorBoard(length, centre), DEFAULT_SETTINGS);
     expect(both.passes).toBe(false);
     expect(both.lengthShortBy).toBeCloseTo(inch, 9);
     expect(both.centerShortBy).toBeCloseTo(eighth, 9);
-    const fine = floorCheck(prepared, inchesToMm(60), inchesToMm(2), DEFAULT_SETTINGS);
+    const fine = floorCheck(prepared, floorBoard(inchesToMm(60), inchesToMm(2)), DEFAULT_SETTINGS);
     expect(fine).toEqual({ passes: true, lengthShortBy: null, centerShortBy: null });
+  });
+
+  it("D-10: out of the box the centre floor is the target + 1/4\" — the 1/8\" Deck Skin and one 1/8\" planer pass", () => {
+    expect(DEFAULT_CENTRE_FLOOR).toBeCloseTo(inchesToMm(1 / 4), 9);
+    // A blank thinner than centre + skin + one pass at its printed centre is hidden; exactly on it
+    // is listed.
+    const prepared = prepareBlank(mRegular);
+    const onFloor = mm(prepared.centerThicknessMm - DEFAULT_CENTRE_FLOOR);
+    const listed = (centre: Mm) =>
+      listedKeys(listBlanks([prepared], fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(70), centre), DEFAULT_SETTINGS));
+    expect(listed(onFloor)).toEqual([keyOf(mRegular)]);
+    expect(listed(mm(onFloor + SIXTEENTH_MM))).toEqual([]);
+    const under = floorCheck(prepared, floorBoard(inchesToMm(70), mm(onFloor + SIXTEENTH_MM)), DEFAULT_SETTINGS);
+    expect(under.passes).toBe(false);
+    expect(under.lengthShortBy).toBeNull();
+    expect(under.centerShortBy).toBeCloseTo(SIXTEENTH_MM, 9);
+  });
+
+  it("D-10: a thicker Deck Skin on the board raises the centre floor by exactly as much", () => {
+    const prepared = prepareBlank(mRegular);
+    const centre = mm(prepared.centerThicknessMm - DEFAULT_CENTRE_FLOOR);
+    const thickerSkin = mm(DEFAULT_BLANK_CUT.deckSkin + SIXTEENTH_MM);
+    expect(floorCheck(prepared, floorBoard(inchesToMm(70), centre), DEFAULT_SETTINGS).passes).toBe(true);
+    const raised = floorCheck(prepared, floorBoard(inchesToMm(70), centre, thickerSkin), DEFAULT_SETTINGS);
+    expect(raised.passes).toBe(false);
+    expect(raised.centerShortBy).toBeCloseTo(SIXTEENTH_MM, 9);
+
+    // The list reads the skin from the board it is handed: the same board with the thicker skin
+    // hides M-Regular, and lists nothing the default skin does not.
+    const ctx = fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(70), centre);
+    const thickCtx: BoardFitContext = { ...ctx, board: { ...ctx.board, deckSkin: thickerSkin } };
+    const withDefault = listedKeys(listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS));
+    const withThicker = listedKeys(listBlanks(PREPARED_ALL, thickCtx, DEFAULT_SETTINGS));
+    expect(withDefault).toContain(keyOf(mRegular));
+    expect(withThicker).not.toContain(keyOf(mRegular));
+    for (const key of withThicker) expect(withDefault).toContain(key);
+  });
+
+  it("D-10: a deeper Planer Max Depth raises the centre floor by exactly as much", () => {
+    const prepared = prepareBlank(mRegular);
+    const centre = mm(prepared.centerThicknessMm - DEFAULT_CENTRE_FLOOR);
+    const deeper: FitSettings = { ...DEFAULT_SETTINGS, planerMaxDepth: mm(DEFAULT_SETTINGS.planerMaxDepth + SIXTEENTH_MM) };
+    const raised = floorCheck(prepared, floorBoard(inchesToMm(70), centre), deeper);
+    expect(raised.passes).toBe(false);
+    expect(raised.centerShortBy).toBeCloseTo(SIXTEENTH_MM, 9);
+  });
+
+  it("D-10: for the default board the list only grows against Phase 11's 3/8\" Extra Center Thickness rule", () => {
+    // Phase 11's floor, restated here only to compare against: printed centre ≥ target + 3/8".
+    const oldCentreFloor = inchesToMm(3 / 8);
+    expect(DEFAULT_CENTRE_FLOOR).toBeLessThan(oldCentreFloor);
+    let grewSomewhere = false;
+    for (const centreIn of [2.25, 2.5, 2.75, 3]) {
+      const ctx = defaultContext(72, centreIn);
+      const listed = listedKeys(listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS));
+      const oldListed = PREPARED_ALL.filter(
+        (p) =>
+          isPickable(p.record) &&
+          p.lengthMm >= ctx.board.length + DEFAULT_SETTINGS.extraLength - FLOOR_EPSILON_MM &&
+          p.centerThicknessMm >= ctx.board.centerThickness + oldCentreFloor - FLOOR_EPSILON_MM,
+      ).map((p) => keyOf(p.record));
+      for (const key of oldListed) expect(listed).toContain(key);
+      if (listed.length > oldListed.length) grewSomewhere = true;
+    }
+    expect(grewSomewhere).toBe(true);
   });
 
   it("D-07: across the default board and every preset, each fitting verdict sits at the fitting 1/16\" placement closest to centre", () => {
@@ -986,7 +1062,7 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
         wontFit++;
         const { prepared } = verdict;
         const L = ctx.board.length;
-        expect(floorCheck(prepared, L, ctx.board.centerThickness, DEFAULT_SETTINGS).passes).toBe(true);
+        expect(floorCheck(prepared, ctx.board, DEFAULT_SETTINGS).passes).toBe(true);
         expect(verdict.fits).toBe(false);
         expect(verdict.worst.amount).toBeGreaterThan(FIT_EPSILON_MM);
         expect(verdict.worst.station).toBeGreaterThanOrEqual(0);
@@ -1074,8 +1150,8 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
       expect(listBlanks(PREPARED_ALL, defaultContext(72, 2.5), DEFAULT_SETTINGS).emptyReason).toBeNull();
     });
 
-    it("thickness — a centre above every blank's centre less Extra Center Thickness", () => {
-      const centre = mm(extremes.thickestCenter - DEFAULT_SETTINGS.extraCenterThickness + SIXTEENTH_MM);
+    it("thickness — a centre above every blank's centre less the Deck Skin and one planer pass", () => {
+      const centre = mm(extremes.thickestCenter - DEFAULT_CENTRE_FLOOR + SIXTEENTH_MM);
       const ctx = fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(72), centre);
       const result = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
       expect(result.fits).toEqual([]);
@@ -1116,7 +1192,7 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
       const settings: FitSettings = {
         ...DEFAULT_SETTINGS,
         extraLength: mm(long.lengthMm - ctx.board.length),
-        extraCenterThickness: mm(thick.centerThicknessMm - ctx.board.centerThickness),
+        planerMaxDepth: mm(thick.centerThicknessMm - ctx.board.centerThickness - DEFAULT_BLANK_CUT.deckSkin),
       };
       const result = listBlanks([long, thick], ctx, settings);
       expect(result.fits).toEqual([]);
@@ -1155,9 +1231,9 @@ describe("the offer and the rescue (D-08, R6)", () => {
     const before = defaultContext(70, 2.5);
     expect(listedKeys(listBlanks(PREPARED_ALL, before, DEFAULT_SETTINGS))).toContain(keyOf(mRegular));
 
-    const centre = mm(prepared.centerThicknessMm - DEFAULT_SETTINGS.extraCenterThickness + SIXTEENTH_MM);
+    const centre = mm(prepared.centerThicknessMm - DEFAULT_CENTRE_FLOOR + SIXTEENTH_MM);
     const after = fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(70), centre);
-    const floor = floorCheck(prepared, after.board.length, centre, DEFAULT_SETTINGS);
+    const floor = floorCheck(prepared, after.board, DEFAULT_SETTINGS);
     expect(floor.passes).toBe(false);
     expect(floor.centerShortBy).toBeCloseTo(SIXTEENTH_MM, 9);
 
