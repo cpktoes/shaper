@@ -7,7 +7,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  *
  * The helpers below are copies of `e2e/rocker-blanks.spec.ts`'s own (`dismissChrome`, `blankList`,
  * `firstFittingRow`, `pickedCard`, `openRocker` with its hydration wait, `pickFirstFittingBlank`,
- * `sliderUnder`, `undoOnce`) — spec files do not import each other, the repo's existing per-spec
+ * `sliderUnder`, `undoOnce` at the foot of the file) — spec files do not import each other, the repo's existing per-spec
  * helper pattern. Like that spec, this one has no database: the list reads the committed catalogue
  * CSVs (`SHAPER_BLANKS_SOURCE=seed-csv`), and no blank name, depth or pass count is ever typed here —
  * each test reads a value off the page, moves a control, and checks the value changed.
@@ -120,4 +120,93 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(pickedCard(page)).toHaveCount(1);
     expect(requests).toBe(0);
   });
+
+  test("with no blank picked, there is no Deck Skin, no OFF BOTTOM and no planer passes line", async ({ page }) => {
+    await openRocker(page);
+    // D-12: hidden, not disabled — the sidebar is Phase 11's fallback column exactly.
+    await expect(page.getByText("Placement — pick a blank first")).toBeVisible();
+    await expect(page.getByText(/^Deck Skin/)).toHaveCount(0);
+    await expect(page.locator("[data-readouts]")).toHaveCount(0);
+    await expect(page.getByText("OFF BOTTOM", { exact: true })).toHaveCount(0);
+    await expect(page.locator("[data-bottom-passes]")).toHaveCount(0);
+    await expect(page.getByText(/ a pass — your Planer Max Depth\.$/)).toHaveCount(0);
+  });
+
+  test("in Metric the Deck Skin, the OFF BOTTOM cells and the passes hint read whole millimetres", async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+
+    await expect(deckSkinLabel(page)).toHaveText(/^Deck Skin — \d+ mm$/);
+    const readouts = page.locator("[data-readouts]");
+    await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
+    const readoutText = await readouts.innerText();
+    expect(readoutText).toContain("mm");
+    expect(readoutText).not.toContain('"');
+    await expect(page.getByText(/^At \d+ mm a pass — your Planer Max Depth\.$/)).toBeVisible();
+
+    // A drag keeps every one of them in millimetres.
+    const skin = sliderUnder(page, /^Deck Skin — /);
+    await skin.focus();
+    await skin.press("ArrowRight");
+    await expect(deckSkinLabel(page)).toHaveText(/^Deck Skin — \d+ mm$/);
+    expect(await readouts.innerText()).not.toContain('"');
+    expect(await page.locator("[data-bottom-passes]").innerText()).not.toContain('"');
+  });
+
+  test("Remove This Blank, then one undo, brings the blank back with its own Deck Skin", async ({ page }, testInfo) => {
+    await openRocker(page);
+    const name = await pickFirstFittingBlank(page);
+
+    // Move the skin off where the pick put it, so there is something of the board's own to lose.
+    const labelAtPick = await deckSkinLabel(page).innerText();
+    const skin = sliderUnder(page, /^Deck Skin — /);
+    await skin.focus();
+    await skin.press("ArrowRight");
+    await expect(deckSkinLabel(page)).not.toHaveText(labelAtPick);
+    const ownSkin = await deckSkinLabel(page).innerText();
+
+    await page.getByRole("button", { name: "Remove This Blank" }).click();
+    await expect(pickedCard(page)).toHaveCount(0);
+    await expect(deckSkinLabel(page)).toHaveCount(0);
+
+    await undoOnce(page, testInfo.project.name);
+
+    await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(name);
+    await expect(deckSkinLabel(page)).toHaveText(ownSkin);
+  });
+
+  test("switching to another blank keeps the board's Deck Skin", async ({ page }) => {
+    await openRocker(page);
+    const first = await pickFirstFittingBlank(page);
+
+    const labelAtPick = await deckSkinLabel(page).innerText();
+    const skin = sliderUnder(page, /^Deck Skin — /);
+    await skin.focus();
+    await skin.press("ArrowRight");
+    await expect(deckSkinLabel(page)).not.toHaveText(labelAtPick);
+    const ownSkin = await deckSkinLabel(page).innerText();
+
+    await page.getByRole("button", { name: "Change Blank" }).click();
+    // The first fitting row that is not the board's blank already.
+    const other = blankList(page).locator('li[data-group="fits"] button[aria-pressed="false"]').first();
+    const otherName = (await other.locator("[data-blank-name]").innerText()).trim();
+    expect(otherName).not.toBe(first);
+    await other.click();
+    await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(otherName);
+
+    await expect(deckSkinLabel(page)).toHaveText(ownSkin);
+  });
 });
+
+/**
+ * Undo, the way a shaper reaches it: Cmd/Ctrl+Z at a keyboard, the floating Undo button on a phone
+ * (`components/design/phone-undo-bar.tsx`, shown only in the phone layout).
+ */
+async function undoOnce(page: Page, projectName: string) {
+  if (projectName === "desktop") {
+    await page.keyboard.press("ControlOrMeta+z");
+  } else {
+    await page.locator("[data-phone-undo-bar]").getByRole("button", { name: "Undo" }).click();
+  }
+}
