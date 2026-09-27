@@ -88,6 +88,42 @@ export function formatMarkBare(value: Mm, system: UnitsSystem): string {
 }
 
 /**
+ * How many whole grid steps a marks-family value PRINTS as — sixteenths of an inch in Imperial,
+ * whole millimetres in Metric. Rounds exactly the way the printed number does: the same signed
+ * `1e-9` nudge before `Math.round` that `formatWholeMm` and `formatInchesFraction` apply (see their
+ * doc comments in units.ts), so this count and `formatMark`'s text can never disagree about which
+ * way a value on a boundary goes.
+ */
+function printedSteps(value: Mm, system: UnitsSystem): number {
+  const steps = system === "metric" ? value : mmToInches(value) * 16;
+  const nudge = steps < 0 ? -1e-9 : 1e-9;
+  return Math.round(steps + nudge);
+}
+
+/**
+ * The number of planer passes it takes to remove `depth` of foam at `passDepth` a pass (D-03): the
+ * depth divided by the pass depth, rounded UP to whole passes.
+ *
+ * Counted from the PRINTED numbers, not the stored ones (UI contract, "Pass-count rule"): both the
+ * depth and the pass depth are first rounded to the grid the chosen system prints (1/16" or a
+ * whole millimetre), so a shaper who divides the two numbers on the screen by hand always gets the
+ * count the screen shows. The known consequence is that the same board can read one pass
+ * different in Imperial and Metric — each is honest to its own printed numbers, and switching
+ * systems never moves a stored value (CLAUDE.md Rule 2). A printed depth of zero or less (no foam
+ * to take off), or a pass depth that prints as zero, counts 0.
+ */
+export function planerPasses(depth: Mm, passDepth: Mm, system: UnitsSystem): number {
+  const d = printedSteps(depth, system);
+  const p = printedSteps(passDepth, system);
+  return d <= 0 || p <= 0 ? 0 : Math.ceil(d / p - 1e-9);
+}
+
+/** A pass count as a shaper reads it: `1 pass`, otherwise `{n} passes` — including `0 passes`. */
+export function formatPasses(n: number): string {
+  return n === 1 ? "1 pass" : `${n} passes`;
+}
+
+/**
  * A signed dims-family value — imperial `+2 1/4"` / `-1 1/2"` / `0"`, metric `+5.1 cm` /
  * `-2.5 cm` / `0 cm` — for a measurement taken from a datum, where the direction is half the
  * meaning (the widepoint offset). The metric branch takes its sign from what was PRINTED, exactly

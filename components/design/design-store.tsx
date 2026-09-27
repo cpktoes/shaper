@@ -29,6 +29,14 @@
  * blank builds it from the board's own copy of that blank's catalogue rows (D-01), prepared once
  * per copy. The copy lives on the board itself (`blank`), never looked up again, so a later
  * catalogue correction can never move a saved board.
+ *
+ * The board's cut travels on its blank too (Phase 12, D-01, D-04, D-13): how much comes off the
+ * deck (`deckSkin`), where the tips are thinned (`tipStyle`, Pin deck or Bottom) and which surface
+ * a 12" fine-tune moves (`fineTuneSurface`). The first pick bakes in the shaper's live Deck Skin and
+ * Tip Style from Fit & Tip Defaults; switching to another blank keeps the board's own; Remove This
+ * Blank takes them away with the blank, and one undo brings them all back together. The eight blank
+ * moves are `pickBlank`, `setPlacement`, `setDeckSkin`, `setTipStyle`, `setFineTuneSurface`,
+ * `setFineTune`, `resetFineTune` and `removeBlank`.
  */
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
@@ -46,7 +54,13 @@ import type { FiveStationRocker } from "@/lib/geometry/rocker";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
 import type { FoilSpec } from "@/lib/geometry/foil";
-import type { BlankRecord, BoardBlank } from "@/lib/geometry/blank";
+import {
+  DEFAULT_BLANK_CUT,
+  type BlankRecord,
+  type BoardBlank,
+  type FineTuneSurface,
+  type TipStyle,
+} from "@/lib/geometry/blank";
 import { prepareBlank, type PreparedBlank } from "@/lib/geometry/blank-fit";
 import { buildBoardProfile, handSetFromProfile, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import type { BoardPreset } from "@/lib/geometry/presets";
@@ -147,8 +161,8 @@ interface DesignState {
    * save never stores a reference to its own row. */
   modelId: string | null;
   /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,
-   * `updateRocker`, `updateFoil`, the five blank moves (`pickBlank`, `setPlacement`, `setFineTune`,
-   * `resetFineTune`, `removeBlank`), `updateRailSection`, `toggleTailHardEdge`, `updateFins`,
+   * `updateRocker`, `updateFoil`, the eight blank moves (`pickBlank`, `setPlacement`, `setDeckSkin`,
+   * `setTipStyle`, `setFineTuneSurface`, `setFineTune`, `resetFineTune`, `removeBlank`), `updateRailSection`, `toggleTailHardEdge`, `updateFins`,
    * `updateVolume`, `setFinsImportTemplate`, `toggleRailsImportFoilThickness`, `setBoardName`,
    * `setFinSystem`, the two VOLUME import toggles or `markSaved` — never derived by
    * comparing state against its default — a user who drags a slider back to its default value
@@ -194,6 +208,12 @@ const DEFAULT_DESIGN_STATE: DesignState = {
 interface LiveTips {
   noseTip: Mm;
   tailTip: Mm;
+}
+
+/** The gear menu's Deck Skin and Tip Style (Fit & Tip Defaults, Phase 12), as a first pick's cut. */
+interface LiveCut {
+  deckSkin: Mm;
+  tipStyle: TipStyle;
 }
 
 /**
@@ -271,15 +291,38 @@ interface DesignContextValue {
   updateRocker: (patch: Partial<FiveStationRocker>) => void;
   updateFoil: (patch: Partial<FoilSpec>) => void;
   /** Puts the board in `record` at `placement` (D-01): the record is kept as the board's own copy.
-   * Switching from one blank to another keeps the existing 12" fine-tunes (D-11); a first pick
-   * starts them at 0. One undo step. */
+   * Switching from one blank to another keeps the existing 12" fine-tunes (D-11) and the board's
+   * own cut — its Deck Skin, Tip Style and fine-tune surface (Phase 12, D-01, D-04, D-13); a first
+   * pick starts the fine-tunes at 0 and bakes in the live Deck Skin and Tip Style from Fit & Tip
+   * Defaults (picking a blank counts as an edit, D-01), with fine-tunes on the Deck. One undo step. */
   pickBlank: (record: BlankRecord, placement: Mm) => void;
   /** Slides the board along its blank. Stored as given and clamped on read by the side profile,
    * never written back; a drag of the slider coalesces into one undo step like every slider. A no-op
    * with no blank picked. */
   setPlacement: (placement: Mm) => void;
-  /** Sets one or both signed 12" fine-tunes (D-11), added to the blank-scaled thickness at that
-   * station. Coalesces per field like a slider. A no-op with no blank picked. */
+  /** Sets how much foam comes off the blank's deck (Phase 12, D-01) — the board's own Deck Skin,
+   * stored on its blank. The board's deck lowers or rises by the change at every station, the foam
+   * off the bottom shrinks or grows by the same amount, and the list re-judges (the skin is part of
+   * the centre floor, D-10); the pick is never cleared. A drag coalesces into one undo step like
+   * every slider. A no-op with no blank picked. */
+  setDeckSkin: (deckSkin: Mm) => void;
+  /** Sets where the tips' extra comes off (Phase 12, D-04) — the board's own Tip Style, stored on
+   * its blank: Pin deck takes it off the bottom (the tip rocker grows, or falls when a tip needs
+   * more foam than the cut leaves, D-16), Bottom takes it off the deck. Only the last 12" at each
+   * end re-derives; nothing at or inside the 12" stations moves (SPEC R5). A discrete choice: one
+   * undo step, re-checks the flag, never clears the pick. A no-op with no blank picked, or when the
+   * board already has that style. */
+  setTipStyle: (tipStyle: TipStyle) => void;
+  /** Sets which surface a 12" fine-tune moves (Phase 12, D-13) — stored on the board's blank, Deck
+   * for a new board. On the Deck a tweak adds or takes foam on the deck and the rocker stays the
+   * blank's; on the Bottom it moves the bottom and the rocker re-levels on its own low point, so
+   * its numbers can shift. The tweak amounts themselves never change. A discrete choice: one undo
+   * step, re-checks the flag, never clears the pick. A no-op with no blank picked, or when the
+   * board already uses that surface. */
+  setFineTuneSurface: (surface: FineTuneSurface) => void;
+  /** Sets one or both signed 12" fine-tunes (D-11), added to the thickness cut from the blank at
+   * that station (the blank's thickness less the Deck Skin and the centre gap). Coalesces per field
+   * like a slider. A no-op with no blank picked. */
   setFineTune: (patch: Partial<{ nose12Offset: Mm; tail12Offset: Mm }>) => void;
   /** Clears both 12" fine-tunes back to 0 (D-11). One undo step. A no-op with no blank picked. */
   resetFineTune: () => void;
@@ -424,6 +467,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     liveTipsRef.current = { noseTip: liveNoseTip, tailTip: liveTailTip };
   }, [liveNoseTip, liveTailTip]);
+
+  // Phase 12 (D-01, D-04): the gear menu's Deck Skin and Tip Style, live, kept current the same
+  // way. A board's FIRST pick bakes these into its blank; from then on the board keeps its own cut.
+  const liveDeckSkin = fitDefaults.deckSkin;
+  const liveTipStyle = fitDefaults.tipStyle;
+  const liveCutRef = useRef<LiveCut>({ deckSkin: liveDeckSkin, tipStyle: liveTipStyle });
+  useEffect(() => {
+    liveCutRef.current = { deckSkin: liveDeckSkin, tipStyle: liveTipStyle };
+  }, [liveDeckSkin, liveTipStyle]);
 
   // The board's foil as every consumer sees it: the stored foil once the board is started, and —
   // for a new board nobody has touched — the stored foil with the live tip defaults (D-19). Read
@@ -698,6 +750,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
                 placement: state.blank.placement,
                 nose12Offset: state.blank.nose12Offset,
                 tail12Offset: state.blank.tail12Offset,
+                // The board's own cut (Phase 12), carried on its blank.
+                deckSkin: state.blank.deckSkin,
+                tipStyle: state.blank.tipStyle,
+                fineTuneSurface: state.blank.fineTuneSurface,
               }
             : null,
       }),
@@ -782,8 +838,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // The accurate path (D-13): real cross-sections along the board's own length, using the same
   // half-width sampler pattern `lib/geometry/design.ts`'s `summarizeDesign` builds, so a rack
   // card's number and this screen's number can never drift apart. The thickness is the side
-  // profile's own dense curve (Pattern 5) — with a blank, the blank's scaled foil exactly as drawn,
-  // never re-splined through five stations.
+  // profile's own dense curve (Pattern 5) — with a blank, the foil cut from the blank (its thickness
+  // less the Deck Skin and the centre gap) exactly as drawn, never re-splined through five stations.
   const crossSectionVolume = useMemo(
     () =>
       computeCrossSectionVolume({
@@ -810,6 +866,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         // Switching blanks keeps the shaper's fine-tunes (D-11); a first pick starts at 0.
         nose12Offset: prev.blank?.nose12Offset ?? mm(0),
         tail12Offset: prev.blank?.tail12Offset ?? mm(0),
+        // Switching blanks keeps the board's own cut; a first pick bakes in the live Deck Skin and
+        // Tip Style (D-01, D-04 — picking counts as an edit), fine-tunes on the Deck (D-13).
+        deckSkin: prev.blank?.deckSkin ?? liveCutRef.current.deckSkin,
+        tipStyle: prev.blank?.tipStyle ?? liveCutRef.current.tipStyle,
+        fineTuneSurface: prev.blank?.fineTuneSurface ?? DEFAULT_BLANK_CUT.fineTuneSurface,
       },
       boardStarted: true,
       dirty: true,
@@ -823,6 +884,41 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setState((current) => {
       const prev = startedFrom(current, liveTipsRef.current);
       return prev.blank ? { ...prev, blank: { ...prev.blank, placement }, boardStarted: true, dirty: true } : current;
+    });
+  };
+
+  // A slider — one coalescing key, so a whole Deck Skin drag is one undo step (Phase 12, D-01).
+  const setDeckSkin = (deckSkin: Mm) => {
+    if (!state.blank) return;
+    noteEdit("blank:deckSkin");
+    setState((current) => {
+      const prev = startedFrom(current, liveTipsRef.current);
+      return prev.blank ? { ...prev, blank: { ...prev.blank, deckSkin }, boardStarted: true, dirty: true } : current;
+    });
+  };
+
+  // A discrete choice (Phase 12, D-04) — noteEdit(null), so each tap is its own undo step. Compared
+  // against the board's resolved cut (the side profile's, always complete), so tapping the pill
+  // that is already on writes nothing and leaves no empty undo step.
+  const setTipStyle = (tipStyle: TipStyle) => {
+    if (!state.blank || sideProfile.blank?.cut.tipStyle === tipStyle) return;
+    noteEdit(null);
+    setState((current) => {
+      const prev = startedFrom(current, liveTipsRef.current);
+      return prev.blank ? { ...prev, blank: { ...prev.blank, tipStyle }, boardStarted: true, dirty: true } : current;
+    });
+  };
+
+  // A discrete choice (Phase 12, D-13) — the same shape as setTipStyle. It only ever writes the
+  // surface; the geometry moves the chosen surface and nothing else.
+  const setFineTuneSurface = (surface: FineTuneSurface) => {
+    if (!state.blank || sideProfile.blank?.cut.fineTuneSurface === surface) return;
+    noteEdit(null);
+    setState((current) => {
+      const prev = startedFrom(current, liveTipsRef.current);
+      return prev.blank
+        ? { ...prev, blank: { ...prev.blank, fineTuneSurface: surface }, boardStarted: true, dirty: true }
+        : current;
     });
   };
 
@@ -1126,6 +1222,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     updateFoil,
     pickBlank,
     setPlacement,
+    setDeckSkin,
+    setTipStyle,
+    setFineTuneSurface,
     setFineTune,
     resetFineTune,
     removeBlank,

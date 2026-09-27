@@ -65,6 +65,19 @@ async function slideThumbTargetBox(locator: ReturnType<Page["locator"]>) {
  * pulling in the ones this plan intentionally left untouched. */
 const DEFAULT_OR_ICON_BUTTON = '[data-slot="button"].h-8, [data-slot="button"].size-8';
 
+/** Opens RAILS's INSTRUCTIONS page, where the Flat / Domed pair lives. Retried, because a tap that
+ * lands before the page has hydrated does nothing — and only tapped again while the pair is still
+ * hidden, so a retry can never undo a switch that already happened. */
+async function openRailInstructions(page: Page) {
+  const tab = page.getByRole("tab", { name: "INSTRUCTIONS" });
+  const flat = page.getByRole("button", { name: "Flat", exact: true });
+  await expect(tab).toBeVisible();
+  await expect(async () => {
+    if (!(await flat.isVisible())) await tab.click();
+    await expect(flat).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
+}
+
 test.describe("touch sizing — every control at least 44px for a finger", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "touch-only sizing assertions");
@@ -205,6 +218,20 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     }
   });
 
+  // Plan 12-04 (12-UI-SPEC §4): the shared two-way pill (`TwoOptionToggle`) gained FINS's
+  // `coarse:min-h-11`, so RAILS's Flat / Domed pair on the INSTRUCTIONS page is now as
+  // finger-sized as FINS's pills already were.
+  test("RAILS: the Flat / Domed pills on INSTRUCTIONS are each at least 44px tall", async ({ page }) => {
+    await page.goto("/design/rails");
+    await openRailInstructions(page);
+    for (const label of ["Flat", "Domed"]) {
+      const pill = page.getByRole("button", { name: label, exact: true });
+      await expect(pill).toBeVisible();
+      const height = await pill.evaluate((el) => (el as HTMLElement).offsetHeight);
+      expect(height, `${label} pill height`).toBeGreaterThanOrEqual(44);
+    }
+  });
+
   // Plan 11-12 (11-UI-SPEC §15): the ROCKER controls that only exist once a blank is in play — every
   // blank row, every text link (they grow their row, not their glyph, on a touch pointer) and the
   // DATASHEET's typed cells. Names are read off the page, never typed in: the first row under FITS
@@ -252,6 +279,15 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     expect(await heightOf(change, "Change Blank")).toBeGreaterThanOrEqual(44);
     expect(await heightOf(page.getByRole("button", { name: "Remove This Blank" }), "Remove This Blank")).toBeGreaterThanOrEqual(44);
     expect(await heightOf(page.getByRole("button", { name: "↺ Reset Fine-Tune" }), "Reset Fine-Tune")).toBeGreaterThanOrEqual(44);
+    // Phase 12: THICKNESS's two quiet pairs, Tip Style and Fine-tune off — every pill finger-sized.
+    for (const group of ["Tip Style", "Fine-tune off"]) {
+      const pills = page.getByRole("group", { name: group }).getByRole("button");
+      await expect(pills).toHaveCount(2);
+      for (const pill of await pills.all()) {
+        const label = (await pill.innerText()).trim();
+        expect(await heightOf(pill, `${group}: ${label}`), `${group}: ${label} pill height`).toBeGreaterThanOrEqual(44);
+      }
+    }
     await change.click();
     expect(await heightOf(page.getByRole("button", { name: "Keep This Blank" }), "Keep This Blank")).toBeGreaterThanOrEqual(44);
 
@@ -353,5 +389,17 @@ test.describe("touch sizing — desktop stays exactly today's smaller sizes", ()
     const singleFinBox = await singleFinButton.boundingBox();
     if (!singleFinBox) throw new Error("Single Fin setup button is missing a bounding box");
     expect(singleFinBox.height).toBe(69);
+  });
+
+  // Plan 12-04: the two-way pill's new `coarse:min-h-11` is pointer-keyed — on a mouse RAILS's
+  // Flat / Domed pills stay under a finger's 44px, at their old resting height.
+  test("RAILS: the Flat / Domed pills stay their smaller resting height on a mouse", async ({ page }) => {
+    await page.goto("/design/rails");
+    await openRailInstructions(page);
+    for (const label of ["Flat", "Domed"]) {
+      const pill = page.getByRole("button", { name: label, exact: true });
+      const height = await pill.evaluate((el) => (el as HTMLElement).offsetHeight);
+      expect(height, `${label} pill height`).toBeLessThan(44);
+    }
   });
 });

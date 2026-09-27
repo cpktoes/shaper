@@ -136,7 +136,8 @@ export function SettingsMenuContent() {
         })}
       </Menu.RadioGroup>
 
-      {/* D-09: the shaper's five fit and tip defaults. The row only opens a dialog — typed
+      {/* D-09: the shaper's seven fit and tip defaults (Phase 12 added Planer Max Depth, Deck
+          Skin and Tip Style — hence the detail line's "planer, skin"). The row only opens a dialog — typed
           numbers inside the menu would fight its own arrow-key and typeahead handling — and the
           dialog is rendered by FitDefaultsProvider, not here, because this popup unmounts the
           moment it closes. A plain Menu.Item closes the menu on click, which is what we want. */}
@@ -152,7 +153,7 @@ export function SettingsMenuContent() {
           <SlidersHorizontalIcon aria-hidden className="size-4 shrink-0 text-surf-ink-muted" />
           <span className="flex-1 leading-tight">
             <span className="block text-sm text-surf-ink">Fit & Tip Defaults</span>
-            <span className="block text-[11px] text-surf-ink-muted">Spare foam and tip thickness</span>
+            <span className="block text-[11px] text-surf-ink-muted">Spare foam, planer, skin and tips</span>
           </span>
         </Menu.Item>
       </Menu.Group>

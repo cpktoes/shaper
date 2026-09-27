@@ -64,3 +64,7 @@ Open questions for the discussion:
   tips and fine-tunes; skin and the pin choice would be new fields, with defaults that either reproduce
   today's numbers as closely as possible or make a clear one-time change — decide which.
 - Presets: their provisional blanks and quoted litres would move again.
+
+## Outcome
+
+Folded into Phase 12 (Foil the Way a Shaper Cuts It) on 2026-09-26: the brief is locked as `.planning/phases/12-foil-the-way-a-shaper-cuts-it/12-SPEC.md` and its open questions are settled in `12-CONTEXT.md` (D-01–D-12).

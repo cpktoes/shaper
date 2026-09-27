@@ -120,14 +120,17 @@ describe("design-store.tsx — nothing but the shaper's own pick or removal chan
     "pickBlank",
     "removeBlank",
     "setPlacement",
+    "setDeckSkin",
+    "setTipStyle",
+    "setFineTuneSurface",
     "setFineTune",
     "resetFineTune",
     "applyPreset",
     "applyModel",
   ]);
 
-  it("the five blank moves each write the blank", () => {
-    for (const name of ["pickBlank", "removeBlank", "setPlacement", "setFineTune", "resetFineTune"]) {
+  it("the blank moves each write the blank", () => {
+    for (const name of ["pickBlank", "removeBlank", "setPlacement", "setDeckSkin", "setTipStyle", "setFineTuneSurface", "setFineTune", "resetFineTune"]) {
       expect(handler(name), name).toMatch(/\bblank:/);
     }
   });
@@ -163,6 +166,73 @@ describe("design-store.tsx — nothing but the shaper's own pick or removal chan
 
 });
 
+describe("design-store.tsx — the board's cut rides on its blank (Phase 12, D-01, D-04, D-13)", () => {
+  it("reads the live Deck Skin and Tip Style from Fit & Tip Defaults into liveCutRef, kept current like the tips", () => {
+    expect(SOURCE).toMatch(/const liveDeckSkin = fitDefaults\.deckSkin;/);
+    expect(SOURCE).toMatch(/const liveTipStyle = fitDefaults\.tipStyle;/);
+    expect(SOURCE).toMatch(/liveCutRef\.current = \{ deckSkin: liveDeckSkin, tipStyle: liveTipStyle \}/);
+  });
+
+  it("a first pick bakes in the live cut; a switch keeps the board's own", () => {
+    const body = handler("pickBlank");
+    expect(body).toMatch(/deckSkin:\s*prev\.blank\?\.deckSkin\s*\?\?\s*liveCutRef\.current\.deckSkin/);
+    expect(body).toMatch(/tipStyle:\s*prev\.blank\?\.tipStyle\s*\?\?\s*liveCutRef\.current\.tipStyle/);
+    expect(body).toMatch(/fineTuneSurface:\s*prev\.blank\?\.fineTuneSurface\s*\?\?\s*DEFAULT_BLANK_CUT\.fineTuneSurface/);
+  });
+
+  it("setDeckSkin is a slider: a no-op with no blank, one coalescing key, writes only the skin", () => {
+    const body = handler("setDeckSkin");
+    expect(body.indexOf("if (!state.blank) return;")).toBeGreaterThanOrEqual(0);
+    expect(body.indexOf("if (!state.blank) return;")).toBeLessThan(body.indexOf("noteEdit("));
+    expect(body).toContain('noteEdit("blank:deckSkin")');
+    expect(body).toMatch(/blank:\s*\{\s*\.\.\.prev\.blank,\s*deckSkin\s*\}/);
+  });
+
+  it("the side profile is built with the blank's own cut", () => {
+    const start = SOURCE.search(/const sideProfile\b[^=]*=\s*useMemo\(/);
+    const body = balancedFrom(SOURCE, SOURCE.indexOf("useMemo(", start));
+    expect(body).toMatch(/deckSkin:\s*state\.blank\.deckSkin/);
+    expect(body).toMatch(/tipStyle:\s*state\.blank\.tipStyle/);
+    expect(body).toMatch(/fineTuneSurface:\s*state\.blank\.fineTuneSurface/);
+  });
+
+  it("setDeckSkin is on the context value, beside the other blank moves", () => {
+    const start = SOURCE.search(/const value: DesignContextValue = \{/);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(balancedFrom(SOURCE, start + "const value: DesignContextValue =".length)).toMatch(/\n\s+setDeckSkin,/);
+  });
+
+  it("setTipStyle is a discrete choice: a no-op with no blank or on the style already on, one undo step per tap, writes only the style", () => {
+    const body = handler("setTipStyle");
+    const guard = body.indexOf("if (!state.blank || sideProfile.blank?.cut.tipStyle === tipStyle) return;");
+    expect(guard).toBeGreaterThanOrEqual(0);
+    expect(guard).toBeLessThan(body.indexOf("noteEdit("));
+    expect(body).toContain("noteEdit(null)");
+    expect(body).toMatch(/blank:\s*\{\s*\.\.\.prev\.blank,\s*tipStyle\s*\}/);
+  });
+
+  it("setTipStyle is on the context value", () => {
+    const start = SOURCE.search(/const value: DesignContextValue = \{/);
+    expect(balancedFrom(SOURCE, start + "const value: DesignContextValue =".length)).toMatch(/\n\s+setTipStyle,/);
+  });
+
+  it("setFineTuneSurface is a discrete choice: a no-op with no blank or on the surface already on, one undo step per tap, writes only the surface", () => {
+    const body = handler("setFineTuneSurface");
+    const guard = body.indexOf("if (!state.blank || sideProfile.blank?.cut.fineTuneSurface === surface) return;");
+    expect(guard).toBeGreaterThanOrEqual(0);
+    expect(guard).toBeLessThan(body.indexOf("noteEdit("));
+    expect(body).toContain("noteEdit(null)");
+    expect(body).toMatch(/blank:\s*\{\s*\.\.\.prev\.blank,\s*fineTuneSurface:\s*surface\s*\}/);
+    // It moves no tweak and no other part of the cut: the geometry decides what the surface moves.
+    expect(body).not.toMatch(/Offset|deckSkin|tipStyle:/);
+  });
+
+  it("setFineTuneSurface is on the context value", () => {
+    const start = SOURCE.search(/const value: DesignContextValue = \{/);
+    expect(balancedFrom(SOURCE, start + "const value: DesignContextValue =".length)).toMatch(/\n\s+setFineTuneSurface,/);
+  });
+});
+
 describe("design-store.tsx — an untouched new board follows the live tip defaults, until its first edit (D-19)", () => {
   /** Every handler that edits the board — the first of any of them bakes the tips in. */
   const STARTS_THE_BOARD = [
@@ -179,6 +249,9 @@ describe("design-store.tsx — an untouched new board follows the live tip defau
     "setFinSystem",
     "pickBlank",
     "setPlacement",
+    "setDeckSkin",
+    "setTipStyle",
+    "setFineTuneSurface",
     "setFineTune",
     "resetFineTune",
     "removeBlank",

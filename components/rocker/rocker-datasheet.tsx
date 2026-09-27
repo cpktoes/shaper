@@ -13,14 +13,16 @@
  *   all five stations. Rocker is typed at Nose Tip, Nose @ 12", Tail @ 12" and Tail Tip — the four
  *   hand-set stations, reversing quick task 260829-rda's read-only 12" cells — with Center a
  *   read-only 0, the flat the rocker is measured up from (Phase 4 D-06/D-07).
- * - A BLANK PICKED (D-16) — three blocks, eight rows: the blank's own Rocker, Thickness and Width
- *   under each of the board's five stations (read-only, from the board's own copy of the blank —
- *   never the blank table); YOUR BOARD's Rocker (read-only, the re-levelled curve), Thickness
- *   (typed at Nose Tip, Center and Tail Tip — the values the sidebar writes — and read-only at the
- *   two 12" stations, whose fine-tune lives in the sidebar) and Width (read-only); and Foam Off, the
- *   blank's thickness less the board's, under a heavier rule, with a negative value (the board pokes
- *   out of the blank there) in warning ink. Under the table: the catalogue footnote and one line per
- *   catalogue flag on the blank, verbatim.
+ * - A BLANK PICKED (D-16, Phase 12 D-06) — four blocks, ten rows: the blank's own Rocker, Thickness
+ *   and Width under each of the board's five stations (read-only, from the board's own copy of the
+ *   blank — never the blank table); YOUR BOARD's Rocker (read-only, the board's own curve, including
+ *   the tip lift under Pin deck), Thickness (typed at Nose Tip, Center and Tail Tip — the values the
+ *   sidebar writes — and read-only at the two 12" stations, whose fine-tune lives in the sidebar) and
+ *   Width (read-only); and FOAM OFF, split by surface — Deck (the skin, plus the tip thinning under
+ *   Bottom, less a Deck fine-tune) and Bottom (the centre gap, plus the tip lift under Pin deck, less
+ *   a Bottom fine-tune) — with a value below zero (the board pokes out of the blank on that surface)
+ *   in warning ink. Under the table: the catalogue footnote and one line per catalogue flag on the
+ *   blank, verbatim.
  *
  * Typed cells are the app's one typed measurement control, `MeasureField`, in bare mode (D-12),
  * with its bounds taken from the matching slider's `measureSlider` range through `typedFieldBounds`
@@ -138,6 +140,23 @@ export function RockerDatasheet({
     </div>
   );
 
+  /** A FOAM OFF cell (Deck or Bottom): a bare, read-only mark. A value that prints as zero reads as
+   * zero, never as a warning "-0"; one below zero (the board would poke out of the blank on that
+   * surface) reads in warning ink with its minus sign. */
+  const foamOffCell = (key: FoilStationKey, value: Mm) => {
+    const printed = formatMarkBare(value, system);
+    const isZero = /^-?0"?$/.test(printed);
+    const pokesOut = value < 0 && !isZero;
+    return (
+      <div
+        key={key}
+        className={`min-w-0 flex-1 text-right text-sm font-normal ${pokesOut ? "text-surf-warning-ink" : "text-surf-ink-muted"}`}
+      >
+        {isZero ? formatMarkBare(mm(0), system) : printed}
+      </div>
+    );
+  };
+
   /** A typed marks-family cell: bare `MeasureField`, bounded by its matching slider's range. */
   const typedMarkCell = (
     key: FoilStationKey,
@@ -228,8 +247,9 @@ export function RockerDatasheet({
                 {stations.map((s) => markCell(s.key, profile.stationRocker[s.key]))}
               </Row>
               {/* Thickness: the centre and the two tips are the board's own stored values, typed
-                  here exactly as the sidebar sets them; the 12" stations are the blank-scaled
-                  result plus any fine-tune, read-only (the fine-tune lives in the sidebar). */}
+                  here exactly as the sidebar sets them; the 12" stations are the thickness cut
+                  from the blank (its thickness less the Deck Skin and the centre gap) plus any
+                  fine-tune, read-only (the fine-tune lives in the sidebar). */}
               <Row label={`Thickness${markSuffix}`} typed>
                 {stations.map((s) =>
                   s.key === "nose12" || s.key === "tail12"
@@ -241,22 +261,16 @@ export function RockerDatasheet({
               </Row>
               {widthRow}
 
-              <Row label={`Foam Off${markSuffix}`} typed={false} className="border-t-2 border-surf-line-faint">
-                {stations.map((s) => {
-                  const value = blank.foamOff[s.key];
-                  const printed = formatMarkBare(value, system);
-                  // A value that prints as zero reads as zero, never as a warning "-0".
-                  const isZero = /^-?0"?$/.test(printed);
-                  const pokesOut = value < 0 && !isZero;
-                  return (
-                    <div
-                      key={s.key}
-                      className={`min-w-0 flex-1 text-right text-sm font-normal ${pokesOut ? "text-surf-warning-ink" : "text-surf-ink-muted"}`}
-                    >
-                      {isZero ? formatMarkBare(mm(0), system) : printed}
-                    </div>
-                  );
-                })}
+              {/* D-06: the foam to come off, split by surface. The blank's own rocker stays in its
+                  block above and the board's in YOUR BOARD, so the sheet a shaper takes to the
+                  supplier reads the blank, the board and the cut between them side by side. The
+                  FOAM OFF label does the separating job the old single row's heavier rule did. */}
+              <GroupLabel>FOAM OFF</GroupLabel>
+              <Row label={`Deck${markSuffix}`} typed={false}>
+                {stations.map((s) => foamOffCell(s.key, blank.foamOffDeck[s.key]))}
+              </Row>
+              <Row label={`Bottom${markSuffix}`} typed={false} className="">
+                {stations.map((s) => foamOffCell(s.key, blank.foamOffBottom[s.key]))}
               </Row>
             </>
           ) : (

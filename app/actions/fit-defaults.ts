@@ -1,9 +1,10 @@
 "use server";
 
 /**
- * Server Action for saving a shaper's five fit and tip defaults to their account (D-09): Extra
- * Length, Extra Center Thickness and Width Margin (which decide the blanks a board fits into), and
- * the Nose and Tail Tip thicknesses a new board starts from. Copies
+ * Server Action for saving a shaper's seven fit and tip defaults to their account (D-09, Phase 12
+ * D-03/D-04): Extra Length, Planer Max Depth and Width Margin (which decide the blanks a board fits
+ * into), and the Deck Skin, the Nose and Tail Tip thicknesses and the Tip Style (Pin deck or
+ * Bottom) a new board starts from. Copies
  * `app/actions/print-instructions.ts`'s shape: `await auth()` runs before any database statement,
  * and the parameter list never accepts a user id, owner id or Clerk id from the client — the
  * writing identity always comes from the session. Mechanically enforced by
@@ -26,13 +27,15 @@ import {
 /**
  * Saves a CHANGE to the shaper's fit and tip defaults: only the settings `patch` carries are
  * written; a setting it does not carry is never touched, so a pick made on one device can't wipe a
- * setting chosen on another (WR-02). Restore Defaults sends all five as `null` on purpose.
+ * setting chosen on another (WR-02). Restore Defaults sends all seven as `null` on purpose.
  *
  * `patch` arrives over the wire from a client component, so it is checked whole before anything
  * is written (`parseFitDefaultsPatch`): if it is not an object, names any key that is not one of
- * the five settings, or carries a value that is neither `null` nor a finite number of millimetres
- * inside that setting's bounds, nothing is written at all — a crafted call can't put arbitrary
- * content into these columns, and a half-valid call can't write half a change.
+ * the seven settings (the retired Extra Center Thickness is refused too), or carries a value that is
+ * neither `null` nor — for the six numbers — a finite number of millimetres inside that setting's
+ * bounds, or — for Tip Style — exactly `pinDeck` or `bottom`, nothing is written at all — a
+ * crafted call can't put arbitrary content into these columns, and a half-valid call can't write
+ * half a change.
  *
  * The UPDATE of an existing row sets only the present columns plus `updatedAt`
  * (`fitDefaultsUpdateSet`); a first-time INSERT fills every absent setting with `null`

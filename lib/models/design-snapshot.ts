@@ -8,7 +8,7 @@
  * blank (D-11 — the whole `DesignState`, minus `modelId`, `boardStarted` and `dirty`, which are
  * session bookkeeping, not board design).
  *
- * Four rules govern this file:
+ * Five rules govern this file:
  *
  * 1. The branded `Mm`/`Degrees`/`Litres` types (lib/geometry/units.ts) are plain numbers at
  *    runtime, so every one of them is validated here as `z.number()` — never re-branded at the
@@ -50,6 +50,15 @@
  *      (but not that far) is dropped, so the board reopens hand-set instead of crashing the rack.
  *    - `foil.center` stays the board's ONE stored centre thickness (D-12); the blank carries no
  *      board centre of its own.
+ * 5. Version 5 (Phase 12, D-07/D-14) puts the board's CUT on its blank: `deckSkin`, `tipStyle` and
+ *    `fineTuneSurface` — all three or none, anything else rejected. A blank with none of them is a
+ *    Phase 11 blank, and it is carried over on read: the out-of-the-box skin, the shaper's Tip Style
+ *    (passed in, `ParseSnapshotOptions`), fine-tunes on the Deck, and the two 12" fine-tunes set so
+ *    the five station thicknesses read exactly what Phase 11 showed (clamped to the ±50 mm bound so
+ *    the result re-parses). The trigger is the blank's SHAPE (`hasPhase11Blank`), never the
+ *    envelope's version number, because `saveModel` re-stamps whatever arrives with the current
+ *    version — a tab left open across the deploy saves a Phase 11 blank stamped 5. Phase 11's
+ *    proportional formula survives only in `lib/geometry/phase11-foil.ts`, for this.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -59,7 +68,8 @@
 
 import { z } from "zod";
 import { blankRecordShapeSchema, isPickable } from "@/lib/blanks/catalog";
-import type { BlankRecord, BoardBlank } from "@/lib/geometry/blank";
+import { DEFAULT_BLANK_CUT, type BlankRecord, type BoardBlank, type TipStyle } from "@/lib/geometry/blank";
+import { prepareBlank } from "@/lib/geometry/blank-fit";
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, type OutlineSpec } from "@/lib/geometry/board";
 import {
   DEFAULT_FIN_PLACEMENT_SPEC,
@@ -67,6 +77,7 @@ import {
   type FinSystem,
 } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
+import { carryPhase11Blank } from "@/lib/geometry/phase11-foil";
 import { DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "@/lib/geometry/rail-bands";
 import {
   DEFAULT_ROCKER_SPEC,
@@ -74,10 +85,10 @@ import {
   type FiveStationRocker,
   type RockerSpec,
 } from "@/lib/geometry/rocker";
-import { inchesToMm } from "@/lib/geometry/units";
+import { inchesToMm, mm, type Mm } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC, type VolumeSpec } from "@/lib/geometry/volume";
 
-export const DESIGN_SNAPSHOT_VERSION = 4;
+export const DESIGN_SNAPSHOT_VERSION = 5;
 
 const tailShapeSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("pin") }),
@@ -159,6 +170,9 @@ const rockerSpecSchema = z.union([fiveStationRockerSchema, bezierV3RockerSchema]
 const BLANK_PLACEMENT_MAX_MM = 4000;
 /** The largest 12" fine-tune either way, in mm (~2"). */
 const BLANK_OFFSET_MAX_MM = 50;
+/** The thickest deck skin a saved board may carry, in mm (~2") — the same sanity bound as a
+ * fine-tune; the Deck Skin control itself stops far short of it. */
+export const BLANK_DECK_SKIN_MAX_MM = 50;
 
 /** The board's own copy of its blank's catalogue record (D-01): well-formed by the ONE blank shape
  * rule in `lib/blanks/catalog.ts` (`blankRecordShapeSchema` — bounded, stations strictly tail to
@@ -170,14 +184,26 @@ const blankRecordSchema = blankRecordShapeSchema.refine((record) => isPickable(r
 });
 
 /** A board's blank (D-01): its catalogue copy, where the board sits on it (positive toward the
- * nose, D-08) and the two 12" fine-tunes (D-11). It carries no board centre thickness — that stays
- * `foil.center` (D-12). */
-export const boardBlankSchema = z.object({
-  copy: blankRecordSchema,
-  placement: z.number().min(-BLANK_PLACEMENT_MAX_MM).max(BLANK_PLACEMENT_MAX_MM),
-  nose12Offset: z.number().min(-BLANK_OFFSET_MAX_MM).max(BLANK_OFFSET_MAX_MM),
-  tail12Offset: z.number().min(-BLANK_OFFSET_MAX_MM).max(BLANK_OFFSET_MAX_MM),
-});
+ * nose, D-08), the two 12" fine-tunes (D-11) and — from version 5 — how the board is cut from it
+ * (Phase 12: deck skin, Tip Style, fine-tune surface; all three or none, rule 5). It carries no
+ * board centre thickness — that stays `foil.center` (D-12). */
+export const boardBlankSchema = z
+  .object({
+    copy: blankRecordSchema,
+    placement: z.number().min(-BLANK_PLACEMENT_MAX_MM).max(BLANK_PLACEMENT_MAX_MM),
+    nose12Offset: z.number().min(-BLANK_OFFSET_MAX_MM).max(BLANK_OFFSET_MAX_MM),
+    tail12Offset: z.number().min(-BLANK_OFFSET_MAX_MM).max(BLANK_OFFSET_MAX_MM),
+    deckSkin: z.number().min(0).max(BLANK_DECK_SKIN_MAX_MM).optional(),
+    tipStyle: z.enum(["pinDeck", "bottom"]).optional(),
+    fineTuneSurface: z.enum(["deck", "bottom"]).optional(),
+  })
+  .refine(
+    (blank) => {
+      const present = [blank.deckSkin, blank.tipStyle, blank.fineTuneSurface].filter((v) => v !== undefined);
+      return present.length === 0 || present.length === 3;
+    },
+    { message: "a blank carries its deck skin, Tip Style and fine-tune surface together, or none of them" },
+  );
 
 /** Five thickness values, including both tips (D-05) — `foilSpecSchema`'s only structural
  * difference from `rockerSpecSchema` is the extra `center` field. */
@@ -316,13 +342,39 @@ function isBezierV3Rocker(rocker: object): boolean {
 }
 
 /**
+ * True when a stored (or incoming) value holds a Phase 11 blank — a blank object with no
+ * `tipStyle` of its own (rule 5). Decided by the blank's SHAPE, never by the envelope's version
+ * number: a save re-stamps the current version on whatever arrives (Pitfall 5).
+ */
+export function hasPhase11Blank(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const design = (value as { design?: unknown }).design;
+  if (typeof design !== "object" || design === null) return false;
+  const blank = (design as { blank?: unknown }).blank;
+  return typeof blank === "object" && blank !== null && !Object.prototype.hasOwnProperty.call(blank, "tipStyle");
+}
+
+/** How a Phase 11 blank is carried over (rule 5). */
+export interface ParseSnapshotOptions {
+  /** The Tip Style a carried-over board takes — the shaper's account default (D-14). Absent means
+   * the out-of-the-box one (`DEFAULT_BLANK_CUT.tipStyle`). */
+  tipStyle?: TipStyle;
+}
+
+/** A carried-over fine-tune pulled inside the snapshot's own bound, so the board re-parses. */
+function clampOffset(value: number): Mm {
+  return mm(Math.min(BLANK_OFFSET_MAX_MM, Math.max(-BLANK_OFFSET_MAX_MM, value)));
+}
+
+/**
  * Validates and unwraps a stored (or incoming) snapshot back into usable design fields, filling
  * any field an older version omitted from the matching geometry module's own DEFAULT_* constant.
  * The rocker is always returned as five stations — a version-3 Bezier or a missing rocker is read
- * at the board's own five stations (rule 4). Throws (via Zod) on a structurally wrong or oversized
- * value rather than half-accepting it.
+ * at the board's own five stations (rule 4). A Phase 11 blank is carried over to its version-5 cut
+ * (rule 5); a blank that already has its cut is returned exactly as parsed. Throws (via Zod) on a
+ * structurally wrong or oversized value rather than half-accepting it.
  */
-export function parseSnapshot(value: unknown): DesignSnapshotFields {
+export function parseSnapshot(value: unknown, options: ParseSnapshotOptions = {}): DesignSnapshotFields {
   const parsed = designSnapshotSchema.parse(value);
   const design = parsed.design;
 
@@ -334,6 +386,39 @@ export function parseSnapshot(value: unknown): DesignSnapshotFields {
       ? bezierToFiveStations(design.rocker as RockerSpec, outline.length)
       : (design.rocker as FiveStationRocker);
 
+  const foil = (design.foil ?? DEFAULT_FOIL_SPEC) as FoilSpec;
+
+  // Tolerate and migrate (WR-05): a blank on a board whose length is outside the app's own
+  // range is dropped, so the board reopens hand-set rather than crashing every screen that lays
+  // it on its blank (the blank maths is only built for boards in that range).
+  const kept = (design.blank && isBoardLengthInRange(outline.length) ? design.blank : null) as BoardBlank | null;
+
+  // Rule 5: a blank with no cut is a Phase 11 blank — carry it over so its five station
+  // thicknesses read what Phase 11 showed. It already passed the bounded, pickable schema, so
+  // preparing it cannot throw.
+  let blank = kept;
+  if (kept && kept.tipStyle === undefined) {
+    const carried = carryPhase11Blank(
+      prepareBlank(kept.copy),
+      {
+        length: outline.length,
+        centerThickness: foil.center,
+        noseTip: foil.noseTip,
+        tailTip: foil.tailTip,
+        nose12Offset: kept.nose12Offset,
+        tail12Offset: kept.tail12Offset,
+      },
+      kept.placement,
+      options.tipStyle ?? DEFAULT_BLANK_CUT.tipStyle,
+    );
+    blank = {
+      ...kept,
+      ...carried,
+      nose12Offset: clampOffset(carried.nose12Offset),
+      tail12Offset: clampOffset(carried.tail12Offset),
+    };
+  }
+
   // The cast below is the one deliberate bridge from "validated plain numbers" back to the
   // branded Mm/Degrees/Litres types real design state is built from — see rule 1 in the module
   // doc-comment. Each field was validated shape-for-shape above; only the numeric brand is
@@ -341,7 +426,7 @@ export function parseSnapshot(value: unknown): DesignSnapshotFields {
   return {
     outline,
     rocker,
-    foil: (design.foil ?? DEFAULT_FOIL_SPEC) as FoilSpec,
+    foil,
     rails: (design.rails ?? DEFAULT_RAIL_BAND_SPEC) as RailBandSpec,
     fins: (design.fins ?? DEFAULT_FIN_PLACEMENT_SPEC) as FinPlacementSpec,
     volume: (design.volume ?? DEFAULT_VOLUME_SPEC) as VolumeSpec,
@@ -349,9 +434,6 @@ export function parseSnapshot(value: unknown): DesignSnapshotFields {
     railsImportFoilThickness: design.railsImportFoilThickness ?? true,
     boardName: design.boardName ?? "",
     finSystem: (design.finSystem ?? "fcs2") as FinSystem,
-    // Tolerate and migrate (WR-05): a blank on a board whose length is outside the app's own
-    // range is dropped, so the board reopens hand-set rather than crashing every screen that lays
-    // it on its blank (the blank maths is only built for boards in that range).
-    blank: (design.blank && isBoardLengthInRange(outline.length) ? design.blank : null) as BoardBlank | null,
+    blank,
   };
 }

@@ -620,9 +620,10 @@ test.describe("ROCKER DATASHEET on a phone — the same sideways-scrolling box (
     expect(box.scrollWidth, "the datasheet box does not scroll sideways at all").toBeGreaterThan(box.clientWidth);
   });
 
-  // Plan 11-12 (D-16, 11-UI-SPEC §11): with a blank picked the DATASHEET grows to eight rows in three
-  // blocks, and its row names are sticky — scrolled all the way to the Tail Tip column, a shaper can
-  // still read which row is Foam Off. Picks "the first row under FITS THIS BOARD", whatever the
+  // Plan 11-12 (D-16, 11-UI-SPEC §11): with a blank picked the DATASHEET grows to ten rows in four
+  // blocks (Phase 12 D-06 split the old Foam Off row into FOAM OFF's Deck and Bottom), and its row
+  // names are sticky — scrolled all the way to the Tail Tip column, a shaper can still read which
+  // row is Bottom, the sheet's last. Picks "the first row under FITS THIS BOARD", whatever the
   // catalogue calls it.
   test("the ROCKER DATASHEET with a blank still scrolls sideways at 360px, and its row names stay in view", async ({
     page,
@@ -644,8 +645,9 @@ test.describe("ROCKER DATASHEET on a phone — the same sideways-scrolling box (
     await page.getByRole("tab", { name: "DATASHEET" }).click();
     const tableBox = page.locator("main .overflow-x-auto").first();
     await expect(tableBox).toBeVisible();
-    const foamOffLabel = tableBox.getByText(/^Foam Off/);
-    await expect(foamOffLabel).toBeVisible();
+    // Scoped to the table, so the sidebar's Bottom pills are never matched.
+    const bottomLabel = tableBox.getByText(/^Bottom( \(mm\))?$/);
+    await expect(bottomLabel).toBeVisible();
 
     const docScrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);
     expect(docScrollWidth, "the document itself scrolled sideways at 360px").toBe(360);
@@ -670,15 +672,15 @@ test.describe("ROCKER DATASHEET on a phone — the same sideways-scrolling box (
     if (!headingAfter) throw new Error("the Nose Tip heading has no bounding box after scrolling");
     expect(headingAfter.x, "the columns did not move under the scroll").toBeLessThan(headingBefore.x - 1);
 
-    // The Foam Off row's name is still wholly inside the box's visible rectangle.
-    const inside = await foamOffLabel.evaluate((label, boxEl) => {
+    // The Bottom row's name is still wholly inside the box's visible rectangle.
+    const inside = await bottomLabel.evaluate((label, boxEl) => {
       const l = label.getBoundingClientRect();
       const b = (boxEl as Element).getBoundingClientRect();
       return { label: { left: l.left, right: l.right }, box: { left: b.left, right: b.right } };
     }, await tableBox.elementHandle());
-    expect(inside.label.left, "Foam Off slid off the left of the box").toBeGreaterThanOrEqual(inside.box.left - 0.5);
-    expect(inside.label.right, "Foam Off is past the right of the box").toBeLessThanOrEqual(inside.box.right + 0.5);
-    await expect(foamOffLabel).toBeVisible();
+    expect(inside.label.left, "Bottom slid off the left of the box").toBeGreaterThanOrEqual(inside.box.left - 0.5);
+    expect(inside.label.right, "Bottom is past the right of the box").toBeLessThanOrEqual(inside.box.right + 0.5);
+    await expect(bottomLabel).toBeVisible();
   });
 });
 

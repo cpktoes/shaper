@@ -10,12 +10,15 @@ Shaper started from a working prototype (built in Claude Design) that already pr
 
 **Milestone v1.3 (Phase 11, complete 2026-09-26)** takes the rocker off the drawing board and puts it in real foam. The ROCKER screen stopped being a hand-drawn curve: a shaper sets a target centre thickness, picks a real blank that fits from the US Blanks, Arctic Foam and Marko Foam catalogues (162 blanks seeded from `db/seed/blanks/`, 158 pickable), slides the board along it, and the board's rocker, thickness and foil are read off where it sits in that foam — the four rocker numbers and the foam to remove live, every blank that won't fit listed with why, five Fit & Tip Defaults on the account, and older saved boards reopening hand-set. One phase of thirteen plans, planned, executed, reviewed, verified, walked by the founder and shipped to production in a day and a half.
 
+**Milestone v1.4 (Phase 12, opened 2026-09-26)** models the foil the way a shaper actually cuts it. Phase 11 scales the blank's thickness profile down to the centre thickness; a shaper does something else with a planer: skins the deck by a roughly constant amount, planes the bottom down to thickness, and only then thins the tips. The founder's brief puts that on the screen — a deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, and tip thinning in the last 12" with a pin-deck or bottom choice — so the DATASHEET's numbers become the numbers a shaper works to. Opened for discussion on branch `foil-real-shaping`; nothing lands on `main` until the founder approves the plan.
+
 ## Milestones
 
 - ✅ **v1.0 — the design tool, in inches** — Phases 1–4 (shipped 2026-08-29)
 - ✅ **v1.1 — Imperial vs Metric** — Phases 5–7 (shipped 2026-09-06)
 - ✅ **v1.2 — Rails Finished, Phone Ready** — Phases 8–10 (shipped 2026-09-12)
 - ✅ **v1.3 — Rocker from Real Blanks** — Phase 11 (shipped 2026-09-26)
+- 🚧 **v1.4 — Foil the Way a Shaper Cuts It** — Phase 12 (opened 2026-09-26 on branch `foil-real-shaping`; planned the same day, 10 plans in 5 waves, awaiting the founder's approval)
 
 ## Phases
 
@@ -48,6 +51,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Milestone v1.3 — Rocker from Real Blanks (complete)**
 
 - [x] **Phase 11: Rocker from Real Blanks** - The ROCKER screen sets rocker, thickness and foil from a real blank the shaper picks and slides the board along, with the fit checked at every point, the four rocker numbers live and every blank that won't fit shown with why; blank data seeded from the three vendor catalogues (completed 2026-09-26)
+
+**Milestone v1.4 — Foil the Way a Shaper Cuts It (in progress)**
+
+- [ ] **Phase 12: Foil the Way a Shaper Cuts It** - The foil modelled the way foam actually comes off: a deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, and tip thinning in the last 12" with a pin-deck or bottom choice — the 12" stations still fine-tunable
 
 ## Phase Details
 
@@ -128,12 +135,52 @@ UAT (7/7 with the founder), security (43/43) and six live checks. Full phase det
 [`.planning/milestones/v1.3-REQUIREMENTS.md`](milestones/v1.3-REQUIREMENTS.md); phase artifacts in
 [`.planning/milestones/v1.3-phases/`](milestones/v1.3-phases/).
 
+### Milestone v1.4: Foil the Way a Shaper Cuts It (Phase 12, in progress)
+
+Opened 2026-09-26 on branch `foil-real-shaping`, the same day v1.3 shipped, from the founder's own brief captured verbatim in [`.planning/todos/pending/2026-09-26-foil-the-way-a-shaper-cuts-it-deck-skin-parallel-bottom-pin-deck-tips.md`](.planning/todos/pending/2026-09-26-foil-the-way-a-shaper-cuts-it-deck-skin-parallel-bottom-pin-deck-tips.md). It changes the foil calculator that shapers cut to, so it is a phase with the tests-before-UI discipline of Phase 11, not a quick task. Requirements and decisions are gathered by `/gsd-discuss-phase 12` and locked in the phase directory; nothing lands on `main` until the founder approves the plan.
+
+### Phase 12: Foil the Way a Shaper Cuts It
+
+**Goal:** A shaper's board is cut from its blank the way a planer actually works: a constant deck skin comes off first, parallel to the blank's deck; the centre thickness sets the board's bottom under that deck, and the gap down to the blank's bottom reads as the foam to remove and as planer passes; the board's bottom parallels the blank's rocker so the four rocker numbers are the blank's own and each 12" station's thickness falls out of it; the tips are thinned last, only inside the last 12", with the deck pinned (default, the bottom rises and tip rocker grows) or the bottom pinned (the deck drops) — the curve through the 12" stations fixed before thinning and still nudged by the fine-tune adjusters. Every printed number stays a number a shaper would cut to, and every board saved under the Phase 11 model still opens.
+**Requirements**: R1–R11 locked in `.planning/phases/12-foil-the-way-a-shaper-cuts-it/12-SPEC.md` (six from the founder's brief, five carried constraints); decisions D-01–D-20 in `12-CONTEXT.md`; UI contract in `12-UI-SPEC.md`
+**Depends on:** Phase 11
+**Plans:** 9/10 plans executed in 5 waves
+
+Plans:
+
+**Wave 1**
+
+- [x] 12-01-PLAN.md — Pin Phase 11's foil in a golden file, then cut the board from its blank the way a planer does (deck skin, bottom gap, eased tips) and carry older boards across — all six named geometry tests before any screen changes (R1 R2 R3 R4 R5 R6 R7 R9 R10 R11)
+- [x] 12-02-PLAN.md — Add the three new settings columns to the development database with a read-only proof, and teach the app to count planer passes from the printed numbers (R2 R8 R11)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 12-03-PLAN.md — Planer Max Depth replaces Extra Center Thickness: the blank list needs room for one deck pass and one bottom pass, its words say so, the defaults dialog shows the new rows, and the ROCKER reference picture is re-taken once (R1 R2 R8 R11)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 12-04-PLAN.md — Tip Style becomes a shaper's own default in Fit & Tip Defaults, and every two-way pill is keyboard- and finger-friendly (R4 R8 R11)
+- [x] 12-05-PLAN.md — A picked board keeps its own Deck Skin, and the sidebar reads the foam off the bottom at every station and the planer passes at the center; presets keep their own cut (R1 R2 R3 R8 R11)
+- [x] 12-06-PLAN.md — Older boards open with the shaper's own Tip Style on every server path, and every board in the development database is proven to open with its numbers kept (R9 R11)
+- [x] 12-07-PLAN.md — The fit check keeps a planer pass under the center wherever the board sits, and refuses a board that would run under 1/8" thick (R2 R8 R11)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 12-08-PLAN.md — Tip Style and Fine-tune off on the ROCKER sidebar, and THICKNESS explains how the foil is now cut (R4 R5 R6 R8 R11)
+- [x] 12-09-PLAN.md — The DATASHEET shows foam off the deck and off the bottom at every station, the drawing says so, and every board must now carry its own cut (R1 R2 R4 R7 R8 R10 R11)
+
+**Wave 5** *(blocked on Wave 4 completion — a founder step)*
+
+- [ ] 12-10-PLAN.md — The founder migrates production first (migration 0006 only), then merges, deploys and checks the live site (R9 R11)
+
+Cross-cutting constraints: geometry pure and tested under `lib/geometry/` before any screen change, with a golden fixture of Phase 11's foil generated from tag `v1.3` in the first commit (R7); every conversion through `lib/geometry/units.ts` and every displayed number through `measure-display.ts` (R8); no new dependency and no package.json change (R11); additive migration 0006 to the development branch inside 12-02 and to production BEFORE the merge (CLAUDE.md Database, D-19 keeps `extra_center_thickness_mm` until a follow-up); the ROCKER desktop baseline re-recorded once in 12-03, TEMPLATE/RAILS/FINS/VOLUME byte-identical; every version 1–4 saved board still opens (R9, D-14).
+
 ---
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 6 → 7 (v1.1, complete) → 8 → 9 → 10 (v1.2, complete) → 11 (v1.3, complete)
+Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 6 → 7 (v1.1, complete) → 8 → 9 → 10 (v1.2, complete) → 11 (v1.3, complete) → 12 (v1.4, in progress)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -148,3 +195,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 9. The Design Screens on a Phone | 9/9 | Complete    | 2026-09-09 |
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
 | 11. Rocker from Real Blanks | 13/13 | Complete    | 2026-09-26 |
+| 12. Foil the Way a Shaper Cuts It | 9/10 | In Progress|  |

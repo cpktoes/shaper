@@ -12,8 +12,10 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { models } from "@/lib/db/schema";
+import { resolveCarryOverTipStyle } from "@/lib/fit-defaults-server";
 import {
   buildSnapshot,
+  hasPhase11Blank,
   parseSnapshot,
   type DesignSnapshotFields,
 } from "@/lib/models/design-snapshot";
@@ -44,10 +46,18 @@ export async function saveModel(
   // a versioned envelope — wrapping first, then parsing, validates the payload without asking
   // the client to know about versions. Validated before it ever reaches the database — a
   // malformed snapshot never gets written (T-02-05).
-  const design = parseSnapshot(buildSnapshot(snapshot as DesignSnapshotFields));
+  //
+  // A browser tab left open across the Phase 12 update still sends a blank with no cut of its own;
+  // that is carried over here by its SHAPE (Pitfall 5 — the envelope below always says the current
+  // version) with the shaper's own Tip Style (D-14). The Tip Style is looked up only for such a
+  // blank, so an ordinary save costs no extra read, and the lookup never throws.
+  const incoming = buildSnapshot(snapshot as DesignSnapshotFields);
+  const design = parseSnapshot(incoming, {
+    tipStyle: hasPhase11Blank(incoming) ? await resolveCarryOverTipStyle() : undefined,
+  });
 
   // What the row stores is the envelope, not the bare fields: the read path
-  // (`parseSnapshot(row.snapshot)` in app/page.tsx) requires `version` to be present, and the
+  // (the rack parsing each row, in app/page.tsx) requires `version` to be present, and the
   // version number is what lets Phase 4 grow the format without migrating existing rows.
   // The snapshot's embedded boardName is pinned to the row's name column here at the write
   // boundary — `name` is the authoritative label, and a reopened board restores its name from
@@ -103,7 +113,12 @@ export async function renameModel(modelId: string, name: string): Promise<void> 
     .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)));
   if (!source) throw new Error("Couldn't find that board.");
 
-  const design = parseSnapshot(source.snapshot);
+  // A board still stored with a Phase 11 blank is carried over by its shape with the shaper's own
+  // Tip Style (D-14, Pitfall 5), exactly as the rack reads it — and re-stored with the same five
+  // station thicknesses.
+  const design = parseSnapshot(source.snapshot, {
+    tipStyle: hasPhase11Blank(source.snapshot) ? await resolveCarryOverTipStyle() : undefined,
+  });
   const envelope = buildSnapshot({ ...design, boardName: trimmed });
 
   await db.update(models)
@@ -135,8 +150,11 @@ export async function duplicateModel(modelId: string): Promise<DuplicateModelRes
   if (!source) throw new Error("Couldn't find that board.");
 
   // Validated on the way back in, same as a save (T-02-05) — a corrupt or stale source snapshot
-  // is never written forward into a new row unchecked.
-  const design = parseSnapshot(source.snapshot);
+  // is never written forward into a new row unchecked. A Phase 11 blank is carried over by its
+  // shape with the shaper's own Tip Style (D-14, Pitfall 5), exactly as the rack reads it.
+  const design = parseSnapshot(source.snapshot, {
+    tipStyle: hasPhase11Blank(source.snapshot) ? await resolveCarryOverTipStyle() : undefined,
+  });
   const copyName = `Copy of ${source.name}`;
   const envelope = buildSnapshot({ ...design, boardName: copyName });
 

@@ -3,11 +3,12 @@ import { isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
 import type { BlankRecord, BlankShortfall } from "./blank";
-import { placementRange } from "./blank-fit";
+import { MIN_FOIL_THICKNESS_MM, placementRange } from "./blank-fit";
 import {
   blankRowMeta,
   blankRowVolume,
   boardLine,
+  type CenterFloorRules,
   emptyListMessage,
   FLAG_HEADLINES,
   floorShortfallMessage,
@@ -19,9 +20,10 @@ import {
   offerLine,
   placementSlider,
   REASON_SNAP_MM,
+  tweakOverSkinLine,
 } from "./blank-reasons";
 import { DEFAULT_BOARD_SPEC } from "./board";
-import { formatDim, formatLength, formatMark, stationLabel } from "./measure-display";
+import { formatDim, formatLength, formatMark, formatSignedMark, stationLabel } from "./measure-display";
 import { BOARD_PRESETS } from "./presets";
 import { MEASURE_STATION_MM } from "./outline";
 import { inchesToMm, litres, mm, mmToInches, UNITS_SYSTEMS, type Mm, type UnitsSystem } from "./units";
@@ -32,7 +34,7 @@ import { inchesToMm, litres, mm, mmToInches, UNITS_SYSTEMS, type Mm, type UnitsS
 
 const SETTINGS = toFitSettings(DEFAULT_FIT_DEFAULTS);
 const L = inchesToMm(72);
-const BOARD = { length: L, widePointStation: inchesToMm(35.5) };
+const BOARD = { length: L, widePointStation: inchesToMm(35.5), centerThickness: inchesToMm(2.5) };
 const shortfall = (kind: BlankShortfall["kind"], station: number, amount: number): BlankShortfall => ({
   kind,
   station: mm(station),
@@ -77,7 +79,7 @@ describe("formatShortfall — the reason line (D-06, R12)", () => {
       const station = BOARD.widePointStation - inchesToMm(4);
       expect(read("thin", station)).toBe(`${amount} too thin ${formatDim(mm(station), system)} from the tail`);
       // The widepoint wins over the center when both are within the snap (first match).
-      const both = { length: L, widePointStation: mm(L / 2 - inchesToMm(0.5)) };
+      const both = { ...BOARD, widePointStation: mm(L / 2 - inchesToMm(0.5)) };
       expect(formatShortfall(shortfall("wide", L / 2, eighth), both, system)).toBe(
         `${amount} too wide at the widepoint`,
       );
@@ -127,6 +129,81 @@ describe("formatShortfall — the reason line (D-06, R12)", () => {
   it("the imperial 'under' line reads the UI-SPEC's copy", () => {
     expect(formatShortfall(shortfall("thin", L, 0.01), BOARD, "imperial")).toBe(`under 1/16" too thin at the nose tip`);
     expect(formatShortfall(shortfall("thin", L, 0.01), BOARD, "metric")).toBe("under 1 mm too thin at the nose tip");
+  });
+});
+
+describe("formatShortfall — the foil runs out (D-18)", () => {
+  const centre = inchesToMm(1);
+  const thinCentre = { ...BOARD, centerThickness: centre };
+  const over = inchesToMm(1 / 32);
+
+  describe.each(UNITS_SYSTEMS)("in %s", (system: UnitsSystem) => {
+    const least = formatMark(MIN_FOIL_THICKNESS_MM, system);
+    const tooThick = `this blank is too thick for a ${formatMark(centre, system)} center`;
+    const read = (station: number) => formatShortfall(shortfall("runsOut", station, over), thinCentre, system);
+
+    it("says the blank is too thick for this center, at the place the board would run out, with no full stop", () => {
+      const text = read(L - MEASURE_STATION_MM);
+      expect(text).toBe(`Less than ${least} would be left ${stationLabel(system)} from the nose — ${tooThick}`);
+      expect(text.endsWith(".")).toBe(false);
+    });
+
+    it("names the place with the same vocabulary as every other reason", () => {
+      expect(read(0)).toBe(`Less than ${least} would be left at the tail tip — ${tooThick}`);
+      expect(read(L / 2)).toBe(`Less than ${least} would be left at the center — ${tooThick}`);
+      const fromTail = inchesToMm(18.5);
+      expect(read(fromTail)).toBe(`Less than ${least} would be left ${formatDim(fromTail, system)} from the tail — ${tooThick}`);
+      // Width is never the reason, so the widepoint is never named for it.
+      expect(read(BOARD.widePointStation)).not.toContain("widepoint");
+    });
+
+    it("quotes the board's own center, whatever it is", () => {
+      const other = inchesToMm(1.5);
+      expect(formatShortfall(shortfall("runsOut", L / 2, over), { ...BOARD, centerThickness: other }, system)).toBe(
+        `Less than ${least} would be left at the center — this blank is too thick for a ${formatMark(other, system)} center`,
+      );
+    });
+
+    it("leaves the too-thin and too-wide sentences exactly as they were", () => {
+      for (const kind of ["thin", "wide"] as const) {
+        const station = L - MEASURE_STATION_MM;
+        expect(formatShortfall(shortfall(kind, station, over), thinCentre, system)).toBe(
+          formatShortfall(shortfall(kind, station, over), BOARD, system),
+        );
+        expect(formatShortfall(shortfall(kind, station, over), thinCentre, system)).not.toContain("center");
+      }
+    });
+  });
+});
+
+describe("tweakOverSkinLine — a Deck fine-tune bigger than the Deck Skin (D-13)", () => {
+  const tweak = inchesToMm(3 / 16);
+  const skin = inchesToMm(1 / 8);
+
+  for (const system of UNITS_SYSTEMS) {
+    it(`names the tweak, the board's own skin and the three fixes on ROCKER (${system})`, () => {
+      expect(tweakOverSkinLine(tweak, skin, system)).toBe(
+        `Your ${formatSignedMark(tweak, system)} fine-tune is more than this board's ` +
+          `${formatMark(skin, system)} Deck Skin, so the deck would sit above any blank's deck there. ` +
+          `Raise the Deck Skin, reset the fine-tune, or take it off the Bottom`,
+      );
+    });
+
+    it(`ends without a full stop, so the flag adds one (${system})`, () => {
+      expect(tweakOverSkinLine(tweak, skin, system).endsWith(".")).toBe(false);
+    });
+  }
+
+  it("reads the Imperial marks as the shaper sees them on the sliders", () => {
+    const line = tweakOverSkinLine(tweak, skin, "imperial");
+    expect(line).toContain(`Your ${formatSignedMark(tweak, "imperial")} fine-tune`);
+    expect(formatSignedMark(tweak, "imperial")).toBe('+3/16"');
+    expect(formatMark(skin, "imperial")).toBe('1/8"');
+  });
+
+  it("reads the Metric marks in whole millimetres", () => {
+    const line = tweakOverSkinLine(tweak, skin, "metric");
+    expect(line).toMatch(/^Your \+\d+ mm fine-tune is more than this board's \d+ mm Deck Skin,/);
   });
 });
 
@@ -256,97 +333,126 @@ describe("placementSlider — the thumb can always land exactly on centred (IN-0
   });
 });
 
+// The centre floor's rules (Phase 12 D-10): the list's Extra Length and Planer Max Depth, and the
+// Deck Skin the verdicts use. `DEFAULT_RULES` is what a board with no blank picked quotes out of the
+// box; `OTHER_RULES` is a shaper who changed all three, so every sentence below is proven to quote
+// the rules it is handed rather than the defaults. Every expected number is formatted here, from
+// these values, through `formatMark` — never typed.
+const DEFAULT_RULES: CenterFloorRules = {
+  extraLength: SETTINGS.extraLength,
+  planerMaxDepth: SETTINGS.planerMaxDepth,
+  deckSkin: DEFAULT_FIT_DEFAULTS.deckSkin,
+};
+const OTHER_RULES: CenterFloorRules = {
+  extraLength: inchesToMm(4.5),
+  planerMaxDepth: inchesToMm(3 / 16),
+  deckSkin: inchesToMm(1 / 4),
+};
+const RULE_CASES = UNITS_SYSTEMS.flatMap((system) =>
+  [
+    { label: "the defaults", rules: DEFAULT_RULES },
+    { label: "a changed skin, pass and length", rules: OTHER_RULES },
+  ].map((c) => ({ ...c, system })),
+);
+
 describe("floorShortfallMessage — a picked blank that no longer passes a floor (F3, F4)", () => {
-  it("reads the UI-SPEC's copy in both systems", () => {
+  it("reads the UI-SPEC's F3 copy in both systems (unchanged)", () => {
     const short = inchesToMm(1.5);
-    expect(floorShortfallMessage("length", short, SETTINGS.extraLength, "imperial")).toBe(
+    expect(floorShortfallMessage("length", short, DEFAULT_RULES, "imperial")).toBe(
       `It's 1 1/2" too short — you've asked for at least 2" of spare length.`,
     );
-    expect(floorShortfallMessage("length", short, SETTINGS.extraLength, "metric")).toBe(
+    expect(floorShortfallMessage("length", short, DEFAULT_RULES, "metric")).toBe(
       "It's 38 mm too short — you've asked for at least 51 mm of spare length.",
-    );
-    const thin = inchesToMm(1 / 8);
-    expect(floorShortfallMessage("center", thin, SETTINGS.extraCenterThickness, "imperial")).toBe(
-      `It's 1/8" too thin at the center — you've asked for at least 3/8" of spare thickness.`,
-    );
-    expect(floorShortfallMessage("center", thin, SETTINGS.extraCenterThickness, "metric")).toBe(
-      "It's 3 mm too thin at the center — you've asked for at least 10 mm of spare thickness.",
     );
   });
 
-  it.each(UNITS_SYSTEMS)("composes through formatMark, and reads 'under' a step rather than zero, in %s", (system) => {
+  it.each(RULE_CASES)("F4 names the deck skin and the bottom pass it is short of — $label, $system", ({ rules, system }) => {
+    const f = (value: Mm) => formatMark(value, system);
+    const thin = inchesToMm(1 / 16);
+    expect(floorShortfallMessage("center", thin, rules, system)).toBe(
+      `It's ${f(thin)} too thin at the center — there isn't room for your ${f(rules.deckSkin)} deck skin and a ${f(rules.planerMaxDepth)} bottom pass.`,
+    );
+    expect(floorShortfallMessage("center", thin, rules, system)).not.toContain("spare thickness");
+  });
+
+  it.each(RULE_CASES)("composes through formatMark, and reads 'under' a step rather than zero — $label, $system", ({ rules, system }) => {
+    const f = (value: Mm) => formatMark(value, system);
     const by = inchesToMm(0.8125);
-    expect(floorShortfallMessage("length", by, SETTINGS.extraLength, system)).toBe(
-      `It's ${formatMark(by, system)} too short — you've asked for at least ${formatMark(SETTINGS.extraLength, system)} of spare length.`,
+    expect(floorShortfallMessage("length", by, rules, system)).toBe(
+      `It's ${f(by)} too short — you've asked for at least ${f(rules.extraLength)} of spare length.`,
     );
     const step = system === "metric" ? mm(1) : inchesToMm(1 / 16);
-    expect(floorShortfallMessage("center", mm(0.01), SETTINGS.extraCenterThickness, system)).toBe(
-      `It's under ${formatMark(step, system)} too thin at the center — you've asked for at least ${formatMark(SETTINGS.extraCenterThickness, system)} of spare thickness.`,
+    expect(floorShortfallMessage("center", mm(0.01), rules, system)).toBe(
+      `It's under ${f(step)} too thin at the center — there isn't room for your ${f(rules.deckSkin)} deck skin and a ${f(rules.planerMaxDepth)} bottom pass.`,
     );
+  });
+
+  it("quotes the skin and pass it is handed, not the defaults", () => {
+    for (const system of UNITS_SYSTEMS) {
+      const thin = inchesToMm(1 / 16);
+      expect(floorShortfallMessage("center", thin, OTHER_RULES, system)).not.toBe(
+        floorShortfallMessage("center", thin, DEFAULT_RULES, system),
+      );
+    }
   });
 });
 
 describe("emptyListMessage — E1, E2, E3", () => {
-  const numbers = {
+  const board = {
     boardLength: inchesToMm(150),
     longest: inchesToMm(151.5),
     centre: inchesToMm(4.75),
     thickestCenter: inchesToMm(4.875),
-    settings: SETTINGS,
   };
 
-  it("reads the UI-SPEC's copy in Imperial", () => {
+  it("reads the UI-SPEC's E1 copy in both systems (unchanged)", () => {
+    const numbers = { ...board, rules: DEFAULT_RULES };
     expect(emptyListMessage("length", numbers, "imperial")).toEqual({
       heading: "No blank is long enough",
       body: `Your board is 12'6" and the longest blank in the three catalogs is 12'7 1/2", so none leaves the 2" of spare length you've asked for. Shorten the board on the TEMPLATE screen, or ask for less spare length.`,
     });
-    expect(emptyListMessage("thickness", numbers, "imperial")).toEqual({
-      heading: "No blank is thick enough",
-      body: `Your center is 4 3/4" and the thickest blank is 4 7/8" at the center, so none leaves the 3/8" of spare thickness you've asked for. Try a thinner center, or ask for less spare thickness.`,
-    });
-    expect(emptyListMessage("both", numbers, "imperial")).toEqual({
-      heading: "No blank passes both rules",
-      body: `Nothing in the three catalogs is both 2" longer and 3/8" thicker at the center than your board.`,
-    });
-  });
-
-  it("reads the UI-SPEC's E1 numbers in Metric", () => {
     expect(emptyListMessage("length", numbers, "metric").body).toBe(
       "Your board is 381.0 cm and the longest blank in the three catalogs is 384.8 cm, so none leaves the 51 mm of spare length you've asked for. Shorten the board on the TEMPLATE screen, or ask for less spare length.",
     );
   });
 
-  it.each(UNITS_SYSTEMS)("composes every number through the display boundary in %s", (system) => {
+  it("keeps the E2 and E3 headings", () => {
+    const numbers = { ...board, rules: DEFAULT_RULES };
+    expect(emptyListMessage("thickness", numbers, "imperial").heading).toBe("No blank is thick enough");
+    expect(emptyListMessage("both", numbers, "imperial").heading).toBe("No blank passes both rules");
+  });
+
+  it.each(RULE_CASES)("composes every number through the display boundary — $label, $system", ({ rules, system }) => {
+    const numbers = { ...board, rules };
     const f = (value: Mm) => formatMark(value, system);
     expect(emptyListMessage("length", numbers, system).body).toBe(
-      `Your board is ${formatLength(numbers.boardLength, system)} and the longest blank in the three catalogs is ${formatLength(numbers.longest, system)}, so none leaves the ${f(SETTINGS.extraLength)} of spare length you've asked for. Shorten the board on the TEMPLATE screen, or ask for less spare length.`,
+      `Your board is ${formatLength(numbers.boardLength, system)} and the longest blank in the three catalogs is ${formatLength(numbers.longest, system)}, so none leaves the ${f(rules.extraLength)} of spare length you've asked for. Shorten the board on the TEMPLATE screen, or ask for less spare length.`,
     );
     expect(emptyListMessage("thickness", numbers, system).body).toBe(
-      `Your center is ${f(numbers.centre)} and the thickest blank is ${f(numbers.thickestCenter)} at the center, so none leaves the ${f(SETTINGS.extraCenterThickness)} of spare thickness you've asked for. Try a thinner center, or ask for less spare thickness.`,
+      `Your center is ${f(numbers.centre)} and the thickest blank is ${f(numbers.thickestCenter)} at the center, so none leaves room for a ${f(rules.deckSkin)} deck skin and a ${f(rules.planerMaxDepth)} bottom pass. Try a thinner center, or change your Deck Skin or Planer Max Depth.`,
     );
     expect(emptyListMessage("both", numbers, system).body).toBe(
-      `Nothing in the three catalogs is both ${f(SETTINGS.extraLength)} longer and ${f(SETTINGS.extraCenterThickness)} thicker at the center than your board.`,
+      `Nothing in the three catalogs is both ${f(rules.extraLength)} longer than your board and thick enough at the center for a ${f(rules.deckSkin)} deck skin and a ${f(rules.planerMaxDepth)} bottom pass.`,
     );
   });
 });
 
-describe("listIntro — the line above the list, live from the settings", () => {
-  it("reads the UI-SPEC's copy in both systems", () => {
-    expect(listIntro(SETTINGS, "imperial")).toBe(
-      `Shortest first. Each is at least 2" longer and 3/8" thicker at the center than your board. Greyed blanks don't fit somewhere — the line under each says where.`,
-    );
-    expect(listIntro(SETTINGS, "metric")).toBe(
-      "Shortest first. Each is at least 51 mm longer and 10 mm thicker at the center than your board. Greyed blanks don't fit somewhere — the line under each says where.",
+describe("listIntro — the line above the list, live from the rules the list is judged by", () => {
+  it.each(RULE_CASES)("quotes the extra length, the deck skin and the bottom pass — $label, $system", ({ rules, system }) => {
+    const f = (value: Mm) => formatMark(value, system);
+    expect(listIntro(rules, system)).toBe(
+      `Shortest first. Each is at least ${f(rules.extraLength)} longer than your board, with room at the center for a ${f(rules.deckSkin)} deck skin and a ${f(rules.planerMaxDepth)} bottom pass. Greyed blanks don't fit somewhere — the line under each says where.`,
     );
   });
 
-  it.each(UNITS_SYSTEMS)("follows the settings in %s", (system) => {
-    const settings = { extraLength: inchesToMm(4.5), extraCenterThickness: inchesToMm(0.5) };
-    expect(listIntro(settings, system)).toContain(
-      `at least ${formatMark(settings.extraLength, system)} longer and ${formatMark(settings.extraCenterThickness, system)} thicker`,
-    );
+  it("follows the rules it is handed, and never mentions spare thickness", () => {
+    for (const system of UNITS_SYSTEMS) {
+      expect(listIntro(OTHER_RULES, system)).not.toBe(listIntro(DEFAULT_RULES, system));
+      expect(listIntro(DEFAULT_RULES, system)).not.toContain("thicker at the center");
+    }
   });
 });
+
 
 describe("a blank's row and the offer line", () => {
   const mRegular = findBlank("Marko Foam", `6'0" M-Regular`);

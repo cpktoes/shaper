@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { BOARD_LENGTH_RANGE_IN, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
 import { MEASURE_STATION_MM } from "./outline";
 import {
@@ -11,9 +12,11 @@ import {
   formatLength,
   formatMark,
   formatMarkBare,
+  formatPasses,
   formatSignedDim,
   formatSignedMark,
   measureSlider,
+  planerPasses,
   stationLabel,
   columnUnitSuffix,
   typedFieldBounds,
@@ -34,7 +37,10 @@ import {
   inchesToMm,
   mm,
   mmToCentimetres,
+  parseImperial,
+  parseMetric,
   squareMmToSquareInches,
+  type Mm,
   type UnitsSystem,
 } from "./units";
 
@@ -798,5 +804,94 @@ describe("UNITS_SYSTEMS invariant — a dropped branch fails here rather than fa
     const imperialView = measureSlider(mm(514), WIDEPOINT_WIDTH_RANGE_IN, 0.125, 1, "imperial");
     const metricView = measureSlider(mm(514), WIDEPOINT_WIDTH_RANGE_IN, 0.125, 1, "metric");
     expect(imperialView.step).not.toBe(metricView.step);
+  });
+});
+
+describe("planerPasses / formatPasses — passes from the printed numbers (D-03, R8)", () => {
+  /** Every depth from 0 to 1" in 1/64" steps. */
+  const DEPTHS: Mm[] = Array.from({ length: 65 }, (_, k) => inchesToMm(k / 64));
+  /** The Planer Max Depth range: 1/16", 1/8", 3/16", 1/4". */
+  const PASS_DEPTHS: Mm[] = [1, 2, 3, 4].map((sixteenths) => inchesToMm(sixteenths / 16));
+  const ONE_EIGHTH = inchesToMm(1 / 8);
+
+  /** What the screen prints for `value` (a mark), read back through the app's own parser. */
+  function printedBack(value: Mm, system: UnitsSystem): Mm {
+    const printed = formatMark(value, system);
+    // KNOWN PARSER BUG (found by 12-02, not fixed here — units.ts is outside this plan's files):
+    // `parseImperial` misreads a bare fraction with a two-digit numerator — `11/16"` comes back as
+    // 1 1/16" because its whole-number group takes the first "1". Writing the same number with an
+    // explicit zero whole part (`0 11/16"`) reads correctly, so the sweep reads it back that way.
+    // Once parseImperial is fixed this line can go and the sweep must still pass unchanged.
+    const readable = system === "imperial" && /^\d+\/\d+"$/.test(printed) ? `0 ${printed}` : printed;
+    const parsed = system === "metric" ? parseMetric(readable, "mm") : parseImperial(readable);
+    if (parsed === null) throw new Error(`the app could not read back its own printed '${printed}'`);
+    return parsed;
+  }
+
+  /** The count a shaper gets by dividing the two printed numbers by hand, rounded up (D-03). */
+  function countFromPrinted(depth: Mm, passDepth: Mm, system: UnitsSystem): number {
+    const d = printedBack(depth, system);
+    const p = printedBack(passDepth, system);
+    return d <= 0 || p <= 0 ? 0 : Math.ceil(d / p - 1e-9);
+  }
+
+  it("equals the count from the printed depth and printed pass depth, for every depth and pass depth, in both systems", () => {
+    for (const system of UNITS_SYSTEMS) {
+      for (const passDepth of PASS_DEPTHS) {
+        for (const depth of DEPTHS) {
+          expect(
+            planerPasses(depth, passDepth, system),
+            `${system}: ${formatMark(depth, system)} at ${formatMark(passDepth, system)} a pass`,
+          ).toBe(countFromPrinted(depth, passDepth, system));
+        }
+      }
+    }
+  });
+
+  it("counts 0 passes when there is no foam to take off (zero or below)", () => {
+    for (const system of UNITS_SYSTEMS) {
+      expect(planerPasses(mm(0), ONE_EIGHTH, system)).toBe(0);
+      expect(planerPasses(inchesToMm(-1 / 16), ONE_EIGHTH, system)).toBe(0);
+    }
+  });
+
+  it("the same board can read one pass different in Imperial and Metric, and never more than one", () => {
+    const imperial = (depth: Mm) => planerPasses(depth, ONE_EIGHTH, "imperial");
+    const metric = (depth: Mm) => planerPasses(depth, ONE_EIGHTH, "metric");
+
+    expect(DEPTHS.some((depth) => imperial(depth) !== metric(depth))).toBe(true);
+    for (const depth of DEPTHS) {
+      expect(Math.abs(imperial(depth) - metric(depth))).toBeLessThanOrEqual(1);
+    }
+
+    // 3/8" at 1/8" a pass: the printed metric numbers divide to one more pass than the printed
+    // imperial ones — each system honest to its own printed numbers, no stored value moved (Rule 2).
+    const threeEighths = inchesToMm(3 / 8);
+    expect(metric(threeEighths)).toBe(imperial(threeEighths) + 1);
+  });
+
+  it("the UI contract's reference board counts the same passes in both systems (from the catalogue, never copied)", () => {
+    const blank = readSeedCatalog().find(
+      (record) => record.vendor === "Marko Foam" && record.name === `6'0" M-Regular`,
+    );
+    const centre = blank?.stations.find((station) => station.label === "C")?.thicknessMm;
+    if (centre == null) throw new Error(`Marko Foam 6'0" M-Regular has no printed centre thickness`);
+
+    // The printed centre, less a 1/8" deck skin, less a 2 1/2" target centre.
+    const gap = mm(centre - inchesToMm(1 / 8) - inchesToMm(2.5));
+    const imperial = planerPasses(gap, ONE_EIGHTH, "imperial");
+    const metric = planerPasses(gap, ONE_EIGHTH, "metric");
+
+    expect(imperial).toBe(metric);
+    expect(imperial).toBe(countFromPrinted(gap, ONE_EIGHTH, "imperial"));
+    expect(metric).toBe(countFromPrinted(gap, ONE_EIGHTH, "metric"));
+    expect(imperial).toBeGreaterThan(0);
+  });
+
+  it("formatPasses reads 1 pass, and n passes for every other count including zero", () => {
+    expect(formatPasses(0)).toBe("0 passes");
+    expect(formatPasses(1)).toBe("1 pass");
+    expect(formatPasses(2)).toBe("2 passes");
+    expect(formatPasses(12)).toBe("12 passes");
   });
 });

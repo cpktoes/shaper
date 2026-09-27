@@ -4,8 +4,17 @@ import { describe, expect, it } from "vitest";
 import { BLANK_CSV_COLUMNS, isPickable } from "@/lib/blanks/catalog";
 import { parseCsv } from "@/lib/blanks/csv";
 import { readSeedCatalog, SEED_CSV_DIR } from "@/lib/blanks/seed-files";
+import presetBlanks from "@/lib/blanks/preset-blanks.generated.json";
 import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
-import type { BlankRecord, BlankStation, FitSettings } from "./blank";
+import golden from "./__fixtures__/phase11-foil-golden.json";
+import {
+  DEFAULT_BLANK_CUT,
+  type BlankRecord,
+  type BlankStation,
+  type FineTuneSurface,
+  type FitSettings,
+  type TipStyle,
+} from "./blank";
 import {
   BLANK_PLACEMENT_BUFFER_MM,
   blankStationOf,
@@ -20,11 +29,13 @@ import {
   judgeBlank,
   levelCurve,
   listBlanks,
+  MIN_FOIL_THICKNESS_MM,
   nearestFit,
   nearestFittingPlacement,
   placementRange,
   prepareBlank,
   TIP_EASE_WINDOW_MM,
+  tweakExceedsDeckSkin,
   type BlankListResult,
   type BlankVerdict,
   type BoardFitContext,
@@ -33,6 +44,7 @@ import {
   type PreparedBlank,
 } from "./blank-fit";
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, type OutlineSpec } from "./board";
+import { buildBlankProfile } from "./board-profile";
 import { buildOutline, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import { preparePchip } from "./pchip";
@@ -66,7 +78,11 @@ function csvNumber(file: string, vendor: string, name: string, label: string, co
   return Number(text);
 }
 
-/** A board with no tip or fine-tune influence — only the rocker is read in test (a). */
+/**
+ * A board with no tip or fine-tune influence — only the rocker is read in test (a). Bottom Tip
+ * Style, so any tip thinning comes off the deck and the rocker under the board is the blank's own
+ * everywhere, tips included (Phase 12 D-06).
+ */
 function plainBoard(blank: BlankRecord): BoardOnBlankInput {
   const centre = blank.stations.find((s) => s.label === "C")!.thicknessMm!;
   return {
@@ -76,6 +92,8 @@ function plainBoard(blank: BlankRecord): BoardOnBlankInput {
     tailTip: mm(0),
     nose12Offset: mm(0),
     tail12Offset: mm(0),
+    ...DEFAULT_BLANK_CUT,
+    tipStyle: "bottom",
   };
 }
 
@@ -199,14 +217,17 @@ describe("the brief's four named tests (R16)", () => {
     const blank = findBlank(MARKO_VENDOR, M_REGULAR);
     const prepared = prepareBlank(blank);
     const noseTipCsv = csvNumber(MARKO_FILE, MARKO_VENDOR, M_REGULAR, "N0", "thickness_in");
+    // The out-of-the-box cut (Pin deck): a nose tip thicker than the blank's nose drops the bottom
+    // below the blank's bottom there (Phase 12 D-09, D-16).
     const board: BoardOnBlankInput = {
       ...plainBoard(blank),
+      ...DEFAULT_BLANK_CUT,
       centerThickness: inchesToMm(2.5),
       tailTip: inchesToMm(1 / 4),
       noseTip: inchesToMm(noseTipCsv + 1 / 16),
     };
     const onBlank = boardOnBlank(prepared, board, mm(0));
-    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(board.length / 2), inchesToMm(1));
+    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(board.length / 2), rulesWith(inchesToMm(1)));
     expect(result.fits).toBe(false);
     expect(result.worst.kind).toBe("thin");
     expect(board.length - result.worst.station).toBeLessThanOrEqual(inchesToMm(1));
@@ -217,21 +238,197 @@ describe("the brief's four named tests (R16)", () => {
   });
 });
 
+/**
+ * The per-placement fit rules with a given width margin and the default Planer Max Depth (the one
+ * pass that must survive under the board's centre, D-15) — the settings exercised, not expected values.
+ */
+function rulesWith(widthMargin: Mm) {
+  return { widthMargin, planerMaxDepth: toFitSettings(DEFAULT_FIT_DEFAULTS).planerMaxDepth };
+}
+
 /** A board outline `by` narrower than the blank under it at every station (half-width, ≥ 0). */
 function narrowerBy(onBlank: BoardOnBlank, by: number) {
   return (s: Mm) => Math.max(0, (onBlank.blankWidthAt(s) - by) / 2);
 }
 
-/** Default tip settings (5/16" nose, 1/4" tail) — inputs, not expected values. */
+/** Default tip settings (5/16" nose, 1/4" tail) and the out-of-the-box cut — inputs, not expected values. */
 function defaultBoard(blank: BlankRecord, length: number, centre: number): BoardOnBlankInput {
   return {
     ...plainBoard(blank),
+    ...DEFAULT_BLANK_CUT,
     length: mm(length),
     centerThickness: mm(centre),
     noseTip: inchesToMm(5 / 16),
     tailTip: inchesToMm(1 / 4),
   };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Phase 12: the board cut from its blank the way a planer does. Every blank below is read from the
+// committed CSVs, Phase 11's numbers from the generated golden fixture, and every expected value
+// is computed here from the functions under test and the settings being exercised.
+// ---------------------------------------------------------------------------------------------
+
+const PICKABLE = CATALOG.filter(isPickable);
+const TIP_STYLES: TipStyle[] = ["pinDeck", "bottom"];
+const SURFACES: FineTuneSurface[] = ["deck", "bottom"];
+
+/** Every 1/4" from the tail tip to the nose tip, plus the nose tip itself. */
+function quarterStations(length: number): number[] {
+  const quarter = inchesToMm(1 / 4);
+  const out: number[] = [];
+  for (let s = 0; s <= length; s += quarter) out.push(s);
+  out.push(length);
+  return out;
+}
+
+/** A board 2" shorter than its blank, 2 1/2" centre, default tips, the out-of-the-box cut, then `cut`. */
+function cutBoard(blank: BlankRecord, cut: Partial<BoardOnBlankInput> = {}): BoardOnBlankInput {
+  return { ...defaultBoard(blank, blank.lengthMm - inchesToMm(2), inchesToMm(2.5)), ...cut };
+}
+
+/** The one-sided slope jump of `f` at `x`, with step `h`. */
+function slopeJump(f: (s: number) => number, x: number, h: number): number {
+  return Math.abs((f(x + h) - f(x)) / h - (f(x) - f(x - h)) / h);
+}
+
+describe("the phase's named geometry tests (R7)", () => {
+  const W = TIP_EASE_WINDOW_MM;
+
+  it("the board's deck sits exactly the deck skin below the blank's deck at every station, on every seeded blank", () => {
+    const deckSkin = inchesToMm(1 / 8);
+    let checked = 0;
+    for (const record of PICKABLE) {
+      const board = cutBoard(record, { deckSkin, tipStyle: "pinDeck", fineTuneSurface: "deck" });
+      const profile = buildBlankProfile(prepareBlank(record), board, mm(0));
+      for (const s of quarterStations(board.length)) {
+        checked++;
+        expect(profile.deckAt(mm(s)), `${record.vendor} ${record.name} @ ${s}`).toBeCloseTo(
+          profile.blank!.deckAt(mm(s)) - deckSkin,
+          9,
+        );
+      }
+    }
+    expect(checked).toBeGreaterThan(PICKABLE.length * 100);
+  });
+
+  it("the board's bottom sits exactly the centre gap above the blank's bottom at every station, so the rocker is the blank's own", () => {
+    for (const record of PICKABLE) {
+      const board = cutBoard(record, { tipStyle: "bottom", fineTuneSurface: "deck" });
+      const onBlank = boardOnBlank(prepareBlank(record), board, mm(0));
+      for (const s of quarterStations(board.length)) {
+        expect(onBlank.bottomOffAt(s), `${record.vendor} ${record.name} @ ${s}`).toBeCloseTo(onBlank.centerGap, 9);
+      }
+    }
+    // Phase 11's own rocker, recorded from tag v1.3 before this phase touched the maths.
+    for (const entry of golden.cases) {
+      const record = findBlank(entry.vendor, entry.name);
+      const length = mm(entry.boardLengthMm);
+      const onBlank = boardOnBlank(
+        prepareBlank(record),
+        {
+          length,
+          centerThickness: mm(entry.centerThicknessMm),
+          noseTip: mm(entry.noseTipMm),
+          tailTip: mm(entry.tailTipMm),
+          nose12Offset: mm(0),
+          tail12Offset: mm(0),
+          deckSkin: inchesToMm(1 / 8),
+          tipStyle: "bottom",
+          fineTuneSurface: "deck",
+        },
+        mm(entry.placementMm),
+      );
+      for (const { key, station } of rockerStationPositions(length)) {
+        expect(onBlank.rockerAt(station), `${entry.label} ${key}`).toBeCloseTo(entry.rockerMm[key], 9);
+      }
+    }
+  });
+
+  it("each 12\" station's thickness is the blank's thickness there less the skin and the gap", () => {
+    for (const record of PICKABLE) {
+      for (const tipStyle of TIP_STYLES) {
+        const board = cutBoard(record, { tipStyle });
+        const onBlank = boardOnBlank(prepareBlank(record), board, mm(0));
+        const skin = board.deckSkin!;
+        for (const station of [W, board.length - W]) {
+          expect(onBlank.derivedThicknessAt(station), `${record.vendor} ${record.name} ${tipStyle}`).toBeCloseTo(
+            onBlank.blankThicknessAt(station) - skin - onBlank.centerGap,
+            9,
+          );
+        }
+      }
+    }
+  });
+
+  it("changing Tip Style or a tip thickness moves no number at or inside the 12\" stations", () => {
+    const n = PICKABLE.length;
+    const blanks = [
+      findBlank(MARKO_VENDOR, M_REGULAR),
+      PICKABLE[Math.floor(n / 4)],
+      PICKABLE[Math.floor(n / 2)],
+      PICKABLE[Math.floor((3 * n) / 4)],
+    ];
+    const tips = [
+      { noseTip: inchesToMm(5 / 16), tailTip: inchesToMm(1 / 4) },
+      { noseTip: inchesToMm(1 / 2), tailTip: inchesToMm(7 / 16) },
+    ];
+    for (const record of blanks) {
+      const prepared = prepareBlank(record);
+      for (const fineTuneSurface of SURFACES) {
+        const base = cutBoard(record, {
+          fineTuneSurface,
+          nose12Offset: inchesToMm(1 / 16),
+          tail12Offset: mm(-inchesToMm(1 / 16)),
+        });
+        const L = base.length;
+        const stations: number[] = [W, L - W];
+        for (let s: number = W; s <= L - W; s += inchesToMm(1 / 4)) stations.push(s);
+        const read = (onBlank: BoardOnBlank) =>
+          stations.map((s) => [onBlank.thicknessAt(s), onBlank.rockerAt(s), onBlank.deckOffAt(s), onBlank.bottomOffAt(s)]);
+        const reference = read(boardOnBlank(prepared, { ...base, tipStyle: "pinDeck", ...tips[0] }, mm(0)));
+        for (const tipStyle of TIP_STYLES) {
+          for (const tip of tips) {
+            const other = read(boardOnBlank(prepared, { ...base, tipStyle, ...tip }, mm(0)));
+            other.forEach((values, i) => {
+              values.forEach((value, j) => {
+                expect(value, `${record.name} ${fineTuneSurface} ${tipStyle} @ ${stations[i]} [${j}]`).toBe(reference[i][j]);
+              });
+            });
+          }
+        }
+      }
+    }
+  });
+
+  it("the tip thinning joins each 12\" station with no kink", () => {
+    const h = 1e-3;
+    for (const record of PICKABLE) {
+      const prepared = prepareBlank(record);
+      for (const tipStyle of TIP_STYLES) {
+        const board = cutBoard(record, { tipStyle });
+        const profile = buildBlankProfile(prepared, board, mm(0));
+        const onBlank = profile.blank!.onBlank;
+        const view = profile.blank!;
+        const where = `${record.vendor} ${record.name} ${tipStyle}`;
+        for (const x of [W, board.length - W]) {
+          expect(slopeJump(onBlank.thicknessAt, x, h), `${where} thickness @ ${x}`).toBeLessThanOrEqual(
+            slopeJump(onBlank.blankThicknessAt, x, h) + 1e-5,
+          );
+          if (tipStyle === "pinDeck") {
+            expect(slopeJump(onBlank.rockerAt, x, h), `${where} bottom @ ${x}`).toBeLessThanOrEqual(
+              slopeJump((s) => view.bottomAt(mm(s)), x, h) + 1e-5,
+            );
+          } else {
+            expect(slopeJump((s) => profile.deckAt(mm(s)), x, h), `${where} deck @ ${x}`).toBeLessThanOrEqual(
+              slopeJump((s) => view.deckAt(mm(s)), x, h) + 1e-5,
+            );
+          }
+        }
+      }
+    }
+  });
+});
 
 describe("prepareBlank (R14)", () => {
   it("keeps its own copy, so changing the record afterwards changes nothing it samples", () => {
@@ -305,7 +502,7 @@ describe("placement on the blank (R3, D-08)", () => {
   });
 });
 
-describe("the board's foil, scaled from the blank (D-10, D-17, D-18, D-11)", () => {
+describe("the board's foil, cut from the blank (D-05, D-09, D-13, D-16)", () => {
   const blank = findBlank(MARKO_VENDOR, M_REGULAR);
   const prepared = prepareBlank(blank);
   const L = inchesToMm(70);
@@ -313,97 +510,230 @@ describe("the board's foil, scaled from the blank (D-10, D-17, D-18, D-11)", () 
   const board = defaultBoard(blank, L, centre);
   const { min, max } = placementRange(blank.lengthMm, L);
   const W = TIP_EASE_WINDOW_MM;
+  const outline = (onBlank: BoardOnBlank) => narrowerBy(onBlank, inchesToMm(2));
 
-  it("scales to the blank's thickness under the board's centre, so the centre equals the target at every placement (D-18)", () => {
-    for (const p of [min, mm(0), max]) {
-      const onBlank = boardOnBlank(prepared, board, p);
-      expect(onBlank.ratio).toBeCloseTo(centre / onBlank.blankThicknessAt(L / 2), 12);
-      expect(Math.abs(onBlank.thicknessAt(L / 2) - centre)).toBeLessThanOrEqual(1e-9);
+  it("puts both tips exactly on their settings and the centre on the target at every placement, under either Tip Style", () => {
+    for (const tipStyle of TIP_STYLES) {
+      for (const p of [min, mm(0), max]) {
+        const onBlank = boardOnBlank(prepared, { ...board, tipStyle }, p);
+        expect(onBlank.thicknessAt(0)).toBe(board.tailTip);
+        expect(onBlank.thicknessAt(L)).toBe(board.noseTip);
+        expect(Math.abs(onBlank.thicknessAt(L / 2) - centre)).toBeLessThanOrEqual(1e-9);
+        // The centre gap is the blank under the board's centre less the skin and the target (D-03).
+        expect(onBlank.centerGap).toBeCloseTo(onBlank.blankThicknessAt(L / 2) - board.deckSkin! - centre, 12);
+      }
     }
   });
 
-  it("puts both tips exactly on their settings and leaves the 12\" stations purely blank-scaled (D-17)", () => {
-    for (const p of [min, mm(0), max]) {
-      const onBlank = boardOnBlank(prepared, board, p);
-      expect(onBlank.thicknessAt(0)).toBe(board.tailTip);
-      expect(onBlank.thicknessAt(L)).toBe(board.noseTip);
-      expect(onBlank.derivedThicknessAt(W)).toBeCloseTo(onBlank.ratio * onBlank.blankThicknessAt(W), 9);
-      expect(onBlank.derivedThicknessAt(L - W)).toBeCloseTo(onBlank.ratio * onBlank.blankThicknessAt(L - W), 9);
+  it("takes the tip thinning off the bottom under Pin deck and off the deck under Bottom — the thickness is the same either way", () => {
+    const pin = boardOnBlank(prepared, { ...board, tipStyle: "pinDeck" }, mm(0));
+    const bottom = boardOnBlank(prepared, { ...board, tipStyle: "bottom" }, mm(0));
+    for (const s of quarterStations(L)) {
+      expect(pin.thicknessAt(s)).toBe(bottom.thicknessAt(s));
+      expect(pin.deckOffAt(s)).toBeCloseTo(board.deckSkin!, 12);
+      expect(pin.bottomOffAt(s)).toBeCloseTo(pin.centerGap + pin.tipThinningAt(s), 12);
+      expect(bottom.bottomOffAt(s)).toBeCloseTo(bottom.centerGap, 12);
+      expect(bottom.deckOffAt(s)).toBeCloseTo(board.deckSkin! + bottom.tipThinningAt(s), 12);
+      expect(pin.rockerAt(s)).toBeCloseTo(bottom.rockerAt(s) + pin.tipThinningAt(s), 12);
     }
+    // Each tip's thinning is the un-thinned thickness there less its setting (D-16).
+    for (const [s, tip] of [
+      [0, board.tailTip],
+      [L, board.noseTip],
+    ] as const) {
+      expect(pin.tipThinningAt(s)).toBeCloseTo(pin.blankThicknessAt(s) - board.deckSkin! - pin.centerGap - tip, 9);
+    }
+    expect(pin.tipThinningAt(W)).toBe(0);
+    expect(pin.tipThinningAt(L - W)).toBe(0);
   });
 
-  it("is continuous across both 12\" stations", () => {
-    const onBlank = boardOnBlank(prepared, board, mm(0));
-    for (const s of [W, L - W]) {
-      expect(Math.abs(onBlank.thicknessAt(s - 1e-6) - onBlank.thicknessAt(s + 1e-6))).toBeLessThanOrEqual(1e-6);
+  it("never lets a tip window dig under both its tip setting and the parallel cut, now the Phase 11 guard is gone", () => {
+    // Inside a tip window the ease runs between the parallel cut (the blank's thickness less the
+    // skin and the gap) and the tip setting. With the Phase 11 never-below guard retired (D-16),
+    // this pins what holds instead: the thickness is never under the lower of the two, and where
+    // the parallel cut leaves at least the tip setting all through the window, never more than
+    // 1/64" under the setting. Where the cut itself leaves less than the setting (a thin centre in a
+    // long, thick blank — the foil running out, D-18's territory), the board follows the cut there
+    // and only the tip itself is made as thick as set.
+    const sixtyFourth = inchesToMm(1 / 64);
+    const sixteenth = inchesToMm(1 / 16);
+    let boards = 0;
+    let cutBelowSetting = 0;
+    let worstUnderBoth = -Infinity;
+    let worstUnderSetting = 0;
+    for (const record of PICKABLE) {
+      const blankPrepared = prepareBlank(record);
+      const length = mm(record.lengthMm - inchesToMm(2));
+      const range = placementRange(record.lengthMm, length);
+      for (const c of [2.25, 2.5, 2.75, 3].map(inchesToMm)) {
+        if (blankPrepared.centerThicknessMm < c + inchesToMm(1 / 4)) continue;
+        const input = defaultBoard(record, length, c);
+        for (const p of [range.min, mm(0), range.max]) {
+          boards++;
+          const onBlank = boardOnBlank(blankPrepared, input, p);
+          expect(onBlank.thicknessAt(0)).toBe(input.tailTip);
+          expect(onBlank.thicknessAt(length)).toBe(input.noseTip);
+          const parallel = (s: number) => onBlank.blankThicknessAt(s) - input.deckSkin! - onBlank.centerGap;
+          for (const [tip, at] of [
+            [input.tailTip, (d: number) => d],
+            [input.noseTip, (d: number) => length - d],
+          ] as const) {
+            let cutKeepsSetting = true;
+            let underSetting = 0;
+            for (let d = 0; d <= W; d += sixteenth) {
+              const s = at(d);
+              const t = onBlank.thicknessAt(s);
+              worstUnderBoth = Math.max(worstUnderBoth, Math.min(tip, parallel(s)) - t);
+              underSetting = Math.max(underSetting, tip - t);
+              if (parallel(s) < tip) cutKeepsSetting = false;
+            }
+            if (cutKeepsSetting) worstUnderSetting = Math.max(worstUnderSetting, underSetting);
+            else cutBelowSetting++;
+          }
+        }
+      }
     }
+    expect(boards).toBeGreaterThan(PICKABLE.length);
+    expect(cutBelowSetting).toBeGreaterThan(0);
+    expect(worstUnderBoth).toBeLessThanOrEqual(1e-9);
+    expect(worstUnderSetting).toBeLessThanOrEqual(sixtyFourth);
   });
 
-  it("never dips below a tip setting inside that tip's window", () => {
-    const thickTips = { ...board, noseTip: inchesToMm(1), tailTip: inchesToMm(1) };
-    const onBlank = boardOnBlank(prepared, thickTips, mm(0));
-    for (let s = 0; s <= W; s += inchesToMm(1 / 16)) {
-      expect(onBlank.thicknessAt(s)).toBeGreaterThanOrEqual(thickTips.tailTip);
-      expect(onBlank.thicknessAt(L - s)).toBeGreaterThanOrEqual(thickTips.noseTip);
-    }
+  it("makes a tip thicker than the parallel foil there as thick as set: Pin deck drops the tip rocker, Bottom lifts the deck above the blank's and fails (D-16)", () => {
+    const preset = BOARD_PRESETS.find((p) => p.id === "shortboard")!;
+    const pick = (presetBlanks.picks as Record<string, { vendor: string; name: string; placementMm: number }>)[preset.id];
+    const shortboardPrepared = prepareBlank(findBlank(pick.vendor, pick.name));
+    const input: BoardOnBlankInput = {
+      length: preset.outline.length,
+      centerThickness: preset.foil.center,
+      noseTip: preset.foil.noseTip,
+      tailTip: preset.foil.tailTip,
+      nose12Offset: mm(0),
+      tail12Offset: mm(0),
+      ...DEFAULT_BLANK_CUT,
+    };
+    const pin = boardOnBlank(shortboardPrepared, { ...input, tipStyle: "pinDeck" }, mm(pick.placementMm));
+    const bottom = boardOnBlank(shortboardPrepared, { ...input, tipStyle: "bottom" }, mm(pick.placementMm));
+    expect(pin.tipThinningAt(0)).toBeLessThan(0);
+    expect(pin.thicknessAt(0)).toBe(input.tailTip);
+    expect(pin.rockerAt(0)).toBeLessThan(bottom.rockerAt(0));
+    expect(bottom.deckOffAt(0)).toBeCloseTo(input.deckSkin! + bottom.tipThinningAt(0), 12);
+    expect(bottom.deckOffAt(0)).toBeLessThan(0);
+    const result = fitAt(bottom, outline(bottom), mm(input.length / 2), rulesWith(inchesToMm(1)));
+    expect(result.fits).toBe(false);
+    expect(result.worst.kind).toBe("thin");
+    expect(result.worst.station).toBeLessThanOrEqual(inchesToMm(1));
   });
 
-  it("adds a 12\" fine-tune exactly at its station, leaving tips and centre alone, at any placement (D-11)", () => {
+  it("puts a Deck fine-tune on the deck alone: the 12\" station moves by the tweak and the bottom and rocker stay put (D-13)", () => {
     const offset = inchesToMm(1 / 16);
     for (const p of [min, mm(0), max]) {
       const plain = boardOnBlank(prepared, board, p);
-      const tuned = boardOnBlank(prepared, { ...board, nose12Offset: offset }, p);
-      expect(tuned.thicknessAt(L - W)).toBe(tuned.derivedThicknessAt(L - W) + offset);
+      const tuned = boardOnBlank(prepared, { ...board, fineTuneSurface: "deck", nose12Offset: offset }, p);
+      expect(tuned.thicknessAt(L - W)).toBeCloseTo(tuned.derivedThicknessAt(L - W) + offset, 9);
       expect(tuned.thicknessAt(0)).toBe(plain.thicknessAt(0));
       expect(tuned.thicknessAt(L)).toBe(plain.thicknessAt(L));
       expect(tuned.thicknessAt(L / 2)).toBe(plain.thicknessAt(L / 2));
       expect(tuned.thicknessAt(W)).toBe(plain.thicknessAt(W));
+      expect(tuned.deckOffAt(L - W)).toBeCloseTo(board.deckSkin! - offset, 9);
+      for (const s of quarterStations(L)) {
+        expect(tuned.rockerAt(s)).toBe(plain.rockerAt(s));
+        expect(tuned.bottomOffAt(s)).toBe(plain.bottomOffAt(s));
+      }
     }
-    const tail = boardOnBlank(prepared, { ...board, tail12Offset: mm(-offset) }, mm(0));
-    expect(tail.thicknessAt(W)).toBe(tail.derivedThicknessAt(W) - offset);
   });
 
-  it("lets the fit check see the fine-tune: enough extra foam at the nose 12\" turns a fitting board into a thin failure there", () => {
-    const outline = (onBlank: BoardOnBlank) => narrowerBy(onBlank, inchesToMm(2));
+  it("puts a Bottom fine-tune on the bottom alone: the deck stays put and the rocker re-levels on its own low point (D-13)", () => {
+    const offset = inchesToMm(1 / 8);
+    const plain = boardOnBlank(prepared, { ...board, fineTuneSurface: "bottom" }, mm(0));
+    const tuned = boardOnBlank(prepared, { ...board, fineTuneSurface: "bottom", tail12Offset: offset }, mm(0));
+    for (const s of quarterStations(L)) expect(tuned.deckOffAt(s)).toBe(plain.deckOffAt(s));
+    expect(tuned.bottomOffAt(W)).toBeCloseTo(tuned.centerGap - offset, 9);
+    expect(tuned.thicknessAt(W)).toBeCloseTo(tuned.derivedThicknessAt(W) + offset, 9);
+    let lowest = Infinity;
+    for (let s = 0; s <= L; s += inchesToMm(1 / 64)) lowest = Math.min(lowest, tuned.rockerAt(s));
+    expect(lowest).toBeGreaterThanOrEqual(-1e-3);
+    expect(lowest).toBeLessThanOrEqual(1e-3);
+  });
+
+  it("gives the identical board on either fine-tune surface when both tweaks are zero (D-13)", () => {
+    for (const tipStyle of TIP_STYLES) {
+      const deck = boardOnBlank(prepared, { ...board, tipStyle, fineTuneSurface: "deck" }, max);
+      const bottom = boardOnBlank(prepared, { ...board, tipStyle, fineTuneSurface: "bottom" }, max);
+      for (const s of quarterStations(L)) {
+        expect(bottom.rockerAt(s)).toBe(deck.rockerAt(s));
+        expect(bottom.thicknessAt(s)).toBe(deck.thicknessAt(s));
+        expect(bottom.deckOffAt(s)).toBe(deck.deckOffAt(s));
+        expect(bottom.bottomOffAt(s)).toBe(deck.bottomOffAt(s));
+      }
+    }
+  });
+
+  it("fails the fit where a Deck tweak lifts the deck above the blank's deck (D-09)", () => {
     const plain = boardOnBlank(prepared, board, mm(0));
-    expect(fitAt(plain, outline(plain), mm(L / 2), inchesToMm(1)).fits).toBe(true);
-    const spare = plain.blankThicknessAt(L - W) - plain.derivedThicknessAt(L - W);
-    const tuned = boardOnBlank(prepared, { ...board, nose12Offset: mm(spare + inchesToMm(1 / 16)) }, mm(0));
-    const result = fitAt(tuned, outline(tuned), mm(L / 2), inchesToMm(1));
+    expect(fitAt(plain, outline(plain), mm(L / 2), rulesWith(inchesToMm(1))).fits).toBe(true);
+    const tuned = boardOnBlank(
+      prepared,
+      { ...board, fineTuneSurface: "deck", nose12Offset: mm(board.deckSkin! + inchesToMm(1 / 16)) },
+      mm(0),
+    );
+    expect(tuned.deckOffAt(L - W)).toBeLessThan(0);
+    const result = fitAt(tuned, outline(tuned), mm(L / 2), rulesWith(inchesToMm(1)));
     expect(result.fits).toBe(false);
     expect(result.worst.kind).toBe("thin");
     expect(Math.abs(result.worst.station - (L - W))).toBeLessThanOrEqual(inchesToMm(1));
   });
 
-  it("never goes below zero, holds the centre and keeps both tips on or above their settings on every pickable blank (R13)", () => {
+  it("fails the fit where the blank is too thin under the board's centre for the target and the skin — the bottom drops below the blank's (D-09)", () => {
+    const plain = boardOnBlank(prepared, board, mm(0));
+    const tooThick = mm(plain.blankThicknessAt(L / 2) - board.deckSkin! + inchesToMm(1 / 16));
+    const onBlank = boardOnBlank(prepared, { ...board, centerThickness: tooThick }, mm(0));
+    expect(onBlank.centerGap).toBeLessThan(0);
+    for (const s of [W, L / 2, L - W]) expect(onBlank.bottomOffAt(s)).toBeLessThan(0);
+    const result = fitAt(onBlank, outline(onBlank), mm(L / 2), rulesWith(inchesToMm(1)));
+    expect(result.fits).toBe(false);
+    expect(result.worst.kind).toBe("thin");
+  });
+
+  it("on realistic boards on every blank the list puts under FITS: never below zero, centre on target, tips on their settings", () => {
     const quarter = inchesToMm(1 / 4);
-    let boards = 0;
+    const boards: { label: string; outline: OutlineSpec; length: Mm; tips: { noseTip: Mm; tailTip: Mm } }[] = [
+      {
+        label: "default",
+        outline: DEFAULT_BOARD_SPEC.outline,
+        length: DEFAULT_BOARD_SPEC.outline.length,
+        tips: { noseTip: DEFAULT_FIT_DEFAULTS.noseTipThickness, tailTip: DEFAULT_FIT_DEFAULTS.tailTipThickness },
+      },
+      ...BOARD_PRESETS.map((preset) => ({
+        label: preset.id,
+        outline: preset.outline,
+        length: preset.outline.length,
+        tips: { noseTip: preset.foil.noseTip, tailTip: preset.foil.tailTip },
+      })),
+    ];
+    let checked = 0;
     const problems: string[] = [];
-    for (const record of CATALOG.filter(isPickable)) {
-      const blankPrepared = prepareBlank(record);
-      const lengths = [record.lengthMm, Math.max(record.lengthMm - inchesToMm(6), inchesToMm(BOARD_LENGTH_RANGE_IN.min))];
-      for (const length of lengths) {
-        const range = placementRange(record.lengthMm, mm(length));
-        for (let c: number = inchesToMm(1.75); c <=blankPrepared.centerThicknessMm - inchesToMm(3 / 8) + 1e-9; c += quarter) {
-          const input = defaultBoard(record, length, c);
-          for (const p of [range.min, mm(0), range.max]) {
-            boards++;
-            const onBlank = boardOnBlank(blankPrepared, input, p);
-            const where = `${record.vendor} ${record.name} L=${length} c=${c} p=${p}`;
-            if (Math.abs(onBlank.thicknessAt(length / 2) - c) > 1e-9) problems.push(`${where}: centre`);
-            for (let s = 0; s <= length; s += quarter) {
-              const t = onBlank.thicknessAt(s);
-              if (t < 0) problems.push(`${where}: below zero at ${s}`);
-              if (s <= TIP_EASE_WINDOW_MM && t < input.tailTip) problems.push(`${where}: under tail tip at ${s}`);
-              if (s >= length - TIP_EASE_WINDOW_MM && t < input.noseTip) problems.push(`${where}: under nose tip at ${s}`);
-            }
+    for (const { label, outline: spec, length, tips } of boards) {
+      for (let c: number = inchesToMm(2); c <= inchesToMm(3) + 1e-9; c += quarter) {
+        const ctx = fitContext(spec, length, mm(c), tips);
+        for (const verdict of listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS).fits) {
+          checked++;
+          const onBlank = boardOnBlank(verdict.prepared, ctx.board, verdict.placement);
+          const where = `${label} c=${c} ${keyOf(verdict.prepared.record)}`;
+          if (Math.abs(onBlank.thicknessAt(length / 2) - c) > 1e-9) problems.push(`${where}: centre`);
+          if (onBlank.thicknessAt(0) !== tips.tailTip) problems.push(`${where}: tail tip`);
+          if (onBlank.thicknessAt(length) !== tips.noseTip) problems.push(`${where}: nose tip`);
+          for (const s of quarterStations(length)) {
+            if (onBlank.thicknessAt(s) < 0) problems.push(`${where}: below zero at ${s}`);
           }
         }
       }
     }
-    expect(boards).toBeGreaterThan(0);
+    expect(checked).toBeGreaterThan(100);
     expect(problems).toEqual([]);
-  });
+    // A whole-catalogue sweep, several lists deep: its own time limit, so a busy machine can't fail
+    // it — the speed guard is "judges the whole catalogue for the default board in under 250 ms".
+  }, 30_000);
 });
 
 describe("the fit check (R12, D-05)", () => {
@@ -414,7 +744,7 @@ describe("the fit check (R12, D-05)", () => {
 
   it("passes the M-Regular at full length with default tips and an outline 2\" narrower everywhere", () => {
     const onBlank = boardOnBlank(prepared, defaultBoard(blank, L, inchesToMm(2.5)), mm(0));
-    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(L / 2), margin);
+    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(L / 2), rulesWith(margin));
     expect(result.fits).toBe(true);
     expect(result.worst.amount).toBeLessThanOrEqual(0);
   });
@@ -424,7 +754,7 @@ describe("the fit check (R12, D-05)", () => {
     const tight = L / 2;
     const narrow = narrowerBy(onBlank, inchesToMm(2));
     const halfWidthAt = (s: Mm) => (s === tight ? onBlank.blankWidthAt(s) / 2 - inchesToMm(1 / 4) : narrow(s));
-    const result = fitAt(onBlank, halfWidthAt, mm(tight), margin);
+    const result = fitAt(onBlank, halfWidthAt, mm(tight), rulesWith(margin));
     expect(result.fits).toBe(false);
     expect(result.worst.kind).toBe("wide");
     expect(result.worst.station).toBe(tight);
@@ -445,7 +775,7 @@ describe("the fit check (R12, D-05)", () => {
     };
     const onBlank = boardOnBlank(roundedPrepared, input, mm(0));
     expect(onBlank.blankWidthAt(Lr)).toBe(0);
-    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(Lr / 2), margin);
+    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(Lr / 2), rulesWith(margin));
     expect(result.fits).toBe(true);
   });
 
@@ -454,7 +784,7 @@ describe("the fit check (R12, D-05)", () => {
     const onBlank = boardOnBlank(prepared, defaultBoard(blank, longer, inchesToMm(2.5)), mm(0));
     expect(onBlank.blankThicknessAt(0)).toBe(0);
     expect(onBlank.blankWidthAt(longer)).toBe(0);
-    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(longer / 2), margin);
+    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(longer / 2), rulesWith(margin));
     expect(result.fits).toBe(false);
     expect(result.worst.kind).toBe("thin");
   });
@@ -482,6 +812,16 @@ const PREPARED_ALL: PreparedBlank[] = CATALOG.flatMap((blank) => {
 const DEFAULT_SETTINGS: FitSettings = toFitSettings(DEFAULT_FIT_DEFAULTS);
 const SIXTEENTH_MM = inchesToMm(1 / 16);
 const QUARTER_MM = inchesToMm(1 / 4);
+/**
+ * How much a blank's printed centre must stand above the target centre out of the box (Phase 12
+ * D-10): the board's Deck Skin plus one pass of the Planer Max Depth — both read from the defaults.
+ */
+const DEFAULT_CENTRE_FLOOR = mm(DEFAULT_BLANK_CUT.deckSkin + DEFAULT_SETTINGS.planerMaxDepth);
+
+/** The floor check's view of a board: its length, target centre and its own Deck Skin. */
+function floorBoard(length: Mm, centerThickness: Mm, deckSkin: Mm = DEFAULT_BLANK_CUT.deckSkin) {
+  return { length, centerThickness, deckSkin };
+}
 
 /** A board built from an outline at the given length and centre, with the given tips. */
 function fitContext(
@@ -502,6 +842,7 @@ function fitContext(
       tailTip: tips.tailTip,
       nose12Offset: mm(0),
       tail12Offset: mm(0),
+      ...DEFAULT_BLANK_CUT,
     },
     halfWidthAt: (s: Mm) => sampleOutline(geometry, s),
     widePointStation: geometry.widePointStation,
@@ -538,7 +879,7 @@ function fitHere(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitSet
     boardOnBlank(prepared, ctx.board, mm(placement)),
     ctx.halfWidthAt,
     ctx.widePointStation,
-    settings.widthMargin,
+    settings,
   );
 }
 
@@ -572,10 +913,11 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
     };
     expect(listedKeys(listBlanks(PREPARED_ALL, ctx, longer))).not.toContain(keyOf(mRegular));
 
+    // A planer pass deep enough that M-Regular's centre can't hold the skin and one pass any more.
     const mRegularCentre = prepareBlank(mRegular).centerThicknessMm;
     const thicker: FitSettings = {
       ...DEFAULT_SETTINGS,
-      extraCenterThickness: mm(mRegularCentre - ctx.board.centerThickness + SIXTEENTH_MM),
+      planerMaxDepth: mm(mRegularCentre - ctx.board.centerThickness - DEFAULT_BLANK_CUT.deckSkin + SIXTEENTH_MM),
     };
     expect(listedKeys(listBlanks(PREPARED_ALL, ctx, thicker))).not.toContain(keyOf(mRegular));
   });
@@ -585,24 +927,24 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
     const boundary = prepared.lengthMm - DEFAULT_SETTINGS.extraLength;
     const centre = inchesToMm(2.5);
     for (const length of [boundary, boundary + 1e-9, boundary - 1e-9]) {
-      const check = floorCheck(prepared, mm(length), centre, DEFAULT_SETTINGS);
+      const check = floorCheck(prepared, floorBoard(mm(length), centre), DEFAULT_SETTINGS);
       expect(check.passes).toBe(true);
       expect(check.lengthShortBy).toBeNull();
       const ctx = fitContext(DEFAULT_BOARD_SPEC.outline, mm(length), centre);
       expect(listedKeys(listBlanks([prepared], ctx, DEFAULT_SETTINGS))).toEqual([keyOf(mRegular)]);
     }
-    const tooLong = floorCheck(prepared, mm(boundary + 1), centre, DEFAULT_SETTINGS);
+    const tooLong = floorCheck(prepared, floorBoard(mm(boundary + 1), centre), DEFAULT_SETTINGS);
     expect(tooLong.passes).toBe(false);
     expect(tooLong.lengthShortBy).toBeCloseTo(1, 9);
     const ctx = fitContext(DEFAULT_BOARD_SPEC.outline, mm(boundary + 1), centre);
     expect(listedKeys(listBlanks([prepared], ctx, DEFAULT_SETTINGS))).toEqual([]);
 
     // The centre floor, the same way: exactly on it passes, a millimetre over fails by that much.
-    const centreBoundary = prepared.centerThicknessMm - DEFAULT_SETTINGS.extraCenterThickness;
-    const onCentre = floorCheck(prepared, inchesToMm(60), mm(centreBoundary + 1e-9), DEFAULT_SETTINGS);
+    const centreBoundary = prepared.centerThicknessMm - DEFAULT_CENTRE_FLOOR;
+    const onCentre = floorCheck(prepared, floorBoard(inchesToMm(60), mm(centreBoundary + 1e-9)), DEFAULT_SETTINGS);
     expect(onCentre.passes).toBe(true);
     expect(onCentre.centerShortBy).toBeNull();
-    const overCentre = floorCheck(prepared, inchesToMm(60), mm(centreBoundary + 1), DEFAULT_SETTINGS);
+    const overCentre = floorCheck(prepared, floorBoard(inchesToMm(60), mm(centreBoundary + 1)), DEFAULT_SETTINGS);
     expect(overCentre.passes).toBe(false);
     expect(overCentre.lengthShortBy).toBeNull();
     expect(overCentre.centerShortBy).toBeCloseTo(1, 9);
@@ -614,13 +956,78 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
     const inch = inchesToMm(1);
     const eighth = inchesToMm(1 / 8);
     const length = mm(prepared.lengthMm - DEFAULT_SETTINGS.extraLength + inch);
-    const centre = mm(prepared.centerThicknessMm - DEFAULT_SETTINGS.extraCenterThickness + eighth);
-    const both = floorCheck(prepared, length, centre, DEFAULT_SETTINGS);
+    const centre = mm(prepared.centerThicknessMm - DEFAULT_CENTRE_FLOOR + eighth);
+    const both = floorCheck(prepared, floorBoard(length, centre), DEFAULT_SETTINGS);
     expect(both.passes).toBe(false);
     expect(both.lengthShortBy).toBeCloseTo(inch, 9);
     expect(both.centerShortBy).toBeCloseTo(eighth, 9);
-    const fine = floorCheck(prepared, inchesToMm(60), inchesToMm(2), DEFAULT_SETTINGS);
+    const fine = floorCheck(prepared, floorBoard(inchesToMm(60), inchesToMm(2)), DEFAULT_SETTINGS);
     expect(fine).toEqual({ passes: true, lengthShortBy: null, centerShortBy: null });
+  });
+
+  it("D-10: out of the box the centre floor is the target + 1/4\" — the 1/8\" Deck Skin and one 1/8\" planer pass", () => {
+    expect(DEFAULT_CENTRE_FLOOR).toBeCloseTo(inchesToMm(1 / 4), 9);
+    // A blank thinner than centre + skin + one pass at its printed centre is hidden; exactly on it
+    // is listed.
+    const prepared = prepareBlank(mRegular);
+    const onFloor = mm(prepared.centerThicknessMm - DEFAULT_CENTRE_FLOOR);
+    const listed = (centre: Mm) =>
+      listedKeys(listBlanks([prepared], fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(70), centre), DEFAULT_SETTINGS));
+    expect(listed(onFloor)).toEqual([keyOf(mRegular)]);
+    expect(listed(mm(onFloor + SIXTEENTH_MM))).toEqual([]);
+    const under = floorCheck(prepared, floorBoard(inchesToMm(70), mm(onFloor + SIXTEENTH_MM)), DEFAULT_SETTINGS);
+    expect(under.passes).toBe(false);
+    expect(under.lengthShortBy).toBeNull();
+    expect(under.centerShortBy).toBeCloseTo(SIXTEENTH_MM, 9);
+  });
+
+  it("D-10: a thicker Deck Skin on the board raises the centre floor by exactly as much", () => {
+    const prepared = prepareBlank(mRegular);
+    const centre = mm(prepared.centerThicknessMm - DEFAULT_CENTRE_FLOOR);
+    const thickerSkin = mm(DEFAULT_BLANK_CUT.deckSkin + SIXTEENTH_MM);
+    expect(floorCheck(prepared, floorBoard(inchesToMm(70), centre), DEFAULT_SETTINGS).passes).toBe(true);
+    const raised = floorCheck(prepared, floorBoard(inchesToMm(70), centre, thickerSkin), DEFAULT_SETTINGS);
+    expect(raised.passes).toBe(false);
+    expect(raised.centerShortBy).toBeCloseTo(SIXTEENTH_MM, 9);
+
+    // The list reads the skin from the board it is handed: the same board with the thicker skin
+    // hides M-Regular, and lists nothing the default skin does not.
+    const ctx = fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(70), centre);
+    const thickCtx: BoardFitContext = { ...ctx, board: { ...ctx.board, deckSkin: thickerSkin } };
+    const withDefault = listedKeys(listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS));
+    const withThicker = listedKeys(listBlanks(PREPARED_ALL, thickCtx, DEFAULT_SETTINGS));
+    expect(withDefault).toContain(keyOf(mRegular));
+    expect(withThicker).not.toContain(keyOf(mRegular));
+    for (const key of withThicker) expect(withDefault).toContain(key);
+  });
+
+  it("D-10: a deeper Planer Max Depth raises the centre floor by exactly as much", () => {
+    const prepared = prepareBlank(mRegular);
+    const centre = mm(prepared.centerThicknessMm - DEFAULT_CENTRE_FLOOR);
+    const deeper: FitSettings = { ...DEFAULT_SETTINGS, planerMaxDepth: mm(DEFAULT_SETTINGS.planerMaxDepth + SIXTEENTH_MM) };
+    const raised = floorCheck(prepared, floorBoard(inchesToMm(70), centre), deeper);
+    expect(raised.passes).toBe(false);
+    expect(raised.centerShortBy).toBeCloseTo(SIXTEENTH_MM, 9);
+  });
+
+  it("D-10: for the default board the list only grows against Phase 11's 3/8\" Extra Center Thickness rule", () => {
+    // Phase 11's floor, restated here only to compare against: printed centre ≥ target + 3/8".
+    const oldCentreFloor = inchesToMm(3 / 8);
+    expect(DEFAULT_CENTRE_FLOOR).toBeLessThan(oldCentreFloor);
+    let grewSomewhere = false;
+    for (const centreIn of [2.25, 2.5, 2.75, 3]) {
+      const ctx = defaultContext(72, centreIn);
+      const listed = listedKeys(listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS));
+      const oldListed = PREPARED_ALL.filter(
+        (p) =>
+          isPickable(p.record) &&
+          p.lengthMm >= ctx.board.length + DEFAULT_SETTINGS.extraLength - FLOOR_EPSILON_MM &&
+          p.centerThicknessMm >= ctx.board.centerThickness + oldCentreFloor - FLOOR_EPSILON_MM,
+      ).map((p) => keyOf(p.record));
+      for (const key of oldListed) expect(listed).toContain(key);
+      if (listed.length > oldListed.length) grewSomewhere = true;
+    }
+    expect(grewSomewhere).toBe(true);
   });
 
   it("D-07: across the default board and every preset, each fitting verdict sits at the fitting 1/16\" placement closest to centre", () => {
@@ -667,7 +1074,7 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
         wontFit++;
         const { prepared } = verdict;
         const L = ctx.board.length;
-        expect(floorCheck(prepared, L, ctx.board.centerThickness, DEFAULT_SETTINGS).passes).toBe(true);
+        expect(floorCheck(prepared, ctx.board, DEFAULT_SETTINGS).passes).toBe(true);
         expect(verdict.fits).toBe(false);
         expect(verdict.worst.amount).toBeGreaterThan(FIT_EPSILON_MM);
         expect(verdict.worst.station).toBeGreaterThanOrEqual(0);
@@ -755,8 +1162,8 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
       expect(listBlanks(PREPARED_ALL, defaultContext(72, 2.5), DEFAULT_SETTINGS).emptyReason).toBeNull();
     });
 
-    it("thickness — a centre above every blank's centre less Extra Center Thickness", () => {
-      const centre = mm(extremes.thickestCenter - DEFAULT_SETTINGS.extraCenterThickness + SIXTEENTH_MM);
+    it("thickness — a centre above every blank's centre less the Deck Skin and one planer pass", () => {
+      const centre = mm(extremes.thickestCenter - DEFAULT_CENTRE_FLOOR + SIXTEENTH_MM);
       const ctx = fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(72), centre);
       const result = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
       expect(result.fits).toEqual([]);
@@ -797,7 +1204,7 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
       const settings: FitSettings = {
         ...DEFAULT_SETTINGS,
         extraLength: mm(long.lengthMm - ctx.board.length),
-        extraCenterThickness: mm(thick.centerThicknessMm - ctx.board.centerThickness),
+        planerMaxDepth: mm(thick.centerThicknessMm - ctx.board.centerThickness - DEFAULT_BLANK_CUT.deckSkin),
       };
       const result = listBlanks([long, thick], ctx, settings);
       expect(result.fits).toEqual([]);
@@ -836,9 +1243,9 @@ describe("the offer and the rescue (D-08, R6)", () => {
     const before = defaultContext(70, 2.5);
     expect(listedKeys(listBlanks(PREPARED_ALL, before, DEFAULT_SETTINGS))).toContain(keyOf(mRegular));
 
-    const centre = mm(prepared.centerThicknessMm - DEFAULT_SETTINGS.extraCenterThickness + SIXTEENTH_MM);
+    const centre = mm(prepared.centerThicknessMm - DEFAULT_CENTRE_FLOOR + SIXTEENTH_MM);
     const after = fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(70), centre);
-    const floor = floorCheck(prepared, after.board.length, centre, DEFAULT_SETTINGS);
+    const floor = floorCheck(prepared, after.board, DEFAULT_SETTINGS);
     expect(floor.passes).toBe(false);
     expect(floor.centerShortBy).toBeCloseTo(SIXTEENTH_MM, 9);
 
@@ -964,5 +1371,210 @@ describe("the offer and the rescue (D-08, R6)", () => {
       }
       expect(clampedChecked).toBeGreaterThan(0);
     });
+  });
+});
+
+describe("one planer pass under the board's centre where it sits (D-15)", () => {
+  it("a board slid to where less than one pass would come off the bottom at its centre fails thin at the centre by exactly the missing foam, yet the blank still fits elsewhere (F2) and the rescue leaves a full pass", () => {
+    const ctx = defaultContext(72, 2.5);
+    const L = ctx.board.length;
+    const pass = DEFAULT_SETTINGS.planerMaxDepth;
+    const list = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+    let underOnePass = 0;
+    let found = 0;
+    for (const verdict of [...list.fits, ...list.wontFit]) {
+      const { prepared } = verdict;
+      const range = placementRange(prepared.lengthMm, L);
+      for (const end of [range.min, range.max]) {
+        const gap = boardOnBlank(prepared, ctx.board, end).bottomOffAt(L / 2);
+        if (!(gap > 0 && gap < pass - FIT_EPSILON_MM)) continue;
+        underOnePass++;
+        const here = fitHere(prepared, ctx, DEFAULT_SETTINGS, end);
+        expect(here.fits, keyOf(prepared.record)).toBe(false);
+        // Whatever else is tight at this end, the centre alone is short by the missing pass …
+        expect(here.worst.amount).toBeGreaterThanOrEqual(pass - gap - 1e-9);
+        // … and where the centre is the worst place and the blank fits somewhere else — the flag's
+        // F2, "{amount} too thin at the center" — the amount is exactly the missing foam.
+        if (here.worst.station !== L / 2) continue;
+        if (!judgeBlank(prepared, ctx, DEFAULT_SETTINGS).fits) continue;
+        found++;
+        expect(here.worst.kind).toBe("thin");
+        expect(here.worst.amount).toBeCloseTo(pass - gap, 9);
+        const to = nearestFittingPlacement(prepared, ctx, DEFAULT_SETTINGS, end);
+        expect(to).not.toBeNull();
+        expect(boardOnBlank(prepared, ctx.board, to!).bottomOffAt(L / 2)).toBeGreaterThanOrEqual(pass - FIT_EPSILON_MM);
+        expect(fitHere(prepared, ctx, DEFAULT_SETTINGS, to!).fits).toBe(true);
+      }
+    }
+    expect(underOnePass).toBeGreaterThan(0);
+    expect(found).toBeGreaterThan(0);
+  });
+
+  it("every fitting verdict leaves at least one pass under the board's centre at its placement", () => {
+    for (const { label, ctx } of sweepContexts()) {
+      for (const verdict of listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS).fits) {
+        const onBlank = boardOnBlank(verdict.prepared, ctx.board, verdict.placement);
+        expect(
+          onBlank.bottomOffAt(ctx.board.length / 2),
+          `${label} ${keyOf(verdict.prepared.record)}`,
+        ).toBeGreaterThanOrEqual(DEFAULT_SETTINGS.planerMaxDepth - FIT_EPSILON_MM);
+      }
+    }
+  });
+});
+
+describe("a board under 1/8\" thick anywhere does not fit (D-18)", () => {
+  it("the least foam a board may be anywhere is 1/8\", and a tip set to exactly that still fits", () => {
+    expect(MIN_FOIL_THICKNESS_MM).toBe(inchesToMm(1 / 8));
+    const blank = findBlank(MARKO_VENDOR, M_REGULAR);
+    const prepared = prepareBlank(blank);
+    const L = blank.lengthMm;
+    const board = {
+      ...defaultBoard(blank, L, inchesToMm(2.5)),
+      noseTip: MIN_FOIL_THICKNESS_MM,
+      tailTip: MIN_FOIL_THICKNESS_MM,
+    };
+    const onBlank = boardOnBlank(prepared, board, mm(0));
+    expect(onBlank.thicknessAt(0)).toBe(MIN_FOIL_THICKNESS_MM);
+    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(L / 2), DEFAULT_SETTINGS);
+    expect(result.fits).toBe(true);
+    // The tips are the tightest place, with exactly nothing to spare.
+    expect(result.worst.kind).toBe("runsOut");
+    expect(result.worst.amount).toBe(0);
+
+    // A sixteenth thinner at the tail tip and the check fires there, by exactly that sixteenth.
+    const thinner = boardOnBlank(prepared, { ...board, tailTip: mm(MIN_FOIL_THICKNESS_MM - SIXTEENTH_MM) }, mm(0));
+    const failed = fitAt(thinner, narrowerBy(thinner, inchesToMm(2)), mm(L / 2), DEFAULT_SETTINGS);
+    expect(failed.fits).toBe(false);
+    expect(failed.worst.kind).toBe("runsOut");
+    expect(failed.worst.station).toBe(0);
+    expect(failed.worst.amount).toBeCloseTo(SIXTEENTH_MM, 9);
+  });
+
+  it("a 1\" center on the default board runs out of foam in at least one blank, and says where by how much", () => {
+    const ctx = defaultContext(72, 1);
+    let runsOut = 0;
+    for (const prepared of PREPARED_ALL) {
+      if (!isPickable(prepared.record)) continue;
+      const verdict = judgeBlank(prepared, ctx, DEFAULT_SETTINGS);
+      if (verdict.fits || verdict.worst.kind !== "runsOut") continue;
+      runsOut++;
+      const onBlank = boardOnBlank(prepared, ctx.board, verdict.placement);
+      expect(onBlank.thicknessAt(verdict.worst.station)).toBeCloseTo(MIN_FOIL_THICKNESS_MM - verdict.worst.amount, 9);
+      expect(verdict.worst.amount).toBeGreaterThan(FIT_EPSILON_MM);
+    }
+    expect(runsOut).toBeGreaterThan(0);
+  });
+
+  it("from a 2\" center up, no listed blank is ruled out for running out — the default board and every preset", () => {
+    const boards = [
+      { label: "default", outline: DEFAULT_BOARD_SPEC.outline, length: inchesToMm(72), tips: undefined },
+      ...BOARD_PRESETS.map((preset) => ({
+        label: preset.id,
+        outline: preset.outline,
+        length: preset.outline.length,
+        tips: { noseTip: preset.foil.noseTip, tailTip: preset.foil.tailTip },
+      })),
+    ];
+    // A FITTING verdict's `worst` is its tightest place with foam to spare, and that can be the
+    // thinnest spot on the board (a negative runs-out amount) — so the rule is on the verdicts that
+    // fail: none of them fails for running out.
+    let judged = 0;
+    for (const { label, outline, length, tips } of boards) {
+      for (let centreIn = 2; centreIn <= 3; centreIn += 1 / 4) {
+        const ctx = fitContext(outline, length, inchesToMm(centreIn), tips);
+        const list = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+        for (const verdict of [...list.fits, ...list.wontFit]) {
+          judged++;
+          const ruledOutForRunningOut = !verdict.fits && verdict.worst.kind === "runsOut";
+          expect(ruledOutForRunningOut, `${label} at ${centreIn}": ${keyOf(verdict.prepared.record)}`).toBe(false);
+          if (verdict.worst.kind === "runsOut") expect(verdict.worst.amount).toBeLessThanOrEqual(FIT_EPSILON_MM);
+        }
+      }
+    }
+    expect(judged).toBeGreaterThan(BOARD_PRESETS.length * 5);
+  }, 120_000);
+});
+
+describe("a Deck fine-tune bigger than the Deck Skin fits nowhere, and is read at once (D-13)", () => {
+  // The default board with its nose 12" tweak pushed `by` past the skin, on the chosen surface.
+  const overSkin = (surface: FineTuneSurface, by: Mm = SIXTEENTH_MM): BoardFitContext => {
+    const ctx = defaultContext(72, 2.5);
+    return { ...ctx, board: { ...ctx.board, nose12Offset: mm(ctx.board.deckSkin + by), fineTuneSurface: surface } };
+  };
+  const longest = () => PREPARED_ALL.reduce((a, b) => (b.lengthMm > a.lengthMm ? b : a));
+
+  it("no blank fits, each is read at the centre placement, and most read exactly the tweak less the skin too thin at the nose 12\"", () => {
+    const ctx = overSkin("deck");
+    const result = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+    expect(result.fits).toHaveLength(0);
+    expect(result.wontFit.length).toBeGreaterThan(100);
+    const nose12 = rockerStationPositions(ctx.board.length).find((p) => p.key === "nose12")!.station;
+    let readAsTheTweak = 0;
+    for (const verdict of result.wontFit) {
+      expect(verdict.fits).toBe(false);
+      expect(verdict.placement).toBe(0);
+      // Nowhere is the worst smaller than the over-skin amount itself.
+      expect(verdict.worst.amount).toBeGreaterThanOrEqual(SIXTEENTH_MM - FIT_EPSILON_MM);
+      if (Math.abs(verdict.worst.amount - SIXTEENTH_MM) < 1e-6) {
+        expect(verdict.worst.kind).toBe("thin");
+        expect(verdict.worst.station).toBeCloseTo(nose12, 6);
+        readAsTheTweak++;
+      }
+    }
+    // Where nothing else is tighter — most of the catalogue for the default board — the reason IS the tweak.
+    expect(readAsTheTweak).toBeGreaterThan(result.wontFit.length / 2);
+  });
+
+  it("hides no fitting placement: every 1/4\" placement of the longest blank fails by at least that much", () => {
+    const ctx = overSkin("deck");
+    const prepared = longest();
+    const { min, max } = placementRange(prepared.lengthMm, ctx.board.length);
+    expect(max - min).toBeGreaterThan(inchesToMm(24));
+    let tried = 0;
+    for (let placement: number = min; placement <= max + 1e-9; placement += QUARTER_MM) {
+      const onBlank = boardOnBlank(prepared, ctx.board, clampPlacement(mm(placement), prepared.lengthMm, ctx.board.length));
+      const result = fitAt(onBlank, ctx.halfWidthAt, ctx.widePointStation, DEFAULT_SETTINGS);
+      expect(result.fits).toBe(false);
+      expect(result.worst.amount).toBeGreaterThanOrEqual(SIXTEENTH_MM - FIT_EPSILON_MM);
+      tried++;
+    }
+    expect(tried).toBeGreaterThan(90);
+    expect(nearestFittingPlacement(prepared, ctx, DEFAULT_SETTINGS, mm(0))).toBeNull();
+  });
+
+  it("the same tweak on the Bottom is searched as before and still fits most of the catalogue", () => {
+    const result = listBlanks(PREPARED_ALL, overSkin("bottom"), DEFAULT_SETTINGS);
+    expect(result.fits.length).toBeGreaterThan(100);
+  });
+
+  it("a tweak exactly the skin is not over it — the list still fits", () => {
+    const result = listBlanks(PREPARED_ALL, overSkin("deck", mm(0)), DEFAULT_SETTINGS);
+    expect(result.fits.length).toBeGreaterThan(100);
+  });
+
+  it("tweakExceedsDeckSkin: true for a Deck tweak 1/16\" past the skin at either 12\" station, false at the skin, on the Bottom or for a negative tweak", () => {
+    const board = defaultContext(72, 2.5).board;
+    const skin = board.deckSkin;
+    const over = mm(skin + SIXTEENTH_MM);
+    // Nose or tail, on the Deck: over the skin.
+    expect(tweakExceedsDeckSkin({ ...board, fineTuneSurface: "deck", nose12Offset: over, tail12Offset: mm(0) })).toBe(true);
+    expect(tweakExceedsDeckSkin({ ...board, fineTuneSurface: "deck", nose12Offset: mm(0), tail12Offset: over })).toBe(true);
+    // Exactly the skin is not over it.
+    expect(tweakExceedsDeckSkin({ ...board, fineTuneSurface: "deck", nose12Offset: skin, tail12Offset: skin })).toBe(false);
+    // The same tweak on the Bottom never lifts the deck.
+    expect(tweakExceedsDeckSkin({ ...board, fineTuneSurface: "bottom", nose12Offset: over, tail12Offset: over })).toBe(false);
+    // A negative tweak takes foam away — never over the skin.
+    const under = mm(-(skin + SIXTEENTH_MM));
+    expect(tweakExceedsDeckSkin({ ...board, fineTuneSurface: "deck", nose12Offset: under, tail12Offset: under })).toBe(false);
+  });
+
+  it("judges the whole catalogue in under 250 ms when nothing fits (12-08 measured 1.3 s in Node, ~40 s on WebKit)", () => {
+    const ctx = overSkin("deck");
+    const started = performance.now();
+    const result = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+    const elapsed = performance.now() - started;
+    expect(result.wontFit.length).toBeGreaterThan(100);
+    expect(elapsed).toBeLessThan(250);
   });
 });

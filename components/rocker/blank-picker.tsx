@@ -51,7 +51,7 @@ import {
 import type { UnitsSystem } from "@/lib/geometry/units";
 import { cn } from "@/lib/utils";
 import { BlankFlag } from "./blank-flag";
-import { useBlankList } from "./use-blank-list";
+import { useBlankList, useCenterFloorRules } from "./use-blank-list";
 
 /** How many rows state A shows before "Show all" (`(researcher's choice — founder may overrule)`). */
 const FIRST_ROWS = 6;
@@ -154,15 +154,16 @@ function BlankListBody({
 }: Omit<BlankListProps, "catalog"> & { records: readonly BlankRecord[] }) {
   const { system } = useUnits();
   const { blank, pickBlank, outline, foil } = useDesign();
-  const { settings, openDialog } = useFitDefaults();
+  const { openDialog } = useFitDefaults();
   const { list, board, prepared, recordOf } = useBlankList(records);
+  const rules = useCenterFloorRules();
   const [expanded, setExpanded] = useState(false);
 
   if (list.emptyReason !== null) {
     const { longest, thickestCenter } = catalogueExtremes(prepared);
     const message = emptyListMessage(
       list.emptyReason,
-      { boardLength: outline.length, longest, centre: foil.center, thickestCenter, settings },
+      { boardLength: outline.length, longest, centre: foil.center, thickestCenter, rules },
       system,
     );
     return (
@@ -263,11 +264,11 @@ function BlankList({ catalog, ...rest }: BlankListProps) {
 /** The intro, the search box and the list region (states A and B). */
 function BlankBrowser({ catalog, onPicked }: { catalog: Promise<BlankCatalogResult>; onPicked: () => void }) {
   const { system } = useUnits();
-  const { settings } = useFitDefaults();
+  const rules = useCenterFloorRules();
   const [query, setQuery] = useState("");
   return (
     <div className="flex flex-col gap-2">
-      <div className="text-xs text-surf-ink-muted font-normal">{listIntro(settings, system)}</div>
+      <div className="text-xs text-surf-ink-muted font-normal">{listIntro(rules, system)}</div>
       <div className="relative">
         <SearchIcon
           aria-hidden

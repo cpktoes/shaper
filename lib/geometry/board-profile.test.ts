@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
-import type { BlankRecord } from "./blank";
+import { DEFAULT_BLANK_CUT, type BlankRecord } from "./blank";
 import { boardOnBlank, placementRange, prepareBlank, type BoardOnBlankInput } from "./blank-fit";
 import {
   buildBlankProfile,
@@ -41,6 +41,7 @@ function boardInput(overrides: Partial<BoardOnBlankInput> = {}): BoardOnBlankInp
     tailTip: inchesToMm(0.25),
     nose12Offset: mm(0),
     tail12Offset: mm(0),
+    ...DEFAULT_BLANK_CUT,
     ...overrides,
   };
 }
@@ -139,16 +140,37 @@ describe("the blank profile — a board sitting in a real blank", () => {
     expectDeckIsDerived(profile);
   });
 
-  it("gives the foam to come off at each station — at the centre, the blank under the board's centre less the target (R4, D-18)", () => {
-    expect(view.foamOff.center).toBeCloseTo(view.onBlank.blankThicknessAt(L / 2) - inchesToMm(2.5), 9);
+  it("gives the foam to come off the deck and off the bottom at each station — the skin and the centre gap at the centre (R4, D-03)", () => {
+    const skin = board.deckSkin;
+    expect(view.cut).toEqual(DEFAULT_BLANK_CUT);
+    expect(view.centerGap).toBe(view.onBlank.centerGap);
+    expect(view.centerGap).toBeCloseTo(view.onBlank.blankThicknessAt(L / 2) - skin - board.centerThickness, 9);
+    expect(view.foamOffDeck.center).toBeCloseTo(skin, 9);
+    expect(view.foamOffBottom.center).toBeCloseTo(view.centerGap, 9);
     for (const { key, station } of profile.stations) {
-      expect(view.foamOff[key]).toBe(view.onBlank.blankThicknessAt(station) - profile.thicknessAt(station));
+      expect(view.foamOffDeck[key]).toBe(view.onBlank.deckOffAt(station));
+      expect(view.foamOffBottom[key]).toBe(view.onBlank.bottomOffAt(station));
+      // Off the deck plus off the bottom is all the foam that comes off: the blank's thickness
+      // there less the board's.
+      expect(view.foamOffDeck[key] + view.foamOffBottom[key]).toBeCloseTo(
+        view.onBlank.blankThicknessAt(station) - profile.thicknessAt(station),
+        9,
+      );
     }
   });
 
-  it("holds the blank-scaled 12in thicknesses before any fine-tune (R5, D-11)", () => {
+  it("holds the 12in thicknesses before any fine-tune: the blank's there less the skin and the gap (R3, D-11)", () => {
     expect(view.derived12.nose12).toBe(view.onBlank.derivedThicknessAt(L - MEASURE_STATION_MM));
     expect(view.derived12.tail12).toBe(view.onBlank.derivedThicknessAt(MEASURE_STATION_MM));
+    for (const [key, station] of [
+      ["nose12", L - MEASURE_STATION_MM],
+      ["tail12", MEASURE_STATION_MM],
+    ] as const) {
+      expect(view.derived12[key]).toBeCloseTo(
+        view.onBlank.blankThicknessAt(station) - board.deckSkin - view.centerGap,
+        9,
+      );
+    }
   });
 
   it("places the blank's silhouette in the board's own coordinates", () => {
@@ -158,13 +180,29 @@ describe("the blank profile — a board sitting in a real blank", () => {
     expect(view.record.name).toBe(M_REGULAR);
   });
 
-  it("lays the board's bottom on the blank's bottom, and the blank's deck is never below its bottom", () => {
-    const along = sweep(L, 199).filter((s) => view.bottomAt(s) !== profile.rockerAt(s));
+  it("sits the blank's bottom the foam off the bottom under the board's, and the blank's deck is never below its bottom", () => {
+    // The blank's bottom is the board's bottom less the foam off the bottom there, and so the
+    // blank's deck less its own thickness.
+    const along = sweep(L, 199).filter(
+      (s) =>
+        view.bottomAt(s) !== profile.rockerAt(s) - view.onBlank.bottomOffAt(s) ||
+        Math.abs(view.bottomAt(s) - (view.deckAt(s) - view.onBlank.blankThicknessAt(s))) > 1e-9,
+    );
     expect(along).toEqual([]);
+    // Parallel to the board's un-thinned bottom: the centre gap below it wherever the tips are not
+    // thinned, the gap plus the Pin deck thinning where they are (Phase 12 R2).
+    const gap = sweep(L, 199).filter(
+      (s) => Math.abs(profile.rockerAt(s) - view.bottomAt(s) - (view.centerGap + view.onBlank.tipThinningAt(s))) > 1e-9,
+    );
+    expect(gap).toEqual([]);
     const wholeBlank = sweep(mm(view.end - view.start), 400).map((d) => mm(view.start + d));
-    // bottomAt is the blank's import-levelled rocker less the crop's low point (Pattern 3).
+    // bottomAt is the blank's import-levelled rocker less the crop's low point (Pattern 3), less
+    // the centre gap.
     const formula = wholeBlank.filter(
-      (s) => Math.abs(view.bottomAt(s) - (view.onBlank.blankRockerAt(s) - view.onBlank.cropMinimum)) > 1e-9,
+      (s) =>
+        Math.abs(
+          view.bottomAt(s) - (view.onBlank.blankRockerAt(s) - view.onBlank.cropMinimum - view.centerGap),
+        ) > 1e-9,
     );
     expect(formula).toEqual([]);
     const inverted = wholeBlank.filter((s) => view.deckAt(s) < view.bottomAt(s));
@@ -250,31 +288,43 @@ describe("buildBoardProfile — one entry point for both kinds of board", () => 
     expect(profile.stationRocker).toEqual(expected.stationRocker);
   });
 
-  it("with a blank, feeds the foil's centre and tips and the two offsets into the blank profile", () => {
+  it("with a blank, feeds the foil's centre and tips, the two offsets and the board's own cut into the blank profile", () => {
     const nose12Offset = inchesToMm(1 / 16);
     const tail12Offset = inchesToMm(-1 / 32);
-    const profile = buildBoardProfile({
-      length: BOARD_LENGTH,
-      rocker: DEFAULT_FALLBACK_ROCKER,
-      foil,
-      blank: { prepared, placement: mm(0), nose12Offset, tail12Offset },
-    });
-    const expected = buildBlankProfile(
-      prepared,
-      {
+    const cuts = [
+      DEFAULT_BLANK_CUT,
+      { deckSkin: inchesToMm(3 / 16), tipStyle: "bottom", fineTuneSurface: "bottom" },
+    ] as const;
+    const profiles = cuts.map((cut) => {
+      const profile = buildBoardProfile({
         length: BOARD_LENGTH,
-        centerThickness: foil.center,
-        noseTip: foil.noseTip,
-        tailTip: foil.tailTip,
-        nose12Offset,
-        tail12Offset,
-      },
-      mm(0),
-    );
-    expect(profile.blank).not.toBeNull();
-    expect(profile.effectiveFoil).toEqual(expected.effectiveFoil);
-    expect(profile.stationRocker).toEqual(expected.stationRocker);
-    expect(profile.blank!.foamOff).toEqual(expected.blank!.foamOff);
+        rocker: DEFAULT_FALLBACK_ROCKER,
+        foil,
+        blank: { prepared, placement: mm(0), nose12Offset, tail12Offset, ...cut },
+      });
+      const expected = buildBlankProfile(
+        prepared,
+        {
+          length: BOARD_LENGTH,
+          centerThickness: foil.center,
+          noseTip: foil.noseTip,
+          tailTip: foil.tailTip,
+          nose12Offset,
+          tail12Offset,
+          ...cut,
+        },
+        mm(0),
+      );
+      expect(profile.blank).not.toBeNull();
+      expect(profile.blank!.cut).toEqual(cut);
+      expect(profile.effectiveFoil).toEqual(expected.effectiveFoil);
+      expect(profile.stationRocker).toEqual(expected.stationRocker);
+      expect(profile.blank!.foamOffDeck).toEqual(expected.blank!.foamOffDeck);
+      expect(profile.blank!.foamOffBottom).toEqual(expected.blank!.foamOffBottom);
+      return profile;
+    });
+    // The cut really reaches the maths: a thicker skin leaves less foam off the bottom.
+    expect(profiles[1].blank!.centerGap).toBeLessThan(profiles[0].blank!.centerGap);
   });
 });
 
@@ -313,7 +363,13 @@ describe("Remove This Blank keeps the five stations exactly (WR-01)", () => {
       length: c.length,
       rocker: DEFAULT_FALLBACK_ROCKER,
       foil: c.foil,
-      blank: { prepared: prepareBlank(c.record), placement: c.placement, nose12Offset: inchesToMm(1 / 16), tail12Offset: inchesToMm(-1 / 32) },
+      blank: {
+        prepared: prepareBlank(c.record),
+        placement: c.placement,
+        nose12Offset: inchesToMm(1 / 16),
+        tail12Offset: inchesToMm(-1 / 32),
+        ...DEFAULT_BLANK_CUT,
+      },
     });
     const handSet = handSetFromProfile(onBlank, c.foil);
     const after = buildBoardProfile({ length: c.length, rocker: handSet.rocker, foil: handSet.foil, blank: null });

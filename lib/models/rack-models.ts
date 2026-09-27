@@ -11,7 +11,7 @@
  * Pure: no React, browser or database import.
  */
 import { summarizeDesign } from "@/lib/geometry/design";
-import { parseSnapshot, type DesignSnapshotFields } from "./design-snapshot";
+import { parseSnapshot, type DesignSnapshotFields, type ParseSnapshotOptions } from "./design-snapshot";
 
 /** A stored board row as the rack reads it. */
 export interface RackRow {
@@ -29,13 +29,20 @@ export interface RackModel {
   updatedAt: Date;
 }
 
+/**
+ * `options` is handed straight to `parseSnapshot` for every row: a board saved under Phase 11 is
+ * carried over to the new cut with the Tip Style it names — the shaper's own account default
+ * (Phase 12 D-14), which the caller looks up once for the whole rack, and only when some row
+ * actually holds a Phase 11 blank. Left out, a carried board takes Pin deck.
+ */
 export function rackModelsFromRows(
   rows: readonly RackRow[],
   log: (message: string, error: unknown) => void = (message, error) => console.error(message, error),
+  options: ParseSnapshotOptions = {},
 ): RackModel[] {
   return rows.flatMap((row) => {
     try {
-      const snapshot = parseSnapshot(row.snapshot);
+      const snapshot = parseSnapshot(row.snapshot, options);
       summarizeDesign(snapshot);
       return [{ id: row.id, name: row.name, snapshot, updatedAt: row.updatedAt }];
     } catch (error) {

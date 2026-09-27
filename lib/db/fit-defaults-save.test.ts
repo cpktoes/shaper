@@ -40,18 +40,26 @@ describe("the fit-defaults save writes only the settings it was given (WR-02)", 
     expect(updatedColumns(sql)).toEqual(["updated_at", "width_margin_mm"]);
   });
 
-  it("Restore Defaults (all five sent as null) updates all five columns and updated_at", () => {
+  it("Restore Defaults (all seven sent as null) updates the seven columns and updated_at — never the retired one", () => {
     const allNull = Object.fromEntries(FIT_DEFAULTS_KEYS.map((key) => [key, null])) as FitDefaultsPatch;
-    expect(updatedColumns(upsertSql(allNull))).toEqual(
+    const updated = updatedColumns(upsertSql(allNull));
+    expect(updated).toEqual(
       [
-        "extra_center_thickness_mm",
+        "deck_skin_mm",
         "extra_length_mm",
         "nose_tip_thickness_mm",
+        "planer_max_depth_mm",
         "tail_tip_thickness_mm",
+        "tip_style",
         "updated_at",
         "width_margin_mm",
       ].sort(),
     );
+    expect(updated).not.toContain("extra_center_thickness_mm");
+  });
+
+  it("a one-key Tip Style patch updates only tip_style and updated_at", () => {
+    expect(updatedColumns(upsertSql({ tipStyle: "bottom" }))).toEqual(["tip_style", "updated_at"]);
   });
 
   it("never names units or the print toggle in the update", () => {

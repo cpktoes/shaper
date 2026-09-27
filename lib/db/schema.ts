@@ -78,10 +78,18 @@ export const userPreferences = pgTable("user_preferences", {
   units: text("units"),
   printRailInstructions: boolean("print_rail_instructions"),
   extraLengthMm: doublePrecision("extra_length_mm"),
+  // Retired by Phase 12 (D-10): no longer read or written. It stays declared, and stays in the
+  // database, until a follow-up step after the deploy drops it (D-19, CLAUDE.md Database).
   extraCenterThicknessMm: doublePrecision("extra_center_thickness_mm"),
   widthMarginMm: doublePrecision("width_margin_mm"),
   noseTipThicknessMm: doublePrecision("nose_tip_thickness_mm"),
   tailTipThicknessMm: doublePrecision("tail_tip_thickness_mm"),
+  // Phase 12 (D-01, D-03, D-04): the shaper's Planer Max Depth and Deck Skin defaults (both
+  // millimetres) and Tip Style default (Pin deck / Bottom; the allowed values live in the reader's
+  // allow-list, lib/fit-defaults-preference.ts). Null = not chosen, like every column above.
+  planerMaxDepthMm: doublePrecision("planer_max_depth_mm"),
+  deckSkinMm: doublePrecision("deck_skin_mm"),
+  tipStyle: text("tip_style"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
+import { DEFAULT_BLANK_CUT } from "@/lib/geometry/blank";
 import { boardOnBlank, fitAt, prepareBlank } from "@/lib/geometry/blank-fit";
 import { DEFAULT_FOIL_SPEC } from "@/lib/geometry/foil";
 import { BOARD_PRESETS, type BoardPreset } from "@/lib/geometry/presets";
@@ -78,7 +79,7 @@ describe("the rule and the picks (D-03, D-08)", () => {
       boardOnBlank(prepareBlank(blank.copy), ctx.board, blank.placement),
       ctx.halfWidthAt,
       ctx.widePointStation,
-      SETTINGS.widthMargin,
+      SETTINGS,
     );
     expect(result.fits).toBe(true);
   });
@@ -94,9 +95,11 @@ describe("the rule and the picks (D-03, D-08)", () => {
     expect(() => provisionalPresetPick(shortboard, [])).toThrow(/Shortboard/);
   });
 
-  it("the fit context is the preset's own board: its length, centre and tips, no fine-tunes", () => {
+  it("the fit context is the preset's own board: its length, centre and tips, no fine-tunes, and its own cut (D-17)", () => {
     for (const preset of BOARD_PRESETS) {
       const { board } = presetFitContext(preset);
+      // D-17: a preset is judged with its own 1/8" skin and Pin deck, never the account default —
+      // the way it keeps its own tips.
       expect(board).toEqual({
         length: preset.outline.length,
         centerThickness: preset.foil.center,
@@ -104,6 +107,7 @@ describe("the rule and the picks (D-03, D-08)", () => {
         tailTip: preset.foil.tailTip,
         nose12Offset: 0,
         tail12Offset: 0,
+        ...DEFAULT_BLANK_CUT,
       });
     }
   });
@@ -119,6 +123,28 @@ describe("presetBlank and presetDesignFields — what a preset opens as", () => 
     expect(fields.blank.placement).toBe(pick.placementMm);
     expect(fields.blank.nose12Offset).toBe(0);
     expect(fields.blank.tail12Offset).toBe(0);
+  });
+
+  it.each(BOARD_PRESETS)("$id: opens with its own cut — DEFAULT_BLANK_CUT's skin, Tip Style and fine-tune surface (D-17)", (preset) => {
+    const blank = presetBlank(preset);
+    expect(blank.deckSkin).toBe(DEFAULT_BLANK_CUT.deckSkin);
+    expect(blank.tipStyle).toBe(DEFAULT_BLANK_CUT.tipStyle);
+    expect(blank.fineTuneSurface).toBe(DEFAULT_BLANK_CUT.fineTuneSurface);
+    // The one mapping applyPreset and the preset card both read carries the same cut.
+    const fields = presetDesignFields(preset);
+    expect({
+      deckSkin: fields.blank.deckSkin,
+      tipStyle: fields.blank.tipStyle,
+      fineTuneSurface: fields.blank.fineTuneSurface,
+    }).toEqual(DEFAULT_BLANK_CUT);
+  });
+
+  it.each(BOARD_PRESETS)("$id: its blank still fits its own board with its own cut (the provisional pick has not gone stale)", (preset) => {
+    const blank = presetBlank(preset);
+    const ctx = presetFitContext(preset);
+    const onBlank = boardOnBlank(prepareBlank(blank.copy), ctx.board, blank.placement);
+    expect(onBlank.cut).toEqual(DEFAULT_BLANK_CUT);
+    expect(fitAt(onBlank, ctx.halfWidthAt, ctx.widePointStation, SETTINGS).fits).toBe(true);
   });
 
   it.each(BOARD_PRESETS)("$id: keeps its centre and tips, the default hand-set rocker, and the default 12\" fallbacks", (preset) => {
