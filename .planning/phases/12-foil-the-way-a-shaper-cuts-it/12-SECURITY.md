@@ -136,6 +136,7 @@ Totals: 35 threats · 35 closed · 0 open · 0 at or above the `high` threshold 
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
 | 2026-09-27 | 35 | 35 | 0 | Claude (orchestrator, secure-phase L1 grep verification on `main`, code at a7dc3e4) |
+| 2026-09-27 | 35 | 35 | 0 | Claude (orchestrator, `/gsd-secure-phase` re-audit after the phase closed — State A: no code change since a7dc3e4 (`git diff --stat a7dc3e4 HEAD` outside .planning is empty), the nine high-severity rows re-checked by grep, `lib/db/ownership.test.ts` 13/13) |
 
 ---
 
