@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 12-foil-the-way-a-shaper-cuts-it
 source: [12-VERIFICATION.md]
 started: 2026-09-27T04:22:58.368Z
-updated: 2026-09-27T05:03:19.627Z
+updated: 2026-09-27T18:08:36.525Z
 ---
 
 ## Current Test
 
-number: 2
-name: On a real iPhone and a real Pixel, pick a blank and drag the Deck Skin slider thumb with a thumb (not a keyboard)
-expected: |
-  the label never wraps, the Center's OFF BOTTOM and the passes line follow the drag live, nothing on the drawing jumps
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -24,12 +20,12 @@ result: passed 2026-09-27 on www.shaperassistant.com (orchestrator in the built-
 ### 2. On a real iPhone and a real Pixel, pick a blank and drag the Deck Skin slider thumb with a thumb (not a keyboard)
 expected: the label never wraps, the Center's OFF BOTTOM and the passes line follow the drag live, nothing on the drawing jumps
 why human: 12-05's e2e drives this slider by keyboard on all three Playwright profiles; a real thumb drag has not been walked (12-05 SUMMARY, Human check)
-result: [pending]
+result: passed 2026-09-27 (founder: pass — real-phone thumb drag)
 
 ### 3. On a real phone, tap the Tip Style and Fine-tune off pills with a thumb, and the Deck Skin / Planer Max Depth / Restore Defaults controls in Fit & Tip Defaults
 expected: every pill and field feels finger-sized and easy to hit, hints wrap cleanly, the readouts respond
 why human: the touch-size e2e proves 44px CSS heights, not how a real thumb feels landing on them (12-04 SUMMARY, 12-08 SUMMARY, Human check)
-result: [pending]
+result: passed 2026-09-27 (founder: pass — real-phone taps on the pills and Fit & Tip Defaults controls)
 
 ### 4. Signed in on a real device, set Tip Style to Bottom (and Planer Max Depth, Deck Skin) in Fit & Tip Defaults, then open the gear menu on a second device signed in to the same account
 expected: the second device shows the same Tip Style / Planer Max Depth / Deck Skin, and flipping Imperial/Metric and reloading keeps the pick (the Phase 11 CR-01 case)
@@ -44,24 +40,24 @@ result: passed 2026-09-27, confirmed by the founder on the live site: an older s
 ### 6. In each of the four visual themes, with a blank picked, look at the drawing
 expected: a deck-side foam band and a bottom-side foam band both show, in the same muted shade, both widening over the last 12" on the side the Tip Style takes the extra from; on a board that doesn't fit, the outline crosses the blank's line where foam runs out, with no warning colour on the drawing itself
 why human: 12-09 SUMMARY records this was never walked in a browser by eye; it is a rendering/visual judgement across four themes, not a DOM assertion
-result: [pending]
+result: passed 2026-09-27 (founder: pass — all four themes with a blank picked)
 
 ### 7. Open a saved board whose carried-over 12" fine-tune exceeds ±1/4" (the snapshot allows up to ±50 mm; the largest measured residual is 27.1 mm)
 expected: the label and the Tweak hint read the true stored value with the thumb pinned at the end of its track (per UI-SPEC §10); a drag replaces it with an in-range value, and one undo restores the saved one
 why human: 12-08 SUMMARY records this has not been walked on a real saved board; it needs a board with a residual that large, which the seeded/dev fixtures may not currently contain
-result: [pending]
+result: passed 2026-09-27 (founder: pass — a saved board with a carried-over tweak beyond 1/4in: true value read, thumb pinned, drag then undo)
 
 ### 8. Open the re-recorded ROCKER desktop baseline (rocker-desktop-desktop-darwin.png) beside the previous one
 expected: only the list intro's new wording and the one extra line of wrap should differ; the drawing, Center Thickness section, top bar and first four listed blanks should be identical
 why human: 12-03 SUMMARY recorded this diff was inspected by the executor at plan time; an independent human eye on the two images has not happened, and the hash-only check this verifier ran cannot see whether the new sentence itself reads well
-result: [pending]
+result: passed 2026-09-27 (founder: pass — before/after baselines and a red-pixel difference picture reviewed: 1.9% of pixels changed, all in the blank-list intro and the rows it pushed down)
 
 ## Summary
 
 total: 8
-passed: 3
+passed: 8
 issues: 0
-pending: 5
+pending: 0
 skipped: 0
 blocked: 0
 
