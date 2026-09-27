@@ -3,15 +3,15 @@ status: testing
 phase: 12-foil-the-way-a-shaper-cuts-it
 source: [12-VERIFICATION.md]
 started: 2026-09-27T04:22:58.368Z
-updated: 2026-09-27T04:22:58.368Z
+updated: 2026-09-27T05:03:19.627Z
 ---
 
 ## Current Test
 
-number: 1
-name: Walk the phase's own DONE WHEN goal on ROCKER — pick a blank, watch the deck sit one skin below the blank's deck, the bottom parallel the blank's rocker, the four rocker numbers read the blank's own, the 12" stations fall out of that, then thin a tip and watch only the last 12" move
+number: 2
+name: On a real iPhone and a real Pixel, pick a blank and drag the Deck Skin slider thumb with a thumb (not a keyboard)
 expected: |
-  every number matches the founder's brief in plain sight — deck skin constant, bottom parallel, rocker numbers the blank's own, tips thinned last, curve fixed before thinning
+  the label never wraps, the Center's OFF BOTTOM and the passes line follow the drag live, nothing on the drawing jumps
 awaiting: user response
 
 ## Tests
@@ -19,7 +19,7 @@ awaiting: user response
 ### 1. Walk the phase's own DONE WHEN goal on ROCKER — pick a blank, watch the deck sit one skin below the blank's deck, the bottom parallel the blank's rocker, the four rocker numbers read the blank's own, the 12" stations fall out of that, then thin a tip and watch only the last 12" move
 expected: every number matches the founder's brief in plain sight — deck skin constant, bottom parallel, rocker numbers the blank's own, tips thinned last, curve fixed before thinning
 why human: this is a felt, whole-screen judgement of the finished feature, not a single assertion; the geometry is proven by six named unit tests and code-read, but nobody has watched the drawing and sidebar move together in a browser
-result: [pending]
+result: passed 2026-09-27 on www.shaperassistant.com (orchestrator in the built-in browser, founder present): US Blanks 6'2"A picked; Deck Skin 1/8"→1/4" moved the Center's OFF BOTTOM 5/16"→3/16" and the passes 3→2; Tip Style→Bottom moved the Nose Tip rocker 4 3/4"→4 1/4" and the Tail Tip 2 3/8"→1 11/16" while Nose @ 12" 1 1/2" and Tail @ 12" 7/8" stayed; DATASHEET FOAM OFF showed Deck and Bottom rows at all five stations
 
 ### 2. On a real iPhone and a real Pixel, pick a blank and drag the Deck Skin slider thumb with a thumb (not a keyboard)
 expected: the label never wraps, the Center's OFF BOTTOM and the passes line follow the drag live, nothing on the drawing jumps
@@ -34,12 +34,12 @@ result: [pending]
 ### 4. Signed in on a real device, set Tip Style to Bottom (and Planer Max Depth, Deck Skin) in Fit & Tip Defaults, then open the gear menu on a second device signed in to the same account
 expected: the second device shows the same Tip Style / Planer Max Depth / Deck Skin, and flipping Imperial/Metric and reloading keeps the pick (the Phase 11 CR-01 case)
 why human: Clerk never settles under the e2e suite's fake key, so the browser tests cannot reach this account round trip; only unit tests of the save/read path exist (12-03, 12-04, 12-06 SUMMARY, Human check)
-result: [pending]
+result: passed 2026-09-27, confirmed by the founder on the live site: Fit & Tip Defaults showed Planer Max Depth, Deck Skin and Tip Style with no Extra Center Thickness; Tip Style set to Bottom read Bottom on a second signed-in device; Restore Defaults reset it; an Imperial/Metric flip survived a reload
 
 ### 5. Signed in with Tip Style set to Bottom, open a board saved under Phase 11 from the rack
 expected: it opens with Tip Style reading Bottom, and its five station thicknesses (tail tip, tail 12", centre, nose 12", nose tip) read exactly what Phase 11 showed, matching the recorded read-only database evidence (7 of 7 boards open, 1 of 1 Phase 11 board keeps its five numbers)
 why human: this is an account-signed-in rack flow the e2e suite (which runs signed out) cannot reach; the claim rests on a script run once against the development database in 12-06's own session, not re-run here per the orchestrator's no-.env-file instruction
-result: [pending]
+result: passed 2026-09-27, confirmed by the founder on the live site: an older saved board opened from the rack normally (production's read-only check: 10 of 10 boards open, the one Phase 11 board keeps its five station thicknesses)
 
 ### 6. In each of the four visual themes, with a blank picked, look at the drawing
 expected: a deck-side foam band and a bottom-side foam band both show, in the same muted shade, both widening over the last 12" on the side the Tip Style takes the extra from; on a board that doesn't fit, the outline crosses the blank's line where foam runs out, with no warning colour on the drawing itself
@@ -59,9 +59,9 @@ result: [pending]
 ## Summary
 
 total: 8
-passed: 0
+passed: 3
 issues: 0
-pending: 8
+pending: 5
 skipped: 0
 blocked: 0
 

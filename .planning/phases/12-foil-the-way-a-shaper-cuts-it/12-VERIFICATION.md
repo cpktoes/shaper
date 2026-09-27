@@ -1,11 +1,12 @@
 ---
 phase: 12-foil-the-way-a-shaper-cuts-it
-verified: 2026-09-27T04:30:00Z
+verified: "2026-09-27T05:02:23Z"
 status: human_needed
 score: 11/11 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - "test: \"Walk the phase's own DONE WHEN goal on ROCKER — pick a blank, watch the deck sit one skin below the blank's deck, the bottom parallel the blank's rocker, the four rocker numbers read the blank's own, the 12\" stations fall out of that, then thin a tip and watch only the last 12\" move\" | expected: \"every number matches the founder's brief in plain sight — deck skin constant, bottom parallel, rocker numbers the blank's own, tips thinned last, curve fixed before thinning\" | why_human: \"this is a felt, whole-screen judgement of the finished feature, not a single assertion; the geometry is proven by six named unit tests and code-read, but nobody has watched the drawing and sidebar move together in a browser\""
   - "test: \"On a real iPhone and a real Pixel, pick a blank and drag the Deck Skin slider thumb with a thumb (not a keyboard)\" | expected: \"the label never wraps, the Center's OFF BOTTOM and the passes line follow the drag live, nothing on the drawing jumps\" | why_human: \"12-05's e2e drives this slider by keyboard on all three Playwright profiles; a real thumb drag has not been walked (12-05 SUMMARY, Human check)\""
   - "test: \"On a real phone, tap the Tip Style and Fine-tune off pills with a thumb, and the Deck Skin / Planer Max Depth / Restore Defaults controls in Fit & Tip Defaults\" | expected: \"every pill and field feels finger-sized and easy to hit, hints wrap cleanly, the readouts respond\" | why_human: \"the touch-size e2e proves 44px CSS heights, not how a real thumb feels landing on them (12-04 SUMMARY, 12-08 SUMMARY, Human check)\""
@@ -14,6 +15,7 @@ human_verification:
   - "test: \"In each of the four visual themes, with a blank picked, look at the drawing\" | expected: \"a deck-side foam band and a bottom-side foam band both show, in the same muted shade, both widening over the last 12\" on the side the Tip Style takes the extra from; on a board that doesn't fit, the outline crosses the blank's line where foam runs out, with no warning colour on the drawing itself\" | why_human: \"12-09 SUMMARY records this was never walked in a browser by eye; it is a rendering/visual judgement across four themes, not a DOM assertion\""
   - "test: \"Open a saved board whose carried-over 12\" fine-tune exceeds ±1/4\" (the snapshot allows up to ±50 mm; the largest measured residual is 27.1 mm)\" | expected: \"the label and the Tweak hint read the true stored value with the thumb pinned at the end of its track (per UI-SPEC §10); a drag replaces it with an in-range value, and one undo restores the saved one\" | why_human: \"12-08 SUMMARY records this has not been walked on a real saved board; it needs a board with a residual that large, which the seeded/dev fixtures may not currently contain\""
   - "test: \"Open the re-recorded ROCKER desktop baseline (rocker-desktop-desktop-darwin.png) beside the previous one\" | expected: \"only the list intro's new wording and the one extra line of wrap should differ; the drawing, Center Thickness section, top bar and first four listed blanks should be identical\" | why_human: \"12-03 SUMMARY recorded this diff was inspected by the executor at plan time; an independent human eye on the two images has not happened, and the hash-only check this verifier ran cannot see whether the new sentence itself reads well\""
+
 ---
 
 # Phase 12: Foil the Way a Shaper Cuts It — Verification Report
@@ -44,30 +46,39 @@ suite (not trusting the SUMMARYs' own numbers):
 - `npx tsc --noEmit` — clean.
 - `npx vitest run` — **74 files, 2984 passed, 2 skipped** (matches the post-review-fix figure in
   12-REVIEW-FIX.md exactly).
+
 - `npm run lint` — 0 errors, 11 warnings, all pre-existing and outside this phase's files.
 - Read the core derivation (`boardOnBlank`, `fitAt`, `tweakExceedsDeckSkin`) in
   `lib/geometry/blank-fit.ts` line by line against SPEC R1–R6, R9 and D-02/D-03/D-05/D-06/D-09/D-13/
   D-16, and confirmed the formulas match every claim in the plans and summaries.
+
 - Grepped for and read all six named-test titles verbatim in `lib/geometry/blank-fit.test.ts` and
   `lib/models/design-snapshot.test.ts`, and ran just those two files (119 tests passed).
+
 - Reproduced the R7 ordering proof independently: `git log --reverse` shows the sixth named test
   landed in `c610ac9` and the first `components/` commit is `21b3924`;
   `git merge-base --is-ancestor c610ac9 21b3924` exits 0.
+
 - Regenerated `lib/blanks/preset-blanks.generated.json` — byte-identical (D-17, D-08).
 - Confirmed `scripts/extract-phase11-foil-golden.ts`'s guard refuses to run against this branch's
   `blank-fit.ts` (it is not tag v1.3's) and the committed fixture is byte-identical to what a rerun
   of the guard-passing state would produce (`git diff --exit-code` clean on the fixture).
+
 - Confirmed `git diff main -- lib/geometry/pchip.ts package.json package-lock.json` is empty (R10,
   R11, D-20).
+
 - Confirmed `extra_center_thickness_mm` stays declared in `lib/db/schema.ts` and in the migration's
   target table, with no DROP anywhere in `drizzle/0006_deck_skin_planer_tip_style.sql` (D-19).
+
 - Read `components/rocker/blank-flag.tsx`, `lib/geometry/blank-reasons.ts`,
   `components/rocker/board-on-blank.tsx`, `components/rocker/rocker-controls.tsx`,
   `components/rocker/rocker-datasheet.tsx` and `lib/models/design-snapshot.ts` against the UI-SPEC
   copy table and the WR-01/WR-02 fixes, line by line — not sampled.
+
 - Scanned every file this phase touched (59 files) for `TBD`/`FIXME`/`XXX`/`TODO`/`HACK`/
   `PLACEHOLDER` — none found — and for stray `25.4` / `/ 10` literals outside `units.ts` /
   `measure-display.ts` / test comments — none found.
+
 - Did not run Playwright (the orchestrator's own full suite was running concurrently on port 3100)
   and did not touch any `.env*` file or run either database check script — per explicit instruction,
   their SUMMARY-recorded evidence is treated as the record for those two items.
@@ -150,10 +161,13 @@ stray `25.4`/`/ 10` literals outside the units boundary — clean both times.
 - **WR-01** (dead-end flag when a Deck tweak exceeds the Deck Skin): fixed, verified in code
   (`tweakExceedsDeckSkin`, the dedicated flag branch, `↺ Reset Fine-Tune`) — closes the freeze bug
   (`d1d96fc`) with an honest sentence rather than just a fast exit.
+
 - **WR-02** (Deck Skin copy claimed uniform removal when a Deck tweak existed): fixed, verified
   (`deckTweaked` computed and three-way hint in `board-on-blank.tsx`).
+
 - **IN-01, IN-05, IN-06**: fixed (stale comments, driver-error printing, trivial leftovers) —
   verified in code.
+
 - **IN-02, IN-03, IN-04**: skipped by explicit orchestrator ruling, each with a stated reason
   (copy wording is the founder's own words; tightening the snapshot bound risks breaking R9;
   the stale-tab edge belongs in deploy notes). These are judgment calls already made, not
@@ -171,19 +185,23 @@ the founder may want to weigh in on before or shortly after shipping.
    than the tip setting calls for — as thin as 3.30 mm (0.130") a few inches in from a tip. D-18's
    "under 1/8" anywhere" floor catches 6 of 528 such cases; 522 still read as fitting. Is "under
    1/8" anywhere" the right floor, given this?
+
 2. **Carried-over Phase 11 boards and the WR-01 flag (12-REVIEW.md WR-01).** 34 of 39 golden
    carry-over cases come out with a Deck tweak larger than 1/8", which under the fixed WR-01 branch
    now shows a clear "too thin" message with a working Reset Fine-Tune button — but the whole blank
    list is still empty for that board until the shaper acts. D-14 accepted that carried boards may
    open flagged; is this specific "every blank greyed, no offer, just Reset Fine-Tune" consequence
    what the founder had in mind?
+
 3. **IN-02 — the D-18 "too thick" wording.** The reason line always says "this blank is too thick
    for a {center} center," even when the true cause is a negative fine-tune or the board running
    past the blank's end. The founder's own D-18 wording only literally fits the thin-centre case.
    Should the sentence branch by cause?
+
 4. **IN-03 — the saved-board Deck Skin bound (0–50 mm) is wider than the control (1/16"–1/2").**
    Tightening it risks a saved board failing to reopen (against R9); left wide on purpose, but it is
    a looser contract than the control offers. Worth a founder ruling on record.
+
 5. **IN-04 — a Phase 11 browser tab left open across the deploy.** Its Restore Defaults would be
    silently rejected (naming a retired key) and its cookie write could drop the new Phase 12 keys
    for a signed-out shaper. Ruled a deploy-transition edge for 12-10's own deploy notes, not a code
@@ -228,3 +246,15 @@ window on Android — a timing flake, fixed in df0fa10), 329 / 0 after Wave 4 an
 Plan 12-10 (the founder's production migration, merge, deploy and live walk-through) is a `blocking-human`
 checkpoint and is deliberately outside this verification; the phase is verified on the branch, as that plan's
 own precondition requires. `phase.complete` waits for 12-10.
+
+## Addendum — Plan 12-10 verified on production (2026-09-27T05:02:23Z)
+
+The founder's step ran on 2026-09-27 with the orchestrator driving a terminal tab under the founder's own login:
+`npm run db:migrate:prod` applied 0006 to production BEFORE the merge; the read-only checks read
+`3 of 3 new columns`, `extra_center_thickness_mm kept`, `drizzle migrations recorded: 7`,
+`saved boards: 10 … open: 10 of 10`, `five station thicknesses kept: 1 of 1`; `main` merged
+`foil-real-shaping` at 125a90f and Vercel's production deployment was Ready 30 s after the push.
+Live ROCKER (orchestrator): Deck Skin 1/8"→1/4" moved the Center's OFF BOTTOM 5/16"→3/16" and the passes
+3→2; Tip Style→Bottom moved both tip rockers while both 12" readings stayed; the DATASHEET showed FOAM OFF
+Deck and Bottom rows. Fit & Tip Defaults round trip and an older board from the rack: confirmed by the
+founder. R9 and R11 hold on production. deferred: []

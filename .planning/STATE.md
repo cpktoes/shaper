@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Foil the Way a Shaper Cuts It
-status: awaiting-human
-stopped_at: Phase 12 built, reviewed and verified on branch foil-real-shaping (9 of 10 plans; 11/11 must-haves; full browser suite 332/0) — parked at 12-10, the founder's blocking-human production step (.continue-here.md): migrate 0006 first, then merge, deploy and walk the live site; 12-UAT.md holds 8 human checks for /gsd-verify-work 12
-last_updated: "2026-09-27T04:26:53.874Z"
+status: shipped — UAT pending
+stopped_at: Phase 12 SHIPPED 2026-09-27 — production migrated first (0006), foil-real-shaping merged into main (125a90f), deployed and walked live; all 10 plans have SUMMARYs; phase.complete waits on /gsd-verify-work 12 (5 of 8 UAT checks pending: real-phone thumb walks, four themes, a carried-over tweak beyond 1/4in, the ROCKER baseline picture) and /gsd-secure-phase 12
+last_updated: "2026-09-27T05:03:19.715Z"
 last_activity: 2026-09-26
-last_activity_desc: "Phase 12 executed on the branch: 4 code waves merged, code review (2 warnings fixed), verification 11/11 human_needed, UAT persisted; awaiting the founder's production checkpoint (12-10)"
+last_activity_desc: "Phase 12 shipped to www.shaperassistant.com: migration 0006 on production before the merge, 73 commits merged, deploy Ready in 28 s, live ROCKER / Fit & Tip Defaults / rack checks passed; UAT 3 of 8 recorded, 5 pending"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 100
 current_phase: 12
 current_phase_name: Foil the Way a Shaper Cuts It
 ---
