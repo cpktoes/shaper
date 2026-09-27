@@ -22,7 +22,7 @@ estimate:
 
 must_haves:
   truths:
-    - "On the Summary, page 2's Shaper Use Only box has a field labelled Blank beside Board # and Price. The old two-part label is gone. Board Name, Board # and Price read exactly as before."
+    - "On the Summary, page 2's Shaper Use Only box has a field labelled Blank on its own full-width line directly above Board # and Price. The old two-part label is gone. Board Name, Board # and Price read exactly as before."
     - "When the board has no blank (a fresh board, or one whose blank was removed on ROCKER), the Blank field is an empty ruled line the shop writes on, the same as before."
     - "After a shaper picks a blank on ROCKER, the Blank field prints that blank read-only as vendor then name on one line (for example US Blanks 6'2\"A). That is the same identity ROCKER gives it, taken from the board's own copy of the blank."
     - "Every blank in the three catalogues prints whole in the Blank field, with no '…' cut-off, both on screen and on paper. Board # and Price keep a ruled line to write on."
@@ -52,7 +52,7 @@ In the app: page 2 of the printed order form, the Shaper Reference sheet, ends w
 
 The brief put this box on page 1. It is on page 2: the code's own comment says the front is the customer's copy and the back is the shaper's.
 
-**One departure from the brief, measured, for the founder to confirm (Task 2).** The brief said to keep the field's width share (`flex-[1.4]`). Measured at plan time, that share cuts off 19 of the 162 blank names in the catalogues with a "…", on screen and on paper. Examples: `Marko Foam 10'0" MK-SUP-STD`, `Marko Foam 6'0" M-Regular`, `US Blanks 10'4"A SUP EPS`. `OrderFormField` truncates on purpose and must not be redesigned, so the field needs a bigger share of its row instead. Task 2 gives it `flex-[2.2]`, the smallest measured share at which all 162 fit with a margin in print. Board # and Price keep their lines but get shorter ones: in print, 97 px → 62 px and 107 px → 72 px of room to write, about 0.65 in and 0.75 in. Task 1 stands on its own with the old share. If the founder would rather keep the old proportions and accept cut-off long names, drop Task 2.
+**One departure from the brief, measured, and settled by the founder (Task 2).** The brief said to keep the field's width share (`flex-[1.4]`). Measured at plan time, that share cuts off 19 of the 162 blank names in the catalogues with a "…", on screen and on paper. Examples: `Marko Foam 10'0" MK-SUP-STD`, `Marko Foam 6'0" M-Regular`, `US Blanks 10'4"A SUP EPS`. `OrderFormField` truncates on purpose and must not be redesigned, so the field needs more room. **The founder chose (2026-09-27): the Blank field gets a full-width line of its own, directly above the Board # and Price row.** Every name then has the whole box width (about 404 px on screen and 328 px in print — more than the widest name needs), and Board # and Price each keep half of their own row, a LONGER writing line than today, not a shorter one. Task 1 stands on its own with the old share; Task 2 makes the layout change.
 
 Purpose: the shop's record of the job names the exact blank the board's numbers were cut from, with nothing to copy across by hand from ROCKER.
 Output: the relabelled, live Blank field. A new browser spec covers three things: the blank line, the printed name, and every catalogue name fitting on screen and on paper. The SUMMARY carries a plain-English note for the founder.
@@ -109,7 +109,7 @@ Measured by the planner on main at 1d2ee9b. The probe was a throwaway Playwright
 |---|---|---|---|
 | flex-[1.4] (today) | 318 / 234 / **19 of 162** | 258 / 187 / **19 of 162** | 123 & 136 · 97 & 107 |
 | flex-[2] | 386 / 303 / 0 | 313 / 242 / **3 of 162** | 89 & 102 · 69 & 79 |
-| **flex-[2.2]** (Task 2) | 404 / 321 / 0 | 328 / 257 / 0 | 80 & 93 · 62 & 72 |
+| flex-[2.2] (measured, not chosen) | 404 / 321 / 0 | 328 / 257 / 0 | 80 & 93 · 62 & 72 |
 | flex-[2.4] | 421 / 338 / 0 | 341 / 271 / 0 | 72 & 85 · 55 & 65 |
 
 With the old caption, the field kept only 123 px (screen) and 94 px (print) of room for its value. The shorter `Blank:` caption alone frees about 110 px, and that is still not enough at flex-[1.4].
@@ -169,11 +169,10 @@ Read every `db/seed/blanks/*.csv` with node:fs `readdirSync`/`readFileSync`, fro
 
 On /design/summary (no blank needed), wait for `document.fonts.ready`. Then, in one `evaluate` on the field's value span: set its `textContent` to each name in turn, collect the names whose `scrollWidth > clientWidth`, and restore a single non-breaking space at the end. Do it under screen media, then under `page.emulateMedia({ media: "print" })`, then set screen back. Expect both collected lists `toEqual([])`, so a failure names every blank that would be cut off. Explain in a comment why this test puts text into the field instead of picking each blank: no single board's ROCKER list offers every blank (the default board lists 141 of the catalogue's blanks and none of the widest), and the question is whether the field has room, which does not depend on how a blank got picked. Run the test and confirm it fails with the long names.
 
-GREEN. In components/summary/order-form.tsx, change only the Blank field's `className` to `flex-[2.2]`, keeping it on the same line as `label="Blank"`. Board # and Price stay `flex-1`, and the row's `gap-6` stays. Add a short comment above that row explaining the share, with the plan-time figures:
+GREEN. In components/summary/order-form.tsx, move the Blank field OUT of the three-field row onto a full-width line of its own, directly above the row that keeps Board # and Price (the founder's choice, 2026-09-27). Keep the `<OrderFormField label="Blank" …>` element on one line (the grep gates read it) with no `flex-[…]` share — a full-width block (`className="w-full"` if the primitive needs it, otherwise none). Board # and Price stay `flex-1` inside their `flex gap-6` row, so each now takes half that row. Add a short comment above the two rows explaining the layout, with the plan-time figures:
 - the widest catalogue name needs about 297 px on screen and 248 px in print;
-- the old share cut off 19 of 162 names;
-- 2.2 is the smallest share measured that fits them all with a margin in print;
-- Board # and Price keep about 0.65 in and 0.75 in of printed line to write on.
+- on the shared row the old share cut off 19 of 162 names;
+- a line of its own gives the name the whole box width, and Board # and Price a longer line each than before.
 Keep the comment plain. Run the test to green.
 
 Then run every Summary spec and the desktop baseline. The Summary box sits at the foot of page 2 and nothing in the baseline shows the Summary, so the five baseline pictures must not change. Never pass `--update-snapshots`.
@@ -183,10 +182,10 @@ Then run every Summary spec and the desktop baseline. The Summary box sits at th
     <automated>IS_WEBPACK_TEST=1 PW_PORT=3161 npx playwright test e2e/summary-   # worktree, port checked free first; runs summary-blank plus the five existing Summary specs on all three projects, with each spec's own skips</automated>
     <automated>IS_WEBPACK_TEST=1 PW_PORT=3161 npx playwright test e2e/desktop-baseline.spec.ts --project=desktop   # expect 5 passed</automated>
     <automated>test -z "$(git status --porcelain e2e/desktop-baseline.spec.ts-snapshots)" && shasum -a 256 e2e/desktop-baseline.spec.ts-snapshots/*.png | grep -c -E '^(a925ba158835322b653696718a8c1356500967b11466d191bb2c50ad97896b62|ef4fa37e7b2d7b6d644e9262d82548833fde54c1a6f52b5e3e73a894107f36c0|6c2c6b2be7e1e35d4b55f6e443b0cf52c0059139937f8e49661f6398761b2373|0dc0ba2610300d9b468321a1df07da5e8a1de1602e6c10602fc445dce938cae9|b80a752b7b8a5e89862145d1b8e263dde60c074056ea837487e0306fa15f8e34) '   # must print 5</automated>
-    <automated>grep -F 'label="Blank"' components/summary/order-form.tsx | grep -q -F 'flex-[2.2]' && grep -q 'from "\.\./lib/blanks/csv"' e2e/summary-blank.spec.ts && test -z "$(git diff --name-only HEAD~2 HEAD -- components/summary/order-form-primitives.tsx lib components/design components/rocker e2e/rocker-blanks.spec.ts)"   # run after this task's commit</automated>
+    <automated>! (grep -F 'label="Blank"' components/summary/order-form.tsx | grep -q 'flex-\[') && test "$(grep -n -F 'label="Blank"' components/summary/order-form.tsx | cut -d: -f1)" -lt "$(grep -n -F 'label="Board #"' components/summary/order-form.tsx | cut -d: -f1)" && grep -q 'from "\.\./lib/blanks/csv"' e2e/summary-blank.spec.ts && test -z "$(git diff --name-only HEAD~2 HEAD -- components/summary/order-form-primitives.tsx lib components/design components/rocker e2e/rocker-blanks.spec.ts)"   # run after this task's commit</automated>
   </verify>
   <done>
-The desktop test failed before the change, naming the cut-off blanks, and passes after it, on screen and in print. Every Summary spec and the desktop baseline pass. The five baseline pictures carry the same SHA-256 as at 1d2ee9b. Committed alone with a plain-English subject such as `fix: the order form's Blank field is wide enough for every blank's full name`. The message ends with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
+The desktop test failed before the change, naming the cut-off blanks, and passes after it, on screen and in print. Every Summary spec and the desktop baseline pass. The five baseline pictures carry the same SHA-256 as at 1d2ee9b. Committed alone with a plain-English subject such as `fix: the order form's Blank field has a line of its own, so every blank's full name prints`. The message ends with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
   </done>
 </task>
 
@@ -223,5 +222,5 @@ A shaper who picked a blank on ROCKER prints the order form and finds that blank
 </success_criteria>
 
 <output>
-Create `.planning/quick/260926-wkh-summary-page-the-blank-and-rocker-sectio/260926-wkh-SUMMARY.md` when done. Include both commit hashes and the before-and-after baseline hashes. Add a short "Note for the founder" in plain English covering four things: the field's new name; what prints when a blank is picked and when it isn't; that 19 of the catalogue's longer names (mostly Marko Foam and the SUP blanks) would have printed cut off at the old width; and that the Board # and Price lines are now shorter, about 0.65 in and 0.75 in of printed line, with one line in the code to change if he'd rather have those back.
+Create `.planning/quick/260926-wkh-summary-page-the-blank-and-rocker-sectio/260926-wkh-SUMMARY.md` when done. Include both commit hashes and the before-and-after baseline hashes. Add a short "Note for the founder" in plain English covering four things: the field's new name; what prints when a blank is picked and when it isn't; that 19 of the catalogue's longer names (mostly Marko Foam and the SUP blanks) would have printed cut off at the old width; and that Blank now sits on a line of its own, so the Board # and Price writing lines are longer than before (each half their row).
 </output>
