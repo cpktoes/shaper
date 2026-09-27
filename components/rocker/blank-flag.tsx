@@ -174,7 +174,11 @@ function PickedBlankFlag({
     [floor.passes, prepared, ctx, extraLength, planerMaxDepth, widthMargin],
   );
 
-  const board = { length: outline.length, widePointStation: outlineGeometry.widePointStation };
+  const board = {
+    length: outline.length,
+    widePointStation: outlineGeometry.widePointStation,
+    centerThickness: foil.center,
+  };
   const offer = (
     <Suspense fallback={null}>
       <Offer catalog={catalog} current={prepared.record} />
@@ -203,8 +207,10 @@ function PickedBlankFlag({
     );
   }
 
-  // One sample at the current placement, on every change (slider moves included).
-  const current = fitAt(view.onBlank, ctx.halfWidthAt, ctx.widePointStation, widthMargin);
+  // One sample at the current placement, on every change (slider moves included) — with the same
+  // width margin and one-pass-at-the-centre rule the list judges by (D-15), so a board slid to where
+  // less than one planer pass would come off the bottom at its centre reads F2 here.
+  const current = fitAt(view.onBlank, ctx.halfWidthAt, ctx.widePointStation, { widthMargin, planerMaxDepth });
   if (current.fits || verdict === null) return null;
 
   if (verdict.fits) {

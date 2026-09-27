@@ -78,7 +78,7 @@ describe("the rule and the picks (D-03, D-08)", () => {
       boardOnBlank(prepareBlank(blank.copy), ctx.board, blank.placement),
       ctx.halfWidthAt,
       ctx.widePointStation,
-      SETTINGS.widthMargin,
+      SETTINGS,
     );
     expect(result.fits).toBe(true);
   });

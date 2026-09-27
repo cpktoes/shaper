@@ -15,6 +15,7 @@
  * Pure — no React, browser or database import (CLAUDE.md Rule 1).
  */
 import type { BlankRecord, BlankShortfall } from "./blank";
+import { MIN_FOIL_THICKNESS_MM } from "./blank-fit";
 import {
   formatDim,
   formatDimBare,
@@ -88,14 +89,27 @@ function formatWhere(
  * `{amount} too wide {where}` — e.g. `1/8" too thin 12" from the nose` / `3 mm too thin 30.5 cm
  * from the nose`, `1/2" too wide at the widepoint`. `station` is measured from the board's tail tip.
  * Every reason names a station and an amount.
+ *
+ * When the board itself would run under the least foam a board may be (Phase 12 D-18), the reason
+ * names that least amount and the board's own centre instead, because the blank is too thick for
+ * that centre rather than too thin: `Less than {1/8" | 3 mm} would be left {where} — this blank is
+ * too thick for a {center} center`. No sentence here ends in a full stop — the flag adds one, the
+ * list row shows the line bare.
  */
 export function formatShortfall(
   shortfall: BlankShortfall,
-  board: { length: Mm; widePointStation: Mm },
+  board: { length: Mm; widePointStation: Mm; centerThickness: Mm },
   system: UnitsSystem,
 ): string {
+  const where = formatWhere(shortfall, board, system);
+  if (shortfall.kind === "runsOut") {
+    return (
+      `Less than ${formatMark(MIN_FOIL_THICKNESS_MM, system)} would be left ${where} — ` +
+      `this blank is too thick for a ${formatMark(board.centerThickness, system)} center`
+    );
+  }
   const what = shortfall.kind === "wide" ? "too wide" : "too thin";
-  return `${formatAmount(shortfall.amount, system)} ${what} ${formatWhere(shortfall, board, system)}`;
+  return `${formatAmount(shortfall.amount, system)} ${what} ${where}`;
 }
 
 /**

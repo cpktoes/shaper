@@ -77,8 +77,8 @@ export interface BlankListState extends PreparedCatalogue {
   list: BlankListResult;
   /** Everything about the board a verdict depends on — never the placement. */
   ctx: BoardFitContext;
-  /** The board as the reason lines name places along it. */
-  board: { length: Mm; widePointStation: Mm };
+  /** The board as the reason lines name places along it, and its centre (the D-18 sentence quotes it). */
+  board: { length: Mm; widePointStation: Mm; centerThickness: Mm };
 }
 
 /**
@@ -162,8 +162,12 @@ export function useBlankList(records: readonly BlankRecord[]): BlankListState {
   );
 
   const board = useMemo(
-    () => ({ length: outline.length, widePointStation: outlineGeometry.widePointStation }),
-    [outline.length, outlineGeometry.widePointStation],
+    () => ({
+      length: outline.length,
+      widePointStation: outlineGeometry.widePointStation,
+      centerThickness: foil.center,
+    }),
+    [outline.length, outlineGeometry.widePointStation, foil.center],
   );
 
   return { ...catalogue, list, ctx, board };
