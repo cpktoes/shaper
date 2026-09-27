@@ -247,8 +247,9 @@ export function RockerDatasheet({
                 {stations.map((s) => markCell(s.key, profile.stationRocker[s.key]))}
               </Row>
               {/* Thickness: the centre and the two tips are the board's own stored values, typed
-                  here exactly as the sidebar sets them; the 12" stations are the blank-scaled
-                  result plus any fine-tune, read-only (the fine-tune lives in the sidebar). */}
+                  here exactly as the sidebar sets them; the 12" stations are the thickness cut
+                  from the blank (its thickness less the Deck Skin and the centre gap) plus any
+                  fine-tune, read-only (the fine-tune lives in the sidebar). */}
               <Row label={`Thickness${markSuffix}`} typed>
                 {stations.map((s) =>
                   s.key === "nose12" || s.key === "tail12"

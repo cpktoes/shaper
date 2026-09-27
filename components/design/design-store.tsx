@@ -320,8 +320,9 @@ interface DesignContextValue {
    * step, re-checks the flag, never clears the pick. A no-op with no blank picked, or when the
    * board already uses that surface. */
   setFineTuneSurface: (surface: FineTuneSurface) => void;
-  /** Sets one or both signed 12" fine-tunes (D-11), added to the blank-scaled thickness at that
-   * station. Coalesces per field like a slider. A no-op with no blank picked. */
+  /** Sets one or both signed 12" fine-tunes (D-11), added to the thickness cut from the blank at
+   * that station (the blank's thickness less the Deck Skin and the centre gap). Coalesces per field
+   * like a slider. A no-op with no blank picked. */
   setFineTune: (patch: Partial<{ nose12Offset: Mm; tail12Offset: Mm }>) => void;
   /** Clears both 12" fine-tunes back to 0 (D-11). One undo step. A no-op with no blank picked. */
   resetFineTune: () => void;
@@ -837,8 +838,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // The accurate path (D-13): real cross-sections along the board's own length, using the same
   // half-width sampler pattern `lib/geometry/design.ts`'s `summarizeDesign` builds, so a rack
   // card's number and this screen's number can never drift apart. The thickness is the side
-  // profile's own dense curve (Pattern 5) — with a blank, the blank's scaled foil exactly as drawn,
-  // never re-splined through five stations.
+  // profile's own dense curve (Pattern 5) — with a blank, the foil cut from the blank (its thickness
+  // less the Deck Skin and the centre gap) exactly as drawn, never re-splined through five stations.
   const crossSectionVolume = useMemo(
     () =>
       computeCrossSectionVolume({
