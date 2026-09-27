@@ -144,7 +144,7 @@ describe("presetBlank and presetDesignFields — what a preset opens as", () => 
     const ctx = presetFitContext(preset);
     const onBlank = boardOnBlank(prepareBlank(blank.copy), ctx.board, blank.placement);
     expect(onBlank.cut).toEqual(DEFAULT_BLANK_CUT);
-    expect(fitAt(onBlank, ctx.halfWidthAt, ctx.widePointStation, SETTINGS.widthMargin).fits).toBe(true);
+    expect(fitAt(onBlank, ctx.halfWidthAt, ctx.widePointStation, SETTINGS).fits).toBe(true);
   });
 
   it.each(BOARD_PRESETS)("$id: keeps its centre and tips, the default hand-set rocker, and the default 12\" fallbacks", (preset) => {
