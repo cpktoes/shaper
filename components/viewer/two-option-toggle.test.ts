@@ -39,6 +39,22 @@ describe("TwoOptionToggle", () => {
     expect(finControlsSource).toContain(INACTIVE_CLASSES);
   });
 
+  it("announces which pill is on, with aria-pressed on each", () => {
+    expect(toggleSource).toContain("aria-pressed={active}");
+  });
+
+  it("can name the pair as a group for a screen reader, and only when asked to", () => {
+    expect(toggleSource).toContain("ariaLabel?: string");
+    expect(toggleSource).toContain("role=");
+    expect(toggleSource).toContain('role={ariaLabel ? "group" : undefined}');
+  });
+
+  it("puts the accent focus ring before the unchanged base run and the 44px touch height after it", () => {
+    expect(toggleSource).toContain("focus-ring-accent");
+    expect(toggleSource).toContain("coarse:min-h-11");
+    expect(toggleSource).toContain(`focus-ring-accent cursor-pointer ${BASE_CLASSES} coarse:min-h-11`);
+  });
+
   it("is imported by rail-instructions.tsx", () => {
     expect(railInstructionsSource).toMatch(
       /import\s*\{\s*TwoOptionToggle\s*\}\s*from\s*["']@\/components\/viewer\/two-option-toggle["']/,

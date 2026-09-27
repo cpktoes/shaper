@@ -5,11 +5,15 @@
  * and rendered once, by `FitDefaultsProvider`, rather than inside the menu: the menu popup unmounts
  * the moment it closes, and a dialog inside it would vanish with it.
  *
- * Six typed marks in two groups. WHICH BLANKS FIT holds the three rules that decide whether a real
- * blank counts as a fit for the board (Phase 11 D-04's extra length, Phase 12 D-03's Planer Max
- * Depth — which, with the board's Deck Skin, sets the centre floor (D-10) — and D-05's width
- * margin); NEW BOARDS START WITH holds the Deck Skin and the nose and tail tip thickness a
- * brand-new board begins from — a board already started keeps its own.
+ * Seven settings in two groups: six typed marks and one two-way choice. WHICH BLANKS FIT holds the
+ * three rules that decide whether a real blank counts as a fit for the board (Phase 11 D-04's
+ * extra length, Phase 12 D-03's Planer Max Depth — which, with the board's Deck Skin, sets the
+ * centre floor (D-10) — and D-05's width margin); NEW BOARDS START WITH holds the Deck Skin, the
+ * nose and tail tip thickness and the Tip Style (Pin deck or Bottom, Phase 12 D-04) a brand-new
+ * board begins from — a board already started keeps its own.
+ *
+ * The Tip Style pair commits on the tap itself, like the Units rows; tapping the option already
+ * shown stores nothing, the same "only a real change counts" rule the typed fields follow.
  *
  * Every field commits on blur or Enter and takes effect at once, the same way the Units rows apply
  * as they are picked, so there is no Save and no Cancel: the footer is Restore Defaults (returns
@@ -37,7 +41,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatMark, measureSlider, typedFieldBounds } from "@/lib/geometry/measure-display";
+import { TwoOptionToggle } from "@/components/viewer/two-option-toggle";
 import { FIT_DEFAULTS_RANGE_IN, type FitDefaultsMmKey } from "@/lib/fit-defaults-preference";
+import type { TipStyle } from "@/lib/geometry/blank";
 import type { Mm } from "@/lib/geometry/units";
 
 /** The menu's own group-label type (settings-menu.tsx), reused for the dialog's two groups. */
@@ -69,15 +75,28 @@ const FIELD_COPY: Record<FitDefaultsMmKey, FieldCopy> = {
   tailTipThickness: { label: "Tail Tip Thickness" },
 };
 
-const GROUPS: { label: string; hint?: string; keys: FitDefaultsMmKey[] }[] = [
+/** The Tip Style row's fixed copy (D-04, 12-UI-SPEC §6). The hint is static — unlike the ROCKER
+ * sidebar's, it does not change with the option shown. */
+const TIP_STYLE_LABEL = "Tip Style";
+const TIP_STYLE_HINT = "Pin deck takes the tips' extra off the bottom; Bottom takes it off the deck.";
+const TIP_STYLE_OPTIONS = ["pinDeck", "bottom"] as const satisfies readonly [TipStyle, TipStyle];
+const TIP_STYLE_LABELS = ["Pin deck", "Bottom"] as const;
+
+/** One row of the dialog: a typed number of millimetres, or the Tip Style pair — the one setting
+ * that is a choice rather than a number. */
+type DialogRow = { kind: "measure"; key: FitDefaultsMmKey } | { kind: "tipStyle" };
+
+const measure = (key: FitDefaultsMmKey): DialogRow => ({ kind: "measure", key });
+
+const GROUPS: { label: string; hint?: string; rows: DialogRow[] }[] = [
   {
     label: "WHICH BLANKS FIT",
-    keys: ["extraLength", "planerMaxDepth", "widthMargin"],
+    rows: [measure("extraLength"), measure("planerMaxDepth"), measure("widthMargin")],
   },
   {
     label: "NEW BOARDS START WITH",
     hint: "Boards you've already started keep their own.",
-    keys: ["deckSkin", "noseTipThickness", "tailTipThickness"],
+    rows: [measure("deckSkin"), measure("noseTipThickness"), measure("tailTipThickness"), { kind: "tipStyle" }],
   },
 ];
 
@@ -131,7 +150,31 @@ export function FitDefaultsDialog({
                 <div className={GROUP_LABEL_CLASS}>{group.label}</div>
                 {group.hint && <p className="mt-1 text-xs text-surf-ink-muted">{group.hint}</p>}
               </div>
-              {group.keys.map((key) => {
+              {group.rows.map((row) => {
+                if (row.kind === "tipStyle") {
+                  return (
+                    <div key="tipStyle" className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm text-surf-ink">{TIP_STYLE_LABEL}</div>
+                        <p className="mt-0.5 text-xs text-surf-ink-muted">{TIP_STYLE_HINT}</p>
+                      </div>
+                      <div className="shrink-0">
+                        <TwoOptionToggle
+                          options={TIP_STYLE_OPTIONS}
+                          labels={TIP_STYLE_LABELS}
+                          value={defaults.tipStyle}
+                          ariaLabel="Tip Style"
+                          // Compared against the resolved value (the commitIfChanged idea): tapping
+                          // the option already shown stores nothing, so "not chosen" stays so.
+                          onChange={(next) => {
+                            if (next !== defaults.tipStyle) setDefault("tipStyle", next);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+                const key = row.key;
                 const copy = FIELD_COPY[key];
                 const range = FIT_DEFAULTS_RANGE_IN[key];
                 const view = measureSlider(defaults[key], range, range.step, 1, system);
