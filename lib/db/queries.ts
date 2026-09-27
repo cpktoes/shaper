@@ -18,6 +18,8 @@ import {
   parseTipStyleValue,
   type FitDefaultsPreference,
 } from "@/lib/fit-defaults-preference";
+import { parseHiddenBlankMakersColumn } from "@/lib/blank-makers-preference";
+import type { BlankVendor } from "@/lib/blanks/vendors";
 import type { UnitsSystem } from "@/lib/geometry/units";
 
 export interface ListedModel {
@@ -117,4 +119,24 @@ export async function readFitDefaultsPreference(clerkId: string): Promise<FitDef
     tailTipThickness: parseFitDefaultValue("tailTipThickness", row?.tailTipThicknessMm ?? null),
     tipStyle: parseTipStyleValue(row?.tipStyle ?? null),
   };
+}
+
+/**
+ * The blank makers a shaper has switched off in the gear menu's BLANK MAKERS tick boxes (quick task
+ * 260926-wmf), or `null` when the row is missing or they have never chosen — which the app shows as
+ * every maker on. The column's JSON text is run through `parseHiddenBlankMakersColumn`'s allow-list,
+ * so a hand-edited or drifted value keeps only makers the app knows, and malformed text (or a value
+ * hiding every maker) reads as "not chosen".
+ *
+ * Selects exactly this one column and nothing else, so the reads above never ask for it and this
+ * one never asks for theirs.
+ *
+ * Read-only contract, same register as `listModels`: one `select`, no counters, no last-seen
+ * stamp, no write of any kind.
+ */
+export async function readBlankMakersPreference(clerkId: string): Promise<BlankVendor[] | null> {
+  const [row] = await db.select({ hiddenBlankMakers: userPreferences.hiddenBlankMakers })
+    .from(userPreferences)
+    .where(eq(userPreferences.clerkUserId, clerkId));
+  return parseHiddenBlankMakersColumn(row?.hiddenBlankMakers ?? null);
 }

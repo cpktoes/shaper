@@ -1,0 +1,1 @@
+ALTER TABLE "user_preferences" ADD COLUMN "hidden_blank_makers" text;

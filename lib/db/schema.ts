@@ -28,7 +28,9 @@
  * shows the standard default until they do. Every read of these columns goes through
  * `lib/fit-defaults-preference.ts`'s allow-list, and every read of this table selects only the
  * columns it needs — so the existing units and print reads never ask for a column that a
- * not-yet-migrated database doesn't have.
+ * not-yet-migrated database doesn't have. Quick task 260926-wmf adds one more nullable text column,
+ * `hidden_blank_makers`: the blank makers a shaper has switched off, read through
+ * `lib/blank-makers-preference.ts`'s allow-list.
  *
  * `blanks` (Phase 11) holds the three vendor foam-blank catalogues — one row per blank, public
  * catalogue data that belongs to no shaper, so it has no owner column at all and is read through
@@ -90,6 +92,10 @@ export const userPreferences = pgTable("user_preferences", {
   planerMaxDepthMm: doublePrecision("planer_max_depth_mm"),
   deckSkinMm: doublePrecision("deck_skin_mm"),
   tipStyle: text("tip_style"),
+  // Quick task 260926-wmf: the blank makers a shaper switched OFF in the gear menu's BLANK MAKERS
+  // tick boxes, as JSON text of catalogue vendor names (e.g. `["Arctic Foam"]`). Null = not chosen,
+  // which means every maker is on. The allow-list lives in lib/blank-makers-preference.ts.
+  hiddenBlankMakers: text("hidden_blank_makers"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
