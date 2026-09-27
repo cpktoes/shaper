@@ -225,7 +225,7 @@ describe("the brief's four named tests (R16)", () => {
       noseTip: inchesToMm(noseTipCsv + 1 / 16),
     };
     const onBlank = boardOnBlank(prepared, board, mm(0));
-    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(board.length / 2), inchesToMm(1));
+    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(board.length / 2), rulesWith(inchesToMm(1)));
     expect(result.fits).toBe(false);
     expect(result.worst.kind).toBe("thin");
     expect(board.length - result.worst.station).toBeLessThanOrEqual(inchesToMm(1));
@@ -235,6 +235,14 @@ describe("the brief's four named tests (R16)", () => {
     expect(onBlank.thicknessAt(centre)).toBeLessThan(onBlank.blankThicknessAt(centre));
   });
 });
+
+/**
+ * The per-placement fit rules with a given width margin and the default Planer Max Depth (the one
+ * pass that must survive under the board's centre, D-15) — the settings exercised, not expected values.
+ */
+function rulesWith(widthMargin: Mm) {
+  return { widthMargin, planerMaxDepth: toFitSettings(DEFAULT_FIT_DEFAULTS).planerMaxDepth };
+}
 
 /** A board outline `by` narrower than the blank under it at every station (half-width, ≥ 0). */
 function narrowerBy(onBlank: BoardOnBlank, by: number) {
@@ -609,7 +617,7 @@ describe("the board's foil, cut from the blank (D-05, D-09, D-13, D-16)", () => 
     expect(pin.rockerAt(0)).toBeLessThan(bottom.rockerAt(0));
     expect(bottom.deckOffAt(0)).toBeCloseTo(input.deckSkin! + bottom.tipThinningAt(0), 12);
     expect(bottom.deckOffAt(0)).toBeLessThan(0);
-    const result = fitAt(bottom, outline(bottom), mm(input.length / 2), inchesToMm(1));
+    const result = fitAt(bottom, outline(bottom), mm(input.length / 2), rulesWith(inchesToMm(1)));
     expect(result.fits).toBe(false);
     expect(result.worst.kind).toBe("thin");
     expect(result.worst.station).toBeLessThanOrEqual(inchesToMm(1));
@@ -661,14 +669,14 @@ describe("the board's foil, cut from the blank (D-05, D-09, D-13, D-16)", () => 
 
   it("fails the fit where a Deck tweak lifts the deck above the blank's deck (D-09)", () => {
     const plain = boardOnBlank(prepared, board, mm(0));
-    expect(fitAt(plain, outline(plain), mm(L / 2), inchesToMm(1)).fits).toBe(true);
+    expect(fitAt(plain, outline(plain), mm(L / 2), rulesWith(inchesToMm(1))).fits).toBe(true);
     const tuned = boardOnBlank(
       prepared,
       { ...board, fineTuneSurface: "deck", nose12Offset: mm(board.deckSkin! + inchesToMm(1 / 16)) },
       mm(0),
     );
     expect(tuned.deckOffAt(L - W)).toBeLessThan(0);
-    const result = fitAt(tuned, outline(tuned), mm(L / 2), inchesToMm(1));
+    const result = fitAt(tuned, outline(tuned), mm(L / 2), rulesWith(inchesToMm(1)));
     expect(result.fits).toBe(false);
     expect(result.worst.kind).toBe("thin");
     expect(Math.abs(result.worst.station - (L - W))).toBeLessThanOrEqual(inchesToMm(1));
@@ -680,7 +688,7 @@ describe("the board's foil, cut from the blank (D-05, D-09, D-13, D-16)", () => 
     const onBlank = boardOnBlank(prepared, { ...board, centerThickness: tooThick }, mm(0));
     expect(onBlank.centerGap).toBeLessThan(0);
     for (const s of [W, L / 2, L - W]) expect(onBlank.bottomOffAt(s)).toBeLessThan(0);
-    const result = fitAt(onBlank, outline(onBlank), mm(L / 2), inchesToMm(1));
+    const result = fitAt(onBlank, outline(onBlank), mm(L / 2), rulesWith(inchesToMm(1)));
     expect(result.fits).toBe(false);
     expect(result.worst.kind).toBe("thin");
   });
@@ -732,7 +740,7 @@ describe("the fit check (R12, D-05)", () => {
 
   it("passes the M-Regular at full length with default tips and an outline 2\" narrower everywhere", () => {
     const onBlank = boardOnBlank(prepared, defaultBoard(blank, L, inchesToMm(2.5)), mm(0));
-    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(L / 2), margin);
+    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(L / 2), rulesWith(margin));
     expect(result.fits).toBe(true);
     expect(result.worst.amount).toBeLessThanOrEqual(0);
   });
@@ -742,7 +750,7 @@ describe("the fit check (R12, D-05)", () => {
     const tight = L / 2;
     const narrow = narrowerBy(onBlank, inchesToMm(2));
     const halfWidthAt = (s: Mm) => (s === tight ? onBlank.blankWidthAt(s) / 2 - inchesToMm(1 / 4) : narrow(s));
-    const result = fitAt(onBlank, halfWidthAt, mm(tight), margin);
+    const result = fitAt(onBlank, halfWidthAt, mm(tight), rulesWith(margin));
     expect(result.fits).toBe(false);
     expect(result.worst.kind).toBe("wide");
     expect(result.worst.station).toBe(tight);
@@ -763,7 +771,7 @@ describe("the fit check (R12, D-05)", () => {
     };
     const onBlank = boardOnBlank(roundedPrepared, input, mm(0));
     expect(onBlank.blankWidthAt(Lr)).toBe(0);
-    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(Lr / 2), margin);
+    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(Lr / 2), rulesWith(margin));
     expect(result.fits).toBe(true);
   });
 
@@ -772,7 +780,7 @@ describe("the fit check (R12, D-05)", () => {
     const onBlank = boardOnBlank(prepared, defaultBoard(blank, longer, inchesToMm(2.5)), mm(0));
     expect(onBlank.blankThicknessAt(0)).toBe(0);
     expect(onBlank.blankWidthAt(longer)).toBe(0);
-    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(longer / 2), margin);
+    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(longer / 2), rulesWith(margin));
     expect(result.fits).toBe(false);
     expect(result.worst.kind).toBe("thin");
   });
@@ -867,7 +875,7 @@ function fitHere(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitSet
     boardOnBlank(prepared, ctx.board, mm(placement)),
     ctx.halfWidthAt,
     ctx.widePointStation,
-    settings.widthMargin,
+    settings,
   );
 }
 
@@ -1359,5 +1367,54 @@ describe("the offer and the rescue (D-08, R6)", () => {
       }
       expect(clampedChecked).toBeGreaterThan(0);
     });
+  });
+});
+
+describe("one planer pass under the board's centre where it sits (D-15)", () => {
+  it("a board slid to where less than one pass would come off the bottom at its centre fails thin at the centre by exactly the missing foam, yet the blank still fits elsewhere (F2) and the rescue leaves a full pass", () => {
+    const ctx = defaultContext(72, 2.5);
+    const L = ctx.board.length;
+    const pass = DEFAULT_SETTINGS.planerMaxDepth;
+    const list = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+    let underOnePass = 0;
+    let found = 0;
+    for (const verdict of [...list.fits, ...list.wontFit]) {
+      const { prepared } = verdict;
+      const range = placementRange(prepared.lengthMm, L);
+      for (const end of [range.min, range.max]) {
+        const gap = boardOnBlank(prepared, ctx.board, end).bottomOffAt(L / 2);
+        if (!(gap > 0 && gap < pass - FIT_EPSILON_MM)) continue;
+        underOnePass++;
+        const here = fitHere(prepared, ctx, DEFAULT_SETTINGS, end);
+        expect(here.fits, keyOf(prepared.record)).toBe(false);
+        // Whatever else is tight at this end, the centre alone is short by the missing pass …
+        expect(here.worst.amount).toBeGreaterThanOrEqual(pass - gap - 1e-9);
+        // … and where the centre is the worst place and the blank fits somewhere else — the flag's
+        // F2, "{amount} too thin at the center" — the amount is exactly the missing foam.
+        if (here.worst.station !== L / 2) continue;
+        if (!judgeBlank(prepared, ctx, DEFAULT_SETTINGS).fits) continue;
+        found++;
+        expect(here.worst.kind).toBe("thin");
+        expect(here.worst.amount).toBeCloseTo(pass - gap, 9);
+        const to = nearestFittingPlacement(prepared, ctx, DEFAULT_SETTINGS, end);
+        expect(to).not.toBeNull();
+        expect(boardOnBlank(prepared, ctx.board, to!).bottomOffAt(L / 2)).toBeGreaterThanOrEqual(pass - FIT_EPSILON_MM);
+        expect(fitHere(prepared, ctx, DEFAULT_SETTINGS, to!).fits).toBe(true);
+      }
+    }
+    expect(underOnePass).toBeGreaterThan(0);
+    expect(found).toBeGreaterThan(0);
+  });
+
+  it("every fitting verdict leaves at least one pass under the board's centre at its placement", () => {
+    for (const { label, ctx } of sweepContexts()) {
+      for (const verdict of listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS).fits) {
+        const onBlank = boardOnBlank(verdict.prepared, ctx.board, verdict.placement);
+        expect(
+          onBlank.bottomOffAt(ctx.board.length / 2),
+          `${label} ${keyOf(verdict.prepared.record)}`,
+        ).toBeGreaterThanOrEqual(DEFAULT_SETTINGS.planerMaxDepth - FIT_EPSILON_MM);
+      }
+    }
   });
 });

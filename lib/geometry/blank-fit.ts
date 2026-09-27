@@ -405,17 +405,23 @@ export function boardOnBlank(
 }
 
 /**
- * Does the board fit inside its blank? (R12, D-05, Phase 12 D-09)
+ * Does the board fit inside its blank? (R12, D-05, Phase 12 D-09, D-15)
  *
  * Samples every `FIT_SAMPLE_STEP_MM` from tail tip to nose tip, plus the five board stations and
  * the widepoint. At each: the THIN amount is how far the board pokes out of the blank through
  * either surface — the smaller of the foam off the deck and the foam off the bottom, negated — so a
  * deck above the blank's deck and a bottom below the blank's bottom both fail (D-09), and together
  * they cover a board thicker than the blank; and, only where the board itself has width
- * (`halfWidthAt(s) > 0`), the WIDE
- * amount is the board's full width plus `widthMargin` minus the blank's width. Width is never
- * checked where the board has none — a rounded-nose blank is 0 wide at its very tip by design, and
- * the board's own outline reaches 0 there too.
+ * (`halfWidthAt(s) > 0`), the WIDE amount is the board's full width plus `rules.widthMargin` minus
+ * the blank's width. Width is never checked where the board has none — a rounded-nose blank is 0
+ * wide at its very tip by design, and the board's own outline reaches 0 there too.
+ *
+ * One more THIN amount at the board's centre (D-15): at least one pass of the shaper's
+ * `rules.planerMaxDepth` must come off the bottom under the board's centre WHERE IT SITS — the
+ * placement half of "one pass on the deck and one on the bottom as a minimum". The list's floor
+ * (`floorCheck`) reads the blank's printed centre; this reads the foam actually under the board's
+ * centre at this placement, which can be less when the board slides toward a thinner end. A
+ * failure is reported at the centre by exactly how much less than one pass would come off there.
  *
  * `halfWidthAt` is the board outline's HALF-width (what `sampleOutline` returns). `worst` is the
  * largest amount found, with its station and kind; the board fits when that is no more than
@@ -425,7 +431,7 @@ export function fitAt(
   onBlank: BoardOnBlank,
   halfWidthAt: (station: Mm) => number,
   widePointStation: Mm,
-  widthMargin: Mm,
+  rules: Pick<FitSettings, "widthMargin" | "planerMaxDepth">,
 ): FitResult {
   const L = onBlank.board.length;
   const stations: number[] = [];
@@ -443,8 +449,10 @@ export function fitAt(
   for (const s of stations) {
     consider("thin", s, thinBy(s));
     const half = halfWidthAt(mm(s));
-    if (half > 0) consider("wide", s, 2 * half + widthMargin - onBlank.blankWidthAt(s));
+    if (half > 0) consider("wide", s, 2 * half + rules.widthMargin - onBlank.blankWidthAt(s));
   }
+  // D-15: one bottom pass must survive under the board's centre where it sits.
+  consider("thin", L / 2, rules.planerMaxDepth - onBlank.bottomOffAt(L / 2));
   return { fits: worst.amount <= FIT_EPSILON_MM, worst };
 }
 
@@ -572,7 +580,7 @@ function fitterFor(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitS
         boardOnBlank(prepared, ctx.board, blankPlacementAt(prepared, ctx.board.length, index)),
         ctx.halfWidthAt,
         ctx.widePointStation,
-        settings.widthMargin,
+        settings,
       );
       results.set(index, result);
     }
@@ -732,8 +740,7 @@ export function nearestFittingPlacement(
   const L = ctx.board.length;
   const halfWidthAt = memoiseHalfWidth(ctx.halfWidthAt);
   const fitsAt = (placement: Mm) =>
-    fitAt(boardOnBlank(prepared, ctx.board, placement), halfWidthAt, ctx.widePointStation, settings.widthMargin)
-      .fits;
+    fitAt(boardOnBlank(prepared, ctx.board, placement), halfWidthAt, ctx.widePointStation, settings).fits;
 
   const start = clampPlacement(from, prepared.lengthMm, L);
   if (fitsAt(start)) return start;
