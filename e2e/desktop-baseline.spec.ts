@@ -2,6 +2,19 @@ import { expect, test } from "@playwright/test";
 
 /**
  *
+ * RE-RECORDED 2026-09-26 (Phase 12, plan 12-03) — ROCKER only, `rocker-desktop.png`, for the blank
+ * list intro's new wording: a blank now needs room at the center for a deck skin and a bottom pass
+ * (Phase 12 D-10), so the intro reads "Shortest first. Each is at least 2" longer than your board,
+ * with room at the center for a 1/8" deck skin and a 1/8" bottom pass. …" and wraps onto one more
+ * line, pushing the search box and the list down by that line. The diff image, inspected before
+ * re-recording, showed nothing else moved: the first rows are the same blanks in the same order,
+ * and the drawing, the Center Thickness section and the top bar are untouched. TEMPLATE, RAILS,
+ * FINS and VOLUME were not re-recorded and are byte-for-byte what they were (SHA-256 ef4fa37e…c0
+ * outline, 6c2c6b2b…73 rails, a925ba15…62 fins, e6d97a8d…72 volume). The new PNG was rendered by
+ * the webpack dev server (`IS_WEBPACK_TEST=1`, port 3153) in the 12-03 worktree on this Mac; if
+ * the orchestrator's Turbopack run from the main checkout disagrees, it may re-record ROCKER once
+ * there.
+ *
  * RE-RECORDED 2026-09-26 (Phase 11, plan 11-12) — two images only, `rocker-desktop.png` and
  * `volume-desktop.png`. ROCKER is a new screen: the sidebar now reads Center Thickness, the blank
  * list (the ROCKER shot waits for that streamed list, so the picture always includes it), a
