@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Foil the Way a Shaper Cuts It
-status: discussing
+status: executing
 stopped_at: Phase 12 planned 2026-09-26 on branch foil-real-shaping — 10 plans in 5 waves, checker passed first pass; awaiting the founder's approval before /gsd-execute-phase 12 (no code until then)
-last_updated: "2026-09-27T01:02:06.907Z"
+last_updated: "2026-09-27T01:25:38.725Z"
 last_activity: 2026-09-26
 last_activity_desc: "Phase 12 planned: research (D-13–D-20 rulings), UI contract, 10 plans in 5 waves, plan checker VERIFICATION PASSED; awaiting approval"
 progress:
@@ -24,14 +24,14 @@ current_phase_name: Foil the Way a Shaper Cuts It
 See: .planning/PROJECT.md (updated 2026-09-26)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** v1.4 — Phase 12 planned (10 plans, 5 waves) on branch `foil-real-shaping`; the founder reviews the plans, then `/gsd-execute-phase 12`
+**Current focus:** Phase 12 — Foil the Way a Shaper Cuts It
 
 ## Current Position
 
 **v1.4 — Foil the Way a Shaper Cuts It: OPENED 2026-09-26 on branch `foil-real-shaping`.** Phase 12 added from the founder's brief (todo 2026-09-26: deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, tip thinning in the last 12" with a pin-deck or bottom choice, fine-tunes on the 12" stations). v1.3 shipped the same day and is archived under .planning/milestones/.
 
-Status: Phase 12 planned — ready to execute on approval
-Last activity: 2026-09-26 — Phase 12 planned (10 plans in 5 waves)
+Status: Executing Phase 12
+Last activity: 2026-09-26 — Phase 12 execution started
 
 ## Performance Metrics
 
