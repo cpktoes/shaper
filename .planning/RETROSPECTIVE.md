@@ -86,6 +86,46 @@
 
 ---
 
+## Milestone: v1.4 — Foil the Way a Shaper Cuts It
+
+**Shipped:** 2026-09-27
+**Phases:** 1 (12) | **Plans:** 10 | **Sessions:** ~2 across 2026-09-26 → 2026-09-27
+
+### What Was Built
+- Phase 11's foil pinned in a golden fixture generated from tag `v1.3`, then replaced by the planer's cut — a constant deck skin, the bottom planed parallel to the blank's down to the centre thickness, the tips thinned last inside 12" with the deck or the bottom pinned — with six named geometry tests green on every seeded blank before any screen moved.
+- The ROCKER screen's Deck Skin slider, OFF BOTTOM column and planer-pass count, Tip Style and Fine-tune off pills, and the DATASHEET's FOAM OFF Deck and Bottom rows; Fit & Tip Defaults grown to seven with Planer Max Depth in place of Extra Center Thickness; the fit check refusing a board under 1/8" or without a pass under its centre.
+- Saved boards at version 5 with the cut on the blank, every Phase 11 board reopening with its five station numbers kept; production migrated before the merge and the live site walked the same night.
+
+### What Worked
+- **A golden from the last release tag before touching the maths:** the fixture made "nothing a shaper cut to may move" a named test over 39 boards rather than a promise, and the same read-only script proved it on production (10 of 10 open, 1 of 1 kept).
+- **Expand-and-contract applied to types, not just columns:** optional cut fields with one fallback in 12-01, every caller migrated across three plans, then the fields made required and the fallback deleted in 12-09 — the compiler closed the loop.
+- **Research measured before the founder ruled:** the 65% of Phase 11 boards that would open flagged, the 9–31% of blank × tip combinations where the tip is thicker than the parallel cut, the 1-in-1,953 one-pass failures — so D-14, D-15 and D-16 were rulings on counted numbers, not guesses.
+- **The v1.3 shape ran again without friction:** discuss → plan → five waves → code review → verify → UAT with the DONE WHEN first → production migrated before the merge, in about 21 hours of wall clock.
+- **The code review's two warnings were real:** a dead-end flag (WR-01) and copy that stopped being true once a Deck tweak was set (WR-02), both fixed before the founder saw the screen; the three notes it did not fix became founder questions rather than silent skips.
+
+### What Was Inefficient
+- 12-02's imperial read-back tripped over a pre-existing parser bug (a bare 11/16" read an inch high); the plan worked around it inside a test and the fix waited for a quick task the next morning — the sweep should have failed loudly and filed the bug in the same commit.
+- 12-08 found a stall the earlier waves had introduced (a 12" fine-tune pushed past the Deck Skin froze the ROCKER page); its own test was steered around it and the fix landed as a separate orchestrator commit in the same wave (d1d96fc).
+- One Android browser-test flake (Clerk's boot traffic inside a "no request" window) cost a full-suite run before the timing fix (df0fa10).
+- `summary-extract` again returned each summary's first DEVIATION line as its one-liner and counted 0 tasks, so the MILESTONES entry, the task count and the archive header were written by hand.
+
+### Patterns Established
+- Replacing a calculator: pin the old numbers from the last release tag first, keep the old maths only inside the carry-over reader, and decide the carry-over by the saved value's shape, never its version stamp.
+- A retired column stays declared until its own DROP after the deploy (D-19) — a DROP never rides in the same migrate run as an additive change.
+- Review findings the orchestrator rules out are written into the UAT as founder questions, so the close can name them instead of losing them.
+
+### Key Lessons
+1. When a phase changes numbers a shaper already cut to, the carry-over is a requirement with its own named test, and the read-only proof script runs on production too.
+2. A per-board setting a saved board should remember (Tip Style) needs its ROCKER control even when the founder first asked for an account default only — ask "should a saved board remember this?" at discussion, before planning.
+3. A workaround inside a test is a bug report in disguise — file the todo in the same commit, not the next morning.
+
+### Cost Observations
+- Model mix: the quality profile, as in v1.3 — planning and execution on opus; verification, review and the fixer on sonnet; the UI checker on haiku.
+- Sessions: ~2 (one long session compacted, then the founder's production and UAT session).
+- Notable: opened the afternoon v1.3 shipped and closed the next morning — about 21 hours from the first commit to the last, with production migrated, deployed and walked inside that window.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -96,6 +136,7 @@
 | v1.1 | — | 3 (5–7) | Units as display-only preference; byte-identical PDF proofs; milestone audit before close |
 | v1.2 | ~12 | 3 (8–10) | Real-device sweeps as the only proof for phone work; code review between last code wave and human checkpoint; Playwright projects + desktop baselines |
 | v1.3 | ~3 | 1 (11) | Opus executors in worktrees; founder rulings as D-NN before planning; expand-first migrations; the production step run with the founder present; the DONE WHEN walked first in UAT |
+| v1.4 | ~2 | 1 (12) | A golden from the last release tag before replacing a calculator; expand-and-contract on types; research counted the carry-over before the founder ruled; review notes ruled out become founder questions in the UAT |
 
 ### Cumulative Quality
 
@@ -105,7 +146,9 @@
 | v1.1 | ~2,240 unit | — | 0 new runtime deps |
 | v1.2 | 2,463 unit + 225 browser | — | Playwright (dev-only) |
 | v1.3 | 2,865 unit + 293 browser | — | 0 new deps (D-20) |
+| v1.4 | 3,043 unit + 360 browser | — | 0 new deps (R11) |
 
 ### Top Lessons (Verified Across Milestones)
 1. Proof that a machine can run (golden fixtures, byte-identical PDFs, compiled-CSS contracts) beats prose in a summary — every milestone found at least one "Self-Check: PASSED" that main's own run disproved.
 2. The founder's hands are the final instrument for anything printed or held — v1.1's ruler-checked 1:1 templates and v1.2's real-phone sweeps both caught what tests could not.
+3. Numbers a shaper already cut to are pinned before they are changed — v1.3's R16 and v1.4's R7 both put the named geometry tests before the first screen commit, v1.4 added a golden from the previous release tag, and both closes proved the order by git ancestry.
