@@ -428,6 +428,27 @@ describe("commitTypedMeasure", () => {
     expect(result.display).toBe('20 1/4"');
   });
 
+  it('imperial: a typed bare 11/16 commits 11/16", not an inch more', () => {
+    // Bounds 1/2" to 5" bracket both 11/16" and 1 1/16", so the clamp cannot hide a misread.
+    const field = {
+      current: inchesToMm(1),
+      family: "mark",
+      min: 0.5,
+      max: 5,
+      system: "imperial",
+      bare: false,
+    } as const;
+    const elevenSixteenths = commitTypedMeasure({ ...field, typed: "11/16" });
+    expect(elevenSixteenths.error).toBeNull();
+    expect(elevenSixteenths.value).toBe(inchesToMm(11 / 16));
+    expect(elevenSixteenths.display).toBe('11/16"');
+
+    const tenSixteenths = commitTypedMeasure({ ...field, typed: "10/16" });
+    expect(tenSixteenths.error).toBeNull();
+    expect(tenSixteenths.value).toBe(inchesToMm(10 / 16));
+    expect(tenSixteenths.display).toBe('5/8"');
+  });
+
   it("imperial: an unreadable typed value reverts to current and shows the exact ImperialField error line", () => {
     const current = inchesToMm(20);
     const result = commitTypedMeasure({
@@ -817,13 +838,7 @@ describe("planerPasses / formatPasses — passes from the printed numbers (D-03,
   /** What the screen prints for `value` (a mark), read back through the app's own parser. */
   function printedBack(value: Mm, system: UnitsSystem): Mm {
     const printed = formatMark(value, system);
-    // KNOWN PARSER BUG (found by 12-02, not fixed here — units.ts is outside this plan's files):
-    // `parseImperial` misreads a bare fraction with a two-digit numerator — `11/16"` comes back as
-    // 1 1/16" because its whole-number group takes the first "1". Writing the same number with an
-    // explicit zero whole part (`0 11/16"`) reads correctly, so the sweep reads it back that way.
-    // Once parseImperial is fixed this line can go and the sweep must still pass unchanged.
-    const readable = system === "imperial" && /^\d+\/\d+"$/.test(printed) ? `0 ${printed}` : printed;
-    const parsed = system === "metric" ? parseMetric(readable, "mm") : parseImperial(readable);
+    const parsed = system === "metric" ? parseMetric(printed, "mm") : parseImperial(printed);
     if (parsed === null) throw new Error(`the app could not read back its own printed '${printed}'`);
     return parsed;
   }

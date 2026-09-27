@@ -164,6 +164,34 @@ describe("units boundary", () => {
     it("returns null for unparseable text", () => {
       expect(parseImperial("abc")).toBeNull();
     });
+
+    // A whole number and a fraction need whitespace between them, so a fraction typed on its own is
+    // read whole, whatever its numerator. Every expected value is arithmetic on the typed fraction.
+    describe("a fraction typed on its own, or after a whole number", () => {
+      it.each<[string, number, string]>([
+        ["11/16", 11 / 16, "11 ÷ 16, not 1 + 1/16"],
+        ["13/16", 13 / 16, "13 ÷ 16, not 1 + 3/16"],
+        ["15/16", 15 / 16, "15 ÷ 16, not 1 + 5/16"],
+        ["10/16", 10 / 16, "10 ÷ 16, not 1 + 0/16"],
+        ['11/16"', 11 / 16, "11 ÷ 16 with the inch mark"],
+        ["21/16", 21 / 16, "21 ÷ 16, not 2 + 1/16"],
+        ["3/16", 3 / 16, "3 ÷ 16"],
+        ["9/16", 9 / 16, "9 ÷ 16"],
+        ["1 11/16", 1 + 11 / 16, "1 + 11/16"],
+        ["0 11/16", 11 / 16, "0 + 11/16"],
+        ["2 11/16", 2 + 11 / 16, "2 + 11/16"],
+        [`6' 11/16"`, 6 * 12 + 11 / 16, "6 × 12 + 11/16"],
+        ["-2 11/16", -(2 + 11 / 16), "−(2 + 11/16)"],
+        ["-11/16", -(11 / 16), "−(11/16)"],
+        ["-1/2", -(1 / 2), "−(1/2), read rather than refused"],
+      ])("%s reads as %s inches (%s)", (typed, inches) => {
+        expect(mmToInches(parseImperial(typed)!)).toBeCloseTo(inches, 9);
+      });
+
+      it.each(["-2 -11/16", "2 -11/16", "11/0"])("%s is refused", (typed) => {
+        expect(parseImperial(typed)).toBeNull();
+      });
+    });
   });
 
   describe("formatCentimetres", () => {
