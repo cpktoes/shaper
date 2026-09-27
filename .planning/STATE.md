@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Foil the Way a Shaper Cuts It
 status: executing
-stopped_at: Phase 12 Wave 3 merged 2026-09-26 (12-04 Tip Style default, 12-05 Deck Skin on ROCKER, 12-06 carry-over + saved-board check, 12-07 fit rules D-15/D-18); Wave 4 (12-08, 12-09) next
-last_updated: "2026-09-27T02:57:08.439Z"
+stopped_at: Phase 12 Wave 4 merged 2026-09-26 (12-08 Tip Style + Fine-tune off on ROCKER, 12-09 FOAM OFF block + cut fields required); over-skin fine-tune freeze fixed on the branch; next: code review, verification, then the founder's Wave 5 checkpoint (12-10)
+last_updated: "2026-09-27T03:46:14.290Z"
 last_activity: 2026-09-26
-last_activity_desc: "Phase 12 Wave 3 complete: Tip Style default, Deck Skin/OFF BOTTOM/passes on ROCKER, older boards carry the account Tip Style, one-pass and runs-out fit rules; one post-merge type seam fixed on the branch; build, 2968 unit tests, tsc, lint green"
+last_activity_desc: "Phase 12 Wave 4 complete: Tip Style and Fine-tune off pills on ROCKER, DATASHEET FOAM OFF Deck/Bottom rows, the three cut fields required; the over-skin fine-tune freeze 12-08 found is fixed with an exact early exit; build, 2977 unit tests, tsc, lint green"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 10
-  completed_plans: 7
-  percent: 70
+  completed_plans: 9
+  percent: 90
 current_phase: 12
 current_phase_name: Foil the Way a Shaper Cuts It
 ---
