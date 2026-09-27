@@ -734,8 +734,14 @@ export function OrderForm() {
                   onChange={setBoardName}
                   placeholder="Name this board"
                 />
+                {/* Blank takes a line of its own, the whole width of the box, above the row that
+                    keeps Board # and Price. The widest blank in the catalogue needs about 297px on
+                    screen and 248px in print; sharing the row with Board # and Price, the field
+                    cut off 19 of the 162 names with a "…". On its own line every name prints
+                    whole, and Board # and Price each get half their row — a longer line to write
+                    on than before. */}
+                <OrderFormField label="Blank" value={blankLabel} />
                 <div className="flex gap-6">
-                  <OrderFormField label="Blank" value={blankLabel} className="flex-[1.4]" />
                   <OrderFormField label="Board #" className="flex-1" />
                   <OrderFormField label="Price" prefix="$" className="flex-1" />
                 </div>

@@ -1,4 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { parseCsv } from "../lib/blanks/csv";
 
 /**
  * The Summary order form's Blank field (quick 260926-wkh). Page 2 of the order form, the Shaper
@@ -63,7 +66,28 @@ async function openRocker(page: Page) {
   });
 }
 
-/** The order form's Blank field — the `<label>` holding the `Blank:` caption. */
+/** Every unique `vendor name` in the committed catalogue CSVs — everything the Blank field could
+ * ever be asked to print. Read straight from `db/seed/blanks/*.csv` with the same tested reader the
+ * seed uses, so no blank name is typed here either. */
+function catalogueBlankNames(): string[] {
+  const dir = join(__dirname, "..", "db", "seed", "blanks");
+  const names = new Set<string>();
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".csv"))) {
+    const [header, ...rows] = parseCsv(readFileSync(join(dir, file), "utf8"));
+    const vendorCol = header.indexOf("vendor");
+    const nameCol = header.indexOf("blank_name");
+    expect(vendorCol, `${file} has a vendor column`).toBeGreaterThanOrEqual(0);
+    expect(nameCol, `${file} has a blank_name column`).toBeGreaterThanOrEqual(0);
+    for (const row of rows) {
+      const vendor = (row[vendorCol] ?? "").trim();
+      const name = (row[nameCol] ?? "").trim();
+      if (vendor && name) names.add(`${vendor} ${name}`);
+    }
+  }
+  return [...names];
+}
+
+/** The order form's Blank field —the `<label>` holding the `Blank:` caption. */
 function blankField(page: Page): Locator {
   return page.getByText("Blank:", { exact: true }).locator("xpath=..");
 }
@@ -98,5 +122,44 @@ test.describe("Summary — the Shaper Use Only box's Blank field", () => {
     await page.getByRole("link", { name: "SUMMARY", exact: true }).filter({ visible: true }).first().click();
     await expect(page).toHaveURL(/\/design\/summary$/);
     await expect(blankFieldValue(page)).toHaveText(expected);
+  });
+
+  test("every blank in the catalogue prints whole in the Blank field, on screen and on paper", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "measures the printed sheet; one engine is enough");
+
+    const names = catalogueBlankNames();
+    // Never a vacuous pass: the three catalogues hold well over a hundred blanks.
+    expect(names.length).toBeGreaterThan(100);
+
+    await page.goto("/design/summary");
+    const value = blankFieldValue(page);
+    await expect(value).toHaveCount(1);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+
+    // The names go straight into the field rather than being picked one at a time on ROCKER, on
+    // purpose. No single board's ROCKER list offers every blank — the default board lists 141 of
+    // the catalogue's blanks and none of the widest — and the question here is only whether the
+    // field has room for a name, which doesn't depend on how that blank got picked.
+    const namesCutOff = () =>
+      value.evaluate((span, all) => {
+        const clipped: string[] = [];
+        for (const name of all) {
+          span.textContent = name;
+          if (span.scrollWidth > span.clientWidth) clipped.push(name);
+        }
+        span.textContent = " ";
+        return clipped;
+      }, names);
+
+    const cutOffOnScreen = await namesCutOff();
+    await page.emulateMedia({ media: "print" });
+    const cutOffOnPaper = await namesCutOff();
+    await page.emulateMedia({ media: "screen" });
+
+    // A failure names every blank that would print with a "…" instead of its full name.
+    expect(cutOffOnScreen).toEqual([]);
+    expect(cutOffOnPaper).toEqual([]);
   });
 });
