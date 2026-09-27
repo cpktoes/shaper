@@ -300,6 +300,10 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     for (let i = 0; i < 4; i++) await nose12.press("ArrowLeft");
     await expect(nose12Label).not.toHaveText(labelBefore);
     const tweakedLabel = await nose12Label.innerText();
+    // A tweak off the Deck changes the foam off the deck there, and the Deck Skin's hint says so.
+    await expect(
+      page.getByText(`Off the deck — a 12" fine-tune changes it there; see the DATASHEET's Deck row`, { exact: true }),
+    ).toBeVisible();
 
     // The ROCKER column of the readouts (the second cell of each row).
     const rockerCells = page.locator("[data-readouts] [data-readout-row] > :nth-child(2)");
@@ -313,6 +317,8 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
       page.getByText("Tweaks move the bottom, so the rocker re-levels and its numbers can shift.", { exact: true }),
     ).toBeVisible();
 
+    // Off the Bottom the deck comes off evenly again.
+    await expect(page.getByText("Off the deck at every station", { exact: true })).toBeVisible();
     // The tweak's amount is the same, so the 12" thickness reads the same...
     await expect(nose12Label).toHaveText(tweakedLabel);
     // ...but it now comes off the bottom, so the rocker re-levels and at least one reading moves.

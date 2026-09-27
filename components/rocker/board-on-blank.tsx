@@ -15,16 +15,20 @@
  * blank's deck. It is the board's own, stored on its blank (the first pick took the shaper's Fit &
  * Tip Defaults value), 1/16"–1/2" in 1/16" steps (2–12 mm in Metric) through the same range
  * constant the Fit & Tip Defaults dialog uses. Its hint says where the skin comes off: the same at
- * every station under Pin deck, more at the tips under Bottom. A drag lowers or raises the board's
- * deck at every station and moves the foam off the bottom by the same amount; it never clears the
- * pick.
+ * every station under Pin deck, more at the tips under Bottom — and, when a 12" fine-tune is taken
+ * off the Deck, that the fine-tune changes it there and where the numbers are. A drag lowers or
+ * raises the board's deck at every station and moves the foam off the bottom by the same amount;
+ * it never clears the pick.
  *
  * Under those, the live readouts: the board's own rocker (under Pin deck the tips include the lift)
  * and the foam off the BOTTOM at the board's five stations, nose to tail, re-read on every slider
  * move from the store's one side profile — one sample of one prepared blank, never a list verdict
  * and never a network request (R14). A value below zero (the board's bottom would drop below the
  * blank's there) reads in warning ink with its minus sign; one that prints as zero reads as zero.
- * The deck needs no column: the foam off the deck is the Deck Skin, printed just above.
+ * The deck has no column here: the foam off the deck is the Deck Skin, printed just above, at every
+ * station until a 12" fine-tune taken off the Deck changes it there (or, under Bottom, the tip
+ * thinning adds to it toward the tips, and a negative tip setting can take it below — D-16). The
+ * DATASHEET's FOAM OFF · Deck row carries the per-station numbers.
  *
  * Under the grid, the planer passes at the center (D-03): the center's foam off the bottom divided
  * by the shaper's Planer Max Depth, rounded up — counted from the printed numbers, so a shaper who
@@ -109,6 +113,15 @@ export function BoardOnBlankSection() {
   const noRoom = range.max <= 0;
   const skinSlider = measureSlider(view.cut.deckSkin, DECK_SKIN_RANGE_IN, DECK_SKIN_RANGE_IN.step, 1, system);
   const passes = planerPasses(view.centerGap, defaults.planerMaxDepth, system);
+  // A 12" fine-tune taken off the Deck changes the foam off the deck at that station, so the skin
+  // is no longer the same everywhere (WR-02).
+  const deckTweaked = view.cut.fineTuneSurface === "deck" && (blank.nose12Offset !== 0 || blank.tail12Offset !== 0);
+  const skinHint =
+    view.cut.tipStyle === "bottom"
+      ? "Off the deck — more at the tips"
+      : deckTweaked
+        ? `Off the deck — a ${stationLabel(system)} fine-tune changes it there; see the DATASHEET's Deck row`
+        : "Off the deck at every station";
 
   return (
     <div className="flex flex-col">
@@ -148,7 +161,7 @@ export function BoardOnBlankSection() {
           min={skinSlider.min}
           max={skinSlider.max}
           step={skinSlider.step}
-          leftHint={view.cut.tipStyle === "pinDeck" ? "Off the deck at every station" : "Off the deck — more at the tips"}
+          leftHint={skinHint}
           onValueChange={(v) => setDeckSkin(skinSlider.toMm(v))}
         />
       </div>

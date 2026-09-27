@@ -40,18 +40,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatMark, measureSlider, typedFieldBounds } from "@/lib/geometry/measure-display";
+import { formatMark, measureSlider, stationLabel, typedFieldBounds } from "@/lib/geometry/measure-display";
 import { TwoOptionToggle } from "@/components/viewer/two-option-toggle";
 import { FIT_DEFAULTS_RANGE_IN, type FitDefaultsMmKey } from "@/lib/fit-defaults-preference";
 import type { TipStyle } from "@/lib/geometry/blank";
-import type { Mm } from "@/lib/geometry/units";
+import type { Mm, UnitsSystem } from "@/lib/geometry/units";
 
 /** The menu's own group-label type (settings-menu.tsx), reused for the dialog's two groups. */
 const GROUP_LABEL_CLASS = "text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase";
 
 interface FieldCopy {
   label: string;
-  hint?: string;
+  /** A fixed line, or one that names the 12" station in the shaper's system (CLAUDE.md Rule 2). */
+  hint?: string | ((system: UnitsSystem) => string);
 }
 
 const FIELD_COPY: Record<FitDefaultsMmKey, FieldCopy> = {
@@ -69,7 +70,8 @@ const FIELD_COPY: Record<FitDefaultsMmKey, FieldCopy> = {
   },
   deckSkin: {
     label: "Deck Skin",
-    hint: "Taken off the blank's deck, the same at every station.",
+    hint: (system) =>
+      `Taken off the blank's deck, the same at every station until a board's ${stationLabel(system)} fine-tunes move it.`,
   },
   noseTipThickness: { label: "Nose Tip Thickness" },
   tailTipThickness: { label: "Tail Tip Thickness" },
@@ -183,7 +185,11 @@ export function FitDefaultsDialog({
                   <div key={key} className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="text-sm text-surf-ink">{copy.label}</div>
-                      {copy.hint && <p className="mt-0.5 text-xs text-surf-ink-muted">{copy.hint}</p>}
+                      {copy.hint && (
+                        <p className="mt-0.5 text-xs text-surf-ink-muted">
+                          {typeof copy.hint === "function" ? copy.hint(system) : copy.hint}
+                        </p>
+                      )}
                     </div>
                     <div className="shrink-0">
                       <MeasureField
