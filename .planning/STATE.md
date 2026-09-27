@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Foil the Way a Shaper Cuts It
 status: executing
-stopped_at: Phase 12 Wave 1 merged 2026-09-26 (12-01 geometry core + golden, 12-02 columns + planer passes); Wave 2 (12-03) next
-last_updated: "2026-09-27T01:50:14.155Z"
+stopped_at: Phase 12 Wave 2 merged 2026-09-26 (12-03 Planer Max Depth replaces Extra Center Thickness, ROCKER baseline re-recorded once); Wave 3 (12-04..12-07) next
+last_updated: "2026-09-27T02:21:26.000Z"
 last_activity: 2026-09-26
-last_activity_desc: "Phase 12 Wave 1 complete: the planer-style cut with its golden fixture (12-01) and the three settings columns + planer-pass count (12-02); build, 2893 unit tests, tsc and lint green on the branch"
+last_activity_desc: "Phase 12 Wave 2 complete: Planer Max Depth replaces Extra Center Thickness from the gear menu to the blank list (12-03); build, 2920 unit tests, tsc, lint green on the branch"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 10
-  completed_plans: 2
-  percent: 20
+  completed_plans: 3
+  percent: 30
 current_phase: 12
 current_phase_name: Foil the Way a Shaper Cuts It
 ---
