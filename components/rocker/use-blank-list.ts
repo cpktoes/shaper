@@ -9,6 +9,13 @@
  * its two tips, the two 12" fine-tunes, how it is cut from the blank (Deck Skin, Tip Style,
  * fine-tune surface — Phase 12) and the shaper's three fit rules — and on NOTHING else.
  *
+ * Which blanks are judged at all is decided by the blank makers a shaper has ticked in the settings
+ * menu (quick task 260926-wmf): an unticked maker's blanks are left out of the prepared catalogue
+ * before judging, so they leave the list, the empty-list numbers and the flag's offer together. The
+ * filter never re-fits a blank (the catalogue is still fitted once per visit), and with every maker
+ * ticked it hands back the very same list, so nothing is re-judged. The board's own picked blank
+ * never passes through here, so unticking its maker leaves it on the board.
+ *
  * The placement is deliberately absent from every dependency list below: a verdict never takes a
  * placement (`judgeBlank` searches every placement itself), so sliding the board along its blank
  * never re-judges the list and never touches the network. Only the picked blank's own flag is
@@ -19,8 +26,10 @@
 
 import { useMemo } from "react";
 import { useDesign } from "@/components/design/design-store";
+import { useBlankMakers } from "@/components/blank-makers-provider";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { isPickable } from "@/lib/blanks/catalog";
+import { filterShownBlanks } from "@/lib/blanks/vendors";
 import { DEFAULT_BLANK_CUT, type BlankCut, type BlankRecord } from "@/lib/geometry/blank";
 import {
   listBlanks,
@@ -72,7 +81,9 @@ function prepareCatalogue(records: readonly BlankRecord[]): PreparedCatalogue {
   return result;
 }
 
-export interface BlankListState extends PreparedCatalogue {
+export interface BlankListState extends Omit<PreparedCatalogue, "prepared"> {
+  /** The prepared blanks from the makers the shaper shows — every one when all are ticked. */
+  prepared: readonly PreparedBlank[];
   /** Both groups, shortest first, and why the list is empty when it is. */
   list: BlankListResult;
   /** Everything about the board a verdict depends on — never the placement. */
@@ -114,8 +125,15 @@ export function useBlankList(records: readonly BlankRecord[]): BlankListState {
   const { outline, outlineGeometry, foil, blank } = useDesign();
   const { settings } = useFitDefaults();
   const { deckSkin, tipStyle, fineTuneSurface } = useBoardCut();
+  const { hidden } = useBlankMakers();
 
   const catalogue = useMemo(() => prepareCatalogue(records), [records]);
+  // Only the makers the shaper shows are judged. With every maker ticked this is the very same
+  // array, so the list below is not re-judged.
+  const shown = useMemo(
+    () => filterShownBlanks(catalogue.prepared, hidden, (blank) => blank.record.vendor),
+    [catalogue.prepared, hidden],
+  );
 
   // The two fine-tunes count toward a verdict (a tweak can push the board through the foam); with
   // no blank picked there is no tweak, so both read 0.
@@ -157,8 +175,8 @@ export function useBlankList(records: readonly BlankRecord[]): BlankListState {
   const { extraLength, planerMaxDepth, widthMargin } = settings;
   // D-07: no placement here either — the list is judged on the board and the three fit rules only.
   const list = useMemo(
-    () => listBlanks(catalogue.prepared, ctx, { extraLength, planerMaxDepth, widthMargin }),
-    [catalogue.prepared, ctx, extraLength, planerMaxDepth, widthMargin],
+    () => listBlanks(shown, ctx, { extraLength, planerMaxDepth, widthMargin }),
+    [shown, ctx, extraLength, planerMaxDepth, widthMargin],
   );
 
   const board = useMemo(
@@ -170,5 +188,5 @@ export function useBlankList(records: readonly BlankRecord[]): BlankListState {
     [outline.length, outlineGeometry.widePointStation, foil.center],
   );
 
-  return { ...catalogue, list, ctx, board };
+  return { prepared: shown, recordOf: catalogue.recordOf, list, ctx, board };
 }

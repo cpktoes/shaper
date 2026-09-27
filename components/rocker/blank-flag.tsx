@@ -13,8 +13,9 @@
  * - F2 — it fits somewhere else along the blank, just not where the board sits now: Move to Where
  *   It Fits, which slides the board to the fitting placement nearest to where it is.
  * - F1 — it fits nowhere along the blank: the offer.
- * - The offer is the fitting blank of any vendor whose length is closest to this one, with Switch
- *   to This Blank. F5 — when no blank in any catalogue fits — says so and offers Change Fit Rules
+ * - The offer is the fitting blank whose length is closest to this one, from the blank makers
+ *   ticked in the settings menu only (never an unticked maker's), with Switch to This Blank. F5 —
+ *   when no blank in those catalogues fits — says so, naming them, and offers Change Fit Rules
  *   (the gear menu's Fit & Tip Defaults dialog) instead. With the catalogue unavailable there is
  *   no offer line at all; the flag's headline and reason never wait for the catalogue.
  * - Ahead of all of these: a 12" fine-tune on the Deck bigger than the board's Deck Skin
@@ -34,9 +35,11 @@
 import { Suspense, use, useMemo, type ReactNode } from "react";
 import { TriangleAlertIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
+import { useBlankMakers } from "@/components/blank-makers-provider";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { Button } from "@/components/ui/button";
 import { useUnits } from "@/components/units-provider";
+import { catalogsPhrase } from "@/lib/blanks/vendors";
 import type { BlankCatalogResult } from "@/lib/db/blanks";
 import type { BlankRecord } from "@/lib/geometry/blank";
 import {
@@ -54,7 +57,7 @@ import {
   FLAG_HEADLINES,
   floorShortfallMessage,
   formatShortfall,
-  NOTHING_FITS_SENTENCE,
+  nothingFitsSentence,
   offerLine,
   tweakOverSkinLine,
 } from "@/lib/geometry/blank-reasons";
@@ -94,14 +97,16 @@ function OfferBody({ records, current }: { records: readonly BlankRecord[]; curr
   const { system } = useUnits();
   const { foil, pickBlank } = useDesign();
   const { openDialog } = useFitDefaults();
+  const { hidden } = useBlankMakers();
   const { list, recordOf } = useBlankList(records);
   const offer = nearestFit(current, list.fits, foil.center);
 
   if (offer === null) {
-    // F5: nothing in any catalogue fits this board right now.
+    // F5: nothing in the catalogues being searched (the makers ticked in the settings menu) fits
+    // this board right now.
     return (
       <>
-        <p className="text-xs text-surf-ink">{NOTHING_FITS_SENTENCE}</p>
+        <p className="text-xs text-surf-ink">{nothingFitsSentence(catalogsPhrase(hidden))}</p>
         <Button variant="outline" className={ACTION_CLASS} onClick={openDialog}>
           Change Fit Rules
         </Button>
