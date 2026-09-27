@@ -12,6 +12,7 @@ import {
   type VolumeTemplateValues,
 } from "./volume";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
+import { DEFAULT_BLANK_CUT } from "./blank";
 import { prepareBlank } from "./blank-fit";
 import { buildBlankProfile, buildFallbackProfile } from "./board-profile";
 import { DEFAULT_FOIL_SPEC, foilStationPoints, sampleFoil, type FoilSpec } from "./foil";
@@ -624,6 +625,7 @@ describe("thicknessAt — one thickness curve for every board", () => {
         tailTip: foil.tailTip,
         nose12Offset: mm(0),
         tail12Offset: mm(0),
+        ...DEFAULT_BLANK_CUT,
       },
       mm(0),
     );

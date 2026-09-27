@@ -25,7 +25,6 @@
  */
 import { isPickable } from "../blanks/catalog";
 import {
-  DEFAULT_BLANK_CUT,
   type BlankCut,
   type BlankRecord,
   type BlankShortfall,
@@ -184,31 +183,12 @@ export interface BoardOnBlankInput {
   nose12Offset: Mm;
   /** Signed fine-tune at the tail 12" station (D-11). */
   tail12Offset: Mm;
-  /** The board's deck skin (Phase 12 D-01); optional until 12-09 — see `cutOf`. */
-  deckSkin?: Mm;
-  /** The board's Tip Style (Phase 12 D-04); optional until 12-09 — see `cutOf`. */
-  tipStyle?: TipStyle;
-  /** The board's fine-tune surface (Phase 12 D-13); optional until 12-09 — see `cutOf`. */
-  fineTuneSurface?: FineTuneSurface;
-}
-
-/**
- * The board's full cut, each missing field read from the out-of-the-box cut in `blank.ts`.
- * TRANSITIONAL: it exists only while the screens cannot yet pass every board's own cut (Phase 12
- * R7 lands the geometry before any screen changes); plan 12-09 makes the three fields required and
- * deletes this function. It is the ONE place a missing field is filled.
- */
-export function cutOf(board: {
-  deckSkin?: Mm;
-  tipStyle?: TipStyle;
-  fineTuneSurface?: FineTuneSurface;
-}): BlankCut {
-  const fallback = DEFAULT_BLANK_CUT;
-  return {
-    deckSkin: board.deckSkin ?? fallback.deckSkin,
-    tipStyle: board.tipStyle ?? fallback.tipStyle,
-    fineTuneSurface: board.fineTuneSurface ?? fallback.fineTuneSurface,
-  };
+  /** The board's own deck skin (Phase 12 D-01). */
+  deckSkin: Mm;
+  /** The board's own Tip Style (Phase 12 D-04). */
+  tipStyle: TipStyle;
+  /** The board's own fine-tune surface (Phase 12 D-13). */
+  fineTuneSurface: FineTuneSurface;
 }
 
 /**
@@ -305,7 +285,11 @@ export function boardOnBlank(
   board: BoardOnBlankInput,
   placement: Mm,
 ): BoardOnBlank {
-  const cut = cutOf(board);
+  const cut: BlankCut = {
+    deckSkin: board.deckSkin,
+    tipStyle: board.tipStyle,
+    fineTuneSurface: board.fineTuneSurface,
+  };
   const L = board.length;
   const Lb = prepared.lengthMm;
   const p = clampPlacement(placement, Lb, L);
@@ -531,12 +515,12 @@ const COARSE_STEPS = 4;
  */
 export function floorCheck(
   prepared: PreparedBlank,
-  board: { length: Mm; centerThickness: Mm; deckSkin?: Mm },
+  board: { length: Mm; centerThickness: Mm; deckSkin: Mm },
   settings: FitSettings,
 ): { passes: boolean; lengthShortBy: Mm | null; centerShortBy: Mm | null } {
   const lengthShort = board.length + settings.extraLength - prepared.lengthMm;
   const centerShort =
-    board.centerThickness + cutOf(board).deckSkin + settings.planerMaxDepth - prepared.centerThicknessMm;
+    board.centerThickness + board.deckSkin + settings.planerMaxDepth - prepared.centerThicknessMm;
   const lengthShortBy = lengthShort > FLOOR_EPSILON_MM ? mm(lengthShort) : null;
   const centerShortBy = centerShort > FLOOR_EPSILON_MM ? mm(centerShort) : null;
   return { passes: lengthShortBy === null && centerShortBy === null, lengthShortBy, centerShortBy };

@@ -141,7 +141,7 @@ describe("the blank profile — a board sitting in a real blank", () => {
   });
 
   it("gives the foam to come off the deck and off the bottom at each station — the skin and the centre gap at the centre (R4, D-03)", () => {
-    const skin = board.deckSkin!;
+    const skin = board.deckSkin;
     expect(view.cut).toEqual(DEFAULT_BLANK_CUT);
     expect(view.centerGap).toBe(view.onBlank.centerGap);
     expect(view.centerGap).toBeCloseTo(view.onBlank.blankThicknessAt(L / 2) - skin - board.centerThickness, 9);
@@ -150,9 +150,12 @@ describe("the blank profile — a board sitting in a real blank", () => {
     for (const { key, station } of profile.stations) {
       expect(view.foamOffDeck[key]).toBe(view.onBlank.deckOffAt(station));
       expect(view.foamOffBottom[key]).toBe(view.onBlank.bottomOffAt(station));
-      // The total stays the blank's thickness less the board's — deck plus bottom.
-      expect(view.foamOff[key]).toBe(view.onBlank.blankThicknessAt(station) - profile.thicknessAt(station));
-      expect(view.foamOff[key]).toBeCloseTo(view.foamOffDeck[key] + view.foamOffBottom[key], 9);
+      // Off the deck plus off the bottom is all the foam that comes off: the blank's thickness
+      // there less the board's.
+      expect(view.foamOffDeck[key] + view.foamOffBottom[key]).toBeCloseTo(
+        view.onBlank.blankThicknessAt(station) - profile.thicknessAt(station),
+        9,
+      );
     }
   });
 
@@ -164,7 +167,7 @@ describe("the blank profile — a board sitting in a real blank", () => {
       ["tail12", MEASURE_STATION_MM],
     ] as const) {
       expect(view.derived12[key]).toBeCloseTo(
-        view.onBlank.blankThicknessAt(station) - board.deckSkin! - view.centerGap,
+        view.onBlank.blankThicknessAt(station) - board.deckSkin - view.centerGap,
         9,
       );
     }
@@ -316,7 +319,6 @@ describe("buildBoardProfile — one entry point for both kinds of board", () => 
       expect(profile.blank!.cut).toEqual(cut);
       expect(profile.effectiveFoil).toEqual(expected.effectiveFoil);
       expect(profile.stationRocker).toEqual(expected.stationRocker);
-      expect(profile.blank!.foamOff).toEqual(expected.blank!.foamOff);
       expect(profile.blank!.foamOffDeck).toEqual(expected.blank!.foamOffDeck);
       expect(profile.blank!.foamOffBottom).toEqual(expected.blank!.foamOffBottom);
       return profile;

@@ -259,6 +259,10 @@ function presetProfile(preset: BoardPreset) {
       placement: fields.blank.placement,
       nose12Offset: fields.blank.nose12Offset,
       tail12Offset: fields.blank.tail12Offset,
+      // The preset's own cut, as the store passes it (Phase 12 D-17).
+      deckSkin: fields.blank.deckSkin,
+      tipStyle: fields.blank.tipStyle,
+      fineTuneSurface: fields.blank.fineTuneSurface,
     },
   });
   return { fields, profile };
