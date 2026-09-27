@@ -583,6 +583,20 @@ function fitterFor(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitS
   };
 }
 
+/**
+ * True when no blank can take this board at any placement, read off the board alone: a 12"
+ * fine-tune on the Deck bigger than the Deck Skin lifts the board's deck above the blank's deck at
+ * that station — the fine-tune hump peaks there and the tip ease is flat there (D-05), so the deck
+ * sits exactly `deckSkin − offset` below the blank's deck at every placement on every blank — and
+ * `fitAt` samples that station. D-13 says such a tweak is honestly flagged "too thin there"; this
+ * is what lets the list and the flag say so at once instead of confirming it one placement at a
+ * time (a full catalogue scan ran 1.3 s in Node and about 40 s on WebKit per keystroke — 12-08).
+ */
+function cannotFitAnywhere(board: BoardOnBlankInput): boolean {
+  if (board.fineTuneSurface !== "deck") return false;
+  return Math.max(board.nose12Offset, board.tail12Offset) - board.deckSkin > FIT_EPSILON_MM;
+}
+
 /** The search itself, on a context whose half-width is already memoised. */
 function judgeWith(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitSettings): BlankVerdict {
   const { lo, hi } = placementIndexRange(prepared, ctx.board.length);
@@ -591,6 +605,10 @@ function judgeWith(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitS
     const { fits, worst } = fitAtIndex(index);
     return { prepared, fits, placement: blankPlacementAt(prepared, ctx.board.length, index), worst };
   };
+  // A board no blank can take anywhere is read once, at the centre placement (its worst there is
+  // the same over-skin shortfall every placement shows), not searched.
+  if (cannotFitAnywhere(ctx.board)) return verdict(0);
+
 
   // Coarse: 0, then 1/4" steps outward, the nose side first at each distance, then the outermost
   // 1/16" placement each side when the range does not end on a quarter inch.
@@ -737,6 +755,7 @@ export function nearestFittingPlacement(
   const fitsAt = (placement: Mm) =>
     fitAt(boardOnBlank(prepared, ctx.board, placement), halfWidthAt, ctx.widePointStation, settings).fits;
 
+  if (cannotFitAnywhere(ctx.board)) return null;
   const start = clampPlacement(from, prepared.lengthMm, L);
   if (fitsAt(start)) return start;
 

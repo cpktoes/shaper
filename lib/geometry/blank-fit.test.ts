@@ -1494,3 +1494,70 @@ describe("a board under 1/8\" thick anywhere does not fit (D-18)", () => {
     expect(judged).toBeGreaterThan(BOARD_PRESETS.length * 5);
   }, 120_000);
 });
+
+describe("a Deck fine-tune bigger than the Deck Skin fits nowhere, and is read at once (D-13)", () => {
+  // The default board with its nose 12" tweak pushed `by` past the skin, on the chosen surface.
+  const overSkin = (surface: FineTuneSurface, by: Mm = SIXTEENTH_MM): BoardFitContext => {
+    const ctx = defaultContext(72, 2.5);
+    return { ...ctx, board: { ...ctx.board, nose12Offset: mm(ctx.board.deckSkin + by), fineTuneSurface: surface } };
+  };
+  const longest = () => PREPARED_ALL.reduce((a, b) => (b.lengthMm > a.lengthMm ? b : a));
+
+  it("no blank fits, each is read at the centre placement, and most read exactly the tweak less the skin too thin at the nose 12\"", () => {
+    const ctx = overSkin("deck");
+    const result = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+    expect(result.fits).toHaveLength(0);
+    expect(result.wontFit.length).toBeGreaterThan(100);
+    const nose12 = rockerStationPositions(ctx.board.length).find((p) => p.key === "nose12")!.station;
+    let readAsTheTweak = 0;
+    for (const verdict of result.wontFit) {
+      expect(verdict.fits).toBe(false);
+      expect(verdict.placement).toBe(0);
+      // Nowhere is the worst smaller than the over-skin amount itself.
+      expect(verdict.worst.amount).toBeGreaterThanOrEqual(SIXTEENTH_MM - FIT_EPSILON_MM);
+      if (Math.abs(verdict.worst.amount - SIXTEENTH_MM) < 1e-6) {
+        expect(verdict.worst.kind).toBe("thin");
+        expect(verdict.worst.station).toBeCloseTo(nose12, 6);
+        readAsTheTweak++;
+      }
+    }
+    // Where nothing else is tighter — most of the catalogue for the default board — the reason IS the tweak.
+    expect(readAsTheTweak).toBeGreaterThan(result.wontFit.length / 2);
+  });
+
+  it("hides no fitting placement: every 1/4\" placement of the longest blank fails by at least that much", () => {
+    const ctx = overSkin("deck");
+    const prepared = longest();
+    const { min, max } = placementRange(prepared.lengthMm, ctx.board.length);
+    expect(max - min).toBeGreaterThan(inchesToMm(24));
+    let tried = 0;
+    for (let placement: number = min; placement <= max + 1e-9; placement += QUARTER_MM) {
+      const onBlank = boardOnBlank(prepared, ctx.board, clampPlacement(mm(placement), prepared.lengthMm, ctx.board.length));
+      const result = fitAt(onBlank, ctx.halfWidthAt, ctx.widePointStation, DEFAULT_SETTINGS);
+      expect(result.fits).toBe(false);
+      expect(result.worst.amount).toBeGreaterThanOrEqual(SIXTEENTH_MM - FIT_EPSILON_MM);
+      tried++;
+    }
+    expect(tried).toBeGreaterThan(90);
+    expect(nearestFittingPlacement(prepared, ctx, DEFAULT_SETTINGS, mm(0))).toBeNull();
+  });
+
+  it("the same tweak on the Bottom is searched as before and still fits most of the catalogue", () => {
+    const result = listBlanks(PREPARED_ALL, overSkin("bottom"), DEFAULT_SETTINGS);
+    expect(result.fits.length).toBeGreaterThan(100);
+  });
+
+  it("a tweak exactly the skin is not over it — the list still fits", () => {
+    const result = listBlanks(PREPARED_ALL, overSkin("deck", mm(0)), DEFAULT_SETTINGS);
+    expect(result.fits.length).toBeGreaterThan(100);
+  });
+
+  it("judges the whole catalogue in under 250 ms when nothing fits (12-08 measured 1.3 s in Node, ~40 s on WebKit)", () => {
+    const ctx = overSkin("deck");
+    const started = performance.now();
+    const result = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+    const elapsed = performance.now() - started;
+    expect(result.wontFit.length).toBeGreaterThan(100);
+    expect(elapsed).toBeLessThan(250);
+  });
+});
