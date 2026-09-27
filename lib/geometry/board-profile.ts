@@ -8,9 +8,11 @@
  *   through the five stored thicknesses, both on pchip. Its `effectiveFoil` is the stored foil
  *   exactly and its `stationRocker` the typed rocker exactly, so nothing RAILS shows moves for a
  *   board without a blank.
- * - A board in a blank (D-01, D-10–D-18) reads its rocker and foil off `boardOnBlank`, and also
- *   carries the blank's own silhouette in the board's coordinates, the foam to come off at each
- *   station and the blank's own numbers under each station (the DATASHEET's blank rows).
+ * - A board in a blank (D-01; cut from it as a planer does, Phase 12) reads its rocker and foil off
+ *   `boardOnBlank`, and also carries the blank's own silhouette in the board's coordinates — its
+ *   deck the skin above the board's deck, its bottom the centre gap below the board's un-thinned
+ *   bottom — the foam to come off the deck and off the bottom at each station, and the blank's own
+ *   numbers under each station (the DATASHEET's blank rows).
  *
  * In both, the deck is DERIVED (R10): `deckAt(s)` is exactly `rockerAt(s) + thicknessAt(s)`, never
  * a third interpolated curve. Every curve is prepared once when the profile is built and only
@@ -22,7 +24,7 @@
  * No React/browser/database import — pure geometry, unit-tested in board-profile.test.ts, per
  * CLAUDE.md Rule 1.
  */
-import type { BlankRecord } from "./blank";
+import type { BlankCut, BlankRecord, FineTuneSurface, TipStyle } from "./blank";
 import {
   boardOnBlank,
   levelCurve,
@@ -48,16 +50,28 @@ export interface BlankSideView {
   start: Mm;
   /** Where the blank's nose tip falls in board coordinates: `start` + the blank's length. */
   end: Mm;
-  /** The blank's bottom, levelled exactly as the board's rocker is — so along the board it IS the
-   * board's bottom. */
+  /** The cut the board was derived with (Phase 12): deck skin, Tip Style, fine-tune surface. */
+  cut: BlankCut;
+  /** The foam planed off the bottom at the board's centre (Phase 12 D-03). */
+  centerGap: Mm;
+  /** The blank's bottom, in the board's rocker frame: the board's bottom less the foam off the
+   * bottom there. Along the board it runs parallel to the board's un-thinned bottom, the centre gap
+   * below it (Phase 12 R2) — no longer the board's bottom itself. */
   bottomAt(s: Mm): Mm;
   /** The blank's deck: its bottom plus its own thickness there. */
   deckAt(s: Mm): Mm;
-  /** The blank-scaled 12" thicknesses before any fine-tune (D-11). */
+  /** The 12" thicknesses before any fine-tune (D-11): the blank's thickness there less the deck
+   * skin and the centre gap (Phase 12 R3). */
   derived12: { nose12: Mm; tail12: Mm };
-  /** Foam to come off at each of the board's five stations: the blank's thickness there minus the
-   * board's (R4). Below zero means the board pokes out of the blank there. */
+  /** The TOTAL foam to come off at each of the board's five stations — deck plus bottom, the
+   * blank's thickness there minus the board's (R4). Below zero means the board pokes out of the
+   * blank there. Kept for its two remaining screen readers until 12-07 moves them to
+   * `foamOffDeck` / `foamOffBottom`. */
   foamOff: Record<FoilStationKey, Mm>;
+  /** Foam off the deck at each of the board's five stations (`BoardOnBlank.deckOffAt`). */
+  foamOffDeck: Record<FoilStationKey, Mm>;
+  /** Foam off the bottom at each of the board's five stations (`BoardOnBlank.bottomOffAt`). */
+  foamOffBottom: Record<FoilStationKey, Mm>;
   /** The blank's own rocker (levelled on the blank's own low point), thickness and full width at
    * the point under each of the board's five stations — the DATASHEET's blank rows (D-16). */
   blankAtStations: Record<FoilStationKey, { rocker: Mm; thickness: Mm; width: Mm }>;
@@ -146,10 +160,10 @@ export function buildBlankProfile(
   const measured = (pick: (station: BlankRecord["stations"][number]) => Mm | null) =>
     prepared.record.stations.filter((station) => pick(station) !== null).map((station) => mm(start + station.fromTailMm));
 
-  // The board's rocker is the blank's rocker less the crop's own low point — the same curve, so
-  // the blank's bottom under the board is read through it, and the two coincide to the last bit
-  // (equal to `blankRockerAt(s) − cropMinimum`, Pattern 3, up to float rounding).
-  const bottomAt = (s: Mm) => mm(onBlank.rockerAt(s));
+  // The blank's bottom is the board's bottom less the foam planed off the bottom there: the Pin
+  // deck thinning and a Bottom fine-tune appear in both and cancel, leaving the blank's own rocker
+  // (levelled with the board's) the centre gap below the board's un-thinned bottom.
+  const bottomAt = (s: Mm) => mm(onBlank.rockerAt(s) - onBlank.bottomOffAt(s));
   const tail12 = stations.find((station) => station.key === "tail12")!.station;
   const nose12 = stations.find((station) => station.key === "nose12")!.station;
 
@@ -159,6 +173,8 @@ export function buildBlankProfile(
     onBlank,
     start,
     end: mm(start + prepared.lengthMm),
+    cut: onBlank.cut,
+    centerGap: mm(onBlank.centerGap),
     bottomAt,
     deckAt: (s) => mm(bottomAt(s) + onBlank.blankThicknessAt(s)),
     derived12: {
@@ -166,6 +182,8 @@ export function buildBlankProfile(
       tail12: mm(onBlank.derivedThicknessAt(tail12)),
     },
     foamOff: stationRecord(stations, (s) => mm(onBlank.blankThicknessAt(s) - thicknessAt(s))),
+    foamOffDeck: stationRecord(stations, (s) => mm(onBlank.deckOffAt(s))),
+    foamOffBottom: stationRecord(stations, (s) => mm(onBlank.bottomOffAt(s))),
     blankAtStations: stationRecord(stations, (s) => ({
       rocker: mm(onBlank.blankRockerAt(s)),
       thickness: mm(onBlank.blankThicknessAt(s)),
@@ -230,13 +248,24 @@ export interface BoardProfileInput {
   rocker: FiveStationRocker;
   /** The stored foil. With a blank, only `center` and the two tips are read. */
   foil: FoilSpec;
-  blank: { prepared: PreparedBlank; placement: Mm; nose12Offset: Mm; tail12Offset: Mm } | null;
+  /** The board's blank, where it sits, its two fine-tunes and (Phase 12) its cut — the three cut
+   * fields optional until 12-09. */
+  blank: {
+    prepared: PreparedBlank;
+    placement: Mm;
+    nose12Offset: Mm;
+    tail12Offset: Mm;
+    deckSkin?: Mm;
+    tipStyle?: TipStyle;
+    fineTuneSurface?: FineTuneSurface;
+  } | null;
 }
 
 /**
  * The board's side profile, whichever kind of board it is. With a blank, the foil's centre is the
- * target thickness and its two tips the tip settings; the foil's stored 12" values are the
- * hand-set fallback's own and are ignored while a blank is picked.
+ * target thickness and its two tips the tip settings, cut from the blank with the board's own deck
+ * skin, Tip Style and fine-tune surface; the foil's stored 12" values are the hand-set fallback's
+ * own and are ignored while a blank is picked.
  */
 export function buildBoardProfile(input: BoardProfileInput): BoardSideProfile {
   const { length, rocker, foil, blank } = input;
@@ -250,6 +279,9 @@ export function buildBoardProfile(input: BoardProfileInput): BoardSideProfile {
       tailTip: foil.tailTip,
       nose12Offset: blank.nose12Offset,
       tail12Offset: blank.tail12Offset,
+      deckSkin: blank.deckSkin,
+      tipStyle: blank.tipStyle,
+      fineTuneSurface: blank.fineTuneSurface,
     },
     blank.placement,
   );
