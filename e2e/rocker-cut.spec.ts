@@ -75,6 +75,16 @@ function deckSkinLabel(page: Page): Locator {
   return page.getByText(/^Deck Skin — /);
 }
 
+/** A named two-way pill pair (`TwoOptionToggle` with an `ariaLabel`). */
+function pillGroup(page: Page, name: string): Locator {
+  return page.getByRole("group", { name });
+}
+
+/** One pill inside a named pair. */
+function pill(page: Page, group: string, label: string): Locator {
+  return pillGroup(page, group).getByRole("button", { name: label, exact: true });
+}
+
 test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the planer passes (Phase 12)", () => {
   test.beforeEach(async ({ page }) => {
     await dismissChrome(page);
@@ -203,6 +213,116 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(otherName);
 
     await expect(deckSkinLabel(page)).toHaveText(ownSkin);
+  });
+
+  test(`a Tip Style tap changes a tip's rocker reading and leaves both 12" readings exactly as they were`, async ({
+    page,
+  }, testInfo) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+
+    // A new board's Tip Style is the account default — Pin deck out of the box (D-04).
+    await expect(pillGroup(page, "Tip Style")).toBeVisible();
+    await expect(pill(page, "Tip Style", "Pin deck")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Tip Style", "Bottom")).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByText(/^The deck stays put and the extra comes off the bottom/)).toBeVisible();
+
+    const readouts = page.locator("[data-readouts]");
+    const row = (key: string) => readouts.locator(`[data-readout-row="${key}"]`);
+    const noseTip = await row("noseTip").textContent();
+    const tailTip = await row("tailTip").textContent();
+    const nose12 = await row("nose12").textContent();
+    const tail12 = await row("tail12").textContent();
+
+    await pill(page, "Tip Style", "Bottom").click();
+    await expect(pill(page, "Tip Style", "Bottom")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Tip Style", "Pin deck")).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByText(/^The bottom stays put and the extra comes off the deck/)).toBeVisible();
+
+    // The last 12" at each end re-derives: at least one tip reads differently...
+    await expect
+      .poll(async () => (await row("noseTip").textContent()) !== noseTip || (await row("tailTip").textContent()) !== tailTip)
+      .toBe(true);
+    // ...and nothing at the 12" stations moves (SPEC R5).
+    expect(await row("nose12").textContent()).toBe(nose12);
+    expect(await row("tail12").textContent()).toBe(tail12);
+    // Under Bottom the Deck Skin's hint says the tips take more off the deck.
+    await expect(page.getByText("Off the deck — more at the tips", { exact: true })).toBeVisible();
+    // Never clears the pick.
+    await expect(pickedCard(page)).toHaveCount(1);
+
+    // One undo step brings Pin deck back.
+    await undoOnce(page, testInfo.project.name);
+    await expect(pill(page, "Tip Style", "Pin deck")).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText("Off the deck at every station", { exact: true })).toBeVisible();
+  });
+
+  test(`Fine-tune off starts on Deck, and on Bottom a 12" tweak re-levels the rocker instead of taking foam off the deck`, async ({
+    page,
+  }, testInfo) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+
+    // THICKNESS says how the foil now comes off (the station label is 12" in Imperial).
+    await expect(
+      page.getByText(
+        `Deck and bottom follow your blank's; the tips are thinned in the last 12". Set the tips, and fine-tune the 12" stations if you need to.`,
+        { exact: true },
+      ),
+    ).toBeVisible();
+
+    // A new board's 12" tweaks come off the deck (D-13).
+    await expect(pill(page, "Fine-tune off", "Deck")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Fine-tune off", "Bottom")).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByText("Tweaks add or take foam on the deck; the rocker stays the blank's.", { exact: true })).toBeVisible();
+
+    // Nudge Nose @ 12" four steps — a quarter inch, far more than one printed step. DOWN, not up:
+    // an upward Deck tweak larger than the Deck Skin lifts the deck above every blank's deck, so the
+    // whole list re-judges with nothing fitting anywhere, and each step then stalls the page (about
+    // 2 s on Chromium, about 40 s on Playwright's WebKit — recorded in 12-08-SUMMARY.md). A quarter
+    // inch down moves the same surfaces the same distance and keeps the board in its blank.
+    const nose12Label = page.getByText(/^Nose @ 12" — /);
+    const labelBefore = await nose12Label.innerText();
+    const nose12 = sliderUnder(page, /^Nose @ 12" — /);
+    await nose12.focus();
+    for (let i = 0; i < 4; i++) await nose12.press("ArrowLeft");
+    await expect(nose12Label).not.toHaveText(labelBefore);
+    const tweakedLabel = await nose12Label.innerText();
+
+    // The ROCKER column of the readouts (the second cell of each row).
+    const rockerCells = page.locator("[data-readouts] [data-readout-row] > :nth-child(2)");
+    await expect(rockerCells).toHaveCount(5);
+    const rockerBefore = await rockerCells.allTextContents();
+
+    await pill(page, "Fine-tune off", "Bottom").click();
+    await expect(pill(page, "Fine-tune off", "Bottom")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Fine-tune off", "Deck")).toHaveAttribute("aria-pressed", "false");
+    await expect(
+      page.getByText("Tweaks move the bottom, so the rocker re-levels and its numbers can shift.", { exact: true }),
+    ).toBeVisible();
+
+    // The tweak's amount is the same, so the 12" thickness reads the same...
+    await expect(nose12Label).toHaveText(tweakedLabel);
+    // ...but it now comes off the bottom, so the rocker re-levels and at least one reading moves.
+    await expect.poll(async () => (await rockerCells.allTextContents()).join("|")).not.toBe(rockerBefore.join("|"));
+    // Never clears the pick.
+    await expect(pickedCard(page)).toHaveCount(1);
+
+    // One undo step goes back to Deck, and the rocker with it.
+    await undoOnce(page, testInfo.project.name);
+    await expect(pill(page, "Fine-tune off", "Deck")).toHaveAttribute("aria-pressed", "true");
+    await expect.poll(async () => (await rockerCells.allTextContents()).join("|")).toBe(rockerBefore.join("|"));
+  });
+
+  test("with no blank there is no Tip Style and no Fine-tune off", async ({ page }) => {
+    await openRocker(page);
+    // D-12: hidden, not disabled — THICKNESS is Phase 11's fallback column exactly.
+    await expect(page.getByText("Hand-set until you pick a blank.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("group", { name: "Tip Style" })).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Fine-tune off" })).toHaveCount(0);
+    await expect(page.getByText("Tip Style", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Fine-tune off", { exact: true })).toHaveCount(0);
+    await expect(page.getByText(/^Deck and bottom follow your blank's/)).toHaveCount(0);
   });
 });
 

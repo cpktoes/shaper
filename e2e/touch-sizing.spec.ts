@@ -279,6 +279,15 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     expect(await heightOf(change, "Change Blank")).toBeGreaterThanOrEqual(44);
     expect(await heightOf(page.getByRole("button", { name: "Remove This Blank" }), "Remove This Blank")).toBeGreaterThanOrEqual(44);
     expect(await heightOf(page.getByRole("button", { name: "↺ Reset Fine-Tune" }), "Reset Fine-Tune")).toBeGreaterThanOrEqual(44);
+    // Phase 12: THICKNESS's two quiet pairs, Tip Style and Fine-tune off — every pill finger-sized.
+    for (const group of ["Tip Style", "Fine-tune off"]) {
+      const pills = page.getByRole("group", { name: group }).getByRole("button");
+      await expect(pills).toHaveCount(2);
+      for (const pill of await pills.all()) {
+        const label = (await pill.innerText()).trim();
+        expect(await heightOf(pill, `${group}: ${label}`), `${group}: ${label} pill height`).toBeGreaterThanOrEqual(44);
+      }
+    }
     await change.click();
     expect(await heightOf(page.getByRole("button", { name: "Keep This Blank" }), "Keep This Blank")).toBeGreaterThanOrEqual(44);
 

@@ -23,10 +23,21 @@
  *
  * THICKNESS, nose to tail. The two tips are absolute in both states and stored on the board (D-10).
  * With no blank the two 12" stations are absolute too. With a blank picked they are the blank's own
- * foil scaled to the centre (D-18) plus the shaper's signed fine-tune (D-11): the label shows the
+ * thickness there less the deck skin and the centre gap (Phase 12, 12-UI-SPEC §5) plus the shaper's
+ * signed fine-tune (D-11): the label shows the
  * FINAL thickness, the slider moves only the tweak (±1/4" / ±6 mm around 0), and the two-ended hint
  * reads "From blank …" and "Tweak …" (or "No tweak"). "↺ Reset Fine-Tune" clears both tweaks; with
  * both at zero it stays in place, dimmed and inert, so nothing above it shifts.
+ *
+ * Phase 12 (D-04, 12-UI-SPEC §4): with a blank picked, THICKNESS ends with the board's own Tip Style
+ * — a quiet `Pin deck` / `Bottom` pair, read from the side profile's resolved cut (`view.cut`), with
+ * the selected option's hint under it. A tap re-derives only the last 12" at each end; nothing at or
+ * inside the 12" stations moves (SPEC R5). With no blank it is not on the page at all (D-12).
+ * Directly under the Tail @ 12" row — with the two 12" fine-tunes it governs — sits `Fine-tune off:
+ * Deck / Bottom` (D-13, 12-UI-SPEC §5a), the same anatomy: which surface a tweak moves. The slider's
+ * reach stays ±1/4" (D-20), and a carried-over tweak beyond it still reads its true stored value.
+ * With a blank, the intro says how the foil now comes off: deck and bottom follow the blank's, the
+ * tips are thinned in the last 12".
  *
  * Every slider commits its own number through `measureSlider`'s conversion at its call site, and
  * every number reads through `lib/geometry/measure-display.ts` (CLAUDE.md Rule 2). Every control is
@@ -39,7 +50,7 @@ import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { Slider } from "@/components/ui/slider";
 import { useUnits } from "@/components/units-provider";
 import type { BlankCatalogResult } from "@/lib/db/blanks";
-import type { BoardBlank } from "@/lib/geometry/blank";
+import type { BoardBlank, FineTuneSurface, TipStyle } from "@/lib/geometry/blank";
 import type { BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec } from "@/lib/geometry/foil";
 import {
@@ -52,6 +63,7 @@ import {
 import { ROCKER_LIFT_RANGE_IN, type FiveStationRocker } from "@/lib/geometry/rocker";
 import { mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { cn } from "@/lib/utils";
+import { TwoOptionToggle } from "@/components/viewer/two-option-toggle";
 import { BlankPicker } from "./blank-picker";
 import { BoardOnBlankSection } from "./board-on-blank";
 
@@ -61,6 +73,20 @@ export type RockerControlsSectionKey = "center" | "blank" | "boardOnBlank" | "ro
  * rounded inward by `measureSlider`) — `(researcher's choice — founder may overrule)` (UI-SPEC §5). */
 const FINE_TUNE_RANGE_IN = { min: -0.25, max: 0.25 } as const;
 const FINE_TUNE_STEP_IN = 0.0625;
+
+/** The Tip Style hints (12-UI-SPEC copy table, D-16: under Pin deck a tip that needs more foam than
+ * the cut leaves makes the tip rocker fall rather than grow). */
+const TIP_STYLE_HINT: Record<TipStyle, string> = {
+  pinDeck:
+    "The deck stays put and the extra comes off the bottom, so the tip rocker grows — or falls, if the tip needs more foam than the cut leaves.",
+  bottom: "The bottom stays put and the extra comes off the deck, so the rocker stays the blank's own.",
+};
+
+/** The Fine-tune off hints (12-UI-SPEC copy table, D-13). */
+const FINE_TUNE_SURFACE_HINT: Record<FineTuneSurface, string> = {
+  deck: "Tweaks add or take foam on the deck; the rocker stays the blank's.",
+  bottom: "Tweaks move the bottom, so the rocker re-levels and its numbers can shift.",
+};
 
 interface RockerControlsProps {
   /** The pickable catalogue, streamed from the page and never awaited there (Pattern 8). */
@@ -76,6 +102,10 @@ interface RockerControlsProps {
   onChangeFoil: (patch: Partial<FoilSpec>) => void;
   onFineTune: (patch: Partial<{ nose12Offset: Mm; tail12Offset: Mm }>) => void;
   onResetFineTune: () => void;
+  /** The board's own Tip Style (D-04) — one undo step per tap; shown only with a blank picked. */
+  onTipStyle: (tipStyle: TipStyle) => void;
+  /** Which surface the board's 12" fine-tunes move (D-13) — one undo step per tap; blank picked only. */
+  onFineTuneSurface: (surface: FineTuneSurface) => void;
   sectionOpen: Record<RockerControlsSectionKey, boolean>;
   onToggleSectionOpen: (key: RockerControlsSectionKey) => void;
 }
@@ -170,6 +200,8 @@ export function RockerControls({
   onChangeFoil,
   onFineTune,
   onResetFineTune,
+  onTipStyle,
+  onFineTuneSurface,
   sectionOpen,
   onToggleSectionOpen,
 }: RockerControlsProps) {
@@ -304,7 +336,7 @@ export function RockerControls({
           <div className="flex flex-col gap-3.5 pt-3">
             <div className="text-xs text-surf-ink-muted font-normal">
               {blank
-                ? `Your blank's own foil, scaled down to your center. Set the tips; fine-tune the ${station} stations if you need to.`
+                ? `Deck and bottom follow your blank's; the tips are thinned in the last ${station}. Set the tips, and fine-tune the ${station} stations if you need to.`
                 : "Hand-set until you pick a blank."}
             </div>
 
@@ -333,6 +365,21 @@ export function RockerControls({
                   system={system}
                   onChange={(next) => onFineTune({ tail12Offset: next })}
                 />
+                {/* Directly under the two 12" rows it governs (§5a); Tip Style stays last. */}
+                <div className="flex flex-col">
+                  <div className="mb-2 text-sm text-surf-ink-muted font-normal">Fine-tune off</div>
+                  <TwoOptionToggle
+                    options={["deck", "bottom"] as const}
+                    labels={["Deck", "Bottom"] as const}
+                    value={view.cut.fineTuneSurface}
+                    onChange={onFineTuneSurface}
+                    ariaLabel="Fine-tune off"
+                    className="self-start"
+                  />
+                  <div className="mt-2 text-xs text-surf-ink-muted font-normal">
+                    {FINE_TUNE_SURFACE_HINT[view.cut.fineTuneSurface]}
+                  </div>
+                </div>
               </>
             ) : (
               <>
@@ -375,6 +422,22 @@ export function RockerControls({
               >
                 ↺ Reset Fine-Tune
               </button>
+            )}
+
+            {view && (
+              // Last in THICKNESS, at its natural width — "those who want it will find it" (§4).
+              <div className="flex flex-col">
+                <div className="mb-2 text-sm text-surf-ink-muted font-normal">Tip Style</div>
+                <TwoOptionToggle
+                  options={["pinDeck", "bottom"] as const}
+                  labels={["Pin deck", "Bottom"] as const}
+                  value={view.cut.tipStyle}
+                  onChange={onTipStyle}
+                  ariaLabel="Tip Style"
+                  className="self-start"
+                />
+                <div className="mt-2 text-xs text-surf-ink-muted font-normal">{TIP_STYLE_HINT[view.cut.tipStyle]}</div>
+              </div>
             )}
           </div>
         )}
