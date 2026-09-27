@@ -37,8 +37,8 @@ function boardInput(overrides: Partial<BoardOnBlankInput> = {}): BoardOnBlankInp
   return {
     length: BOARD_LENGTH,
     centerThickness: inchesToMm(2.5),
-    noseTip: inchesToMm(0.3125),
-    tailTip: inchesToMm(0.25),
+    noseTip: DEFAULT_FOIL_SPEC.noseTip,
+    tailTip: DEFAULT_FOIL_SPEC.tailTip,
     nose12Offset: mm(0),
     tail12Offset: mm(0),
     ...DEFAULT_BLANK_CUT,

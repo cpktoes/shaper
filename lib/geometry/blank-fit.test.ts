@@ -251,15 +251,15 @@ function narrowerBy(onBlank: BoardOnBlank, by: number) {
   return (s: Mm) => Math.max(0, (onBlank.blankWidthAt(s) - by) / 2);
 }
 
-/** Default tip settings (5/16" nose, 1/4" tail) and the out-of-the-box cut — inputs, not expected values. */
+/** The default tip settings (`DEFAULT_FIT_DEFAULTS`) and the out-of-the-box cut — inputs, not expected values. */
 function defaultBoard(blank: BlankRecord, length: number, centre: number): BoardOnBlankInput {
   return {
     ...plainBoard(blank),
     ...DEFAULT_BLANK_CUT,
     length: mm(length),
     centerThickness: mm(centre),
-    noseTip: inchesToMm(5 / 16),
-    tailTip: inchesToMm(1 / 4),
+    noseTip: DEFAULT_FIT_DEFAULTS.noseTipThickness,
+    tailTip: DEFAULT_FIT_DEFAULTS.tailTipThickness,
   };
 }
 
