@@ -71,4 +71,41 @@ describe("rackModelsFromRows", () => {
     expect(model.name).toBe("good");
     expect(model.updatedAt).toEqual(new Date(0));
   });
+
+  describe("a board saved under Phase 11 takes the Tip Style it is handed (D-14)", () => {
+    /** An UNTYPED version-4 envelope with a Phase 11 blank — no cut on the blank — so no typed
+     * literal is left without a cut once 12-09 makes the cut required. */
+    function phase11Row(id: string): RackRow {
+      const envelope = JSON.parse(JSON.stringify(buildSnapshot(FIELDS)));
+      envelope.version = 4;
+      delete envelope.design.blank.deckSkin;
+      delete envelope.design.blank.tipStyle;
+      delete envelope.design.blank.fineTuneSurface;
+      return { id, name: id, snapshot: envelope, updatedAt: new Date(0) };
+    }
+
+    it("carries a Phase 11 board over with the shaper's own Tip Style when one is passed", () => {
+      const log = vi.fn();
+      const [model] = rackModelsFromRows([phase11Row("old")], log, { tipStyle: "bottom" });
+      expect(log).not.toHaveBeenCalled();
+      expect(model.snapshot.blank?.tipStyle).toBe("bottom");
+      expect(model.snapshot.blank?.deckSkin).toBe(DEFAULT_BLANK_CUT.deckSkin);
+      expect(model.snapshot.blank?.fineTuneSurface).toBe("deck");
+    });
+
+    it("carries the same board over with Pin deck when no Tip Style is passed", () => {
+      const [model] = rackModelsFromRows([phase11Row("old")], vi.fn());
+      expect(model.snapshot.blank?.tipStyle).toBe("pinDeck");
+      expect(model.snapshot.blank?.deckSkin).toBe(DEFAULT_BLANK_CUT.deckSkin);
+      expect(model.snapshot.blank?.fineTuneSurface).toBe("deck");
+    });
+
+    it("leaves a board that already has its own cut exactly as saved, whatever Tip Style is passed", () => {
+      const [withBottom] = rackModelsFromRows([row("new", FIELDS)], vi.fn(), { tipStyle: "bottom" });
+      const [withNothing] = rackModelsFromRows([row("new", FIELDS)], vi.fn());
+      expect(withBottom.snapshot).toEqual(FIELDS);
+      expect(withNothing.snapshot).toEqual(FIELDS);
+      expect(withBottom.snapshot.blank?.tipStyle).toBe("pinDeck");
+    });
+  });
 });
