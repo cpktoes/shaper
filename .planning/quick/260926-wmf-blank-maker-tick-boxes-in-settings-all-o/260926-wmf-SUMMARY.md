@@ -174,3 +174,22 @@ None. Every surface this task added (the Server Action, the cookie, the account 
 - `drizzle/0007_hidden_blank_makers.sql` matches the single ADD COLUMN statement exactly.
 - `git diff --name-only bb6fae2 HEAD` lists exactly the plan's 23 files. `package.json`, `package-lock.json`, STATE.md, ROADMAP.md, the design store, the preset blanks, the server catalogue read and the ROCKER page loader are unchanged.
 - `git diff --numstat` for `lib/geometry/blank-reasons.test.ts` shows 35 additions and 0 deletions, and `NOTHING_FITS_SENTENCE` still reads "No blank in the three catalogs fits this board right now."
+
+## Production (2026-09-27, run by the founder in his own terminal)
+
+Before the deploy, as CLAUDE.md's Database rule requires: `npm run db:migrate:prod` applied migration
+`0007_hidden_blank_makers` to the live database, and the read-only proof read
+
+```
+user_preferences: planer_max_depth_mm double precision, deck_skin_mm double precision, tip_style text, hidden_blank_makers text (4 of 4 columns); extra_center_thickness_mm kept
+drizzle migrations recorded: 8
+```
+
+with no `.env.production.pull` left behind (only `.env.local` present). The push of `main` followed the
+green browser suite on the merged code.
+
+Full browser suite on `main` after the merge (Turbopack, port 3100): 350 passed, 4 failed, 246 skipped in
+22.4 min under a load spike (load average 178 while a sibling executor ran its own suite); all four were
+page-load or screenshot timeouts, two of them on screens this task never touched (OUTLINE, RAILS). Re-run
+alone on the idle machine, the three failing spec files passed 52 of 52 with the five baseline pictures
+byte-identical. Build, `tsc`, 3024 unit tests and lint were green on `main`.
