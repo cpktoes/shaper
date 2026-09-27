@@ -87,6 +87,7 @@ import {
   type MeasureFamily,
 } from "@/lib/geometry/measure-display";
 import { inchesToMm, mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
+import { formatPlacement } from "@/lib/geometry/blank-reasons";
 
 /**
  * The page-2 identification strip's own length figure (D-06's rule): a bare centimetre number on
@@ -244,10 +245,21 @@ export function OrderForm() {
     FIN_SETUPS.find((s) => s.value === effectiveFins.finSetup)?.label ?? effectiveFins.finSetup;
 
   // The blank the board was designed on, named the way ROCKER names it — vendor, then the blank's
-  // own name. Read from the board's own copy of the blank, so the shop's record names the blank
-  // these numbers were cut from even if the catalogue is corrected later. No blank, no text: the
-  // field then prints as a ruled line for the shop to write in.
-  const blankLabel = blank ? `${blank.copy.vendor} ${blank.copy.name}` : undefined;
+  // own name — then where the board's centre sits on it, so the shop can lay the board on the
+  // blank from the sheet alone. The name is read from the board's own copy of the blank, so the
+  // shop's record names the blank these numbers were cut from even if the catalogue is corrected
+  // later. The placement is the side profile's, pulled inside the blank on read — the number
+  // ROCKER's Placement label shows — and is worded by the same `formatPlacement`, so the Summary
+  // and ROCKER always say the same thing, `centered` included. No blank, no text: the field then
+  // prints as a ruled line for the shop to write in.
+  const blankView = sideProfile.blank;
+  const blankPlacementWords = blankView ? formatPlacement(blankView.placement, system) : undefined;
+  const blankLabel =
+    blank && blankView
+      ? `${blank.copy.vendor} ${blank.copy.name} — ${
+          blankPlacementWords === "centered" ? "centered" : `center ${blankPlacementWords}`
+        }`
+      : undefined;
 
   const thicknessDisplay = formatDim(railBands.center.boardThickness, system);
 
@@ -725,9 +737,9 @@ export function OrderForm() {
                 bodyClassName="gap-2 p-2"
               >
                 {/* Board Name is live (the store has carried it since the landscape summary). Blank
-                    prints the blank picked on ROCKER when the board has one, and is a ruled line
-                    for the shop to write in when it doesn't. Board # and Price are written in by
-                    the shop. */}
+                    prints the blank picked on ROCKER and where the board sits on it when the board
+                    has one, and is a ruled line for the shop to write in when it doesn't. Board #
+                    and Price are written in by the shop. */}
                 <OrderFormField
                   label="Board Name"
                   value={boardName}
@@ -739,7 +751,11 @@ export function OrderForm() {
                     screen and 248px in print; sharing the row with Board # and Price, the field
                     cut off 19 of the 162 names with a "…". On its own line every name prints
                     whole, and Board # and Price each get half their row — a longer line to write
-                    on than before. */}
+                    on than before. Since the line also says where the board sits on the blank, the
+                    widest name plus the widest placement note any blank can carry (`— center
+                    44 13/16" toward nose`, a 60" board on the 12'6" blank) needs about
+                    297 + 295px of the 737px on screen and 248 + 246px of the 603px in print, so
+                    every combination still prints whole (quick 260927-0fq). */}
                 <OrderFormField label="Blank" value={blankLabel} />
                 <div className="flex gap-6">
                   <OrderFormField label="Board #" className="flex-1" />
