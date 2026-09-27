@@ -101,10 +101,17 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     const passesBefore = await passesLine.innerText();
 
     // R14: the skin is store state and the numbers come off the side profile the page already
-    // holds — nothing goes to any server, this site's or anyone else's.
-    let requests = 0;
-    page.on("request", () => {
-      requests += 1;
+    // holds — nothing goes to any server, this site's or anyone else's. Two things a drag cannot
+    // cause are left out: Clerk's own sign-in boot traffic (its script blob and its environment /
+    // client fetches, which never settle under the suite's fake key and retry on their own clock —
+    // under the main checkout's dev server they landed inside this window 1 run in 2), and
+    // browser-internal blob: loads, which never leave the page. Everything else is listed on
+    // failure so a stray request names itself.
+    const requests: string[] = [];
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.startsWith("blob:") || /clerk\.accounts\.dev|\/__clerk\//.test(url)) return;
+      requests.push(`${request.method()} ${url}`);
     });
 
     const skin = sliderUnder(page, /^Deck Skin — /);
@@ -118,7 +125,7 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
     // Never clears the pick.
     await expect(pickedCard(page)).toHaveCount(1);
-    expect(requests).toBe(0);
+    expect(requests, `requests during the drag: ${requests.join(", ")}`).toHaveLength(0);
   });
 
   test("with no blank picked, there is no Deck Skin, no OFF BOTTOM and no planer passes line", async ({ page }) => {
