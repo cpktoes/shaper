@@ -155,10 +155,14 @@ export interface DesignSummary {
  * The side profile is built exactly as the design store builds it (Pattern 5): for a board in a
  * blank, from the board's OWN copy of that blank's catalogue rows (D-01 — a rack card never reads
  * the catalogue, so a later catalogue correction can never move a saved board's numbers), with the
- * RAILS thicknesses read off the blank-scaled foil and the litres integrated along its dense
+ * RAILS thicknesses read off the foil cut from the blank and the litres integrated along its dense
  * thickness curve; for a hand-set board, from the stored foil through the five-station curve,
  * which is exactly what it always was. So a rack card, a preset card and the VOLUME screen quote
  * one litres figure for the same board.
+ *
+ * Phase 12 (D-08): the board is cut from its blank with the board's OWN cut — its Deck Skin, Tip
+ * Style and fine-tune surface, carried on its blank — passed through to the one side profile
+ * exactly as the store passes it, so the litres follow the new foil everywhere.
  */
 export function summarizeDesign(fields: DesignSummaryFields): DesignSummary {
   const outlineGeometry = buildOutline(fields.outline);
@@ -173,6 +177,9 @@ export function summarizeDesign(fields: DesignSummaryFields): DesignSummary {
           placement: blank.placement,
           nose12Offset: blank.nose12Offset,
           tail12Offset: blank.tail12Offset,
+          deckSkin: blank.deckSkin,
+          tipStyle: blank.tipStyle,
+          fineTuneSurface: blank.fineTuneSurface,
         }
       : null,
   });

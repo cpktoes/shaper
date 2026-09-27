@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { isPickable } from "@/lib/blanks/catalog";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
-import type { BoardBlank } from "./blank";
+import { DEFAULT_BLANK_CUT, type BoardBlank } from "./blank";
 import { prepareBlank } from "./blank-fit";
 import type { OutlineSpec } from "./board";
 import { buildBoardProfile } from "./board-profile";
 import { BOARD_PRESETS } from "./presets";
+import { presetSummary } from "./summary-line";
 import { buildOutline, sampleOutline } from "./outline";
 import { computeRailBands, DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "./rail-bands";
 import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
@@ -440,6 +441,10 @@ describe("summarizeDesign for a board sitting in a blank (D-01, 11-10)", () => {
         placement: fields.blank.placement,
         nose12Offset: fields.blank.nose12Offset,
         tail12Offset: fields.blank.tail12Offset,
+        // The board's own cut, as the store passes it (Phase 12).
+        deckSkin: fields.blank.deckSkin,
+        tipStyle: fields.blank.tipStyle,
+        fineTuneSurface: fields.blank.fineTuneSurface,
       },
     });
     const effectiveRails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
@@ -468,10 +473,30 @@ describe("summarizeDesign for a board sitting in a blank (D-01, 11-10)", () => {
         tail12Offset: inchesToMm(-1 / 16),
       },
     };
+    // Phase 12: the same board with a cut of its own — a thicker skin, the tips off the bottom and
+    // the fine-tunes on the bottom — so the store mirror below is exercised on a non-default cut.
+    const ownCut = {
+      ...moved,
+      blank: { ...moved.blank, deckSkin: inchesToMm(1 / 4), tipStyle: "bottom" as const, fineTuneSurface: "bottom" as const },
+    };
     return [
       { label: `${preset.id} as opened`, fields },
       { label: `${preset.id} slid 1/2in and fine-tuned`, fields: moved },
+      { label: `${preset.id} slid, fine-tuned and cut its own way`, fields: ownCut },
     ];
+  });
+
+  it.each(BOARD_PRESETS)("$id: the Tip Style never moves the thickness, so Pin deck and Bottom quote the same litres (D-08)", (preset) => {
+    const fields = { ...presetDesignFields(preset), railsImportFoilThickness: true, volume: DEFAULT_VOLUME_SPEC };
+    const pinDeck = summarizeDesign({ ...fields, blank: { ...fields.blank, ...DEFAULT_BLANK_CUT, tipStyle: "pinDeck" } });
+    const bottom = summarizeDesign({ ...fields, blank: { ...fields.blank, ...DEFAULT_BLANK_CUT, tipStyle: "bottom" } });
+    expect(bottom.volumeLitres).toBe(pinDeck.volumeLitres);
+  });
+
+  it.each(BOARD_PRESETS)("$id: a preset board's litres are its preset card's litres (presetSummary), on the preset's own cut", (preset) => {
+    const fields = { ...presetDesignFields(preset), railsImportFoilThickness: true, volume: DEFAULT_VOLUME_SPEC };
+    expect(fields.blank.tipStyle).toBe(DEFAULT_BLANK_CUT.tipStyle);
+    expect(summarizeDesign(fields).volumeLitres).toBe(presetSummary(preset).volumeLitres);
   });
 
   it.each(CASES)("$label: the litres are exactly the store's cross-section litres from the blank's side profile", ({ fields }) => {
