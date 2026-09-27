@@ -16,6 +16,7 @@ const QUERIES_PATH = join(REPO_ROOT, "lib/db/queries.ts");
 const UNITS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/units.ts");
 const PRINT_INSTRUCTIONS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/print-instructions.ts");
 const FIT_DEFAULTS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/fit-defaults.ts");
+const BLANK_MAKERS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/blank-makers.ts");
 const BLANKS_READ_PATH = join(REPO_ROOT, "lib/db/blanks.ts");
 const SCHEMA_PATH = join(REPO_ROOT, "lib/db/schema.ts");
 
@@ -66,13 +67,15 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
   const unitsActionsSource = stripComments(readFileSync(UNITS_ACTIONS_PATH, "utf8"));
   const printInstructionsActionsSource = stripComments(readFileSync(PRINT_INSTRUCTIONS_ACTIONS_PATH, "utf8"));
   const fitDefaultsActionsSource = stripComments(readFileSync(FIT_DEFAULTS_ACTIONS_PATH, "utf8"));
+  const blankMakersActionsSource = stripComments(readFileSync(BLANK_MAKERS_ACTIONS_PATH, "utf8"));
 
-  it("every exported async function in app/design/actions.ts, app/actions/units.ts, app/actions/print-instructions.ts and app/actions/fit-defaults.ts awaits auth() before any database call", () => {
+  it("every exported async function in app/design/actions.ts, app/actions/units.ts, app/actions/print-instructions.ts, app/actions/fit-defaults.ts and app/actions/blank-makers.ts awaits auth() before any database call", () => {
     const fns = [
       ...exportedAsyncFunctions(actionsSource),
       ...exportedAsyncFunctions(unitsActionsSource),
       ...exportedAsyncFunctions(printInstructionsActionsSource),
       ...exportedAsyncFunctions(fitDefaultsActionsSource),
+      ...exportedAsyncFunctions(blankMakersActionsSource),
     ];
     expect(fns.length).toBeGreaterThan(0);
     for (const fn of fns) {
@@ -95,6 +98,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
       ...exportedFunctionSignatures(unitsActionsSource),
       ...exportedFunctionSignatures(printInstructionsActionsSource),
       ...exportedFunctionSignatures(fitDefaultsActionsSource),
+      ...exportedFunctionSignatures(blankMakersActionsSource),
     ];
     expect(signatures.length).toBeGreaterThan(0);
     const offenders = signatures.filter((fn) => /userId|ownerId|clerkUserId/.test(fn.params));
@@ -128,6 +132,12 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
     expect(fns).toEqual(["saveFitDefaultsPreference"]);
   });
 
+  it("app/actions/blank-makers.ts exports exactly the expected action and no others", () => {
+    // Mirrors the assertion above for app/actions/fit-defaults.ts (quick task 260926-wmf).
+    const fns = exportedAsyncFunctions(blankMakersActionsSource).map((fn) => fn.name).sort();
+    expect(fns).toEqual(["saveBlankMakersPreference"]);
+  });
+
   it("every Drizzle statement touching an owned table constrains on the owning-user column", () => {
     for (const [label, source] of [
       ["app/design/actions.ts", actionsSource],
@@ -135,6 +145,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
       ["app/actions/units.ts", unitsActionsSource],
       ["app/actions/print-instructions.ts", printInstructionsActionsSource],
       ["app/actions/fit-defaults.ts", fitDefaultsActionsSource],
+      ["app/actions/blank-makers.ts", blankMakersActionsSource],
     ] as const) {
       // Split on each db.<verb>( call so every statement is inspected against the text between
       // it and the NEXT db call (or end of source) — the statement's own where/values clause.

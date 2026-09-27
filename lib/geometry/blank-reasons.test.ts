@@ -17,6 +17,7 @@ import {
   listIntro,
   matchesBlankSearch,
   NOTHING_FITS_SENTENCE,
+  nothingFitsSentence,
   offerLine,
   placementSlider,
   REASON_SNAP_MM,
@@ -562,6 +563,40 @@ describe("boardLine — the board's size under the ROCKER subtitle", () => {
     );
     expect(boardLine(length, width, "metric")).toBe(
       `Length and width from TEMPLATE: ${formatLength(length, "metric").replace(/ cm$/, "")} × ${formatDim(width, "metric")}`,
+    );
+  });
+});
+
+describe("the catalogs a sentence names, when a shaper has switched blank makers off (quick task 260926-wmf)", () => {
+  const numbers = {
+    boardLength: inchesToMm(150),
+    longest: inchesToMm(151.5),
+    centre: inchesToMm(4.75),
+    thickestCenter: inchesToMm(4.875),
+    rules: DEFAULT_RULES,
+  };
+
+  it("names only the catalogs still shown in the empty-list bodies", () => {
+    expect(emptyListMessage("length", numbers, "imperial", "the US Blanks catalog").body).toBe(
+      `Your board is 12'6" and the longest blank in the US Blanks catalog is 12'7 1/2", so none leaves the 2" of spare length you've asked for. Shorten the board on the TEMPLATE screen, or ask for less spare length.`,
+    );
+    expect(emptyListMessage("both", numbers, "imperial", "the US Blanks and Marko Foam catalogs").body).toMatch(
+      /^Nothing in the US Blanks and Marko Foam catalogs is both /,
+    );
+  });
+
+  it("reads exactly as before when no catalogs phrase is passed", () => {
+    for (const kind of ["length", "thickness", "both"] as const) {
+      expect(emptyListMessage(kind, numbers, "metric", "the three catalogs")).toEqual(
+        emptyListMessage(kind, numbers, "metric"),
+      );
+    }
+  });
+
+  it("nothingFitsSentence is the fixed sentence by default, and names the catalogs it is given", () => {
+    expect(nothingFitsSentence()).toBe(NOTHING_FITS_SENTENCE);
+    expect(nothingFitsSentence("the US Blanks catalog")).toBe(
+      "No blank in the US Blanks catalog fits this board right now.",
     );
   });
 });

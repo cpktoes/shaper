@@ -46,8 +46,18 @@ export const FLAG_HEADLINES = {
   notHere: "Doesn't fit at this placement",
 } as const;
 
-/** F5's added sentence, when no blank in any catalogue fits (so there is no offer). */
-export const NOTHING_FITS_SENTENCE = "No blank in the three catalogs fits this board right now.";
+/**
+ * F5's added sentence, when no blank in the catalogues being searched fits (so there is no offer).
+ * `catalogs` names them — "the three catalogs" unless a shaper has switched blank makers off in the
+ * settings menu, when the caller passes the narrower phrase (`catalogsPhrase` in
+ * `lib/blanks/vendors.ts`), so the sentence never claims to have searched a hidden maker.
+ */
+export function nothingFitsSentence(catalogs: string = "the three catalogs"): string {
+  return `No blank in ${catalogs} fits this board right now.`;
+}
+
+/** F5's sentence with every maker shown — byte for byte the sentence it has always been. */
+export const NOTHING_FITS_SENTENCE = nothingFitsSentence();
 
 /** The smallest step each system prints: 1/16" or 1 mm. */
 function smallestStep(system: UnitsSystem): Mm {
@@ -213,7 +223,9 @@ export function floorShortfallMessage(
 
 /**
  * The empty list's heading and body (E1, E2, E3), naming the board's number, the catalogue's best
- * and the rule that ruled every blank out. `kind` is `listBlanks`'s `emptyReason`.
+ * and the rule that ruled every blank out. `kind` is `listBlanks`'s `emptyReason`. `catalogs` names
+ * the catalogues searched — "the three catalogs" unless a shaper has switched blank makers off, when
+ * the caller passes the narrower phrase so the longest blank quoted is one they can actually see.
  */
 export function emptyListMessage(
   kind: "length" | "thickness" | "both",
@@ -225,14 +237,15 @@ export function emptyListMessage(
     rules: CenterFloorRules;
   },
   system: UnitsSystem,
+  catalogs: string = "the three catalogs",
 ): { heading: string; body: string } {
   const extraLength = formatMark(numbers.rules.extraLength, system);
   if (kind === "length") {
     return {
       heading: "No blank is long enough",
       body:
-        `Your board is ${formatLength(numbers.boardLength, system)} and the longest blank in the three ` +
-        `catalogs is ${formatLength(numbers.longest, system)}, so none leaves the ${extraLength} of spare ` +
+        `Your board is ${formatLength(numbers.boardLength, system)} and the longest blank in ${catalogs} ` +
+        `is ${formatLength(numbers.longest, system)}, so none leaves the ${extraLength} of spare ` +
         `length you've asked for. Shorten the board on the TEMPLATE screen, or ask for less spare length.`,
     };
   }
@@ -248,7 +261,7 @@ export function emptyListMessage(
   return {
     heading: "No blank passes both rules",
     body:
-      `Nothing in the three catalogs is both ${extraLength} longer than your board and thick enough at the ` +
+      `Nothing in ${catalogs} is both ${extraLength} longer than your board and thick enough at the ` +
       `center for a ${skinAndPass(numbers.rules, system)}.`,
   };
 }

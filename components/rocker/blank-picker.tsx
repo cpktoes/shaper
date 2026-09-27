@@ -10,8 +10,9 @@
  * so (E4) — a board that already has a blank keeps working from its own copy (D-01).
  *
  * Three states (§2):
- * - A — browsing, no search: the intro, the search box, the first six rows of one list across all
- *   three vendors, shortest first (the blanks that fit under FITS THIS BOARD, then the ones that
+ * - A — browsing, no search: the intro, the search box, the first six rows of one list across the
+ *   blank makers ticked in the settings menu (all three unless a shaper has unticked some — then a
+ *   one-line note under the intro says which are shown), shortest first (the blanks that fit under FITS THIS BOARD, then the ones that
  *   don't, greyed, each with the one reason it fails), then "Show all {n} blanks".
  * - B — searching: every match, uncapped, or "No blanks match …" with Clear Search. The search is a
  *   plain filter over the list already held; it never re-judges a blank and never fetches.
@@ -33,10 +34,12 @@
 import { Suspense, use, useState } from "react";
 import { CheckIcon, SearchIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
+import { useBlankMakers } from "@/components/blank-makers-provider";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUnits } from "@/components/units-provider";
+import { blankMakersNote, catalogsPhrase } from "@/lib/blanks/vendors";
 import type { BlankCatalogResult } from "@/lib/db/blanks";
 import type { BlankRecord } from "@/lib/geometry/blank";
 import { catalogueExtremes, type BlankVerdict } from "@/lib/geometry/blank-fit";
@@ -155,6 +158,7 @@ function BlankListBody({
   const { system } = useUnits();
   const { blank, pickBlank, outline, foil } = useDesign();
   const { openDialog } = useFitDefaults();
+  const { hidden } = useBlankMakers();
   const { list, board, prepared, recordOf } = useBlankList(records);
   const rules = useCenterFloorRules();
   const [expanded, setExpanded] = useState(false);
@@ -165,6 +169,7 @@ function BlankListBody({
       list.emptyReason,
       { boardLength: outline.length, longest, centre: foil.center, thickestCenter, rules },
       system,
+      catalogsPhrase(hidden),
     );
     return (
       <div className="flex flex-col gap-1" data-blank-list-empty>
@@ -265,10 +270,19 @@ function BlankList({ catalog, ...rest }: BlankListProps) {
 function BlankBrowser({ catalog, onPicked }: { catalog: Promise<BlankCatalogResult>; onPicked: () => void }) {
   const { system } = useUnits();
   const rules = useCenterFloorRules();
+  const { hidden } = useBlankMakers();
+  const makersNote = blankMakersNote(hidden);
   const [query, setQuery] = useState("");
   return (
     <div className="flex flex-col gap-2">
       <div className="text-xs text-surf-ink-muted font-normal">{listIntro(rules, system)}</div>
+      {/* Only when a maker is unticked in the settings menu — with all ticked nothing is drawn, so
+          the list reads exactly as it always has. */}
+      {makersNote !== null && (
+        <div data-blank-makers-note className="text-xs text-surf-ink-muted font-normal">
+          {makersNote}
+        </div>
+      )}
       <div className="relative">
         <SearchIcon
           aria-hidden

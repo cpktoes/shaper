@@ -40,7 +40,8 @@ export function PhoneMenu() {
 
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="end" sideOffset={10} className="isolate z-50">
-          <Menu.Popup className="min-w-64 origin-(--transform-origin) rounded-lg border border-surf-line-faint bg-surf-panel p-1.5 shadow-lg outline-none duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+          {/* Height-limited to the room below the button, scrolling inside itself: on a phone the menu is taller than the screen (quick task 260926-wmf). */}
+          <Menu.Popup className="max-h-(--available-height) min-w-64 origin-(--transform-origin) overflow-y-auto rounded-lg border border-surf-line-faint bg-surf-panel p-1.5 shadow-lg outline-none duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
             {/* A way back to the home screen from any design screen — the phone has no
                 wordmark row to tap, so the menu carries it. Hidden on the home screen itself,
                 where it would only close the menu. router.push keeps the board in memory (a hard
