@@ -349,11 +349,16 @@ export function formatFeetInches(value: Mm): string {
 }
 
 /**
- * Parses a free-form imperial length string into millimetres. Accepts an
- * optional feet part (`6'`), an optional whole-inch or decimal part
- * (`19`, `18.5`), an optional space-separated fraction (`1/2`), and an
- * optional trailing double-quote. Returns null for empty/whitespace-only
- * or unparseable input.
+ * Parses a free-form imperial length string into millimetres. Accepts:
+ * - an optional feet part (`6'`);
+ * - an inch part that is a whole or decimal number (`19`, `18.5`), a whole
+ *   number then at least one space then a fraction (`19 1/2`, `2 11/16`), or a
+ *   fraction on its own with any numerator (`1/2`, `11/16` — eleven
+ *   sixteenths, never 1 1/16);
+ * - an optional trailing double-quote.
+ * A minus may lead the whole number (`-2 11/16`) or a fraction on its own
+ * (`-11/16`), but not a fraction that follows a whole number (`2 -11/16`).
+ * Returns null for empty/whitespace-only or unreadable input.
  */
 export function parseImperial(input: string): Mm | null {
   if (input == null) return null;
@@ -379,16 +384,33 @@ export function parseImperial(input: string): Mm | null {
   let hasInches = false;
 
   if (rest.length > 0) {
-    const match = rest.match(
-      /^(-?\d+(?:\.\d+)?)?\s*(?:(\d+)\s*\/\s*(\d+))?$/,
+    // Whitespace must separate a whole number from a fraction, so a fraction
+    // standing alone is read whole, whatever its numerator: `11/16` is eleven
+    // sixteenths, not 1 + 1/16. The inch part is exactly one of two shapes.
+    const wholeThenFraction = rest.match(
+      /^(-?\d+(?:\.\d+)?)(?:\s+(\d+)\s*\/\s*(\d+))?$/,
     );
-    if (!match) return null;
-    const [, wholeStr, numStr, denStr] = match;
-    if (wholeStr === undefined && numStr === undefined) {
-      return null;
+    const bareFraction = wholeThenFraction
+      ? null
+      : rest.match(/^(-?)(\d+)\s*\/\s*(\d+)$/);
+    if (!wholeThenFraction && !bareFraction) return null;
+
+    let whole = 0;
+    let isNegative = false;
+    let numStr: string | undefined;
+    let denStr: string | undefined;
+    if (wholeThenFraction) {
+      const wholeStr = wholeThenFraction[1];
+      whole = parseFloat(wholeStr);
+      isNegative = whole < 0 || wholeStr.startsWith("-");
+      numStr = wholeThenFraction[2];
+      denStr = wholeThenFraction[3];
+    } else if (bareFraction) {
+      isNegative = bareFraction[1] === "-";
+      numStr = bareFraction[2];
+      denStr = bareFraction[3];
     }
-    const whole = wholeStr !== undefined ? parseFloat(wholeStr) : 0;
-    const isNegative = whole < 0 || wholeStr?.startsWith("-") === true;
+
     let frac = 0;
     if (numStr !== undefined && denStr !== undefined) {
       const den = parseInt(denStr, 10);
