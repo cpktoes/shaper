@@ -38,7 +38,16 @@ shape rather than its version stamp, and production migrated (0006) before the m
 amended database rule. Verified 11/11, walked 8/8 by the founder on real phones and the live site,
 35/35 threats closed. Five verifier questions (the 1/8" floor at thin tips, the carried-over
 fine-tune greying, a reason line's wording, the loose saved Deck Skin bound, a stale-tab edge) wait
-on the founder and are listed in `12-UAT.md`.
+on the founder and are listed in [12-UAT.md](milestones/v1.4-phases/12-foil-the-way-a-shaper-cuts-it/12-UAT.md), and carried forward below.
+
+Before that, **v1.3 — Rocker from Real Blanks** (2026-09-26, Phase 11, 13 plans): the ROCKER screen
+stopped being a hand-drawn curve. A shaper sets a target centre thickness, picks a real foam blank that
+fits from three vendor catalogues (162 blanks, 158 pickable), slides the board along it and reads the
+rocker, thickness and foil off where it sits in that foam, with five Fit & Tip Defaults on the account and
+every older board reopening hand-set. Its full narrative is folded below.
+
+<details>
+<summary>Earlier narrative — v1.3 phase 11 and v1.2 phases 8–10 as they landed</summary>
 
 **Shipped: v1.3 — Rocker from Real Blanks** (2026-09-26, Phase 11, 13 plans)
 
@@ -57,9 +66,6 @@ a fit check at every point, and the brief's four named geometry tests green befo
 was migrated and seeded BEFORE the deploy, under the database rule the phase's code review amended
 (Drizzle names every column on insert). Verified 16/16 with no gaps, walked 7/7 by the founder,
 43/43 threats closed, six live checks on www.shaperassistant.com.
-
-<details>
-<summary>Earlier narrative — v1.2 phases 8–10 as they landed</summary>
 
 **Phase 10 complete (2026-09-12, 11 plans): the whole app on a phone.** The rack’s dialogs, the account controls and the home screen were sized for a thumb, then the app was put in the founder’s hands on a real iPhone — twice. The first walk found what no emulator could: a phone held sideways is ~844 dots wide, not the emulator’s 750, so it crossed the 820px layout switch. A round of fixes tried to make a sideways phone stay a phone; the founder, phone in hand, said it was better as a normal browser, and that stands (D-10). The second walk passed all ten steps on the iPhone and found one thing — the drawing column didn’t scroll on a short screen — fixed the same day and pinned by a test that measures a real scroll. The board card’s picture now has a floor it can never fall below; the RAILS instructions page dropped its sliders on an upright phone; three code-review rounds fixed every finding that could reach a shaper. The Android phone was not walked, by the founder’s explicit call, so PHON-10 closes on the iPhone’s evidence alone.
 
@@ -111,13 +117,13 @@ Before that, **v1.0 — the design tool, in inches** (2026-08-29, Phases 1–4):
 prototype ported into a real Next.js app and live on Vercel, with accounts and saved designs,
 verified geometry math, live volume, printable full-size templates, and the rocker and foil editors.
 
-Archives: [v1.3](milestones/v1.3-ROADMAP.md) · [v1.2](milestones/v1.2-ROADMAP.md) · [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-phases/)
+Archives: [v1.4](milestones/v1.4-ROADMAP.md) · [v1.3](milestones/v1.3-ROADMAP.md) · [v1.2](milestones/v1.2-ROADMAP.md) · [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-phases/)
 
 ## Current Milestone
 
-_v1.4 — Foil the Way a Shaper Cuts It — shipped 2026-09-27 (Phase 12, 10 plans; UAT 8/8, security 35/35). Its one
-phase is complete; the milestone closes with `/gsd-complete-milestone v1.4`, and the next one is defined by
-`/gsd-new-milestone`._
+_No milestone is open. v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, 10 plans;
+verified 11/11, UAT 8/8, security 35/35; production migrated before the merge) and is archived under
+`milestones/` with tag `v1.4`. The next milestone is defined by `/gsd-new-milestone`._
 
 <details>
 <summary>Carried forward — not yet scheduled</summary>
@@ -126,6 +132,9 @@ phase is complete; the milestone closes with `/gsd-complete-milestone v1.4`, and
 - **Public sharing / model gallery** — build-guide milestone M6
 - **A smoother-looking drawn rocker curve** that leaves every PCHIP number alone (todo 2026-09-26); the blank-maker tick boxes shipped as quick task 260926-wmf on 2026-09-27
 - **Pages and prints still open** — the Summary should carry the tip thicknesses and the deck and bottom passes, a Contacts page, and a link from a picked blank to its maker's catalogue page (todos 2026-09-26 and 2026-09-27)
+- **Five founder questions from Phase 12** — decisions, not defects, listed at the foot of [12-UAT.md](milestones/v1.4-phases/12-foil-the-way-a-shaper-cuts-it/12-UAT.md): whether 1/8" is the right floor at a thin tip (D-18); the carried-over Deck fine-tune greying every blank until it is reset, out-skinned or moved to the Bottom (the D-14 outcome, about nine in ten Phase 11 boards); the D-18 reason line blaming the blank's thickness even when a negative fine-tune is the cause (IN-02); a saved board's Deck Skin accepted anywhere in 0–50 mm (IN-03); a browser tab left open across the deploy until it is reloaded (IN-04)
+- **Drop the retired `extra_center_thickness_mm` column** — its own quick task now that v1.4 is deployed: remove it from the schema, deploy, then generate and run the DROP on production (D-19; the expand-first rule in CLAUDE.md)
+- **The four presets' provisional blank picks** — chosen by rule in v1.3 and still marked provisional; their litres moved again under v1.4's parallel foil (D-17: Shortboard 30.2 L, Fish 35.4 L, Midlength 51.5 L, Longboard 75.3 L); the founder's own picks pending
 - **Retroactive coverage on v1.1** — a security pass for Phase 5 (it added a database table and a server action) and Nyquist validation for Phases 5–7, none of which was run
 
 </details>
@@ -172,6 +181,8 @@ _(none — the next milestone's requirements are defined by `/gsd-new-milestone`
 - Public sharing / model gallery — deferred alongside billing (build guide milestone M6)
 
 ## Context
+
+**After v1.4 (2026-09-27):** 3,043 unit tests (Vitest, 76 files) and 360 browser tests (Playwright, the full suite run on `main` at the close) green; the foil is cut the way a planer works, with Deck Skin, Planer Max Depth and Tip Style on the account (seven Fit & Tip Defaults) and saved boards at version 5; no new runtime dependency (R11); live at shaperassistant.com. Three todos filed during the milestone and still pending (a picked blank's catalogue page; the Summary's tip thicknesses and deck/bottom passes; a Contacts page); the bare-fraction parser bug 12-02 found was fixed by quick task 260927-ef8 the next morning, and the blank-maker tick boxes shipped as 260926-wmf.
 
 **After v1.3 (2026-09-26):** 2,865 unit tests (Vitest) and 293 browser tests (Playwright) green; 162 real blanks (158 pickable) in the database, seeded from three vendor CSVs; the ROCKER screen reads rocker, thickness and foil off a real blank; no new runtime dependency (D-20); live at shaperassistant.com. Three todos filed at close (manufacturer tick-boxes; a smoother drawn curve without changing the numbers; the foil-from-real-shaping model).
 
@@ -245,6 +256,7 @@ templates ("the math is right").
 | A board saved under Phase 11 keeps its five station numbers exactly on reopen; the two 12" fine-tunes absorb the residual, and the carry-over is decided by the blank's shape, never the version stamp | Nothing a shaper already cut to may move (R9, D-07, D-14); about nine in ten carried boards open with a fine-tune bigger than the skin, and the flag says so and offers Reset Fine-Tune | ✓ Working — 10 of 10 production boards open; ⚠️ the D-14 greying is a founder question still open |
 | A blank fits only if one deck pass and one bottom pass come off at the centre, and no point runs under 1/8" thick | "One on deck and one on bottom as a minimum" (D-10, D-15, D-18); the too-thin case is reachable only at centres of 1 1/2" or less | ✓ Working; ⚠️ the 1/8" floor at thin tips is a founder question still open |
 | Planer Max Depth replaces Extra Center Thickness as a saved default; the retired column stays declared until its own later DROP | Passes are counted from the printed numbers (D-03); a DROP cannot ride in the same migration run as an additive change (D-19, the CR-01 rule) | ✓ Good — 0006 on production before the deploy; the DROP is its own quick task |
+| A replaced calculator is pinned first by a golden generated from the last release tag, and the old maths survives only inside the carry-over reader | Nothing a shaper already cut to may move (R7, R9): the fixture made that promise a test over 39 Phase 11 boards, and the same read-only script proved it on production | ✓ Good — named test (f) green, 10 of 10 production boards open (v1.4) |
 
 ## Evolution
 
@@ -264,4 +276,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-27 after Phase 12 (v1.4 ready to close)*
+*Last updated: 2026-09-27 after v1.4 milestone*

@@ -1,5 +1,25 @@
 # Milestones
 
+## v1.4 Foil the Way a Shaper Cuts It (Shipped: 2026-09-27)
+
+**Phases completed:** 1 phase (12), 10 plans, 22 tasks
+**Commits:** 116 between 2026-09-26 and 2026-09-27 — 73 on branch `foil-real-shaping`, merged to `main` as 125a90f, the rest the phase's opening and close-out and five quick tasks on `main` after the merge · **Code changed:** 132 files, +18,553 / −775 (80 code files outside the planning folder: +8,136 / −746)
+**Audit:** none run — closed on the phase's own record: verification 11/11 requirements with 0 gaps ([12-VERIFICATION.md](milestones/v1.4-phases/12-foil-the-way-a-shaper-cuts-it/12-VERIFICATION.md)), UAT 8/8 with the founder ([12-UAT.md](milestones/v1.4-phases/12-foil-the-way-a-shaper-cuts-it/12-UAT.md)), security 35/35 threats closed ([12-SECURITY.md](milestones/v1.4-phases/12-foil-the-way-a-shaper-cuts-it/12-SECURITY.md)), a code review of 56 files with both warnings fixed and three notes ruled into founder questions ([12-REVIEW.md](milestones/v1.4-phases/12-foil-the-way-a-shaper-cuts-it/12-REVIEW.md), [12-REVIEW-FIX.md](milestones/v1.4-phases/12-foil-the-way-a-shaper-cuts-it/12-REVIEW-FIX.md)), production migrated before the merge and walked live ([12-10-SUMMARY.md](milestones/v1.4-phases/12-foil-the-way-a-shaper-cuts-it/12-10-SUMMARY.md))
+**Closeout:** override_closeout — Known verification overrides: 17 open artifacts by the scanner's count acknowledged as deferred (see STATE.md Deferred Items): the same 7 debug sessions and 5 quick-task records carried since v1.2, whose work shipped long ago, and the pending todos — ten on the day, three of them filed this milestone. Nothing from Phase 12 itself is open.
+
+**Delivered:** The foil is cut the way a planer works. With a blank picked, a constant Deck Skin comes off the deck first, the bottom is planed parallel to the blank's down to the centre thickness with the foam to remove read as a depth and as planer passes, the four rocker numbers are the blank's own, and the tips are thinned last inside the final 12" with the deck or the bottom pinned — every number on the DATASHEET a number a shaper works to, and every board saved under Phase 11 reopening with its five station thicknesses kept.
+
+**Key accomplishments:**
+
+- **Phase 11's foil pinned, then replaced, before any screen moved:** a golden fixture of 39 Phase 11 boards generated from tag `v1.3`, then six named geometry tests green on every seeded blank — the deck exactly one skin below the blank's deck, the bottom exactly one centre gap above the blank's bottom, each 12" station the blank's thickness there less skin and gap, tip thinning that moves nothing inside the 12" stations and joins them with no kink, and every version-4 board reopening with its five numbers exact — with git ancestry proving the tests landed before the first screen commit.
+- **The planer's numbers on the ROCKER screen:** a Deck Skin slider and an OFF BOTTOM column at every station, the passes at the centre counted from the printed numbers against a Planer Max Depth, Tip Style (Pin deck / Bottom) and Fine-tune off (Deck / Bottom) as per-board choices with undo, and the DATASHEET's FOAM OFF block with Deck and Bottom rows, the drawing shading both bands.
+- **Fit & Tip Defaults grew to seven:** Planer Max Depth replaced Extra Center Thickness, Deck Skin and Tip Style joined the account (three nullable columns, migration 0006, with a per-browser fallback signed out), the blank list's centre floor became target + skin + one pass in plain words, and every two-way pill got a keyboard focus ring, a pressed state for screen readers and a finger-sized height on touch.
+- **The fit check learned the planer's limits:** at least one pass under the centre wherever the board sits (D-15), a board that would run under 1/8" thick anywhere refused with its own reason line (D-18), a "runs out" reason where the foil crosses the blank, and a Deck fine-tune bigger than the skin flagged with a Reset Fine-Tune offer instead of a dead end (review WR-01).
+- **Every older board still opens:** saved boards moved to version 5 with the cut travelling on the blank; a Phase 11 board is recognised by its blank's shape, never its version stamp, opens with the shaper's own Tip Style on every server path, and keeps its five station numbers exactly — proven by a read-only script on the development database and again on production (10 of 10 boards open, 1 of 1 Phase 11 board kept).
+- **Shipped in a day:** 10 plans in 5 waves, a code review with both warnings fixed in the same session, 2,984 unit and 332 browser tests green at verification with the desktop baselines byte-identical after the one permitted ROCKER re-record, production migrated BEFORE the merge under the expand-first rule, and the founder's eight UAT checks passed on real phones and the live site.
+
+---
+
 ## v1.3 Rocker from Real Blanks (Shipped: 2026-09-26)
 
 **Phases completed:** 1 phase (11), 13 plans, 33 tasks

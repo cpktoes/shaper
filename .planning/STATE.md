@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Foil the Way a Shaper Cuts It
-status: completed
-stopped_at: Phase 12 complete 2026-09-27 — UAT 8/8 walked by the founder, verification passed, security 35/35; milestone v1.4 ready to close with /gsd-complete-milestone v1.4
-last_updated: "2026-09-27T18:15:43.008Z"
+status: Awaiting next milestone
+stopped_at: Milestone v1.4 closed and archived 2026-09-27 — no milestone open; next /gsd-new-milestone
+last_updated: "2026-09-27T18:53:56.314Z"
 last_activity: 2026-09-27
-last_activity_desc: "Phase 12 complete: the founder walked the last five UAT checks (8 of 8), verification passed, 35 of 35 threats closed; v1.4 ready to close"
+last_activity_desc: "Milestone v1.4 closed: roadmap and requirements archived, Phase 12 artifacts moved to milestones/v1.4-phases/, tagged v1.4"
 progress:
   total_phases: 1
   completed_phases: 1
@@ -24,14 +24,14 @@ current_phase_name: Foil the Way a Shaper Cuts It
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Close milestone v1.4 (/gsd-complete-milestone v1.4), then define the next one
+**Current focus:** Define the next milestone with /gsd-new-milestone — the five Phase 12 founder questions and the D-19 column drop are the loose ends to settle first
 
 ## Current Position
 
-**v1.4 — Foil the Way a Shaper Cuts It: SHIPPED 2026-09-27 — Phase 12 complete (UAT 8/8, verification passed, security 35/35), milestone ready to close.** Opened 2026-09-26 on branch `foil-real-shaping` from the founder's brief (todo 2026-09-26: deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, tip thinning in the last 12" with a pin-deck or bottom choice, fine-tunes on the 12" stations); production carried migration 0006 before the merge (`125a90f`, 2026-09-27) and the live site was walked the same day. v1.3 shipped 2026-09-26 and is archived under .planning/milestones/.
+**No milestone open.** v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27: Phase 12 (10 plans, 22 tasks) verified 11/11 with 0 gaps, walked 8/8 by the founder on real phones and the live site, security 35/35; production carried migration 0006 before the merge (`125a90f`). Archived under .planning/milestones/ (v1.4-ROADMAP.md, v1.4-REQUIREMENTS.md, v1.4-phases/) and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: All phases complete
-Last activity: 2026-09-27 — Phase 12 complete: UAT 8/8 walked by the founder, verification passed, security 35/35
+Status: Awaiting next milestone
+Last activity: 2026-09-27 — Milestone v1.4 completed and archived
 
 ## Performance Metrics
 
@@ -151,7 +151,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-6 pending:
+10 pending:
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Mobile/phone-width layout polish for the design screens — `.planning/todos/pending/2026-08-19-mobile-phone-width-layout-polish.md`
@@ -159,6 +159,10 @@ Recent decisions affecting current work:
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
 - [minor/general] Brand the order form with a shaper's own logo and contact details (paid tier) — `.planning/todos/pending/2026-09-06-brand-the-order-form-for-paid-shapers.md`
 - [minor/ui] Show live coordinates under the pointer on the Template and Rocker curves — `.planning/todos/pending/2026-09-14-live-pointer-coordinates-on-the-template-and-rocker-curves.md`
+- [minor/rocker] Smoother-looking drawn rocker curve without changing the PCHIP numbers — `.planning/todos/pending/2026-09-26-smoother-drawn-rocker-curve-without-changing-the-numbers.md`
+- [minor/rocker] Open the blank's own catalog page from the app — `.planning/todos/pending/2026-09-26-open-the-blank-s-catalog-page-from-the-app.md`
+- [minor/summary] Summary order form needs the tip thicknesses and the deck/bottom passes somewhere — `.planning/todos/pending/2026-09-27-summary-needs-tip-thickness-and-deck-bottom-passes.md`
+- [minor/site] Add a Contacts page — `.planning/todos/pending/2026-09-27-add-a-contacts-page.md`
 
 ### Blockers/Concerns
 
@@ -290,6 +294,36 @@ Recent decisions affecting current work:
 
 ## Deferred Items
 
+### Acknowledged at the v1.4 close (2026-09-27)
+
+Twenty-two open artifacts acknowledged and deferred at milestone close (the scanner's headline count is
+17: it lists five todos and folds the other five into "and 5 more"), on the founder's standing choice from
+the v1.2 and v1.3 closes: the same seven debug sessions and five quick-task records — shipped work from
+earlier milestones whose bookkeeping was never closed, carried forward unchanged — and the ten pending
+todos, three of them filed this milestone. Nothing from Phase 12 itself is open: its UAT has no gaps and
+its verification no overrides; the five founder questions at the foot of 12-UAT.md are decisions, not
+defects, and are listed under Carried forward in PROJECT.md.
+
+| Category | Item | Status |
+|----------|------|--------|
+| debug | fin-placement-numbers-in-cm, keyboard-focus-invisible-on-sliders, metric-axis-labels-instructions-card, order-form-letter-blank-pages, phone-print-button-does-nothing, typed-length-box-too-narrow, view-full-sized-print-offset | diagnosed — fixes shipped in v1.1/v1.2 (see the v1.2 table below); carried forward a third time |
+| quick_task | 260818*-rebuild-volume* | record missing (carried forward) |
+| quick_task | 260910-2ny, 260910-jfp, 260910-kz2 | incomplete records; work shipped and tested (carried forward) |
+| quick_task | 260914-rj0-the-rear-fin-and-centre-fin-heights-on-t | status unknown to the scanner; work shipped 2026-09-14 (carried forward) |
+| todo | 2026-08-19-add-finished-board-photo-uploads-with-ratings | pending — backlog |
+| todo | 2026-08-19-mobile-phone-width-layout-polish | pending — largely superseded by v1.2; review before scheduling |
+| todo | 2026-08-21-fins-imported-template-width-branch | pending — backlog |
+| todo | 2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes | pending — backlog |
+| todo | 2026-09-06-brand-the-order-form-for-paid-shapers | pending — waits on the paid tier |
+| todo | 2026-09-14-live-pointer-coordinates-on-the-template-and-rocker-curves | pending — backlog |
+| todo | 2026-09-26-smoother-drawn-rocker-curve-without-changing-the-numbers | pending — carried from the v1.3 close |
+| todo | 2026-09-26-open-the-blank-s-catalog-page-from-the-app | pending — filed this milestone |
+| todo | 2026-09-27-summary-needs-tip-thickness-and-deck-bottom-passes | pending — filed this milestone |
+| todo | 2026-09-27-add-a-contacts-page | pending — filed this milestone |
+
+Closed since the v1.3 table: the blank-manufacturer tick boxes (quick task 260926-wmf) and the
+foil-the-way-a-shaper-cuts-it brief (this milestone).
+
 ### Acknowledged at the v1.3 close (2026-09-26)
 
 Seventeen open artifacts acknowledged and deferred, per the founder's choice at milestone close. The
@@ -381,12 +415,13 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-27T18:19:24.000Z
-Stopped at: Phase 12 complete — UAT 8/8, verification passed, security 35/35; milestone v1.4 ready to close
+Last session: 2026-09-27T19:01:06.000Z
+Stopped at: Milestone v1.4 closed and archived; tagged v1.4
 Resume file: None
-Next action: `/gsd-complete-milestone v1.4` — archive v1.4, then `/gsd-new-milestone`
+Next action: `/gsd-new-milestone` — define the next milestone (questioning → research → requirements → roadmap)
 
 ## Operator Next Steps
 
-- Close milestone v1.4 with /gsd-complete-milestone v1.4 (archive), then start the next with /gsd-new-milestone
-- Answer the five Phase 12 founder questions listed in 12-UAT.md (decisions, not defects)
+- Start the next milestone with /gsd-new-milestone
+- Answer the five Phase 12 founder questions at the foot of milestones/v1.4-phases/12-foil-the-way-a-shaper-cuts-it/12-UAT.md (decisions, not defects) — they may shape the next milestone's scope
+- Run the D-19 follow-up as a quick task: drop the retired extra_center_thickness_mm column (schema first, deploy, then the DROP on production)
