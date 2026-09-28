@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 1 (security patch) live; item 2 (housekeeping) next, after the founder signs off item 1
-last_updated: "2026-09-28T01:16:53.346Z"
+stopped_at: Phase 13 item 2 (housekeeping) done and verified on this Mac; the push and the three GitHub branch deletions await the founder's go, then item 3
+last_updated: "2026-09-28T01:55:45.700Z"
 last_activity: 2026-09-27
-last_activity_desc: "Phase 13 item 1 live: the security patch deployed on the founder's go (Next.js 16.3.6; live-site audit 6 → 0)"
+last_activity_desc: "Completed quick task 260927-pij: Phase 13 item 2, housekeeping — verified locally, the push and GitHub branch deletions await the founder's go"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **1 of 13 items done.** Item 1, the security patch, is live (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0, every suite green, deployed on the founder's go 2026-09-27). **Item 2, housekeeping, is next** — it starts after the founder signs off item 1. The work list, the owner of each item, what "done" means, and the Progress Log all live in [13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; the founder's decisions and walks are recorded in the SPEC's Progress Log. Going public with tiered subscriptions (guide M5) is the next milestone, after the demo.
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **1 of 13 items done.** Item 1, the security patch, is live (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0, every suite green, deployed on the founder's go 2026-09-27). **Item 2, housekeeping, is done on this Mac and verified** (quick 260927-pij: four commits, lint 0 warnings, scanner down to the 9 real todos) — **the push, and deleting the three GitHub branches, wait on the founder's go**; the founder's own two steps (the client-secret file, `.env.example`) stay open. Then item 3, retiring the Extra Center Thickness column. The work list, the owner of each item, what "done" means, and the Progress Log all live in [13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; the founder's decisions and walks are recorded in the SPEC's Progress Log. Going public with tiered subscriptions (guide M5) is the next milestone, after the demo.
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-27 - Phase 13 item 1 live: the security patch deployed on the founder's go (Next.js 16.3.6; live-site audit 6 → 0)
+Last activity: 2026-09-27 - Completed quick task 260927-pij: Phase 13 item 2, housekeeping — verified locally, the push and GitHub branch deletions await the founder's go
 
 ## Performance Metrics
 
@@ -157,10 +157,9 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-10 pending (four of them are Phase 13 items: the fin tail question is item 6, the order form is item 8, the catalogue links are item 9, the Contacts page is item 10; the phone-width polish is closed by item 2):
+9 pending (four of them are Phase 13 items: the fin tail question is item 6, the order form is item 8, the catalogue links are item 9, the Contacts page is item 10; the phone-width polish todo was closed by item 2 on 2026-09-27):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
-- [minor/general] Mobile/phone-width layout polish for the design screens — `.planning/todos/pending/2026-08-19-mobile-phone-width-layout-polish.md`
 - [minor/general] Fins imported tail uses the generic polynomial curve, not the drawn outline — `.planning/todos/pending/2026-08-21-fins-imported-template-width-branch.md`
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
 - [minor/general] Brand the order form with a shaper's own logo and contact details (paid tier) — `.planning/todos/pending/2026-09-06-brand-the-order-form-for-paid-shapers.md`
@@ -172,11 +171,10 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- [Phase 2] .env.example still needs to be created by hand (repo root, three lines: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=, CLERK_SECRET_KEY=, DATABASE_URL=) — the execution sandbox hard-blocks any tool write matching a .env* path, including this values-empty example file
-- [Phase 2] client_secret_*.json (Google OAuth download) still sits in the repo root — gitignored so it can't be committed, but should be moved out of the working tree entirely
+- [Phase 2 → Phase 13 item 2, founder step] .env.example still needs to be created by hand (repo root, three lines: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=, CLERK_SECRET_KEY=, DATABASE_URL=) — the execution sandbox hard-blocks any tool write matching a .env* path, including this values-empty example file. Since quick 260927-pij (2026-09-27) it can be committed: a later `.env*` rule in the GSD block of .gitignore had been silently re-ignoring it
+- [Phase 2 → Phase 13 item 2, founder step] client_secret_*.json (Google OAuth download) still sits in the repo root — gitignored so it can't be committed, but should be moved out of the working tree entirely (into a password manager)
 - [Phase 12] Five verifier questions await the founder's decision (12-UAT.md, "Founder Questions"): the 1/8" floor at thin tips (D-18), the D-14 greying of carried-over boards until the fine-tune is reset, the IN-02 reason wording, the loose 0–50 mm saved Deck Skin bound (IN-03), and the stale-tab Restore Defaults edge (IN-04) — decisions, not defects (now Phase 13 item 4)
 - [Phase 13] Deadline: the founder shows the app to many shapers on Saturday 2026-10-10; freeze on Wednesday 2026-10-07 evening, after which only rehearsal fixes land
-- [Phase 13] Until item 1 ships, the live site runs Next.js 16.3.1, which carries a critical advisory (unauthenticated remote code execution in the image optimiser with AVIF files, and on Windows hosts; probably low exposure on Vercel, which runs Linux and whose own service optimises images, and the app uses no `next/image`) plus five lesser advisories through `shadcn`'s tooling and `sharp`. The two Phase 2 items above are item 2's founder steps
 
 ### Quick Tasks Completed
 
@@ -300,8 +298,11 @@ Recent decisions affecting current work:
 | 260927-0fq | The order form's Blank line also says where the board centre sits on the blank, in ROCKER's own words ("US Blanks 6'2\"A — centered", "— center 1/4\" toward tail", Metric in mm); the width test now covers the longest possible note (— center 44 13/16\" toward nose) against every catalogue name | 2026-09-27 | 213ad68 | [260927-0fq-order-form-blank-line-also-says-where-th](./quick/260927-0fq-order-form-blank-line-also-says-where-th/) |
 | 260927-ef8 | Typing a bare fraction with a two-digit top number (11/16, 13/16, 15/16, 10/16) into any Imperial field now saves exactly that fraction; it used to gain a whole inch with no error (11/16\" saved as 1 1/16\", 10/16\" as 1\"). A whole number and a fraction still need a space between them (2 11/16), a minus in front of a lone fraction is now read, and the planer-pass test's 0-prefix workaround is gone | 2026-09-27 | 6f003c1 | [260927-ef8-bare-fractions-with-two-digit-numerators](./quick/260927-ef8-bare-fractions-with-two-digit-numerators/) |
 | 260927-onx | Phase 13 item 1, the security patch: the site's framework moves from Next.js 16.3.1 to 16.3.6, closing a critical flaw where a specially made picture sent to its picture-resizing address could run a stranger's code on the server, along with the fixed picture library that comes with it (sharp 0.35.5); four lesser warnings in the shadcn helper tool cleared; nothing else upgraded (Clerk, React, shadcn unchanged; drizzle-kit held at 0.31.10). Live-site packages audit 6 advisories → 0; 3,043 unit and 360 browser tests green, desktop screenshots unchanged. Nothing about a board changes | 2026-09-27 | 5d2d5a1, e9afc79 | [260927-onx-phase-13-item-1-security-patch-upgrade-n](./quick/260927-onx-phase-13-item-1-security-patch-upgrade-n/) |
+| 260927-pij | Phase 13 item 2, housekeeping — nothing a shaper sees changes: the six merged branches and the one superseded sketch branch deleted on this Mac (the three GitHub copies go at push time), the two finished session worktrees and an orphan folder removed, five unused starter images deleted, GSD's research cache no longer committed, `.env.example` made committable (a later `.env*` rule had been re-ignoring it), the 11 code-checker warnings cleared with the golden fixtures byte-identical, and three milestones of stale records closed on evidence (7 debug sessions, 4 quick-task records, 2 ledger entries, the phone-width todo) — the scanner now lists only the 9 real backlog todos. GSD model profile set to balanced (founder) | 2026-09-27 | aa086a3, 3cb5e31, 1464bcd, f722d32 | [260927-pij-phase-13-item-2-housekeeping-clear-the-m](./quick/260927-pij-phase-13-item-2-housekeeping-clear-the-m/) |
 
 ## Deferred Items
+
+**Closed 2026-09-27 by Phase 13 item 2 (quick 260927-pij):** the seven debug sessions (now `status: resolved` in `.planning/debug/resolved/`, each citing the plan and commits that shipped its fix), the five quick-task records (the three 260910 SUMMARYs and 260914-rj0 marked complete on their browser readings and specs; the empty star-named `260818*-rebuild-volume*` folder removed), the phone-width todo (delivered by Phases 9–10), and both open WINDOWS.md entries (entry 1 fixed — Phase 1's own UAT ran those production checks the afternoon it was logged; entry 2 waived as superseded by later real-phone walks). The scanner now lists only the 9 real backlog todos. Corrections to the attributions in the tables below, from the commits: order-form-letter-blank-pages shipped in plan 08-09 (1360d62, bc9f13d), not a quick task; fin-placement-numbers-in-cm in 06-08 (907bd5d, 909f72c); typed-length-box-too-narrow in 06-09 (e76c237); phone-print-button-does-nothing through 09-09's iOS note (ab6905f, f3da72b, 85bbaf5) — the PDF route its diagnosis floated was never built. The tables stay as the record of each close.
 
 ### Acknowledged at the v1.4 close (2026-09-27)
 
