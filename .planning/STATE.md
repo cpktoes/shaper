@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 1 (security patch) merged and verified on main; awaiting the founder's go to push and deploy, then item 2
-last_updated: "2026-09-28T01:13:47.064Z"
+stopped_at: Phase 13 item 1 (security patch) live; item 2 (housekeeping) next, after the founder signs off item 1
+last_updated: "2026-09-28T01:16:53.346Z"
 last_activity: 2026-09-27
-last_activity_desc: "Completed quick task 260927-onx: Phase 13 item 1, the security patch — merged and verified locally, awaiting the founder's go to deploy"
+last_activity_desc: "Phase 13 item 1 live: the security patch deployed on the founder's go (Next.js 16.3.6; live-site audit 6 → 0)"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 13
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 8
 current_phase: 13
 current_phase_name: Ready for the Shapers
 ---
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** 0 of 13 items done. **Item 1, the security patch, is merged on `main` and verified locally** (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0, every suite green) — **it waits on the founder's go to push and deploy**, after which it is ticked; then item 2, housekeeping. The work list, the owner of each item, what "done" means, and the Progress Log all live in [13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; the founder's decisions and walks are recorded in the SPEC's Progress Log. Going public with tiered subscriptions (guide M5) is the next milestone, after the demo.
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **1 of 13 items done.** Item 1, the security patch, is live (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0, every suite green, deployed on the founder's go 2026-09-27). **Item 2, housekeeping, is next** — it starts after the founder signs off item 1. The work list, the owner of each item, what "done" means, and the Progress Log all live in [13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; the founder's decisions and walks are recorded in the SPEC's Progress Log. Going public with tiered subscriptions (guide M5) is the next milestone, after the demo.
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-27 - Completed quick task 260927-onx: Phase 13 item 1, the security patch (Next.js 16.3.6, audit 6 → 0) — merged and verified locally, awaiting the founder's go to deploy
+Last activity: 2026-09-27 - Phase 13 item 1 live: the security patch deployed on the founder's go (Next.js 16.3.6; live-site audit 6 → 0)
 
 ## Performance Metrics
 
