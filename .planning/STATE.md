@@ -157,7 +157,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-9 pending (four of them are Phase 13 items: the fin tail question is item 6, the order form is item 8, the catalogue links are item 9, the Contacts page is item 10; the phone-width polish todo was closed by item 2 on 2026-09-27):
+10 pending (five of them are Phase 13 items: the fin tail question is item 6, the order form is item 8, the catalogue links are item 9, the ghost of the last edit is optional item 9b, the Contacts page is item 10; the phone-width polish todo was closed by item 2 on 2026-09-27):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Fins imported tail uses the generic polynomial curve, not the drawn outline — `.planning/todos/pending/2026-08-21-fins-imported-template-width-branch.md`
@@ -168,6 +168,7 @@ Recent decisions affecting current work:
 - [minor/rocker] Open the blank's own catalog page from the app — `.planning/todos/pending/2026-09-26-open-the-blank-s-catalog-page-from-the-app.md`
 - [minor/summary] Summary order form needs the tip thicknesses and the deck/bottom passes somewhere — `.planning/todos/pending/2026-09-27-summary-needs-tip-thickness-and-deck-bottom-passes.md`
 - [minor/site] Add a Contacts page — `.planning/todos/pending/2026-09-27-add-a-contacts-page.md`
+- [minor/ui] Show a ghost of the last edit on the Template screen — `.planning/todos/pending/2026-09-27-show-a-ghost-of-the-last-edit-on-the-template-screen.md`
 
 ### Blockers/Concerns
 

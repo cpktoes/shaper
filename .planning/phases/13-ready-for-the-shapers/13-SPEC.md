@@ -77,6 +77,10 @@ The review found the app healthy: the live site at www.shaperassistant.com was s
 9. **Blank catalogue links, if time allows before the freeze** (todo `2026-09-26-open-the-blank-s-catalog-page-from-the-app`). A picked blank links to its maker's catalogue, and to the right page where the vendor allows it, from the blank card and from the DATASHEET's footnote. The addresses come from a fixed table in `lib/blanks/`, never from free text.
    *Done when:* each vendor's link opens the right catalogue on desktop and phone, or the item is moved to after Oct 10.
 
+9b. **Optional: a ghost of the last edit on TEMPLATE** (todo `2026-09-27-show-a-ghost-of-the-last-edit-on-the-template-screen`, added by the founder on 2026-09-27: "add a ghost image on the template page so that when you edit, you still have a reference of your last edit"). A faint outline of the shape before the most recent edit, drawn behind the live one on screen only, never printed. The before-shape already sits in the undo history, so this needs no new geometry. Which "last edit" it shows, and whether it fades or has a toggle, is the founder's call when it is planned.
+   *Who:* the founder (those choices), then Claude (quick task). **Built only if items 1–9 leave room before the Oct 7 freeze** (founder, 2026-09-27); otherwise it moves to after Oct 10.
+   *Done when:* the ghost shows after an edit on desktop and phone, in both orientations, in all four themes, and never on paper or the Summary; or the item is moved to after Oct 10.
+
 ### Ready to listen (guide M4) — Sat–Mon, Oct 3–5
 
 10. **Contact page** (todo `2026-09-27-add-a-contacts-page`). A `/contact` page that works signed in or out, reachable from the gear menu and the phone menu. The founder decides the words and whether it's an email link or a small form.
