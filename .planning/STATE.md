@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: "Phase 13 item 4a live (1/4\\\" thinness rule); 4b (Deck Skin 0–50 mm) next, after the founder signs off 4a"
-last_updated: "2026-09-28T22:29:55.258Z"
+stopped_at: Phase 13 item 4b verified locally, awaiting the founder's go to push; that completes item 4
+last_updated: "2026-09-28T23:08:05.233Z"
 last_activity: 2026-09-28
-last_activity_desc: "Phase 13 item 4a live: the 1/4\" thinness rule and cause-named reason line deployed on the founder's go"
+last_activity_desc: "Quick task 260928-lm6 (Phase 13 item 4b, Deck Skin none–1\") verified locally; the push awaits the founder's go"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-28 - Phase 13 item 4a live: the 1/4" thinness rule and cause-named reason line deployed on the founder's go
+Last activity: 2026-09-28 - Quick task 260928-lm6 (Phase 13 item 4b, Deck Skin none–1") verified locally; the push awaits the founder's go
 
 ## Performance Metrics
 
@@ -89,7 +89,7 @@ Last activity: 2026-09-28 - Phase 13 item 4a live: the 1/4" thinness rule and ca
 
 ### Decisions
 
-- [Phase 13 item 4, 2026-09-28]: The founder answered Phase 12's five questions. Q1 (the thin spot near a tip): raise the floor from 1/8" to 1/4" anywhere on the board, and the lowest tip setting to 1/4" ("no boards should have a 1/8" tip anyway"), and the real fix, curve rules that never hump, is its own phase after Oct 10 (todo 2026-09-28, major). Q2 (Phase 11 boards opening greyed until Reset Fine-Tune): accept. Q3 (the floor reason line): correct it with a proper rewording by cause. Q4 (saved Deck Skin 0–50 mm vs the slider's 1/16"–1/2"): open the slider up to the full 0–50 mm range ("some shapers not wanting to add a planer max depth"). Q5 (a tab left open across the Phase 12 deploy): accept. The 1/4" floor refuses 15 of the 1,611 stress-test boards (6 before); the milder humps stay allowed until the curve-flow phase.
+- [Phase 13 item 4, 2026-09-28]: The founder answered Phase 12's five questions. Q1 (the thin spot near a tip): raise the floor from 1/8" to 1/4" anywhere on the board, and the lowest tip setting to 1/4" ("no boards should have a 1/8" tip anyway"), and the real fix, curve rules that never hump, is its own phase after Oct 10 (todo 2026-09-28, major). Q2 (Phase 11 boards opening greyed until Reset Fine-Tune): accept. Q3 (the floor reason line): correct it with a proper rewording by cause. Q4 (saved Deck Skin 0–50 mm vs the slider's 1/16"–1/2"): open the control up — first to the full 0–50 mm, then capped by the founder at 0–1" ("no one needs to trim more than that"); saved boards keep accepting 0–50 mm. Q5 (a tab left open across the Phase 12 deploy): accept. The 1/4" floor refuses 15 of the 1,611 stress-test boards (6 before); the milder humps stay allowed until the curve-flow phase.
 
 - [Phase 13]: The retired `extra_center_thickness_mm` column is gone from both databases (migration 0008, quick 260927-qrn, 2026-09-27): removed from the code and deployed first, then dropped on production in the founder's terminal, proven present/8 → absent/9 by `scripts/check-preference-columns.ts --before-drop` and its default run (closes D-19)
 - [Phase 12]: A board is cut from its blank the way a planer works — the deck skin first (a saved default and a per-board value), the bottom planed to centre thickness with the foam shown as planer passes against Planer Max Depth, the tips thinned last inside 12" with the deck or the bottom pinned (D-01–D-06, D-10)
@@ -306,6 +306,7 @@ Recent decisions affecting current work:
 | 260927-pij | Phase 13 item 2, housekeeping — nothing a shaper sees changes: the six merged branches and the one superseded sketch branch deleted on this Mac (the three GitHub copies go at push time), the two finished session worktrees and an orphan folder removed, five unused starter images deleted, GSD's research cache no longer committed, `.env.example` made committable (a later `.env*` rule had been re-ignoring it), the 11 code-checker warnings cleared with the golden fixtures byte-identical, and three milestones of stale records closed on evidence (7 debug sessions, 4 quick-task records, 2 ledger entries, the phone-width todo) — the scanner now lists only the 9 real backlog todos. GSD model profile set to balanced (founder) | 2026-09-27 | aa086a3, 3cb5e31, 1464bcd, f722d32 | [260927-pij-phase-13-item-2-housekeeping-clear-the-m](./quick/260927-pij-phase-13-item-2-housekeeping-clear-the-m/) |
 | 260927-qrn | Phase 13 item 3, retiring the unused Extra Center Thickness setting (D-19) — nothing a shaper sees changes: the column is gone from the code and migration 0008 is one line that removes it; the development database was checked before (present, 8 migrations) and after (absent, 9), and a second run changed nothing; the read-only account-settings check now expects the column gone and has a `--before-drop` option for production's one run just before the removal (it refuses any mistyped option before touching the database). Production follows the deploy, run in the founder's terminal | 2026-09-27 | 39b9b3d, 3a614b9 | [260927-qrn-phase-13-item-3-retire-the-unused-extra-](./quick/260927-qrn-phase-13-item-3-retire-the-unused-extra-/) |
 | 260928-j00 | Phase 13 item 4a, the thinness rule (the founder's answers to Phase 12's Q1 and Q3): a board may be no thinner than 1/4" anywhere (was 1/8"), every ROCKER thickness control and the Fit & Tip Defaults tips now start at 1/4" — one shared figure — while older saved boards and stored defaults with a thinner tip still read back exactly as saved (flagged, never quietly raised); the too-thin reason line now names the real cause: a thin centre in a thick blank (the founder's wording, kept), a fine-tune that takes too much off, the board running past the end of the blank, or an older tip setting below the minimum. Development holds no board or default under 1/4". 3,064 unit and 360 browser tests green, desktop screenshots unchanged | 2026-09-28 | 8864015, 17f697c, 1021b0a | [260928-j00-phase-13-item-4a-the-thinness-rule-a-boa](./quick/260928-j00-phase-13-item-4a-the-thinness-rule-a-boa/) |
+| 260928-lm6 | Phase 13 item 4b (the founder's answer to Phase 12's Q4, capped by them at 1"): the Deck Skin control on ROCKER and in Fit & Tip Defaults now runs from none to 1" (Metric 0–25 mm) — was 1/16"–1/2"; at none the slider reads "Deck Skin — none", nothing comes off the deck, the centre needs only the target plus one bottom pass (so more blanks fit), and every sentence that quoted the skin reads naturally ("room for your 1/8" bottom pass"; an upward Deck fine-tune "raises the deck, but this board takes no Deck Skin"). Every older skin reads back as saved; a hand-made skin over 1" shows its true value with the thumb parked. A new board still starts at 1/8". 3,085 unit and 360 browser tests green | 2026-09-28 | be0d244, ca7b84c | [260928-lm6-phase-13-item-4b-the-deck-skin-control-a](./quick/260928-lm6-phase-13-item-4b-the-deck-skin-control-a/) |
 
 ## Deferred Items
 
