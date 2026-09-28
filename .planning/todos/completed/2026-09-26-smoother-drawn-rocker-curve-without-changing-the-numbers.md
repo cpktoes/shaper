@@ -29,3 +29,12 @@ figure and every fit verdict is unchanged.
    through the PCHIP values at the stations and never overshoot between them.
 3. Put the options side by side as screenshots for the founder to pick from (the way the RAILS plot
    fit was settled, 260914-v2v), then ship the pick as one quick task.
+
+## Outcome
+
+Folded on 2026-09-28 into `2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow.md` (pending,
+major, its own phase after the Oct 10 showing), by the founder's decision while answering Phase 12's founder
+question 1: "improve the spline curve rules/type so that the curve never humps and always has a realistic surfboard
+flow." That todo carries this one's intent (a smoother-looking curve), and it goes further: the curve rules
+themselves may change, by the founder's call, as long as nothing overshoots, especially at the nose. Nothing was
+built under this todo.

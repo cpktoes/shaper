@@ -165,11 +165,11 @@ Recent decisions affecting current work:
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
 - [minor/general] Brand the order form with a shaper's own logo and contact details (paid tier) — `.planning/todos/pending/2026-09-06-brand-the-order-form-for-paid-shapers.md`
 - [minor/ui] Show live coordinates under the pointer on the Template and Rocker curves — `.planning/todos/pending/2026-09-14-live-pointer-coordinates-on-the-template-and-rocker-curves.md`
-- [minor/rocker] Smoother-looking drawn rocker curve without changing the PCHIP numbers — `.planning/todos/pending/2026-09-26-smoother-drawn-rocker-curve-without-changing-the-numbers.md`
 - [minor/rocker] Open the blank's own catalog page from the app — `.planning/todos/pending/2026-09-26-open-the-blank-s-catalog-page-from-the-app.md`
 - [minor/summary] Summary order form needs the tip thicknesses and the deck/bottom passes somewhere — `.planning/todos/pending/2026-09-27-summary-needs-tip-thickness-and-deck-bottom-passes.md`
 - [minor/site] Add a Contacts page — `.planning/todos/pending/2026-09-27-add-a-contacts-page.md`
 - [minor/ui] Show a ghost of the last edit on the Template screen — `.planning/todos/pending/2026-09-27-show-a-ghost-of-the-last-edit-on-the-template-screen.md`
+- [major/rocker] Give the foil and rocker curves a realistic surfboard flow (its own phase after Oct 10; folds in the 2026-09-26 smoother-rocker todo) — `.planning/todos/pending/2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow.md`
 
 ### Blockers/Concerns
 

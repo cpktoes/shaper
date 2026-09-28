@@ -114,6 +114,7 @@ The review found the app healthy: the live site at www.shaperassistant.com was s
 ## After Oct 10 — recorded here, not part of this phase
 
 - **Listen (guide M4), about 1–2 weeks.** Fix the top five complaints and add what they all ask for. Use the visit counts to see which screens shapers actually use, because that is where the Free/Pro line gets drawn. The guide suggests outline editing and printable templates free, with rocker, volume, fins, exports and unlimited boards as Pro, but it says to let real shapers decide.
+- **The curve-flow phase (founder, 2026-09-28): its own phase after Oct 10.** The foil and rocker curves get a realistic surfboard flow: never a hump near a tip, no kinks or facets, and still no overshoot at the nose. It needs a discussion, curve-type research, a golden of today's numbers first, and a carry-over for saved boards. Todo `2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow` (major), which folds in the 2026-09-26 smoother-rocker todo.
 - **v1.6 — Turn on Pro (guide M5), its own milestone on the `quality` profile:**
   - terms and privacy pages checked by a person
   - Vercel Pro (the free Hobby plan is non-commercial, so this is required before taking money)
@@ -131,7 +132,6 @@ The review found the app healthy: the live site at www.shaperassistant.com was s
   - saved-board version history (the one M3 item never built)
   - bottom contours (a full phase: new maths, and it changes volume)
   - live coordinates under the pointer
-  - a smoother-looking rocker drawing
   - the fin tail branch, if item 6 keeps it
 
 ## Progress Log
