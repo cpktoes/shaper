@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 2 (housekeeping) done and verified on this Mac; the push and the three GitHub branch deletions await the founder's go, then item 3
-last_updated: "2026-09-28T01:55:45.700Z"
+stopped_at: Phase 13 items 1 and 2 live; item 3 (retire the Extra Center Thickness column) next, after the founder signs off item 2
+last_updated: "2026-09-28T02:08:37.068Z"
 last_activity: 2026-09-27
-last_activity_desc: "Completed quick task 260927-pij: Phase 13 item 2, housekeeping — verified locally, the push and GitHub branch deletions await the founder's go"
+last_activity_desc: "Phase 13 item 2 live: housekeeping pushed on the founder's go and the three old GitHub branches deleted"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 13
-  completed_plans: 1
-  percent: 8
+  completed_plans: 2
+  percent: 15
 current_phase: 13
 current_phase_name: Ready for the Shapers
 ---
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **1 of 13 items done.** Item 1, the security patch, is live (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0, every suite green, deployed on the founder's go 2026-09-27). **Item 2, housekeeping, is done on this Mac and verified** (quick 260927-pij: four commits, lint 0 warnings, scanner down to the 9 real todos) — **the push, and deleting the three GitHub branches, wait on the founder's go**; the founder's own two steps (the client-secret file, `.env.example`) stay open. Then item 3, retiring the Extra Center Thickness column. The work list, the owner of each item, what "done" means, and the Progress Log all live in [13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; the founder's decisions and walks are recorded in the SPEC's Progress Log. Going public with tiered subscriptions (guide M5) is the next milestone, after the demo.
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **2 of 13 items done, both live.** Item 1, the security patch (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0). Item 2, housekeeping (quick 260927-pij: only `main` here and on GitHub, lint 0 warnings, the scanner down to the 9 real todos); the founder's own two steps from item 2 (the client-secret file, `.env.example`) stay open. **Item 3, retiring the Extra Center Thickness column, is next** — it starts after the founder signs off item 2, and its production step needs the founder present. The work list, the owner of each item, what "done" means, and the Progress Log all live in [13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; the founder's decisions and walks are recorded in the SPEC's Progress Log. Going public with tiered subscriptions (guide M5) is the next milestone, after the demo.
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-27 - Completed quick task 260927-pij: Phase 13 item 2, housekeeping — verified locally, the push and GitHub branch deletions await the founder's go
+Last activity: 2026-09-27 - Phase 13 item 2 live: housekeeping pushed on the founder's go and the three old GitHub branches deleted
 
 ## Performance Metrics
 
