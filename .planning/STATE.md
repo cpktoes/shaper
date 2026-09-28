@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 items 1 and 2 live; item 3 (retire the Extra Center Thickness column) next, after the founder signs off item 2
-last_updated: "2026-09-28T02:08:37.068Z"
+stopped_at: "Phase 13 item 3: code + development database done (migration 0008); awaiting the test gates, the founder's go to push, the deploy, then the production removal in the founder's terminal"
+last_updated: "2026-09-28T02:37:54.898Z"
 last_activity: 2026-09-27
-last_activity_desc: "Phase 13 item 2 live: housekeeping pushed on the founder's go and the three old GitHub branches deleted"
+last_activity_desc: "Quick task 260927-qrn: Phase 13 item 3 done in code and on the development database; the push, deploy and production removal follow"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **2 of 13 items done, both live.** Item 1, the security patch (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0). Item 2, housekeeping (quick 260927-pij: only `main` here and on GitHub, lint 0 warnings, the scanner down to the 9 real todos); the founder's own two steps from item 2 (the client-secret file, `.env.example`) stay open. **Item 3, retiring the Extra Center Thickness column, is next** — it starts after the founder signs off item 2, and its production step needs the founder present. The work list, the owner of each item, what "done" means, and the Progress Log all live in [13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; the founder's decisions and walks are recorded in the SPEC's Progress Log. Going public with tiered subscriptions (guide M5) is the next milestone, after the demo.
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **2 of 13 items done, both live.** Item 1, the security patch (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0). Item 2, housekeeping (quick 260927-pij: only `main` here and on GitHub, lint 0 warnings, the scanner down to the 9 real todos); the founder's own two steps from item 2 (the client-secret file, `.env.example`) stay open. **Item 3, retiring the Extra Center Thickness column, is done in code and on the development database** (quick 260927-qrn: migration 0008, the development database checked present/8 → absent/9). Still to do, in order: every test suite, the founder's go to push, the deploy going live, then the production removal in the founder's terminal (the one command in `scripts/check-preference-columns.ts`'s header), then the founder's signed-in settings check on the live site. `.env.example` is committed (the founder made it); the client-secret file still sits in the project folder. The work list, the owner of each item, what "done" means, and the Progress Log all live in [13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; the founder's decisions and walks are recorded in the SPEC's Progress Log. Going public with tiered subscriptions (guide M5) is the next milestone, after the demo.
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-27 - Phase 13 item 2 live: housekeeping pushed on the founder's go and the three old GitHub branches deleted
+Last activity: 2026-09-27 - Quick task 260927-qrn: Phase 13 item 3 done in code and on the development database; the push, deploy and production removal follow
 
 ## Performance Metrics
 
@@ -300,6 +300,7 @@ Recent decisions affecting current work:
 | 260927-ef8 | Typing a bare fraction with a two-digit top number (11/16, 13/16, 15/16, 10/16) into any Imperial field now saves exactly that fraction; it used to gain a whole inch with no error (11/16\" saved as 1 1/16\", 10/16\" as 1\"). A whole number and a fraction still need a space between them (2 11/16), a minus in front of a lone fraction is now read, and the planer-pass test's 0-prefix workaround is gone | 2026-09-27 | 6f003c1 | [260927-ef8-bare-fractions-with-two-digit-numerators](./quick/260927-ef8-bare-fractions-with-two-digit-numerators/) |
 | 260927-onx | Phase 13 item 1, the security patch: the site's framework moves from Next.js 16.3.1 to 16.3.6, closing a critical flaw where a specially made picture sent to its picture-resizing address could run a stranger's code on the server, along with the fixed picture library that comes with it (sharp 0.35.5); four lesser warnings in the shadcn helper tool cleared; nothing else upgraded (Clerk, React, shadcn unchanged; drizzle-kit held at 0.31.10). Live-site packages audit 6 advisories → 0; 3,043 unit and 360 browser tests green, desktop screenshots unchanged. Nothing about a board changes | 2026-09-27 | 5d2d5a1, e9afc79 | [260927-onx-phase-13-item-1-security-patch-upgrade-n](./quick/260927-onx-phase-13-item-1-security-patch-upgrade-n/) |
 | 260927-pij | Phase 13 item 2, housekeeping — nothing a shaper sees changes: the six merged branches and the one superseded sketch branch deleted on this Mac (the three GitHub copies go at push time), the two finished session worktrees and an orphan folder removed, five unused starter images deleted, GSD's research cache no longer committed, `.env.example` made committable (a later `.env*` rule had been re-ignoring it), the 11 code-checker warnings cleared with the golden fixtures byte-identical, and three milestones of stale records closed on evidence (7 debug sessions, 4 quick-task records, 2 ledger entries, the phone-width todo) — the scanner now lists only the 9 real backlog todos. GSD model profile set to balanced (founder) | 2026-09-27 | aa086a3, 3cb5e31, 1464bcd, f722d32 | [260927-pij-phase-13-item-2-housekeeping-clear-the-m](./quick/260927-pij-phase-13-item-2-housekeeping-clear-the-m/) |
+| 260927-qrn | Phase 13 item 3, retiring the unused Extra Center Thickness setting (D-19) — nothing a shaper sees changes: the column is gone from the code and migration 0008 is one line that removes it; the development database was checked before (present, 8 migrations) and after (absent, 9), and a second run changed nothing; the read-only account-settings check now expects the column gone and has a `--before-drop` option for production's one run just before the removal (it refuses any mistyped option before touching the database). Production follows the deploy, run in the founder's terminal | 2026-09-27 | 39b9b3d, 3a614b9 | [260927-qrn-phase-13-item-3-retire-the-unused-extra-](./quick/260927-qrn-phase-13-item-3-retire-the-unused-extra-/) |
 
 ## Deferred Items
 
