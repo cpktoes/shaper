@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { formatDeckSkin } from "./geometry/blank-reasons";
 import { DEFAULT_BLANK_CUT } from "./geometry/blank";
 import { DEFAULT_FOIL_SPEC, FOIL_THICKNESS_RANGE_IN } from "./geometry/foil";
+import { measureSlider } from "./geometry/measure-display";
 import { inchesToMm, mm } from "./geometry/units";
 import {
   DEFAULT_FIT_DEFAULTS,
@@ -84,9 +86,9 @@ describe("fit-defaults preference boundary", () => {
     expect(DEFAULT_FIT_DEFAULTS.tipStyle).toBe("pinDeck");
   });
 
-  it("bounds Planer Max Depth to 1/16\"–1/4\" and Deck Skin to 1/16\"–1/2\", in 1/16\" steps", () => {
+  it('bounds Planer Max Depth to 1/16"–1/4" and Deck Skin to 0"–1", in 1/16" steps', () => {
     expect(FIT_DEFAULTS_RANGE_IN.planerMaxDepth).toEqual({ min: 1 / 16, max: 1 / 4, step: 1 / 16 });
-    expect(FIT_DEFAULTS_RANGE_IN.deckSkin).toEqual({ min: 1 / 16, max: 1 / 2, step: 1 / 16 });
+    expect(FIT_DEFAULTS_RANGE_IN.deckSkin).toEqual({ min: 0, max: 1, step: 1 / 16 });
   });
 
   it("every number default sits inside its own bounds", () => {
@@ -149,6 +151,73 @@ describe("fit-defaults preference boundary", () => {
     });
   });
 
+  describe("the Deck Skin range (Phase 13 item 4b)", () => {
+    it("every Deck Skin the old dialog could store (1/16\"–1/2\") reads back exactly through every reader", () => {
+      for (let k = 1; k <= 8; k++) {
+        const value = inchesToMm(k / 16);
+        expect(parseFitDefaultValue("deckSkin", value)).toBe(value);
+        expect(parseFitDefaultsPreference({ deckSkin: value }).deckSkin).toBe(value);
+        expect(parseFitDefaultsPatch({ deckSkin: value })).toEqual({ deckSkin: value });
+      }
+    });
+
+    it("parseFitDefaultsPatch: a Deck Skin of zero is a valid patch, and past the 1\" end is rejected", () => {
+      expect(parseFitDefaultsPatch({ deckSkin: 0 })).toEqual({ deckSkin: 0 });
+      expect(parseFitDefaultsPatch({ deckSkin: inchesToMm(17 / 16) })).toBeNull();
+    });
+
+    describe("the slider view, measureSlider(value, FIT_DEFAULTS_RANGE_IN.deckSkin, …)", () => {
+      const range = FIT_DEFAULTS_RANGE_IN.deckSkin;
+
+      it("at mm(0), the slider sits at its own start in both systems", () => {
+        const imperial = measureSlider(mm(0), range, range.step, 1, "imperial");
+        expect(imperial.value).toBe(0);
+        expect(imperial.min).toBe(0);
+        expect(imperial.max).toBe(1);
+        expect(imperial.step).toBe(1 / 16);
+
+        const metric = measureSlider(mm(0), range, range.step, 1, "metric");
+        expect(metric.value).toBe(0);
+        expect(metric.min).toBe(0);
+        expect(metric.max).toBe(25);
+        expect(metric.step).toBe(1);
+      });
+
+      it("a drag to the left end stores a plain zero in both systems", () => {
+        for (const system of ["imperial", "metric"] as const) {
+          const view = measureSlider(mm(0), range, range.step, 1, system);
+          expect(Object.is(view.toMm(view.min), 0)).toBe(true);
+        }
+      });
+
+      it("a hand-crafted 1 1/2\" skin (only a hand-crafted save can hold it) reads its true value, pinned at the far end", () => {
+        const value = inchesToMm(1.5);
+
+        // Imperial: measureSlider hands the slider the true, UNCLAMPED inch value — Base UI's
+        // SliderRoot then clamps what it DRAWS into [min, max] (node_modules/@base-ui/react/slider
+        // /root/SliderRoot.js, `clamp(valueUnwrapped, min, max)`), which is what pins the thumb.
+        const imperial = measureSlider(value, range, range.step, 1, "imperial");
+        expect(imperial.value).toBeCloseTo(1.5, 9);
+        expect(imperial.min).toBe(0);
+        expect(imperial.max).toBe(1);
+
+        // Metric: measureSlider itself clamps the drawn value into the metric range.
+        const metric = measureSlider(value, range, range.step, 1, "metric");
+        expect(metric.value).toBe(25);
+        expect(metric.max).toBe(25);
+
+        // The label still reads the board's true skin, whatever the slider draws.
+        expect(formatDeckSkin(value, "imperial")).toBe(`1 1/2"`);
+        expect(formatDeckSkin(value, "metric")).toBe("38 mm");
+
+        // Only a drag calls toMm, and a drag to the far end stores exactly the range's own end —
+        // never the value that was carried in.
+        expect(imperial.toMm(imperial.max)).toBe(inchesToMm(1));
+        expect(metric.toMm(metric.max)).toBe(mm(25));
+      });
+    });
+  });
+
   describe("parseFitDefaultValue", () => {
     it("keeps a finite millimetre value inside the field's bounds, bounds inclusive", () => {
       for (const key of FIT_DEFAULTS_MM_KEYS) {
@@ -179,7 +248,8 @@ describe("fit-defaults preference boundary", () => {
       const noisyMax = inchesToMm(12) + 1e-9;
       expect(parseFitDefaultValue("extraLength", noisyMax)).toBe(inchesToMm(12));
       expect(parseFitDefaultValue("widthMargin", -1e-9)).toBe(0);
-      expect(parseFitDefaultValue("deckSkin", inchesToMm(1 / 2) + 1e-9)).toBe(inchesToMm(1 / 2));
+      expect(parseFitDefaultValue("deckSkin", inchesToMm(1) + 1e-9)).toBe(inchesToMm(1));
+      expect(parseFitDefaultValue("deckSkin", -1e-9)).toBe(0);
     });
 
     it("returns null for a tip thinner than 1/8\"", () => {
@@ -188,13 +258,16 @@ describe("fit-defaults preference boundary", () => {
       expect(parseFitDefaultValue("noseTipThickness", mm(0))).toBeNull();
     });
 
-    it("returns null for a Planer Max Depth or Deck Skin of zero, or under 1/16\" — a pass can't be nothing", () => {
-      for (const key of ["planerMaxDepth", "deckSkin"] as const) {
-        expect(parseFitDefaultValue(key, mm(0))).toBeNull();
-        expect(parseFitDefaultValue(key, inchesToMm(1 / 32))).toBeNull();
-      }
+    it("returns null for a Planer Max Depth of zero, or under 1/16\" — a pass can't be nothing", () => {
+      expect(parseFitDefaultValue("planerMaxDepth", mm(0))).toBeNull();
+      expect(parseFitDefaultValue("planerMaxDepth", inchesToMm(1 / 32))).toBeNull();
       expect(parseFitDefaultValue("planerMaxDepth", inchesToMm(5 / 16))).toBeNull();
-      expect(parseFitDefaultValue("deckSkin", inchesToMm(9 / 16))).toBeNull();
+    });
+
+    it("a Deck Skin of zero is valid — the board takes no deck skin (Phase 13 item 4b)", () => {
+      expect(parseFitDefaultValue("deckSkin", mm(0))).toBe(0);
+      expect(parseFitDefaultValue("deckSkin", inchesToMm(1 / 32))).toBe(inchesToMm(1 / 32));
+      expect(parseFitDefaultValue("deckSkin", inchesToMm(17 / 16))).toBeNull();
     });
 
     it("allows zero extra length and zero width margin", () => {
@@ -463,7 +536,7 @@ describe("fit-defaults preference boundary", () => {
         { widthMargin: inchesToMm(1), tipStyle: "Bottom" },
         { tipStyle: 1 },
         { planerMaxDepth: mm(0) },
-        { deckSkin: inchesToMm(1) },
+        { deckSkin: inchesToMm(17 / 16) },
       ]) {
         expect(parseFitDefaultsPatch(bad), JSON.stringify(bad)).toBeNull();
       }

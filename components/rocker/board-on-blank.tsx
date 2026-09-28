@@ -13,14 +13,17 @@
  *
  * Directly under it, the Deck Skin slider (Phase 12, D-01): how much foam the planer takes off the
  * blank's deck. It is the board's own, stored on its blank (the first pick took the shaper's Fit &
- * Tip Defaults value), 1/16"–1/2" in 1/16" steps (2–12 mm in Metric) through the same range
- * constant the Fit & Tip Defaults dialog uses. Its hint says where the skin comes off: the same at
- * every station under Pin deck, more at the tips under Bottom — and, when a 12" fine-tune is taken
- * off the Deck, that the fine-tune changes it there and where the numbers are. A drag lowers or
- * raises the board's deck at every station and moves the foam off the bottom by the same amount;
- * it never clears the pick. At 0 the board takes no deck skin, so the label reads `Deck Skin —
- * none` and, under Pin deck with no Deck fine-tune, the hint reads `Nothing off the deck at any
- * station` (Phase 13 item 4b, FD-6/FD-8).
+ * Tip Defaults value), 0"–1" in 1/16" steps (0–25 mm in Metric, Phase 13 item 4b — this range was
+ * 1/16"–1/2" until 2026-09-28) through the same range constant the Fit & Tip Defaults dialog uses
+ * (`DECK_SKIN_RANGE_IN` reads `FIT_DEFAULTS_RANGE_IN.deckSkin` directly, with no edit of its own).
+ * Its hint says where the skin comes off: the same at every station under Pin deck, more at the
+ * tips under Bottom — and, when a 12" fine-tune is taken off the Deck, that the fine-tune changes
+ * it there and where the numbers are. A drag lowers or raises the board's deck at every station and
+ * moves the foam off the bottom by the same amount; it never clears the pick. At 0 the board takes
+ * no deck skin, so the label reads `Deck Skin — none` and, under Pin deck with no Deck fine-tune,
+ * the hint reads `Nothing off the deck at any station` (Phase 13 item 4b, FD-6/FD-8). A saved skin
+ * past the 1" end — only a hand-crafted save can hold one — reads its true value on the label, with
+ * the thumb pinned at the slider's end, and nothing is written until the shaper drags (FD-7).
  *
  * Under those, the live readouts: the board's own rocker (under Pin deck the tips include the lift)
  * and the foam off the BOTTOM at the board's five stations, nose to tail, re-read on every slider

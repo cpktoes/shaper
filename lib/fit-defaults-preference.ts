@@ -96,16 +96,24 @@ export const DEFAULT_FIT_DEFAULTS: FitDefaults = {
  * Each number setting's sane range, in inches — WHAT THE DIALOG'S TYPED FIELDS OFFER, and (the
  * ROCKER sidebar's Deck Skin slider aside) the only place a shaper can still pick a tip below this:
  * Extra Length 0"–12", Planer Max Depth 1/16"–1/4" (never zero — it divides the passes), Width
- * Margin 0"–3", Deck Skin 1/16"–1/2", each tip 1/4"–1 1/2" — the least a board may be anywhere
- * (Phase 13 item 4; this pair was 1/8" until 2026-09-28), all in 1/16" steps (11-UI-SPEC §12,
- * 12-UI-SPEC §1 and §6). Inclusive at both ends. A STORED value is read through
- * `FIT_DEFAULTS_ACCEPTED_RANGE_IN`, not this one.
+ * Margin 0"–3", Deck Skin 0"–1", each tip 1/4"–1 1/2" — the least a board may be anywhere (Phase 13
+ * item 4; this pair was 1/8" until 2026-09-28), all in 1/16" steps (11-UI-SPEC §12, 12-UI-SPEC §1
+ * and §6). Inclusive at both ends. A STORED value is read through `FIT_DEFAULTS_ACCEPTED_RANGE_IN`,
+ * not this one.
+ *
+ * Deck Skin was 1/16"–1/2" until 2026-09-28 (Phase 13 item 4b): the founder first asked to open it
+ * to the full 0–50 mm a saved board may already hold, then capped it — "Lets actually cap the deck
+ * skin from 0-1", no one needs to trim more than that." At 0 the board takes no deck skin: the
+ * planer takes nothing off the blank's deck, so the board's deck is the blank's own deck
+ * (`lib/geometry/blank-reasons.ts`'s `takesNoDeckSkin`). Metric reads 0–25 mm, not 0–25.4: Deck
+ * Skin's slider is built through `measureSlider`, and `metricSliderRange` rounds each end inward to
+ * a whole millimetre, the same rule every Metric slider in the app follows.
  */
 export const FIT_DEFAULTS_RANGE_IN = {
   extraLength: { min: 0, max: 12, step: 0.0625 },
   planerMaxDepth: { min: 0.0625, max: 0.25, step: 0.0625 },
   widthMargin: { min: 0, max: 3, step: 0.0625 },
-  deckSkin: { min: 0.0625, max: 0.5, step: 0.0625 },
+  deckSkin: { min: 0, max: 1, step: 0.0625 },
   noseTipThickness: { min: FOIL_THICKNESS_RANGE_IN.min, max: 1.5, step: 0.0625 },
   tailTipThickness: { min: FOIL_THICKNESS_RANGE_IN.min, max: 1.5, step: 0.0625 },
 } as const satisfies Record<FitDefaultsMmKey, { min: number; max: number; step: number }>;
@@ -127,6 +135,10 @@ export const LEGACY_TIP_THICKNESS_MIN_IN = 0.125;
  * browser's older pick is promoted to the account at sign-in in one all-or-nothing patch, and
  * refusing it would drop every other field in that promotion too. The dialog itself can no longer
  * produce a value outside the offered range.
+ *
+ * The Deck Skin's accepted range is its offered one (0"–1"), with no edit of its own (Phase 13 item
+ * 4b, FD-7): every skin the old dialog could store, 1/16"–1/2", sits inside 0"–1", so an account
+ * default saved before today reads back exactly, unchanged and unclamped.
  */
 export const FIT_DEFAULTS_ACCEPTED_RANGE_IN = {
   ...FIT_DEFAULTS_RANGE_IN,
@@ -150,8 +162,9 @@ export const EMPTY_FIT_DEFAULTS_PREFERENCE: FitDefaultsPreference = {
 /**
  * Reads one stored number setting back as millimetres, or `null` for anything that is not a
  * finite number inside that setting's bounds — a string, a boolean, NaN, Infinity, a negative
- * value, a value above the maximum, a tip thinner than 1/8", or a Deck Skin or Planer Max Depth
- * under 1/16". Never a silent default: the caller decides what "not chosen" renders as.
+ * value, a value above the maximum, a tip thinner than 1/8", or a Planer Max Depth under 1/16". A
+ * Deck Skin of zero is valid now (Phase 13 item 4b, FD-6): 0 means the board takes no deck skin.
+ * Never a silent default: the caller decides what "not chosen" renders as.
  */
 export function parseFitDefaultValue(key: FitDefaultsMmKey, value: unknown): Mm | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;

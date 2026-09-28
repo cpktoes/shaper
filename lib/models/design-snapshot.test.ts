@@ -23,7 +23,9 @@ import {
 } from "@/lib/geometry/rocker";
 import { degrees, inchesToMm, mm, UNITS_SYSTEMS } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
+import { FIT_DEFAULTS_RANGE_IN } from "@/lib/fit-defaults-preference";
 import {
+  BLANK_DECK_SKIN_MAX_MM,
   DESIGN_SNAPSHOT_VERSION,
   SNAPSHOT_BOARD_LENGTH_MM,
   boardBlankSchema,
@@ -503,6 +505,16 @@ describe("design-snapshot", () => {
         wire.design.blank.deckSkin = deckSkin;
         expect(() => parseSnapshot(wire), `${deckSkin}`).not.toThrow();
       }
+    });
+
+    it("a saved Deck Skin reopens exactly as saved — none, and one past the control's 1\" end (Phase 13 item 4b)", () => {
+      for (const deckSkin of [mm(0), inchesToMm(1.5)]) {
+        const wire = wireWithBlank();
+        wire.design.blank.deckSkin = deckSkin;
+        expect(parseSnapshot(wire).blank!.deckSkin).toBe(deckSkin);
+      }
+      expect(inchesToMm(1.5)).toBeGreaterThan(inchesToMm(FIT_DEFAULTS_RANGE_IN.deckSkin.max));
+      expect(BLANK_DECK_SKIN_MAX_MM).toBe(50);
     });
 
     it("each Tip Style and fine-tune surface the app offers parses", () => {
