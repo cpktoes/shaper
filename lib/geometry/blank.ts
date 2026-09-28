@@ -120,19 +120,35 @@ export interface FitSettings {
 }
 
 /**
+ * Why a `runsOut` shortfall happened (Phase 13 item 4, FD-4) — classified from values the fit check
+ * already holds, no new geometry:
+ *
+ * - `thinCenter`: the blank is so much thicker than the target centre that the parallel cut leaves
+ *   too little foam somewhere. The wording every runs-out had before the other three causes existed,
+ *   and what a runs-out with no cause at all still reads as.
+ * - `fineTune`: a negative 12" fine-tune — typed just now, or carried over from a Phase 11 board —
+ *   took that spot under the floor when the board would have had enough foam there without it.
+ * - `offBlank`: the station is past the end of the blank, where the blank reads 0 thick.
+ * - `tipSetting`: that end's own tip is set under the floor — only an older saved board or a stored
+ *   default can hold one now, since no control offers a thinner tip.
+ */
+export type RunsOutCause = "thinCenter" | "fineTune" | "offBlank" | "tipSetting";
+
+/**
  * The worst place a board sits on (or pokes out of) its blank. `station` is measured from the
  * board's tail tip; `amount > 0` means it does not fit there by that much, `amount <= 0` is the
  * spare foam at the tightest place.
  *
  * `thin`: the board pokes out through the deck or the bottom, or leaves less than one bottom pass
  * under its centre. `wide`: it is too wide for the blank plus the width margin. `runsOut` (Phase 12
- * D-18): the board itself would be less than 1/8" thick there — a very thin centre in a thick blank,
- * where the blank is too thick for this centre rather than too thin.
+ * D-18): the board itself would be less than the floor thick there. `cause` is set by `fitAt` on
+ * every `runsOut` worst (never on `thin` or `wide`) — see `RunsOutCause`.
  */
 export interface BlankShortfall {
   kind: "thin" | "wide" | "runsOut";
   station: Mm;
   amount: Mm;
+  cause?: RunsOutCause;
 }
 
 /** The fit verdict: whether the board fits, and its tightest (or failing) place either way. */

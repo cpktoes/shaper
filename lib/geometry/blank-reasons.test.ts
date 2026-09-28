@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
-import { DEFAULT_BLANK_CUT, type BlankRecord, type BlankShortfall } from "./blank";
+import { DEFAULT_BLANK_CUT, type BlankRecord, type BlankShortfall, type RunsOutCause } from "./blank";
 import { MIN_FOIL_THICKNESS_MM, boardOnBlank, fitAt, placementRange, prepareBlank } from "./blank-fit";
 import {
   blankRowMeta,
@@ -36,10 +36,16 @@ import { inchesToMm, litres, mm, mmToInches, UNITS_SYSTEMS, type Mm, type UnitsS
 const SETTINGS = toFitSettings(DEFAULT_FIT_DEFAULTS);
 const L = inchesToMm(72);
 const BOARD = { length: L, widePointStation: inchesToMm(35.5), centerThickness: inchesToMm(2.5) };
-const shortfall = (kind: BlankShortfall["kind"], station: number, amount: number): BlankShortfall => ({
+const shortfall = (
+  kind: BlankShortfall["kind"],
+  station: number,
+  amount: number,
+  cause?: RunsOutCause,
+): BlankShortfall => ({
   kind,
   station: mm(station),
   amount: mm(amount),
+  ...(cause !== undefined ? { cause } : {}),
 });
 
 function findBlank(vendor: string, name: string): BlankRecord {
@@ -133,7 +139,7 @@ describe("formatShortfall — the reason line (D-06, R12)", () => {
   });
 });
 
-describe("formatShortfall — the foil runs out (D-18)", () => {
+describe("formatShortfall — the foil runs out, by cause (D-18, FD-4 Phase 13 item 4)", () => {
   const centre = inchesToMm(1);
   const thinCentre = { ...BOARD, centerThickness: centre };
   const over = inchesToMm(1 / 32);
@@ -141,28 +147,61 @@ describe("formatShortfall — the foil runs out (D-18)", () => {
   describe.each(UNITS_SYSTEMS)("in %s", (system: UnitsSystem) => {
     const least = formatMark(MIN_FOIL_THICKNESS_MM, system);
     const tooThick = `this blank is too thick for a ${formatMark(centre, system)} center`;
-    const read = (station: number) => formatShortfall(shortfall("runsOut", station, over), thinCentre, system);
+    const read = (station: number, cause?: RunsOutCause) =>
+      formatShortfall(shortfall("runsOut", station, over, cause), thinCentre, system);
 
-    it("says the blank is too thick for this center, at the place the board would run out, with no full stop", () => {
-      const text = read(L - MEASURE_STATION_MM);
+    it("(a) thinCenter: says the blank is too thick for this center, at the place the board would run out, with no full stop", () => {
+      const text = read(L - MEASURE_STATION_MM, "thinCenter");
       expect(text).toBe(`Less than ${least} would be left ${stationLabel(system)} from the nose — ${tooThick}`);
       expect(text.endsWith(".")).toBe(false);
     });
 
-    it("names the place with the same vocabulary as every other reason", () => {
-      expect(read(0)).toBe(`Less than ${least} would be left at the tail tip — ${tooThick}`);
-      expect(read(L / 2)).toBe(`Less than ${least} would be left at the center — ${tooThick}`);
-      const fromTail = inchesToMm(18.5);
-      expect(read(fromTail)).toBe(`Less than ${least} would be left ${formatDim(fromTail, system)} from the tail — ${tooThick}`);
-      // Width is never the reason, so the widepoint is never named for it.
-      expect(read(BOARD.widePointStation)).not.toContain("widepoint");
+    it("(b) fineTune: names the half the station is in", () => {
+      expect(read(L - MEASURE_STATION_MM, "fineTune")).toBe(
+        `Less than ${least} would be left ${stationLabel(system)} from the nose — your nose fine-tune takes too much off there`,
+      );
+      expect(read(MEASURE_STATION_MM, "fineTune")).toBe(
+        `Less than ${least} would be left ${stationLabel(system)} from the tail — your tail fine-tune takes too much off there`,
+      );
     });
 
-    it("quotes the board's own center, whatever it is", () => {
+    it("(c) offBlank: the board runs past the end of the blank", () => {
+      expect(read(MEASURE_STATION_MM, "offBlank")).toBe(
+        `Less than ${least} would be left ${stationLabel(system)} from the tail — your board runs past the end of this blank`,
+      );
+    });
+
+    it("(d) tipSetting: names the tip that is itself set thinner, at either end", () => {
+      expect(read(0, "tipSetting")).toBe(
+        `Less than ${least} would be left at the tail tip — your tail tip is set thinner than that`,
+      );
+      expect(read(L, "tipSetting")).toBe(
+        `Less than ${least} would be left at the nose tip — your nose tip is set thinner than that`,
+      );
+    });
+
+    it("names the place with the same vocabulary as every other reason", () => {
+      expect(read(0, "thinCenter")).toBe(`Less than ${least} would be left at the tail tip — ${tooThick}`);
+      expect(read(L / 2, "thinCenter")).toBe(`Less than ${least} would be left at the center — ${tooThick}`);
+      const fromTail = inchesToMm(18.5);
+      expect(read(fromTail, "thinCenter")).toBe(
+        `Less than ${least} would be left ${formatDim(fromTail, system)} from the tail — ${tooThick}`,
+      );
+      // Width is never the reason, so the widepoint is never named for it.
+      expect(read(BOARD.widePointStation, "thinCenter")).not.toContain("widepoint");
+    });
+
+    it("quotes the board's own center, whatever it is — a missing cause reads exactly as thinCenter", () => {
       const other = inchesToMm(1.5);
       expect(formatShortfall(shortfall("runsOut", L / 2, over), { ...BOARD, centerThickness: other }, system)).toBe(
         `Less than ${least} would be left at the center — this blank is too thick for a ${formatMark(other, system)} center`,
       );
+    });
+
+    it("no runs-out sentence ends in a full stop, whatever the cause", () => {
+      for (const cause of [undefined, "thinCenter", "fineTune", "offBlank", "tipSetting"] as const) {
+        expect(read(L - MEASURE_STATION_MM, cause).endsWith(".")).toBe(false);
+      }
     });
 
     it("leaves the too-thin and too-wide sentences exactly as they were", () => {
@@ -198,13 +237,14 @@ describe("the 1/4\" floor, end to end (Phase 13 item 4)", () => {
     expect(result.fits).toBe(false);
     expect(result.worst.kind).toBe("runsOut");
     expect(result.worst.station).toBe(0);
+    expect(result.worst.cause).toBe("tipSetting");
 
     const boardForCopy = { length, widePointStation: mm(length / 2), centerThickness: board.centerThickness };
-    const imperial = formatShortfall(result.worst, boardForCopy, "imperial");
-    expect(imperial.startsWith(`Less than 1/4" would be left at the tail tip — `)).toBe(true);
-    const metric = formatShortfall(result.worst, boardForCopy, "metric");
-    expect(metric.startsWith(`Less than ${formatMark(MIN_FOIL_THICKNESS_MM, "metric")} would be left at the tail tip — `)).toBe(
-      true,
+    expect(formatShortfall(result.worst, boardForCopy, "imperial")).toBe(
+      `Less than 1/4" would be left at the tail tip — your tail tip is set thinner than that`,
+    );
+    expect(formatShortfall(result.worst, boardForCopy, "metric")).toBe(
+      `Less than ${formatMark(MIN_FOIL_THICKNESS_MM, "metric")} would be left at the tail tip — your tail tip is set thinner than that`,
     );
   });
 });

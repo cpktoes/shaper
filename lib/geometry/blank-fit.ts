@@ -32,6 +32,7 @@ import {
   type FineTuneSurface,
   type FitResult,
   type FitSettings,
+  type RunsOutCause,
   type TipStyle,
 } from "./blank";
 import { FOIL_THICKNESS_RANGE_IN } from "./foil";
@@ -228,6 +229,12 @@ export interface BoardOnBlank {
   /** The blank's full width under board station `s`; 0 where the board runs past the blank. */
   blankWidthAt(s: number): number;
   /**
+   * Whether board station `s` lies over the blank (within `FIT_EPSILON_MM` of either end); where
+   * it does not, `blankThicknessAt` and `blankWidthAt` read 0 (Phase 13 item 4: what a runs-out
+   * cause of `"offBlank"` means).
+   */
+  onFoamAt(s: number): boolean;
+  /**
    * The signed tip thinning at `s` (D-05, D-16): 0 at and inside both 12" stations, the un-thinned
    * tip thickness less the tip setting at each tip, eased between. Negative where a tip setting is
    * thicker than the parallel foil there.
@@ -392,12 +399,44 @@ export function boardOnBlank(
     blankRockerAt: (s) => prepared.rocker.sample(u(s)),
     blankThicknessAt,
     blankWidthAt,
+    onFoamAt: (s) => onFoam(u(s)),
     tipThinningAt,
     derivedThicknessAt,
     thicknessAt: (s) => derivedThicknessAt(s) + offsetAt(s),
     deckOffAt: (s) => cut.deckSkin + (pinDeck ? 0 : tipThinningAt(s)) - (onDeck ? offsetAt(s) : 0),
     bottomOffAt: (s) => centerGap + (pinDeck ? tipThinningAt(s) : 0) - (onDeck ? 0 : offsetAt(s)),
   };
+}
+
+/**
+ * Why a runs-out shortfall at `station` happened (Phase 13 item 4, FD-4) — classification only, no
+ * new geometry: reads only values `onBlank` already holds. First match wins:
+ *
+ * - not on the foam at all (`!onBlank.onFoamAt(station)`) → `"offBlank"`: the board runs past the
+ *   end of the blank there.
+ * - `station` sits inside a tip's ease window (strictly under `TIP_EASE_WINDOW_MM` from the tail
+ *   tip, or strictly over `L − TIP_EASE_WINDOW_MM` from it) and that end's own tip setting
+ *   (`board.tailTip` / `board.noseTip`) is itself under `MIN_FOIL_THICKNESS_MM − FIT_EPSILON_MM` →
+ *   `"tipSetting"`.
+ * - that half's 12" fine-tune (`board.tail12Offset` for `station <= L / 2`, `board.nose12Offset`
+ *   above — the same split the fine-tune hump uses) is negative, and the board would have had
+ *   enough foam there WITHOUT it (`derivedThicknessAt(station)` is at least
+ *   `MIN_FOIL_THICKNESS_MM − FIT_EPSILON_MM`) → `"fineTune"`.
+ * - otherwise → `"thinCenter"`: the blank itself is too thick for this target centre — the wording
+ *   every runs-out had before the other three causes existed, and what a runs-out with no cause at
+ *   all still reads as.
+ */
+export function runsOutCause(onBlank: BoardOnBlank, station: number): RunsOutCause {
+  const { board } = onBlank;
+  const L = board.length;
+  const W = TIP_EASE_WINDOW_MM;
+  if (!onBlank.onFoamAt(station)) return "offBlank";
+  const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
+  if (station < W && board.tailTip < floor) return "tipSetting";
+  if (station > L - W && board.noseTip < floor) return "tipSetting";
+  const halfOffset = station <= L / 2 ? board.tail12Offset : board.nose12Offset;
+  if (halfOffset < 0 && onBlank.derivedThicknessAt(station) >= floor) return "fineTune";
+  return "thinCenter";
 }
 
 /**
@@ -412,7 +451,8 @@ export function boardOnBlank(
  * the blank's width. Width is never checked where the board has none — a rounded-nose blank is 0
  * wide at its very tip by design, and the board's own outline reaches 0 there too. And at every
  * station, tip windows included, the RUNS-OUT amount is how much thinner than
- * `MIN_FOIL_THICKNESS_MM` the board itself would be there (D-18).
+ * `MIN_FOIL_THICKNESS_MM` the board itself would be there (D-18); a runs-out worst has its cause
+ * (`runsOutCause`, Phase 13 item 4) attached before it is returned.
  *
  * One more THIN amount at the board's centre (D-15): at least one pass of the shaper's
  * `rules.planerMaxDepth` must come off the bottom under the board's centre WHERE IT SITS — the
@@ -452,7 +492,9 @@ export function fitAt(
   }
   // D-15: one bottom pass must survive under the board's centre where it sits.
   consider("thin", L / 2, rules.planerMaxDepth - onBlank.bottomOffAt(L / 2));
-  return { fits: worst.amount <= FIT_EPSILON_MM, worst };
+  const result: BlankShortfall =
+    worst.kind === "runsOut" ? { ...worst, cause: runsOutCause(onBlank, worst.station) } : worst;
+  return { fits: result.amount <= FIT_EPSILON_MM, worst: result };
 }
 
 // ---------------------------------------------------------------------------------------------

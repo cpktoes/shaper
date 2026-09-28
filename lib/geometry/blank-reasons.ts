@@ -14,7 +14,7 @@
  *
  * Pure — no React, browser or database import (CLAUDE.md Rule 1).
  */
-import type { BlankRecord, BlankShortfall } from "./blank";
+import type { BlankRecord, BlankShortfall, RunsOutCause } from "./blank";
 import { MIN_FOIL_THICKNESS_MM } from "./blank-fit";
 import {
   formatDim,
@@ -96,16 +96,43 @@ function formatWhere(
 }
 
 /**
+ * The runs-out sentence's clause, picked by `shortfall.cause` (Phase 13 item 4, FD-4) — a missing
+ * cause reads as `thinCenter`, the wording every runs-out had before the other three causes
+ * existed. `end` is `"nose"` when the station is past the board's centre, else `"tail"` — the half
+ * a fine-tune or a tip setting names. An exhaustive switch, so a fifth cause fails to compile.
+ */
+function runsOutClause(
+  cause: RunsOutCause | undefined,
+  end: "nose" | "tail",
+  centerThickness: Mm,
+  system: UnitsSystem,
+): string {
+  switch (cause ?? "thinCenter") {
+    case "thinCenter":
+      return `this blank is too thick for a ${formatMark(centerThickness, system)} center`;
+    case "fineTune":
+      return `your ${end} fine-tune takes too much off there`;
+    case "offBlank":
+      return `your board runs past the end of this blank`;
+    case "tipSetting":
+      return `your ${end} tip is set thinner than that`;
+  }
+}
+
+/**
  * The reason line under a WON'T FIT row and in the flag (D-06, R12): `{amount} too thin {where}` or
  * `{amount} too wide {where}` — e.g. `1/8" too thin 12" from the nose` / `3 mm too thin 30.5 cm
  * from the nose`, `1/2" too wide at the widepoint`. `station` is measured from the board's tail tip.
  * Every reason names a station and an amount.
  *
  * When the board itself would run under the least foam a board may be (Phase 12 D-18), the reason
- * names that least amount and the board's own centre instead, because the blank is too thick for
- * that centre rather than too thin: `Less than {1/4" | 6 mm} would be left {where} — this blank is
- * too thick for a {center} center`. No sentence here ends in a full stop — the flag adds one, the
- * list row shows the line bare.
+ * names that least amount and its cause instead of an amount (Phase 13 item 4, FD-4):
+ * `Less than {1/4" | 6 mm} would be left {where} — {clause}`, where `{clause}` is one of four,
+ * picked by `shortfall.cause` — `this blank is too thick for a {center} center` (thinCenter, and
+ * what a missing cause reads as too), `your {end} fine-tune takes too much off there` (fineTune),
+ * `your board runs past the end of this blank` (offBlank), or `your {end} tip is set thinner than
+ * that` (tipSetting). No sentence here ends in a full stop — the flag adds one, the list row shows
+ * the line bare.
  */
 export function formatShortfall(
   shortfall: BlankShortfall,
@@ -114,9 +141,10 @@ export function formatShortfall(
 ): string {
   const where = formatWhere(shortfall, board, system);
   if (shortfall.kind === "runsOut") {
+    const end = shortfall.station > board.length / 2 ? "nose" : "tail";
     return (
       `Less than ${formatMark(MIN_FOIL_THICKNESS_MM, system)} would be left ${where} — ` +
-      `this blank is too thick for a ${formatMark(board.centerThickness, system)} center`
+      runsOutClause(shortfall.cause, end, board.centerThickness, system)
     );
   }
   const what = shortfall.kind === "wide" ? "too wide" : "too thin";

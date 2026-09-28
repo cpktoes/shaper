@@ -34,6 +34,7 @@ import {
   nearestFittingPlacement,
   placementRange,
   prepareBlank,
+  runsOutCause,
   TIP_EASE_WINDOW_MM,
   tweakExceedsDeckSkin,
   type BlankListResult,
@@ -624,6 +625,8 @@ describe("the board's foil, cut from the blank (D-05, D-09, D-13, D-16)", () => 
     expect(result.fits).toBe(false);
     expect(result.worst.kind).toBe("thin");
     expect(result.worst.station).toBeLessThanOrEqual(inchesToMm(1));
+    // Only a runsOut worst ever carries a cause (Phase 13 item 4).
+    expect(result.worst.cause).toBeUndefined();
   });
 
   it("puts a Deck fine-tune on the deck alone: the 12\" station moves by the tweak and the bottom and rocker stay put (D-13)", () => {
@@ -1452,6 +1455,7 @@ describe("a board under 1/4\" thick anywhere does not fit (D-18, raised in Phase
     expect(failed.worst.kind).toBe("runsOut");
     expect(failed.worst.station).toBe(0);
     expect(failed.worst.amount).toBeCloseTo(SIXTEENTH_MM, 9);
+    expect(failed.worst.cause).toBe("tipSetting");
   });
 
   it("a 1\" center on the default board runs out of foam in at least one blank, and says where by how much", () => {
@@ -1497,6 +1501,111 @@ describe("a board under 1/4\" thick anywhere does not fit (D-18, raised in Phase
     }
     expect(judged).toBeGreaterThan(BOARD_PRESETS.length * 5);
   }, 120_000);
+});
+
+describe("the runs-out reason names its cause (Phase 13 item 4)", () => {
+  it("(a) a thin centre in a thick blank: every runs-out verdict on the default 1\" centre board carries cause thinCenter", () => {
+    const ctx = defaultContext(72, 1);
+    let runsOut = 0;
+    for (const prepared of PREPARED_ALL) {
+      if (!isPickable(prepared.record)) continue;
+      const verdict = judgeBlank(prepared, ctx, DEFAULT_SETTINGS);
+      if (verdict.fits || verdict.worst.kind !== "runsOut") continue;
+      runsOut++;
+      expect(verdict.worst.cause).toBe("thinCenter");
+    }
+    expect(runsOut).toBeGreaterThan(0);
+  });
+
+  it.each(SURFACES)(
+    "(b) a negative 12\" fine-tune on the %s takes an otherwise-fine spot under the floor: cause fineTune",
+    (fineTuneSurface) => {
+      const blank = findBlank(MARKO_VENDOR, M_REGULAR);
+      const prepared = prepareBlank(blank);
+      const L = blank.lengthMm - inchesToMm(2);
+      const base = { ...defaultBoard(blank, L, inchesToMm(2.5)), fineTuneSurface };
+      const untweaked = boardOnBlank(prepared, base, mm(0));
+      const station = L - TIP_EASE_WINDOW_MM;
+      const nose12Offset = mm(MIN_FOIL_THICKNESS_MM - SIXTEENTH_MM - untweaked.derivedThicknessAt(station));
+      const board = { ...base, nose12Offset };
+      const onBlank = boardOnBlank(prepared, board, mm(0));
+      const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(L / 2), DEFAULT_SETTINGS);
+      expect(result.fits).toBe(false);
+      expect(result.worst.kind).toBe("runsOut");
+      expect(result.worst.station).toBeGreaterThan(L / 2);
+      expect(onBlank.derivedThicknessAt(result.worst.station)).toBeGreaterThanOrEqual(
+        MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM,
+      );
+      expect(result.worst.cause).toBe("fineTune");
+    },
+  );
+
+  it("(b′) a fine-tune is not blamed where the board would be under the floor without it", () => {
+    const ctx = defaultContext(72, 1);
+    let checked = 0;
+    for (const prepared of PREPARED_ALL) {
+      if (!isPickable(prepared.record)) continue;
+      const verdict = judgeBlank(prepared, ctx, DEFAULT_SETTINGS);
+      if (verdict.fits || verdict.worst.kind !== "runsOut") continue;
+      const tweaked = {
+        ...ctx.board,
+        nose12Offset: mm(-inchesToMm(1 / 16)),
+        tail12Offset: mm(-inchesToMm(1 / 16)),
+      };
+      const onBlank = boardOnBlank(verdict.prepared, tweaked, verdict.placement);
+      expect(runsOutCause(onBlank, verdict.worst.station)).toBe("thinCenter");
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it("(c) the board runs past the end of the blank: cause offBlank, and onFoamAt is true at every station of a board 2\" shorter than its blank", () => {
+    const blank = findBlank(MARKO_VENDOR, M_REGULAR);
+    const prepared = prepareBlank(blank);
+    const length = mm(blank.lengthMm + inchesToMm(30));
+    const board = defaultBoard(blank, length, inchesToMm(1.5));
+    const onBlank = boardOnBlank(prepared, board, mm(0));
+    const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(length / 2), DEFAULT_SETTINGS);
+    expect(result.fits).toBe(false);
+    expect(result.worst.kind).toBe("runsOut");
+    expect(onBlank.onFoamAt(result.worst.station)).toBe(false);
+    expect(result.worst.cause).toBe("offBlank");
+
+    const shortLength = blank.lengthMm - inchesToMm(2);
+    const shortBoard = defaultBoard(blank, shortLength, inchesToMm(2.5));
+    const shortOnBlank = boardOnBlank(prepared, shortBoard, mm(0));
+    for (const s of quarterStations(shortLength)) {
+      expect(shortOnBlank.onFoamAt(s)).toBe(true);
+    }
+  });
+
+  it("(d) a tip setting under the floor: cause tipSetting, at either end", () => {
+    const blank = findBlank(MARKO_VENDOR, M_REGULAR);
+    const prepared = prepareBlank(blank);
+    const L = blank.lengthMm - inchesToMm(2);
+
+    const tailBoard = {
+      ...defaultBoard(blank, L, inchesToMm(2.5)),
+      tailTip: mm(MIN_FOIL_THICKNESS_MM - SIXTEENTH_MM),
+    };
+    const tailOnBlank = boardOnBlank(prepared, tailBoard, mm(0));
+    const tailResult = fitAt(tailOnBlank, narrowerBy(tailOnBlank, inchesToMm(2)), mm(L / 2), DEFAULT_SETTINGS);
+    expect(tailResult.fits).toBe(false);
+    expect(tailResult.worst.kind).toBe("runsOut");
+    expect(tailResult.worst.station).toBe(0);
+    expect(tailResult.worst.cause).toBe("tipSetting");
+
+    const noseBoard = {
+      ...defaultBoard(blank, L, inchesToMm(2.5)),
+      noseTip: mm(MIN_FOIL_THICKNESS_MM - SIXTEENTH_MM),
+    };
+    const noseOnBlank = boardOnBlank(prepared, noseBoard, mm(0));
+    const noseResult = fitAt(noseOnBlank, narrowerBy(noseOnBlank, inchesToMm(2)), mm(L / 2), DEFAULT_SETTINGS);
+    expect(noseResult.fits).toBe(false);
+    expect(noseResult.worst.kind).toBe("runsOut");
+    expect(noseResult.worst.station).toBe(L);
+    expect(noseResult.worst.cause).toBe("tipSetting");
+  });
 });
 
 describe("a Deck fine-tune bigger than the Deck Skin fits nowhere, and is read at once (D-13)", () => {
