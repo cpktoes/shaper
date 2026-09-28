@@ -9,9 +9,11 @@ import {
   blankRowVolume,
   boardLine,
   type CenterFloorRules,
+  deckSkinHint,
   emptyListMessage,
   FLAG_HEADLINES,
   floorShortfallMessage,
+  formatDeckSkin,
   formatPlacement,
   formatShortfall,
   listIntro,
@@ -249,6 +251,54 @@ describe("the 1/4\" floor, end to end (Phase 13 item 4)", () => {
   });
 });
 
+describe("formatDeckSkin — the Deck Skin slider's value (Phase 13 item 4b)", () => {
+  it("reads formatMark's own printed value at every non-zero skin", () => {
+    expect(formatDeckSkin(inchesToMm(1 / 8), "imperial")).toBe('1/8"');
+    expect(formatDeckSkin(inchesToMm(1 / 8), "metric")).toBe("3 mm");
+    expect(formatDeckSkin(inchesToMm(1), "imperial")).toBe('1"');
+    expect(formatDeckSkin(inchesToMm(1), "metric")).toBe("25 mm");
+    expect(formatDeckSkin(inchesToMm(1.5), "imperial")).toBe(`1 1/2"`);
+    expect(formatDeckSkin(inchesToMm(1.5), "metric")).toBe("38 mm");
+  });
+
+  it("reads 'none' — never '0\"' or '0 mm' — whenever the value prints as zero", () => {
+    expect(formatDeckSkin(mm(0), "imperial")).toBe("none");
+    expect(formatDeckSkin(mm(0), "metric")).toBe("none");
+    expect(formatDeckSkin(mm(0.7), "imperial")).toBe("none");
+    expect(formatDeckSkin(mm(0.7), "metric")).toBe("1 mm");
+  });
+});
+
+describe("deckSkinHint — where the skin comes off (Phase 13 item 4b)", () => {
+  it("Bottom reads the same hint at 1/8\" and at 0 — the tips still take the extra", () => {
+    expect(deckSkinHint(inchesToMm(1 / 8), "bottom", false, "imperial")).toBe("Off the deck — more at the tips");
+    expect(deckSkinHint(mm(0), "bottom", false, "imperial")).toBe("Off the deck — more at the tips");
+    expect(deckSkinHint(mm(0), "bottom", true, "imperial")).toBe("Off the deck — more at the tips");
+  });
+
+  it("a Deck fine-tune reads the same hint at 1/8\" and at 0, in both systems", () => {
+    expect(deckSkinHint(inchesToMm(1 / 8), "pinDeck", true, "imperial")).toBe(
+      `Off the deck — a ${stationLabel("imperial")} fine-tune changes it there; see the DATASHEET's Deck row`,
+    );
+    expect(deckSkinHint(mm(0), "pinDeck", true, "imperial")).toBe(
+      `Off the deck — a ${stationLabel("imperial")} fine-tune changes it there; see the DATASHEET's Deck row`,
+    );
+    expect(deckSkinHint(mm(0), "pinDeck", true, "metric")).toBe(
+      `Off the deck — a ${stationLabel("metric")} fine-tune changes it there; see the DATASHEET's Deck row`,
+    );
+  });
+
+  it("Pin deck, not tweaked, reads 'Off the deck at every station' at 1/8\", and 'Nothing off the deck at any station' at 0", () => {
+    expect(deckSkinHint(inchesToMm(1 / 8), "pinDeck", false, "imperial")).toBe("Off the deck at every station");
+    expect(deckSkinHint(mm(0), "pinDeck", false, "imperial")).toBe("Nothing off the deck at any station");
+    expect(deckSkinHint(mm(0), "pinDeck", false, "metric")).toBe("Nothing off the deck at any station");
+  });
+
+  it("follows today's precedence: Bottom first, then deckTweaked, then the skin", () => {
+    expect(deckSkinHint(mm(0), "bottom", true, "imperial")).toBe("Off the deck — more at the tips");
+  });
+});
+
 describe("tweakOverSkinLine — a Deck fine-tune bigger than the Deck Skin (D-13)", () => {
   const tweak = inchesToMm(3 / 16);
   const skin = inchesToMm(1 / 8);
@@ -277,6 +327,31 @@ describe("tweakOverSkinLine — a Deck fine-tune bigger than the Deck Skin (D-13
   it("reads the Metric marks in whole millimetres", () => {
     const line = tweakOverSkinLine(tweak, skin, "metric");
     expect(line).toMatch(/^Your \+\d+ mm fine-tune is more than this board's \d+ mm Deck Skin,/);
+  });
+
+  describe("the zero form — this board takes no deck skin (Phase 13 item 4b, FD-6/FD-8)", () => {
+    const zeroTweak = inchesToMm(1 / 16);
+
+    it("reads the verbatim Imperial sentence", () => {
+      expect(tweakOverSkinLine(zeroTweak, mm(0), "imperial")).toBe(
+        `Your +1/16" fine-tune raises the deck, but this board takes no Deck Skin, so the deck would sit above any blank's deck there. Add a Deck Skin, reset the fine-tune, or take it off the Bottom`,
+      );
+    });
+
+    it("reads the verbatim Metric sentence", () => {
+      expect(tweakOverSkinLine(zeroTweak, mm(0), "metric")).toBe(
+        `Your +2 mm fine-tune raises the deck, but this board takes no Deck Skin, so the deck would sit above any blank's deck there. Add a Deck Skin, reset the fine-tune, or take it off the Bottom`,
+      );
+    });
+
+    it("composes through formatSignedMark and never ends in a full stop, in both systems", () => {
+      for (const system of UNITS_SYSTEMS) {
+        const line = tweakOverSkinLine(zeroTweak, mm(0), system);
+        expect(line).toContain(`Your ${formatSignedMark(zeroTweak, system)} fine-tune raises the deck`);
+        expect(line).toContain("this board takes no Deck Skin");
+        expect(line.endsWith(".")).toBe(false);
+      }
+    });
   });
 });
 
@@ -523,6 +598,71 @@ describe("listIntro — the line above the list, live from the rules the list is
       expect(listIntro(OTHER_RULES, system)).not.toBe(listIntro(DEFAULT_RULES, system));
       expect(listIntro(DEFAULT_RULES, system)).not.toContain("thicker at the center");
     }
+  });
+});
+
+// The centre floor with no deck skin (Phase 13 item 4b, FD-6/FD-8): the board's own Deck Skin is
+// none, so every sentence that used to say "{skin} deck skin and a {pass} bottom pass" names only
+// the bottom pass. Same board numbers as the emptyListMessage E1/E2/E3 describe above (150" board,
+// 151.5" longest, 4.75" centre, 4.875" thickest), so the two describes are directly comparable.
+const NO_SKIN_RULES: CenterFloorRules = { ...DEFAULT_RULES, deckSkin: mm(0) };
+
+describe("the centre floor with no deck skin (Phase 13 item 4b)", () => {
+  const board = {
+    boardLength: inchesToMm(150),
+    longest: inchesToMm(151.5),
+    centre: inchesToMm(4.75),
+    thickestCenter: inchesToMm(4.875),
+  };
+
+  it("F4 (floorShortfallMessage) reads the verbatim zero sentences, in both systems", () => {
+    const thin = inchesToMm(1 / 16);
+    expect(floorShortfallMessage("center", thin, NO_SKIN_RULES, "imperial")).toBe(
+      `It's 1/16" too thin at the center — there isn't room for your 1/8" bottom pass.`,
+    );
+    expect(floorShortfallMessage("center", thin, NO_SKIN_RULES, "metric")).toBe(
+      "It's 2 mm too thin at the center — there isn't room for your 3 mm bottom pass.",
+    );
+  });
+
+  it("E2 (emptyListMessage 'thickness') reads the verbatim zero body, in both systems, and drops the Deck Skin advice", () => {
+    const numbers = { ...board, rules: NO_SKIN_RULES };
+    expect(emptyListMessage("thickness", numbers, "imperial").body).toBe(
+      `Your center is 4 3/4" and the thickest blank is 4 7/8" at the center, so none leaves room for a 1/8" bottom pass. Try a thinner center, or change your Planer Max Depth.`,
+    );
+    expect(emptyListMessage("thickness", numbers, "metric").body).toBe(
+      "Your center is 121 mm and the thickest blank is 124 mm at the center, so none leaves room for a 3 mm bottom pass. Try a thinner center, or change your Planer Max Depth.",
+    );
+  });
+
+  it("E3 (emptyListMessage 'both') reads the verbatim zero body, in both systems", () => {
+    const numbers = { ...board, rules: NO_SKIN_RULES };
+    expect(emptyListMessage("both", numbers, "imperial").body).toBe(
+      `Nothing in the three catalogs is both 2" longer than your board and thick enough at the center for a 1/8" bottom pass.`,
+    );
+    expect(emptyListMessage("both", numbers, "metric").body).toBe(
+      "Nothing in the three catalogs is both 51 mm longer than your board and thick enough at the center for a 3 mm bottom pass.",
+    );
+  });
+
+  it("listIntro reads the verbatim zero sentence, in both systems", () => {
+    expect(listIntro(NO_SKIN_RULES, "imperial")).toBe(
+      `Shortest first. Each is at least 2" longer than your board, with room at the center for a 1/8" bottom pass. Greyed blanks don't fit somewhere — the line under each says where.`,
+    );
+    expect(listIntro(NO_SKIN_RULES, "metric")).toBe(
+      "Shortest first. Each is at least 51 mm longer than your board, with room at the center for a 3 mm bottom pass. Greyed blanks don't fit somewhere — the line under each says where.",
+    );
+  });
+
+  it("none of the four zero-skin sentences mentions 'deck skin'", () => {
+    const numbers = { ...board, rules: NO_SKIN_RULES };
+    const texts = [
+      floorShortfallMessage("center", inchesToMm(1 / 16), NO_SKIN_RULES, "imperial"),
+      emptyListMessage("thickness", numbers, "imperial").body,
+      emptyListMessage("both", numbers, "imperial").body,
+      listIntro(NO_SKIN_RULES, "imperial"),
+    ];
+    for (const text of texts) expect(text.toLowerCase()).not.toContain("deck skin");
   });
 });
 

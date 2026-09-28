@@ -14,7 +14,7 @@
  *
  * Pure — no React, browser or database import (CLAUDE.md Rule 1).
  */
-import type { BlankRecord, BlankShortfall, RunsOutCause } from "./blank";
+import type { BlankRecord, BlankShortfall, RunsOutCause, TipStyle } from "./blank";
 import { MIN_FOIL_THICKNESS_MM } from "./blank-fit";
 import {
   formatDim,
@@ -152,6 +152,41 @@ export function formatShortfall(
 }
 
 /**
+ * The one rule for "the board takes no deck skin" (Phase 13 item 4b, FD-6/FD-8): true whenever
+ * `skin` PRINTS as zero in `system`, exactly the prints-as-zero test `formatPlacement` uses for
+ * `centered`. Every sentence that mentions the Deck Skin reads this same rule, so the label and
+ * every flag, empty-list body and list intro agree on what counts as none, and no line ever quotes
+ * a `0"` or `0 mm` skin.
+ */
+function takesNoDeckSkin(skin: Mm, system: UnitsSystem): boolean {
+  return formatMark(skin, system) === formatMark(mm(0), system);
+}
+
+/**
+ * The ROCKER Deck Skin slider's value text (Phase 13 item 4b, FD-8): the word `none` when the board
+ * takes no deck skin — 0 means the planer takes nothing off the blank's deck — else `formatMark`.
+ * `centered` in `formatPlacement` is the precedent for a word standing in for a printed zero.
+ */
+export function formatDeckSkin(skin: Mm, system: UnitsSystem): string {
+  return takesNoDeckSkin(skin, system) ? "none" : formatMark(skin, system);
+}
+
+/**
+ * The ROCKER Deck Skin slider's hint (Phase 13 item 4b, FD-6/FD-8), in today's precedence: Bottom
+ * first (`Off the deck — more at the tips`), then a Deck fine-tune (`deckTweaked` — the caller's "a
+ * 12" fine-tune is taken off the Deck", WR-02: `Off the deck — a 12" fine-tune changes it there; see
+ * the DATASHEET's Deck row`), then the skin itself (`Off the deck at every station`, or, when the
+ * board takes no deck skin, `Nothing off the deck at any station`). The Bottom and fine-tune hints
+ * stay the same at 0 because both are still true there: the tips' extra still comes off the deck
+ * under Bottom, and a lowering Deck fine-tune still takes foam off the deck at that station.
+ */
+export function deckSkinHint(skin: Mm, tipStyle: TipStyle, deckTweaked: boolean, system: UnitsSystem): string {
+  if (tipStyle === "bottom") return "Off the deck — more at the tips";
+  if (deckTweaked) return `Off the deck — a ${stationLabel(system)} fine-tune changes it there; see the DATASHEET's Deck row`;
+  return takesNoDeckSkin(skin, system) ? "Nothing off the deck at any station" : "Off the deck at every station";
+}
+
+/**
  * The flag body for a board whose 12" fine-tune on the Deck is bigger than its Deck Skin
  * (`tweakExceedsDeckSkin`, Phase 12 D-13): no blank anywhere can take it, and nothing in the Fit &
  * Tip Defaults dialog changes that, so the sentence names the three fixes that do — all on ROCKER:
@@ -159,8 +194,20 @@ export function formatShortfall(
  * blank's deck there. Raise the Deck Skin, reset the fine-tune, or take it off the Bottom`. `tweak`
  * is the larger of the two 12" offsets; `skin` is the board's own Deck Skin. No full stop at the end —
  * the flag adds one, as it does for every reason line here.
+ *
+ * When the board takes no deck skin (Phase 13 item 4b, FD-6/FD-8), any upward Deck fine-tune still
+ * lifts the deck above the blank's own, so the sentence reads `Your +1/16" fine-tune raises the
+ * deck, but this board takes no Deck Skin, so the deck would sit above any blank's deck there. Add a
+ * Deck Skin, reset the fine-tune, or take it off the Bottom` — "Raise" becomes "Add", since there is
+ * no skin left to raise.
  */
 export function tweakOverSkinLine(tweak: Mm, skin: Mm, system: UnitsSystem): string {
+  if (takesNoDeckSkin(skin, system)) {
+    return (
+      `Your ${formatSignedMark(tweak, system)} fine-tune raises the deck, but this board takes no Deck Skin, ` +
+      `so the deck would sit above any blank's deck there. Add a Deck Skin, reset the fine-tune, or take it off the Bottom`
+    );
+  }
   return (
     `Your ${formatSignedMark(tweak, system)} fine-tune is more than this board's ` +
     `${formatMark(skin, system)} Deck Skin, so the deck would sit above any blank's deck there. ` +
@@ -226,8 +273,13 @@ export interface CenterFloorRules {
   deckSkin: Mm;
 }
 
-/** `{skin} deck skin and a {pass} bottom pass` — the centre floor, in the shaper's words. */
+/**
+ * `{skin} deck skin and a {pass} bottom pass` — the centre floor, in the shaper's words. When the
+ * board takes no deck skin (Phase 13 item 4b, FD-6/FD-8), the phrase drops the skin entirely —
+ * `{pass} bottom pass` — since a skin that is already none cannot be lowered to help.
+ */
 function skinAndPass(rules: CenterFloorRules, system: UnitsSystem): string {
+  if (takesNoDeckSkin(rules.deckSkin, system)) return `${formatMark(rules.planerMaxDepth, system)} bottom pass`;
   return `${formatMark(rules.deckSkin, system)} deck skin and a ${formatMark(rules.planerMaxDepth, system)} bottom pass`;
 }
 
@@ -235,7 +287,9 @@ function skinAndPass(rules: CenterFloorRules, system: UnitsSystem): string {
  * The flag body for a picked blank that no longer passes a floor (F3, F4): `It's 1 1/2" too short —
  * you've asked for at least 2" of spare length.` / `It's 1/16" too thin at the center — there isn't
  * room for your 1/8" deck skin and a 1/8" bottom pass.` Every number but the shortfall comes from
- * `rules` — the shaper's own settings and the board's own skin.
+ * `rules` — the shaper's own settings and the board's own skin. When that skin is none (Phase 13
+ * item 4b, FD-6/FD-8), the center sentence names only the bottom pass: `there isn't room for your
+ * 1/8" bottom pass.`
  */
 export function floorShortfallMessage(
   kind: "length" | "center",
@@ -254,6 +308,8 @@ export function floorShortfallMessage(
  * and the rule that ruled every blank out. `kind` is `listBlanks`'s `emptyReason`. `catalogs` names
  * the catalogues searched — "the three catalogs" unless a shaper has switched blank makers off, when
  * the caller passes the narrower phrase so the longest blank quoted is one they can actually see.
+ * When the rules' Deck Skin is none (Phase 13 item 4b, FD-6/FD-8), the E2 body's closing advice
+ * drops "your Deck Skin" — a skin that is already none cannot be lowered to help.
  */
 export function emptyListMessage(
   kind: "length" | "thickness" | "both",
@@ -278,12 +334,15 @@ export function emptyListMessage(
     };
   }
   if (kind === "thickness") {
+    const advice = takesNoDeckSkin(numbers.rules.deckSkin, system)
+      ? "Try a thinner center, or change your Planer Max Depth."
+      : "Try a thinner center, or change your Deck Skin or Planer Max Depth.";
     return {
       heading: "No blank is thick enough",
       body:
         `Your center is ${formatMark(numbers.centre, system)} and the thickest blank is ` +
         `${formatMark(numbers.thickestCenter, system)} at the center, so none leaves room for a ` +
-        `${skinAndPass(numbers.rules, system)}. Try a thinner center, or change your Deck Skin or Planer Max Depth.`,
+        `${skinAndPass(numbers.rules, system)}. ${advice}`,
     };
   }
   return {
@@ -296,7 +355,8 @@ export function emptyListMessage(
 
 /**
  * The line above the list, live from the rules the list is judged by (D-04, D-10). With no blank
- * picked, the Deck Skin it quotes is the account default (12-UI-SPEC §11).
+ * picked, the Deck Skin it quotes is the account default (12-UI-SPEC §11). When that skin is none
+ * (Phase 13 item 4b, FD-6/FD-8), the room-at-the-center clause names only the bottom pass.
  */
 export function listIntro(rules: CenterFloorRules, system: UnitsSystem): string {
   return (

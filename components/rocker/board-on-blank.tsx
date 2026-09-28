@@ -18,7 +18,9 @@
  * every station under Pin deck, more at the tips under Bottom — and, when a 12" fine-tune is taken
  * off the Deck, that the fine-tune changes it there and where the numbers are. A drag lowers or
  * raises the board's deck at every station and moves the foam off the bottom by the same amount;
- * it never clears the pick.
+ * it never clears the pick. At 0 the board takes no deck skin, so the label reads `Deck Skin —
+ * none` and, under Pin deck with no Deck fine-tune, the hint reads `Nothing off the deck at any
+ * station` (Phase 13 item 4b, FD-6/FD-8).
  *
  * Under those, the live readouts: the board's own rocker (under Pin deck the tips include the lift)
  * and the foam off the BOTTOM at the board's five stations, nose to tail, re-read on every slider
@@ -48,7 +50,7 @@ import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { useUnits } from "@/components/units-provider";
 import { FIT_DEFAULTS_RANGE_IN } from "@/lib/fit-defaults-preference";
 import { placementRange } from "@/lib/geometry/blank-fit";
-import { formatPlacement, placementSlider } from "@/lib/geometry/blank-reasons";
+import { deckSkinHint, formatDeckSkin, formatPlacement, placementSlider } from "@/lib/geometry/blank-reasons";
 import type { FoilStationKey } from "@/lib/geometry/foil";
 import { formatMark, formatPasses, measureSlider, planerPasses, stationLabel } from "@/lib/geometry/measure-display";
 import { mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
@@ -116,12 +118,7 @@ export function BoardOnBlankSection() {
   // A 12" fine-tune taken off the Deck changes the foam off the deck at that station, so the skin
   // is no longer the same everywhere (WR-02).
   const deckTweaked = view.cut.fineTuneSurface === "deck" && (blank.nose12Offset !== 0 || blank.tail12Offset !== 0);
-  const skinHint =
-    view.cut.tipStyle === "bottom"
-      ? "Off the deck — more at the tips"
-      : deckTweaked
-        ? `Off the deck — a ${stationLabel(system)} fine-tune changes it there; see the DATASHEET's Deck row`
-        : "Off the deck at every station";
+  const skinHint = deckSkinHint(view.cut.deckSkin, view.cut.tipStyle, deckTweaked, system);
 
   return (
     <div className="flex flex-col">
@@ -156,7 +153,7 @@ export function BoardOnBlankSection() {
         )}
 
         <SliderRow
-          label={`Deck Skin — ${formatMark(view.cut.deckSkin, system)}`}
+          label={`Deck Skin — ${formatDeckSkin(view.cut.deckSkin, system)}`}
           value={skinSlider.value}
           min={skinSlider.min}
           max={skinSlider.max}
