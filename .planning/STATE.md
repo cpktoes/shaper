@@ -160,7 +160,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-10 pending (five of them are Phase 13 items: the fin tail question is item 6, the order form is item 8, the catalogue links are item 9, the ghost of the last edit is optional item 9b, the Contacts page is item 10; the phone-width polish todo was closed by item 2 on 2026-09-27):
+11 pending (five of them are Phase 13 items: the fin tail question is item 6, the order form is item 8, the catalogue links are item 9, the ghost of the last edit is optional item 9b, the Contacts page is item 10; the phone-width polish todo was closed by item 2 on 2026-09-27):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Fins imported tail uses the generic polynomial curve, not the drawn outline — `.planning/todos/pending/2026-08-21-fins-imported-template-width-branch.md`
@@ -172,6 +172,7 @@ Recent decisions affecting current work:
 - [minor/site] Add a Contacts page — `.planning/todos/pending/2026-09-27-add-a-contacts-page.md`
 - [minor/ui] Show a ghost of the last edit on the Template screen — `.planning/todos/pending/2026-09-27-show-a-ghost-of-the-last-edit-on-the-template-screen.md`
 - [major/rocker] Give the foil and rocker curves a realistic surfboard flow (its own phase after Oct 10; folds in the 2026-09-26 smoother-rocker todo) — `.planning/todos/pending/2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow.md`
+- [minor/rocker] Custom rocker on a blank, saved as the shaper's own Custom Blank (after Oct 10) — `.planning/todos/pending/2026-09-28-custom-rocker-on-a-blank-saved-as-the-shaper-s-own-custom-bl.md`
 
 ### Blockers/Concerns
 
