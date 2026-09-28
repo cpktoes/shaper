@@ -1,0 +1,1 @@
+ALTER TABLE "user_preferences" DROP COLUMN "extra_center_thickness_mm";

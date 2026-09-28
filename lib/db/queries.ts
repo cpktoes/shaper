@@ -92,8 +92,7 @@ export async function readPrintRailInstructionsPreference(clerkId: string): Prom
  *
  * Selects exactly these seven columns and nothing else — a projection, never the whole row — so
  * this read and the units/print reads above each ask only for the columns they use. The retired
- * `extra_center_thickness_mm` column is no longer read (D-19); it stays in the table, unread and
- * unwritten, until it is dropped after a deploy.
+ * Extra Center Thickness column was dropped by migration 0008 (D-19, quick task 260927-qrn).
  *
  * Read-only contract, same register as `listModels`: one `select`, no counters, no last-seen
  * stamp, no write of any kind.

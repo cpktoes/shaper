@@ -25,7 +25,9 @@
  * blanks a board fits into, D-04/D-05), and the Nose and Tail Tip thicknesses a new board starts
  * from. All five are millimetres, stored as `double precision`, and all five are nullable with no
  * default for the same reason as `units`: "this shaper hasn't chosen" is a real state, and the app
- * shows the standard default until they do. Every read of these columns goes through
+ * shows the standard default until they do. Phase 12 (D-10) retired Extra Center Thickness, and
+ * migration 0008 (quick task 260927-qrn, D-19) dropped its column, so four of those five remain.
+ * Every read of these columns goes through
  * `lib/fit-defaults-preference.ts`'s allow-list, and every read of this table selects only the
  * columns it needs — so the existing units and print reads never ask for a column that a
  * not-yet-migrated database doesn't have. Quick task 260926-wmf adds one more nullable text column,
@@ -80,9 +82,6 @@ export const userPreferences = pgTable("user_preferences", {
   units: text("units"),
   printRailInstructions: boolean("print_rail_instructions"),
   extraLengthMm: doublePrecision("extra_length_mm"),
-  // Retired by Phase 12 (D-10): no longer read or written. It stays declared, and stays in the
-  // database, until a follow-up step after the deploy drops it (D-19, CLAUDE.md Database).
-  extraCenterThicknessMm: doublePrecision("extra_center_thickness_mm"),
   widthMarginMm: doublePrecision("width_margin_mm"),
   noseTipThicknessMm: doublePrecision("nose_tip_thickness_mm"),
   tailTipThicknessMm: doublePrecision("tail_tip_thickness_mm"),

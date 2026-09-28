@@ -57,6 +57,13 @@
       "when": 1790491798452,
       "tag": "0007_hidden_blank_makers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790562514734,
+      "tag": "0008_drop_extra_center_thickness",
+      "breakpoints": true
     }
   ]
 }

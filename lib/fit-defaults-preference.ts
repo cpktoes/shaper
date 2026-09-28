@@ -216,9 +216,9 @@ export function mergeFitDefaultsPatch(current: FitDefaultsPreference, patch: Fit
 
 /**
  * Each setting's account column, by the `user_preferences` table's own property name in
- * `lib/db/schema.ts` (no database import here — just the names). The retired
- * `extraCenterThicknessMm` column stays declared in the schema but is never named here, so no
- * save can write it (D-19).
+ * `lib/db/schema.ts` (no database import here — just the names). The retired Extra Center
+ * Thickness column is not among these names — it was dropped from the schema and the database by
+ * migration 0008 (D-19, quick task 260927-qrn), so no save can write it.
  */
 export const FIT_DEFAULTS_COLUMNS = {
   extraLength: "extraLengthMm",
