@@ -3,22 +3,29 @@
  * have somewhere to live: `user_preferences` holds `planer_max_depth_mm` (double precision),
  * `deck_skin_mm` (double precision) and `tip_style` (text), migration 0006 (Phase 12 D-01, D-03,
  * D-04), and `hidden_blank_makers` (text), migration 0007 (quick task 260926-wmf: the blank makers a
- * shaper switched off in the gear menu). It also proves the retired `extra_center_thickness_mm`
- * column is STILL there — that column is dropped only in a follow-up step after the deploy (D-19,
- * CLAUDE.md Database), so finding it gone means a DROP ran too early.
+ * shaper switched off in the gear menu). It also reports the state of the retired
+ * `extra_center_thickness_mm` column — dropped by migration 0008 (quick task 260927-qrn, D-19).
+ *
+ * By default the retired column is expected ABSENT: from migration 0008 on, "gone" is the normal
+ * state everywhere the check runs. Pass `--before-drop` for the one case where PRESENT is expected
+ * instead — production's single run just before its own DROP (a removal deploys first and drops
+ * after, D-19, CLAUDE.md Database "removals wait for the deploy"). Any other option is refused
+ * before any database work, with exit 1.
  *
  * Why a separate check at all: `drizzle-kit migrate` prints "migrations applied successfully" even
  * when it applied nothing, so that line proves nothing on its own. This script asks the database.
  *
  * It writes nothing. It prints exactly two lines:
- *   user_preferences: planer_max_depth_mm double precision, deck_skin_mm double precision, tip_style text, hidden_blank_makers text (4 of 4 columns); extra_center_thickness_mm kept
+ *   user_preferences: planer_max_depth_mm double precision, deck_skin_mm double precision, tip_style text, hidden_blank_makers text (4 of 4 columns); extra_center_thickness_mm absent (expected absent)
  *   drizzle migrations recorded: <n>
- * with `missing` in place of any column it did not find, and exits 1 when any of the four
- * columns is missing or has another type, or when `extra_center_thickness_mm` is gone. Only column
- * names, their types and a count are ever printed — never the connection string, never row data.
- * When the check itself fails (the database can't be reached, say) it prints one fixed sentence with
- * the error's kind and code only — never the driver's message, which can name the database host —
- * unless `--verbose` is added to the command, which appends that message for debugging.
+ * with `missing` in place of any column it did not find, and the retired column's line-1 ending one
+ * of `present (expected present)`, `absent (expected absent)`, `present (expected absent)` or
+ * `absent (expected present)`. Exits 1 when fewer than 4 of the 4 columns match their types, or when
+ * the retired column's actual state differs from the expected one. Only column names, their types
+ * and a count are ever printed — never the connection string, never row data. When the check itself
+ * fails (the database can't be reached, say) it prints one fixed sentence with the error's kind and
+ * code only — never the driver's message, which can name the database host — unless `--verbose` is
+ * added to the command, which appends that message for debugging.
  *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
@@ -27,10 +34,13 @@
  *     npx --no-install tsx scripts/check-preference-columns.ts
  *   development, from a worktree (names the main checkout's env file):
  *     CHECK_ENV_FILE=/Users/kontoes/Code/shaper/.env.local npx --no-install tsx scripts/check-preference-columns.ts
- *   production — the founder only (plan 12-10, and again for quick task 260926-wmf), after
- *   `npm run db:migrate:prod` and BEFORE the deploy. The production env is pulled to a temporary
- *   file and deleted on exit:
- *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts'
+ *   production — quick task 260927-qrn, run once, in the founder's terminal, from the main checkout,
+ *   only AFTER the deploy that stops naming the column is live: it pulls the production settings to
+ *   a temporary file, checks the column is still there, runs the drop, checks it is gone, and
+ *   deletes the file on exit. Any failed step stops the rest.
+ *     bash -c 'trap "rm -f .env.production.pull" EXIT INT TERM; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts --before-drop && MIGRATE_ENV_FILE=.env.production.pull npx --no-install drizzle-kit migrate && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts'
+ *   Earlier production runs (plan 12-10, quick 260926-wmf) used the check on its own, after
+ *   `npm run db:migrate:prod`.
  *
  * Which env file is read is controlled by `CHECK_ENV_FILE` (default `.env.local`, resolved from the
  * current directory), mirroring `SEED_ENV_FILE` in scripts/seed-blanks.ts: when the file exists, any
@@ -50,10 +60,23 @@ const NEW_COLUMNS = [
   { name: "hidden_blank_makers", type: "text" },
 ] as const;
 
-/** Retired by Phase 12 D-10, but it must survive this phase's migration run (D-19). */
+/**
+ * Retired by Phase 12 D-10, dropped by migration 0008 (quick task 260927-qrn, D-19). Expected
+ * absent unless `--before-drop`.
+ */
 const RETIRED_COLUMN = "extra_center_thickness_mm";
 
 async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  for (const arg of args) {
+    if (arg !== "--before-drop" && arg !== "--verbose") {
+      console.error(`Unknown option "${arg}": the only options are --before-drop and --verbose.`);
+      process.exitCode = 1;
+      return;
+    }
+  }
+  const expectPresent = args.includes("--before-drop");
+
   const envFile = path.resolve(process.cwd(), process.env.CHECK_ENV_FILE ?? ".env.local");
   if (existsSync(envFile)) {
     delete process.env.DATABASE_URL;
@@ -89,15 +112,17 @@ async function main(): Promise<void> {
 
   const described = NEW_COLUMNS.map(({ name }) => `${name} ${found.get(name) ?? "missing"}`);
   const present = NEW_COLUMNS.filter(({ name, type }) => found.get(name) === type).length;
-  const retiredKept = found.has(RETIRED_COLUMN);
+  const retiredPresent = found.has(RETIRED_COLUMN);
+  const expectedWord = expectPresent ? "expected present" : "expected absent";
+  const actualWord = retiredPresent ? "present" : "absent";
 
   console.log(
     `user_preferences: ${described.join(", ")} (${present} of ${NEW_COLUMNS.length} columns); ` +
-      `${RETIRED_COLUMN} ${retiredKept ? "kept" : "missing"}`,
+      `${RETIRED_COLUMN} ${actualWord} (${expectedWord})`,
   );
   console.log(`drizzle migrations recorded: ${recorded}`);
 
-  if (present !== NEW_COLUMNS.length || !retiredKept) {
+  if (present !== NEW_COLUMNS.length || retiredPresent !== expectPresent) {
     process.exitCode = 1;
   }
 }
