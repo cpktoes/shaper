@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 4b verified locally, awaiting the founder's go to push; that completes item 4
-last_updated: "2026-09-28T23:08:05.233Z"
+stopped_at: Phase 13 items 1–4 live; item 5 (the four preset blanks) next
+last_updated: "2026-09-28T23:35:07.052Z"
 last_activity: 2026-09-28
-last_activity_desc: "Quick task 260928-lm6 (Phase 13 item 4b, Deck Skin none–1\") verified locally; the push awaits the founder's go"
+last_activity_desc: "Phase 13 item 4 done: 4b (Deck Skin none–1\") deployed on the founder's go"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 13
-  completed_plans: 3
-  percent: 23
+  completed_plans: 4
+  percent: 31
 current_phase: 13
 current_phase_name: Ready for the Shapers
 ---
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **3 of 13 items done.** Item 1, the security patch (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0). Item 2, housekeeping (quick 260927-pij: only `main` here and on GitHub, lint 0 warnings, the scanner down to the real todos). Item 3, the retired Extra Center Thickness column (quick 260927-qrn: migration 0008 on both databases, production proven present/8 → absent/9, the founder's signed-in settings save confirmed on the live site). Of the founder's item 2 steps, `.env.example` is committed; the client-secret file still sits in the project folder. **Item 4: the founder answered all five on 2026-09-28.** Quick task 4a (the 1/4" floor, the 1/4" control minimum and the cause-named reason line, 260928-j00) is live; **4b (the Deck Skin control and default opened to 0–50 mm) is next**, after the founder's sign-off on 4a.
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **4 of 13 items done, all live.** Item 1, the security patch (260927-onx). Item 2, housekeeping (260927-pij). Item 3, the retired Extra Center Thickness column dropped from both databases (260927-qrn). Item 4, the founder's answers to Phase 12's five questions: a 1/4" thinness floor with 1/4" control minimums and cause-named reason lines (260928-j00), and the Deck Skin control opened to none–1" (260928-lm6). The founder added two post-Oct-10 todos (the curves' realistic flow, major, its own phase; custom rocker on a blank) and optional item 9b (the ghost outline). The client-secret file still sits in the project folder. **Item 5 — the four preset blanks, the founder's picks — is next.**
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-28 - Quick task 260928-lm6 (Phase 13 item 4b, Deck Skin none–1") verified locally; the push awaits the founder's go
+Last activity: 2026-09-28 - Phase 13 item 4 done: 4b (Deck Skin none–1") deployed on the founder's go
 
 ## Performance Metrics
 
