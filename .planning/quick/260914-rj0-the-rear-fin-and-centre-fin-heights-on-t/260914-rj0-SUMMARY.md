@@ -125,6 +125,7 @@ coverage:
     verification: []
     human_judgment: true
     rationale: "valueFontSize's computation (CALLOUT_PX.value / fitScale) was moved earlier in the component's source order (hoisted above marksWithDims) but its formula was not touched — confirmed by code diff inspection. The browser test's own settle gate additionally depends on this: it polls the label's computed font-size moving away from the placeholder 14px value used before useSvgFitScale's layout effect runs, which would not work if the pinned-face calculation had changed."
+status: complete
 ---
 
 # Quick Task 260914-rj0: The Rear-Fin and Centre-Fin Heights on the Fin Drawing Summary

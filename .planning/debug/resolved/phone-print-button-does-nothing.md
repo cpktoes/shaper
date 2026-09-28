@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "G-09-6: On a real iPhone, the Print button in the RAILS screen's View Full Sized dialog does nothing when tapped (the shaper wrote \"print buttons dont do anything\", plural — check every Print button reachable on a phone)."
 created: 2026-09-09T16:10:00Z
-updated: 2026-09-09T17:40:00Z
+updated: 2026-09-28T01:44:43Z
 mode: symptoms_prefilled, goal=find_root_cause_only
 bug_class: Bohrbug on the shaper's iPhone (every tap, every Print button); not reproducible in Playwright's WebKit emulation, which cannot run the native print step (WebDriver-controlled pages skip Chrome::print) — so the app side was verified by counting window.print() calls and the iOS side by research + differential probes.
 ---
@@ -131,3 +131,4 @@ files_involved:
   - e2e/phone-rails.spec.ts — the phone dialog test stops at "Print button is visible" and never asserts the handler runs (a stub-count of window.print would at least pin the app side)
 why_not_caught: No gate could have — Phase 9's automation only proved the print CSS was unchanged, the dialog e2e test only checked visibility, and Playwright/WebDriver cannot run the native print step; the only gate for "a phone can print" is a human on a device, and that step was deferred to end-of-phase UAT where it was found.
 recurrence_guard: (proposed) a UAT step that records how the site was launched on the phone (Safari vs Home-Screen icon) before printing; an e2e assertion that tapping Print calls a stubbed window.print on the iphone/android projects; and, once the fix lands, a phone print path that does not depend on window.print().
+shipped: plan 09-09, gap G-09-6, 2026-09-09 — ab6905f (a plain note replaces the phone Print button when it cannot work), f3da72b (test proving a phone tap really calls print), 85bbaf5 (the note shows only on iOS, where printing actually fails). The app side was never broken; iOS refuses printing from a Home-Screen web app, and the shipped fix tells the shaper so. The PDF route this diagnosis floated was not built. Closed 2026-09-27 by quick 260927-pij (Phase 13 item 2).

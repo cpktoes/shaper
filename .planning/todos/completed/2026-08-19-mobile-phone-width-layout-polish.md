@@ -35,3 +35,10 @@ TBD. Likely a responsive breakpoint (e.g. `min-[640px]:flex-nowrap` reverting to
 `flex-col` below that) on the shared aside+main shell across the four design screens, plus
 re-verifying the SHAPER wordmark/nav tab row at true phone widths (320-375px) still holds.
 Revisit when planning mobile/responsive support explicitly.
+
+## Outcome
+
+Delivered by Phase 9 (The Design Screens on a Phone) and Phase 10 (The Whole App on a Phone),
+whose UATs walked it on a real iPhone: below 820 dots wide, the design screens now stack the
+drawing above the controls with a bottom tab bar instead of letting the sidebar and the drawing
+overlap. Closed 2026-09-27 by quick 260927-pij (Phase 13 item 2).

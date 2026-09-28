@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "Phase 8 UAT gap G-08-10 (test 10) — order form prints blank first and last pages on Letter"
 created: 2026-09-08T21:02:28Z
-updated: 2026-09-08T21:02:28Z
+updated: 2026-09-28T01:44:43Z
 goal: find_root_cause_only
 ---
 
@@ -27,3 +27,6 @@ Screen-only padding around the paper survives into print while the sheets are fi
 
 ## Suggested fix direction
 Zero the wrapper's padding in the print block (`[data-order-form-page] { padding: 0 !important }`), or fold it into the fit; then count pages on Letter at 100% (unticked 2, ticked 3) in both systems and confirm A4 and the on-screen layout are unchanged.
+
+## Resolution
+shipped: plan 08-09, gap G-08-10, 2026-09-08 — 1360d62 (the order form drops its screen padding when it prints), bc9f13d (test pinning the @page margin). Closed 2026-09-27 by quick 260927-pij (Phase 13 item 2). Note: STATE.md's table from the earlier milestone close attributes this fix to "quick task, Phase 7/8" — the commits show it shipped in plan 08-09, not a quick task.

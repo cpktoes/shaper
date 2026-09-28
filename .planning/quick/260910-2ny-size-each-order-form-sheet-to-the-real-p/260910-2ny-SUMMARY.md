@@ -286,7 +286,7 @@ coverage:
 
 duration: 55min + this session
 completed: 2026-09-10
-status: incomplete
+status: complete
 ---
 
 # Quick Task 260910-2ny — Tasks 8-11 of 12: a phone's sheet now sizes itself off the page
@@ -835,3 +835,14 @@ own test print.**
 ---
 *Phase: quick-260910-2ny*
 *Completed: 2026-09-10*
+
+## Outcome (2026-09-27, quick 260927-pij)
+
+The Task 11 browser reading this SUMMARY marked NOT RUN was taken by the orchestrator on the main
+checkout the same day (`260910-2ny-BROWSER-READING.md`): the fit gate (case 6b) passed at every
+swept width on all three browsers. Its one failing check (case 6a) turned out to be a rocker
+drawing label, not the order form's own type, and was narrowed to the form's type classes in
+`7aad8ff`. The founder's own iPhone print then confirmed three sheets on three pages at 100%
+(recorded in STATE.md's Quick Tasks table). Shipped as `7aad8ff`, guarded by
+`e2e/summary-print-touch-box.spec.ts`, which runs in the full browser suite that passed on main on
+2026-09-27 (360 tests, Phase 13 item 1).

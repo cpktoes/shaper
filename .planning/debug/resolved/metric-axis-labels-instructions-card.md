@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "Phase 8 UAT gap G-08-9 (test 9) — Metric axis numbers on the INSTRUCTIONS example rail"
 created: 2026-09-08T21:02:28Z
-updated: 2026-09-08T21:02:28Z
+updated: 2026-09-28T01:44:43Z
 goal: find_root_cause_only
 ---
 
@@ -25,3 +25,6 @@ The plot's tick density and left padding were sized for Imperial single digits a
 
 ## Suggested fix direction
 Thin Metric x-axis labels when the available pixels per tick fall below a label's width (e.g. label every 20 or 50 mm, keep the grid), and give y-axis labels room in Metric (wider LEFT_PAD or svg overflow visible) — while keeping the VIEWER and the printed sheets pixel-identical in Imperial (existing bounds tests pin those).
+
+## Resolution
+shipped: plan 08-08, gap G-08-9, 2026-09-08 — 1df06ef, 2843309, ca8778f, d46307f. Closed 2026-09-27 by quick 260927-pij (Phase 13 item 2).

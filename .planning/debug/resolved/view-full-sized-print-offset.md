@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "Phase 8 UAT gap G-08-5 (test 5) — View Full Sized prints true"
 created: 2026-09-08T21:02:28Z
-updated: 2026-09-08T21:02:28Z
+updated: 2026-09-28T01:44:43Z
 goal: find_root_cause_only
 ---
 
@@ -30,3 +30,6 @@ Two layers: (1) the print stylesheet neutralises `transform` but Tailwind v4's c
 
 ## Suggested fix direction
 Add `translate: none !important` to the dialog's print rule; give the true-size page room without shrinking — e.g. a landscape `@page` (11 in wide) emitted only while the dialog is open (a `<style>` rendered inside the dialog, since @page cannot be gated by :has()), with the dialog's padding/border dropped in print; mark the banner `data-print-hide`. Re-measure with print-to-PDF: the content transform must stay 0.75 and the check bar 144 pt, on Letter and A4, in both systems.
+
+## Resolution
+shipped: plan 08-07, gap G-08-5, 2026-09-08 — 4a28874, 27a26a8, 2fd8941. Closed 2026-09-27 by quick 260927-pij (Phase 13 item 2).

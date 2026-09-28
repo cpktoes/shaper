@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "G-06-4 — On Metric, the typed Board Length box (the shared MeasureField) is not big enough for its text."
 created: 2026-09-05T22:00:00Z
-updated: 2026-09-05T22:20:00Z
+updated: 2026-09-28T01:44:43Z
 mode: find_root_cause_only
 symptoms_prefilled: true
 ---
@@ -138,3 +138,4 @@ fix: "(not applied — diagnose-only) Suggested: make the width follow the mode.
 verification: "(not applied) After the change: SSR of /design/outline with `shaper-units=metric` shows the wider class on the Board Length input; in the browser `input.scrollWidth <= input.clientWidth` for `365.8 cm` on the Fins screen (set length to max) and for `304.8 cm` on Template Builder/Volume; ROCKER datasheet cells unchanged at 64px in both systems; Imperial sidebars unchanged (no MeasureField rendered)."
 files_changed: []
 oracle_type: derived
+shipped: plan 06-09, gap G-06-4, 2026-09-05 — e76c237 (the typed board length box shows its whole value). Closed 2026-09-27 by quick 260927-pij (Phase 13 item 2).

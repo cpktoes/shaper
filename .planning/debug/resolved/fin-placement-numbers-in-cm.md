@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "G-06-12 and G-06-15 (same root cause — diagnose together). On Metric, fin placement numbers read in centimetres where the shaper wants whole millimetres, on the Fins DATA tab, the fins sidebar sliders and the fin drawing's callouts."
 created: 2026-09-05T22:00:00Z
-updated: 2026-09-05T22:45:00Z
+updated: 2026-09-28T01:44:43Z
 mode: symptoms_prefilled, goal=find_root_cause_only
 ---
 
@@ -117,3 +117,4 @@ root_cause: 06-CONTEXT.md D-01 classified "fin positions off the tail" (front/re
 fix: (diagnose-only — see Suggested Fix Direction in the returned diagnosis) flip those nine sites to "mark"/formatMark, update the three fins.test.ts expectations (454, 479, 494) and their wording, refresh the comments that cite D-01 at fins.ts 137-142 and 1171-1174, fin-controls.tsx 270-273, fin-viewer.tsx 220-221, and record the superseding decision against D-01 / UI-SPEC FINS. Open question for the shaper before planning: the toe-aim tables' CELL values (aim distances, 1.19-3 in) — keep cm (no change) or move to mm (toeAimTableFor 1175 splits into a cm formatter for columns/rowLabel and formatMarkBare for cells; toe-aim-table-modal.tsx 47 -> columnUnitSuffix("mark"); fins.test.ts 552-553 -> formatMarkBare).
 verification: n/a (diagnose-only). Planner's acceptance: fins.test.ts family block green with "mark"; golden-parity and template.test.ts untouched and green; units-isolation ledger green; Imperial strings byte-identical (both families call formatInchesFraction).
 files_changed: []
+shipped: plan 06-08, gaps G-06-12 and G-06-15, 2026-09-05 — 907bd5d (fin placement numbers read in millimetres on Metric), 909f72c (the toe-aim tables' aim distances read in millimetres). Closed 2026-09-27 by quick 260927-pij (Phase 13 item 2).

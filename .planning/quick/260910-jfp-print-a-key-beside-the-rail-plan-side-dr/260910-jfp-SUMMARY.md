@@ -60,7 +60,7 @@ requirements-completed: []  # Task 3 (the browser gate) is outstanding — do no
 
 duration: 45min
 completed: 2026-09-10
-status: incomplete
+status: complete
 ---
 
 # Quick Task 260910-jfp: Print a Key Beside the Rail Plan/Side Drawing — Summary
@@ -228,3 +228,11 @@ here, since this executor stopped at Task 2 by design.
 - FOUND: `e2e/summary-rail-key.spec.ts`
 - FOUND commit `71a624a` (feat, Task 1)
 - FOUND commit `14deabb` (test, Task 2)
+
+## Outcome (2026-09-27, quick 260927-pij)
+
+The browser reading this SUMMARY awaited was taken by the orchestrator the same day
+(`260910-jfp-BROWSER-READING.md`): verdict PASS — the key costs no height at any of seven page
+widths on all three browsers, and both protected print gates stayed untouched. Shipped as
+`71a624a`, guarded by `e2e/summary-rail-key.spec.ts`, which runs in the full browser suite that
+passed on main on 2026-09-27 (360 tests, Phase 13 item 1).

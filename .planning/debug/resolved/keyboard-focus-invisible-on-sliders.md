@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "G-09-4: On a desktop browser, tabbing through the design screens gives no visible indication of which slider has keyboard focus, and the tail-shape icon buttons on TEMPLATE barely show focus either."
 created: 2026-09-09T16:00:00Z
-updated: 2026-09-09T16:35:00Z
+updated: 2026-09-28T01:44:43Z
 mode: symptoms_prefilled, goal=find_root_cause_only
 ---
 
@@ -144,3 +144,4 @@ root_cause:
 fix: (diagnose-only session — not applied)
 verification: (n/a)
 files_changed: []
+shipped: plan 09-08, gap G-09-4, 2026-09-09 — 26fe27b, 781dc12, 761e596 (the focus ring now paints on sliders and every hand-rolled selection button, proved by a real Tab walk). Closed 2026-09-27 by quick 260927-pij (Phase 13 item 2).

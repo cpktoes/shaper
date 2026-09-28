@@ -68,7 +68,7 @@ coverage:
 
 duration: unknown
 completed: 2026-09-10
-status: incomplete
+status: complete
 ---
 
 # Quick Task 260910-kz2: Stop the Rail Instructions Sheet Clipping Its Example Rail — Summary
@@ -231,3 +231,11 @@ orchestrator needs to:
 *Quick task: 260910-kz2*
 *Tasks 1-2 completed: 2026-09-10*
 *Task 3: pending (orchestrator, main checkout)*
+
+## Outcome (2026-09-27, quick 260927-pij)
+
+The Task 3 browser reading was taken by the orchestrator the same day
+(`260910-kz2-BROWSER-READING.md`): verdict PASS — the example rail survives from 268 dots up,
+and nothing that had already shipped moved. Shipped as `1a8705c`, guarded by
+`e2e/summary-rail-instructions-fit.spec.ts`, which runs in the full browser suite that passed on
+main on 2026-09-27 (360 tests, Phase 13 item 1).
