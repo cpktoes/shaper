@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: "Phase 13 item 3: code + development database done (migration 0008); awaiting the test gates, the founder's go to push, the deploy, then the production removal in the founder's terminal"
-last_updated: "2026-09-28T02:37:54.898Z"
+stopped_at: "Phase 13 items 1–3 done (item 3: column dropped on both databases, the founder confirmed a signed-in save); item 4 (the five Phase 12 questions) next"
+last_updated: "2026-09-28T02:54:39.515Z"
 last_activity: 2026-09-27
-last_activity_desc: "Quick task 260927-qrn: Phase 13 item 3 done in code and on the development database; the push, deploy and production removal follow"
+last_activity_desc: "Phase 13 item 3 done: migration 0008 applied to production in the founder's terminal (present/8 → absent/9); signed-in settings save confirmed"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 13
-  completed_plans: 2
-  percent: 15
+  completed_plans: 3
+  percent: 23
 current_phase: 13
 current_phase_name: Ready for the Shapers
 ---
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **2 of 13 items done, both live.** Item 1, the security patch (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0). Item 2, housekeeping (quick 260927-pij: only `main` here and on GitHub, lint 0 warnings, the scanner down to the 9 real todos); the founder's own two steps from item 2 (the client-secret file, `.env.example`) stay open. **Item 3, retiring the Extra Center Thickness column, is done in code and on the development database** (quick 260927-qrn: migration 0008, the development database checked present/8 → absent/9). Still to do, in order: every test suite, the founder's go to push, the deploy going live, then the production removal in the founder's terminal (the one command in `scripts/check-preference-columns.ts`'s header), then the founder's signed-in settings check on the live site. `.env.example` is committed (the founder made it); the client-secret file still sits in the project folder. The work list, the owner of each item, what "done" means, and the Progress Log all live in [13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; the founder's decisions and walks are recorded in the SPEC's Progress Log. Going public with tiered subscriptions (guide M5) is the next milestone, after the demo.
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **3 of 13 items done.** Item 1, the security patch (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0). Item 2, housekeeping (quick 260927-pij: only `main` here and on GitHub, lint 0 warnings, the scanner down to the real todos). Item 3, the retired Extra Center Thickness column (quick 260927-qrn: migration 0008 on both databases, production proven present/8 → absent/9, the founder's signed-in settings save confirmed on the live site). Of the founder's item 2 steps, `.env.example` is committed; the client-secret file still sits in the project folder. **Item 4 — the five Phase 12 questions, the founder's decisions — is next.**
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-27 - Quick task 260927-qrn: Phase 13 item 3 done in code and on the development database; the push, deploy and production removal follow
+Last activity: 2026-09-27 - Phase 13 item 3 done: migration 0008 applied to production in the founder's terminal (present/8 → absent/9); signed-in settings save confirmed
 
 ## Performance Metrics
 
@@ -89,6 +89,7 @@ Last activity: 2026-09-27 - Quick task 260927-qrn: Phase 13 item 3 done in code 
 
 ### Decisions
 
+- [Phase 13]: The retired `extra_center_thickness_mm` column is gone from both databases (migration 0008, quick 260927-qrn, 2026-09-27): removed from the code and deployed first, then dropped on production in the founder's terminal, proven present/8 → absent/9 by `scripts/check-preference-columns.ts --before-drop` and its default run (closes D-19)
 - [Phase 12]: A board is cut from its blank the way a planer works — the deck skin first (a saved default and a per-board value), the bottom planed to centre thickness with the foam shown as planer passes against Planer Max Depth, the tips thinned last inside 12" with the deck or the bottom pinned (D-01–D-06, D-10)
 - [Phase 12]: A Phase 11 board keeps its five station numbers exactly on reopen; the two 12" fine-tunes absorb the residual, and the carry-over is decided by the blank's shape, never the version stamp (D-07, D-14; 10 of 10 production boards open)
 - [Phase 12]: A blank fits only with one deck pass and one bottom pass at the centre and nothing under 1/8" thick (D-10, D-15, D-18); Fine-tune off picks the surface a 12" tweak moves (D-13); the ±1/4" slider stays, with a carried-over value shown true and the thumb pinned (D-20)
