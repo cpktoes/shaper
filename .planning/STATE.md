@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Foil the Way a Shaper Cuts It
-status: Awaiting next milestone
-stopped_at: Milestone v1.4 closed and archived 2026-09-27 — no milestone open; next /gsd-new-milestone
-last_updated: "2026-09-27T18:53:56.314Z"
+milestone: v1.5
+milestone_name: Ready for the Shapers
+status: Phase 13 open — working the Oct 10 list one item at a time
+stopped_at: Phase 13 opened 2026-09-27 with its 13-item work list (13-SPEC.md); item 1, the security patch, next
+last_updated: "2026-09-28T00:42:54.770Z"
 last_activity: 2026-09-27
-last_activity_desc: "Milestone v1.4 closed: roadmap and requirements archived, Phase 12 artifacts moved to milestones/v1.4-phases/, tagged v1.4"
+last_activity_desc: Phase 13 (Ready for the Shapers) opened with its 13-item Oct 10 work list
 progress:
   total_phases: 1
-  completed_phases: 1
-  total_plans: 10
-  completed_plans: 10
-  percent: 100
-current_phase: 12
-current_phase_name: Foil the Way a Shaper Cuts It
+  completed_phases: 0
+  total_plans: 13
+  completed_plans: 0
+  percent: 0
+current_phase: 13
+current_phase_name: Ready for the Shapers
 ---
 
 # Project State
@@ -24,14 +24,16 @@ current_phase_name: Foil the Way a Shaper Cuts It
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Define the next milestone with /gsd-new-milestone — the five Phase 12 founder questions and the D-19 column drop are the loose ends to settle first
+**Current focus:** Phase 13 — Ready for the Shapers. The founder shows the app to many shapers on Saturday 2026-10-10 (build guide M4), with a freeze on Wednesday 2026-10-07 evening. Work the 13 items in `phases/13-ready-for-the-shapers/13-SPEC.md` one at a time, stopping for the founder's review after each.
 
 ## Current Position
 
-**No milestone open.** v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27: Phase 12 (10 plans, 22 tasks) verified 11/11 with 0 gaps, walked 8/8 by the founder on real phones and the live site, security 35/35; production carried migration 0006 before the merge (`125a90f`). Archived under .planning/milestones/ (v1.4-ROADMAP.md, v1.4-REQUIREMENTS.md, v1.4-phases/) and tagged `v1.4`; v1.0–v1.3 sit alongside.
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** 0 of 13 items done; **item 1, the security patch, is next** (Next.js 16.3.1 → 16.3.6 plus `npm audit fix`, full test gates, deploy on the founder's go), then item 2, housekeeping. The work list, the owner of each item, what "done" means, and the Progress Log all live in [13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; the founder's decisions and walks are recorded in the SPEC's Progress Log. Going public with tiered subscriptions (guide M5) is the next milestone, after the demo.
 
-Status: Awaiting next milestone
-Last activity: 2026-09-27 — Milestone v1.4 completed and archived
+Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
+
+Status: Phase 13 open — working the Oct 10 list one item at a time
+Last activity: 2026-09-27 - Phase 13 (Ready for the Shapers) opened with its 13-item Oct 10 work list
 
 ## Performance Metrics
 
@@ -149,9 +151,13 @@ Recent decisions affecting current work:
 - [Phase 05]: [Phase 5] 05-05: 34 of the planned 38+ SliderRow renders were migrated; eight sliders (three Board Length Select-combos, FINS' paired Tail Width @ 12in, and RAILS' Family/Ratio/Corner Cut Offset/Bottom Tuck 3) were deliberately left hand-rolled and named in slider-row.test.ts's allowlist with a reason each, since their shape doesn't fit SliderRow without changing how they look -- approved by the shaper at the checkpoint with the shortfall disclosed
 - [Phase ?]: [Phase 5] 05-07: the shaper authorised the orchestrator to run git push origin main and npm run db:migrate:prod during Task 2's checkpoint, rather than typing each command personally -- CLAUDE.md's push-then-deploy-then-migrate order was still followed exactly, gated on the shaper's own "deployed and migrated" resume signal
 
+### Roadmap Evolution
+
+- Phase 13 added (2026-09-27): Ready for the Shapers — milestone v1.5, the build guide's M4 preparation for the founder's showing to many shapers on 2026-10-10; 13 ordered items in `phases/13-ready-for-the-shapers/13-SPEC.md`, run one at a time as quick tasks with the founder's review between
+
 ### Pending Todos
 
-10 pending:
+10 pending (four of them are Phase 13 items: the fin tail question is item 6, the order form is item 8, the catalogue links are item 9, the Contacts page is item 10; the phone-width polish is closed by item 2):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Mobile/phone-width layout polish for the design screens — `.planning/todos/pending/2026-08-19-mobile-phone-width-layout-polish.md`
@@ -168,7 +174,9 @@ Recent decisions affecting current work:
 
 - [Phase 2] .env.example still needs to be created by hand (repo root, three lines: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=, CLERK_SECRET_KEY=, DATABASE_URL=) — the execution sandbox hard-blocks any tool write matching a .env* path, including this values-empty example file
 - [Phase 2] client_secret_*.json (Google OAuth download) still sits in the repo root — gitignored so it can't be committed, but should be moved out of the working tree entirely
-- [Phase 12] Five verifier questions await the founder's decision (12-UAT.md, "Founder Questions"): the 1/8" floor at thin tips (D-18), the D-14 greying of carried-over boards until the fine-tune is reset, the IN-02 reason wording, the loose 0–50 mm saved Deck Skin bound (IN-03), and the stale-tab Restore Defaults edge (IN-04) — decisions, not defects
+- [Phase 12] Five verifier questions await the founder's decision (12-UAT.md, "Founder Questions"): the 1/8" floor at thin tips (D-18), the D-14 greying of carried-over boards until the fine-tune is reset, the IN-02 reason wording, the loose 0–50 mm saved Deck Skin bound (IN-03), and the stale-tab Restore Defaults edge (IN-04) — decisions, not defects (now Phase 13 item 4)
+- [Phase 13] Deadline: the founder shows the app to many shapers on Saturday 2026-10-10; freeze on Wednesday 2026-10-07 evening, after which only rehearsal fixes land
+- [Phase 13] Until item 1 ships, the live site runs Next.js 16.3.1, which carries a critical advisory (unauthenticated remote code execution in the image optimiser with AVIF files, and on Windows hosts; probably low exposure on Vercel, which runs Linux and whose own service optimises images, and the app uses no `next/image`) plus five lesser advisories through `shadcn`'s tooling and `sharp`. The two Phase 2 items above are item 2's founder steps
 
 ### Quick Tasks Completed
 
@@ -415,13 +423,13 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-27T19:01:06.000Z
-Stopped at: Milestone v1.4 closed and archived; tagged v1.4
-Resume file: None
-Next action: `/gsd-new-milestone` — define the next milestone (questioning → research → requirements → roadmap)
+Last session: 2026-09-28T00:45:00.000Z
+Stopped at: Phase 13 opened with its 13-item work list; item 1 (security patch) next
+Resume file: .planning/phases/13-ready-for-the-shapers/13-SPEC.md
+Next action: the next unticked item in 13-SPEC.md's Progress Log, as `/gsd-quick "Phase 13 item N: …"`, then stop for the founder's review
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
-- Answer the five Phase 12 founder questions at the foot of milestones/v1.4-phases/12-foil-the-way-a-shaper-cuts-it/12-UAT.md (decisions, not defects) — they may shape the next milestone's scope
-- Run the D-19 follow-up as a quick task: drop the retired extra_center_thickness_mm column (schema first, deploy, then the DROP on production)
+- Work Phase 13 one item at a time, in the order in [13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md): 1 security patch → 2 housekeeping → 3 retire the Extra Center Thickness column → 4–6 the founder's decisions → 7 volume against three real boards → 8 order form tips and passes → 9 catalogue links (if time) → 10 contact page → 11 analytics and privacy page → 12 error screen and link preview → 13 real-device rehearsal and the Oct 7 freeze
+- Tick each item in the SPEC's Progress Log and in ROADMAP.md's Phase 13 checklist in the same commit that records it
+- After the demo on 2026-10-10: close v1.5, listen for 1–2 weeks, then open v1.6 — Turn on Pro (guide M5) on the quality profile

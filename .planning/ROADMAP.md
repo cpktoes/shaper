@@ -12,6 +12,8 @@ Shaper started from a working prototype (built in Claude Design) that already pr
 
 **Milestone v1.4 (Phase 12, complete 2026-09-27)** models the foil the way a shaper actually cuts it. Phase 11 scaled the blank's thickness profile down to the centre thickness; a shaper does something else with a planer: skins the deck by a roughly constant amount, planes the bottom down to thickness, and only then thins the tips. The founder's brief put that on the screen — a deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, and tip thinning in the last 12" with a pin-deck or bottom choice — so the DATASHEET's numbers became the numbers a shaper works to. One phase of ten plans, opened on branch `foil-real-shaping` the afternoon v1.3 shipped and live the next morning: production carried migration 0006 before the merge (`125a90f`), the founder passed all eight UAT checks on real phones and the live site, and every one of the phase's 35 declared threats is closed.
 
+**Milestone v1.5 (Phase 13, opened 2026-09-27)** gets the app ready for the room. On Saturday 2026-10-10 the founder shows Shaper Assistant to many shapers at once. That is the build guide's M4, "invite shapers, free for everyone, watch what they use", and the founder plans to go public with tiered subscriptions (M5) shortly after hearing from them. A review on the day v1.4 closed found the app healthy but not yet ready for that. The live site ran a framework version with a critical security advisory. Three milestones of stale records were still open, along with five founder decisions and four provisional preset blanks. Volume had never been checked against a real finished board. The order form was missing the tips and the planer passes. And there was no way for a shaper to send feedback, or for the founder to see which screens get used. The phase has thirteen items, most of them small, run one at a time with a review between: safe fixes first, then the founder's decisions, then what shapers will test first, then what lets the founder listen, then a rehearsal on real phones and a freeze on Oct 7.
+
 ## Milestones
 
 - ✅ **v1.0 — the design tool, in inches** — Phases 1–4 (shipped 2026-08-29)
@@ -19,6 +21,7 @@ Shaper started from a working prototype (built in Claude Design) that already pr
 - ✅ **v1.2 — Rails Finished, Phone Ready** — Phases 8–10 (shipped 2026-09-12)
 - ✅ **v1.3 — Rocker from Real Blanks** — Phase 11 (shipped 2026-09-26)
 - ✅ **v1.4 — Foil the Way a Shaper Cuts It** — Phase 12 (shipped 2026-09-27)
+- 🚧 **v1.5 — Ready for the Shapers** — Phase 13 (in progress; the shapers see it 2026-10-10)
 
 ## Phases
 
@@ -55,6 +58,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Milestone v1.4 — Foil the Way a Shaper Cuts It (complete)**
 
 - [x] **Phase 12: Foil the Way a Shaper Cuts It** - The foil modelled the way foam actually comes off: a deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, and tip thinning in the last 12" with a pin-deck or bottom choice — the 12" stations still fine-tunable (completed 2026-09-27)
+
+**Milestone v1.5 — Ready for the Shapers (in progress)**
+
+- [ ] **Phase 13: Ready for the Shapers** - Safe, clean, credible and ready to listen by the founder's showing to many shapers on 2026-10-10: the security patch, housekeeping, the founder's open decisions, volume proven against real boards, the order form completed, a contact page, visitor analytics and a privacy page, a friendly error screen and link preview, and a real-device rehearsal before a freeze on Oct 7
 
 ## Phase Details
 
@@ -152,12 +159,51 @@ founder questions stand open as decisions, not defects. Full phase detail archiv
 [`.planning/milestones/v1.4-REQUIREMENTS.md`](milestones/v1.4-REQUIREMENTS.md); phase artifacts in
 [`.planning/milestones/v1.4-phases/`](milestones/v1.4-phases/).
 
+### Milestone v1.5: Ready for the Shapers (Phase 13, in progress — the shapers see it 2026-10-10)
+
+### Phase 13: Ready for the Shapers
+
+**Goal:** When a room of shapers sees the app on Saturday 2026-10-10 (the build guide's M4, "invite shapers"), it is safe, tidy, and credible on the numbers they know best, and it is ready to hear from them: the security patch live, the project clean, the founder's open decisions made, volume proven against real boards, the printed order form complete, a way for shapers to reach the founder and a count of which screens they use, and the whole trip rehearsed on real phones before a freeze on Wednesday 2026-10-07.
+**Requirements**: Items 1–13 in `.planning/phases/13-ready-for-the-shapers/13-SPEC.md` (ordered; who does each and what "done" means), run one at a time with the founder's review between
+**Depends on:** Phase 12
+**Plans:** 0/13 items — each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; founder items are recorded in the SPEC's Progress Log
+
+Plans:
+
+**Safe fixes shapers won't see (Mon–Tue, Sep 28–29)**
+
+- [ ] 1. Security patch: Next.js 16.3.6 and the other advisories cleared, every test suite green, deployed after the founder's go
+- [ ] 2. Housekeeping: old branches, worktrees, starter images, the research cache, lint warnings and three milestones of stale records cleared
+- [ ] 3. Retire the unused Extra Center Thickness column (code and deploy first, then the databases)
+
+**The founder's decisions (this week)**
+
+- [ ] 4. The five Phase 12 questions
+- [ ] 5. The four preset blanks
+- [ ] 6. The fin-placement tail question
+
+**What shapers will test first (Wed–Fri, Sep 30–Oct 2)**
+
+- [ ] 7. Volume proven against three real boards with known litres
+- [ ] 8. The order form carries the tip thicknesses and the planer passes
+- [ ] 9. Blank catalogue links (if time allows before the freeze)
+
+**Ready to listen (Sat–Mon, Oct 3–5)**
+
+- [ ] 10. Contact page
+- [ ] 11. Visitor analytics and a privacy page
+- [ ] 12. A friendly error screen and a link-preview picture
+
+**Rehearse, then freeze (Tue–Thu, Oct 6–8)**
+
+- [ ] 13. Real-device rehearsal on the live site (Android, iPhone, the presenting laptop, a non-founder Google sign-up), then the freeze
+
 ---
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 6 → 7 (v1.1, complete) → 8 → 9 → 10 (v1.2, complete) → 11 (v1.3, complete) → 12 (v1.4, complete)
+Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 6 → 7 (v1.1, complete) → 8 → 9 → 10 (v1.2, complete) → 11 (v1.3, complete) → 12 (v1.4, complete) → 13 (v1.5, in progress)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -173,3 +219,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
 | 11. Rocker from Real Blanks | 13/13 | Complete    | 2026-09-26 |
 | 12. Foil the Way a Shaper Cuts It | 10/10 | Complete    | 2026-09-27 |
+| 13. Ready for the Shapers | 0/13 items | In progress | - |

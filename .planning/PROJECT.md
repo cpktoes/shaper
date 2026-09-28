@@ -119,23 +119,42 @@ verified geometry math, live volume, printable full-size templates, and the rock
 
 Archives: [v1.4](milestones/v1.4-ROADMAP.md) · [v1.3](milestones/v1.3-ROADMAP.md) · [v1.2](milestones/v1.2-ROADMAP.md) · [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-phases/)
 
-## Current Milestone
+## Current Milestone: v1.5 — Ready for the Shapers
 
-_No milestone is open. v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, 10 plans;
-verified 11/11, UAT 8/8, security 35/35; production migrated before the merge) and is archived under
-`milestones/` with tag `v1.4`. The next milestone is defined by `/gsd-new-milestone`._
+**Phase 13, opened 2026-09-27. Deadline: Saturday 2026-10-10**, when the founder shows the app to many
+shapers at once (the build guide's M4, "invite shapers, free for everyone, watch what they use").
+**Freeze:** Wednesday 2026-10-07 evening. Thirteen items, run one at a time with the founder's review
+between:
+
+1. security patch
+2. housekeeping
+3. retire the Extra Center Thickness column
+4. the five Phase 12 questions
+5. the four preset blanks
+6. the fin tail question
+7. volume proven against three real boards
+8. the order form's tips and planer passes
+9. catalogue links, if time allows
+10. a contact page
+11. visitor analytics and a privacy page
+12. a friendly error screen and a link preview
+13. a real-device rehearsal before the freeze
+
+The work list, who does each item, what "done" means, and the Progress Log are in
+[13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Going public with tiered subscriptions
+(M5) is the next milestone, v1.6, opened after the founder has heard from the shapers.
 
 <details>
-<summary>Carried forward — not yet scheduled</summary>
+<summary>Carried forward — what Phase 13 does and does not take on</summary>
 
-- **Free/paid tier gating** (Clerk Billing) — build-guide milestones M4–M5, waiting on real shapers using the free version so it's clear what's worth paying for. The first candidate feature is branding the order form with a shaper's own logo and contact details (todo, 2026-09-06)
+- **Free/paid tier gating** (Clerk Billing): the build guide's M5, after the Oct 10 showing (M4) tells the founder what's worth paying for. The first candidate feature is branding the order form with a shaper's own logo and contact details (todo, 2026-09-06). The full M5 list is at the foot of 13-SPEC.md.
 - **Public sharing / model gallery** — build-guide milestone M6
 - **A smoother-looking drawn rocker curve** that leaves every PCHIP number alone (todo 2026-09-26); the blank-maker tick boxes shipped as quick task 260926-wmf on 2026-09-27
-- **Pages and prints still open** — the Summary should carry the tip thicknesses and the deck and bottom passes, a Contacts page, and a link from a picked blank to its maker's catalogue page (todos 2026-09-26 and 2026-09-27)
-- **Five founder questions from Phase 12** — decisions, not defects, listed at the foot of [12-UAT.md](milestones/v1.4-phases/12-foil-the-way-a-shaper-cuts-it/12-UAT.md): whether 1/8" is the right floor at a thin tip (D-18); the carried-over Deck fine-tune greying every blank until it is reset, out-skinned or moved to the Bottom (the D-14 outcome, about nine in ten Phase 11 boards); the D-18 reason line blaming the blank's thickness even when a negative fine-tune is the cause (IN-02); a saved board's Deck Skin accepted anywhere in 0–50 mm (IN-03); a browser tab left open across the deploy until it is reloaded (IN-04)
-- **Drop the retired `extra_center_thickness_mm` column** — its own quick task now that v1.4 is deployed: remove it from the schema, deploy, then generate and run the DROP on production (D-19; the expand-first rule in CLAUDE.md)
-- **The four presets' provisional blank picks** — chosen by rule in v1.3 and still marked provisional; their litres moved again under v1.4's parallel foil (D-17: Shortboard 30.2 L, Fish 35.4 L, Midlength 51.5 L, Longboard 75.3 L); the founder's own picks pending
-- **Retroactive coverage on v1.1** — a security pass for Phase 5 (it added a database table and a server action) and Nyquist validation for Phases 5–7, none of which was run
+- **Pages and prints still open** — the Summary should carry the tip thicknesses and the deck and bottom passes, a Contacts page, and a link from a picked blank to its maker's catalogue page (todos 2026-09-26 and 2026-09-27) — now Phase 13 items 8, 10 and 9
+- **Five founder questions from Phase 12** — decisions, not defects, listed at the foot of [12-UAT.md](milestones/v1.4-phases/12-foil-the-way-a-shaper-cuts-it/12-UAT.md): whether 1/8" is the right floor at a thin tip (D-18); the carried-over Deck fine-tune greying every blank until it is reset, out-skinned or moved to the Bottom (the D-14 outcome, about nine in ten Phase 11 boards); the D-18 reason line blaming the blank's thickness even when a negative fine-tune is the cause (IN-02); a saved board's Deck Skin accepted anywhere in 0–50 mm (IN-03); a browser tab left open across the deploy until it is reloaded (IN-04) — now Phase 13 item 4
+- **Drop the retired `extra_center_thickness_mm` column** — its own quick task now that v1.4 is deployed: remove it from the schema, deploy, then generate and run the DROP on production (D-19; the expand-first rule in CLAUDE.md) — now Phase 13 item 3
+- **The four presets' provisional blank picks** — chosen by rule in v1.3 and still marked provisional; their litres moved again under v1.4's parallel foil (D-17: Shortboard 30.2 L, Fish 35.4 L, Midlength 51.5 L, Longboard 75.3 L); the founder's own picks pending — now Phase 13 item 5, checked against item 7's real boards
+- **Retroactive coverage on v1.1** — a security pass for Phase 5 (it added a database table and a server action) and Nyquist validation for Phases 5–7, none of which was run — folded into the full security review before M5's live keys
 
 </details>
 
