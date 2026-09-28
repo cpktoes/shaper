@@ -45,6 +45,7 @@ import {
 } from "./blank-fit";
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, type OutlineSpec } from "./board";
 import { buildBlankProfile } from "./board-profile";
+import { FOIL_THICKNESS_RANGE_IN } from "./foil";
 import { buildOutline, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import { preparePchip } from "./pchip";
@@ -1423,9 +1424,11 @@ describe("one planer pass under the board's centre where it sits (D-15)", () => 
   });
 });
 
-describe("a board under 1/8\" thick anywhere does not fit (D-18)", () => {
-  it("the least foam a board may be anywhere is 1/8\", and a tip set to exactly that still fits", () => {
-    expect(MIN_FOIL_THICKNESS_MM).toBe(inchesToMm(1 / 8));
+describe("a board under 1/4\" thick anywhere does not fit (D-18, raised in Phase 13 item 4)", () => {
+  it("the least foam a board may be anywhere is 1/4\", and a tip set to exactly that still fits", () => {
+    expect(FOIL_THICKNESS_RANGE_IN.min).toBe(1 / 4);
+    expect(MIN_FOIL_THICKNESS_MM).toBe(inchesToMm(FOIL_THICKNESS_RANGE_IN.min));
+    expect(MIN_FOIL_THICKNESS_MM).toBe(inchesToMm(1 / 4));
     const blank = findBlank(MARKO_VENDOR, M_REGULAR);
     const prepared = prepareBlank(blank);
     const L = blank.lengthMm;

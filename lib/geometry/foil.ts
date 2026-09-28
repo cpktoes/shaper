@@ -40,9 +40,15 @@ export interface FoilSpec {
   tailTip: Mm;
 }
 
-/** Inch-domain bounds every foil slider, drag solve and typed field shares. One definition,
- * imported everywhere, never restated. */
-export const FOIL_THICKNESS_RANGE_IN = { min: 0.125, max: 5, step: 0.0625 } as const;
+/**
+ * Inch-domain bounds every foil slider, drag solve and typed field shares — one definition,
+ * imported everywhere, never restated. `min` is the least foam a board may be anywhere on its
+ * blank, tips included: 1/4", raised from 1/8" by the founder on 2026-09-28 (Phase 13 item 4:
+ * "no boards should have a 1/8" tip anyway"). `MIN_FOIL_THICKNESS_MM` in blank-fit.ts is this same
+ * figure in millimetres (`inchesToMm(FOIL_THICKNESS_RANGE_IN.min)`), so a control can never offer a
+ * thickness the fit check refuses. The ROCKER view frame reads only `max`.
+ */
+export const FOIL_THICKNESS_RANGE_IN = { min: 0.25, max: 5, step: 0.0625 } as const;
 
 /**
  * Starting values for a new board's foil, authored through `inchesToMm()`.

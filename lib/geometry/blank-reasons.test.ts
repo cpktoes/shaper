@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
-import type { BlankRecord, BlankShortfall } from "./blank";
-import { MIN_FOIL_THICKNESS_MM, placementRange } from "./blank-fit";
+import { DEFAULT_BLANK_CUT, type BlankRecord, type BlankShortfall } from "./blank";
+import { MIN_FOIL_THICKNESS_MM, boardOnBlank, fitAt, placementRange, prepareBlank } from "./blank-fit";
 import {
   blankRowMeta,
   blankRowVolume,
@@ -174,6 +174,38 @@ describe("formatShortfall — the foil runs out (D-18)", () => {
         expect(formatShortfall(shortfall(kind, station, over), thinCentre, system)).not.toContain("center");
       }
     });
+  });
+});
+
+describe("the 1/4\" floor, end to end (Phase 13 item 4)", () => {
+  it("a real blank with a tail tip under 1/4\" fails to fit, and the reason line opens naming the tail tip", () => {
+    const blank = findBlank("Marko Foam", `6'0" M-Regular`);
+    const prepared = prepareBlank(blank);
+    const length = mm(blank.lengthMm - inchesToMm(2));
+    const board = {
+      length,
+      centerThickness: inchesToMm(2.5),
+      noseTip: DEFAULT_FIT_DEFAULTS.noseTipThickness,
+      tailTip: mm(MIN_FOIL_THICKNESS_MM - inchesToMm(1 / 16)),
+      nose12Offset: mm(0),
+      tail12Offset: mm(0),
+      ...DEFAULT_BLANK_CUT,
+    };
+    const onBlank = boardOnBlank(prepared, board, mm(0));
+    const halfWidthAt = (s: Mm) => Math.max(0, (onBlank.blankWidthAt(s) - inchesToMm(2)) / 2);
+    const result = fitAt(onBlank, halfWidthAt, mm(length / 2), SETTINGS);
+
+    expect(result.fits).toBe(false);
+    expect(result.worst.kind).toBe("runsOut");
+    expect(result.worst.station).toBe(0);
+
+    const boardForCopy = { length, widePointStation: mm(length / 2), centerThickness: board.centerThickness };
+    const imperial = formatShortfall(result.worst, boardForCopy, "imperial");
+    expect(imperial.startsWith(`Less than 1/4" would be left at the tail tip — `)).toBe(true);
+    const metric = formatShortfall(result.worst, boardForCopy, "metric");
+    expect(metric.startsWith(`Less than ${formatMark(MIN_FOIL_THICKNESS_MM, "metric")} would be left at the tail tip — `)).toBe(
+      true,
+    );
   });
 });
 

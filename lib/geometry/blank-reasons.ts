@@ -103,7 +103,7 @@ function formatWhere(
  *
  * When the board itself would run under the least foam a board may be (Phase 12 D-18), the reason
  * names that least amount and the board's own centre instead, because the blank is too thick for
- * that centre rather than too thin: `Less than {1/8" | 3 mm} would be left {where} — this blank is
+ * that centre rather than too thin: `Less than {1/4" | 6 mm} would be left {where} — this blank is
  * too thick for a {center} center`. No sentence here ends in a full stop — the flag adds one, the
  * list row shows the line bare.
  */

@@ -34,6 +34,7 @@ import {
   type FitSettings,
   type TipStyle,
 } from "./blank";
+import { FOIL_THICKNESS_RANGE_IN } from "./foil";
 import { MEASURE_STATION_MM } from "./outline";
 import { pchipMinimum, preparePchip, type PreparedPchip } from "./pchip";
 import { rockerStationPositions } from "./rocker";
@@ -54,12 +55,15 @@ export const FIT_SAMPLE_STEP_MM = inchesToMm(0.25);
 export const TIP_EASE_WINDOW_MM = MEASURE_STATION_MM;
 
 /**
- * The least foam a board may be anywhere, tips included (Phase 12 D-18): a board that would be
- * thinner than 1/8" somewhere is not a board, so it does not fit — and the reason is that the blank
- * is too thick for this centre, not too thin. Only a very thin centre in a thick blank gets here
- * (research: centres of 1 1/2" or less); the tip sliders never go below it.
+ * The least foam a board may be anywhere, tips included (Phase 12 D-18, raised to 1/4" by the
+ * founder on 2026-09-28, Phase 13 item 4): a board that would be thinner than this somewhere does
+ * not fit — and the reason is that the blank is too thick for this centre, not too thin. Every
+ * thickness control (ROCKER's Center Thickness, tips and 12" stations, and the Fit & Tip Defaults
+ * dialog's tip boxes) starts at this same figure — `FOIL_THICKNESS_RANGE_IN.min` — so only an older
+ * saved board or stored default can hold a thinner tip, and such a board opens flagged, never
+ * quietly raised.
  */
-export const MIN_FOIL_THICKNESS_MM = inchesToMm(1 / 8);
+export const MIN_FOIL_THICKNESS_MM = inchesToMm(FOIL_THICKNESS_RANGE_IN.min);
 
 /** A board fits when its worst shortfall is no more than this — float noise, not foam. */
 export const FIT_EPSILON_MM = 1e-6;
