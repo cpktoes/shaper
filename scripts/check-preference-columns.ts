@@ -27,11 +27,18 @@
  * code only — never the driver's message, which can name the database host — unless `--verbose` is
  * added to the command, which appends that message for debugging.
  *
+ * `--thin-tips` (Phase 13 item 4, read-only, one more select, counts only): one more line —
+ *   account tip defaults under {floor}: nose n, tail m (of r accounts with settings)
+ * {floor} is the fit check's own floor (`MIN_FOIL_THICKNESS_MM`, formatted); r is every row in
+ * `user_preferences`; n and m count `nose_tip_thickness_mm` / `tail_tip_thickness_mm` under it,
+ * with a bound `sql` parameter, never a string-built limit. Never changes the exit code.
+ *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
  *
  *   development, from the main checkout (reads .env.local — the Neon development branch):
  *     npx --no-install tsx scripts/check-preference-columns.ts
+ *     npx --no-install tsx scripts/check-preference-columns.ts --thin-tips
  *   development, from a worktree (names the main checkout's env file):
  *     CHECK_ENV_FILE=/Users/kontoes/Code/shaper/.env.local npx --no-install tsx scripts/check-preference-columns.ts
  *   production — quick task 260927-qrn, run once, in the founder's terminal, from the main checkout,
@@ -69,13 +76,14 @@ const RETIRED_COLUMN = "extra_center_thickness_mm";
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   for (const arg of args) {
-    if (arg !== "--before-drop" && arg !== "--verbose") {
-      console.error(`Unknown option "${arg}": the only options are --before-drop and --verbose.`);
+    if (arg !== "--before-drop" && arg !== "--thin-tips" && arg !== "--verbose") {
+      console.error(`Unknown option "${arg}": the only options are --before-drop, --thin-tips and --verbose.`);
       process.exitCode = 1;
       return;
     }
   }
   const expectPresent = args.includes("--before-drop");
+  const thinTipsFlag = args.includes("--thin-tips");
 
   const envFile = path.resolve(process.cwd(), process.env.CHECK_ENV_FILE ?? ".env.local");
   if (existsSync(envFile)) {
@@ -94,6 +102,8 @@ async function main(): Promise<void> {
   // Relative imports on purpose: the script always uses the lib/ files that sit next to it.
   const { sql } = await import("drizzle-orm");
   const { db } = await import("../lib/db/client");
+  const { FIT_EPSILON_MM, MIN_FOIL_THICKNESS_MM } = await import("../lib/geometry/blank-fit");
+  const { formatMark } = await import("../lib/geometry/measure-display");
 
   // Read-only: two selects, nothing else.
   const columnResult = await db.execute(sql`
@@ -121,6 +131,26 @@ async function main(): Promise<void> {
       `${RETIRED_COLUMN} ${actualWord} (${expectedWord})`,
   );
   console.log(`drizzle migrations recorded: ${recorded}`);
+
+  if (thinTipsFlag) {
+    // Read-only: one more select, a bound parameter for the floor, never a string-built limit.
+    const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
+    const thinResult = await db.execute(sql`
+      select
+        count(*) as total,
+        count(*) filter (where nose_tip_thickness_mm < ${floor}) as nose,
+        count(*) filter (where tail_tip_thickness_mm < ${floor}) as tail
+      from user_preferences
+    `);
+    const thinRow = thinResult.rows[0] as { total: unknown; nose: unknown; tail: unknown } | undefined;
+    const total = String(thinRow?.total ?? 0);
+    const nose = String(thinRow?.nose ?? 0);
+    const tail = String(thinRow?.tail ?? 0);
+    console.log(
+      `account tip defaults under ${formatMark(MIN_FOIL_THICKNESS_MM, "imperial")}: nose ${nose}, tail ${tail} ` +
+        `(of ${total} accounts with settings)`,
+    );
+  }
 
   if (present !== NEW_COLUMNS.length || retiredPresent !== expectPresent) {
     process.exitCode = 1;

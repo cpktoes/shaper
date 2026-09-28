@@ -28,16 +28,23 @@
  * the database host — unless `--verbose` is added to the command, which appends that message for
  * debugging.
  *
+ * `--thin-tips` (Phase 13 item 4, read-only, counts only): one more line after the usual three —
+ *   saved boards with a thickness under {floor}: k of N (a tip under it: t)
+ * {floor} is the fit check's own floor (`MIN_FOIL_THICKNESS_MM`, formatted). N is every board that
+ * opens; k counts a board any of whose five stored foil values sits under the floor; t counts, of
+ * those, the ones whose nose or tail tip does. Never changes the exit code.
+ *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
  *
  *   development, from the main checkout (reads .env.local — the Neon development branch):
  *     npx --no-install tsx scripts/check-saved-boards.ts
+ *     npx --no-install tsx scripts/check-saved-boards.ts --thin-tips
  *   development, from a worktree (names the main checkout's env file):
  *     CHECK_ENV_FILE=/Users/kontoes/Code/shaper/.env.local npx --no-install tsx scripts/check-saved-boards.ts
  *   production — the founder only (plan 12-10). The production env is pulled to a temporary file and
  *   deleted on exit:
- *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts'
+ *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --thin-tips'
  *
  * Which env file is read is controlled by `CHECK_ENV_FILE` (default `.env.local`, resolved from the
  * current directory), exactly as scripts/check-preference-columns.ts: when the file exists, any
@@ -71,7 +78,8 @@ async function main(): Promise<void> {
   const { designSnapshotSchema, hasPhase11Blank, parseSnapshot } = await import("../lib/models/design-snapshot");
   const { summarizeDesign } = await import("../lib/geometry/design");
   const { buildBoardProfile } = await import("../lib/geometry/board-profile");
-  const { clampPlacement, nearestFittingPlacement, prepareBlank } = await import("../lib/geometry/blank-fit");
+  const { clampPlacement, FIT_EPSILON_MM, MIN_FOIL_THICKNESS_MM, nearestFittingPlacement, prepareBlank } =
+    await import("../lib/geometry/blank-fit");
   const { phase11TwelveInch } = await import("../lib/geometry/phase11-foil");
   const { buildOutline, sampleOutline } = await import("../lib/geometry/outline");
   const { formatMark } = await import("../lib/geometry/measure-display");
@@ -84,12 +92,16 @@ async function main(): Promise<void> {
 
   const STATION_KEYS: readonly FoilStationKey[] = ["tailTip", "tail12", "center", "nose12", "noseTip"];
   const fitSettings = toFitSettings(DEFAULT_FIT_DEFAULTS);
+  const thinTipsFlag = process.argv.includes("--thin-tips");
+  const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
 
   // Read-only: one select of every saved board's id and snapshot, nothing else.
   const rows = await db.select({ id: models.id, snapshot: models.snapshot }).from(models);
 
   const versions = new Map<number, number>();
   let opened = 0;
+  let thinBoards = 0;
+  let thinTipBoards = 0;
   const notOpened: string[] = [];
   let phase11Boards = 0;
   let kept = 0;
@@ -113,6 +125,12 @@ async function main(): Promise<void> {
       notOpened.push(row.id);
       if (phase11) moved.push(row.id);
       continue;
+    }
+
+    // --thin-tips (Phase 13 item 4): counts only, never affects the exit code.
+    if (STATION_KEYS.some((key) => parsed.foil[key] < floor)) {
+      thinBoards++;
+      if (parsed.foil.noseTip < floor || parsed.foil.tailTip < floor) thinTipBoards++;
     }
     if (!phase11) continue;
 
@@ -199,6 +217,12 @@ async function main(): Promise<void> {
   console.log(`saved boards: ${rows.length} (${byVersion}); open: ${opened} of ${rows.length}`);
   console.log(`Phase 11 boards with a blank: ${phase11Boards}; five station thicknesses kept: ${kept} of ${phase11Boards}`);
   console.log(`carried boards that no longer fit where they sit: ${noLongerFits} of ${phase11Boards}`);
+  if (thinTipsFlag) {
+    console.log(
+      `saved boards with a thickness under ${formatMark(MIN_FOIL_THICKNESS_MM, "imperial")}: ${thinBoards} of ${opened} ` +
+        `(a tip under it: ${thinTipBoards})`,
+    );
+  }
 
   if (notOpened.length > 0) console.log(`boards that do not open: ${notOpened.join(", ")}`);
   if (moved.length > 0) console.log(`Phase 11 boards whose five thicknesses moved: ${moved.join(", ")}`);

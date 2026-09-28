@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_BLANK_CUT } from "./geometry/blank";
-import { DEFAULT_FOIL_SPEC } from "./geometry/foil";
+import { DEFAULT_FOIL_SPEC, FOIL_THICKNESS_RANGE_IN } from "./geometry/foil";
 import { inchesToMm, mm } from "./geometry/units";
 import {
   DEFAULT_FIT_DEFAULTS,
   EMPTY_FIT_DEFAULTS_PREFERENCE,
+  FIT_DEFAULTS_ACCEPTED_RANGE_IN,
   FIT_DEFAULTS_COOKIE_MAX_AGE_SECONDS,
   FIT_DEFAULTS_COOKIE_NAME,
   FIT_DEFAULTS_KEYS,
@@ -12,6 +13,7 @@ import {
   FIT_DEFAULTS_RANGE_IN,
   FIT_DEFAULTS_STORAGE_KEY,
   FIT_DEFAULTS_COLUMNS,
+  LEGACY_TIP_THICKNESS_MIN_IN,
   decideFitDefaultsHandoff,
   fitDefaultsCookieString,
   fitDefaultsInsertColumns,
@@ -93,10 +95,64 @@ describe("fit-defaults preference boundary", () => {
     }
   });
 
+  describe("offered vs accepted ranges (Phase 13 item 4)", () => {
+    it("the dialog now offers each tip from 1/4\", the same figure the fit check floors on", () => {
+      expect(FIT_DEFAULTS_RANGE_IN.noseTipThickness).toEqual({ min: 1 / 4, max: 3 / 2, step: 1 / 16 });
+      expect(FIT_DEFAULTS_RANGE_IN.tailTipThickness).toEqual({ min: 1 / 4, max: 3 / 2, step: 1 / 16 });
+      expect(FIT_DEFAULTS_RANGE_IN.noseTipThickness.min).toBe(FOIL_THICKNESS_RANGE_IN.min);
+      expect(FIT_DEFAULTS_RANGE_IN.tailTipThickness.min).toBe(FOIL_THICKNESS_RANGE_IN.min);
+    });
+
+    it("a stored value may still hold a tip down to 1/8\" — every other key's accepted range is the offered one", () => {
+      expect(LEGACY_TIP_THICKNESS_MIN_IN).toBe(1 / 8);
+      expect(FIT_DEFAULTS_ACCEPTED_RANGE_IN.noseTipThickness.min).toBe(LEGACY_TIP_THICKNESS_MIN_IN);
+      expect(FIT_DEFAULTS_ACCEPTED_RANGE_IN.tailTipThickness.min).toBe(LEGACY_TIP_THICKNESS_MIN_IN);
+      for (const key of FIT_DEFAULTS_MM_KEYS) {
+        expect(FIT_DEFAULTS_ACCEPTED_RANGE_IN[key].max).toBe(FIT_DEFAULTS_RANGE_IN[key].max);
+        expect(FIT_DEFAULTS_ACCEPTED_RANGE_IN[key].step).toBe(FIT_DEFAULTS_RANGE_IN[key].step);
+        expect(FIT_DEFAULTS_ACCEPTED_RANGE_IN[key].min).toBeLessThanOrEqual(FIT_DEFAULTS_RANGE_IN[key].min);
+      }
+      for (const key of ["extraLength", "planerMaxDepth", "widthMargin", "deckSkin"] as const) {
+        expect(FIT_DEFAULTS_ACCEPTED_RANGE_IN[key]).toEqual(FIT_DEFAULTS_RANGE_IN[key]);
+      }
+    });
+
+    it("every default sits inside what the dialog offers, not just what a stored value may hold", () => {
+      for (const key of FIT_DEFAULTS_MM_KEYS) {
+        const { min, max } = FIT_DEFAULTS_RANGE_IN[key];
+        expect(DEFAULT_FIT_DEFAULTS[key]).toBeGreaterThanOrEqual(inchesToMm(min) - 1e-6);
+        expect(DEFAULT_FIT_DEFAULTS[key]).toBeLessThanOrEqual(inchesToMm(max) + 1e-6);
+      }
+    });
+
+    it("a stored 3/16\" or 1/8\" tip default reads back exactly, not null and not raised, through every reader", () => {
+      for (const inches of [3 / 16, 1 / 8]) {
+        const value = inchesToMm(inches);
+        expect(parseFitDefaultValue("noseTipThickness", value)).toBe(value);
+        expect(parseFitDefaultValue("tailTipThickness", value)).toBe(value);
+
+        const pref = parseFitDefaultsPreference({ noseTipThickness: value, tailTipThickness: value });
+        expect(pref.noseTipThickness).toBe(value);
+        expect(pref.tailTipThickness).toBe(value);
+        expect(resolveFitDefaults(pref).noseTipThickness).toBe(value);
+        expect(resolveFitDefaults(pref).tailTipThickness).toBe(value);
+
+        const cookieValue = parseFitDefaultsCookieValue(
+          encodeURIComponent(JSON.stringify({ noseTipThickness: value, tailTipThickness: value })),
+        );
+        expect(cookieValue.noseTipThickness).toBe(value);
+        expect(cookieValue.tailTipThickness).toBe(value);
+
+        const patch = parseFitDefaultsPatch({ noseTipThickness: value, tailTipThickness: value });
+        expect(patch).toEqual({ noseTipThickness: value, tailTipThickness: value });
+      }
+    });
+  });
+
   describe("parseFitDefaultValue", () => {
     it("keeps a finite millimetre value inside the field's bounds, bounds inclusive", () => {
       for (const key of FIT_DEFAULTS_MM_KEYS) {
-        const { min, max } = FIT_DEFAULTS_RANGE_IN[key];
+        const { min, max } = FIT_DEFAULTS_ACCEPTED_RANGE_IN[key];
         expect(parseFitDefaultValue(key, inchesToMm(min))).toBe(inchesToMm(min));
         expect(parseFitDefaultValue(key, inchesToMm(max))).toBe(inchesToMm(max));
         const middle = inchesToMm((min + max) / 2);
@@ -115,7 +171,7 @@ describe("fit-defaults preference boundary", () => {
     it("returns null for negative values and values above the maximum", () => {
       for (const key of FIT_DEFAULTS_MM_KEYS) {
         expect(parseFitDefaultValue(key, mm(-1))).toBeNull();
-        expect(parseFitDefaultValue(key, inchesToMm(FIT_DEFAULTS_RANGE_IN[key].max + 1 / 16))).toBeNull();
+        expect(parseFitDefaultValue(key, inchesToMm(FIT_DEFAULTS_ACCEPTED_RANGE_IN[key].max + 1 / 16))).toBeNull();
       }
     });
 

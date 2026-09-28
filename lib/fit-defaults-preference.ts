@@ -19,6 +19,14 @@
  * written anywhere. The retired Extra Center Thickness key is simply ignored in a stored value (an
  * old cookie or localStorage entry) and rejects a patch outright (T-12-09).
  *
+ * Two ranges, offered vs accepted (Phase 13 item 4, FD-2/FD-3): `FIT_DEFAULTS_RANGE_IN` is what the
+ * dialog's typed fields OFFER — each tip from 1/4", the least foam a board may be anywhere
+ * (`FOIL_THICKNESS_RANGE_IN.min`, raised from 1/8" on 2026-09-28). `FIT_DEFAULTS_ACCEPTED_RANGE_IN`
+ * is what a stored or submitted value may still HOLD — the same range, except the two tips still
+ * accept down to 1/8", so a default saved before today, or promoted from the browser at sign-in,
+ * reads back exactly rather than being silently nulled or raised. `parseFitDefaultValue` reads the
+ * accepted range; only the dialog reads the offered one.
+ *
  * The sign-in handoff is decided PER FIELD through the generic `decidePreferenceHandoff`
  * (11-RESEARCH.md assumption A7), so a tip chosen on one device and a margin chosen on another
  * both survive — neither device's pick overwrites the other's. Every later save carries only the
@@ -29,7 +37,7 @@
  */
 
 import { DEFAULT_BLANK_CUT, type FitSettings, type TipStyle } from "./geometry/blank";
-import { DEFAULT_FOIL_SPEC } from "./geometry/foil";
+import { DEFAULT_FOIL_SPEC, FOIL_THICKNESS_RANGE_IN } from "./geometry/foil";
 import { inchesToMm, mm, type Mm } from "./geometry/units";
 import { decidePreferenceHandoff } from "./preference-handoff";
 
@@ -85,19 +93,45 @@ export const DEFAULT_FIT_DEFAULTS: FitDefaults = {
 };
 
 /**
- * Each number setting's sane range, in inches: Extra Length 0"–12", Planer Max Depth 1/16"–1/4"
- * (never zero — it divides the passes), Width Margin 0"–3", Deck Skin 1/16"–1/2", each tip
- * 1/8"–1 1/2", all in 1/16" steps (11-UI-SPEC §12, 12-UI-SPEC §1 and §6). Inclusive at both ends.
- * The dialog's typed fields — and later the ROCKER sidebar's Deck Skin — take their bounds from
- * here; the parser compares in millimetres after converting these through `inchesToMm`.
+ * Each number setting's sane range, in inches — WHAT THE DIALOG'S TYPED FIELDS OFFER, and (the
+ * ROCKER sidebar's Deck Skin slider aside) the only place a shaper can still pick a tip below this:
+ * Extra Length 0"–12", Planer Max Depth 1/16"–1/4" (never zero — it divides the passes), Width
+ * Margin 0"–3", Deck Skin 1/16"–1/2", each tip 1/4"–1 1/2" — the least a board may be anywhere
+ * (Phase 13 item 4; this pair was 1/8" until 2026-09-28), all in 1/16" steps (11-UI-SPEC §12,
+ * 12-UI-SPEC §1 and §6). Inclusive at both ends. A STORED value is read through
+ * `FIT_DEFAULTS_ACCEPTED_RANGE_IN`, not this one.
  */
 export const FIT_DEFAULTS_RANGE_IN = {
   extraLength: { min: 0, max: 12, step: 0.0625 },
   planerMaxDepth: { min: 0.0625, max: 0.25, step: 0.0625 },
   widthMargin: { min: 0, max: 3, step: 0.0625 },
   deckSkin: { min: 0.0625, max: 0.5, step: 0.0625 },
-  noseTipThickness: { min: 0.125, max: 1.5, step: 0.0625 },
-  tailTipThickness: { min: 0.125, max: 1.5, step: 0.0625 },
+  noseTipThickness: { min: FOIL_THICKNESS_RANGE_IN.min, max: 1.5, step: 0.0625 },
+  tailTipThickness: { min: FOIL_THICKNESS_RANGE_IN.min, max: 1.5, step: 0.0625 },
+} as const satisfies Record<FitDefaultsMmKey, { min: number; max: number; step: number }>;
+
+/**
+ * The lowest tip default a shaper could ever have saved before the floor rose on 2026-09-28 (Phase
+ * 13 item 4). A default saved back then still reads back exactly as saved — never nulled, never
+ * quietly raised — and a board started from it opens flagged by the fit check rather than silently
+ * changed (the founder, 2026-09-28: "any saved board or account default that already has a thinner
+ * tip will open flagged, not quietly changed").
+ */
+export const LEGACY_TIP_THICKNESS_MIN_IN = 0.125;
+
+/**
+ * What a STORED or SUBMITTED value may hold — every setting's offered range (`FIT_DEFAULTS_RANGE_IN`),
+ * except the two tips, which still accept down to `LEGACY_TIP_THICKNESS_MIN_IN` (1/8"). Every
+ * reader goes through `parseFitDefaultValue`, so the account row, the cookie, localStorage and the
+ * save action all accept a value in this wider range — the save action on purpose, because a
+ * browser's older pick is promoted to the account at sign-in in one all-or-nothing patch, and
+ * refusing it would drop every other field in that promotion too. The dialog itself can no longer
+ * produce a value outside the offered range.
+ */
+export const FIT_DEFAULTS_ACCEPTED_RANGE_IN = {
+  ...FIT_DEFAULTS_RANGE_IN,
+  noseTipThickness: { ...FIT_DEFAULTS_RANGE_IN.noseTipThickness, min: LEGACY_TIP_THICKNESS_MIN_IN },
+  tailTipThickness: { ...FIT_DEFAULTS_RANGE_IN.tailTipThickness, min: LEGACY_TIP_THICKNESS_MIN_IN },
 } as const satisfies Record<FitDefaultsMmKey, { min: number; max: number; step: number }>;
 
 const BOUND_TOLERANCE_MM = 1e-6;
@@ -121,7 +155,7 @@ export const EMPTY_FIT_DEFAULTS_PREFERENCE: FitDefaultsPreference = {
  */
 export function parseFitDefaultValue(key: FitDefaultsMmKey, value: unknown): Mm | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  const { min, max } = FIT_DEFAULTS_RANGE_IN[key];
+  const { min, max } = FIT_DEFAULTS_ACCEPTED_RANGE_IN[key];
   // A millionth of a millimetre of slack at each end, so float noise from an inch↔mm round trip
   // on a value sitting exactly on a bound is not mistaken for an out-of-range value.
   const minMm = inchesToMm(min);

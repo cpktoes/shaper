@@ -256,6 +256,29 @@ describe("design-snapshot", () => {
     }
   });
 
+  describe("a thin tip saved before the 1/4\" floor reopens as saved (Phase 13 item 4)", () => {
+    it("a hand-set board with a 3/16\" nose tip and a 1/8\" tail tip reopens with exactly those two tips", () => {
+      const fields: DesignSnapshotFields = {
+        ...FIXTURES[0],
+        foil: { ...DEFAULT_FOIL_SPEC, noseTip: inchesToMm(3 / 16), tailTip: inchesToMm(1 / 8) },
+      };
+      const result = roundTrip(fields);
+      expect(result.foil.noseTip).toBe(inchesToMm(3 / 16));
+      expect(result.foil.tailTip).toBe(inchesToMm(1 / 8));
+    });
+
+    it("the same board WITH a blank reopens with exactly those two tips too", () => {
+      const fields: DesignSnapshotFields = {
+        ...FIXTURES[0],
+        foil: { ...DEFAULT_FOIL_SPEC, noseTip: inchesToMm(3 / 16), tailTip: inchesToMm(1 / 8) },
+        blank: boardBlank(),
+      };
+      const result = roundTrip(fields);
+      expect(result.foil.noseTip).toBe(inchesToMm(3 / 16));
+      expect(result.foil.tailTip).toBe(inchesToMm(1 / 8));
+    });
+  });
+
   describe("older versions reopen as they were saved, now as five stations (D-14)", () => {
     it("version 1 (no rocker, no foil, no blank): the default curve is read at the board's own length", () => {
       const versionOneDesign = {
