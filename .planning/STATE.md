@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **3 of 13 items done.** Item 1, the security patch (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0). Item 2, housekeeping (quick 260927-pij: only `main` here and on GitHub, lint 0 warnings, the scanner down to the real todos). Item 3, the retired Extra Center Thickness column (quick 260927-qrn: migration 0008 on both databases, production proven present/8 → absent/9, the founder's signed-in settings save confirmed on the live site). Of the founder's item 2 steps, `.env.example` is committed; the client-secret file still sits in the project folder. **Item 4 — the five Phase 12 questions, the founder's decisions — is next.**
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **3 of 13 items done.** Item 1, the security patch (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0). Item 2, housekeeping (quick 260927-pij: only `main` here and on GitHub, lint 0 warnings, the scanner down to the real todos). Item 3, the retired Extra Center Thickness column (quick 260927-qrn: migration 0008 on both databases, production proven present/8 → absent/9, the founder's signed-in settings save confirmed on the live site). Of the founder's item 2 steps, `.env.example` is committed; the client-secret file still sits in the project folder. **Item 4: the founder answered all five on 2026-09-28**, and its code follows as quick task 4a (the 1/4" floor, the tip minimum and the reworded reason line), then 4b (Deck Skin 0–50 mm), each reviewed before its push.
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
@@ -88,6 +88,8 @@ Last activity: 2026-09-27 - Phase 13 item 3 done: migration 0008 applied to prod
 ## Accumulated Context
 
 ### Decisions
+
+- [Phase 13 item 4, 2026-09-28]: The founder answered Phase 12's five questions. Q1 (the thin spot near a tip): raise the floor from 1/8" to 1/4" anywhere on the board, and the lowest tip setting to 1/4" ("no boards should have a 1/8" tip anyway"), and the real fix, curve rules that never hump, is its own phase after Oct 10 (todo 2026-09-28, major). Q2 (Phase 11 boards opening greyed until Reset Fine-Tune): accept. Q3 (the floor reason line): correct it with a proper rewording by cause. Q4 (saved Deck Skin 0–50 mm vs the slider's 1/16"–1/2"): open the slider up to the full 0–50 mm range ("some shapers not wanting to add a planer max depth"). Q5 (a tab left open across the Phase 12 deploy): accept. The 1/4" floor refuses 15 of the 1,611 stress-test boards (6 before); the milder humps stay allowed until the curve-flow phase.
 
 - [Phase 13]: The retired `extra_center_thickness_mm` column is gone from both databases (migration 0008, quick 260927-qrn, 2026-09-27): removed from the code and deployed first, then dropped on production in the founder's terminal, proven present/8 → absent/9 by `scripts/check-preference-columns.ts --before-drop` and its default run (closes D-19)
 - [Phase 12]: A board is cut from its blank the way a planer works — the deck skin first (a saved default and a per-board value), the bottom planed to centre thickness with the foam shown as planer passes against Planer Max Depth, the tips thinned last inside 12" with the deck or the bottom pinned (D-01–D-06, D-10)
@@ -175,7 +177,7 @@ Recent decisions affecting current work:
 
 - [Phase 2 → Phase 13 item 2, founder step] .env.example still needs to be created by hand (repo root, three lines: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=, CLERK_SECRET_KEY=, DATABASE_URL=) — the execution sandbox hard-blocks any tool write matching a .env* path, including this values-empty example file. Since quick 260927-pij (2026-09-27) it can be committed: a later `.env*` rule in the GSD block of .gitignore had been silently re-ignoring it
 - [Phase 2 → Phase 13 item 2, founder step] client_secret_*.json (Google OAuth download) still sits in the repo root — gitignored so it can't be committed, but should be moved out of the working tree entirely (into a password manager)
-- [Phase 12] Five verifier questions await the founder's decision (12-UAT.md, "Founder Questions"): the 1/8" floor at thin tips (D-18), the D-14 greying of carried-over boards until the fine-tune is reset, the IN-02 reason wording, the loose 0–50 mm saved Deck Skin bound (IN-03), and the stale-tab Restore Defaults edge (IN-04) — decisions, not defects (now Phase 13 item 4)
+- [Phase 12 → Phase 13 item 4] The five verifier questions were answered on 2026-09-28 (see Decisions); their code lands as quick tasks 4a (the 1/4" floor, the tip minimum and the rewording) and 4b (Deck Skin 0–50 mm)
 - [Phase 13] Deadline: the founder shows the app to many shapers on Saturday 2026-10-10; freeze on Wednesday 2026-10-07 evening, after which only rehearsal fixes land
 
 ### Quick Tasks Completed
