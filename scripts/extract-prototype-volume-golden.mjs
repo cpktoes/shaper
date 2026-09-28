@@ -94,7 +94,6 @@ const HELPER_METHOD_MARKERS = {
 const host = {};
 for (const [name, marker] of Object.entries(HELPER_METHOD_MARKERS)) {
   const { params, body } = extractMethod(marker);
-  // eslint-disable-next-line no-new-func
   const fn = new Function(params, body);
   host[name] = function (...args) {
     return fn.call(this, ...args);
@@ -102,7 +101,6 @@ for (const [name, marker] of Object.entries(HELPER_METHOD_MARKERS)) {
 }
 
 const { params: renderValsParams, body: renderValsBody } = extractMethod("renderVals() {");
-// eslint-disable-next-line no-new-func
 const renderValsFn = new Function(renderValsParams, renderValsBody);
 host.renderVals = function () {
   return renderValsFn.call(this);

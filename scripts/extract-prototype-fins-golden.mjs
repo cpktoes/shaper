@@ -94,7 +94,6 @@ if (constSemiIdx === -1) {
   throw new Error("Failed to find the terminating semicolon for the SCALE/ORIGIN_X/... const line.");
 }
 const constStatement = html.slice(constIdx, constSemiIdx + 1);
-// eslint-disable-next-line no-new-func
 const constFn = new Function(`${constStatement} return { SCALE, ORIGIN_X, TAIL_Y, VIEW_IN, VIEW_TOP_MARGIN };`);
 const { SCALE, ORIGIN_X, TAIL_Y, VIEW_IN, VIEW_TOP_MARGIN } = constFn();
 
@@ -138,7 +137,6 @@ const HELPER_METHOD_MARKERS = {
 const host = {};
 for (const [name, marker] of Object.entries(HELPER_METHOD_MARKERS)) {
   const { params, body } = extractMethod(marker);
-  // eslint-disable-next-line no-new-func
   const fn = new Function(`${CONST_PARAMS}, ${params}`, body);
   host[name] = function (...args) {
     return fn.call(this, ...CONST_ARGS, ...args);
@@ -146,7 +144,6 @@ for (const [name, marker] of Object.entries(HELPER_METHOD_MARKERS)) {
 }
 
 const { body: renderValsBody } = extractMethod("renderVals() {");
-// eslint-disable-next-line no-new-func
 const renderValsFn = new Function(CONST_PARAMS, renderValsBody);
 host.renderVals = function () {
   return renderValsFn.call(this, ...CONST_ARGS);
@@ -161,7 +158,6 @@ host.rootRef = null;
 // stub, so the harness never retypes a single table cell.
 const toeTablesSrc = readFileSync(toeTablesPath, "utf8");
 const windowStub = {};
-// eslint-disable-next-line no-new-func
 new Function("window", toeTablesSrc)(windowStub);
 globalThis.window = windowStub;
 

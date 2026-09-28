@@ -288,6 +288,7 @@ export function RailPlanSideFigure({
         >
           <div className="absolute inset-0 flex" style={{ gap: `${(FIGURE_GAP / FIGURE_CONTENT_WIDTH) * 100}%` }}>
             <div className="relative h-full flex-none" style={{ width: widthPercent(FIGURE_COLUMNS.plan) }}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- a plain img on purpose: it must be loaded when the page prints, and next/image lazy-loads it through an image optimiser this app does not use */}
               <img
                 src="/rail-bands-plan-bg.png"
                 alt="Plan and side view of an example board showing where the rail sections sit"

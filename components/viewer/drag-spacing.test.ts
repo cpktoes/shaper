@@ -180,7 +180,6 @@ describe("outline: phone hit-zone spacing at the tightest realistic board", () =
       const fit = fitScale(box, frame);
       const perMm = pxPerMm(scale, fit);
       const closestPx = closest.mm * perMm;
-      // eslint-disable-next-line no-console
       console.log(
         `[outline/${device.name}] render scale ${perMm.toFixed(4)}px/mm ` +
           `(frame ${frame.width.toFixed(1)}x${frame.height.toFixed(1)} user units, ` +

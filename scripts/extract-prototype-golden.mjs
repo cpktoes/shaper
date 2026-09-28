@@ -52,7 +52,6 @@ const body = html.slice(bodyStart, bodyEnd);
 
 // buildGeometry(s) references no component state and no outer scope — it's a pure function
 // of its single `s` parameter — so it can be extracted and evaluated standalone.
-// eslint-disable-next-line no-new-func
 const buildGeometry = new Function("s", body);
 
 function xAtY(pts, yTarget) {

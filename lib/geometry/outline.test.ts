@@ -4,7 +4,6 @@ import { buildOutline, sampleOutline } from "./outline";
 import { degrees, inchesToMm, mmToInches } from "./units";
 import golden from "./__fixtures__/prototype-outline-golden.json";
 
-const TOLERANCE_IN = 1e-6;
 const SQ_IN_PER_SQ_MM = 1 / (25.4 * 25.4);
 
 interface GoldenState {
