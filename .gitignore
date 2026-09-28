@@ -45,6 +45,11 @@ next-env.d.ts
 # GSD runtime scratch (dispatch-isolation sentinel, etc.)
 .gsd/
 .env*
+!.env.example
+
+# GSD research cache — lookups saved between research runs, rebuilt on demand,
+# not part of the project's history
+.planning/research/.cache/
 
 # playwright
 /test-results/
