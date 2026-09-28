@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 opened 2026-09-27 with its 13-item work list (13-SPEC.md); item 1, the security patch, next
-last_updated: "2026-09-28T00:42:54.770Z"
+stopped_at: Phase 13 item 1 (security patch) merged and verified on main; awaiting the founder's go to push and deploy, then item 2
+last_updated: "2026-09-28T01:13:47.064Z"
 last_activity: 2026-09-27
-last_activity_desc: Phase 13 (Ready for the Shapers) opened with its 13-item Oct 10 work list
+last_activity_desc: "Completed quick task 260927-onx: Phase 13 item 1, the security patch — merged and verified locally, awaiting the founder's go to deploy"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** 0 of 13 items done; **item 1, the security patch, is next** (Next.js 16.3.1 → 16.3.6 plus `npm audit fix`, full test gates, deploy on the founder's go), then item 2, housekeeping. The work list, the owner of each item, what "done" means, and the Progress Log all live in [13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; the founder's decisions and walks are recorded in the SPEC's Progress Log. Going public with tiered subscriptions (guide M5) is the next milestone, after the demo.
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** 0 of 13 items done. **Item 1, the security patch, is merged on `main` and verified locally** (quick 260927-onx: Next.js 16.3.6, live-site audit 6 → 0, every suite green) — **it waits on the founder's go to push and deploy**, after which it is ticked; then item 2, housekeeping. The work list, the owner of each item, what "done" means, and the Progress Log all live in [13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; the founder's decisions and walks are recorded in the SPEC's Progress Log. Going public with tiered subscriptions (guide M5) is the next milestone, after the demo.
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-27 - Phase 13 (Ready for the Shapers) opened with its 13-item Oct 10 work list
+Last activity: 2026-09-27 - Completed quick task 260927-onx: Phase 13 item 1, the security patch (Next.js 16.3.6, audit 6 → 0) — merged and verified locally, awaiting the founder's go to deploy
 
 ## Performance Metrics
 
@@ -299,6 +299,7 @@ Recent decisions affecting current work:
 | 260926-wmf | Blank Makers tick boxes in the gear menu and the phone menu (US Blanks, Arctic Foam, Marko Foam; all on by default; the last one locked): an unticked maker leaves the ROCKER blank list and the closest-fit offer with a one-line note, the picked blank stays; remembered on the account (new nullable column hidden_blank_makers, migration 0007 on development and production) or in the browser signed out; both menus now scroll within the screen | 2026-09-27 | 00aad20 | [260926-wmf-blank-maker-tick-boxes-in-settings-all-o](./quick/260926-wmf-blank-maker-tick-boxes-in-settings-all-o/) |
 | 260927-0fq | The order form's Blank line also says where the board centre sits on the blank, in ROCKER's own words ("US Blanks 6'2\"A — centered", "— center 1/4\" toward tail", Metric in mm); the width test now covers the longest possible note (— center 44 13/16\" toward nose) against every catalogue name | 2026-09-27 | 213ad68 | [260927-0fq-order-form-blank-line-also-says-where-th](./quick/260927-0fq-order-form-blank-line-also-says-where-th/) |
 | 260927-ef8 | Typing a bare fraction with a two-digit top number (11/16, 13/16, 15/16, 10/16) into any Imperial field now saves exactly that fraction; it used to gain a whole inch with no error (11/16\" saved as 1 1/16\", 10/16\" as 1\"). A whole number and a fraction still need a space between them (2 11/16), a minus in front of a lone fraction is now read, and the planer-pass test's 0-prefix workaround is gone | 2026-09-27 | 6f003c1 | [260927-ef8-bare-fractions-with-two-digit-numerators](./quick/260927-ef8-bare-fractions-with-two-digit-numerators/) |
+| 260927-onx | Phase 13 item 1, the security patch: the site's framework moves from Next.js 16.3.1 to 16.3.6, closing a critical flaw where a specially made picture sent to its picture-resizing address could run a stranger's code on the server, along with the fixed picture library that comes with it (sharp 0.35.5); four lesser warnings in the shadcn helper tool cleared; nothing else upgraded (Clerk, React, shadcn unchanged; drizzle-kit held at 0.31.10). Live-site packages audit 6 advisories → 0; 3,043 unit and 360 browser tests green, desktop screenshots unchanged. Nothing about a board changes | 2026-09-27 | 5d2d5a1, e9afc79 | [260927-onx-phase-13-item-1-security-patch-upgrade-n](./quick/260927-onx-phase-13-item-1-security-patch-upgrade-n/) |
 
 ## Deferred Items
 

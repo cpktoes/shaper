@@ -135,3 +135,4 @@ The review found the app healthy: the live site at www.shaperassistant.com was s
 | Item | Date | How | Record | Outcome |
 |------|------|-----|--------|---------|
 | — | 2026-09-27 | Phase opened | this file | Work list agreed with the founder; item 1 next |
+| 1 | 2026-09-27 | quick 260927-onx | 5d2d5a1, e9afc79 (merged 2947858) | **Verified locally; deploy waiting on the founder's go.** Next.js 16.3.1 → 16.3.6 and sharp 0.35.5; fast-uri, js-yaml, hono and qs patched; nothing else upgraded (drizzle-kit held at 0.31.10). `npm audit --omit=dev` 6 → 0; 3,043 unit tests, lint (0 errors, the same 11 warnings), the build, 360 browser tests across iPhone, Android and desktop (screenshots unchanged) and the production-build suite all green on `main` after `npm ci`. Four developer-only moderates stay (the esbuild chain under drizzle-kit — see the task SUMMARY) |
