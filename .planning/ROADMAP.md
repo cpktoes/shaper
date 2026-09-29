@@ -179,7 +179,7 @@ Plans:
 **The founder's decisions (this week)**
 
 - [x] 4. The five Phase 12 questions (answered 2026-09-28; the 1/4" floor and cause-named reasons, quick 260928-j00, and Deck Skin none–1", quick 260928-lm6, both live)
-- [x] 5. The four preset blanks (the founder's US Blanks picks: Shortboard 6'3"EA, Fish 5'10"RP, Mid-length 7'4"SP, Longboard 9'3"Y — quick 260928-nu9, live 2026-09-28)
+- [x] 5. The four preset blanks (the founder's US Blanks picks: Shortboard 6'3"RP (changed from 6'3"EA the same day), Fish 5'10"RP, Mid-length 7'4"SP, Longboard 9'3"Y — quick 260928-nu9, live 2026-09-28)
 - [x] 6. The fin-placement tail question (ticked: fins drawn against the real tail; unticked keeps the generic tail — quick 260928-p45, live 2026-09-28)
 
 **What shapers will test first (Wed–Fri, Sep 30–Oct 2)**

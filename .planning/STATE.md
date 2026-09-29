@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 items 1–7 done; item 8 (the order form tips and planer passes) next
-last_updated: "2026-09-29T02:33:03.204Z"
+stopped_at: "Phase 13 items 1–7 done; Shortboard preset moved to 6'3\"RP (fast task 125, awaiting push); item 8 being re-planned for page 2"
+last_updated: "2026-09-29T03:35:33.941Z"
 last_activity: 2026-09-28
 last_activity_desc: "Phase 13 item 7 done: the founder checked the four presets' litres, all within 1/2–1 L"
 progress:
@@ -309,6 +309,7 @@ Recent decisions affecting current work:
 | 260928-lm6 | Phase 13 item 4b (the founder's answer to Phase 12's Q4, capped by them at 1"): the Deck Skin control on ROCKER and in Fit & Tip Defaults now runs from none to 1" (Metric 0–25 mm) — was 1/16"–1/2"; at none the slider reads "Deck Skin — none", nothing comes off the deck, the centre needs only the target plus one bottom pass (so more blanks fit), and every sentence that quoted the skin reads naturally ("room for your 1/8" bottom pass"; an upward Deck fine-tune "raises the deck, but this board takes no Deck Skin"). Every older skin reads back as saved; a hand-made skin over 1" shows its true value with the thumb parked. A new board still starts at 1/8". 3,085 unit and 360 browser tests green | 2026-09-28 | be0d244, ca7b84c | [260928-lm6-phase-13-item-4b-the-deck-skin-control-a](./quick/260928-lm6-phase-13-item-4b-the-deck-skin-control-a/) |
 | 260928-nu9 | Phase 13 item 5, the preset blanks: the founder chose a US Blanks blank for every preset — Shortboard 6'3"EA, Fish 5'10"RP, Mid-length 7'4"SP, Longboard 9'3"Y (its old pick, now the founder's own), all centred — captured with the app's own `buildRockerPresetSource` line and the generator re-run, so no preset is provisional any more (a new test guards it). The cards' litres follow their new blanks: Shortboard 30.2 → 29.1 L, Fish 35.4 → 35.0, Mid-length 51.5 → 50.3, Longboard 75.3 unchanged. Boards already saved keep their own blank. 3,086 unit and 360 browser tests green | 2026-09-28 | 588fc26, 2a108e9 | [260928-nu9-phase-13-item-5-the-founder-s-own-us-bla](./quick/260928-nu9-phase-13-item-5-the-founder-s-own-us-bla/) |
 | 260928-p45 | Phase 13 item 6, the fin tail question (founder, 2026-09-28: keep the generic tail when Import Template is unticked, keep the tick box, build before Oct 10): with the box ticked, fins measured in from the rail are now drawn against the REAL drawn tail — the prototype's own imported branch, ported and pinned by a new golden generated from the prototype (9 outlines, 32 cases) — on FINS, TEMPLATE's fin marks and the order form's bottom view. No written fin number changes (a test proves it); the drawings move up to 3/16" (Fish twins +0.170", Mid-length rear quads −0.190"). Unticked is unchanged. tsx is now a declared developer tool (it runs the fins golden script). 3,320 unit and 360 browser tests green; the old 2026-08-21 todo is closed | 2026-09-28 | 621ec36, 6004bd5, 26a0c54 | [260928-p45-phase-13-item-6-with-import-template-tic](./quick/260928-p45-phase-13-item-6-with-import-template-tic/) |
+| 125 | Shortboard preset blank changes to US Blanks 6'3"RP at the founder's request (was 6'3"EA), centred; card 29.4 L; captured via buildRockerPresetSource, module regenerated | 2026-09-29 | 7579ffb | — |
 
 ## Deferred Items
 
