@@ -5,13 +5,15 @@ import { join } from "node:path";
 import { parseCsv } from "../lib/blanks/csv";
 import { FIT_DEFAULTS_RANGE_IN } from "../lib/fit-defaults-preference";
 import { FOIL_THICKNESS_RANGE_IN } from "../lib/geometry/foil";
-import { formatMarkBare, measureSlider } from "../lib/geometry/measure-display";
-import { planingBox } from "../lib/geometry/planing";
-import { inchesToMm, mm, type Mm, type UnitsSystem } from "../lib/geometry/units";
+import { formatMarkBare, measureSlider, planerPasses } from "../lib/geometry/measure-display";
+import { planingTable } from "../lib/geometry/planing";
+import { inchesToMm, mm, parseImperial, parseMetric, type Mm, type UnitsSystem } from "../lib/geometry/units";
 
 /**
- * Browser proof for the order form's PLANING column (Phase 13 item 8, the founder's 2026-09-29
- * redirect to page 2, beside the rail markings, condensed to make room).
+ * Browser proof for the order form's PLANING table (Phase 13 item 8, the founder's 2026-09-29
+ * redirect to page 2, beside the rail markings, condensed to make room; reworked into a small
+ * Deck/Bottom table by quick 260928-tst, after the founder saw the printed page: "Let's organize
+ * this like the rail dims. Deck and Bottom are headers.").
  *
  * Runs signed out on the seed-CSV catalogue, exactly like `summary-blank.spec.ts`:
  * `playwright.config.ts` sets `SHAPER_BLANKS_SOURCE=seed-csv` for its own dev server, so ROCKER's
@@ -20,16 +22,16 @@ import { inchesToMm, mm, type Mm, type UnitsSystem } from "../lib/geometry/units
  * Nothing here is typed. Every expected value in cases A and B is read off ROCKER's own screen
  * before the Summary is reached — the one exception is the no-blank sentence in case A, which is
  * the module's own fixed wording (`lib/geometry/planing.ts`'s `NO_BLANK_LINE`). Case D's candidate
- * lists are built by calling the app's own `planingBox` and `formatMarkBare` in Node, never by
+ * lists are built by calling the app's own `planingTable` and `formatMarkBare` in Node, never by
  * hand-typing a string.
  *
- * Per `<plan_time_measurements>` in the plan this spec was written from: on a touch print at 733
- * dots and narrower, the rail table was ALREADY taller than its own box before this change — a
- * pre-existing overflow, unchanged by this plan and out of scope for it. Case D therefore asserts
- * that the rail table and the fin grid stay inside their own boxes only at the computer's print;
- * at every touch width it asserts only that nothing NEW broke (rows stay equal height, no cell
- * clips sideways, no sheet spills past its own edge) — the same set of checks the plan's own
- * `<threat_model>` (T-r9h-03) calls for.
+ * Per `<plan_time_measurements>` in the quick 260928-tst plan this spec was reworked from: at 560
+ * dots the rail table and the PLANING table can no longer sit side by side, so the rail labels wrap
+ * there — a change from item 8, where the 20% column was stacked label over value and never wrapped.
+ * Case D therefore logs the 560-dot print (rail row spread and rail content vs box) without
+ * asserting anything about the rail rows there; every other width and the computer print still
+ * assert one-line rail rows, unchanged from item 8. That 560-dot assertion is handed to item 8b,
+ * whose own spec takes it over.
  *
  * Every helper below is COPIED from another spec rather than imported, per this repo's own
  * convention that each spec carries its own: `dismissChrome`, `blankList`, `firstFittingRow`,
@@ -242,13 +244,16 @@ function thickestCatalogueThicknessIn(): number {
   return thickest;
 }
 
-/** The candidate lists page.evaluate below writes into the DOM. */
+/** The candidate lists page.evaluate below writes onto the live sheet — one list per
+ * `[data-planing-cell]` (row-major: Foam Off deck, Foam Off bottom, Passes deck, Passes bottom)
+ * plus the footnote. */
 interface PlaningCandidateLists {
   railCells: string[];
-  skin: string[];
-  offBottom: string[];
-  passes: string[];
-  note: string[];
+  deckFoam: string[];
+  bottomFoam: string[];
+  deckPasses: string[];
+  bottomPasses: string[];
+  footnote: string[];
 }
 
 /** What `measureAndWrite` reads back after writing the widest candidates onto the live sheet. */
@@ -260,16 +265,33 @@ interface PlaningMeasurement {
   railBoxHeight: number;
   finContentHeight: number;
   finBoxHeight: number;
-  planingBoxOverflow: number;
-  planingDescendantOverflow: number[];
+  /** The `[data-planing]` panel's own `scrollHeight - clientHeight`. */
+  planingPanelOverflow: number;
+  /** The `<table data-planing-table>`'s own drawn width minus its parent's `clientWidth`. */
+  tableOverflow: number;
+  /** Every `[data-planing-cell]` and `[data-planing-header]`'s own `scrollWidth - clientWidth`. */
+  planingCellHeaderOverflow: number[];
+  /** Whether each `[data-planing-label]` drew on one line — a `Range` over its own contents. */
+  planingLabelOneLine: boolean[];
   railCaptionBottom: number;
   planingCaptionBottom: number;
-  planingLabelHeights: number[];
+  /** The rail header row's first value header's (`Nose`) text top. */
+  railHeaderTop: number;
+  /** The PLANING table's first column header's (`Deck`) text top. */
+  planingHeaderTop: number;
   sheetOverflow: number[];
   labelColWidth: number;
   valueColWidth: number;
+  /** The PLANING FormBox's own drawn width — the `.order-form-planing-col` element itself. */
   planingColWidth: number;
-  widest: { railCell: string; skin: string; offBottom: string; passes: string; note: string };
+  widest: {
+    railCell: string;
+    deckFoam: string;
+    bottomFoam: string;
+    deckPasses: string;
+    bottomPasses: string;
+    footnote: string;
+  };
 }
 
 /**
@@ -279,9 +301,9 @@ interface PlaningMeasurement {
  * Picks each list's widest string by drawn width — a `Range` over the actual element it is about
  * to be written into (`summary-blank.spec.ts`'s own technique), so the measurement reflects the
  * real print-time font at whatever width the caller has already set the viewport to — writes the
- * widest rail string into every rail value cell and the widest planing strings into the three
- * `[data-planing-value]` elements and the `[data-planing-note]`, then reads back every
- * relationship the plan's `<verify>` and `T-r9h-03` care about.
+ * widest rail string into every rail value cell and the widest planing strings into the four
+ * `[data-planing-cell]` elements (row-major) and the `[data-planing-footnote]`, then reads back
+ * every relationship the plan's `<verify>` and `T-tst-03` care about.
  */
 function measureAndWrite(lists: PlaningCandidateLists): PlaningMeasurement {
   const widestOf = (probe: Element, candidates: string[]): string => {
@@ -334,30 +356,44 @@ function measureAndWrite(lists: PlaningCandidateLists): PlaningMeasurement {
   );
   const valueCells = rows.flatMap((row) => Array.from(row.children).slice(1)) as HTMLElement[];
 
-  const planingValueEls = Array.from(referenceSheet.querySelectorAll<HTMLElement>("[data-planing-value]"));
-  const planingNoteEls = Array.from(referenceSheet.querySelectorAll<HTMLElement>("[data-planing-note]"));
-
   const widestRailCell = valueCells.length > 0 ? widestOf(valueCells[0], lists.railCells) : "";
   for (const cell of valueCells) cell.textContent = widestRailCell;
 
-  const widestSkin = planingValueEls[0] ? widestOf(planingValueEls[0], lists.skin) : "";
-  const widestOffBottom = planingValueEls[1] ? widestOf(planingValueEls[1], lists.offBottom) : "";
-  const widestPasses = planingValueEls[2] ? widestOf(planingValueEls[2], lists.passes) : "";
-  const widestNote = planingNoteEls[0] ? widestOf(planingNoteEls[0], lists.note) : "";
+  const planingCellEls = Array.from(referenceSheet.querySelectorAll<HTMLElement>("[data-planing-cell]"));
+  const planingHeaderEls = Array.from(referenceSheet.querySelectorAll<HTMLElement>("[data-planing-header]"));
+  const planingLabelEls = Array.from(referenceSheet.querySelectorAll<HTMLElement>("[data-planing-label]"));
+  const planingFootnoteEl = referenceSheet.querySelector<HTMLElement>("[data-planing-footnote]");
+
+  const widestDeckFoam = planingCellEls[0] ? widestOf(planingCellEls[0], lists.deckFoam) : "";
+  const widestBottomFoam = planingCellEls[1] ? widestOf(planingCellEls[1], lists.bottomFoam) : "";
+  const widestDeckPasses = planingCellEls[2] ? widestOf(planingCellEls[2], lists.deckPasses) : "";
+  const widestBottomPasses = planingCellEls[3] ? widestOf(planingCellEls[3], lists.bottomPasses) : "";
+  const widestFootnote = planingFootnoteEl ? widestOf(planingFootnoteEl, lists.footnote) : "";
 
   const railBandsRow = referenceSheet.querySelector<HTMLElement>("[data-rail-bands-row]");
   if (!railBandsRow) throw new Error("[data-rail-bands-row] not found");
   const railBox = railBandsRow.children[0] as HTMLElement;
-  const planingBoxEl = railBandsRow.children[1] as HTMLElement;
+  const planingFormBoxEl = railBandsRow.children[1] as HTMLElement;
   const railCaptionBottom = (railBox.children[0] as HTMLElement).getBoundingClientRect().bottom;
-  const planingCaptionBottom = (planingBoxEl.children[0] as HTMLElement).getBoundingClientRect().bottom;
+  const planingCaptionBottom = (planingFormBoxEl.children[0] as HTMLElement).getBoundingClientRect().bottom;
 
   const planingEl = referenceSheet.querySelector<HTMLElement>("[data-planing]");
   if (!planingEl) throw new Error("[data-planing] not found");
-  const planingDescendants = Array.from(planingEl.querySelectorAll<HTMLElement>("*"));
-  const planingLabelHeights = Array.from(
-    referenceSheet.querySelectorAll<HTMLElement>("[data-planing-label]"),
-  ).map((el) => el.getBoundingClientRect().height);
+
+  const planingTableEl = referenceSheet.querySelector<HTMLElement>("[data-planing-table]");
+  if (!planingTableEl) throw new Error("[data-planing-table] not found");
+  const tableParent = planingTableEl.parentElement as HTMLElement;
+  const tableOverflow = planingTableEl.getBoundingClientRect().width - tableParent.clientWidth;
+
+  const labelRange = document.createRange();
+  const planingLabelOneLine = planingLabelEls.map((el) => {
+    labelRange.selectNodeContents(el);
+    const tops = new Set(Array.from(labelRange.getClientRects()).map((r) => Math.round(r.top)));
+    return tops.size === 1;
+  });
+
+  const railHeaderTop = (railHeaderRow.children[1] as HTMLElement | undefined)?.getBoundingClientRect().top ?? 0;
+  const planingHeaderTop = planingHeaderEls[0] ? planingHeaderEls[0].getBoundingClientRect().top : 0;
 
   return {
     railRowHeights: rows.map((r) => r.getBoundingClientRect().height),
@@ -367,21 +403,25 @@ function measureAndWrite(lists: PlaningCandidateLists): PlaningMeasurement {
     railBoxHeight: railTable.getBoundingClientRect().height,
     finContentHeight: contentHeightOf(finGrid),
     finBoxHeight: finGrid.getBoundingClientRect().height,
-    planingBoxOverflow: planingEl.scrollHeight - planingEl.clientHeight,
-    planingDescendantOverflow: planingDescendants.map((d) => d.scrollWidth - d.clientWidth),
+    planingPanelOverflow: planingEl.scrollHeight - planingEl.clientHeight,
+    tableOverflow,
+    planingCellHeaderOverflow: [...planingCellEls, ...planingHeaderEls].map((d) => d.scrollWidth - d.clientWidth),
+    planingLabelOneLine,
     railCaptionBottom,
     planingCaptionBottom,
-    planingLabelHeights,
+    railHeaderTop,
+    planingHeaderTop,
     sheetOverflow: sheets.map((s) => s.scrollHeight - s.clientHeight),
     labelColWidth: rows[0] ? (rows[0].children[0] as HTMLElement).getBoundingClientRect().width : 0,
     valueColWidth: valueCells[0] ? valueCells[0].getBoundingClientRect().width : 0,
-    planingColWidth: planingEl.getBoundingClientRect().width,
+    planingColWidth: planingFormBoxEl.getBoundingClientRect().width,
     widest: {
       railCell: widestRailCell,
-      skin: widestSkin,
-      offBottom: widestOffBottom,
-      passes: widestPasses,
-      note: widestNote,
+      deckFoam: widestDeckFoam,
+      bottomFoam: widestBottomFoam,
+      deckPasses: widestDeckPasses,
+      bottomPasses: widestBottomPasses,
+      footnote: widestFootnote,
     },
   };
 }
@@ -392,21 +432,22 @@ function spread(values: number[]): number {
   return Math.max(...values) - Math.min(...values);
 }
 
-/** Every assertion case D makes on one `measureAndWrite` result — shared between the computer
- * print and every touch-sweep width, with two checks reserved for the computer print only (the
- * pre-existing touch overflow this plan leaves untouched, see the file's own doc comment). */
-function assertMeasurement(result: PlaningMeasurement, label: string, computerOnly: boolean) {
-  expect(spread(result.railRowHeights), `${label}: rail row heights differ — a label wrapped`).toBeLessThanOrEqual(
-    0.5,
-  );
-  expect(spread(result.headerCellHeights), `${label}: header cell heights differ`).toBeLessThanOrEqual(0.5);
-  for (const overflow of result.cellOverflow) {
-    expect(overflow, `${label}: a rail value cell overflowed sideways`).toBeLessThanOrEqual(0.5);
+/**
+ * Every assertion case D makes on one `measureAndWrite` result. `mode` is `"computer"` for the
+ * computer's print, `"touch"` for every phone width from 618 dots up (where the rail markings still
+ * fit one line beside the wider PLANING table), and `"touch-560"` for the narrowest phone print,
+ * where the two tables no longer fit side by side and the rail rows are known to wrap (handed to
+ * item 8b) — so nothing about the rail rows is asserted there, only logged in the report line.
+ */
+function assertMeasurement(result: PlaningMeasurement, label: string, mode: "computer" | "touch" | "touch-560") {
+  expect(result.tableOverflow, `${label}: the PLANING table overflowed its own box`).toBeLessThanOrEqual(0.5);
+  for (const overflow of result.planingCellHeaderOverflow) {
+    expect(overflow, `${label}: a planing cell or header overflowed sideways`).toBeLessThanOrEqual(0.5);
   }
-  expect(result.planingBoxOverflow, `${label}: the PLANING box overflowed`).toBeLessThanOrEqual(0.5);
-  for (const overflow of result.planingDescendantOverflow) {
-    expect(overflow, `${label}: something inside PLANING overflowed sideways`).toBeLessThanOrEqual(0.5);
+  for (const oneLine of result.planingLabelOneLine) {
+    expect(oneLine, `${label}: a PLANING row label wrapped to two lines`).toBe(true);
   }
+  expect(result.planingPanelOverflow, `${label}: the PLANING box overflowed`).toBeLessThanOrEqual(0.5);
   expect(
     Math.abs(result.railCaptionBottom - result.planingCaptionBottom),
     `${label}: the two caption rows do not line up`,
@@ -414,7 +455,23 @@ function assertMeasurement(result: PlaningMeasurement, label: string, computerOn
   for (const overflow of result.sheetOverflow) {
     expect(overflow, `${label}: a sheet overflowed its own page box`).toBeLessThanOrEqual(0.5);
   }
-  if (computerOnly) {
+  for (const overflow of result.cellOverflow) {
+    expect(overflow, `${label}: a rail value cell overflowed sideways`).toBeLessThanOrEqual(0.5);
+  }
+
+  if (mode !== "touch-560") {
+    expect(
+      spread(result.railRowHeights),
+      `${label}: rail row heights differ — a label wrapped`,
+    ).toBeLessThanOrEqual(0.5);
+    expect(spread(result.headerCellHeights), `${label}: header cell heights differ`).toBeLessThanOrEqual(0.5);
+    expect(
+      Math.abs(result.railHeaderTop - result.planingHeaderTop),
+      `${label}: the two header rows' text does not line up`,
+    ).toBeLessThanOrEqual(0.5);
+  }
+
+  if (mode === "computer") {
     expect(
       result.railContentHeight,
       `${label}: rail content (${result.railContentHeight.toFixed(1)}) taller than its box (${result.railBoxHeight.toFixed(1)})`,
@@ -423,22 +480,18 @@ function assertMeasurement(result: PlaningMeasurement, label: string, computerOn
       result.finContentHeight,
       `${label}: fin content (${result.finContentHeight.toFixed(1)}) taller than its box (${result.finBoxHeight.toFixed(1)}) — a quad no longer clears Shaper Use Only`,
     ).toBeLessThanOrEqual(result.finBoxHeight + 0.5);
-    expect(
-      spread(result.planingLabelHeights),
-      `${label}: a PLANING label wrapped to two lines`,
-    ).toBeLessThanOrEqual(0.5);
   }
 }
 
 const SYSTEMS: UnitsSystem[] = ["imperial", "metric"];
 
-test.describe("Summary — the PLANING column (Phase 13 item 8, quick 260928-r9h)", () => {
+test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h; reworked 260928-tst)", () => {
   test.beforeEach(async ({ page }) => {
     await dismissChrome(page);
   });
 
   for (const system of SYSTEMS) {
-    test(`with no blank picked, the PLANING column says to pick a blank and nothing else (${system})`, async ({
+    test(`with no blank picked, the PLANING table shows dashes and says to pick a blank (${system})`, async ({
       page,
     }) => {
       await selectSystem(page, system);
@@ -449,13 +502,25 @@ test.describe("Summary — the PLANING column (Phase 13 item 8, quick 260928-r9h
       const planingCol = row.locator(":scope > div").nth(1);
       const captionSpan = planingCol.locator(":scope > div").nth(0).locator("span.order-form-caption");
       await expect(captionSpan).toHaveText("Planing");
-      await expect(page.locator("[data-planing-empty]")).toHaveText(
+
+      const headers = planingCol.locator("[data-planing-header]");
+      await expect(headers).toHaveCount(2);
+      expect(await headers.allTextContents()).toEqual(["Deck", "Bottom"]);
+
+      const labels = planingCol.locator("[data-planing-label]");
+      await expect(labels).toHaveCount(2);
+      expect(await labels.allTextContents()).toEqual(["Foam Off", "Passes"]);
+
+      const cells = planingCol.locator("[data-planing-cell]");
+      await expect(cells).toHaveCount(4);
+      expect(await cells.allTextContents()).toEqual(["—", "—", "—", "—"]);
+
+      await expect(planingCol.locator("[data-planing-footnote]")).toHaveText(
         "Pick a blank on ROCKER for the planing numbers.",
       );
-      await expect(page.locator("[data-planing-item]")).toHaveCount(0);
     });
 
-    test(`with a blank picked, the PLANING column prints ROCKER's own Deck Skin, foam off the bottom at the center and planer passes (${system})`, async ({
+    test(`with a blank picked, the PLANING table prints ROCKER's own foam off and passes, and the deck's passes worked the same way (${system})`, async ({
       page,
     }) => {
       await selectSystem(page, system);
@@ -469,7 +534,8 @@ test.describe("Summary — the PLANING column (Phase 13 item 8, quick 260928-r9h
         (await page.locator('[data-readouts] [data-readout-row="center"] > div').nth(2).textContent()) ?? ""
       ).trim();
 
-      const passes = ((await page.locator("[data-bottom-passes] span").last().textContent()) ?? "").trim();
+      const passesText = ((await page.locator("[data-bottom-passes] span").last().textContent()) ?? "").trim();
+      const bottomPasses = passesText.replace(/ passes?$/, "");
 
       const depthRaw = (await page.getByText(/ a pass — your Planer Max Depth\.$/).textContent()) ?? "";
       const depthMatch = depthRaw.match(/^At (.+) a pass — your Planer Max Depth\.$/);
@@ -482,22 +548,40 @@ test.describe("Summary — the PLANING column (Phase 13 item 8, quick 260928-r9h
         expect(offBottom, `Off Bottom @ Center "${offBottom}" is not a Metric mark`).toMatch(/ mm$/);
       }
 
+      // The deck's pass count is worked the same way `planerPasses` works the bottom's — parsing
+      // ROCKER's own printed Deck Skin and depth strings, never a typed number (CLAUDE.md Rule 1).
+      const parse = (s: string): Mm | null => (system === "imperial" ? parseImperial(s) : parseMetric(s, "mm"));
+      let deckPasses: string;
+      if (skin === "none") {
+        deckPasses = "0";
+      } else {
+        const skinParsed = parse(skin);
+        const depthParsed = parse(depth);
+        expect(skinParsed, `could not parse Deck Skin "${skin}"`).not.toBeNull();
+        expect(depthParsed, `could not parse the depth "${depth}"`).not.toBeNull();
+        deckPasses = String(planerPasses(skinParsed!, depthParsed!, system));
+      }
+
       await goToSummary(page);
 
       const row = page.locator("[data-rail-bands-row]");
       const planingCol = row.locator(":scope > div").nth(1);
-      await expect(planingCol.locator("[data-planing-item]")).toHaveCount(3);
-      const labels = await planingCol.locator("[data-planing-label]").allTextContents();
-      const values = await planingCol.locator("[data-planing-value]").allTextContents();
-      expect(labels).toEqual(["Deck Skin", "Off Bottom @ Center", "Planer Passes"]);
-      expect(values).toEqual([skin, offBottom, passes]);
-      const notes = planingCol.locator("[data-planing-note]");
-      await expect(notes).toHaveCount(1);
-      await expect(notes).toHaveText(`at ${depth} a pass`);
-      await expect(planingCol.locator("[data-planing-empty]")).toHaveCount(0);
+
+      const headers = planingCol.locator("[data-planing-header]");
+      expect(await headers.allTextContents()).toEqual(["Deck", "Bottom"]);
+
+      const labels = planingCol.locator("[data-planing-label]");
+      expect(await labels.allTextContents()).toEqual(["Foam Off", "Passes"]);
+
+      const cells = planingCol.locator("[data-planing-cell]");
+      expect(await cells.allTextContents()).toEqual([skin, offBottom, deckPasses, bottomPasses]);
+
+      await expect(planingCol.locator("[data-planing-footnote]")).toHaveText(
+        `At the center, at ${depth} a pass — your Planer Max Depth.`,
+      );
     });
 
-    test(`on paper, with a blank picked, both pages print at true size on Letter and A4 with the PLANING column on the back (${system})`, async ({
+    test(`on paper, with a blank picked, both pages print at true size on Letter and A4 with the PLANING table on the back (${system})`, async ({
       page,
     }, testInfo) => {
       test.skip(testInfo.project.name !== "desktop", "page.pdf() is Chromium-headless only");
@@ -506,10 +590,13 @@ test.describe("Summary — the PLANING column (Phase 13 item 8, quick 260928-r9h
       await openRocker(page);
       await pickFirstFittingBlank(page);
       await goToSummary(page);
-      await expect(page.locator("[data-planing-item]")).toHaveCount(3);
+
+      const cells = page.locator("[data-planing-cell]");
+      await expect(cells).toHaveCount(4);
+      expect(await cells.first().textContent()).not.toBe("—");
 
       // The no-blank PDF is already summary-print-size.spec.ts's first case, and that sheet now
-      // carries the condensed table and the no-blank line — nothing further to prove for it here.
+      // carries the table and the no-blank line — nothing further to prove for it here.
       for (const format of ["Letter", "A4"] as const) {
         const pdfBytes = await page.pdf({ format, printBackground: false });
         const geometries = extractPageGeometries(pdfBytes);
@@ -537,11 +624,13 @@ test.describe("Summary — the PLANING column (Phase 13 item 8, quick 260928-r9h
         railCells.add(formatMarkBare(mm(v), system));
       }
 
-      const skinValues = new Set<string>();
-      for (let v = 0; v <= inchesToMm(FIT_DEFAULTS_RANGE_IN.deckSkin.max); v += 0.5) {
-        const box = planingBox({ blank: { cut: { deckSkin: mm(v) }, centerGap: mm(0) } }, inchesToMm(1 / 8), system);
-        skinValues.add(box.items[0].value);
-      }
+      const skinSweep: Mm[] = [];
+      for (let v = 0; v <= inchesToMm(FIT_DEFAULTS_RANGE_IN.deckSkin.max); v += 0.5) skinSweep.push(mm(v));
+
+      const centerGapMinMm = -inchesToMm(FOIL_THICKNESS_RANGE_IN.max + FIT_DEFAULTS_RANGE_IN.deckSkin.max);
+      const centerGapMaxMm = inchesToMm(thickestCatalogueThicknessIn());
+      const gapSweep: Mm[] = [];
+      for (let g = centerGapMinMm; g <= centerGapMaxMm; g += 0.5) gapSweep.push(mm(g));
 
       const passDepths: Mm[] =
         system === "imperial"
@@ -565,44 +654,80 @@ test.describe("Summary — the PLANING column (Phase 13 item 8, quick 260928-r9h
               return out;
             })();
 
-      const centerGapMinMm = -inchesToMm(FOIL_THICKNESS_RANGE_IN.max + FIT_DEFAULTS_RANGE_IN.deckSkin.max);
-      const centerGapMaxMm = inchesToMm(thickestCatalogueThicknessIn());
-      const offBottomValues = new Set<string>();
-      const passesValues = new Set<string>();
-      const noteValues = new Set<string>();
-      for (let g = centerGapMinMm; g <= centerGapMaxMm; g += 0.5) {
+      const arbitraryDepth = passDepths[0];
+
+      const deckFoam = new Set<string>();
+      for (const skin of skinSweep) {
+        const t = planingTable({ blank: { cut: { deckSkin: skin }, centerGap: mm(0) } }, arbitraryDepth, system);
+        deckFoam.add(t.rows[0].deck);
+      }
+
+      const bottomFoam = new Set<string>();
+      for (const gap of gapSweep) {
+        const t = planingTable({ blank: { cut: { deckSkin: mm(0) }, centerGap: gap } }, arbitraryDepth, system);
+        bottomFoam.add(t.rows[0].bottom);
+      }
+
+      const deckPasses = new Set<string>();
+      for (const skin of skinSweep) {
         for (const depth of passDepths) {
-          const box = planingBox({ blank: { cut: { deckSkin: mm(0) }, centerGap: mm(g) } }, depth, system);
-          offBottomValues.add(box.items[1].value);
-          passesValues.add(box.items[2].value);
-          if (box.items[2].note !== null) noteValues.add(box.items[2].note);
+          const t = planingTable({ blank: { cut: { deckSkin: skin }, centerGap: mm(0) } }, depth, system);
+          deckPasses.add(t.rows[1].deck);
         }
       }
 
+      const bottomPasses = new Set<string>();
+      for (const gap of gapSweep) {
+        for (const depth of passDepths) {
+          const t = planingTable({ blank: { cut: { deckSkin: mm(0) }, centerGap: gap } }, depth, system);
+          bottomPasses.add(t.rows[1].bottom);
+        }
+      }
+
+      const footnote = new Set<string>();
+      for (const depth of passDepths) {
+        const t = planingTable(
+          { blank: { cut: { deckSkin: inchesToMm(1 / 8) }, centerGap: inchesToMm(1 / 8) } },
+          depth,
+          system,
+        );
+        footnote.add(t.footnote);
+      }
+
       // Non-vacuity guard: every list must genuinely carry a spread of numbers, not one repeated
-      // value. The Deck Skin control runs from none to 1" (quick 260928-lm6), so the skin list holds
-      // at least every sixteenth in that range (Metric's whole millimetres give more); the note list
-      // holds exactly one "at … a pass" per Planer Max Depth the control offers (four sixteenths in
-      // Imperial, five whole millimetres in Metric). Orchestrator fix 2026-09-29: the first version
-      // asked for more than 20 of each, which neither short range can reach.
-      expect(skinValues.size, "Deck Skin candidates").toBeGreaterThanOrEqual(
+      // value. The Deck Skin control runs from none to 1" (quick 260928-lm6), so the deck foam-off
+      // list holds at least every sixteenth in that range; the footnote list holds exactly one
+      // "at … a pass" per Planer Max Depth the control offers (four sixteenths in Imperial, five
+      // whole millimetres in Metric); the deck passes list must include 0 (a none skin) and the most
+      // passes the deck can ever need (the widest skin at the finest pass depth).
+      expect(deckFoam.size, "Deck Foam Off candidates").toBeGreaterThanOrEqual(
         Math.round(FIT_DEFAULTS_RANGE_IN.deckSkin.max * 16) + 1,
       );
-      expect(offBottomValues.size, "Off Bottom @ Center candidates").toBeGreaterThan(20);
-      expect(passesValues.size, "Planer Passes candidates").toBeGreaterThan(20);
-      expect(noteValues.size, "note candidates").toBe(passDepths.length);
+      expect(bottomFoam.size, "Bottom Foam Off candidates").toBeGreaterThan(20);
+      expect(bottomPasses.size, "Bottom Passes candidates").toBeGreaterThan(20);
+      expect(deckPasses.has("0"), "Deck Passes candidates should include 0 (a none skin)").toBe(true);
+      const maxDeckPasses = String(
+        planerPasses(inchesToMm(FIT_DEFAULTS_RANGE_IN.deckSkin.max), passDepths[0], system),
+      );
+      expect(
+        deckPasses.has(maxDeckPasses),
+        `Deck Passes candidates should include ${maxDeckPasses}, the most passes the deck can need`,
+      ).toBe(true);
+      expect(footnote.size, "footnote candidates").toBe(passDepths.length);
 
       const lists: PlaningCandidateLists = {
         railCells: [...railCells],
-        skin: [...skinValues],
-        offBottom: [...offBottomValues],
-        passes: [...passesValues],
-        note: [...noteValues],
+        deckFoam: [...deckFoam],
+        bottomFoam: [...bottomFoam],
+        deckPasses: [...deckPasses],
+        bottomPasses: [...bottomPasses],
+        footnote: [...footnote],
       };
 
       const report = (label: string, result: PlaningMeasurement) =>
-        `[260928-r9h] ${label}: label ${result.labelColWidth.toFixed(1)}px, value ${result.valueColWidth.toFixed(1)}px, ` +
-        `PLANING ${result.planingColWidth.toFixed(1)}px, rail content ${result.railContentHeight.toFixed(1)} vs box ${result.railBoxHeight.toFixed(1)}, ` +
+        `[260928-tst] ${label}: label ${result.labelColWidth.toFixed(1)}px, value ${result.valueColWidth.toFixed(1)}px, ` +
+        `PLANING ${result.planingColWidth.toFixed(1)}px, rail row spread ${spread(result.railRowHeights).toFixed(2)}, ` +
+        `rail content ${result.railContentHeight.toFixed(1)} vs box ${result.railBoxHeight.toFixed(1)}, ` +
         `fin content ${result.finContentHeight.toFixed(1)} vs box ${result.finBoxHeight.toFixed(1)}, widest: ${JSON.stringify(result.widest)}`;
 
       // (i) the computer's print — viewport 1280 x 800, no touch attribute.
@@ -613,9 +738,10 @@ test.describe("Summary — the PLANING column (Phase 13 item 8, quick 260928-r9h
       const computerLine = report(`computer print (${system})`, computerResult);
       console.log(computerLine);
       await testInfo.attach(`computer print (${system})`, { body: computerLine, contentType: "text/plain" });
-      assertMeasurement(computerResult, `computer print (${system})`, true);
+      assertMeasurement(computerResult, `computer print (${system})`, "computer");
 
-      // (ii) after forceTouchSheet, at each width in SWEEP_WIDTHS.
+      // (ii) after forceTouchSheet, at each width in SWEEP_WIDTHS — 560 asserts nothing about the
+      // rail rows (the wrap is known and handed to item 8b), every other width does.
       await forceTouchSheet(page);
       for (const width of SWEEP_WIDTHS) {
         await page.setViewportSize({ width, height: 1400 });
@@ -625,7 +751,7 @@ test.describe("Summary — the PLANING column (Phase 13 item 8, quick 260928-r9h
         const line = report(`touch ${width} (${system})`, result);
         console.log(line);
         await testInfo.attach(`touch ${width} (${system})`, { body: line, contentType: "text/plain" });
-        assertMeasurement(result, `touch ${width} (${system})`, false);
+        assertMeasurement(result, `touch ${width} (${system})`, width === 560 ? "touch-560" : "touch");
       }
     });
   }
