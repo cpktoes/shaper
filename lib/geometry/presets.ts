@@ -84,21 +84,27 @@
  * carries a hand-drawn rocker: it names a real foam blank and where the board sits on it, and its
  * rocker is that blank's own. Its foil keeps only the centre and the two tips (`PresetFoil`) — the
  * typed nose 12" and tail 12" thicknesses went too, because with a blank the foil between centre
- * and tips is the blank's own shape scaled to the centre (D-10), not five typed numbers. Every
- * preset's blank is, for now, a PROVISIONAL pick: `scripts/generate-preset-blanks.ts` chose it by
- * the app's own rule (the fitting blank whose length is closest to the preset's own length, ties to
- * less spare centre foam, at its fitting placement closest to centre, with the default fit
- * settings and the preset's own centre and tips) and stored that blank's catalogue rows in
- * `lib/blanks/preset-blanks.generated.json`, so the setup screen can open a preset in its blank
- * without the catalogue database. The founder replaces a pick the same way outlines and rockers
- * were captured: set the board up on the ROCKER screen in the blank they want, press the
- * development-only "Copy preset values" button, paste its `blank: { … }` line into that preset
- * below (a captured pick always wins over the rule), and re-run the generator:
+ * and tips is the blank's own shape scaled to the centre (D-10), not five typed numbers. Until
+ * Phase 13 item 5, every preset's blank was a PROVISIONAL pick: `scripts/generate-preset-blanks.ts`
+ * chose it by the app's own rule (the fitting blank whose length is closest to the preset's own
+ * length, ties to less spare centre foam, at its fitting placement closest to centre, with the
+ * default fit settings and the preset's own centre and tips) and stored that blank's catalogue rows
+ * in `lib/blanks/preset-blanks.generated.json`, so the setup screen can open a preset in its blank
+ * without the catalogue database.
+ *
+ * Blank picks captured (Phase 13 item 5, 2026-09-28): the founder chose a US Blanks blank for each
+ * preset, all centred (placement 0) — Shortboard `6'3"EA`, Fish `5'10"RP`, Mid-length `7'4"SP` and
+ * Longboard `9'3"Y`, the last the same blank as its provisional pick, now the founder's own. Every
+ * preset below carries its captured `blank:` line, the generated module marks none provisional, and
+ * the rule above remains only the fallback for a preset with no captured line. The founder replaces
+ * a pick the same way outlines and rockers were captured: set the board up on the ROCKER screen in
+ * the blank they want, press the development-only "Copy preset values" button, paste its
+ * `blank: { … }` line into that preset below (a captured pick always wins over the rule), and
+ * re-run the generator:
  *
  *   npx --no-install tsx --tsconfig ./tsconfig.json scripts/generate-preset-blanks.ts
  *
- * Until then each preset carries a `// blank: provisional pick` comment. This file never imports
- * the generated JSON — the generator imports this file.
+ * This file never imports the generated JSON — the generator imports this file.
  *
  * Any future change to any preset field should go through the matching
  * capture loop rather than being hand-edited. Every length/width/offset is
@@ -170,7 +176,8 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
     // (`lib/geometry/preset-source.ts`), so a recapture pastes in as-is. Since Phase 11 (D-03) the
     // captured rocker block and the nose 12" / tail 12" thicknesses are retired: the rocker and
     // 12" foil come from this preset's blank, the centre and tips below are what it keeps.
-    // blank: provisional pick — see lib/blanks/preset-blanks.generated.json
+    // The founder's own pick (2026-09-28, Phase 13 item 5), captured through buildRockerPresetSource.
+    blank: { vendor: "US Blanks", name: "6'3\"EA", placement: inchesToMm(0) },
     foil: {
       noseTip: inchesToMm(0.4375),
       center: inchesToMm(2.25),
@@ -269,7 +276,8 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
       tail: { kind: "swallow", endWidth: inchesToMm(10), crotchDepth: inchesToMm(2.75) },
     },
     // Rocker and 12" foil retired (Phase 11, D-03) — they come from this preset's blank.
-    // blank: provisional pick — see lib/blanks/preset-blanks.generated.json
+    // The founder's own pick (2026-09-28, Phase 13 item 5), captured through buildRockerPresetSource.
+    blank: { vendor: "US Blanks", name: "5'10\"RP", placement: inchesToMm(0) },
     foil: {
       noseTip: inchesToMm(0.6875),
       center: inchesToMm(2.5),
@@ -367,7 +375,8 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
       tail: { kind: "round" },
     },
     // Rocker and 12" foil retired (Phase 11, D-03) — they come from this preset's blank.
-    // blank: provisional pick — see lib/blanks/preset-blanks.generated.json
+    // The founder's own pick (2026-09-28, Phase 13 item 5), captured through buildRockerPresetSource.
+    blank: { vendor: "US Blanks", name: "7'4\"SP", placement: inchesToMm(0) },
     foil: {
       noseTip: inchesToMm(0.625),
       center: inchesToMm(2.75),
@@ -464,7 +473,9 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
       tail: { kind: "squash", endWidth: inchesToMm(8.5) },
     },
     // Rocker and 12" foil retired (Phase 11, D-03) — they come from this preset's blank.
-    // blank: provisional pick — see lib/blanks/preset-blanks.generated.json
+    // The founder's own pick (2026-09-28, Phase 13 item 5), captured through buildRockerPresetSource.
+    // Same blank as this preset's old provisional pick — now captured as the founder's own.
+    blank: { vendor: "US Blanks", name: "9'3\"Y", placement: inchesToMm(0) },
     foil: {
       noseTip: inchesToMm(0.875),
       center: inchesToMm(3),

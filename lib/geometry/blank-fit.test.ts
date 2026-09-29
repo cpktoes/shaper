@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import { BLANK_CSV_COLUMNS, isPickable } from "@/lib/blanks/catalog";
 import { parseCsv } from "@/lib/blanks/csv";
 import { readSeedCatalog, SEED_CSV_DIR } from "@/lib/blanks/seed-files";
-import presetBlanks from "@/lib/blanks/preset-blanks.generated.json";
 import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
 import golden from "./__fixtures__/phase11-foil-golden.json";
 import {
@@ -603,8 +602,10 @@ describe("the board's foil, cut from the blank (D-05, D-09, D-13, D-16)", () => 
 
   it("makes a tip thicker than the parallel foil there as thick as set: Pin deck drops the tip rocker, Bottom lifts the deck above the blank's and fails (D-16)", () => {
     const preset = BOARD_PRESETS.find((p) => p.id === "shortboard")!;
-    const pick = (presetBlanks.picks as Record<string, { vendor: string; name: string; placementMm: number }>)[preset.id];
-    const shortboardPrepared = prepareBlank(findBlank(pick.vendor, pick.name));
+    // The Shortboard's own pick was Marko Foam 6'4" TP until Phase 13 item 5 replaced it with the
+    // founder's US Blanks 6'3"EA, whose tail is thick enough to leave nothing for this test to
+    // prove. The old pick is still a real blank in the catalogue, so it is named here directly.
+    const shortboardPrepared = prepareBlank(findBlank("Marko Foam", `6'4" TP`));
     const input: BoardOnBlankInput = {
       length: preset.outline.length,
       centerThickness: preset.foil.center,
@@ -614,8 +615,8 @@ describe("the board's foil, cut from the blank (D-05, D-09, D-13, D-16)", () => 
       tail12Offset: mm(0),
       ...DEFAULT_BLANK_CUT,
     };
-    const pin = boardOnBlank(shortboardPrepared, { ...input, tipStyle: "pinDeck" }, mm(pick.placementMm));
-    const bottom = boardOnBlank(shortboardPrepared, { ...input, tipStyle: "bottom" }, mm(pick.placementMm));
+    const pin = boardOnBlank(shortboardPrepared, { ...input, tipStyle: "pinDeck" }, mm(0));
+    const bottom = boardOnBlank(shortboardPrepared, { ...input, tipStyle: "bottom" }, mm(0));
     expect(pin.tipThinningAt(0)).toBeLessThan(0);
     expect(pin.thicknessAt(0)).toBe(input.tailTip);
     expect(pin.rockerAt(0)).toBeLessThan(bottom.rockerAt(0));
