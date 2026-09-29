@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 8b built and verified locally (quick 260928-vpi), before/after sent; awaiting the founder's paper check and go to push
+stopped_at: Phase 13 item 8b live (deployment 6740140853); the founder's own iPhone print is the last check; next is item 9 (blank catalogue links, if time)
 last_updated: "2026-09-29T05:36:10.968Z"
 last_activity: 2026-09-29
-last_activity_desc: "Quick task 260928-vpi (item 8b: page 2 on a phone print, plus the Metric fin-note wording) verified locally"
+last_activity_desc: "Item 8b live: page 2 printed from a phone keeps every rail mark and fin number in its own box"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **8 of 13 items done.** Items 1–6 and 8 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. **Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is built and verified locally (quick 260928-vpi); the founder's paper check and go are next**, then 9 (catalogue links, if time) and 9b (the ghost outline, optional).
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **8 of 13 items done.** Items 1–6 and 8 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). **Item 9 — the blank catalogue links, if time — is next**, then 9b (the ghost outline, optional), 10 (Contact page), 11 (analytics + privacy), 12 (error screen + link preview) and 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07).
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-29 - Completed quick task 260928-vpi: Phase 13 item 8b (page 2 on a phone print, plus the Metric fin-note wording) verified locally; before/after sent to the founder
+Last activity: 2026-09-29 - Item 8b live (Vercel deployment 6740140853, 16:36 UTC): page 2 printed from a phone keeps every rail mark and fin number in its own box
 
 ## Performance Metrics
 

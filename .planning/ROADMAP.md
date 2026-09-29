@@ -186,7 +186,7 @@ Plans:
 
 - [x] 7. Volume proven against three real boards with known litres (the founder checked the four presets against their expected volumes: all within 1/2–1 L, 2026-09-28)
 - [x] 8. The order form carries the tip thicknesses and the planer passes (the founder's redirect: the tips stay on page 1's ROCKER strip; page 2 gets a PLANING table — Deck / Bottom, Foam Off and Passes — to the LEFT of the rail markings; quick 260928-r9h + 260928-tst + fast task 128, live 2026-09-29)
-- [ ] 8b. Page 2 on a phone print: the rail markings stop running into Fin Placement (founder's addition 2026-09-29)
+- [x] 8b. Page 2 on a phone print: the rail markings stop running into Fin Placement (founder's addition 2026-09-29; page-2 type on a phone sheet fits its page, every rail mark and fin number in its own box from 560 to 900 dots, the fin note's last line per system — quick 260928-vpi, live 2026-09-29)
 - [ ] 9. Blank catalogue links (if time allows before the freeze)
 - [ ] 9b. Optional: a ghost of the last edit on TEMPLATE (founder's addition 2026-09-27; only if time allows before the freeze)
 
