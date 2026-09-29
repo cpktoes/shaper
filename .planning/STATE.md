@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 items 1–6 live; item 7 (volume against three real boards) next — needs the founder's boards; quality profile
-last_updated: "2026-09-29T02:18:48.233Z"
+stopped_at: Phase 13 items 1–7 done; item 8 (the order form tips and planer passes) next
+last_updated: "2026-09-29T02:33:03.204Z"
 last_activity: 2026-09-28
-last_activity_desc: "Phase 13 item 6 live: fins drawn against the real tail when Import Template is ticked"
+last_activity_desc: "Phase 13 item 7 done: the founder checked the four presets' litres, all within 1/2–1 L"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 13
-  completed_plans: 6
-  percent: 46
+  completed_plans: 7
+  percent: 54
 current_phase: 13
 current_phase_name: Ready for the Shapers
 ---
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **6 of 13 items done, all live.** Items 1–3 (security patch, housekeeping, the retired column); item 4 (the five Phase 12 answers: 1/4" floor, cause-named reasons, Deck Skin none–1"); item 5 (the founder's US Blanks preset picks); item 6 (fins drawn against the real tail when Import Template is ticked, 260928-p45 — no written fin number changed). The client-secret file still sits in the project folder. **Item 7 — volume against three real boards — is next**: it needs the founder's three boards (dimensions and known litres), and GSD switches to the quality profile for it (founder, 2026-09-27).
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **7 of 13 items done.** Items 1–6 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. **Item 8 — the order form's tip thicknesses and planer passes — is next**, then 9 (catalogue links, if time) and 9b (the ghost outline, optional).
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-28 - Phase 13 item 6 live: fins drawn against the real tail when Import Template is ticked
+Last activity: 2026-09-28 - Phase 13 item 7 done: the founder checked the four presets' litres, all within 1/2–1 L
 
 ## Performance Metrics
 
@@ -89,6 +89,7 @@ Last activity: 2026-09-28 - Phase 13 item 6 live: fins drawn against the real ta
 
 ### Decisions
 
+- [Phase 13 item 7, 2026-09-28]: Volume accepted on the founder's own check — the four presets (29.1 / 35.0 / 50.3 / 75.3 L on their US Blanks picks) are within 1/2–1 L of what each board should have; no real-board fixtures were added (optional guard offered)
 - [Phase 13 item 4, 2026-09-28]: The founder answered Phase 12's five questions. Q1 (the thin spot near a tip): raise the floor from 1/8" to 1/4" anywhere on the board, and the lowest tip setting to 1/4" ("no boards should have a 1/8" tip anyway"), and the real fix, curve rules that never hump, is its own phase after Oct 10 (todo 2026-09-28, major). Q2 (Phase 11 boards opening greyed until Reset Fine-Tune): accept. Q3 (the floor reason line): correct it with a proper rewording by cause. Q4 (saved Deck Skin 0–50 mm vs the slider's 1/16"–1/2"): open the control up — first to the full 0–50 mm, then capped by the founder at 0–1" ("no one needs to trim more than that"); saved boards keep accepting 0–50 mm. Q5 (a tab left open across the Phase 12 deploy): accept. The 1/4" floor refuses 15 of the 1,611 stress-test boards (6 before); the milder humps stay allowed until the curve-flow phase.
 
 - [Phase 13]: The retired `extra_center_thickness_mm` column is gone from both databases (migration 0008, quick 260927-qrn, 2026-09-27): removed from the code and deployed first, then dropped on production in the founder's terminal, proven present/8 → absent/9 by `scripts/check-preference-columns.ts --before-drop` and its default run (closes D-19)
