@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 items 1–4 live; item 5 (the four preset blanks) next
-last_updated: "2026-09-28T23:35:07.052Z"
+stopped_at: Phase 13 item 5 verified locally, awaiting the founder's go to push
+last_updated: "2026-09-29T00:39:14.959Z"
 last_activity: 2026-09-28
-last_activity_desc: "Phase 13 item 4 done: 4b (Deck Skin none–1\") deployed on the founder's go"
+last_activity_desc: Quick task 260928-nu9 (Phase 13 item 5, the founder's US Blanks preset picks) verified locally; the push awaits the founder's go
 progress:
   total_phases: 1
   completed_phases: 0
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-28 - Phase 13 item 4 done: 4b (Deck Skin none–1") deployed on the founder's go
+Last activity: 2026-09-28 - Quick task 260928-nu9 (Phase 13 item 5, the founder's US Blanks preset picks) verified locally; the push awaits the founder's go
 
 ## Performance Metrics
 
@@ -307,6 +307,7 @@ Recent decisions affecting current work:
 | 260927-qrn | Phase 13 item 3, retiring the unused Extra Center Thickness setting (D-19) — nothing a shaper sees changes: the column is gone from the code and migration 0008 is one line that removes it; the development database was checked before (present, 8 migrations) and after (absent, 9), and a second run changed nothing; the read-only account-settings check now expects the column gone and has a `--before-drop` option for production's one run just before the removal (it refuses any mistyped option before touching the database). Production follows the deploy, run in the founder's terminal | 2026-09-27 | 39b9b3d, 3a614b9 | [260927-qrn-phase-13-item-3-retire-the-unused-extra-](./quick/260927-qrn-phase-13-item-3-retire-the-unused-extra-/) |
 | 260928-j00 | Phase 13 item 4a, the thinness rule (the founder's answers to Phase 12's Q1 and Q3): a board may be no thinner than 1/4" anywhere (was 1/8"), every ROCKER thickness control and the Fit & Tip Defaults tips now start at 1/4" — one shared figure — while older saved boards and stored defaults with a thinner tip still read back exactly as saved (flagged, never quietly raised); the too-thin reason line now names the real cause: a thin centre in a thick blank (the founder's wording, kept), a fine-tune that takes too much off, the board running past the end of the blank, or an older tip setting below the minimum. Development holds no board or default under 1/4". 3,064 unit and 360 browser tests green, desktop screenshots unchanged | 2026-09-28 | 8864015, 17f697c, 1021b0a | [260928-j00-phase-13-item-4a-the-thinness-rule-a-boa](./quick/260928-j00-phase-13-item-4a-the-thinness-rule-a-boa/) |
 | 260928-lm6 | Phase 13 item 4b (the founder's answer to Phase 12's Q4, capped by them at 1"): the Deck Skin control on ROCKER and in Fit & Tip Defaults now runs from none to 1" (Metric 0–25 mm) — was 1/16"–1/2"; at none the slider reads "Deck Skin — none", nothing comes off the deck, the centre needs only the target plus one bottom pass (so more blanks fit), and every sentence that quoted the skin reads naturally ("room for your 1/8" bottom pass"; an upward Deck fine-tune "raises the deck, but this board takes no Deck Skin"). Every older skin reads back as saved; a hand-made skin over 1" shows its true value with the thumb parked. A new board still starts at 1/8". 3,085 unit and 360 browser tests green | 2026-09-28 | be0d244, ca7b84c | [260928-lm6-phase-13-item-4b-the-deck-skin-control-a](./quick/260928-lm6-phase-13-item-4b-the-deck-skin-control-a/) |
+| 260928-nu9 | Phase 13 item 5, the preset blanks: the founder chose a US Blanks blank for every preset — Shortboard 6'3"EA, Fish 5'10"RP, Mid-length 7'4"SP, Longboard 9'3"Y (its old pick, now the founder's own), all centred — captured with the app's own `buildRockerPresetSource` line and the generator re-run, so no preset is provisional any more (a new test guards it). The cards' litres follow their new blanks: Shortboard 30.2 → 29.1 L, Fish 35.4 → 35.0, Mid-length 51.5 → 50.3, Longboard 75.3 unchanged. Boards already saved keep their own blank. 3,086 unit and 360 browser tests green | 2026-09-28 | 588fc26, 2a108e9 | [260928-nu9-phase-13-item-5-the-founder-s-own-us-bla](./quick/260928-nu9-phase-13-item-5-the-founder-s-own-us-bla/) |
 
 ## Deferred Items
 
