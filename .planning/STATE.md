@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 8b live (deployment 6740140853); the founder's own iPhone print is the last check; next is item 9 (blank catalogue links, if time)
+stopped_at: "Phase 13 item 10 in progress: decisions recorded; walking the founder through domain email (Forward Email receives, SMTP2GO sends) before the Contact page quick task"
 last_updated: "2026-09-29T05:36:10.968Z"
 last_activity: 2026-09-29
-last_activity_desc: "Item 8b live: page 2 printed from a phone keeps every rail mark and fin number in its own box"
+last_activity_desc: "Item 10 started: domain email (Forward Email + SMTP2GO) added to the item and the stack"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **8 of 13 items done.** Items 1–6 and 8 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). **Item 9 — the blank catalogue links, if time — is next**, then 9b (the ghost outline, optional), 10 (Contact page), 11 (analytics + privacy), 12 (error screen + link preview) and 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07).
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **8 of 13 items done.** Items 1–6 and 8 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). Item 9 is skipped for now (the founder, 2026-09-29). **Item 10 — the Contact page, plus email at shaperassistant.com (Forward Email receives, SMTP2GO sends, both free) — is in progress:** the founder's decisions are recorded in the SPEC and the email setup walk-through comes first, then the page as a quick task. After it: 11 (analytics + privacy), 12 (error screen + link preview), 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07); 9b stays optional.
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-29 - Item 8b live (Vercel deployment 6740140853, 16:36 UTC): page 2 printed from a phone keeps every rail mark and fin number in its own box
+Last activity: 2026-09-29 - Item 10 started: the founder's decisions recorded, domain email (Forward Email + SMTP2GO) added to the item and the stack; the email setup walk-through is next
 
 ## Performance Metrics
 

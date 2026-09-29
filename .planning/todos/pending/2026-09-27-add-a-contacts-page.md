@@ -17,7 +17,7 @@ they'd like added to the catalogue. Today the only route is whatever the founder
 
 ## Solution
 
-To be shaped with the founder before planning (his call on each):
+To be shaped with the founder before planning (their call on each):
 
 - What the page holds: an email address and a short line about what to write in about (a bug, a blank to add,
   a question), or a small form that sends a message; whether to mention the catalogue makers by name.
