@@ -9,8 +9,8 @@ import { formatMark } from "../lib/geometry/measure-display";
  *    Nose Tip Thickness there and the ROCKER screen's Nose Tip reads it at once. The first edit
  *    (here, one keyboard nudge of the Tail Tip slider) makes the tips the board's own, so a later
  *    change to the default leaves the board alone (D-09).
- * 2. D-03 — a preset opens sitting in its (provisional) blank: after Shortboard, the ROCKER drawing
- *    shows the blank's silhouette and the DATASHEET has a `BLANK — …` group.
+ * 2. D-03 — a preset opens sitting in its blank: after Shortboard, the ROCKER drawing shows the
+ *    blank's silhouette and the DATASHEET has a `BLANK — …` group.
  *
  * Helpers are copied locally, as every spec in this suite does (`fit-defaults.spec.ts` for the
  * dialog, `undo-redo.spec.ts` for keyboard slider input, `phone-trip.spec.ts` for tapping the tab

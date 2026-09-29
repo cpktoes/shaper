@@ -54,21 +54,32 @@ describe("preset-blanks.generated.json — generated, and identical to the catal
     }
   });
 
-  it.each(BOARD_PRESETS)("$id: a provisional pick is exactly what the rule picks from the catalogue today", (preset) => {
-    const pick = PRESET_BLANKS.picks[preset.id];
-    if (preset.blank) {
-      // A captured pick: the module records it as the founder's, not the rule's.
-      expect(pick).toEqual({
-        vendor: preset.blank.vendor,
-        name: preset.blank.name,
-        placementMm: preset.blank.placement,
-        provisional: false,
-      });
-      return;
+  it("every preset carries the founder's captured blank, so none is left provisional (Phase 13 item 5)", () => {
+    for (const preset of BOARD_PRESETS) {
+      expect(preset.blank).toBeDefined();
     }
-    expect(pick.provisional).toBe(true);
-    expect(provisionalPresetPick(preset, PREPARED)).toEqual(pick);
+    const stillProvisional = Object.values(PRESET_BLANKS.picks).filter((pick) => pick.provisional);
+    expect(stillProvisional).toEqual([]);
   });
+
+  it.each(BOARD_PRESETS)(
+    "$id: its pick is its captured blank line, recorded as the founder's; a preset without one gets exactly what the rule picks today",
+    (preset) => {
+      const pick = PRESET_BLANKS.picks[preset.id];
+      if (preset.blank) {
+        // A captured pick: the module records it as the founder's, not the rule's.
+        expect(pick).toEqual({
+          vendor: preset.blank.vendor,
+          name: preset.blank.name,
+          placementMm: preset.blank.placement,
+          provisional: false,
+        });
+        return;
+      }
+      expect(pick.provisional).toBe(true);
+      expect(provisionalPresetPick(preset, PREPARED)).toEqual(pick);
+    },
+  );
 });
 
 describe("the rule and the picks (D-03, D-08)", () => {
@@ -139,7 +150,7 @@ describe("presetBlank and presetDesignFields — what a preset opens as", () => 
     }).toEqual(DEFAULT_BLANK_CUT);
   });
 
-  it.each(BOARD_PRESETS)("$id: its blank still fits its own board with its own cut (the provisional pick has not gone stale)", (preset) => {
+  it.each(BOARD_PRESETS)("$id: its blank still fits its own board with its own cut (its pick has not gone stale)", (preset) => {
     const blank = presetBlank(preset);
     const ctx = presetFitContext(preset);
     const onBlank = boardOnBlank(prepareBlank(blank.copy), ctx.board, blank.placement);
@@ -164,7 +175,7 @@ describe("presetBlank and presetDesignFields — what a preset opens as", () => 
     expect(boardBlankSchema.safeParse(presetBlank(preset)).success).toBe(true);
   });
 
-  it("a captured blank line wins over the provisional pick", () => {
+  it("a captured blank line decides the blank a preset opens in", () => {
     const fish = BOARD_PRESETS.find((preset) => preset.id === "fish")!;
     // Capture the SHORTBOARD's blank into the fish, a quarter-inch toward the nose — any blank the
     // module holds will do; the point is which one wins.

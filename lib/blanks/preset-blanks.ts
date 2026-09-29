@@ -50,8 +50,8 @@ export const PRESET_BLANKS: PresetBlanksModule = generated as unknown as PresetB
  * tips, no fine-tunes, and its own cut (Phase 12, D-17) — `DEFAULT_BLANK_CUT`'s 1/8" deck skin,
  * Pin deck tips and Deck fine-tunes, never the shaper's account defaults, the same way a preset
  * keeps its own tips. Otherwise a shaper whose Tip Style default is Bottom would open a new
- * Shortboard already flagged as not fitting its own blank. Litres follow the new foil (D-08); the
- * picks stay provisional and unchanged.
+ * Shortboard already flagged as not fitting its own blank. Litres follow the new foil (D-08);
+ * Phase 12 left the picks unchanged.
  */
 export function presetFitContext(preset: BoardPreset): BoardFitContext {
   const geometry = buildOutline(preset.outline);
