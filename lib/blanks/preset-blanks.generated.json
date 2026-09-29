@@ -3,7 +3,7 @@
   "picks": {
     "shortboard": {
       "vendor": "US Blanks",
-      "name": "6'3\"EA",
+      "name": "6'3\"RP",
       "placementMm": 0,
       "provisional": false
     },
@@ -128,99 +128,99 @@
     },
     {
       "vendor": "US Blanks",
-      "name": "6'3\"EA",
-      "catalogSlug": "shortboard/6-3EA",
-      "pdfPage": 10,
+      "name": "6'3\"RP",
+      "catalogSlug": "fish-egg/6-3-rp",
+      "pdfPage": 11,
       "lengthMm": 1933.6004,
-      "deckLengthMm": 1911.4007999999997,
-      "volumeLitres": 39.2,
+      "deckLengthMm": 1917.6999999999998,
+      "volumeLitres": 57.47,
       "stations": [
         {
           "label": "T0",
           "fromTailMm": 0,
-          "rockerMm": 52.4002,
+          "rockerMm": 45.999399999999994,
           "thicknessMm": 31.8008,
-          "widthMm": 203.2,
+          "widthMm": 292.09999999999997,
           "flag": null
         },
         {
           "label": "T6",
           "fromTailMm": 152.39999999999998,
-          "rockerMm": 36.4998,
-          "thicknessMm": 41.300399999999996,
-          "widthMm": 315.89979999999997,
+          "rockerMm": 33.2994,
+          "thicknessMm": 40.4876,
+          "widthMm": 392.09979999999996,
           "flag": null
         },
         {
           "label": "T12",
           "fromTailMm": 304.79999999999995,
-          "rockerMm": 23.7998,
-          "thicknessMm": 47.5996,
-          "widthMm": 392.09979999999996,
+          "rockerMm": 22.1996,
+          "thicknessMm": 50.8,
+          "widthMm": 458.80019999999996,
           "flag": null
         },
         {
           "label": "T18",
           "fromTailMm": 457.2,
-          "rockerMm": 14.300199999999998,
-          "thicknessMm": 55.6006,
-          "widthMm": 449.3006,
+          "rockerMm": 12.7,
+          "thicknessMm": 57.200799999999994,
+          "widthMm": 508,
           "flag": null
         },
         {
           "label": "T24",
           "fromTailMm": 609.5999999999999,
-          "rockerMm": 7.899399999999999,
-          "thicknessMm": 58.6994,
-          "widthMm": 489.00079999999997,
+          "rockerMm": 6.400799999999999,
+          "thicknessMm": 62.712599999999995,
+          "widthMm": 539.8008,
           "flag": null
         },
         {
           "label": "C",
           "fromTailMm": 966.8002,
           "rockerMm": 0,
-          "thicknessMm": 65.1002,
-          "widthMm": 523.9004,
+          "thicknessMm": 69.90079999999999,
+          "widthMm": 574.7004,
           "flag": null
         },
         {
           "label": "N24",
           "fromTailMm": 1324.0004,
-          "rockerMm": 11.0998,
-          "thicknessMm": 58.6994,
-          "widthMm": 482.59999999999997,
+          "rockerMm": 6.400799999999999,
+          "thicknessMm": 67.41159999999999,
+          "widthMm": 553.9993999999999,
           "flag": null
         },
         {
           "label": "N18",
           "fromTailMm": 1476.4003999999998,
-          "rockerMm": 23.7998,
-          "thicknessMm": 50.8,
-          "widthMm": 435.0004,
+          "rockerMm": 17.5006,
+          "thicknessMm": 60.2996,
+          "widthMm": 515.8994,
           "flag": null
         },
         {
           "label": "N12",
           "fromTailMm": 1628.8004,
-          "rockerMm": 45.999399999999994,
-          "thicknessMm": 42.9006,
-          "widthMm": 360.4006,
+          "rockerMm": 34.8996,
+          "thicknessMm": 51.206399999999995,
+          "widthMm": 447.7004,
           "flag": null
         },
         {
           "label": "N6",
           "fromTailMm": 1781.2004,
-          "rockerMm": 99.9998,
-          "thicknessMm": 31.8008,
-          "widthMm": 257.20039999999995,
+          "rockerMm": 65.1002,
+          "thicknessMm": 39.700199999999995,
+          "widthMm": 336.6008,
           "flag": null
         },
         {
           "label": "N0",
           "fromTailMm": 1933.6004,
-          "rockerMm": 139.7,
-          "thicknessMm": 19.1008,
-          "widthMm": 104.8004,
+          "rockerMm": 108.00079999999998,
+          "thicknessMm": 30.2006,
+          "widthMm": 139.7,
           "flag": null
         }
       ]

@@ -93,7 +93,8 @@
  * without the catalogue database.
  *
  * Blank picks captured (Phase 13 item 5, 2026-09-28): the founder chose a US Blanks blank for each
- * preset, all centred (placement 0) — Shortboard `6'3"EA`, Fish `5'10"RP`, Mid-length `7'4"SP` and
+ * preset, all centred (placement 0) — Shortboard `6'3"RP` (changed from `6'3"EA` the same day, at the
+ * founder's request), Fish `5'10"RP`, Mid-length `7'4"SP` and
  * Longboard `9'3"Y`, the last the same blank as its provisional pick, now the founder's own. Every
  * preset below carries its captured `blank:` line, the generated module marks none provisional, and
  * the rule above remains only the fallback for a preset with no captured line. The founder replaces
@@ -177,7 +178,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
     // captured rocker block and the nose 12" / tail 12" thicknesses are retired: the rocker and
     // 12" foil come from this preset's blank, the centre and tips below are what it keeps.
     // The founder's own pick (2026-09-28, Phase 13 item 5), captured through buildRockerPresetSource.
-    blank: { vendor: "US Blanks", name: "6'3\"EA", placement: inchesToMm(0) },
+    blank: { vendor: "US Blanks", name: "6'3\"RP", placement: inchesToMm(0) },
     foil: {
       noseTip: inchesToMm(0.4375),
       center: inchesToMm(2.25),
