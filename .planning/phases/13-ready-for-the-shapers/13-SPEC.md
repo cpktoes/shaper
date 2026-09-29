@@ -74,6 +74,10 @@ The review found the app healthy: the live site at www.shaperassistant.com was s
 8. **The order form carries the tips and the planer passes** (todo `2026-09-27-summary-needs-tip-thickness-and-deck-bottom-passes`). The printed Shaper Reference sheet shows the Nose Tip and Tail Tip thicknesses, the Deck Skin, and the foam off the bottom as a depth and as planer passes (the foam-off numbers only when a blank is picked). Every number is read through `measure-display.ts` and the DATASHEET's own derivations, and the sheet stays within its page budget.
    *Done when:* the print tests and a headless print-to-PDF prove it in both Imperial and Metric, and the founder approves it on paper.
 
+8b. **Page 2 on a phone print: the rail markings no longer run into Fin Placement** (founder, 2026-09-29). Found by item 8's planner while measuring: on a print made from a phone at 733 dots wide or narrower, the Rail Bands table is already taller than its box and runs into the Fin Placement box below — 427 px in 414 at 733, 400 in 334 at 618 (the founder's own phone's page width), 400 in 292 at 560. It is not caused by item 8 and item 8 does not change it.
+   *Who:* Claude (quick task, after item 8).
+   *Done when:* at every phone print width (560–900) and on a computer print, in both systems and on Letter and A4, the rail markings and the fin numbers each fit their own box with nothing overlapping, proven by a browser spec and a printed PDF the founder checks.
+
 9. **Blank catalogue links, if time allows before the freeze** (todo `2026-09-26-open-the-blank-s-catalog-page-from-the-app`). A picked blank links to its maker's catalogue, and to the right page where the vendor allows it, from the blank card and from the DATASHEET's footnote. The addresses come from a fixed table in `lib/blanks/`, never from free text.
    *Done when:* each vendor's link opens the right catalogue on desktop and phone, or the item is moved to after Oct 10.
 

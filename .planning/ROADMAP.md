@@ -166,7 +166,7 @@ founder questions stand open as decisions, not defects. Full phase detail archiv
 **Goal:** When a room of shapers sees the app on Saturday 2026-10-10 (the build guide's M4, "invite shapers"), it is safe, tidy, and credible on the numbers they know best, and it is ready to hear from them: the security patch live, the project clean, the founder's open decisions made, volume proven against real boards, the printed order form complete, a way for shapers to reach the founder and a count of which screens they use, and the whole trip rehearsed on real phones before a freeze on Wednesday 2026-10-07.
 **Requirements**: Items 1–13 in `.planning/phases/13-ready-for-the-shapers/13-SPEC.md` (ordered; who does each and what "done" means), run one at a time with the founder's review between
 **Depends on:** Phase 12
-**Plans:** 7/13 items, plus optional 9b — each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; founder items are recorded in the SPEC's Progress Log
+**Plans:** 7/13 items, plus 8b and optional 9b — each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; founder items are recorded in the SPEC's Progress Log
 
 Plans:
 
@@ -186,6 +186,7 @@ Plans:
 
 - [x] 7. Volume proven against three real boards with known litres (the founder checked the four presets against their expected volumes: all within 1/2–1 L, 2026-09-28)
 - [ ] 8. The order form carries the tip thicknesses and the planer passes
+- [ ] 8b. Page 2 on a phone print: the rail markings stop running into Fin Placement (founder's addition 2026-09-29)
 - [ ] 9. Blank catalogue links (if time allows before the freeze)
 - [ ] 9b. Optional: a ghost of the last edit on TEMPLATE (founder's addition 2026-09-27; only if time allows before the freeze)
 
