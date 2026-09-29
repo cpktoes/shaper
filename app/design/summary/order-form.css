@@ -158,6 +158,7 @@
   --order-form-spine: 1.5rem; /* 24px — 12px vertical type with 6px of air either side */
   --order-form-gap: 0.25rem; /* must match the `gap-1` on the three band rows */
   --order-form-left: 0.32;
+  --order-form-planing: 0.2; /* page 2's PLANING column, as a share of the Shaping Data column */
 }
 
 /* `flex: none` plus an explicit `width`, rather than putting the size in the `flex` shorthand's
@@ -175,6 +176,14 @@
 [data-order-form-root] .order-form-left-col {
   flex: none;
   width: calc(100% * var(--order-form-left));
+}
+
+/* 20% is 138 px at the computer's print and 104 px at the narrowest phone print; the measured
+   ceiling before a rail row wraps at 560 dots is about 22%, set by `Tapered Rail Thickness` and
+   Metric `Center (mm)`; and at the computer's print it keeps `Off Bottom @ Center` on one line. */
+[data-order-form-root] .order-form-planing-col {
+  flex: none;
+  width: calc(100% * var(--order-form-planing));
 }
 
 [data-order-form-root] .order-form-logo-col {

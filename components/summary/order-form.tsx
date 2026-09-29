@@ -36,7 +36,9 @@
  * could afford there was smaller than a number you cut foam to has any business being. On their own
  * page they get a half-page each. What the front gets back is the muse's own use for that space:
  * its board outlines live inside a big `COLOR DESIGN AND LOGOS` panel, blank around the drawings so
- * a customer can sketch artwork on it.
+ * a customer can sketch artwork on it. Since Phase 13 item 8 (quick 260928-r9h) the Rail Bands table
+ * also shares its row with a new PLANING column — the Deck Skin, how much comes off the bottom at
+ * the centre and how many planer passes that is — condensed room for by narrowing the rail table.
  *
  * Every calculated value is read from the shared design store (`components/design/design-store.tsx`)
  * and rendered through the *existing* view components — `OutlineViewer`, `RailSectionPlot`,
@@ -54,6 +56,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { useDesign } from "@/components/design/design-store";
+import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { usePrintRailInstructions } from "@/components/print-instructions-provider";
 import { useUnits } from "@/components/units-provider";
 import { OutlineViewer } from "@/components/outline/outline-viewer";
@@ -77,6 +80,7 @@ import { useOrderFormPrintFit } from "./use-print-fit";
 import { dimensionValueFitClass } from "./dimension-fit";
 import { cn } from "@/lib/utils";
 import { FIN_SETUPS, FIN_SYSTEMS, type FinSystem } from "@/lib/geometry/fins";
+import { planingBox } from "@/lib/geometry/planing";
 import type { RailSectionKey } from "@/lib/geometry/rail-bands";
 import {
   formatDim,
@@ -218,6 +222,7 @@ export function OrderForm() {
     blank,
   } = useDesign();
   const { system } = useUnits();
+  const { defaults } = useFitDefaults();
   const { rootRef, printOrderForm } = useOrderFormPrintFit();
   // The phone preview's scale, measured, for the engines whose stylesheet cannot divide two lengths
   // (260909-wrz) — see use-preview-scale.ts. The page wrapper is what it measures, the scaler is
@@ -262,6 +267,9 @@ export function OrderForm() {
       : undefined;
 
   const thicknessDisplay = formatDim(railBands.center.boardThickness, system);
+
+  // The PLANING column's words, read off the same side profile and Planer Max Depth ROCKER uses.
+  const planing = planingBox(sideProfile, defaults.planerMaxDepth, system);
 
   return (
     <div
@@ -626,16 +634,64 @@ export function OrderForm() {
                 afford there was smaller than a number you cut foam to has any business being. One
                 above the other, each gets the full width of the page as well as a large share of its
                 height — and the reading order matches the order a blank gets worked: bands marked
-                first, fins set last. */}
+                first, fins set last. Since Phase 13 item 8 (quick 260928-r9h, the founder,
+                2026-09-29) the Rail Bands table also shares its row with a new PLANING column, made
+                room for by condensing the rail markings horizontally, so its rows keep their
+                height. */}
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
-              <FormBox
-                caption="Rail Bands"
-                captionRight="plots overleaf"
-                className="min-h-0 min-w-0 flex-[1.6]"
-                bodyClassName="p-2"
-              >
-                <RailDataTable sections={sections} compact />
-              </FormBox>
+              <div data-rail-bands-row className="flex min-h-0 min-w-0 flex-[1.6] gap-1">
+                <FormBox
+                  caption="Rail Bands"
+                  captionRight="plots overleaf"
+                  className="min-h-0 min-w-0 flex-1"
+                  bodyClassName="p-2"
+                >
+                  <RailDataTable sections={sections} compact />
+                </FormBox>
+
+                {/* The PLANING column (Phase 13 item 8): with a blank picked, the Deck Skin, how
+                    much foam comes off the bottom at the centre, and how many planer passes that
+                    is at the shaper's own Planer Max Depth — the same numbers ROCKER shows, worded
+                    in the one tested place, lib/geometry/planing.ts. With no blank picked there is
+                    nothing to derive those numbers from, so the box holds one plain line saying so
+                    instead of printing empty (<no_blank_decision> in the plan). The tip
+                    thicknesses stay on page 1's rocker strip, which already prints them, and the
+                    five-station FOAM OFF Deck/Bottom rows stay on ROCKER's own DATASHEET — five
+                    station columns do not fit this box, and a full-width row would make this page
+                    taller. `captionRight` is a non-breaking space, matching Rail Bands' own row
+                    height: its `plots overleaf` note makes that caption row about 2px taller, and
+                    this keeps the two caption rows lined up. */}
+                <FormBox
+                  caption="Planing"
+                  captionRight={" "}
+                  className="order-form-planing-col min-w-0"
+                  bodyClassName="p-0"
+                >
+                  <div data-planing className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 px-1 py-1.5">
+                    {planing.noBlankLine !== null ? (
+                      <p data-planing-empty className="text-surf-ink-muted leading-tight order-form-micro">
+                        {planing.noBlankLine}
+                      </p>
+                    ) : (
+                      planing.items.map((item) => (
+                        <div key={item.label} data-planing-item className="flex flex-col">
+                          <div data-planing-label className="text-surf-ink-muted leading-tight order-form-micro">
+                            {item.label}
+                          </div>
+                          <div data-planing-value className="font-bold text-surf-ink leading-tight order-form-value">
+                            {item.value}
+                          </div>
+                          {item.note !== null && (
+                            <div data-planing-note className="text-surf-ink-muted leading-tight order-form-micro">
+                              {item.note}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </FormBox>
+              </div>
 
               <FormBox
                 caption="Fin Placement"

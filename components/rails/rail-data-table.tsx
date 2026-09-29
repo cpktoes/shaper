@@ -50,11 +50,17 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
       // several rounds of layout work. Clipped overflow is what the sheet's audit checks for.
       // data-print-unfold still releases the height for print.
       <div data-print-unfold className="min-h-0 min-w-0 flex-1 overflow-hidden">
+        {/* Since Phase 13 item 8 (quick 260928-r9h) the order form's rail table shares its row
+            with the PLANING column, so its label column takes 1.75 shares against 1 per value
+            column (condensed from 1.4). 1.75 is where, at the narrowest phone print (560 dots,
+            type at its 12px floor), neither the longest label (`Tapered Rail Thickness`, 131.5 px)
+            nor the widest header (Metric `Center (mm)`, 74.8 px) wraps, measured with `Hard Edge`
+            in every cell. The rows keep their height, and the DATA page's full table keeps 1.4. */}
         <div
           className="mb-1 flex gap-2 border-b-2 border-surf-line-faint pb-1"
           style={{ fontSize: "var(--summary-font-label, 12px)" }}
         >
-          <div className="min-w-0 flex-[1.4]" />
+          <div className="min-w-0 flex-[1.75]" />
           {sections.map((s) => (
             <div key={s.key} className="min-w-0 flex-1 text-right font-extrabold text-surf-ink">
               {s.title}
@@ -76,7 +82,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
                 className="flex gap-2 border-b border-surf-line-faint py-0.5 leading-tight"
                 style={{ fontSize: "var(--summary-font-row, 11px)" }}
               >
-                <div className="min-w-0 flex-[1.4] text-surf-ink-muted">{row.label}</div>
+                <div className="min-w-0 flex-[1.75] text-surf-ink-muted">{row.label}</div>
                 {row.cells.map((cell, i) => (
                   <div key={i} className="min-w-0 flex-1 text-right font-bold whitespace-nowrap text-surf-ink">
                     {formatCell(cell, system)}
