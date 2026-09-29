@@ -1,12 +1,13 @@
 /**
- * The order form's PLANING column (Phase 13 item 8, quick task 260928-r9h) — the words for a small
- * block beside the Rail Bands table on page 2, the Shaper Reference sheet. The founder asked for
- * this on 2026-09-27 ("summary needs tip thickness and deck/bottom passes info somewhere") and
- * redirected it on 2026-09-29 to page 2, beside the rail markings, condensed to make room: the tips
- * themselves are left to page 1's rocker strip, which already prints all five thicknesses (nose tip
- * and tail tip included), so this column carries only what ROCKER's own Deck Skin and Center OFF
- * BOTTOM readouts show — how much comes off the deck, how much comes off the bottom at the centre,
- * and how many planer passes that is at the shaper's own Planer Max Depth.
+ * The order form's PLANING column (Phase 13 item 8, quick task 260928-r9h; reworked into a small
+ * Deck/Bottom table by quick 260928-tst) — the words for a small block beside the Rail Bands table
+ * on page 2, the Shaper Reference sheet. The founder asked for this on 2026-09-27 ("summary needs
+ * tip thickness and deck/bottom passes info somewhere") and redirected it on 2026-09-29 to page 2,
+ * beside the rail markings, condensed to make room: the tips themselves are left to page 1's rocker
+ * strip, which already prints all five thicknesses (nose tip and tail tip included), so this column
+ * carries only what ROCKER's own Deck Skin and Center OFF BOTTOM readouts show — how much comes off
+ * the deck, how much comes off the bottom at the centre, and how many planer passes that is at the
+ * shaper's own Planer Max Depth.
  *
  * Every number is the side profile's own — `blank.cut.deckSkin` and `blank.centerGap` — read through
  * the SAME formatters ROCKER and the DATASHEET already read them through: `formatDeckSkin` for the
@@ -87,5 +88,84 @@ export function planingBox(profile: PlaningInput, planerMaxDepth: Mm, system: Un
       },
     ],
     noBlankLine: null,
+  };
+}
+
+/** One row of the table: a label with a value under each of `Deck` and `Bottom`. */
+export interface PlaningRow {
+  label: string;
+  deck: string;
+  bottom: string;
+}
+
+/** The table's contents: the two column headers, the two rows, and the footnote under them. */
+export interface PlaningTable {
+  headers: { deck: string; bottom: string };
+  rows: PlaningRow[];
+  footnote: string;
+}
+
+const TABLE_HEADERS = { deck: "Deck", bottom: "Bottom" };
+const LABEL_FOAM_OFF = "Foam Off";
+const LABEL_PASSES = "Passes";
+/** The rail table's own "nothing here" mark (U+2014), reused so the two tables agree on what a
+ * missing value looks like. */
+const NO_DATA_CELL = "—";
+
+/**
+ * The founder's 2026-09-29 words, after seeing item 8's printed page: "Let's organize this like the
+ * rail dims. Deck and Bottom are headers." `planingTable` is that table, laid out exactly like the
+ * rail markings beside it — same header rule, same row rule, same `--summary-font-label`/
+ * `--summary-font-row` type sizes (`components/summary/order-form.tsx` draws the `<table>`; this
+ * module only words its cells).
+ *
+ * Each decision below is `<decisions>` in the quick 260928-tst plan, restated in one line:
+ * - a zero prints `0`, never a dash — a dash is reserved for "no blank picked" (Decision 1);
+ * - the pass depth lives in the footnote, not a row or the caption, because a footnote wraps freely
+ *   and never widens the table (Decision 2);
+ * - a pass count prints as a bare whole number, the rail table's own label-plus-value idiom
+ *   (Decision 3);
+ * - the row labels are the DATASHEET's own `Foam Off` and the PLANING caption's own `Passes`
+ *   (Decision 4);
+ * - Metric carries its unit on every Foam Off value, since each column mixes a depth row with a
+ *   count row and a header unit would sit over the counts too (Decision 5);
+ * - with no blank picked, the same table prints with `—` in all four cells and a footnote saying to
+ *   pick one, so page 2 has one layout either way (Decision 6).
+ *
+ * The Deck value is the deck skin — identical to the DATASHEET's own FOAM OFF Deck cell at Center
+ * (`BlankSideView.foamOffDeck.center`), which is why the footnote's "At the center" covers both
+ * columns even though the Deck figure does not vary along the board. There is no second formula and
+ * no conversion factor here (CLAUDE.md Rules 1 and 2): every value is read straight off the side
+ * profile's own `blank.cut.deckSkin` and `blank.centerGap` through the existing boundary formatters
+ * and `planerPasses`, exactly as `planingBox` above did.
+ */
+export function planingTable(profile: PlaningInput, planerMaxDepth: Mm, system: UnitsSystem): PlaningTable {
+  const { blank } = profile;
+  if (blank === null) {
+    return {
+      headers: TABLE_HEADERS,
+      rows: [
+        { label: LABEL_FOAM_OFF, deck: NO_DATA_CELL, bottom: NO_DATA_CELL },
+        { label: LABEL_PASSES, deck: NO_DATA_CELL, bottom: NO_DATA_CELL },
+      ],
+      footnote: NO_BLANK_LINE,
+    };
+  }
+
+  return {
+    headers: TABLE_HEADERS,
+    rows: [
+      {
+        label: LABEL_FOAM_OFF,
+        deck: formatDeckSkin(blank.cut.deckSkin, system),
+        bottom: unsignedZeroMark(blank.centerGap, system),
+      },
+      {
+        label: LABEL_PASSES,
+        deck: String(planerPasses(blank.cut.deckSkin, planerMaxDepth, system)),
+        bottom: String(planerPasses(blank.centerGap, planerMaxDepth, system)),
+      },
+    ],
+    footnote: `At the center, at ${formatMark(planerMaxDepth, system)} a pass — your Planer Max Depth.`,
   };
 }
