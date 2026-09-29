@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: "Phase 13 items 1–7 done; Shortboard preset moved to 6'3\"RP (fast task 125, awaiting push); item 8 being re-planned for page 2"
-last_updated: "2026-09-29T03:35:33.941Z"
-last_activity: 2026-09-28
-last_activity_desc: "Phase 13 item 7 done: the founder checked the four presets' litres, all within 1/2–1 L"
+stopped_at: Phase 13 item 8 verified locally with before/after PDFs sent; awaiting the founder's paper check and go; then 8b
+last_updated: "2026-09-29T04:23:35.190Z"
+last_activity: 2026-09-29
+last_activity_desc: Quick task 260928-r9h (Phase 13 item 8, the Planing column on page 2) verified locally; awaiting the founder's paper check
 progress:
   total_phases: 1
   completed_phases: 0
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-28 - Phase 13 item 7 done: the founder checked the four presets' litres, all within 1/2–1 L
+Last activity: 2026-09-29 - Quick task 260928-r9h (Phase 13 item 8, the Planing column on page 2) verified locally; the founder's paper check and go are next
 
 ## Performance Metrics
 
@@ -310,6 +310,7 @@ Recent decisions affecting current work:
 | 260928-nu9 | Phase 13 item 5, the preset blanks: the founder chose a US Blanks blank for every preset — Shortboard 6'3"EA, Fish 5'10"RP, Mid-length 7'4"SP, Longboard 9'3"Y (its old pick, now the founder's own), all centred — captured with the app's own `buildRockerPresetSource` line and the generator re-run, so no preset is provisional any more (a new test guards it). The cards' litres follow their new blanks: Shortboard 30.2 → 29.1 L, Fish 35.4 → 35.0, Mid-length 51.5 → 50.3, Longboard 75.3 unchanged. Boards already saved keep their own blank. 3,086 unit and 360 browser tests green | 2026-09-28 | 588fc26, 2a108e9 | [260928-nu9-phase-13-item-5-the-founder-s-own-us-bla](./quick/260928-nu9-phase-13-item-5-the-founder-s-own-us-bla/) |
 | 260928-p45 | Phase 13 item 6, the fin tail question (founder, 2026-09-28: keep the generic tail when Import Template is unticked, keep the tick box, build before Oct 10): with the box ticked, fins measured in from the rail are now drawn against the REAL drawn tail — the prototype's own imported branch, ported and pinned by a new golden generated from the prototype (9 outlines, 32 cases) — on FINS, TEMPLATE's fin marks and the order form's bottom view. No written fin number changes (a test proves it); the drawings move up to 3/16" (Fish twins +0.170", Mid-length rear quads −0.190"). Unticked is unchanged. tsx is now a declared developer tool (it runs the fins golden script). 3,320 unit and 360 browser tests green; the old 2026-08-21 todo is closed | 2026-09-28 | 621ec36, 6004bd5, 26a0c54 | [260928-p45-phase-13-item-6-with-import-template-tic](./quick/260928-p45-phase-13-item-6-with-import-template-tic/) |
 | 125 | Shortboard preset blank changes to US Blanks 6'3"RP at the founder's request (was 6'3"EA), centred; card 29.4 L; captured via buildRockerPresetSource, module regenerated | 2026-09-29 | 7579ffb | — |
+| 260928-r9h | Phase 13 item 8, the order form's planing numbers (founder's redirect: tips are already on page 1's rocker strip; a Planing column on page 2 beside the rail markings, made by condensing them sideways): page 2's Shaper Reference sheet now prints Deck Skin, Off Bottom @ Center and the planer passes ("3 passes at 1/8\" a pass"), or "Pick a blank on ROCKER for the planing numbers." with no blank; the rail table's label column narrows but no row gets taller at any print width, and a quad's fin numbers still clear the Shaper Use Only box (a new browser spec proves both, after an orchestrator fix to its spread guards). 3,333 unit and 376 browser tests green | 2026-09-29 | e7dd48d, f42cfe3, 8972620, bbd8176 | [260928-r9h-phase-13-item-8-the-printed-order-form-c](./quick/260928-r9h-phase-13-item-8-the-printed-order-form-c/) |
 
 ## Deferred Items
 
