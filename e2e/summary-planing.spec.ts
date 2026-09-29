@@ -233,10 +233,20 @@ async function forceTouchSheet(page: Page) {
 }
 
 /** Switches the app's own units preference before the first navigation — the design lives in
- * memory and the preference is read once at hydration, so this must run before `page.goto`. */
+ * memory and the preference is read once at hydration, so this must run before `page.goto`.
+ *
+ * Sets BOTH the localStorage key and the `shaper-units` cookie (quick 260928-vpi): the SERVER
+ * resolves the very first paint's system from the cookie alone
+ * (`app/layout.tsx`'s `resolveUnitsHandoff()`, `components/units-provider.tsx`'s own head
+ * comment), not from localStorage — so a page read straight after `page.goto`, with no
+ * intervening click to trigger React's own re-sync, would otherwise still show Imperial's SSR
+ * output. `addCookies`, not an in-page `document.cookie` write: the cookie has to be present in
+ * the browser's OWN first request for this navigation, which an `addInitScript` (evaluated only
+ * once the document already exists) is too late for. */
 async function selectSystem(page: Page, system: UnitsSystem) {
   if (system === "metric") {
     await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
+    await page.context().addCookies([{ name: "shaper-units", value: "metric", domain: "localhost", path: "/" }]);
   }
 }
 
@@ -304,8 +314,14 @@ interface PlaningMeasurement {
   /** `[data-order-form-root]`'s own `clientWidth` — proves the viewport width really reached the
    * root (quick 260928-vpi guard (a)). */
   rootWidth: number;
-  /** Page 2 sheet's `clientHeight / clientWidth` — proves the phone sheet's own Letter shape was in
-   * effect at this width, not just its width (quick 260928-vpi guard (a)). */
+  /** Page 2 sheet's own bounding-rect `height / width` — proves the phone sheet's own Letter shape
+   * was in effect at this width, not just its width (quick 260928-vpi guard (a)). A bounding rect,
+   * not `clientHeight / clientWidth`, on purpose: the sheet is `box-sizing: border-box` with a 1px
+   * border, and `aspect-ratio` locks the BORDER box, so `clientWidth`/`clientHeight` — always
+   * integers, and excluding the border — read a ratio measurably off the true one at a narrow width
+   * (measured: 1.2957 against 1.294118 at 560 dots, over this check's own tolerance). The bounding
+   * rect reads the same border-box the CSS itself locked, sub-pixel, matching the pattern
+   * `e2e/summary-print-touch-box.spec.ts`'s own ratio check already uses. */
   sheetRatio: number;
   /** `[data-fin-notes]`'s bounding bottom minus the fin body's content-box bottom (its own bounding
    * bottom minus its computed `padding-bottom`). The fin body is `finGrid.parentElement`. Positive
@@ -442,7 +458,8 @@ function measureAndWrite(lists: PlaningCandidateLists): PlaningMeasurement {
   const root = document.querySelector<HTMLElement>("[data-order-form-root]");
   if (!root) throw new Error("[data-order-form-root] not found");
   const rootWidth = root.clientWidth;
-  const sheetRatio = referenceSheet.clientHeight / referenceSheet.clientWidth;
+  const referenceSheetRect = referenceSheet.getBoundingClientRect();
+  const sheetRatio = referenceSheetRect.height / referenceSheetRect.width;
 
   const finNotesEl = referenceSheet.querySelector<HTMLElement>("[data-fin-notes]");
   if (!finNotesEl) throw new Error("[data-fin-notes] not found");
