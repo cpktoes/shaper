@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 8 live (deployment 6727569021); next is item 8b — page 2 on a phone print, plus the Metric fin-note wording
+stopped_at: Phase 13 item 8b built and verified locally (quick 260928-vpi), before/after sent; awaiting the founder's paper check and go to push
 last_updated: "2026-09-29T05:36:10.968Z"
 last_activity: 2026-09-29
-last_activity_desc: "Item 8 live: the order form's PLANING table on page 2, to the left of the rail markings"
+last_activity_desc: "Quick task 260928-vpi (item 8b: page 2 on a phone print, plus the Metric fin-note wording) verified locally"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **8 of 13 items done.** Items 1–6 and 8 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. **Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is next**, then 9 (catalogue links, if time) and 9b (the ghost outline, optional).
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **8 of 13 items done.** Items 1–6 and 8 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. **Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is built and verified locally (quick 260928-vpi); the founder's paper check and go are next**, then 9 (catalogue links, if time) and 9b (the ghost outline, optional).
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-29 - Item 8 live (Vercel deployment 6727569021, 05:41 UTC): the order form's PLANING table on page 2, to the left of the rail markings
+Last activity: 2026-09-29 - Completed quick task 260928-vpi: Phase 13 item 8b (page 2 on a phone print, plus the Metric fin-note wording) verified locally; before/after sent to the founder
 
 ## Performance Metrics
 
@@ -313,6 +313,7 @@ Recent decisions affecting current work:
 | 260928-r9h | Phase 13 item 8, the order form's planing numbers (founder's redirect: tips are already on page 1's rocker strip; a Planing column on page 2 beside the rail markings, made by condensing them sideways): page 2's Shaper Reference sheet now prints Deck Skin, Off Bottom @ Center and the planer passes ("3 passes at 1/8\" a pass"), or "Pick a blank on ROCKER for the planing numbers." with no blank; the rail table's label column narrows but no row gets taller at any print width, and a quad's fin numbers still clear the Shaper Use Only box (a new browser spec proves both, after an orchestrator fix to its spread guards). 3,333 unit and 376 browser tests green | 2026-09-29 | e7dd48d, f42cfe3, 8972620, bbd8176 | [260928-r9h-phase-13-item-8-the-printed-order-form-c](./quick/260928-r9h-phase-13-item-8-the-printed-order-form-c/) |
 | 260928-tst | Phase 13 item 8 revision (the founder, on paper: "organize this like the rail dims. Deck and Bottom are headers. Font size should match the other dim text, and I'd like to add a #of passes for the deck too"): the PLANING column is now a small table like the rail markings — headers Deck / Bottom, rows Foam Off (1/8" · 3/8") and Passes (1 · 3), the rail table's own type size, a footnote "At the center, at 1/8\" a pass — your Planer Max Depth.", dashes plus "Pick a blank on ROCKER for the planing numbers." with no blank — and 28% wide (was 20%). At the 560-dot phone print the rail labels now wrap (handed to item 8b with the measured levers). 3,333 unit and 376 browser tests green | 2026-09-29 | ed416ea, 08873fa, d23bbfb | [260928-tst-phase-13-item-8-revision-the-planing-col](./quick/260928-tst-phase-13-item-8-revision-the-planing-col/) |
 | 128 | Order form page 2: the PLANING table moves to the LEFT of the Rail Bands table at the founder's request ("Planning comes before rail shaping"); widths, captions and every number unchanged; the planing browser spec finds the boxes in their new places and fails if PLANING drifts back right. 3,333 unit and 376 browser tests, production suite green | 2026-09-29 | 159521f | — |
+| 260928-vpi | Phase 13 item 8b, page 2 on a phone print (the founder's addition 2026-09-29, plus their decision to fix the Metric fin-note wording here): printed from a phone, page 2's rail table was cut off at the bottom of its box (the Bottom Tuck rows never printed) and a quad's fin numbers ran into their notes, because a phone's Letter-shaped sheet is shorter for its width than a computer's and page 2's type sat on a 12 px floor. Now page 2's type on a phone sheet follows one fit size (about 8.2 pt on the founder's iPhone paper, 8.7 pt from 733 dots up; a computer print stays 9.6 pt) and each table box is never shorter than what it holds, so every rail mark and fin number sits in its own box from 560 to 900 dots in both systems. The fin notes' last line reads "nearest 1/16\"" or "nearest millimetre" (the old "(0.1 cm in cm units)" aside is gone), on FINS' MODEL INFO too. A computer print is identical apart from that line. 3,341 unit and 382 browser tests, the build and the production suite green | 2026-09-29 | 69d5f19, f9c4da9, 55890f1, 5a416dd | [260928-vpi-phase-13-item-8b-page-2-on-a-phone-print](./quick/260928-vpi-phase-13-item-8b-page-2-on-a-phone-print/) |
 
 ## Deferred Items
 
