@@ -26,10 +26,17 @@
  *    term `(isPintail ? narrowShiftGunFront * 0 : 0)`, which is zero on both branches. It is
  *    recorded in a comment and contributes nothing, exactly as in the prototype. It is not
  *    "fixed" into `narrowShiftGunFront`.
- * 5. IMPORTED-TEMPLATE BRANCH OMITTED. `effectiveHalfWidthAt` chooses between imported template
- *    geometry and the polynomial fallback. Cross-screen template import is not built yet, so
- *    only the fallback branch is ported; `tailHalfWidthAt` is the single seam where the
- *    imported branch will be added later.
+ * 5. IMPORTED-TEMPLATE BRANCH PORTED (quick 260928-p45, Phase 13 item 6, founder 2026-09-28).
+ *    `effectiveHalfWidthAtInches` is the seam: it reads a caller-supplied `ImportedFinTail`, and
+ *    the store passes one only while FINS' Import Template box is ticked. With none (`null`, or
+ *    an empty tail with no points — the prototype's own `geom.points.length` guard), every
+ *    function here is the standalone calculator exactly as before. The branch is ported from the
+ *    prototype's own loop (`effectiveHalfWidthAt`, Fins.dc.html lines 658-671) rather than
+ *    `outline.ts`'s `sampleOutline`, because the prototype clamps below the tail pod and at 24in
+ *    — a station-domain sampler with a different fallback-at-the-ends rule would silently answer
+ *    a different question at both edges (see the plan's own measurement 4). The tail itself
+ *    arrives as data from the pure adapter `importedFinTailFromOutline`, so this module still
+ *    reaches for nothing outside `lib/geometry`.
  * 6. CM BRANCH OMITTED. Every `unitBounds` call and `toU`/`fromU` pair collapses to its inch
  *    branch; this module has no unit mode.
  * 7. LONGBOARD-QUAD LENGTH FLOOR. A new product rule with no counterpart in the prototype: McKee's
@@ -43,6 +50,7 @@
  */
 
 import type { Point2D } from "./board";
+import type { OutlineGeometry } from "./outline";
 import { formatDim, formatDimBare, formatMarkBare } from "./measure-display";
 import { type Mm, inchesToMm, mm, mmToInches, type MeasureFamily, type UnitsSystem } from "./units";
 import { TOE_AIM_TABLE, TOE_AIM_TABLE_COLUMNS, type ToeAimTableRowKey } from "./toe-aim-tables";
@@ -114,6 +122,23 @@ export const DEFAULT_FIN_PLACEMENT_SPEC: FinPlacementSpec = {
     quadRearOffTailOverridden: false,
   },
 };
+
+/**
+ * The real drawn tail, as the fin maths read it (quick 260928-p45) — the app's own analogue of
+ * the prototype's `templateValues.tailGeom`. Passed as `computeFinPlacement`'s (and
+ * `tailHalfWidthAt`'s / `tailOffTailAtHalfWidth`'s) optional last argument only while FINS' Import
+ * Template box is ticked; `null` (or an empty tail with no points) means the standalone
+ * calculator on the generic tail curve, exactly as before this task.
+ */
+export interface ImportedFinTail {
+  /** The right half of the real outline, off-tail station ascending, cut at 24in — same axes as
+   * `tailOutlineHalfPoints`' points and the store's `finTailOutline.points`: `x` is the half-width,
+   * `y` is the off-tail station. */
+  points: Point2D[];
+  /** The prototype's own `podY` — the tail pod's station (a diamond's wing corner; zero for every
+   * other tail shape). Read off the outline geometry's `tailPodStation`. */
+  podStation: Mm;
+}
 
 /** One drawn fin, trailing-edge convention. `lateral` is signed from the stringer (negative =
  * left of centre); `lateralValue` is the off-rail distance when `lateralKind` is `'rail'`, the
@@ -334,8 +359,8 @@ function scaleFactorInches(shape: FinTailShape, w12: number): number {
   return w12 / 2 / xBaseAtInches(baseShape, 12);
 }
 
-/** Ported from `halfWidthAt` (Fins.dc.html lines 811-820) — the polynomial-fallback branch of
- * `effectiveHalfWidthAt` only (deviation 5: the imported-template branch is not ported here). */
+/** Ported from `halfWidthAt` (Fins.dc.html lines 811-820) — the polynomial-fallback branch that
+ * `effectiveHalfWidthAtInches` below falls back to whenever no imported tail is in force. */
 function tailHalfWidthAtInches(shape: FinTailShape, w12: number, y: number): number {
   const yy = Math.max(0, Math.min(24, y));
   const S = scaleFactorInches(shape, w12);
@@ -347,15 +372,62 @@ function tailHalfWidthAtInches(shape: FinTailShape, w12: number, y: number): num
   return S * xBaseAtInches(shape, yy);
 }
 
+/** The inch-domain shape of `ImportedFinTail`, in the prototype's own `[y, x]` (off-tail, half-
+ * width) order — the private counterpart `importedTailToInches` below converts into just before
+ * the inch core ever sees one. */
+interface ImportedTailInches {
+  points: [number, number][];
+  podY: number;
+}
+
+/** Statement-for-statement port of the imported branch of `effectiveHalfWidthAt` (Fins.dc.html
+ * lines 662-668) — walking the real drawn tail's own sampled points instead of the polynomial.
+ * Never called with an empty `points` array (see `effectiveHalfWidthAtInches`'s own guard). */
+function importedHalfWidthAtInches(tail: ImportedTailInches, y: number): number {
+  const yy = Math.max(tail.podY, Math.min(24, y));
+  for (let i = 0; i < tail.points.length - 1; i++) {
+    const [y0, x0] = tail.points[i];
+    const [y1, x1] = tail.points[i + 1];
+    if (yy >= y0 && yy <= y1) {
+      const t = y1 > y0 ? (yy - y0) / (y1 - y0) : 0;
+      return x0 + (x1 - x0) * t;
+    }
+  }
+  return tail.points[tail.points.length - 1][1];
+}
+
+/** Ported from `effectiveHalfWidthAt` (Fins.dc.html lines 658-671) — the seam deviation 5's header
+ * comment describes. Chooses the imported branch only when a real tail with at least one point is
+ * in force (the prototype's own `geom.points.length` guard); otherwise every caller gets exactly
+ * the standalone calculator (`tailHalfWidthAtInches`) it always has. */
+function effectiveHalfWidthAtInches(
+  shape: FinTailShape,
+  w12: number,
+  imported: ImportedTailInches | null,
+  y: number,
+): number {
+  if (imported !== null && imported.points.length > 0) {
+    return importedHalfWidthAtInches(imported, y);
+  }
+  return tailHalfWidthAtInches(shape, w12, y);
+}
+
 /** Ported from `outlineOffTailAtHalfWidth` (Fins.dc.html lines 822-830) — bisection capped at 24
- * iterations (see threat T-mr2-02: no reachable input can make this loop hang). */
-function tailOffTailAtHalfWidthInches(shape: FinTailShape, w12: number, targetHw: number): number {
-  if (tailHalfWidthAtInches(shape, w12, 0) >= targetHw) return 0;
+ * iterations (see threat T-mr2-02: no reachable input can make this loop hang). Both half-width
+ * reads go through `effectiveHalfWidthAtInches`, exactly as the prototype's own
+ * `outlineOffTailAtHalfWidth` calls `effectiveHalfWidthAt` rather than `halfWidthAt` directly. */
+function tailOffTailAtHalfWidthInches(
+  shape: FinTailShape,
+  w12: number,
+  imported: ImportedTailInches | null,
+  targetHw: number,
+): number {
+  if (effectiveHalfWidthAtInches(shape, w12, imported, 0) >= targetHw) return 0;
   let lo = 0;
   let hi = 24;
   for (let i = 0; i < 24; i++) {
     const mid = (lo + hi) / 2;
-    if (tailHalfWidthAtInches(shape, w12, mid) < targetHw) lo = mid;
+    if (effectiveHalfWidthAtInches(shape, w12, imported, mid) < targetHw) lo = mid;
     else hi = mid;
   }
   return hi;
@@ -471,6 +543,9 @@ interface FinPlacementSpecInches {
   quadRearModel: QuadRearModel;
   twinTemplate: TwinTemplate;
   quadCenterFinOn: boolean;
+  /** The real drawn tail (quick 260928-p45), or `null` for the standalone calculator — see
+   * `ImportedFinTail`'s own doc comment. */
+  importedTail: ImportedTailInches | null;
   advanced: {
     baseLenForward: number;
     baseLenForwardOverridden: boolean;
@@ -626,7 +701,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
   const frontFinal = frontBase + (isThruster || isQuad ? adv.forwardPositionOffset : 0);
   // frontSpread turns an off-rail distance into a lateral position through the outline half
   // width at the fin's OWN off-tail, not at the tail or at 12".
-  const frontSpread = tailHalfWidthAtInches(spec.tailShape, w12, frontFinal) - frontOffRail;
+  const frontSpread = effectiveHalfWidthAtInches(spec.tailShape, w12, spec.importedTail, frontFinal) - frontOffRail;
 
   const centerSuggestedThruster = activeThrusterModel.center;
 
@@ -636,7 +711,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
   // spread is a HALF spread: for basicOffRail it comes from half width minus off-rail; for
   // every other model it is the model's own full spread divided by two.
   const spread = isBasicOffRail
-    ? tailHalfWidthAtInches(spec.tailShape, w12, rearFinal) - quadRearOffRailValue
+    ? effectiveHalfWidthAtInches(spec.tailShape, w12, spec.importedTail, rearFinal) - quadRearOffRailValue
     : (quadModels[spec.quadRearModel].spread ?? 0) / 2;
 
   // ---- Twin (§6) ----
@@ -767,7 +842,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
     );
   }
   if (isTwin) {
-    const tSpread = tailHalfWidthAtInches(spec.tailShape, w12, mainOffTail) - mainOffRail;
+    const tSpread = effectiveHalfWidthAtInches(spec.tailShape, w12, spec.importedTail, mainOffTail) - mainOffRail;
     marks.push(
       buildFinMarkInches({
         role: "front",
@@ -816,7 +891,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
         lateralValueIn: null,
       }),
     );
-    const sSpread = tailHalfWidthAtInches(spec.tailShape, w12, sideFinal) - activeSideOffRail;
+    const sSpread = effectiveHalfWidthAtInches(spec.tailShape, w12, spec.importedTail, sideFinal) - activeSideOffRail;
     marks.push(
       buildFinMarkInches({
         role: "front",
@@ -1096,16 +1171,64 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
   };
 }
 
+/** Converts a public `ImportedFinTail` into the inch core's own `[y, x]`-ordered shape — the
+ * order is swapped here, once, rather than at every read site. `null` stays `null`. */
+function importedTailToInches(tail: ImportedFinTail | null): ImportedTailInches | null {
+  if (tail === null) return null;
+  return {
+    points: tail.points.map((p) => [mmToInches(p.y), mmToInches(p.x)]),
+    podY: mmToInches(tail.podStation),
+  };
+}
+
 // ============================================================================================
 // Public (Mm) surface
 // ============================================================================================
 
-export function tailHalfWidthAt(shape: FinTailShape, tailWidth12: Mm, offTail: Mm): Mm {
-  return inchesToMm(tailHalfWidthAtInches(shape, mmToInches(tailWidth12), mmToInches(offTail)));
+/** Pass `importedTail` only while FINS' Import Template box is ticked — with it omitted (or
+ * `null`), this is the standalone calculator on the generic tail curve, exactly as before quick
+ * 260928-p45. */
+export function tailHalfWidthAt(
+  shape: FinTailShape,
+  tailWidth12: Mm,
+  offTail: Mm,
+  importedTail: ImportedFinTail | null = null,
+): Mm {
+  return inchesToMm(
+    effectiveHalfWidthAtInches(shape, mmToInches(tailWidth12), importedTailToInches(importedTail), mmToInches(offTail)),
+  );
 }
 
-export function tailOffTailAtHalfWidth(shape: FinTailShape, tailWidth12: Mm, targetHalfWidth: Mm): Mm {
-  return inchesToMm(tailOffTailAtHalfWidthInches(shape, mmToInches(tailWidth12), mmToInches(targetHalfWidth)));
+/** Pass `importedTail` only while FINS' Import Template box is ticked — with it omitted (or
+ * `null`), this is the standalone calculator on the generic tail curve, exactly as before quick
+ * 260928-p45. */
+export function tailOffTailAtHalfWidth(
+  shape: FinTailShape,
+  tailWidth12: Mm,
+  targetHalfWidth: Mm,
+  importedTail: ImportedFinTail | null = null,
+): Mm {
+  return inchesToMm(
+    tailOffTailAtHalfWidthInches(
+      shape,
+      mmToInches(tailWidth12),
+      importedTailToInches(importedTail),
+      mmToInches(targetHalfWidth),
+    ),
+  );
+}
+
+/**
+ * The one place the app builds the prototype's `tailGeom` (quick 260928-p45) — pure, reaching for
+ * nothing outside `lib/geometry`. The store calls this only while FINS' Import Template box is
+ * ticked, and passes the result as `computeFinPlacement`'s (and `tailHalfWidthAt`'s /
+ * `tailOffTailAtHalfWidth`'s) `importedTail` argument.
+ */
+export function importedFinTailFromOutline(geometry: OutlineGeometry): ImportedFinTail {
+  const points: Point2D[] = geometry.points
+    .filter((p) => mmToInches(p.station) <= 24)
+    .map((p) => ({ x: p.halfWidth, y: p.station }));
+  return { points, podStation: geometry.tailPodStation };
 }
 
 export function tailOutlineHalfPoints(
@@ -1199,7 +1322,13 @@ export function toeAimTableFor(boardLength: Mm, tailWidth12: Mm, system: UnitsSy
   };
 }
 
-export function computeFinPlacement(spec: FinPlacementSpec): FinPlacementResult {
+/** Pass `importedTail` only while FINS' Import Template box is ticked — with it omitted (or
+ * `null`), this is the standalone calculator on the generic tail curve, exactly as before quick
+ * 260928-p45. */
+export function computeFinPlacement(
+  spec: FinPlacementSpec,
+  importedTail: ImportedFinTail | null = null,
+): FinPlacementResult {
   const inchesSpec: FinPlacementSpecInches = {
     boardLength: mmToInches(spec.boardLength),
     tailWidth12: mmToInches(spec.tailWidth12),
@@ -1209,6 +1338,7 @@ export function computeFinPlacement(spec: FinPlacementSpec): FinPlacementResult 
     quadRearModel: effectiveQuadRearModel(spec.quadRearModel, spec.boardLength),
     twinTemplate: spec.twinTemplate,
     quadCenterFinOn: spec.quadCenterFinOn,
+    importedTail: importedTailToInches(importedTail),
     advanced: {
       baseLenForward: mmToInches(spec.advanced.baseLenForward),
       baseLenForwardOverridden: spec.advanced.baseLenForwardOverridden,
