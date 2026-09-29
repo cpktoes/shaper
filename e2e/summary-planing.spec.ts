@@ -284,6 +284,9 @@ interface PlaningMeasurement {
   valueColWidth: number;
   /** The PLANING FormBox's own drawn width — the `.order-form-planing-col` element itself. */
   planingColWidth: number;
+  /** The PLANING FormBox's right edge and the Rail Bands FormBox's left edge — PLANING sits first. */
+  planingColRight: number;
+  railBoxLeft: number;
   widest: {
     railCell: string;
     deckFoam: string;
@@ -372,8 +375,10 @@ function measureAndWrite(lists: PlaningCandidateLists): PlaningMeasurement {
 
   const railBandsRow = referenceSheet.querySelector<HTMLElement>("[data-rail-bands-row]");
   if (!railBandsRow) throw new Error("[data-rail-bands-row] not found");
-  const railBox = railBandsRow.children[0] as HTMLElement;
-  const planingFormBoxEl = railBandsRow.children[1] as HTMLElement;
+  // PLANING is the row's FIRST box and Rail Bands the second — planing comes before rail shaping
+  // (the founder, 2026-09-29).
+  const planingFormBoxEl = railBandsRow.children[0] as HTMLElement;
+  const railBox = railBandsRow.children[1] as HTMLElement;
   const railCaptionBottom = (railBox.children[0] as HTMLElement).getBoundingClientRect().bottom;
   const planingCaptionBottom = (planingFormBoxEl.children[0] as HTMLElement).getBoundingClientRect().bottom;
 
@@ -415,6 +420,8 @@ function measureAndWrite(lists: PlaningCandidateLists): PlaningMeasurement {
     labelColWidth: rows[0] ? (rows[0].children[0] as HTMLElement).getBoundingClientRect().width : 0,
     valueColWidth: valueCells[0] ? valueCells[0].getBoundingClientRect().width : 0,
     planingColWidth: planingFormBoxEl.getBoundingClientRect().width,
+    planingColRight: planingFormBoxEl.getBoundingClientRect().right,
+    railBoxLeft: railBox.getBoundingClientRect().left,
     widest: {
       railCell: widestRailCell,
       deckFoam: widestDeckFoam,
@@ -440,6 +447,10 @@ function spread(values: number[]): number {
  * item 8b) — so nothing about the rail rows is asserted there, only logged in the report line.
  */
 function assertMeasurement(result: PlaningMeasurement, label: string, mode: "computer" | "touch" | "touch-560") {
+  expect(
+    result.planingColRight,
+    `${label}: the PLANING table is not to the LEFT of Rail Bands (planing comes before rail shaping)`,
+  ).toBeLessThanOrEqual(result.railBoxLeft + 0.5);
   expect(result.tableOverflow, `${label}: the PLANING table overflowed its own box`).toBeLessThanOrEqual(0.5);
   for (const overflow of result.planingCellHeaderOverflow) {
     expect(overflow, `${label}: a planing cell or header overflowed sideways`).toBeLessThanOrEqual(0.5);
@@ -499,7 +510,7 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
 
       const row = page.locator("[data-rail-bands-row]");
       await expect(row).toBeVisible();
-      const planingCol = row.locator(":scope > div").nth(1);
+      const planingCol = row.locator(":scope > div").nth(0);
       const captionSpan = planingCol.locator(":scope > div").nth(0).locator("span.order-form-caption");
       await expect(captionSpan).toHaveText("Planing");
 
@@ -565,7 +576,7 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       await goToSummary(page);
 
       const row = page.locator("[data-rail-bands-row]");
-      const planingCol = row.locator(":scope > div").nth(1);
+      const planingCol = row.locator(":scope > div").nth(0);
 
       const headers = planingCol.locator("[data-planing-header]");
       expect(await headers.allTextContents()).toEqual(["Deck", "Bottom"]);

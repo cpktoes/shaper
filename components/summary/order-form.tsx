@@ -638,25 +638,19 @@ export function OrderForm() {
                 first, fins set last. Since Phase 13 item 8 (quick 260928-r9h, the founder,
                 2026-09-29; reworked into a small Deck/Bottom table by quick 260928-tst) the Rail
                 Bands table also shares its row with a PLANING table, made room for by condensing
-                the rail markings horizontally, so its rows keep their height. */}
+                the rail markings horizontally, so its rows keep their height. PLANING sits to the
+                LEFT of Rail Bands, so the row reads in the order a blank gets worked — the founder,
+                2026-09-29: "Planning comes before rail shaping." */}
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
               <div data-rail-bands-row className="flex min-h-0 min-w-0 flex-[1.6] gap-1">
-                <FormBox
-                  caption="Rail Bands"
-                  captionRight="plots overleaf"
-                  className="min-h-0 min-w-0 flex-1"
-                  bodyClassName="p-2"
-                >
-                  <RailDataTable sections={sections} compact />
-                </FormBox>
-
                 {/* The PLANING table (Phase 13 item 8; reworked by quick 260928-tst). The founder,
                     2026-09-29, after seeing item 8's printed page: "Let's organize this like the
                     rail dims. Deck and Bottom are headers. Font size should match the other dim
                     text, and I'd like to add a #of passes for the deck too." So this is a small
-                    <table> beside the Rail Bands table, drawn with the SAME header rule, row rule
-                    and --summary-font-label/--summary-font-row type sizes as
-                    rail-data-table.tsx's compact variant — the two read as one type scale.
+                    <table> to the left of the Rail Bands table (planing comes before rail
+                    shaping), drawn with the SAME header rule, row rule and
+                    --summary-font-label/--summary-font-row type sizes as rail-data-table.tsx's
+                    compact variant — the two read as one type scale.
 
                     Deck and Bottom are the column headers; Foam Off and Passes are the rows — how
                     much foam comes off each face and how many planer passes that is. The pass depth
@@ -753,6 +747,15 @@ export function OrderForm() {
                       {planing.footnote}
                     </p>
                   </div>
+                </FormBox>
+
+                <FormBox
+                  caption="Rail Bands"
+                  captionRight="plots overleaf"
+                  className="min-h-0 min-w-0 flex-1"
+                  bodyClassName="p-2"
+                >
+                  <RailDataTable sections={sections} compact />
                 </FormBox>
               </div>
 
