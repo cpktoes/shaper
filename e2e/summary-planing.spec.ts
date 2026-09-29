@@ -4,6 +4,7 @@ import { inflateSync } from "node:zlib";
 import { join } from "node:path";
 import { parseCsv } from "../lib/blanks/csv";
 import { FIT_DEFAULTS_RANGE_IN } from "../lib/fit-defaults-preference";
+import { finRoundingNote } from "../lib/geometry/fins";
 import { FOIL_THICKNESS_RANGE_IN } from "../lib/geometry/foil";
 import { formatMarkBare, measureSlider, planerPasses } from "../lib/geometry/measure-display";
 import { planingTable } from "../lib/geometry/planing";
@@ -26,12 +27,16 @@ import { inchesToMm, mm, parseImperial, parseMetric, type Mm, type UnitsSystem }
  * hand-typing a string.
  *
  * Per `<plan_time_measurements>` in the quick 260928-tst plan this spec was reworked from: at 560
- * dots the rail table and the PLANING table can no longer sit side by side, so the rail labels wrap
- * there — a change from item 8, where the 20% column was stacked label over value and never wrapped.
- * Case D therefore logs the 560-dot print (rail row spread and rail content vs box) without
- * asserting anything about the rail rows there; every other width and the computer print still
- * assert one-line rail rows, unchanged from item 8. That 560-dot assertion is handed to item 8b,
- * whose own spec takes it over.
+ * dots the rail table and the PLANING table could no longer sit side by side, and the rail labels
+ * wrapped there — a change from item 8, where the 20% column was stacked label over value and never
+ * wrapped. **Quick 260928-vpi (Phase 13 item 8b) took that 560-dot gap over.** A phone's page 2 is
+ * Letter-shaped and shorter for its width than a computer's, so on a phone sheet page 2's type now
+ * follows its own fit unit instead of the 12px floor. Case D therefore asserts, at every phone width
+ * from 560 to 900 and on the computer print, in both systems: one-line rail rows, the rail and fin
+ * content each inside their own box, the fin notes inside the Fin Placement body, level rail/PLANING
+ * headers, and Shaper Use Only clear of the PAGE 2 OF 2 footer. Letter and A4 are covered because the
+ * computer's printed box is the smaller of the two papers on each axis and the phone sheet's shape is
+ * Letter's whatever the paper, while case C and `summary-print-touch-box.spec.ts` print both papers.
  *
  * Every helper below is COPIED from another spec rather than imported, per this repo's own
  * convention that each spec carries its own: `dismissChrome`, `blankList`, `firstFittingRow`,
@@ -39,8 +44,9 @@ import { inchesToMm, mm, parseImperial, parseMetric, type Mm, type UnitsSystem }
  * are `e2e/summary-blank.spec.ts`'s own; `EXPECTED_SHEET_WIDTH_DOTS`, `EXPECTED_SHEET_HEIGHT_DOTS`,
  * `SHEET_TOLERANCE_DOTS`, `EXPECTED_SCALE`, `SCALE_TOLERANCE`, `PageGeometry`,
  * `findNextStreamKeyword`, `extractPageGeometries` and `assertPageIsCorrect` are
- * `e2e/summary-print-size.spec.ts`'s own, kept verbatim with their doc comments; `SWEEP_WIDTHS` and
- * `forceTouchSheet` are `e2e/summary-print-touch-box.spec.ts`'s own.
+ * `e2e/summary-print-size.spec.ts`'s own, kept verbatim with their doc comments; `forceTouchSheet`
+ * and `EXPECTED_TOUCH_RATIO` (as `FIT_WIDTHS`'s own non-vacuity guard) are
+ * `e2e/summary-print-touch-box.spec.ts`'s own.
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
@@ -207,9 +213,17 @@ function assertPageIsCorrect(geometry: PageGeometry, pageLabel: string) {
   ).toBeDefined();
 }
 
-/** The page widths case D's sweep tests — bracketing the design width from well below to well
- * above (`e2e/summary-print-touch-box.spec.ts`'s own). */
-const SWEEP_WIDTHS = [560, 618, 680, 733, 760, 812, 900];
+/** The page widths case D sweeps — `e2e/summary-print-touch-box.spec.ts`'s own `SWEEP_WIDTHS`
+ * (bracketing the design width from well below to well above) plus 800, the coordinator's own
+ * width list for item 8b. Quick 260928-vpi retired the 560-dot exemption: every width below now
+ * asserts the full set of checks, not just logs a report line. */
+const FIT_WIDTHS = [560, 618, 680, 733, 760, 800, 812, 900];
+
+/** The squarest portrait paper's own height/width ratio — `8.5 / 11`, US Letter — the shape a
+ * touch sheet's `aspect-ratio` is built from, not a magic figure (`e2e/summary-print-touch-box.
+ * spec.ts`'s own `EXPECTED_TOUCH_RATIO`). Used by case D's non-vacuity guard (a): if the touch
+ * sheet's own ratio ever drifted off this, the phone-sheet CSS path was not really in effect. */
+const EXPECTED_TOUCH_RATIO = 1.294118;
 
 /** Forces the touch attribute onto the root directly — used where a case needs the touch box on a
  * specific engine (Chromium, for measuring at print sizes) independent of whichever pointer that
@@ -287,6 +301,30 @@ interface PlaningMeasurement {
   /** The PLANING FormBox's right edge and the Rail Bands FormBox's left edge — PLANING sits first. */
   planingColRight: number;
   railBoxLeft: number;
+  /** `[data-order-form-root]`'s own `clientWidth` — proves the viewport width really reached the
+   * root (quick 260928-vpi guard (a)). */
+  rootWidth: number;
+  /** Page 2 sheet's `clientHeight / clientWidth` — proves the phone sheet's own Letter shape was in
+   * effect at this width, not just its width (quick 260928-vpi guard (a)). */
+  sheetRatio: number;
+  /** `[data-fin-notes]`'s bounding bottom minus the fin body's content-box bottom (its own bounding
+   * bottom minus its computed `padding-bottom`). The fin body is `finGrid.parentElement`. Positive
+   * means the notes ran past the bottom of their own box (quick 260928-vpi). */
+  finNotesOverflow: number;
+  /** The Shaping Data column's last child (Shaper Use Only)'s bottom minus the column's own bottom.
+   * The column is `railBandsRow.parentElement`. Positive means the shop box ran past the bottom of
+   * its own column (quick 260928-vpi). */
+  columnOverflow: number;
+  /** Page 2's last element child (its PageMark)'s top minus the shop box's bottom. Negative means
+   * the shop box ran under the PAGE 2 OF 2 footer (quick 260928-vpi). */
+  shopToMark: number;
+  /** The first rail row's computed `font-size`, in CSS px (quick 260928-vpi guard (c)). */
+  railRowFontPx: number;
+  /** Page 1's PageMark's computed `font-size`, in CSS px — proves page 1's own 12px floor holds on
+   * a phone sheet even while page 2's has moved (quick 260928-vpi guard (b)). */
+  page1MarkFontPx: number;
+  /** Page 2's PageMark's computed `font-size`, in CSS px (quick 260928-vpi guard (b)). */
+  page2MarkFontPx: number;
   widest: {
     railCell: string;
     deckFoam: string;
@@ -400,6 +438,31 @@ function measureAndWrite(lists: PlaningCandidateLists): PlaningMeasurement {
   const railHeaderTop = (railHeaderRow.children[1] as HTMLElement | undefined)?.getBoundingClientRect().top ?? 0;
   const planingHeaderTop = planingHeaderEls[0] ? planingHeaderEls[0].getBoundingClientRect().top : 0;
 
+  // quick 260928-vpi additions below — the phone-print fit and content-floor measurements.
+  const root = document.querySelector<HTMLElement>("[data-order-form-root]");
+  if (!root) throw new Error("[data-order-form-root] not found");
+  const rootWidth = root.clientWidth;
+  const sheetRatio = referenceSheet.clientHeight / referenceSheet.clientWidth;
+
+  const finNotesEl = referenceSheet.querySelector<HTMLElement>("[data-fin-notes]");
+  if (!finNotesEl) throw new Error("[data-fin-notes] not found");
+  const finBody = finGrid.parentElement as HTMLElement;
+  const finBodyPaddingBottom = parseFloat(getComputedStyle(finBody).paddingBottom || "0");
+  const finBodyContentBottom = finBody.getBoundingClientRect().bottom - finBodyPaddingBottom;
+  const finNotesOverflow = finNotesEl.getBoundingClientRect().bottom - finBodyContentBottom;
+
+  const shapingColumn = railBandsRow.parentElement as HTMLElement;
+  const shopBox = shapingColumn.lastElementChild as HTMLElement;
+  const columnOverflow = shopBox.getBoundingClientRect().bottom - shapingColumn.getBoundingClientRect().bottom;
+  const page2Mark = referenceSheet.lastElementChild as HTMLElement;
+  const shopToMark = page2Mark.getBoundingClientRect().top - shopBox.getBoundingClientRect().bottom;
+
+  const railRowFontPx = parseFloat(getComputedStyle(rows[0]).fontSize || "0");
+  const page1Sheet = sheets[0];
+  const page1Mark = page1Sheet.lastElementChild as HTMLElement;
+  const page1MarkFontPx = parseFloat(getComputedStyle(page1Mark).fontSize || "0");
+  const page2MarkFontPx = parseFloat(getComputedStyle(page2Mark).fontSize || "0");
+
   return {
     railRowHeights: rows.map((r) => r.getBoundingClientRect().height),
     headerCellHeights: headerCells.map((c) => c.getBoundingClientRect().height),
@@ -422,6 +485,14 @@ function measureAndWrite(lists: PlaningCandidateLists): PlaningMeasurement {
     planingColWidth: planingFormBoxEl.getBoundingClientRect().width,
     planingColRight: planingFormBoxEl.getBoundingClientRect().right,
     railBoxLeft: railBox.getBoundingClientRect().left,
+    rootWidth,
+    sheetRatio,
+    finNotesOverflow,
+    columnOverflow,
+    shopToMark,
+    railRowFontPx,
+    page1MarkFontPx,
+    page2MarkFontPx,
     widest: {
       railCell: widestRailCell,
       deckFoam: widestDeckFoam,
@@ -441,12 +512,15 @@ function spread(values: number[]): number {
 
 /**
  * Every assertion case D makes on one `measureAndWrite` result. `mode` is `"computer"` for the
- * computer's print, `"touch"` for every phone width from 618 dots up (where the rail markings still
- * fit one line beside the wider PLANING table), and `"touch-560"` for the narrowest phone print,
- * where the two tables no longer fit side by side and the rail rows are known to wrap (handed to
- * item 8b) — so nothing about the rail rows is asserted there, only logged in the report line.
+ * computer's print and `"touch"` for every phone width (quick 260928-vpi retired the old
+ * narrowest-phone-width carve-out mode: since item 8b's fix, 560 asserts the same set as every
+ * other width). `width` is the CSS-dot page width the result was measured at — for `"computer"`
+ * this is the computer viewport width (1280), not a phone width; it is only used by guard (a)/(b)
+ * below, which only run in `"touch"` mode. Every message names the width and the system through
+ * `label` (`touch ${width} (${system})` / `computer print (${system})`, as built by the caller)
+ * alongside the two numbers compared.
  */
-function assertMeasurement(result: PlaningMeasurement, label: string, mode: "computer" | "touch" | "touch-560") {
+function assertMeasurement(result: PlaningMeasurement, label: string, mode: "computer" | "touch", width: number) {
   expect(
     result.planingColRight,
     `${label}: the PLANING table is not to the LEFT of Rail Bands (planing comes before rail shaping)`,
@@ -470,27 +544,89 @@ function assertMeasurement(result: PlaningMeasurement, label: string, mode: "com
     expect(overflow, `${label}: a rail value cell overflowed sideways`).toBeLessThanOrEqual(0.5);
   }
 
-  if (mode !== "touch-560") {
+  // These four used to be conditioned on `mode` (the retired narrowest-phone mode skipped them, and the box-fit checks
+  // ran only on the computer print). Quick 260928-vpi's fit rule holds them at every width, so they
+  // now run unconditionally for both modes.
+  expect(spread(result.railRowHeights), `${label}: rail row heights differ — a label wrapped`).toBeLessThanOrEqual(
+    0.5,
+  );
+  expect(spread(result.headerCellHeights), `${label}: header cell heights differ`).toBeLessThanOrEqual(0.5);
+  expect(
+    Math.abs(result.railHeaderTop - result.planingHeaderTop),
+    `${label}: the two header rows' text does not line up`,
+  ).toBeLessThanOrEqual(0.5);
+
+  expect(
+    result.railContentHeight,
+    `${label}: rail content (${result.railContentHeight.toFixed(1)}) taller than its box (${result.railBoxHeight.toFixed(1)})`,
+  ).toBeLessThanOrEqual(result.railBoxHeight + 0.5);
+  expect(
+    result.finContentHeight,
+    `${label}: fin content (${result.finContentHeight.toFixed(1)}) taller than its box (${result.finBoxHeight.toFixed(1)}) — a quad no longer clears Shaper Use Only`,
+  ).toBeLessThanOrEqual(result.finBoxHeight + 0.5);
+
+  // New for quick 260928-vpi (Phase 13 item 8b): the fin notes stay inside the Fin Placement body,
+  // and Shaper Use Only stays clear of the column and the PAGE 2 OF 2 footer, at every width.
+  expect(
+    result.finNotesOverflow,
+    `${label}: fin notes bottom overflow ${result.finNotesOverflow.toFixed(1)} past the Fin Placement body's own content-box bottom`,
+  ).toBeLessThanOrEqual(0.5);
+  expect(
+    result.columnOverflow,
+    `${label}: Shaper Use Only bottom overflow ${result.columnOverflow.toFixed(1)} past the Shaping Data column's own bottom`,
+  ).toBeLessThanOrEqual(0.5);
+  expect(
+    result.shopToMark,
+    `${label}: Shaper Use Only's bottom to page 2's PageMark top is ${result.shopToMark.toFixed(1)} (negative means it ran under the footer)`,
+  ).toBeGreaterThanOrEqual(-0.5);
+
+  if (mode === "touch") {
+    // Guard (a): the phone sheet really was in effect at this width — its root reached the
+    // requested viewport width, and page 2's own sheet kept its Letter shape rather than some
+    // other ratio.
     expect(
-      spread(result.railRowHeights),
-      `${label}: rail row heights differ — a label wrapped`,
-    ).toBeLessThanOrEqual(0.5);
-    expect(spread(result.headerCellHeights), `${label}: header cell heights differ`).toBeLessThanOrEqual(0.5);
+      result.rootWidth,
+      `${label}: root clientWidth ${result.rootWidth.toFixed(1)} is not within 1 of the requested width ${width}`,
+    ).toBeGreaterThanOrEqual(width - 1);
     expect(
-      Math.abs(result.railHeaderTop - result.planingHeaderTop),
-      `${label}: the two header rows' text does not line up`,
-    ).toBeLessThanOrEqual(0.5);
+      result.rootWidth,
+      `${label}: root clientWidth ${result.rootWidth.toFixed(1)} is not within 1 of the requested width ${width}`,
+    ).toBeLessThanOrEqual(width + 1);
+    expect(
+      Math.abs(result.sheetRatio - EXPECTED_TOUCH_RATIO),
+      `${label}: page 2 sheet ratio ${result.sheetRatio.toFixed(6)} is not within 0.001 of the Letter ratio ${EXPECTED_TOUCH_RATIO}`,
+    ).toBeLessThanOrEqual(0.001);
+
+    // Guard (b): page 1's own 12px floor holds on every phone sheet; page 2's fit unit has moved
+    // off that floor below the 733.44-dot design width.
+    expect(
+      result.page1MarkFontPx,
+      `${label}: page 1's PageMark font-size ${result.page1MarkFontPx.toFixed(2)}px dropped below its own 12px floor`,
+    ).toBeGreaterThanOrEqual(11.99);
+    if (width < 733) {
+      expect(
+        result.page2MarkFontPx,
+        `${label}: page 2's PageMark font-size ${result.page2MarkFontPx.toFixed(2)}px did not drop below page 1's 12px floor`,
+      ).toBeLessThan(12);
+    }
   }
 
   if (mode === "computer") {
+    // Guard (c): the computer print's own reference-sheet token (1.75cqw) is unchanged, and its
+    // root is still the same measured design width — the computer print is untouched (L-3).
     expect(
-      result.railContentHeight,
-      `${label}: rail content (${result.railContentHeight.toFixed(1)}) taller than its box (${result.railBoxHeight.toFixed(1)})`,
-    ).toBeLessThanOrEqual(result.railBoxHeight + 0.5);
+      result.rootWidth,
+      `${label}: computer root clientWidth ${result.rootWidth.toFixed(1)} drifted off ${EXPECTED_SHEET_WIDTH_DOTS}`,
+    ).toBeGreaterThanOrEqual(EXPECTED_SHEET_WIDTH_DOTS - 1);
     expect(
-      result.finContentHeight,
-      `${label}: fin content (${result.finContentHeight.toFixed(1)}) taller than its box (${result.finBoxHeight.toFixed(1)}) — a quad no longer clears Shaper Use Only`,
-    ).toBeLessThanOrEqual(result.finBoxHeight + 0.5);
+      result.rootWidth,
+      `${label}: computer root clientWidth ${result.rootWidth.toFixed(1)} drifted off ${EXPECTED_SHEET_WIDTH_DOTS}`,
+    ).toBeLessThanOrEqual(EXPECTED_SHEET_WIDTH_DOTS + 1);
+    const expectedRailRowFontPx = 1.75 * (result.rootWidth / 100);
+    expect(
+      Math.abs(result.railRowFontPx - expectedRailRowFontPx),
+      `${label}: computer rail row font-size ${result.railRowFontPx.toFixed(3)}px is not within 0.01 of the 1.75cqw token ${expectedRailRowFontPx.toFixed(3)}px`,
+    ).toBeLessThanOrEqual(0.01);
   }
 }
 
@@ -736,34 +872,62 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       };
 
       const report = (label: string, result: PlaningMeasurement) =>
-        `[260928-tst] ${label}: label ${result.labelColWidth.toFixed(1)}px, value ${result.valueColWidth.toFixed(1)}px, ` +
+        `[260928-vpi] ${label}: label ${result.labelColWidth.toFixed(1)}px, value ${result.valueColWidth.toFixed(1)}px, ` +
         `PLANING ${result.planingColWidth.toFixed(1)}px, rail row spread ${spread(result.railRowHeights).toFixed(2)}, ` +
         `rail content ${result.railContentHeight.toFixed(1)} vs box ${result.railBoxHeight.toFixed(1)}, ` +
-        `fin content ${result.finContentHeight.toFixed(1)} vs box ${result.finBoxHeight.toFixed(1)}, widest: ${JSON.stringify(result.widest)}`;
+        `fin content ${result.finContentHeight.toFixed(1)} vs box ${result.finBoxHeight.toFixed(1)}, ` +
+        `column overflow ${result.columnOverflow.toFixed(1)}, shop-to-mark ${result.shopToMark.toFixed(1)}, ` +
+        `rail row font ${result.railRowFontPx.toFixed(3)}px, widest: ${JSON.stringify(result.widest)}`;
+
+      // Every width's result and report line are collected FIRST (so a failing run shows every
+      // width), and only then asserted (quick 260928-vpi).
+      const runs: { label: string; mode: "computer" | "touch"; width: number; result: PlaningMeasurement }[] = [];
 
       // (i) the computer's print — viewport 1280 x 800, no touch attribute.
       await page.setViewportSize({ width: 1280, height: 800 });
       await page.emulateMedia({ media: "print" });
       const computerResult = await page.evaluate(measureAndWrite, lists);
       await page.emulateMedia({ media: "screen" });
-      const computerLine = report(`computer print (${system})`, computerResult);
-      console.log(computerLine);
-      await testInfo.attach(`computer print (${system})`, { body: computerLine, contentType: "text/plain" });
-      assertMeasurement(computerResult, `computer print (${system})`, "computer");
+      runs.push({ label: `computer print (${system})`, mode: "computer", width: 1280, result: computerResult });
 
-      // (ii) after forceTouchSheet, at each width in SWEEP_WIDTHS — 560 asserts nothing about the
-      // rail rows (the wrap is known and handed to item 8b), every other width does.
+      // (ii) after forceTouchSheet, at every width in FIT_WIDTHS — every width asserts the full set
+      // since quick 260928-vpi (Phase 13 item 8b) fixed the fit at 560 too.
       await forceTouchSheet(page);
-      for (const width of SWEEP_WIDTHS) {
+      for (const width of FIT_WIDTHS) {
         await page.setViewportSize({ width, height: 1400 });
         await page.emulateMedia({ media: "print" });
         const result = await page.evaluate(measureAndWrite, lists);
         await page.emulateMedia({ media: "screen" });
-        const line = report(`touch ${width} (${system})`, result);
-        console.log(line);
-        await testInfo.attach(`touch ${width} (${system})`, { body: line, contentType: "text/plain" });
-        assertMeasurement(result, `touch ${width} (${system})`, width === 560 ? "touch-560" : "touch");
+        runs.push({ label: `touch ${width} (${system})`, mode: "touch", width, result });
       }
+
+      for (const run of runs) {
+        const line = report(run.label, run.result);
+        console.log(line);
+        await testInfo.attach(run.label, { body: line, contentType: "text/plain" });
+      }
+
+      for (const run of runs) {
+        assertMeasurement(run.result, run.label, run.mode, run.width);
+      }
+    });
+
+    test(`the fin notes' last line is worded per system, under data-fin-notes (${system})`, async ({ page }) => {
+      // Quick 260928-vpi: computeFinPlacement no longer carries the rounding line, so the display
+      // layer appends finRoundingNote(system) — proved here on the real DOM, on every project (the
+      // wording does not depend on print media or a phone sheet).
+      await selectSystem(page, system);
+      await page.goto("/design/summary");
+
+      const notesLines = page.locator("[data-fin-notes] > div");
+      const count = await notesLines.count();
+      expect(count, `${system}: [data-fin-notes] has no lines`).toBeGreaterThan(0);
+
+      const texts = await notesLines.allTextContents();
+      expect(texts[texts.length - 1], `${system}: the fin notes' last line`).toBe(finRoundingNote(system));
+
+      const roundingLines = texts.filter((t) => t.startsWith("All measurements round"));
+      expect(roundingLines.length, `${system}: exactly one line should start with "All measurements round"`).toBe(1);
     });
   }
 });
