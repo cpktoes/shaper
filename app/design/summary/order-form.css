@@ -158,7 +158,7 @@
   --order-form-spine: 1.5rem; /* 24px — 12px vertical type with 6px of air either side */
   --order-form-gap: 0.25rem; /* must match the `gap-1` on the three band rows */
   --order-form-left: 0.32;
-  --order-form-planing: 0.2; /* page 2's PLANING column, as a share of the Shaping Data column */
+  --order-form-planing: 0.28; /* page 2's PLANING table, as a share of the Shaping Data column */
 }
 
 /* `flex: none` plus an explicit `width`, rather than putting the size in the `flex` shorthand's
@@ -178,12 +178,24 @@
   width: calc(100% * var(--order-form-left));
 }
 
-/* 20% is 138 px at the computer's print and 104 px at the narrowest phone print; the measured
-   ceiling before a rail row wraps at 560 dots is about 22%, set by `Tapered Rail Thickness` and
-   Metric `Center (mm)`; and at the computer's print it keeps `Off Bottom @ Center` on one line. */
+/* 28% is 193.6 px on a computer print, where the table itself needs only about 25% and the rail
+   markings stay one line up to 38% — so the wider column gives the table air rather than pinching
+   it against its own numbers (the founder, 2026-09-29: "There's room to make the column wider too
+   if that helps the layout better").
+
+   `min-width: min-content` is the floor that actually matters: whatever the 28% share comes out to
+   at a given print width, the table never shrinks past its own widest cell. At 618 dots (the
+   founder's own phone page) 28% is only 161.3 px, but the floor lifts it to the table's own 165 px
+   — and the rail markings still fit one line up to 172.8 px there, a 7.7 px margin. No planing
+   number is ever cut off at any width this floor can reach.
+
+   At 560 dots the two tables can no longer both fit: the rail table's own minimum is 399 px and the
+   PLANING table's is about 165 px, 568 px against a 518 px Shaping Data column. There the rail
+   labels wrap instead of the planing table shrinking — that is item 8b's (quick 260928-tst). */
 [data-order-form-root] .order-form-planing-col {
   flex: none;
   width: calc(100% * var(--order-form-planing));
+  min-width: min-content;
 }
 
 [data-order-form-root] .order-form-logo-col {
