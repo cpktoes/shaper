@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 8, its revision and the Planing-left swap verified locally, PDFs sent; awaiting the founder's paper check and go; then 8b
+stopped_at: Phase 13 item 8 live (deployment 6727569021); next is item 8b — page 2 on a phone print, plus the Metric fin-note wording
 last_updated: "2026-09-29T05:36:10.968Z"
 last_activity: 2026-09-29
-last_activity_desc: "Fast task 128 (item 8: the Planing table moves to the left of Rail Bands) verified locally; PDFs sent"
+last_activity_desc: "Item 8 live: the order form's PLANING table on page 2, to the left of the rail markings"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 13
-  completed_plans: 7
-  percent: 54
+  completed_plans: 8
+  percent: 62
 current_phase: 13
 current_phase_name: Ready for the Shapers
 ---
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **7 of 13 items done.** Items 1–6 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. **Item 8 — the order form's tip thicknesses and planer passes — is next**, then 9 (catalogue links, if time) and 9b (the ghost outline, optional).
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **8 of 13 items done.** Items 1–6 and 8 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. **Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is next**, then 9 (catalogue links, if time) and 9b (the ghost outline, optional).
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-29 - Fast task 128 (item 8: the Planing table moves to the left of Rail Bands, at the founder's request) verified locally; PDFs sent to the founder
+Last activity: 2026-09-29 - Item 8 live (Vercel deployment 6727569021, 05:41 UTC): the order form's PLANING table on page 2, to the left of the rail markings
 
 ## Performance Metrics
 
