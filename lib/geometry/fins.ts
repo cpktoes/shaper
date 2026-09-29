@@ -1058,7 +1058,11 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
 
   // Ported verbatim from notesItems (Fins.dc.html lines 1256-1286), including the empty string
   // the prototype pushes for the thruster mckeeSB model — filtered out at the very end so this
-  // still diffs one-to-one against the source.
+  // still diffs one-to-one against the source. The prototype's own closing line (line 1286) — its
+  // rounding-grain sentence — is NOT ported here: this function never sees the shaper's system (the
+  // preference is display-only and lives outside the design store, CLAUDE.md Rule 2), so it cannot
+  // word that line itself. The display layer appends `finRoundingNote(system)` after these notes
+  // (quick 260928-vpi, Phase 13 item 8b).
   const notesItems: string[] = [];
   if (isSingle) {
     notesItems.push(
@@ -1125,7 +1129,6 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
   if (isPintail && isQuad) {
     notesItems.push(`Pintail shape adds 3⁄16" to the quad rear off-tail across all rear models, per the standard pintail correction.`);
   }
-  notesItems.push(`All measurements round to the nearest 1/16" (0.1 cm in cm units) — expect a hair of play when routing to these numbers.`);
 
   const flags: FinPlacementFlags = {
     hasCenterSection,
@@ -1169,6 +1172,28 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
     },
     flags,
   };
+}
+
+/**
+ * Names the grain the fin numbers actually round to in each system, with no bracketed aside:
+ * Imperial fin numbers print to the sixteenth of an inch (`formatMark` via `formatInchesFraction`),
+ * Metric fin numbers print to the whole millimetre (`formatMark` via the whole-mm formatter, the
+ * marks family, CLAUDE.md Rule 2) — never the centimetre. `finRoundingNote` builds its sentence
+ * from this. (quick 260928-vpi, Phase 13 item 8b)
+ */
+export function finRoundingGrain(system: UnitsSystem): string {
+  return system === "metric" ? "millimetre" : '1/16"';
+}
+
+/**
+ * The fin notes' closing line, worded per system. This is the prototype's own closing note
+ * (reference/project/Fins.dc.html line 1286), reworded: the prototype's bracketed centimetre
+ * aside was never true of either printed system, so it is dropped rather than translated.
+ * `computeFinPlacement` never sees the shaper's system, so the display layer (the order form, and
+ * FINS' MODEL INFO tab) appends this after the model notes. (quick 260928-vpi, Phase 13 item 8b)
+ */
+export function finRoundingNote(system: UnitsSystem): string {
+  return `All measurements round to the nearest ${finRoundingGrain(system)} — expect a hair of play when routing to these numbers.`;
 }
 
 /** Converts a public `ImportedFinTail` into the inch core's own `[y, x]`-ordered shape — the

@@ -5,6 +5,8 @@ import {
   computeFinPlacement,
   defaultCenterBaseLength,
   effectiveQuadRearModel,
+  finRoundingGrain,
+  finRoundingNote,
   isQuadRearModelAvailable,
   resetAdvanced,
   toeAimTableFor,
@@ -16,7 +18,7 @@ import {
   type ThrusterFrontModel,
   type TwinTemplate,
 } from "./fins";
-import { formatInchesFraction, inchesToMm, type Mm, mmToInches } from "./units";
+import { formatInchesFraction, inchesToMm, type Mm, mmToInches, parseImperial, parseMetric } from "./units";
 import { formatDim, formatDimBare, formatMark, formatMarkBare } from "./measure-display";
 import { TOE_AIM_TABLE, TOE_AIM_TABLE_COLUMNS } from "./toe-aim-tables";
 import golden from "./__fixtures__/prototype-fins-golden.json";
@@ -566,5 +568,68 @@ describe("toeAimTableFor is system-aware (D-01, D-10)", () => {
     const metric = toeAimTableFor(boardLength, tailWidth12, "metric");
     expect(imperial.highlightIndex).toBe(metric.highlightIndex);
     expect(imperial.highlightIndex).toBe(9);
+  });
+});
+
+describe("finRoundingNote — the fin notes' rounding line in the shaper's own units (quick 260928-vpi)", () => {
+  it('finRoundingNote("imperial") reads the em-dash sentence with a straight inch mark', () => {
+    expect(finRoundingNote("imperial")).toBe(
+      'All measurements round to the nearest 1/16" — expect a hair of play when routing to these numbers.',
+    );
+  });
+
+  it('finRoundingNote("metric") reads the same sentence in whole millimetres', () => {
+    expect(finRoundingNote("metric")).toBe(
+      "All measurements round to the nearest millimetre — expect a hair of play when routing to these numbers.",
+    );
+  });
+
+  it("finRoundingGrain names the grain per system, with no bracketed centimetre aside", () => {
+    expect(finRoundingGrain("imperial")).toBe('1/16"');
+    expect(finRoundingGrain("metric")).toBe("millimetre");
+    expect(finRoundingGrain("imperial")).not.toMatch(/cm/);
+    expect(finRoundingGrain("metric")).not.toMatch(/cm/);
+  });
+
+  it("every golden fixture's notes carry no rounding line and no 0.1 cm aside — the display layer appends it, not the geometry", () => {
+    for (const [, fixture] of goldenEntries) {
+      const spec = toSpec(fixture.state as GoldenState);
+      const result = computeFinPlacement(spec);
+      for (const note of result.notes) {
+        expect(note).not.toMatch(/round to the nearest/);
+        expect(note).not.toMatch(/0\.1 cm/);
+      }
+    }
+  });
+
+  it("both wordings are true of the printed fin numbers over every golden fixture: every mark row and full-spread value round-trips to a whole sixteenth (Imperial) and a whole millimetre (Metric)", () => {
+    let checked = 0;
+    for (const [, fixture] of goldenEntries) {
+      const spec = toSpec(fixture.state as GoldenState);
+      const result = computeFinPlacement(spec);
+      const values: Mm[] = [];
+      for (const section of result.sections) {
+        for (const group of section.groups) {
+          for (const row of group.rows) {
+            if (row.family === "mark") values.push(row.value);
+          }
+          if (group.fullSpread !== null) values.push(group.fullSpread);
+        }
+      }
+      for (const v of values) {
+        const metricStr = formatMark(v, "metric");
+        const metricMm = parseMetric(metricStr, "mm");
+        expect(metricMm).not.toBeNull();
+        expect(Number.isInteger(Math.round((metricMm as number) * 1e9) / 1e9)).toBe(true);
+
+        const imperialStr = formatMark(v, "imperial");
+        const imperialMm = parseImperial(imperialStr);
+        expect(imperialMm).not.toBeNull();
+        const sixteenths = mmToInches(imperialMm as Mm) * 16;
+        expect(Math.abs(sixteenths - Math.round(sixteenths))).toBeLessThanOrEqual(1e-9);
+        checked += 1;
+      }
+    }
+    expect(checked).toBeGreaterThan(20);
   });
 });

@@ -1,7 +1,14 @@
+"use client";
+
+import { useUnits } from "@/components/units-provider";
+import { finRoundingGrain } from "@/lib/geometry/fins";
+
 /**
  * MODEL INFO tab: static reference text on where each placement model's guidance comes from.
  * Copy lifted verbatim from reference/project/Fins.dc.html lines 480-528 — this is reference
- * text a shaper reads, not paraphrased or shortened.
+ * text a shaper reads, not paraphrased or shortened. The one departure from that verbatim copy is
+ * the Convention paragraph's rounding sentence, which now reads `finRoundingGrain(system)` so the
+ * claim matches the numbers FINS actually prints in each system (Phase 13 item 8b, quick 260928-vpi).
  */
 
 function InfoBlock({ heading, children }: { heading: string; children: React.ReactNode }) {
@@ -14,6 +21,7 @@ function InfoBlock({ heading, children }: { heading: string; children: React.Rea
 }
 
 export function FinModelInfo() {
+  const { system } = useUnits();
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pt-10 text-surf-ink">
       <div className="mb-6 text-xl font-display text-surf-ink uppercase tracking-architectural font-extrabold">Model Info</div>
@@ -25,8 +33,8 @@ export function FinModelInfo() {
         All positions use the trailing-edge convention: off-tail and off-rail are measured to the
         trailing edge of the fin base, toe-in is the leading edge&apos;s inward offset from that
         trailing edge (regardless of fin base length), rears are often defined by a trailing edge
-        spread rather than off-tail measurement, and every value is rounded to the nearest 1/16&quot;
-        (0.1 cm).
+        spread rather than off-tail measurement, and every value is rounded to the nearest{" "}
+        {finRoundingGrain(system)}.
       </InfoBlock>
 
       <InfoBlock heading="Single Model">

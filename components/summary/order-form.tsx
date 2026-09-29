@@ -80,7 +80,7 @@ import { useOrderFormPreviewScale } from "./use-preview-scale";
 import { useOrderFormPrintFit } from "./use-print-fit";
 import { dimensionValueFitClass } from "./dimension-fit";
 import { cn } from "@/lib/utils";
-import { FIN_SETUPS, FIN_SYSTEMS, type FinSystem } from "@/lib/geometry/fins";
+import { FIN_SETUPS, FIN_SYSTEMS, finRoundingNote, type FinSystem } from "@/lib/geometry/fins";
 import { planingTable } from "@/lib/geometry/planing";
 import type { RailSectionKey } from "@/lib/geometry/rail-bands";
 import {
@@ -833,14 +833,18 @@ export function OrderForm() {
                 </div>
                 {/* Outside the columned container on purpose: the notes qualify every number in the
                     panel, so flowing them as one more column item — landing them under whichever
-                    section happened to end last — would read as a footnote to that section alone. */}
-                {finPlacement.notes.length > 0 && (
-                  <div className="flex-none border-t border-surf-line-faint pt-1 text-surf-ink-muted order-form-micro">
-                    {finPlacement.notes.map((note) => (
-                      <div key={note}>{note}</div>
-                    ))}
-                  </div>
-                )}
+                    section happened to end last — would read as a footnote to that section alone.
+                    The last line is worded per system here, in finRoundingNote, because the
+                    geometry doesn't know the shaper's units (quick 260928-vpi). There is always at
+                    least one note now, so the old length guard is gone. */}
+                <div
+                  data-fin-notes
+                  className="flex-none border-t border-surf-line-faint pt-1 text-surf-ink-muted order-form-micro"
+                >
+                  {[...finPlacement.notes, finRoundingNote(system)].map((note) => (
+                    <div key={note}>{note}</div>
+                  ))}
+                </div>
               </FormBox>
 
               {/*
