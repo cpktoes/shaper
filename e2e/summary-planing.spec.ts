@@ -580,11 +580,17 @@ test.describe("Summary — the PLANING column (Phase 13 item 8, quick 260928-r9h
       }
 
       // Non-vacuity guard: every list must genuinely carry a spread of numbers, not one repeated
-      // value.
-      expect(skinValues.size, "Deck Skin candidates").toBeGreaterThan(20);
+      // value. The Deck Skin control runs from none to 1" (quick 260928-lm6), so the skin list holds
+      // at least every sixteenth in that range (Metric's whole millimetres give more); the note list
+      // holds exactly one "at … a pass" per Planer Max Depth the control offers (four sixteenths in
+      // Imperial, five whole millimetres in Metric). Orchestrator fix 2026-09-29: the first version
+      // asked for more than 20 of each, which neither short range can reach.
+      expect(skinValues.size, "Deck Skin candidates").toBeGreaterThanOrEqual(
+        Math.round(FIT_DEFAULTS_RANGE_IN.deckSkin.max * 16) + 1,
+      );
       expect(offBottomValues.size, "Off Bottom @ Center candidates").toBeGreaterThan(20);
       expect(passesValues.size, "Planer Passes candidates").toBeGreaterThan(20);
-      expect(noteValues.size, "note candidates").toBeGreaterThan(20);
+      expect(noteValues.size, "note candidates").toBe(passDepths.length);
 
       const lists: PlaningCandidateLists = {
         railCells: [...railCells],
