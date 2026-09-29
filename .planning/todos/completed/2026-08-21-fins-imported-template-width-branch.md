@@ -64,3 +64,15 @@ this can be closed as won't-fix and only the visual improvement remains.
 `fins.ts` is golden-fixture tested against the prototype. The existing fixtures were captured on the
 fallback branch and must keep passing unchanged — the imported branch is an additional path, not a
 replacement. Add fixtures covering it specifically.
+
+## Outcome
+
+Fixed in quick 260928-p45 (Phase 13 item 6). The founder decided on 2026-09-28, after seeing the
+measured difference, to keep the Import Template box and the generic tail curve for the unticked
+standalone calculator. With the box ticked, fin placement now follows the real drawn outline
+through the prototype's own imported branch, checked against the prototype on 32 boards.
+
+No written fin number changes: off-tail, off-rail, toe-in and spread are formulas. What moves is
+where rail-measured fins are drawn, on FINS, TEMPLATE and the Summary order form: the Fish twins
+about 3/16 in out, the Mid-length rear quads about 3/16 in in. The Shortboard and Longboard do not
+visibly move.

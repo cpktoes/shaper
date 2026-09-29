@@ -82,9 +82,11 @@ import {
 import {
   DEFAULT_FIN_PLACEMENT_SPEC,
   computeFinPlacement,
+  importedFinTailFromOutline,
   type FinPlacementResult,
   type FinPlacementSpec,
   type FinSystem,
+  type ImportedFinTail,
 } from "@/lib/geometry/fins";
 import {
   DEFAULT_VOLUME_SPEC,
@@ -96,7 +98,7 @@ import {
   type VolumeSpec,
   type VolumeTemplateValues,
 } from "@/lib/geometry/volume";
-import { type Litres, type Mm, inchesToMm, mm } from "@/lib/geometry/units";
+import { type Litres, type Mm, mm } from "@/lib/geometry/units";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 import {
   canRedo,
@@ -396,9 +398,14 @@ interface DesignContextValue {
   /** `fins` unless `finsImportTemplate`, in which case boardLength/tailWidth12/tailShape come
    * from the outline. */
   effectiveFins: FinPlacementSpec;
+  /** The designed outline's tail as the fin maths read it (quick 260928-p45) — the real rail FINS
+   * measures each rail-referenced fin in from. `null` when `finsImportTemplate` is unticked, which
+   * keeps the standalone calculator on the generic tail curve. */
+  finImportedTail: ImportedFinTail | null;
   finPlacement: FinPlacementResult;
   /** The designed outline's tail, in `tailOutlineHalfPoints`' own shape, for the fin viewer to
-   * draw behind the fin marks. `null` when not importing. */
+   * draw behind the fin marks — built from `finImportedTail`'s own points, so the drawing and the
+   * maths can never disagree. `null` when not importing. */
   finTailOutline: FinTailOutline | null;
   /** `volume` with length/width/centerThickness overridden per the import toggles — the derived-
    * value equivalent of the prototype's `syncFromTemplate`. */
@@ -803,14 +810,23 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     outlineGeometry.tailWidthAt12in,
   ]);
 
-  const finPlacement = useMemo(() => computeFinPlacement(effectiveFins), [effectiveFins]);
+  // The real drawn tail the fin maths read (quick 260928-p45) — built only while Import Template
+  // is ticked, exactly the same condition `effectiveFins` above already follows.
+  const finImportedTail: ImportedFinTail | null = useMemo(
+    () => (state.finsImportTemplate ? importedFinTailFromOutline(outlineGeometry) : null),
+    [state.finsImportTemplate, outlineGeometry],
+  );
 
+  const finPlacement = useMemo(
+    () => computeFinPlacement(effectiveFins, finImportedTail),
+    [effectiveFins, finImportedTail],
+  );
+
+  // Built from `finImportedTail`'s own points, so the drawing and the maths can never disagree —
+  // the adapter's own 24in cut (`importedFinTailFromOutline`) is the same one this used to apply
+  // here directly.
   const finTailOutline: FinTailOutline | null = useMemo(() => {
-    if (!state.finsImportTemplate) return null;
-    const cutoff = inchesToMm(24);
-    const points: Point2D[] = outlineGeometry.points
-      .filter((p) => p.station <= cutoff)
-      .map((p) => ({ x: p.halfWidth, y: p.station }));
+    if (finImportedTail === null) return null;
     const tailKind = state.outline.tail.kind;
     // The prototype's own connector rule (Template.dc.html line 276): diamond closes at the
     // origin, swallow closes at the crotch depth, everything else has no connector.
@@ -820,8 +836,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         : tailKind === "swallow"
           ? { x: mm(0), y: outlineGeometry.centreCloseStation }
           : null;
-    return { points, connector };
-  }, [state.finsImportTemplate, outlineGeometry, state.outline.tail.kind]);
+    return { points: finImportedTail.points, connector };
+  }, [finImportedTail, outlineGeometry, state.outline.tail.kind]);
 
   // Derived-value equivalent of the prototype's syncFromTemplate (Volume.dc.html lines 235-242):
   // produces the same observable values without an effect that writes back into state.
@@ -1251,6 +1267,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     railValues,
     effectiveFins,
     finPlacement,
+    finImportedTail,
     finTailOutline,
     effectiveVolume,
     volumeResult,

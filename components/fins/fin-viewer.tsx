@@ -26,7 +26,7 @@
  */
 
 import { useMemo, useRef } from "react";
-import type { FinMark, FinPlacementResult, FinRole, FinTailShape, FinLateralKind } from "@/lib/geometry/fins";
+import type { FinMark, FinPlacementResult, FinRole, FinTailShape, FinLateralKind, ImportedFinTail } from "@/lib/geometry/fins";
 import { tailHalfWidthAt, tailOffTailAtHalfWidth, tailOutlineHalfPoints } from "@/lib/geometry/fins";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { formatDim, formatLength, formatMark } from "@/lib/geometry/measure-display";
@@ -180,7 +180,12 @@ const KIND_ORDER: FinLateralKind[] = ["none", "stringer", "rail"];
 /** Ported from the tier-stacking pass (Fins.dc.html lines 1133-1162), grouped by FinRole — see
  * the header note above for the one narrow difference from the prototype's own setup-driven
  * grouping. */
-function useSharedTierLayout(marks: FinMark[], tailShape: FinTailShape, tailWidth12: Mm) {
+function useSharedTierLayout(
+  marks: FinMark[],
+  tailShape: FinTailShape,
+  tailWidth12: Mm,
+  importedTail: ImportedFinTail | null,
+) {
   return useMemo(() => {
     const rolesPresent = Array.from(new Set(marks.map((m) => m.role))) as FinRole[];
     const roleReps = rolesPresent
@@ -200,14 +205,14 @@ function useSharedTierLayout(marks: FinMark[], tailShape: FinTailShape, tailWidt
     let sharedBoundaryPx = 0;
     for (let i = 0; i <= 6; i++) {
       const yIn = (sharedMaxOffTailIn * i) / 6;
-      const hwIn = mmToInches(tailHalfWidthAt(tailShape, tailWidth12, inchesToMm(yIn)));
+      const hwIn = mmToInches(tailHalfWidthAt(tailShape, tailWidth12, inchesToMm(yIn), importedTail));
       sharedBoundaryPx = Math.max(sharedBoundaryPx, hwIn * SCALE);
     }
     const availableSpan = Math.max(0, ORIGIN_X - sharedBoundaryPx - 4 - 70);
     const leftTierStackPx = maxLeftTier > 0 ? Math.min(55, availableSpan / maxLeftTier) : 0;
 
     return { tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier };
-  }, [marks, tailShape, tailWidth12]);
+  }, [marks, tailShape, tailWidth12, importedTail]);
 }
 
 /** Ported from `buildFinMark`'s dimension branches (Fins.dc.html lines 845-942, minus the
@@ -221,6 +226,7 @@ function dimsForMark(
   leftTierStackPx: number,
   maxLeftTier: number,
   system: UnitsSystem,
+  importedTail: ImportedFinTail | null,
 ): FinDim[] {
   const { mark, teX, teY, leX, leY } = geom;
   const dims: FinDim[] = [];
@@ -252,9 +258,9 @@ function dimsForMark(
     // (still +/-20px apart at the extremes) while landing perfectly centered when there is
     // only one tier.
     const midY = (TAIL_Y + teY) / 2 + (tier - maxLeftTier / 2) * 20;
-    const topEdgeXIn = mmToInches(tailHalfWidthAt(tailShape, tailWidth12, mm(0)));
+    const topEdgeXIn = mmToInches(tailHalfWidthAt(tailShape, tailWidth12, mm(0), importedTail));
     const topEdgeX = ORIGIN_X - topEdgeXIn * SCALE;
-    const botEdgeXIn = mmToInches(tailHalfWidthAt(tailShape, tailWidth12, mark.offTail));
+    const botEdgeXIn = mmToInches(tailHalfWidthAt(tailShape, tailWidth12, mark.offTail, importedTail));
     const botEdgeX = ORIGIN_X - botEdgeXIn * SCALE;
     dims.push({
       kind: "plain",
@@ -303,7 +309,7 @@ function dimsForMark(
     // the sole role whose lateralKind is 'stringer'.
     const rowY = TAIL_Y + 38;
     const midX = (ORIGIN_X + teX) / 2;
-    const edgeOffTailRightIn = mmToInches(tailOffTailAtHalfWidth(tailShape, tailWidth12, mark.lateral));
+    const edgeOffTailRightIn = mmToInches(tailOffTailAtHalfWidth(tailShape, tailWidth12, mark.lateral, importedTail));
     const edgeYRight = TAIL_Y - edgeOffTailRightIn * SCALE;
     dims.push({
       kind: "below",
@@ -347,7 +353,7 @@ function dimsForMark(
   }
 
   if (mark.lateralKind === "rail" && mark.side === 1) {
-    const edgeHwIn = mmToInches(tailHalfWidthAt(tailShape, tailWidth12, mark.offTail));
+    const edgeHwIn = mmToInches(tailHalfWidthAt(tailShape, tailWidth12, mark.offTail, importedTail));
     const edgeHwPx = edgeHwIn * SCALE;
     const railEdgeX = ORIGIN_X + edgeHwPx;
     const GAP2 = 4;
@@ -386,6 +392,12 @@ interface FinViewerProps {
    * place of the polynomial tail-shape fallback, when the fins screen is importing template
    * values. `null`/`undefined` falls back to `tailOutlineHalfPoints`. */
   outlineOverride?: { points: Point2D[]; connector: Point2D | null } | null;
+  /** The same tail `computeFinPlacement` was given while FINS imports the template (quick
+   * 260928-p45). Every rail edge this drawing measures from reads it, exactly as the prototype
+   * routes each through `effectiveHalfWidthAt`: the off-tail extension ends, the off-rail
+   * dimension's rail end, the half-spread extension and the callout column's clearance.
+   * `null`/`undefined` means the generic tail curve, as before. */
+  importedTail?: ImportedFinTail | null;
   /** Embedding-only display used by the Summary dashboard's Fin Placement card (Fins.dc.html
    * lines 25-72, 1363-1373): drops the legend column, adds a top-centre length heading, and
    * shrinks the dimension callouts to the shared `--summary-font-*` scale. Defaults to `false`,
@@ -402,6 +414,7 @@ export function FinViewer({
   tailWidth12,
   showCallouts,
   outlineOverride,
+  importedTail,
   compact = false,
   boardLength,
 }: FinViewerProps) {
@@ -430,6 +443,7 @@ export function FinViewer({
     result.marks,
     tailShape,
     tailWidth12,
+    importedTail ?? null,
   );
 
   // Hoisted above marksWithDims (and the off-tail label-spacing memo below it, which needs the
@@ -451,9 +465,19 @@ export function FinViewer({
     () =>
       marksGeom.map((geom) => ({
         geom,
-        dims: dimsForMark(geom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier, system),
+        dims: dimsForMark(
+          geom,
+          tailShape,
+          tailWidth12,
+          tierRank,
+          sharedBoundaryPx,
+          leftTierStackPx,
+          maxLeftTier,
+          system,
+          importedTail ?? null,
+        ),
       })),
-    [marksGeom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier, system],
+    [marksGeom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier, system, importedTail],
   );
 
   /**

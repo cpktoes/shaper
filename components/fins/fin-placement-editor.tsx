@@ -50,6 +50,7 @@ export function FinPlacementEditor() {
     effectiveFins: spec,
     updateFins,
     finPlacement: result,
+    finImportedTail,
     finTailOutline,
     finsImportTemplate,
     setFinsImportTemplate,
@@ -110,6 +111,7 @@ export function FinPlacementEditor() {
                 tailWidth12={spec.tailWidth12}
                 showCallouts={showCallouts}
                 outlineOverride={finTailOutline}
+                importedTail={finImportedTail}
               />
             </div>
           )}
