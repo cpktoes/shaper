@@ -78,6 +78,10 @@
  * this way: type sized in fixed pixels rather than `cqw` prints disproportionately small on a page
  * area wider than 733.44px, not merely photographically small, and
  * `e2e/summary-print-touch-box.spec.ts` is what measures whether any such type sits on the sheet.
+ * Since quick 260928-vpi (Phase 13 item 8b), page 2 on a phone sheet no longer uses these clamp
+ * floors at all — see `.order-form-sheet-reference`'s own phone rule further down this file, inside
+ * `@media print` — because page 2's own shorter shape needed a type size the 12px floor could not
+ * reach without overflowing its own boxes; page 1 still uses the scale above, untouched.
  */
 [data-order-form-root] {
   --order-form-caption: clamp(12px, 1.636cqw, 20px); /* 14.4px screen / 12px print — field labels */
@@ -189,9 +193,9 @@
    — and the rail markings still fit one line up to 172.8 px there, a 7.7 px margin. No planing
    number is ever cut off at any width this floor can reach.
 
-   At 560 dots the two tables can no longer both fit: the rail table's own minimum is 399 px and the
-   PLANING table's is about 165 px, 568 px against a 518 px Shaping Data column. There the rail
-   labels wrap instead of the planing table shrinking — that is item 8b's (quick 260928-tst). */
+   On a phone sheet page 2's type follows the fit unit below (quick 260928-vpi, Phase 13 item 8b),
+   so at 560 dots the PLANING table's own minimum drops under its 28% share and every rail row stays
+   one line — the two tables no longer compete for room the way they did before that fix. */
 [data-order-form-root] .order-form-planing-col {
   flex: none;
   width: calc(100% * var(--order-form-planing));
@@ -693,6 +697,74 @@
     width: auto !important;
     height: auto !important;
     aspect-ratio: 8.5 / 11 !important;
+  }
+
+  /* Page 2 on a phone sheet, fitted to its own shorter shape (quick 260928-vpi, Phase 13 item 8b).
+     Its rail marks and fin numbers used to run past their own boxes on a phone print, and this rule
+     is why, and what fixes it:
+
+     A phone's sheet is Letter-shaped (the rule just above), so at any width its page 2 is SHORTER
+     for its width than a computer's: 948.6 against 990.5 dots at 733 CSS px. Below 733 dots the old
+     12px floor made page 2's type relatively bigger still, on a page that was already shrinking
+     faster — and the rules under every row, the box padding and the gaps are fixed pixels that
+     don't shrink with the page at all.
+
+     So on a phone sheet every page-2 type size now follows one unit, `--order-form-ref-unit`, and
+     no longer has a 12px floor. `0.94cqw` is the phone sheet's own shape ratio (1.294118 / 1.351,
+     about 0.958) less a hair, tuned so a phone sheet keeps at least the computer print's own share
+     of spare room at every width measured. Below the design width the unit loses `0.003px` per dot
+     of narrowing, because the fixed pixels below are a bigger share of a narrower page. The design
+     width, `min(8.5in, 8.27in) - 16mm`, is the same expression the computer box above is pinned to
+     (PORTRAIT_PAPER_IN and PAGE_MARGIN_MM in use-print-fit.ts) — pinned again by
+     order-form-print.test.ts, so the two can never quietly drift apart.
+
+     The measured result: a quad's rail marks and fin numbers fit their own boxes from 560 to 900
+     CSS px. The rail row's own type is 8.30px at 560, 9.56px at 618 (about 8.2pt on the founder's
+     own measured iPhone paper) and follows `1.645cqw` from 733 up (about 8.7pt) — against a
+     computer's unchanged 9.6pt.
+
+     Why this keys on the phone sheet (`[data-print-touch]`) rather than a width: a 733-dot phone
+     sheet and the computer's own 733.44-dot sheet are the same WIDTH and differ only in SHAPE, so no
+     width-only rule can tell them apart (CLAUDE.md's width-decides-layout switch is untouched by
+     this: it decides a type SIZE here, never a layout — page 2 is arranged identically at every
+     width, on a phone sheet or a computer's).
+
+     `--order-form-ref-unit` is deliberately not registered with `@property`: an unregistered custom
+     property's `cqw` resolves where a font-size actually USES it — against `[data-order-form-root]`,
+     the same container every other token on this sheet already resolves against. Registering it
+     would instead resolve `cqw` where the custom property is declared, which is not the same
+     container query context and would silently change every figure above.
+
+     Specificity: this selector scores (0,3,0) against `.order-form-sheet-reference`'s own (0,2,0),
+     so it always wins regardless of source order — the same reasoning `globals.css`'s tripled
+     `:root` block already documents for itself. */
+  [data-order-form-root][data-print-touch] .order-form-sheet-reference {
+    --order-form-ref-unit: calc(0.94cqw - 0.003 * max(0px, min(8.5in, 8.27in) - 16mm - 100cqw));
+    --order-form-caption: calc(1.9 * var(--order-form-ref-unit));
+    --order-form-micro: calc(1.75 * var(--order-form-ref-unit));
+    --order-form-value: calc(2.15 * var(--order-form-ref-unit));
+    --order-form-row: calc(1.75 * var(--order-form-ref-unit));
+    --order-form-group: calc(1.9 * var(--order-form-ref-unit));
+
+    --summary-font-callout: calc(2.15 * var(--order-form-ref-unit));
+    --summary-font-group: calc(1.9 * var(--order-form-ref-unit));
+    --summary-font-row: calc(1.75 * var(--order-form-ref-unit));
+    --summary-font-label: calc(1.9 * var(--order-form-ref-unit));
+  }
+
+  /* Each of page 2's two table boxes — the rail row and the Fin Placement box — is never shorter
+     than what it holds, so the page's spare room goes where the content actually is (quick
+     260928-vpi, Phase 13 item 8b). On a computer print both floors sit below the boxes' own flex
+     shares already, so this is a measured no-op there; it only ever lifts a box on a phone sheet,
+     or a board whose fin content already ran into its own notes on the computer print too (see this
+     quick task's plan for the one such case, which no measured board is in today).
+
+     `min-height: min-content` — not a hardcoded figure — because "what it holds" changes with the
+     board (a single fin's placement box holds far less than a quad's). `.order-form-content-floor`
+     scores (0,2,0), unlayered, which beats Tailwind's own layered `min-h-0` utility on the same
+     elements in both engines measured. */
+  [data-order-form-root] .order-form-content-floor {
+    min-height: min-content;
   }
 
   /* One break between the two sheets, asked for from BOTH sides (D-03): the pair above already

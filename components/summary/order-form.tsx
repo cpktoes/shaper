@@ -640,9 +640,12 @@ export function OrderForm() {
                 Bands table also shares its row with a PLANING table, made room for by condensing
                 the rail markings horizontally, so its rows keep their height. PLANING sits to the
                 LEFT of Rail Bands, so the row reads in the order a blank gets worked — the founder,
-                2026-09-29: "Planning comes before rail shaping." */}
+                2026-09-29: "Planning comes before rail shaping." Since quick 260928-vpi (item 8b)
+                this row carries the content-floor class below (never shorter than its own rail
+                table), and on a phone sheet its type follows the phone-sheet fit rule in
+                order-form.css rather than the 12px floor. */}
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
-              <div data-rail-bands-row className="flex min-h-0 min-w-0 flex-[1.6] gap-1">
+              <div data-rail-bands-row className="flex min-h-0 min-w-0 flex-[1.6] gap-1 order-form-content-floor">
                 {/* The PLANING table (Phase 13 item 8; reworked by quick 260928-tst). The founder,
                     2026-09-29, after seeing item 8's printed page: "Let's organize this like the
                     rail dims. Deck and Bottom are headers. Font size should match the other dim
@@ -762,7 +765,7 @@ export function OrderForm() {
               <FormBox
                 caption="Fin Placement"
                 captionRight={finSetupLabel}
-                className="min-h-0 min-w-0 flex-1"
+                className="min-h-0 min-w-0 flex-1 order-form-content-floor"
                 bodyClassName="gap-1 overflow-hidden p-2"
               >
                 {/*

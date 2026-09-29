@@ -539,4 +539,105 @@ describe("order form print path (G-08-10, PRNT-06)", () => {
       "use-print-fit.ts does not carry the coarse pointer media query as a quoted string — a width query would wrongly exclude an iPad",
     ).toMatch(/["'`]\(pointer:\s*coarse\)["'`]/);
   });
+
+  // Quick 260928-vpi (Phase 13 item 8b): the phone sheet's own fit rule and the content floor,
+  // both added after the touch sheet's shape rule above.
+  const ORDER_FORM_TSX_PATH = "components/summary/order-form.tsx";
+
+  /** Extracts the `{ ... }` body and file offset of the FIRST rule matching an exact selector
+   * marker (`"selector {"`) — the same shape `phoneSheetRuleBody` and its neighbours above use,
+   * generalised so this new case can look up two different `.order-form-sheet-reference` rules
+   * by their own distinct selectors. */
+  function ruleBodyAndIndex(css: string, marker: string): { body: string; index: number } {
+    const start = css.indexOf(marker);
+    expect(start, `no rule found for exactly "${marker}"`).toBeGreaterThanOrEqual(0);
+    const bodyStart = start + marker.length;
+    const bodyEnd = css.indexOf("}", bodyStart);
+    expect(bodyEnd, "rule body never closes").toBeGreaterThan(bodyStart);
+    return { body: css.slice(bodyStart, bodyEnd), index: start };
+  }
+
+  it("the phone sheet's page-2 fit rule redeclares every type size the reference sheet declares, none of them floored", () => {
+    const css = readStripped(ORDER_FORM_CSS_PATH);
+    const { body: referenceBody } = ruleBodyAndIndex(css, "[data-order-form-root] .order-form-sheet-reference {");
+    const { body: phoneRefBody } = ruleBodyAndIndex(
+      css,
+      "[data-order-form-root][data-print-touch] .order-form-sheet-reference {",
+    );
+
+    const referenceDecls = ruleDeclarations(referenceBody);
+    expect(referenceDecls.length, "the reference sheet's own type-scale rule declares no properties").toBeGreaterThan(
+      0,
+    );
+
+    for (const { property } of referenceDecls) {
+      const phoneValue = extractDeclarationValue(phoneRefBody, property);
+      expect(
+        phoneValue,
+        `the phone fit rule's "${property}" value ("${phoneValue}") does not reference --order-form-ref-unit`,
+      ).toMatch(/var\(--order-form-ref-unit\)/);
+      expect(
+        phoneValue,
+        `the phone fit rule's "${property}" value ("${phoneValue}") still carries a clamp() floor`,
+      ).not.toMatch(/clamp\(/);
+    }
+  });
+
+  it("the fit unit measures a phone sheet against the same printed width the computer's sheet is pinned to", () => {
+    const css = readStripped(ORDER_FORM_CSS_PATH);
+    const { body: phoneRefBody } = ruleBodyAndIndex(
+      css,
+      "[data-order-form-root][data-print-touch] .order-form-sheet-reference {",
+    );
+    const unitExpr = extractDeclarationValue(phoneRefBody, "--order-form-ref-unit");
+    const numbers = parseCalcNumbers(unitExpr);
+
+    const hookSource = readStripped(USE_PRINT_FIT_PATH);
+    const marginMm = readNumericConst(hookSource, "PAGE_MARGIN_MM");
+    const papers = readPortraitPapersIn(hookSource);
+
+    expect(
+      [...numbers.papers].sort((a, b) => a - b),
+      `the fit unit's paper figures (${numbers.papers}) do not match PORTRAIT_PAPER_IN's widths`,
+    ).toEqual([...papers.map((p) => p.width)].sort((a, b) => a - b));
+    expect(
+      numbers.marginMm,
+      `the fit unit subtracts ${numbers.marginMm}mm, not twice PAGE_MARGIN_MM (${2 * marginMm}mm)`,
+    ).toBe(2 * marginMm);
+  });
+
+  it("the fit rule and the content floor apply only in print, after the phone sheet's own shape rule", () => {
+    const css = readStripped(ORDER_FORM_CSS_PATH);
+    const mediaPrintIndex = css.indexOf("@media print {");
+    expect(mediaPrintIndex, "no @media print block found").toBeGreaterThanOrEqual(0);
+
+    const { index: phoneShapeIndex } = phoneSheetRuleBody(css);
+    const { index: fitRuleIndex } = ruleBodyAndIndex(
+      css,
+      "[data-order-form-root][data-print-touch] .order-form-sheet-reference {",
+    );
+    const { body: floorBody, index: floorIndex } = ruleBodyAndIndex(
+      css,
+      "[data-order-form-root] .order-form-content-floor {",
+    );
+
+    for (const [label, index] of [
+      ["the fit rule", fitRuleIndex],
+      ["the content floor", floorIndex],
+    ] as const) {
+      expect(index, `${label} appears before @media print`).toBeGreaterThan(mediaPrintIndex);
+      expect(index, `${label} appears before the phone sheet's own shape rule`).toBeGreaterThan(phoneShapeIndex);
+    }
+
+    expect(floorBody, "the content floor rule does not declare min-height: min-content").toMatch(
+      /min-height:\s*min-content/,
+    );
+
+    const orderFormTsx = readStripped(ORDER_FORM_TSX_PATH);
+    const floorClassMatches = orderFormTsx.match(/order-form-content-floor/g) ?? [];
+    expect(
+      floorClassMatches.length,
+      `order-form.tsx should carry "order-form-content-floor" exactly twice, found ${floorClassMatches.length}`,
+    ).toBe(2);
+  });
 });

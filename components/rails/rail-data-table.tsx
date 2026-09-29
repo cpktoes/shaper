@@ -52,10 +52,12 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
       <div data-print-unfold className="min-h-0 min-w-0 flex-1 overflow-hidden">
         {/* Since Phase 13 item 8 (quick 260928-r9h) the order form's rail table shares its row
             with the PLANING column, so its label column takes 1.75 shares against 1 per value
-            column (condensed from 1.4). 1.75 is where, at the narrowest phone print (560 dots,
-            type at its 12px floor), neither the longest label (`Tapered Rail Thickness`, 131.5 px)
-            nor the widest header (Metric `Center (mm)`, 74.8 px) wraps, measured with `Hard Edge`
-            in every cell. The rows keep their height, and the DATA page's full table keeps 1.4. */}
+            column (condensed from 1.4). 1.75 is where, at the narrowest phone print (560 dots) —
+            since item 8b (quick 260928-vpi) a phone sheet's page-2 type follows its own fit unit
+            rather than the 12px floor — neither the longest label (`Tapered Rail Thickness`,
+            131.5 px) nor the widest header (Metric `Center (mm)`, 74.8 px) wraps, measured with
+            `Hard Edge` in every cell. The rows keep their height, and the DATA page's full table
+            keeps 1.4. */}
         <div
           className="mb-1 flex gap-2 border-b-2 border-surf-line-faint pb-1"
           style={{ fontSize: "var(--summary-font-label, 12px)" }}
@@ -69,7 +71,11 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
           ))}
         </div>
         {merged.map((group) => (
-          <div key={group.heading} className="mb-1.5">
+          // `last:mb-0` (quick 260928-vpi): the last group's own bottom margin sits below the
+          // last row, inside this table's own box, and never shows on screen — but it did count
+          // towards `.order-form-content-floor`'s min-content height, making the floor 6px taller
+          // than the table actually needs.
+          <div key={group.heading} className="mb-1.5 last:mb-0">
             <div
               className="mb-0.5 font-display text-surf-ink uppercase tracking-architectural font-extrabold"
               style={{ fontSize: "var(--summary-font-group, 9px)" }}
