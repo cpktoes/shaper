@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 items 1–5 live; item 6 (the fin-placement tail question) next
-last_updated: "2026-09-29T00:42:34.636Z"
+stopped_at: Phase 13 item 6 verified locally, awaiting the founder's go to push
+last_updated: "2026-09-29T02:03:49.199Z"
 last_activity: 2026-09-28
-last_activity_desc: "Phase 13 item 5 live: the founder's US Blanks preset picks deployed"
+last_activity_desc: Quick task 260928-p45 (Phase 13 item 6, fins against the real tail) verified locally; the push awaits the founder's go
 progress:
   total_phases: 1
   completed_phases: 0
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-28 - Phase 13 item 5 live: the founder's US Blanks preset picks deployed
+Last activity: 2026-09-28 - Quick task 260928-p45 (Phase 13 item 6, fins drawn against the real tail when Import Template is ticked) verified locally; the push awaits the founder's go
 
 ## Performance Metrics
 
@@ -160,10 +160,9 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-11 pending (five of them are Phase 13 items: the fin tail question is item 6, the order form is item 8, the catalogue links are item 9, the ghost of the last edit is optional item 9b, the Contacts page is item 10; the phone-width polish todo was closed by item 2 on 2026-09-27):
+10 pending (four of them are Phase 13 items (the fin tail question, item 6, was closed by quick 260928-p45): the order form is item 8, the catalogue links are item 9, the ghost of the last edit is optional item 9b, the Contacts page is item 10; the phone-width polish todo was closed by item 2 on 2026-09-27):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
-- [minor/general] Fins imported tail uses the generic polynomial curve, not the drawn outline — `.planning/todos/pending/2026-08-21-fins-imported-template-width-branch.md`
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
 - [minor/general] Brand the order form with a shaper's own logo and contact details (paid tier) — `.planning/todos/pending/2026-09-06-brand-the-order-form-for-paid-shapers.md`
 - [minor/ui] Show live coordinates under the pointer on the Template and Rocker curves — `.planning/todos/pending/2026-09-14-live-pointer-coordinates-on-the-template-and-rocker-curves.md`
@@ -308,6 +307,7 @@ Recent decisions affecting current work:
 | 260928-j00 | Phase 13 item 4a, the thinness rule (the founder's answers to Phase 12's Q1 and Q3): a board may be no thinner than 1/4" anywhere (was 1/8"), every ROCKER thickness control and the Fit & Tip Defaults tips now start at 1/4" — one shared figure — while older saved boards and stored defaults with a thinner tip still read back exactly as saved (flagged, never quietly raised); the too-thin reason line now names the real cause: a thin centre in a thick blank (the founder's wording, kept), a fine-tune that takes too much off, the board running past the end of the blank, or an older tip setting below the minimum. Development holds no board or default under 1/4". 3,064 unit and 360 browser tests green, desktop screenshots unchanged | 2026-09-28 | 8864015, 17f697c, 1021b0a | [260928-j00-phase-13-item-4a-the-thinness-rule-a-boa](./quick/260928-j00-phase-13-item-4a-the-thinness-rule-a-boa/) |
 | 260928-lm6 | Phase 13 item 4b (the founder's answer to Phase 12's Q4, capped by them at 1"): the Deck Skin control on ROCKER and in Fit & Tip Defaults now runs from none to 1" (Metric 0–25 mm) — was 1/16"–1/2"; at none the slider reads "Deck Skin — none", nothing comes off the deck, the centre needs only the target plus one bottom pass (so more blanks fit), and every sentence that quoted the skin reads naturally ("room for your 1/8" bottom pass"; an upward Deck fine-tune "raises the deck, but this board takes no Deck Skin"). Every older skin reads back as saved; a hand-made skin over 1" shows its true value with the thumb parked. A new board still starts at 1/8". 3,085 unit and 360 browser tests green | 2026-09-28 | be0d244, ca7b84c | [260928-lm6-phase-13-item-4b-the-deck-skin-control-a](./quick/260928-lm6-phase-13-item-4b-the-deck-skin-control-a/) |
 | 260928-nu9 | Phase 13 item 5, the preset blanks: the founder chose a US Blanks blank for every preset — Shortboard 6'3"EA, Fish 5'10"RP, Mid-length 7'4"SP, Longboard 9'3"Y (its old pick, now the founder's own), all centred — captured with the app's own `buildRockerPresetSource` line and the generator re-run, so no preset is provisional any more (a new test guards it). The cards' litres follow their new blanks: Shortboard 30.2 → 29.1 L, Fish 35.4 → 35.0, Mid-length 51.5 → 50.3, Longboard 75.3 unchanged. Boards already saved keep their own blank. 3,086 unit and 360 browser tests green | 2026-09-28 | 588fc26, 2a108e9 | [260928-nu9-phase-13-item-5-the-founder-s-own-us-bla](./quick/260928-nu9-phase-13-item-5-the-founder-s-own-us-bla/) |
+| 260928-p45 | Phase 13 item 6, the fin tail question (founder, 2026-09-28: keep the generic tail when Import Template is unticked, keep the tick box, build before Oct 10): with the box ticked, fins measured in from the rail are now drawn against the REAL drawn tail — the prototype's own imported branch, ported and pinned by a new golden generated from the prototype (9 outlines, 32 cases) — on FINS, TEMPLATE's fin marks and the order form's bottom view. No written fin number changes (a test proves it); the drawings move up to 3/16" (Fish twins +0.170", Mid-length rear quads −0.190"). Unticked is unchanged. tsx is now a declared developer tool (it runs the fins golden script). 3,320 unit and 360 browser tests green; the old 2026-08-21 todo is closed | 2026-09-28 | 621ec36, 6004bd5, 26a0c54 | [260928-p45-phase-13-item-6-with-import-template-tic](./quick/260928-p45-phase-13-item-6-with-import-template-tic/) |
 
 ## Deferred Items
 
