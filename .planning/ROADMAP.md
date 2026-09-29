@@ -166,7 +166,7 @@ founder questions stand open as decisions, not defects. Full phase detail archiv
 **Goal:** When a room of shapers sees the app on Saturday 2026-10-10 (the build guide's M4, "invite shapers"), it is safe, tidy, and credible on the numbers they know best, and it is ready to hear from them: the security patch live, the project clean, the founder's open decisions made, volume proven against real boards, the printed order form complete, a way for shapers to reach the founder and a count of which screens they use, and the whole trip rehearsed on real phones before a freeze on Wednesday 2026-10-07.
 **Requirements**: Items 1–13 in `.planning/phases/13-ready-for-the-shapers/13-SPEC.md` (ordered; who does each and what "done" means), run one at a time with the founder's review between
 **Depends on:** Phase 12
-**Plans:** 4/13 items, plus optional 9b — each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; founder items are recorded in the SPEC's Progress Log
+**Plans:** 5/13 items, plus optional 9b — each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; founder items are recorded in the SPEC's Progress Log
 
 Plans:
 
@@ -179,7 +179,7 @@ Plans:
 **The founder's decisions (this week)**
 
 - [x] 4. The five Phase 12 questions (answered 2026-09-28; the 1/4" floor and cause-named reasons, quick 260928-j00, and Deck Skin none–1", quick 260928-lm6, both live)
-- [ ] 5. The four preset blanks
+- [x] 5. The four preset blanks (the founder's US Blanks picks: Shortboard 6'3"EA, Fish 5'10"RP, Mid-length 7'4"SP, Longboard 9'3"Y — quick 260928-nu9, live 2026-09-28)
 - [ ] 6. The fin-placement tail question
 
 **What shapers will test first (Wed–Fri, Sep 30–Oct 2)**
@@ -220,4 +220,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
 | 11. Rocker from Real Blanks | 13/13 | Complete    | 2026-09-26 |
 | 12. Foil the Way a Shaper Cuts It | 10/10 | Complete    | 2026-09-27 |
-| 13. Ready for the Shapers | 4/13 items | In progress | - |
+| 13. Ready for the Shapers | 5/13 items | In progress | - |

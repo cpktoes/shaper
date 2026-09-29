@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 5 verified locally, awaiting the founder's go to push
-last_updated: "2026-09-29T00:39:14.959Z"
+stopped_at: Phase 13 items 1–5 live; item 6 (the fin-placement tail question) next
+last_updated: "2026-09-29T00:42:34.636Z"
 last_activity: 2026-09-28
-last_activity_desc: Quick task 260928-nu9 (Phase 13 item 5, the founder's US Blanks preset picks) verified locally; the push awaits the founder's go
+last_activity_desc: "Phase 13 item 5 live: the founder's US Blanks preset picks deployed"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 13
-  completed_plans: 4
-  percent: 31
+  completed_plans: 5
+  percent: 38
 current_phase: 13
 current_phase_name: Ready for the Shapers
 ---
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **4 of 13 items done, all live.** Item 1, the security patch (260927-onx). Item 2, housekeeping (260927-pij). Item 3, the retired Extra Center Thickness column dropped from both databases (260927-qrn). Item 4, the founder's answers to Phase 12's five questions: a 1/4" thinness floor with 1/4" control minimums and cause-named reason lines (260928-j00), and the Deck Skin control opened to none–1" (260928-lm6). The founder added two post-Oct-10 todos (the curves' realistic flow, major, its own phase; custom rocker on a blank) and optional item 9b (the ghost outline). The client-secret file still sits in the project folder. **Item 5 — the four preset blanks, the founder's picks — is next.**
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **5 of 13 items done, all live.** Item 1 security patch (260927-onx); item 2 housekeeping (260927-pij); item 3 the retired column dropped (260927-qrn); item 4 the five Phase 12 answers (260928-j00: 1/4" floor and cause-named reasons; 260928-lm6: Deck Skin none–1"); item 5 the founder's US Blanks preset picks (260928-nu9: Shortboard 6'3"EA 29.1 L, Fish 5'10"RP 35.0 L, Mid-length 7'4"SP 50.3 L, Longboard 9'3"Y 75.3 L). The client-secret file still sits in the project folder. **Item 6 — the fin-placement tail question, the founder's decision — is next**, then item 7 (volume against three real boards, which also re-checks the presets' litres).
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-28 - Quick task 260928-nu9 (Phase 13 item 5, the founder's US Blanks preset picks) verified locally; the push awaits the founder's go
+Last activity: 2026-09-28 - Phase 13 item 5 live: the founder's US Blanks preset picks deployed
 
 ## Performance Metrics
 
