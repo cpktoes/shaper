@@ -13,7 +13,7 @@ A web app that helps surfboard shapers — hobbyist, professional, and curious s
 - **Geometry math**: All geometry math (outline, rocker, rail band, foil, fin placement, volume) must live in pure TypeScript files under `lib/`, with unit tests — the calculators are the core value proposition, so their correctness must be verifiable in isolation from UI code
 - **Units**: UI displays inches and litres (how shapers think and talk); all data is stored in metric internally — for internal precision/consistency while matching shaper-familiar units at the surface
 - **Audience**: Users are shapers and surfers, not developers — UI must be approachable to non-technical users, and changes/explanations should be communicated in plain English
-- **Tech stack**: Prescribed by the founder's build guide — Next.js (latest, App Router) + TypeScript + Tailwind CSS v4 + shadcn/ui; Neon Postgres via Drizzle ORM; Clerk for auth (Clerk Billing later for subscriptions); hosted on Vercel; Vitest for unit tests, Playwright for e2e; domain email through Forward Email (receiving) and SMTP2GO (sending), added by the founder 2026-09-29 — not to be substituted without discussion
+- **Tech stack**: Prescribed by the founder's build guide — Next.js (latest, App Router) + TypeScript + Tailwind CSS v4 + shadcn/ui; Neon Postgres via Drizzle ORM; Clerk for auth (Clerk Billing later for subscriptions); hosted on Vercel; Vitest for unit tests, Playwright for e2e; domain email through ImprovMX (receiving) and SMTP2GO (sending), added by the founder 2026-09-29 — not to be substituted without discussion
 
 <!-- GSD:project-end -->
 

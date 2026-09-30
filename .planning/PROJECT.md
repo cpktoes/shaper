@@ -230,7 +230,7 @@ templates ("the math is right").
 - **Geometry math**: All geometry math (outline, rocker, rail band, foil, fin placement, volume) must live in pure TypeScript files under `lib/`, with unit tests — the calculators are the core value proposition, so their correctness must be verifiable in isolation from UI code
 - **Units**: UI displays the shaper's chosen system — Imperial (feet-inches and fractions) by default, or Metric (cm and mm) from milestone v1.1 — with litres for volume either way; all data is stored in metric internally and every conversion goes through `lib/geometry/units.ts` — for internal precision/consistency while matching how each shaper reads a tape measure
 - **Audience**: Users are shapers and surfers, not developers — UI must be approachable to non-technical users, and changes/explanations should be communicated in plain English
-- **Tech stack**: Prescribed by the founder's build guide — Next.js (latest, App Router) + TypeScript + Tailwind CSS v4 + shadcn/ui; Neon Postgres via Drizzle ORM; Clerk for auth (Clerk Billing later for subscriptions); hosted on Vercel; Vitest for unit tests, Playwright for e2e; domain email through Forward Email (receiving) and SMTP2GO (sending), added by the founder 2026-09-29 — not to be substituted without discussion
+- **Tech stack**: Prescribed by the founder's build guide — Next.js (latest, App Router) + TypeScript + Tailwind CSS v4 + shadcn/ui; Neon Postgres via Drizzle ORM; Clerk for auth (Clerk Billing later for subscriptions); hosted on Vercel; Vitest for unit tests, Playwright for e2e; domain email through ImprovMX (receiving) and SMTP2GO (sending), added by the founder 2026-09-29 — not to be substituted without discussion
 
 ## Key Decisions
 

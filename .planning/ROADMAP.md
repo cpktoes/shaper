@@ -192,7 +192,7 @@ Plans:
 
 **Ready to listen (Sat–Mon, Oct 3–5)**
 
-- [ ] 10. Contact page, plus email at shaperassistant.com — Forward Email receives, SMTP2GO sends (the founder's addition, 2026-09-29)
+- [ ] 10. Contact page, plus email at shaperassistant.com — ImprovMX receives (swapped in for Forward Email the same day), SMTP2GO sends; support@shaperassistant.com (the founder's addition, 2026-09-29)
 - [ ] 11. Visitor analytics and a privacy page
 - [ ] 12. A friendly error screen and a link-preview picture
 
