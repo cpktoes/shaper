@@ -1,31 +1,33 @@
 /**
- * The Contact form's delivery switch (quick 260929-u1t, Task 1): the production-guarded stand-in
- * (P-3), the SMTP2GO HTTP call, and `submitContact` — the one function the Server Action calls,
- * which decides between honeypot, validation, availability and delivery in that order.
+ * The Contact form's delivery switch (quick 260929-u1t, Task 1; the sender reworked for Resend in
+ * quick 260929-w2k, Task 1): the production-guarded stand-in (P-3), the Resend HTTP call, and
+ * `submitContact` — the one function the Server Action calls, which decides between honeypot,
+ * validation, availability and delivery in that order.
  *
  * Pure except for the injectable `fetch` — server-side only by convention, never by React or
  * Next import: nothing under `components/` may import this file (the boundary test in
  * delivery.test.ts enforces it), because the moment this module is reachable from a client
- * bundle, the SMTP2GO key it eventually touches (via `lib/contact-server.ts`) is one bundler
+ * bundle, the Resend key it eventually touches (via `lib/contact-server.ts`) is one bundler
  * mistake from shipping to the browser.
  */
 
 import {
   CONTACT_LIMITS,
-  buildSmtp2goRequest,
+  buildResendRequest,
   isHoneypotFilled,
   validateContactFields,
   type ContactFields,
   type ContactFormState,
-  type Smtp2goSendBody,
+  type ResendSendBody,
 } from "./message";
 
-export const SMTP2GO_SEND_URL = "https://api.smtp2go.com/v3/email/send";
+export const RESEND_SEND_URL = "https://api.resend.com/emails";
+export const CONTACT_USER_AGENT = "shaper-assistant/1.0";
 export const CONTACT_STAND_IN_ENV = "SHAPER_CONTACT_STAND_IN";
 export const CONTACT_STAND_IN_COOKIE = "shaper-contact-stand-in";
 
 export type ContactDelivery =
-  | { kind: "smtp2go"; apiKey: string }
+  | { kind: "resend"; apiKey: string }
   | { kind: "stand-in"; outcome: "sent" | "failed" }
   | { kind: "none" };
 
@@ -36,7 +38,7 @@ export type ContactDelivery =
  * cookie's `standInChoice` picks `sent` or `failed`, and anything else — including no cookie at
  * all — resolves to `none`, so a browser test that forgets to set the cookie sees the
  * address-only page rather than an accidental real send. Otherwise the trimmed
- * `SMTP2GO_API_KEY` decides: present and non-blank is `smtp2go`, blank is `none`.
+ * `RESEND_API_KEY` decides: present and non-blank is `resend`, blank is `none`.
  */
 export function resolveContactDelivery(input: {
   nodeEnv: string | undefined;
@@ -53,7 +55,7 @@ export function resolveContactDelivery(input: {
   }
 
   const trimmedKey = (input.apiKey ?? "").trim();
-  return trimmedKey === "" ? { kind: "none" } : { kind: "smtp2go", apiKey: trimmedKey };
+  return trimmedKey === "" ? { kind: "none" } : { kind: "resend", apiKey: trimmedKey };
 }
 
 export function isContactFormAvailable(delivery: ContactDelivery): boolean {
@@ -61,29 +63,31 @@ export function isContactFormAvailable(delivery: ContactDelivery): boolean {
 }
 
 /**
- * The one real network call, guarded by the OK rule pinned in the plan's `<context>`: a send
- * counts as OK only on a 2xx response, parseable JSON, `data.failed === 0` and
- * `data.succeeded >= 1`. Anything else — a non-2xx, a network error, a timeout, bad JSON, missing
- * fields, or `failed > 0` — is a failure, logged with the status and SMTP2GO's own error code
- * only. The key, the body, the headers and the delivery object are never logged: a failure a
- * shaper never sees still must not leak the key into a server log a shaper never sees either.
+ * The one real network call, guarded by the OK rule pinned in the plan's `<context>` (W-4): a
+ * send counts as OK only on a 2xx response whose parsed JSON is a non-null, non-array object
+ * carrying a non-empty string `id`. Anything else — a non-2xx (even one carrying an id), a
+ * network error, a timeout, bad JSON, or a missing/empty/non-string `id` — is a failure, logged
+ * with the HTTP status and Resend's own error `name` only. The key, the body, the headers, the
+ * delivery object and Resend's `message` field are never logged: a failure a shaper never sees
+ * still must not leak the key or a shaper's typed text into a server log a shaper never sees
+ * either.
  */
-export async function sendWithSmtp2go(
-  body: Smtp2goSendBody,
+export async function sendWithResend(
+  body: ResendSendBody,
   apiKey: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<{ ok: boolean }> {
   let status: number | null = null;
-  let errorCode: string | null = null;
+  let errorName: string | null = null;
   let ok = false;
 
   try {
-    const response = await fetchImpl(SMTP2GO_SEND_URL, {
+    const response = await fetchImpl(RESEND_SEND_URL, {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        Accept: "application/json",
-        "X-Smtp2go-Api-Key": apiKey,
+        "User-Agent": CONTACT_USER_AGENT,
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(10_000),
@@ -98,38 +102,26 @@ export async function sendWithSmtp2go(
       payload = null;
     }
 
-    const data =
-      payload !== null && typeof payload === "object" && "data" in payload
-        ? (payload as { data?: unknown }).data
-        : undefined;
-    const failed =
-      data !== undefined && typeof data === "object" && data !== null && "failed" in data
-        ? (data as { failed?: unknown }).failed
-        : undefined;
-    const succeeded =
-      data !== undefined && typeof data === "object" && data !== null && "succeeded" in data
-        ? (data as { succeeded?: unknown }).succeeded
-        : undefined;
+    const isPlainObject =
+      payload !== null && typeof payload === "object" && !Array.isArray(payload);
+    const id = isPlainObject ? (payload as { id?: unknown }).id : undefined;
 
-    ok = response.ok && failed === 0 && typeof succeeded === "number" && succeeded >= 1;
+    ok = response.ok && isPlainObject && typeof id === "string" && id.length > 0;
 
     if (!ok) {
-      errorCode =
-        data !== undefined &&
-        typeof data === "object" &&
-        data !== null &&
-        typeof (data as { error_code?: unknown }).error_code === "string"
-          ? (data as { error_code: string }).error_code
+      errorName =
+        isPlainObject && typeof (payload as { name?: unknown }).name === "string"
+          ? (payload as { name: string }).name
           : null;
     }
   } catch {
     ok = false;
     status = null;
-    errorCode = null;
+    errorName = null;
   }
 
   if (!ok) {
-    console.error("Shaper: contact message did not send", { status, errorCode });
+    console.error("Shaper: contact message did not send", { status, errorName });
   }
 
   return { ok };
@@ -138,7 +130,7 @@ export async function sendWithSmtp2go(
 /** Dispatches on the delivery kind. The stand-in never touches the network — a browser test can
  * never trigger a real send even if a real key happens to be present (P-3). */
 export async function deliverContactMessage(
-  body: Smtp2goSendBody,
+  body: ResendSendBody,
   delivery: ContactDelivery,
   fetchImpl?: typeof fetch,
 ): Promise<{ ok: boolean }> {
@@ -147,8 +139,8 @@ export async function deliverContactMessage(
       return { ok: delivery.outcome === "sent" };
     case "none":
       return { ok: false };
-    case "smtp2go":
-      return sendWithSmtp2go(body, delivery.apiKey, fetchImpl);
+    case "resend":
+      return sendWithResend(body, delivery.apiKey, fetchImpl);
   }
 }
 
@@ -180,7 +172,7 @@ export async function submitContact(input: {
   fields: ContactFields;
   delivery: ContactDelivery;
   previous: ContactFormState | undefined;
-  deliver?: (body: Smtp2goSendBody, delivery: ContactDelivery) => Promise<{ ok: boolean }>;
+  deliver?: (body: ResendSendBody, delivery: ContactDelivery) => Promise<{ ok: boolean }>;
 }): Promise<ContactFormState> {
   const attempt = safePreviousAttempt(input.previous) + 1;
 
@@ -218,7 +210,7 @@ export async function submitContact(input: {
 
   const deliver = input.deliver ?? deliverContactMessage;
   try {
-    const body = buildSmtp2goRequest(validated.value);
+    const body = buildResendRequest(validated.value);
     const result = await deliver(body, input.delivery);
     if (result.ok) {
       return {

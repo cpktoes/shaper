@@ -3,23 +3,24 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
-  SMTP2GO_SEND_URL,
+  RESEND_SEND_URL,
   deliverContactMessage,
   isContactFormAvailable,
   resolveContactDelivery,
-  sendWithSmtp2go,
+  sendWithResend,
   submitContact,
 } from "./delivery";
-import { buildSmtp2goRequest, type ContactFields, type Smtp2goSendBody } from "./message";
+import { buildResendRequest, type ContactFields, type ResendSendBody } from "./message";
 
 /**
- * TDD RED for quick 260929-u1t, Task 1: the production-guarded delivery switch (P-3), the
- * SMTP2GO HTTP call, and submitContact's ordering (attempt, honeypot, validation, availability,
- * deliver). The boundary describe block at the bottom is the open-access.test.ts idiom:
- * source-reading assertions that guard the key's isolation mechanically rather than by review.
+ * TDD RED for quick 260929-u1t, Task 1 (the sender reworked for Resend in quick 260929-w2k,
+ * Task 1): the production-guarded delivery switch (P-3), the Resend HTTP call, and
+ * submitContact's ordering (attempt, honeypot, validation, availability, deliver). The boundary
+ * describe block at the bottom is the open-access.test.ts idiom: source-reading assertions that
+ * guard the key's isolation mechanically rather than by review.
  */
 
-const message: Smtp2goSendBody = buildSmtp2goRequest({
+const message: ResendSendBody = buildResendRequest({
   message: "Hello there",
   email: "jane@example.com",
   name: "Jane Smith",
@@ -63,7 +64,7 @@ describe("resolveContactDelivery", () => {
       standInChoice: "sent",
       apiKey: " k ",
     });
-    expect(delivery).toEqual({ kind: "smtp2go", apiKey: "k" });
+    expect(delivery).toEqual({ kind: "resend", apiKey: "k" });
   });
 
   it.each(["", "   ", undefined])("with the stand-in off, a blank apiKey %s resolves to none", (apiKey) => {
@@ -93,7 +94,7 @@ describe("resolveContactDelivery", () => {
       standInChoice: "sent",
       apiKey: "k",
     });
-    expect(delivery).toEqual({ kind: "smtp2go", apiKey: "k" });
+    expect(delivery).toEqual({ kind: "resend", apiKey: "k" });
   });
 
   it("nodeEnv 'test' behaves like 'development'", () => {
@@ -112,7 +113,7 @@ describe("isContactFormAvailable", () => {
     expect(isContactFormAvailable({ kind: "none" })).toBe(false);
     expect(isContactFormAvailable({ kind: "stand-in", outcome: "sent" })).toBe(true);
     expect(isContactFormAvailable({ kind: "stand-in", outcome: "failed" })).toBe(true);
-    expect(isContactFormAvailable({ kind: "smtp2go", apiKey: "k" })).toBe(true);
+    expect(isContactFormAvailable({ kind: "resend", apiKey: "k" })).toBe(true);
   });
 });
 
@@ -120,88 +121,99 @@ function fakeFetch(response: { ok: boolean; status: number; json: () => Promise<
   return vi.fn().mockResolvedValue(response);
 }
 
-describe("sendWithSmtp2go", () => {
-  it("calls the SMTP2GO endpoint exactly once with method POST", async () => {
-    const fetchImpl = fakeFetch({ ok: true, status: 200, json: async () => ({ data: { succeeded: 1, failed: 0, failures: [], email_id: "x" } }) });
-    await sendWithSmtp2go(message, "secret-key", fetchImpl);
+const SUCCESS_ID = "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794";
+const successResponse = () =>
+  fakeFetch({ ok: true, status: 200, json: async () => ({ id: SUCCESS_ID }) });
+
+describe("sendWithResend", () => {
+  it("calls the Resend endpoint exactly once with method POST", async () => {
+    const fetchImpl = successResponse();
+    await sendWithResend(message, "re_test_key", fetchImpl);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     const [url, options] = fetchImpl.mock.calls[0];
-    expect(url).toBe(SMTP2GO_SEND_URL);
+    expect(url).toBe(RESEND_SEND_URL);
+    expect(url).toBe("https://api.resend.com/emails");
     expect(options.method).toBe("POST");
   });
 
-  it("sends the three pinned headers", async () => {
-    const fetchImpl = fakeFetch({ ok: true, status: 200, json: async () => ({ data: { succeeded: 1, failed: 0, failures: [], email_id: "x" } }) });
-    await sendWithSmtp2go(message, "secret-key", fetchImpl);
+  it("sends the three pinned headers, exactly these", async () => {
+    const fetchImpl = successResponse();
+    await sendWithResend(message, "re_test_key", fetchImpl);
     const [, options] = fetchImpl.mock.calls[0];
     expect(options.headers).toEqual({
+      Authorization: "Bearer re_test_key",
       "Content-Type": "application/json",
-      Accept: "application/json",
-      "X-Smtp2go-Api-Key": "secret-key",
+      "User-Agent": "shaper-assistant/1.0",
     });
   });
 
-  it("the body equals JSON.stringify(body) and never contains the key", async () => {
-    const fetchImpl = fakeFetch({ ok: true, status: 200, json: async () => ({ data: { succeeded: 1, failed: 0, failures: [], email_id: "x" } }) });
-    await sendWithSmtp2go(message, "secret-key", fetchImpl);
+  it("the body equals JSON.stringify(body), never contains the key, and has no html key", async () => {
+    const fetchImpl = successResponse();
+    await sendWithResend(message, "re_test_key", fetchImpl);
     const [, options] = fetchImpl.mock.calls[0];
     expect(options.body).toBe(JSON.stringify(message));
-    expect(options.body).not.toContain("secret-key");
+    expect(options.body).not.toContain("re_test_key");
+    expect(options.body).not.toContain("html");
   });
 
-  it("counts as ok on 200 with succeeded 1 and failed 0", async () => {
-    const fetchImpl = fakeFetch({ ok: true, status: 200, json: async () => ({ data: { succeeded: 1, failed: 0, failures: [], email_id: "x" } }) });
-    const result = await sendWithSmtp2go(message, "k", fetchImpl);
+  it("passes AbortSignal.timeout(10_000)'s own returned signal to fetch (W-5)", async () => {
+    const fakeSignal = { fake: "signal" } as unknown as AbortSignal;
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout").mockReturnValue(fakeSignal);
+    const fetchImpl = successResponse();
+    await sendWithResend(message, "re_test_key", fetchImpl);
+    expect(timeoutSpy).toHaveBeenCalledWith(10_000);
+    const [, options] = fetchImpl.mock.calls[0];
+    expect(options.signal).toBe(fakeSignal);
+    timeoutSpy.mockRestore();
+  });
+
+  it("counts as ok on 200 with a non-empty string id", async () => {
+    const fetchImpl = successResponse();
+    const result = await sendWithResend(message, "re_test_key", fetchImpl);
     expect(result.ok).toBe(true);
   });
 
-  it("counts as a failure on 200 with failed 1", async () => {
-    const fetchImpl = fakeFetch({ ok: true, status: 200, json: async () => ({ data: { succeeded: 0, failed: 1, failures: [{}], email_id: "x" } }) });
+  it("does not call console.error on success", async () => {
+    const fetchImpl = successResponse();
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const result = await sendWithSmtp2go(message, "k", fetchImpl);
-    expect(result.ok).toBe(false);
+    await sendWithResend(message, "re_test_key", fetchImpl);
+    expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
 
-  it("counts as a failure on 200 with no data field", async () => {
+  it("counts as a failure on 200 with an empty object (no id)", async () => {
     const fetchImpl = fakeFetch({ ok: true, status: 200, json: async () => ({}) });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const result = await sendWithSmtp2go(message, "k", fetchImpl);
+    const result = await sendWithResend(message, "re_test_key", fetchImpl);
     expect(result.ok).toBe(false);
     spy.mockRestore();
   });
 
-  it("counts as a failure on 400 with the ENDPOINT_PERMISSION_DENIED body", async () => {
-    const fetchImpl = fakeFetch({
-      ok: false,
-      status: 400,
-      json: async () => ({
-        data: { error_code: "E_ApiResponseCodes.ENDPOINT_PERMISSION_DENIED", error: "You do not have permission to access this API endpoint" },
-      }),
-    });
+  it("counts as a failure on 200 with an empty string id", async () => {
+    const fetchImpl = fakeFetch({ ok: true, status: 200, json: async () => ({ id: "" }) });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const result = await sendWithSmtp2go(message, "k", fetchImpl);
+    const result = await sendWithResend(message, "re_test_key", fetchImpl);
     expect(result.ok).toBe(false);
     spy.mockRestore();
   });
 
-  it("counts as a failure on 500", async () => {
-    const fetchImpl = fakeFetch({ ok: false, status: 500, json: async () => ({}) });
+  it("counts as a failure on 200 with a non-string id", async () => {
+    const fetchImpl = fakeFetch({ ok: true, status: 200, json: async () => ({ id: 42 }) });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const result = await sendWithSmtp2go(message, "k", fetchImpl);
+    const result = await sendWithResend(message, "re_test_key", fetchImpl);
     expect(result.ok).toBe(false);
     spy.mockRestore();
   });
 
-  it("counts as a failure when fetch throws", async () => {
-    const fetchImpl = vi.fn().mockRejectedValue(new Error("network down"));
+  it("counts as a failure on 200 whose json() resolves null", async () => {
+    const fetchImpl = fakeFetch({ ok: true, status: 200, json: async () => null });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const result = await sendWithSmtp2go(message, "k", fetchImpl);
+    const result = await sendWithResend(message, "re_test_key", fetchImpl);
     expect(result.ok).toBe(false);
     spy.mockRestore();
   });
 
-  it("counts as a failure on 200 with a non-JSON body", async () => {
+  it("counts as a failure on 200 whose json() throws a SyntaxError", async () => {
     const fetchImpl = fakeFetch({
       ok: true,
       status: 200,
@@ -210,28 +222,85 @@ describe("sendWithSmtp2go", () => {
       },
     });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const result = await sendWithSmtp2go(message, "k", fetchImpl);
+    const result = await sendWithResend(message, "re_test_key", fetchImpl);
     expect(result.ok).toBe(false);
     spy.mockRestore();
   });
 
-  it("on every failure calls console.error once, with no argument carrying the key, the message text or the reply address", async () => {
-    const fetchImpl = fakeFetch({ ok: false, status: 500, json: async () => ({}) });
+  it("counts as a failure on 500 with an id, since a non-2xx carrying an id is still a failure", async () => {
+    const fetchImpl = fakeFetch({ ok: false, status: 500, json: async () => ({ id: SUCCESS_ID }) });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    await sendWithSmtp2go(message, "super-secret-key", fetchImpl);
-    expect(spy).toHaveBeenCalledTimes(1);
-    const serialized = JSON.stringify(spy.mock.calls[0]);
-    expect(serialized).not.toContain("super-secret-key");
-    expect(serialized).not.toContain("Hello there");
-    expect(serialized).not.toContain("jane@example.com");
+    const result = await sendWithResend(message, "re_test_key", fetchImpl);
+    expect(result.ok).toBe(false);
     spy.mockRestore();
   });
 
-  it("does not call console.error on success", async () => {
-    const fetchImpl = fakeFetch({ ok: true, status: 200, json: async () => ({ data: { succeeded: 1, failed: 0, failures: [], email_id: "x" } }) });
+  it("counts as a failure on 403, the domain-not-verified shape", async () => {
+    const fetchImpl = fakeFetch({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        statusCode: 403,
+        message: "The shaperassistant.com domain is not verified.",
+        name: "validation_error",
+      }),
+    });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    await sendWithSmtp2go(message, "k", fetchImpl);
-    expect(spy).not.toHaveBeenCalled();
+    const result = await sendWithResend(message, "re_test_key", fetchImpl);
+    expect(result.ok).toBe(false);
+    spy.mockRestore();
+  });
+
+  it("counts as a failure when fetch rejects with a network error", async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new Error("network down"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await sendWithResend(message, "re_test_key", fetchImpl);
+    expect(result.ok).toBe(false);
+    spy.mockRestore();
+  });
+
+  it("counts as a failure when fetch rejects with a timeout DOMException", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValue(new DOMException("The operation was aborted due to timeout", "TimeoutError"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await sendWithResend(message, "re_test_key", fetchImpl);
+    expect(result.ok).toBe(false);
+    spy.mockRestore();
+  });
+
+  it("logs the exact status and errorName on a 422, with none of the key, the shaper's text or Resend's message reaching the log", async () => {
+    const fetchImpl = fakeFetch({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        statusCode: 422,
+        name: "validation_error",
+        message: "Invalid `to` field: jane@example.com — Hello there — re_test_key",
+      }),
+    });
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await sendWithResend(message, "re_test_key", fetchImpl);
+    expect(spy).toHaveBeenCalledExactlyOnceWith("Shaper: contact message did not send", {
+      status: 422,
+      errorName: "validation_error",
+    });
+    const serialized = JSON.stringify(spy.mock.calls[0]);
+    expect(serialized).not.toContain("re_test_key");
+    expect(serialized).not.toContain("Hello there");
+    expect(serialized).not.toContain("jane@example.com");
+    expect(serialized).not.toContain("Invalid `to` field");
+    spy.mockRestore();
+  });
+
+  it("a thrown fetch logs exactly status null, errorName null", async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new Error("network down"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await sendWithResend(message, "re_test_key", fetchImpl);
+    expect(spy).toHaveBeenCalledExactlyOnceWith("Shaper: contact message did not send", {
+      status: null,
+      errorName: null,
+    });
     spy.mockRestore();
   });
 });
@@ -258,9 +327,9 @@ describe("deliverContactMessage", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("smtp2go goes through sendWithSmtp2go", async () => {
-    const fetchImpl = fakeFetch({ ok: true, status: 200, json: async () => ({ data: { succeeded: 1, failed: 0, failures: [], email_id: "x" } }) });
-    const result = await deliverContactMessage(message, { kind: "smtp2go", apiKey: "k" }, fetchImpl);
+  it("resend goes through sendWithResend", async () => {
+    const fetchImpl = fakeFetch({ ok: true, status: 200, json: async () => ({ id: SUCCESS_ID }) });
+    const result = await deliverContactMessage(message, { kind: "resend", apiKey: "k" }, fetchImpl);
     expect(result.ok).toBe(true);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
@@ -319,7 +388,7 @@ describe("submitContact", () => {
     const deliver = vi.fn().mockResolvedValue({ ok: true });
     const result = await submitContact({
       fields: validFields,
-      delivery: { kind: "smtp2go", apiKey: "k" },
+      delivery: { kind: "resend", apiKey: "k" },
       previous: undefined,
       deliver,
     });
@@ -328,8 +397,8 @@ describe("submitContact", () => {
     expect(result.values).toEqual({ message: "", email: "", name: "" });
     expect(deliver).toHaveBeenCalledTimes(1);
     expect(deliver).toHaveBeenCalledWith(
-      buildSmtp2goRequest({ message: "Hello there", email: "jane@example.com", name: "Jane Smith" }),
-      { kind: "smtp2go", apiKey: "k" },
+      buildResendRequest({ message: "Hello there", email: "jane@example.com", name: "Jane Smith" }),
+      { kind: "resend", apiKey: "k" },
     );
   });
 
@@ -337,7 +406,7 @@ describe("submitContact", () => {
     const deliver = vi.fn().mockResolvedValue({ ok: false });
     const result = await submitContact({
       fields: validFields,
-      delivery: { kind: "smtp2go", apiKey: "k" },
+      delivery: { kind: "resend", apiKey: "k" },
       previous: undefined,
       deliver,
     });
@@ -349,7 +418,7 @@ describe("submitContact", () => {
     const deliver = vi.fn().mockRejectedValue(new Error("boom"));
     const result = await submitContact({
       fields: validFields,
-      delivery: { kind: "smtp2go", apiKey: "k" },
+      delivery: { kind: "resend", apiKey: "k" },
       previous: undefined,
       deliver,
     });
@@ -360,7 +429,7 @@ describe("submitContact", () => {
     const deliver = vi.fn().mockResolvedValue({ ok: true });
     const result = await submitContact({
       fields: validFields,
-      delivery: { kind: "smtp2go", apiKey: "k" },
+      delivery: { kind: "resend", apiKey: "k" },
       previous: { status: "idle", errors: {}, values: { message: "", email: "", name: "" }, replyTo: "", attempt: 4 },
       deliver,
     });
@@ -375,7 +444,7 @@ describe("submitContact", () => {
         : { status: "idle" as const, errors: {}, values: { message: "", email: "", name: "" }, replyTo: "", attempt: attempt as number };
     const result = await submitContact({
       fields: validFields,
-      delivery: { kind: "smtp2go", apiKey: "k" },
+      delivery: { kind: "resend", apiKey: "k" },
       previous,
       deliver,
     });
@@ -394,7 +463,7 @@ describe("submitContact", () => {
         name: "n".repeat(300),
         honeypot: "",
       },
-      delivery: { kind: "smtp2go", apiKey: "k" },
+      delivery: { kind: "resend", apiKey: "k" },
       previous: undefined,
       deliver,
     });
@@ -438,13 +507,13 @@ describe("boundary: the key never crosses where it shouldn't", () => {
   it("(a) lib/contact-server.ts's source contains the literal env reads", () => {
     const source = readFileSync(join(REPO_ROOT, "lib/contact-server.ts"), "utf8");
     expect(source).toContain("nodeEnv: process.env.NODE_ENV");
-    expect(source).toContain("apiKey: process.env.SMTP2GO_API_KEY");
+    expect(source).toContain("apiKey: process.env.RESEND_API_KEY");
   });
 
   it("(b) no non-test .ts/.tsx file under app/, components/ or lib/ names the key with the public-variable prefix", () => {
     // Built from parts so this test's own source never matches its own search needle.
     const publicPrefix = ["NEXT", "_PUBLIC_"].join("");
-    const keyName = ["SMTP2GO", "_API_KEY"].join("");
+    const keyName = ["RESEND", "_API_KEY"].join("");
     const needle = publicPrefix + keyName;
 
     const dirs = ["app", "components", "lib"].map((d) => join(REPO_ROOT, d));

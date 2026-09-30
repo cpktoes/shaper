@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CONTACT_ADDRESS,
   CONTACT_EMAIL_PATTERN,
   CONTACT_ERRORS,
   CONTACT_LIMITS,
@@ -7,7 +8,7 @@ import {
   CONTACT_SENDER,
   buildContactSubject,
   buildContactTextBody,
-  buildSmtp2goRequest,
+  buildResendRequest,
   contactPrefillFrom,
   initialContactFormState,
   isHoneypotFilled,
@@ -17,10 +18,11 @@ import {
 } from "./message";
 
 /**
- * TDD RED for quick 260929-u1t, Task 1: the Contact form's pure checks — reading the raw
- * FormData, checking each field, flattening text for the subject line, and building the exact
- * SMTP2GO request body. No React, Next, Clerk or network import anywhere in message.ts, so this
- * suite runs in plain node with vitest's node environment.
+ * TDD RED for quick 260929-u1t, Task 1 (the request body reworked for Resend in quick
+ * 260929-w2k, Task 1): the Contact form's pure checks — reading the raw FormData, checking each
+ * field, flattening text for the subject line, and building the exact Resend request body. No
+ * React, Next, Clerk or network import anywhere in message.ts, so this suite runs in plain node
+ * with vitest's node environment.
  */
 
 function formDataWith(entries: Record<string, FormDataEntryValue>): FormData {
@@ -308,27 +310,40 @@ describe("buildContactTextBody", () => {
   });
 });
 
-describe("buildSmtp2goRequest", () => {
+describe("buildResendRequest", () => {
   const message = { message: "Hello there", email: "jane@example.com", name: "Jane Smith" };
 
-  it("has exactly the pinned keys, sorted: custom_headers, sender, subject, text_body, to", () => {
-    const request = buildSmtp2goRequest(message);
-    expect(Object.keys(request).sort()).toEqual(["custom_headers", "sender", "subject", "text_body", "to"]);
+  it("has exactly the pinned keys, sorted, so there is no html key", () => {
+    const request = buildResendRequest(message);
+    expect(Object.keys(request).sort()).toEqual(["from", "reply_to", "subject", "text", "to"]);
   });
 
-  it("sender is CONTACT_SENDER and to is [CONTACT_RECIPIENT]", () => {
-    const request = buildSmtp2goRequest(message);
-    expect(request.sender).toBe(CONTACT_SENDER);
+  it("from is CONTACT_SENDER, the literal Shaper Assistant <support@shaperassistant.com>", () => {
+    const request = buildResendRequest(message);
+    expect(request.from).toBe(CONTACT_SENDER);
+    expect(CONTACT_SENDER).toBe("Shaper Assistant <support@shaperassistant.com>");
+  });
+
+  it("to is the plain address, as the literal, CONTACT_ADDRESS and CONTACT_RECIPIENT", () => {
+    const request = buildResendRequest(message);
+    expect(request.to).toEqual(["support@shaperassistant.com"]);
+    expect(request.to).toEqual([CONTACT_ADDRESS]);
     expect(request.to).toEqual([CONTACT_RECIPIENT]);
   });
 
-  it("custom_headers is exactly one Reply-To header with the checked email", () => {
-    const request = buildSmtp2goRequest(message);
-    expect(request.custom_headers).toEqual([{ header: "Reply-To", value: "jane@example.com" }]);
+  it("subject and text are exactly today's builders' output", () => {
+    const request = buildResendRequest(message);
+    expect(request.subject).toBe(buildContactSubject(message));
+    expect(request.text).toBe(buildContactTextBody(message));
+  });
+
+  it("reply_to is the checked email, a single string", () => {
+    const request = buildResendRequest(message);
+    expect(request.reply_to).toBe("jane@example.com");
   });
 
   it("JSON.stringify of it contains no carriage return", () => {
-    const request = buildSmtp2goRequest(message);
+    const request = buildResendRequest(message);
     expect(JSON.stringify(request)).not.toContain("\r");
   });
 });

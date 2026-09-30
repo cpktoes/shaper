@@ -1,7 +1,8 @@
 /**
- * The Contact page's pure parts (quick 260929-u1t, Task 1): every string a shaper reads on the
- * page and in the form, the field checks, the honeypot rule, the subject and text-body builders,
- * the exact SMTP2GO request shape (P-8), and the Clerk-account prefill.
+ * The Contact page's pure parts (quick 260929-u1t, Task 1; the request body reworked for Resend
+ * in quick 260929-w2k, Task 1): every string a shaper reads on the page and in the form, the
+ * field checks, the honeypot rule, the subject and text-body builders, the exact Resend request
+ * shape, and the Clerk-account prefill.
  *
  * No React, Next, browser API or network import anywhere in this file — CLAUDE.md's Rule 1 for
  * `lib/geometry/` applies here too: this is the calculator for what a shaper's message becomes,
@@ -13,7 +14,7 @@ export const CONTACT_ADDRESS = "support@shaperassistant.com";
 export const CONTACT_MAILTO = `mailto:${CONTACT_ADDRESS}`;
 export const CONTACT_ROUTE = "/contact";
 export const CONTACT_SENDER = "Shaper Assistant <support@shaperassistant.com>";
-export const CONTACT_RECIPIENT = "Shaper Assistant <support@shaperassistant.com>";
+export const CONTACT_RECIPIENT = CONTACT_ADDRESS;
 
 export const CONTACT_LIMITS = {
   nameMax: 100,
@@ -75,12 +76,12 @@ export type ContactFormState = {
   replyTo: string;
   attempt: number;
 };
-export type Smtp2goSendBody = {
-  sender: string;
+export type ResendSendBody = {
+  from: string;
   to: string[];
   subject: string;
-  text_body: string;
-  custom_headers: { header: string; value: string }[];
+  text: string;
+  reply_to: string;
 };
 
 /** A single form field's raw text, or "" for anything missing or a File/Blob entry (a shaper's
@@ -199,16 +200,16 @@ export function buildContactTextBody(message: ContactMessage): string {
   ].join("\n");
 }
 
-/** The exact body pinned in the plan's `<context>`: text only (no `html_body`), the constant
- * sender and recipient (P-8), and the shaper's checked email as the one `custom_headers` entry
- * so the founder's Gmail Reply goes straight to them. */
-export function buildSmtp2goRequest(message: ContactMessage): Smtp2goSendBody {
+/** The exact Resend request body: text only (never an `html` key), the constant `from` sender
+ * and plain-address `to` recipient, and the shaper's checked email as `reply_to`, so the
+ * founder's Reply in Zoho Mail goes straight back to them. */
+export function buildResendRequest(message: ContactMessage): ResendSendBody {
   return {
-    sender: CONTACT_SENDER,
+    from: CONTACT_SENDER,
     to: [CONTACT_RECIPIENT],
     subject: buildContactSubject(message),
-    text_body: buildContactTextBody(message),
-    custom_headers: [{ header: "Reply-To", value: message.email }],
+    text: buildContactTextBody(message),
+    reply_to: message.email,
   };
 }
 

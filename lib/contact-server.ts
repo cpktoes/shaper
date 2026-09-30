@@ -30,7 +30,7 @@ export async function resolveContactDeliveryForRequest(): Promise<ContactDeliver
     nodeEnv: process.env.NODE_ENV,
     standInFlag: process.env.SHAPER_CONTACT_STAND_IN,
     standInChoice: cookieStore.get(CONTACT_STAND_IN_COOKIE)?.value,
-    apiKey: process.env.SMTP2GO_API_KEY,
+    apiKey: process.env.RESEND_API_KEY,
   });
 }
 
