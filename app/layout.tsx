@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono, Inter } from "next/font/google";
+import { geistMono, inter } from "./fonts";
 import { SITE_METADATA } from "@/lib/site/metadata";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -17,22 +17,6 @@ import { resolvePrintRailInstructionsHandoff } from "@/lib/print-instructions-se
 import { resolveFitDefaultsHandoff } from "@/lib/fit-defaults-server";
 import { resolveBlankMakersHandoff } from "@/lib/blank-makers-server";
 import { PRIVACY_ROUTE } from "@/lib/privacy/copy";
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-/**
- * The face of the surf design language (see the `@theme` block in app/globals.css). Both
- * `font-display` and `font-body` resolve to it: headings are set apart by weight, wide
- * tracking and ALL CAPS rather than by a second family. Space Grotesk was the source
- * config's display face and was dropped when the founder chose the wordmark's Inter.
- */
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = SITE_METADATA;
 

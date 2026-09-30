@@ -59,6 +59,12 @@ export default defineConfig({
       // (the address-only page). playwright.prod.config.ts strips this whole env block, so it
       // never reaches a production server either.
       SHAPER_CONTACT_STAND_IN: "1",
+      // Quick 260930-fjm: the forced-error switch (P-4) — test-only, never set in Vercel or in
+      // any env file, honoured only outside a production build. It makes `/test-error` throw on
+      // the server so e2e/error-pages.spec.ts can see the error screen.
+      // playwright.prod.config.ts strips this whole env block, so it never reaches a production
+      // server either.
+      SHAPER_FORCED_ERROR: "1",
     },
   },
   use: {
