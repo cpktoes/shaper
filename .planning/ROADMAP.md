@@ -199,7 +199,7 @@ Plans:
 
 **Rehearse, then freeze (Tue–Thu, Oct 6–8)**
 
-- [ ] 13. Real-device rehearsal on the live site (Android, iPhone, the presenting laptop, a non-founder Google sign-up), then the freeze
+- [ ] 13. Real-device rehearsal on the live site (Android, iPhone, the presenting laptop, a non-founder Google sign-up), then the freeze — prepared 2026-09-30: the walk sheet is `13-UAT.md`
 
 ---
 
