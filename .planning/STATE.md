@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: "Phase 13 item 10: the Contact form sends through Resend (quick 260929-w2k, verified locally); key + DMARC in place; awaiting the founder's go to push, then their live tests"
+stopped_at: "Phase 13 item 10: the Contact form is live through Resend (deployment 6753190419); awaiting the founder's live test, then tick item 10"
 last_updated: "2026-09-29T05:36:10.968Z"
 last_activity: 2026-09-29
-last_activity_desc: "Quick task 260929-w2k (item 10: the Contact form via Resend) verified locally"
+last_activity_desc: The Contact form is live through Resend
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **8 of 13 items done.** Items 1–6 and 8 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). Item 9 is skipped for now (the founder, 2026-09-29). **Item 10 — the Contact page, plus email at shaperassistant.com (support@shaperassistant.com on Zoho Mail's free plan) — is in progress:** Zoho's DNS is live, and the Contact page is live address-only (deployment 6752631903, 2026-09-30). The form's sender is now Resend (quick 260929-w2k, verified locally); the founder has verified the domain in Resend, set `RESEND_API_KEY` for Production and added DMARC, so the form appears with the next deploy. Still open: the push, then the founder's live tests (a form message and a direct email reaching Zoho, a reply from Zoho, a Clerk sign-in code). After it: 11 (analytics + privacy), 12 (error screen + link preview), 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07); 9b stays optional.
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **8 of 13 items done.** Items 1–6 and 8 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). Item 9 is skipped for now (the founder, 2026-09-29). **Item 10 — the Contact page, plus email at shaperassistant.com (support@shaperassistant.com on Zoho Mail's free plan) — is in progress:** Zoho's DNS is live, and the Contact page is live address-only (deployment 6752631903, 2026-09-30). The form's sender is now Resend (quick 260929-w2k, verified locally); the founder has verified the domain in Resend, set `RESEND_API_KEY` for Production and added DMARC, and the form is live (deployment 6753190419, 2026-09-30). Still open: the founder's live tests (a form message and a direct email reaching Zoho, a reply from Zoho, a Clerk sign-in code); item 10 is ticked once they pass. After it: 11 (analytics + privacy), 12 (error screen + link preview), 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07); 9b stays optional.
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-30 - Completed quick task 260929-w2k: the Contact form sends through Resend; the founder verified the domain in Resend, set RESEND_API_KEY (Production) and added DMARC
+Last activity: 2026-09-30 - The Contact form is live through Resend (deployment 6753190419); the founder's live test is next
 
 ## Performance Metrics
 
