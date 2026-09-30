@@ -192,7 +192,7 @@ Plans:
 
 **Ready to listen (Sat–Mon, Oct 3–5)**
 
-- [ ] 10. Contact page, plus email at shaperassistant.com — support@shaperassistant.com on Zoho Mail (after Forward Email, then ImprovMX + SMTP2GO, the same day); the page is live address-only, the form waits on a sending choice (the founder's addition, 2026-09-29)
+- [ ] 10. Contact page, plus email at shaperassistant.com — support@shaperassistant.com on Zoho Mail (after Forward Email, then ImprovMX + SMTP2GO, the same day); the page is live address-only; the form sends through Resend once its key is in Vercel (the founder's addition, 2026-09-29)
 - [ ] 11. Visitor analytics and a privacy page
 - [ ] 12. A friendly error screen and a link-preview picture
 

@@ -19,11 +19,10 @@ answers, commit messages and summaries alike.
 - Deployed on Vercel from `main` → https://www.shaperassistant.com (the old
   shaper-coral.vercel.app address still works — it redirects there)
 - Domain email (the founder, 2026-09-29, Phase 13 item 10): Zoho Mail's free plan hosts
-  `support@shaperassistant.com`, receiving and sending in Zoho's own apps; its DNS records live in
-  Vercel beside Clerk's. The Contact page's form sends through SMTP2GO's HTTP API only when
-  `SMTP2GO_API_KEY` is set in Vercel; with none set (the founder cancelled SMTP2GO the same day) the
-  page shows the address instead. Zoho's free plan has no SMTP access, so switching the form on means
-  choosing a sending service first.
+  `support@shaperassistant.com`, receiving and sending in Zoho's own apps. The Contact page's form sends
+  through Resend's HTTP API (free plan) only when `RESEND_API_KEY` is set in Vercel — server-only, never
+  in Development — and shows the address instead until then. All their DNS records live in Vercel beside
+  Clerk's: Zoho's at the root, Resend's on the `send.` subdomain plus its `resend._domainkey` key.
 
 Clerk auth and Neon Postgres via Drizzle are installed and in use (accounts and saved
 designs, Phase 2). Playwright is installed and in use (Phase 9) — the browser-driven tests in
