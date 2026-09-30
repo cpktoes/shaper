@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: "Phase 13 item 10: Contact page built and verified locally (quick 260929-u1t), pictures sent; awaiting the founder's go to push; SMTP2GO records/key and the reply path still open"
+stopped_at: "Phase 13 item 10: Contact page live address-only (deployment 6752631903); support@ on Zoho Mail; the founder decides whether to switch the form on (ZeptoMail) or keep address-only"
 last_updated: "2026-09-29T05:36:10.968Z"
 last_activity: 2026-09-29
-last_activity_desc: "Quick task 260929-u1t (item 10: the Contact page) verified locally"
+last_activity_desc: Contact page live address-only; support@ moved to Zoho Mail
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **8 of 13 items done.** Items 1–6 and 8 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). Item 9 is skipped for now (the founder, 2026-09-29). **Item 10 — the Contact page, plus email at shaperassistant.com (ImprovMX receives, SMTP2GO sends, both free; support@ is the primary address) — is in progress:** ImprovMX's DNS is live on shaperassistant.com; the Contact page is built and verified locally (quick 260929-u1t), waiting on the founder's go to push; SMTP2GO's sender-domain records and API key, and how the founder replies as support@, are still open. After it: 11 (analytics + privacy), 12 (error screen + link preview), 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07); 9b stays optional.
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **8 of 13 items done.** Items 1–6 and 8 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). Item 9 is skipped for now (the founder, 2026-09-29). **Item 10 — the Contact page, plus email at shaperassistant.com (support@shaperassistant.com on Zoho Mail's free plan) — is in progress:** Zoho's DNS is live, and the Contact page is live address-only (deployment 6752631903, 2026-09-30). Still open: the founder's mail tests (support@ in and out, a Clerk sign-in code) and whether to switch the form on through a sending service (ZeptoMail) or keep the page address-only for Oct 10. After it: 11 (analytics + privacy), 12 (error screen + link preview), 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07); 9b stays optional.
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-29 - Completed quick task 260929-u1t: the Contact page (address-only until the SMTP2GO key is in Vercel), verified locally; pictures sent to the founder
+Last activity: 2026-09-30 - The Contact page is live address-only (deployment 6752631903); support@ moved to Zoho Mail, ImprovMX and SMTP2GO cancelled
 
 ## Performance Metrics
 

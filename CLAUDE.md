@@ -18,11 +18,12 @@ answers, commit messages and summaries alike.
 - Vitest for unit tests — `lib/**/*.test.ts`, node environment
 - Deployed on Vercel from `main` → https://www.shaperassistant.com (the old
   shaper-coral.vercel.app address still works — it redirects there)
-- Domain email (added by the founder 2026-09-29, set up in Phase 13 item 10): ImprovMX
-  receives mail for shaperassistant.com and forwards `support@` to the founder's inbox; SMTP2GO sends —
-  Gmail's "Send mail as" for replies, and the Contact page's messages through its HTTP API. Both on
-  free plans. Their DNS records live in Vercel beside Clerk's; the SMTP2GO API key lives only in
-  Vercel's environment settings.
+- Domain email (the founder, 2026-09-29, Phase 13 item 10): Zoho Mail's free plan hosts
+  `support@shaperassistant.com`, receiving and sending in Zoho's own apps; its DNS records live in
+  Vercel beside Clerk's. The Contact page's form sends through SMTP2GO's HTTP API only when
+  `SMTP2GO_API_KEY` is set in Vercel; with none set (the founder cancelled SMTP2GO the same day) the
+  page shows the address instead. Zoho's free plan has no SMTP access, so switching the form on means
+  choosing a sending service first.
 
 Clerk auth and Neon Postgres via Drizzle are installed and in use (accounts and saved
 designs, Phase 2). Playwright is installed and in use (Phase 9) — the browser-driven tests in
