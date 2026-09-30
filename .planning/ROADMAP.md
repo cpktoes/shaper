@@ -166,7 +166,7 @@ founder questions stand open as decisions, not defects. Full phase detail archiv
 **Goal:** When a room of shapers sees the app on Saturday 2026-10-10 (the build guide's M4, "invite shapers"), it is safe, tidy, and credible on the numbers they know best, and it is ready to hear from them: the security patch live, the project clean, the founder's open decisions made, volume proven against real boards, the printed order form complete, a way for shapers to reach the founder and a count of which screens they use, and the whole trip rehearsed on real phones before a freeze on Wednesday 2026-10-07.
 **Requirements**: Items 1–13 in `.planning/phases/13-ready-for-the-shapers/13-SPEC.md` (ordered; who does each and what "done" means), run one at a time with the founder's review between
 **Depends on:** Phase 12
-**Plans:** 9/13 items, plus 8b and 11a and optional 9b — each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; founder items are recorded in the SPEC's Progress Log
+**Plans:** 10/13 items, plus 8b and 11a and optional 9b — each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; founder items are recorded in the SPEC's Progress Log
 
 Plans:
 
@@ -194,7 +194,7 @@ Plans:
 
 - [x] 10. Contact page, plus email at shaperassistant.com — support@shaperassistant.com on Zoho Mail (after Forward Email, then ImprovMX + SMTP2GO, the same day); the form is live through Resend (quick 260929-u1t + 260929-w2k, live 2026-09-30; the founder's addition, 2026-09-29)
 - [x] 11a. A shaper can delete their own account and everything saved with it — Clerk's own button plus automatic cleanup (founder's addition 2026-09-30, before 11; quick 260930-ckm, live 2026-09-30)
-- [ ] 11. Visitor analytics and a privacy page
+- [x] 11. Visitor analytics and a privacy page (quick 260930-03d, live 2026-09-30)
 - [ ] 12. A friendly error screen and a link-preview picture
 
 **Rehearse, then freeze (Tue–Thu, Oct 6–8)**
@@ -222,4 +222,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
 | 11. Rocker from Real Blanks | 13/13 | Complete    | 2026-09-26 |
 | 12. Foil the Way a Shaper Cuts It | 10/10 | Complete    | 2026-09-27 |
-| 13. Ready for the Shapers | 9/13 items | In progress | - |
+| 13. Ready for the Shapers | 10/13 items | In progress | - |
