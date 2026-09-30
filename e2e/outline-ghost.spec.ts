@@ -119,3 +119,237 @@ test.describe("TEMPLATE's last-edit ghost", () => {
     await expect(offsetLabel).not.toHaveText(afterFirstDrag ?? "");
   });
 });
+
+test.describe("the ghost button", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissSignInBanner(page);
+  });
+
+  test("desktop: on a freshly loaded TEMPLATE no button's name matches /ghost of the last edit/", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "fresh-load assertion, desktop project only");
+
+    await page.goto("/design/outline");
+    await expect(page.getByRole("button", { name: /ghost of the last edit/ })).toHaveCount(0);
+  });
+
+  test("desktop: after one edit the ghost button appears last in the toolbar row, with Export Template and Rotate unmoved", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop button-layout assertion");
+
+    await page.goto("/design/outline");
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+
+    const exportButton = page.getByRole("button", { name: "Export Template" });
+    const rotateButton = page.getByRole("button", { name: "Rotate the board to horizontal" });
+    const exportBoxBefore = await exportButton.boundingBox();
+    const rotateBoxBefore = await rotateButton.boundingBox();
+    if (!exportBoxBefore || !rotateBoxBefore) throw new Error("toolbar button missing a bounding box");
+
+    const widepoint = page.locator('[data-drag-target="widepoint"]');
+    await expect(widepoint).toBeVisible();
+    const box = await widepoint.boundingBox();
+    if (!box) throw new Error("widepoint drag target has no bounding box");
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx, cy - 40, { steps: 4 });
+    await page.mouse.up();
+
+    const ghostButton = page.getByRole("button", { name: "Hide the ghost of the last edit" });
+    await expect(ghostButton).toBeVisible();
+    await expect(ghostButton).toHaveAttribute("aria-pressed", "true");
+
+    // It is the LAST visible button of the row, in DOM order.
+    const row = page.locator("[data-viewer-toolbar]:visible");
+    const visibleButtons = row.locator("button:visible");
+    const lastButton = visibleButtons.last();
+    await expect(lastButton).toHaveAttribute("aria-label", "Hide the ghost of the last edit");
+
+    // Its right edge sits one button width plus 6px left of the previous visible button's left edge.
+    const ghostBox = await ghostButton.boundingBox();
+    const count = await visibleButtons.count();
+    const previousButton = visibleButtons.nth(count - 2);
+    const previousBox = await previousButton.boundingBox();
+    if (!ghostBox || !previousBox) throw new Error("toolbar button missing a bounding box");
+    const gap = previousBox.x - (ghostBox.x + ghostBox.width);
+    expect(Math.abs(gap - 6)).toBeLessThanOrEqual(1);
+
+    // Export Template and Rotate have not moved.
+    const exportBoxAfter = await exportButton.boundingBox();
+    const rotateBoxAfter = await rotateButton.boundingBox();
+    if (!exportBoxAfter || !rotateBoxAfter) throw new Error("toolbar button missing a bounding box");
+    expect(Math.abs(exportBoxAfter.x - exportBoxBefore.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(rotateBoxAfter.x - rotateBoxBefore.x)).toBeLessThanOrEqual(1);
+  });
+
+  test("desktop: pressing the ghost button hides the ghost, pressing again brings back the same ghost", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop toggle assertion");
+
+    await page.goto("/design/outline");
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+
+    const widepoint = page.locator('[data-drag-target="widepoint"]');
+    await expect(widepoint).toBeVisible();
+    const box = await widepoint.boundingBox();
+    if (!box) throw new Error("widepoint drag target has no bounding box");
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx, cy - 40, { steps: 4 });
+    await page.mouse.up();
+
+    const ghostButton = page.getByRole("button", { name: "Hide the ghost of the last edit" });
+    await expect(ghostButton).toBeVisible();
+    const ghostPath = page.locator("[data-outline-ghost]");
+    await expect(ghostPath).toHaveCount(1);
+    const dBeforeHide = await ghostPath.getAttribute("d");
+    const silhouette = page.locator("[data-board-silhouette='outline']");
+    const dSilhouetteBefore = await silhouette.getAttribute("d");
+
+    await ghostButton.click();
+
+    await expect(page.locator("[data-outline-ghost]")).toHaveCount(0);
+    await expect(page.locator("[data-board-ink-line]")).toHaveCount(0);
+    const showButton = page.getByRole("button", { name: "Show the ghost of the last edit" });
+    await expect(showButton).toBeVisible();
+    await expect(showButton).toHaveAttribute("aria-pressed", "false");
+    await expect(silhouette).toHaveAttribute("d", dSilhouetteBefore ?? "");
+
+    await showButton.click();
+    const ghostButtonAgain = page.getByRole("button", { name: "Hide the ghost of the last edit" });
+    await expect(ghostButtonAgain).toBeVisible();
+    await expect(page.locator("[data-outline-ghost]")).toHaveAttribute("d", dBeforeHide ?? "");
+  });
+
+  test("desktop: the choice is not remembered — a reload brings the button back on", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop reload assertion");
+
+    await page.goto("/design/outline");
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+
+    const widepoint = page.locator('[data-drag-target="widepoint"]');
+    await expect(widepoint).toBeVisible();
+    const box = await widepoint.boundingBox();
+    if (!box) throw new Error("widepoint drag target has no bounding box");
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx, cy - 40, { steps: 4 });
+    await page.mouse.up();
+
+    const ghostButton = page.getByRole("button", { name: "Hide the ghost of the last edit" });
+    await expect(ghostButton).toBeVisible();
+    await ghostButton.click();
+    await expect(page.getByRole("button", { name: "Show the ghost of the last edit" })).toBeVisible();
+
+    await page.reload();
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+    const widepoint2 = page.locator('[data-drag-target="widepoint"]');
+    await expect(widepoint2).toBeVisible();
+    const box2 = await widepoint2.boundingBox();
+    if (!box2) throw new Error("widepoint drag target has no bounding box");
+    const cx2 = box2.x + box2.width / 2;
+    const cy2 = box2.y + box2.height / 2;
+    await page.mouse.move(cx2, cy2);
+    await page.mouse.down();
+    await page.mouse.move(cx2, cy2 - 40, { steps: 4 });
+    await page.mouse.up();
+
+    const ghostButtonAfterReload = page.getByRole("button", { name: "Hide the ghost of the last edit" });
+    await expect(ghostButtonAfterReload).toBeVisible();
+    await expect(ghostButtonAfterReload).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("iphone: a slider nudge reveals the ghost button, which hides and shows the ghost, with Export Template unmoved", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "one-armed-nudge path, iPhone project only");
+
+    await page.goto("/design/outline");
+    const exportButton = page.getByRole("button", { name: "Export Template" });
+    const exportBoxBefore = await exportButton.boundingBox();
+    if (!exportBoxBefore) throw new Error("Export Template has no bounding box");
+
+    const noseAngleLabel = page.getByText(/^Nose Angle — /);
+    await expect(noseAngleLabel).toBeVisible();
+    const before = await noseAngleLabel.textContent();
+    await thumbInputFor(noseAngleLabel).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(noseAngleLabel).not.toHaveText(before ?? "");
+
+    const ghostButton = page.getByRole("button", { name: "Hide the ghost of the last edit" });
+    await expect(ghostButton).toBeVisible();
+    await expect(ghostButton).toHaveAttribute("aria-pressed", "true");
+
+    const row = page.locator("[data-viewer-toolbar]:visible");
+    const visibleButtons = row.locator("button:visible");
+    await expect(visibleButtons.last()).toHaveAttribute("aria-label", "Hide the ghost of the last edit");
+
+    const exportBoxAfter = await exportButton.boundingBox();
+    if (!exportBoxAfter) throw new Error("Export Template has no bounding box after the edit");
+    expect(Math.abs(exportBoxAfter.x - exportBoxBefore.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(exportBoxAfter.y - exportBoxBefore.y)).toBeLessThanOrEqual(1);
+
+    await ghostButton.tap();
+    const showButton = page.getByRole("button", { name: "Show the ghost of the last edit" });
+    await expect(showButton).toBeVisible();
+    await expect(showButton).toHaveAttribute("aria-pressed", "false");
+
+    await showButton.tap();
+    await expect(page.getByRole("button", { name: "Hide the ghost of the last edit" })).toBeVisible();
+  });
+
+  test("android: a touch drag reveals the ghost button, which hides and shows the ghost, with Export Template unmoved", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "CDP touch dispatch is Chromium-only");
+
+    await page.goto("/design/outline");
+    const exportButton = page.getByRole("button", { name: "Export Template" });
+    const exportBoxBefore = await exportButton.boundingBox();
+    if (!exportBoxBefore) throw new Error("Export Template has no bounding box");
+
+    // The construction overlay is already on for a touch screen (D-02).
+    const widepoint = page.locator('[data-drag-target="widepoint"]');
+    await expect(widepoint).toBeVisible();
+    const box = await widepoint.boundingBox();
+    if (!box) throw new Error("widepoint drag target has no bounding box");
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: startX, y: startY }] });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: startX, y: startY - 40 }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    const ghostButton = page.getByRole("button", { name: "Hide the ghost of the last edit" });
+    await expect(ghostButton).toBeVisible();
+    await expect(ghostButton).toHaveAttribute("aria-pressed", "true");
+
+    const exportBoxAfter = await exportButton.boundingBox();
+    if (!exportBoxAfter) throw new Error("Export Template has no bounding box after the drag");
+    expect(Math.abs(exportBoxAfter.x - exportBoxBefore.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(exportBoxAfter.y - exportBoxBefore.y)).toBeLessThanOrEqual(1);
+
+    await ghostButton.tap();
+    const showButton = page.getByRole("button", { name: "Show the ghost of the last edit" });
+    await expect(showButton).toBeVisible();
+    await expect(showButton).toHaveAttribute("aria-pressed", "false");
+
+    await showButton.tap();
+    await expect(page.getByRole("button", { name: "Hide the ghost of the last edit" })).toBeVisible();
+  });
+});
