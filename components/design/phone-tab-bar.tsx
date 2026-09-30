@@ -3,14 +3,16 @@
 /**
  * The bottom tab bar (D-06/D-07): the app's six design screens under the thumb on a phone, one
  * tap away, mirroring what the desktop top nav already does for the same six routes. Mounted in
- * TWO places — as the last child of `app/page.tsx`'s single returned fragment (so it appears
- * exactly once across that page's signed-in and signed-out branches) and as the last child of
- * `app/design/layout.tsx` (so it appears on every one of the six design routes). It renders on
- * those six design routes and deliberately not on the home route (`/`) — D-07: the six tabs are
- * noise while a shaper is still choosing a board, and hiding them there gives the setup screen's
- * cards back the 56px + safe-area the bar was costing them. Neither mount point is touched to get
- * that: the component decides its own visibility from the route it already reads, the same shape
- * `PhoneTopBar`'s `onHomeScreen` already uses for its own wordmark.
+ * THREE places (quick 260929-u1t added the third) — as the last child of `app/page.tsx`'s single
+ * returned fragment (so it appears exactly once across that page's signed-in and signed-out
+ * branches), as the last child of `app/design/layout.tsx` (so it appears on every one of the six
+ * design routes), and as the last child of `app/contact/page.tsx` (P-2) — the Contact page isn't a
+ * design route or the home route, so it needs its own copy of the same shape `app/page.tsx` uses.
+ * It renders on those six design routes and deliberately not on the home route (`/`) — D-07: the
+ * six tabs are noise while a shaper is still choosing a board, and hiding them there gives the
+ * setup screen's cards back the 56px + safe-area the bar was costing them. No mount point is
+ * touched to get that: the component decides its own visibility from the route it already reads,
+ * the same shape `PhoneTopBar`'s `onHomeScreen` already uses for its own wordmark.
  *
  * This route check is the app's third, independent switch, beside the `max-shell:` width
  * breakpoint that picks a layout and the `coarse:` pointer variant that picks a control's size
