@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 11a built and verified locally (quick 260930-ckm); awaiting the founder's Clerk steps + CLERK_WEBHOOK_SIGNING_SECRET and the go to push; item 11 paused
+stopped_at: Phase 13 item 11a done (live test passed); resuming item 11 (plan 260930-03d) with the deletion wording updated
 last_updated: "2026-09-29T05:36:10.968Z"
 last_activity: 2026-09-29
-last_activity_desc: "Quick task 260930-ckm (item 11a: account deletion cleanup) verified locally"
+last_activity_desc: Item 11a done
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **9 of 13 items done.** Items 1–6, 8 and 10 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). Item 9 is skipped for now (the founder, 2026-09-29). Item 10 is done: the Contact page and its form are live, sending through Resend to support@shaperassistant.com on Zoho Mail (the founder's live test passed 2026-09-30). **Item 11a — a shaper deletes their own account (Clerk's button plus a `user.deleted` webhook that deletes their boards and settings) — is in progress**, the founder's addition before item 11 (analytics + privacy page, planned as quick 260930-03d and paused: Web Analytics is enabled, pages only). Then 12 (error screen + link preview) and 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07); 9b stays optional. After it: 11 (analytics + privacy), 12 (error screen + link preview), 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07); 9b stays optional.
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **9 of 13 items done.** Items 1–6, 8 and 10 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). Item 9 is skipped for now (the founder, 2026-09-29). Item 10 is done: the Contact page and its form are live, sending through Resend to support@shaperassistant.com on Zoho Mail (the founder's live test passed 2026-09-30). Item 11a is done: a shaper deletes their own account from Clerk's Manage account and a signed `user.deleted` webhook deletes their boards and settings (the founder's live test: "Deleted: saved boards 1, settings rows 1"). **Item 11 — analytics and the privacy page (quick 260930-03d, planned; Web Analytics enabled, pages only) — is next**, its deletion wording updated for 11a. Then 12 (error screen + link preview) and 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07); 9b stays optional. After it: 11 (analytics + privacy), 12 (error screen + link preview), 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07); 9b stays optional.
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-30 - Completed quick task 260930-ckm: deleting a Clerk account deletes the shaper's boards and settings (verified locally)
+Last activity: 2026-09-30 - Item 11a done: the founder's live test showed "Deleted: saved boards 1, settings rows 1"
 
 ## Performance Metrics
 
