@@ -31,7 +31,7 @@ import { OutlineViewer } from "./outline-viewer";
  */
 
 export function OutlineEditor() {
-  const { outline, updateOutline, outlineGeometry, finPlacement } = useDesign();
+  const { outline, updateOutline, outlineGeometry, outlineGhostGeometry, finPlacement } = useDesign();
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
   /** View state, like the construction override below — not design data, and deliberately not a
    * stored preference (D-03), so a reload always comes back vertical. Still what the rotate
@@ -192,6 +192,7 @@ export function OutlineEditor() {
               geometry={outlineGeometry}
               outline={outline}
               showConstruction={showConstruction}
+              ghostGeometry={outlineGhostGeometry}
               onOutlineDrag={updateOutline}
               finMarks={finPlacement.marks}
               hideFinMarks

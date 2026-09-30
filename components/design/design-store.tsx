@@ -111,6 +111,7 @@ import {
   undoShortcut,
   type DesignHistory,
 } from "@/lib/design-history";
+import { pickOutlineGhost } from "@/lib/outline-ghost";
 
 /** What one undo/redo step holds — `DesignSnapshotFields` (D-11's eleven-field saved-board shape)
  * minus `boardName`. The exclusion is deliberate and structural, not a special case bolted onto
@@ -379,6 +380,13 @@ interface DesignContextValue {
 
   // Derived values.
   outlineGeometry: OutlineGeometry;
+  /** TEMPLATE's last-edit ghost (quick 260930-lia): the outline as it was one edit ago, by the O-1
+   * rule in `lib/outline-ghost.ts` — walk this session's undo history from its most recent entry
+   * for the first one whose outline actually differs from what is on screen. Session-only (the
+   * undo history is never saved) and never `null` on a board that has at least one real outline
+   * edit behind it; `null` on a board nobody has edited yet, or once Undo has walked all the way
+   * back to the start. */
+  outlineGhostGeometry: OutlineGeometry | null;
   /** The board's blank fitted once (`prepareBlank`) — every curve prepared a single time per blank
    * copy (R14), so sliding or fine-tuning never refits the catalogue's stations. Null with no blank. */
   preparedBlank: PreparedBlank | null;
@@ -735,6 +743,20 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     }));
 
   const outlineGeometry = useMemo(() => buildOutline(state.outline), [state.outline]);
+
+  // TEMPLATE's last-edit ghost (quick 260930-lia): the outline as it was one edit ago, picked
+  // from this session's own undo history by the O-1 rule in lib/outline-ghost.ts. Read-only over
+  // `history` — nothing here ever writes to it, so the ghost can never itself become an undo step
+  // or leak into a save. `outlineGhost` depends on `[history.past, state.outline]` rather than the
+  // whole `history` object so a redo (which only ever touches `future`) never recomputes it.
+  const outlineGhost = useMemo(
+    () => pickOutlineGhost(history.past, state.outline),
+    [history.past, state.outline],
+  );
+  const outlineGhostGeometry = useMemo(
+    () => (outlineGhost ? buildOutline(outlineGhost) : null),
+    [outlineGhost],
+  );
 
   // The blank is fitted ONCE per blank copy (R14): keyed on the copy's own identity, which only
   // changes when a different blank is picked (or a board is opened) — sliding the placement or
@@ -1259,6 +1281,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     toggleImportTemplateDimensions,
     toggleImportRailThickness,
     outlineGeometry,
+    outlineGhostGeometry,
     preparedBlank,
     sideProfile,
     effectiveRails,

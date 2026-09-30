@@ -131,6 +131,11 @@ const READOUT_PAD_PX = 8;
 /** How far the static stringer/centreline overhangs the board's own tip/tail — a drafting nicety
  * (sketch 004's reference render), not load-bearing geometry. */
 const STRINGER_OVERHANG = 8;
+/** The last-edit ghost's stroke width (P-6, quick 260930-lia) — thinner than the live outline's 2,
+ * heavier than the 1-unit station lines, so it reads as a real shape rather than a stray guide
+ * line. Scales with the drawing exactly like the live line, since both are drawn in the same SVG
+ * user-unit space. */
+const GHOST_STROKE_WIDTH = 1.25;
 
 /**
  * Ceiling on a callout's rendered size, in SVG user units — the largest a chip or the output
@@ -177,6 +182,16 @@ interface OutlineViewerProps {
   geometry: OutlineGeometry;
   outline: OutlineSpec;
   showConstruction: boolean;
+  /**
+   * TEMPLATE's last-edit ghost (quick 260930-lia): the outline as it was one edit ago, drawn at
+   * the LIVE board's own scale and position — so a change of length shows as a real change of
+   * length, not two boards independently fitted to the frame. Omitted entirely by the order
+   * form's template window and the preset-card thumbnails, which is what keeps the ghost off
+   * paper and off thumbnails by construction rather than by a flag either of them has to
+   * remember to set; also ignored whenever `hideCallouts` is on, for the same reason. `null`
+   * (the default) draws nothing extra — today's single silhouette path, unchanged.
+   */
+  ghostGeometry?: OutlineGeometry | null;
   /** The calculated fin marks, drawn on the template as one accent line per fin from trailing to
    * leading edge, with a dot at each end (Template.dc.html lines 178-182). Optional so the
    * viewer still renders standalone before fins are wired up. */
@@ -289,6 +304,7 @@ export function OutlineViewer({
   geometry,
   outline,
   showConstruction,
+  ghostGeometry = null,
   finMarks = [],
   hideCallouts = false,
   hideFinMarks = false,
@@ -344,19 +360,32 @@ export function OutlineViewer({
   const lenToY = (stationIn: number) => tailPy - stationIn * scale;
   const pxX = (halfWidthIn: number) => centerlineX + halfWidthIn * scale;
 
-  const rightPx = geometry.points.map((p) => [
-    pxX(mmToInches(p.halfWidth)),
-    lenToY(mmToInches(p.station)),
-  ]);
-  const leftPx = geometry.points
-    .slice()
-    .reverse()
-    .map((p) => [pxX(-mmToInches(p.halfWidth)), lenToY(mmToInches(p.station))]);
+  // The board silhouette's own path string, built from any OutlineGeometry — moved out of an
+  // inline expression (quick 260930-lia) so the ghost (below) can draw from a SECOND geometry
+  // through the exact same arithmetic, at the LIVE board's own pxX/lenToY projection (its scale
+  // and frame), rather than refitting a ghost to its own scale — which is what makes a change of
+  // length between the two shapes show up as a real difference in size, not just shape. Moving the
+  // code, not rewriting it: `outlinePath` below is byte-identical to what this file always built.
+  const silhouettePath = (g: OutlineGeometry): string => {
+    const rightPx = g.points.map((p) => [pxX(mmToInches(p.halfWidth)), lenToY(mmToInches(p.station))]);
+    const leftPx = g.points
+      .slice()
+      .reverse()
+      .map((p) => [pxX(-mmToInches(p.halfWidth)), lenToY(mmToInches(p.station))]);
+    const centerCloseIn = mmToInches(g.centreCloseStation);
+    const centerClosePx = `${pxX(0).toFixed(2)} ${lenToY(centerCloseIn).toFixed(2)}`;
+    return `M ${rightPx.map((p) => p.map((v) => v.toFixed(2)).join(" ")).join(" L ")} L ${leftPx
+      .map((p) => p.map((v) => v.toFixed(2)).join(" "))
+      .join(" L ")} L ${centerClosePx} Z`;
+  };
+  const outlinePath = silhouettePath(geometry);
+  // Ignored under `hideCallouts` (the order form, preset-card thumbnails never receive this prop
+  // anyway, but the guard holds even if a future guard ever did) — see `ghostGeometry`'s own doc
+  // comment on why the ghost must never reach paper or a thumbnail.
+  const ghostPath = ghostGeometry && !hideCallouts ? silhouettePath(ghostGeometry) : null;
+  // Kept as its own binding (not only computed inside `silhouettePath` above) because the touch-
+  // drag bounds calculation below still needs the LIVE board's own tail-close station, in inches.
   const centerCloseIn = mmToInches(geometry.centreCloseStation);
-  const centerClosePx = `${pxX(0).toFixed(2)} ${lenToY(centerCloseIn).toFixed(2)}`;
-  const outlinePath = `M ${rightPx.map((p) => p.map((v) => v.toFixed(2)).join(" ")).join(" L ")} L ${leftPx
-    .map((p) => p.map((v) => v.toFixed(2)).join(" "))
-    .join(" L ")} L ${centerClosePx} Z`;
 
   const xAtStationIn = (stationIn: number) =>
     mmToInches(sampleOutline(geometry, inchesToMm(stationIn)));
@@ -906,13 +935,44 @@ export function OutlineViewer({
           `app/globals.css` has no `svg` descendant selectors, so an extra group cannot change
           what any existing consumer draws either way. */}
       <g ref={contentRef} transform={horizontal ? "rotate(-90)" : undefined}>
+      {/* P-5 (quick 260930-lia): the board's fill is opaque, so a ghost drawn before this path
+          would vanish wherever the old shape lies inside the new one. So, only while a ghost is
+          drawn, this hooked path keeps its `d`/fill/strokeWidth and paints the fill alone
+          (`stroke="none"`) — the same pixels as before, still found by every existing test and
+          the link-preview capture through `data-board-silhouette` — the ghost path is drawn next,
+          and an unhooked copy of this same outline draws the dark ink line on top of both. SVG
+          already paints a path's fill before its line, so with no ghost this is exactly the one
+          path this file has always drawn. */}
       <path
         data-board-silhouette="outline"
         d={outlinePath}
         fill="var(--outline-board-fill)"
-        stroke="var(--outline-ink)"
+        stroke={ghostPath ? "none" : "var(--outline-ink)"}
         strokeWidth={2}
       />
+      {ghostPath && (
+        <>
+          <path
+            data-outline-ghost
+            d={ghostPath}
+            fill="none"
+            stroke="var(--outline-ghost)"
+            strokeWidth={GHOST_STROKE_WIDTH}
+            strokeDasharray="var(--outline-ghost-dash)"
+            pointerEvents="none"
+            aria-hidden
+          />
+          <path
+            data-board-ink-line
+            d={outlinePath}
+            fill="none"
+            stroke="var(--outline-ink)"
+            strokeWidth={2}
+            pointerEvents="none"
+            aria-hidden
+          />
+        </>
+      )}
 
       {(!hideCallouts || showStationLines) && (
         <>
