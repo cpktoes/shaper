@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: "Phase 13 item 10: the Contact form is live through Resend (deployment 6753190419); awaiting the founder's live test, then tick item 10"
+stopped_at: Phase 13 item 10 done (Contact page + form live through Resend, the founder's test passed); next is item 11 (analytics + privacy page)
 last_updated: "2026-09-29T05:36:10.968Z"
 last_activity: 2026-09-29
-last_activity_desc: The Contact form is live through Resend
+last_activity_desc: "Item 10 done: the Contact form test passed"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 13
-  completed_plans: 8
-  percent: 62
+  completed_plans: 9
+  percent: 69
 current_phase: 13
 current_phase_name: Ready for the Shapers
 ---
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **8 of 13 items done.** Items 1–6 and 8 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). Item 9 is skipped for now (the founder, 2026-09-29). **Item 10 — the Contact page, plus email at shaperassistant.com (support@shaperassistant.com on Zoho Mail's free plan) — is in progress:** Zoho's DNS is live, and the Contact page is live address-only (deployment 6752631903, 2026-09-30). The form's sender is now Resend (quick 260929-w2k, verified locally); the founder has verified the domain in Resend, set `RESEND_API_KEY` for Production and added DMARC, and the form is live (deployment 6753190419, 2026-09-30). Still open: the founder's live tests (a form message and a direct email reaching Zoho, a reply from Zoho, a Clerk sign-in code); item 10 is ticked once they pass. After it: 11 (analytics + privacy), 12 (error screen + link preview), 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07); 9b stays optional.
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **9 of 13 items done.** Items 1–6, 8 and 10 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, and page 2's PLANING table — Deck / Bottom, Foam Off and Passes — to the left of the rail markings). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). Item 9 is skipped for now (the founder, 2026-09-29). Item 10 is done: the Contact page and its form are live, sending through Resend to support@shaperassistant.com on Zoho Mail (the founder's live test passed 2026-09-30). **Item 11 — visitor analytics and a privacy page — is next**, then 12 (error screen + link preview) and 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07); 9b stays optional. After it: 11 (analytics + privacy), 12 (error screen + link preview), 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07); 9b stays optional.
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-30 - The Contact form is live through Resend (deployment 6753190419); the founder's live test is next
+Last activity: 2026-09-30 - Item 10 done: the founder's live test of the Contact form passed (a message reached Zoho, the reply reached the sender)
 
 ## Performance Metrics
 
@@ -161,15 +161,13 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-10 pending (four of them are Phase 13 items (the fin tail question, item 6, was closed by quick 260928-p45): the order form is item 8, the catalogue links are item 9, the ghost of the last edit is optional item 9b, the Contacts page is item 10; the phone-width polish todo was closed by item 2 on 2026-09-27):
+8 pending (two of them are Phase 13 items: the catalogue links are item 9, skipped for now, and the ghost of the last edit is optional item 9b. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, and the Contacts page by item 10):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
 - [minor/general] Brand the order form with a shaper's own logo and contact details (paid tier) — `.planning/todos/pending/2026-09-06-brand-the-order-form-for-paid-shapers.md`
 - [minor/ui] Show live coordinates under the pointer on the Template and Rocker curves — `.planning/todos/pending/2026-09-14-live-pointer-coordinates-on-the-template-and-rocker-curves.md`
 - [minor/rocker] Open the blank's own catalog page from the app — `.planning/todos/pending/2026-09-26-open-the-blank-s-catalog-page-from-the-app.md`
-- [minor/summary] Summary order form needs the tip thicknesses and the deck/bottom passes somewhere — `.planning/todos/pending/2026-09-27-summary-needs-tip-thickness-and-deck-bottom-passes.md`
-- [minor/site] Add a Contacts page — `.planning/todos/pending/2026-09-27-add-a-contacts-page.md`
 - [minor/ui] Show a ghost of the last edit on the Template screen — `.planning/todos/pending/2026-09-27-show-a-ghost-of-the-last-edit-on-the-template-screen.md`
 - [major/rocker] Give the foil and rocker curves a realistic surfboard flow (its own phase after Oct 10; folds in the 2026-09-26 smoother-rocker todo) — `.planning/todos/pending/2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow.md`
 - [minor/rocker] Custom rocker on a blank, saved as the shaper's own Custom Blank (after Oct 10) — `.planning/todos/pending/2026-09-28-custom-rocker-on-a-blank-saved-as-the-shaper-s-own-custom-bl.md`
@@ -345,8 +343,8 @@ defects, and are listed under Carried forward in PROJECT.md.
 | todo | 2026-09-14-live-pointer-coordinates-on-the-template-and-rocker-curves | pending — backlog |
 | todo | 2026-09-26-smoother-drawn-rocker-curve-without-changing-the-numbers | pending — carried from the v1.3 close |
 | todo | 2026-09-26-open-the-blank-s-catalog-page-from-the-app | pending — filed this milestone |
-| todo | 2026-09-27-summary-needs-tip-thickness-and-deck-bottom-passes | pending — filed this milestone |
-| todo | 2026-09-27-add-a-contacts-page | pending — filed this milestone |
+| todo | 2026-09-27-summary-needs-tip-thickness-and-deck-bottom-passes | closed — Phase 13 item 8 (2026-09-29) |
+| todo | 2026-09-27-add-a-contacts-page | closed — Phase 13 item 10 (2026-09-30) |
 
 Closed since the v1.3 table: the blank-manufacturer tick boxes (quick task 260926-wmf) and the
 foil-the-way-a-shaper-cuts-it brief (this milestone).
