@@ -3,6 +3,7 @@ import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { SiteNav } from "@/components/site-nav";
+import { SiteAnalytics } from "@/components/site-analytics";
 import { DesignProvider as Provider } from "@/components/design/design-store";
 import { ThemeProvider } from "@/components/theme-provider";
 import { UnitsProvider } from "@/components/units-provider";
@@ -14,6 +15,7 @@ import { resolveUnitsHandoff } from "@/lib/units-server";
 import { resolvePrintRailInstructionsHandoff } from "@/lib/print-instructions-server";
 import { resolveFitDefaultsHandoff } from "@/lib/fit-defaults-server";
 import { resolveBlankMakersHandoff } from "@/lib/blank-makers-server";
+import { PRIVACY_ROUTE } from "@/lib/privacy/copy";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -96,7 +98,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     // It wraps <html> rather than nesting inside <body> so a Clerk-rendered redirect or error
     // boundary (neither of which this phase triggers — D-01 keeps every route open) would still
     // have the full document to work with.
-    <ClerkProvider>
+    //
+    // `appearance={{ options: { privacyPageUrl } }}` (quick 260930-03d, Task 2, P-4) puts a
+    // "Privacy" link in the footer of Clerk's sign-in and sign-up card, which opens /privacy in a
+    // new tab. `options` is the key in the installed @clerk/nextjs 7.8.2 types — there is no
+    // `layout` key in this version, which is the older SDK's name for the same setting. This isn't
+    // asserted in the browser suite, because Clerk never actually renders its hosted UI under this
+    // suite's fake keys (see e2e/phone-account.spec.ts's header); lib/privacy/wiring.test.ts guards
+    // the source instead, and the founder checks the real footer link live.
+    <ClerkProvider appearance={{ options: { privacyPageUrl: PRIVACY_ROUTE } }}>
       <html
         lang="en"
         className={`${geistMono.variable} ${inter.variable} h-dvh antialiased`}
@@ -153,6 +163,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               </FitDefaultsProvider>
             </PrintInstructionsProvider>
           </UnitsProvider>
+          {/* The visit counter (quick 260930-03d), which sends the page's address only — see
+              components/site-analytics.tsx. Renders no DOM of its own, so the body's flex column
+              above is untouched. */}
+          <SiteAnalytics />
         </body>
       </html>
     </ClerkProvider>

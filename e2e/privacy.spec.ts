@@ -85,4 +85,16 @@ test.describe("Privacy page", () => {
       await expect(page.getByRole("banner").getByRole("button", { name: "Menu" })).toBeHidden();
     }
   });
+
+  test("the visit counter is on every page, exactly once", async ({ page }) => {
+    await page.route("https://va.vercel-scripts.com/**", (route) => route.abort());
+
+    await page.goto(PRIVACY_ROUTE);
+    const script = page.locator('head script[data-sdkn="@vercel/analytics/next"]');
+    await expect(script).toHaveCount(1, { timeout: 20_000 });
+    await expect(script).toHaveAttribute("data-sdkv", "2.0.1");
+
+    await page.goto("/design/rails");
+    await expect(page.locator('head script[data-sdkn="@vercel/analytics/next"]')).toHaveCount(1);
+  });
 });
