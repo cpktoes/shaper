@@ -3,11 +3,13 @@
 /**
  * The bottom tab bar (D-06/D-07): the app's six design screens under the thumb on a phone, one
  * tap away, mirroring what the desktop top nav already does for the same six routes. Mounted in
- * THREE places (quick 260929-u1t added the third) — as the last child of `app/page.tsx`'s single
- * returned fragment (so it appears exactly once across that page's signed-in and signed-out
- * branches), as the last child of `app/design/layout.tsx` (so it appears on every one of the six
- * design routes), and as the last child of `app/contact/page.tsx` (P-2) — the Contact page isn't a
- * design route or the home route, so it needs its own copy of the same shape `app/page.tsx` uses.
+ * FOUR places (quick 260929-u1t added the third; quick 260930-03d added the fourth) — as the last
+ * child of `app/page.tsx`'s single returned fragment (so it appears exactly once across that
+ * page's signed-in and signed-out branches), as the last child of `app/design/layout.tsx` (so it
+ * appears on every one of the six design routes), as the last child of `app/contact/page.tsx`
+ * (P-2), and as the last child of `app/privacy/page.tsx` beside it — neither the Contact page nor
+ * the Privacy page is a design route or the home route, so each needs its own copy of the same
+ * shape `app/page.tsx` uses.
  * It renders on those six design routes and deliberately not on the home route (`/`) — D-07: the
  * six tabs are noise while a shaper is still choosing a board, and hiding them there gives the
  * setup screen's cards back the 56px + safe-area the bar was costing them. No mount point is

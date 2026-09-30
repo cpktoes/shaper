@@ -22,6 +22,7 @@ import { NavAuthControl } from "@/components/auth/nav-auth-control";
 import { SaveButton } from "@/components/design/save-button";
 import { PhoneTopBar } from "@/components/design/phone-top-bar";
 import { CONTACT_ROUTE } from "@/lib/contact/message";
+import { PRIVACY_ROUTE } from "@/lib/privacy/copy";
 
 /** Exported so `components/design/phone-tab-bar.tsx` reads the same six words and order rather
  * than re-declaring them — the labels can never drift between the desktop nav and the phone tab
@@ -38,14 +39,18 @@ export const NAV_LINKS = [
 export function SiteNav() {
   const pathname = usePathname();
   // Below the shell breakpoint the desktop link row is replaced by the compact top bar and the
-  // bottom tab bar on the design routes, the home screen, AND (quick 260929-u1t, P-2) the Contact
-  // page — without that last one, a phone on /contact would get the desktop link row squeezed
-  // into 390 dots, the one route this switch used to leave out. The bottom bar itself is mounted
-  // per route (app/design/layout.tsx for the design screens, app/page.tsx for the home screen,
-  // app/contact/page.tsx for the Contact page) because it must be the last child of the root
-  // layout's own flex column — see any of the three files' own doc comment for why.
+  // bottom tab bar on the design routes, the home screen, the Contact page (quick 260929-u1t, P-2)
+  // AND (quick 260930-03d) the Privacy page — without that last one, a phone on /privacy would get
+  // the desktop link row squeezed into 390 dots, same as /contact would have without its own entry.
+  // The bottom bar itself is mounted per route (app/design/layout.tsx for the design screens,
+  // app/page.tsx for the home screen, app/contact/page.tsx for the Contact page, app/privacy/page.tsx
+  // for the Privacy page) because it must be the last child of the root layout's own flex column —
+  // see any of the four files' own doc comment for why.
   const onPhoneShellRoute =
-    pathname === "/" || pathname === CONTACT_ROUTE || (pathname?.startsWith("/design/") ?? false);
+    pathname === "/" ||
+    pathname === CONTACT_ROUTE ||
+    pathname === PRIVACY_ROUTE ||
+    (pathname?.startsWith("/design/") ?? false);
 
   return (
     <>
