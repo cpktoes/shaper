@@ -193,6 +193,7 @@ Plans:
 **Ready to listen (Sat–Mon, Oct 3–5)**
 
 - [x] 10. Contact page, plus email at shaperassistant.com — support@shaperassistant.com on Zoho Mail (after Forward Email, then ImprovMX + SMTP2GO, the same day); the form is live through Resend (quick 260929-u1t + 260929-w2k, live 2026-09-30; the founder's addition, 2026-09-29)
+- [ ] 11a. A shaper can delete their own account and everything saved with it — Clerk's own button plus automatic cleanup (founder's addition 2026-09-30, before 11)
 - [ ] 11. Visitor analytics and a privacy page
 - [ ] 12. A friendly error screen and a link-preview picture
 
