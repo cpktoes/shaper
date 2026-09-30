@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 11 done; item 12 (error screen, not-found page, link preview) next
+stopped_at: Phase 13 item 12 built and verified locally (quick 260930-fjm); awaiting the founder's go to push
 last_updated: "2026-09-29T05:36:10.968Z"
 last_activity: 2026-09-29
-last_activity_desc: Item 11 done
+last_activity_desc: "Quick task 260930-fjm (item 12: error screens + link preview) verified locally"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-30 - Item 11 done: the founder saw their visits in Vercel's Analytics and Privacy on Clerk's sign-in card
+Last activity: 2026-09-30 - Completed quick task 260930-fjm: the error and not-found screens and the link preview, verified locally; pictures sent to the founder
 
 ## Performance Metrics
 
@@ -316,6 +316,7 @@ Recent decisions affecting current work:
 | 260929-w2k | Phase 13 item 10, the Contact form's sender swapped to Resend (the founder cancelled SMTP2GO and asked for a free-forever option): the form now sends through Resend's API (from Shaper Assistant <support@shaperassistant.com> to support@, Reply-To the shaper, text only, counted as sent only on a 2xx with an id) when RESEND_API_KEY is set in Vercel, and shows the address until then; every SMTP2GO trace removed, the page's visible text byte-identical. Resend's DNS (send. subdomain + DKIM) and a starter DMARC record checked live beside Zoho's. 3,448 unit and 421 browser tests, the build and the production suite green | 2026-09-30 | 06b8d67, 20b90d1 | [260929-w2k-phase-13-item-10-the-contact-form-sends-](./quick/260929-w2k-phase-13-item-10-the-contact-form-sends-/) |
 | 260930-ckm | Phase 13 item 11a, a deleted account takes its boards and settings with it (the founder's choice: Clerk's own Delete account plus automatic cleanup): a public POST route at /api/webhooks/clerk accepts only Svix-signed Clerk messages (verifyWebhook; no signing secret or a bad signature → 400), and on user.deleted deletes that account's saved boards and settings in one all-or-nothing Neon batch (repeats are harmless; other events ignored; a database failure → 500 so Clerk retries); logs carry counts only, never the account id. A schema-scan test fails if a future per-account table is left out. 3,478 unit and 424 browser tests, the build and the production suite green | 2026-09-30 | a3794c9, e405af7 | [260930-ckm-phase-13-item-11a-a-deleted-account-take](./quick/260930-ckm-phase-13-item-11a-a-deleted-account-take/) |
 | 260930-03d | Phase 13 item 11, visitor analytics and a plain-English privacy page (the founder approved the wording, with the deletion section revised after 11a, and chose pages-only counts): `/privacy`, signed in or out, says what's kept and why (account via Clerk, saved boards and settings, cookie-free visit counts, Contact messages via Resend), the cookies and on-device settings, who handles it (Clerk, Neon, Vercel, Resend, Zoho Mail), and how to delete a board or the whole account yourself (Manage account → Security → Delete account) or by email — every claim checked against the code. Linked under Contact in both menus, on Clerk's sign-in card (appearance.options.privacyPageUrl) and after the Contact form's note. Vercel Web Analytics (@vercel/analytics 2.0.1, exact) counts pages only. 3,525 unit and 463 browser tests, the build and the production suite green | 2026-09-30 | 9ed4e41, 67a412b, f9bd987 | [260930-03d-phase-13-item-11-visitor-analytics-and-a](./quick/260930-03d-phase-13-item-11-visitor-analytics-and-a/) |
+| 260930-fjm | Phase 13 item 12, a friendly error screen, a not-found page and a link preview (the founder approved the words, chose a real capture of the Template screen for the picture, then asked for it cropped tight to the board inside the viewer's border): `app/error.tsx` and `app/global-error.tsx` show "Something went wrong" with Try again, the home screen and "Tell us what happened" (Contact) plus a reference code, never the error itself; `app/not-found.tsx` shows "We couldn't find that page" with the home screen and a broken-link report; both get the phone's bars at phone width (the nav now uses the phone bar on every address below 820). Link previews: metadataBase, Open Graph + Twitter summary_large_image, the new description, and `app/opengraph-image.png` (62 KB) made by `npm run preview:capture` from the real Template screen — the Shortboard nose-left with its control points, station marks and data cards, framed in the viewer's own border. A test-only `/test-error` works only on a non-production build with the test flag (a 404 in production). The everyday browser suite now skips the production-only specs (they run in the production suite). 3,588 unit, 496 browser and 9 production-build tests green | 2026-09-30 | 7149266, b5b0475, ad79a62, 0e69bed, 22a5867 | [260930-fjm-phase-13-item-12-a-friendly-error-screen](./quick/260930-fjm-phase-13-item-12-a-friendly-error-screen/) |
 
 ## Deferred Items
 
