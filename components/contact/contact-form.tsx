@@ -13,6 +13,7 @@
  */
 
 import { useActionState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { sendContactMessage } from "@/app/actions/contact";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import {
   initialContactFormState,
   type ContactFormState,
 } from "@/lib/contact/message";
+import { PRIVACY_COPY, PRIVACY_ROUTE } from "@/lib/privacy/copy";
 
 /** Shared by the address-only page, the sent panel and the "prefer email" line under the form —
  * one definition so the address and its styling can never drift between the three places it
@@ -185,7 +187,17 @@ export function ContactForm({ prefill }: { prefill: { name: string; email: strin
         {pending ? CONTACT_COPY.sending : CONTACT_COPY.send}
       </Button>
 
-      <p className="text-xs leading-relaxed text-surf-ink-muted">{CONTACT_COPY.privacy}</p>
+      {/* The founder approved this note's words exactly (quick 260929-u1t), so quick 260930-03d
+          appends the Privacy link rather than weaving it into the approved sentence. */}
+      <p data-contact-privacy className="text-xs leading-relaxed text-surf-ink-muted">
+        {CONTACT_COPY.privacy}{" "}
+        <Link
+          href={PRIVACY_ROUTE}
+          className="font-bold text-surf-accent-ink underline-offset-4 hover:underline focus-ring-accent"
+        >
+          {PRIVACY_COPY.contactLineLinkLabel}
+        </Link>
+      </p>
 
       <p className="text-sm text-surf-ink">
         {CONTACT_COPY.emailInsteadLead} <ContactAddressLink />.

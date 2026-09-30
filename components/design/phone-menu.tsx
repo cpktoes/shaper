@@ -14,18 +14,18 @@
  * button or Clerk's own self-contained account button, both safe to mount inside another popup's
  * content. Phase 10 owns testing the account flows that open from inside it.
  *
- * Quick 260929-u1t (P-1) adds `ContactMenuItem` — the same shared row the desktop gear menu
- * renders — grouped with Home as this popup's two "go to a page" rows: Home (hidden on `/`), then
- * Contact (hidden on `/contact`), then ONE unconditional divider before the settings content. Home
- * and Contact can never both be hidden at once (`/` hides only Home, `/contact` hides only
- * Contact), so the divider is always doing real work separating at least one visible row from the
- * settings below it.
+ * Quick 260929-u1t (P-1) adds `ContactMenuItem`, and quick 260930-03d adds `PrivacyMenuItem` right
+ * after it — both the same shared rows the desktop gear menu renders — grouped with Home as this
+ * popup's three "go to a page" rows: Home (hidden on `/`), Contact (hidden on `/contact`), Privacy
+ * (hidden on `/privacy`), then ONE unconditional divider before the settings content. No two of
+ * those three ever hide at once (each hides only on its own route), so the divider is always doing
+ * real work separating at least one visible row from the settings below it.
  */
 
 import { Menu } from "@base-ui/react/menu";
 import { HouseIcon, MenuIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { ContactMenuItem, SettingsMenuContent } from "@/components/settings-menu";
+import { ContactMenuItem, PrivacyMenuItem, SettingsMenuContent } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
 
 export function PhoneMenu() {
@@ -66,6 +66,7 @@ export function PhoneMenu() {
               </Menu.Item>
             )}
             <ContactMenuItem />
+            <PrivacyMenuItem />
             <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />
             <SettingsMenuContent />
             {/* No Menu.Separator export exists on this Base UI version's Menu module — a plain

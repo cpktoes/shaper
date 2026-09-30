@@ -22,6 +22,7 @@ import {
   MoonIcon,
   RulerIcon,
   SettingsIcon,
+  ShieldCheckIcon,
   SlidersHorizontalIcon,
   SunIcon,
 } from "lucide-react";
@@ -33,6 +34,7 @@ import { useUnits } from "@/components/units-provider";
 import { isLastShownMaker } from "@/lib/blank-makers-preference";
 import { KNOWN_BLANK_VENDORS, type BlankVendor } from "@/lib/blanks/vendors";
 import { CONTACT_COPY, CONTACT_ROUTE } from "@/lib/contact/message";
+import { PRIVACY_COPY, PRIVACY_ROUTE } from "@/lib/privacy/copy";
 import { formatDimsExample, presetSummary } from "@/lib/geometry/summary-line";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import type { UnitsSystem } from "@/lib/geometry/units";
@@ -55,39 +57,57 @@ const MODE_LABEL: Record<ThemeMode, string> = { light: "Light", dark: "Dark" };
 const MODES: ThemeMode[] = ["light", "dark"];
 
 /**
- * A "Contact" row shared by the desktop gear menu and the phone menu (quick 260929-u1t, C-1,
- * P-1) — one exported component, so the two menus can never drift apart the way two hand-copied
- * rows eventually would. It sits FIRST in both menus: the phone menu is taller than a phone's
- * screen and scrolls inside itself (quick 260926-wmf), so a row placed last would sit below the
- * fold, while a row placed first is visible the moment either menu opens.
+ * "Contact" and "Privacy" rows shared by the desktop gear menu and the phone menu (Contact:
+ * quick 260929-u1t, C-1, P-1; Privacy: quick 260930-03d, P-1/P-6) — two thin exports over one
+ * private `PageMenuItem`, so the two rows can never drift apart the way two hand-copied rows
+ * eventually would. Privacy sits directly under Contact in both menus, so it is visible the
+ * moment either menu opens: the phone menu is taller than a phone's screen and scrolls inside
+ * itself (quick 260926-wmf), so a row placed last would sit below the fold, under the account
+ * control, and "two taps" would become "tap, scroll, tap".
  *
- * Left out entirely on the Contact page itself — `usePathname()` returns null there, the same way
- * `phone-menu.tsx`'s own Home row hides on `/`. `divider` renders the popup's own rule after the
- * row; the gear menu passes it (Contact, then a divider, then the settings), while the phone menu
- * supplies its own single divider after Home-or-Contact so the two rows can share one rule instead
- * of doubling it when both are visible.
+ * Each row is left out entirely on its own page — `usePathname()` returns its own route there, the
+ * same way `phone-menu.tsx`'s own Home row hides on `/`. Contact and Privacy can never both be
+ * hidden at once (each hides only on its own route), so the divider after them is always doing
+ * real work separating at least one visible row from what follows — the gear menu's popup now
+ * renders a plain, unconditional divider after the two rows, the same shape the phone menu's own
+ * divider already had.
  */
-export function ContactMenuItem({ divider = false }: { divider?: boolean } = {}) {
+function PageMenuItem({
+  route,
+  label,
+  Icon,
+}: {
+  route: string;
+  label: string;
+  Icon: typeof MailIcon;
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
-  if (pathname === CONTACT_ROUTE) {
+  if (pathname === route) {
     return null;
   }
 
   return (
-    <Fragment>
-      <Menu.Item
-        onClick={() => router.push(CONTACT_ROUTE)}
-        // Verbatim the same row classes phone-menu.tsx's Home row already uses, so the two rows
-        // read as one family: 44px tall under a touch pointer, today's height for a mouse.
-        className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-surf-ink outline-none select-none coarse:min-h-11 data-highlighted:bg-surf-well"
-      >
-        <MailIcon aria-hidden className="size-4 text-surf-ink-muted" />
-        {CONTACT_COPY.menuLabel}
-      </Menu.Item>
-      {divider && <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />}
-    </Fragment>
+    <Menu.Item
+      onClick={() => router.push(route)}
+      // Verbatim the same row classes phone-menu.tsx's Home row already uses, so the two rows
+      // read as one family: 44px tall under a touch pointer, today's height for a mouse.
+      className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-surf-ink outline-none select-none coarse:min-h-11 data-highlighted:bg-surf-well"
+    >
+      <Icon aria-hidden className="size-4 text-surf-ink-muted" />
+      {label}
+    </Menu.Item>
+  );
+}
+
+export function ContactMenuItem() {
+  return <PageMenuItem route={CONTACT_ROUTE} label={CONTACT_COPY.menuLabel} Icon={MailIcon} />;
+}
+
+export function PrivacyMenuItem() {
+  return (
+    <PageMenuItem route={PRIVACY_ROUTE} label={PRIVACY_COPY.menuLabel} Icon={ShieldCheckIcon} />
   );
 }
 
@@ -268,7 +288,9 @@ export function SettingsMenu() {
           {/* Never taller than the room Base UI measures below the gear — past that it scrolls
               inside itself, so every row (the Blank Makers tick boxes included) stays reachable. */}
           <Menu.Popup className="max-h-(--available-height) min-w-64 origin-(--transform-origin) overflow-y-auto rounded-lg border border-surf-line-faint bg-surf-panel p-1.5 shadow-lg outline-none duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
-            <ContactMenuItem divider />
+            <ContactMenuItem />
+            <PrivacyMenuItem />
+            <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />
             <SettingsMenuContent />
           </Menu.Popup>
         </Menu.Positioner>

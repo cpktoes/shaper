@@ -117,6 +117,7 @@ test.describe("Contact page", () => {
     "/design/volume",
     "/design/fins",
     "/design/summary",
+    "/privacy",
   ];
 
   for (const route of routesReachableFromTwoTaps) {
