@@ -23,6 +23,9 @@ answers, commit messages and summaries alike.
   through Resend's HTTP API (free plan) only when `RESEND_API_KEY` is set in Vercel — server-only, never
   in Development — and shows the address instead until then. All their DNS records live in Vercel beside
   Clerk's: Zoho's at the root, Resend's on the `send.` subdomain plus its `resend._domainkey` key.
+- Visitor counts (Phase 13 item 11): Vercel Web Analytics, `@vercel/analytics` pinned to 2.0.1 and
+  mounted once in the root layout — cookie-free, and every address is cut at its first `?` or `#` so
+  only the page is counted. The founder switched it on in Vercel's dashboard; `/privacy` describes it.
 
 Clerk auth and Neon Postgres via Drizzle are installed and in use (accounts and saved
 designs, Phase 2). Playwright is installed and in use (Phase 9) — the browser-driven tests in

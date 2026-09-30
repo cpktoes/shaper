@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 11a done (live test passed); resuming item 11 (plan 260930-03d) with the deletion wording updated
+stopped_at: Phase 13 item 11 built and verified locally (quick 260930-03d), pictures sent; awaiting the founder's go to push
 last_updated: "2026-09-29T05:36:10.968Z"
 last_activity: 2026-09-29
-last_activity_desc: Item 11a done
+last_activity_desc: "Quick task 260930-03d (item 11: privacy page + analytics) verified locally"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-30 - Item 11a done: the founder's live test showed "Deleted: saved boards 1, settings rows 1"
+Last activity: 2026-09-30 - Completed quick task 260930-03d: the privacy page and visitor analytics, verified locally; pictures sent to the founder
 
 ## Performance Metrics
 
@@ -315,6 +315,7 @@ Recent decisions affecting current work:
 | 260929-u1t | Phase 13 item 10, the Contact page (the founder's decisions 2026-09-29: a small form, support@shaperassistant.com, the short, friendly wording): a /contact page, signed in or out, two taps from every screen through a new Contact row at the top of the gear menu and the phone menu, with the phone's own top and bottom bars. The form (message, email to reply to, optional name; filled in when signed in; a hidden anti-spam field) sends through SMTP2GO's API from support@ to support@ with Reply-To set to the shaper, text only, nothing saved in the app. Until the founder puts SMTP2GO_API_KEY in Vercel the page shows the address only; a failed send keeps the message and points to the address. A test-only stand-in proves every page state in the browser and cannot switch on in a production build. 3,441 unit and 421 browser tests, the build and the production suite green | 2026-09-29 | c5bd888, a5a8ddc, 20e172a | [260929-u1t-phase-13-item-10-the-contact-page-with-a](./quick/260929-u1t-phase-13-item-10-the-contact-page-with-a/) |
 | 260929-w2k | Phase 13 item 10, the Contact form's sender swapped to Resend (the founder cancelled SMTP2GO and asked for a free-forever option): the form now sends through Resend's API (from Shaper Assistant <support@shaperassistant.com> to support@, Reply-To the shaper, text only, counted as sent only on a 2xx with an id) when RESEND_API_KEY is set in Vercel, and shows the address until then; every SMTP2GO trace removed, the page's visible text byte-identical. Resend's DNS (send. subdomain + DKIM) and a starter DMARC record checked live beside Zoho's. 3,448 unit and 421 browser tests, the build and the production suite green | 2026-09-30 | 06b8d67, 20b90d1 | [260929-w2k-phase-13-item-10-the-contact-form-sends-](./quick/260929-w2k-phase-13-item-10-the-contact-form-sends-/) |
 | 260930-ckm | Phase 13 item 11a, a deleted account takes its boards and settings with it (the founder's choice: Clerk's own Delete account plus automatic cleanup): a public POST route at /api/webhooks/clerk accepts only Svix-signed Clerk messages (verifyWebhook; no signing secret or a bad signature → 400), and on user.deleted deletes that account's saved boards and settings in one all-or-nothing Neon batch (repeats are harmless; other events ignored; a database failure → 500 so Clerk retries); logs carry counts only, never the account id. A schema-scan test fails if a future per-account table is left out. 3,478 unit and 424 browser tests, the build and the production suite green | 2026-09-30 | a3794c9, e405af7 | [260930-ckm-phase-13-item-11a-a-deleted-account-take](./quick/260930-ckm-phase-13-item-11a-a-deleted-account-take/) |
+| 260930-03d | Phase 13 item 11, visitor analytics and a plain-English privacy page (the founder approved the wording, with the deletion section revised after 11a, and chose pages-only counts): `/privacy`, signed in or out, says what's kept and why (account via Clerk, saved boards and settings, cookie-free visit counts, Contact messages via Resend), the cookies and on-device settings, who handles it (Clerk, Neon, Vercel, Resend, Zoho Mail), and how to delete a board or the whole account yourself (Manage account → Security → Delete account) or by email — every claim checked against the code. Linked under Contact in both menus, on Clerk's sign-in card (appearance.options.privacyPageUrl) and after the Contact form's note. Vercel Web Analytics (@vercel/analytics 2.0.1, exact) counts pages only. 3,525 unit and 463 browser tests, the build and the production suite green | 2026-09-30 | 9ed4e41, 67a412b, f9bd987 | [260930-03d-phase-13-item-11-visitor-analytics-and-a](./quick/260930-03d-phase-13-item-11-visitor-analytics-and-a/) |
 
 ## Deferred Items
 
