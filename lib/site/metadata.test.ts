@@ -16,7 +16,7 @@ describe("SITE_URL / SITE_NAME / SITE_TITLE", () => {
   });
 
   it("SITE_TITLE is the tab title", () => {
-    expect(SITE_TITLE).toBe("Shaper Assistant — Surfboard Design");
+    expect(SITE_TITLE).toBe("Shaper Assistant — Surfboard Shaping and Design");
   });
 });
 

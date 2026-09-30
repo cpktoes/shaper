@@ -26,7 +26,7 @@ export const SITE_URL = "https://www.shaperassistant.com";
 
 export const SITE_NAME = "Shaper Assistant";
 
-export const SITE_TITLE = "Shaper Assistant — Surfboard Design";
+export const SITE_TITLE = "Shaper Assistant — Surfboard Shaping and Design";
 
 /** The founder's approved line (F-3, 2026-09-30), 137 characters — replaces the app's original
  * "Design custom surfboards with calculated rail bands, fin placement, and volume." */
