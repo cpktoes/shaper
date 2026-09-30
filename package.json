@@ -18,6 +18,7 @@
     "golden:rails": "node scripts/extract-prototype-rails-golden.mjs",
     "golden:fins": "tsx --tsconfig ./tsconfig.json scripts/extract-prototype-fins-golden.mjs",
     "golden:volume": "node scripts/extract-prototype-volume-golden.mjs",
+    "preview:capture": "tsx --tsconfig ./tsconfig.json scripts/capture-link-preview.ts",
     "test:e2e:prod": "npm run build && playwright test -c playwright.prod.config.ts"
   },
   "dependencies": {

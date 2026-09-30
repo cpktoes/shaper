@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
+import { SITE_METADATA } from "@/lib/site/metadata";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { SiteNav } from "@/components/site-nav";
@@ -33,10 +34,7 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Shaper Assistant — Surfboard Design",
-  description: "Design custom surfboards with calculated rail bands, fin placement, and volume.",
-};
+export const metadata: Metadata = SITE_METADATA;
 
 /**
  * The "cover" fit is what makes the bottom tab bar's safe-area padding
