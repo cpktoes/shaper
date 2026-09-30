@@ -86,4 +86,32 @@ describe("open access (D-01)", () => {
     const proxySource = stripComments(readFileSync(PROXY_PATH, "utf8"));
     expect(proxySource).not.toContain("createRouteMatcher");
   });
+
+  it("the Clerk webhook is a public route guarded only by Clerk's signature (quick 260930-ckm)", () => {
+    const webhookRoutePath = join(APP_DIR, "api", "webhooks", "clerk", "route.ts");
+    expect(existsSync(webhookRoutePath)).toBe(true);
+
+    const stripped = stripComments(readFileSync(webhookRoutePath, "utf8"));
+
+    // O1: declares an async POST function and imports verifyWebhook from @clerk/nextjs/webhooks.
+    expect(stripped).toMatch(/export\s+async\s+function\s+POST\s*\(/);
+    expect(stripped).toContain('from "@clerk/nextjs/webhooks"');
+
+    // O2: no other HTTP-method export, and no call to auth(, currentUser(, redirect(, notFound(
+    // or .protect( — word-boundary regexes so verifyWebhook( never matches any of these.
+    for (const method of ["GET", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]) {
+      expect(stripped).not.toMatch(new RegExp(`export\\s+async\\s+function\\s+${method}\\s*\\(`));
+    }
+    expect(stripped).not.toMatch(/\bauth\s*\(/);
+    expect(stripped).not.toMatch(/\bcurrentUser\s*\(/);
+    expect(stripped).not.toMatch(/\bredirect\s*\(/);
+    expect(stripped).not.toMatch(/\bnotFound\s*\(/);
+    expect(stripped).not.toMatch(/\.protect\s*\(/);
+
+    // O3: proxy.ts still runs clerkMiddleware on this route (the "/(api|trpc)(.*)" matcher) and
+    // gates nothing (D-01) — already proved above, repeated here as the contract this test leans on.
+    const proxySource = stripComments(readFileSync(PROXY_PATH, "utf8"));
+    expect(proxySource).toContain("/(api|trpc)(.*)");
+    expect(proxySource).not.toContain("createRouteMatcher");
+  });
 });
