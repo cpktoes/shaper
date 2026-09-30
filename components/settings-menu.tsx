@@ -17,6 +17,7 @@ import { Fragment } from "react";
 import { Menu } from "@base-ui/react/menu";
 import {
   CheckIcon,
+  MailIcon,
   MonitorIcon,
   MoonIcon,
   RulerIcon,
@@ -24,12 +25,14 @@ import {
   SlidersHorizontalIcon,
   SunIcon,
 } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { useBlankMakers } from "@/components/blank-makers-provider";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { useTheme } from "@/components/theme-provider";
 import { useUnits } from "@/components/units-provider";
 import { isLastShownMaker } from "@/lib/blank-makers-preference";
 import { KNOWN_BLANK_VENDORS, type BlankVendor } from "@/lib/blanks/vendors";
+import { CONTACT_COPY, CONTACT_ROUTE } from "@/lib/contact/message";
 import { formatDimsExample, presetSummary } from "@/lib/geometry/summary-line";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import type { UnitsSystem } from "@/lib/geometry/units";
@@ -50,6 +53,43 @@ const MODE_ICON: Record<ThemeMode, typeof SunIcon> = { light: SunIcon, dark: Moo
 const MODE_LABEL: Record<ThemeMode, string> = { light: "Light", dark: "Dark" };
 /** Heading order. A mode with no themes registered simply does not render. */
 const MODES: ThemeMode[] = ["light", "dark"];
+
+/**
+ * A "Contact" row shared by the desktop gear menu and the phone menu (quick 260929-u1t, C-1,
+ * P-1) — one exported component, so the two menus can never drift apart the way two hand-copied
+ * rows eventually would. It sits FIRST in both menus: the phone menu is taller than a phone's
+ * screen and scrolls inside itself (quick 260926-wmf), so a row placed last would sit below the
+ * fold, while a row placed first is visible the moment either menu opens.
+ *
+ * Left out entirely on the Contact page itself — `usePathname()` returns null there, the same way
+ * `phone-menu.tsx`'s own Home row hides on `/`. `divider` renders the popup's own rule after the
+ * row; the gear menu passes it (Contact, then a divider, then the settings), while the phone menu
+ * supplies its own single divider after Home-or-Contact so the two rows can share one rule instead
+ * of doubling it when both are visible.
+ */
+export function ContactMenuItem({ divider = false }: { divider?: boolean } = {}) {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  if (pathname === CONTACT_ROUTE) {
+    return null;
+  }
+
+  return (
+    <Fragment>
+      <Menu.Item
+        onClick={() => router.push(CONTACT_ROUTE)}
+        // Verbatim the same row classes phone-menu.tsx's Home row already uses, so the two rows
+        // read as one family: 44px tall under a touch pointer, today's height for a mouse.
+        className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-surf-ink outline-none select-none coarse:min-h-11 data-highlighted:bg-surf-well"
+      >
+        <MailIcon aria-hidden className="size-4 text-surf-ink-muted" />
+        {CONTACT_COPY.menuLabel}
+      </Menu.Item>
+      {divider && <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />}
+    </Fragment>
+  );
+}
 
 /**
  * The popup's own content — the Units and Theme radio groups, the Blanks row that opens the fit
@@ -228,6 +268,7 @@ export function SettingsMenu() {
           {/* Never taller than the room Base UI measures below the gear — past that it scrolls
               inside itself, so every row (the Blank Makers tick boxes included) stays reachable. */}
           <Menu.Popup className="max-h-(--available-height) min-w-64 origin-(--transform-origin) overflow-y-auto rounded-lg border border-surf-line-faint bg-surf-panel p-1.5 shadow-lg outline-none duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+            <ContactMenuItem divider />
             <SettingsMenuContent />
           </Menu.Popup>
         </Menu.Positioner>

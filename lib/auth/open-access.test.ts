@@ -69,4 +69,21 @@ describe("open access (D-01)", () => {
     }
     expect(offenders, `Found .protect() calls in: ${offenders.join(", ")}`).toEqual([]);
   });
+
+  it("the Contact page is a public route (quick 260929-u1t)", () => {
+    const contactPagePath = join(APP_DIR, "contact", "page.tsx");
+    expect(existsSync(contactPagePath)).toBe(true);
+
+    const stripped = stripComments(readFileSync(contactPagePath, "utf8"));
+    expect(stripped).not.toMatch(/\bredirect\s*\(/);
+    expect(stripped).not.toMatch(/\bnotFound\s*\(/);
+    expect(stripped).not.toMatch(/\.protect\s*\(/);
+    expect(stripped).not.toMatch(/RedirectToSignIn/);
+
+    // proxy.ts never builds a protected-route list to begin with — this is the helper such a
+    // list would start from, so its absence here is the mechanical proof that no route (this one
+    // included) can be gated behind a matcher.
+    const proxySource = stripComments(readFileSync(PROXY_PATH, "utf8"));
+    expect(proxySource).not.toContain("createRouteMatcher");
+  });
 });

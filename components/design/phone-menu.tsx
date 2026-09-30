@@ -13,12 +13,19 @@
  * `NavAuthControl` is the same account control the desktop nav renders — either a plain "Sign in"
  * button or Clerk's own self-contained account button, both safe to mount inside another popup's
  * content. Phase 10 owns testing the account flows that open from inside it.
+ *
+ * Quick 260929-u1t (P-1) adds `ContactMenuItem` — the same shared row the desktop gear menu
+ * renders — grouped with Home as this popup's two "go to a page" rows: Home (hidden on `/`), then
+ * Contact (hidden on `/contact`), then ONE unconditional divider before the settings content. Home
+ * and Contact can never both be hidden at once (`/` hides only Home, `/contact` hides only
+ * Contact), so the divider is always doing real work separating at least one visible row from the
+ * settings below it.
  */
 
 import { Menu } from "@base-ui/react/menu";
 import { HouseIcon, MenuIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { SettingsMenuContent } from "@/components/settings-menu";
+import { ContactMenuItem, SettingsMenuContent } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
 
 export function PhoneMenu() {
@@ -46,19 +53,20 @@ export function PhoneMenu() {
                 wordmark row to tap, so the menu carries it. Hidden on the home screen itself,
                 where it would only close the menu. router.push keeps the board in memory (a hard
                 navigation would drop the design store). Row sizing matches rack-card-menu.tsx's
-                ROW_CLASS: 44px tall under a touch pointer, today's height for a mouse. */}
+                ROW_CLASS: 44px tall under a touch pointer, today's height for a mouse. No divider
+                of its own — quick 260929-u1t moved the one divider below Contact, so Home and
+                Contact read as one group of "go to a page" rows. */}
             {pathname !== "/" && (
-              <>
-                <Menu.Item
-                  onClick={() => router.push("/")}
-                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-surf-ink outline-none select-none coarse:min-h-11 data-highlighted:bg-surf-well"
-                >
-                  <HouseIcon aria-hidden className="size-4 text-surf-ink-muted" />
-                  Home
-                </Menu.Item>
-                <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />
-              </>
+              <Menu.Item
+                onClick={() => router.push("/")}
+                className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-surf-ink outline-none select-none coarse:min-h-11 data-highlighted:bg-surf-well"
+              >
+                <HouseIcon aria-hidden className="size-4 text-surf-ink-muted" />
+                Home
+              </Menu.Item>
             )}
+            <ContactMenuItem />
+            <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />
             <SettingsMenuContent />
             {/* No Menu.Separator export exists on this Base UI version's Menu module — a plain
                 divider row does the same job, matching the popup's own line token. */}
