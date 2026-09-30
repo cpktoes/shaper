@@ -18,6 +18,12 @@ const port = Number(process.env.PW_PORT ?? 3100);
 
 export default defineConfig({
   testDir: "./e2e",
+  // Quick 260930-fjm: the specs under e2e/prod/ only ever pass against a production build (run
+  // through playwright.prod.config.ts, whose own testDir "./e2e/prod" is unaffected by this).
+  // Without this, the everyday dev-server suite above also picked them up and failed all three
+  // projects — on the dev server /test-error throws on purpose and the preview picture's address
+  // is localhost, both correct for dev and both exactly what the prod-only specs assert against.
+  testIgnore: ["**/prod/**"],
   fullyParallel: false,
   workers: 1,
   webServer: {

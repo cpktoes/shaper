@@ -37,6 +37,12 @@ void _fakeDevServerEnv;
 export default defineConfig({
   ...base,
   testDir: "./e2e/prod",
+  // Quick 260930-fjm: playwright.config.ts's own testIgnore ("**/prod/**", so the everyday
+  // dev-server suite never runs these specs) is matched against each file's ABSOLUTE path, the
+  // same path this config's own testDir points straight at — so inheriting it unchanged through
+  // `...base` above would silently exclude every spec this config exists to run ("No tests
+  // found"). Reset it here, back to none, for this config alone.
+  testIgnore: [],
   webServer: {
     ...productionServer,
     command: `npx next start -p ${port}`,
