@@ -9,7 +9,7 @@
  * the server-only delivery switch, so there is no ownership boundary here to enforce.
  *
  * The one function below returns only `ContactFormState` — never the `ContactDelivery` object,
- * never the SMTP2GO key — so the client component this feeds can hold nothing more sensitive
+ * never the Resend key — so the client component this feeds can hold nothing more sensitive
  * than what the shaper themself just typed.
  */
 

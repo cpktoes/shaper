@@ -9,21 +9,23 @@ import {
 } from "../lib/contact/message";
 
 /**
- * Quick 260929-u1t (Phase 13 item 10): browser proof for the Contact page on all three device
- * profiles — the iPhone, the Android phone, and the desktop.
+ * Quick 260929-u1t (Phase 13 item 10; the sender became Resend in quick 260929-w2k): browser
+ * proof for the Contact page on all three device profiles — the iPhone, the Android phone, and
+ * the desktop.
  *
  * `playwright.config.ts`'s `webServer.env` sets `SHAPER_CONTACT_STAND_IN=1` (P-3), so every test
  * here can pick its outcome with the `shaper-contact-stand-in` cookie instead of ever reaching a
- * real SMTP2GO account: `sent` makes a submission succeed, `failed` makes one fail, and no cookie
+ * real Resend account: `sent` makes a submission succeed, `failed` makes one fail, and no cookie
  * at all means no send path exists (the address-only page, test (1)). The real key is never used
  * while the stand-in is on, and `playwright.prod.config.ts` strips this whole env block, so the
  * stand-in can never switch on in a production build — that half of the guarantee is proved by
  * `lib/contact/delivery.test.ts`'s unit tests, not here.
  *
- * Left for the founder's own live check, once `SMTP2GO_API_KEY` is in Vercel (this plan's
- * `<success_criteria>`): a real message actually arriving in their inbox, Reply from Gmail (as
- * support@) reaching the shaper, and their own signed-in visit showing their real name and email
- * filled in — none of that is provable from a stand-in, by design.
+ * Left for the founder's own live check, once `RESEND_API_KEY` is in Vercel and the domain is
+ * verified in Resend (this plan's `<success_criteria>`): a real message actually arriving in the
+ * support@ inbox in Zoho Mail, the founder's Reply from Zoho Mail reaching the shaper, and their
+ * own signed-in visit showing their real name and email filled in — none of that is provable from
+ * a stand-in, by design.
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";

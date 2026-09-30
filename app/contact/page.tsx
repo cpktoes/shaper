@@ -14,7 +14,7 @@ export const metadata: Metadata = {
  * D-01, "no route gating": `proxy.ts` protects nothing, and `lib/auth/open-access.test.ts` has a
  * case for this page.
  *
- * The form only appears once a send path exists (C-5): until the founder puts `SMTP2GO_API_KEY`
+ * The form only appears once a send path exists (C-5): until the founder puts `RESEND_API_KEY`
  * into Vercel, `contactFormAvailableForRequest()` resolves false and the address-only panel below
  * renders instead. That boolean is the ONLY thing this Server Component reads about delivery — it
  * never imports `resolveContactDeliveryForRequest` (that would put the delivery object, and with

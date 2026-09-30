@@ -49,15 +49,15 @@ export default defineConfig({
       // through the same tested reader the database seed uses, so the list a browser test sees is
       // the list the database holds. Test-only: never set this in Vercel or in any .env file.
       SHAPER_BLANKS_SOURCE: "seed-csv",
-      // Quick 260929-u1t: the Contact form's test stand-in (P-3). Test-only, never set in Vercel
-      // or in any .env file. It is honoured only outside a production build — lib/contact-server.ts
-      // reads the literal process.env.NODE_ENV, which Next inlines as "production" on a real
-      // deploy, so this flag is provably inert there. While it is on, the Contact form can't
-      // reach SMTP2GO even if a real SMTP2GO_API_KEY happens to be present in the environment;
-      // each test instead picks its outcome with the shaper-contact-stand-in cookie: "sent",
-      // "failed", or no cookie at all for "no send path" (the address-only page).
-      // playwright.prod.config.ts strips this whole env block, so it never reaches a production
-      // server either.
+      // Quick 260929-u1t: the Contact form's test stand-in (P-3; sender became Resend in quick
+      // 260929-w2k). Test-only, never set in Vercel or in any .env file. It is honoured only
+      // outside a production build — lib/contact-server.ts reads the literal process.env.NODE_ENV,
+      // which Next inlines as "production" on a real deploy, so this flag is provably inert there.
+      // While it is on, the Contact form can't reach Resend even if a real RESEND_API_KEY happens
+      // to be present in the environment; each test instead picks its outcome with the
+      // shaper-contact-stand-in cookie: "sent", "failed", or no cookie at all for "no send path"
+      // (the address-only page). playwright.prod.config.ts strips this whole env block, so it
+      // never reaches a production server either.
       SHAPER_CONTACT_STAND_IN: "1",
     },
   },
