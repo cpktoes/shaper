@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 11 built and verified locally (quick 260930-03d), pictures sent; awaiting the founder's go to push
+stopped_at: "Phase 13 item 11 live (deployment 6766575621); awaiting the founder's checks: visits in Vercel Analytics, Privacy in Clerk's sign-in footer"
 last_updated: "2026-09-29T05:36:10.968Z"
 last_activity: 2026-09-29
-last_activity_desc: "Quick task 260930-03d (item 11: privacy page + analytics) verified locally"
+last_activity_desc: Item 11 live
 progress:
   total_phases: 1
   completed_phases: 0
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-30 - Completed quick task 260930-03d: the privacy page and visitor analytics, verified locally; pictures sent to the founder
+Last activity: 2026-09-30 - Item 11 live (deployment 6766575621): the privacy page and visit counting; the founder's dashboard and sign-in checks are next
 
 ## Performance Metrics
 
