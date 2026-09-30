@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 12 built and verified locally (quick 260930-fjm); awaiting the founder's go to push
+stopped_at: Phase 13 item 12 live (deployment 6770163822); awaiting the founder's texted-link check
 last_updated: "2026-09-29T05:36:10.968Z"
 last_activity: 2026-09-29
-last_activity_desc: "Quick task 260930-fjm (item 12: error screens + link preview) verified locally"
+last_activity_desc: Item 12 live
 progress:
   total_phases: 1
   completed_phases: 0
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-30 - Completed quick task 260930-fjm: the error and not-found screens and the link preview, verified locally; pictures sent to the founder
+Last activity: 2026-09-30 - Item 12 live (deployment 6770163822): error screens and the link preview; the founder's texted-link check is next
 
 ## Performance Metrics
 
