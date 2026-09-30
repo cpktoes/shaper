@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: "Phase 13 item 11a in progress (account deletion: Clerk button + user.deleted webhook); item 11 planned (260930-03d) and paused"
+stopped_at: Phase 13 item 11a built and verified locally (quick 260930-ckm); awaiting the founder's Clerk steps + CLERK_WEBHOOK_SIGNING_SECRET and the go to push; item 11 paused
 last_updated: "2026-09-29T05:36:10.968Z"
 last_activity: 2026-09-29
-last_activity_desc: Item 11a added before item 11
+last_activity_desc: "Quick task 260930-ckm (item 11a: account deletion cleanup) verified locally"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-30 - Item 11a added (account deletion before the privacy page); item 11 planned and paused
+Last activity: 2026-09-30 - Completed quick task 260930-ckm: deleting a Clerk account deletes the shaper's boards and settings (verified locally)
 
 ## Performance Metrics
 
@@ -314,6 +314,7 @@ Recent decisions affecting current work:
 | 260928-vpi | Phase 13 item 8b, page 2 on a phone print (the founder's addition 2026-09-29, plus their decision to fix the Metric fin-note wording here): printed from a phone, page 2's rail table was cut off at the bottom of its box (the Bottom Tuck rows never printed) and a quad's fin numbers ran into their notes, because a phone's Letter-shaped sheet is shorter for its width than a computer's and page 2's type sat on a 12 px floor. Now page 2's type on a phone sheet follows one fit size (about 8.2 pt on the founder's iPhone paper, 8.7 pt from 733 dots up; a computer print stays 9.6 pt) and each table box is never shorter than what it holds, so every rail mark and fin number sits in its own box from 560 to 900 dots in both systems. The fin notes' last line reads "nearest 1/16\"" or "nearest millimetre" (the old "(0.1 cm in cm units)" aside is gone), on FINS' MODEL INFO too. A computer print is identical apart from that line. 3,341 unit and 382 browser tests, the build and the production suite green | 2026-09-29 | 69d5f19, f9c4da9, 55890f1, 5a416dd | [260928-vpi-phase-13-item-8b-page-2-on-a-phone-print](./quick/260928-vpi-phase-13-item-8b-page-2-on-a-phone-print/) |
 | 260929-u1t | Phase 13 item 10, the Contact page (the founder's decisions 2026-09-29: a small form, support@shaperassistant.com, the short, friendly wording): a /contact page, signed in or out, two taps from every screen through a new Contact row at the top of the gear menu and the phone menu, with the phone's own top and bottom bars. The form (message, email to reply to, optional name; filled in when signed in; a hidden anti-spam field) sends through SMTP2GO's API from support@ to support@ with Reply-To set to the shaper, text only, nothing saved in the app. Until the founder puts SMTP2GO_API_KEY in Vercel the page shows the address only; a failed send keeps the message and points to the address. A test-only stand-in proves every page state in the browser and cannot switch on in a production build. 3,441 unit and 421 browser tests, the build and the production suite green | 2026-09-29 | c5bd888, a5a8ddc, 20e172a | [260929-u1t-phase-13-item-10-the-contact-page-with-a](./quick/260929-u1t-phase-13-item-10-the-contact-page-with-a/) |
 | 260929-w2k | Phase 13 item 10, the Contact form's sender swapped to Resend (the founder cancelled SMTP2GO and asked for a free-forever option): the form now sends through Resend's API (from Shaper Assistant <support@shaperassistant.com> to support@, Reply-To the shaper, text only, counted as sent only on a 2xx with an id) when RESEND_API_KEY is set in Vercel, and shows the address until then; every SMTP2GO trace removed, the page's visible text byte-identical. Resend's DNS (send. subdomain + DKIM) and a starter DMARC record checked live beside Zoho's. 3,448 unit and 421 browser tests, the build and the production suite green | 2026-09-30 | 06b8d67, 20b90d1 | [260929-w2k-phase-13-item-10-the-contact-form-sends-](./quick/260929-w2k-phase-13-item-10-the-contact-form-sends-/) |
+| 260930-ckm | Phase 13 item 11a, a deleted account takes its boards and settings with it (the founder's choice: Clerk's own Delete account plus automatic cleanup): a public POST route at /api/webhooks/clerk accepts only Svix-signed Clerk messages (verifyWebhook; no signing secret or a bad signature → 400), and on user.deleted deletes that account's saved boards and settings in one all-or-nothing Neon batch (repeats are harmless; other events ignored; a database failure → 500 so Clerk retries); logs carry counts only, never the account id. A schema-scan test fails if a future per-account table is left out. 3,478 unit and 424 browser tests, the build and the production suite green | 2026-09-30 | a3794c9, e405af7 | [260930-ckm-phase-13-item-11a-a-deleted-account-take](./quick/260930-ckm-phase-13-item-11a-a-deleted-account-take/) |
 
 ## Deferred Items
 
