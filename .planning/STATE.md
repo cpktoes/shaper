@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 item 12 live (deployment 6770163822); awaiting the founder's texted-link check
+stopped_at: Phase 13 item 12 done; item 13 (real-device rehearsal, then the freeze on Wed 2026-10-07) next
 last_updated: "2026-09-30T21:13:18.964Z"
 last_activity: 2026-09-30
-last_activity_desc: "Item 12 live (deployment 6770163822): error screens and the link preview; the founder's texted-link check is next"
+last_activity_desc: Item 12 done
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 13
-  completed_plans: 10
-  percent: 77
+  completed_plans: 11
+  percent: 85
 current_phase: 13
 current_phase_name: Ready for the Shapers
 ---
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **10 of 13 items done.** Items 1–6, 8, 10 and 11 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, page 2's PLANING table to the left of the rail markings, the Contact page and form, and the privacy page with visit counts). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). Item 9 is skipped for now (the founder, 2026-09-29). Item 10 is done: the Contact page and its form are live, sending through Resend to support@shaperassistant.com on Zoho Mail (the founder's live test passed 2026-09-30). Item 11a is done: a shaper deletes their own account from Clerk's Manage account and a signed `user.deleted` webhook deletes their boards and settings (the founder's live test: "Deleted: saved boards 1, settings rows 1"). Item 11 is done: the privacy page and cookie-free visit counts are live (the founder's checks passed). **Item 12 — a friendly error screen, a not-found page and a link-preview picture — is next**; then 13 (the real-device rehearsal, then the freeze on Wed 2026-10-07). 9b stays optional.
+**Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **11 of 13 items done.** Items 1–6, 8, 10, 11 and 12 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, page 2's PLANING table to the left of the rail markings, the Contact page and form, and the privacy page with visit counts). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). Item 9 is skipped for now (the founder, 2026-09-29). Item 10 is done: the Contact page and its form are live, sending through Resend to support@shaperassistant.com on Zoho Mail (the founder's live test passed 2026-09-30). Item 11a is done: a shaper deletes their own account from Clerk's Manage account and a signed `user.deleted` webhook deletes their boards and settings (the founder's live test: "Deleted: saved boards 1, settings rows 1"). Item 11 is done: the privacy page and cookie-free visit counts are live (the founder's checks passed). Item 12 is done: the error and not-found screens and the link preview are live (the founder: "looks perfect"; the site title now reads "Shaper Assistant — Surfboard Shaping and Design"). **Item 13 — the real-device rehearsal, then the freeze on Wed 2026-10-07 — is next.** Item 9 (catalogue links) is skipped for now and 9b stays optional.
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-30 - Item 12 live (deployment 6770163822): error screens and the link preview; the founder's texted-link check is next
+Last activity: 2026-09-30 - Item 12 done: the founder's texted link shows the card ("looks perfect")
 
 ## Performance Metrics
 
