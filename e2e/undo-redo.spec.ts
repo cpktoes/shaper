@@ -3,7 +3,9 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 /**
  * Quick task 260913-k5k's own proof: a shaper who moves a slider, drags a point on the drawing, or
  * types a number can take that change back with Cmd/Ctrl+Z and put it back with
- * Shift+Cmd/Ctrl+Z — and on a phone, with a pair of round arrow buttons above the tab bar.
+ * Shift+Cmd/Ctrl+Z — and on a phone, with a pair of round arrow buttons above the tab bar. Since
+ * quick 260930-lo8 the same round pair also shows on a computer, 16px from the window's
+ * bottom-right corner.
  *
  * Follows `e2e/desktop-regression.spec.ts` closely for the mouse-drag pattern and
  * `e2e/touch-sizing.spec.ts` for the metric-units and banner-dismissal helpers, copied locally
@@ -54,6 +56,31 @@ function rowFor(label: Locator): Locator {
  * slider at all. */
 function thumbInputFor(label: Locator): Locator {
   return rowFor(label).locator('[data-slot="slider-thumb"] input[type="range"]');
+}
+
+/** Waits until React owns the given element (it carries a `__reactFiber…` key) — the same probe
+ * `e2e/desktop-baseline.spec.ts` uses, needed so a click or assertion right after navigation never
+ * races hydration and catches server-rendered HTML that isn't wired up yet. */
+async function waitForReactOwned(locator: Locator) {
+  await expect
+    .poll(() => locator.evaluate((el) => Object.keys(el).some((key) => key.startsWith("__reactFiber"))))
+    .toBe(true);
+}
+
+/** On a computer the pair sits a plain 16px from the window's bottom-right corner (quick
+ * 260930-lo8, `shell:bottom-4` plus the existing `right-4`) — asserts the pair's box against the
+ * viewport's own size, read fresh each time since these tests never resize the window. */
+async function expectPairAtCorner(page: Page, bar: Locator) {
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error("no viewport size");
+  const box = await bar.boundingBox();
+  if (!box) throw new Error("undo/redo pair has no bounding box");
+  expect(box.x + box.width).toBeCloseTo(viewport.width - 16, 0);
+  expect(box.y + box.height).toBeCloseTo(viewport.height - 16, 0);
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
 }
 
 test.describe("undo/redo — taking a design change back", () => {
@@ -218,5 +245,94 @@ test.describe("undo/redo — taking a design change back", () => {
     const afterUndo = await noseAngleLabel.textContent();
     await redoButton.tap();
     await expect(noseAngleLabel).not.toHaveText(afterUndo ?? "");
+  });
+
+  test("desktop: the on-screen Undo and Redo pair appears at the bottom-right once there is something to take back, and each arrow works", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "on-screen control on a computer, desktop project only");
+
+    const bar = page.locator("[data-phone-undo-bar]");
+    const designRoutes = [
+      "/design/outline",
+      "/design/rocker",
+      "/design/rails",
+      "/design/volume",
+      "/design/fins",
+      "/design/summary",
+    ];
+
+    // A freshly opened screen shows no pair at all, on every one of the six design screens.
+    for (const route of designRoutes) {
+      await page.goto(route);
+      await waitForReactOwned(page.getByRole("link", { name: "Home" }));
+      await expect(bar).toHaveCount(0);
+    }
+
+    // Back to TEMPLATE for the nudge.
+    await page.goto("/design/outline");
+    const noseAngleLabel = page.getByText(/^Nose Angle — /);
+    await expect(noseAngleLabel).toBeVisible();
+    const before = await noseAngleLabel.textContent();
+    const thumbInput = thumbInputFor(noseAngleLabel);
+    await waitForReactOwned(thumbInput);
+    await thumbInput.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(noseAngleLabel).not.toHaveText(before ?? "");
+
+    await expect(bar).toBeVisible();
+    await expectPairAtCorner(page, bar);
+
+    const undoButton = bar.getByRole("button", { name: "Undo" });
+    const redoButton = bar.getByRole("button", { name: "Redo" });
+    const undoBox = await undoButton.boundingBox();
+    const redoBox = await redoButton.boundingBox();
+    if (!undoBox || !redoBox) throw new Error("undo/redo button is missing a bounding box");
+    console.log(
+      `PhoneUndoBar (desktop) measured boxes — Undo: ${undoBox.width}x${undoBox.height}, Redo: ${redoBox.width}x${redoBox.height}`,
+    );
+    expect(undoBox.width).toBeCloseTo(40, 0);
+    expect(undoBox.height).toBeCloseTo(40, 0);
+    expect(redoBox.width).toBeCloseTo(40, 0);
+    expect(redoBox.height).toBeCloseTo(40, 0);
+    await expect(undoButton).toBeEnabled();
+    await expect(redoButton).toBeDisabled();
+
+    // Clicking Undo takes the edit back and makes Redo usable; Redo puts it back.
+    await undoButton.click();
+    await expect(noseAngleLabel).toHaveText(before ?? "");
+    await expect(redoButton).toBeEnabled();
+    await expect(undoButton).toBeDisabled();
+
+    const afterUndo = await noseAngleLabel.textContent();
+    await redoButton.click();
+    await expect(noseAngleLabel).not.toHaveText(afterUndo ?? "");
+    await expect(undoButton).toBeEnabled();
+    await expect(redoButton).toBeDisabled();
+
+    // Walking to every other design screen keeps the pair in the same corner, still usable.
+    const otherScreens: Array<[string, string]> = [
+      ["ROCKER", "/design/rocker"],
+      ["RAILS", "/design/rails"],
+      ["VOLUME", "/design/volume"],
+      ["FINS", "/design/fins"],
+      ["SUMMARY", "/design/summary"],
+    ];
+    for (const [name, path] of otherScreens) {
+      await page
+        .getByRole("link", { name, exact: true })
+        .filter({ visible: true })
+        .first()
+        .click();
+      await expect(page).toHaveURL(new RegExp(`${path}$`));
+      await expect(bar).toBeVisible();
+      await expectPairAtCorner(page, bar);
+      await expect(undoButton).toBeEnabled();
+    }
+
+    // The home screen never sees the pair, even after walking back to it.
+    await page.getByRole("link", { name: "Home" }).click();
+    await expect(page).toHaveURL("/");
+    await expect(bar).toHaveCount(0);
   });
 });

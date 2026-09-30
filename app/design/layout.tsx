@@ -18,9 +18,10 @@ import { RailLegendProvider } from "@/components/rails/rail-legend-provider";
  * sign-in offer is up would mean a shaper who never dismisses that offer never sees the tip at
  * all), mounting `PhoneTabBar` (D-06/D-07) as the LAST child, below `props.children`, so it
  * appears on the same six design routes and nowhere else, mounting `PhoneUndoBar` (quick task
- * 260913-k5k) immediately BEFORE `PhoneTabBar` — it is fixed-positioned and therefore sits OUTSIDE
- * the flex sizing chain the rest of this comment is about, so its place in this JSX tree is about
- * mount-once-per-route bookkeeping, not layout order — and wrapping everything in
+ * 260913-k5k; since quick 260930-lo8 it paints at every width once there is something to undo, not
+ * only below the phone breakpoint) immediately BEFORE `PhoneTabBar` — it is fixed-positioned and
+ * therefore sits OUTSIDE the flex sizing chain the rest of this comment is about, so its place in
+ * this JSX tree is about mount-once-per-route bookkeeping, not layout order — and wrapping everything in
  * `RailLegendProvider` (quick task 260910-0b1, D-01/D-02) so the RAILS tab's nine legend ticks and
  * the Summary's own mirrored ticks read and write one shared, session-only set — this is the
  * narrowest mount that covers both screens, and it is what lets that shared set survive a
@@ -28,8 +29,8 @@ import { RailLegendProvider } from "@/components/rails/rail-legend-provider";
  * its context element — so it cannot disturb the flex sizing chain the rest of this comment is
  * about. The banner and the tip are both `flex-none`; each editor already declares
  * `flex-1`/`min-h-0` on its own root, so adding any bar here does not disturb that sizing chain —
- * `PhoneTabBar` and `PhoneUndoBar` both paint or not purely from their own `max-shell:` CSS
- * variant, with no layout impact on a desktop width.
+ * `PhoneTabBar` paints or not purely from its own `max-shell:` CSS variant, while `PhoneUndoBar` is
+ * fixed to the window at every width, so neither changes the layout on a computer.
  */
 export default function DesignLayout(props: LayoutProps<"/design">) {
   return (
