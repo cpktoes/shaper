@@ -21,8 +21,6 @@ import { SettingsMenu } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
 import { SaveButton } from "@/components/design/save-button";
 import { PhoneTopBar } from "@/components/design/phone-top-bar";
-import { CONTACT_ROUTE } from "@/lib/contact/message";
-import { PRIVACY_ROUTE } from "@/lib/privacy/copy";
 
 /** Exported so `components/design/phone-tab-bar.tsx` reads the same six words and order rather
  * than re-declaring them — the labels can never drift between the desktop nav and the phone tab
@@ -36,31 +34,21 @@ export const NAV_LINKS = [
   { href: "/design/summary", label: "SUMMARY" },
 ] as const;
 
+/** Below the shell breakpoint, every page the app draws uses the phone's top bar — there is no
+ * fixed list of addresses this applies to, because the not-found page can sit at any address
+ * (P-2, quick 260930-fjm). Each page mounts its own bottom tab bar as its own last child instead:
+ * app/page.tsx, app/design/layout.tsx, the Contact and Privacy pages, app/not-found.tsx and
+ * app/error.tsx. Before this change a mistyped address gave a phone the desktop link row squeezed
+ * into its width, with no phone top bar at all (measured 2026-09-30, quick 260930-fjm). */
+const DESKTOP_NAV_CLASS =
+  "flex flex-none items-center justify-between gap-10 border-b border-surf-line-faint bg-surf-ground px-6 py-6 lg:px-12 max-shell:hidden";
+
 export function SiteNav() {
   const pathname = usePathname();
-  // Below the shell breakpoint the desktop link row is replaced by the compact top bar and the
-  // bottom tab bar on the design routes, the home screen, the Contact page (quick 260929-u1t, P-2)
-  // AND (quick 260930-03d) the Privacy page — without that last one, a phone on /privacy would get
-  // the desktop link row squeezed into 390 dots, same as /contact would have without its own entry.
-  // The bottom bar itself is mounted per route (app/design/layout.tsx for the design screens,
-  // app/page.tsx for the home screen, app/contact/page.tsx for the Contact page, app/privacy/page.tsx
-  // for the Privacy page) because it must be the last child of the root layout's own flex column —
-  // see any of the four files' own doc comment for why.
-  const onPhoneShellRoute =
-    pathname === "/" ||
-    pathname === CONTACT_ROUTE ||
-    pathname === PRIVACY_ROUTE ||
-    (pathname?.startsWith("/design/") ?? false);
 
   return (
     <>
-      <nav
-        data-print-hide
-        className={
-          "flex flex-none items-center justify-between gap-10 border-b border-surf-line-faint bg-surf-ground px-6 py-6 lg:px-12" +
-          (onPhoneShellRoute ? " max-shell:hidden" : "")
-        }
-      >
+      <nav data-print-hide className={DESKTOP_NAV_CLASS}>
         <Link
           href="/"
           className="text-sm font-extrabold tracking-architectural text-surf-ink transition-colors hover:text-surf-accent-ink"
@@ -109,11 +97,12 @@ export function SiteNav() {
           <NavAuthControl />
         </div>
       </nav>
-      {/* The phone's compact top bar (D-08) — a sibling of the desktop row above, shown only
-          below the shell breakpoint and only on the design routes it replaces navigation for.
-          Both are always in the server-rendered tree; the CSS width variant on each decides
-          which paints, so the first frame is right on every device with no JavaScript check. */}
-      {onPhoneShellRoute && <PhoneTopBar />}
+      {/* The phone's compact top bar (D-08) — a sibling of the desktop row above, shown on every
+          address below the shell breakpoint (P-2), since the not-found page can render at any
+          of them. Both are always in the server-rendered tree; the CSS width variant on each
+          decides which paints, so the first frame is right on every device with no JavaScript
+          check. */}
+      <PhoneTopBar />
     </>
   );
 }
