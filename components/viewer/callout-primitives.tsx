@@ -508,7 +508,11 @@ export function CalloutChip({ x, y, name, value, nameColor = "var(--outline-call
   const centerX = horizontal ? x : x - sizes.chipW / 2;
   const centerY = horizontal ? y + sizes.chipH / 2 : y;
   return (
-    <g>
+    // Quick 260930-fjm, Task 4: no stable hook for "a named data card" existed before this —
+    // `scripts/capture-link-preview.ts` unions every `data-callout-chip`'s bounding box (with
+    // `data-board-silhouette`, `data-drag-target` and `data-output-rail`) to find the link-preview
+    // picture's crop box, so the board and its cards are kept and the site nav and toolbar aren't.
+    <g data-callout-chip={name}>
       {leaderToX !== undefined && (
         <line x1={x} y1={y} x2={leaderToX} y2={y} stroke="var(--outline-station-line)" strokeWidth={1} />
       )}
@@ -569,7 +573,10 @@ export function OutputRail({ edgeX, y, value, station, valueX = OUTLINE_OUTPUT_V
   const horizontal = useViewerOrientation() === "horizontal";
   const reachX = valueX - CALLOUT_VALUE_GAP;
   return (
-    <g>
+    // Quick 260930-fjm, Task 4: no stable hook for "a station read-out" existed before this — see
+    // the `data-callout-chip` note on `CalloutChip` above; this is the same crop-box union's other
+    // half, the three Nose/Center/Tail labels.
+    <g data-output-rail={station}>
       <line x1={edgeX} y1={y} x2={reachX} y2={y} stroke="var(--outline-station-line)" strokeWidth={1} />
       <DimensionTick x={edgeX} y={y} color="var(--outline-dim-ink)" />
       <UprightAt x={valueX} y={y}>

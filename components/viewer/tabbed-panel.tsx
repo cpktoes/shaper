@@ -151,6 +151,11 @@ export function TabbedPanel<T extends string>({
             matching, pixel for pixel, the single bordered box the plain `<div>` this replaced
             used to draw. */}
         <div
+          // Quick 260930-fjm, Task 4 (the founder's revision): no stable hook named "the viewer
+          // panel" existed before this — `scripts/capture-link-preview.ts` reads this element's
+          // computed border colour and corner radius so the link-preview picture's frame always
+          // matches the app's own chrome instead of a colour sampled once and left to drift.
+          data-viewer-panel
           className={cn(
             "flex min-h-0 flex-1 flex-col rounded-lg border bg-surf-panel",
             bare ? "border-surf-line p-1" : "border-surf-line-faint p-3",

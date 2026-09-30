@@ -51,6 +51,57 @@ export const PREVIEW_CAPTURE = {
   hideDevIndicatorCss: "nextjs-portal{display:none!important}",
 } as const;
 
+/**
+ * Quick 260930-fjm, Task 4 (the founder's revision, 2026-09-30): "the preview picture doesn't need
+ * the nav bar and button icons. Just a tightly cropped shot of the board." These are the
+ * data-attribute hooks the capture script unions to find the crop box — the board's own outline,
+ * its drag handles, the three station read-outs and the four named data chips — and nothing of
+ * the site nav or the viewer's own toolbar buttons. `data-board-silhouette` and `data-drag-target`
+ * already existed for other reasons; `data-output-rail` and `data-callout-chip` were added for
+ * this, because no stable hook for "a station label" or "a data card" existed before.
+ */
+export const PREVIEW_CROP_SELECTORS = [
+  '[data-board-silhouette="outline"]',
+  "[data-drag-target]",
+  "[data-output-rail]",
+  "[data-callout-chip]",
+] as const;
+
+/** Space kept around the measured union before the crop (Task 4), so the tightest label or
+ * control point never touches the picture's own frame. */
+export const PREVIEW_CROP_MARGIN_PX = 16;
+
+/**
+ * Hides the viewer's own floating toolbar row (Rotate, Construction Lines, Wide view, Export
+ * Template) before the clipped screenshot (Task 4). That row is pinned absolutely over the
+ * drawing's own top-right corner (`ViewerToolbar` in `components/viewer/toolbar-button.tsx`), so
+ * it can fall inside the crop rectangle even though it is never one of `PREVIEW_CROP_SELECTORS`'
+ * own elements. `[data-viewer-toolbar]` already existed as a browser-test hook for that same row,
+ * reused here rather than adding a second one.
+ */
+export const PREVIEW_HIDE_TOOLBAR_CSS = "[data-viewer-toolbar]{display:none!important}";
+
+/** Selects the viewer panel whose own computed border colour and corner radius the picture's
+ * frame copies (Task 4), so the frame always matches the app's real chrome instead of a colour
+ * sampled once and left to drift. Added for this — nothing named "the viewer panel" existed
+ * before. */
+export const PREVIEW_PANEL_SELECTOR = "[data-viewer-panel]";
+
+/**
+ * The finished picture's frame (Task 4): how far its border sits in from the 1200x630 edge, how
+ * thick the border is, and the least white space kept between the border and the cropped board
+ * once it's scaled to fit. Matches the founder-approved reference (`option-A2-cropped.png`).
+ */
+export const PREVIEW_FRAME = {
+  /** Distance from the picture's own edge to the frame's border. */
+  insetPx: 14,
+  /** The frame's own border thickness. */
+  borderWidthPx: 3,
+  /** The least white space kept between the frame's border and the board on every side — `object-
+   * fit: contain` never adds less, though a board with a different aspect ratio may get more. */
+  minPaddingPx: 34,
+} as const;
+
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 
 /**

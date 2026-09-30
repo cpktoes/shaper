@@ -15,8 +15,17 @@
  * picture can ever appear in the image (T-fjm-07).
  *
  * The base address comes from `PREVIEW_BASE_URL` (default `http://localhost:3111`). It needs no
- * new dependency: the downscale runs by screenshotting a second Chromium page, not by using
- * `sharp` (present only as Next's own optional dependency).
+ * new dependency: the crop and the downscale both run by screenshotting a second Chromium page,
+ * not by using `sharp` (present only as Next's own optional dependency).
+ *
+ * Quick 260930-fjm, Task 4 (the founder's revision, 2026-09-30): "the preview picture doesn't
+ * need the nav bar and button icons. Just a tightly cropped shot of the board." After the same
+ * clicks as before, the script now measures the union of every data-carrying mark on the drawing
+ * (`PREVIEW_CROP_SELECTORS`) — the board outline, its drag handles, the three station read-outs
+ * and the four named data chips — and screenshots only that, clipped, with a small margin
+ * (`PREVIEW_CROP_MARGIN_PX`). It is then framed to match the app's own viewer panel (its real,
+ * computed border colour and corner radius, read through `PREVIEW_PANEL_SELECTOR` rather than a
+ * colour guessed once) and centred on a white 1200x630 page, per `PREVIEW_FRAME`.
  */
 
 import { writeFileSync } from "node:fs";
@@ -28,9 +37,14 @@ import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import {
   PREVIEW_ALT_FILE,
   PREVIEW_CAPTURE,
+  PREVIEW_CROP_MARGIN_PX,
+  PREVIEW_CROP_SELECTORS,
+  PREVIEW_FRAME,
+  PREVIEW_HIDE_TOOLBAR_CSS,
   PREVIEW_IMAGE_ALT,
   PREVIEW_IMAGE_FILE,
   PREVIEW_IMAGE_SIZE,
+  PREVIEW_PANEL_SELECTOR,
   pngDimensions,
   previewImageProblems,
 } from "../lib/link-preview/preview-image";
@@ -92,43 +106,106 @@ async function main(): Promise<void> {
     await page.waitForTimeout(PREVIEW_CAPTURE.settleMs.afterSidebar);
 
     await page.addStyleTag({ content: PREVIEW_CAPTURE.hideDevIndicatorCss });
+    // Task 4: the viewer's own floating toolbar (Rotate, Construction Lines, Wide view, Export
+    // Template) is pinned absolutely over the drawing's own top-right corner, so it can fall
+    // inside the crop rectangle below even though it is never one of the elements that rectangle
+    // is measured from. Hiding it outright is simpler and more robust than trying to carve its
+    // corner out of the crop math.
+    await page.addStyleTag({ content: PREVIEW_HIDE_TOOLBAR_CSS });
     await page.waitForTimeout(PREVIEW_CAPTURE.settleMs.afterStyle);
 
-    const big = await page.screenshot({ type: "png" });
-    const bigDimensions = pngDimensions(new Uint8Array(big));
-    const expectedBigWidth = PREVIEW_CAPTURE.viewport.width * PREVIEW_CAPTURE.deviceScaleFactor;
-    const expectedBigHeight = PREVIEW_CAPTURE.viewport.height * PREVIEW_CAPTURE.deviceScaleFactor;
-    if (!bigDimensions || bigDimensions.width !== expectedBigWidth || bigDimensions.height !== expectedBigHeight) {
+    // Measure the union of every data-carrying mark on the drawing — the board outline, its drag
+    // handles, the three station read-outs and the four named data chips — in CSS px, so the crop
+    // below keeps exactly those and nothing of the site nav (which sits well above this union).
+    const crop = await page.evaluate(
+      ({ selectors, margin }: { selectors: readonly string[]; margin: number }) => {
+        const rects: DOMRect[] = [];
+        for (const selector of selectors) {
+          document.querySelectorAll(selector).forEach((el) => rects.push(el.getBoundingClientRect()));
+        }
+        if (rects.length === 0) {
+          throw new Error(`No elements matched any of: ${selectors.join(", ")}`);
+        }
+        const left = Math.min(...rects.map((r) => r.left));
+        const top = Math.min(...rects.map((r) => r.top));
+        const right = Math.max(...rects.map((r) => r.right));
+        const bottom = Math.max(...rects.map((r) => r.bottom));
+        return {
+          x: Math.max(0, left - margin),
+          y: Math.max(0, top - margin),
+          width: right - left + margin * 2,
+          height: bottom - top + margin * 2,
+        };
+      },
+      { selectors: PREVIEW_CROP_SELECTORS, margin: PREVIEW_CROP_MARGIN_PX },
+    );
+
+    // The viewer panel's own computed border colour and radius (Task 4), so the picture's frame
+    // always matches the app's real chrome rather than a colour sampled once and left to drift.
+    const panelFrame = await page.evaluate((selector: string) => {
+      const el = document.querySelector(selector);
+      if (!el) throw new Error(`No element matched ${selector}`);
+      const style = getComputedStyle(el);
+      return {
+        borderColor: style.borderTopColor,
+        borderRadiusPx: parseFloat(style.borderTopLeftRadius) || 0,
+      };
+    }, PREVIEW_PANEL_SELECTOR);
+
+    const cropped = await page.screenshot({ type: "png", clip: crop });
+    const croppedDimensions = pngDimensions(new Uint8Array(cropped));
+    const expectedCroppedWidth = Math.round(crop.width * PREVIEW_CAPTURE.deviceScaleFactor);
+    const expectedCroppedHeight = Math.round(crop.height * PREVIEW_CAPTURE.deviceScaleFactor);
+    if (
+      !croppedDimensions ||
+      Math.abs(croppedDimensions.width - expectedCroppedWidth) > 2 ||
+      Math.abs(croppedDimensions.height - expectedCroppedHeight) > 2
+    ) {
       throw new Error(
-        `The full-viewport capture was ${bigDimensions ? `${bigDimensions.width} by ${bigDimensions.height}` : "not a PNG"}, ` +
-          `not the expected ${expectedBigWidth} by ${expectedBigHeight}.`,
+        `The cropped capture was ${croppedDimensions ? `${croppedDimensions.width} by ${croppedDimensions.height}` : "not a PNG"}, ` +
+          `not close to the expected ${expectedCroppedWidth} by ${expectedCroppedHeight} (crop ${JSON.stringify(crop)}).`,
       );
     }
 
     await context.close();
 
-    // Downscale in Chromium, with no new dependency (P-8): the 2x screenshot is loaded as a data
-    // URL into an <img> sized exactly 1200x630 on a 1200x630, scale-1 page, which is then
-    // screenshotted.
-    const downscaleContext = await browser.newContext({
+    // Compose the final 1200x630 picture in a second Chromium page, with no new dependency
+    // (P-8, unchanged by Task 4): a white page holding the cropped board, framed to match the
+    // viewer panel, centred with at least PREVIEW_FRAME.minPaddingPx of white on every side.
+    const composeContext = await browser.newContext({
       viewport: PREVIEW_IMAGE_SIZE,
       deviceScaleFactor: 1,
     });
-    const downscalePage = await downscaleContext.newPage();
-    const dataUrl = `data:image/png;base64,${big.toString("base64")}`;
-    await downscalePage.setContent(
+    const composePage = await composeContext.newPage();
+    const dataUrl = `data:image/png;base64,${cropped.toString("base64")}`;
+    await composePage.setContent(
       `<!doctype html><html><head><style>
-        html,body{margin:0;padding:0;overflow:hidden;background:#fff;}
-        img{display:block;width:${PREVIEW_IMAGE_SIZE.width}px;height:${PREVIEW_IMAGE_SIZE.height}px;}
-      </style></head><body><img src="${dataUrl}" /></body></html>`,
+        html,body{margin:0;padding:0;overflow:hidden;background:#fff;width:${PREVIEW_IMAGE_SIZE.width}px;height:${PREVIEW_IMAGE_SIZE.height}px;}
+        .frame{
+          position:absolute;
+          left:${PREVIEW_FRAME.insetPx}px;
+          top:${PREVIEW_FRAME.insetPx}px;
+          right:${PREVIEW_FRAME.insetPx}px;
+          bottom:${PREVIEW_FRAME.insetPx}px;
+          box-sizing:border-box;
+          border:${PREVIEW_FRAME.borderWidthPx}px solid ${panelFrame.borderColor};
+          border-radius:${panelFrame.borderRadiusPx}px;
+          background:#fff;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          padding:${PREVIEW_FRAME.minPaddingPx}px;
+        }
+        .frame img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;}
+      </style></head><body><div class="frame"><img src="${dataUrl}" /></div></body></html>`,
     );
-    await downscalePage.locator("img").evaluate((img: HTMLImageElement) => img.decode());
-    const small = await downscalePage.screenshot({ type: "png" });
-    await downscaleContext.close();
+    await composePage.locator("img").evaluate((img: HTMLImageElement) => img.decode());
+    const small = await composePage.screenshot({ type: "png" });
+    await composeContext.close();
 
     const problems = previewImageProblems(new Uint8Array(small));
     if (problems.length > 0) {
-      throw new Error(`The downscaled picture has problems: ${problems.join("; ")}`);
+      throw new Error(`The framed picture has problems: ${problems.join("; ")}`);
     }
 
     writeFileSync(join(REPO_ROOT, PREVIEW_IMAGE_FILE), small);
@@ -136,7 +213,8 @@ async function main(): Promise<void> {
 
     console.log(
       `Wrote ${PREVIEW_IMAGE_FILE} (${PREVIEW_IMAGE_SIZE.width} x ${PREVIEW_IMAGE_SIZE.height}, ` +
-        `${small.byteLength.toLocaleString("en-US")} bytes) and ${PREVIEW_ALT_FILE}`,
+        `${small.byteLength.toLocaleString("en-US")} bytes, frame ${panelFrame.borderColor} at ${panelFrame.borderRadiusPx}px radius) ` +
+        `and ${PREVIEW_ALT_FILE}`,
     );
   } finally {
     await browser.close();

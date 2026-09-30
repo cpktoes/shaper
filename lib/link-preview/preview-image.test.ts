@@ -6,11 +6,16 @@ import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import {
   PREVIEW_ALT_FILE,
   PREVIEW_CAPTURE,
+  PREVIEW_CROP_MARGIN_PX,
+  PREVIEW_CROP_SELECTORS,
+  PREVIEW_FRAME,
+  PREVIEW_HIDE_TOOLBAR_CSS,
   PREVIEW_IMAGE_ALT,
   PREVIEW_IMAGE_FILE,
   PREVIEW_IMAGE_MAX_BYTES,
   PREVIEW_IMAGE_ROUTE,
   PREVIEW_IMAGE_SIZE,
+  PREVIEW_PANEL_SELECTOR,
   pngDimensions,
   previewImageProblems,
 } from "./preview-image";
@@ -23,6 +28,9 @@ import {
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const OUTLINE_EDITOR_PATH = join(REPO_ROOT, "components", "outline", "outline-editor.tsx");
+const OUTLINE_VIEWER_PATH = join(REPO_ROOT, "components", "outline", "outline-viewer.tsx");
+const CALLOUT_PRIMITIVES_PATH = join(REPO_ROOT, "components", "viewer", "callout-primitives.tsx");
+const TABBED_PANEL_PATH = join(REPO_ROOT, "components", "viewer", "tabbed-panel.tsx");
 const IMAGE_PATH = join(REPO_ROOT, PREVIEW_IMAGE_FILE);
 const ALT_PATH = join(REPO_ROOT, PREVIEW_ALT_FILE);
 
@@ -127,5 +135,62 @@ describe("the committed preview image and alt file", () => {
 
   it("PREVIEW_IMAGE_ROUTE is the served address", () => {
     expect(PREVIEW_IMAGE_ROUTE).toBe("/opengraph-image.png");
+  });
+});
+
+/**
+ * Quick 260930-fjm, Task 4 (the founder's revision): the preview picture is now a tight crop of
+ * the board itself, framed to match the app's chrome, with no nav bar and no toolbar icon. These
+ * pin the crop/frame recipe as data (P-13's pattern) and prove every selector it relies on is
+ * really in the source it claims to read, the same idiom `outline editor button names` above use.
+ */
+describe("PREVIEW_CROP_SELECTORS, PREVIEW_PANEL_SELECTOR and PREVIEW_CROP_MARGIN_PX (Task 4)", () => {
+  it("each crop selector's data attribute appears verbatim in the component that should draw it", () => {
+    const outlineViewerSource = readFileSync(OUTLINE_VIEWER_PATH, "utf8");
+    const calloutPrimitivesSource = readFileSync(CALLOUT_PRIMITIVES_PATH, "utf8");
+    expect(outlineViewerSource).toContain('data-board-silhouette="outline"');
+    expect(outlineViewerSource).toContain("data-drag-target");
+    expect(calloutPrimitivesSource).toContain("data-output-rail");
+    expect(calloutPrimitivesSource).toContain("data-callout-chip");
+  });
+
+  it("names exactly the board, its handles, the station read-outs and the named data chips", () => {
+    expect(PREVIEW_CROP_SELECTORS).toEqual([
+      '[data-board-silhouette="outline"]',
+      "[data-drag-target]",
+      "[data-output-rail]",
+      "[data-callout-chip]",
+    ]);
+  });
+
+  it("PREVIEW_PANEL_SELECTOR's data attribute appears verbatim in the viewer panel it should mark", () => {
+    const tabbedPanelSource = readFileSync(TABBED_PANEL_PATH, "utf8");
+    expect(tabbedPanelSource).toContain("data-viewer-panel");
+    expect(PREVIEW_PANEL_SELECTOR).toBe("[data-viewer-panel]");
+  });
+
+  it("the crop margin is a small positive number of CSS pixels", () => {
+    expect(PREVIEW_CROP_MARGIN_PX).toBe(16);
+  });
+
+  it("PREVIEW_HIDE_TOOLBAR_CSS hides the same row the browser tests already find by data-viewer-toolbar", () => {
+    const toolbarButtonSource = readFileSync(
+      join(REPO_ROOT, "components", "viewer", "toolbar-button.tsx"),
+      "utf8",
+    );
+    expect(toolbarButtonSource).toContain("data-viewer-toolbar");
+    expect(PREVIEW_HIDE_TOOLBAR_CSS).toBe("[data-viewer-toolbar]{display:none!important}");
+  });
+});
+
+describe("PREVIEW_FRAME (Task 4)", () => {
+  it("pins the frame's inset, border width and minimum padding", () => {
+    expect(PREVIEW_FRAME).toEqual({ insetPx: 14, borderWidthPx: 3, minPaddingPx: 34 });
+  });
+
+  it("the border sits inside the inset, and every number is positive", () => {
+    expect(PREVIEW_FRAME.borderWidthPx).toBeGreaterThan(0);
+    expect(PREVIEW_FRAME.borderWidthPx).toBeLessThan(PREVIEW_FRAME.insetPx);
+    expect(PREVIEW_FRAME.minPaddingPx).toBeGreaterThan(0);
   });
 });
