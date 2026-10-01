@@ -106,7 +106,8 @@ your own words, because that sentence is what becomes the fix.
    least 15 characters, and Clerk refuses any password known from a data breach. On a phone in a
    noisy room that will trip some people. Keep it (the safer setting) and steer people to Continue
    with Google, or lower the minimum in Clerk's dashboard (the password settings under User &
-   authentication) before the freeze. Your call.
+   authentication) before the freeze. Your call. **Decided 2026-09-30: the founder lowered the minimum
+   to 8 characters in Clerk** (read back from Clerk's live settings: 8, breached passwords still refused).
 3. **The name on Google's screen.** Google shows an app's name and logo on its sign-in screen only
    once the brand is verified; until then it shows only the web address. Test 7 shows which you
    have. If it's only the address and you'd like "Shaper Assistant" there, the Branding page in the

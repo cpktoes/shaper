@@ -188,7 +188,8 @@ Plans:
 - [x] 8. The order form carries the tip thicknesses and the planer passes (the founder's redirect: the tips stay on page 1's ROCKER strip; page 2 gets a PLANING table — Deck / Bottom, Foam Off and Passes — to the LEFT of the rail markings; quick 260928-r9h + 260928-tst + fast task 128, live 2026-09-29)
 - [x] 8b. Page 2 on a phone print: the rail markings stop running into Fin Placement (founder's addition 2026-09-29; page-2 type on a phone sheet fits its page, every rail mark and fin number in its own box from 560 to 900 dots, the fin note's last line per system — quick 260928-vpi, live 2026-09-29)
 - [ ] 9. Blank catalogue links (if time allows before the freeze) — skipped for now at the founder's word, 2026-09-29
-- [ ] 9b. Optional: a ghost of the last edit on TEMPLATE (founder's addition 2026-09-27; only if time allows before the freeze)
+- [ ] 9b. Optional: a ghost of the last edit on TEMPLATE (founder's addition 2026-09-27; picked up 2026-09-30 with the founder's three choices — one edit ago from the undo history, stays with a hide button in the viewer toolbar, TEMPLATE only)
+- [ ] 9c. Undo and redo buttons on every design screen on a computer — the phone's floating bottom-right pair extended to the desktop shell, appearing once there is something to take back (founder's addition 2026-09-30)
 
 **Ready to listen (Sat–Mon, Oct 3–5)**
 
