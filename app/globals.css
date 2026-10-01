@@ -848,6 +848,16 @@
        `app/design/summary/order-form.css`. Anyone who would rather spend no colour at all ticks
        black-and-white in the print dialog. */
   }
+
+  /* TEMPLATE's last-edit ghost (O-4, quick 260930-lia) is a screen aid, exactly like the board's
+     own fill a few lines up — never a line on paper someone might cut foam to. The printed
+     Template, Overview Sheet, Paper Saver and order form never draw it anyway, because none of
+     them are ever handed `ghostGeometry` in the first place; this rule is the belt-and-suspenders
+     case where TEMPLATE itself is printed straight from the browser (Cmd/Ctrl+P), the one screen
+     that DOES receive it. */
+  [data-outline-ghost] {
+    display: none;
+  }
 }
 
 /*

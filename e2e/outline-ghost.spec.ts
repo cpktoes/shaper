@@ -44,6 +44,53 @@ function thumbInputFor(label: Locator): Locator {
   return rowFor(label).locator('[data-slot="slider-thumb"] input[type="range"]');
 }
 
+/** The construction overlay (and its five drag targets) is already on for a touch screen (D-02),
+ * so only desktop needs its own toolbar button pressed before a widepoint drag is possible. */
+async function ensureConstructionOverlay(page: Page, projectName: string) {
+  if (projectName === "desktop") {
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+  }
+}
+
+/**
+ * One outline edit, driven the way each project actually shapes a board (Task 3's own cross-
+ * project cases): a real mouse drag on the widepoint (desktop), a real CDP touch drag on the
+ * widepoint (android, copied from `e2e/touch-drag.spec.ts`), or one ArrowRight nudge of the Nose
+ * Angle slider (iphone — Playwright's WebKit has no trusted touch drag). Call
+ * `ensureConstructionOverlay` first on desktop/android; the slider needs no overlay at all.
+ */
+async function performEdit(page: Page, projectName: string) {
+  if (projectName === "iphone") {
+    const noseAngleLabel = page.getByText(/^Nose Angle — /);
+    await expect(noseAngleLabel).toBeVisible();
+    const before = await noseAngleLabel.textContent();
+    await thumbInputFor(noseAngleLabel).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(noseAngleLabel).not.toHaveText(before ?? "");
+    return;
+  }
+
+  const widepoint = page.locator('[data-drag-target="widepoint"]');
+  await expect(widepoint).toBeVisible();
+  const box = await widepoint.boundingBox();
+  if (!box) throw new Error("widepoint drag target has no bounding box");
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+
+  if (projectName === "android") {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: cx, y: cy }] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: cx, y: cy - 40 }] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    return;
+  }
+
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx, cy - 40, { steps: 4 });
+  await page.mouse.up();
+}
+
 test.describe("TEMPLATE's last-edit ghost", () => {
   test.beforeEach(async ({ page }) => {
     await dismissSignInBanner(page);
@@ -351,5 +398,238 @@ test.describe("the ghost button", () => {
 
     await showButton.tap();
     await expect(page.getByRole("button", { name: "Hide the ghost of the last edit" })).toBeVisible();
+  });
+});
+
+test.describe("the ghost rule, on every project — O-1, off paper, off every other screen", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissSignInBanner(page);
+  });
+
+  test("(a) a freshly loaded TEMPLATE has no ghost, no ink-line copy, and no ghost button", async ({ page }) => {
+    await page.goto("/design/outline");
+    await expect(page.locator("[data-board-silhouette='outline']")).toBeVisible();
+    await expect(page.locator("[data-outline-ghost]")).toHaveCount(0);
+    await expect(page.locator("[data-board-ink-line]")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /ghost of the last edit/ })).toHaveCount(0);
+  });
+
+  test("(b) after one edit the ghost matches the pre-edit shape and the live shape has moved on", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/design/outline");
+    await ensureConstructionOverlay(page, testInfo.project.name);
+    const silhouette = page.locator("[data-board-silhouette='outline']");
+    await expect(silhouette).toBeVisible();
+    const dBefore = await silhouette.getAttribute("d");
+
+    await performEdit(page, testInfo.project.name);
+
+    const ghost = page.locator("[data-outline-ghost]");
+    await expect(ghost).toHaveCount(1);
+    await expect(ghost).toHaveAttribute("d", dBefore ?? "");
+    const dAfter = await silhouette.getAttribute("d");
+    expect(dAfter).not.toBe(dBefore);
+  });
+
+  test("(d) printing hides the ghost while the board stays visible; back to screen it returns", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/design/outline");
+    await ensureConstructionOverlay(page, testInfo.project.name);
+    await performEdit(page, testInfo.project.name);
+
+    const ghost = page.locator("[data-outline-ghost]");
+    await expect(ghost).toBeVisible();
+    const silhouette = page.locator("[data-board-silhouette='outline']");
+
+    await page.emulateMedia({ media: "print" });
+    await expect(ghost).toBeHidden();
+    await expect(silhouette).toBeVisible();
+
+    await page.emulateMedia({ media: "screen" });
+    await expect(ghost).toBeVisible();
+  });
+
+  test("(e) SUMMARY, the home screen's cards and ROCKER never show a ghost; TEMPLATE keeps its own", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/design/outline");
+    await ensureConstructionOverlay(page, testInfo.project.name);
+    await performEdit(page, testInfo.project.name);
+
+    const ghost = page.locator("[data-outline-ghost]");
+    await expect(ghost).toBeVisible();
+    const dOnTemplate = await ghost.getAttribute("d");
+
+    // Never `page.goto` — that reloads and wipes the in-memory board, which would make this proof
+    // empty. Walk by the app's own visible links instead, the way e2e/summary-blank.spec.ts does.
+    // `dispatchEvent("click")`, not `.click()` (the same substitution e2e/phone-trip.spec.ts makes
+    // and explains at length): under `next dev` only, the `<nextjs-portal>` dev-mode indicator
+    // sits bottom-left of the viewport and can physically intercept a real pointer click at that
+    // screen position on a phone-width layout — a dev-server-only artifact, never present in the
+    // production build. `dispatchEvent` fires the DOM `click` event straight on the `<a>` itself,
+    // which is what Next's own `<Link>` listens for, so this still proves the link's own handler
+    // navigates, just without racing a dev-only overlay.
+    await page
+      .getByRole("link", { name: "SUMMARY", exact: true })
+      .filter({ visible: true })
+      .first()
+      .dispatchEvent("click");
+    await page.waitForURL(/\/design\/summary$/);
+    await expect(page.locator("[data-board-silhouette='outline']").first()).toBeVisible();
+    await expect(page.locator("[data-outline-ghost]")).toHaveCount(0);
+
+    // The board kept it: the ghost is back, with the same shape, proof its absence on SUMMARY was
+    // real and not merely "the page hasn't rendered a ghost yet."
+    await page
+      .getByRole("link", { name: "TEMPLATE", exact: true })
+      .filter({ visible: true })
+      .first()
+      .dispatchEvent("click");
+    await page.waitForURL(/\/design\/outline$/);
+    await expect(page.locator("[data-outline-ghost]")).toHaveAttribute("d", dOnTemplate ?? "");
+
+    await page
+      .getByRole("link", { name: "ROCKER", exact: true })
+      .filter({ visible: true })
+      .first()
+      .dispatchEvent("click");
+    await page.waitForURL(/\/design\/rocker$/);
+    await expect(page.locator("[data-outline-ghost]")).toHaveCount(0);
+
+    await page.locator('a[href="/"]').filter({ visible: true }).first().dispatchEvent("click");
+    await expect(page.locator("[data-board-silhouette='outline']").first()).toBeVisible();
+    await expect(page.locator("[data-outline-ghost]")).toHaveCount(0);
+  });
+});
+
+test.describe("the ghost rule — one edit ago, undo/redo and rotation (desktop)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "keyboard-shortcut and rotation assertions, desktop project only");
+    await dismissSignInBanner(page);
+  });
+
+  test("(f) one edit ago: a second nudge moves the ghost on to the shape after the first nudge, not the original", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+    const silhouette = page.locator("[data-board-silhouette='outline']");
+    await expect(silhouette).toBeVisible();
+    const dOriginal = await silhouette.getAttribute("d");
+
+    const noseAngleLabel = page.getByText(/^Nose Angle — /);
+    await expect(noseAngleLabel).toBeVisible();
+    await thumbInputFor(noseAngleLabel).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(silhouette).not.toHaveAttribute("d", dOriginal ?? "");
+    const d1 = await silhouette.getAttribute("d");
+
+    // Longer than COALESCE_WINDOW_MS (500ms, lib/design-history.ts) so this nudge records as its
+    // OWN step rather than folding into the first one.
+    await page.waitForTimeout(700);
+    await page.keyboard.press("ArrowRight");
+    await expect(silhouette).not.toHaveAttribute("d", d1 ?? "");
+
+    await expect(page.locator("[data-outline-ghost]")).toHaveAttribute("d", d1 ?? "");
+  });
+
+  test("(g) Undo/Redo step the ghost back and forward with the board; one Undo on a fresh board's only edit leaves no ghost and no button", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+    const silhouette = page.locator("[data-board-silhouette='outline']");
+    await expect(silhouette).toBeVisible();
+    const dOriginal = await silhouette.getAttribute("d");
+
+    const noseAngleLabel = page.getByText(/^Nose Angle — /);
+    await expect(noseAngleLabel).toBeVisible();
+    await thumbInputFor(noseAngleLabel).focus();
+    await page.keyboard.press("ArrowRight");
+    const d1 = await silhouette.getAttribute("d");
+    await page.waitForTimeout(700);
+    await page.keyboard.press("ArrowRight");
+
+    await page.keyboard.press("ControlOrMeta+KeyZ");
+    await expect(silhouette).toHaveAttribute("d", d1 ?? "");
+    await expect(page.locator("[data-outline-ghost]")).toHaveAttribute("d", dOriginal ?? "");
+
+    await page.keyboard.press("Shift+ControlOrMeta+KeyZ");
+    await expect(page.locator("[data-outline-ghost]")).toHaveAttribute("d", d1 ?? "");
+
+    // A fresh board, one drag, one Undo: back to nothing to compare against.
+    await page.reload();
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+    const widepoint = page.locator('[data-drag-target="widepoint"]');
+    await expect(widepoint).toBeVisible();
+    const box = await widepoint.boundingBox();
+    if (!box) throw new Error("widepoint drag target has no bounding box");
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx, cy - 40, { steps: 4 });
+    await page.mouse.up();
+    await expect(page.locator("[data-outline-ghost]")).toHaveCount(1);
+
+    await page.keyboard.press("ControlOrMeta+KeyZ");
+    await expect(page.locator("[data-outline-ghost]")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /ghost of the last edit/ })).toHaveCount(0);
+  });
+
+  test("(h) rotation: the ghost turns with the board, in the same rotated group as the hooked silhouette", async ({
+    page,
+  }) => {
+    await page.goto("/design/outline");
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+    const widepoint = page.locator('[data-drag-target="widepoint"]');
+    await expect(widepoint).toBeVisible();
+    const box = await widepoint.boundingBox();
+    if (!box) throw new Error("widepoint drag target has no bounding box");
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx, cy - 40, { steps: 4 });
+    await page.mouse.up();
+    await expect(page.locator("[data-outline-ghost]")).toBeVisible();
+
+    await page.getByRole("button", { name: "Rotate the board to horizontal" }).click();
+
+    // `local-name()='g'`, not a bare `g` tag test: SVG elements sit in the SVG XML namespace, and
+    // an unprefixed XPath tag-name test never matches a namespaced element in a mixed HTML/SVG
+    // document — `local-name()` compares the tag's own local name regardless of namespace.
+    const ghostGroupTransform = await page
+      .locator("[data-outline-ghost]")
+      .locator("xpath=ancestor::*[local-name()='g'][@transform][1]")
+      .getAttribute("transform");
+    const silhouetteGroupTransform = await page
+      .locator("[data-board-silhouette='outline']")
+      .locator("xpath=ancestor::*[local-name()='g'][@transform][1]")
+      .getAttribute("transform");
+    expect(ghostGroupTransform).toBe("rotate(-90)");
+    expect(ghostGroupTransform).toBe(silhouetteGroupTransform);
+  });
+});
+
+test.describe("the ghost rule — Undo on a phone (D-02's on-screen control)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the on-screen undo control, phone projects only");
+    await dismissSignInBanner(page);
+  });
+
+  test("(g2) tapping the phone undo bar's Undo button after one edit leaves no ghost", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/design/outline");
+    await ensureConstructionOverlay(page, testInfo.project.name);
+    await performEdit(page, testInfo.project.name);
+    await expect(page.locator("[data-outline-ghost]")).toHaveCount(1);
+
+    const bar = page.locator("[data-phone-undo-bar]");
+    await expect(bar).toBeVisible();
+    await bar.getByRole("button", { name: "Undo" }).tap();
+
+    await expect(page.locator("[data-outline-ghost]")).toHaveCount(0);
   });
 });
