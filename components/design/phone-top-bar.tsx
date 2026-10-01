@@ -6,11 +6,12 @@
  * below the shell breakpoint (`hidden max-shell:flex`) — the two are always both in the
  * server-rendered tree, and the width variant alone decides which paints, exactly like
  * `components/design/phone-tab-bar.tsx`. Since quick 260930-r8s (Phase 13 item 9d) it is also
- * shown on a short screen, 500 dots tall or less, AT ANY WIDTH (`[@media(max-height:500px)]:flex`)
- * — so a phone held sideways gets this one thin line instead of the desktop row, which used to
- * wrap SHAPER ASSISTANT onto two lines there. Still 56 dots (`--phone-top-bar-h`, unchanged); the
- * menu it opens carries the six screens at the desktop-shell width, where there is no bottom tab
- * bar to reach them from otherwise.
+ * shown on a short screen, 500 dots tall or less, AT ANY WIDTH — a height-alone media query
+ * written inline on the header's own className below, the same inline form
+ * `design-screen-shell.tsx`, RAILS and FINS already use — so a phone held sideways gets this one
+ * thin line instead of the desktop row, which used to wrap SHAPER ASSISTANT onto two lines there.
+ * Still 56 dots (`--phone-top-bar-h`, unchanged); the menu it opens carries the six screens at the
+ * desktop-shell width, where there is no bottom tab bar to reach them from otherwise.
  *
  * `SaveButton` is reused unchanged — its own four strings (Save, Saving…, Saved, Not saved) are
  * the whole story on a phone too, no phone-specific rewording. Save has always been rendered on
