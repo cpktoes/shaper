@@ -222,7 +222,13 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
         </div>
       }
       canvas={
-        <TabbedPanel bare={wideView} tabs={ROCKER_TABS} active={activeTab} onSelect={setActiveTab}>
+        <TabbedPanel
+          bare={wideView}
+          tabs={ROCKER_TABS}
+          active={activeTab}
+          onSelect={setActiveTab}
+          compactOnPhone={activeTab === "viewer" ? "drawing" : "text"}
+        >
           {activeTab === "viewer" ? (
             // `relative` makes this div the positioning context for the two toolbar buttons
             // below, absolutely positioned over the drawing — the same box treatment as the

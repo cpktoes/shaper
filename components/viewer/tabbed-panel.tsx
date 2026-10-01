@@ -41,6 +41,7 @@ export function TabbedPanel<T extends string>({
   panelClassName = "",
   bare = false,
   growOnShortScreen = false,
+  compactOnPhone,
 }: {
   tabs: readonly PanelTab<T>[];
   active: T;
@@ -82,20 +83,53 @@ export function TabbedPanel<T extends string>({
    * before this prop existed.
    */
   growOnShortScreen?: boolean;
+  /**
+   * Phase 13 item 9e (13-SPEC.md, the founder, 2026-09-30: "phone real estate is expensive, we
+   * need to save all of it"), quick 260930-s23. Opt-in, like `growOnShortScreen` above — the
+   * same idiom, a prop that is undefined by default and, when unset, emits classes byte-identical
+   * to before this prop existed. Only the five drawing screens (TEMPLATE, ROCKER, RAILS, VOLUME,
+   * FINS) pass it; RAILS's View Full Sized dialog also renders through this component, for its
+   * own full-size print, and deliberately does NOT pass it, so its markup and its print stay
+   * byte-identical (P-11).
+   *
+   * Set, it slims the tab strip to 22 dots tall (P-2, `py-0.5` in place of `py-1.5`, the same
+   * 12px capitals) and drops the folder card and inner card's own padding to a 2px rim on a phone,
+   * recovering the frame a phone's drawing used to waste — see `design-screen-shell.tsx`'s own
+   * comment for the sibling rule on the drawing COLUMN around this whole panel. The two values,
+   * `"drawing"` and `"text"`, give the IDENTICAL tab strip and the IDENTICAL outer rim — only the
+   * INNER card's own padding differs between them (`text` keeps an 8px reading margin, `drawing`
+   * has none) — so switching between a screen's VIEWER tab and its DATASHEET/DATA/INSTRUCTIONS/
+   * MODEL INFO/ESTIMATE tab never moves the frame itself, only what's drawn inside it (P-4).
+   */
+  compactOnPhone?: "drawing" | "text";
 }) {
   const interactive = typeof onSelect === "function" && tabs.length > 1;
 
   return (
     <>
       {!bare && (
-        <div className="flex flex-none gap-1.5" role={interactive ? "tablist" : undefined}>
+        <div
+          className={cn(
+            "flex flex-none gap-1.5",
+            // P-3: the tab strip's own top padding — only while the strip is interactive, since a
+            // single read-only label (TEMPLATE/VOLUME) carries no touch box to clear. 9px of
+            // padding plus the column's own 2px rim is 11px, which is where the touch box below
+            // (centred on a 22px tab, reaching 11px above it) stops.
+            !bare && compactOnPhone && interactive && "max-shell:pt-[9px] [@media(max-height:500px)]:pt-[9px]",
+          )}
+          role={interactive ? "tablist" : undefined}
+        >
           {tabs.map((tab) => {
             const on = tab.id === active;
-            const className =
-              "rounded-t-lg border px-[18px] py-1.5 text-xs font-display font-bold tracking-architectural uppercase " +
-              (on
+            const className = cn(
+              "rounded-t-lg border px-[18px] py-1.5 text-xs font-display font-bold tracking-architectural uppercase",
+              on
                 ? "border-surf-line border-b-0 bg-surf-tab-active text-surf-ink"
-                : "border-transparent bg-transparent text-surf-ink-muted");
+                : "border-transparent bg-transparent text-surf-ink-muted",
+              // P-2: every tab on a phone draws 22px tall (py-0.5) instead of 30px (py-1.5), the
+              // same slim strip on every one of the five drawing screens.
+              !bare && compactOnPhone && "max-shell:py-0.5 [@media(max-height:500px)]:py-0.5",
+            );
 
             if (!interactive) {
               return (
@@ -111,7 +145,23 @@ export function TabbedPanel<T extends string>({
                 role="tab"
                 aria-selected={on}
                 onClick={() => onSelect?.(tab.id)}
-                className={`cursor-pointer ${className}`}
+                className={cn(
+                  "cursor-pointer",
+                  className,
+                  // P-3: on a touch screen only, a 44px-tall invisible box centred on the tab —
+                  // the same idea as the slider thumb's own `::after` touch ring. Centred on a
+                  // 22px tab it reaches 11px above and 11px below, into the empty frame a phone
+                  // carries around the tab (the strip's own top padding above, the card's rim and
+                  // this card's own top padding below) — never the top bar, never the drawing,
+                  // never the viewer's own toolbar buttons. `z-10` keeps it above the folder card
+                  // below, which it reaches down into. This tab's own real touch area (30px on
+                  // every phone and orientation today) was never measured by
+                  // `e2e/touch-sizing.spec.ts`, which covers sliders, typed fields, buttons,
+                  // checkbox rows and a handful of hand-rolled grids — not this tab strip.
+                  !bare &&
+                    compactOnPhone &&
+                    "coarse:relative coarse:after:absolute coarse:after:inset-x-0 coarse:after:top-1/2 coarse:after:h-11 coarse:after:-translate-y-1/2 coarse:after:z-10 coarse:after:content-['']",
+                )}
               >
                 {tab.label}
               </button>
@@ -137,6 +187,15 @@ export function TabbedPanel<T extends string>({
             ? "flex min-h-0 flex-1 flex-col"
             : "flex min-h-0 flex-1 flex-col rounded-tr-lg rounded-b-lg border border-surf-line bg-surf-tab-active p-3 -mt-px",
           growOnShortScreen && "[@media(max-height:500px)]:min-h-fit",
+          // P-1/P-2: the folder card's own 12px pad (p-3) drops to a 2px rim on a phone.
+          !bare && compactOnPhone && "max-shell:p-0.5 [@media(max-height:500px)]:p-0.5",
+          // P-3: the tab above became `relative` for its own touch box (coarse:relative on the
+          // tab itself); making this card positioned too keeps it painting its own 1px line under
+          // the active tab exactly as today, because positioned boxes paint in page (DOM) order —
+          // without this the card's own stacking context would default ahead of a positioned tab
+          // instead of behind it, and the seam would shift. Measured: the seam's pixel row is
+          // identical with and without this rule.
+          !bare && compactOnPhone && interactive && "coarse:relative",
         )}
       >
         {/* The content's own card. In non-bare mode these are two nested boundaries doing
@@ -160,6 +219,25 @@ export function TabbedPanel<T extends string>({
             "flex min-h-0 flex-1 flex-col rounded-lg border bg-surf-panel",
             bare ? "border-surf-line p-1" : "border-surf-line-faint p-3",
             growOnShortScreen && "[@media(max-height:500px)]:min-h-fit",
+            // P-1/P-2/P-4: this card's own border and 12px pad (p-3) drop to nothing on a phone —
+            // the folder card above now carries the whole 2px rim, so a second nested border and
+            // pad here would double it. `text` then puts back an 8px reading margin (P-4) so
+            // DATASHEET/DATA/INSTRUCTIONS/MODEL INFO/ESTIMATE text never touches the frame line;
+            // `drawing` stays at zero so a drawing can reach the rim. Order matters here: `cn`
+            // (tailwind-merge) keeps the LAST class written for a given CSS property, so `text`'s
+            // `p-2` has to come after the `border-0 p-0` reset to survive, and the touch-box
+            // clearance's `pt-[9px]` has to come after THAT to survive on top of `text`'s own `p-2`
+            // — a later `pt` only overrides the padding-top component of an earlier `p`, never its
+            // left/right/bottom, which is exactly what lets both rules compose into one pad.
+            !bare &&
+              compactOnPhone &&
+              "max-shell:border-0 max-shell:p-0 [@media(max-height:500px)]:border-0 [@media(max-height:500px)]:p-0",
+            !bare && compactOnPhone === "text" && "max-shell:p-2 [@media(max-height:500px)]:p-2",
+            // P-3: the touch box reaches down into this card by 11px total — 1px of the tab's own
+            // bottom border it overlaps, 2px of the folder card's rim, and 9px of this card's own
+            // top padding — so a tappable tab strip never overlaps the drawing or the text below
+            // it, on any of the five screens.
+            !bare && compactOnPhone && interactive && "max-shell:pt-[9px] [@media(max-height:500px)]:pt-[9px]",
             panelClassName,
           )}
         >
