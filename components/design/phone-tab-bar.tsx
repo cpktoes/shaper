@@ -22,8 +22,9 @@
  * phone at any width and any pointer type gets the bar on a design route and not on the home
  * route.
  *
- * Shown only below the shell breakpoint (`hidden max-shell:flex`) — the desktop top nav is the
- * only navigation at and above it, hidden by the matching `max-shell:hidden` rule on its own
+ * Shown only below the shell breakpoint (`hidden max-shell:flex`) — at and above it, the desktop
+ * row carries the six screens on a tall screen, and the phone menu's screens group carries them
+ * on a short one (quick 260930-r8s), hidden by the matching `max-shell:hidden` rule on its own
  * link row in `components/site-nav.tsx`. Both are always in the server-rendered tree; the width
  * variant alone decides which paints, so there is no JavaScript width check and no flash between
  * layouts on any device.

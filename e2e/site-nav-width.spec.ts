@@ -15,7 +15,10 @@ import { devices, expect, test, type Page } from "@playwright/test";
  *
  * 820 to 870 is the band: 820px is where the fix's own commit message measured the first 51px
  * overflow, and 863px is a real Pixel 7 held sideways (10-SWEEP.md, 2026-09-11) — the touch case
- * where the account control's extra width made the overflow 7px worse.
+ * where the account control's extra width made the overflow 7px worse. Since quick 260930-r8s
+ * (item 9d) a phone held sideways never draws this row any more — a screen 500 dots tall or less
+ * gets the phone's thin bar instead — so 820 to 870 here stand for a narrow but tall window and
+ * the touch tablet below, which is why every viewport in this file is at least 640 tall.
  *
  * 10-05 briefly redefined `max-shell` to also fire on a short TOUCH screen in this band
  * (`width < 820px` OR `coarse pointer AND height < 500px`), which would have hidden this row
