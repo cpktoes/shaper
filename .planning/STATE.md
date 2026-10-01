@@ -4,7 +4,7 @@ milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
 stopped_at: Phase 13 items 9d and 9e merged into main and awaiting the founder's look and push go; 9b and 9c live; item 13's walk sheet (13-UAT.md) is with the founder
-last_updated: "2026-10-01T02:32:42.920Z"
+last_updated: "2026-10-01T06:24:27.632Z"
 last_activity: 2026-09-30
 last_activity_desc: Items 9d and 9e merged, awaiting the founder's go
 progress:
@@ -321,6 +321,7 @@ Recent decisions affecting current work:
 | 260930-lia | Phase 13 item 9b: a ghost of the last edit on TEMPLATE — one edit ago from the undo history, a hide button in the viewer toolbar, screen only | 2026-09-30 | 8daa3b2 | [260930-lia-phase-13-item-9b-a-ghost-of-the-last-edi](./quick/260930-lia-phase-13-item-9b-a-ghost-of-the-last-edi/) |
 | 260930-lo8 | Phase 13 item 9c: undo and redo buttons on every design screen on a computer — the phone's floating pair extended to the desktop shell | 2026-09-30 | d6a874f | [260930-lo8-phase-13-item-9c-undo-and-redo-buttons-o](./quick/260930-lo8-phase-13-item-9c-undo-and-redo-buttons-o/) |
 | 138 | The last-edit ghost on TEMPLATE is a faint solid line at 55% of the muted ink (the founder's pick from six rendered shades), its dash token removed (fast task) | 2026-09-30 | 35877ea | — |
+| 139 | On a phone held sideways the drawing runs to the bottom of the screen with the Undo/Redo pair floating over its corner — the founder's pick of 9e's Alternative A (fast task) | 2026-09-30 | d0a194c | — |
 
 ## Deferred Items
 
