@@ -166,7 +166,7 @@ founder questions stand open as decisions, not defects. Full phase detail archiv
 **Goal:** When a room of shapers sees the app on Saturday 2026-10-10 (the build guide's M4, "invite shapers"), it is safe, tidy, and credible on the numbers they know best, and it is ready to hear from them: the security patch live, the project clean, the founder's open decisions made, volume proven against real boards, the printed order form complete, a way for shapers to reach the founder and a count of which screens they use, and the whole trip rehearsed on real phones before a freeze on Wednesday 2026-10-07.
 **Requirements**: Items 1–13 in `.planning/phases/13-ready-for-the-shapers/13-SPEC.md` (ordered; who does each and what "done" means), run one at a time with the founder's review between
 **Depends on:** Phase 12
-**Plans:** 11/13 items, plus 8b, 11a, 9b and 9c — each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; founder items are recorded in the SPEC's Progress Log
+**Plans:** 11/13 items, plus 8b, 11a, 9b, 9c, 9d and 9e — each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; founder items are recorded in the SPEC's Progress Log
 
 Plans:
 
@@ -190,8 +190,8 @@ Plans:
 - [ ] 9. Blank catalogue links (if time allows before the freeze) — skipped for now at the founder's word, 2026-09-29
 - [x] 9b. Optional: a ghost of the last edit on TEMPLATE (founder's addition 2026-09-27; the founder's three choices — one edit ago from the undo history, stays with a hide button in the viewer toolbar, TEMPLATE only; a faint solid line at 55% — quick 260930-lia + fast task 138, live 2026-09-30)
 - [x] 9c. Undo and redo buttons on every design screen on a computer — the phone's floating bottom-right pair extended to the desktop shell, appearing once there is something to take back (founder's addition 2026-09-30; quick 260930-lo8, live 2026-09-30)
-- [ ] 9d. A phone held sideways gets a thin top bar — the phone's compact bar and hamburger menu replace the desktop row on a short screen, so the wordmark no longer wraps (founder's addition 2026-09-30, from walking the live site sideways)
-- [ ] 9e. On a phone, upright or sideways, every band and gutter of chrome around the drawing is minimised — tab row, paddings, side gaps — with thumb-sized tap targets as the only floor; computers untouched (founder's addition 2026-09-30, after 9d)
+- [x] 9d. A phone held sideways gets a thin top bar — the phone's compact bar and hamburger menu (with the six screens) replace the desktop row on a short screen, so the wordmark no longer wraps (founder's addition 2026-09-30, from walking the live site sideways; quick 260930-r8s, live 2026-09-30)
+- [x] 9e. On a phone, upright or sideways, every band and gutter of chrome around the drawing is minimised — tab row, paddings, side gaps — with thumb-sized tap targets as the only floor; computers untouched (founder's addition 2026-09-30, after 9d; quick 260930-s23 + fast task 139 for Alternative A, live 2026-09-30)
 
 **Ready to listen (Sat–Mon, Oct 3–5)**
 
