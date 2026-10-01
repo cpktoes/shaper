@@ -3,9 +3,14 @@
 /**
  * The phone's compact top bar (D-08): the wordmark, the Save control and the one menu button, in
  * one non-wrapping row. Mounted beside the desktop nav row in `components/site-nav.tsx`, shown
- * only below the shell breakpoint (`hidden max-shell:flex`) — the two are always both in the
+ * below the shell breakpoint (`hidden max-shell:flex`) — the two are always both in the
  * server-rendered tree, and the width variant alone decides which paints, exactly like
- * `components/design/phone-tab-bar.tsx`.
+ * `components/design/phone-tab-bar.tsx`. Since quick 260930-r8s (Phase 13 item 9d) it is also
+ * shown on a short screen, 500 dots tall or less, AT ANY WIDTH (`[@media(max-height:500px)]:flex`)
+ * — so a phone held sideways gets this one thin line instead of the desktop row, which used to
+ * wrap SHAPER ASSISTANT onto two lines there. Still 56 dots (`--phone-top-bar-h`, unchanged); the
+ * menu it opens carries the six screens at the desktop-shell width, where there is no bottom tab
+ * bar to reach them from otherwise.
  *
  * `SaveButton` is reused unchanged — its own four strings (Save, Saving…, Saved, Not saved) are
  * the whole story on a phone too, no phone-specific rewording. Save has always been rendered on
@@ -23,6 +28,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SaveButton } from "@/components/design/save-button";
 import { PhoneMenu } from "@/components/design/phone-menu";
+import type { NavLink } from "@/components/site-nav";
 
 /** Deliberately one size smaller than SiteNav's own desktop wordmark class (D-01), now that the
  * name is longer — `tracking-architectural` and the weight still match, so the phone mark keeps
@@ -34,14 +40,14 @@ import { PhoneMenu } from "@/components/design/phone-menu";
  * than inlined twice below) so the linked and plain-text renderings of the mark can never drift. */
 const WORDMARK_CLASS = "text-xs font-extrabold tracking-architectural text-surf-ink";
 
-export function PhoneTopBar() {
+export function PhoneTopBar({ screens }: { screens: readonly NavLink[] }) {
   const pathname = usePathname();
   const onHomeScreen = pathname === "/";
 
   return (
     <header
       data-print-hide
-      className="hidden max-shell:flex h-(--phone-top-bar-h) flex-none items-center justify-between border-b border-surf-line-faint bg-surf-ground px-4"
+      className="hidden max-shell:flex [@media(max-height:500px)]:flex h-(--phone-top-bar-h) flex-none items-center justify-between border-b border-surf-line-faint bg-surf-ground px-4"
     >
       {onHomeScreen ? (
         <span className={WORDMARK_CLASS}>SHAPER ASSISTANT</span>
@@ -53,7 +59,7 @@ export function PhoneTopBar() {
       <div className="flex items-center gap-3">
         <SaveButton />
         <span aria-hidden className="h-4 w-px bg-surf-line-faint" />
-        <PhoneMenu />
+        <PhoneMenu screens={screens} />
       </div>
     </header>
   );
