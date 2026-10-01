@@ -755,6 +755,19 @@
   --outline-blank-line: color-mix(in srgb, var(--surf-ink-muted) 60%, transparent); /* the blank's side silhouette — solid, 1px */
   --outline-foam-shade: color-mix(in srgb, var(--surf-ink-muted) 24%, transparent); /* the foam to come off */
   --outline-ink: var(--surf-ink);
+  /* TEMPLATE's last-edit ghost (P-6, quick 260930-lia): the outline as it was one edit ago, drawn
+     faintly behind the live board. Muted ink, not the accent — the accent means "you can grab
+     this", and the ghost is a reference, not an interactive point. 80% of the muted token over
+     each background, computed at plan time with WCAG relative luminance (the same method the rest
+     of this file's contrast notes use):
+       Daylight 3.94 (panel) / 3.55 (board fill) | Chalk 3.94 / 3.42
+       Slate    5.30 (panel) / 4.60 (board fill) | Phosphor 4.32 / 3.77
+     Every figure clears the 3:1 bar for a meaningful graphic, in all four themes, against both
+     backgrounds it can sit over — outside the board on the page canvas, and inside it on the
+     board's own fill. Assigned once here, off `--surf-ink-muted`, which every theme block already
+     sets (plus the print block below, where a separate rule hides this entirely) — so it follows
+     any theme or a fifth one added later with no per-theme copy. */
+  --outline-ghost: color-mix(in srgb, var(--surf-ink-muted) 80%, transparent);
 
   /* Callout-system tokens (sketches 001-004, see .planning/sketches/MANIFEST.md).
      Dash patterns are shared across every plan-view board viewer so a reference line always
@@ -763,6 +776,7 @@
   --outline-widepoint-dash: 2 3; /* widepoint station line — input, distinct from the static centreline it can sit within 1/2" of */
   --outline-widepoint-line: color-mix(in srgb, var(--outline-widepoint-knot) 45%, transparent);
   --outline-station-dash: 5 4; /* derived station lines (12" marks, etc) */
+  --outline-ghost-dash: 8 5; /* the last-edit ghost's dash — long dashes, distinct from the stringer, station and widepoint dashes above */
   --outline-dim-ink: var(--outline-ink); /* dimension lines, ticks and values */
   --outline-callout-label: var(--surf-ink-muted); /* muted: station names and chip names */
 }
@@ -833,6 +847,16 @@
        drift apart. Its one consumer is the order form's spine labels — see
        `app/design/summary/order-form.css`. Anyone who would rather spend no colour at all ticks
        black-and-white in the print dialog. */
+  }
+
+  /* TEMPLATE's last-edit ghost (O-4, quick 260930-lia) is a screen aid, exactly like the board's
+     own fill a few lines up — never a line on paper someone might cut foam to. The printed
+     Template, Overview Sheet, Paper Saver and order form never draw it anyway, because none of
+     them are ever handed `ghostGeometry` in the first place; this rule is the belt-and-suspenders
+     case where TEMPLATE itself is printed straight from the browser (Cmd/Ctrl+P), the one screen
+     that DOES receive it. */
+  [data-outline-ghost] {
+    display: none;
   }
 }
 

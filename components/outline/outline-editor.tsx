@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DownloadIcon, LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
+import { DownloadIcon, GhostIcon, LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
@@ -31,7 +31,7 @@ import { OutlineViewer } from "./outline-viewer";
  */
 
 export function OutlineEditor() {
-  const { outline, updateOutline, outlineGeometry, finPlacement } = useDesign();
+  const { outline, updateOutline, outlineGeometry, outlineGhostGeometry, finPlacement } = useDesign();
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
   /** View state, like the construction override below — not design data, and deliberately not a
    * stored preference (D-03), so a reload always comes back vertical. Still what the rotate
@@ -54,6 +54,13 @@ export function OutlineEditor() {
    * the shaper on a setting they never chose. */
   const [wideView, setWideView] = useState(false);
   const [preWideViewConstruction, setPreWideViewConstruction] = useState(false);
+  /** Whether the last-edit ghost is showing (P-4, quick 260930-lia): view state, like `orientation`
+   * and `constructionOverride` above, not design data — deliberately not a stored preference. The
+   * ghost itself is session-only (the undo history behind it is never saved), so a remembered
+   * "off" would outlive the very thing it hides; the neighbouring construction-lines toggle
+   * already behaves the same way. On by default, so a reload or a return to TEMPLATE always
+   * brings it back showing. */
+  const [showGhost, setShowGhost] = useState(true);
 
   // D-09/D-10: on a coarse (touch) pointer only, the board follows the phone's own orientation —
   // nose-up in portrait, flat in landscape — computed fresh every render, never stored. On a fine
@@ -177,6 +184,24 @@ export function OutlineEditor() {
         >
           {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
         </ViewerToolbarButton>
+        {outlineGhostGeometry !== null && (
+          // Appended LAST (P-3): `ViewerToolbar`'s `flex-row-reverse` growth rule means the last
+          // child in the JSX lands at the row's FAR LEFT, so every button above keeps the exact
+          // slot it has always had — nothing moves when this one shows up. It exists only once
+          // there is a ghost to hide (`outlineGhostGeometry !== null`), the same "nothing new
+          // appears until there is something to act on" rule the phone undo bar already follows
+          // in this app — so a freshly opened board's toolbar is byte-for-byte what it is today,
+          // and `e2e/viewer-toolbar.spec.ts` (which measures a freshly loaded screen) needs no
+          // change. It draws at 34px like its neighbours (P-7) and at every width and pointer
+          // type, unlike Rotate/Wide View above: the ghost is as useful on a phone as on a mouse.
+          <ViewerToolbarButton
+            onClick={() => setShowGhost((v) => !v)}
+            pressed={showGhost}
+            label={showGhost ? "Hide the ghost of the last edit" : "Show the ghost of the last edit"}
+          >
+            <GhostIcon className="size-6" />
+          </ViewerToolbarButton>
+        )}
       </ViewerToolbar>
       <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center">
         <div className="relative flex min-h-0 w-full flex-1 justify-center">
@@ -192,6 +217,7 @@ export function OutlineEditor() {
               geometry={outlineGeometry}
               outline={outline}
               showConstruction={showConstruction}
+              ghostGeometry={showGhost ? outlineGhostGeometry : null}
               onOutlineDrag={updateOutline}
               finMarks={finPlacement.marks}
               hideFinMarks
