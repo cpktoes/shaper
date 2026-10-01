@@ -60,7 +60,9 @@
  *
  * `data-print-hide` matters for the same reason every other piece of phone chrome carries it — the
  * Summary screen prints, and a floating round button on a printed order form would be a real
- * defect.
+ * defect. `data-print-hide` is honoured only by the Summary's and RAILS' own print stylesheets
+ * (quick 260930-lo8 measured that a print of TEMPLATE still carried the pair), so the wrapper also
+ * carries Tailwind's own `print:hidden`, which hides it on every printout from any screen.
  *
  * WHY THE FILE, EXPORT AND ATTRIBUTE KEEP THEIR PHONE-ERA NAMES even though the pair now serves
  * every width: the worktree merge guard this task runs under refuses any deletion, and three
@@ -80,7 +82,7 @@ export function PhoneUndoBar() {
     <div
       data-print-hide
       data-phone-undo-bar
-      className="pointer-events-none fixed right-4 z-40 flex items-center gap-2 max-shell:bottom-[calc(3.5rem+env(safe-area-inset-bottom)+0.75rem)] shell:bottom-4"
+      className="pointer-events-none fixed right-4 z-40 flex items-center gap-2 max-shell:bottom-[calc(3.5rem+env(safe-area-inset-bottom)+0.75rem)] shell:bottom-4 print:hidden"
     >
       <button
         type="button"

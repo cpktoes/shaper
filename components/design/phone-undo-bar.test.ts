@@ -57,6 +57,7 @@ const PHONE_OFFSET_CLASS = [
 ].join("");
 const SHELL_OFFSET_CLASS = ["shell:bottom", "-4"].join("");
 const STYLE_ATTR = ["sty", "le="].join("");
+const PRINT_HIDDEN = ["print", ":hidden"].join("");
 
 describe("PhoneUndoBar source contract", () => {
   it("the wrapper's className string is the one, and only, class string whose tokens include fixed", () => {
@@ -83,6 +84,12 @@ describe("PhoneUndoBar source contract", () => {
 
   it("carries no inline style attribute — an inline bottom would outrank both offset classes", () => {
     expect(barSource).not.toContain(STYLE_ATTR);
+  });
+
+  it("the wrapper's tokens carry print:hidden, so it never reaches a printed page from any screen (quick 260930-lo8)", () => {
+    const [wrapperTokens] = classNameTokenLists(barSource).filter((tokens) => tokens.includes(FIXED));
+    expect(wrapperTokens).toContain(PRINT_HIDDEN);
+    expect(wrapperTokens).not.toContain(HIDDEN_BASE_CLASS);
   });
 
   it("the wrapper carries pointer-events-none and each button carries pointer-events-auto", () => {

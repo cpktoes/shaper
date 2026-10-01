@@ -335,4 +335,79 @@ test.describe("undo/redo — taking a design change back", () => {
     await expect(page).toHaveURL("/");
     await expect(bar).toHaveCount(0);
   });
+
+  test("the Undo and Redo pair never reaches paper", async ({ page }) => {
+    const bar = page.locator("[data-phone-undo-bar]");
+
+    await page.goto("/design/outline");
+    const noseAngleLabel = page.getByText(/^Nose Angle — /);
+    await expect(noseAngleLabel).toBeVisible();
+    const before = await noseAngleLabel.textContent();
+    const thumbInput = thumbInputFor(noseAngleLabel);
+    await waitForReactOwned(thumbInput);
+    await thumbInput.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(noseAngleLabel).not.toHaveText(before ?? "");
+
+    await expect(bar).toBeVisible();
+    await page.emulateMedia({ media: "print" });
+    await expect(bar).toBeHidden();
+    await page.emulateMedia({ media: "screen" });
+    await expect(bar).toBeVisible();
+
+    // Walking to SUMMARY through whichever nav is visible on this project (the desktop top nav
+    // or the phone tab bar) — the pair still never prints there either.
+    await page
+      .getByRole("link", { name: "SUMMARY", exact: true })
+      .filter({ visible: true })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/design\/summary$/);
+    await expect(bar).toBeVisible();
+    await page.emulateMedia({ media: "print" });
+    await expect(bar).toBeHidden();
+    await page.emulateMedia({ media: "screen" });
+    await expect(bar).toBeVisible();
+  });
+
+  test("phone: the pair sits exactly where it always has", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "phone offset proof, iphone and android projects only");
+
+    await page.goto("/design/outline");
+    const noseAngleLabel = page.getByText(/^Nose Angle — /);
+    await expect(noseAngleLabel).toBeVisible();
+    const before = await noseAngleLabel.textContent();
+    const thumbInput = thumbInputFor(noseAngleLabel);
+    await waitForReactOwned(thumbInput);
+    await thumbInput.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(noseAngleLabel).not.toHaveText(before ?? "");
+
+    const bar = page.locator("[data-phone-undo-bar]");
+    await expect(bar).toBeVisible();
+
+    const viewport = page.viewportSize();
+    if (!viewport) throw new Error("no viewport size");
+    const barBox = await bar.boundingBox();
+    const tabBarBox = await page.locator('nav[aria-label="Screens"]').boundingBox();
+    if (!barBox || !tabBarBox) throw new Error("pair or tab bar has no bounding box");
+    console.log(
+      `PhoneUndoBar (${testInfo.project.name}) measured — pair bottom: ${barBox.y + barBox.height}, ` +
+        `tab bar top: ${tabBarBox.y}, viewport: ${viewport.width}x${viewport.height}`,
+    );
+
+    expect(tabBarBox.y - (barBox.y + barBox.height)).toBeCloseTo(12, 0);
+    expect(viewport.width - (barBox.x + barBox.width)).toBeCloseTo(16, 0);
+    expect(viewport.height - (barBox.y + barBox.height)).toBeCloseTo(68, 0);
+
+    const undoButton = bar.getByRole("button", { name: "Undo" });
+    const redoButton = bar.getByRole("button", { name: "Redo" });
+    const undoBox = await undoButton.boundingBox();
+    const redoBox = await redoButton.boundingBox();
+    if (!undoBox || !redoBox) throw new Error("undo/redo button is missing a bounding box");
+    expect(undoBox.width).toBeGreaterThanOrEqual(44);
+    expect(undoBox.height).toBeGreaterThanOrEqual(44);
+    expect(redoBox.width).toBeGreaterThanOrEqual(44);
+    expect(redoBox.height).toBeGreaterThanOrEqual(44);
+  });
 });
