@@ -190,6 +190,8 @@ Plans:
 - [ ] 9. Blank catalogue links (if time allows before the freeze) — skipped for now at the founder's word, 2026-09-29
 - [x] 9b. Optional: a ghost of the last edit on TEMPLATE (founder's addition 2026-09-27; the founder's three choices — one edit ago from the undo history, stays with a hide button in the viewer toolbar, TEMPLATE only; a faint solid line at 55% — quick 260930-lia + fast task 138, live 2026-09-30)
 - [x] 9c. Undo and redo buttons on every design screen on a computer — the phone's floating bottom-right pair extended to the desktop shell, appearing once there is something to take back (founder's addition 2026-09-30; quick 260930-lo8, live 2026-09-30)
+- [ ] 9d. A phone held sideways gets a thin top bar — the phone's compact bar and hamburger menu replace the desktop row on a short screen, so the wordmark no longer wraps (founder's addition 2026-09-30, from walking the live site sideways)
+- [ ] 9e. On a phone, upright or sideways, every band and gutter of chrome around the drawing is minimised — tab row, paddings, side gaps — with thumb-sized tap targets as the only floor; computers untouched (founder's addition 2026-09-30, after 9d)
 
 **Ready to listen (Sat–Mon, Oct 3–5)**
 

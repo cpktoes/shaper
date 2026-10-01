@@ -190,7 +190,7 @@ Rotate button alone, whether it draws at all — since turning a touch device al
 board. Pointer never decides a LAYOUT; the layout switch above reads width alone, and this variant
 is never reached for to move one.
 
-**Short screen — height alone.** How SHORT the screen is decides three separate things, all written
+**Short screen — height alone.** How SHORT the screen is decides four separate things, all written
 inline as `[@media(max-height:500px)]` rather than a named variant, and all deliberately not tied
 to width or to the layout switch above: a phone held sideways is short regardless of which layout
 it lands in. On FINS, `fin-viewer.tsx` uses it to decide whether the Base Length key sits beside
@@ -207,7 +207,25 @@ as they always have. The third thing is what puts that key row under the plots r
 them: on a short screen the RAILS viewer's own cards grow with their content instead of being
 pinned to the column's height (`rail-band-editor.tsx`, and `tabbed-panel.tsx`'s `growOnShortScreen`
 prop, which only RAILS passes) — still height alone, still written inline. A real desktop window
-is never under 500 dots tall, so that rule can never reach a mouse.
+is never under 500 dots tall, so that rule can never reach a mouse. The fourth is which TOP BAR draws
+(Phase 13 item 9d, 2026-09-30 — the founder's call after walking the live site sideways): on a short
+screen the phone's compact bar — wordmark, Save, the hamburger menu — replaces the desktop row at any
+width, because that row stood about 105 dots tall on a 390-dot screen with the wordmark wrapped onto
+two lines. The layout beneath it is still the desktop shell, chosen by width alone; and because the
+desktop shell has no bottom tab bar, the hamburger menu carries the six screens as its first group at
+shell widths only (hidden by width on each row), so an upright phone's menu is unchanged. `site-nav.tsx`
+and `phone-top-bar.tsx` own that rule, written inline the same way, and `e2e/phone-sideways-top-bar.spec.ts`
+proves it on a sideways Pixel 7 and iPhone and proves a tall window of any width still gets the desktop row.
 
-Width picks the layout, pointer picks the sizing, height picks whether a short screen scrolls
-(and, on FINS only, beside-or-beneath) — and none of the three is ever conflated with another.
+**Phone chrome is tightened under both rules, never a third.** Phase 13 item 9e (2026-09-30, the founder's rule:
+"phone real estate is expensive, we need to save all of it" — a computer has room to spare and is untouched)
+shrinks every band and gutter around the drawing — the drawing column's paddings, the card frame, the
+VIEWER/DATA tab strip (22 dots drawn, a 44-dot touch box on a coarse pointer), the 48-dot top bar — with the
+SAME values under the `max-shell` width rule (an upright phone) and the inline short-screen height rule (a phone
+held sideways). Two switches, each answering its own question; no "phone" variant exists, and the pointer is not
+read for padding (an iPad or a touch laptop keeps its room). A real iPhone's notch is cleared with
+`env(safe-area-inset-*)` on the drawing column's right edge and the top bar's ends. `e2e/phone-chrome.spec.ts`
+pins the bands on all four phone sizes and the 44-dot touch boxes.
+
+Width picks the layout, pointer picks the sizing, height picks whether a short screen scrolls and
+which top bar it gets (and, on FINS only, beside-or-beneath) — and none of the three is ever conflated with another.
