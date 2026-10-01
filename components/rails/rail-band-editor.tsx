@@ -264,6 +264,10 @@ export function RailBandEditor() {
           // key row lands under the plots and the drawing column scrolls one whole card rather
           // than the content spilling past two borders.
           growOnShortScreen
+          // Item 9e (quick 260930-s23): the same slimmer VIEWER/DATA/INSTRUCTIONS frame every
+          // other screen gets, keyed the same way ROCKER and FINS are — VIEWER (the drawing) gets
+          // no inner padding, DATA and INSTRUCTIONS (text/tables) keep an 8px reading margin.
+          compactOnPhone={activePage === "viewer" ? "drawing" : "text"}
         >
         {activePage === "viewer" && (
           <div className="relative flex min-h-0 flex-1 flex-col [@media(max-height:500px)]:flex-none">
@@ -325,9 +329,20 @@ export function RailBandEditor() {
                 card chrome compounds instead of sharing one border. The tab row below copies
                 TabbedPanel's own tab-button classes verbatim (same idiom, same look, same
                 behaviour as the View Full Sized dialog's Nose/Center/Tail tabs) without a second
-                nested card, so the plot gets the pinned area's actual full width. */}
+                nested card, so the plot gets the pinned area's actual full width.
+
+                Item 9e (quick 260930-s23, P-9): this whole block's container (`hidden
+                ... max-shell:flex`) only ever draws in the UPRIGHT phone layout — a sideways
+                phone gets the desktop shell, where this stays `hidden` and the desktop plot row
+                above draws instead — so every class the slimming below adds is deliberately
+                UNPREFIXED rather than `max-shell:`-gated a second time; the container's own
+                `max-shell:flex` is already the only gate this whole block needs. With VIEWER's
+                own outer TabbedPanel tab row ALSO tappable above this one (P-3), two stacked rows
+                of tappable tabs each need their own 11px of clearance above and below — this row's
+                `pt-[11px]` is where the outer row's own touch box stops, and the plot box's
+                `pt-[11px]` below is where THIS row's touch box stops — so the two never overlap. */}
             <div data-rail-plot-row="phone" className="hidden min-h-0 w-full flex-1 flex-col max-shell:flex">
-              <div className="flex flex-none gap-1.5" role="tablist">
+              <div className="flex flex-none gap-1.5 pt-[11px]" role="tablist">
                 {(
                   [
                     { id: "nose" as const, label: "NOSE" },
@@ -344,7 +359,8 @@ export function RailBandEditor() {
                       aria-selected={on}
                       onClick={() => setPhoneSection(tab.id)}
                       className={
-                        "cursor-pointer rounded-t-lg border px-[18px] py-1.5 text-xs font-display font-bold tracking-architectural uppercase " +
+                        "cursor-pointer rounded-t-lg border px-[18px] py-0.5 text-xs font-display font-bold tracking-architectural uppercase " +
+                        "coarse:relative coarse:after:absolute coarse:after:inset-x-0 coarse:after:top-1/2 coarse:after:h-11 coarse:after:-translate-y-1/2 coarse:after:z-10 coarse:after:content-[''] " +
                         (on
                           ? "border-surf-line border-b-0 bg-surf-tab-active text-surf-ink"
                           : "border-transparent bg-transparent text-surf-ink-muted")
@@ -355,12 +371,16 @@ export function RailBandEditor() {
                   );
                 })}
               </div>
-              <div className="-mt-px flex min-h-0 flex-1 flex-col items-center justify-center rounded-tr-lg rounded-b-lg border border-surf-line p-1">
+              <div className="-mt-px flex min-h-0 flex-1 flex-col items-center justify-center rounded-tr-lg rounded-b-lg border border-surf-line px-0.5 pb-0.5 pt-[11px] coarse:relative">
                 <RailSectionPlot sectionKey={phoneSection} output={bands[phoneSection]} xAxisMin={sharedXAxisMin} fit="width" />
               </div>
             </div>
             {legend.length > 0 && (
-              <div className="mt-4 flex flex-none flex-wrap items-center justify-center gap-x-6 gap-y-2">
+              // Item 9e (P-9): the key's 16px gap above it (mt-4) becomes 4px on an upright phone
+              // (max-shell:mt-1) — this row sits under BOTH the desktop plot row above and the
+              // phone NOSE/CENTER/TAIL row above, so this one class change reaches whichever is
+              // showing.
+              <div className="mt-4 flex flex-none flex-wrap items-center justify-center gap-x-6 gap-y-2 max-shell:mt-1 [@media(max-height:500px)]:mt-1">
                 {legend.map((entry) => (
                   <span key={entry.label} className="flex items-center gap-1.5 text-[10px] text-surf-ink-muted">
                     <span

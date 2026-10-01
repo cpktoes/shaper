@@ -47,7 +47,12 @@ export function VolumeEstimator() {
       canvas={
         // Single region, so the tab labels rather than switches — same reasoning as the
         // Template screen.
-        <TabbedPanel tabs={[{ id: "estimate" as const, label: "ESTIMATE" }]} active="estimate" panelClassName="overflow-y-auto">
+        <TabbedPanel
+          tabs={[{ id: "estimate" as const, label: "ESTIMATE" }]}
+          active="estimate"
+          panelClassName="overflow-y-auto"
+          compactOnPhone="text"
+        >
           <VolumeCalculationCard
             result={volumeResult}
             quotedVolumeLitres={quotedVolumeLitres}

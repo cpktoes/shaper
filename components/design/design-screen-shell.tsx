@@ -132,9 +132,40 @@ export function DesignScreenShell({
   // `components/fins/fin-viewer.tsx`'s identical media query). A real desktop window is never
   // under 500px tall, so this rule can never reach a mouse at all -- not "reaches it but draws the
   // same," genuinely never applies -- which is what keeps the screenshot baselines untouched.
+  //
+  // Phase 13 item 9e (13-SPEC.md, the founder, 2026-09-30: "phone real estate is expensive, we
+  // need to save all of it" / "minimize all horizontal space on both phone orientations"), quick
+  // 260930-s23, P-1/P-5/P-6: on a phone the drawing's own margin shrinks from the desktop's 12px
+  // (upright, `p-3`) or 4px (wide view, `p-1`) down to a 2px rim on every side it can, with the
+  // floor set by what has to stay clear, not by a round number. These additive rules ride the
+  // SAME two switches CLAUDE.md's Layout section already keeps separate — the short-screen query
+  // below for a sideways phone, `max-shell:` further down for an upright one — carrying the SAME
+  // values, because both describe the identical thing: "this is a phone, give the drawing the
+  // room its frame used to waste." The bottom is the one place the two rules diverge, and the only
+  // one: sideways, the drawing column's own bottom padding is 61px (not 2px) because 9c's floating
+  // Undo/Redo pair sits 16px in from the window's bottom-right corner at 44px tall on a touch
+  // screen, over THIS column, in the desktop shell a sideways phone lands in (CLAUDE.md: width
+  // alone picks that shell, this file's own `mainPhone`/`asideClassName` split never moves because
+  // of height) — 61 + the folder card's 2px rim + 1px line = 64px, which clears the pair's 60px
+  // (16 + 44) with 4px of air to spare. Upright the same pair floats over the CONTROLS column
+  // instead (it is `fixed` to the viewport, not this element), so there is nothing here to clear
+  // and the upright bottom stays 2px like every other side. The right edge reads
+  // `env(safe-area-inset-right)` rather than a bare 2px: a real iPhone held sideways puts its notch
+  // or Dynamic Island at the screen's right edge (this app asks for edge-to-edge rendering,
+  // `viewportFit: "cover"`), and the old 38px gutter happened to clear it by accident — a flat 2px
+  // would not. The inset is 0 in every test browser and in portrait, so no measured number in this
+  // plan's spec moves; on a real sideways iPhone the right padding grows to roughly 47px instead,
+  // which is accounted for and accepted (P-6) rather than hidden. One more edge case, recorded
+  // rather than fixed: a narrow phone held sideways (an iPhone SE or mini, under the 820px shell
+  // width) matches BOTH this short-screen query and the `max-shell:` one below, and Tailwind
+  // writes this file's `[@media(max-height:500px)]:` rules after its `max-shell:` rules in the
+  // compiled stylesheet (checked directly), so the 61px bottom wins there too even though that
+  // phone's own tab bar sits under the drawing on that width alone — about 60 extra dots of empty
+  // band where the pair never actually reaches. Neither founder phone is that narrow, so this is
+  // left as-is rather than special-cased.
   const mainBase = wideView
-    ? "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-1 [@media(max-height:500px)]:overflow-y-auto"
-    : "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3 [@media(max-height:500px)]:overflow-y-auto";
+    ? "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-1 [@media(max-height:500px)]:overflow-y-auto [@media(max-height:500px)]:pt-0.5 [@media(max-height:500px)]:pb-[61px] [@media(max-height:500px)]:pl-0.5 [@media(max-height:500px)]:pr-[max(2px,env(safe-area-inset-right))]"
+    : "flex h-full min-h-0 min-w-0 flex-1 basis-[480px] flex-col gap-0 bg-surf-canvas p-3 [@media(max-height:500px)]:overflow-y-auto [@media(max-height:500px)]:pt-0.5 [@media(max-height:500px)]:pb-[61px] [@media(max-height:500px)]:pl-0.5 [@media(max-height:500px)]:pr-[max(2px,env(safe-area-inset-right))]";
 
   // The phone stack must stay byte-identical to before this fix. Every viewport this project's own
   // Playwright suite exercises under the phone-stack width (< 820px) is also taller than 500px, so
@@ -143,9 +174,19 @@ export function DesignScreenShell({
   // it, redundantly, since the base carried no overflow rule at all), so even a hypothetical narrow
   // AND short viewport (an embedded in-app browser, say) cannot change the phone stack's own
   // overflow behaviour.
+  //
+  // Item 9e (quick 260930-s23, P-1): the old flat `max-shell:p-2` (8px on every side) becomes the
+  // same 2px rim the short-screen rule above uses, split the same four ways and for the same
+  // reasons — an UPRIGHT phone has no floating pair to clear below this column (it floats over the
+  // controls instead, which sort AFTER this element on a phone), so unlike the sideways case the
+  // bottom here stays 2px like every other side; the right edge still reads
+  // `env(safe-area-inset-right)` for the same notch-at-the-edge reason (P-6), even though a
+  // portrait phone's notch sits at the TOP, not a side — the inset is 0 there in practice, so this
+  // is a no-op for every real upright phone and costs nothing to keep symmetric with the sideways
+  // rule above.
   const mainPhone = nonePinned
-    ? "max-shell:order-first max-shell:flex-none max-shell:basis-auto max-shell:p-2 max-shell:h-auto max-shell:overflow-visible"
-    : `max-shell:order-first max-shell:flex-none max-shell:basis-auto max-shell:p-2 max-shell:overflow-visible ${PHONE_PINNED_MAX_HEIGHT_CLASS[phonePinned]}`;
+    ? "max-shell:order-first max-shell:flex-none max-shell:basis-auto max-shell:pt-0.5 max-shell:pb-0.5 max-shell:pl-0.5 max-shell:pr-[max(2px,env(safe-area-inset-right))] max-shell:h-auto max-shell:overflow-visible"
+    : `max-shell:order-first max-shell:flex-none max-shell:basis-auto max-shell:pt-0.5 max-shell:pb-0.5 max-shell:pl-0.5 max-shell:pr-[max(2px,env(safe-area-inset-right))] max-shell:overflow-visible ${PHONE_PINNED_MAX_HEIGHT_CLASS[phonePinned]}`;
 
   const mainClassName = `${mainBase} ${mainPhone}`;
 

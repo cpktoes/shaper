@@ -572,7 +572,12 @@ export function FinViewer({
     // `h-full` as well as `flex-1`: the Summary card's body is a block, not a flex container, so
     // flex-1 alone resolves to zero height there. It went unnoticed while the svg carried an
     // intrinsic size and propped the height up from below.
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center gap-4 [@media(max-height:500px)]:flex-row [@media(max-height:500px)]:items-stretch [@media(max-height:500px)]:gap-2">
+    //
+    // Item 9e (quick 260930-s23, P-10): the 16px gap between the tail drawing and its Base Length
+    // key becomes 8px on an UPRIGHT phone too (`max-shell:gap-2`) — the same 8px the SIDEWAYS rule
+    // next to it already uses, so both rules carry the identical value on purpose. 4px was tried
+    // in the prototype and rejected: it put the "1 3/16"" callout text against the key's own text.
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center gap-4 max-shell:gap-2 [@media(max-height:500px)]:flex-row [@media(max-height:500px)]:items-stretch [@media(max-height:500px)]:gap-2">
       {/* The SVG is pinned to the whole available box and `meet` scales the drawing to fit inside
           it. Sizing is the container's job; `preserveAspectRatio` keeps the proportion.
 
