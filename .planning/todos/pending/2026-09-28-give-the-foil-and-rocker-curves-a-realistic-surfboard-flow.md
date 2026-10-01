@@ -78,3 +78,14 @@ steps come before any code:
 
 Keep CLAUDE.md Rule 1: every formula lives in `lib/geometry/`, pure and tested, with expected values from fixtures,
 never hand-typed.
+
+## Founder's addition, 2026-10-01
+
+At the close of the Phase 13 build evening, in their words: "after this we need to ... consider
+different spline options to get smoother curves." That is this phase's research question: today the
+rocker and thickness curves are PCHIP (Phase 11's R10/R15 — chosen for SciPy parity and no overshoot
+at the nose, and never changed just to cure a faceted drawing). The options to compare, each against a
+golden of today's numbers first: a monotone cubic with tension, a Catmull-Rom/cardinal family, a cubic
+B-spline fitted through the stations, and a clamped natural spline with the tip rules on top — judged
+on no hump near a tip, no kink or facet, no overshoot at the nose, and how far the five stored
+thicknesses and the four rocker numbers move for the production boards.
