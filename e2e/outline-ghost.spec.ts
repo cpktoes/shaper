@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
  * Phase 13 optional item 9b (quick task 260930-lia): TEMPLATE's last-edit ghost — after a drag or
- * a slider move, the outline as it was one edit ago stays on screen as a faint dashed line behind
+ * a slider move, the outline as it was one edit ago stays on screen as a faint solid line behind
  * the live board, so a shaper can judge an edit as a side-by-side comparison rather than having to
  * remember the old shape. This file is built up across the quick task's three commits: Task 1
  * proves the ghost itself appears and never blocks a grab; Task 2 adds the toolbar button that
@@ -107,7 +107,7 @@ test.describe("TEMPLATE's last-edit ghost", () => {
     await expect(page.locator("[data-board-ink-line]")).toHaveCount(0);
   });
 
-  test("desktop: a mouse drag leaves a dashed ghost with the pre-drag shape, and the ghost cannot catch the mouse", async ({
+  test("desktop: a mouse drag leaves a faint solid ghost with the pre-drag shape, and the ghost cannot catch the mouse", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "mouse-drag path, desktop project only");

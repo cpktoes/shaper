@@ -958,7 +958,6 @@ export function OutlineViewer({
             fill="none"
             stroke="var(--outline-ghost)"
             strokeWidth={GHOST_STROKE_WIDTH}
-            strokeDasharray="var(--outline-ghost-dash)"
             pointerEvents="none"
             aria-hidden
           />

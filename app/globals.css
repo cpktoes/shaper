@@ -767,7 +767,7 @@
      board's own fill. Assigned once here, off `--surf-ink-muted`, which every theme block already
      sets (plus the print block below, where a separate rule hides this entirely) — so it follows
      any theme or a fifth one added later with no per-theme copy. */
-  --outline-ghost: color-mix(in srgb, var(--surf-ink-muted) 80%, transparent);
+  --outline-ghost: color-mix(in srgb, var(--surf-ink-muted) 55%, transparent); /* 55%, solid: the founder's pick (2026-09-30) over 80% and 35% — faint, still readable in Slate */
 
   /* Callout-system tokens (sketches 001-004, see .planning/sketches/MANIFEST.md).
      Dash patterns are shared across every plan-view board viewer so a reference line always
@@ -776,7 +776,6 @@
   --outline-widepoint-dash: 2 3; /* widepoint station line — input, distinct from the static centreline it can sit within 1/2" of */
   --outline-widepoint-line: color-mix(in srgb, var(--outline-widepoint-knot) 45%, transparent);
   --outline-station-dash: 5 4; /* derived station lines (12" marks, etc) */
-  --outline-ghost-dash: 8 5; /* the last-edit ghost's dash — long dashes, distinct from the stringer, station and widepoint dashes above */
   --outline-dim-ink: var(--outline-ink); /* dimension lines, ticks and values */
   --outline-callout-label: var(--surf-ink-muted); /* muted: station names and chip names */
 }
