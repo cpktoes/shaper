@@ -260,7 +260,12 @@ export function OutlineEditor() {
         // drag state, the toolbar buttons, `ExportPreviewDialog` — on every Wide View toggle,
         // discarding any in-flight interaction. `<TabbedPanel>` is now the one component that
         // always sits here; only its internal chrome varies.
-        <TabbedPanel bare={wideView} tabs={[{ id: "viewer" as const, label: "VIEWER" }]} active="viewer">
+        <TabbedPanel
+          bare={wideView}
+          tabs={[{ id: "viewer" as const, label: "VIEWER" }]}
+          active="viewer"
+          compactOnPhone="drawing"
+        >
           {viewerContent}
         </TabbedPanel>
       }

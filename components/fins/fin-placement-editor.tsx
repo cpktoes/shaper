@@ -102,6 +102,7 @@ export function FinPlacementEditor() {
           tabs={TAB_ORDER.map((tab) => ({ id: tab, label: TAB_LABEL[tab] }))}
           active={activeTab}
           onSelect={setActiveTab}
+          compactOnPhone={activeTab === "viewer" ? "drawing" : "text"}
         >
           {activeTab === "viewer" && (
             <div className="flex min-h-0 flex-1 flex-col items-center">
