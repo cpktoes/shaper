@@ -144,8 +144,15 @@
 :root {
   /* Read by `phone-top-bar.tsx` itself (`h-(--phone-top-bar-h)`), so a future change to the bar's
      own height (a longer wordmark, a taller Save button, an added row) moves this one number and
-     the cap that depends on it moves with it — there is no second place to remember. */
-  --phone-top-bar-h: 56px;
+     the cap that depends on it moves with it — there is no second place to remember.
+     13-SPEC.md item 9e (quick 260930-s23, P-7, the founder: "phone real estate is expensive, we
+     need to save all of it"): 56 becomes 48. The bar's own Save and menu buttons are 44px on a
+     touch screen; a 48px bar leaves 47 inside the bar's own 1px bottom line, so both keep their
+     full 44px with 1.5px of air above and below — the tightest value that still leaves them
+     honestly full-size (45 would press the Save pill against that line). The setup screen's card
+     cap below reads this same number, so its preset cards grow about three-quarters of the 8px
+     saved here — not a separate change, a consequence of this one moving. */
+  --phone-top-bar-h: 48px;
   /* The preset card's own text stack and padding above/below its thumbnail box — the name, the
      four-number dims line, the descriptor line, and the button's own padding — measured 2026-09-11
      against the preset variant, the largest of the three card families' extra text. Nothing in

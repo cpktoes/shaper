@@ -8,8 +8,9 @@ import { devices, expect, test, type Locator, type Page } from "@playwright/test
  * alone, at any width — now also deciding which top bar draws: below this, a phone held sideways
  * got the desktop row squeezed into a short screen (measured 93 dots tall with the name wrapped
  * onto two lines, about 105 on the live site, which renders Clerk's real wider account button);
- * after this plan the same screen gets the phone's own 56-dot bar, name on one line, with the six
- * screens reachable from its Menu instead of the desktop row.
+ * after this plan the same screen gets the phone's own 48-dot bar (item 9e, quick 260930-s23,
+ * P-7, made it thinner still — 56 when this plan first shipped it), name on one line, with the
+ * six screens reachable from its Menu instead of the desktop row.
  *
  * This file starts as Task 1's tracer (one Pixel 7 sideways test) and is Task 2's home for the
  * full proof: both real sideways phones, every route, the Menu's walk between all six screens,
@@ -44,7 +45,7 @@ async function waitForReactOwner(page: Page, selector: string) {
 /** The full proof that a given viewport draws the phone's thin bar, not the desktop row: the
  * window really is `width` x `height`; the height-alone media query matches, alongside the
  * width-alone query that keeps the desktop SHELL underneath; the bare desktop `<nav>` is hidden;
- * the `banner` (the phone bar) is visible at (within a dot of) `--phone-top-bar-h`, 56; the name
+ * the `banner` (the phone bar) is visible at (within a dot of) `--phone-top-bar-h`, 48; the name
  * inside it sits on exactly one line (a DOM Range over its text, counting the distinct rounded
  * `top` values of the Range's own client rects); the bar's Menu button is visible; the six-tab
  * bottom bar (`nav[aria-label="Screens"]`) stays hidden, since the desktop shell never shows it;
@@ -74,7 +75,9 @@ async function assertThinBar(page: Page, width: number, height: number) {
   const bannerBox = await banner.boundingBox();
   if (!bannerBox) throw new Error("banner has no bounding box");
   expect(Math.abs(bannerBox.height - barHeightToken)).toBeLessThanOrEqual(1);
-  expect(Math.abs(bannerBox.height - 56)).toBeLessThanOrEqual(1);
+  // Item 9e (quick 260930-s23, P-7): the bar itself is 48 now, not 56 — this literal moves with
+  // it. The assertion above, against the token, stays as it is.
+  expect(Math.abs(bannerBox.height - 48)).toBeLessThanOrEqual(1);
 
   const wordmark = banner.getByText("SHAPER ASSISTANT", { exact: true });
   await expect(wordmark).toBeVisible();

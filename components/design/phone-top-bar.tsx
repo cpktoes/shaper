@@ -10,8 +10,9 @@
  * written inline on the header's own className below, the same inline form
  * `design-screen-shell.tsx`, RAILS and FINS already use — so a phone held sideways gets this one
  * thin line instead of the desktop row, which used to wrap SHAPER ASSISTANT onto two lines there.
- * Still 56 dots (`--phone-top-bar-h`, unchanged); the menu it opens carries the six screens at the
- * desktop-shell width, where there is no bottom tab bar to reach them from otherwise.
+ * Now 48 dots (`--phone-top-bar-h`, item 9e, quick 260930-s23, P-7 — was 56), still read from the
+ * one token in `app/globals.css`; the menu it opens carries the six screens at the desktop-shell
+ * width, where there is no bottom tab bar to reach them from otherwise.
  *
  * `SaveButton` is reused unchanged — its own four strings (Save, Saving…, Saved, Not saved) are
  * the whole story on a phone too, no phone-specific rewording. Save has always been rendered on
@@ -48,7 +49,15 @@ export function PhoneTopBar({ screens }: { screens: readonly NavLink[] }) {
   return (
     <header
       data-print-hide
-      className="hidden max-shell:flex [@media(max-height:500px)]:flex h-(--phone-top-bar-h) flex-none items-center justify-between border-b border-surf-line-faint bg-surf-ground px-4"
+      // Item 9e (orchestrator amendment, 2026-09-30, from the planner's own P-13 finding): the
+      // flat `px-4` becomes `env(safe-area-inset-left)`/`-right`-aware padding, each floored at
+      // the same 1rem (16px) `px-4` always drew — so on a real iPhone held sideways neither the
+      // wordmark (left) nor the menu button (right) sits under the notch or Dynamic Island,
+      // whichever side it's on. The inset is 0 in every test browser and in portrait, so no
+      // measured number in this suite moves; this is the same idea `design-screen-shell.tsx`'s
+      // drawing column uses for its own right edge (P-6), applied here to both sides since the
+      // bar spans the full window width rather than sitting beside a controls column.
+      className="hidden max-shell:flex [@media(max-height:500px)]:flex h-(--phone-top-bar-h) flex-none items-center justify-between border-b border-surf-line-faint bg-surf-ground pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]"
     >
       {onHomeScreen ? (
         <span className={WORDMARK_CLASS}>SHAPER ASSISTANT</span>

@@ -51,8 +51,10 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * `padding-bottom: 61px` is asserted there. Every tappable tab answers a 44px touch band — on
  * RAILS, upright, TWO stacked rows of them (the outer VIEWER/DATA/INSTRUCTIONS strip and the
  * phone-only NOSE/CENTER/TAIL switch inside VIEWER), each boxed to 11px of clearance so neither
- * ever reaches the other. The top bar itself (still 56 here — Task 3 makes it 48) is proved
- * separately by `e2e/phone-sideways-top-bar.spec.ts`.
+ * ever reaches the other. The top bar itself was 56 before this plan; Task 3 (P-7) makes it 48,
+ * with Save and the menu button keeping their full 44px — asserted in its own describe block
+ * below on all four phone sizes, and proved sideways in more detail by
+ * `e2e/phone-sideways-top-bar.spec.ts`.
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
@@ -1217,5 +1219,50 @@ test.describe("All five screens — a computer is untouched (item 9e)", () => {
         }
       });
     }
+  }
+});
+
+test.describe("The phone top bar is 48 dots, with Save and the menu still full-sized (item 9e, P-7)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the phone top bar only ever draws on a phone project");
+    await dismissChrome(page);
+  });
+
+  for (const [sizeLabel, size, project] of [
+    ["iphone upright 390x844", IPHONE_UPRIGHT, "iphone"],
+    ["iphone sideways 844x390", IPHONE_SIDEWAYS, "iphone"],
+    ["android upright 412x915", ANDROID_UPRIGHT, "android"],
+    ["android sideways 863x360", ANDROID_SIDEWAYS, "android"],
+  ] as const) {
+    test(`${sizeLabel}: the bar is 48 tall, matches the token, and Save/the menu are each at least 44x44`, async ({
+      page,
+    }, testInfo) => {
+      test.skip(testInfo.project.name !== project, `${project}-only viewport`);
+      await page.setViewportSize(size);
+      await gotoRoute(page, "/design/rocker");
+      await settle(page);
+
+      const topBar = await topBarBox(page);
+      if (!topBar) throw new Error("top bar has no bounding box");
+      const token = await page.evaluate(() =>
+        parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--phone-top-bar-h")),
+      );
+      console.log(`[9e] top bar ${sizeLabel} — height ${topBar.height}, token ${token}`);
+
+      expectWithin(topBar.height, 48, 1);
+      expectWithin(topBar.height, token, 1);
+
+      const saveButton = page.getByRole("banner").getByRole("button", { name: "Save Board" });
+      const saveBox = await saveButton.boundingBox();
+      if (!saveBox) throw new Error("Save Board button has no bounding box");
+      expect(saveBox.width).toBeGreaterThanOrEqual(44);
+      expect(saveBox.height).toBeGreaterThanOrEqual(44);
+
+      const menuButton = page.getByRole("banner").getByRole("button", { name: "Menu" });
+      const menuBox = await menuButton.boundingBox();
+      if (!menuBox) throw new Error("Menu button has no bounding box");
+      expect(menuBox.width).toBeGreaterThanOrEqual(44);
+      expect(menuBox.height).toBeGreaterThanOrEqual(44);
+    });
   }
 });
