@@ -4,7 +4,7 @@ milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
 stopped_at: Phase 13 items 9b and 9c built and merged, awaiting the founder's look and push go; item 13's walk sheet (13-UAT.md) is with the founder
-last_updated: "2026-09-30T21:13:18.964Z"
+last_updated: "2026-10-01T02:32:42.920Z"
 last_activity: 2026-09-30
 last_activity_desc: Items 9b and 9c built, awaiting the founder's go
 progress:
@@ -320,6 +320,7 @@ Recent decisions affecting current work:
 | 135 | The site title (link previews and the browser tab) reads "Shaper Assistant — Surfboard Shaping and Design" at the founder's request (was "— Surfboard Design"); link-preview checks green on all three profiles | 2026-09-30 | d0b8d31 | — |
 | 260930-lia | Phase 13 item 9b: a ghost of the last edit on TEMPLATE — one edit ago from the undo history, a hide button in the viewer toolbar, screen only | 2026-09-30 | 8daa3b2 | [260930-lia-phase-13-item-9b-a-ghost-of-the-last-edi](./quick/260930-lia-phase-13-item-9b-a-ghost-of-the-last-edi/) |
 | 260930-lo8 | Phase 13 item 9c: undo and redo buttons on every design screen on a computer — the phone's floating pair extended to the desktop shell | 2026-09-30 | d6a874f | [260930-lo8-phase-13-item-9c-undo-and-redo-buttons-o](./quick/260930-lo8-phase-13-item-9c-undo-and-redo-buttons-o/) |
+| 138 | The last-edit ghost on TEMPLATE is a faint solid line at 55% of the muted ink (the founder's pick from six rendered shades), its dash token removed (fast task) | 2026-09-30 | 35877ea | — |
 
 ## Deferred Items
 
