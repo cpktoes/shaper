@@ -44,11 +44,12 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * After this task: upright, the frame above a tabbed (`drawing`) screen is 11, below and at the
  * sides 5; a labelled (non-interactive) screen's own frame above is 2 (TEMPLATE) or 10 (VOLUME,
  * `text`); `text` screens keep an 8px reading margin, which is why VOLUME's own sides/below read
- * 13, not 5. Sideways, the frame above a tabbed screen is still 11 and the column's own bottom
- * padding is 61 — `drawing` screens stay 64 clear of the floating Undo/Redo pair in the desktop
- * shell a sideways phone lands in, `text` (VOLUME) 72 (the same 61 plus its own 8px reading
- * margin). RAILS sideways SCROLLS instead of a fixed clearance (260914-v2v), so only its own
- * `padding-bottom: 61px` is asserted there. Every tappable tab answers a 44px touch band — on
+ * 13, not 5. Sideways, the frame above a tabbed screen is still 11 and the bottom is the same 5
+ * (`text`, VOLUME: 13) — the plan first kept a 64-dot band there so the floating Undo/Redo pair
+ * never covered a chip; the founder chose its Alternative A (2026-09-30), every dot to the drawing
+ * and the pair floating over the drawing's bottom-right corner once there is an edit to take back.
+ * RAILS sideways SCROLLS instead of a fixed clearance (260914-v2v), so only its own
+ * `padding-bottom: 2px` is asserted there. Every tappable tab answers a 44px touch band — on
  * RAILS, upright, TWO stacked rows of them (the outer VIEWER/DATA/INSTRUCTIONS strip and the
  * phone-only NOSE/CENTER/TAIL switch inside VIEWER), each boxed to 11px of clearance so neither
  * ever reaches the other. The top bar itself was 56 before this plan; Task 3 (P-7) makes it 48,
@@ -351,7 +352,7 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_UPRIGHT.width);
   });
 
-  test("iphone sideways (844x390): frame, drawing width, touch boxes and the Undo/Redo clearance", async ({
+  test("iphone sideways (844x390): frame, drawing width, touch boxes and the Undo/Redo pair over the corner", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "iphone-only viewport");
@@ -362,7 +363,7 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     const paddingBottom = await page
       .locator("main")
       .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
-    expectWithin(paddingBottom, 61, 0.5);
+    expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
@@ -379,13 +380,13 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     expectWithin(viewerBox.y - (topBar.y + topBar.height), 11, 1);
     // Growth floor (today 416 wide).
     expect(content.width).toBeGreaterThanOrEqual(478);
-    expectWithin(IPHONE_SIDEWAYS.height - (content.y + content.height), 64, 1);
+    expectWithin(IPHONE_SIDEWAYS.height - (content.y + content.height), 5, 1);
 
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(datasheetTab, bounds);
 
-    // The Undo/Redo pair stays clear of the drawing once there is something to take back.
+    // The Undo/Redo pair appears once there is something to take back (Alternative A: over the corner).
     const slider = page.locator("aside [data-slot='slider-thumb'] input[type='range']").first();
     await expect
       .poll(() => slider.evaluate((el) => Object.keys(el).some((key) => key.startsWith("__reactFiber"))))
@@ -396,7 +397,10 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     await expect(pair).toBeVisible();
     const pairBox = await pair.boundingBox();
     if (!pairBox) throw new Error("undo/redo pair has no bounding box");
-    expect(pairBox.y).toBeGreaterThanOrEqual(content.y + content.height + 3);
+    // Alternative A (the founder, 2026-09-30): the pair floats over the drawing's bottom-right
+    // corner — on screen, inside the window, and overlapping the drawing area rather than below it.
+    expect(pairBox.y + pairBox.height).toBeLessThanOrEqual(IPHONE_SIDEWAYS.height);
+    expect(pairBox.y).toBeLessThan(content.y + content.height);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(IPHONE_SIDEWAYS.width);
@@ -411,7 +415,7 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     const paddingBottom = await page
       .locator("main")
       .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
-    expectWithin(paddingBottom, 61, 0.5);
+    expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
@@ -428,7 +432,7 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     expectWithin(viewerBox.y - (topBar.y + topBar.height), 11, 1);
     // Growth floor (today 426 wide).
     expect(content.width).toBeGreaterThanOrEqual(488);
-    expectWithin(ANDROID_SIDEWAYS.height - (content.y + content.height), 64, 1);
+    expectWithin(ANDROID_SIDEWAYS.height - (content.y + content.height), 5, 1);
 
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
@@ -527,7 +531,7 @@ test.describe("TEMPLATE — the slimmer phone frame, a label not a button (item 
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_UPRIGHT.width);
   });
 
-  test("iphone sideways (844x390): label frame, drawing width and the Undo/Redo clearance", async ({
+  test("iphone sideways (844x390): label frame, drawing width and the Undo/Redo pair over the corner", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "iphone-only viewport");
@@ -538,7 +542,7 @@ test.describe("TEMPLATE — the slimmer phone frame, a label not a button (item 
     const paddingBottom = await page
       .locator("main")
       .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
-    expectWithin(paddingBottom, 61, 0.5);
+    expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
     const labelBox = await label(page).boundingBox();
@@ -553,10 +557,10 @@ test.describe("TEMPLATE — the slimmer phone frame, a label not a button (item 
     expectWithin(labelBox.y - (topBar.y + topBar.height), 2, 1);
     // Growth floor (today 416 wide).
     expect(content.width).toBeGreaterThanOrEqual(466);
-    expectWithin(IPHONE_SIDEWAYS.height - (content.y + content.height), 64, 1);
+    expectWithin(IPHONE_SIDEWAYS.height - (content.y + content.height), 5, 1);
 
-    // TEMPLATE sideways repeats the Undo/Redo clearance check (the plan's own instruction — the
-    // pair must stay clear of every drawing screen's drawing, not only ROCKER's).
+    // TEMPLATE sideways repeats the Undo/Redo check: under Alternative A the pair floats over the
+    // drawing's corner on every drawing screen, not only ROCKER's.
     const slider = page.locator("aside [data-slot='slider-thumb'] input[type='range']").first();
     await expect
       .poll(() => slider.evaluate((el) => Object.keys(el).some((key) => key.startsWith("__reactFiber"))))
@@ -567,7 +571,10 @@ test.describe("TEMPLATE — the slimmer phone frame, a label not a button (item 
     await expect(pair).toBeVisible();
     const pairBox = await pair.boundingBox();
     if (!pairBox) throw new Error("undo/redo pair has no bounding box");
-    expect(pairBox.y).toBeGreaterThanOrEqual(content.y + content.height + 3);
+    // Alternative A (the founder, 2026-09-30): the pair floats over the drawing's bottom-right
+    // corner — on screen, inside the window, and overlapping the drawing area rather than below it.
+    expect(pairBox.y + pairBox.height).toBeLessThanOrEqual(IPHONE_SIDEWAYS.height);
+    expect(pairBox.y).toBeLessThan(content.y + content.height);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(IPHONE_SIDEWAYS.width);
@@ -582,7 +589,7 @@ test.describe("TEMPLATE — the slimmer phone frame, a label not a button (item 
     const paddingBottom = await page
       .locator("main")
       .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
-    expectWithin(paddingBottom, 61, 0.5);
+    expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
     const labelBox = await label(page).boundingBox();
@@ -597,7 +604,7 @@ test.describe("TEMPLATE — the slimmer phone frame, a label not a button (item 
     expectWithin(labelBox.y - (topBar.y + topBar.height), 2, 1);
     // Growth floor (today 426 wide).
     expect(content.width).toBeGreaterThanOrEqual(476);
-    expectWithin(ANDROID_SIDEWAYS.height - (content.y + content.height), 64, 1);
+    expectWithin(ANDROID_SIDEWAYS.height - (content.y + content.height), 5, 1);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_SIDEWAYS.width);
@@ -690,7 +697,7 @@ test.describe("VOLUME — the slimmer phone frame, a label and an 8px reading ma
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_UPRIGHT.width);
   });
 
-  test("iphone sideways (844x390): label frame and the 72px sideways clearance", async ({ page }, testInfo) => {
+  test("iphone sideways (844x390): label frame and the 13px sideways bottom", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "iphone-only viewport");
     await page.setViewportSize(IPHONE_SIDEWAYS);
     await gotoRoute(page, "/design/volume");
@@ -699,7 +706,7 @@ test.describe("VOLUME — the slimmer phone frame, a label and an 8px reading ma
     const paddingBottom = await page
       .locator("main")
       .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
-    expectWithin(paddingBottom, 61, 0.5);
+    expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
     const labelBox = await label(page).boundingBox();
@@ -713,15 +720,15 @@ test.describe("VOLUME — the slimmer phone frame, a label and an 8px reading ma
 
     expectWithin(labelBox.y - (topBar.y + topBar.height), 2, 1);
     expect(content.width).toBeGreaterThanOrEqual(456);
-    // VOLUME is `text`: the same 61px bottom padding plus its own 8px reading margin is 72, not
-    // the drawing screens' 64.
-    expectWithin(IPHONE_SIDEWAYS.height - (content.y + content.height), 72, 1);
+    // VOLUME is `text`: the same 2px bottom padding plus its own 8px reading margin is 13, not
+    // the drawing screens' 5.
+    expectWithin(IPHONE_SIDEWAYS.height - (content.y + content.height), 13, 1);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(IPHONE_SIDEWAYS.width);
   });
 
-  test("android sideways (863x360): label frame and the 72px sideways clearance", async ({ page }, testInfo) => {
+  test("android sideways (863x360): label frame and the 13px sideways bottom", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "android", "android-only viewport");
     await page.setViewportSize(ANDROID_SIDEWAYS);
     await gotoRoute(page, "/design/volume");
@@ -730,7 +737,7 @@ test.describe("VOLUME — the slimmer phone frame, a label and an 8px reading ma
     const paddingBottom = await page
       .locator("main")
       .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
-    expectWithin(paddingBottom, 61, 0.5);
+    expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
     const labelBox = await label(page).boundingBox();
@@ -744,7 +751,7 @@ test.describe("VOLUME — the slimmer phone frame, a label and an 8px reading ma
 
     expectWithin(labelBox.y - (topBar.y + topBar.height), 2, 1);
     expect(content.width).toBeGreaterThanOrEqual(466);
-    expectWithin(ANDROID_SIDEWAYS.height - (content.y + content.height), 72, 1);
+    expectWithin(ANDROID_SIDEWAYS.height - (content.y + content.height), 13, 1);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_SIDEWAYS.width);
@@ -858,7 +865,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const paddingBottom = await page
       .locator("main")
       .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
-    expectWithin(paddingBottom, 61, 0.5);
+    expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
@@ -876,7 +883,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     expectWithin(viewerBox.y - (topBar.y + topBar.height), 11, 1);
     // Growth floor (today 416 wide).
     expect(content.width).toBeGreaterThanOrEqual(466);
-    expectWithin(IPHONE_SIDEWAYS.height - (content.y + content.height), 64, 1);
+    expectWithin(IPHONE_SIDEWAYS.height - (content.y + content.height), 5, 1);
 
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
@@ -896,7 +903,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const paddingBottom = await page
       .locator("main")
       .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
-    expectWithin(paddingBottom, 61, 0.5);
+    expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
@@ -914,7 +921,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     expectWithin(viewerBox.y - (topBar.y + topBar.height), 11, 1);
     // Growth floor (today 426 wide).
     expect(content.width).toBeGreaterThanOrEqual(476);
-    expectWithin(ANDROID_SIDEWAYS.height - (content.y + content.height), 64, 1);
+    expectWithin(ANDROID_SIDEWAYS.height - (content.y + content.height), 5, 1);
 
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
@@ -1073,7 +1080,7 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
     const paddingBottom = await page
       .locator("main")
       .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
-    expectWithin(paddingBottom, 61, 0.5);
+    expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
@@ -1089,7 +1096,7 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
     // Growth floor (today 416 wide, the plots' own width).
     expect(content.width).toBeGreaterThanOrEqual(466);
     // RAILS sideways SCROLLS (260914-v2v) instead of a fixed window-bottom clearance — only the
-    // column's own 61px bottom padding is asserted (already checked above).
+    // column's own 2px bottom padding is asserted (already checked above).
 
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
@@ -1111,7 +1118,7 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
     const paddingBottom = await page
       .locator("main")
       .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
-    expectWithin(paddingBottom, 61, 0.5);
+    expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
