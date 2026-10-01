@@ -310,14 +310,21 @@ test.describe("phone held sideways, iPhone — the rotate button stays gone, con
 
     await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeHidden();
 
-    // Client-side nav via the desktop link row (visible here, since this viewport keeps the
-    // desktop shell) rather than a second hard `page.goto` — a WebKit-only dev-server quirk,
-    // reproducible on this exact viewport, otherwise races a hard navigation against a background
-    // Fast-Refresh reload the dev server occasionally pushes right after the outline route's first
-    // paint. A shaper would move between screens exactly this way (the desktop nav's own link),
-    // so this is not a weaker proof of the rotate button's own rule — same assertion, a navigation
-    // path already exercised by every other desktop-shell test in this file.
-    await page.getByRole("link", { name: "ROCKER" }).click();
+    // Client-side nav via the phone Menu, not the desktop link row — since quick 260930-r8s
+    // (item 9d) a sideways phone is also a SHORT screen, so the desktop row is hidden here and
+    // the Menu is the only way between screens (O-2). Still not a second hard `page.goto` — a
+    // WebKit-only dev-server quirk, reproducible on this exact viewport, otherwise races a hard
+    // navigation against a background Fast-Refresh reload the dev server occasionally pushes
+    // right after the outline route's first paint. A shaper would move between screens exactly
+    // this way (the Menu's own screens group), so this is not a weaker proof of the rotate
+    // button's own rule — same assertion, a navigation path already exercised elsewhere.
+    await page.waitForFunction(() => {
+      const el = document.querySelector('header button[aria-label="Menu"]');
+      return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+    });
+    await page.getByRole("banner").getByRole("button", { name: "Menu" }).click();
+    await page.getByRole("menu").getByRole("menuitem", { name: "ROCKER", exact: true }).click();
+    await expect(page).toHaveURL(/\/design\/rocker$/);
     await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeHidden();
   });
 });
@@ -331,7 +338,15 @@ test.describe("phone held sideways, iPhone — the rotate button stays gone, con
 // prove the opposite (10-05's own rule); it now proves D-10 in a real browser. It is deliberately
 // separate from — and does not touch the BODY of — the touch-tablet describe above, which now
 // proves the same D-10 outcome on the OTHER real hardware width (a real iPhone held sideways).
-test.describe("phone held sideways — the desktop shell renders, controls beside the board (D-10)", () => {
+//
+// Since quick 260930-r8s (Phase 13 item 9d) a sideways phone is also a SHORT screen, so width
+// still picks the shell (the desktop sidebar-beside-canvas layout, unchanged by this quick task)
+// while height alone now also picks which top bar draws there: the desktop link row is hidden on
+// any screen 500 dots tall or less, and the phone's own thin bar takes its place, carrying the
+// six screens in its Menu. This test was rewritten for that: the desktop shell itself is
+// unchanged (D-10 still holds), but what used to be a visible desktop link row with six links is
+// now the phone bar's Menu with the same six screens inside it.
+test.describe("phone held sideways — the desktop shell renders under the phone's thin bar (D-10, quick 260930-r8s)", () => {
   test.use({ ...pixel7LandscapeViewport });
 
   test.beforeEach(async ({ page }, testInfo) => {
@@ -342,35 +357,58 @@ test.describe("phone held sideways — the desktop shell renders, controls besid
     await dismissSignInBanner(page);
   });
 
-  test("at 863 x 360 (a real Pixel 7 turned sideways) the desktop shell renders: the desktop link row shows all six screens, the six-tab bottom bar and compact top bar are gone, and the rotate button is gone (a touch pointer's own job, not this switch's)", async ({
+  test("at 863 x 360 (a real Pixel 7 turned sideways) the desktop shell renders under the phone's thin bar: the desktop link row and the six-tab bottom bar are gone, the six screens are in the menu, and the rotate button is gone (a touch pointer's own job, not this switch's)", async ({
     page,
   }) => {
     await page.goto("/design/outline");
 
     // Load-bearing precondition: this really is the width real hardware reported, on a touch
-    // device, before asserting anything about which shell rendered.
+    // device, before asserting anything about which shell and which bar rendered.
     const preconditions = await page.evaluate(() => ({
       width: window.innerWidth,
       height: window.innerHeight,
       coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+      shortScreen: window.matchMedia("(max-height: 500px)").matches,
     }));
     expect(preconditions.width).toBe(863);
     expect(preconditions.height).toBe(360);
     expect(preconditions.coarsePointer).toBe(true);
+    expect(preconditions.shortScreen).toBe(true);
 
-    // The desktop screen-link row (SiteNav's own bare <nav>, no aria-label) now renders — the
-    // layout switch reads width alone again, and 863px clears the 820px cutoff.
+    // The desktop SHELL still renders — the sidebar beside the drawing, not stacked above it —
+    // the layout switch reads width alone, and 863px clears the 820px cutoff (D-10, unchanged).
+    const sidebar = page.locator("aside");
+    const canvas = page.locator("main");
+    const sidebarBox = await sidebar.boundingBox();
+    const canvasBox = await canvas.boundingBox();
+    if (!sidebarBox || !canvasBox) throw new Error("missing bounding box");
+    expect(sidebarBox.x + sidebarBox.width).toBeLessThanOrEqual(canvasBox.x + 1);
+
+    // The desktop link row is gone on this short screen — the phone bar replaces it (quick
+    // 260930-r8s, item 9d).
     const desktopNav = page.locator("nav:not([aria-label])");
-    await expect(desktopNav).toBeVisible();
-    for (const label of SCREEN_LABELS) {
-      await expect(desktopNav.getByRole("link", { name: label })).toBeVisible();
-    }
+    await expect(desktopNav).toBeHidden();
+
+    const topBar = page.getByRole("banner");
+    await expect(topBar).toBeVisible();
+    await expect(topBar.getByRole("button", { name: "Menu" })).toBeVisible();
 
     const tabBar = page.getByRole("navigation", { name: "Screens" });
     await expect(tabBar).toBeHidden();
 
-    const topBar = page.getByRole("banner");
-    await expect(topBar).toBeHidden();
+    // The six screens the desktop row used to show are reachable from the Menu instead.
+    await page.waitForFunction(() => {
+      const el = document.querySelector('header button[aria-label="Menu"]');
+      return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+    });
+    await topBar.getByRole("button", { name: "Menu" }).click();
+    const popup = page.getByRole("menu");
+    await expect(popup).toBeVisible();
+    for (const label of SCREEN_LABELS) {
+      await expect(popup.getByRole("menuitem", { name: label, exact: true })).toBeVisible();
+    }
+    await page.keyboard.press("Escape");
+    await expect(popup).toBeHidden();
 
     // Unchanged, because it was never a layout question: a touch device turning already turns the
     // board, so the Rotate button stays gone here too — this is the `coarse` pointer variant's own
