@@ -89,3 +89,26 @@ golden of today's numbers first: a monotone cubic with tension, a Catmull-Rom/ca
 B-spline fitted through the stations, and a clamped natural spline with the tip rules on top — judged
 on no hump near a tip, no kink or facet, no overshoot at the nose, and how far the five stored
 thicknesses and the four rocker numbers move for the production boards.
+
+## Founder's research direction, 2026-10-01 — US Blanks as the muse
+
+The founder (verbatim): "does it make sense to look at the blank database and use US Blanks as a muse
+(because they provide the most data points their curves are smoothest — except that I need to fix a few
+dims before actually doing any analysis as not to introduce erroneous bias) for the type of curve that
+should be created and where weighting is needed to allow the tips (specifically the nose) to smoothly,
+but more rapidly ramp up on the blanks that have less fixed points."
+
+The catalogue supports it: US Blanks has 101 blanks at 9–15 stations each (most 11–15), Arctic Foam 33
+at 5–6, Marko 28 at 5–10. The experiment that makes it a measurement rather than a taste: for each US
+Blank, keep only the stations a sparse catalogue would give (nose, 12", centre, 12", tail — the Arctic
+pattern), fit every candidate curve through those few points, and score it against the blank's own
+dense profile — per region (nose last 12", body, tail), per curve family — with the dims fixed first
+and a robust fit that flags any station sitting far off every candidate as a possible catalogue typo
+(the same scan then runs over Arctic and Marko before the founder's manual list is final). The nose
+weighting the founder describes is then fitted, not guessed: PCHIP is monotone and derivative-limited,
+so with two points in the last foot it draws the nose ramp too straight; a parametric tip model (a
+power/exponential ramp blended into the body spline over the last N inches, its exponent fitted on the
+US Blanks dense data) is the leading candidate. Caveat to carry: a US Blanks prior can bias Arctic and
+Marko toward US Blanks' rocker style — so the tip model fills only the gaps between a sparse blank's
+stations, never moves a station, and at least one real Arctic and one real Marko blank measured with a
+tape at 6" intervals in the bay is the independent check.
