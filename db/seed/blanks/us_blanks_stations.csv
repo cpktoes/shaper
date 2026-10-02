@@ -70,7 +70,7 @@ US Blanks,"6'2""A",T18,18,0.563,2.311,20.5,74.752,74.0,55.1,fish-egg/6-2A,7,
 US Blanks,"6'2""A",T24,24,0.252,2.563,22.0,74.752,74.0,55.1,fish-egg/6-2A,7,
 US Blanks,"6'2""A",C,37.376,0.0,2.937,23.5,74.752,74.0,55.1,fish-egg/6-2A,7,
 US Blanks,"6'2""A",N24,50.752,0.437,2.752,22.626,74.752,74.0,55.1,fish-egg/6-2A,7,
-US Blanks,"6'2""A",N18,56.752,0.937,3.063,21.248,74.752,74.0,55.1,fish-egg/6-2A,7,"catalog prints 3 1/16"" here, thicker than its own stated max of 2 15/16""; likely a catalog typo"
+US Blanks,"6'2""A",N18,56.752,0.937,2.4375,21.248,74.752,74.0,55.1,fish-egg/6-2A,7,"thickness: catalog prints 3 1/16"" (7.78 cm) here, thicker than its own stated max of 2 15/16""; used 2 7/16"", the 6'2""AX less 1/4"""
 US Blanks,"6'2""A",N12,62.752,1.689,2.126,19.0,74.752,74.0,55.1,fish-egg/6-2A,7,
 US Blanks,"6'2""A",N6,68.752,2.874,1.626,15.189,74.752,74.0,55.1,fish-egg/6-2A,7,
 US Blanks,"6'2""A",N0,74.752,4.752,1.126,8.0,74.752,74.0,55.1,fish-egg/6-2A,7,
@@ -135,7 +135,7 @@ US Blanks,"6'4""EAX",T12,12,0.937,2.252,15.437,76.244,75.5,46.61,shortboard/6-4E
 US Blanks,"6'4""EAX",T18,18,0.563,2.563,17.689,76.244,75.5,46.61,shortboard/6-4EAX,13,
 US Blanks,"6'4""EAX",T24,24,0.311,2.752,19.252,76.244,75.5,46.61,shortboard/6-4EAX,13,
 US Blanks,"6'4""EAX",C,38.122,0.0,3.0,20.626,76.244,75.5,46.61,shortboard/6-4EAX,13,
-US Blanks,"6'4""EAX",N24,52.244,0.437,2.811,19.0,76.244,75.5,46.61,shortboard/6-4EAX,13,
+US Blanks,"6'4""EAX",N24,52.244,0.437,2.6875,19.0,76.244,75.5,46.61,shortboard/6-4EAX,13,"thickness: catalog prints 2 13/16"" (7.14 cm) here; used 2 11/16"", the 6'4""EA plus 1/4"""
 US Blanks,"6'4""EAX",N18,58.244,0.937,2.374,17.126,76.244,75.5,46.61,shortboard/6-4EAX,13,
 US Blanks,"6'4""EAX",N12,64.244,1.811,2.0,14.189,76.244,75.5,46.61,shortboard/6-4EAX,13,
 US Blanks,"6'4""EAX",N6,70.244,3.311,1.563,10.126,76.244,75.5,46.61,shortboard/6-4EAX,13,
@@ -531,7 +531,7 @@ US Blanks,"7'11""A",N12,83.5,2.689,2.126,13.252,95.5,94.689,65.7,guns/711A,45,
 US Blanks,"7'11""A",N6,89.5,4.189,1.669,9.126,95.5,94.689,65.7,guns/711A,45,
 US Blanks,"7'11""A",N0,95.5,6.449,1.126,3.5,95.5,94.689,65.7,guns/711A,45,
 US Blanks,"8'0""H",T0,0,3.126,1.311,6.752,96.126,95.626,78.4,fish-eggs/80H,46,
-US Blanks,"8'0""H",T6,6,2.874,1.752,13.0,96.126,95.626,78.4,fish-eggs/80H,46,
+US Blanks,"8'0""H",T6,6,2.375,1.752,13.0,96.126,95.626,78.4,fish-eggs/80H,46,"rocker: catalog prints 2 7/8"" (7.30 cm) here, which would lift the tail 1 1/8"" in six inches; used 2 3/8"", the figure the neighbouring stations give"
 US Blanks,"8'0""H",T12,12,1.752,2.126,16.437,96.126,95.626,78.4,fish-eggs/80H,46,
 US Blanks,"8'0""H",T18,18,1.252,2.437,18.811,96.126,95.626,78.4,fish-eggs/80H,46,
 US Blanks,"8'0""H",T24,24,0.811,2.752,20.5,96.126,95.626,78.4,fish-eggs/80H,46,
@@ -617,7 +617,7 @@ US Blanks,"8'4""SPX",T36,36,0.252,3.626,22.874,100.437,99.811,84.0,fish-eggs/84S
 US Blanks,"8'4""SPX",C,50.219,0.0,3.752,24.063,100.437,99.811,84.0,fish-eggs/84SPX,52,
 US Blanks,"8'4""SPX",N36,64.437,0.189,3.563,23.874,100.437,99.811,84.0,fish-eggs/84SPX,52,
 US Blanks,"8'4""SPX",N24,76.437,0.811,3.189,22.5,100.437,99.811,84.0,fish-eggs/84SPX,52,
-US Blanks,"8'4""SPX",N18,82.437,1.374,3.063,21.189,100.437,99.811,84.0,fish-eggs/84SPX,52,
+US Blanks,"8'4""SPX",N18,82.437,1.374,2.9375,21.189,100.437,99.811,84.0,fish-eggs/84SPX,52,"thickness: catalog prints 3 1/16"" (7.78 cm) here; used 2 15/16"", the 8'4""SP plus 3/8"""
 US Blanks,"8'4""SPX",N12,88.437,2.189,2.626,19.252,100.437,99.811,84.0,fish-eggs/84SPX,52,
 US Blanks,"8'4""SPX",N6,94.437,3.252,2.189,15.811,100.437,99.811,84.0,fish-eggs/84SPX,52,
 US Blanks,"8'4""SPX",N0,100.437,4.752,1.689,0,100.437,99.811,84.0,fish-eggs/84SPX,52,"width 0: rounded nose, not printed in catalog"
@@ -905,7 +905,7 @@ US Blanks,"10'6""AX",T6,6,2.874,2.311,9.374,126.752,125.874,123.7,guns/106AX,72,
 US Blanks,"10'6""AX",T12,12,2.374,2.5,12.374,126.752,125.874,123.7,guns/106AX,72,
 US Blanks,"10'6""AX",T18,18,1.937,2.811,14.752,126.752,125.874,123.7,guns/106AX,72,
 US Blanks,"10'6""AX",T24,24,1.5,3.063,16.752,126.752,125.874,123.7,guns/106AX,72,
-US Blanks,"10'6""AX",T36,36,0.752,3.063,19.811,126.752,125.874,123.7,guns/106AX,72,
+US Blanks,"10'6""AX",T36,36,0.752,3.5625,19.811,126.752,125.874,123.7,guns/106AX,72,"thickness: catalog prints 3 1/16"" (7.78 cm) here, the same as the next station; used 3 9/16"", the 10'6""A plus 1/2"""
 US Blanks,"10'6""AX",T48,48,0.252,4.0,21.874,126.752,125.874,123.7,guns/106AX,72,
 US Blanks,"10'6""AX",C,63.376,0.0,4.252,23.189,126.752,125.874,123.7,guns/106AX,72,
 US Blanks,"10'6""AX",N48,78.752,0.311,4.252,22.811,126.752,125.874,123.7,guns/106AX,72,
@@ -1077,7 +1077,7 @@ US Blanks,"7'2""X EPS",T0,0,2.874,1.5,5.0,86.752,85.752,,superfused/72xsuperfuse
 US Blanks,"7'2""X EPS",T6,6,1.937,1.937,11.311,86.752,85.752,,superfused/72xsuperfusedeps,86,
 US Blanks,"7'2""X EPS",T12,12,1.252,2.5,14.811,86.752,85.752,,superfused/72xsuperfusedeps,86,
 US Blanks,"7'2""X EPS",T18,18,0.811,2.563,17.626,86.752,85.752,,superfused/72xsuperfusedeps,86,
-US Blanks,"7'2""X EPS",T24,24,0.5,2.811,19.252,86.752,85.752,,superfused/72xsuperfusedeps,86,
+US Blanks,"7'2""X EPS",T24,24,0.5,2.9375,19.252,86.752,85.752,,superfused/72xsuperfusedeps,86,"thickness: catalog prints 2 13/16"" (7.14 cm) here; used 2 15/16"", the 7'2"" EPS plus 3/8"""
 US Blanks,"7'2""X EPS",T36,36,0.063,3.252,21.252,86.752,85.752,,superfused/72xsuperfusedeps,86,
 US Blanks,"7'2""X EPS",C,43.376,0.0,3.311,21.563,86.752,85.752,,superfused/72xsuperfusedeps,86,
 US Blanks,"7'2""X EPS",N36,50.752,0.063,3.252,21.126,86.752,85.752,,superfused/72xsuperfusedeps,86,
