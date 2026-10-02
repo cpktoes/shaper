@@ -550,13 +550,14 @@ describe("blank-datasheet validation (D-14)", () => {
   // Measured by running this suite: Family 1 produced the largest centre-station cross-section
   // (deckPercent 100, removeCornerCut true, singleTuck true) at 53104.7 mm2 — the fullest of the
   // five families, as expected since Family 1 is this calculator's boxiest rail profile. Using
-  // Family 1 for the whole board, the computed volume is 78.85 L against the datasheet's stated
-  // 77.17 L — a 2.17% deviation, comfortably inside the 10% bar. (Re-measured in Phase 11 plan
-  // 11-04, when the foil and this test's plan curve moved onto pchip; it read 77.95 L, 1.01%, on
-  // the older Fritsch–Carlson sampler.) The remaining gap is exactly what the 10% tolerance exists
-  // for: the app's boxiest rail band is still a shaped rail rather than a blank's true square edge,
-  // and the plan curve between the five quoted widths is a pchip curve rather than the blank's true
-  // outline curve.
+  // Family 1 for the whole board, the computed volume is 79.72 L against the datasheet's stated
+  // 77.17 L — a 3.30% deviation, comfortably inside the 10% bar. (Re-measured in Phase 14 plan
+  // 14-04, when the foil moved onto the square-root fall through its five stations, which carries
+  // more foam between them; it read about 2.2% over on pchip in Phase 11 plan 11-04, and 1.01% on
+  // the older Fritsch–Carlson sampler before that.) The remaining gap is exactly what the 10%
+  // tolerance exists for: the app's boxiest rail band is still a shaped rail rather than a blank's
+  // true square edge, and the plan curve between the five quoted widths is a pchip curve rather
+  // than the blank's true outline curve.
   it("lands within 10% of the Arctic Foam 7'3\" SBF's stated 77.17 L using the fullest rail treatment", () => {
     const result = computeCrossSectionVolume({
       halfWidthAt: blankHalfWidthAt,
@@ -589,6 +590,20 @@ describe("thicknessAt — one thickness curve for every board", () => {
     expect(mismatches).toEqual([]);
     for (const { station, thickness } of foilStationPoints(foil, length)) {
       expect(sampleFoil(foil, length, station)).toBe(thickness);
+    }
+  });
+
+  it("sampleFoil reads exactly what the hand-set side profile draws, on a 1/8in sweep and at the five stations (Phase 14 D-13)", () => {
+    const profile = buildFallbackProfile(DEFAULT_FALLBACK_ROCKER, foil, length);
+    const mismatches: number[] = [];
+    for (let s = 0; s <= length; s += inchesToMm(0.125)) {
+      if (sampleFoil(foil, length, mm(s)) !== profile.thicknessAt(mm(s))) mismatches.push(s);
+    }
+    if (sampleFoil(foil, length, length) !== profile.thicknessAt(length)) mismatches.push(length);
+    expect(mismatches).toEqual([]);
+    for (const { station, thickness } of foilStationPoints(foil, length)) {
+      expect(sampleFoil(foil, length, station)).toBe(thickness);
+      expect(profile.thicknessAt(station)).toBe(thickness);
     }
   });
 
