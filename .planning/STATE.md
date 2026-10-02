@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 14 planned 2026-10-02: 18 plans in 10 waves, plan checker VERIFICATION PASSED on the second pass; next: the founder approves, then /gsd-execute-phase 14 (go-live 1, the curves, is wave 5 — target Sat 2026-10-03)"
+stopped_at: "Phase 14 wave 1 of 10 merged (14-01: today's numbers pinned from the live commit ed39f4a, 1.2 MB fixture with the blanks by value, 7 tests); gate green on main; next: wave 2 (14-02, the square-root curve module)"
 last_updated: "2026-10-02T23:07:28.535Z"
 last_activity: 2026-10-02
-last_activity_desc: Phase 14 researched and planned — the research rebuilt both steps in a scratch copy and reproduced every figure; the founder ruled on three questions (D-20 to D-22) and six more were settled on the measurements (D-23 to D-28); 18 plans in 10 waves with the two go-lives as founder checkpoints (waves 5 and 10); checker passed after one revision
+last_activity_desc: Phase 14 executing — wave 1 done (the pin); the founder approved the plan 2026-10-02; executors on Opus
 progress:
   total_phases: 2
   completed_phases: 0
-  total_plans: 18
-  completed_plans: 0
-  percent: 0
+  total_plans: 31
+  completed_plans: 12
+  percent: 39
 current_phase: 14
 current_phase_name: Realistic Surfboard Flow
 ---
