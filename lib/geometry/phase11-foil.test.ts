@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import golden from "./__fixtures__/phase11-foil-golden.json";
+import pinnedBlanks from "./__fixtures__/phase11-foil-golden-blanks.json";
+import { phase11GoldenBlank } from "./__fixtures__/phase11-golden-blank";
 import { DEFAULT_BLANK_CUT, type BlankRecord, type TipStyle } from "./blank";
 import { boardOnBlank, prepareBlank, TIP_EASE_WINDOW_MM } from "./blank-fit";
 import { carryPhase11Blank, phase11TwelveInch, type Phase11Board } from "./phase11-foil";
@@ -8,15 +9,14 @@ import { mm } from "./units";
 
 // Every expected number below is Phase 11's own output, recorded in the generated fixture by
 // scripts/extract-phase11-foil-golden.ts running tag v1.3's boardOnBlank — never typed here
-// (CLAUDE.md Rule 1).
-const CATALOG = readSeedCatalog();
+// (CLAUDE.md Rule 1). Each case's blank comes from the pinned fixture — the catalogue as the numbers
+// were recorded on it — and not from today's catalogue, because a board saved under Phase 11 carries
+// its blank by value, so a later catalogue correction must not be able to disturb these.
 
 type GoldenCase = (typeof golden.cases)[number];
 
 function recordOf(entry: GoldenCase): BlankRecord {
-  const record = CATALOG.find((b) => b.vendor === entry.vendor && b.name === entry.name);
-  if (!record) throw new Error(`${entry.vendor} ${entry.name} is not in the seeded catalogue`);
-  return record;
+  return phase11GoldenBlank(entry.vendor, entry.name);
 }
 
 function boardOf(entry: GoldenCase): Phase11Board {
@@ -45,6 +45,12 @@ describe("Phase 11's 12\" formula, kept for the carry-over (D-14)", () => {
         9,
       );
     }
+  });
+
+  it("the pinned blanks are exactly the blanks the recorded boards name — no more, no fewer", () => {
+    const named = new Set(golden.cases.map((entry) => `${entry.vendor} | ${entry.name}`));
+    const pinned = new Set(pinnedBlanks.blanks.map((blank) => `${blank.vendor} | ${blank.name}`));
+    expect([...pinned].sort()).toEqual([...named].sort());
   });
 
   it("the fixture holds the presets, the development board, a catalogue sweep and the guard cases", () => {

@@ -92,6 +92,31 @@ describe("the three seeded catalogues (R7)", () => {
       expect(blank.pdfPage, where).toBe(Number(row[col("pdf_page")]));
     }
   });
+
+  it("puts every station where its label says: T<n> n inches from the tail, N<n> n inches from the nose, C at half the length", () => {
+    let checked = 0;
+    for (const blank of CATALOG) {
+      const length = mmToInches(blank.lengthMm);
+      for (const station of blank.stations) {
+        const where = `${blank.vendor} ${blank.name} ${station.label}`;
+        const at = mmToInches(station.fromTailMm);
+        const tail = /^T(\d+)$/.exec(station.label);
+        const nose = /^N(\d+)$/.exec(station.label);
+        if (tail) {
+          expect(at, where).toBeCloseTo(Number(tail[1]), 6);
+        } else if (nose) {
+          expect(at, where).toBeCloseTo(length - Number(nose[1]), 6);
+        } else if (station.label === "C") {
+          // The catalogue writes the centre rounded to two decimals, so this is a tolerance, not an expected figure.
+          expect(at, where).toBeCloseTo(length / 2, 1);
+        } else {
+          expect.fail(`${where}: the label is not T<n>, N<n> or C`);
+        }
+        checked++;
+      }
+    }
+    expect(checked).toBe(CATALOG.reduce((n, blank) => n + blank.stations.length, 0));
+  });
 });
 
 describe("empty cells and flags (R8, R9, edge coverage)", () => {
