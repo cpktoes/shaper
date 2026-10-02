@@ -161,17 +161,17 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-9 pending (two of them are Phase 13 items: the catalogue links are item 9, skipped for now, and the ghost of the last edit is optional item 9b. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, and the Contacts page by item 10):
+9 pending (one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
 - [minor/general] Brand the order form with a shaper's own logo and contact details (paid tier) — `.planning/todos/pending/2026-09-06-brand-the-order-form-for-paid-shapers.md`
 - [minor/ui] Show live coordinates under the pointer on the Template and Rocker curves — `.planning/todos/pending/2026-09-14-live-pointer-coordinates-on-the-template-and-rocker-curves.md`
 - [minor/rocker] Open the blank's own catalog page from the app — `.planning/todos/pending/2026-09-26-open-the-blank-s-catalog-page-from-the-app.md`
-- [minor/ui] Show a ghost of the last edit on the Template screen — `.planning/todos/pending/2026-09-27-show-a-ghost-of-the-last-edit-on-the-template-screen.md`
 - [major/rocker] Give the foil and rocker curves a realistic surfboard flow (moved up by the founder on 2026-10-02: "tackle this very soon, before the 10th"; the research is done — a square-root rule on today's PCHIP wins for bottom, thickness and width — and the two-step plan is in the todo with the founder's answers of 2026-10-02: curves AND tips both before the Oct 7 freeze, an automatic tip start the shaper can override (6" to the centre), saved boards redraw, the blank's width and the hand-set board included; nothing built yet; folds in the 2026-09-26 smoother-rocker todo) — `.planning/todos/pending/2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow.md`
 - [minor/rocker] Custom rocker on a blank, saved as the shaper's own Custom Blank (after Oct 10) — `.planning/todos/pending/2026-09-28-custom-rocker-on-a-blank-saved-as-the-shaper-s-own-custom-bl.md`
 - [major/data] Fix the blank catalogue dims (the founder moved it up on 2026-10-01: "let's tackle the blank errors now"). All three correction rounds are live (quick 261001-v1q, 261001-www, 261002-aqu); what is left is the founder's own list — any blank they know is wrong that a check against the catalog could not see — `.planning/todos/pending/2026-10-01-fix-the-blank-catalogue-dims-the-founder-knows-are-wrong.md`
+- [minor/ui] Hold the ghost still until the control is released (the founder, 2026-10-02: on TEMPLATE the ghost moves while a slider or a draggable point is still held; it should stay on the shape from before the grab until the release. Cause measured: a half-second timer, not the release, decides where one edit ends, so a slow drag or a pause counts as several edits. No date set) — `.planning/todos/pending/2026-10-02-hold-the-ghost-still-until-the-control-is-released.md`
 
 ### Blockers/Concerns
 

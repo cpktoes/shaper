@@ -58,3 +58,17 @@ Rough shape, to be settled with the founder when it is planned:
 - **Proof.** Unit tests for any pure helper (for example "the outline to ghost, given this history"). Browser
   tests on the three device profiles. The desktop reference screenshots will change on TEMPLATE only once an edit
   has happened; a freshly opened board shows no ghost, so the baselines should hold.
+
+## Outcome
+
+Done as Phase 13 optional item 9b: quick 260930-lia (commits f60fb00, 4e4da62, 7507baf, merged 8daa3b2) and
+fast task 138 (35877ea), pushed on the founder's go on 2026-09-30 and live since then.
+
+The founder's choices: the ghost is the outline as it was one edit ago, from the undo history; it stays until
+the next edit; a button in the drawing's toolbar hides and shows it, on by default and not remembered; TEMPLATE
+only, with ROCKER able to follow later; and a faint solid line at 55% of the muted ink instead of a dashed one.
+It never prints and never shows on the home cards, the SUMMARY sheet or any other screen.
+
+Closed on 2026-10-02, when the founder asked for the ghost to hold still until the control is released. This
+todo had stayed in the pending list after the ghost went live. The follow-up is its own todo:
+`2026-10-02-hold-the-ghost-still-until-the-control-is-released.md`.
