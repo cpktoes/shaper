@@ -6,6 +6,7 @@ import { parseCsv } from "@/lib/blanks/csv";
 import { readSeedCatalog, SEED_CSV_DIR } from "@/lib/blanks/seed-files";
 import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
 import golden from "./__fixtures__/phase11-foil-golden.json";
+import { phase11GoldenBlank } from "./__fixtures__/phase11-golden-blank";
 import {
   DEFAULT_BLANK_CUT,
   type BlankRecord,
@@ -321,9 +322,11 @@ describe("the phase's named geometry tests (R7)", () => {
         expect(onBlank.bottomOffAt(s), `${record.vendor} ${record.name} @ ${s}`).toBeCloseTo(onBlank.centerGap, 9);
       }
     }
-    // Phase 11's own rocker, recorded from tag v1.3 before this phase touched the maths.
+    // Phase 11's own rocker, recorded from tag v1.3 before this phase touched the maths — on each
+    // case's blank as the catalogue held it then (the pinned fixture), since a saved Phase 11 board
+    // carries its blank by value and a later catalogue correction must not disturb it.
     for (const entry of golden.cases) {
-      const record = findBlank(entry.vendor, entry.name);
+      const record = phase11GoldenBlank(entry.vendor, entry.name);
       const length = mm(entry.boardLengthMm);
       const onBlank = boardOnBlank(
         prepareBlank(record),

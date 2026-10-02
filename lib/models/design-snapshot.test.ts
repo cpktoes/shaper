@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import golden from "@/lib/geometry/__fixtures__/phase11-foil-golden.json";
+import { phase11GoldenBlank } from "@/lib/geometry/__fixtures__/phase11-golden-blank";
 import { DEFAULT_BLANK_CUT, type BlankRecord, type BoardBlank, type TipStyle } from "@/lib/geometry/blank";
 import { prepareBlank } from "@/lib/geometry/blank-fit";
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
@@ -118,10 +119,10 @@ function boardBlank(copy: BlankRecord = MARKO): BoardBlank {
 type GoldenCase = (typeof golden.cases)[number];
 
 /** A version-4 envelope for one golden case, exactly as Phase 11 saved such a board: no cut on the
- * blank. Built from the case's own inputs and the catalogue record — never typed numbers. */
+ * blank. Built from the case's own inputs and the blank as Phase 11 saw it — the pinned fixture —
+ * never typed numbers. */
 function phase11Envelope(entry: GoldenCase, version = 4) {
-  const copy = CATALOG.find((blank) => blank.vendor === entry.vendor && blank.name === entry.name);
-  if (!copy) throw new Error(`${entry.vendor} ${entry.name} is not in the seeded catalogue`);
+  const copy = phase11GoldenBlank(entry.vendor, entry.name);
   return JSON.parse(
     JSON.stringify({
       version,
