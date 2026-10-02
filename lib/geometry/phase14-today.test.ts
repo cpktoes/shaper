@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { PHASE14_TODAY, pinnedBlank, pinnedCatalogue } from "./__fixtures__/phase14-today";
 import { buildStressSet, STRESS_FIT_SETTINGS } from "./__fixtures__/phase14-stress-set";
-import { boardOnBlank, fitAt, prepareBlank } from "./blank-fit";
+import { boardOnBlank, fitAt, prepareBlankPchip } from "./blank-fit";
 import { buildBoardProfile } from "./board-profile";
 import { BOARD_PRESETS } from "./presets";
 import { rockerStationPositions } from "./rocker";
@@ -16,10 +16,10 @@ import { mm } from "./units";
 // catalogue, so a later catalogue correction cannot move a recorded number (D-26). Litres are recorded
 // in the pin but asserted by plan 14-05, through the named frozen rules.
 
-describe("today's numbers, pinned from the live commit before anything changes (D-26)", () => {
+describe("today's numbers, reproduced by today's rule kept by name (D-25, D-26)", () => {
   it("reproduces every blank's levelled bottom, thickness and width at every station and midpoint", () => {
     for (const entry of PHASE14_TODAY.curves) {
-      const prepared = prepareBlank(pinnedBlank(entry.vendor, entry.name));
+      const prepared = prepareBlankPchip(pinnedBlank(entry.vendor, entry.name));
       const label = `${entry.vendor} ${entry.name}`;
       for (const point of entry.rocker) expect(prepared.rocker.sample(point.x), `${label} rocker`).toBe(point.y);
       for (const point of entry.thickness) {
@@ -46,7 +46,7 @@ describe("today's numbers, pinned from the live commit before anything changes (
         rocker: fields.rocker,
         foil: fields.foil,
         blank: {
-          prepared: prepareBlank(fields.blank.copy),
+          prepared: prepareBlankPchip(fields.blank.copy),
           placement: fields.blank.placement,
           nose12Offset: fields.blank.nose12Offset,
           tail12Offset: fields.blank.tail12Offset,
@@ -68,7 +68,7 @@ describe("today's numbers, pinned from the live commit before anything changes (
   });
 
   it("reproduces every pinned stress board's numbers, fit verdict and worst shortfall", () => {
-    const byLabel = new Map(buildStressSet(pinnedCatalogue(), prepareBlank).map((entry) => [entry.label, entry]));
+    const byLabel = new Map(buildStressSet(pinnedCatalogue(), prepareBlankPchip).map((entry) => [entry.label, entry]));
     for (const entry of PHASE14_TODAY.stress) {
       const stressCase = byLabel.get(entry.label);
       expect(stressCase, entry.label).toBeDefined();

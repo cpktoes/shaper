@@ -34,6 +34,7 @@ import {
   nearestFittingPlacement,
   placementRange,
   prepareBlank,
+  prepareBlankPchip,
   runsOutCause,
   TIP_EASE_WINDOW_MM,
   tweakExceedsDeckSkin,
@@ -49,8 +50,9 @@ import { buildBlankProfile } from "./board-profile";
 import { FOIL_THICKNESS_RANGE_IN } from "./foil";
 import { buildOutline, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
-import { preparePchip } from "./pchip";
+import { type PreparedPchip } from "./pchip";
 import { rockerStationPositions } from "./rocker";
+import { prepareRootCurve, type RootKind } from "./root-curve";
 import { inchesToMm, mm, mmToInches, type Mm } from "./units";
 
 // Every catalogue figure below is read from the committed CSVs — through the tested reader, or as
@@ -111,22 +113,30 @@ describe("the brief's four named tests (R16)", () => {
     }
   });
 
-  it("pchip never overshoots between two stations on any seeded blank", () => {
-    const attributes = [
-      (s: BlankStation) => s.rockerMm,
-      (s: BlankStation) => s.thicknessMm,
-      (s: BlankStation) => s.widthMm,
+  it("the blank's curves never overshoot between two stations on any seeded blank", () => {
+    // The live curves (Phase 14 D-13): a pickable blank's own prepared bottom, thickness and width,
+    // and the same square-root rule straight through the knots for a blank that cannot be picked
+    // (`prepareBlank` refuses a blank with no centre thickness).
+    const attributes: {
+      pick: (s: BlankStation) => Mm | null;
+      kind: RootKind;
+      live: (prepared: PreparedBlank) => PreparedPchip;
+    }[] = [
+      { pick: (s) => s.rockerMm, kind: "rise", live: (prepared) => prepared.rocker.curve },
+      { pick: (s) => s.thicknessMm, kind: "fall", live: (prepared) => prepared.thickness },
+      { pick: (s) => s.widthMm, kind: "fall", live: (prepared) => prepared.width },
     ];
     let intervals = 0;
     let outside = 0;
     for (const blank of CATALOG) {
-      for (const pick of attributes) {
+      const prepared = isPickable(blank) ? prepareBlank(blank) : null;
+      for (const { pick, kind, live } of attributes) {
         // Each attribute over its OWN stations: an empty cell is not a knot (R10).
         const knots = blank.stations
           .filter((s) => pick(s) !== null)
           .map((s) => ({ x: s.fromTailMm as number, y: pick(s) as number }));
         if (knots.length < 2) continue;
-        const curve = preparePchip(knots);
+        const curve = prepared ? live(prepared) : prepareRootCurve(knots, kind);
         for (let k = 0; k < knots.length - 1; k++) {
           intervals++;
           const [a, b] = [knots[k], knots[k + 1]];
@@ -143,15 +153,18 @@ describe("the brief's four named tests (R16)", () => {
     expect(outside).toBe(0);
   });
 
-  it("levelling puts the curve's minimum at exactly 0", () => {
-    // 1. Every seeded blank, pickable or not: the whole-blank minimum of the levelled rocker —
-    //    its two ends and every knot, which is exact because pchip is monotone between knots —
-    //    is exactly 0.
+  it("levelling the blank's bottom puts its minimum at exactly 0", () => {
+    // 1. Every seeded blank, pickable or not, on the live curve (Phase 14 D-13): the whole-blank
+    //    minimum of the levelled rocker — its two ends and every knot, which is exact because the
+    //    curve stays between its two neighbouring stations — is exactly 0. A pickable blank's own
+    //    prepared bottom; the same rule through the knots for a blank that cannot be picked.
     for (const blank of CATALOG) {
       const knots = blank.stations
         .filter((s) => s.rockerMm !== null)
         .map((s) => ({ x: s.fromTailMm as number, y: s.rockerMm as number }));
-      const levelled = levelCurve(preparePchip(knots), 0, blank.lengthMm);
+      const levelled = isPickable(blank)
+        ? prepareBlank(blank).rocker
+        : levelCurve(prepareRootCurve(knots, "rise"), 0, blank.lengthMm);
       const lowest = Math.min(
         levelled.sample(0),
         levelled.sample(blank.lengthMm),
@@ -324,12 +337,14 @@ describe("the phase's named geometry tests (R7)", () => {
     }
     // Phase 11's own rocker, recorded from tag v1.3 before this phase touched the maths — on each
     // case's blank as the catalogue held it then (the pinned fixture), since a saved Phase 11 board
-    // carries its blank by value and a later catalogue correction must not disturb it.
+    // carries its blank by value and a later catalogue correction must not disturb it. That golden is
+    // Phase 11's PCHIP rocker, so its blank is prepared on today's rule by name (Phase 14 D-25); the
+    // assertion above, and named tests (a)–(e)'s others, run on the live rule.
     for (const entry of golden.cases) {
       const record = phase11GoldenBlank(entry.vendor, entry.name);
       const length = mm(entry.boardLengthMm);
       const onBlank = boardOnBlank(
-        prepareBlank(record),
+        prepareBlankPchip(record),
         {
           length,
           centerThickness: mm(entry.centerThicknessMm),
