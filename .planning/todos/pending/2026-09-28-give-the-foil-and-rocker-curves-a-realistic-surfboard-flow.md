@@ -284,7 +284,7 @@ US Blanks 6'5"R tail 12" reads 11/16" where its neighbours (1 7/16" at 6", 9/16"
 milder, 8'8" EPS tail 6" (1 15/16") and 6'2"P nose 6" (2 1/2"). Marko's 8'0" Gun and 10'6" Gun nose
 numbers zig-zag. Dropping those blanks leaves the rocker result unchanged (0.106 → 0.031).
 
-## Proposed plan, 2026-10-02 (Claude's recommendation — the founder has not decided)
+## The plan, 2026-10-02 (Claude's proposal; the founder's answers are at the end)
 
 **Step A — the curves.** No new control and no change to what a saved board stores.
 
@@ -311,12 +311,20 @@ the presets' recorded litres move on two cards.
 4. To settle in the phase: one start for both tips or one each; whether Fit & Tip Defaults carries it;
    what the 12" fine-tune means when the start is not at 12".
 
-**Decisions that are the founder's:**
+**Decisions that were the founder's — answered 2026-10-02 (by question card, right after reading the
+findings):**
 
-1. How much goes in before the Oct 7 freeze — Step A alone, both steps, or nothing until after the 10th.
-2. The tip start: Automatic with a manual override, manual only (default 12", a thin spot flagged but
-   not prevented), or 12" fixed with only the shape changed.
-3. Saved boards: redraw with the new curves when opened (stations never move; an Arctic board shifts up
-   to 7/16" between stations and reads 1–5% more litres), or keep old boards on today's curves until
-   the shaper updates them (that needs a marker on each saved board).
-4. Whether the hand-set board and the blank's width join Step A (recommended: both).
+1. *How much goes in before the Oct 7 freeze?* — **"Curves and tips, both now."** Steps A and B are both
+   built before the freeze. (Claude had recommended Step A now and Step B after the 10th; the founder chose
+   both.)
+2. *How should the tip start work?* — **Automatic, and the shaper can override it**: 12" unless the board
+   there is too thin to run down to its tip steadily, then as far in as it needs; a control from 6" to
+   the board's centre sets it by hand.
+3. *Saved boards?* — **Redraw with the new curves** the next time they are opened. Stations never move;
+   no marker on saved boards.
+4. *What else joins Step A?* — **Both**: the blank's width and the hand-set board.
+
+**Still to settle in the phase's discussion** (none of these were asked on the card): one start point
+for both tips or one each; whether Fit & Tip Defaults carries a start; what the 12" fine-tune means when
+the start is not at 12"; the final shape of the taper, picked from side-by-side pictures; and the
+tape-measure check on a real Arctic blank, which is still the only independent proof of its bottom.
