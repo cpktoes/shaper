@@ -1,7 +1,7 @@
 # Phase 14: Realistic Surfboard Flow — Specification
 
 **Created:** 2026-10-02
-**Ambiguity score:** 0.15 (gate: ≤ 0.20) — the requirements below are the founder's own words of 2026-09-28, 2026-10-01 and 2026-10-02 and their four answers of 2026-10-02; the open points in the Ambiguity Report are the phase's discussion, starting with the five tip questions
+**Ambiguity score:** 0.04 (gate: ≤ 0.20) — the requirements below are the founder's own words of 2026-09-28, 2026-10-01 and 2026-10-02 and their four answers of 2026-10-02; the founder locked this brief on 2026-10-02 and the nine open points in the Ambiguity Report were settled the same day as D-01 to D-19 in `14-CONTEXT.md`
 **Requirements:** 9 locked from the founder's words and answers, plus 8 carried constraints
 **Source:** `.planning/todos/completed/2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow.md` — the founder's messages verbatim, the measured research of 2026-10-02 (sections 1–8) and the four answers. That file is the phase's research record: every figure quoted here comes from it.
 
@@ -34,15 +34,15 @@ The founder's words are quoted; the sentence after each quote is the requirement
    - A board in a blank keeps following its blank: its bottom is the blank's bottom and its foil is the blank's foil cut level, both now drawn by the new rules. It is not redrawn from its own five stations when the blank prints more.
    - A hand-set board (no blank) draws its five rocker numbers with the square-root rise and its five thicknesses with the square-root fall.
 
-5. **The blank's width joins.** The founder's answer 4, *"Both"* (the blank's width and the hand-set board join the curves step) — The blank's width is drawn with the square-root fall. Today's width reads about 1/2" narrow between stations; 27 of 192 near-limit test boards are refused today only because of that.
+5. **The blank's width joins.** The founder's answer 4, *"Both"* (the blank's width and the hand-set board join the curves step) — The blank's width is drawn with the square-root fall. Today's width reads about 1/2" narrow between stations; 27 of 192 near-limit test boards are refused today only because of that. *Sharpened by D-13: today's curve (PCHIP) runs inside the square-root rule for the bottom, the thickness, the width and the hand-set board alike.*
 
-6. **Where the tip thinning starts is automatic, and the shaper can set it.** *"we may have to adjust my earlier recommendation that the tip thinning is from the 12" mark only. May be better to let the user have a control for that actually that ranges 6" to board center."* and answer 2, *"Automatic, and the shaper can override it"* — The start is 12" from the tip unless the board there is too thin to run down to its tip steadily; then it is as far in as it needs to be. A control from 6" to the board's centre sets it by hand.
+6. **Where the tip thinning starts is automatic, and the shaper can set it.** *"we may have to adjust my earlier recommendation that the tip thinning is from the 12" mark only. May be better to let the user have a control for that actually that ranges 6" to board center."* and answer 2, *"Automatic, and the shaper can override it"* — The start is 12" from the tip unless the board there is too thin to run down to its tip steadily; then it is as far in as it needs to be. A control from 6" to the board's centre sets it by hand. *Sharpened by D-02, D-03, D-05, D-06 and D-09 to D-12: one start per tip; Automatic never nearer than 12"; a start set too close is drawn as set and flagged; no account default in this phase; the control is called Thinning Starts, a slider with an Automatic button at the end of THICKNESS, and the start is also shown on the drawing, the DATASHEET and the printed order form.*
 
-7. **A steady taper into each tip.** From the problem as captured on 2026-09-28 (*"a hump, not a taper"*) and the plan the founder approved — The S-shaped blend is replaced by a taper that runs the thickness down steadily from the start to the tip setting. It comes off whichever surface the Tip Style names, as today. Its final shape is picked by the founder from side-by-side pictures.
+7. **A steady taper into each tip.** From the problem as captured on 2026-09-28 (*"a hump, not a taper"*) and the plan the founder approved — The S-shaped blend is replaced by a taper that runs the thickness down steadily from the start to the tip setting. It comes off whichever surface the Tip Style names, as today. Its final shape is picked by the founder from side-by-side pictures. *Sharpened by D-01, D-04 and D-07: the steady taper (one parabola from the start to the tip); the 12" fine-tune stays a nudge on top; where a start moves in past 12", that tip's 12" numbers belong to the taper.*
 
 8. **Saved boards redraw.** Answer 3, *"Redraw with the new curves"* — A saved board is drawn with the new curves the next time it is opened. Nothing is rewritten in the database and no marker is put on saved boards. A blank's printed stations never move.
 
-9. **Before the showing, both steps.** *"I think i want to tackle this very soon, before the 10th."* and answer 1, *"Curves and tips, both now."* — The curves step (requirements 2–5) and the tips step (6–7) are both built before the freeze on Wednesday 2026-10-07 evening. Working schedule: curves built and live Saturday Oct 3; tips Sunday–Monday Oct 4–5; the founder's rehearsal walk Tuesday Oct 6. Cut line: if the tips step is not verified by Monday evening, it waits until after the 10th.
+9. **Before the showing, both steps.** *"I think i want to tackle this very soon, before the 10th."* and answer 1, *"Curves and tips, both now."* — The curves step (requirements 2–5) and the tips step (6–7) are both built before the freeze on Wednesday 2026-10-07 evening. Working schedule: curves built and live Saturday Oct 3; tips Sunday–Monday Oct 4–5; the founder's rehearsal walk Tuesday Oct 6. Cut line: if the tips step is not verified by Monday evening, it waits until after the 10th. *Replaced by D-15 to D-18: two go-lives on one plan approval; the tips can take Tuesday Oct 6, and only if they are still not proven by Tuesday evening does the showing run on the curves alone; one rehearsal walk after the last change; a read-only report on the real saved boards before each push.*
 
 ## Boundaries
 
@@ -75,19 +75,19 @@ The founder's words are quoted; the sentence after each quote is the requirement
 
 ## Ambiguity Report
 
-Open points, to be settled in the phase's discussion (`14-CONTEXT.md`). The first five are the tip questions the founder left open on 2026-10-02.
+All nine points were settled in the phase's discussion on 2026-10-02 (`14-CONTEXT.md`). The first five are the tip questions the founder left open that morning.
 
 | # | Open point | Where it stands |
 |---|---|---|
-| 1 | One start point for both tips, or one each | Open. Automatic already works per tip: 249 of the 1,635 test boards want different starts at nose and tail. |
-| 2 | Whether Fit & Tip Defaults carries a start | Open. A default on the account means new columns and a production migration in freeze week. |
-| 3 | What the 12" fine-tune means when the start is not at 12" | Open. Today the 12" stations sit outside the tip blend; with a start further in they sit inside it. |
-| 4 | The final shape of the taper | Open. Three candidates measured and drawn side by side in `pictures/tip-taper-three-shapes.png`. |
-| 5 | The tape-measure check on a real Arctic blank | Open. Still the only independent proof of an Arctic bottom; the catalogues' own litres already support the thickness and width curves. |
-| 6 | Which curve runs inside the square-root step | PCHIP, Steffen's and a Hyman-filtered cubic score the same; the last two look slightly smoother. A taste call from pictures. |
-| 7 | What the start control is called, where it sits, and what it shows on Automatic | Open. For the discussion and then the UI contract. |
-| 8 | The twelve boards on the US Blanks 9'9"B | That blank's thickest printed station is not its centre. Accept as the blank's own shape, or treat as a catalogue question. |
-| 9 | What happens at the cut line | If the tips step slips past Monday evening, does the curves step ship alone for the showing. |
+| 1 | One start point for both tips, or one each | **Settled, D-02:** one each. Automatic already works per tip: 249 of the 1,635 test boards want different starts at nose and tail. |
+| 2 | Whether Fit & Tip Defaults carries a start | **Settled, D-06:** not in this phase; every new board starts on Automatic. Deferred to after the showing. |
+| 3 | What the 12" fine-tune means when the start is not at 12" | **Settled, D-04 and D-07:** it stays a nudge on top of whatever the board reads at 12", taper included. |
+| 4 | The final shape of the taper | **Settled, D-01:** the steady taper, picked from `pictures/tip-taper-three-shapes.png`. |
+| 5 | The tape-measure check on a real Arctic blank | **Settled, D-08:** after go-live, on the sheet `arctic-blank-tape-check-sheet.pdf`; it gates neither push. |
+| 6 | Which curve runs inside the square-root step | **Settled, D-13:** PCHIP, picked from `pictures/curve-inside-the-rule.png`. |
+| 7 | What the start control is called, where it sits, and what it shows on Automatic | **Settled, D-09 to D-12.** Wording and spacing go to the screen design step. |
+| 8 | The twelve boards on the US Blanks 9'9"B | **Settled, D-14:** the blank's own shape, drawn as printed; the blank is on the founder's corrections list to check. |
+| 9 | What happens at the cut line | **Settled, D-16:** the tips can take Tuesday; curves alone only if they are still not proven by Tuesday evening. |
 
 ## Interview Log
 
