@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 14 wave 2 of 10 merged (14-02: the square-root curve module, 16 tests, scores match the research); gate green on main; next: wave 3 (14-03 every blank on the new curves, 14-04 the hand-set board)"
+stopped_at: "Phase 14 wave 3 of 10 merged (14-03 every blank on the new curves with today's rule kept as prepareBlankPchip; 14-04 the hand-set board and summarizeDesignWith); gate green on main, browser suite running; next: wave 4 (14-05 figures + curves report, 14-06 preset record + ROCKER/VOLUME baselines)"
 last_updated: "2026-10-02T23:07:28.535Z"
 last_activity: 2026-10-02
-last_activity_desc: Phase 14 executing — waves 1–2 done (the pin, the curve module); executors on Opus
+last_activity_desc: Phase 14 executing — waves 1–3 done (the pin, the curve module, every blank and the hand-set board on the new curves); executors on Opus
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 31
-  completed_plans: 13
-  percent: 42
+  completed_plans: 15
+  percent: 48
 current_phase: 14
 current_phase_name: Realistic Surfboard Flow
 ---
