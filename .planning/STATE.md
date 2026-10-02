@@ -4,9 +4,9 @@ milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
 stopped_at: Phase 13 items 9b, 9c, 9d and 9e live (2026-09-30); item 13's walk sheet (13-UAT.md) is with the founder — their walk, then the freeze on Wed 2026-10-07
-last_updated: "2026-10-02T06:29:21.000Z"
-last_activity: 2026-10-01
-last_activity_desc: Blank catalog corrections part 1 built (quick 261001-v1q) — awaiting the founder's go to push and reseed production
+last_updated: "2026-10-02T15:14:07.000Z"
+last_activity: 2026-10-02
+last_activity_desc: A length a fraction over a whole foot reads 8'0 1/8" (quick 261002-f8e) — built, not pushed; the founder's reading and go.
 progress:
   total_phases: 1
   completed_phases: 0
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-10-01 - Completed quick task 261001-v1q: blank catalog corrections part 1 (US Blanks) — built and in the development database; not pushed, production not reseeded (the founder's go)
+Last activity: 2026-10-02 - Completed quick task 261002-f8e: a length a fraction over a whole foot reads 8'0 1/8" with its zero inches, not 8'1/8" — built and verified; not pushed (the founder's reading and go).
 
 ## Performance Metrics
 
@@ -324,6 +324,7 @@ Recent decisions affecting current work:
 | 138 | The last-edit ghost on TEMPLATE is a faint solid line at 55% of the muted ink (the founder's pick from six rendered shades), its dash token removed (fast task) | 2026-09-30 | 35877ea | — |
 | 139 | On a phone held sideways the drawing runs to the bottom of the screen with the Undo/Redo pair floating over its corner — the founder's pick of 9e's Alternative A (fast task) | 2026-09-30 | d0a194c | — |
 | 261001-v1q | Blank catalog corrections, part 1 (US Blanks) — every blank was checked against the makers' own catalog pages: 31 US Blanks station numbers that had been taken from the catalog's mistyped centimetre line now follow the page's inch figure (each with a DATASHEET note), the three 9'8" EPS blanks are 9'8" long (they read 9'0"), the 6'3"RP reads 51.5 L (it read 57.5 L) and the 10'0"T has a rounded nose; Phase 11's recorded boards are now checked against the blanks they were recorded on, so catalogue corrections cannot disturb them. Development database reseeded (162 of 162); not pushed, production not reseeded — the founder's go. Arctic's four 2022 pages and six numbers the catalog prints wrong in both units await the founder's call | 2026-10-01 | 5167409 | [261001-v1q-blank-catalog-corrections-part-1-us-blan](./quick/261001-v1q-blank-catalog-corrections-part-1-us-blan/) |
+| 261002-f8e | A length a fraction over a whole foot reads with its zero inches: the US Blanks 8'0"H on the ROCKER blank list reads `8'0 1/8"` (it read `8'1/8"`, the fraction standing where the inches go); a whole number of feet stays `8'0"` and whole inches are untouched. One change inside `formatFeetInches` (lib/geometry/units.ts), so every length in the app follows — blank rows, the offer line, the Board Length lines, the home cards, the order form and both PDFs; eleven catalogue readings change (nine US Blanks, Marko Foam's two 6'0" blanks), no preset card, no saved board and no stored number moves, and both typed spellings still read as the same length. Unit suite (3,633), types and lint green; the browser suite green on all three profiles except three tests that fail the same way on the starting commit in the cloud container (a Clerk script retry caught by ROCKER's no-network drag check; two taps after a CDP touch drag on the container's older Chromium) — the founder's Mac run is the proof; the iPhone profile ran on Chromium here (WebKit cannot be fetched) and the five macOS reference pictures were not compared. Not pushed — the founder's reading and go | 2026-10-02 | ec6d842 | [261002-f8e-the-foot-and-a-fraction-length-reads-8-0](./quick/261002-f8e-the-foot-and-a-fraction-length-reads-8-0/) |
 
 ## Deferred Items
 
