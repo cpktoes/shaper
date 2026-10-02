@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
-status: Phases 13 and 14 open — Phase 14 (Realistic Surfboard Flow) planned (18 plans in 10 waves, verified) and waiting on the founder's approval before any code is written; Phase 13 waits on the founder's walk and the freeze
+status: executing
 stopped_at: "Phase 14 planned 2026-10-02: 18 plans in 10 waves, plan checker VERIFICATION PASSED on the second pass; next: the founder approves, then /gsd-execute-phase 14 (go-live 1, the curves, is wave 5 — target Sat 2026-10-03)"
-last_updated: "2026-10-02T22:59:55.204Z"
+last_updated: "2026-10-02T23:07:28.535Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 14 researched and planned — the research rebuilt both steps in a scratch copy and reproduced every figure; the founder ruled on three questions (D-20 to D-22) and six more were settled on the measurements (D-23 to D-28); 18 plans in 10 waves with the two go-lives as founder checkpoints (waves 5 and 10); checker passed after one revision
 progress:
   total_phases: 2
   completed_phases: 0
-  total_plans: 31
-  completed_plans: 11
-  percent: 35
+  total_plans: 18
+  completed_plans: 0
+  percent: 0
 current_phase: 14
 current_phase_name: Realistic Surfboard Flow
 ---
@@ -24,7 +24,7 @@ current_phase_name: Realistic Surfboard Flow
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 14 — Realistic Surfboard Flow, planned and awaiting the founder's approval (go-live 1, the curves, targets Sat 2026-10-03; go-live 2, the tips, by Tue 2026-10-06 evening or it waits). Beside it Phase 13 — Ready for the Shapers. The founder shows the app to many shapers on Saturday 2026-10-10 (build guide M4), with a freeze on Wednesday 2026-10-07 evening. Work the 13 items in `phases/13-ready-for-the-shapers/13-SPEC.md` one at a time, stopping for the founder's review after each.
+**Current focus:** Phase 14 — Realistic Surfboard Flow
 
 ## Current Position
 
@@ -34,8 +34,8 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Phases 13 and 14 open — Phase 14 (Realistic Surfboard Flow) planned (18 plans in 10 waves, verified) and waiting on the founder's approval before any code is written; Phase 13 waits on the founder's walk and the freeze
-Last activity: 2026-10-02 - Phase 14 researched and planned (18 plans in 10 waves; checker passed after one revision); before that, blank catalog corrections part 3 (quick 261002-aqu: twelve notes, the 10'0"T renamed 10'10"T, the seed's --prune option) went live on the founder's go — parts 1 and 2 before it; the foot-and-a-fraction length reading (quick 261002-f8e, from a separate session) went live the same morning
+Status: Executing Phase 14
+Last activity: 2026-10-02 — Phase 14 execution started
 
 ## Performance Metrics
 
