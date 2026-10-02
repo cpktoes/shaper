@@ -1,0 +1,437 @@
+{
+ "files": {
+  "db/seed/blanks/arctic_foam_stations.csv": [
+   {
+    "vendor": "Arctic Foam",
+    "blank": "10'2\" LB",
+    "station": "T12",
+    "page": 27,
+    "cells": [
+     {
+      "column": "width_in",
+      "old": 15.417,
+      "new": "17.2",
+      "page_inch": "17 1/5”",
+      "page_cm": "39.16"
+     },
+     {
+      "column": "thickness_in",
+      "old": 2.091,
+      "new": "2.3125",
+      "page_inch": "2 5/16”",
+      "page_cm": "5.31"
+     },
+     {
+      "column": "rocker_in",
+      "old": 2.941,
+      "new": "2.5",
+      "page_inch": "2 1/2”",
+      "page_cm": "7.47"
+     }
+    ],
+    "flag_old": "width: used catalog cm (39.16 cm); printed inch (17 1/5”) is stale from an older page; thickness: used catalog cm (5.31 cm); printed inch (2 5/16”) is stale from an older page; rocker: used catalog cm (7.47 cm); printed inch (2 1/2”) is stale from an older page",
+    "flag_new": "width: catalog cm (39.16 cm = 15.417 in) disagrees with inch (17 1/5”); used inch; thickness: catalog cm (5.31 cm = 2.091 in) disagrees with inch (2 5/16”); used inch; rocker: catalog cm (7.47 cm = 2.941 in) disagrees with inch (2 1/2”); used inch"
+   },
+   {
+    "vendor": "Arctic Foam",
+    "blank": "10'2\" LB",
+    "station": "N12",
+    "page": 27,
+    "cells": [
+     {
+      "column": "width_in",
+      "old": 18.941,
+      "new": "20.8125",
+      "page_inch": "20 13/16”",
+      "page_cm": "48.11"
+     },
+     {
+      "column": "thickness_in",
+      "old": 2.106,
+      "new": "2.375",
+      "page_inch": "2 3/8”",
+      "page_cm": "5.35"
+     },
+     {
+      "column": "rocker_in",
+      "old": 2.189,
+      "new": "1.75",
+      "page_inch": "1 3/4”",
+      "page_cm": "5.56"
+     }
+    ],
+    "flag_old": "width: used catalog cm (48.11 cm); printed inch (20 13/16”) is stale from an older page; thickness: used catalog cm (5.35 cm); printed inch (2 3/8”) is stale from an older page; rocker: used catalog cm (5.56 cm); printed inch (1 3/4”) is stale from an older page",
+    "flag_new": "width: catalog cm (48.11 cm = 18.941 in) disagrees with inch (20 13/16”); used inch; thickness: catalog cm (5.35 cm = 2.106 in) disagrees with inch (2 3/8”); used inch; rocker: catalog cm (5.56 cm = 2.189 in) disagrees with inch (1 3/4”); used inch"
+   },
+   {
+    "vendor": "Arctic Foam",
+    "blank": "10'2\" LB",
+    "station": "N3",
+    "page": 27,
+    "cells": [
+     {
+      "column": "width_in",
+      "old": 12.067,
+      "new": "14.0625",
+      "page_inch": "14 1/16”",
+      "page_cm": "30.65"
+     }
+    ],
+    "flag_old": "width measured 3\" back from the nose tip (catalog \"@ 3\"); width: used catalog cm (30.65 cm); printed inch (14 1/16”) is stale from an older page",
+    "flag_new": "width measured 3\" back from the nose tip (catalog \"@ 3\"); width: catalog cm (30.65 cm = 12.067 in) disagrees with inch (14 1/16”); used inch"
+   },
+   {
+    "vendor": "Arctic Foam",
+    "blank": "9'4\" G",
+    "station": "T0",
+    "page": 31,
+    "cells": [
+     {
+      "column": "rocker_in",
+      "old": 3.299,
+      "new": "3.125",
+      "page_inch": "3 1/8”",
+      "page_cm": "8.38"
+     }
+    ],
+    "flag_old": "rocker: used catalog cm (8.38 cm); printed inch (3 1/8”) is stale from an older page",
+    "flag_new": "rocker: catalog cm (8.38 cm = 3.299 in) disagrees with inch (3 1/8”); used inch"
+   },
+   {
+    "vendor": "Arctic Foam",
+    "blank": "9'4\" G",
+    "station": "T12",
+    "page": 31,
+    "cells": [
+     {
+      "column": "width_in",
+      "old": 11.756,
+      "new": "13.625",
+      "page_inch": "13 5/8”",
+      "page_cm": "29.86"
+     },
+     {
+      "column": "thickness_in",
+      "old": 2.094,
+      "new": "2.375",
+      "page_inch": "2 3/8”",
+      "page_cm": "5.32"
+     },
+     {
+      "column": "rocker_in",
+      "old": 2.315,
+      "new": "1.75",
+      "page_inch": "1 3/4”",
+      "page_cm": "5.88"
+     }
+    ],
+    "flag_old": "width: used catalog cm (29.86 cm); printed inch (13 5/8”) is stale from an older page; thickness: used catalog cm (5.32 cm); printed inch (2 3/8”) is stale from an older page; rocker: used catalog cm (5.88 cm); printed inch (1 3/4”) is stale from an older page",
+    "flag_new": "width: catalog cm (29.86 cm = 11.756 in) disagrees with inch (13 5/8”); used inch; thickness: catalog cm (5.32 cm = 2.094 in) disagrees with inch (2 3/8”); used inch; rocker: catalog cm (5.88 cm = 2.315 in) disagrees with inch (1 3/4”); used inch"
+   },
+   {
+    "vendor": "Arctic Foam",
+    "blank": "9'4\" G",
+    "station": "N12",
+    "page": 31,
+    "cells": [
+     {
+      "column": "width_in",
+      "old": 10.819,
+      "new": "13.625",
+      "page_inch": "13 5/8”",
+      "page_cm": "27.48"
+     },
+     {
+      "column": "thickness_in",
+      "old": 2.472,
+      "new": "2.75",
+      "page_inch": "2 3/4”",
+      "page_cm": "6.28"
+     },
+     {
+      "column": "rocker_in",
+      "old": 4.524,
+      "new": "3.25",
+      "page_inch": "3 1/4”",
+      "page_cm": "11.49"
+     }
+    ],
+    "flag_old": "width: used catalog cm (27.48 cm); printed inch (13 5/8”) is stale from an older page; thickness: used catalog cm (6.28 cm); printed inch (2 3/4”) is stale from an older page; rocker: used catalog cm (11.49 cm); printed inch (3 1/4”) is stale from an older page",
+    "flag_new": "width: catalog cm (27.48 cm = 10.819 in) disagrees with inch (13 5/8”); used inch; thickness: catalog cm (6.28 cm = 2.472 in) disagrees with inch (2 3/4”); used inch; rocker: catalog cm (11.49 cm = 4.524 in) disagrees with inch (3 1/4”); used inch"
+   },
+   {
+    "vendor": "Arctic Foam",
+    "blank": "9'4\" G",
+    "station": "N0",
+    "page": 31,
+    "cells": [
+     {
+      "column": "rocker_in",
+      "old": 7.094,
+      "new": "6.75",
+      "page_inch": "6 3/4”",
+      "page_cm": "18.02"
+     }
+    ],
+    "flag_old": "rocker: used catalog cm (18.02 cm); printed inch (6 3/4”) is stale from an older page",
+    "flag_new": "rocker: catalog cm (18.02 cm = 7.094 in) disagrees with inch (6 3/4”); used inch"
+   },
+   {
+    "vendor": "Arctic Foam",
+    "blank": "9'9\" G",
+    "station": "T12",
+    "page": 32,
+    "cells": [
+     {
+      "column": "width_in",
+      "old": 11.614,
+      "new": "13.875",
+      "page_inch": "13 7/8”",
+      "page_cm": "29.5"
+     },
+     {
+      "column": "thickness_in",
+      "old": 2.165,
+      "new": "2.5",
+      "page_inch": "2 1/2”",
+      "page_cm": "5.5"
+     },
+     {
+      "column": "rocker_in",
+      "old": 2.496,
+      "new": "2.0625",
+      "page_inch": "2 1/16”",
+      "page_cm": "6.34"
+     }
+    ],
+    "flag_old": "width: used catalog cm (29.5 cm); printed inch (13 7/8”) is stale from an older page; thickness: used catalog cm (5.5 cm); printed inch (2 1/2”) is stale from an older page; rocker: used catalog cm (6.34 cm); printed inch (2 1/16”) is stale from an older page",
+    "flag_new": "width: catalog cm (29.5 cm = 11.614 in) disagrees with inch (13 7/8”); used inch; thickness: catalog cm (5.5 cm = 2.165 in) disagrees with inch (2 1/2”); used inch; rocker: catalog cm (6.34 cm = 2.496 in) disagrees with inch (2 1/16”); used inch"
+   },
+   {
+    "vendor": "Arctic Foam",
+    "blank": "9'9\" G",
+    "station": "C",
+    "page": 32,
+    "cells": [
+     {
+      "column": "thickness_in",
+      "old": 4.205,
+      "new": "4.25",
+      "page_inch": "4 1/4”",
+      "page_cm": "10.68"
+     }
+    ],
+    "flag_old": "width: catalog cm (69.05) is a typo for 59.05 (matches inch and summary box); thickness: used catalog cm (10.68 cm); printed inch (4 1/4”) is stale from an older page",
+    "flag_new": "width: catalog cm (69.05) is a typo for 59.05 (matches inch and summary box); thickness: catalog cm (10.68 cm = 4.205 in) disagrees with inch (4 1/4”); used inch"
+   },
+   {
+    "vendor": "Arctic Foam",
+    "blank": "9'9\" G",
+    "station": "N12",
+    "page": 32,
+    "cells": [
+     {
+      "column": "width_in",
+      "old": 10.366,
+      "new": "13.125",
+      "page_inch": "13 1/8”",
+      "page_cm": "26.33"
+     },
+     {
+      "column": "thickness_in",
+      "old": 2.547,
+      "new": "2.875",
+      "page_inch": "2 7/8”",
+      "page_cm": "6.47"
+     },
+     {
+      "column": "rocker_in",
+      "old": 4.819,
+      "new": "3.875",
+      "page_inch": "3  7/8”",
+      "page_cm": "12.24"
+     }
+    ],
+    "flag_old": "width: used catalog cm (26.33 cm); printed inch (13 1/8”) is stale from an older page; thickness: used catalog cm (6.47 cm); printed inch (2 7/8”) is stale from an older page; rocker: used catalog cm (12.24 cm); printed inch (3  7/8”) is stale from an older page",
+    "flag_new": "width: catalog cm (26.33 cm = 10.366 in) disagrees with inch (13 1/8”); used inch; thickness: catalog cm (6.47 cm = 2.547 in) disagrees with inch (2 7/8”); used inch; rocker: catalog cm (12.24 cm = 4.819 in) disagrees with inch (3  7/8”); used inch"
+   },
+   {
+    "vendor": "Arctic Foam",
+    "blank": "9'9\" G",
+    "station": "N0",
+    "page": 32,
+    "cells": [
+     {
+      "column": "thickness_in",
+      "old": 1.701,
+      "new": "1.75",
+      "page_inch": "1 3/4”",
+      "page_cm": "4.32"
+     }
+    ],
+    "flag_old": "thickness: used catalog cm (4.32 cm); printed inch (1 3/4”) is stale from an older page",
+    "flag_new": "thickness: catalog cm (4.32 cm = 1.701 in) disagrees with inch (1 3/4”); used inch"
+   },
+   {
+    "vendor": "Arctic Foam",
+    "blank": "10'6\" G",
+    "station": "T12",
+    "page": 33,
+    "cells": [
+     {
+      "column": "width_in",
+      "old": 11.52,
+      "new": "13.6875",
+      "page_inch": "13 11/16”",
+      "page_cm": "29.26"
+     },
+     {
+      "column": "thickness_in",
+      "old": 2.201,
+      "new": "2.5",
+      "page_inch": "2 1/2”",
+      "page_cm": "5.59"
+     },
+     {
+      "column": "rocker_in",
+      "old": 2.756,
+      "new": "2.3125",
+      "page_inch": "2 5/16”",
+      "page_cm": "7.0"
+     }
+    ],
+    "flag_old": "width: used catalog cm (29.26 cm); printed inch (13 11/16”) is stale from an older page; thickness: used catalog cm (5.59 cm); printed inch (2 1/2”) is stale from an older page; rocker: used catalog cm (7.0 cm); printed inch (2 5/16”) is stale from an older page",
+    "flag_new": "width: catalog cm (29.26 cm = 11.520 in) disagrees with inch (13 11/16”); used inch; thickness: catalog cm (5.59 cm = 2.201 in) disagrees with inch (2 1/2”); used inch; rocker: catalog cm (7.0 cm = 2.756 in) disagrees with inch (2 5/16”); used inch"
+   },
+   {
+    "vendor": "Arctic Foam",
+    "blank": "10'6\" G",
+    "station": "N12",
+    "page": 33,
+    "cells": [
+     {
+      "column": "width_in",
+      "old": 10.161,
+      "new": "12.875",
+      "page_inch": "12 7/8”",
+      "page_cm": "25.81"
+     },
+     {
+      "column": "thickness_in",
+      "old": 2.602,
+      "new": "2.875",
+      "page_inch": "2 7/8”",
+      "page_cm": "6.61"
+     },
+     {
+      "column": "rocker_in",
+      "old": 5.461,
+      "new": "4.4375",
+      "page_inch": "4 7/16”",
+      "page_cm": "13.87"
+     }
+    ],
+    "flag_old": "width: used catalog cm (25.81 cm); printed inch (12 7/8”) is stale from an older page; thickness: used catalog cm (6.61 cm); printed inch (2 7/8”) is stale from an older page; rocker: used catalog cm (13.87 cm); printed inch (4 7/16”) is stale from an older page",
+    "flag_new": "width: catalog cm (25.81 cm = 10.161 in) disagrees with inch (12 7/8”); used inch; thickness: catalog cm (6.61 cm = 2.602 in) disagrees with inch (2 7/8”); used inch; rocker: catalog cm (13.87 cm = 5.461 in) disagrees with inch (4 7/16”); used inch"
+   }
+  ],
+  "db/seed/blanks/us_blanks_stations.csv": [
+   {
+    "vendor": "US Blanks",
+    "blank": "6'2\"A",
+    "station": "N18",
+    "page": 7,
+    "cells": [
+     {
+      "column": "thickness_in",
+      "old": 3.063,
+      "new": "2.4375",
+      "now_inch": "2 7/16"
+     }
+    ],
+    "flag_old": "catalog prints 3 1/16\" here, thicker than its own stated max of 2 15/16\"; likely a catalog typo",
+    "flag_new": "thickness: catalog prints 3 1/16\" (7.78 cm) here, thicker than its own stated max of 2 15/16\"; used 2 7/16\", the 6'2\"AX less 1/4\""
+   },
+   {
+    "vendor": "US Blanks",
+    "blank": "6'4\"EAX",
+    "station": "N24",
+    "page": 13,
+    "cells": [
+     {
+      "column": "thickness_in",
+      "old": 2.811,
+      "new": "2.6875",
+      "now_inch": "2 11/16"
+     }
+    ],
+    "flag_old": "",
+    "flag_new": "thickness: catalog prints 2 13/16\" (7.14 cm) here; used 2 11/16\", the 6'4\"EA plus 1/4\""
+   },
+   {
+    "vendor": "US Blanks",
+    "blank": "7'2\"X EPS",
+    "station": "T24",
+    "page": 86,
+    "cells": [
+     {
+      "column": "thickness_in",
+      "old": 2.811,
+      "new": "2.9375",
+      "now_inch": "2 15/16"
+     }
+    ],
+    "flag_old": "",
+    "flag_new": "thickness: catalog prints 2 13/16\" (7.14 cm) here; used 2 15/16\", the 7'2\" EPS plus 3/8\""
+   },
+   {
+    "vendor": "US Blanks",
+    "blank": "8'0\"H",
+    "station": "T6",
+    "page": 46,
+    "cells": [
+     {
+      "column": "rocker_in",
+      "old": 2.874,
+      "new": "2.375",
+      "now_inch": "2 3/8"
+     }
+    ],
+    "flag_old": "",
+    "flag_new": "rocker: catalog prints 2 7/8\" (7.30 cm) here, which would lift the tail 1 1/8\" in six inches; used 2 3/8\", the figure the neighbouring stations give"
+   },
+   {
+    "vendor": "US Blanks",
+    "blank": "8'4\"SPX",
+    "station": "N18",
+    "page": 52,
+    "cells": [
+     {
+      "column": "thickness_in",
+      "old": 3.063,
+      "new": "2.9375",
+      "now_inch": "2 15/16"
+     }
+    ],
+    "flag_old": "",
+    "flag_new": "thickness: catalog prints 3 1/16\" (7.78 cm) here; used 2 15/16\", the 8'4\"SP plus 3/8\""
+   },
+   {
+    "vendor": "US Blanks",
+    "blank": "10'6\"AX",
+    "station": "T36",
+    "page": 72,
+    "cells": [
+     {
+      "column": "thickness_in",
+      "old": 3.063,
+      "new": "3.5625",
+      "now_inch": "3 9/16"
+     }
+    ],
+    "flag_old": "",
+    "flag_new": "thickness: catalog prints 3 1/16\" (7.78 cm) here, the same as the next station; used 3 9/16\", the 10'6\"A plus 1/2\""
+   }
+  ]
+ }
+}
