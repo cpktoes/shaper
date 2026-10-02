@@ -73,6 +73,69 @@ The founder's words are quoted; the sentence after each quote is the requirement
 8. A hand-set board with today's default numbers draws through the same five rocker numbers and five thicknesses, to the last bit.
 9. The founder has picked the taper's final shape from side-by-side pictures and walked the result on real devices before the freeze.
 
+*(Planning notes 2026-10-02, from the planning research; the criteria above are unchanged. Criterion 1: all 162 blanks are tested at the curve level, and the 158 that can be picked are also tested through the app's own blank preparation, since four catalogue blanks cannot be prepared at all (D-27). Criterion 3: the exception is computed from the data as "blanks whose thickest printed station is not the centre", which today yields the twelve boards on the 9'9"B; 291 of the 1,635 boards are longer than the app's 10'0" limit, so the buildable subset is reported beside the full set (D-27); and with Automatic, thin boards in thick blanks stop being refused (D-20). Criterion 5: the Mid-length moves 0.0149", so the 0.015" bound is neither tightened nor hand-rounded, and nothing records a card's litres today, so a generated record is added (D-27). Criterion 6: "the numbers" are the board's five thicknesses, which stay exactly; the small stored tweak under them moves by up to 0.03" (D-25).)*
+
+## Edge Coverage
+
+**Coverage:** 27/27 applicable edges resolved · 0 unresolved
+
+Filled from the planning research of 2026-10-02 (every measured figure names its script in `14-RESEARCH.md`, "How every number here was produced") and the rulings D-20 to D-28. ✅ = an explicit acceptance criterion a test asserts; 🧪 = a backstop the plan holds out as a held-out check.
+
+| Category | Requirement | Status | Resolution / Reason |
+|----------|-------------|--------|---------------------|
+| Two or more stations tie for the lowest (6 catalogue blanks) | R1, R2 | ✅ covered | The bottom curve is exactly flat at the lowest value across the tie; a test builds the tie list from the catalogue (not typed) and asserts each blank's lowest sampled point is its lowest printed station |
+| The lowest station at an end of the blank | R1, R2 | ✅ covered | No catalogue blank does it; a synthetic test (lowest first, lowest last) asserts exact stations and the low point at that end |
+| A thickest or widest printed station that is not the centre (9'9"B, 9'9"A; 16 blanks widest away from the centre) | R3, R5 | ✅ covered | Drawn as printed (D-14): the fall is measured from the thickest (or widest) station; the test's exception list is computed from the data and expects humps only on those blanks |
+| A blank missing a cell for one curve, or with fewer than two stations on it | R1 | ✅ covered | The curve uses that attribute's own stations and reads flat with none or one, as today; the four blanks that cannot be picked are tested at the curve level only (D-27) |
+| A start set by hand that ends up further in than the board's centre after the board is shortened | R6 | ✅ covered | Pulled into the range (6" to half the length, rounded in to 1/2") on read; nothing is written; lengthening the board brings the stored value back. Test: the profile shows the pulled value and the stored value is unchanged |
+| A start exactly at the centre, or under 6" | R6 | ✅ covered | The range's far end is half the length rounded down to the half inch, so the two tips' runs never overlap; under 6" is pulled up to 6". Test |
+| A saved board that stores no start | R6, R8 | ✅ covered | Reads Automatic on both tips, and opening writes nothing. Test: the parsed board carries no start and a deep-frozen input is unchanged |
+| A stored start that is not a number, or is out of bounds | R6, R8 | ✅ covered | Reads as Automatic and never rejects the board (D-24). Test |
+| A saved Phase 11 board | R8 | ✅ covered | Its five thicknesses are unchanged: the existing Phase 11 tests pass unmodified. The stored tweak under them moves by up to 0.03" (D-25) |
+| The site rolled back one deployment after a board is saved with a start | R6, R8 | ✅ covered | Today's reader drops an unknown value on the blank and accepts any version, so the board opens on Automatic (measured on the live code). Test, written before the new values exist: the reader drops an unknown value on the blank and accepts a higher version |
+| A signed-out or never-saved board | R6 | ✅ covered | It lives in memory only; undo carries the whole blank. Test: going back to Automatic removes the value and leaves no phantom undo step |
+| The start and its slider in Metric | R6 | ✅ covered | Centimetres to one decimal (D-22) through `lib/geometry/units.ts`; a start at the 12" station prints the same digits as the station's own label; switching systems rewrites nothing. Tests |
+| The Metric slider's ends sit up to 7.6 mm inside the Imperial range (rounded in to 10 mm), and an Automatic start can sit off the 10 mm grid | R6 | 🧪 backstop | Nothing is written and the thumb draws where the value is, as the Placement slider already does; held out as a look at both ends in Metric and a check that the arrow keys work from an off-grid thumb |
+| A 12" tweak on top of a start moved in past 12" | R6, R7 | ✅ covered | The tweak stays a nudge at the 12" station on top of the taper, and Automatic ignores it (D-04). Test: with any start, the 12" thickness is the taper's value plus the tweak |
+| Tip Style, Deck Skin and tweaks with a moved-in start | R7 | ✅ covered | The thickness is identical under Pin deck and Bottom; only the surface the thinning comes off changes; Automatic's start is unchanged by Tip Style, Deck Skin and the tweaks. Test |
+| The hand-set board with no blank | R4 | ✅ covered | Drawn by the square-root rise and fall through its five typed numbers, exact at the stations (acceptance 8); it shows no Thinning Starts rows. Test |
+| A start set by hand too close to the tip: a thin spot, a sharp bend, or a cut that thickens toward the tip there | R6 | ✅ covered | Drawn as set and flagged (D-05); the bend line shows from 1/32" per inch (D-21); not a fit failure on its own. Tests on the flag and on the sentence |
+| Automatic finds no start that can run down steadily (never on the stress set or on realistic boards) | R6 | ✅ covered | Automatic is 12" and no line shows (D-23); the fit check and the 1/4" floor judge the board. Test on a built-for-the-purpose board |
+| A tip that needs more foam than the planer cut leaves | R7 | ✅ covered | As today (Phase 12 D-16): Pin deck lets the tip rocker fall, Bottom raises the deck; no stress board newly pokes out of its blank (acceptance 3). Test |
+| A thin board in a thick blank, refused today as "too thick for this center" | R6, R7 | ✅ covered | Fits after the tips step (D-20), with tips flatter than the blank's own rocker; no stress board is newly refused. Tests built on the old refusal use a hand-set start |
+| Placement at either end of its slider | R4, R7 | ✅ covered | Automatic is worked out from the blank at that placement, and the blank list judges each placement with its own Automatic starts. Test |
+| Automatic's start while a control slides | R6 | ✅ covered | The start never reverses as a control moves one way and moves at most 1/2" per 1/16" of Placement (D-23). Test |
+| Test boards longer than the app's own 10'0" limit (291 of 1,635) | R6, R7 | ✅ covered | The stress set stays as defined and the buildable subset is reported beside it; pictures and browser fixtures use a buildable board (D-27) |
+| A catalogue correction after today's numbers are pinned | R8 | ✅ covered | The pin carries its blank rows by value (D-26). Test: the frozen rule reproduces the pin exactly |
+| The starts line on the printed order form, on both papers and at every phone width | R6 | 🧪 backstop | The screen design measured room for it; the print-fit browser test and a printed page prove it |
+| What Automatic costs inside the blank list, on a phone | R6 | 🧪 backstop | Under half a millisecond per slider movement and tens of milliseconds for the whole list in Node; WebKit is unmeasured. A size-guard test in Node, and the feel on a real phone during the rehearsal walk |
+| The desktop reference screenshots | R4, R8 | 🧪 backstop | ROCKER and VOLUME of the first board a visitor sees change at the curves step (30.06 to 30.51 L); RAILS, FINS and TEMPLATE must not; none changes at the tips step. The founder's eye on the difference before each go |
+
+## Prohibitions (must-NOT)
+
+**Coverage:** 18/18 applicable prohibitions resolved · 0 unresolved
+
+| Prohibition (must-NOT statement) | Requirement | Status | Verification / Reason |
+|----------------------------------|-------------|--------|------------------------|
+| MUST NOT let the Phase 11 conversion read a live curve or the live tip rule for Phase 11's own number | R8 | resolved | test: the conversion prepares its own blank on the frozen rule (D-25); `phase11-foil.test.ts` and the Phase 11 tests in `design-snapshot.test.ts` pass unmodified |
+| MUST NOT move a blank's printed stations, in the data or on any curve | R1, R8 | resolved | test: every printed value reads back exactly; no catalogue or seed file is changed by this phase (diff check) |
+| MUST NOT write to a saved board by opening it, and MUST NOT change the database | R8 | resolved | test (deep-frozen input); no diff under `drizzle/` or in `lib/db/schema.ts` |
+| MUST NOT store a start on a board that is on Automatic | R6, R8 | resolved | test: Automatic removes the stored value; no code path writes a worked-out start into a board |
+| MUST NOT put tips code in the curves go-live, or change the 12" blend there | R9 | resolved | commit order (D-28); a check that the curves commits do not touch the tip rule |
+| MUST NOT push, merge to main, deploy or run anything against production without the founder's go, and nothing but rehearsal fixes after the freeze on Wednesday 2026-10-07 evening | R9 | resolved | each push and each production report is a founder checkpoint in the plan |
+| MUST NOT change any of a board's five station numbers at the tips step when the start is 12" | R7 | resolved | test (acceptance 4, exact equality) |
+| MUST NOT let Automatic read the 12" tweak, the Deck Skin or the Tip Style | R6 | resolved | test |
+| MUST NOT inline a formula in a component, convert units outside `lib/geometry/units.ts`, or import React, a browser API or the database into a geometry file | R1 | resolved | lint, the existing import guards, review |
+| MUST NOT hand-type an expected number | R2 | resolved | every expected value comes from a generated fixture or is computed in the test from the catalogue |
+| MUST NOT add a third curve for the deck | R3 | resolved | test: the deck stays the bottom plus the thickness |
+| MUST NOT add a package | R9 | resolved | `package.json` and lockfile diff check |
+| MUST NOT leave a scratch script loose under the repo or `.planning/` | R9 | resolved | scratch stays in the scratchpad or in an archive |
+| MUST NOT show a notice, a marker or a "what's new" for redrawn boards | R8 | resolved | browser test: no new text on opening a saved board (D-19) |
+| MUST NOT let the saved-boards report print a board's contents, its name, a user id or the connection string, or write anything | R9 | resolved | the script's single read and counts-only output (D-18); review and a test of the report's own function |
+| MUST NOT let ↺ Reset Fine-Tune clear a Thinning Start, or add a start to Fit & Tip Defaults | R6 | resolved | store test; no account column (D-06) |
+| MUST NOT draw a hand-set board with today's curve after the curves step, except through the frozen rule for the reports and the pictures | R4 | resolved | test |
+| MUST NOT tighten or hand-round the 0.015" preset bound | R4 | resolved | test: compared against the generated pin with the brief's own bound (D-27) |
+
 ## Ambiguity Report
 
 All nine points were settled in the phase's discussion on 2026-10-02 (`14-CONTEXT.md`). The first five are the tip questions the founder left open that morning.

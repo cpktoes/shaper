@@ -627,7 +627,10 @@ The board is thinnest …                                    (the too-close line
   4. **A "pulled inside the range" rule that agrees with the slider:** the profile's resolved start is
      clamped to the same `{ min, max }` the slider uses (the rounded-inward maximum), not to the true
      half length. Otherwise a start at the true centre would label as `35 1/4"` over a thumb that stops at
-     `35"`.
+     `35"`. *(Amended 2026-10-02, planning research Q19: this holds in Imperial. The profile does not know
+     the system, so in Metric the slider's ends sit up to 7.6 mm inside the profile's range: a hand-set
+     6" start labels `15.2 cm` over a thumb at 16.0 cm. Harmless, nothing is written, and the Placement
+     slider already behaves this way; it is held out as a visual check in the brief's Edge Coverage.)*
 - **When the board is shortened on TEMPLATE so a hand-set start is now past the centre:** it is **pulled to
   the new maximum on read, and nothing is written**, exactly the Placement precedent
   (`board-on-blank.tsx:141-142`: "stored as given, clamped on read"). The label reads the pulled
@@ -692,10 +695,12 @@ Two things make a hand-set start "too close to the tip", and CONTEXT D-03's test
   The sentence is built by one new pure function in `lib/geometry/blank-reasons.ts`,
   `thinningStartLine(end, view, tipSetting, system): string | null`, which returns null when the printed
   numbers do not differ (Copywriting). The component renders what it returns.
-- **The "sharp bend" threshold is the planner's** with this constraint: it must not fire for a bend a
-  shaper could not see. My default `(Claude's discretion — founder may overrule)`: the taper's slope may
-  differ from the planer cut's slope at the start by up to 1/16" of thickness per inch of length before
-  the flag shows, in both systems alike. Open item (§Open items).
+- **The "sharp bend" threshold is 1/32" of thickness per inch of length** (the founder's pick of
+  2026-10-02 from a true-scale picture of the two corners, CONTEXT D-21): the flag shows when the taper's
+  slope differs from the planer cut's slope at the start by more than that, in both systems alike. A
+  planer cut that is getting thicker toward the tip at the start is a bend by the same measure and takes
+  the same sharp-bend sentence. *(Amended 2026-10-02: this contract's own default was 1/16" per inch,
+  which the planning research measured as showing on only 22 of 295 bending tips; 1/32" shows on 119.)*
 
 ### 5. Fit and flag interplay, in one place
 
@@ -944,7 +949,9 @@ Touch sizes, all through the existing `coarse:` idiom:
     undo step.
   - On a fixture board where a hand-set 12" start leaves a thin spot (model: the picture's Arctic 10'9" LB
     tail at a 2 1/2" center), the too-close line appears, names the Automatic distance, and clears when
-    Automatic is pressed.
+    Automatic is pressed. *(Amended 2026-10-02, CONTEXT D-27: the picture's board is 127" long and the app
+    stops at 120", so the fixture is a 10'0" board on that blank slid to the tail end, where Automatic
+    starts the tail at 26".)*
   - On Automatic at 12" the label's distance ends with the same text as the `Nose @ …` station name in both
     systems.
   - Switching blanks keeps a hand-set start.
@@ -980,6 +987,26 @@ Touch sizes, all through the existing `coarse:` idiom:
 6. **A Metric thumb that is not on the 10 mm grid.** An Automatic start such as 647.7 mm is drawn where
    it is and only a drag snaps (§3). Every Metric slider already works this way for a value set in
    Imperial, but check once that the arrow keys behave from an off-grid thumb.
+
+**Amended 2026-10-02 — how the planning research closed these** (`14-RESEARCH.md`; the rulings are
+CONTEXT D-20 to D-28). Nothing on screen is redesigned; no new surface is added.
+
+1. *Cost:* measured in Node at under half a millisecond per slider movement and tens of milliseconds for
+   the whole list; a size-guard test and the rehearsal walk on a real phone hold out the rest.
+2. *The sharp-bend threshold:* **1/32" per inch**, the founder's pick (D-21); §4 is amended in place.
+3. *A flag on Automatic:* on the stress set and on realistic boards Automatic always finds a steady start.
+   On far-fetched boards it can find none; it then falls back to 12", **no line shows**, and the case has
+   no name on screen (D-23). The "On Automatic it never shows" rule in §4 holds in every case.
+4. *The saved-board version* stays 5, with two optional values on the board's blank (D-24); the six
+   construction sites are confirmed and all six take the starts.
+5. *The preset cards' litres* get a generated record, re-recorded from the app at each go-live (D-27).
+6. *The off-grid Metric thumb* stays as designed; it and the Metric slider's ends (§3 point 4, amended)
+   are held out as a visual check.
+
+Also confirmed by the founder on 2026-10-02: a Thinning Start reads in **centimetres** in Metric, as §9 has
+it (D-22). And one consequence the tips step brings that this contract did not state: with Automatic, a
+thin board in a thick blank is no longer refused as "too thick for this center" (D-20), so the blank
+list shows more blanks as fitting for such a board; the wording of the remaining reasons is unchanged.
 
 ---
 
