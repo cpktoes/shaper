@@ -58,27 +58,24 @@ by the founder (162 of 162), checked on the live site:
   8'4"SPX N18 → 2 15/16", 10'6"AX T36 → 3 9/16" (thickness); 8'0"H T6 → 2 3/8" (rocker).
 - The 7'9"HX and 8'4"SPX keep the litres their pages print (the founder's decision).
 
-**Built — part 3 (quick task 261002-aqu, 2026-10-02).** The founder's two decisions of 2026-10-02,
-by question card. On this computer and in the development database only — NOT yet pushed, NOT yet
-in production:
+**Done and live — part 3 (quick task 261002-aqu).** The founder's two decisions of 2026-10-02, by
+question card; live the same day on the founder's go — pushed (70802a1), deployed, production reseeded
+by the founder with `--prune` (it removed exactly the old `US Blanks 10'0"T` row; 162 of 162), checked
+on the live site:
 
 - The twelve rows where the catalog's inch label is the slip (the app already held the right
-  figure) gain a DATASHEET note, e.g. the 9'2"A at center: `width: catalog prints 21 1/4" but
+  figure) carry a DATASHEET note, e.g. the 9'2"A at center: `width: catalog prints 21 1/4" but
   56.52 cm here; used the cm value (22 1/4")`.
 - The blank the catalog's page titles `10'0"T` is listed as the `10'10"T` it is (10'9 3/8" long,
   catalog address `sups/1010T`), with a note saying so.
 - The seed can remove a blank that has left the catalogue files — only with `--prune`, never more
-  than five in one run, never on an empty catalogue (`lib/blanks/prune.ts`, tested). Proven on the
-  development database: a plain reseed added the new name, kept the old row and said so (163
-  blanks, exit 1, with the hint); `--prune` removed exactly `US Blanks 10'0"T`; 162 of 162.
+  than five in one run, never on an empty catalogue (`lib/blanks/prune.ts`, tested).
 
-**Still open — the founder's calls:**
+**Still open — the founder's call:**
 
-1. **The go for part 3**: push, let Vercel deploy, then reseed production with the `--prune`
-   one-liner in `scripts/seed-blanks.ts`'s header (it must print one `removed (no longer in the
-   catalogue): US Blanks 10'0"T` line and end "162 of 162").
-2. **The founder's own list** — any blank they know to be wrong that a check against the catalog
-   could not see (a number the catalog prints consistently but a real blank contradicts).
+- **The founder's own list** — any blank they know to be wrong that a check against the catalog
+  could not see (a number the catalog prints consistently but a real blank contradicts). When that
+  list is empty, this todo is done.
 
 Found along the way and left alone: the two catalog addresses that repeat a neighbour's (6'9"EAX,
 11'8"BG) are printed that way on the catalog pages themselves; lengths and deck lengths where the
