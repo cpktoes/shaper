@@ -11,12 +11,12 @@ import { mm } from "./units";
 // The board is the store's DEFAULT_DESIGN_STATE: the default outline, the default foil and hand-set
 // rocker, no blank. Its litres are recorded in the pin but asserted by plan 14-05.
 
-describe("the first board a visitor sees, pinned before the curves change (D-26)", () => {
+describe("the first board a visitor sees, reproduced by today's curve kept by name (D-25, D-26)", () => {
   it("reproduces the default hand-set board's five thicknesses, five rocker numbers and its 1\" sweep", () => {
     const { handSet } = PHASE14_TODAY;
     const length = DEFAULT_BOARD_SPEC.outline.length;
     expect(length).toBe(handSet.boardLengthMm);
-    const profile = buildBoardProfile({ length, rocker: DEFAULT_FALLBACK_ROCKER, foil: DEFAULT_FOIL_SPEC, blank: null });
+    const profile = buildBoardProfile({ length, rocker: DEFAULT_FALLBACK_ROCKER, foil: DEFAULT_FOIL_SPEC, blank: null, handSetCurve: "pchip" });
     for (const { key, station } of rockerStationPositions(length)) {
       expect(profile.thicknessAt(station), `thickness ${key}`).toBe(handSet.thicknessMm[key]);
       expect(profile.rockerAt(station), `rocker ${key}`).toBe(handSet.rockerMm[key]);

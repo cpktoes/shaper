@@ -25,6 +25,7 @@ import {
   type RailSectionSpec,
 } from "./rail-bands";
 import { samplePchip, type SplinePoint } from "./pchip";
+import { prepareRootCurve } from "./root-curve";
 import { cubicMmToLitres, formatInchesFraction, inchesToMm, MM_PER_INCH, type Mm, mm, mmToInches } from "./units";
 import golden from "./__fixtures__/prototype-volume-golden.json";
 import blankDatasheet from "./__fixtures__/blank-datasheet-golden.json";
@@ -578,11 +579,12 @@ describe("thicknessAt — one thickness curve for every board", () => {
   const foil = DEFAULT_FOIL_SPEC;
   const rails = DEFAULT_RAIL_BAND_SPEC;
 
-  it("sampleFoil is pchip through the five foil stations, everywhere along the board (D-13)", () => {
+  it("sampleFoil is the square-root fall through the five foil stations, everywhere along the board (Phase 14 D-13)", () => {
     const points: SplinePoint[] = foilStationPoints(foil, length).map((p) => ({ x: p.station, y: p.thickness }));
+    const curve = prepareRootCurve(points, "fall");
     const mismatches: number[] = [];
     for (let s = 0; s <= length; s += inchesToMm(0.125)) {
-      if (sampleFoil(foil, length, mm(s)) !== samplePchip(points, s)) mismatches.push(s);
+      if (sampleFoil(foil, length, mm(s)) !== curve.sample(s)) mismatches.push(s);
     }
     expect(mismatches).toEqual([]);
     for (const { station, thickness } of foilStationPoints(foil, length)) {
