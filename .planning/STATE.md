@@ -4,9 +4,9 @@ milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
 stopped_at: Phase 13 items 9b, 9c, 9d and 9e live (2026-09-30); item 13's walk sheet (13-UAT.md) is with the founder — their walk, then the freeze on Wed 2026-10-07
-last_updated: "2026-10-02T07:41:52.000Z"
+last_updated: "2026-10-02T15:54:26.000Z"
 last_activity: 2026-10-02
-last_activity_desc: Blank catalog corrections — part 1 live; part 2 (Arctic's four pages, six catalog slips) built, awaiting the founder's go
+last_activity_desc: Blank catalog corrections — parts 1 and 2 live; part 3 (twelve notes, the 10'10"T rename) built, awaiting the founder's go
 progress:
   total_phases: 1
   completed_phases: 0
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-10-02 - Completed quick task 261001-www: blank catalog corrections part 2 (Arctic's four 2022 pages and six US Blanks catalog slips) — built and in the development database, awaiting the founder's go; part 1 (261001-v1q) went live the same night
+Last activity: 2026-10-02 - Completed quick task 261002-aqu: blank catalog corrections part 3 (twelve notes, the 10'0"T renamed 10'10"T, the seed's --prune option) — built and in the development database, awaiting the founder's go; parts 1 and 2 are live
 
 ## Performance Metrics
 
@@ -171,7 +171,7 @@ Recent decisions affecting current work:
 - [minor/ui] Show a ghost of the last edit on the Template screen — `.planning/todos/pending/2026-09-27-show-a-ghost-of-the-last-edit-on-the-template-screen.md`
 - [major/rocker] Give the foil and rocker curves a realistic surfboard flow (its own phase after Oct 10; folds in the 2026-09-26 smoother-rocker todo) — `.planning/todos/pending/2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow.md`
 - [minor/rocker] Custom rocker on a blank, saved as the shaper's own Custom Blank (after Oct 10) — `.planning/todos/pending/2026-09-28-custom-rocker-on-a-blank-saved-as-the-shaper-s-own-custom-bl.md`
-- [major/data] Fix the blank catalogue dims (the founder moved it up on 2026-10-01: "let's tackle the blank errors now"). Part 1 is live (quick 261001-v1q); part 2 is built by quick 261001-www and awaits the founder's go to push and reseed production; still open after that: small notes and the founder's own list — `.planning/todos/pending/2026-10-01-fix-the-blank-catalogue-dims-the-founder-knows-are-wrong.md`
+- [major/data] Fix the blank catalogue dims (the founder moved it up on 2026-10-01: "let's tackle the blank errors now"). Parts 1 and 2 are live (quick 261001-v1q, 261001-www); part 3 (the notes and the 10'10"T rename) is built by quick 261002-aqu and awaits the founder's go to push and reseed production with --prune; still open after that: the founder's own list — `.planning/todos/pending/2026-10-01-fix-the-blank-catalogue-dims-the-founder-knows-are-wrong.md`
 
 ### Blockers/Concerns
 
@@ -324,7 +324,8 @@ Recent decisions affecting current work:
 | 138 | The last-edit ghost on TEMPLATE is a faint solid line at 55% of the muted ink (the founder's pick from six rendered shades), its dash token removed (fast task) | 2026-09-30 | 35877ea | — |
 | 139 | On a phone held sideways the drawing runs to the bottom of the screen with the Undo/Redo pair floating over its corner — the founder's pick of 9e's Alternative A (fast task) | 2026-09-30 | d0a194c | — |
 | 261001-v1q | Blank catalog corrections, part 1 (US Blanks) — every blank was checked against the makers' own catalog pages: 31 US Blanks station numbers that had been taken from the catalog's mistyped centimetre line now follow the page's inch figure (each with a DATASHEET note), the three 9'8" EPS blanks are 9'8" long (they read 9'0"), the 6'3"RP reads 51.5 L (it read 57.5 L) and the 10'0"T has a rounded nose; Phase 11's recorded boards are now checked against the blanks they were recorded on, so catalogue corrections cannot disturb them. Live 2026-10-02 on the founder's go: pushed, deployed, and production reseeded by the founder (162 of 162), checked on the live site. | 2026-10-01 | 5167409 | [261001-v1q-blank-catalog-corrections-part-1-us-blan](./quick/261001-v1q-blank-catalog-corrections-part-1-us-blan/) |
-| 261001-www | Blank catalog corrections, part 2 — the founder's three decisions of 2026-10-01: Arctic Foam's 10'2" LB, 9'4" G, 9'9" G and 10'6" G now read the inch figures on their June 2022 pages (29 numbers; the catalogue file had taken the disagreeing centimetre figures), six US Blanks numbers the catalog prints wrong in inches and centimetres alike take the sister blank's figure with a DATASHEET note (6'2"A, 6'4"EAX, 7'2"X EPS, 8'4"SPX, 10'6"AX thickness; 8'0"H tail rocker), and the 7'9"HX and 8'4"SPX keep the page's litres. Development database reseeded (162 of 162); not pushed, production not reseeded — the founder's go | 2026-10-01 | 9dade6c | [261001-www-blank-catalog-corrections-part-2-arctic-](./quick/261001-www-blank-catalog-corrections-part-2-arctic-/) |
+| 261001-www | Blank catalog corrections, part 2 — the founder's three decisions of 2026-10-01: Arctic Foam's 10'2" LB, 9'4" G, 9'9" G and 10'6" G now read the inch figures on their June 2022 pages (29 numbers; the catalogue file had taken the disagreeing centimetre figures), six US Blanks numbers the catalog prints wrong in inches and centimetres alike take the sister blank's figure with a DATASHEET note (6'2"A, 6'4"EAX, 7'2"X EPS, 8'4"SPX, 10'6"AX thickness; 8'0"H tail rocker), and the 7'9"HX and 8'4"SPX keep the page's litres. Live 2026-10-02 on the founder's go: pushed, deployed, and production reseeded by the founder (162 of 162), checked on the live site | 2026-10-01 | 9dade6c | [261001-www-blank-catalog-corrections-part-2-arctic-](./quick/261001-www-blank-catalog-corrections-part-2-arctic-/) |
+| 261002-aqu | Blank catalog corrections, part 3 — the founder's two decisions of 2026-10-02: the twelve rows where the catalog's inch label is the slip (the app already held the right figure) gain a DATASHEET note saying so, and the blank the catalog's page titles 10'0"T is listed as the 10'10"T it is. The seed learns to remove a blank that has left the catalogue files, only when asked with --prune, never more than five in a run and never on an empty catalogue; proven on the development database (it removed exactly the old 10'0"T row; 162 of 162). Not pushed, production not reseeded — the founder's go | 2026-10-02 | 7426ab3 | [261002-aqu-blank-catalog-corrections-part-3-a-note-](./quick/261002-aqu-blank-catalog-corrections-part-3-a-note-/) |
 
 ## Deferred Items
 
