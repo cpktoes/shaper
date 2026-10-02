@@ -14,8 +14,8 @@
  * in isolation exactly like every other module under lib/geometry/.
  */
 
-import type { BoardBlank } from "./blank";
-import { prepareBlank } from "./blank-fit";
+import type { BlankRecord, BoardBlank } from "./blank";
+import { prepareBlank, type PreparedBlank } from "./blank-fit";
 import type { OutlineSpec } from "./board";
 import { buildBoardProfile } from "./board-profile";
 import type { FoilSpec } from "./foil";
@@ -23,6 +23,7 @@ import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
 import { buildOutline, sampleOutline } from "./outline";
 import { computeRailBands, type RailBandSpec, type RailBandsOutput } from "./rail-bands";
+import type { CurveRule } from "./root-curve";
 import {
   computeCrossSectionVolume,
   computeVolume,
@@ -163,8 +164,33 @@ export interface DesignSummary {
  * Phase 12 (D-08): the board is cut from its blank with the board's OWN cut — its Deck Skin, Tip
  * Style and fine-tune surface, carried on its blank — passed through to the one side profile
  * exactly as the store passes it, so the litres follow the new foil everywhere.
+ *
+ * This is exactly `summarizeDesignWith(fields, { prepare: prepareBlank, handSetCurve: "root" })`:
+ * the live rules (Phase 14 D-13) through the one pipeline below.
  */
 export function summarizeDesign(fields: DesignSummaryFields): DesignSummary {
+  return summarizeDesignWith(fields, { prepare: prepareBlank, handSetCurve: "root" });
+}
+
+/**
+ * Which rules a board's figures are worked out under: how a blank's catalogue rows become its
+ * curves, and which curve draws a board with no blank between its five stations. Every screen uses
+ * the live ones (`summarizeDesign`); the reports and pictures may ask for the rules the site used
+ * before Phase 14, kept by name (D-25), so a "before" figure comes from this same pipeline and never
+ * from a second calculation.
+ */
+export interface DesignRules {
+  /** Prepares a blank's own copy of its catalogue rows into the curves the board is cut from. */
+  prepare: (record: BlankRecord) => PreparedBlank;
+  /** Which rule draws a board with no blank (`BoardProfileInput.handSetCurve`). */
+  handSetCurve: CurveRule;
+}
+
+/**
+ * `summarizeDesign`'s whole pipeline (see its comment) with the blank preparation and the hand-set
+ * curve passed in — the one way to work out a board's figures under a chosen set of rules.
+ */
+export function summarizeDesignWith(fields: DesignSummaryFields, rules: DesignRules): DesignSummary {
   const outlineGeometry = buildOutline(fields.outline);
   const { blank } = fields;
   const profile = buildBoardProfile({
@@ -173,7 +199,7 @@ export function summarizeDesign(fields: DesignSummaryFields): DesignSummary {
     foil: fields.foil,
     blank: blank
       ? {
-          prepared: prepareBlank(blank.copy),
+          prepared: rules.prepare(blank.copy),
           placement: blank.placement,
           nose12Offset: blank.nose12Offset,
           tail12Offset: blank.tail12Offset,
@@ -182,6 +208,7 @@ export function summarizeDesign(fields: DesignSummaryFields): DesignSummary {
           fineTuneSurface: blank.fineTuneSurface,
         }
       : null,
+    handSetCurve: rules.handSetCurve,
   });
   const effectiveRails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
   const railBands = computeRailBands(effectiveRails);
