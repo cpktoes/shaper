@@ -19,7 +19,7 @@ key-files:
     - lib/geometry/units.test.ts
     - lib/geometry/blank-reasons.test.ts
 decisions:
-  - "F-1 (put to the founder; the go is the decision): a length a fraction over a whole foot reads 8'0 1/8\" — eight foot and an eighth, as a shaper writes it. A whole number of feet stays 8'0\"."
+  - "F-1 (confirmed by the founder on 2026-10-02 — 'Yes, 8'0 1/8\" is right — push it'): a length a fraction over a whole foot reads 8'0 1/8\" — eight foot and an eighth, as a shaper writes it. A whole number of feet stays 8'0\"."
   - "O-1: the change is inside formatFeetInches alone; formatInchesFraction keeps printing a bare 1/8\" for a mark on its own."
   - "O-4: Phase 11's archived records that quote 6'1/16\" are the record of their day and are not edited."
 metrics:
@@ -78,10 +78,10 @@ None.
 
 None (no new network, auth, file-access or schema surface; no database, push or production step).
 
-## Still to do (the founder)
+## Still to do
 
-1. **The decision this task was opened to settle:** is `8'0 1/8"` the wanted reading? The work is built on a yes. On a no, the commit is dropped and nothing else is touched.
-2. On a yes: `git push -u origin claude/eloquent-maxwell-mbfx5m` (nothing is pushed without the founder's go), then Vercel deploys from `main` as usual. No migration, no reseed — nothing stored changes.
+1. Done — the founder confirmed the reading on 2026-10-02 ("Yes, 8'0 1/8\" is right — push it") and the branch `claude/eloquent-maxwell-mbfx5m` was pushed on their go, with `main` (part 2 of the catalogue corrections, quick 261001-www) merged into it afterwards so the merge is clean; the unit suite was re-run on the merged tree.
+2. Merge the branch into `main`; Vercel deploys from `main`. No migration and no reseed — nothing stored changes.
 3. On the Mac: `npm run test:e2e` for the five reference pictures, the real WebKit iPhone run and the three tests that cannot pass in the cloud container.
 
 ## Self-Check: PASSED
