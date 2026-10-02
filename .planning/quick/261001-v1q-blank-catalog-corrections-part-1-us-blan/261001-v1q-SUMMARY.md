@@ -31,7 +31,7 @@ metrics:
   tasks: 3
 status: complete
 actuals:
-  tokens: 37000
+  tokens: 156067
   tasks: 3
   commits: 3
 ---

@@ -82,12 +82,16 @@ DATASHEET footnote tells a shaper holding the page why the app follows the inch 
 - **Six US Blanks numbers printed wrong in both units** (6'2"A, 10'6"AX, 6'4"EAX, 8'4"SPX,
   7'2"X EPS thickness; 8'0"H rocker) and the two copied litres figures (7'9"HX, 8'4"SPX) — the
   founder's call whether the app follows the page or the sister blank.
-- **Eleven rows where the page's inch label is the slip and the app is already right** (5'9"P,
-  6'4"MB, 7'11"A N6, 8'2"A, 8'2"AX, 8'9"Y N48, 9'2"A C, 9'9"B, 9'8"X EPS, 11'8"BG T36,
-  10'4"B SUP EPS) — no number changes; a note on those rows is a possible follow-up.
+- **Twelve rows where the page's inch label is the slip and the app is already right** (5'9"P N6,
+  6'4"MB N18, 6'9"EAX N0 thickness — found after the plan was written, by reading every "13/16
+  versus 1 3/16"-style label by eye — 7'11"A N6, 8'2"A, 8'2"AX, 8'9"Y N48, 9'2"A C, 9'9"B,
+  9'8"X EPS, 11'8"BG T36, 10'4"B SUP EPS) — no number changes; a note on those rows is a possible
+  follow-up.
 - The 10'0"T's name (it is the 10'10"T — the page's title has the slip), the two catalog addresses
-  that repeat a neighbour's (6'9"EAX, 11'8"BG), deck lengths where the page's inch and cm differ by
-  under an inch (the app does not use deck length), and the Marko stations placed on the 12-inch grid.
+  that repeat a neighbour's (6'9"EAX, 11'8"BG), lengths and deck lengths where the page's inch and
+  cm differ by a quarter inch or less (6'7"P, 6'10"RH, 11'2"C; the app does not use deck length),
+  the rocker the catalog does not print at the 48-inch stations of five long blanks (stored as 0),
+  and the Marko stations placed on the 12-inch grid.
 
 ## The machine-readable copy
 

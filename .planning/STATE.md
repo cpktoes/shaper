@@ -4,9 +4,9 @@ milestone: v1.5
 milestone_name: Ready for the Shapers
 status: Phase 13 open — working the Oct 10 list one item at a time
 stopped_at: Phase 13 items 9b, 9c, 9d and 9e live (2026-09-30); item 13's walk sheet (13-UAT.md) is with the founder — their walk, then the freeze on Wed 2026-10-07
-last_updated: "2026-10-01T06:24:27.632Z"
-last_activity: 2026-09-30
-last_activity_desc: Items 9d and 9e live
+last_updated: "2026-10-02T06:29:21.000Z"
+last_activity: 2026-10-01
+last_activity_desc: Blank catalog corrections part 1 built (quick 261001-v1q) — awaiting the founder's go to push and reseed production
 progress:
   total_phases: 1
   completed_phases: 0
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-09-30 - Items 9d (the thin sideways bar) and 9e (minimal phone chrome, Alternative A) live
+Last activity: 2026-10-01 - Completed quick task 261001-v1q: blank catalog corrections part 1 (US Blanks) — built and in the development database; not pushed, production not reseeded (the founder's go)
 
 ## Performance Metrics
 
@@ -161,7 +161,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-8 pending (two of them are Phase 13 items: the catalogue links are item 9, skipped for now, and the ghost of the last edit is optional item 9b. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, and the Contacts page by item 10):
+9 pending (two of them are Phase 13 items: the catalogue links are item 9, skipped for now, and the ghost of the last edit is optional item 9b. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, and the Contacts page by item 10):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
@@ -171,6 +171,7 @@ Recent decisions affecting current work:
 - [minor/ui] Show a ghost of the last edit on the Template screen — `.planning/todos/pending/2026-09-27-show-a-ghost-of-the-last-edit-on-the-template-screen.md`
 - [major/rocker] Give the foil and rocker curves a realistic surfboard flow (its own phase after Oct 10; folds in the 2026-09-26 smoother-rocker todo) — `.planning/todos/pending/2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow.md`
 - [minor/rocker] Custom rocker on a blank, saved as the shaper's own Custom Blank (after Oct 10) — `.planning/todos/pending/2026-09-28-custom-rocker-on-a-blank-saved-as-the-shaper-s-own-custom-bl.md`
+- [major/data] Fix the blank catalogue dims (the founder moved it up on 2026-10-01: "let's tackle the blank errors now"). Part 1 built by quick 261001-v1q; open: the founder's go to push and reseed production, the four Arctic 2022 pages, six US Blanks numbers the catalog prints wrong in both units, and the founder's own list — `.planning/todos/pending/2026-10-01-fix-the-blank-catalogue-dims-the-founder-knows-are-wrong.md`
 
 ### Blockers/Concerns
 
@@ -322,6 +323,7 @@ Recent decisions affecting current work:
 | 260930-lo8 | Phase 13 item 9c: undo and redo buttons on every design screen on a computer — the phone's floating pair extended to the desktop shell | 2026-09-30 | d6a874f | [260930-lo8-phase-13-item-9c-undo-and-redo-buttons-o](./quick/260930-lo8-phase-13-item-9c-undo-and-redo-buttons-o/) |
 | 138 | The last-edit ghost on TEMPLATE is a faint solid line at 55% of the muted ink (the founder's pick from six rendered shades), its dash token removed (fast task) | 2026-09-30 | 35877ea | — |
 | 139 | On a phone held sideways the drawing runs to the bottom of the screen with the Undo/Redo pair floating over its corner — the founder's pick of 9e's Alternative A (fast task) | 2026-09-30 | d0a194c | — |
+| 261001-v1q | Blank catalog corrections, part 1 (US Blanks) — every blank was checked against the makers' own catalog pages: 31 US Blanks station numbers that had been taken from the catalog's mistyped centimetre line now follow the page's inch figure (each with a DATASHEET note), the three 9'8" EPS blanks are 9'8" long (they read 9'0"), the 6'3"RP reads 51.5 L (it read 57.5 L) and the 10'0"T has a rounded nose; Phase 11's recorded boards are now checked against the blanks they were recorded on, so catalogue corrections cannot disturb them. Development database reseeded (162 of 162); not pushed, production not reseeded — the founder's go. Arctic's four 2022 pages and six numbers the catalog prints wrong in both units await the founder's call | 2026-10-01 | 5167409 | [261001-v1q-blank-catalog-corrections-part-1-us-blan](./quick/261001-v1q-blank-catalog-corrections-part-1-us-blan/) |
 
 ## Deferred Items
 

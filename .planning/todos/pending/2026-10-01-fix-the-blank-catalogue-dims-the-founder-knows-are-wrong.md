@@ -21,20 +21,66 @@ ROCKER screen offers (US Blanks, Arctic Foam, Marko Foam — seeded from the ven
 Phase 11) carry dimensions the founder knows to be wrong. Which blanks and which numbers is the
 founder's list, still to be written down.
 
+## Progress — 2026-10-01 (the founder: "let's tackle the blank errors now")
+
+**The list now exists.** Every number the app holds for the 162 blanks was checked against the
+makers' own catalog pages — the three PDFs in the founder's Downloads folder that the catalogue
+files were first built from. The method and every finding, each with its catalog page, are in
+`.planning/quick/261001-v1q-blank-catalog-corrections-part-1-us-blan/261001-v1q-CORRECTIONS.md`;
+the founder has a 7-page sheet of the findings showing the catalog's own printed labels.
+
+**The cause.** Each US Blanks drawing prints every measurement twice — inches, with centimetres
+underneath. The catalogue file's US Blanks numbers were taken from the centimetre line, and that
+line has slips (often a copy of the neighbouring row). Marko Foam: every number matches its page.
+Arctic Foam: 29 of 33 blanks match.
+
+**Done — part 1 (quick task 261001-v1q, 2026-10-01).** On this computer and in the development
+database only — NOT yet pushed, NOT yet in production:
+
+- 31 US Blanks station numbers now follow the page's inch figure, each with a DATASHEET note;
+- the three 9'8" EPS blanks are 9'8" long (they read 9'0"), their nose-side stations moved with it;
+- the 6'3"RP — the Shortboard preset's blank — reads 51.5 L (it read 57.5 L);
+- the 10'0"T has a rounded nose (it had a 32" square one).
+
+**Still open — the founder's calls:**
+
+1. **The go for part 1**: push, let Vercel deploy, then reseed production with the command in
+   `scripts/seed-blanks.ts`'s header (data only, no schema change; the seed updates the 34 changed
+   blanks in place and its `--check` must end "162 of 162").
+2. **Arctic Foam's four June-2022 pages** (10'2" LB, 9'4" G, 9'9" G, 10'6" G). The app holds the
+   centimetre figures at the 12-inch stations; the pages' inch figures differ by 2–3" in width,
+   1/4–3/8" in thickness and up to 1" in rocker. The blanks' own printed litres agree with the inch
+   figures (litres from the app's numbers come out about 10% short; from the inch figures within
+   2%, like every other Arctic longboard and gun), and so does an older published spec for the
+   9'9" gun. Recommended: use the inch figures at the 12-inch stations.
+3. **Six US Blanks numbers the catalog prints wrong in both units** — 6'2"A N18, 10'6"AX T36,
+   6'4"EAX N24, 8'4"SPX N18 and 7'2"X EPS T24 thickness, 8'0"H T6 rocker — where the sister blank
+   (the same blank made thicker by a fixed amount) or the curve says what it should be; and the
+   litres of the 7'9"HX and 8'4"SPX, which the catalog copied from the thinner blank.
+4. **Small things**: a note on the twelve rows where the catalog's inch label is the slip and the
+   app is already right; the 10'0"T is really the 10'10"T (a rename needs a one-off delete of the
+   old row — the seed never deletes one); two catalog addresses repeat a neighbour's (6'9"EAX,
+   11'8"BG).
+5. **The founder's own list** — any blank they know to be wrong that a check against the catalog
+   could not see (a number the catalog prints consistently but a real blank contradicts).
+
 ## Solution
 
-Rough shape, after Oct 10 (the freeze is Wednesday 2026-10-07 evening; catalogue data moves litres
-and fits, so it does not ship between the freeze and the demo):
+How a correction round runs (part 1 is the worked example):
 
-- The founder lists each wrong blank with the right numbers and where they come from (the maker's
-  current catalogue page or a measured blank), so every change has a source the way the seed data
-  does.
-- The fix is to the catalogue CSVs under `db/seed/blanks/`, never a hand edit of the database; the
-  seed is re-run on the development branch first, then production (additive rule in CLAUDE.md —
-  updated rows are not a schema change, but check what the seed does with an existing row before
-  running it on production).
-- The four presets' blanks come through `scripts/generate-preset-blanks.ts`; if a preset's blank
-  changes, regenerate and re-check the four cards' litres against the founder's figures (item 7's
-  1/2–1 L tolerance), and the preset tests that record them.
-- Saved boards that sit on a corrected blank re-fit on open; check the carry-over on the development
-  branch's copies of the production boards before the production seed, as Phase 11/12 did.
+- Every change names its source — the catalog page and what it prints, or a measured blank — in a
+  CORRECTIONS file in the round's quick-task folder, so each number has a source the way the seed
+  data does.
+- The fix is to the catalogue CSVs under `db/seed/blanks/`, never a hand edit of the database, and
+  each changed row gets a note in its `flag` column (the DATASHEET prints it). The files are CRLF.
+- Regenerate `lib/blanks/preset-blanks.generated.json` with `scripts/generate-preset-blanks.ts`
+  (part 1 changed the Fish's 5'10"RP and the Shortboard's 6'3"RP; the four preset cards' litres
+  did not move).
+- Reseed the development database, then production after the founder's go. An updated row is not a
+  schema change: the seed upserts by vendor + name.
+- Saved boards carry their blank's rows by value, so a correction never moves a board already
+  saved — only new picks see the corrected rows. (Checked 2026-10-01: the development database
+  holds 7 saved boards, one on a blank, the 6'8"RP, which is not a corrected blank.) Phase 11's
+  recorded boards are pinned to the blanks they were recorded on
+  (`lib/geometry/__fixtures__/phase11-foil-golden-blanks.json`), so later rounds do not disturb
+  those tests.
