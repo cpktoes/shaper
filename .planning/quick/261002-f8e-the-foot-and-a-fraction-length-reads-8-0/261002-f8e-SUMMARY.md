@@ -80,9 +80,8 @@ None (no new network, auth, file-access or schema surface; no database, push or 
 
 ## Still to do
 
-1. Done — the founder confirmed the reading on 2026-10-02 ("Yes, 8'0 1/8\" is right — push it") and the branch `claude/eloquent-maxwell-mbfx5m` was pushed on their go, with `main` (part 2 of the catalogue corrections, quick 261001-www) merged into it afterwards so the merge is clean; the unit suite was re-run on the merged tree.
-2. Merge the branch into `main`; Vercel deploys from `main`. No migration and no reseed — nothing stored changes.
-3. On the Mac: `npm run test:e2e` for the five reference pictures, the real WebKit iPhone run and the three tests that cannot pass in the cloud container.
+1. Done — the founder confirmed the reading on 2026-10-02 ("Yes, 8'0 1/8\" is right — push it"), then asked for it to go straight to `main`; pushed at 15:33 UTC 2026-10-02, with `main` (part 2 of the catalogue corrections, quick 261001-www) merged in first so the push was a plain fast-forward, and the unit suite re-run on the merged tree. Vercel deploys from `main`; no migration and no reseed — nothing stored changes.
+2. On the Mac: `npm run test:e2e` for the five reference pictures, the real WebKit iPhone run and the three tests that cannot pass in the cloud container.
 
 ## Self-Check: PASSED
 
