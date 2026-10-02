@@ -22,10 +22,14 @@
  *    read off a blank are the same maths. Every station still reads its own thickness exactly;
  *    only the curve between stations moved, by a hair (the default board's cross-section volume
  *    went from about 29.79 L to 29.94 L).
+ * 3. THE SQUARE-ROOT RULE (Phase 14 D-13). From Phase 14 the curve is the square-root fall through
+ *    the five stations (`lib/geometry/root-curve.ts`), with that same pchip inside — the rule a
+ *    blank's thickness is drawn with too. Every station still reads its own thickness exactly.
  */
 
-import { preparePchip, type SplinePoint } from "./pchip";
+import { type SplinePoint } from "./pchip";
 import { rockerStationPositions } from "./rocker";
+import { prepareRootCurve } from "./root-curve";
 import { type Mm, inchesToMm, mm } from "./units";
 
 export type FoilStationKey = "tailTip" | "tail12" | "center" | "nose12" | "noseTip";
@@ -94,15 +98,17 @@ export function foilStationPoints(
 }
 
 /**
- * Samples the board's thickness at an arbitrary station: pchip through the five points from
- * `foilStationPoints` (D-13). Fitted fresh on every call — five points, cheap — so nothing derived
- * is cached. Anything that samples the same foil many times (the side profile,
- * `lib/geometry/board-profile.ts`) prepares the identical curve once instead.
+ * Samples the board's thickness at an arbitrary station: the square-root fall through the five
+ * points from `foilStationPoints`, PCHIP inside — the same curve the hand-set side profile draws
+ * (`lib/geometry/board-profile.ts`, Phase 14 D-13), so `computeCrossSectionVolume` given no
+ * `thicknessAt` keeps agreeing with it. Exact at the five stations. Fitted fresh on every call —
+ * five points, cheap — so nothing derived is cached. Anything that samples the same foil many times
+ * (the side profile) prepares the identical curve once instead.
  */
 export function sampleFoil(spec: FoilSpec, length: Mm, station: Mm): Mm {
   const points: SplinePoint[] = foilStationPoints(spec, length).map((p) => ({
     x: p.station,
     y: p.thickness,
   }));
-  return mm(preparePchip(points).sample(station));
+  return mm(prepareRootCurve(points, "fall").sample(station));
 }

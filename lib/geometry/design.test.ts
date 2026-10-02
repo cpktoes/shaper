@@ -4,7 +4,7 @@ import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_BLANK_CUT, type BoardBlank } from "./blank";
 import { prepareBlank } from "./blank-fit";
-import type { OutlineSpec } from "./board";
+import { DEFAULT_BOARD_SPEC, type OutlineSpec } from "./board";
 import { buildBoardProfile } from "./board-profile";
 import { BOARD_PRESETS } from "./presets";
 import { presetSummary } from "./summary-line";
@@ -21,6 +21,8 @@ import {
   deriveRailValues,
   deriveTemplateValues,
   summarizeDesign,
+  summarizeDesignWith,
+  type DesignSummaryFields,
 } from "./design";
 
 // summarizeDesign's tests below all pass railsImportFoilThickness: false so they keep exercising
@@ -73,6 +75,31 @@ describe("summarizeDesign", () => {
     });
     expect(summary.centerThickness).toBe(distinctFoil.center);
     expect(summary.centerThickness).not.toBe(preset.rails.center.boardThickness);
+  });
+
+  it("summarizeDesign is summarizeDesignWith on the live rules, for the presets and the first board a visitor sees", () => {
+    // The presets as applyPreset builds them (presetSummary's fields), and the store's default board
+    // (DEFAULT_DESIGN_STATE: the default outline, rails, foil and hand-set rocker, no blank).
+    const boards: DesignSummaryFields[] = [
+      ...BOARD_PRESETS.map((preset) => ({
+        ...presetDesignFields(preset),
+        railsImportFoilThickness: true,
+        volume: DEFAULT_VOLUME_SPEC,
+      })),
+      {
+        outline: DEFAULT_BOARD_SPEC.outline,
+        rails: DEFAULT_RAIL_BAND_SPEC,
+        foil: DEFAULT_FOIL_SPEC,
+        railsImportFoilThickness: true,
+        volume: DEFAULT_VOLUME_SPEC,
+        rocker: DEFAULT_FALLBACK_ROCKER,
+        blank: null,
+      },
+    ];
+    expect(boards).toHaveLength(BOARD_PRESETS.length + 1);
+    for (const fields of boards) {
+      expect(summarizeDesign(fields)).toEqual(summarizeDesignWith(fields, { prepare: prepareBlank, handSetCurve: "root" }));
+    }
   });
 });
 
