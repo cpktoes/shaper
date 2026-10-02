@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { PHASE14_TODAY, pinnedBlank, pinnedCatalogue } from "./__fixtures__/phase14-today";
@@ -98,5 +100,47 @@ describe("today's numbers, pinned from the live commit before anything changes (
       ...PHASE14_TODAY.hiddenStations.width,
     ];
     for (const { vendor, name } of used) expect(carried.has(`${vendor}\u0000${name}`), `${vendor} ${name}`).toBe(true);
+  });
+
+  it("the pin's generator names the live commit and the files it guards", () => {
+    const script = readFileSync(path.resolve(process.cwd(), "scripts/extract-phase14-today-golden.ts"), "utf8");
+    for (const text of [
+      "ed39f4a7d47e8db81481b93c3bd7fe0c0e9e2220",
+      "ls-tree",
+      "lib/geometry",
+      "lib/blanks",
+      "db/seed/blanks",
+      "lib/fit-defaults-preference.ts",
+    ]) {
+      expect(script, text).toContain(text);
+    }
+  });
+
+  it("the pin carries every blank it uses by value", () => {
+    // The presets carry their own blank copies (lib/blanks/preset-blanks.generated.json), so only
+    // the stress boards, the curves and the hidden-station data name blanks the pin must carry.
+    const used = [
+      ...PHASE14_TODAY.stress,
+      ...PHASE14_TODAY.curves,
+      ...PHASE14_TODAY.hiddenStations.rocker,
+      ...PHASE14_TODAY.hiddenStations.thickness,
+      ...PHASE14_TODAY.hiddenStations.width,
+    ];
+    for (const { vendor, name } of used) {
+      const record = pinnedBlank(vendor, name);
+      expect([record.vendor, record.name], `${vendor} ${name}`).toEqual([vendor, name]);
+    }
+
+    const first = pinnedCatalogue();
+    const second = pinnedCatalogue();
+    expect(second).toEqual(first);
+    expect(second[0]).not.toBe(first[0]);
+    expect(second[0].stations[0]).not.toBe(first[0].stations[0]);
+    const before = second[0].stations[0].fromTailMm;
+    first[0].stations[0].fromTailMm = mm(before + 1);
+    first[0].name = `${first[0].name} (changed)`;
+    const third = pinnedCatalogue();
+    expect(third[0].stations[0].fromTailMm).toBe(before);
+    expect(third[0].name).toBe(second[0].name);
   });
 });
