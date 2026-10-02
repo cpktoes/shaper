@@ -130,6 +130,57 @@ describe("units boundary", () => {
     it("formats 5'0\"", () => {
       expect(formatFeetInches(inchesToMm(60))).toBe(`5'0"`);
     });
+
+    // Quick 261002-f8e: a length a fraction over a whole foot carries its zero inches, the way a
+    // shaper writes eight foot and an eighth. It read `8'1/8"` before — the fraction standing where
+    // the inches go — first seen on the ROCKER blank list for the US Blanks 8'0"H.
+    describe("a fraction over a whole foot carries the zero", () => {
+      it("the US Blanks 8'0\"H, 96 1/8\" long, reads 8'0 1/8\" — never 8'1/8\"", () => {
+        expect(formatFeetInches(inchesToMm(96.125))).toBe(`8'0 1/8"`);
+      });
+
+      it("Marko Foam's 6'0\" blanks, 72.04\" long, read 6'0 1/16\"", () => {
+        expect(formatFeetInches(inchesToMm(72.04))).toBe(`6'0 1/16"`);
+      });
+
+      it.each<[number, string]>([
+        [60.25, `5'0 1/4"`],
+        [72.5, `6'0 1/2"`],
+        [84.875, `7'0 7/8"`],
+        [120.75, `10'0 3/4"`],
+        [72.9375, `6'0 15/16"`],
+      ])("%s inches reads %s", (inches, expected) => {
+        expect(formatFeetInches(inchesToMm(inches))).toBe(expected);
+      });
+
+      it("a whole number of feet stays as it was — no zero is added where there is no fraction", () => {
+        expect(formatFeetInches(inchesToMm(60))).toBe(`5'0"`);
+        expect(formatFeetInches(inchesToMm(96))).toBe(`8'0"`);
+        expect(formatFeetInches(inchesToMm(120))).toBe(`10'0"`);
+      });
+
+      it("a whole inch with or without a fraction is unchanged", () => {
+        expect(formatFeetInches(inchesToMm(74))).toBe(`6'2"`);
+        expect(formatFeetInches(inchesToMm(74.5))).toBe(`6'2 1/2"`);
+        expect(formatFeetInches(inchesToMm(71.9375))).toBe(`5'11 15/16"`);
+        expect(formatFeetInches(inchesToMm(97.125))).toBe(`8'1 1/8"`);
+      });
+
+      it("a value a hair under a whole foot still rounds up to it, with no stray zero", () => {
+        // 1828.8 mm is 6'0" exactly; the millimetre round-trip lands a few ULPs either side.
+        expect(formatFeetInches(mm(1828.8))).toBe(`6'0"`);
+        expect(formatFeetInches(mm(1828.8 - 1e-9))).toBe(`6'0"`);
+      });
+
+      it("every sixteenth across the board's own length range reads as feet, whole inches, then an optional fraction — and reads back to the same length", () => {
+        for (let sixteenths = BOARD_LENGTH_RANGE_IN.min * 16; sixteenths <= BOARD_LENGTH_RANGE_IN.max * 16; sixteenths++) {
+          const inches = sixteenths / 16;
+          const text = formatFeetInches(inchesToMm(inches));
+          expect(text, `${inches}" printed as ${text}`).toMatch(/^\d+'\d+(?: \d+\/\d+)?"$/);
+          expect(mmToInches(parseImperial(text)!), `${text} read back`).toBeCloseTo(inches, 9);
+        }
+      });
+    });
   });
 
   describe("parseImperial", () => {
@@ -163,6 +214,22 @@ describe("units boundary", () => {
 
     it("returns null for unparseable text", () => {
       expect(parseImperial("abc")).toBeNull();
+    });
+
+    // Quick 261002-f8e: the app now prints `8'0 1/8"`, and a shaper may still type the old
+    // `8'1/8"` — both must read as the same length, so nothing a shaper typed or saw before stops
+    // being understood.
+    it.each<[string, number]>([
+      [`8'0 1/8"`, 96.125],
+      [`8'1/8"`, 96.125],
+      [`8' 1/8"`, 96.125],
+      ["8'0 1/8", 96.125],
+      [`6'0 1/16"`, 72.0625],
+      [`6'1/16"`, 72.0625],
+      [`10'0 3/4"`, 120.75],
+      [`8'0"`, 96],
+    ])("%s reads as %s inches, with or without the zero inches", (typed, inches) => {
+      expect(mmToInches(parseImperial(typed)!)).toBeCloseTo(inches, 9);
     });
 
     // A whole number and a fraction need whitespace between them, so a fraction typed on its own is

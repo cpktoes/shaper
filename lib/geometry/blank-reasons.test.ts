@@ -672,7 +672,7 @@ describe("a blank's row and the offer line", () => {
   const centre = mRegular.stations.find((s) => s.label === "C")!.thicknessMm!;
 
   it("the row's meta line reads the UI-SPEC's M-Regular example in both systems", () => {
-    expect(blankRowMeta(mRegular, "imperial")).toBe(`Marko Foam · 6'1/16" · 2 15/16" center`);
+    expect(blankRowMeta(mRegular, "imperial")).toBe(`Marko Foam · 6'0 1/16" · 2 15/16" center`);
     expect(blankRowMeta(mRegular, "metric")).toBe("Marko Foam · 183.0 cm · 74 mm center");
   });
 
@@ -694,7 +694,7 @@ describe("a blank's row and the offer line", () => {
   });
 
   it("keeps the catalogue's own name text, straight quotes and all", () => {
-    expect(offerLine(mRegular, "imperial")).toBe(`Closest blank that fits: Marko Foam 6'0" M-Regular, 6'1/16"`);
+    expect(offerLine(mRegular, "imperial")).toBe(`Closest blank that fits: Marko Foam 6'0" M-Regular, 6'0 1/16"`);
   });
 });
 
