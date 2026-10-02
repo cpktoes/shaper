@@ -339,13 +339,24 @@ export function roundToSixteenthInch(value: Mm): Mm {
  * inch value to the nearest 1/16 FIRST, then splits feet/inches — this is
  * what prevents float drift from the millimetre round-trip (1828.8mm)
  * printing as `5'11 15/16"` instead of `6'0"`.
+ *
+ * The inch figure is always written, even when it is zero: a length a fraction over a whole foot
+ * reads `8'0 1/8"` — eight foot and an eighth, the way a shaper writes it — never `8'1/8"`, which
+ * puts the fraction where the inches go and reads like a misprint. A whole number of feet stays
+ * `8'0"`, exactly as before (quick 261002-f8e, the founder's call; first seen on the ROCKER blank
+ * list, where the US Blanks 8'0"H read `8'1/8"`). `formatInchesFraction` itself is untouched — a
+ * bare `1/8"` is the right reading for a mark standing on its own.
  */
 export function formatFeetInches(value: Mm): string {
   const inches = mmToInches(value);
   const roundedInches = Math.round(inches * 16) / 16;
   const feet = Math.floor((roundedInches + 1e-9) / 12);
   const remainderInches = roundedInches - feet * 12;
-  return `${feet}'${formatInchesFraction(inchesToMm(remainderInches))}`;
+  // Under an inch but not zero: the fraction would otherwise stand where the inches go, so it
+  // carries the zero a shaper writes. `remainderInches` is an exact sixteenth (both terms are),
+  // so this comparison is exact too.
+  const zeroInches = remainderInches > 0 && remainderInches < 1 ? "0 " : "";
+  return `${feet}'${zeroInches}${formatInchesFraction(inchesToMm(remainderInches))}`;
 }
 
 /**
