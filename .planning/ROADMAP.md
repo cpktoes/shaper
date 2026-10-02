@@ -12,7 +12,7 @@ Shaper started from a working prototype (built in Claude Design) that already pr
 
 **Milestone v1.4 (Phase 12, complete 2026-09-27)** models the foil the way a shaper actually cuts it. Phase 11 scaled the blank's thickness profile down to the centre thickness; a shaper does something else with a planer: skins the deck by a roughly constant amount, planes the bottom down to thickness, and only then thins the tips. The founder's brief put that on the screen — a deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, and tip thinning in the last 12" with a pin-deck or bottom choice — so the DATASHEET's numbers became the numbers a shaper works to. One phase of ten plans, opened on branch `foil-real-shaping` the afternoon v1.3 shipped and live the next morning: production carried migration 0006 before the merge (`125a90f`), the founder passed all eight UAT checks on real phones and the live site, and every one of the phase's 35 declared threats is closed.
 
-**Milestone v1.5 (Phase 13, opened 2026-09-27)** gets the app ready for the room. On Saturday 2026-10-10 the founder shows Shaper Assistant to many shapers at once. That is the build guide's M4, "invite shapers, free for everyone, watch what they use", and the founder plans to go public with tiered subscriptions (M5) shortly after hearing from them. A review on the day v1.4 closed found the app healthy but not yet ready for that. The live site ran a framework version with a critical security advisory. Three milestones of stale records were still open, along with five founder decisions and four provisional preset blanks. Volume had never been checked against a real finished board. The order form was missing the tips and the planer passes. And there was no way for a shaper to send feedback, or for the founder to see which screens get used. The phase has thirteen items, most of them small, run one at a time with a review between: safe fixes first, then the founder's decisions, then what shapers will test first, then what lets the founder listen, then a rehearsal on real phones and a freeze on Oct 7.
+**Milestone v1.5 (Phase 13, opened 2026-09-27)** gets the app ready for the room. On Saturday 2026-10-10 the founder shows Shaper Assistant to many shapers at once. That is the build guide's M4, "invite shapers, free for everyone, watch what they use", and the founder plans to go public with tiered subscriptions (M5) shortly after hearing from them. A review on the day v1.4 closed found the app healthy but not yet ready for that. The live site ran a framework version with a critical security advisory. Three milestones of stale records were still open, along with five founder decisions and four provisional preset blanks. Volume had never been checked against a real finished board. The order form was missing the tips and the planer passes. And there was no way for a shaper to send feedback, or for the founder to see which screens get used. The phase has thirteen items, most of them small, run one at a time with a review between: safe fixes first, then the founder's decisions, then what shapers will test first, then what lets the founder listen, then a rehearsal on real phones and a freeze on Oct 7. **Phase 14 (opened 2026-10-02)** joins it at the founder's word, "before the 10th": the curves a shaper cuts foam to are redrawn so they flow the way a real surfboard does. A blank's bottom, thickness and width are drawn between their printed stations by the rule that redraws real blanks most closely (measured on the US Blanks catalogue), a hand-set board follows the same rule, and each tip runs down steadily from a start point that moves in when it has to, so no board comes out thinner near a tip than at the tip itself.
 
 ## Milestones
 
@@ -21,7 +21,7 @@ Shaper started from a working prototype (built in Claude Design) that already pr
 - ✅ **v1.2 — Rails Finished, Phone Ready** — Phases 8–10 (shipped 2026-09-12)
 - ✅ **v1.3 — Rocker from Real Blanks** — Phase 11 (shipped 2026-09-26)
 - ✅ **v1.4 — Foil the Way a Shaper Cuts It** — Phase 12 (shipped 2026-09-27)
-- 🚧 **v1.5 — Ready for the Shapers** — Phase 13 (in progress; the shapers see it 2026-10-10)
+- 🚧 **v1.5 — Ready for the Shapers** — Phases 13–14 (in progress; the shapers see it 2026-10-10)
 
 ## Phases
 
@@ -62,6 +62,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Milestone v1.5 — Ready for the Shapers (in progress)**
 
 - [ ] **Phase 13: Ready for the Shapers** - Safe, clean, credible and ready to listen by the founder's showing to many shapers on 2026-10-10: the security patch, housekeeping, the founder's open decisions, volume proven against real boards, the order form completed, a contact page, visitor analytics and a privacy page, a friendly error screen and link preview, and a real-device rehearsal before a freeze on Oct 7
+- [ ] **Phase 14: Realistic Surfboard Flow** - A blank's bottom, thickness and width drawn between their printed stations by the square-root rule that redraws real blanks most closely, a hand-set board drawn the same way, and a steady taper into each tip from a start that is automatic and can be set by hand (6" to the board's centre) — built before the Oct 7 freeze
 
 ## Phase Details
 
@@ -159,7 +160,7 @@ founder questions stand open as decisions, not defects. Full phase detail archiv
 [`.planning/milestones/v1.4-REQUIREMENTS.md`](milestones/v1.4-REQUIREMENTS.md); phase artifacts in
 [`.planning/milestones/v1.4-phases/`](milestones/v1.4-phases/).
 
-### Milestone v1.5: Ready for the Shapers (Phase 13, in progress — the shapers see it 2026-10-10)
+### Milestone v1.5: Ready for the Shapers (Phases 13–14, in progress — the shapers see it 2026-10-10)
 
 ### Phase 13: Ready for the Shapers
 
@@ -204,12 +205,23 @@ Plans:
 
 - [ ] 13. Real-device rehearsal on the live site (Android, iPhone, the presenting laptop, a non-founder Google sign-up), then the freeze — prepared 2026-09-30: the walk sheet is `13-UAT.md`
 
+### Phase 14: Realistic Surfboard Flow
+
+**Goal:** Every curve a shaper cuts foam to flows the way a real surfboard does: a blank's bottom, thickness and width are drawn between their printed stations by the rule that redraws real blanks most closely, a hand-set board is drawn by the same rule, and a board's thickness runs down steadily into each tip, never thinner on the way than the tip itself — built and live before the founder shows the app to a room of shapers on Saturday 2026-10-10.
+**Requirements**: 1–9 in `.planning/phases/14-realistic-surfboard-flow/14-SPEC.md` (the founder's own words and their four answers of 2026-10-02), with the measured research in `.planning/todos/completed/2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow.md`
+**Depends on:** Phase 12 (the planer cut and the tip rule it changes); runs beside Phase 13, whose rehearsal and freeze it must be ready for
+**Plans:** 0 plans — opened 2026-10-02 on branch `surfboard-flow`; the discussion comes first, and no code is written before the founder approves a plan
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 14 to break down)
+
 ---
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 6 → 7 (v1.1, complete) → 8 → 9 → 10 (v1.2, complete) → 11 (v1.3, complete) → 12 (v1.4, complete) → 13 (v1.5, in progress)
+Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 6 → 7 (v1.1, complete) → 8 → 9 → 10 (v1.2, complete) → 11 (v1.3, complete) → 12 (v1.4, complete) → 13 → 14 (v1.5, in progress)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -226,3 +238,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 11. Rocker from Real Blanks | 13/13 | Complete    | 2026-09-26 |
 | 12. Foil the Way a Shaper Cuts It | 10/10 | Complete    | 2026-09-27 |
 | 13. Ready for the Shapers | 11/13 items | In progress | - |
+| 14. Realistic Surfboard Flow | 0/0 | Not started | - |
