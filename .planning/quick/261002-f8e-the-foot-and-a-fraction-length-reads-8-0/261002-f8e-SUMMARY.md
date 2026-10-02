@@ -80,7 +80,7 @@ None (no new network, auth, file-access or schema surface; no database, push or 
 
 ## Still to do
 
-1. Done — the founder confirmed the reading on 2026-10-02 ("Yes, 8'0 1/8\" is right — push it"), then asked for it to go straight to `main`; pushed at 15:33 UTC 2026-10-02, with `main` (part 2 of the catalogue corrections, quick 261001-www) merged in first so the push was a plain fast-forward, and the unit suite re-run on the merged tree. Vercel deploys from `main`; no migration and no reseed — nothing stored changes.
+1. Done — the founder confirmed the reading on 2026-10-02 ("Yes, 8'0 1/8\" is right — push it"), then asked for it to go straight to `main`; pushed at 15:33 UTC 2026-10-02, with `main` (part 2 of the catalogue corrections, quick 261001-www) merged in first so the push was a plain fast-forward, and the unit suite re-run on the merged tree. Vercel deployed it, and the founder confirmed it on the live site: the US Blanks 8'0"H reads `8'0 1/8"` on ROCKER. No migration and no reseed — nothing stored changes.
 2. On the Mac: `npm run test:e2e` for the five reference pictures, the real WebKit iPhone run and the three tests that cannot pass in the cloud container.
 
 ## Self-Check: PASSED
