@@ -210,7 +210,7 @@ Plans:
 **Goal:** Every curve a shaper cuts foam to flows the way a real surfboard does: a blank's bottom, thickness and width are drawn between their printed stations by the rule that redraws real blanks most closely, a hand-set board is drawn by the same rule, and a board's thickness runs down steadily into each tip, never thinner on the way than the tip itself — built and live before the founder shows the app to a room of shapers on Saturday 2026-10-10.
 **Requirements**: 1–9 in `.planning/phases/14-realistic-surfboard-flow/14-SPEC.md` (the founder's own words and their four answers of 2026-10-02), with the measured research in `.planning/todos/completed/2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow.md`
 **Depends on:** Phase 12 (the planer cut and the tip rule it changes); runs beside Phase 13, whose rehearsal and freeze it must be ready for
-**Plans:** 0 plans — opened 2026-10-02 on branch `surfboard-flow`; discussed the same day (the brief locked, D-01 to D-19 in `14-CONTEXT.md`); next the screen design contract for the Thinning Starts control, then one plan for both steps; no code is written before the founder approves it
+**Plans:** 0 plans — opened 2026-10-02 on branch `surfboard-flow`; discussed the same day (the brief locked, D-01 to D-19 in `14-CONTEXT.md`); the screen design contract for the Thinning Starts control approved the same day (`14-UI-SPEC.md`, with a mock-up in the phase's `pictures/`); next one plan for both steps; no code is written before the founder approves it
 
 Plans:
 
