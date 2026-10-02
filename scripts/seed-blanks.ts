@@ -9,7 +9,19 @@
  * Safe to run again: the whole catalogue goes in as ONE `INSERT … ON CONFLICT (vendor, name)
  * DO UPDATE` statement, so a blank already there is updated in place rather than duplicated. The
  * Neon HTTP driver has no interactive transactions, and it does not need one — a single statement
- * is atomic on its own: either every blank lands or none does.
+ * is atomic on its own: either every blank lands or none does. WITHOUT `--prune` the seed only ever
+ * adds or updates: it can never remove a blank.
+ *
+ * `--prune` takes out of the table the blanks that are no longer in the catalogue files. After the
+ * upsert it removes every blank whose maker and name are both missing from the files — one
+ * statement per blank, matched on maker AND name, one line printed per blank removed:
+ *   removed (no longer in the catalogue): <maker> <name>
+ * Use it after a blank is renamed in, or withdrawn from, the catalogue files: the next plain run
+ * would otherwise fail its count check and name the blank. It is guarded — it refuses, removing
+ * nothing and exiting 1, when the catalogue read is empty or when more than
+ * `MAX_BLANKS_REMOVED_PER_RUN` (5, in lib/blanks/prune.ts) blanks would go in one run. `--check`
+ * never writes, so `--check --prune` is refused before any database work. A board a shaper has
+ * already saved is never affected: it carries its own copy of its blank.
  *
  * Every run ends with a read-only count of what the table now holds:
  *   blanks: <total> (US Blanks <n>, Arctic Foam <n>, Marko Foam <n>); pickable: <n>
@@ -25,11 +37,15 @@
  *
  *   development (reads .env.local — the Neon development branch):
  *     npx --no-install tsx scripts/seed-blanks.ts
+ *   development, also removing blanks that have left the catalogue files:
+ *     npx --no-install tsx scripts/seed-blanks.ts --prune
  *   read-only check, writes nothing:
  *     npx --no-install tsx scripts/seed-blanks.ts --check
  *   production — ONLY after the code is pushed, deployed, and `npm run db:migrate:prod` has run
  *   (CLAUDE.md, Database). The production env is pulled to a temporary file and deleted on exit:
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && SEED_ENV_FILE=.env.production.pull npx --no-install tsx scripts/seed-blanks.ts && SEED_ENV_FILE=.env.production.pull npx --no-install tsx scripts/seed-blanks.ts --check'
+ *   production, after a blank is renamed or withdrawn (the same, with --prune on the seeding run):
+ *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && SEED_ENV_FILE=.env.production.pull npx --no-install tsx scripts/seed-blanks.ts --prune && SEED_ENV_FILE=.env.production.pull npx --no-install tsx scripts/seed-blanks.ts --check'
  *
  * Which env file is read is controlled by `SEED_ENV_FILE` (default `.env.local`, resolved from the
  * current directory), mirroring `MIGRATE_ENV_FILE` in drizzle.config.ts: when the file exists, any
@@ -41,9 +57,17 @@
 
 import { existsSync } from "node:fs";
 import path from "node:path";
+// Pure and import-free, so it is safe to load before the env file is read.
+import { planBlankRemoval, readSeedOptions, staleBlanks } from "../lib/blanks/prune";
 
 async function main(): Promise<void> {
-  const checkOnly = process.argv.slice(2).includes("--check");
+  const options = readSeedOptions(process.argv.slice(2));
+  if (options.status === "refused") {
+    console.error(options.reason);
+    process.exitCode = 1;
+    return;
+  }
+  const { check: checkOnly, prune } = options;
 
   const envFile = path.resolve(process.cwd(), process.env.SEED_ENV_FILE ?? ".env.local");
   if (existsSync(envFile)) {
@@ -60,7 +84,7 @@ async function main(): Promise<void> {
   }
 
   // Relative imports on purpose: the script always uses the lib/ files that sit next to it.
-  const { sql } = await import("drizzle-orm");
+  const { and, eq, sql } = await import("drizzle-orm");
   const { db } = await import("../lib/db/client");
   const { blanks } = await import("../lib/db/schema");
   const { blankRecordToRow, blankRowToRecord } = await import("../lib/db/blanks");
@@ -88,6 +112,29 @@ async function main(): Promise<void> {
           updatedAt: new Date(),
         },
       });
+
+    // --prune only: take out the blanks that have left the catalogue files. The plan decides what
+    // may go (and refuses on an empty catalogue or more than the limit); the statement below is
+    // this script's only delete, one per blank, matched on maker AND name, values as parameters.
+    if (prune) {
+      const inTable = await db.select({ vendor: blanks.vendor, name: blanks.name }).from(blanks);
+      const plan = planBlankRemoval(inTable, catalog);
+      if (plan.status === "refused") {
+        console.error(plan.reason);
+        process.exitCode = 1;
+      } else if (plan.blanks.length === 0) {
+        console.log("nothing to remove: every blank in the table is in the catalogue files");
+      } else {
+        for (const blank of plan.blanks) {
+          const removed = await db.delete(blanks)
+            .where(and(eq(blanks.vendor, blank.vendor), eq(blanks.name, blank.name)))
+            .returning({ vendor: blanks.vendor, name: blanks.name });
+          for (const row of removed) {
+            console.log(`removed (no longer in the catalogue): ${row.vendor} ${row.name}`);
+          }
+        }
+      }
+    }
   }
 
   // Read-only from here on.
@@ -126,6 +173,16 @@ async function main(): Promise<void> {
       `The blanks table does not hold the whole catalogue: expected ${catalog.length} blanks, found ${stored.length}` +
         (byVendor.length > 0 ? ` (${byVendor.join("; ")})` : "") +
         ".",
+    );
+    process.exitCode = 1;
+  }
+
+  // Without --prune, name any blank the table holds that the catalogue files no longer have. (With
+  // --prune a refusal has already said why, so this line is not printed.)
+  const leftOver = staleBlanks(stored, catalog);
+  if (!prune && leftOver.length > 0) {
+    console.error(
+      `  no longer in the catalogue files: ${leftOver.map((blank) => `${blank.vendor} ${blank.name}`).join(", ")} — run the seed with --prune to remove ${leftOver.length === 1 ? "it" : "them"}`,
     );
     process.exitCode = 1;
   }
