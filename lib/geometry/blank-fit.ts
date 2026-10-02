@@ -1,7 +1,9 @@
 /**
  * A board laid on a real foam blank (Phase 11): the blank's own rocker, thickness and width
- * fitted with pchip, the rocker levelled so its low point reads zero, the board's rocker and foil
- * read off the blank at any placement, and the check that the board fits inside the foam.
+ * drawn through its printed stations with the square-root rule (Phase 14 D-13, `root-curve.ts`,
+ * today's pchip inside it), the rocker levelled so its low point reads zero, the board's rocker and
+ * foil read off the blank at any placement, and the check that the board fits inside the foam.
+ * Today's rule — pchip straight through the printed values — survives only as `prepareBlankPchip`.
  *
  * How a board sits on a blank (D-08): board station `s` (0 = the board's tail tip) lies at blank
  * station u(s) = Lb/2 + p + s − L/2, where L is the board's length, Lb the blank's, and p the
@@ -39,6 +41,7 @@ import { FOIL_THICKNESS_RANGE_IN } from "./foil";
 import { MEASURE_STATION_MM } from "./outline";
 import { pchipMinimum, preparePchip, type PreparedPchip } from "./pchip";
 import { rockerStationPositions } from "./rocker";
+import { prepareRootCurve, type CurveRule, type RootKind } from "./root-curve";
 import { inchesToMm, mm, type Mm } from "./units";
 
 /** How far the board's tips stay inside the blank's tips at either end of the slider (D-08). */
@@ -70,7 +73,7 @@ export const MIN_FOIL_THICKNESS_MM = inchesToMm(FOIL_THICKNESS_RANGE_IN.min);
 export const FIT_EPSILON_MM = 1e-6;
 
 /**
- * A pchip curve with its minimum over some stretch subtracted, so that stretch's lowest point
+ * A prepared curve with its minimum over some stretch subtracted, so that stretch's lowest point
  * reads exactly 0 (R11).
  */
 export interface LevelledCurve {
@@ -85,8 +88,10 @@ export interface LevelledCurve {
 /**
  * The ONE levelling function (R11), used on import (the whole blank) and again on the crop under
  * the board: subtracts the curve's exact minimum over `[from, to]` — the lowest of the two ends
- * and every knot strictly inside, exact because pchip is monotone between knots (`pchipMinimum`),
- * not merely the lowest printed station value.
+ * and every knot strictly inside (`pchipMinimum`), not merely the lowest printed station value.
+ * Exact on both rules, because each runs steadily between two knots: pchip is monotone there, and
+ * the square-root rule stays between its two neighbouring printed values — so the minimum is always
+ * a knot or an end.
  */
 export function levelCurve(curve: PreparedPchip, from: number, to: number): LevelledCurve {
   const minimum = pchipMinimum(curve, from, to);
@@ -107,28 +112,35 @@ export interface PreparedBlank {
   width: PreparedPchip;
 }
 
-/** The curve through one attribute's OWN non-empty stations — an empty cell is not a knot (R10). */
+/**
+ * The curve through one attribute's OWN non-empty stations — an empty cell is not a knot (R10) —
+ * drawn by `rule`: `"pchip"` is today's pchip straight through the printed values, `"root"` the
+ * square-root rule running the way `kind` says (a bottom rises from its lowest station, a thickness
+ * or width falls from its highest).
+ */
 function attributeCurve(
   stations: readonly BlankStation[],
   pick: (station: BlankStation) => Mm | null,
+  rule: CurveRule,
+  kind: RootKind,
 ): PreparedPchip {
   const points: { x: number; y: number }[] = [];
   for (const station of stations) {
     const value = pick(station);
     if (value !== null) points.push({ x: station.fromTailMm, y: value });
   }
-  return preparePchip(points);
+  return rule === "pchip" ? preparePchip(points) : prepareRootCurve(points, kind);
 }
 
 /**
- * Fits a blank once (R14): one pchip per attribute over that attribute's own stations, the rocker
- * levelled over the whole blank. The record is copied first, so changing it afterwards changes
- * nothing the prepared blank returns.
+ * Fits a blank once (R14) on one rule: one curve per attribute over that attribute's own stations,
+ * the rocker levelled over the whole blank. The record is copied first, so changing it afterwards
+ * changes nothing the prepared blank returns.
  *
  * Throws if the blank has no thickness at its `C` station — such a blank is not pickable
  * (`isPickable`), because the list's centre floor reads that printed centre (D-04).
  */
-export function prepareBlank(record: BlankRecord): PreparedBlank {
+function prepareBlankWith(record: BlankRecord, rule: CurveRule): PreparedBlank {
   const copy: BlankRecord = {
     ...record,
     stations: record.stations.map((station) => ({ ...station })),
@@ -137,15 +149,40 @@ export function prepareBlank(record: BlankRecord): PreparedBlank {
   if (!centre || centre.thicknessMm === null) {
     throw new Error(`${copy.vendor} ${copy.name} has no thickness at its centre station`);
   }
-  const rockerCurve = attributeCurve(copy.stations, (station) => station.rockerMm);
+  const rockerCurve = attributeCurve(copy.stations, (station) => station.rockerMm, rule, "rise");
   return {
     record: copy,
     lengthMm: copy.lengthMm,
     centerThicknessMm: centre.thicknessMm,
     rocker: levelCurve(rockerCurve, 0, copy.lengthMm),
-    thickness: attributeCurve(copy.stations, (station) => station.thicknessMm),
-    width: attributeCurve(copy.stations, (station) => station.widthMm),
+    thickness: attributeCurve(copy.stations, (station) => station.thicknessMm, rule, "fall"),
+    width: attributeCurve(copy.stations, (station) => station.widthMm, rule, "fall"),
   };
+}
+
+/**
+ * Fits a blank on the live rule — the one every screen, the blank list, the flag, the rack and
+ * preset cards and the saved-boards check use (Phase 14 D-13): the bottom drawn with the
+ * square-root rise from its lowest station, the thickness and width with the square-root fall from
+ * their highest, every printed station read exactly.
+ *
+ * Throws if the blank has no thickness at its `C` station (see `prepareBlankWith`).
+ */
+export function prepareBlank(record: BlankRecord): PreparedBlank {
+  return prepareBlankWith(record, "root");
+}
+
+/**
+ * Fits a blank on today's rule — pchip straight through the printed values — kept callable by NAME
+ * only for the Phase 11 conversion, the pin's own test, the saved-boards reports and the
+ * before-and-after pictures (Phase 14 D-25). It is a separate function rather than a second argument
+ * on `prepareBlank` because `.map(prepareBlank)` would pass the index as that argument (Pitfall 4).
+ * Removed after the showing.
+ *
+ * Throws if the blank has no thickness at its `C` station (see `prepareBlankWith`).
+ */
+export function prepareBlankPchip(record: BlankRecord): PreparedBlank {
+  return prepareBlankWith(record, "pchip");
 }
 
 /**
