@@ -149,14 +149,17 @@ function sourceOf(site: string): string {
 }
 
 describe("every place that builds a board from its stored blank passes its starts through the one helper", () => {
-  // The library paths (14-12), the blank list and the blank flag on ROCKER, and the read-only
-  // saved-boards check (14-17).
+  // The library paths (14-12), the blank list and the blank flag on ROCKER, the read-only
+  // saved-boards check (14-17), the before-and-after comparison, and the preset cards' generator
+  // (code review IN-04).
   const SITES = [
     "./board-profile.ts",
     "./design.ts",
+    "./before-after.ts",
     "../../components/rocker/use-blank-list.ts",
     "../../components/rocker/blank-flag.tsx",
     "../../scripts/check-saved-boards.ts",
+    "../../scripts/extract-phase14-preset-figures.ts",
   ] as const;
 
   it.each(SITES)("%s calls thinningStartsOf(", (site) => {
