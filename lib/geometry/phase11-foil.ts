@@ -23,6 +23,7 @@ import {
   boardOnBlank,
   clampPlacement,
   FIT_EPSILON_MM,
+  prepareBlankPchip,
   TIP_EASE_WINDOW_MM,
   type PreparedBlank,
 } from "./blank-fit";
@@ -46,6 +47,11 @@ export interface Phase11Board {
  * times the ratio. Its never-below-the-tip guard ran twice — once on the derived value and again
  * after the fine-tune was added — which is why the tip setting appears in two nested `max`es.
  * Where the board runs past the blank the blank's thickness reads 0, as it did in Phase 11.
+ *
+ * Phase 11's number is read on today's curve whatever the live rule is (Phase 14 D-25, SPEC
+ * constraint 5): the blank is prepared again here with `prepareBlankPchip`, from the record the
+ * caller's blank was fitted to, so editing the live rule in `prepareBlank` cannot move a Phase 11
+ * board's number.
  */
 export function phase11TwelveInch(
   prepared: PreparedBlank,
@@ -53,12 +59,13 @@ export function phase11TwelveInch(
   placement: Mm,
   station: "tail12" | "nose12",
 ): Mm {
+  const frozen = prepareBlankPchip(prepared.record);
   const L = board.length;
-  const Lb = prepared.lengthMm;
+  const Lb = frozen.lengthMm;
   const p = clampPlacement(placement, Lb, L);
   const blankThicknessAt = (s: number) => {
     const u = blankStationOf(mm(s), p, L, Lb);
-    return u >= -FIT_EPSILON_MM && u <= Lb + FIT_EPSILON_MM ? prepared.thickness.sample(u) : 0;
+    return u >= -FIT_EPSILON_MM && u <= Lb + FIT_EPSILON_MM ? frozen.thickness.sample(u) : 0;
   };
   const underCentre = blankThicknessAt(L / 2);
   const ratio = underCentre > 0 ? board.centerThickness / underCentre : 0;

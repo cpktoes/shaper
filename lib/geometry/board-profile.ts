@@ -4,10 +4,11 @@
  * ROCKER drawing, the DATASHEET, RAILS (through `effectiveFoil`), the cross-section volume
  * (through `thicknessAt`) and the Summary.
  *
- * - A board with no blank (D-14) draws its rocker through the five hand-set stations and its foil
- *   through the five stored thicknesses, both on pchip. Its `effectiveFoil` is the stored foil
- *   exactly and its `stationRocker` the typed rocker exactly, so nothing RAILS shows moves for a
- *   board without a blank.
+ * - A board with no blank (D-14) draws its rocker through the five hand-set stations with the
+ *   square-root rise and its foil through the five stored thicknesses with the square-root fall —
+ *   the same rule a blank's curves are drawn with, PCHIP inside (Phase 14 D-13). Both are exact at
+ *   the five stations. Its `effectiveFoil` is the stored foil exactly and its `stationRocker` the
+ *   typed rocker exactly, so nothing RAILS shows moves for a board without a blank.
  * - A board in a blank (D-01; cut from it as a planer does, Phase 12) reads its rocker and foil off
  *   `boardOnBlank`, and also carries the blank's own silhouette in the board's coordinates — its
  *   deck the skin above the board's deck, its bottom the centre gap below the board's un-thinned
@@ -35,6 +36,7 @@ import {
 import { type FoilSpec, type FoilStationKey, foilStationPoints } from "./foil";
 import { preparePchip } from "./pchip";
 import { type FiveStationRocker, fallbackRockerPoints, rockerStationPositions } from "./rocker";
+import { type CurveRule, prepareRootCurve } from "./root-curve";
 import { type Mm, mm } from "./units";
 
 /** A board's blank as the side view and the DATASHEET need it — every station in the BOARD's
@@ -104,15 +106,35 @@ function stationRecord<T>(
 }
 
 /**
- * The hand-set profile (D-14): the rocker through the five typed stations (levelled over the
- * board, which leaves it untouched — every typed lift is at least the centre's 0, so the curve's
- * lowest point is already exactly 0), the foil through the five stored thicknesses, both pchip.
+ * The hand-set profile (D-14): the rocker through the five typed stations with the square-root rise
+ * and the foil through the five stored thicknesses with the square-root fall, PCHIP inside both
+ * (Phase 14 D-13) — the same rule a blank's curves are drawn with. Still exact at the five stations.
+ * The rocker is levelled over the board, which leaves it untouched: every typed lift is at least
+ * the centre's 0, and a rise never reads below its lowest station, so the lowest point is exactly 0.
  */
 export function buildFallbackProfile(rocker: FiveStationRocker, foil: FoilSpec, length: Mm): BoardSideProfile {
-  const rockerCurve = levelCurve(preparePchip(fallbackRockerPoints(rocker, length)), 0, length);
-  const foilCurve = preparePchip(
-    foilStationPoints(foil, length).map((point) => ({ x: point.station, y: point.thickness })),
+  return fallbackProfileWith(rocker, foil, length, "root");
+}
+
+/**
+ * `buildFallbackProfile` under a chosen curve rule: `"root"` is the live rule; `"pchip"` is the
+ * curve every hand-set board was drawn with before Phase 14, kept by name for the reports and
+ * pictures only (D-25).
+ */
+function fallbackProfileWith(
+  rocker: FiveStationRocker,
+  foil: FoilSpec,
+  length: Mm,
+  curve: CurveRule,
+): BoardSideProfile {
+  const rockerPoints = fallbackRockerPoints(rocker, length);
+  const rockerCurve = levelCurve(
+    curve === "pchip" ? preparePchip(rockerPoints) : prepareRootCurve(rockerPoints, "rise"),
+    0,
+    length,
   );
+  const foilPoints = foilStationPoints(foil, length).map((point) => ({ x: point.station, y: point.thickness }));
+  const foilCurve = curve === "pchip" ? preparePchip(foilPoints) : prepareRootCurve(foilPoints, "fall");
   const rockerAt = (s: Mm) => mm(rockerCurve.sample(s));
   const thicknessAt = (s: Mm) => mm(foilCurve.sample(s));
 
@@ -214,7 +236,8 @@ export function buildBlankProfile(
  *   read off `effectiveFoil`. The centre and both tips stay the stored foil's own — they already
  *   are what the blank profile reads there, and `foil.center` stays the one stored centre.
  *
- * Between the stations the hand-set curve is pchip through these five numbers, not the blank's
+ * Between the stations the hand-set curve is the square-root rule through these five numbers (Phase
+ * 14 D-13) — the same rule a blank's curves use, but through five numbers rather than the blank's
  * dense curve, so the drawing between stations (and the litres, a little) can move. That is what
  * the sidebar's hint says.
  */
@@ -252,6 +275,13 @@ export interface BoardProfileInput {
     tipStyle: TipStyle;
     fineTuneSurface: FineTuneSurface;
   } | null;
+  /**
+   * Which rule draws a board with no blank between its five stations. Absent is the live
+   * square-root rule (Phase 14 D-13); `"pchip"` is the curve hand-set boards were drawn with before
+   * Phase 14, kept by name only for the reports and pictures (D-25) and removed after the showing.
+   * Ignored when a blank is picked.
+   */
+  handSetCurve?: CurveRule;
 }
 
 /**
@@ -262,7 +292,7 @@ export interface BoardProfileInput {
  */
 export function buildBoardProfile(input: BoardProfileInput): BoardSideProfile {
   const { length, rocker, foil, blank } = input;
-  if (!blank) return buildFallbackProfile(rocker, foil, length);
+  if (!blank) return fallbackProfileWith(rocker, foil, length, input.handSetCurve ?? "root");
   return buildBlankProfile(
     blank.prepared,
     {

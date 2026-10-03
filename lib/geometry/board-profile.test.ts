@@ -14,8 +14,8 @@ import { DEFAULT_BOARD_SPEC } from "./board";
 import { BOARD_PRESETS } from "./presets";
 import { DEFAULT_FOIL_SPEC, foilStationPoints, sampleFoil, type FoilStationKey } from "./foil";
 import { MEASURE_STATION_MM } from "./outline";
-import { preparePchip } from "./pchip";
 import { DEFAULT_FALLBACK_ROCKER, rockerStationPositions } from "./rocker";
+import { prepareRootCurve } from "./root-curve";
 import { inchesToMm, mm, type Mm } from "./units";
 
 // Every blank figure below is read from the committed CSVs through the tested reader, and every
@@ -82,9 +82,10 @@ describe("the fallback profile — a board with no blank (D-14)", () => {
     expect(profile.length).toBe(length);
   });
 
-  it("draws the foil through the five stored thicknesses on the one pchip sampler", () => {
-    const curve = preparePchip(
+  it("draws the foil through the five stored thicknesses with the square-root fall (Phase 14 D-13)", () => {
+    const curve = prepareRootCurve(
       foilStationPoints(DEFAULT_FOIL_SPEC, length).map((p) => ({ x: p.station, y: p.thickness })),
+      "fall",
     );
     const mismatches = sweep(length, 72).filter((s) => profile.thicknessAt(s) !== curve.sample(s));
     expect(mismatches).toEqual([]);
@@ -103,6 +104,66 @@ describe("the fallback profile — a board with no blank (D-14)", () => {
 
   it("derives the deck as rocker + thickness at 200 stations (R10)", () => {
     expectDeckIsDerived(profile);
+  });
+});
+
+describe("the first board a visitor sees, on the square-root rule (Phase 14 D-13)", () => {
+  // The store's default board: the default length, foil and hand-set rocker, no blank. Every
+  // expected number is the typed station value itself — nothing is typed here.
+  const length = DEFAULT_BOARD_SPEC.outline.length;
+  const profile = buildBoardProfile({ length, rocker: DEFAULT_FALLBACK_ROCKER, foil: DEFAULT_FOIL_SPEC, blank: null });
+
+  it("the first board a visitor sees draws through its same five rocker numbers and five thicknesses, to the last bit (acceptance 8)", () => {
+    for (const { key, station } of rockerStationPositions(length)) {
+      expect(profile.rockerAt(station), `rocker ${key}`).toBe(key === "center" ? 0 : DEFAULT_FALLBACK_ROCKER[key]);
+      expect(profile.thicknessAt(station), `thickness ${key}`).toBe(DEFAULT_FOIL_SPEC[key]);
+    }
+    expect(profile.effectiveFoil).toEqual(DEFAULT_FOIL_SPEC);
+    expect(profile.stationRocker).toEqual({ ...DEFAULT_FALLBACK_ROCKER, center: 0 });
+
+    // The rocker's lowest point is exactly 0 and it never dips below it: a 1/8" sweep plus the five
+    // stations themselves.
+    const eighth = inchesToMm(0.125);
+    const readAt: Mm[] = rockerStationPositions(length).map(({ station }) => station);
+    for (let s = 0; s <= length; s += eighth) readAt.push(mm(s));
+    readAt.push(length);
+    const lowest = Math.min(...readAt.map((s) => profile.rockerAt(s)));
+    expect(lowest).toBe(0);
+
+    // R3: the deck stays derived — rocker + thickness exactly, on a 1" sweep.
+    const inch = inchesToMm(1);
+    const deckMismatches: number[] = [];
+    for (let s = 0; s <= length; s += inch) {
+      if (profile.deckAt(mm(s)) !== profile.rockerAt(mm(s)) + profile.thicknessAt(mm(s))) deckMismatches.push(s);
+    }
+    expect(deckMismatches).toEqual([]);
+  });
+
+  it("is the square-root rise and fall between the stations, not today's curve", () => {
+    const rise = prepareRootCurve(
+      rockerStationPositions(length).map(({ key, station }) => ({
+        x: station,
+        y: key === "center" ? 0 : DEFAULT_FALLBACK_ROCKER[key],
+      })),
+      "rise",
+    );
+    const fall = prepareRootCurve(
+      foilStationPoints(DEFAULT_FOIL_SPEC, length).map((p) => ({ x: p.station, y: p.thickness })),
+      "fall",
+    );
+    const mismatches = sweep(length, 72).filter(
+      (s) => profile.rockerAt(s) !== rise.sample(s) || profile.thicknessAt(s) !== fall.sample(s),
+    );
+    expect(mismatches).toEqual([]);
+    const pchip = buildBoardProfile({
+      length,
+      rocker: DEFAULT_FALLBACK_ROCKER,
+      foil: DEFAULT_FOIL_SPEC,
+      blank: null,
+      handSetCurve: "pchip",
+    });
+    const moved = sweep(length, 72).filter((s) => pchip.thicknessAt(s) !== profile.thicknessAt(s));
+    expect(moved.length).toBeGreaterThan(0);
   });
 });
 

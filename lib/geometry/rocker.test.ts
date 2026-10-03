@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { BOARD_LENGTH_RANGE_IN } from "./board";
 import { MEASURE_STATION_MM } from "./outline";
-import { preparePchip, pchipMinimum } from "./pchip";
+import { pchipMinimum } from "./pchip";
+import { prepareRootCurve } from "./root-curve";
 import { BOARD_PRESETS } from "./presets";
 import {
   bezierToFiveStations,
@@ -293,7 +294,7 @@ describe("the five-station fallback (D-14)", () => {
     }
   });
 
-  it("a prepared pchip through the points reads each typed lift exactly at its station and 0 at the centre", () => {
+  it("the square-root rise through the points (Phase 14 D-13) reads each typed lift exactly at its station and 0 at the centre", () => {
     const rocker: FiveStationRocker = {
       noseTip: inchesToMm(5.25),
       nose12: inchesToMm(1.5),
@@ -302,14 +303,14 @@ describe("the five-station fallback (D-14)", () => {
     };
     for (const lengthIn of [BOARD_LENGTH_RANGE_IN.min, 72, BOARD_LENGTH_RANGE_IN.max]) {
       const length = inchesToMm(lengthIn);
-      const curve = preparePchip(fallbackRockerPoints(rocker, length));
+      const curve = prepareRootCurve(fallbackRockerPoints(rocker, length), "rise");
       for (const { key, station } of rockerStationPositions(length)) {
         expect(curve.sample(station)).toBe(key === "center" ? 0 : rocker[key]);
       }
     }
   });
 
-  it("is never negative on a 1/8in sweep, and its minimum is exactly 0, for any lifts inside ROCKER_LIFT_RANGE_IN", () => {
+  it("the square-root rise is never negative on a 1/8in sweep, and its minimum is exactly 0, for any lifts inside ROCKER_LIFT_RANGE_IN (Phase 14 D-13)", () => {
     const grid = [
       ROCKER_LIFT_RANGE_IN.min,
       ROCKER_LIFT_RANGE_IN.step,
@@ -332,7 +333,7 @@ describe("the five-station fallback (D-14)", () => {
                 nose12: inchesToMm(nose12),
                 noseTip: inchesToMm(noseTip),
               };
-              const curve = preparePchip(fallbackRockerPoints(rocker, length));
+              const curve = prepareRootCurve(fallbackRockerPoints(rocker, length), "rise");
               for (let s = 0; s <= length; s += step) lowest = Math.min(lowest, curve.sample(s));
               lowest = Math.min(lowest, curve.sample(length));
               minima.push(pchipMinimum(curve, 0, length));

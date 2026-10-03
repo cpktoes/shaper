@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
-status: Phase 13 open — working the Oct 10 list one item at a time
-stopped_at: Phase 13 items 9b, 9c, 9d and 9e live (2026-09-30); item 13's walk sheet (13-UAT.md) is with the founder — their walk, then the freeze on Wed 2026-10-07
-last_updated: "2026-10-02T16:11:40.000Z"
+status: executing
+stopped_at: "Phase 14 wave 4 of 10 merged (14-05 before-and-after figures + the read-only curves report; 14-06 preset record + ROCKER/VOLUME baselines re-recorded); build/vitest/tsc/lint green on main, browser suite running on port 3150; next: wave 5 = go-live 1 (14-07), the founder's checkpoint"
+last_updated: "2026-10-02T23:07:28.535Z"
 last_activity: 2026-10-02
-last_activity_desc: Blank catalog corrections — all three parts live (the catalog check, 261001-v1q, 261001-www, 261002-aqu); only the founder's own list of blanks is still open. The foot-and-a-fraction reading (quick 261002-f8e) is live too
+last_activity_desc: Phase 14 executing — waves 1–4 done (the whole curves step is built); go-live 1 is next, on the founder's go
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 0
-  total_plans: 13
-  completed_plans: 11
-  percent: 85
-current_phase: 13
-current_phase_name: Ready for the Shapers
+  total_plans: 31
+  completed_plans: 17
+  percent: 55
+current_phase: 14
+current_phase_name: Realistic Surfboard Flow
 ---
 
 # Project State
@@ -24,16 +24,18 @@ current_phase_name: Ready for the Shapers
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 13 — Ready for the Shapers. The founder shows the app to many shapers on Saturday 2026-10-10 (build guide M4), with a freeze on Wednesday 2026-10-07 evening. Work the 13 items in `phases/13-ready-for-the-shapers/13-SPEC.md` one at a time, stopping for the founder's review after each.
+**Current focus:** Phase 14 — Realistic Surfboard Flow
 
 ## Current Position
 
 **Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **11 of 13 items done.** Items 1–6, 8, 10, 11 and 12 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, page 2's PLANING table to the left of the rail markings, the Contact page and form, and the privacy page with visit counts). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). Item 9 is skipped for now (the founder, 2026-09-29). Item 10 is done: the Contact page and its form are live, sending through Resend to support@shaperassistant.com on Zoho Mail (the founder's live test passed 2026-09-30). Item 11a is done: a shaper deletes their own account from Clerk's Manage account and a signed `user.deleted` webhook deletes their boards and settings (the founder's live test: "Deleted: saved boards 1, settings rows 1"). Item 11 is done: the privacy page and cookie-free visit counts are live (the founder's checks passed). Item 12 is done: the error and not-found screens and the link preview are live (the founder: "looks perfect"; the site title now reads "Shaper Assistant — Surfboard Shaping and Design"). **Item 13 — the real-device rehearsal — is prepared (2026-09-30): `13-UAT.md` holds the nine checks and a printed walk sheet went to the founder; the founder's walk is next (suggested by Oct 3–4), then the freeze on Wed 2026-10-07 evening.** The same evening the founder picked up optional item 9b (the last-edit ghost on TEMPLATE, quick 260930-lia) and added item 9c (undo/redo buttons on every design screen on a computer, quick 260930-lo8); both are live (pushed on the founder's go, Vercel deployment 6774767581; the ghost a faint solid line at 55%, the founder's pick). The founder lowered Clerk's password minimum to 8. The RAILS colour key's last entry under the Undo button on a computer is accepted for now (the founder, 2026-10-01). Later the same evening the founder added 9d (a thin top bar on a phone held sideways, with the six screens in its menu) and 9e (every band and gutter around the drawing minimised on phones, the sideways drawing running to the bottom of the screen with the undo/redo pair over its corner — the founder's Alternative A), under the rule "phone real estate is expensive, we need to save all of it"; both live (Vercel deployment 6777696405). Item 9 (catalogue links) is skipped for now and 9b stays optional.
 
+**Phase 14 — Realistic Surfboard Flow — opened 2026-10-02 on branch `surfboard-flow`** from the curve-flow todo, at the founder's word ("before the 10th"; "Curves and tips, both now"). The brief is `phases/14-realistic-surfboard-flow/14-SPEC.md`: nine requirements in the founder's own words (the square-root rule for a blank's bottom, thickness and width, the same rule for a hand-set board, a steady taper into each tip from a start that is automatic and can be set by hand, saved boards redrawn) and eight carried constraints. **Discussed 2026-10-02: the brief locked and nineteen decisions in `14-CONTEXT.md`.** Tips: the steady taper (the founder's pick from pictures); one Thinning Starts per tip, Automatic or set by hand; the 12" fine-tune stays a nudge; a start set too close is drawn as set and flagged; no account default, so no database change; the tape-measure check on a real Arctic blank comes after go-live (sheet in the phase folder). The control is a slider with an Automatic button at the end of THICKNESS, and the start also shows on the drawing, the DATASHEET and the order form. Curves: today's PCHIP runs inside the square-root rule; the US Blanks 9'9"B is drawn as printed. Shipping: one plan approval, two go-lives (curves target Sat Oct 3, then tips), each on the founder's go after before-and-after pictures and a read-only report on the real saved boards; the tips can take Tuesday Oct 6, and only if still unproven that evening does the showing run on the curves alone; one rehearsal walk after the last change (Tue Oct 6, or Wed morning if the tips take Tuesday); freeze Wed Oct 7 evening. Nothing is said on screen about the change. **Screen design approved 2026-10-02 (`14-UI-SPEC.md`: checker 6 of 6 with two non-blocking recommendations, 43 screen states resolved; a mock-up drawn on the real ROCKER screen is in the phase's `pictures/thinning-starts-mockup.png`).** It settles what the discussion left to this step, each marked for the founder to overrule: the Automatic button sits on the line under each slider and is dimmed while that tip is on Automatic; that line reads "Picked automatically", "Automatic: 12" is too short" or "Automatic would be …"; distances read in inches or centimetres to one decimal (a 12" start reads 30.5 cm, like the station's own label); the slider steps 1/2" (1 cm in Metric); a start set too close shows one sentence in warning ink under its slider (a thin spot, or a sharp bend); the mark on the drawing is a faint dashed line across the board; the DATASHEET gains a THINNING STARTS block and the order form's PLANING box one line; switching blanks keeps a start set by hand; a board under the 1/4" floor because of a hand-set start says so. It also corrects one reading of the discussion's figures: the four preset cards move at each go-live (29.4 → 29.5 → 29.6 L, 35.0 → 35.1 → 35.3, 50.3 → 50.3 → 50.4, 75.3 unchanged), not only at the first. **Researched and planned 2026-10-02** (`14-RESEARCH.md`, `14-PATTERNS.md`, `14-VALIDATION.md`, `14-01` to `14-18-PLAN.md`): the research rebuilt both steps in a scratch copy of the app and reproduced every figure in the brief; the founder answered three questions by card — a thin board in a thick blank now fits (D-20), the sharp-bend line shows from 1/32" per inch (D-21), a Thinning Start reads in centimetres in Metric (D-22) — and six more were settled on the measurements (D-23 to D-28: Automatic's first-hit half-inch scan with a quiet 12" fallback; two optional values on the board's blank with the saved-board version kept at 5 and no database change; today's rules callable by name until after the showing; the pin from the live commit `ed39f4a`, confirmed on Vercel; the test sets as counted; two go-lives by commit order with no switch). 18 plans in 10 waves: pin (1), curves (2–4), go-live 1 (5, a founder checkpoint), tips (6–9), go-live 2 (10, a founder checkpoint with the Tuesday cut line). The plan checker passed on the second pass after one wording blocker in 14-07 and one seam in 14-10 were fixed. **Next: the founder approves the plan, then `/gsd-execute-phase 14`.** No code before that approval (D-15).
+
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Phase 13 open — working the Oct 10 list one item at a time
-Last activity: 2026-10-02 - Blank catalog corrections part 3 (quick 261002-aqu: twelve notes, the 10'0"T renamed 10'10"T, the seed's --prune option) went live on the founder's go — parts 1 and 2 before it; the foot-and-a-fraction length reading (quick 261002-f8e, from a separate session) went live the same morning
+Status: Executing Phase 14
+Last activity: 2026-10-02 — Phase 14 execution started
 
 ## Performance Metrics
 
@@ -158,17 +160,17 @@ Recent decisions affecting current work:
 ### Roadmap Evolution
 
 - Phase 13 added (2026-09-27): Ready for the Shapers — milestone v1.5, the build guide's M4 preparation for the founder's showing to many shapers on 2026-10-10; 13 ordered items in `phases/13-ready-for-the-shapers/13-SPEC.md`, run one at a time as quick tasks with the founder's review between
+- Phase 14 added (2026-10-02): Realistic Surfboard Flow — milestone v1.5, opened from the curve-flow todo on branch `surfboard-flow`; the founder wants it before the Oct 10 showing, curves and tips both; brief in `phases/14-realistic-surfboard-flow/14-SPEC.md`, research in the todo (now under `todos/completed/`)
 
 ### Pending Todos
 
-9 pending (one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10):
+8 pending (one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
 - [minor/general] Brand the order form with a shaper's own logo and contact details (paid tier) — `.planning/todos/pending/2026-09-06-brand-the-order-form-for-paid-shapers.md`
 - [minor/ui] Show live coordinates under the pointer on the Template and Rocker curves — `.planning/todos/pending/2026-09-14-live-pointer-coordinates-on-the-template-and-rocker-curves.md`
 - [minor/rocker] Open the blank's own catalog page from the app — `.planning/todos/pending/2026-09-26-open-the-blank-s-catalog-page-from-the-app.md`
-- [major/rocker] Give the foil and rocker curves a realistic surfboard flow (moved up by the founder on 2026-10-02: "tackle this very soon, before the 10th"; the research is done — a square-root rule on today's PCHIP wins for bottom, thickness and width — and the two-step plan is in the todo with the founder's answers of 2026-10-02: curves AND tips both before the Oct 7 freeze, an automatic tip start the shaper can override (6" to the centre), saved boards redraw, the blank's width and the hand-set board included; nothing built yet; folds in the 2026-09-26 smoother-rocker todo) — `.planning/todos/pending/2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow.md`
 - [minor/rocker] Custom rocker on a blank, saved as the shaper's own Custom Blank (after Oct 10) — `.planning/todos/pending/2026-09-28-custom-rocker-on-a-blank-saved-as-the-shaper-s-own-custom-bl.md`
 - [major/data] Fix the blank catalogue dims (the founder moved it up on 2026-10-01: "let's tackle the blank errors now"). All three correction rounds are live (quick 261001-v1q, 261001-www, 261002-aqu); what is left is the founder's own list — any blank they know is wrong that a check against the catalog could not see — `.planning/todos/pending/2026-10-01-fix-the-blank-catalogue-dims-the-founder-knows-are-wrong.md`
 - [minor/ui] Hold the ghost still until the control is released (the founder, 2026-10-02: on TEMPLATE the ghost moves while a slider or a draggable point is still held; it should stay on the shape from before the grab until the release. Cause measured: a half-second timer, not the release, decides where one edit ends, so a slow drag or a pause counts as several edits. No date set) — `.planning/todos/pending/2026-10-02-hold-the-ghost-still-until-the-control-is-released.md`
@@ -453,9 +455,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-28T00:45:00.000Z
-Stopped at: Phase 13 opened with its 13-item work list; item 1 (security patch) next
-Resume file: .planning/phases/13-ready-for-the-shapers/13-SPEC.md
+Last session: 2026-10-02T19:49:52.275Z
+Stopped at: Phase 14 screen design approved (14-UI-SPEC.md, 6 of 6, 43 screen states resolved); next: the plan for the founder's approval
+Resume file: .planning/phases/14-realistic-surfboard-flow/14-UI-SPEC.md
 Next action: the next unticked item in 13-SPEC.md's Progress Log, as `/gsd-quick "Phase 13 item N: …"`, then stop for the founder's review
 
 ## Operator Next Steps

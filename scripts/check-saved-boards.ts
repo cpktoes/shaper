@@ -34,6 +34,17 @@
  * opens; k counts a board any of whose five stored foil values sits under the floor; t counts, of
  * those, the ones whose nose or tail tip does. Never changes the exit code.
  *
+ * `--curves-report` (Phase 14 D-18, read-only, counts and maxima only): after the lines above, how
+ * far every saved board's numbers move when its curves are drawn the new way. Each board that opens
+ * is worked out twice through `lib/geometry/before-after.ts` — under the curves the site drew before
+ * Phase 14 and under the live ones — and the moves are summed in two groups, boards in a blank and
+ * hand-set boards: how many were compared, the largest move of any of the ten station numbers (five
+ * thicknesses, five rocker numbers), how many move more than 1/16" and more than 1/32", the median
+ * and largest litres change in percent and how many move more than 1%, and how many "fits" verdicts
+ * go from fits to refused and from refused to fits. Phase 11 boards are left to the five-thicknesses
+ * line above. It never prints a board, a board name, a user id or the connection string, and never
+ * changes the exit code; a board the comparison cannot work out is counted, never described.
+ *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
  *
@@ -45,6 +56,8 @@
  *   production — the founder only (plan 12-10). The production env is pulled to a temporary file and
  *   deleted on exit:
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --thin-tips'
+ *   production, the curves report — the founder only (plan 14-07), the same temporary-file recipe:
+ *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --curves-report'
  *
  * Which env file is read is controlled by `CHECK_ENV_FILE` (default `.env.local`, resolved from the
  * current directory), exactly as scripts/check-preference-columns.ts: when the file exists, any
@@ -85,6 +98,8 @@ async function main(): Promise<void> {
   const { formatMark } = await import("../lib/geometry/measure-display");
   const { mm, UNITS_SYSTEMS } = await import("../lib/geometry/units");
   const { DEFAULT_FIT_DEFAULTS, toFitSettings } = await import("../lib/fit-defaults-preference");
+  const { boardFigures, compareFigures, movesReportLines, RULES_BEFORE_CURVES, RULES_LIVE, summarizeMoves } =
+    await import("../lib/geometry/before-after");
 
   type Mm = import("../lib/geometry/units").Mm;
   type FoilStationKey = import("../lib/geometry/foil").FoilStationKey;
@@ -93,6 +108,7 @@ async function main(): Promise<void> {
   const STATION_KEYS: readonly FoilStationKey[] = ["tailTip", "tail12", "center", "nose12", "noseTip"];
   const fitSettings = toFitSettings(DEFAULT_FIT_DEFAULTS);
   const thinTipsFlag = process.argv.includes("--thin-tips");
+  const curvesReportFlag = process.argv.includes("--curves-report");
   const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
 
   // Read-only: one select of every saved board's id and snapshot, nothing else.
@@ -107,6 +123,10 @@ async function main(): Promise<void> {
   let kept = 0;
   const moved: string[] = [];
   let noLongerFits = 0;
+  type BoardMove = import("../lib/geometry/before-after").BoardMove;
+  const blankMoves: BoardMove[] = [];
+  const handSetMoves: BoardMove[] = [];
+  let notCompared = 0;
 
   for (const row of rows) {
     const version = (row.snapshot as { version?: unknown } | null)?.version;
@@ -131,6 +151,20 @@ async function main(): Promise<void> {
     if (STATION_KEYS.some((key) => parsed.foil[key] < floor)) {
       thinBoards++;
       if (parsed.foil.noseTip < floor || parsed.foil.tailTip < floor) thinTipBoards++;
+    }
+
+    // --curves-report (Phase 14 D-18): counts only, never affects the exit code. Phase 11 boards
+    // are the five-thicknesses line's job, not this report's.
+    if (curvesReportFlag && !phase11) {
+      try {
+        const move = compareFigures(
+          boardFigures(parsed, RULES_BEFORE_CURVES, fitSettings),
+          boardFigures(parsed, RULES_LIVE, fitSettings),
+        );
+        (parsed.blank ? blankMoves : handSetMoves).push(move);
+      } catch {
+        notCompared++;
+      }
     }
     if (!phase11) continue;
 
@@ -222,6 +256,16 @@ async function main(): Promise<void> {
       `saved boards with a thickness under ${formatMark(MIN_FOIL_THICKNESS_MM, "imperial")}: ${thinBoards} of ${opened} ` +
         `(a tip under it: ${thinTipBoards})`,
     );
+  }
+  if (curvesReportFlag) {
+    for (const line of movesReportLines("Boards in a blank, today's curves → the new curves", summarizeMoves(blankMoves))) {
+      console.log(line);
+    }
+    for (const line of movesReportLines("Hand-set boards, today's curves → the new curves", summarizeMoves(handSetMoves))) {
+      console.log(line);
+    }
+    console.log("Phase 11 boards are covered by the five-thicknesses line above, not counted here");
+    if (notCompared > 0) console.log(`boards the curves report could not compare: ${notCompared}`);
   }
 
   if (notOpened.length > 0) console.log(`boards that do not open: ${notOpened.join(", ")}`);

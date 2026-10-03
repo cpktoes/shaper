@@ -84,6 +84,18 @@ page's inch and cm differ by a quarter inch or less; the rocker the catalog does
 the 8'6"EA's litres (about 8% under what its stations suggest) and the 8'8" EPS's tail rocker at
 6" (flatter than its neighbours suggest) — both printed consistently, so only a real blank can say.
 
+**Added from Phase 14's curve research, 2026-10-02** (cells no smooth curve explains; each prints the
+same figure in inches and centimetres on its page, so none is a transcription slip, and only the
+founder or a real blank can say):
+
+- **US Blanks 9'9"B** — its thickest printed station is not its centre, so boards on it come out
+  about 1/16" thicker off-centre. The founder chose on 2026-10-02 to draw it as printed and to check
+  it against its catalogue page (Phase 14 D-14).
+- **US Blanks 6'5"R, tail 12"** — reads 11/16" where its neighbours (1 7/16" at 6", 9/16" at 18")
+  suggest 15/16".
+- **US Blanks 6'2"P, nose 6"** — reads 2 1/2", milder than the two above.
+- **Marko 8'0" Gun and 10'6" Gun** — their nose rocker numbers zig-zag.
+
 ## Solution
 
 How a correction round runs (part 1 is the worked example):

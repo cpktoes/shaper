@@ -328,3 +328,14 @@ findings):**
 for both tips or one each; whether Fit & Tip Defaults carries a start; what the 12" fine-tune means when
 the start is not at 12"; the final shape of the taper, picked from side-by-side pictures; and the
 tape-measure check on a real Arctic blank, which is still the only independent proof of its bottom.
+
+## Outcome
+
+Became **Phase 14 — Realistic Surfboard Flow** on 2026-10-02 (milestone v1.5, branch `surfboard-flow`),
+at the founder's word: "Open Phase 14 from the todo ... and start the discussion with the remaining tip
+questions." The brief is `.planning/phases/14-realistic-surfboard-flow/14-SPEC.md`; the decisions are
+recorded in that folder's `14-CONTEXT.md`.
+
+This file stays the phase's research record. The measured findings above (sections 1–8) and the founder's
+four answers are cited from the brief rather than repeated there. Moved to `completed/` because the work
+is now tracked by the phase, not because it is built.
