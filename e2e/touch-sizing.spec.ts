@@ -330,6 +330,62 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     }
     expect(checkedCells).toBeGreaterThan(0);
   });
+
+  // Phase 14 (14-UI-SPEC §12): the two Thinning Starts rows, once a blank is picked — both Automatic
+  // buttons a finger's height, both thumbs' rings 44x44, and with a start set by hand to the centre
+  // end (the thumb at the far right, right above the button) the button's own centre is still the
+  // button: the thumb's ring may overlap its top edge, never cover it.
+  test("ROCKER: both Automatic buttons and both Thinning Starts thumbs are finger-sized, and the thumb never covers the button", async ({
+    page,
+  }) => {
+    await page.goto("/design/rocker");
+    const list = page.getByRole("list", { name: "Blanks" });
+    await expect(list).toBeVisible({ timeout: 30_000 });
+    await page.waitForFunction(() => {
+      const el = document.querySelector('ul[aria-label="Blanks"] li[data-group="fits"] button');
+      return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+    });
+    const firstFit = list.locator('li[data-group="fits"] button').first();
+    const name = (await firstFit.locator("[data-blank-name]").innerText()).trim();
+    await firstFit.click();
+    await expect(page.locator("[data-picked-blank]")).toContainText(name);
+
+    const row = (tip: "Nose" | "Tail") => page.getByText(new RegExp(`^${tip} Thinning Starts — `)).locator("xpath=..");
+    const button = (tip: "nose" | "tail") =>
+      page.getByRole("button", { name: `Use Automatic for the ${tip} thinning start`, exact: true });
+
+    for (const tip of ["nose", "tail"] as const) {
+      const automatic = button(tip);
+      await automatic.scrollIntoViewIfNeeded();
+      const box = await automatic.boundingBox();
+      if (!box) throw new Error(`the ${tip} Automatic button is missing a bounding box`);
+      expect(box.height, `${tip} Automatic button height`).toBeGreaterThanOrEqual(44);
+    }
+    for (const tip of ["Nose", "Tail"] as const) {
+      const thumb = row(tip).locator('[data-slot="slider-thumb"]');
+      await expect(thumb).toHaveCount(1);
+      const box = await slideThumbTargetBox(thumb);
+      expect(box.width, `${tip} thumb target width`).toBeGreaterThanOrEqual(44);
+      expect(box.height, `${tip} thumb target height`).toBeGreaterThanOrEqual(44);
+    }
+
+    // The tail's start set by hand to the far right: the thumb sits right above the button.
+    const tailLabel = page.getByText(/^Tail Thinning Starts — /);
+    const before = await tailLabel.innerText();
+    const slider = row("Tail").getByRole("slider");
+    await slider.focus();
+    await slider.press("End");
+    await expect(tailLabel).not.toHaveText(before);
+    const tailButton = button("tail");
+    await expect(tailButton).toHaveAttribute("aria-pressed", "false");
+    await tailButton.scrollIntoViewIfNeeded();
+    const hitsTheButton = await tailButton.evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return !!hit && (hit === el || el.contains(hit));
+    });
+    expect(hitsTheButton, "the Automatic button's centre is the button, not the thumb's ring").toBe(true);
+  });
 });
 
 test.describe("touch sizing — desktop stays exactly today's smaller sizes", () => {

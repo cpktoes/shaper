@@ -31,13 +31,22 @@
  *
  * Phase 12 (D-04, 12-UI-SPEC §4): with a blank picked, THICKNESS ends with the board's own Tip Style
  * — a quiet `Pin deck` / `Bottom` pair, read from the side profile's resolved cut (`view.cut`), with
- * the selected option's hint under it. A tap re-derives only the last 12" at each end; nothing at or
- * inside the 12" stations moves (SPEC R5). With no blank it is not on the page at all (D-12).
+ * the selected option's hint under it. A tap re-derives each tip from its tip to its Thinning Starts
+ * point (Phase 14, D-07); nothing inside that point moves. With no blank it is not on the page at all
+ * (D-12).
  * Directly under the Tail @ 12" row — with the two 12" fine-tunes it governs — sits `Fine-tune off:
  * Deck / Bottom` (D-13, 12-UI-SPEC §5a), the same anatomy: which surface a tweak moves. The slider's
  * reach stays ±1/4" (D-20), and a carried-over tweak beyond it still reads its true stored value.
- * With a blank, the intro says how the foil now comes off: deck and bottom follow the blank's, the
- * tips are thinned in the last 12".
+ * With a blank, the intro says how the foil now comes off: deck and bottom follow the blank's, and each
+ * tip is thinned from its Thinning Starts point (D-07). When a tip's start is further in than the 12"
+ * station, that 12" row's left hint reads "From the tip taper …" rather than "From blank …", because the
+ * thickness there then belongs to the taper.
+ *
+ * Phase 14 (D-09 to D-11, D-10's order): with a blank picked, THICKNESS closes with Nose Thinning Starts
+ * and Tail Thinning Starts, after Tip Style — each a `SliderRow` from 6" (left, the tip) to the board's
+ * centre (right), the distance in force in its label, the state on the hint line's left and an
+ * Automatic button on its right; under it, only for a start set by hand that is too close to its tip,
+ * one sentence in warning ink (D-05). With no blank neither row is on the page (hidden, not disabled).
  *
  * Every slider commits its own number through `measureSlider`'s conversion at its call site, and
  * every number reads through `lib/geometry/measure-display.ts` (CLAUDE.md Rule 2). Every control is
@@ -61,6 +70,16 @@ import {
   typedFieldBounds,
 } from "@/lib/geometry/measure-display";
 import { ROCKER_LIFT_RANGE_IN, type FiveStationRocker } from "@/lib/geometry/rocker";
+import {
+  automaticButtonLabel,
+  fineTuneSourceHint,
+  thicknessIntroWithBlank,
+  thinningStartHint,
+  thinningStartLine,
+  thinningStartRowLabel,
+  thinningStartSlider,
+} from "@/lib/geometry/blank-reasons";
+import type { TipEnd, TipView } from "@/lib/geometry/tip-taper";
 import { mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { cn } from "@/lib/utils";
 import { TwoOptionToggle } from "@/components/viewer/two-option-toggle";
@@ -106,6 +125,10 @@ interface RockerControlsProps {
   onTipStyle: (tipStyle: TipStyle) => void;
   /** Which surface the board's 12" fine-tunes move (D-13) — one undo step per tap; blank picked only. */
   onFineTuneSurface: (surface: FineTuneSurface) => void;
+  /** Sets where one tip's thinning starts, by hand (Phase 14, D-11) — one undo step per drag per tip. */
+  onThinningStart: (end: TipEnd, start: Mm) => void;
+  /** Puts one tip back on Automatic (D-11) — one undo step; a no-op on a tip already on Automatic. */
+  onThinningStartAutomatic: (end: TipEnd) => void;
   sectionOpen: Record<RockerControlsSectionKey, boolean>;
   onToggleSectionOpen: (key: RockerControlsSectionKey) => void;
 }
@@ -163,6 +186,7 @@ function FineTuneRow({
   label,
   finalThickness,
   derived,
+  reachesStation,
   offset,
   system,
   onChange,
@@ -170,6 +194,8 @@ function FineTuneRow({
   label: string;
   finalThickness: Mm;
   derived: Mm;
+  /** That tip's start is further in than the 12" station (the profile's own flag, D-07). */
+  reachesStation: boolean;
   offset: Mm;
   system: UnitsSystem;
   onChange: (next: Mm) => void;
@@ -183,10 +209,78 @@ function FineTuneRow({
       min={slider.min}
       max={slider.max}
       step={slider.step}
-      leftHint={`From blank ${formatMark(derived, system)}`}
+      leftHint={fineTuneSourceHint(reachesStation, derived, system)}
       rightHint={tweak === formatSignedMark(mm(0), system) ? "No tweak" : `Tweak ${tweak}`}
       onValueChange={(v) => onChange(slider.toMm(v))}
     />
+  );
+}
+
+/**
+ * The Automatic button on a Thinning Starts row's hint line (14-UI-SPEC §2): a text link in the
+ * ↺ Reset Fine-Tune look, minus `self-start` (the hint line centres it) and plus `shrink-0` (a long hint
+ * wraps beside it instead of squeezing it). On Automatic it stays in place, dimmed and inert, so nothing
+ * shifts; the hint beside it says in words what the dimming means.
+ */
+function AutomaticButton({ end, automatic, onPress }: { end: TipEnd; automatic: boolean; onPress: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={automaticButtonLabel(end)}
+      aria-pressed={automatic}
+      aria-disabled={automatic ? "true" : undefined}
+      tabIndex={automatic ? -1 : undefined}
+      onClick={() => {
+        if (!automatic) onPress();
+      }}
+      className={cn(
+        "focus-ring-accent shrink-0 cursor-pointer text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center",
+        automatic && "pointer-events-none opacity-40",
+      )}
+    >
+      Automatic
+    </button>
+  );
+}
+
+/**
+ * One tip's Thinning Starts row (Phase 14, D-09 to D-11, 14-UI-SPEC §1 and §4): the distance in force in
+ * the label, the slider from 6" (left, the tip) to the board's centre (right), the state on the hint
+ * line's left and the Automatic button on its right — and, only for a start set by hand that is too
+ * close to its tip, one sentence in warning ink under it. Everything it shows comes from the side
+ * profile's per-tip view through `lib/geometry/blank-reasons.ts`; it computes and converts nothing.
+ */
+function ThinningStartRow({
+  end,
+  tip,
+  tipSetting,
+  system,
+  onChange,
+  onAutomatic,
+}: {
+  end: TipEnd;
+  tip: TipView;
+  tipSetting: Mm;
+  system: UnitsSystem;
+  onChange: (end: TipEnd, start: Mm) => void;
+  onAutomatic: (end: TipEnd) => void;
+}) {
+  const slider = thinningStartSlider(tip, system);
+  const line = thinningStartLine(end, tip, tipSetting, system);
+  return (
+    <div>
+      <SliderRow
+        label={thinningStartRowLabel(end, tip, system)}
+        value={slider.value}
+        min={slider.min}
+        max={slider.max}
+        step={slider.step}
+        leftHint={thinningStartHint(tip, system)}
+        hintAction={<AutomaticButton end={end} automatic={tip.automatic} onPress={() => onAutomatic(end)} />}
+        onValueChange={(v) => onChange(end, slider.toMm(v))}
+      />
+      {line && <p className="mt-2 text-xs text-surf-warning-ink">{line}</p>}
+    </div>
   );
 }
 
@@ -202,6 +296,8 @@ export function RockerControls({
   onResetFineTune,
   onTipStyle,
   onFineTuneSurface,
+  onThinningStart,
+  onThinningStartAutomatic,
   sectionOpen,
   onToggleSectionOpen,
 }: RockerControlsProps) {
@@ -335,9 +431,7 @@ export function RockerControls({
         {sectionOpen.thickness && (
           <div className="flex flex-col gap-3.5 pt-3">
             <div className="text-xs text-surf-ink-muted font-normal">
-              {blank
-                ? `Deck and bottom follow your blank's; the tips are thinned in the last ${station}. Set the tips, and fine-tune the ${station} stations if you need to.`
-                : "Hand-set until you pick a blank."}
+              {blank ? thicknessIntroWithBlank(system) : "Hand-set until you pick a blank."}
             </div>
 
             <ThicknessRow
@@ -353,6 +447,7 @@ export function RockerControls({
                   label={`Nose @ ${station}`}
                   finalThickness={sideProfile.effectiveFoil.nose12}
                   derived={view.derived12.nose12}
+                  reachesStation={view.tips.nose.reachesStation}
                   offset={blank.nose12Offset}
                   system={system}
                   onChange={(next) => onFineTune({ nose12Offset: next })}
@@ -361,6 +456,7 @@ export function RockerControls({
                   label={`Tail @ ${station}`}
                   finalThickness={sideProfile.effectiveFoil.tail12}
                   derived={view.derived12.tail12}
+                  reachesStation={view.tips.tail.reachesStation}
                   offset={blank.tail12Offset}
                   system={system}
                   onChange={(next) => onFineTune({ tail12Offset: next })}
@@ -425,7 +521,8 @@ export function RockerControls({
             )}
 
             {view && (
-              // Last in THICKNESS, at its natural width — "those who want it will find it" (§4).
+              // At its natural width — "those who want it will find it" (§4); only the two Thinning
+              // Starts rows come after it (Phase 14, D-10).
               <div className="flex flex-col">
                 <div className="mb-2 text-sm text-surf-ink-muted font-normal">Tip Style</div>
                 <TwoOptionToggle
@@ -438,6 +535,29 @@ export function RockerControls({
                 />
                 <div className="mt-2 text-xs text-surf-ink-muted font-normal">{TIP_STYLE_HINT[view.cut.tipStyle]}</div>
               </div>
+            )}
+
+            {view && (
+              // Close THICKNESS, nose then tail (D-10): which surface (Tip Style), then where each tip's
+              // thinning starts. Shown only with a blank picked — hidden, not disabled (D-09).
+              <>
+                <ThinningStartRow
+                  end="nose"
+                  tip={view.tips.nose}
+                  tipSetting={foil.noseTip}
+                  system={system}
+                  onChange={onThinningStart}
+                  onAutomatic={onThinningStartAutomatic}
+                />
+                <ThinningStartRow
+                  end="tail"
+                  tip={view.tips.tail}
+                  tipSetting={foil.tailTip}
+                  system={system}
+                  onChange={onThinningStart}
+                  onAutomatic={onThinningStartAutomatic}
+                />
+              </>
             )}
           </div>
         )}
