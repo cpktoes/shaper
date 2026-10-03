@@ -27,7 +27,7 @@ import {
   type MeasureSliderView,
 } from "./measure-display";
 import { MEASURE_STATION_MM } from "./outline";
-import type { TipView } from "./tip-taper";
+import type { TipEnd, TipView } from "./tip-taper";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "./units";
 
 /**
@@ -322,6 +322,107 @@ export function thinningStartHint(
 ): string {
   if (!view.automatic) return `Automatic would be ${formatThinningStart(view.automaticStart, system)}`;
   return view.reachesStation ? `Automatic: ${stationLabel(system)} is too short` : "Picked automatically";
+}
+
+/**
+ * The too-close line under a Thinning Starts row set by hand (D-05, D-21, UI-SPEC §4) — two sentences,
+ * each WITH its full stops (the line is its own paragraph, not a reason a flag adds a stop to):
+ *
+ * - thin spot (the planer cut at the start is already under the tip setting): where the board is
+ *   thinnest and by how much, against the tip setting, then the Automatic start that clears it — the
+ *   UI-SPEC's Arctic 10'9" tail reads 9/16" at 12" under a 5/8" tip, Automatic 25 1/2";
+ * - sharp bend (a change of slope above 1/32" per inch where the taper leaves the planer cut): where the
+ *   bend is, then the Automatic start that runs it down steadily — the UI-SPEC's 9'4" tail, 12" by hand,
+ *   Automatic 15 1/2".
+ *
+ * The exact wording is the UI-SPEC Copywriting Contract's "The too-close line" table, pinned word for
+ * word in `blank-reasons.test.ts`.
+ *
+ * Distances read through `formatThinningStart`, thicknesses through `formatMark`. Null when the flag is
+ * null — always on Automatic (D-23), on a steady hand-set start, and on a tip whose Automatic found no
+ * steady start (`tipView` gives no flag then, so "Automatic would … clear that" is never said falsely) —
+ * and null when the thinnest thickness PRINTS the same as the tip setting, so the line never contradicts
+ * itself (`5/8"`, under the `5/8"` …).
+ */
+export function thinningStartLine(
+  end: TipEnd,
+  view: Pick<TipView, "fromTip" | "automaticStart" | "flag">,
+  tipSetting: Mm,
+  system: UnitsSystem,
+): string | null {
+  const { flag } = view;
+  if (flag === null) return null;
+  const automatic = formatThinningStart(view.automaticStart, system);
+  if (flag.kind === "steep") {
+    return (
+      `The ${end} thinning starts with a sharp bend, ${formatThinningStart(view.fromTip, system)} from the tip. ` +
+      `Automatic would start it ${automatic} from the tip and run it down steadily.`
+    );
+  }
+  const thinnest = formatMark(flag.thinnest, system);
+  const tip = formatMark(tipSetting, system);
+  if (thinnest === tip) return null;
+  return (
+    `The board is thinnest ${formatThinningStart(flag.at, system)} from the ${end} tip: ${thinnest}, ` +
+    `under the ${tip} set for the tip. Automatic would start the thinning ${automatic} from the tip and clear that.`
+  );
+}
+
+/**
+ * The 12" fine-tune row's left hint (D-07, UI-SPEC §10): `From the tip taper 1 5/16"` when that tip's
+ * start is further in than the 12" station — the 12" thickness then belongs to the taper, not to the
+ * planer cut — and `From blank 1 5/16"` otherwise, the value one thickness through `formatMark`. The row
+ * hands in the profile's own `reachesStation`, never a comparison of its own.
+ */
+export function fineTuneSourceHint(reachesStation: boolean, derived: Mm, system: UnitsSystem): string {
+  return `${reachesStation ? "From the tip taper" : "From blank"} ${formatMark(derived, system)}`;
+}
+
+/** `Nose` / `Tail` — a tip's name at the start of a row label. */
+function tipName(end: TipEnd): string {
+  return end === "nose" ? "Nose" : "Tail";
+}
+
+/**
+ * A Thinning Starts row's label (D-09, UI-SPEC §1): `Nose Thinning Starts — 12"` / `Tail Thinning
+ * Starts — 64.8 cm`, always carrying the distance in force, Automatic's or the shaper's, through
+ * `formatThinningStart`.
+ */
+export function thinningStartRowLabel(end: TipEnd, view: Pick<TipView, "fromTip">, system: UnitsSystem): string {
+  return `${tipName(end)} Thinning Starts — ${formatThinningStart(view.fromTip, system)}`;
+}
+
+/**
+ * The Automatic button's accessible name (D-11, UI-SPEC §2): `Use Automatic for the nose thinning
+ * start` / `…the tail thinning start`, so the two buttons that both read `Automatic` are told apart.
+ */
+export function automaticButtonLabel(end: TipEnd): string {
+  return `Use Automatic for the ${end} thinning start`;
+}
+
+/**
+ * The side profile's accessible-name clause for the two thinning marks (D-12, UI-SPEC "Viewer and
+ * DATASHEET"): `a dashed line across the board where each tip's thinning starts: 30.5 cm from the nose
+ * tip and 64.8 cm from the tail tip`. No full stop — it ends the drawing's name.
+ */
+export function thinningMarksSentence(noseFromTip: Mm, tailFromTip: Mm, system: UnitsSystem): string {
+  return (
+    `a dashed line across the board where each tip's thinning starts: ` +
+    `${formatThinningStart(noseFromTip, system)} from the nose tip and ` +
+    `${formatThinningStart(tailFromTip, system)} from the tail tip`
+  );
+}
+
+/**
+ * THICKNESS's opening line with a blank picked (UI-SPEC "Sidebar: THICKNESS", §10): true wherever the
+ * starts are, replacing "the tips are thinned in the last 12"". The station reads through
+ * `stationLabel` (`12"` / `30.5 cm`).
+ */
+export function thicknessIntroWithBlank(system: UnitsSystem): string {
+  return (
+    `Deck and bottom follow your blank's; each tip is thinned from its Thinning Starts point, below. ` +
+    `Set the tips, and fine-tune the ${stationLabel(system)} stations if you need to.`
+  );
 }
 
 /**
