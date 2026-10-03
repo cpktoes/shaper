@@ -21,7 +21,14 @@
  * - Ahead of all of these: a 12" fine-tune on the Deck bigger than the board's Deck Skin
  *   (`tweakExceedsDeckSkin`, D-13) fits no blank anywhere, and nothing in Fit & Tip Defaults can
  *   change that — so the flag names the fixes on ROCKER and offers ↺ Reset Fine-Tune, never
- *   Change Fit Rules.
+ *   Change Fit Rules. That quick refusal stays exact on Automatic and under Tip Style Pin deck, and is
+ *   conservative in one corner (Phase 14): Tip Style Bottom with that tip's Thinning Start set by
+ *   hand further in than 12", where some placements could fit and it still refuses — recorded in
+ *   the pending todo for retiring today's curve and 12" blend.
+ *
+ * Every check reads the board's own Thinning Starts (Phase 14) — a start set by hand, or Automatic,
+ * which the fit check picks for this blank at each placement — so the flag never disagrees with the
+ * screen or the list.
  *
  * Checked on every change, slider moves included — it is one sample of one prepared blank at one
  * placement (`fitAt`), never a list verdict and never a network request (R14). The "does it fit
@@ -48,6 +55,7 @@ import {
   judgeBlank,
   nearestFit,
   nearestFittingPlacement,
+  thinningStartsOf,
   tweakExceedsDeckSkin,
   type BoardFitContext,
   type PreparedBlank,
@@ -140,6 +148,8 @@ function PickedBlankFlag({
   placement,
   nose12Offset,
   tail12Offset,
+  noseThinningStart,
+  tailThinningStart,
 }: {
   catalog: Promise<BlankCatalogResult>;
   prepared: PreparedBlank;
@@ -148,6 +158,9 @@ function PickedBlankFlag({
   placement: Mm;
   nose12Offset: Mm;
   tail12Offset: Mm;
+  /** Each tip's stored Thinning Start; absent means Automatic. */
+  noseThinningStart: Mm | undefined;
+  tailThinningStart: Mm | undefined;
 }) {
   const { system } = useUnits();
   const { outline, outlineGeometry, foil, setPlacement, resetFineTune } = useDesign();
@@ -158,7 +171,9 @@ function PickedBlankFlag({
   const { deckSkin, tipStyle, fineTuneSurface } = useBoardCut();
   const rules = useCenterFloorRules();
 
-  // Everything about the board the "fits anywhere?" search depends on — never the placement.
+  // Everything about the board the "fits anywhere?" search depends on — never the placement. Both
+  // Thinning Starts are in it and in its dependency list (Phase 14 Pitfall 6), so a new start
+  // re-judges the blank.
   const ctx = useMemo<BoardFitContext>(
     () => ({
       board: {
@@ -171,6 +186,7 @@ function PickedBlankFlag({
         deckSkin,
         tipStyle,
         fineTuneSurface,
+        ...thinningStartsOf({ noseThinningStart, tailThinningStart }),
       },
       halfWidthAt: (station: Mm) => sampleOutline(outlineGeometry, station),
       widePointStation: outlineGeometry.widePointStation,
@@ -186,6 +202,8 @@ function PickedBlankFlag({
       deckSkin,
       tipStyle,
       fineTuneSurface,
+      noseThinningStart,
+      tailThinningStart,
     ],
   );
   const floor = floorCheck(prepared, ctx.board, settings);
@@ -287,6 +305,8 @@ export function BlankFlag({ catalog }: { catalog: Promise<BlankCatalogResult> })
       placement={blank.placement}
       nose12Offset={blank.nose12Offset}
       tail12Offset={blank.tail12Offset}
+      noseThinningStart={blank.noseThinningStart}
+      tailThinningStart={blank.tailThinningStart}
     />
   );
 }
