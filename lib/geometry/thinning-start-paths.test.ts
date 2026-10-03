@@ -116,12 +116,66 @@ function stripComments(source: string): string {
     .join("\n");
 }
 
+/** The text from `start` to the brace/bracket/paren that closes the first opener at or after it
+ * (same helper as components/design/design-store.test.ts — copied, not imported across). */
+function balancedFrom(source: string, start: number): string {
+  const open = source.slice(start).search(/[({[]/);
+  if (open < 0) throw new Error("no opening bracket");
+  let depth = 0;
+  for (let i = start + open; i < source.length; i++) {
+    const ch = source[i];
+    if (ch === "(" || ch === "{" || ch === "[") depth++;
+    else if (ch === ")" || ch === "}" || ch === "]") {
+      depth--;
+      if (depth === 0) return source.slice(start, i + 1);
+    }
+  }
+  throw new Error("unbalanced source");
+}
+
+/** A `useMemo(() => ({ … }), [ … ])` (typed or not) assigned to `const NAME`: its object and its
+ * dependency array — the design-store test's `memo` helper, taught to skip a `<Type>` argument. */
+function memo(source: string, name: string): { object: string; deps: string } {
+  const start = source.search(new RegExp(`const ${name}\\b[^=]*=\\s*useMemo(?:<[^>]*>)?\\(`));
+  expect(start, `${name}'s useMemo not found`).toBeGreaterThanOrEqual(0);
+  const call = balancedFrom(source, source.indexOf("useMemo", start));
+  const depsStart = call.lastIndexOf("[");
+  return { object: call.slice(0, depsStart), deps: call.slice(depsStart) };
+}
+
+/** A source file, read relative to this test and stripped of comments. */
+function sourceOf(site: string): string {
+  return stripComments(readFileSync(new URL(site, import.meta.url), "utf8"));
+}
+
 describe("every place that builds a board from its stored blank passes its starts through the one helper", () => {
-  // Plan 14-17 extends this list to the blank list, the blank flag and the saved-boards check.
-  const SITES = ["./board-profile.ts", "./design.ts"] as const;
+  // The library paths (14-12), the blank list and the blank flag on ROCKER, and the read-only
+  // saved-boards check (14-17).
+  const SITES = [
+    "./board-profile.ts",
+    "./design.ts",
+    "../../components/rocker/use-blank-list.ts",
+    "../../components/rocker/blank-flag.tsx",
+    "../../scripts/check-saved-boards.ts",
+  ] as const;
 
   it.each(SITES)("%s calls thinningStartsOf(", (site) => {
-    const source = stripComments(readFileSync(new URL(site, import.meta.url), "utf8"));
-    expect(source).toContain("thinningStartsOf(");
+    expect(sourceOf(site)).toContain("thinningStartsOf(");
+  });
+
+  // Pitfall 6: a start missing from a memo's dependency list leaves the list's verdicts (or the
+  // flag) judged on the old start after the shaper moves it.
+  it.each(["../../components/rocker/use-blank-list.ts", "../../components/rocker/blank-flag.tsx"])(
+    "%s's board-fit ctx memo passes both starts and re-judges when either changes",
+    (site) => {
+      const { object, deps } = memo(sourceOf(site), "ctx");
+      expect(object).toContain("...thinningStartsOf({ noseThinningStart, tailThinningStart })");
+      expect(deps).toMatch(/\bnoseThinningStart\b/);
+      expect(deps).toMatch(/\btailThinningStart\b/);
+    },
+  );
+
+  it("../../scripts/check-saved-boards.ts passes the starts at both of its board-input sites", () => {
+    expect(sourceOf("../../scripts/check-saved-boards.ts").match(/thinningStartsOf\(/g) ?? []).toHaveLength(2);
   });
 });
