@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 14 wave 7 of 10 merged (14-10 the steady taper in boardOnBlank — stress set clean, presets re-recorded at the tips step; 14-11 the Thinning Starts words, slider helper and SliderRow hintAction; CLAUDE.md Rule 2 names the start as a cm reading); gate green on main, browser suite running on 3150; next: wave 8 (14-12 the per-tip view on the side profile, 14-13 the runs-out reason + Automatic invariants)"
+stopped_at: "Phase 14 wave 8 of 10 merged (14-12 the per-tip view on the side profile + thinningStartsOf at the construction sites + the tips-step before/after; 14-13 the thinningStart runs-out reason — rule built to the design's intent, accepted — and the Automatic invariants proved); gate green on main; next: wave 9 (14-14 the sliders on ROCKER, 14-15 the mark + DATASHEET, 14-16 the order form line, 14-17 the blank list/flag + tips report)"
 last_updated: "2026-10-02T23:07:28.535Z"
 last_activity: 2026-10-02
-last_activity_desc: Phase 14 executing — go-live 1 live; tips step waves 6–7 done, 8–9 next, then go-live 2 (14-18); executors on Opus
+last_activity_desc: Phase 14 executing — go-live 1 live; tips step waves 6–8 done, wave 9 (the screens) next, then go-live 2 (14-18); executors on Opus
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 31
-  completed_plans: 22
-  percent: 71
+  completed_plans: 24
+  percent: 77
 current_phase: 14
 current_phase_name: Realistic Surfboard Flow
 ---
