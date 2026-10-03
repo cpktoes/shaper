@@ -25,17 +25,19 @@ import { inchesToMm, mm, type Mm } from "./units";
 
 /**
  * The curves the live site drew before Phase 14, kept by name (D-25): a blank's catalogue rows
- * drawn with pchip straight through the printed values, and a board with no blank drawn with pchip
- * through its five stations. Reproduces every number pinned from the live site (D-26) exactly.
+ * drawn with pchip straight through the printed values, a board with no blank drawn with pchip
+ * through its five stations, and each tip eased in over the last 12" with Phase 12's S-blend.
+ * Reproduces every number pinned from the live site (D-26) exactly.
  */
-export const RULES_BEFORE_CURVES: DesignRules = { prepare: prepareBlankPchip, handSetCurve: "pchip" };
+export const RULES_BEFORE_CURVES: DesignRules = { prepare: prepareBlankPchip, handSetCurve: "pchip", tipRule: "blend" };
 
 /**
  * The curves every screen draws from Phase 14 on (D-13): the square-root rise for a bottom and the
- * square-root fall for a thickness or a width, for a blank's curves and a hand-set board alike —
- * exactly what `summarizeDesign` uses.
+ * square-root fall for a thickness or a width, for a blank's curves and a hand-set board alike, and
+ * each tip run down steadily from its own Thinning Starts point (D-01) — exactly what
+ * `summarizeDesign` uses.
  */
-export const RULES_LIVE: DesignRules = { prepare: prepareBlank, handSetCurve: "root" };
+export const RULES_LIVE: DesignRules = { prepare: prepareBlank, handSetCurve: "root", tipRule: "steady" };
 
 /** The five station keys, tail to nose. */
 const STATION_KEYS: readonly FoilStationKey[] = ["tailTip", "tail12", "center", "nose12", "noseTip"];
@@ -71,6 +73,7 @@ export function boardProfileWith(fields: DesignSummaryFields, rules: DesignRules
           deckSkin: blank.deckSkin,
           tipStyle: blank.tipStyle,
           fineTuneSurface: blank.fineTuneSurface,
+          tipRule: rules.tipRule,
         }
       : null,
     handSetCurve: rules.handSetCurve,

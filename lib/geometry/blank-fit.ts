@@ -14,9 +14,12 @@
  * skin comes off the top, so the board's deck is the blank's deck lowered by the skin; the bottom
  * is planed flat down until the centre reads the target, so the board's bottom is the blank's
  * bottom raised by one constant centre gap and the rocker is the blank's own; and the tips are
- * thinned last, eased in over the last 12" at each end, off the bottom (Pin deck) or off the deck
- * (Bottom). Phase 11 scaled the blank's thickness by one ratio instead; that formula survives only
- * in `phase11-foil.ts`, to carry Phase 11's saved boards across.
+ * thinned last, off the bottom (Pin deck) or off the deck (Bottom). From Phase 14 (D-01) each tip runs
+ * down steadily from its own Thinning Starts point — 12" unless the board cannot run down steadily from
+ * there, or wherever the shaper set it (`tip-taper.ts`) — along one smooth curve to the tip setting.
+ * Phase 12's S-shaped ease over the last 12" survives only by name (`tipRule: "blend"`) for the
+ * before-and-after reports (D-25). Phase 11 scaled the blank's thickness by one ratio instead; that
+ * formula survives only in `phase11-foil.ts`, to carry Phase 11's saved boards across.
  *
  * Judging the catalogue (11-03): the two floors that hide a blank (D-04), the best-placement
  * search that decides whether a blank fits anywhere along its length (D-07), the list's two groups
@@ -42,6 +45,7 @@ import { MEASURE_STATION_MM } from "./outline";
 import { pchipMinimum, preparePchip, type PreparedPchip } from "./pchip";
 import { rockerStationPositions } from "./rocker";
 import { prepareRootCurve, type CurveRule, type RootKind } from "./root-curve";
+import { thinningStartRange, tipView, type PlanerCut, type TipView } from "./tip-taper";
 import { inchesToMm, mm, type Mm } from "./units";
 
 /** How far the board's tips stay inside the blank's tips at either end of the slider (D-08). */
@@ -55,7 +59,11 @@ export const BLANK_PLACEMENT_BUFFER_MM = inchesToMm(0.5);
  */
 export const FIT_SAMPLE_STEP_MM = inchesToMm(0.25);
 
-/** Each tip eases into its tip setting over this stretch — tip to 12" station (D-17). */
+/**
+ * The stretch Phase 12's S-shaped ease ran over — tip to the 12" station (D-17). Since Phase 14 it
+ * is used only by `tipRule: "blend"` (today's rule, kept by name for the reports, D-25); it is also
+ * the same distance as the 12" station Phase 11's conversion reads.
+ */
 export const TIP_EASE_WINDOW_MM = MEASURE_STATION_MM;
 
 /**
@@ -231,6 +239,40 @@ export interface BoardOnBlankInput {
   tipStyle: TipStyle;
   /** The board's own fine-tune surface (Phase 12 D-13). */
   fineTuneSurface: FineTuneSurface;
+  /**
+   * Where the nose's thinning starts, in mm in from the nose tip, set by hand (Phase 14 D-02).
+   * Absent (or not a number) is Automatic; a finite value is pulled into the range on read.
+   */
+  noseThinningStart?: Mm;
+  /** Where the tail's thinning starts, in mm in from the tail tip — as `noseThinningStart`. */
+  tailThinningStart?: Mm;
+  /**
+   * Which tip rule cuts the tips. Absent is `"steady"`, the live rule (D-01). `"blend"` is Phase 12's
+   * S-shaped ease over the last 12", kept by name only for the pin, the before-side rule sets and the
+   * reports (D-25), and removed after the showing; it ignores both Thinning Starts.
+   */
+  tipRule?: TipRule;
+}
+
+/**
+ * How a board's tips are thinned: `"steady"` runs each tip down steadily from its own Thinning
+ * Starts point (Phase 14 D-01, the live rule); `"blend"` is Phase 12's S-shaped ease over the last
+ * 12" at each end, kept by name for the reports only (D-25).
+ */
+export type TipRule = "steady" | "blend";
+
+/**
+ * A blank's two stored Thinning Starts, ready to spread into a `BoardOnBlankInput`: only the starts
+ * that are actually stored come back, so an Automatic tip never carries an `undefined` key. The ONE
+ * helper every place that builds a board from a stored blank uses.
+ */
+export function thinningStartsOf(
+  blank: { noseThinningStart?: Mm; tailThinningStart?: Mm } | null | undefined,
+): { noseThinningStart?: Mm; tailThinningStart?: Mm } {
+  const starts: { noseThinningStart?: Mm; tailThinningStart?: Mm } = {};
+  if (blank?.noseThinningStart !== undefined) starts.noseThinningStart = blank.noseThinningStart;
+  if (blank?.tailThinningStart !== undefined) starts.tailThinningStart = blank.tailThinningStart;
+  return starts;
 }
 
 /**
@@ -272,16 +314,27 @@ export interface BoardOnBlank {
    */
   onFoamAt(s: number): boolean;
   /**
-   * The signed tip thinning at `s` (D-05, D-16): 0 at and inside both 12" stations, the un-thinned
-   * tip thickness less the tip setting at each tip, eased between. Negative where a tip setting is
-   * thicker than the parallel foil there.
+   * The signed tip thinning at `s` (D-05, D-16): the planer cut less the board's thickness before any
+   * fine-tune — 0 at and inward of each tip's Thinning Starts point, the un-thinned tip thickness less
+   * the tip setting at each tip, and the planer cut less the steady taper between. Negative where the
+   * taper runs above the planer cut (a tip setting thicker than the parallel foil there).
    */
   tipThinningAt(s: number): number;
   /**
    * The board's thickness before any fine-tune: the blank's thickness less the skin and the centre
-   * gap (so the centre is the target), less the tip thinning — each tip reads its setting exactly.
+   * gap (so the centre is the target), and inside each tip's start the steady taper down to the tip
+   * setting — each tip reads its setting exactly.
    */
   derivedThicknessAt(s: number): number;
+  /**
+   * The thickness before any fine-tune with BOTH tips on Automatic, whatever is stored — what the
+   * board would be if the shaper put both starts back to Automatic.
+   */
+  automaticThicknessAt(s: number): number;
+  /** Each tip's Thinning Starts point resolved (`tip-taper.ts` `tipView`). */
+  tips: { nose: TipView; tail: TipView };
+  /** The tip rule the board was cut with. */
+  tipRule: TipRule;
   /** The board's final thickness: derived plus the 12" fine-tunes (D-11), on either surface. */
   thicknessAt(s: number): number;
   /**
@@ -313,11 +366,14 @@ function smoothstep(w: number): number {
  *   placement (R3).
  * - Rocker (R3, R5): the blank's levelled rocker under the board, levelled again over the crop
  *   (R11). The gap is one constant, so levelling the un-thinned bottom gives exactly that curve.
- * - Tips (D-05, D-06, D-16): one signed thinning per tip — the un-thinned tip thickness less the tip
- *   setting — weighted by a smoothstep that is 0 (and flat) at the 12" station and 1 at the tip. It
- *   comes off the bottom under Pin deck (lifting the tip rocker) or the deck under Bottom. The
- *   thickness is written unthinned − unthinnedAtTip·w + tipSetting·w, so the two first terms cancel
- *   at the tip and it reads its setting to the last bit. Nothing at or inside a 12" station moves.
+ * - Tips (Phase 14 D-01 to D-03, D-23): each tip resolves its own Thinning Starts point through
+ *   `tipView` — the planer cut seen from that tip being the un-thinned thickness, its slope the
+ *   blank's own thickness slope (sign flipped at the nose), both read 0 where the board runs off the
+ *   blank — Automatic unless the board stores a start. Inside the start the thickness is the steady
+ *   taper down to the tip setting, which it reads exactly at the tip; at and inward of the start it is
+ *   the planer cut untouched. The thinning (planer cut less taper) comes off the bottom under Pin deck
+ *   (lifting the tip rocker) or the deck under Bottom (D-05, D-16). Under `tipRule: "blend"` the old
+ *   S-shaped ease over the last 12" is used instead, line for line as Phase 12 wrote it (D-25).
  * - Fine-tunes (D-11, D-13): a signed offset through a three-knot pchip hump per half — 0 at the
  *   tip, the offset at the 12" station, 0 at the centre — added to the thickness and taken off the
  *   surface the board chose. On the Deck the rocker never moves. On the Bottom the bottom drops by
@@ -356,45 +412,103 @@ export function boardOnBlank(
     return onFoam(x) ? prepared.width.sample(x) : 0;
   };
 
-  const W = TIP_EASE_WINDOW_MM;
+  // The 12" station: where the fine-tune hump peaks (D-04, D-11), whatever the tips do.
+  const S12 = MEASURE_STATION_MM;
   const underCentre = blankThicknessAt(L / 2);
   const centerGap = underCentre - cut.deckSkin - board.centerThickness;
   // Skin + gap: all the foam the parallel cut takes off, whatever the skin.
   const drop = underCentre - board.centerThickness;
   const unthinned = (s: number) => blankThicknessAt(s) - drop;
-  const tailUn = unthinned(0);
-  const noseUn = unthinned(L);
 
-  const tipThinningAt = (s: number) => {
-    let thinning = 0;
-    if (s < W) thinning += (tailUn - board.tailTip) * smoothstep(1 - s / W);
-    if (s > L - W) thinning += (noseUn - board.noseTip) * smoothstep(1 - (L - s) / W);
-    return thinning;
-  };
+  const rule: TipRule = board.tipRule ?? "steady";
+  let tipThinningAt: (s: number) => number;
+  let derivedThicknessAt: (s: number) => number;
+  let automaticThicknessAt: (s: number) => number;
+  let tips: { nose: TipView; tail: TipView };
 
-  const derivedThicknessAt = (s: number) => {
-    let value = unthinned(s);
-    // Written as unthinned − unthinnedAtTip·w + tip·w so that at the tip (w = 1) the first two
-    // terms cancel exactly and the tip reads its setting to the last bit.
-    if (s < W) {
-      const w = smoothstep(1 - s / W);
-      value = value - tailUn * w + board.tailTip * w;
-    }
-    if (s > L - W) {
-      const w = smoothstep(1 - (L - s) / W);
-      value = value - noseUn * w + board.noseTip * w;
-    }
-    return value;
-  };
+  if (rule === "steady") {
+    // The planer cut seen from each tip (D-23): `d` mm in from that tip, its slope the blank's own
+    // thickness slope there (the drop is one constant), flipped at the nose because d runs the
+    // other way. Both read 0 where the board runs off the blank, as the thickness does.
+    const blankSlopeAt = (s: number) => {
+      const x = u(s);
+      return onFoam(x) ? prepared.thickness.slopeAt(x) : 0;
+    };
+    const tailCut: PlanerCut = { at: (d) => unthinned(d), slopeAt: (d) => blankSlopeAt(d) };
+    const noseCut: PlanerCut = { at: (d) => unthinned(L - d), slopeAt: (d) => -blankSlopeAt(L - d) };
+    const resolve = (tailStored: number | undefined, noseStored: number | undefined) => {
+      const tail = tipView({ cut: tailCut, tip: board.tailTip, length: L, stored: tailStored, end: "tail" });
+      const nose = tipView({ cut: noseCut, tip: board.noseTip, length: L, stored: noseStored, end: "nose" });
+      // Inside a tip's start the taper; at and inward of both starts the planer cut itself, read
+      // through the same `unthinned` so nothing there moves by a bit.
+      const thickness = (s: number) => {
+        if (s < tail.view.fromTip) return tail.taper(s);
+        if (s > L - nose.view.fromTip) return nose.taper(L - s);
+        return unthinned(s);
+      };
+      return { tail, nose, thickness };
+    };
+
+    const live = resolve(board.tailThinningStart, board.noseThinningStart);
+    tips = { tail: live.tail.view, nose: live.nose.view };
+    derivedThicknessAt = live.thickness;
+    tipThinningAt = (s) => {
+      if (s < live.tail.view.fromTip || s > L - live.nose.view.fromTip) return unthinned(s) - live.thickness(s);
+      return 0;
+    };
+    automaticThicknessAt =
+      live.tail.view.automatic && live.nose.view.automatic ? live.thickness : resolve(undefined, undefined).thickness;
+  } else {
+    // Phase 12's S-shaped ease over the last 12", line for line (D-25): kept by name for the pin,
+    // the before-side rule sets and the reports only.
+    const W = TIP_EASE_WINDOW_MM;
+    const tailUn = unthinned(0);
+    const noseUn = unthinned(L);
+
+    tipThinningAt = (s: number) => {
+      let thinning = 0;
+      if (s < W) thinning += (tailUn - board.tailTip) * smoothstep(1 - s / W);
+      if (s > L - W) thinning += (noseUn - board.noseTip) * smoothstep(1 - (L - s) / W);
+      return thinning;
+    };
+
+    derivedThicknessAt = (s: number) => {
+      let value = unthinned(s);
+      // Written as unthinned − unthinnedAtTip·w + tip·w so that at the tip (w = 1) the first two
+      // terms cancel exactly and the tip reads its setting to the last bit.
+      if (s < W) {
+        const w = smoothstep(1 - s / W);
+        value = value - tailUn * w + board.tailTip * w;
+      }
+      if (s > L - W) {
+        const w = smoothstep(1 - (L - s) / W);
+        value = value - noseUn * w + board.noseTip * w;
+      }
+      return value;
+    };
+    automaticThicknessAt = derivedThicknessAt;
+
+    const blendView = (end: "nose" | "tail"): TipView => ({
+      fromTip: W,
+      station: end === "tail" ? W : mm(L - W),
+      automatic: true,
+      automaticStart: W,
+      automaticFound: true,
+      range: thinningStartRange(L),
+      reachesStation: false,
+      flag: null,
+    });
+    tips = { tail: blendView("tail"), nose: blendView("nose") };
+  }
 
   const tailHump = preparePchip([
     { x: 0, y: 0 },
-    { x: W, y: board.tail12Offset },
+    { x: S12, y: board.tail12Offset },
     { x: L / 2, y: 0 },
   ]);
   const noseHump = preparePchip([
     { x: L / 2, y: 0 },
-    { x: L - W, y: board.nose12Offset },
+    { x: L - S12, y: board.nose12Offset },
     { x: L, y: 0 },
   ]);
   const offsetAt = (s: number) => (s <= L / 2 ? tailHump.sample(s) : noseHump.sample(s));
@@ -412,7 +526,7 @@ export function boardOnBlank(
     const tuned = (s: number) => untuned(s) - offsetAt(s);
     let level = 0;
     if (board.nose12Offset !== 0 || board.tail12Offset !== 0) {
-      const candidates = [0, W, L / 2, L - W, L];
+      const candidates = [0, S12, L / 2, L - S12, L];
       const step = inchesToMm(1 / 16);
       for (let s = 0; s < L; s += step) candidates.push(s);
       const tailOnBlank = u(0);
@@ -439,6 +553,9 @@ export function boardOnBlank(
     onFoamAt: (s) => onFoam(u(s)),
     tipThinningAt,
     derivedThicknessAt,
+    automaticThicknessAt,
+    tips,
+    tipRule: rule,
     thicknessAt: (s) => derivedThicknessAt(s) + offsetAt(s),
     deckOffAt: (s) => cut.deckSkin + (pinDeck ? 0 : tipThinningAt(s)) - (onDeck ? offsetAt(s) : 0),
     bottomOffAt: (s) => centerGap + (pinDeck ? tipThinningAt(s) : 0) - (onDeck ? 0 : offsetAt(s)),
@@ -451,10 +568,10 @@ export function boardOnBlank(
  *
  * - not on the foam at all (`!onBlank.onFoamAt(station)`) → `"offBlank"`: the board runs past the
  *   end of the blank there.
- * - `station` sits inside a tip's ease window (strictly under `TIP_EASE_WINDOW_MM` from the tail
- *   tip, or strictly over `L − TIP_EASE_WINDOW_MM` from it) and that end's own tip setting
- *   (`board.tailTip` / `board.noseTip`) is itself under `MIN_FOIL_THICKNESS_MM − FIT_EPSILON_MM` →
- *   `"tipSetting"`.
+ * - `station` sits inside a tip's thinning (strictly nearer the tail tip than that tip's own
+ *   Thinning Starts point, `onBlank.tips.tail.fromTip`, or strictly nearer the nose tip than
+ *   `onBlank.tips.nose.fromTip`) and that end's own tip setting (`board.tailTip` / `board.noseTip`)
+ *   is itself under `MIN_FOIL_THICKNESS_MM − FIT_EPSILON_MM` → `"tipSetting"`.
  * - that half's 12" fine-tune (`board.tail12Offset` for `station <= L / 2`, `board.nose12Offset`
  *   above — the same split the fine-tune hump uses) is negative, and the board would have had
  *   enough foam there WITHOUT it (`derivedThicknessAt(station)` is at least
@@ -466,11 +583,10 @@ export function boardOnBlank(
 export function runsOutCause(onBlank: BoardOnBlank, station: number): RunsOutCause {
   const { board } = onBlank;
   const L = board.length;
-  const W = TIP_EASE_WINDOW_MM;
   if (!onBlank.onFoamAt(station)) return "offBlank";
   const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
-  if (station < W && board.tailTip < floor) return "tipSetting";
-  if (station > L - W && board.noseTip < floor) return "tipSetting";
+  if (station < onBlank.tips.tail.fromTip && board.tailTip < floor) return "tipSetting";
+  if (station > L - onBlank.tips.nose.fromTip && board.noseTip < floor) return "tipSetting";
   const halfOffset = station <= L / 2 ? board.tail12Offset : board.nose12Offset;
   if (halfOffset < 0 && onBlank.derivedThicknessAt(station) >= floor) return "fineTune";
   return "thinCenter";
@@ -669,11 +785,15 @@ function fitterFor(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitS
 /**
  * True when no blank can take this board at any placement, read off the board alone: a 12"
  * fine-tune on the Deck bigger than the Deck Skin lifts the board's deck above the blank's deck at
- * that station — the fine-tune hump peaks there and the tip ease is flat there (D-05), so the deck
- * sits exactly `deckSkin − offset` below the blank's deck at every placement on every blank — and
- * `fitAt` samples that station. D-13 says such a tweak is honestly flagged "too thin there"; this
- * is what lets the list and the flag say so at once instead of confirming it one placement at a
- * time (a full catalogue scan ran 1.3 s in Node and about 40 s on WebKit per keystroke — 12-08).
+ * that station — the fine-tune hump peaks there and, with the tip's thinning starting at 12", no
+ * thinning reaches it, so the deck sits exactly `deckSkin − offset` below the blank's deck at every
+ * placement on every blank — and `fitAt` samples that station. D-13 says such a tweak is honestly
+ * flagged "too thin there"; this is what lets the list and the flag say so at once instead of
+ * confirming it one placement at a time (a full catalogue scan ran 1.3 s in Node and about 40 s on
+ * WebKit per keystroke — 12-08). One corner stays a quick refusal on purpose (Phase 14): under Tip
+ * Style Bottom with a tip's start further in than 12", the taper takes extra foam off the deck at
+ * the 12" station and some placements could fit; searching them costs far too much per change, so
+ * the founder decides after the showing (recorded in the pending todo for retiring today's rules).
  */
 export function tweakExceedsDeckSkin(board: BoardOnBlankInput): boolean {
   if (board.fineTuneSurface !== "deck") return false;

@@ -15,7 +15,7 @@
  */
 
 import type { BlankRecord, BoardBlank } from "./blank";
-import { prepareBlank, type PreparedBlank } from "./blank-fit";
+import { prepareBlank, type PreparedBlank, type TipRule } from "./blank-fit";
 import type { OutlineSpec } from "./board";
 import { buildBoardProfile } from "./board-profile";
 import type { FoilSpec } from "./foil";
@@ -184,6 +184,11 @@ export interface DesignRules {
   prepare: (record: BlankRecord) => PreparedBlank;
   /** Which rule draws a board with no blank (`BoardProfileInput.handSetCurve`). */
   handSetCurve: CurveRule;
+  /**
+   * Which tip rule cuts a board in a blank (`BoardOnBlankInput.tipRule`). Absent is the live steady
+   * taper (Phase 14 D-01); `"blend"` is the 12" S-blend the site used before, kept by name (D-25).
+   */
+  tipRule?: TipRule;
 }
 
 /**
@@ -206,6 +211,7 @@ export function summarizeDesignWith(fields: DesignSummaryFields, rules: DesignRu
           deckSkin: blank.deckSkin,
           tipStyle: blank.tipStyle,
           fineTuneSurface: blank.fineTuneSurface,
+          tipRule: rules.tipRule,
         }
       : null,
     handSetCurve: rules.handSetCurve,

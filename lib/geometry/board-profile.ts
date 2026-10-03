@@ -32,6 +32,7 @@ import {
   type BoardOnBlank,
   type BoardOnBlankInput,
   type PreparedBlank,
+  type TipRule,
 } from "./blank-fit";
 import { type FoilSpec, type FoilStationKey, foilStationPoints } from "./foil";
 import { preparePchip } from "./pchip";
@@ -63,7 +64,8 @@ export interface BlankSideView {
   /** The blank's deck: its bottom plus its own thickness there. */
   deckAt(s: Mm): Mm;
   /** The 12" thicknesses before any fine-tune (D-11): the blank's thickness there less the deck
-   * skin and the centre gap (Phase 12 R3). */
+   * skin and the centre gap (Phase 12 R3) — unless that tip's thinning starts further in than 12",
+   * when the 12" thickness is the steady taper's (Phase 14 D-07). */
   derived12: { nose12: Mm; tail12: Mm };
   /** Foam off the deck at each of the board's five stations (`BoardOnBlank.deckOffAt`). */
   foamOffDeck: Record<FoilStationKey, Mm>;
@@ -274,6 +276,11 @@ export interface BoardProfileInput {
     deckSkin: Mm;
     tipStyle: TipStyle;
     fineTuneSurface: FineTuneSurface;
+    /**
+     * Which tip rule cuts the tips (`BoardOnBlankInput.tipRule`): absent is the live steady taper;
+     * `"blend"` is the 12" S-blend kept by name for the reports and the pin only (D-25).
+     */
+    tipRule?: TipRule;
   } | null;
   /**
    * Which rule draws a board with no blank between its five stations. Absent is the live
@@ -305,6 +312,7 @@ export function buildBoardProfile(input: BoardProfileInput): BoardSideProfile {
       deckSkin: blank.deckSkin,
       tipStyle: blank.tipStyle,
       fineTuneSurface: blank.fineTuneSurface,
+      ...(blank.tipRule === undefined ? {} : { tipRule: blank.tipRule }),
     },
     blank.placement,
   );
