@@ -31,13 +31,22 @@
  *
  * Phase 12 (D-04, 12-UI-SPEC §4): with a blank picked, THICKNESS ends with the board's own Tip Style
  * — a quiet `Pin deck` / `Bottom` pair, read from the side profile's resolved cut (`view.cut`), with
- * the selected option's hint under it. A tap re-derives only the last 12" at each end; nothing at or
- * inside the 12" stations moves (SPEC R5). With no blank it is not on the page at all (D-12).
+ * the selected option's hint under it. A tap re-derives each tip from its tip to its Thinning Starts
+ * point (Phase 14, D-07); nothing inside that point moves. With no blank it is not on the page at all
+ * (D-12).
  * Directly under the Tail @ 12" row — with the two 12" fine-tunes it governs — sits `Fine-tune off:
  * Deck / Bottom` (D-13, 12-UI-SPEC §5a), the same anatomy: which surface a tweak moves. The slider's
  * reach stays ±1/4" (D-20), and a carried-over tweak beyond it still reads its true stored value.
- * With a blank, the intro says how the foil now comes off: deck and bottom follow the blank's, the
- * tips are thinned in the last 12".
+ * With a blank, the intro says how the foil now comes off: deck and bottom follow the blank's, and each
+ * tip is thinned from its Thinning Starts point (D-07). When a tip's start is further in than the 12"
+ * station, that 12" row's left hint reads "From the tip taper …" rather than "From blank …", because the
+ * thickness there then belongs to the taper.
+ *
+ * Phase 14 (D-09 to D-11, D-10's order): with a blank picked, THICKNESS closes with Nose Thinning Starts
+ * and Tail Thinning Starts, after Tip Style — each a `SliderRow` from 6" (left, the tip) to the board's
+ * centre (right), the distance in force in its label, the state on the hint line's left and an
+ * Automatic button on its right; under it, only for a start set by hand that is too close to its tip,
+ * one sentence in warning ink (D-05). With no blank neither row is on the page (hidden, not disabled).
  *
  * Every slider commits its own number through `measureSlider`'s conversion at its call site, and
  * every number reads through `lib/geometry/measure-display.ts` (CLAUDE.md Rule 2). Every control is
@@ -63,6 +72,8 @@ import {
 import { ROCKER_LIFT_RANGE_IN, type FiveStationRocker } from "@/lib/geometry/rocker";
 import {
   automaticButtonLabel,
+  fineTuneSourceHint,
+  thicknessIntroWithBlank,
   thinningStartHint,
   thinningStartLine,
   thinningStartRowLabel,
@@ -175,6 +186,7 @@ function FineTuneRow({
   label,
   finalThickness,
   derived,
+  reachesStation,
   offset,
   system,
   onChange,
@@ -182,6 +194,8 @@ function FineTuneRow({
   label: string;
   finalThickness: Mm;
   derived: Mm;
+  /** That tip's start is further in than the 12" station (the profile's own flag, D-07). */
+  reachesStation: boolean;
   offset: Mm;
   system: UnitsSystem;
   onChange: (next: Mm) => void;
@@ -195,7 +209,7 @@ function FineTuneRow({
       min={slider.min}
       max={slider.max}
       step={slider.step}
-      leftHint={`From blank ${formatMark(derived, system)}`}
+      leftHint={fineTuneSourceHint(reachesStation, derived, system)}
       rightHint={tweak === formatSignedMark(mm(0), system) ? "No tweak" : `Tweak ${tweak}`}
       onValueChange={(v) => onChange(slider.toMm(v))}
     />
@@ -417,9 +431,7 @@ export function RockerControls({
         {sectionOpen.thickness && (
           <div className="flex flex-col gap-3.5 pt-3">
             <div className="text-xs text-surf-ink-muted font-normal">
-              {blank
-                ? `Deck and bottom follow your blank's; the tips are thinned in the last ${station}. Set the tips, and fine-tune the ${station} stations if you need to.`
-                : "Hand-set until you pick a blank."}
+              {blank ? thicknessIntroWithBlank(system) : "Hand-set until you pick a blank."}
             </div>
 
             <ThicknessRow
@@ -435,6 +447,7 @@ export function RockerControls({
                   label={`Nose @ ${station}`}
                   finalThickness={sideProfile.effectiveFoil.nose12}
                   derived={view.derived12.nose12}
+                  reachesStation={view.tips.nose.reachesStation}
                   offset={blank.nose12Offset}
                   system={system}
                   onChange={(next) => onFineTune({ nose12Offset: next })}
@@ -443,6 +456,7 @@ export function RockerControls({
                   label={`Tail @ ${station}`}
                   finalThickness={sideProfile.effectiveFoil.tail12}
                   derived={view.derived12.tail12}
+                  reachesStation={view.tips.tail.reachesStation}
                   offset={blank.tail12Offset}
                   system={system}
                   onChange={(next) => onFineTune({ tail12Offset: next })}
@@ -507,7 +521,8 @@ export function RockerControls({
             )}
 
             {view && (
-              // Last in THICKNESS, at its natural width — "those who want it will find it" (§4).
+              // At its natural width — "those who want it will find it" (§4); only the two Thinning
+              // Starts rows come after it (Phase 14, D-10).
               <div className="flex flex-col">
                 <div className="mb-2 text-sm text-surf-ink-muted font-normal">Tip Style</div>
                 <TwoOptionToggle

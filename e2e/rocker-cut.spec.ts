@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { thicknessIntroWithBlank } from "../lib/geometry/blank-reasons";
 
 /**
  * Phase 12's ROCKER cut, proven in real browsers (12-05; 12-08 extends it): with a blank picked,
@@ -251,11 +252,13 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(pill(page, "Tip Style", "Pin deck")).toHaveAttribute("aria-pressed", "false");
     await expect(page.getByText(/^The bottom stays put and the extra comes off the deck/)).toBeVisible();
 
-    // The last 12" at each end re-derives: at least one tip reads differently...
+    // Each tip re-derives from its tip to its Thinning Starts point (Phase 14, D-07): at least one tip
+    // reads differently...
     await expect
       .poll(async () => (await row("noseTip").textContent()) !== noseTip || (await row("tailTip").textContent()) !== tailTip)
       .toBe(true);
-    // ...and nothing at the 12" stations moves (SPEC R5).
+    // ...and, on the first fitting blank, where both tips start on Automatic at the 12" station,
+    // nothing at the 12" stations moves.
     expect(await row("nose12").textContent()).toBe(nose12);
     expect(await row("tail12").textContent()).toBe(tail12);
     // Under Bottom the Deck Skin's hint says the tips take more off the deck.
@@ -275,13 +278,9 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await openRocker(page);
     await pickFirstFittingBlank(page);
 
-    // THICKNESS says how the foil now comes off (the station label is 12" in Imperial).
-    await expect(
-      page.getByText(
-        `Deck and bottom follow your blank's; the tips are thinned in the last 12". Set the tips, and fine-tune the 12" stations if you need to.`,
-        { exact: true },
-      ),
-    ).toBeVisible();
+    // THICKNESS says how the foil now comes off: each tip is thinned from its own Thinning Starts
+    // point (Phase 14, D-07) — the app's own sentence, built in Node, so no wording is typed twice.
+    await expect(page.getByText(thicknessIntroWithBlank("imperial"), { exact: true })).toBeVisible();
 
     // A new board's 12" tweaks come off the deck (D-13).
     await expect(pill(page, "Fine-tune off", "Deck")).toHaveAttribute("aria-pressed", "true");
