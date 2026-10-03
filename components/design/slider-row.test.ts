@@ -168,7 +168,9 @@ describe("SliderRow's hintAction slot (14-UI-SPEC §1)", () => {
 
   it("keeps today's hint-line classes, and adds items-center gap-2 only with a hintAction", () => {
     expect(moduleSource).toContain(`"${TODAY_HINT_CLASSES}"`);
-    expect(moduleSource).toMatch(/const hasAction = hintAction !== undefined && hintAction !== null;/);
+    expect(moduleSource).toMatch(
+      /const hasAction = hintAction !== undefined && hintAction !== null && hintAction !== false;/,
+    );
     expect(moduleSource).toMatch(/hasAction\s*&&\s*"items-center gap-2"/);
     // The class merge leaves today's string exactly as it is when there is no action.
     expect(cn(TODAY_HINT_CLASSES, false)).toBe(TODAY_HINT_CLASSES);
@@ -176,7 +178,7 @@ describe("SliderRow's hintAction slot (14-UI-SPEC §1)", () => {
   });
 
   it("puts the action where the right hint goes", () => {
-    expect(moduleSource).toMatch(/hintAction\s*\?\?\s*<span>\{rightHint\}<\/span>/);
+    expect(moduleSource).toMatch(/hasAction\s*\?\s*hintAction\s*:\s*<span>\{rightHint\}<\/span>/);
   });
 
   const base = { label: "Tail Thinning Starts", value: 12, min: 6, max: 30, step: 0.5, onValueChange: () => {} };
@@ -207,6 +209,19 @@ describe("SliderRow's hintAction slot (14-UI-SPEC §1)", () => {
     );
     expect(none?.[1]).toBe(TODAY_HINT_CLASSES);
     expect(none?.[2]).toBe("<span>Near the tip</span><span>The center</span>");
+  });
+
+  it("treats a hintAction of false as no action: the right hint shows and no extra classes (IN-07)", () => {
+    // What `hintAction={cond && <Button />}` hands over when `cond` is false.
+    const hints = { leftHint: "Near the tip", rightHint: "The center" };
+    const withFalse = renderToStaticMarkup(createElement(SliderRow, { ...base, ...hints, hintAction: false }));
+    const line = hintLine(withFalse);
+    expect(line?.[1]).toBe(TODAY_HINT_CLASSES);
+    expect(line?.[2]).toBe("<span>Near the tip</span><span>The center</span>");
+    // The whole row is the row with no action at all.
+    expect(withFalse).toBe(renderToStaticMarkup(createElement(SliderRow, { ...base, ...hints })));
+    // With no hints either, there is no hint line.
+    expect(hintLine(renderToStaticMarkup(createElement(SliderRow, { ...base, hintAction: false })))).toBeNull();
   });
 });
 

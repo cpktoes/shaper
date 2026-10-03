@@ -43,7 +43,8 @@ export interface SliderRowProps {
   /**
    * A control drawn at the right end of the hint line, in place of `rightHint` — Phase 14's
    * Automatic button on the Thinning Starts rows (14-UI-SPEC §1). With it the hint line also
-   * centres its two ends (`items-center gap-2`); without it the row renders exactly as before.
+   * centres its two ends (`items-center gap-2`); without it — `undefined`, `null` or `false` — the row
+   * renders exactly as before.
    */
   hintAction?: ReactNode;
   /** The warning-coloured line under the hints. */
@@ -90,7 +91,8 @@ export function SliderRow({
   sliderLabel,
   sliderValueText,
 }: SliderRowProps) {
-  const hasAction = hintAction !== undefined && hintAction !== null;
+  // `false` counts as no action, so a caller can write `hintAction={cond && <Button />}`.
+  const hasAction = hintAction !== undefined && hintAction !== null && hintAction !== false;
   return (
     <div className={cn(className, disabled && "opacity-40")}>
       <div
@@ -120,7 +122,7 @@ export function SliderRow({
           )}
         >
           <span>{leftHint}</span>
-          {hintAction ?? <span>{rightHint}</span>}
+          {hasAction ? hintAction : <span>{rightHint}</span>}
         </div>
       )}
       {note && <div className="mt-0.5 text-[10px] text-surf-warning-ink">{note}</div>}
