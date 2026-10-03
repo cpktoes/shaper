@@ -27,6 +27,7 @@ import {
   type MeasureSliderView,
 } from "./measure-display";
 import { MEASURE_STATION_MM } from "./outline";
+import type { TipView } from "./tip-taper";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "./units";
 
 /**
@@ -259,6 +260,68 @@ export function placementSlider(
   const view = measureSlider(mm(negate(placement)), rangeIn, step, 1, system);
   // `view.value` is already the negated placement in the slider's own unit; only `toMm` turns back.
   return { ...view, toMm: (dragged: number) => mm(negate(view.toMm(dragged))) };
+}
+
+/**
+ * Where a tip's thinning starts, as a distance in from that tip (Phase 14, D-22, UI-SPEC §9): a dim,
+ * read through `formatDim` — Imperial `25 1/2"`, Metric centimetres to one decimal, `64.8 cm`. A
+ * start at the 12" station therefore prints exactly the digits of `stationLabel` (`12"` / `30.5 cm`),
+ * never `305 mm`, so the start and the 12" station two rows above it never read two ways. Every place
+ * the distance appears — the row label, the hint, the too-close line, the drawing's accessible name,
+ * the DATASHEET and the order form — reads through this one formatter or its bare twin below.
+ */
+export function formatThinningStart(start: Mm, system: UnitsSystem): string {
+  return formatDim(start, system);
+}
+
+/**
+ * The bare twin of `formatThinningStart` (D-22, UI-SPEC §9), through `formatDimBare`: Metric `64.8`
+ * with no unit, for the DATASHEET's `From tip (cm)` cells and the printed pair that carries `cm` once
+ * at the end of its line. Imperial keeps its inch mark (`25 1/2"`), as every Imperial cell does.
+ */
+export function formatThinningStartBare(start: Mm, system: UnitsSystem): string {
+  return formatDimBare(start, system);
+}
+
+/**
+ * The Thinning Starts slider (D-11, UI-SPEC §3): the tip at the left end and the board's centre at the
+ * right, on BOTH tips, so dragging right always means "starts further in". The tip view's range (6"
+ * to half the length) is turned into the inch-domain range `measureSlider` takes, each end rounded
+ * inward onto the 1/2" grid (the same 1e-9 nudge as every grid rounding in `units.ts`), with a 1/2"
+ * Imperial step and a 10 mm Metric step — so in Metric the 6" end reads 160 mm and the half-length
+ * end rounds inward to a whole centimetre (`metricSliderRange`).
+ *
+ * A start off the Metric grid (Automatic's 25 1/2" is 647.7 mm) is drawn where it is, never snapped
+ * (`measureSlider` only clamps a Metric value); only a drag's `toMm` snaps, to a whole millimetre on
+ * the 10 mm grid. The component never converts a unit (D-22).
+ */
+export function thinningStartSlider(
+  view: Pick<TipView, "fromTip" | "range">,
+  system: UnitsSystem,
+): MeasureSliderView {
+  const stepIn = 0.5;
+  const onGridUp = (x: number) => Math.ceil(x / stepIn - 1e-9) * stepIn;
+  const onGridDown = (x: number) => Math.floor(x / stepIn + 1e-9) * stepIn;
+  const rangeIn = {
+    min: onGridUp(mmToInches(view.range.min)),
+    max: onGridDown(mmToInches(view.range.max)),
+  };
+  return measureSlider(view.fromTip, rangeIn, stepIn, 10, system);
+}
+
+/**
+ * The Thinning Starts row's hint line, left (D-11, UI-SPEC §1) — exactly one of three states:
+ * `Picked automatically` (Automatic, at the 12" station); `Automatic: 12" is too short` /
+ * `Automatic: 30.5 cm is too short` (Automatic, further in — read off `reachesStation`, the same
+ * boolean the 12" row's hint reads, so the two lines can never disagree); `Automatic would be 25 1/2"`
+ * (set by hand — what pressing the Automatic button would do).
+ */
+export function thinningStartHint(
+  view: Pick<TipView, "automatic" | "reachesStation" | "automaticStart">,
+  system: UnitsSystem,
+): string {
+  if (!view.automatic) return `Automatic would be ${formatThinningStart(view.automaticStart, system)}`;
+  return view.reachesStation ? `Automatic: ${stationLabel(system)} is too short` : "Picked automatically";
 }
 
 /**

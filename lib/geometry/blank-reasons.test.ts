@@ -16,6 +16,8 @@ import {
   formatDeckSkin,
   formatPlacement,
   formatShortfall,
+  formatThinningStart,
+  formatThinningStartBare,
   listIntro,
   matchesBlankSearch,
   NOTHING_FITS_SENTENCE,
@@ -23,13 +25,32 @@ import {
   offerLine,
   placementSlider,
   REASON_SNAP_MM,
+  thinningStartHint,
+  thinningStartSlider,
   tweakOverSkinLine,
 } from "./blank-reasons";
 import { DEFAULT_BOARD_SPEC } from "./board";
-import { formatDim, formatLength, formatMark, formatSignedMark, stationLabel } from "./measure-display";
+import {
+  formatDim,
+  formatDimBare,
+  formatLength,
+  formatMark,
+  formatSignedMark,
+  stationLabel,
+} from "./measure-display";
 import { BOARD_PRESETS } from "./presets";
 import { MEASURE_STATION_MM } from "./outline";
-import { inchesToMm, litres, mm, mmToInches, UNITS_SYSTEMS, type Mm, type UnitsSystem } from "./units";
+import { THINNING_START_MIN_MM, thinningStartRange } from "./tip-taper";
+import {
+  inchesToMm,
+  litres,
+  metricSliderRange,
+  mm,
+  mmToInches,
+  UNITS_SYSTEMS,
+  type Mm,
+  type UnitsSystem,
+} from "./units";
 
 // Expected strings are either the 11-UI-SPEC Copywriting Contract's own examples (checked against
 // the app's formatters when the contract was written) or composed here from those same formatters —
@@ -478,6 +499,124 @@ describe("placementSlider — the thumb can always land exactly on centred (IN-0
       expect(view.toMm(view.max)).toBeGreaterThanOrEqual(range.min - FLOAT_NOISE_MM);
       expect(range.max - view.toMm(view.min)).toBeLessThan(inchesToMm(1 / 16));
     }
+  });
+});
+
+describe("Thinning Starts — the distance, the hint and the slider (D-11, D-22)", () => {
+  // Expected strings are the 14-UI-SPEC's own examples (`25 1/2"`, `64.8 cm`, `30.5 cm`) or composed
+  // from the same formatters the app uses; every slider bound is computed from `metricSliderRange`
+  // or the half-inch grid here, never typed as a converted result.
+  const BOARD_60 = inchesToMm(60);
+  const range60 = thinningStartRange(BOARD_60);
+  const AUTO_25_HALF = mm(647.7); // the UI-SPEC's own 25 1/2" in millimetres (inchesToMm(25.5))
+
+  it.each(UNITS_SYSTEMS)("in %s, a start at the 12\" station prints the station's own label", (system) => {
+    expect(formatThinningStart(MEASURE_STATION_MM, system)).toBe(stationLabel(system));
+  });
+
+  it.each(UNITS_SYSTEMS)("in %s, a start reads as a dim — formatDim and formatDimBare", (system) => {
+    for (const inches of [6, 12, 15.5, 25.5, 30, 41.5, 59.5]) {
+      const start = inchesToMm(inches);
+      expect(formatThinningStart(start, system)).toBe(formatDim(start, system));
+      expect(formatThinningStartBare(start, system)).toBe(formatDimBare(start, system));
+    }
+  });
+
+  it("in Metric a start never reads in whole millimetres", () => {
+    for (const inches of [6, 12, 15.5, 25.5, 30, 41.5, 59.5]) {
+      const text = formatThinningStart(inchesToMm(inches), "metric");
+      expect(text.endsWith(" mm")).toBe(false);
+      expect(text.endsWith(" cm")).toBe(true);
+    }
+    expect(formatThinningStart(MEASURE_STATION_MM, "metric")).not.toBe(formatMark(MEASURE_STATION_MM, "metric"));
+  });
+
+  it("reads the UI-SPEC's own examples", () => {
+    expect(formatThinningStart(AUTO_25_HALF, "metric")).toBe("64.8 cm");
+    expect(formatThinningStartBare(AUTO_25_HALF, "metric")).toBe("64.8");
+    expect(formatThinningStart(inchesToMm(25.5), "imperial")).toBe('25 1/2"');
+    expect(formatThinningStart(MEASURE_STATION_MM, "metric")).toBe("30.5 cm");
+    expect(formatThinningStart(MEASURE_STATION_MM, "imperial")).toBe('12"');
+  });
+
+  it("imperial: a 60\" board's slider runs 6\" to 30\" in half inches, the tip at the left end", () => {
+    const view = thinningStartSlider({ fromTip: MEASURE_STATION_MM, range: range60 }, "imperial");
+    // The millimetre round trip lands a few ULPs off (5.999…); the grid rounding puts each end
+    // exactly on a half inch, so the thumb can land on every step.
+    expect(view.min).toBeCloseTo(mmToInches(THINNING_START_MIN_MM), 9);
+    expect(view.min).toBe(6);
+    expect(view.max).toBeCloseTo(mmToInches(BOARD_60) / 2, 9);
+    expect(view.max).toBe(30);
+    expect(view.step).toBe(0.5);
+    expect(view.value).toBeCloseTo(12, 12);
+    expect(view.toMm(view.min)).toBeCloseTo(range60.min, 9);
+    expect(view.toMm(view.max)).toBeCloseTo(range60.max, 9);
+    // Dragging right is further in from the tip.
+    expect(view.toMm(view.value + view.step)).toBeGreaterThan(MEASURE_STATION_MM);
+  });
+
+  it("metric: the same slider runs in whole centimetres, each end rounded inward", () => {
+    const expected = metricSliderRange({ min: 6, max: 30 }, 10);
+    const view = thinningStartSlider({ fromTip: MEASURE_STATION_MM, range: range60 }, "metric");
+    expect(view.min).toBe(expected.min);
+    expect(view.max).toBe(expected.max);
+    expect(view.step).toBe(10);
+    // Inward of the Imperial range, never past it.
+    expect(view.min).toBeGreaterThanOrEqual(range60.min);
+    expect(view.max).toBeLessThanOrEqual(range60.max);
+    expect(view.min - range60.min).toBeLessThan(10);
+    expect(range60.max - view.max).toBeLessThan(10);
+  });
+
+  it("metric: an Automatic start off the 10 mm grid is drawn where it is, not snapped", () => {
+    const view = thinningStartSlider({ fromTip: AUTO_25_HALF, range: range60 }, "metric");
+    expect(view.value).toBe(AUTO_25_HALF);
+    const imperial = thinningStartSlider({ fromTip: AUTO_25_HALF, range: range60 }, "imperial");
+    expect(imperial.value).toBeCloseTo(25.5, 9);
+  });
+
+  it("metric: a drag stores a whole centimetre, and the stored value draws back at the same place", () => {
+    const view = thinningStartSlider({ fromTip: AUTO_25_HALF, range: range60 }, "metric");
+    for (let dragged = view.min; dragged <= view.max; dragged += view.step) {
+      const stored = view.toMm(dragged);
+      expect(Number.isInteger(stored)).toBe(true);
+      expect(stored % 10).toBe(0);
+      const again = thinningStartSlider({ fromTip: stored, range: range60 }, "metric");
+      expect(again.value).toBe(dragged);
+      expect(again.toMm(again.value)).toBe(stored);
+    }
+    // A drag between steps still lands on a whole millimetre inside the range.
+    const between = view.toMm(647.7);
+    expect(Number.isInteger(between)).toBe(true);
+  });
+
+  describe("the hint line's three states", () => {
+    const atStation = { automatic: true, reachesStation: false, automaticStart: MEASURE_STATION_MM };
+    const furtherIn = { automatic: true, reachesStation: true, automaticStart: AUTO_25_HALF };
+    const byHand = { automatic: false, reachesStation: false, automaticStart: AUTO_25_HALF };
+
+    it.each(UNITS_SYSTEMS)("in %s, Automatic at the 12\" station reads Picked automatically", (system) => {
+      expect(thinningStartHint(atStation, system)).toBe("Picked automatically");
+    });
+
+    it.each(UNITS_SYSTEMS)("in %s, Automatic further in names the 12\" station as too short", (system) => {
+      expect(thinningStartHint(furtherIn, system)).toBe(`Automatic: ${stationLabel(system)} is too short`);
+    });
+
+    it.each(UNITS_SYSTEMS)("in %s, a hand-set start says what Automatic would pick", (system) => {
+      expect(thinningStartHint(byHand, system)).toBe(
+        `Automatic would be ${formatThinningStart(AUTO_25_HALF, system)}`,
+      );
+      // A hand-set start reads the same however far in it is.
+      expect(thinningStartHint({ ...byHand, reachesStation: true }, system)).toBe(thinningStartHint(byHand, system));
+    });
+
+    it("reads the UI-SPEC's own examples", () => {
+      expect(thinningStartHint(furtherIn, "imperial")).toBe('Automatic: 12" is too short');
+      expect(thinningStartHint(furtherIn, "metric")).toBe("Automatic: 30.5 cm is too short");
+      expect(thinningStartHint(byHand, "imperial")).toBe('Automatic would be 25 1/2"');
+      expect(thinningStartHint(byHand, "metric")).toBe("Automatic would be 64.8 cm");
+    });
   });
 });
 
