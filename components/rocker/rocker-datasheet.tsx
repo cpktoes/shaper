@@ -13,7 +13,7 @@
  *   all five stations. Rocker is typed at Nose Tip, Nose @ 12", Tail @ 12" and Tail Tip — the four
  *   hand-set stations, reversing quick task 260829-rda's read-only 12" cells — with Center a
  *   read-only 0, the flat the rocker is measured up from (Phase 4 D-06/D-07).
- * - A BLANK PICKED (D-16, Phase 12 D-06) — four blocks, ten rows: the blank's own Rocker, Thickness
+ * - A BLANK PICKED (D-16, Phase 12 D-06, Phase 14 D-12) — four blocks, nine rows: the blank's own Rocker, Thickness
  *   and Width under each of the board's five stations (read-only, from the board's own copy of the
  *   blank — never the blank table); YOUR BOARD's Rocker (read-only, the board's own curve, including
  *   the tip lift under Pin deck), Thickness (typed at Nose Tip, Center and Tail Tip — the values the
@@ -21,7 +21,9 @@
  *   Width (read-only); and FOAM OFF, split by surface — Deck (the skin, plus the tip thinning under
  *   Bottom, less a Deck fine-tune) and Bottom (the centre gap, plus the tip lift under Pin deck, less
  *   a Bottom fine-tune) — with a value below zero (the board pokes out of the blank on that surface)
- *   in warning ink. Under the table: the catalogue footnote and one line per catalogue flag on the
+ *   in warning ink; and THINNING STARTS — one read-only `From tip` row with where each tip's thinning
+ *   starts, in from that tip, under the NOSE TIP and TAIL TIP columns (the middle three empty), read
+ *   off the profile's resolved starts and never in warning ink. Under the table: the catalogue footnote and one line per catalogue flag on the
  *   blank, verbatim.
  *
  * Typed cells are the app's one typed measurement control, `MeasureField`, in bare mode (D-12),
@@ -39,6 +41,7 @@
 import type { ReactNode } from "react";
 import { MeasureField } from "@/components/design/measure-field";
 import { useUnits } from "@/components/units-provider";
+import { formatThinningStartBare } from "@/lib/geometry/blank-reasons";
 import type { BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec, type FoilStationKey } from "@/lib/geometry/foil";
 import {
@@ -89,15 +92,18 @@ function Row({
   label,
   typed,
   className = "border-b border-surf-line-faint",
+  "data-datasheet-thinning": thinning,
   children,
 }: {
   label: string;
   typed: boolean;
   className?: string;
+  /** Marks the THINNING STARTS row, for the browser tests. */
+  "data-datasheet-thinning"?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className={`flex items-center gap-2 py-1.5 ${className}`}>
+    <div className={`flex items-center gap-2 py-1.5 ${className}`} data-datasheet-thinning={thinning || undefined}>
       <div className={`${LABEL_CELL} text-sm font-normal ${typed ? "text-surf-ink" : "text-surf-ink-muted"}`}>
         {label}
       </div>
@@ -269,8 +275,26 @@ export function RockerDatasheet({
               <Row label={`Deck${markSuffix}`} typed={false}>
                 {stations.map((s) => foamOffCell(s.key, blank.foamOffDeck[s.key]))}
               </Row>
-              <Row label={`Bottom${markSuffix}`} typed={false} className="">
+              <Row label={`Bottom${markSuffix}`} typed={false}>
                 {stations.map((s) => foamOffCell(s.key, blank.foamOffBottom[s.key]))}
+              </Row>
+
+              {/* Phase 14 D-12: where each tip's thinning starts, in from that tip, under its own
+                  tip's column so it sits beside the tip thickness it belongs to. Always the
+                  profile's resolved start (Automatic's, or the hand-set one pulled inside the
+                  slider's reach), never warning ink: a start is a setting. The table's last row,
+                  so it drops the bottom rule. */}
+              <GroupLabel>THINNING STARTS</GroupLabel>
+              <Row label={`From tip${dimSuffix}`} typed={false} className="" data-datasheet-thinning>
+                {stations.map((s) => (
+                  <div key={s.key} className={READ_ONLY_CELL}>
+                    {s.key === "noseTip"
+                      ? formatThinningStartBare(blank.tips.nose.fromTip, system)
+                      : s.key === "tailTip"
+                        ? formatThinningStartBare(blank.tips.tail.fromTip, system)
+                        : ""}
+                  </div>
+                ))}
               </Row>
             </>
           ) : (

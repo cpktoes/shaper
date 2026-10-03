@@ -80,6 +80,40 @@ test.describe("ROCKER — a real blank from the list", () => {
     await expect(page.locator("[data-blank-silhouette]")).toBeVisible();
   });
 
+  test("the thinning marks cross the board at both tips with a blank, and nowhere without one", async ({ page }) => {
+    await openRocker(page);
+    const marks = page.locator("[data-thinning-mark]");
+    // No blank: no mark, and the drawing's name is unchanged.
+    await expect(marks).toHaveCount(0);
+    await expect(page.getByRole("img", { name: "Side profile of the board, showing the rocker line and deck thickness" })).toBeVisible();
+
+    await pickFirstFittingBlank(page);
+    // One dashed line at each tip's thinning start (phones draw the board nose-up, the desktop
+    // nose-left — the marks turn with it either way).
+    await expect(marks).toHaveCount(2);
+    await expect(page.locator('[data-thinning-mark="nose"]')).toHaveCount(1);
+    await expect(page.locator('[data-thinning-mark="tail"]')).toHaveCount(1);
+    for (const end of ["nose", "tail"]) {
+      const box = await page.locator(`[data-thinning-mark="${end}"]`).boundingBox();
+      expect(box).not.toBeNull();
+      // It crosses the board: a real length on screen, not a dot.
+      expect(Math.max(box!.width, box!.height)).toBeGreaterThan(4);
+    }
+    // A screen reader hears where the two marks are.
+    const drawing = page.getByRole("img", { name: /where each tip's thinning starts/ });
+    await expect(drawing).toBeVisible();
+    await expect(drawing).toHaveAttribute("aria-label", /: .+ from the nose tip and .+ from the tail tip$/);
+
+    // The order form's compact drawing is never handed the blank, so it draws no mark.
+    await page.getByRole("link", { name: "SUMMARY", exact: true }).filter({ visible: true }).first().click();
+    // The first visit builds the page on the test's dev server, which can take longer than 5 s.
+    await expect(page).toHaveURL(/\/design\/summary/, { timeout: 30_000 });
+    await expect(
+      page.getByRole("img", { name: "Side profile of the board, showing the rocker line and deck thickness" }).first(),
+    ).toBeAttached({ timeout: 30_000 });
+    await expect(page.locator("[data-thinning-mark]")).toHaveCount(0);
+  });
+
   test("the search narrows the list, says when nothing matches, and Clear Search brings it back", async ({ page }) => {
     await openRocker(page);
     const search = page.getByRole("searchbox", { name: "Search blanks" });
@@ -254,7 +288,8 @@ test.describe("ROCKER — centre, placement, live numbers and the 12\" fine-tune
     await expect(page.getByRole("textbox", { name: "Center Thickness" })).toHaveValue('2 3/4"');
 
     await page.getByRole("link", { name: "RAILS", exact: true }).filter({ visible: true }).first().click();
-    await expect(page).toHaveURL(/\/design\/rails/);
+    // The first visit builds the page on the test's dev server, which can take longer than 5 s.
+    await expect(page).toHaveURL(/\/design\/rails/, { timeout: 30_000 });
     await expect(page.getByText('Board Thickness — 2 3/4"')).toBeVisible();
   });
 });
@@ -271,6 +306,26 @@ async function undoOnce(page: Page, projectName: string) {
   }
 }
 
+/**
+ * The two thinning starts as the drawing's accessible name says them (`… 12" from the nose tip and
+ * 12" from the tail tip`), read off the page so no expected distance is typed into a test.
+ */
+async function thinningStartsFromDrawing(page: Page): Promise<{ nose: string; tail: string }> {
+  const drawing = page.getByRole("img", { name: /where each tip's thinning starts/ });
+  await expect(drawing).toBeVisible();
+  const name = (await drawing.getAttribute("aria-label")) ?? "";
+  const match = /thinning starts: (.+) from the nose tip and (.+) from the tail tip$/.exec(name);
+  expect(match).not.toBeNull();
+  return { nose: match![1], tail: match![2] };
+}
+
+/** The DATASHEET's From tip row: its label, then its five cells in the sheet's nose-to-tail order. */
+async function thinningRowCells(page: Page): Promise<string[]> {
+  const row = page.locator("[data-datasheet-thinning]");
+  await expect(row).toBeVisible();
+  return (await row.locator(":scope > div").allInnerTexts()).map((text) => text.trim());
+}
+
 test.describe("ROCKER — the DATASHEET beside a blank, one undo after Remove, and Metric in millimetres (11-12)", () => {
   test.beforeEach(async ({ page }) => {
     await dismissChrome(page);
@@ -282,7 +337,8 @@ test.describe("ROCKER — the DATASHEET beside a blank, one undo after Remove, a
     await openRocker(page);
     await pickFirstFittingBlank(page);
     // The drawing tells a screen reader both bands are shaded (Phase 12 D-06).
-    await expect(page.getByRole("img", { name: /with the foam to come off the deck and the bottom shaded$/ })).toBeVisible();
+    // Phase 14 D-12: the same name now goes on to say where each tip's thinning starts.
+    await expect(page.getByRole("img", { name: /with the foam to come off the deck and the bottom shaded, and / })).toBeVisible();
     await page.getByRole("tab", { name: "DATASHEET" }).click();
 
     const sheet = page.locator("main");
@@ -296,6 +352,49 @@ test.describe("ROCKER — the DATASHEET beside a blank, one undo after Remove, a
     await expect(table.getByText(/^Bottom( \(mm\))?$/)).toBeVisible();
     await expect(sheet.getByText(/^Foam Off/)).toHaveCount(0);
     await expect(sheet.getByText(/catalog, page \d+/)).toBeVisible();
+  });
+
+  test("with a blank picked the DATASHEET's THINNING STARTS row puts each start under its tip, the same distances the drawing names", async ({
+    page,
+  }) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    const { nose, tail } = await thinningStartsFromDrawing(page);
+    await page.getByRole("tab", { name: "DATASHEET" }).click();
+
+    const table = page.locator("main .overflow-x-auto").filter({ hasText: "FOAM OFF" });
+    const group = table.getByText("THINNING STARTS", { exact: true });
+    await expect(group).toBeVisible();
+    // The new block follows FOAM OFF.
+    const foamOffBox = await table.getByText("FOAM OFF", { exact: true }).boundingBox();
+    const groupBox = await group.boundingBox();
+    expect(groupBox!.y).toBeGreaterThan(foamOffBox!.y);
+
+    const cells = await thinningRowCells(page);
+    expect(cells).toEqual(["From tip", nose, "", "", "", tail]);
+  });
+
+  test("in Metric the THINNING STARTS row reads From tip (cm) and the two starts in bare centimetres", async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    const { nose, tail } = await thinningStartsFromDrawing(page);
+    // The drawing names each start in centimetres (a dim, never `305 mm`).
+    expect(nose).toMatch(/^\d+\.\d cm$/);
+    expect(tail).toMatch(/^\d+\.\d cm$/);
+    await page.getByRole("tab", { name: "DATASHEET" }).click();
+
+    const cells = await thinningRowCells(page);
+    expect(cells).toEqual(["From tip (cm)", nose.replace(/ cm$/, ""), "", "", "", tail.replace(/ cm$/, "")]);
+  });
+
+  test("with no blank the DATASHEET has no THINNING STARTS block", async ({ page }) => {
+    await openRocker(page);
+    await page.getByRole("tab", { name: "DATASHEET" }).click();
+    const main = page.locator("main");
+    await expect(main.getByText(/^Your board's own blank datasheet/)).toBeVisible();
+    await expect(main.getByText("THINNING STARTS", { exact: true })).toHaveCount(0);
+    await expect(page.locator("[data-datasheet-thinning]")).toHaveCount(0);
   });
 
   test("Remove This Blank, then one undo, brings back the same blank, its placement and its fine-tune", async ({
