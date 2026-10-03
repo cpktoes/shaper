@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_BLANK_CUT, type BlankRecord } from "./blank";
-import { boardOnBlank, placementRange, prepareBlank, type BoardOnBlankInput } from "./blank-fit";
+import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
+import { boardOnBlank, judgeBlank, placementRange, prepareBlank, type BoardOnBlankInput } from "./blank-fit";
 import {
   buildBlankProfile,
   buildBoardProfile,
@@ -13,8 +14,8 @@ import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { DEFAULT_BOARD_SPEC } from "./board";
 import { BOARD_PRESETS } from "./presets";
 import { DEFAULT_FOIL_SPEC, foilStationPoints, sampleFoil, type FoilStationKey } from "./foil";
-import { MEASURE_STATION_MM } from "./outline";
-import { DEFAULT_FALLBACK_ROCKER, rockerStationPositions } from "./rocker";
+import { buildOutline, MEASURE_STATION_MM, sampleOutline } from "./outline";
+import { DEFAULT_FALLBACK_ROCKER, ROCKER_LIFT_RANGE_IN, rockerStationPositions } from "./rocker";
 import { prepareRootCurve } from "./root-curve";
 import { STEADY_EPSILON_MM } from "./tip-taper";
 import { inchesToMm, mm, type Mm } from "./units";
@@ -465,6 +466,64 @@ describe("Remove This Blank keeps the five stations exactly (WR-01)", () => {
     expect(r.handSet.foil.center).toBe(r.c.foil.center);
     expect(r.handSet.foil.noseTip).toBe(r.c.foil.noseTip);
     expect(r.handSet.foil.tailTip).toBe(r.c.foil.tailTip);
+  });
+});
+
+describe("Remove This Blank on a board whose tail sits below its centre (Phase 14 code review WR-02)", () => {
+  // The review's example: the default 6'0" outline on the Arctic Foam 7'9" SBF at a 1 1/4" centre,
+  // default tips, Pin deck, both starts on Automatic, laid where the fit check puts it. Under Pin
+  // deck the tail's thinning comes off the bottom, which drops that tip below the board's centre.
+  const record = findBlank("Arctic Foam", `7'9" SBF`);
+  const prepared = prepareBlank(record);
+  const length = DEFAULT_BOARD_SPEC.outline.length;
+  const geometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
+  const foil = { ...DEFAULT_FOIL_SPEC, center: inchesToMm(1.25) };
+  const verdict = judgeBlank(
+    prepared,
+    {
+      board: {
+        length,
+        centerThickness: foil.center,
+        noseTip: foil.noseTip,
+        tailTip: foil.tailTip,
+        nose12Offset: mm(0),
+        tail12Offset: mm(0),
+        ...DEFAULT_BLANK_CUT,
+      },
+      halfWidthAt: (s: Mm) => sampleOutline(geometry, s),
+      widePointStation: geometry.widePointStation,
+    },
+    toFitSettings(DEFAULT_FIT_DEFAULTS),
+  );
+  const onBlank = buildBoardProfile({
+    length,
+    rocker: DEFAULT_FALLBACK_ROCKER,
+    foil,
+    blank: { prepared, placement: verdict.placement, nose12Offset: mm(0), tail12Offset: mm(0), ...DEFAULT_BLANK_CUT },
+  });
+  const handSet = handSetFromProfile(onBlank, foil);
+  const after = buildBoardProfile({ length, rocker: handSet.rocker, foil: handSet.foil, blank: null });
+  const lifts: Record<FoilStationKey, Mm> = { ...handSet.rocker, center: mm(0) };
+  const range = { min: inchesToMm(ROCKER_LIFT_RANGE_IN.min), max: inchesToMm(ROCKER_LIFT_RANGE_IN.max) };
+
+  it("really is a board whose tail tip sits below its centre, so this test cannot go vacuous", () => {
+    expect(onBlank.blank).not.toBeNull();
+    expect(onBlank.stationRocker.tailTip - onBlank.stationRocker.center).toBeLessThan(0);
+  });
+
+  it("seeds every lift inside the hand-set range — the tail tip at the range's minimum", () => {
+    for (const key of ["noseTip", "nose12", "tail12", "tailTip"] as const) {
+      expect(handSet.rocker[key], key).toBeGreaterThanOrEqual(range.min);
+      expect(handSet.rocker[key], key).toBeLessThanOrEqual(range.max);
+    }
+    expect(handSet.rocker.tailTip).toBe(range.min);
+  });
+
+  it("the hand-set board reads exactly those five numbers, from its station rocker and from its drawing", () => {
+    for (const { key, station } of after.stations) {
+      expect(after.stationRocker[key], key).toBe(lifts[key]);
+      expect(after.rockerAt(station), key).toBe(lifts[key]);
+    }
   });
 });
 

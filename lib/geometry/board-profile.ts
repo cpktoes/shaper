@@ -39,10 +39,10 @@ import {
 } from "./blank-fit";
 import { type FoilSpec, type FoilStationKey, foilStationPoints } from "./foil";
 import { preparePchip } from "./pchip";
-import { type FiveStationRocker, fallbackRockerPoints, rockerStationPositions } from "./rocker";
+import { type FiveStationRocker, ROCKER_LIFT_RANGE_IN, fallbackRockerPoints, rockerStationPositions } from "./rocker";
 import { type CurveRule, prepareRootCurve } from "./root-curve";
 import type { TipView } from "./tip-taper";
-import { type Mm, mm } from "./units";
+import { type Mm, inchesToMm, mm } from "./units";
 
 /** A board's blank as the side view and the DATASHEET need it — every station in the BOARD's
  * coordinates (0 = the board's tail tip). */
@@ -242,13 +242,17 @@ export function buildBlankProfile(
 
 /**
  * What "Remove This Blank" (UI-SPEC §7) leaves behind: the hand-set rocker and foil seeded from the
- * board's profile as it is on screen at that moment, so the five station numbers do not move.
+ * board's profile as it is on screen at that moment, so the five station numbers do not move (but for
+ * a tip below the centre, as the Rocker point says).
  *
  * - Rocker: the four lifts are the profile's rocker at those stations LESS its centre rocker. The
  *   hand-set rocker's centre is 0 by definition (D-14), and a board in a blank can have a non-zero
  *   centre rocker (its crop's low point need not sit at the centre, e.g. at an off-centre
  *   placement), so each lift is rebased on the centre rather than copied — the board keeps the
- *   same shape at the five stations, with its centre as the zero.
+ *   same shape at the five stations, with its centre as the zero. Each lift is then pulled into
+ *   `ROCKER_LIFT_RANGE_IN`, so a tip that sat below the centre (a reverse-rocker tail under Pin deck)
+ *   becomes 0: the hand-set rocker fixes the centre at 0 and cannot keep a tip below it, and a lift
+ *   kept below 0 would make the drawing level on that tip and disagree with these numbers.
  * - Foil: the two 12" thicknesses are the profile's FINAL ones (blank-derived plus any fine-tune),
  *   read off `effectiveFoil`. The centre and both tips stay the stored foil's own — they already
  *   are what the blank profile reads there, and `foil.center` stays the one stored centre.
@@ -264,12 +268,15 @@ export function handSetFromProfile(
 ): { rocker: FiveStationRocker; foil: FoilSpec } {
   const { stationRocker, effectiveFoil } = profile;
   const centre = stationRocker.center;
+  const lowest = inchesToMm(ROCKER_LIFT_RANGE_IN.min);
+  const highest = inchesToMm(ROCKER_LIFT_RANGE_IN.max);
+  const lift = (at: Mm) => mm(Math.min(highest, Math.max(lowest, at - centre)));
   return {
     rocker: {
-      noseTip: mm(stationRocker.noseTip - centre),
-      nose12: mm(stationRocker.nose12 - centre),
-      tail12: mm(stationRocker.tail12 - centre),
-      tailTip: mm(stationRocker.tailTip - centre),
+      noseTip: lift(stationRocker.noseTip),
+      nose12: lift(stationRocker.nose12),
+      tail12: lift(stationRocker.tail12),
+      tailTip: lift(stationRocker.tailTip),
     },
     foil: { ...foil, nose12: effectiveFoil.nose12, tail12: effectiveFoil.tail12 },
   };
