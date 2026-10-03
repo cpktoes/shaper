@@ -8,6 +8,7 @@ import { finRoundingNote } from "../lib/geometry/fins";
 import { FOIL_THICKNESS_RANGE_IN } from "../lib/geometry/foil";
 import { formatMarkBare, measureSlider, planerPasses } from "../lib/geometry/measure-display";
 import { planingTable } from "../lib/geometry/planing";
+import { THINNING_START_MIN_MM } from "../lib/geometry/tip-taper";
 import { inchesToMm, mm, parseImperial, parseMetric, type Mm, type UnitsSystem } from "../lib/geometry/units";
 
 /**
@@ -649,6 +650,10 @@ function assertMeasurement(result: PlaningMeasurement, label: string, mode: "com
 
 const SYSTEMS: UnitsSystem[] = ["imperial", "metric"];
 
+/** Both tips' thinning starts for the Node-side `planingTable` sweeps below, which vary only the deck
+ * skin and the centre gap — any start will do, so the slider's own shortest one is used. */
+const ANY_TIPS = { nose: { fromTip: THINNING_START_MIN_MM }, tail: { fromTip: THINNING_START_MIN_MM } };
+
 test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h; reworked 260928-tst)", () => {
   test.beforeEach(async ({ page }) => {
     await dismissChrome(page);
@@ -822,20 +827,20 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
 
       const deckFoam = new Set<string>();
       for (const skin of skinSweep) {
-        const t = planingTable({ blank: { cut: { deckSkin: skin }, centerGap: mm(0) } }, arbitraryDepth, system);
+        const t = planingTable({ blank: { cut: { deckSkin: skin }, centerGap: mm(0), tips: ANY_TIPS } }, arbitraryDepth, system);
         deckFoam.add(t.rows[0].deck);
       }
 
       const bottomFoam = new Set<string>();
       for (const gap of gapSweep) {
-        const t = planingTable({ blank: { cut: { deckSkin: mm(0) }, centerGap: gap } }, arbitraryDepth, system);
+        const t = planingTable({ blank: { cut: { deckSkin: mm(0) }, centerGap: gap, tips: ANY_TIPS } }, arbitraryDepth, system);
         bottomFoam.add(t.rows[0].bottom);
       }
 
       const deckPasses = new Set<string>();
       for (const skin of skinSweep) {
         for (const depth of passDepths) {
-          const t = planingTable({ blank: { cut: { deckSkin: skin }, centerGap: mm(0) } }, depth, system);
+          const t = planingTable({ blank: { cut: { deckSkin: skin }, centerGap: mm(0), tips: ANY_TIPS } }, depth, system);
           deckPasses.add(t.rows[1].deck);
         }
       }
@@ -843,7 +848,7 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       const bottomPasses = new Set<string>();
       for (const gap of gapSweep) {
         for (const depth of passDepths) {
-          const t = planingTable({ blank: { cut: { deckSkin: mm(0) }, centerGap: gap } }, depth, system);
+          const t = planingTable({ blank: { cut: { deckSkin: mm(0) }, centerGap: gap, tips: ANY_TIPS } }, depth, system);
           bottomPasses.add(t.rows[1].bottom);
         }
       }
@@ -851,7 +856,7 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       const footnote = new Set<string>();
       for (const depth of passDepths) {
         const t = planingTable(
-          { blank: { cut: { deckSkin: inchesToMm(1 / 8) }, centerGap: inchesToMm(1 / 8) } },
+          { blank: { cut: { deckSkin: inchesToMm(1 / 8) }, centerGap: inchesToMm(1 / 8), tips: ANY_TIPS } },
           depth,
           system,
         );
