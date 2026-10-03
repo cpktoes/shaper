@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 14 go-live 2 DONE 2026-10-02: the tips are live (merge 9468fd5 on main, deployment shaper-ainecs434 Ready; the founder's tips report: 10 of 10 saved boards open, no verdict flips). All 18 plans executed; code review fixed (0 critical). Next: phase verification (gsd-verifier), then /gsd-verify-work 14 and the founder's rehearsal walk (Phase 13 item 13, due now, before the Wed 2026-10-07 freeze)"
-last_updated: "2026-10-02T23:07:28.535Z"
-last_activity: 2026-10-02
-last_activity_desc: Phase 14 — both go-lives shipped on the founder's go (curves and tips, 2026-10-02); verification next; the rehearsal walk is due
+stopped_at: "Rehearsal (Phase 13 item 13) under way 2026-10-03: checks 1, 2, 3 and 7 passed (4 of 9, 13-UAT.md). Next: bring the walk sheet up to date with the live site (card litres now 29.6 / 35.3 / 50.4 / 75.3 L; add Phase 14's Thinning Starts steps and its five looks), then the founder's walks on the iPhone, a real Android phone and the Oct 10 laptop (checks 4-6), the demo account (8) and the freeze Wed 2026-10-07 evening (9). Phase 14: both go-lives are live (main 9468fd5); 14-VERIFICATION.md is written (human_needed, 8 of 9, the ninth is the walk) but not yet committed; after the walk: /gsd-verify-work 14, the security check, phase complete"
+last_updated: "2026-10-03T21:55:00.000Z"
+last_activity: 2026-10-03
+last_activity_desc: Phase 13 item 13 — rehearsal checks 1, 2, 3 and 7 passed (4 of 9); the walk sheet update, the three device walks, the demo account and the freeze remain
 progress:
   total_phases: 2
   completed_phases: 0

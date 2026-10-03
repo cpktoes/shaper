@@ -3,32 +3,34 @@ status: testing
 phase: 13-ready-for-the-shapers
 source: [13-SPEC.md item 13]
 started: 2026-09-30T21:31:08.000Z
-updated: 2026-09-30T21:44:32.000Z
+updated: 2026-10-03T21:49:50.767Z
 ---
 
 ## Current Test
 
-number: 1
-name: Google sign-in is open to everyone, not only test users
+number: 4
+name: The whole trip on the founder's iPhone
 expected: |
-  In Google Cloud's Google Auth Platform → Audience, Publishing status reads "In production"
+  Every step of "The walk" below passes on the founder's iPhone on the live site, including page 2 of a real order-form print made from the iPhone (item 8b's last open check)
 awaiting: user response
 
 ## Tests
 
 ### 1. Google sign-in is open to everyone, not only test users
 expected: In Google Cloud's Google Auth Platform → Audience, the project that holds Shaper Assistant's Google sign-in shows Publishing status "In production" — if it says "Testing", press Publish app (the app asks Google only for a name and an email address, so Google needs no review)
-result: [pending]
+result: passed 2026-10-03 (founder: pass)
 who: the founder, at a computer, about 5 minutes — see "Your dashboard checks" below
 
 ### 2. Room for a crowd in Clerk, Neon and Vercel
 expected: Clerk shows the free plan's 50,000 monthly users with only a handful used; Neon's Billing page shows this month well under 100 compute hours and 0.5 GB; Vercel's Usage page shows every meter well under its Hobby limit, including 4 hours of Active CPU and 50,000 analytics events
-result: [pending]
+result: passed 2026-10-03 (founder: pass — one figure reported, 0.25 GB, read here as Neon's storage)
+note: Neon raised the Free plan's storage from 0.5 GB to 1 GB per project on 2026-10-02 (its changelog; existing projects get it automatically), so 0.25 GB is a quarter of the allowance, not half. At the limit nothing is deleted; anything that adds data fails until space is freed or the plan is upgraded. Measured the same day on the development copy: the whole database is 31 MB, the app's own tables about 1 MB, the blank catalogue about 0.3 MB and a saved board about 2.5 KB, so the figure is not boards and a room of shapers adds a few megabytes. Neon's own breakdown of the 0.25 GB (its Branches page) was not read.
 who: the founder, at a computer, about 10 minutes — see "Your dashboard checks" below
 
 ### 3. A brand-new shaper signs up with an email address on a phone
 expected: An email address that has never used the app signs up with email and a password on a phone, Clerk's six-digit code arrives within a minute (note whether it landed in the inbox or in spam), and the new account lands signed in and saves a board
-result: [pending]
+result: passed 2026-10-03 (founder: pass)
+note: Where the six-digit code landed (inbox or spam) was not reported.
 who: the founder, on either phone, with a spare email address — afterwards the account can delete itself from Manage account, or be kept
 
 ### 4. The whole trip on the founder's iPhone
@@ -45,7 +47,8 @@ result: [pending]
 
 ### 7. Someone else signs up with Google
 expected: A friend, on their own phone, taps Continue with Google on the live site, gets past Google's screen with no "access blocked" message, lands signed in and saves a board — and notes the name Google's screen shows (Shaper Assistant, or only the web address)
-result: [pending]
+result: passed 2026-10-03 (founder: pass)
+note: The name Google's screen showed (Shaper Assistant, or only the web address) was not reported.
 who: a friend (not the founder), about 5 minutes
 
 ### 8. The demo account holds a few finished boards
@@ -60,9 +63,9 @@ who: Claude and the founder, Wednesday Oct 7 evening
 ## Summary
 
 total: 9
-passed: 0
+passed: 4
 issues: 0
-pending: 9
+pending: 5
 skipped: 0
 blocked: 0
 
