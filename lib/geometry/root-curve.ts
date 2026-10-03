@@ -29,6 +29,10 @@
  * same reason a `"rise"` never reads below its lowest station and a `"fall"` never above its
  * highest.
  *
+ * Its slope (`slopeAt`) arrived with the tips step (Phase 14 D-28), the one thing the steady taper
+ * needs from the curves: `f′ = 2·g·g′` for a rise and `−2·g·g′` for a fall, with `g′` the Hermite
+ * derivative of `g` — so the curve is smooth through every station, its slope included.
+ *
  * Knots are checked exactly as `preparePchip` checks them, with the same plain error: a bad
  * catalogue cell fails loudly here rather than turning into a not-a-number downstream (T-14-03).
  *
@@ -60,6 +64,9 @@ export type CurveRule = "root" | "pchip";
  * x reads the first station's value rather than a not-a-number.
  *
  * `slopes[k]` is the curve's own slope at each station: `±2·g(xₖ)·g′(xₖ)`.
+ *
+ * `slopeAt(x)`: the curve's slope, `±2·g(x)·g′(x)`, inside the stations; 0 past either end (where
+ * `sample` holds flat) and for a non-finite x.
  */
 export function prepareRootCurve(points: readonly SplinePoint[], kind: RootKind): PreparedPchip {
   // Validates the knots with pchip's own rule and messages, and keeps its copies of them.
@@ -93,7 +100,12 @@ export function prepareRootCurve(points: readonly SplinePoint[], kind: RootKind)
     return anchor + sign * r * r;
   }
 
+  function slopeAt(x: number): number {
+    if (!Number.isFinite(x) || x < xs[0] || x > xs[n - 1]) return 0;
+    return 2 * sign * g.sample(x) * g.slopeAt(x);
+  }
+
   const slopes = g.ys.map((root, k) => 2 * sign * root * g.slopes[k]);
 
-  return { xs, ys, slopes, sample };
+  return { xs, ys, slopes, sample, slopeAt };
 }
