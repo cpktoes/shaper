@@ -98,9 +98,10 @@ function formatWhere(
 
 /**
  * The runs-out sentence's clause, picked by `shortfall.cause` (Phase 13 item 4, FD-4) — a missing
- * cause reads as `thinCenter`, the wording every runs-out had before the other three causes
- * existed. `end` is `"nose"` when the station is past the board's centre, else `"tail"` — the half
- * a fine-tune or a tip setting names. An exhaustive switch, so a fifth cause fails to compile.
+ * cause reads as `thinCenter`, the wording every runs-out had before the other causes existed.
+ * `end` is `"nose"` when the station is past the board's centre, else `"tail"` — the half a
+ * fine-tune, a tip setting or a Thinning Starts point names. An exhaustive switch, so a cause
+ * without its own sentence fails to compile (Phase 14 added the fifth, `thinningStart`).
  */
 function runsOutClause(
   cause: RunsOutCause | undefined,
@@ -117,6 +118,8 @@ function runsOutClause(
       return `your board runs past the end of this blank`;
     case "tipSetting":
       return `your ${end} tip is set thinner than that`;
+    case "thinningStart":
+      return `your ${end} thinning starts too close to the tip`;
   }
 }
 
@@ -128,12 +131,13 @@ function runsOutClause(
  *
  * When the board itself would run under the least foam a board may be (Phase 12 D-18), the reason
  * names that least amount and its cause instead of an amount (Phase 13 item 4, FD-4):
- * `Less than {1/4" | 6 mm} would be left {where} — {clause}`, where `{clause}` is one of four,
+ * `Less than {1/4" | 6 mm} would be left {where} — {clause}`, where `{clause}` is one of five,
  * picked by `shortfall.cause` — `this blank is too thick for a {center} center` (thinCenter, and
  * what a missing cause reads as too), `your {end} fine-tune takes too much off there` (fineTune),
- * `your board runs past the end of this blank` (offBlank), or `your {end} tip is set thinner than
- * that` (tipSetting). No sentence here ends in a full stop — the flag adds one, the list row shows
- * the line bare.
+ * `your board runs past the end of this blank` (offBlank), `your {end} tip is set thinner than
+ * that` (tipSetting), or `your {end} thinning starts` … `too close` to that tip, word for word as
+ * UI-SPEC §10 gives it (thinningStart, Phase 14 D-05). No sentence here ends in a full stop — the
+ * flag adds one, the list row shows the line bare.
  */
 export function formatShortfall(
   shortfall: BlankShortfall,

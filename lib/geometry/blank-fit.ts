@@ -570,23 +570,46 @@ export function boardOnBlank(
  *   end of the blank there.
  * - `station` sits inside a tip's thinning (strictly nearer the tail tip than that tip's own
  *   Thinning Starts point, `onBlank.tips.tail.fromTip`, or strictly nearer the nose tip than
- *   `onBlank.tips.nose.fromTip`) and that end's own tip setting (`board.tailTip` / `board.noseTip`)
- *   is itself under `MIN_FOIL_THICKNESS_MM − FIT_EPSILON_MM` → `"tipSetting"`.
+ *   `onBlank.tips.nose.fromTip` — that tip's OWN start, however far in it is, never the 12" station)
+ *   and that end's own tip setting (`board.tailTip` / `board.noseTip`) is itself under
+ *   `MIN_FOIL_THICKNESS_MM − FIT_EPSILON_MM` → `"tipSetting"`.
+ * - `station` sits in the stretch a start set by hand decides: that tip's start is set by hand
+ *   (`!tips.<end>.automatic`) nearer the tip than Automatic's (`fromTip < automaticStart`), and the
+ *   station is nearer that tip than Automatic's start — the hand-set taper and the hand-set start
+ *   itself, where the planer cut is usually thinnest; that tip's setting is not under the floor; and
+ *   before any fine-tune the board is under the floor there with its own start
+ *   (`derivedThicknessAt(station)`) but would have had enough foam there on Automatic
+ *   (`automaticThicknessAt(station)` at least the floor) → `"thinningStart"` (Phase 14 D-05,
+ *   UI-SPEC §10): the start set too close to the tip is what took that spot under the floor. Reading
+ *   both sides before any fine-tune keeps a negative 12" fine-tune's own blame with `"fineTune"`.
  * - that half's 12" fine-tune (`board.tail12Offset` for `station <= L / 2`, `board.nose12Offset`
  *   above — the same split the fine-tune hump uses) is negative, and the board would have had
  *   enough foam there WITHOUT it (`derivedThicknessAt(station)` is at least
  *   `MIN_FOIL_THICKNESS_MM − FIT_EPSILON_MM`) → `"fineTune"`.
  * - otherwise → `"thinCenter"`: the blank itself is too thick for this target centre — the wording
- *   every runs-out had before the other three causes existed, and what a runs-out with no cause at
- *   all still reads as.
+ *   every runs-out had before the other causes existed, and what a runs-out with no cause at all
+ *   still reads as.
  */
 export function runsOutCause(onBlank: BoardOnBlank, station: number): RunsOutCause {
-  const { board } = onBlank;
+  const { board, tips } = onBlank;
   const L = board.length;
   if (!onBlank.onFoamAt(station)) return "offBlank";
   const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
-  if (station < onBlank.tips.tail.fromTip && board.tailTip < floor) return "tipSetting";
-  if (station > L - onBlank.tips.nose.fromTip && board.noseTip < floor) return "tipSetting";
+  const inTail = station < tips.tail.fromTip;
+  const inNose = station > L - tips.nose.fromTip;
+  if (inTail && board.tailTip < floor) return "tipSetting";
+  if (inNose && board.noseTip < floor) return "tipSetting";
+  // Where that tip's start set by hand, nearer the tip than Automatic's, decides the thickness.
+  const startDecides = (view: TipView, tip: number, fromThatTip: number) =>
+    !view.automatic && tip >= floor && view.fromTip < view.automaticStart && fromThatTip < view.automaticStart;
+  const byHand = startDecides(tips.tail, board.tailTip, station) || startDecides(tips.nose, board.noseTip, L - station);
+  if (
+    byHand &&
+    onBlank.derivedThicknessAt(station) < floor &&
+    onBlank.automaticThicknessAt(station) >= floor
+  ) {
+    return "thinningStart";
+  }
   const halfOffset = station <= L / 2 ? board.tail12Offset : board.nose12Offset;
   if (halfOffset < 0 && onBlank.derivedThicknessAt(station) >= floor) return "fineTune";
   return "thinCenter";
@@ -785,15 +808,25 @@ function fitterFor(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitS
 /**
  * True when no blank can take this board at any placement, read off the board alone: a 12"
  * fine-tune on the Deck bigger than the Deck Skin lifts the board's deck above the blank's deck at
- * that station — the fine-tune hump peaks there and, with the tip's thinning starting at 12", no
- * thinning reaches it, so the deck sits exactly `deckSkin − offset` below the blank's deck at every
- * placement on every blank — and `fitAt` samples that station. D-13 says such a tweak is honestly
- * flagged "too thin there"; this is what lets the list and the flag say so at once instead of
- * confirming it one placement at a time (a full catalogue scan ran 1.3 s in Node and about 40 s on
- * WebKit per keystroke — 12-08). One corner stays a quick refusal on purpose (Phase 14): under Tip
- * Style Bottom with a tip's start further in than 12", the taper takes extra foam off the deck at
- * the 12" station and some placements could fit; searching them costs far too much per change, so
- * the founder decides after the showing (recorded in the pending todo for retiring today's rules).
+ * that station — the fine-tune hump peaks there — and `fitAt` samples that station. D-13 says such a
+ * tweak is honestly flagged "too thin there"; this is what lets the list and the flag say so at once
+ * instead of confirming it one placement at a time (a full catalogue scan ran 1.3 s in Node and about
+ * 40 s on WebKit per keystroke — 12-08).
+ *
+ * It relies on no tip thinning coming off the deck at a 12" station, so the deck sits at most
+ * `deckSkin − offset` below the blank's deck there — above it, for a tweak over the skin — at every
+ * placement on every blank. That holds:
+ * - under Tip Style Pin deck always — the thinning comes off the bottom, never the deck;
+ * - on Automatic under either Tip Style — Automatic starts at 12" (no thinning reaches the station)
+ *   or moves a start in only where the taper adds foam at 12" rather than taking it, so the deck
+ *   there is never lowered (tested in tip-flow.test.ts, plan 14-13, on the whole stress set).
+ *
+ * It is conservative in one corner (Phase 14): Tip Style Bottom, a Deck tweak over the skin, and that
+ * tip's start set by hand further in than 12". There the taper takes extra foam off the deck at the
+ * 12" station, so some placements could fit, and this still refuses the board everywhere — because
+ * searching every placement in that corner costs about 30 s per change in Node. Recorded for the
+ * founder to decide after the showing, in the pending todo for retiring today's curve and 12" blend.
+ * Its answer never depends on the starts: it reads only the surface, the two tweaks and the skin.
  */
 export function tweakExceedsDeckSkin(board: BoardOnBlankInput): boolean {
   if (board.fineTuneSurface !== "deck") return false;
