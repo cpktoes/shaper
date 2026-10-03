@@ -102,6 +102,18 @@ export interface BoardBlank {
   tipStyle: TipStyle;
   /** The board's own fine-tune surface (Phase 12 D-13). */
   fineTuneSurface: FineTuneSurface;
+  /**
+   * Where the nose's thinning starts, in millimetres in from the nose tip (Phase 14 D-02, D-24).
+   * Absent means Automatic. Set only by the Thinning Starts slider and removed by its Automatic
+   * button. Not part of `BlankCut`, and not counted by the cut's "all three or none" rule.
+   */
+  noseThinningStart?: Mm;
+  /**
+   * Where the tail's thinning starts, in millimetres in from the tail tip (Phase 14 D-02, D-24).
+   * Absent means Automatic. Set only by the Thinning Starts slider and removed by its Automatic
+   * button. Not part of `BlankCut`, and not counted by the cut's "all three or none" rule.
+   */
+  tailThinningStart?: Mm;
 }
 
 /** The shaper's fit settings (the third account preference, D-09). */
