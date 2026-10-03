@@ -13,6 +13,8 @@ import {
   emptyListMessage,
   FLAG_HEADLINES,
   floorShortfallMessage,
+  automaticButtonLabel,
+  fineTuneSourceHint,
   formatDeckSkin,
   formatPlacement,
   formatShortfall,
@@ -25,7 +27,11 @@ import {
   offerLine,
   placementSlider,
   REASON_SNAP_MM,
+  thicknessIntroWithBlank,
+  thinningMarksSentence,
   thinningStartHint,
+  thinningStartLine,
+  thinningStartRowLabel,
   thinningStartSlider,
   tweakOverSkinLine,
 } from "./blank-reasons";
@@ -40,7 +46,7 @@ import {
 } from "./measure-display";
 import { BOARD_PRESETS } from "./presets";
 import { MEASURE_STATION_MM } from "./outline";
-import { THINNING_START_MIN_MM, thinningStartRange } from "./tip-taper";
+import { THINNING_START_MIN_MM, thinningStartRange, type TipFlag } from "./tip-taper";
 import {
   inchesToMm,
   litres,
@@ -616,6 +622,152 @@ describe("Thinning Starts — the distance, the hint and the slider (D-11, D-22)
       expect(thinningStartHint(furtherIn, "metric")).toBe("Automatic: 30.5 cm is too short");
       expect(thinningStartHint(byHand, "imperial")).toBe('Automatic would be 25 1/2"');
       expect(thinningStartHint(byHand, "metric")).toBe("Automatic would be 64.8 cm");
+    });
+  });
+});
+
+describe("Thinning Starts — the sentences (D-05, D-07, D-21)", () => {
+  // The two reference boards of the 14-UI-SPEC: a tail that humps (9/16" at the 12" mark under a 5/8"
+  // tip, Automatic 25 1/2") and a tail that needs a little more run (Automatic 15 1/2"). Expected
+  // strings are the UI-SPEC's own sentences, or composed from the same formatters.
+  const tip = inchesToMm(5 / 8);
+  const thin: TipFlag = { kind: "thin", thinnest: inchesToMm(9 / 16), at: MEASURE_STATION_MM };
+  const humpingTail = { fromTip: MEASURE_STATION_MM, automaticStart: inchesToMm(25.5), flag: thin };
+  const bendingTail = {
+    fromTip: MEASURE_STATION_MM,
+    automaticStart: inchesToMm(15.5),
+    flag: { kind: "steep" } as TipFlag,
+  };
+
+  describe("the too-close line", () => {
+    it("reads the UI-SPEC's thin-spot sentence in both systems", () => {
+      expect(thinningStartLine("tail", humpingTail, tip, "imperial")).toBe(
+        'The board is thinnest 12" from the tail tip: 9/16", under the 5/8" set for the tip. ' +
+          'Automatic would start the thinning 25 1/2" from the tip and clear that.',
+      );
+      expect(thinningStartLine("tail", humpingTail, tip, "metric")).toBe(
+        "The board is thinnest 30.5 cm from the tail tip: 14 mm, under the 16 mm set for the tip. " +
+          "Automatic would start the thinning 64.8 cm from the tip and clear that.",
+      );
+    });
+
+    it("reads the UI-SPEC's sharp-bend sentence in both systems", () => {
+      expect(thinningStartLine("tail", bendingTail, tip, "imperial")).toBe(
+        'The tail thinning starts with a sharp bend, 12" from the tip. ' +
+          'Automatic would start it 15 1/2" from the tip and run it down steadily.',
+      );
+      expect(thinningStartLine("tail", bendingTail, tip, "metric")).toBe(
+        "The tail thinning starts with a sharp bend, 30.5 cm from the tip. " +
+          "Automatic would start it 39.4 cm from the tip and run it down steadily.",
+      );
+    });
+
+    it.each(UNITS_SYSTEMS)("in %s, every number comes from the app's own formatters", (system) => {
+      const at = inchesToMm(10.5);
+      const thinnest = inchesToMm(1 / 2);
+      const automaticStart = inchesToMm(19);
+      const view = { fromTip: inchesToMm(11), automaticStart, flag: { kind: "thin", thinnest, at } as TipFlag };
+      expect(thinningStartLine("nose", view, tip, system)).toBe(
+        `The board is thinnest ${formatThinningStart(at, system)} from the nose tip: ` +
+          `${formatMark(thinnest, system)}, under the ${formatMark(tip, system)} set for the tip. ` +
+          `Automatic would start the thinning ${formatThinningStart(automaticStart, system)} from the tip and clear that.`,
+      );
+      const steep = { ...view, flag: { kind: "steep" } as TipFlag };
+      expect(thinningStartLine("nose", steep, tip, system)).toBe(
+        `The nose thinning starts with a sharp bend, ${formatThinningStart(view.fromTip, system)} from the tip. ` +
+          `Automatic would start it ${formatThinningStart(automaticStart, system)} from the tip and run it down steadily.`,
+      );
+    });
+
+    it.each(UNITS_SYSTEMS)("in %s, a nose reads nose where a tail reads tail", (system) => {
+      const tail = thinningStartLine("tail", humpingTail, tip, system);
+      const nose = thinningStartLine("nose", humpingTail, tip, system);
+      expect(nose).toBe(tail?.replace("from the tail tip", "from the nose tip"));
+      expect(thinningStartLine("nose", bendingTail, tip, system)).toBe(
+        thinningStartLine("tail", bendingTail, tip, system)?.replace("The tail thinning", "The nose thinning"),
+      );
+    });
+
+    it.each(UNITS_SYSTEMS)("in %s, there is no line when the flag is null (Automatic, or a steady start)", (system) => {
+      expect(thinningStartLine("tail", { ...humpingTail, flag: null }, tip, system)).toBeNull();
+      expect(thinningStartLine("nose", { ...bendingTail, flag: null }, tip, system)).toBeNull();
+    });
+
+    it.each(UNITS_SYSTEMS)("in %s, there is no line when the thinnest prints the same as the tip setting", (system) => {
+      const barelyThinner = mm(tip - 0.1);
+      expect(formatMark(barelyThinner, system)).toBe(formatMark(tip, system));
+      const view = { ...humpingTail, flag: { kind: "thin", thinnest: barelyThinner, at: MEASURE_STATION_MM } as TipFlag };
+      expect(thinningStartLine("tail", view, tip, system)).toBeNull();
+    });
+  });
+
+  describe("the 12\" row's source hint (D-07)", () => {
+    const derived = inchesToMm(1 + 5 / 16);
+
+    it.each(UNITS_SYSTEMS)("in %s, reads From the tip taper only when that tip's start is further in", (system) => {
+      expect(fineTuneSourceHint(true, derived, system)).toBe(`From the tip taper ${formatMark(derived, system)}`);
+      expect(fineTuneSourceHint(false, derived, system)).toBe(`From blank ${formatMark(derived, system)}`);
+    });
+
+    it("reads the UI-SPEC's own examples", () => {
+      expect(fineTuneSourceHint(true, derived, "imperial")).toBe('From the tip taper 1 5/16"');
+      expect(fineTuneSourceHint(true, derived, "metric")).toBe("From the tip taper 33 mm");
+      expect(fineTuneSourceHint(false, derived, "imperial")).toBe('From blank 1 5/16"');
+      expect(fineTuneSourceHint(false, derived, "metric")).toBe("From blank 33 mm");
+    });
+  });
+
+  describe("the row label, the button's name, the drawing's name and the THICKNESS intro", () => {
+    it.each(UNITS_SYSTEMS)("in %s, the row label carries one distance", (system) => {
+      const start = inchesToMm(25.5);
+      expect(thinningStartRowLabel("nose", { fromTip: start }, system)).toBe(
+        `Nose Thinning Starts — ${formatThinningStart(start, system)}`,
+      );
+      expect(thinningStartRowLabel("tail", { fromTip: start }, system)).toBe(
+        `Tail Thinning Starts — ${formatThinningStart(start, system)}`,
+      );
+    });
+
+    it("reads the UI-SPEC's own row labels", () => {
+      expect(thinningStartRowLabel("nose", { fromTip: MEASURE_STATION_MM }, "imperial")).toBe('Nose Thinning Starts — 12"');
+      expect(thinningStartRowLabel("nose", { fromTip: MEASURE_STATION_MM }, "metric")).toBe("Nose Thinning Starts — 30.5 cm");
+      expect(thinningStartRowLabel("tail", { fromTip: inchesToMm(25.5) }, "imperial")).toBe('Tail Thinning Starts — 25 1/2"');
+      expect(thinningStartRowLabel("tail", { fromTip: inchesToMm(25.5) }, "metric")).toBe("Tail Thinning Starts — 64.8 cm");
+    });
+
+    it("names each Automatic button for its own tip", () => {
+      expect(automaticButtonLabel("nose")).toBe("Use Automatic for the nose thinning start");
+      expect(automaticButtonLabel("tail")).toBe("Use Automatic for the tail thinning start");
+    });
+
+    it.each(UNITS_SYSTEMS)("in %s, the drawing's name says where each tip's thinning starts", (system) => {
+      const nose = MEASURE_STATION_MM;
+      const tail = inchesToMm(25.5);
+      expect(thinningMarksSentence(nose, tail, system)).toBe(
+        "a dashed line across the board where each tip's thinning starts: " +
+          `${formatThinningStart(nose, system)} from the nose tip and ${formatThinningStart(tail, system)} from the tail tip`,
+      );
+    });
+
+    it("reads the drawing's name with the UI-SPEC's numbers", () => {
+      expect(thinningMarksSentence(MEASURE_STATION_MM, inchesToMm(25.5), "metric")).toBe(
+        "a dashed line across the board where each tip's thinning starts: 30.5 cm from the nose tip and 64.8 cm from the tail tip",
+      );
+    });
+
+    it.each(UNITS_SYSTEMS)("in %s, the THICKNESS intro names the 12\" stations by their own label", (system) => {
+      expect(thicknessIntroWithBlank(system)).toBe(
+        "Deck and bottom follow your blank's; each tip is thinned from its Thinning Starts point, below. " +
+          `Set the tips, and fine-tune the ${stationLabel(system)} stations if you need to.`,
+      );
+    });
+
+    it("reads the UI-SPEC's own intro", () => {
+      expect(thicknessIntroWithBlank("imperial")).toBe(
+        "Deck and bottom follow your blank's; each tip is thinned from its Thinning Starts point, below. " +
+          'Set the tips, and fine-tune the 12" stations if you need to.',
+      );
+      expect(thicknessIntroWithBlank("metric")).toContain("fine-tune the 30.5 cm stations if you need to.");
     });
   });
 });
