@@ -140,7 +140,9 @@ curves and Thinning Starts all went live after the first sheet.
    extra button under the controls ("Copy preset values") that the live site does not. Until it is
    fixed, Undo takes a tail start back, and turning the phone sideways reaches the button. The fix is
    a small quick task: room at the end of the phone's controls so the last row clears the pair, proved
-   on a production build. Your call, ideally before the walk.
+   on a production build. Your call, ideally before the walk. **Fixed 2026-10-03 on the founder's word
+   (fast task 144, `b32dcaf`), not yet live:** the phone's controls end with 48 dots of extra room and the
+   button sits 8 to 9 dots above the pair; publishing it waits on the founder's go.
 
 ## Your dashboard checks (tests 1 and 2)
 
