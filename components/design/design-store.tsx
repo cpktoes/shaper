@@ -34,9 +34,15 @@
  * deck (`deckSkin`), where the tips are thinned (`tipStyle`, Pin deck or Bottom) and which surface
  * a 12" fine-tune moves (`fineTuneSurface`). The first pick bakes in the shaper's live Deck Skin and
  * Tip Style from Fit & Tip Defaults; switching to another blank keeps the board's own; Remove This
- * Blank takes them away with the blank, and one undo brings them all back together. The eight blank
- * moves are `pickBlank`, `setPlacement`, `setDeckSkin`, `setTipStyle`, `setFineTuneSurface`,
- * `setFineTune`, `resetFineTune` and `removeBlank`.
+ * Blank takes them away with the blank, and one undo brings them all back together.
+ *
+ * Where each tip's thinning starts rides on the blank too (Phase 14, D-02, D-11, D-24): a start set
+ * by hand is stored as `noseThinningStart` / `tailThinningStart`, and a tip on Automatic stores no
+ * key at all, so a board sent back to Automatic equals one that never had a start. Switching blanks
+ * keeps a hand-set start; a first pick starts both tips on Automatic; ↺ Reset Fine-Tune never
+ * touches them. The ten blank moves are `pickBlank`, `setPlacement`, `setDeckSkin`, `setTipStyle`,
+ * `setFineTuneSurface`, `setFineTune`, `resetFineTune`, `setThinningStart`,
+ * `setThinningStartAutomatic` and `removeBlank`.
  */
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
@@ -61,7 +67,8 @@ import {
   type FineTuneSurface,
   type TipStyle,
 } from "@/lib/geometry/blank";
-import { prepareBlank, type PreparedBlank } from "@/lib/geometry/blank-fit";
+import { prepareBlank, thinningStartsOf, type PreparedBlank } from "@/lib/geometry/blank-fit";
+import type { TipEnd } from "@/lib/geometry/tip-taper";
 import { buildBoardProfile, handSetFromProfile, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import type { BoardPreset } from "@/lib/geometry/presets";
 import {
@@ -164,8 +171,9 @@ interface DesignState {
    * save never stores a reference to its own row. */
   modelId: string | null;
   /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,
-   * `updateRocker`, `updateFoil`, the eight blank moves (`pickBlank`, `setPlacement`, `setDeckSkin`,
-   * `setTipStyle`, `setFineTuneSurface`, `setFineTune`, `resetFineTune`, `removeBlank`), `updateRailSection`, `toggleTailHardEdge`, `updateFins`,
+   * `updateRocker`, `updateFoil`, the ten blank moves (`pickBlank`, `setPlacement`, `setDeckSkin`,
+   * `setTipStyle`, `setFineTuneSurface`, `setFineTune`, `resetFineTune`, `setThinningStart`,
+   * `setThinningStartAutomatic`, `removeBlank`), `updateRailSection`, `toggleTailHardEdge`, `updateFins`,
    * `updateVolume`, `setFinsImportTemplate`, `toggleRailsImportFoilThickness`, `setBoardName`,
    * `setFinSystem`, the two VOLUME import toggles or `markSaved` — never derived by
    * comparing state against its default — a user who drags a slider back to its default value
@@ -297,7 +305,8 @@ interface DesignContextValue {
    * Switching from one blank to another keeps the existing 12" fine-tunes (D-11) and the board's
    * own cut — its Deck Skin, Tip Style and fine-tune surface (Phase 12, D-01, D-04, D-13); a first
    * pick starts the fine-tunes at 0 and bakes in the live Deck Skin and Tip Style from Fit & Tip
-   * Defaults (picking a blank counts as an edit, D-01), with fine-tunes on the Deck. One undo step. */
+   * Defaults (picking a blank counts as an edit, D-01), with fine-tunes on the Deck. A switch keeps
+   * a Thinning Start set by hand; a first pick starts both tips on Automatic (Phase 14). One undo step. */
   pickBlank: (record: BlankRecord, placement: Mm) => void;
   /** Slides the board along its blank. Stored as given and clamped on read by the side profile,
    * never written back; a drag of the slider coalesces into one undo step like every slider. A no-op
@@ -311,10 +320,10 @@ interface DesignContextValue {
   setDeckSkin: (deckSkin: Mm) => void;
   /** Sets where the tips' extra comes off (Phase 12, D-04) — the board's own Tip Style, stored on
    * its blank: Pin deck takes it off the bottom (the tip rocker grows, or falls when a tip needs
-   * more foam than the cut leaves, D-16), Bottom takes it off the deck. Only the last 12" at each
-   * end re-derives; nothing at or inside the 12" stations moves (SPEC R5). A discrete choice: one
-   * undo step, re-checks the flag, never clears the pick. A no-op with no blank picked, or when the
-   * board already has that style. */
+   * more foam than the cut leaves, D-16), Bottom takes it off the deck. Each tip re-derives from its
+   * tip to its Thinning Starts point (Phase 14, D-07); nothing inside that point moves. A discrete
+   * choice: one undo step, re-checks the flag, never clears the pick. A no-op with no blank picked,
+   * or when the board already has that style. */
   setTipStyle: (tipStyle: TipStyle) => void;
   /** Sets which surface a 12" fine-tune moves (Phase 12, D-13) — stored on the board's blank, Deck
    * for a new board. On the Deck a tweak adds or takes foam on the deck and the rocker stays the
@@ -327,8 +336,18 @@ interface DesignContextValue {
    * that station (the blank's thickness less the Deck Skin and the centre gap). Coalesces per field
    * like a slider. A no-op with no blank picked. */
   setFineTune: (patch: Partial<{ nose12Offset: Mm; tail12Offset: Mm }>) => void;
-  /** Clears both 12" fine-tunes back to 0 (D-11). One undo step. A no-op with no blank picked. */
+  /** Clears both 12" fine-tunes back to 0 (D-11). One undo step. A no-op with no blank picked.
+   * Leaves both Thinning Starts alone (Phase 14, D-06). */
   resetFineTune: () => void;
+  /** Sets where one tip's thinning starts, by hand, as a distance in from that tip (Phase 14, D-11) —
+   * stored on the board's blank. A drag coalesces into one undo step per tip, so dragging the nose
+   * then the tail is two steps. The side profile pulls a stored start inside its reach on read. A
+   * no-op with no blank picked. */
+  setThinningStart: (end: TipEnd, start: Mm) => void;
+  /** Puts one tip back on Automatic (Phase 14, D-11, UI-SPEC §2): removes that tip's stored start,
+   * so the board equals one that never had a start. One undo step per tap; a no-op with no blank
+   * picked or when that tip is already on Automatic (no empty undo step). */
+  setThinningStartAutomatic: (end: TipEnd) => void;
   /** "Remove This Blank" (D-02, UI-SPEC §7): goes back to the hand-set rocker, seeding its four
    * stations and the foil's two 12" thicknesses from the CURRENT side profile so the drawing does
    * not jump. One undo step brings the blank back. */
@@ -783,6 +802,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
                 deckSkin: state.blank.deckSkin,
                 tipStyle: state.blank.tipStyle,
                 fineTuneSurface: state.blank.fineTuneSurface,
+                // Where each tip's thinning starts (Phase 14, Pitfall 5) — absent on Automatic.
+                ...thinningStartsOf(state.blank),
               }
             : null,
       }),
@@ -909,6 +930,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         deckSkin: prev.blank?.deckSkin ?? liveCutRef.current.deckSkin,
         tipStyle: prev.blank?.tipStyle ?? liveCutRef.current.tipStyle,
         fineTuneSurface: prev.blank?.fineTuneSurface ?? DEFAULT_BLANK_CUT.fineTuneSurface,
+        // Switching blanks keeps a Thinning Start set by hand; a first pick has none, so both tips
+        // start on Automatic (Phase 14, UI-SPEC §11).
+        ...thinningStartsOf(prev.blank),
       },
       boardStarted: true,
       dirty: true,
@@ -979,6 +1003,37 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       return prev.blank
         ? { ...prev, blank: { ...prev.blank, nose12Offset: mm(0), tail12Offset: mm(0) }, boardStarted: true, dirty: true }
         : current;
+    });
+  };
+
+  // A slider (Phase 14, D-11) — one coalescing key PER TIP, so a whole drag of one tip's start is
+  // one undo step and dragging the nose then the tail is two.
+  const setThinningStart = (end: TipEnd, start: Mm) => {
+    if (!state.blank) return;
+    noteEdit(`blank:thinningStart:${end}`);
+    const key = end === "nose" ? "noseThinningStart" : "tailThinningStart";
+    setState((current) => {
+      const prev = startedFrom(current, liveTipsRef.current);
+      return prev.blank ? { ...prev, blank: { ...prev.blank, [key]: start }, boardStarted: true, dirty: true } : current;
+    });
+  };
+
+  // A discrete button (Phase 14, D-11, UI-SPEC §2) — noteEdit(null), so each tap is its own undo
+  // step. The stored key is absent exactly when a tip is on Automatic (the parser drops a stored
+  // start that is not a number, 14-09), which is the side profile's own `automatic` flag — so a tap
+  // on a tip already on Automatic writes nothing and leaves no empty undo step. Going back REMOVES
+  // the key from a fresh copy of the blank rather than storing an empty value, so the board equals
+  // one that never had a start.
+  const setThinningStartAutomatic = (end: TipEnd) => {
+    const key = end === "nose" ? "noseThinningStart" : "tailThinningStart";
+    if (!state.blank || state.blank[key] === undefined) return;
+    noteEdit(null);
+    setState((current) => {
+      const prev = startedFrom(current, liveTipsRef.current);
+      if (!prev.blank) return current;
+      const blank: BoardBlank = { ...prev.blank };
+      delete blank[key];
+      return { ...prev, blank, boardStarted: true, dirty: true };
     });
   };
 
@@ -1265,6 +1320,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setFineTuneSurface,
     setFineTune,
     resetFineTune,
+    setThinningStart,
+    setThinningStartAutomatic,
     removeBlank,
     applyPreset,
     applyModel,

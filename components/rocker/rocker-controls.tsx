@@ -61,6 +61,14 @@ import {
   typedFieldBounds,
 } from "@/lib/geometry/measure-display";
 import { ROCKER_LIFT_RANGE_IN, type FiveStationRocker } from "@/lib/geometry/rocker";
+import {
+  automaticButtonLabel,
+  thinningStartHint,
+  thinningStartLine,
+  thinningStartRowLabel,
+  thinningStartSlider,
+} from "@/lib/geometry/blank-reasons";
+import type { TipEnd, TipView } from "@/lib/geometry/tip-taper";
 import { mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { cn } from "@/lib/utils";
 import { TwoOptionToggle } from "@/components/viewer/two-option-toggle";
@@ -106,6 +114,10 @@ interface RockerControlsProps {
   onTipStyle: (tipStyle: TipStyle) => void;
   /** Which surface the board's 12" fine-tunes move (D-13) — one undo step per tap; blank picked only. */
   onFineTuneSurface: (surface: FineTuneSurface) => void;
+  /** Sets where one tip's thinning starts, by hand (Phase 14, D-11) — one undo step per drag per tip. */
+  onThinningStart: (end: TipEnd, start: Mm) => void;
+  /** Puts one tip back on Automatic (D-11) — one undo step; a no-op on a tip already on Automatic. */
+  onThinningStartAutomatic: (end: TipEnd) => void;
   sectionOpen: Record<RockerControlsSectionKey, boolean>;
   onToggleSectionOpen: (key: RockerControlsSectionKey) => void;
 }
@@ -190,6 +202,74 @@ function FineTuneRow({
   );
 }
 
+/**
+ * The Automatic button on a Thinning Starts row's hint line (14-UI-SPEC §2): a text link in the
+ * ↺ Reset Fine-Tune look, minus `self-start` (the hint line centres it) and plus `shrink-0` (a long hint
+ * wraps beside it instead of squeezing it). On Automatic it stays in place, dimmed and inert, so nothing
+ * shifts; the hint beside it says in words what the dimming means.
+ */
+function AutomaticButton({ end, automatic, onPress }: { end: TipEnd; automatic: boolean; onPress: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={automaticButtonLabel(end)}
+      aria-pressed={automatic}
+      aria-disabled={automatic ? "true" : undefined}
+      tabIndex={automatic ? -1 : undefined}
+      onClick={() => {
+        if (!automatic) onPress();
+      }}
+      className={cn(
+        "focus-ring-accent shrink-0 cursor-pointer text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center",
+        automatic && "pointer-events-none opacity-40",
+      )}
+    >
+      Automatic
+    </button>
+  );
+}
+
+/**
+ * One tip's Thinning Starts row (Phase 14, D-09 to D-11, 14-UI-SPEC §1 and §4): the distance in force in
+ * the label, the slider from 6" (left, the tip) to the board's centre (right), the state on the hint
+ * line's left and the Automatic button on its right — and, only for a start set by hand that is too
+ * close to its tip, one sentence in warning ink under it. Everything it shows comes from the side
+ * profile's per-tip view through `lib/geometry/blank-reasons.ts`; it computes and converts nothing.
+ */
+function ThinningStartRow({
+  end,
+  tip,
+  tipSetting,
+  system,
+  onChange,
+  onAutomatic,
+}: {
+  end: TipEnd;
+  tip: TipView;
+  tipSetting: Mm;
+  system: UnitsSystem;
+  onChange: (end: TipEnd, start: Mm) => void;
+  onAutomatic: (end: TipEnd) => void;
+}) {
+  const slider = thinningStartSlider(tip, system);
+  const line = thinningStartLine(end, tip, tipSetting, system);
+  return (
+    <div>
+      <SliderRow
+        label={thinningStartRowLabel(end, tip, system)}
+        value={slider.value}
+        min={slider.min}
+        max={slider.max}
+        step={slider.step}
+        leftHint={thinningStartHint(tip, system)}
+        hintAction={<AutomaticButton end={end} automatic={tip.automatic} onPress={() => onAutomatic(end)} />}
+        onValueChange={(v) => onChange(end, slider.toMm(v))}
+      />
+      {line && <p className="mt-2 text-xs text-surf-warning-ink">{line}</p>}
+    </div>
+  );
+}
+
 export function RockerControls({
   blanks,
   rocker,
@@ -202,6 +282,8 @@ export function RockerControls({
   onResetFineTune,
   onTipStyle,
   onFineTuneSurface,
+  onThinningStart,
+  onThinningStartAutomatic,
   sectionOpen,
   onToggleSectionOpen,
 }: RockerControlsProps) {
@@ -438,6 +520,29 @@ export function RockerControls({
                 />
                 <div className="mt-2 text-xs text-surf-ink-muted font-normal">{TIP_STYLE_HINT[view.cut.tipStyle]}</div>
               </div>
+            )}
+
+            {view && (
+              // Close THICKNESS, nose then tail (D-10): which surface (Tip Style), then where each tip's
+              // thinning starts. Shown only with a blank picked — hidden, not disabled (D-09).
+              <>
+                <ThinningStartRow
+                  end="nose"
+                  tip={view.tips.nose}
+                  tipSetting={foil.noseTip}
+                  system={system}
+                  onChange={onThinningStart}
+                  onAutomatic={onThinningStartAutomatic}
+                />
+                <ThinningStartRow
+                  end="tail"
+                  tip={view.tips.tail}
+                  tipSetting={foil.tailTip}
+                  system={system}
+                  onChange={onThinningStart}
+                  onAutomatic={onThinningStartAutomatic}
+                />
+              </>
             )}
           </div>
         )}
