@@ -360,3 +360,52 @@ describe("the rule chosen by measurement, US Blanks as the muse (R2, R3, R5)", (
     }
   });
 });
+
+describe("the square-root curve's slope (Phase 14 tips, D-28)", () => {
+  // The only numeric literals: the finite-difference step and the agreement it is held to. Every
+  // expected value is computed from the curve itself.
+  const H = 1e-3;
+  const TOLERANCE = 1e-6;
+  const POINTS_PER_INTERVAL = 50;
+
+  it("agrees with a central difference on every curve of every seed blank", () => {
+    let checked = 0;
+    for (const blank of CATALOG) {
+      for (const { name, kind, pick } of ATTRIBUTES) {
+        const curve = prepareRootCurve(knotsOf(blank, pick), kind);
+        // The worst disagreement on this curve, asserted once and named by where it happened.
+        let worst = 0;
+        let worstAt = Number.NaN;
+        for (let k = 0; k < curve.xs.length - 1; k++) {
+          const width = curve.xs[k + 1] - curve.xs[k];
+          for (let i = 1; i <= POINTS_PER_INTERVAL; i++) {
+            const x = curve.xs[k] + (width * i) / (POINTS_PER_INTERVAL + 1);
+            const difference = (curve.sample(x + H) - curve.sample(x - H)) / (2 * H);
+            const miss = Math.abs(curve.slopeAt(x) - difference);
+            if (!(miss <= worst)) {
+              worst = miss;
+              worstAt = x;
+            }
+            checked++;
+          }
+        }
+        expect(worst, `${blank.vendor} ${blank.name} ${name} at ${worstAt}`).toBeLessThan(TOLERANCE);
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it("reads 0 past both ends and for a value that is not a number", () => {
+    for (const blank of CATALOG) {
+      for (const { kind, pick } of ATTRIBUTES) {
+        const curve = prepareRootCurve(knotsOf(blank, pick), kind);
+        if (curve.xs.length === 0) continue;
+        const first = curve.xs[0];
+        const last = curve.xs[curve.xs.length - 1];
+        expect(curve.slopeAt(first - 1)).toBe(0);
+        expect(curve.slopeAt(last + 1)).toBe(0);
+        expect(curve.slopeAt(Number.NaN)).toBe(0);
+      }
+    }
+  });
+});

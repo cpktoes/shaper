@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { pchipMinimum, pchipSlopes, preparePchip, samplePchip, type SplinePoint } from "./pchip";
+import { readSeedCatalog } from "@/lib/blanks/seed-files";
+import type { BlankStation } from "./blank";
+import {
+  pchipMinimum,
+  pchipSlopes,
+  preparePchip,
+  samplePchip,
+  type PreparedPchip,
+  type SplinePoint,
+} from "./pchip";
 
 // The same three curves monotone-spline.test.ts uses, so every assertion there carries over.
 const INCREASING: SplinePoint[] = [
@@ -183,5 +192,83 @@ describe("pchipMinimum", () => {
     for (let x = 3; x <= 17; x += 0.001) dense = Math.min(dense, curve.sample(x));
     expect(pchipMinimum(curve, 3, 17)).toBeLessThanOrEqual(dense + 1e-12);
     expect(pchipMinimum(curve, 3, 17)).toBeCloseTo(dense, 6);
+  });
+});
+
+describe("slopeAt is the curve's own slope (Phase 14 tips)", () => {
+  // The only numeric literals: the finite-difference step and the agreement it is held to. Every
+  // expected value is computed from the curve itself.
+  const H = 1e-3;
+  const TOLERANCE = 1e-6;
+  const POINTS_PER_INTERVAL = 50;
+
+  /**
+   * Checks slopeAt against a central difference at interior points of every interval, asserting the
+   * worst disagreement once (named by where it happened) so the every-blank sweep stays quick.
+   */
+  function expectSlopeMatchesDifference(curve: PreparedPchip, label: string): number {
+    let checked = 0;
+    let worst = 0;
+    let worstAt = Number.NaN;
+    for (let k = 0; k < curve.xs.length - 1; k++) {
+      const width = curve.xs[k + 1] - curve.xs[k];
+      for (let i = 1; i <= POINTS_PER_INTERVAL; i++) {
+        const x = curve.xs[k] + (width * i) / (POINTS_PER_INTERVAL + 1);
+        const difference = (curve.sample(x + H) - curve.sample(x - H)) / (2 * H);
+        const miss = Math.abs(curve.slopeAt(x) - difference);
+        if (!(miss <= worst)) {
+          worst = miss;
+          worstAt = x;
+        }
+        checked++;
+      }
+    }
+    expect(worst, `${label} at ${worstAt}`).toBeLessThan(TOLERANCE);
+    return checked;
+  }
+
+  it("agrees with a central difference on the three test curves, and is each knot's own slope there", () => {
+    for (const [label, points] of [
+      ["increasing", INCREASING],
+      ["decreasing", DECREASING],
+      ["flat", FLAT],
+    ] as const) {
+      const curve = preparePchip(points);
+      expectSlopeMatchesDifference(curve, label);
+      curve.xs.forEach((x, k) => expect(curve.slopeAt(x), `${label} knot ${k}`).toBe(curve.slopes[k]));
+    }
+  });
+
+  it("agrees with a central difference on every rocker, thickness and width curve of every seed blank", () => {
+    const picks: ((s: BlankStation) => number | null)[] = [
+      (s) => s.rockerMm,
+      (s) => s.thicknessMm,
+      (s) => s.widthMm,
+    ];
+    let checked = 0;
+    for (const blank of readSeedCatalog()) {
+      for (const pick of picks) {
+        const points = blank.stations
+          .filter((s) => pick(s) !== null)
+          .map((s) => ({ x: s.fromTailMm as number, y: pick(s) as number }));
+        const curve = preparePchip(points);
+        checked += expectSlopeMatchesDifference(curve, `${blank.vendor} ${blank.name}`);
+        const offKnot = curve.xs.findIndex((x, k) => curve.slopeAt(x) !== curve.slopes[k]);
+        expect(offKnot, `${blank.vendor} ${blank.name} knot`).toBe(-1);
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it("reads 0 past both ends, on curves of fewer than two points, and for a value that is not a number", () => {
+    const curve = preparePchip(INCREASING);
+    const first = curve.xs[0];
+    const last = curve.xs[curve.xs.length - 1];
+    expect(curve.slopeAt(first - 1)).toBe(0);
+    expect(curve.slopeAt(last + 1)).toBe(0);
+    expect(curve.slopeAt(Number.NaN)).toBe(0);
+    expect(curve.slopeAt(Number.POSITIVE_INFINITY)).toBe(0);
+    expect(preparePchip([]).slopeAt(first)).toBe(0);
+    expect(preparePchip([INCREASING[1]]).slopeAt(INCREASING[1].x)).toBe(0);
   });
 });
