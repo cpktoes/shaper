@@ -94,6 +94,9 @@ function Row({
   typed,
   className = "border-b border-surf-line-faint",
   "data-datasheet-thinning": thinning,
+  "data-datasheet-blank-row": blankRow,
+  "data-datasheet-board-row": boardRow,
+  "data-datasheet-foam-off": foamOff,
   children,
 }: {
   label: string;
@@ -101,10 +104,22 @@ function Row({
   className?: string;
   /** Marks the THINNING STARTS row, for the browser tests. */
   "data-datasheet-thinning"?: boolean;
+  /** Marks a BLANK row, for the browser tests. */
+  "data-datasheet-blank-row"?: "rocker" | "thickness" | "width";
+  /** Marks the YOUR BOARD Rocker row, for the browser tests. */
+  "data-datasheet-board-row"?: "rocker";
+  /** Marks a FOAM OFF row, for the browser tests. */
+  "data-datasheet-foam-off"?: "deck" | "bottom";
   children: ReactNode;
 }) {
   return (
-    <div className={`flex items-center gap-2 py-1.5 ${className}`} data-datasheet-thinning={thinning || undefined}>
+    <div
+      className={`flex items-center gap-2 py-1.5 ${className}`}
+      data-datasheet-thinning={thinning || undefined}
+      data-datasheet-blank-row={blankRow}
+      data-datasheet-board-row={boardRow}
+      data-datasheet-foam-off={foamOff}
+    >
       <div className={`${LABEL_CELL} text-sm font-normal ${typed ? "text-surf-ink" : "text-surf-ink-muted"}`}>
         {label}
       </div>
@@ -144,6 +159,18 @@ export function RockerDatasheet({
   const markCell = (key: FoilStationKey, value: Mm) => (
     <div key={key} className={READ_ONLY_CELL}>
       {formatMarkBare(value, system)}
+    </div>
+  );
+
+  /** A BLANK cell: the catalogue's own printed number, read-only. A null (the catalogue prints
+   * nothing there) reads an em dash in the same muted ink — never a number from the curve. */
+  const printedCell = (
+    key: FoilStationKey,
+    value: Mm | null,
+    format: (value: Mm, system: UnitsSystem) => string,
+  ) => (
+    <div key={key} className={READ_ONLY_CELL}>
+      {value === null ? "—" : format(value, system)}
     </div>
   );
 
@@ -235,22 +262,18 @@ export function RockerDatasheet({
           {blank ? (
             <>
               <GroupLabel>{`BLANK — ${blank.record.vendor} ${blank.record.name}`.toUpperCase()}</GroupLabel>
-              <Row label={`Rocker${markSuffix}`} typed={false}>
-                {stations.map((s) => markCell(s.key, blank.blankAtStations[s.key].rocker))}
+              <Row label={`Rocker${markSuffix}`} typed={false} data-datasheet-blank-row="rocker">
+                {stations.map((s) => printedCell(s.key, blank.printed[s.key].rocker, formatMarkBare))}
               </Row>
-              <Row label={`Thickness${markSuffix}`} typed={false}>
-                {stations.map((s) => markCell(s.key, blank.blankAtStations[s.key].thickness))}
+              <Row label={`Thickness${markSuffix}`} typed={false} data-datasheet-blank-row="thickness">
+                {stations.map((s) => printedCell(s.key, blank.printed[s.key].thickness, formatMarkBare))}
               </Row>
-              <Row label={`Width${dimSuffix}`} typed={false}>
-                {stations.map((s) => (
-                  <div key={s.key} className={READ_ONLY_CELL}>
-                    {formatDimBare(blank.blankAtStations[s.key].width, system)}
-                  </div>
-                ))}
+              <Row label={`Width${dimSuffix}`} typed={false} data-datasheet-blank-row="width">
+                {stations.map((s) => printedCell(s.key, blank.printed[s.key].width, formatDimBare))}
               </Row>
 
               <GroupLabel>YOUR BOARD</GroupLabel>
-              <Row label={`Rocker${markSuffix}`} typed={false}>
+              <Row label={`Rocker${markSuffix}`} typed={false} data-datasheet-board-row="rocker">
                 {stations.map((s) => markCell(s.key, profile.stationRocker[s.key]))}
               </Row>
               {/* Thickness: the centre and the two tips are the board's own stored values, typed
@@ -273,10 +296,10 @@ export function RockerDatasheet({
                   supplier reads the blank, the board and the cut between them side by side. The
                   FOAM OFF label does the separating job the old single row's heavier rule did. */}
               <GroupLabel>FOAM OFF</GroupLabel>
-              <Row label={`Deck${markSuffix}`} typed={false}>
+              <Row label={`Deck${markSuffix}`} typed={false} data-datasheet-foam-off="deck">
                 {stations.map((s) => foamOffCell(s.key, blank.foamOffDeck[s.key]))}
               </Row>
-              <Row label={`Bottom${markSuffix}`} typed={false}>
+              <Row label={`Bottom${markSuffix}`} typed={false} data-datasheet-foam-off="bottom">
                 {stations.map((s) => foamOffCell(s.key, blank.foamOffBottom[s.key]))}
               </Row>
 

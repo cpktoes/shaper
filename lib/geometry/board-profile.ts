@@ -13,7 +13,7 @@
  *   `boardOnBlank`, and also carries the blank's own silhouette in the board's coordinates — its
  *   deck the skin above the board's deck, its bottom the centre gap below the board's un-thinned
  *   bottom — the foam to come off the deck and off the bottom at each station, the blank's own
- *   numbers under each station (the DATASHEET's blank rows), and each tip's Thinning Starts point as
+ *   printed numbers at its catalogue's five stations (the DATASHEET's blank rows), and each tip's Thinning Starts point as
  *   `boardOnBlank` resolved it (`tips`, Phase 14 D-12) — so every screen reads where each tip's
  *   thinning starts, and why, without working anything out itself.
  *
@@ -43,6 +43,47 @@ import { type FiveStationRocker, ROCKER_LIFT_RANGE_IN, fallbackRockerPoints, roc
 import { type CurveRule, prepareRootCurve } from "./root-curve";
 import type { TipView } from "./tip-taper";
 import { type Mm, inchesToMm, mm } from "./units";
+
+/**
+ * The catalogue's own station names, and the DATASHEET column each one fills: N0 is the nose tip,
+ * N12 is 12 inches in from it, C is the centre, T12 is 12 inches in from the tail tip and T0 is the
+ * tail tip itself.
+ */
+export const CATALOG_STATION_LABELS: Record<FoilStationKey, string> = {
+  noseTip: "N0",
+  nose12: "N12",
+  center: "C",
+  tail12: "T12",
+  tailTip: "T0",
+};
+
+/**
+ * One blank station's numbers exactly as the catalogue prints them: rocker before any levelling,
+ * thickness, and the full width. Null where the catalogue prints no number.
+ */
+export interface PrintedBlankValues {
+  rocker: Mm | null;
+  thickness: Mm | null;
+  width: Mm | null;
+}
+
+/**
+ * The blank's own printed rocker, thickness and width at the catalogue's N0 / N12 / C / T12 / T0
+ * stations, picked by label from the record — no arithmetic, no estimate from the curve. The
+ * DATASHEET's BLANK block shows the page's own numbers whatever the board's length or placement
+ * (the founder's call, 2026-10-03). All three are null when the blank has no such station (Marko
+ * Foam's 10'2" M prints no N12 or T12) or the cell is empty; a stored 0 stays 0.
+ */
+export function printedBlankStations(record: BlankRecord): Record<FoilStationKey, PrintedBlankValues> {
+  const out = {} as Record<FoilStationKey, PrintedBlankValues>;
+  for (const key of Object.keys(CATALOG_STATION_LABELS) as FoilStationKey[]) {
+    const station = record.stations.find((s) => s.label === CATALOG_STATION_LABELS[key]);
+    out[key] = station
+      ? { rocker: station.rockerMm, thickness: station.thicknessMm, width: station.widthMm }
+      : { rocker: null, thickness: null, width: null };
+  }
+  return out;
+}
 
 /** A board's blank as the side view and the DATASHEET need it — every station in the BOARD's
  * coordinates (0 = the board's tail tip). */
@@ -75,9 +116,10 @@ export interface BlankSideView {
   foamOffDeck: Record<FoilStationKey, Mm>;
   /** Foam off the bottom at each of the board's five stations (`BoardOnBlank.bottomOffAt`). */
   foamOffBottom: Record<FoilStationKey, Mm>;
-  /** The blank's own rocker (levelled on the blank's own low point), thickness and full width at
-   * the point under each of the board's five stations — the DATASHEET's blank rows (D-16). */
-  blankAtStations: Record<FoilStationKey, { rocker: Mm; thickness: Mm; width: Mm }>;
+  /** The blank's own printed numbers at its catalogue's N0 / N12 / C / T12 / T0 stations — the
+   * DATASHEET's blank rows. Independent of the board's length and placement, and read from this
+   * view's own `record`, never the blank table. */
+  printed: Record<FoilStationKey, PrintedBlankValues>;
   /** Every station the catalogue measured for rocker and for thickness, tail to nose, in board
    * coordinates — the measuring-points overlay's blank dots (D-15). */
   measuredStations: { rocker: Mm[]; thickness: Mm[] };
@@ -216,11 +258,7 @@ export function buildBlankProfile(
     },
     foamOffDeck: stationRecord(stations, (s) => mm(onBlank.deckOffAt(s))),
     foamOffBottom: stationRecord(stations, (s) => mm(onBlank.bottomOffAt(s))),
-    blankAtStations: stationRecord(stations, (s) => ({
-      rocker: mm(onBlank.blankRockerAt(s)),
-      thickness: mm(onBlank.blankThicknessAt(s)),
-      width: mm(onBlank.blankWidthAt(s)),
-    })),
+    printed: printedBlankStations(prepared.record),
     measuredStations: {
       rocker: measured((station) => station.rockerMm),
       thickness: measured((station) => station.thicknessMm),
