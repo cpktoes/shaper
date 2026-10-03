@@ -1,18 +1,27 @@
 import { describe, expect, it } from "vitest";
+import { isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { buildStressSet, STRESS_FIT_SETTINGS, type StressCase } from "./__fixtures__/phase14-stress-set";
-import type { BlankRecord } from "./blank";
+import { DEFAULT_BLANK_CUT, type BlankRecord } from "./blank";
 import {
   boardOnBlank,
   FIT_EPSILON_MM,
   fitAt,
+  judgeBlank,
   MIN_FOIL_THICKNESS_MM,
   prepareBlank,
+  runsOutCause,
+  type BoardFitContext,
   type BoardOnBlank,
+  type BoardOnBlankInput,
 } from "./blank-fit";
-import { MEASURE_STATION_MM } from "./outline";
+import { formatShortfall } from "./blank-reasons";
+import { DEFAULT_BOARD_SPEC } from "./board";
+import { DEFAULT_FOIL_SPEC } from "./foil";
+import { buildOutline, MEASURE_STATION_MM, sampleOutline } from "./outline";
 import { rockerStationPositions } from "./rocker";
-import { inchesToMm, mm } from "./units";
+import { THINNING_START_MIN_MM } from "./tip-taper";
+import { inchesToMm, mm, type Mm } from "./units";
 
 // The tips step (Phase 14 D-01, D-03, D-14, D-27) proven on the stress set the research built —
 // every pickable blank, a board 2" shorter, four centres, slid to either end and centred — and again
@@ -262,3 +271,148 @@ describe(
     }
   },
 );
+
+// ---------------------------------------------------------------------------------------------
+// Plan 14-13: the runs-out reason, Automatic's independence and smoothness, and the list's cost.
+// ---------------------------------------------------------------------------------------------
+
+/** The least foam a board may be anywhere, with the fit check's own slack — as `runsOutCause` reads it. */
+const FLOOR_MM = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
+const SIXTEENTH_MM = inchesToMm(1 / 16);
+
+/** The default outline at a length and centre, out-of-the-box tips and cut, no fine-tunes, on Automatic. */
+function defaultContext(length: Mm, centre: Mm): BoardFitContext {
+  const geometry = buildOutline({ ...DEFAULT_BOARD_SPEC.outline, length });
+  return {
+    board: {
+      length,
+      centerThickness: centre,
+      noseTip: DEFAULT_FOIL_SPEC.noseTip,
+      tailTip: DEFAULT_FOIL_SPEC.tailTip,
+      nose12Offset: mm(0),
+      tail12Offset: mm(0),
+      ...DEFAULT_BLANK_CUT,
+    },
+    halfWidthAt: (s: Mm) => sampleOutline(geometry, s),
+    widePointStation: geometry.widePointStation,
+  };
+}
+
+/** Every pickable blank in the catalogue, prepared once on the live rule. */
+const PREPARED = CATALOG.filter(isPickable).map((record) => prepareBlank(record));
+
+interface RunsOutVerdict {
+  label: string;
+  onBlank: BoardOnBlank;
+  station: number;
+  cause: string | undefined;
+  reason: string;
+}
+
+/** The runs-out verdicts the whole catalogue gives a board, each with its board laid where it was judged. */
+function runsOutVerdicts(ctx: BoardFitContext): RunsOutVerdict[] {
+  const out: RunsOutVerdict[] = [];
+  const copyBoard = { length: ctx.board.length, widePointStation: ctx.widePointStation, centerThickness: ctx.board.centerThickness };
+  for (const prepared of PREPARED) {
+    const verdict = judgeBlank(prepared, ctx, STRESS_FIT_SETTINGS);
+    if (verdict.fits || verdict.worst.kind !== "runsOut") continue;
+    out.push({
+      label: `${prepared.record.vendor}|${prepared.record.name}`,
+      onBlank: boardOnBlank(prepared, ctx.board, verdict.placement),
+      station: verdict.worst.station,
+      cause: verdict.worst.cause,
+      reason: formatShortfall(verdict.worst, copyBoard, "imperial"),
+    });
+  }
+  return out;
+}
+
+describe("the runs-out reason names a start set too close (UI-SPEC §10)", () => {
+  it("a tail tip set under the floor reads tipSetting anywhere inside that tip's own taper — past 12\" too, when Automatic starts further in", () => {
+    // A tail tip a sixteenth under the floor on every stress board; those whose Automatic tail start
+    // is past 12" are classified at a station between 12" and that start, where the old 12" reading
+    // would have said thinCenter.
+    let checked = 0;
+    for (const { prepared, board, placement, label } of ALL) {
+      const thin: BoardOnBlankInput = { ...board, tailTip: mm(MIN_FOIL_THICKNESS_MM - SIXTEENTH_MM) };
+      const onBlank = boardOnBlank(prepared, thin, placement);
+      expect(onBlank.tips.tail.automatic).toBe(true);
+      const start = onBlank.tips.tail.fromTip;
+      if (!(start > MEASURE_STATION_MM + EXACT_MM)) continue;
+      const station = (MEASURE_STATION_MM + start) / 2;
+      expect(runsOutCause(onBlank, station), label).toBe("tipSetting");
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(0);
+  }, SLOW);
+
+  it("a good tip with its start set by hand at 6\" runs out at that start and reads thinningStart; a runs-out at the other end, left on Automatic, never blames it — the reason names the end that caused it", () => {
+    // The default 72" board at a 1" centre: on Automatic it runs out nowhere in the catalogue (D-20).
+    const ctx = defaultContext(inchesToMm(72), inchesToMm(1));
+    const L = ctx.board.length;
+    for (const end of ["tail", "nose"] as const) {
+      const key = end === "tail" ? "tailThinningStart" : "noseThinningStart";
+      const byHand: BoardFitContext = { ...ctx, board: { ...ctx.board, [key]: THINNING_START_MIN_MM } };
+      const verdicts = runsOutVerdicts(byHand);
+      expect(end === "tail" ? byHand.board.tailTip : byHand.board.noseTip).toBeGreaterThanOrEqual(FLOOR_MM);
+      // A blank whose nearest-to-fitting placement slides the board until the end left on Automatic
+      // runs out on its own is that end's reason, never the start set by hand at the other end.
+      const atHandSetEnd = verdicts.filter((v) => (end === "tail" ? v.station < L / 2 : v.station > L / 2));
+      const atOtherEnd = verdicts.filter((v) => !atHandSetEnd.includes(v));
+      expect(atHandSetEnd.length).toBeGreaterThan(atOtherEnd.length);
+      for (const v of atOtherEnd) expect(v.cause, v.label).not.toBe("thinningStart");
+      for (const v of atHandSetEnd) {
+        const view = v.onBlank.tips[end];
+        expect(view.automatic, v.label).toBe(false);
+        expect(view.fromTip, v.label).toBe(THINNING_START_MIN_MM);
+        // Where the hand-set start decides the thickness: at that start or nearer the tip.
+        const fromThatTip = end === "tail" ? v.station : L - v.station;
+        expect(fromThatTip, v.label).toBeLessThanOrEqual(view.fromTip + EXACT_MM);
+        expect(v.onBlank.derivedThicknessAt(v.station), v.label).toBeLessThan(FLOOR_MM);
+        expect(v.onBlank.automaticThicknessAt(v.station), v.label).toBeGreaterThanOrEqual(FLOOR_MM);
+        expect(v.cause, v.label).toBe("thinningStart");
+        expect(v.reason.endsWith(`— your ${end} thinning starts too close to the tip`), v.reason).toBe(true);
+      }
+    }
+  }, SLOW);
+
+  it("a negative 12\" fine-tune on a start set by hand at 12\" keeps its own blame: fineTune, not thinningStart", () => {
+    // Both starts set by hand at the 12" station, a nose tweak that takes the 12" station a sixteenth
+    // under the floor: the start set by hand is not what leaves too little there.
+    let checked = 0;
+    for (const { prepared, board, placement, label } of ALL.filter((entry) => entry.place === "centre")) {
+      const at12: BoardOnBlankInput = {
+        ...board,
+        noseThinningStart: MEASURE_STATION_MM,
+        tailThinningStart: MEASURE_STATION_MM,
+      };
+      const station = board.length - MEASURE_STATION_MM;
+      const untweaked = boardOnBlank(prepared, at12, placement);
+      if (untweaked.derivedThicknessAt(station) < FLOOR_MM) continue;
+      const nose12Offset = mm(MIN_FOIL_THICKNESS_MM - SIXTEENTH_MM - untweaked.derivedThicknessAt(station));
+      const onBlank = boardOnBlank(prepared, { ...at12, nose12Offset }, placement);
+      expect(onBlank.thicknessAt(station), label).toBeLessThan(FLOOR_MM);
+      expect(runsOutCause(onBlank, station), label).toBe("fineTune");
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(0);
+  }, SLOW);
+
+  it("a board that still runs out where Automatic finds no steady start keeps thinCenter — on Automatic and with a start set by hand alike", () => {
+    // A centre a sixteenth over the floor: the parallel cut is under the tip settings everywhere off
+    // the centre, so Automatic finds no steady start and the board runs out on the parallel cut itself.
+    const ctx = defaultContext(inchesToMm(72), mm(MIN_FOIL_THICKNESS_MM + SIXTEENTH_MM));
+    const verdicts = runsOutVerdicts(ctx);
+    expect(verdicts.length).toBeGreaterThan(0);
+    for (const v of verdicts) {
+      expect(v.onBlank.automaticThicknessAt(v.station), v.label).toBeLessThan(FLOOR_MM);
+      expect(v.cause, v.label).toBe("thinCenter");
+      // The same board with the start at that end set by hand at 6": Automatic would not have had
+      // enough foam there either, so the start is not blamed.
+      const key = v.station <= ctx.board.length / 2 ? "tailThinningStart" : "noseThinningStart";
+      const byHand = boardOnBlank(v.onBlank.prepared, { ...ctx.board, [key]: THINNING_START_MIN_MM }, v.onBlank.placement);
+      expect(runsOutCause(byHand, v.station), v.label).toBe("thinCenter");
+    }
+    expect(verdicts.some((v) => !v.onBlank.tips.tail.automaticFound || !v.onBlank.tips.nose.automaticFound)).toBe(true);
+  }, SLOW);
+});

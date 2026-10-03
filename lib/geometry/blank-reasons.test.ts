@@ -209,6 +209,22 @@ describe("formatShortfall — the foil runs out, by cause (D-18, FD-4 Phase 13 i
       );
     });
 
+    it("(e) thinningStart: names the tip whose start set by hand is too close, at either end (Phase 14 D-05, UI-SPEC §10)", () => {
+      const fromNose = inchesToMm(18);
+      const text = read(L - fromNose, "thinningStart");
+      expect(text).toBe(
+        `Less than ${least} would be left ${formatDim(fromNose, system)} from the nose — your nose thinning starts too close to the tip`,
+      );
+      expect(text.endsWith(".")).toBe(false);
+      expect(read(inchesToMm(6), "thinningStart")).toBe(
+        `Less than ${least} would be left ${formatDim(inchesToMm(6), system)} from the tail — your tail thinning starts too close to the tip`,
+      );
+      // The clause adds no value of its own: only the where-phrase and the end change.
+      expect(read(MEASURE_STATION_MM, "thinningStart")).toBe(
+        `Less than ${least} would be left ${stationLabel(system)} from the tail — your tail thinning starts too close to the tip`,
+      );
+    });
+
     it("names the place with the same vocabulary as every other reason", () => {
       expect(read(0, "thinCenter")).toBe(`Less than ${least} would be left at the tail tip — ${tooThick}`);
       expect(read(L / 2, "thinCenter")).toBe(`Less than ${least} would be left at the center — ${tooThick}`);
@@ -228,7 +244,7 @@ describe("formatShortfall — the foil runs out, by cause (D-18, FD-4 Phase 13 i
     });
 
     it("no runs-out sentence ends in a full stop, whatever the cause", () => {
-      for (const cause of [undefined, "thinCenter", "fineTune", "offBlank", "tipSetting"] as const) {
+      for (const cause of [undefined, "thinCenter", "fineTune", "offBlank", "tipSetting", "thinningStart"] as const) {
         expect(read(L - MEASURE_STATION_MM, cause).endsWith(".")).toBe(false);
       }
     });
@@ -242,6 +258,18 @@ describe("formatShortfall — the foil runs out, by cause (D-18, FD-4 Phase 13 i
         expect(formatShortfall(shortfall(kind, station, over), thinCentre, system)).not.toContain("center");
       }
     });
+  });
+});
+
+describe("the runs-out clause for a start set too close — the 14-UI-SPEC §10 example", () => {
+  it("reads the contract's own sentence in both systems, 18\" from the nose of a 72\" board", () => {
+    const worst = shortfall("runsOut", L - inchesToMm(18), inchesToMm(1 / 32), "thinningStart");
+    expect(formatShortfall(worst, BOARD, "imperial")).toBe(
+      `Less than 1/4" would be left 18" from the nose — your nose thinning starts too close to the tip`,
+    );
+    expect(formatShortfall(worst, BOARD, "metric")).toBe(
+      `Less than 6 mm would be left 45.7 cm from the nose — your nose thinning starts too close to the tip`,
+    );
   });
 });
 

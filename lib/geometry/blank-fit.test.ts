@@ -1597,8 +1597,11 @@ describe("a board under 1/4\" thick anywhere does not fit (D-18, raised in Phase
 });
 
 describe("the runs-out reason names its cause (Phase 13 item 4)", () => {
-  it("(a) a thin centre in a thick blank: every runs-out verdict on the default 1\" centre board carries cause thinCenter", () => {
-    // Both starts set by hand at 6" — on Automatic this board no longer runs out anywhere (D-20).
+  it("(a) a thin centre in a thick blank, both starts set by hand at 6\": every runs-out verdict on the default 1\" centre board names the start (thinningStart)", () => {
+    // Until Phase 14 this was the thinCenter case: a 1" centre in a thick blank leaves too little foam
+    // near the tips. With both starts set by hand at 6" the board runs out at the start itself, and
+    // on Automatic it does not run out anywhere (D-20) — so since D-05 the true reason is the start
+    // set too close to the tip. thinCenter stays reachable (tip-flow.test.ts, UI-SPEC §10).
     const ctx = startsAtSix(defaultContext(72, 1));
     let runsOut = 0;
     for (const prepared of PREPARED_ALL) {
@@ -1606,7 +1609,7 @@ describe("the runs-out reason names its cause (Phase 13 item 4)", () => {
       const verdict = judgeBlank(prepared, ctx, DEFAULT_SETTINGS);
       if (verdict.fits || verdict.worst.kind !== "runsOut") continue;
       runsOut++;
-      expect(verdict.worst.cause).toBe("thinCenter");
+      expect(verdict.worst.cause).toBe("thinningStart");
     }
     expect(runsOut).toBeGreaterThan(0);
   });
@@ -1648,7 +1651,11 @@ describe("the runs-out reason names its cause (Phase 13 item 4)", () => {
         tail12Offset: mm(-inchesToMm(1 / 16)),
       };
       const onBlank = boardOnBlank(verdict.prepared, tweaked, verdict.placement);
-      expect(runsOutCause(onBlank, verdict.worst.station)).toBe("thinCenter");
+      // The tweak never takes the blame; the board keeps the reason it had without it (since Phase
+      // 14 D-05 that is the start set by hand at 6", where it was thinCenter before).
+      const cause = runsOutCause(onBlank, verdict.worst.station);
+      expect(cause).not.toBe("fineTune");
+      expect(cause).toBe(verdict.worst.cause);
       checked++;
     }
     expect(checked).toBeGreaterThan(0);
