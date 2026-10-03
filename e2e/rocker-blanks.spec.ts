@@ -326,6 +326,50 @@ async function thinningRowCells(page: Page): Promise<string[]> {
   return (await row.locator(":scope > div").allInnerTexts()).map((text) => text.trim());
 }
 
+/**
+ * Where the DATASHEET's NOSE TIP and TAIL TIP columns sit, read off its own header row (an empty label
+ * cell, then the five station names), so a cell is checked against the column it is drawn under.
+ */
+async function tipColumns(page: Page): Promise<{ nose: number; tail: number }> {
+  const table = page.locator("main .overflow-x-auto").filter({ hasText: "FOAM OFF" });
+  const header = table.getByText(/^nose tip$/i).locator("xpath=..");
+  const names = (await header.locator(":scope > div").allTextContents()).map((text) => text.trim().toLowerCase());
+  const nose = names.indexOf("nose tip");
+  const tail = names.indexOf("tail tip");
+  expect(nose, `header cells: ${names.join(" | ")}`).toBeGreaterThan(0);
+  expect(tail, `header cells: ${names.join(" | ")}`).toBeGreaterThan(0);
+  return { nose, tail };
+}
+
+/** A Thinning Starts row's label line in the sidebar (`Tail Thinning Starts — 12"`). */
+function startLabel(page: Page, end: "nose" | "tail"): Locator {
+  return page.getByText(new RegExp(`^${end === "nose" ? "Nose" : "Tail"} Thinning Starts — `));
+}
+
+/** The distance a label line carries after its ` — `. */
+function distanceOf(label: string): string {
+  const at = label.indexOf(" — ");
+  if (at < 0) throw new Error(`no distance in "${label}"`);
+  return label.slice(at + 3);
+}
+
+/**
+ * Sets the tail's start by hand to the far end of its slider (the board's centre), so the two starts
+ * differ, and returns both distances as the sidebar's labels print them.
+ */
+async function tailStartToFarEnd(page: Page): Promise<{ nose: string; tail: string }> {
+  const label = startLabel(page, "tail");
+  const before = await label.innerText();
+  const slider = label.locator("xpath=..").getByRole("slider");
+  await slider.focus();
+  await slider.press("End");
+  await expect(label).not.toHaveText(before);
+  const nose = distanceOf(await startLabel(page, "nose").innerText());
+  const tail = distanceOf(await label.innerText());
+  expect(tail, "the two starts differ, so a swap cannot pass").not.toBe(nose);
+  return { nose, tail };
+}
+
 test.describe("ROCKER — the DATASHEET beside a blank, one undo after Remove, and Metric in millimetres (11-12)", () => {
   test.beforeEach(async ({ page }) => {
     await dismissChrome(page);
@@ -359,6 +403,10 @@ test.describe("ROCKER — the DATASHEET beside a blank, one undo after Remove, a
   }) => {
     await openRocker(page);
     await pickFirstFittingBlank(page);
+    // The tail set by hand to the far end of its slider, so the two starts differ.
+    const sidebar = await tailStartToFarEnd(page);
+    // The drawing names each tip's own start.
+    await expect(async () => expect(await thinningStartsFromDrawing(page)).toEqual(sidebar)).toPass();
     const { nose, tail } = await thinningStartsFromDrawing(page);
     await page.getByRole("tab", { name: "DATASHEET" }).click();
 
@@ -372,20 +420,29 @@ test.describe("ROCKER — the DATASHEET beside a blank, one undo after Remove, a
 
     const cells = await thinningRowCells(page);
     expect(cells).toEqual(["From tip", nose, "", "", "", tail]);
+    // The nose's start under NOSE TIP and the tail's under TAIL TIP, by the header's own columns.
+    const columns = await tipColumns(page);
+    expect(cells[columns.nose]).toBe(sidebar.nose);
+    expect(cells[columns.tail]).toBe(sidebar.tail);
   });
 
   test("in Metric the THINNING STARTS row reads From tip (cm) and the two starts in bare centimetres", async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
     await openRocker(page);
     await pickFirstFittingBlank(page);
+    const sidebar = await tailStartToFarEnd(page);
+    // The drawing names each start in centimetres (a dim, never `305 mm`), each tip its own.
+    await expect(async () => expect(await thinningStartsFromDrawing(page)).toEqual(sidebar)).toPass();
     const { nose, tail } = await thinningStartsFromDrawing(page);
-    // The drawing names each start in centimetres (a dim, never `305 mm`).
     expect(nose).toMatch(/^\d+\.\d cm$/);
     expect(tail).toMatch(/^\d+\.\d cm$/);
     await page.getByRole("tab", { name: "DATASHEET" }).click();
 
     const cells = await thinningRowCells(page);
     expect(cells).toEqual(["From tip (cm)", nose.replace(/ cm$/, ""), "", "", "", tail.replace(/ cm$/, "")]);
+    const columns = await tipColumns(page);
+    expect(cells[columns.nose]).toBe(sidebar.nose.replace(/ cm$/, ""));
+    expect(cells[columns.tail]).toBe(sidebar.tail.replace(/ cm$/, ""));
   });
 
   test("with no blank the DATASHEET has no THINNING STARTS block", async ({ page }) => {

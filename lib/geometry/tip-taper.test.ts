@@ -297,10 +297,8 @@ describe(`Automatic: 12" unless the board cannot run down steadily, then the fir
       }
     }
   });
-
-  it("reads only the planer cut, the tip setting and the length: no fine-tune, Deck Skin or Tip Style (D-04)", () => {
-    expect(automaticStart.length).toBe(3);
-  });
+  // That Automatic ignores the fine-tune, Deck Skin and Tip Style (D-04) is proven on the stress set in
+  // tip-flow.test.ts, by comparing its starts across those settings.
 });
 
 describe("the slider's reach, pulled on read (D-02, D-11)", () => {
