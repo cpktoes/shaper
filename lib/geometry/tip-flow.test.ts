@@ -4,6 +4,7 @@ import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { buildStressSet, STRESS_FIT_SETTINGS, type StressCase } from "./__fixtures__/phase14-stress-set";
 import { DEFAULT_BLANK_CUT, type BlankRecord } from "./blank";
 import {
+  blankStationOf,
   boardOnBlank,
   FIT_EPSILON_MM,
   fitAt,
@@ -20,7 +21,7 @@ import { DEFAULT_BOARD_SPEC } from "./board";
 import { DEFAULT_FOIL_SPEC } from "./foil";
 import { buildOutline, MEASURE_STATION_MM, sampleOutline } from "./outline";
 import { rockerStationPositions } from "./rocker";
-import { THINNING_START_MIN_MM } from "./tip-taper";
+import { automaticStart, THINNING_START_MIN_MM, type PlanerCut } from "./tip-taper";
 import { inchesToMm, mm, type Mm } from "./units";
 
 // The tips step (Phase 14 D-01, D-03, D-14, D-27) proven on the stress set the research built —
@@ -414,5 +415,208 @@ describe("the runs-out reason names a start set too close (UI-SPEC §10)", () =>
       expect(runsOutCause(byHand, v.station), v.label).toBe("thinCenter");
     }
     expect(verdicts.some((v) => !v.onBlank.tips.tail.automaticFound || !v.onBlank.tips.nose.automaticFound)).toBe(true);
+  }, SLOW);
+});
+
+/** Whether Automatic moved this tip's start further in than the 12" station. */
+const movedIn = (start: number) => start - MEASURE_STATION_MM > EXACT_MM;
+
+/** The stress boards on whose placement Automatic starts at least one tip further in than 12". */
+function movedInCases(): { entry: StressCase; onBlank: BoardOnBlank }[] {
+  return ALL.map((entry) => ({ entry, onBlank: boardOnBlank(entry.prepared, entry.board, entry.placement) })).filter(
+    ({ onBlank }) => movedIn(onBlank.tips.tail.automaticStart) || movedIn(onBlank.tips.nose.automaticStart),
+  );
+}
+
+/** The four 1/4" stations from tail tip to nose tip, the nose tip included. */
+function quarterStations(length: number): number[] {
+  const step = inchesToMm(1 / 4);
+  const out: number[] = [];
+  for (let k = 0; k * step <= length + 1e-9; k++) out.push(Math.min(length, k * step));
+  if (out[out.length - 1] < length) out.push(length);
+  return out;
+}
+
+describe("Automatic reads only the planer cut, and the tweak, the skin and Tip Style keep their meanings (D-04, D-23, R7)", () => {
+  const EIGHTH_MM = inchesToMm(1 / 8);
+  const TWEAKS: readonly { nose: number; tail: number }[] = [
+    { nose: 0, tail: 0 },
+    { nose: EIGHTH_MM, tail: EIGHTH_MM },
+    { nose: -EIGHTH_MM, tail: -EIGHTH_MM },
+    { nose: EIGHTH_MM, tail: -EIGHTH_MM },
+    { nose: -EIGHTH_MM, tail: EIGHTH_MM },
+  ];
+
+  it("each tip's Automatic start is identical across Tip Style, Deck Skin, the fine-tune surface and both 12\" tweaks, on every stress board whose start moved in past 12\"", () => {
+    const cases = movedInCases();
+    expect(cases.length).toBeGreaterThan(0);
+    const moved: string[] = [];
+    for (const { entry, onBlank } of cases) {
+      const want = [onBlank.tips.tail.automaticStart, onBlank.tips.nose.automaticStart];
+      for (const tipStyle of ["pinDeck", "bottom"] as const) {
+        for (const deckSkin of [inchesToMm(1 / 8), inchesToMm(1 / 4)]) {
+          for (const fineTuneSurface of ["deck", "bottom"] as const) {
+            for (const { nose, tail } of TWEAKS) {
+              const board: BoardOnBlankInput = {
+                ...entry.board,
+                tipStyle,
+                deckSkin: mm(deckSkin),
+                fineTuneSurface,
+                nose12Offset: mm(nose),
+                tail12Offset: mm(tail),
+              };
+              const got = boardOnBlank(entry.prepared, board, entry.placement).tips;
+              if (!Object.is(got.tail.automaticStart, want[0]) || !Object.is(got.nose.automaticStart, want[1])) {
+                moved.push(`${entry.label} ${tipStyle} skin ${deckSkin} ${fineTuneSurface} tweaks ${nose}/${tail}`);
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(listed(moved)).toEqual([]);
+  }, SLOW);
+
+  it("a 12\" tweak on a start moved in past 12\" is a nudge on top of the taper: the 12\" thickness is the taper's plus the tweak, on either surface", () => {
+    let checked = 0;
+    for (const { entry, onBlank: untweaked } of movedInCases()) {
+      const L = entry.board.length;
+      const ends = [
+        { moved: movedIn(untweaked.tips.tail.fromTip), station: MEASURE_STATION_MM, key: "tail12Offset" as const },
+        { moved: movedIn(untweaked.tips.nose.fromTip), station: L - MEASURE_STATION_MM, key: "nose12Offset" as const },
+      ];
+      for (const { moved, station, key } of ends) {
+        if (!moved) continue;
+        // The taper, not the planer cut, sets the 12" thickness on this tip.
+        expect(untweaked.tipThinningAt(station), entry.label).not.toBe(0);
+        for (const fineTuneSurface of ["deck", "bottom"] as const) {
+          for (const tweak of [EIGHTH_MM, -EIGHTH_MM]) {
+            const tweaked = boardOnBlank(
+              entry.prepared,
+              { ...entry.board, fineTuneSurface, [key]: mm(tweak) },
+              entry.placement,
+            );
+            expect(tweaked.tips.tail.fromTip, entry.label).toBe(untweaked.tips.tail.fromTip);
+            expect(tweaked.tips.nose.fromTip, entry.label).toBe(untweaked.tips.nose.fromTip);
+            const expected = untweaked.derivedThicknessAt(station) + tweak;
+            expect(Math.abs(tweaked.thicknessAt(station) - expected), entry.label).toBeLessThanOrEqual(EXACT_MM);
+            checked++;
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  }, SLOW);
+
+  it("with a start moved in past 12\", Tip Style changes only which surface the thinning comes off: the thickness is identical at every 1/4\" station", () => {
+    let thinned = 0;
+    const wrong: string[] = [];
+    for (const { entry } of movedInCases()) {
+      const pin = boardOnBlank(entry.prepared, { ...entry.board, tipStyle: "pinDeck" }, entry.placement);
+      const bottom = boardOnBlank(entry.prepared, { ...entry.board, tipStyle: "bottom" }, entry.placement);
+      const skin = entry.board.deckSkin;
+      const off = (a: number, b: number) => !(Math.abs(a - b) <= EXACT_MM);
+      for (const s of quarterStations(entry.board.length)) {
+        const at = `${entry.label} at ${s}`;
+        const thinning = pin.tipThinningAt(s);
+        if (!Object.is(bottom.thicknessAt(s), pin.thicknessAt(s))) wrong.push(`${at}: thickness differs`);
+        if (!Object.is(bottom.tipThinningAt(s), thinning)) wrong.push(`${at}: thinning differs`);
+        // Pin deck: off the bottom, the deck untouched. Bottom: off the deck, the bottom untouched.
+        if (off(pin.bottomOffAt(s), pin.centerGap + thinning)) wrong.push(`${at}: Pin deck bottom`);
+        if (off(pin.deckOffAt(s), skin)) wrong.push(`${at}: Pin deck deck`);
+        if (off(bottom.deckOffAt(s), skin + thinning)) wrong.push(`${at}: Bottom deck`);
+        if (off(bottom.bottomOffAt(s), bottom.centerGap)) wrong.push(`${at}: Bottom bottom`);
+        if (thinning !== 0) thinned++;
+      }
+    }
+    expect(listed(wrong)).toEqual([]);
+    expect(thinned).toBeGreaterThan(0);
+  }, SLOW);
+
+  it("a tip that needs more foam than the planer cut leaves: Pin deck drops that tip's rocker below the Bottom style's, and under Bottom the deck rises above the blank's and the fit check says thin — as before", () => {
+    let lower = 0;
+    let overSkin = 0;
+    let thinAtTheTip = 0;
+    for (const entry of ALL) {
+      const L = entry.board.length;
+      const pin = boardOnBlank(entry.prepared, { ...entry.board, tipStyle: "pinDeck" }, entry.placement);
+      const bottom = boardOnBlank(entry.prepared, { ...entry.board, tipStyle: "bottom" }, entry.placement);
+      let deckRises = false;
+      for (const tip of [0, L]) {
+        const thinning = pin.tipThinningAt(tip);
+        if (!(thinning < -FIT_EPSILON_MM)) continue;
+        expect(pin.rockerAt(tip), `${entry.label} at ${tip}`).toBeLessThan(bottom.rockerAt(tip));
+        lower++;
+        if (bottom.deckOffAt(tip) < -FIT_EPSILON_MM) deckRises = true;
+      }
+      if (!deckRises) continue;
+      overSkin++;
+      const result = fitAt(bottom, entry.halfWidthAt, entry.widePointStation, STRESS_FIT_SETTINGS);
+      expect(result.fits, entry.label).toBe(false);
+      // The board pokes out through the deck, so the worst is that thin place — unless the board is
+      // also too wide somewhere by more.
+      expect(result.worst.kind === "thin" || result.worst.kind === "wide", entry.label).toBe(true);
+      if (result.worst.kind === "thin" && (result.worst.station === 0 || result.worst.station === L)) thinAtTheTip++;
+    }
+    expect(lower).toBeGreaterThan(0);
+    expect(overSkin).toBeGreaterThan(0);
+    expect(thinAtTheTip).toBeGreaterThan(0);
+  }, SLOW);
+
+  it("at either end of the Placement slider Automatic is worked out from the blank at that placement, the list's verdict is the fit check there, and the two ends can differ", () => {
+    // Automatic's start, worked out here straight from the blank's own thickness curve at a placement.
+    const automaticAt = (entry: StressCase, placement: number) => {
+      const { prepared, board } = entry;
+      const L = board.length;
+      const u = (s: number) => blankStationOf(mm(s), mm(placement), L, prepared.lengthMm);
+      const drop = prepared.thickness.sample(u(L / 2)) - board.centerThickness;
+      const tail: PlanerCut = {
+        at: (d) => prepared.thickness.sample(u(d)) - drop,
+        slopeAt: (d) => prepared.thickness.slopeAt(u(d)),
+      };
+      const nose: PlanerCut = {
+        at: (d) => prepared.thickness.sample(u(L - d)) - drop,
+        slopeAt: (d) => -prepared.thickness.slopeAt(u(L - d)),
+      };
+      return { tail: automaticStart(tail, board.tailTip, L).start, nose: automaticStart(nose, board.noseTip, L).start };
+    };
+
+    let ends = 0;
+    let differ = 0;
+    let judged = 0;
+    for (const entry of ALL) {
+      if (entry.place === "centre") {
+        // The list's verdict is exactly the fit check at its own placement, the board on Automatic.
+        const ctx: BoardFitContext = {
+          board: entry.board,
+          halfWidthAt: entry.halfWidthAt,
+          widePointStation: entry.widePointStation,
+        };
+        const verdict = judgeBlank(entry.prepared, ctx, STRESS_FIT_SETTINGS);
+        const there = boardOnBlank(entry.prepared, entry.board, verdict.placement);
+        expect(there.tips.tail.automatic && there.tips.nose.automatic).toBe(true);
+        const check = fitAt(there, entry.halfWidthAt, entry.widePointStation, STRESS_FIT_SETTINGS);
+        expect(check.fits, entry.label).toBe(verdict.fits);
+        expect(check.worst, entry.label).toEqual(verdict.worst);
+        judged++;
+        continue;
+      }
+      if (entry.placement === 0) continue;
+      const onBlank = boardOnBlank(entry.prepared, entry.board, entry.placement);
+      const want = automaticAt(entry, onBlank.placement);
+      expect(onBlank.tips.tail.fromTip, entry.label).toBe(want.tail);
+      expect(onBlank.tips.nose.fromTip, entry.label).toBe(want.nose);
+      ends++;
+      if (entry.place === "nose") {
+        const other = ALL.find((e) => e.place === "tail" && e.record === entry.record && e.centreIn === entry.centreIn);
+        if (other) {
+          const atTail = boardOnBlank(other.prepared, other.board, other.placement).tips;
+          if (atTail.tail.fromTip !== onBlank.tips.tail.fromTip || atTail.nose.fromTip !== onBlank.tips.nose.fromTip) differ++;
+        }
+      }
+    }
+    expect(judged).toBeGreaterThan(0);
+    expect(ends).toBeGreaterThan(0);
+    expect(differ).toBeGreaterThan(0);
   }, SLOW);
 });
