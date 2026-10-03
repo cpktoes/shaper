@@ -695,6 +695,40 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
     }
   });
 
+  test("↺ Reset Fine-Tune clears a 12\" tweak and leaves a start set by hand exactly where it was", async ({ page }) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+
+    // The tail's start, set by hand.
+    const tailSlider = startRow(page, "tail").getByRole("slider");
+    const atPick = await startLabel(page, "tail").innerText();
+    await tailSlider.focus();
+    await tailSlider.press("ArrowRight");
+    await expect(startLabel(page, "tail")).not.toHaveText(atPick);
+    await expect(automaticButton(page, "tail")).toHaveAttribute("aria-pressed", "false");
+    const handSet = await startLabel(page, "tail").innerText();
+
+    // A 12" tweak — down a step, which keeps the board in its blank — so ↺ Reset Fine-Tune is live.
+    const reset = page.getByRole("button", { name: "↺ Reset Fine-Tune", exact: true });
+    await expect(reset).toHaveCount(1);
+    await expect(reset).toHaveAttribute("aria-disabled", "true");
+    const nose12Row = page.getByText(/^Nose @ 12" — /).locator("xpath=..");
+    await nose12Row.getByRole("slider").focus();
+    await nose12Row.getByRole("slider").press("ArrowLeft");
+    await expect(nose12Row).not.toContainText("No tweak");
+    await expect(reset).not.toHaveAttribute("aria-disabled", /.+/);
+
+    await reset.click();
+    await expect(nose12Row).toContainText("No tweak");
+    await expect(reset).toHaveAttribute("aria-disabled", "true");
+
+    // The start is untouched: the same label, and still set by hand — its Automatic button can still be pressed.
+    await expect(startLabel(page, "tail")).toHaveText(handSet);
+    await expect(automaticButton(page, "tail")).toHaveAttribute("aria-pressed", "false");
+    await expect(automaticButton(page, "tail")).not.toHaveAttribute("aria-disabled", /.+/);
+    await expect(automaticButton(page, "tail")).toBeEnabled();
+  });
+
   test("switching to another blank keeps a start set by hand", async ({ page }) => {
     await openRocker(page);
     const first = await pickFirstFittingBlank(page);
