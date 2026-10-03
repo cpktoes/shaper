@@ -2,7 +2,10 @@
  * The before-and-after comparison behind the founder's pictures and the saved-boards report
  * (Phase 14 D-15, D-18): how far a board's five station thicknesses, five rocker numbers and litres
  * move, and whether its "fits" verdict changes, when the same stored board is worked out under the
- * curves the site drew before Phase 14 and under the live ones.
+ * curves the site drew before Phase 14 and under the live ones. The tips step (go-live 2) compares
+ * `RULES_BEFORE_TIPS` with `RULES_LIVE` the same way, and also counts the tips that start further in
+ * than 12" and the largest rise of a 12" thickness (`tipsReportLines`). Each board is worked out with
+ * its own stored Thinning Starts, through `thinningStartsOf`.
  *
  * Both sides come from the one pipeline every screen reads (`buildBoardProfile` for the stations,
  * `summarizeDesignWith` for the litres, `fitAt` for the verdict) with only the rules swapped — never
@@ -13,7 +16,7 @@
  * Pure: no React, browser API or database import (CLAUDE.md Rule 1), unit-tested in
  * before-after.test.ts.
  */
-import { fitAt, prepareBlank, prepareBlankPchip } from "./blank-fit";
+import { fitAt, prepareBlank, prepareBlankPchip, thinningStartsOf } from "./blank-fit";
 import type { FitSettings } from "./blank";
 import { buildBoardProfile, type BoardSideProfile } from "./board-profile";
 import { summarizeDesignWith, type DesignRules, type DesignSummaryFields } from "./design";
@@ -39,6 +42,13 @@ export const RULES_BEFORE_CURVES: DesignRules = { prepare: prepareBlankPchip, ha
  */
 export const RULES_LIVE: DesignRules = { prepare: prepareBlank, handSetCurve: "root", tipRule: "steady" };
 
+/**
+ * What is live after go-live 1 and before go-live 2 (D-18, D-25): the new curves, with each tip
+ * still eased in over the last 12" by Phase 12's S-blend. The tips step's "before" — it differs from
+ * `RULES_LIVE` in the tip rule only, so the tips report and pictures show the tips' move alone.
+ */
+export const RULES_BEFORE_TIPS: DesignRules = { prepare: prepareBlank, handSetCurve: "root", tipRule: "blend" };
+
 /** The five station keys, tail to nose. */
 const STATION_KEYS: readonly FoilStationKey[] = ["tailTip", "tail12", "center", "nose12", "noseTip"];
 
@@ -52,6 +62,12 @@ export interface BoardFigures {
   litres: number;
   /** Whether the board fits its blank where it sits; null for a board with no blank. */
   fits: boolean | null;
+  /**
+   * Whether each tip's thinning starts further in than the 12" station (`TipView.reachesStation`),
+   * so that tip's 12" thickness belongs to the taper (D-07); null for a board with no blank. The two
+   * 12" thicknesses themselves are `thicknessMm.nose12` and `thicknessMm.tail12`.
+   */
+  reachesStation: { nose: boolean; tail: boolean } | null;
 }
 
 /**
@@ -74,6 +90,7 @@ export function boardProfileWith(fields: DesignSummaryFields, rules: DesignRules
           tipStyle: blank.tipStyle,
           fineTuneSurface: blank.fineTuneSurface,
           tipRule: rules.tipRule,
+          ...thinningStartsOf(blank),
         }
       : null,
     handSetCurve: rules.handSetCurve,
@@ -97,6 +114,9 @@ export function boardFigures(fields: DesignSummaryFields, rules: DesignRules, se
     rockerMm: { ...profile.stationRocker },
     litres: summarizeDesignWith(fields, rules).volumeLitres,
     fits,
+    reachesStation: profile.blank
+      ? { nose: profile.blank.tips.nose.reachesStation, tail: profile.blank.tips.tail.reachesStation }
+      : null,
   };
 }
 
@@ -108,6 +128,13 @@ export interface BoardMove {
   litresChange: number;
   /** What happened to the fit verdict; `noBlank` when either side has none. */
   verdict: "same" | "nowRefused" | "nowFits" | "noBlank";
+  /** How many of the board's two tips start further in than 12" after (0, 1 or 2; 0 with no blank). */
+  startsPastStation: number;
+  /**
+   * The larger rise of the two 12" thicknesses, after less before, signed: positive when either 12"
+   * thickness grew, negative when both fell.
+   */
+  twelveRiseMm: number;
 }
 
 /** Compares one board's figures under two sets of rules. */
@@ -125,7 +152,13 @@ export function compareFigures(before: BoardFigures, after: BoardFigures): Board
   if (before.fits === null || after.fits === null) verdict = "noBlank";
   else if (before.fits === after.fits) verdict = "same";
   else verdict = before.fits ? "nowRefused" : "nowFits";
-  return { stationMoveMm, litresChange, verdict };
+  const reaching = after.reachesStation;
+  const startsPastStation = reaching ? Number(reaching.nose) + Number(reaching.tail) : 0;
+  const twelveRiseMm = Math.max(
+    after.thicknessMm.tail12 - before.thicknessMm.tail12,
+    after.thicknessMm.nose12 - before.thicknessMm.nose12,
+  );
+  return { stationMoveMm, litresChange, verdict, startsPastStation, twelveRiseMm };
 }
 
 /** Counts and maxima over many boards' moves — nothing that could identify a board. */
@@ -148,6 +181,10 @@ export interface MovesReport {
   nowRefused: number;
   /** Boards that did not fit before and fit after. */
   nowFits: number;
+  /** Boards with at least one tip whose thinning starts further in than 12" after. */
+  boardsWithStartPastStation: number;
+  /** The largest rise of any board's 12" thickness, after less before; 0 when none rose. */
+  maxTwelveRiseMm: number;
 }
 
 /** A sixteenth and a thirty-second of an inch — the report's two station thresholds. */
@@ -177,6 +214,8 @@ export function summarizeMoves(moves: readonly BoardMove[]): MovesReport {
     overOnePct: litresPct.filter((pct) => pct > LITRES_THRESHOLD_PCT).length,
     nowRefused: moves.filter((move) => move.verdict === "nowRefused").length,
     nowFits: moves.filter((move) => move.verdict === "nowFits").length,
+    boardsWithStartPastStation: moves.filter((move) => move.startsPastStation > 0).length,
+    maxTwelveRiseMm: moves.reduce((max, move) => Math.max(max, move.twelveRiseMm), 0),
   };
 }
 
@@ -193,5 +232,17 @@ export function movesReportLines(heading: string, report: MovesReport): string[]
     `  litres change: median ${report.litresMedianPct.toFixed(2)}%, largest ${report.litresMaxPct.toFixed(2)}%; ` +
       `boards moving more than 1%: ${report.overOnePct}`,
     `  fit verdicts: fits before, refused now: ${report.nowRefused}; refused before, fits now: ${report.nowFits}`,
+  ];
+}
+
+/**
+ * The tips report's two extra lines (D-18), printed after `movesReportLines`: how many boards have a
+ * tip whose thinning starts further in than 12", out of those with a blank, and the largest rise of
+ * a 12" thickness in Imperial. Fixed words, counts and one length — nothing about any one board.
+ */
+export function tipsReportLines(report: MovesReport): string[] {
+  return [
+    `  tips: boards with a thinning start further in than 12": ${report.boardsWithStartPastStation} of ${report.withBlank} with a blank`,
+    `  largest rise of a 12" thickness: ${formatMark(mm(report.maxTwelveRiseMm), "imperial")}`,
   ];
 }

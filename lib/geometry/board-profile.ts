@@ -12,8 +12,10 @@
  * - A board in a blank (D-01; cut from it as a planer does, Phase 12) reads its rocker and foil off
  *   `boardOnBlank`, and also carries the blank's own silhouette in the board's coordinates — its
  *   deck the skin above the board's deck, its bottom the centre gap below the board's un-thinned
- *   bottom — the foam to come off the deck and off the bottom at each station, and the blank's own
- *   numbers under each station (the DATASHEET's blank rows).
+ *   bottom — the foam to come off the deck and off the bottom at each station, the blank's own
+ *   numbers under each station (the DATASHEET's blank rows), and each tip's Thinning Starts point as
+ *   `boardOnBlank` resolved it (`tips`, Phase 14 D-12) — so every screen reads where each tip's
+ *   thinning starts, and why, without working anything out itself.
  *
  * In both, the deck is DERIVED (R10): `deckAt(s)` is exactly `rockerAt(s) + thicknessAt(s)`, never
  * a third interpolated curve. Every curve is prepared once when the profile is built and only
@@ -29,6 +31,7 @@ import type { BlankCut, BlankRecord, FineTuneSurface, TipStyle } from "./blank";
 import {
   boardOnBlank,
   levelCurve,
+  thinningStartsOf,
   type BoardOnBlank,
   type BoardOnBlankInput,
   type PreparedBlank,
@@ -38,6 +41,7 @@ import { type FoilSpec, type FoilStationKey, foilStationPoints } from "./foil";
 import { preparePchip } from "./pchip";
 import { type FiveStationRocker, fallbackRockerPoints, rockerStationPositions } from "./rocker";
 import { type CurveRule, prepareRootCurve } from "./root-curve";
+import type { TipView } from "./tip-taper";
 import { type Mm, mm } from "./units";
 
 /** A board's blank as the side view and the DATASHEET need it — every station in the BOARD's
@@ -77,6 +81,16 @@ export interface BlankSideView {
   /** Every station the catalogue measured for rocker and for thickness, tail to nose, in board
    * coordinates — the measuring-points overlay's blank dots (D-15). */
   measuredStations: { rocker: Mm[]; thickness: Mm[] };
+  /**
+   * Each tip's Thinning Starts point (Phase 14 D-02, D-12; UI-SPEC §4), exactly as `boardOnBlank`
+   * resolved it: the start in force, in from that tip (`fromTip`), and its mark's station along the
+   * board (`station`); whether it is Automatic or set by hand; what Automatic picks; the slider's
+   * reach; whether it starts further in than the 12" station; and the too-close flag. The sidebar,
+   * the drawing's mark, the DATASHEET and the order form read these and work nothing out (Rule 1).
+   * The per-tip distance is `fromTip`, never `start` — `start` above already means where the blank's
+   * tail tip falls.
+   */
+  tips: { nose: TipView; tail: TipView };
 }
 
 /** The one side profile every screen reads (Pattern 5). */
@@ -211,6 +225,7 @@ export function buildBlankProfile(
       rocker: measured((station) => station.rockerMm),
       thickness: measured((station) => station.thicknessMm),
     },
+    tips: onBlank.tips,
   };
 
   return {
@@ -281,6 +296,13 @@ export interface BoardProfileInput {
      * `"blend"` is the 12" S-blend kept by name for the reports and the pin only (D-25).
      */
     tipRule?: TipRule;
+    /**
+     * The board's own stored Thinning Starts (Phase 14 D-24), in mm in from each tip. Absent is
+     * Automatic. They reach `boardOnBlank` through `thinningStartsOf`, the one helper every place
+     * that builds a board from its stored blank uses, so no path can drop them.
+     */
+    noseThinningStart?: Mm;
+    tailThinningStart?: Mm;
   } | null;
   /**
    * Which rule draws a board with no blank between its five stations. Absent is the live
@@ -313,6 +335,7 @@ export function buildBoardProfile(input: BoardProfileInput): BoardSideProfile {
       tipStyle: blank.tipStyle,
       fineTuneSurface: blank.fineTuneSurface,
       ...(blank.tipRule === undefined ? {} : { tipRule: blank.tipRule }),
+      ...thinningStartsOf(blank),
     },
     blank.placement,
   );
