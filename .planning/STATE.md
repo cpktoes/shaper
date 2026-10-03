@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 14 wave 9 of 10 merged (14-14 the Thinning Starts sliders + Automatic buttons on ROCKER; 14-15 the mark + DATASHEET block; 14-16 the printed line; 14-17 the blank list/flag + the tips report and figures) — the whole tips step is built; build/vitest/tsc/lint green on main, the full browser suite running on 3150; next: wave 10 = go-live 2 (14-18), the founder's checkpoint (cut line Tue 2026-10-06 evening)"
-last_updated: "2026-10-02T23:07:28.535Z"
-last_activity: 2026-10-02
-last_activity_desc: Phase 14 — go-live 1 live; the tips step is built (waves 6–9); go-live 2 (14-18) is next, on the founder's go; three screen executors were resumed after an API outage
+stopped_at: "Rehearsal (Phase 13 item 13) under way 2026-10-03: checks 1, 2, 3 and 7 passed (4 of 9, 13-UAT.md); the walk sheet is up to date with the live site (17 steps plus Phase 14's five looks; printable 13-walk-sheet.pdf). The one fault the sheet update found (on an upright phone the tail's Automatic button on ROCKER under the Redo button) is FIXED in b32dcaf (fast task 144) and proven on a production build, but NOT YET LIVE: it waits on the founder's go to publish (merge surfboard-flow into main, push, watch the deploy, re-run the live check, then take the known-fault note off the walk sheet and re-issue the PDF). Then: the founder's walks on the iPhone, a real Android phone and the Oct 10 laptop (checks 4-6), the demo account (8) and the freeze Wed 2026-10-07 evening (9). Phase 14: both go-lives are live (main 9468fd5); 14-VERIFICATION.md is written (human_needed, 8 of 9, the ninth is the walk) but not yet committed; after the walk: /gsd-verify-work 14 (its five looks ride on the walk sheet), the security check, phase complete"
+last_updated: "2026-10-03T23:08:14.321Z"
+last_activity: 2026-10-03
+last_activity_desc: Phase 13 item 13 — the upright-phone fault (the tail's Automatic button under the Redo button) is fixed in b32dcaf and proven on a production build; publishing it waits on the founder's go
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 31
-  completed_plans: 28
-  percent: 90
+  completed_plans: 29
+  percent: 94
 current_phase: 14
 current_phase_name: Realistic Surfboard Flow
 ---
@@ -164,7 +164,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-8 pending (one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10):
+13 pending (four of them are Phase 14's follow-ups, added 2026-10-02; one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
@@ -174,13 +174,18 @@ Recent decisions affecting current work:
 - [minor/rocker] Custom rocker on a blank, saved as the shaper's own Custom Blank (after Oct 10) — `.planning/todos/pending/2026-09-28-custom-rocker-on-a-blank-saved-as-the-shaper-s-own-custom-bl.md`
 - [major/data] Fix the blank catalogue dims (the founder moved it up on 2026-10-01: "let's tackle the blank errors now"). All three correction rounds are live (quick 261001-v1q, 261001-www, 261002-aqu); what is left is the founder's own list — any blank they know is wrong that a check against the catalog could not see — `.planning/todos/pending/2026-10-01-fix-the-blank-catalogue-dims-the-founder-knows-are-wrong.md`
 - [minor/ui] Hold the ghost still until the control is released (the founder, 2026-10-02: on TEMPLATE the ghost moves while a slider or a draggable point is still held; it should stay on the shape from before the grab until the release. Cause measured: a half-second timer, not the release, decides where one edit ends, so a slow drag or a pause counts as several edits. No date set) — `.planning/todos/pending/2026-10-02-hold-the-ghost-still-until-the-control-is-released.md`
+- [minor/geometry] Decide what happens when a very thin board's tip sits below its own center (Phase 14 review WR-02; the founder at go-live 2: "leave it for the showing" — one blank, centers of 1 1/4" and under) — `.planning/todos/pending/2026-10-02-decide-what-happens-when-a-thin-boards-tip-sits-below-its-center.md`
+- [minor/ui] Give every slider in the app a spoken name and a spoken value (Phase 14 review WR-01's wider gap; the two Thinning Starts sliders are already named) — `.planning/todos/pending/2026-10-02-give-every-slider-a-spoken-name.md`
+- [minor/geometry] Retire today's curve and the 12" blend after the showing (kept by name for Phase 14's reports and pictures, D-25) — `.planning/todos/pending/2026-10-03-retire-todays-curve-and-12-inch-blend-after-the-showing.md`
+- [minor/geometry] Tape-check a real Arctic blank against the new bottom curve (Phase 14 D-08: after go-live, when a blank is in the bay) — `.planning/todos/pending/2026-10-02-tape-check-a-real-arctic-blank-against-the-new-curve.md`
+- [minor/rocker] Show a miniature blank outline on the ROCKER viewer (the founder, 2026-10-02: a small top-down drawing of the picked blank with its 12" stations, center and stringer line, ideally with the board's outline inside it; on a small screen it can be its own tab. No date set) — `.planning/todos/pending/2026-10-02-show-a-miniature-blank-outline-on-the-rocker-viewer.md`
 
 ### Blockers/Concerns
 
-- [Phase 2 → Phase 13 item 2, founder step] .env.example still needs to be created by hand (repo root, three lines: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=, CLERK_SECRET_KEY=, DATABASE_URL=) — the execution sandbox hard-blocks any tool write matching a .env* path, including this values-empty example file. Since quick 260927-pij (2026-09-27) it can be committed: a later `.env*` rule in the GSD block of .gitignore had been silently re-ignoring it
 - [Phase 2 → Phase 13 item 2, founder step] client_secret_*.json (Google OAuth download) still sits in the repo root — gitignored so it can't be committed, but should be moved out of the working tree entirely (into a password manager)
 - [Phase 12 → Phase 13 item 4] The five verifier questions were answered on 2026-09-28 (see Decisions); their code lands as quick tasks 4a (the 1/4" floor, the tip minimum and the rewording) and 4b (Deck Skin 0–50 mm)
 - [Phase 13] Deadline: the founder shows the app to many shapers on Saturday 2026-10-10; freeze on Wednesday 2026-10-07 evening, after which only rehearsal fixes land
+- [Phase 13 item 13, the founder's go] The upright-phone fault (the tail's Automatic button on ROCKER under the Redo button, found by machine on the live site 2026-10-03) is fixed in `b32dcaf` (fast task 144): the phone's controls end with 48 dots of extra room, proved by `e2e/prod/phone-controls-clear-undo.spec.ts` on a production build; before/after pictures in `phases/13-ready-for-the-shapers/pictures/`. It is NOT live yet: publishing waits on the founder's go, and after it the walk sheet's known-fault note comes off
 
 ### Quick Tasks Completed
 
@@ -329,6 +334,7 @@ Recent decisions affecting current work:
 | 261001-www | Blank catalog corrections, part 2 — the founder's three decisions of 2026-10-01: Arctic Foam's 10'2" LB, 9'4" G, 9'9" G and 10'6" G now read the inch figures on their June 2022 pages (29 numbers; the catalogue file had taken the disagreeing centimetre figures), six US Blanks numbers the catalog prints wrong in inches and centimetres alike take the sister blank's figure with a DATASHEET note (6'2"A, 6'4"EAX, 7'2"X EPS, 8'4"SPX, 10'6"AX thickness; 8'0"H tail rocker), and the 7'9"HX and 8'4"SPX keep the page's litres. Live 2026-10-02 on the founder's go: pushed, deployed, and production reseeded by the founder (162 of 162), checked on the live site | 2026-10-01 | 9dade6c | [261001-www-blank-catalog-corrections-part-2-arctic-](./quick/261001-www-blank-catalog-corrections-part-2-arctic-/) |
 | 261002-f8e | A length a fraction over a whole foot reads with its zero inches: the US Blanks 8'0"H on the ROCKER blank list reads `8'0 1/8"` (it read `8'1/8"`, the fraction standing where the inches go); a whole number of feet stays `8'0"` and whole inches are untouched. One change inside `formatFeetInches` (lib/geometry/units.ts), so every length in the app follows — blank rows, the offer line, the Board Length lines, the home cards, the order form and both PDFs; eleven catalogue readings change (nine US Blanks, Marko Foam's two 6'0" blanks), no preset card, no saved board and no stored number moves, and both typed spellings still read as the same length. Unit suite (3,633), types and lint green; the browser suite green on all three profiles except three tests that fail the same way on the starting commit in the cloud container (a Clerk script retry caught by ROCKER's no-network drag check; two taps after a CDP touch drag on the container's older Chromium) — the founder's Mac run is the proof; the iPhone profile ran on Chromium here (WebKit cannot be fetched) and the five macOS reference pictures were not compared. The founder confirmed the reading on 2026-10-02 and it was pushed straight to main on their go at 15:33 UTC 2026-10-02; **live**, confirmed by the founder on the site (the 8'0"H reads 8'0 1/8") | 2026-10-02 | ec6d842 | [261002-f8e-the-foot-and-a-fraction-length-reads-8-0](./quick/261002-f8e-the-foot-and-a-fraction-length-reads-8-0/) |
 | 261002-aqu | Blank catalog corrections, part 3 — the founder's two decisions of 2026-10-02: the twelve rows where the catalog's inch label is the slip (the app already held the right figure) gain a DATASHEET note saying so, and the blank the catalog's page titles 10'0"T is listed as the 10'10"T it is. The seed learns to remove a blank that has left the catalogue files, only when asked with --prune, never more than five in a run and never on an empty catalogue; proven on the development database (it removed exactly the old 10'0"T row; 162 of 162). Live 2026-10-02 on the founder's go: pushed (70802a1), deployed, and production reseeded by the founder with --prune (it removed exactly the old 10'0"T row; 162 of 162), checked on the live site | 2026-10-02 | 7426ab3 | [261002-aqu-blank-catalog-corrections-part-3-a-note-](./quick/261002-aqu-blank-catalog-corrections-part-3-a-note-/) |
+| 144 | Phase 13 item 13 fix: on a phone held upright the controls end with 48 dots of extra room, so the last control scrolls clear of the Undo/Redo pair (ROCKER's tail Automatic button sat under the Redo button on the live site); proved by a new production-build test | 2026-10-03 | b32dcaf | — |
 
 ## Deferred Items
 

@@ -210,7 +210,7 @@ Plans:
 **Goal:** Every curve a shaper cuts foam to flows the way a real surfboard does: a blank's bottom, thickness and width are drawn between their printed stations by the rule that redraws real blanks most closely, a hand-set board is drawn by the same rule, and a board's thickness runs down steadily into each tip, never thinner on the way than the tip itself — built and live before the founder shows the app to a room of shapers on Saturday 2026-10-10.
 **Requirements**: R1–R9 locked in `.planning/phases/14-realistic-surfboard-flow/14-SPEC.md` (the founder's own words and their four answers of 2026-10-02), with the measured research in `.planning/todos/completed/2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow.md`
 **Depends on:** Phase 12 (the planer cut and the tip rule it changes); runs beside Phase 13, whose rehearsal and freeze it must be ready for
-**Plans:** 17/18 plans executed in 10 waves — planned 2026-10-02 (`14-RESEARCH.md` first: both steps rebuilt in a scratch copy and every figure reproduced; the founder's three rulings and six more from the research are D-20 to D-28). Go-live 1 (the curves) is wave 5 and go-live 2 (the tips) is wave 10, each a founder checkpoint alone in its wave. No code is written before the founder approves this plan (D-15).
+**Plans:** 18/18 plans executed in 10 waves — planned 2026-10-02 (`14-RESEARCH.md` first: both steps rebuilt in a scratch copy and every figure reproduced; the founder's three rulings and six more from the research are D-20 to D-28). Go-live 1 (the curves) is wave 5 and go-live 2 (the tips) is wave 10, each a founder checkpoint alone in its wave. No code is written before the founder approves this plan (D-15).
 
 Plans:
 
@@ -260,7 +260,7 @@ Plans:
 
 **Wave 10** *(blocked on Wave 9 completion — a founder step)*
 
-- [ ] 14-18-PLAN.md — Go-live 2: the founder sees what moves and the tips report, says go (or takes the Tuesday cut line, D-16), and the tips go live; the rehearsal walk follows (R6 R7 R8 R9)
+- [x] 14-18-PLAN.md — Go-live 2: the founder sees what moves and the tips report, says go (or takes the Tuesday cut line, D-16), and the tips go live; the rehearsal walk follows (R6 R7 R8 R9)
 
 Cross-cutting constraints: no tips code in the curves step — no `slopeAt`, no taper module, the 12" blend untouched until go-live 1 (D-28); today's rules stay callable by name, never as a second argument on the live function (D-25); no hand-typed expected number — every expected value comes from a generated fixture or the catalogue (Rule 1); the pin and the test boards carry their blanks by value; opening a saved board writes nothing and nothing in the database changes (D-06, D-24); no start is stored on a board that is on Automatic; one helper feeds all six places a board's inputs are built; Automatic reads only the planer cut, never the tweaks, the Deck Skin or Tip Style (D-04); the saved-boards report prints counts only and writes nothing (D-18); no formula in a component and no unit conversion outside `units.ts` (Rule 2); nothing is said on screen (D-19); only the ROCKER and VOLUME desktop baselines move, only at the curves step; no new package, no loose scratch script; nothing is pushed without the founder's go and nothing lands after the Wednesday 2026-10-07 freeze (constraint 8).
 
@@ -286,4 +286,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 11. Rocker from Real Blanks | 13/13 | Complete    | 2026-09-26 |
 | 12. Foil the Way a Shaper Cuts It | 10/10 | Complete    | 2026-09-27 |
 | 13. Ready for the Shapers | 11/13 items | In progress | - |
-| 14. Realistic Surfboard Flow | 17/18 | In Progress|  |
+| 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
