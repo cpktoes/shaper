@@ -113,7 +113,31 @@ export function DesignScreenShell({
       ? `hidden ${nonSimpleAsideBase.slice("flex ".length)} max-shell:flex`
       : nonSimpleAsideBase;
 
-  const controlsScrollClassName = "min-h-0 flex-1 overflow-y-auto p-10 max-shell:p-4";
+  // Phase 13 item 13's fix (2026-10-03, found by walking the live site by machine): on an upright
+  // phone the controls END with 48px of extra room, so the last row can always be scrolled clear of
+  // the floating Undo/Redo pair. The pair (`phone-undo-bar.tsx`) sits 12px above the tab bar and is
+  // 44px tall on a touch screen, so it covers the 56px above this box's bottom edge; the 16px of
+  // padding plus this 48px leaves the last control about 8px of daylight. Before this, ROCKER's
+  // Tail Thinning Starts row — the last control on the screen, its Automatic button right-aligned
+  // exactly where the pair floats — ended under the Redo button with nothing below it to scroll it
+  // clear, so the button could not be tapped.
+  //
+  // The room is an empty `::after` block at the end of the scrolling content, NOT more bottom
+  // padding, on purpose. `max-shell:pb-16` was tried first and failed 26 of the iPhone project's
+  // ROCKER tests: on a short phone this box's window can be shorter than 80px (it is 57px on the
+  // dev server at 390x664, under a 66dvh drawing), and once its padding is taller than the window
+  // its content box is empty — at which point WebKit treats everything inside as fully clipped and
+  // `innerText` reads "" for every control in the column. A block at the end of the content adds
+  // the same 48px to the scroll and leaves the padding, and so the content box, exactly as it was.
+  //
+  // It rides the width switch (`max-shell:`) because the pair's own phone position does: the same
+  // layout fact, a tab bar under a stacked column (CLAUDE.md's Layout section). On a computer, and
+  // on a phone held sideways (the desktop shell), the pair floats over the drawing instead and this
+  // rule never applies. The dev-only `sidebarFooter` below happens to sit right where the pair
+  // floats, which is why no dev-server test could ever see the fault;
+  // `e2e/prod/phone-controls-clear-undo.spec.ts` proves the room on a production build.
+  const controlsScrollClassName =
+    "min-h-0 flex-1 overflow-y-auto p-10 max-shell:p-4 max-shell:after:block max-shell:after:h-12 max-shell:after:content-['']";
 
   // 10-SWEEP-2.md: a phone held SIDEWAYS (about 844x390 on a real iPhone) clears 820px and lands
   // in this desktop branch (D-10), where a real desktop window was always tall enough that nobody
