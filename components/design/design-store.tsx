@@ -1040,7 +1040,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // "Remove This Blank" (UI-SPEC §7). Reads the side profile as it is on screen RIGHT NOW (this
   // render's `sideProfile`) and seeds the hand-set rocker's four stations (rebased on the centre
   // rocker, whose hand-set value is 0 by definition) and the foil's two final 12" thicknesses from
-  // it through `handSetFromProfile`, so the five station numbers do not move when the blank goes;
+  // it through `handSetFromProfile`, so the five station numbers do not move when the blank goes
+  // (except a tip that sat below the centre, which a hand-set board cannot hold: it lands on 0);
   // the curve between them is redrawn through them. The centre thickness and tips are already the
   // board's own stored values. All three fields change in one setState, so a single undo brings
   // the blank — and the old hand-set values — back together.
