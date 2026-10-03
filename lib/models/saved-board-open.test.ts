@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import golden from "@/lib/geometry/__fixtures__/phase11-foil-golden.json";
@@ -254,5 +257,31 @@ describe("where each tip's thinning starts, stored on the blank (D-24)", () => {
     const fields = presetDesignFields(SHORTBOARD);
     expect("noseThinningStart" in fields.blank!).toBe(false);
     expect("tailThinningStart" in fields.blank!).toBe(false);
+  });
+});
+
+describe("where the start is kept", () => {
+  const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+  const read = (relativePath: string) => readFileSync(join(REPO_ROOT, relativePath), "utf8");
+
+  it("the stored start needs no database change and no account setting (D-06)", () => {
+    // The blank, and with it each tip's start, lives inside the saved board's one JSON column.
+    const schema = read("lib/db/schema.ts");
+    expect(schema).toContain('snapshot: jsonb("snapshot")');
+    expect(schema).not.toMatch(/ThinningStart|thinning_start/i);
+
+    // Fit & Tip Defaults (the account settings) gains no start: every fit-defaults file under lib/.
+    const fitDefaultsFiles = readdirSync(join(REPO_ROOT, "lib")).filter((name) => name.includes("fit-defaults"));
+    expect(fitDefaultsFiles).toContain("fit-defaults-preference.ts");
+    for (const name of fitDefaultsFiles) {
+      expect(read(join("lib", name)), name).not.toMatch(/ThinningStart/i);
+    }
+
+    // No migration names a start either.
+    const migrations = readdirSync(join(REPO_ROOT, "drizzle")).filter((name) => name.endsWith(".sql"));
+    expect(migrations.length).toBeGreaterThan(0);
+    for (const name of migrations) {
+      expect(read(join("drizzle", name)), name).not.toMatch(/thinning/i);
+    }
   });
 });
