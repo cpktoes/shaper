@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Rehearsal (Phase 13 item 13) under way 2026-10-03: checks 1, 2, 3 and 7 passed (4 of 9, 13-UAT.md). Next: bring the walk sheet up to date with the live site (card litres now 29.6 / 35.3 / 50.4 / 75.3 L; add Phase 14's Thinning Starts steps and its five looks), then the founder's walks on the iPhone, a real Android phone and the Oct 10 laptop (checks 4-6), the demo account (8) and the freeze Wed 2026-10-07 evening (9). Phase 14: both go-lives are live (main 9468fd5); 14-VERIFICATION.md is written (human_needed, 8 of 9, the ninth is the walk) but not yet committed; after the walk: /gsd-verify-work 14, the security check, phase complete"
-last_updated: "2026-10-03T21:55:00.000Z"
+stopped_at: "Rehearsal (Phase 13 item 13) under way 2026-10-03: checks 1, 2, 3 and 7 passed (4 of 9, 13-UAT.md); the walk sheet is up to date with the live site (17 steps plus Phase 14's five looks; printable 13-walk-sheet.pdf). Found by machine while updating it: on an upright phone the tail's Automatic button on ROCKER sits under the Redo button (STATE Blockers; 13-UAT.md call 6) - the fix waits on the founder's go. Next: the founder's walks on the iPhone, a real Android phone and the Oct 10 laptop (checks 4-6), the demo account (8) and the freeze Wed 2026-10-07 evening (9). Phase 14: both go-lives are live (main 9468fd5); 14-VERIFICATION.md is written (human_needed, 8 of 9, the ninth is the walk) but not yet committed; after the walk: /gsd-verify-work 14 (its five looks ride on the walk sheet), the security check, phase complete"
+last_updated: "2026-10-03T22:20:00.000Z"
 last_activity: 2026-10-03
-last_activity_desc: Phase 13 item 13 — rehearsal checks 1, 2, 3 and 7 passed (4 of 9); the walk sheet update, the three device walks, the demo account and the freeze remain
+last_activity_desc: Phase 13 item 13 — the walk sheet brought up to date with the live site (4 of 9 checks passed); one fault found on upright phones (the tail's Automatic button under the Redo button), fix waiting on the founder's go
 progress:
   total_phases: 2
   completed_phases: 0
@@ -182,10 +182,10 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- [Phase 2 → Phase 13 item 2, founder step] .env.example still needs to be created by hand (repo root, three lines: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=, CLERK_SECRET_KEY=, DATABASE_URL=) — the execution sandbox hard-blocks any tool write matching a .env* path, including this values-empty example file. Since quick 260927-pij (2026-09-27) it can be committed: a later `.env*` rule in the GSD block of .gitignore had been silently re-ignoring it
 - [Phase 2 → Phase 13 item 2, founder step] client_secret_*.json (Google OAuth download) still sits in the repo root — gitignored so it can't be committed, but should be moved out of the working tree entirely (into a password manager)
 - [Phase 12 → Phase 13 item 4] The five verifier questions were answered on 2026-09-28 (see Decisions); their code lands as quick tasks 4a (the 1/4" floor, the tip minimum and the rewording) and 4b (Deck Skin 0–50 mm)
 - [Phase 13] Deadline: the founder shows the app to many shapers on Saturday 2026-10-10; freeze on Wednesday 2026-10-07 evening, after which only rehearsal fixes land
+- [Phase 13 item 13, the founder's call] On a phone held upright the tail's Automatic button on ROCKER sits under the Redo button and cannot be tapped once anything has been changed (found by machine on the live site, 2026-10-03; pictures in `phases/13-ready-for-the-shapers/pictures/`; the only control on the six screens the pair covers). The test build hides it: its extra "Copy preset values" button under the controls lets the row scroll clear. The fix, room at the end of the phone's controls proved on a production build, waits on the founder's go, ideally before the walk
 
 ### Quick Tasks Completed
 
