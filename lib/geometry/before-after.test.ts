@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
+import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
+import { buildStressSet, STRESS_FIT_SETTINGS, type StressCase } from "./__fixtures__/phase14-stress-set";
 import { PHASE14_TODAY } from "./__fixtures__/phase14-today";
 import {
   boardFigures,
@@ -8,8 +10,10 @@ import {
   compareFigures,
   movesReportLines,
   RULES_BEFORE_CURVES,
+  RULES_BEFORE_TIPS,
   RULES_LIVE,
   summarizeMoves,
+  tipsReportLines,
   type BoardFigures,
   type BoardMove,
 } from "./before-after";
@@ -24,7 +28,7 @@ import { buildOutline, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import { DEFAULT_RAIL_BAND_SPEC } from "./rail-bands";
 import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
-import { inchesToMm, mm, type Mm } from "./units";
+import { inchesToMm, mm, mmToInches, type Mm } from "./units";
 import { DEFAULT_VOLUME_SPEC } from "./volume";
 
 // Every expected number is either the live site's own output pinned by
@@ -161,6 +165,7 @@ describe("compareFigures", () => {
     rockerMm: five((i) => 40 - i * 3),
     litres: 30,
     fits: true,
+    reachesStation: { nose: false, tail: false },
   };
 
   it("reports the largest move of the ten station numbers, either way", () => {
@@ -197,17 +202,46 @@ describe("compareFigures", () => {
     expect(compareFigures(handSet, handSet).verdict).toBe("noBlank");
     expect(compareFigures(before, handSet).verdict).toBe("noBlank");
   });
+
+  it("counts the tips that start further in than 12\" after, and none for a board with no blank", () => {
+    const one = { ...before, reachesStation: { nose: false, tail: true } };
+    const both = { ...before, reachesStation: { nose: true, tail: true } };
+    const handSet = { ...before, fits: null, reachesStation: null };
+    expect(compareFigures(before, before).startsPastStation).toBe(0);
+    expect(compareFigures(before, one).startsPastStation).toBe(1);
+    expect(compareFigures(both, one).startsPastStation).toBe(1);
+    expect(compareFigures(before, both).startsPastStation).toBe(2);
+    expect(compareFigures(handSet, handSet).startsPastStation).toBe(0);
+  });
+
+  it("takes the larger rise of the two 12\" thicknesses, after less before", () => {
+    const tailUp = 0.9;
+    const noseDown = -0.4;
+    const after: BoardFigures = {
+      ...before,
+      thicknessMm: { ...before.thicknessMm, tail12: mm(before.thicknessMm.tail12 + tailUp), nose12: mm(before.thicknessMm.nose12 + noseDown) },
+    };
+    const expected = Math.max(
+      after.thicknessMm.tail12 - before.thicknessMm.tail12,
+      after.thicknessMm.nose12 - before.thicknessMm.nose12,
+    );
+    expect(compareFigures(before, after).twelveRiseMm).toBe(expected);
+    expect(compareFigures(after, before).twelveRiseMm).toBe(
+      Math.max(before.thicknessMm.tail12 - after.thicknessMm.tail12, before.thicknessMm.nose12 - after.thicknessMm.nose12),
+    );
+    expect(compareFigures(before, before).twelveRiseMm).toBe(0);
+  });
 });
 
 describe("summarizeMoves", () => {
   const sixteenth = inchesToMm(1 / 16);
   const thirtySecond = inchesToMm(1 / 32);
   const moves: BoardMove[] = [
-    { stationMoveMm: sixteenth * 2, litresChange: 0.015, verdict: "same" },
-    { stationMoveMm: sixteenth, litresChange: -0.004, verdict: "nowRefused" },
-    { stationMoveMm: thirtySecond * 1.5, litresChange: -0.02, verdict: "nowFits" },
-    { stationMoveMm: thirtySecond / 2, litresChange: 0.001, verdict: "noBlank" },
-    { stationMoveMm: 0, litresChange: 0.008, verdict: "same" },
+    { stationMoveMm: sixteenth * 2, litresChange: 0.015, verdict: "same", startsPastStation: 2, twelveRiseMm: sixteenth },
+    { stationMoveMm: sixteenth, litresChange: -0.004, verdict: "nowRefused", startsPastStation: 0, twelveRiseMm: -thirtySecond },
+    { stationMoveMm: thirtySecond * 1.5, litresChange: -0.02, verdict: "nowFits", startsPastStation: 1, twelveRiseMm: thirtySecond * 1.5 },
+    { stationMoveMm: thirtySecond / 2, litresChange: 0.001, verdict: "noBlank", startsPastStation: 0, twelveRiseMm: 0 },
+    { stationMoveMm: 0, litresChange: 0.008, verdict: "same", startsPastStation: 0, twelveRiseMm: 0 },
   ];
 
   it("counts boards, maxima and thresholds — a move exactly on a threshold is not over it", () => {
@@ -222,6 +256,16 @@ describe("summarizeMoves", () => {
     expect(report.overOnePct).toBe(moves.filter((move) => Math.abs(move.litresChange) * 100 > 1).length);
     expect(report.nowRefused).toBe(1);
     expect(report.nowFits).toBe(1);
+  });
+
+  it("counts boards with a thinning start further in than 12\" and takes the largest 12\" rise", () => {
+    const report = summarizeMoves(moves);
+    expect(report.boardsWithStartPastStation).toBe(moves.filter((move) => move.startsPastStation > 0).length);
+    expect(report.boardsWithStartPastStation).toBe(2);
+    expect(report.maxTwelveRiseMm).toBe(Math.max(...moves.map((move) => move.twelveRiseMm)));
+    // A report where every 12" thickness fell says nothing rose.
+    const fell = summarizeMoves([{ ...moves[1] }]);
+    expect(fell.maxTwelveRiseMm).toBe(0);
   });
 
   it("takes the median and largest size of the litres change, either way, in percent", () => {
@@ -250,15 +294,21 @@ describe("summarizeMoves", () => {
       overOnePct: 0,
       nowRefused: 0,
       nowFits: 0,
+      boardsWithStartPastStation: 0,
+      maxTwelveRiseMm: 0,
     });
   });
 });
 
+/** A report's largest length as the report prints it: decimal inches to three places, through the
+ * one conversion in units.ts (code review IN-01). */
+const reportInches = (lengthMm: number) => `${mmToInches(mm(lengthMm)).toFixed(3)}"`;
+
 describe("movesReportLines", () => {
   const HEADING = "Boards in a blank, today's curves → the new curves";
   const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  /** An Imperial mark as `formatMark` prints one: whole inches and/or a reduced fraction, then `"`. */
-  const INCHES = String.raw`-?(?:\d+|\d+ \d+/\d+|\d+/\d+)"`;
+  /** Decimal inches to three places, then `"`. */
+  const INCHES = String.raw`\d+\.\d{3}"`;
   const PATTERNS = [
     new RegExp(`^${escape(HEADING)}: \\d+ boards compared \\(\\d+ with a blank both ways\\)$`),
     new RegExp(
@@ -270,8 +320,8 @@ describe("movesReportLines", () => {
 
   it("prints only counts, an Imperial length and percentages, in fixed sentences", () => {
     const moves: BoardMove[] = [
-      { stationMoveMm: inchesToMm(0.3), litresChange: 0.0123, verdict: "same" },
-      { stationMoveMm: inchesToMm(0.02), litresChange: -0.031, verdict: "nowRefused" },
+      { stationMoveMm: inchesToMm(0.3), litresChange: 0.0123, verdict: "same", startsPastStation: 0, twelveRiseMm: 0 },
+      { stationMoveMm: inchesToMm(0.02), litresChange: -0.031, verdict: "nowRefused", startsPastStation: 0, twelveRiseMm: 0 },
     ];
     for (const report of [summarizeMoves(moves), summarizeMoves([])]) {
       const lines = movesReportLines(HEADING, report);
@@ -281,11 +331,127 @@ describe("movesReportLines", () => {
   });
 
   it("carries the report's own numbers", () => {
-    const moves: BoardMove[] = [{ stationMoveMm: inchesToMm(0.3), litresChange: 0.0123, verdict: "nowFits" }];
+    const moves: BoardMove[] = [
+      { stationMoveMm: inchesToMm(0.3), litresChange: 0.0123, verdict: "nowFits", startsPastStation: 0, twelveRiseMm: 0 },
+    ];
     const report = summarizeMoves(moves);
     const text = movesReportLines(HEADING, report).join("\n");
-    expect(text).toContain(formatMark(mm(report.maxStationMoveMm), "imperial"));
+    expect(text).toContain(`largest move of any station number: ${reportInches(report.maxStationMoveMm)};`);
     expect(text).toContain(`median ${report.litresMedianPct.toFixed(2)}%`);
     expect(text).toContain(`refused before, fits now: ${report.nowFits}`);
+  });
+
+  it("prints a move under 1/32\" as its own size, never as 0\" (IN-01)", () => {
+    // The largest move the Mid-length preset made at go-live 1 was about this size; a 1/16" mark
+    // printed it as 0".
+    const small = inchesToMm(0.015);
+    const report = summarizeMoves([
+      { stationMoveMm: small, litresChange: 0, verdict: "same", startsPastStation: 0, twelveRiseMm: 0 },
+    ]);
+    const line = movesReportLines(HEADING, report)[1];
+    expect(line).toContain(`largest move of any station number: ${reportInches(small)};`);
+    expect(line).not.toContain(`number: ${formatMark(small, "imperial")};`);
+    // The two counts still read against 1/16" and 1/32", as before.
+    expect(line).toContain('boards moving more than 1/16": 0; more than 1/32": 0');
+  });
+});
+
+/** A stress board (a blank, the board cut from it, where it sits) as the stored design a card reads. */
+function stressFields(entry: StressCase): DesignSummaryFields {
+  return {
+    outline: { ...DEFAULT_BOARD_SPEC.outline, length: entry.board.length },
+    rails: DEFAULT_RAIL_BAND_SPEC,
+    foil: {
+      ...DEFAULT_FOIL_SPEC,
+      center: entry.board.centerThickness,
+      noseTip: entry.board.noseTip,
+      tailTip: entry.board.tailTip,
+    },
+    railsImportFoilThickness: true,
+    volume: DEFAULT_VOLUME_SPEC,
+    rocker: DEFAULT_FALLBACK_ROCKER,
+    blank: {
+      copy: entry.record,
+      placement: entry.placement,
+      nose12Offset: entry.board.nose12Offset,
+      tail12Offset: entry.board.tail12Offset,
+      deckSkin: entry.board.deckSkin,
+      tipStyle: entry.board.tipStyle,
+      fineTuneSurface: entry.board.fineTuneSurface,
+    },
+  };
+}
+
+describe("the tips step: what is live after go-live 1 against what will be live after go-live 2 (D-18, D-25, D-27)", () => {
+  it("names the 12\" blend on the new curves", () => {
+    expect(RULES_BEFORE_TIPS.prepare).toBe(prepareBlank);
+    expect(RULES_BEFORE_TIPS.handSetCurve).toBe("root");
+    expect(RULES_BEFORE_TIPS.tipRule).toBe("blend");
+    // The only difference from the live rules is the tip rule.
+    expect({ ...RULES_BEFORE_TIPS, tipRule: RULES_LIVE.tipRule }).toEqual(RULES_LIVE);
+  });
+
+  it("moves no preset's station number (all eight starts are 12\") and moves the litres", () => {
+    const moves = BOARD_PRESETS.map((preset) =>
+      compareFigures(
+        boardFigures(presetFields(preset), RULES_BEFORE_TIPS, SETTINGS),
+        boardFigures(presetFields(preset), RULES_LIVE, SETTINGS),
+      ),
+    );
+    for (const move of moves) {
+      expect(move.stationMoveMm).toBe(0);
+      expect(move.startsPastStation).toBe(0);
+      expect(move.twelveRiseMm).toBe(0);
+    }
+    expect(moves.some((move) => move.litresChange !== 0)).toBe(true);
+  });
+
+  it("the board on the 10'9\" longboard blank slid to the tail end starts further in than 12\", and its 12\" thickness rises", () => {
+    const longboard = readSeedCatalog().filter((record) => record.vendor === "Arctic Foam" && record.name === `10'9" LB`);
+    expect(longboard).toHaveLength(1);
+    const cases = buildStressSet(longboard, prepareBlank).filter((entry) => entry.place === "tail");
+    expect(cases.length).toBeGreaterThan(0);
+    const moves = cases.map((entry) =>
+      compareFigures(
+        boardFigures(stressFields(entry), RULES_BEFORE_TIPS, STRESS_FIT_SETTINGS),
+        boardFigures(stressFields(entry), RULES_LIVE, STRESS_FIT_SETTINGS),
+      ),
+    );
+    const atTwoAndAHalf = moves[cases.findIndex((entry) => entry.centreIn === 2.5)];
+    expect(atTwoAndAHalf, 'the 2 1/2" centre board is in the set').toBeDefined();
+    expect(atTwoAndAHalf.startsPastStation).toBeGreaterThanOrEqual(1);
+    expect(atTwoAndAHalf.twelveRiseMm).toBeGreaterThan(0);
+    // The blend never reads a start further in than 12", so the before side has none.
+    const before = boardFigures(stressFields(cases[0]), RULES_BEFORE_TIPS, STRESS_FIT_SETTINGS);
+    expect(before.reachesStation).toEqual({ nose: false, tail: false });
+  });
+});
+
+describe("tipsReportLines", () => {
+  /** Decimal inches to three places, then `"`. */
+  const INCHES = String.raw`\d+\.\d{3}"`;
+  const PATTERNS = [
+    /^ {2}tips: boards with a thinning start further in than 12": \d+ of \d+ with a blank$/,
+    new RegExp(`^  largest rise of a 12" thickness: ${INCHES}$`),
+  ];
+  const moves: BoardMove[] = [
+    { stationMoveMm: inchesToMm(0.1), litresChange: 0.004, verdict: "same", startsPastStation: 1, twelveRiseMm: inchesToMm(0.07) },
+    { stationMoveMm: 0, litresChange: 0.001, verdict: "same", startsPastStation: 0, twelveRiseMm: 0 },
+    { stationMoveMm: 0, litresChange: 0, verdict: "noBlank", startsPastStation: 0, twelveRiseMm: 0 },
+  ];
+
+  it("prints only fixed words, counts and one Imperial length", () => {
+    for (const report of [summarizeMoves(moves), summarizeMoves([])]) {
+      const lines = tipsReportLines(report);
+      expect(lines).toHaveLength(PATTERNS.length);
+      lines.forEach((line, index) => expect(line).toMatch(PATTERNS[index]));
+    }
+  });
+
+  it("carries the report's own numbers", () => {
+    const report = summarizeMoves(moves);
+    const text = tipsReportLines(report).join("\n");
+    expect(text).toContain(`${report.boardsWithStartPastStation} of ${report.withBlank} with a blank`);
+    expect(text).toContain(`largest rise of a 12" thickness: ${reportInches(report.maxTwelveRiseMm)}`);
   });
 });

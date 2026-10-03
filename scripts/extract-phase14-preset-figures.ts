@@ -19,14 +19,15 @@
  * For each preset in BOARD_PRESETS, the board is exactly what clicking the card opens
  * (`presetDesignFields`, with `railsImportFoilThickness: true` and `DEFAULT_VOLUME_SPEC` as the
  * store's defaults supply): its side profile from `buildBoardProfile` on the blank prepared with
- * `prepareBlank`, `thicknessMm` from that profile's `effectiveFoil` and `rockerMm` from its
+ * `prepareBlank` (with any Thinning Starts the preset's blank stores, through `thinningStartsOf` — none
+ * today, so both tips read Automatic), `thicknessMm` from that profile's `effectiveFoil` and `rockerMm` from its
  * `stationRocker`, tail tip to nose tip. Every length is millimetres at full precision. Running it
  * twice writes the same bytes.
  */
 import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
-import { prepareBlank } from "@/lib/geometry/blank-fit";
+import { prepareBlank, thinningStartsOf } from "@/lib/geometry/blank-fit";
 import { buildBoardProfile } from "@/lib/geometry/board-profile";
 import type { FoilStationKey } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
@@ -74,6 +75,7 @@ function main() {
         deckSkin: fields.blank.deckSkin,
         tipStyle: fields.blank.tipStyle,
         fineTuneSurface: fields.blank.fineTuneSurface,
+        ...thinningStartsOf(fields.blank),
       },
     });
     return {

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_BLANK_CUT, type BlankRecord } from "./blank";
-import { boardOnBlank, placementRange, prepareBlank, type BoardOnBlankInput } from "./blank-fit";
+import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
+import { boardOnBlank, judgeBlank, placementRange, prepareBlank, type BoardOnBlankInput } from "./blank-fit";
 import {
   buildBlankProfile,
   buildBoardProfile,
@@ -13,10 +14,12 @@ import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { DEFAULT_BOARD_SPEC } from "./board";
 import { BOARD_PRESETS } from "./presets";
 import { DEFAULT_FOIL_SPEC, foilStationPoints, sampleFoil, type FoilStationKey } from "./foil";
-import { MEASURE_STATION_MM } from "./outline";
-import { DEFAULT_FALLBACK_ROCKER, rockerStationPositions } from "./rocker";
+import { buildOutline, MEASURE_STATION_MM, sampleOutline } from "./outline";
+import { DEFAULT_FALLBACK_ROCKER, ROCKER_LIFT_RANGE_IN, rockerStationPositions } from "./rocker";
 import { prepareRootCurve } from "./root-curve";
+import { STEADY_EPSILON_MM } from "./tip-taper";
 import { inchesToMm, mm, type Mm } from "./units";
+import { isPickable } from "@/lib/blanks/catalog";
 
 // Every blank figure below is read from the committed CSVs through the tested reader, and every
 // expected number is computed by the functions under test — never typed (CLAUDE.md Rule 1).
@@ -463,5 +466,174 @@ describe("Remove This Blank keeps the five stations exactly (WR-01)", () => {
     expect(r.handSet.foil.center).toBe(r.c.foil.center);
     expect(r.handSet.foil.noseTip).toBe(r.c.foil.noseTip);
     expect(r.handSet.foil.tailTip).toBe(r.c.foil.tailTip);
+  });
+});
+
+describe("Remove This Blank on a board whose tail sits below its centre (Phase 14 code review WR-02)", () => {
+  // The review's example: the default 6'0" outline on the Arctic Foam 7'9" SBF at a 1 1/4" centre,
+  // default tips, Pin deck, both starts on Automatic, laid where the fit check puts it. Under Pin
+  // deck the tail's thinning comes off the bottom, which drops that tip below the board's centre.
+  const record = findBlank("Arctic Foam", `7'9" SBF`);
+  const prepared = prepareBlank(record);
+  const length = DEFAULT_BOARD_SPEC.outline.length;
+  const geometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
+  const foil = { ...DEFAULT_FOIL_SPEC, center: inchesToMm(1.25) };
+  const verdict = judgeBlank(
+    prepared,
+    {
+      board: {
+        length,
+        centerThickness: foil.center,
+        noseTip: foil.noseTip,
+        tailTip: foil.tailTip,
+        nose12Offset: mm(0),
+        tail12Offset: mm(0),
+        ...DEFAULT_BLANK_CUT,
+      },
+      halfWidthAt: (s: Mm) => sampleOutline(geometry, s),
+      widePointStation: geometry.widePointStation,
+    },
+    toFitSettings(DEFAULT_FIT_DEFAULTS),
+  );
+  const onBlank = buildBoardProfile({
+    length,
+    rocker: DEFAULT_FALLBACK_ROCKER,
+    foil,
+    blank: { prepared, placement: verdict.placement, nose12Offset: mm(0), tail12Offset: mm(0), ...DEFAULT_BLANK_CUT },
+  });
+  const handSet = handSetFromProfile(onBlank, foil);
+  const after = buildBoardProfile({ length, rocker: handSet.rocker, foil: handSet.foil, blank: null });
+  const lifts: Record<FoilStationKey, Mm> = { ...handSet.rocker, center: mm(0) };
+  const range = { min: inchesToMm(ROCKER_LIFT_RANGE_IN.min), max: inchesToMm(ROCKER_LIFT_RANGE_IN.max) };
+
+  it("really is a board whose tail tip sits below its centre, so this test cannot go vacuous", () => {
+    expect(onBlank.blank).not.toBeNull();
+    expect(onBlank.stationRocker.tailTip - onBlank.stationRocker.center).toBeLessThan(0);
+  });
+
+  it("seeds every lift inside the hand-set range — the tail tip at the range's minimum", () => {
+    for (const key of ["noseTip", "nose12", "tail12", "tailTip"] as const) {
+      expect(handSet.rocker[key], key).toBeGreaterThanOrEqual(range.min);
+      expect(handSet.rocker[key], key).toBeLessThanOrEqual(range.max);
+    }
+    expect(handSet.rocker.tailTip).toBe(range.min);
+  });
+
+  it("the hand-set board reads exactly those five numbers, from its station rocker and from its drawing", () => {
+    for (const { key, station } of after.stations) {
+      expect(after.stationRocker[key], key).toBe(lifts[key]);
+      expect(after.rockerAt(station), key).toBe(lifts[key]);
+    }
+  });
+});
+
+describe("each tip's thinning start on the side profile (Phase 14 D-02, D-12, D-24)", () => {
+  // A pickable blank and a board 2" shorter than it (the stress set's own rule).
+  const regular = findBlank(MARKO_VENDOR, M_REGULAR);
+  const prepared = prepareBlank(regular);
+  const length = mm(prepared.lengthMm - inchesToMm(2));
+  const foil = { ...DEFAULT_FOIL_SPEC, center: inchesToMm(2.5) };
+  const board = (starts: { noseThinningStart?: Mm; tailThinningStart?: Mm } = {}) =>
+    buildBoardProfile({
+      length,
+      rocker: DEFAULT_FALLBACK_ROCKER,
+      foil,
+      blank: { prepared, placement: mm(0), nose12Offset: mm(0), tail12Offset: mm(0), ...DEFAULT_BLANK_CUT, ...starts },
+    });
+  // The 10'9" longboard blank: long enough for every board length below.
+  const longboard = prepareBlank(findBlank("Arctic Foam", `10'9" LB`));
+
+  /** Freezes an object and every plain object inside it — all but the shared prepared blank — so any write throws. */
+  function deepFreeze<T>(value: T): T {
+    if (value && typeof value === "object") {
+      for (const [key, inner] of Object.entries(value)) if (key !== "prepared") deepFreeze(inner);
+      Object.freeze(value);
+    }
+    return value;
+  }
+
+  it("is the blank fit's own per-tip view, exactly", () => {
+    expect(isPickable(regular)).toBe(true);
+    const input = boardInput({ length, centerThickness: foil.center });
+    const profile = buildBlankProfile(prepared, input, mm(0));
+    expect(profile.blank!.tips).toEqual(boardOnBlank(prepared, input, mm(0)).tips);
+    expect(board().blank!.tips).toEqual(profile.blank!.tips);
+  });
+
+  it("reads Automatic on both tips when the board stores no start, and follows Automatic's own distance", () => {
+    // The board on M-Regular, and a board 2" shorter than the longboard blank slid to its tail end
+    // (where the tail's Automatic start moves further in than 12").
+    const longLength = mm(longboard.lengthMm - inchesToMm(2));
+    const tailEnd = placementRange(longboard.lengthMm, longLength).min;
+    const views = [
+      board().blank!.tips,
+      buildBlankProfile(longboard, boardInput({ length: longLength, centerThickness: foil.center }), tailEnd).blank!.tips,
+    ].flatMap((tips) => [tips.nose, tips.tail]);
+    for (const view of views) {
+      expect(view.automatic).toBe(true);
+      expect(view.fromTip).toBe(view.automaticStart);
+      expect(view.reachesStation).toBe(view.automaticStart - MEASURE_STATION_MM > STEADY_EPSILON_MM);
+    }
+    // Both answers occur, so the rule above is really exercised.
+    expect(views.some((view) => view.reachesStation)).toBe(true);
+    expect(views.some((view) => !view.reachesStation)).toBe(true);
+  });
+
+  it('a tail start stored at 18" reads 18", set by hand, and leaves the nose\'s view alone', () => {
+    const automatic = board().blank!.tips;
+    const handSet = board({ tailThinningStart: inchesToMm(18) }).blank!.tips;
+    expect(handSet.tail.fromTip).toBe(inchesToMm(18));
+    expect(handSet.tail.automatic).toBe(false);
+    expect(handSet.tail.automaticStart).toBe(automatic.tail.automaticStart);
+    expect(handSet.nose).toEqual(automatic.nose);
+  });
+
+  it("a stored start further in than a shortened board's centre reads the range's far end, and comes back when the board is lengthened", () => {
+    const stored = inchesToMm(36);
+    const profileAt = (boardLength: Mm) => {
+      const input = deepFreeze({
+        length: boardLength,
+        rocker: { ...DEFAULT_FALLBACK_ROCKER },
+        foil: { ...foil },
+        blank: {
+          prepared: longboard,
+          placement: mm(0),
+          nose12Offset: mm(0),
+          tail12Offset: mm(0),
+          ...DEFAULT_BLANK_CUT,
+          tailThinningStart: stored,
+          noseThinningStart: stored,
+        },
+      });
+      const profile = buildBoardProfile(input);
+      // Nothing is written back: the stored starts are the ones passed in.
+      expect(input.blank.tailThinningStart).toBe(stored);
+      expect(input.blank.noseThinningStart).toBe(stored);
+      return profile.blank!.tips;
+    };
+
+    const short = profileAt(inchesToMm(60));
+    for (const view of [short.tail, short.nose]) {
+      expect(view.range.max).toBeLessThan(stored);
+      expect(view.fromTip).toBe(view.range.max);
+      expect(view.automatic).toBe(false);
+    }
+    const long = profileAt(inchesToMm(96));
+    expect(long.tail.fromTip).toBe(stored);
+    expect(long.nose.fromTip).toBe(stored);
+  });
+
+  it("carries each tip's mark station, and a hand-set start moves only its own tip's mark", () => {
+    const automatic = board().blank!.tips;
+    const tailMoved = board({ tailThinningStart: inchesToMm(18) }).blank!.tips;
+    const noseMoved = board({ noseThinningStart: inchesToMm(15) }).blank!.tips;
+    for (const tips of [automatic, tailMoved, noseMoved]) {
+      expect(tips.tail.station).toBe(tips.tail.fromTip);
+      expect(tips.nose.station).toBe(length - tips.nose.fromTip);
+    }
+    expect(tailMoved.tail.station).not.toBe(automatic.tail.station);
+    expect(tailMoved.nose.station).toBe(automatic.nose.station);
+    expect(noseMoved.nose.station).not.toBe(automatic.nose.station);
+    expect(noseMoved.tail.station).toBe(automatic.tail.station);
   });
 });

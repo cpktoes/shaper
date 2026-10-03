@@ -12,8 +12,10 @@
  * - A board in a blank (D-01; cut from it as a planer does, Phase 12) reads its rocker and foil off
  *   `boardOnBlank`, and also carries the blank's own silhouette in the board's coordinates — its
  *   deck the skin above the board's deck, its bottom the centre gap below the board's un-thinned
- *   bottom — the foam to come off the deck and off the bottom at each station, and the blank's own
- *   numbers under each station (the DATASHEET's blank rows).
+ *   bottom — the foam to come off the deck and off the bottom at each station, the blank's own
+ *   numbers under each station (the DATASHEET's blank rows), and each tip's Thinning Starts point as
+ *   `boardOnBlank` resolved it (`tips`, Phase 14 D-12) — so every screen reads where each tip's
+ *   thinning starts, and why, without working anything out itself.
  *
  * In both, the deck is DERIVED (R10): `deckAt(s)` is exactly `rockerAt(s) + thicknessAt(s)`, never
  * a third interpolated curve. Every curve is prepared once when the profile is built and only
@@ -29,15 +31,18 @@ import type { BlankCut, BlankRecord, FineTuneSurface, TipStyle } from "./blank";
 import {
   boardOnBlank,
   levelCurve,
+  thinningStartsOf,
   type BoardOnBlank,
   type BoardOnBlankInput,
   type PreparedBlank,
+  type TipRule,
 } from "./blank-fit";
 import { type FoilSpec, type FoilStationKey, foilStationPoints } from "./foil";
 import { preparePchip } from "./pchip";
-import { type FiveStationRocker, fallbackRockerPoints, rockerStationPositions } from "./rocker";
+import { type FiveStationRocker, ROCKER_LIFT_RANGE_IN, fallbackRockerPoints, rockerStationPositions } from "./rocker";
 import { type CurveRule, prepareRootCurve } from "./root-curve";
-import { type Mm, mm } from "./units";
+import type { TipView } from "./tip-taper";
+import { type Mm, inchesToMm, mm } from "./units";
 
 /** A board's blank as the side view and the DATASHEET need it — every station in the BOARD's
  * coordinates (0 = the board's tail tip). */
@@ -63,7 +68,8 @@ export interface BlankSideView {
   /** The blank's deck: its bottom plus its own thickness there. */
   deckAt(s: Mm): Mm;
   /** The 12" thicknesses before any fine-tune (D-11): the blank's thickness there less the deck
-   * skin and the centre gap (Phase 12 R3). */
+   * skin and the centre gap (Phase 12 R3) — unless that tip's thinning starts further in than 12",
+   * when the 12" thickness is the steady taper's (Phase 14 D-07). */
   derived12: { nose12: Mm; tail12: Mm };
   /** Foam off the deck at each of the board's five stations (`BoardOnBlank.deckOffAt`). */
   foamOffDeck: Record<FoilStationKey, Mm>;
@@ -75,6 +81,16 @@ export interface BlankSideView {
   /** Every station the catalogue measured for rocker and for thickness, tail to nose, in board
    * coordinates — the measuring-points overlay's blank dots (D-15). */
   measuredStations: { rocker: Mm[]; thickness: Mm[] };
+  /**
+   * Each tip's Thinning Starts point (Phase 14 D-02, D-12; UI-SPEC §4), exactly as `boardOnBlank`
+   * resolved it: the start in force, in from that tip (`fromTip`), and its mark's station along the
+   * board (`station`); whether it is Automatic or set by hand; what Automatic picks; the slider's
+   * reach; whether it starts further in than the 12" station; and the too-close flag. The sidebar,
+   * the drawing's mark, the DATASHEET and the order form read these and work nothing out (Rule 1).
+   * The per-tip distance is `fromTip`, never `start` — `start` above already means where the blank's
+   * tail tip falls.
+   */
+  tips: { nose: TipView; tail: TipView };
 }
 
 /** The one side profile every screen reads (Pattern 5). */
@@ -209,6 +225,7 @@ export function buildBlankProfile(
       rocker: measured((station) => station.rockerMm),
       thickness: measured((station) => station.thicknessMm),
     },
+    tips: onBlank.tips,
   };
 
   return {
@@ -225,13 +242,17 @@ export function buildBlankProfile(
 
 /**
  * What "Remove This Blank" (UI-SPEC §7) leaves behind: the hand-set rocker and foil seeded from the
- * board's profile as it is on screen at that moment, so the five station numbers do not move.
+ * board's profile as it is on screen at that moment, so the five station numbers do not move (but for
+ * a tip below the centre, as the Rocker point says).
  *
  * - Rocker: the four lifts are the profile's rocker at those stations LESS its centre rocker. The
  *   hand-set rocker's centre is 0 by definition (D-14), and a board in a blank can have a non-zero
  *   centre rocker (its crop's low point need not sit at the centre, e.g. at an off-centre
  *   placement), so each lift is rebased on the centre rather than copied — the board keeps the
- *   same shape at the five stations, with its centre as the zero.
+ *   same shape at the five stations, with its centre as the zero. Each lift is then pulled into
+ *   `ROCKER_LIFT_RANGE_IN`, so a tip that sat below the centre (a reverse-rocker tail under Pin deck)
+ *   becomes 0: the hand-set rocker fixes the centre at 0 and cannot keep a tip below it, and a lift
+ *   kept below 0 would make the drawing level on that tip and disagree with these numbers.
  * - Foil: the two 12" thicknesses are the profile's FINAL ones (blank-derived plus any fine-tune),
  *   read off `effectiveFoil`. The centre and both tips stay the stored foil's own — they already
  *   are what the blank profile reads there, and `foil.center` stays the one stored centre.
@@ -247,12 +268,15 @@ export function handSetFromProfile(
 ): { rocker: FiveStationRocker; foil: FoilSpec } {
   const { stationRocker, effectiveFoil } = profile;
   const centre = stationRocker.center;
+  const lowest = inchesToMm(ROCKER_LIFT_RANGE_IN.min);
+  const highest = inchesToMm(ROCKER_LIFT_RANGE_IN.max);
+  const lift = (at: Mm) => mm(Math.min(highest, Math.max(lowest, at - centre)));
   return {
     rocker: {
-      noseTip: mm(stationRocker.noseTip - centre),
-      nose12: mm(stationRocker.nose12 - centre),
-      tail12: mm(stationRocker.tail12 - centre),
-      tailTip: mm(stationRocker.tailTip - centre),
+      noseTip: lift(stationRocker.noseTip),
+      nose12: lift(stationRocker.nose12),
+      tail12: lift(stationRocker.tail12),
+      tailTip: lift(stationRocker.tailTip),
     },
     foil: { ...foil, nose12: effectiveFoil.nose12, tail12: effectiveFoil.tail12 },
   };
@@ -274,6 +298,18 @@ export interface BoardProfileInput {
     deckSkin: Mm;
     tipStyle: TipStyle;
     fineTuneSurface: FineTuneSurface;
+    /**
+     * Which tip rule cuts the tips (`BoardOnBlankInput.tipRule`): absent is the live steady taper;
+     * `"blend"` is the 12" S-blend kept by name for the reports and the pin only (D-25).
+     */
+    tipRule?: TipRule;
+    /**
+     * The board's own stored Thinning Starts (Phase 14 D-24), in mm in from each tip. Absent is
+     * Automatic. They reach `boardOnBlank` through `thinningStartsOf`, the one helper every place
+     * that builds a board from its stored blank uses, so no path can drop them.
+     */
+    noseThinningStart?: Mm;
+    tailThinningStart?: Mm;
   } | null;
   /**
    * Which rule draws a board with no blank between its five stations. Absent is the live
@@ -305,6 +341,8 @@ export function buildBoardProfile(input: BoardProfileInput): BoardSideProfile {
       deckSkin: blank.deckSkin,
       tipStyle: blank.tipStyle,
       fineTuneSurface: blank.fineTuneSurface,
+      ...(blank.tipRule === undefined ? {} : { tipRule: blank.tipRule }),
+      ...thinningStartsOf(blank),
     },
     blank.placement,
   );

@@ -35,14 +35,20 @@
  * (out of scope for this module).
  */
 import type { BlankCut } from "./blank";
-import { formatDeckSkin } from "./blank-reasons";
+import { formatDeckSkin, formatThinningStart, formatThinningStartBare } from "./blank-reasons";
 import { formatMark, planerPasses } from "./measure-display";
+import type { TipView } from "./tip-taper";
 import { mm, type Mm, type UnitsSystem } from "./units";
 
 /** What `planingTable` needs off a board's side profile — `BoardSideProfile` (`board-profile.ts`)
- * satisfies this structurally, so the order form passes `sideProfile` straight in. */
+ * satisfies this structurally, so the order form passes `sideProfile` straight in. `tips` is each
+ * tip's Thinning Start in force (Phase 14, D-12) — `BlankSideView.tips` already carries it. */
 export interface PlaningInput {
-  blank: { cut: Pick<BlankCut, "deckSkin">; centerGap: Mm } | null;
+  blank: {
+    cut: Pick<BlankCut, "deckSkin">;
+    centerGap: Mm;
+    tips: { nose: Pick<TipView, "fromTip">; tail: Pick<TipView, "fromTip"> };
+  } | null;
 }
 
 const NO_BLANK_LINE = "Pick a blank on ROCKER for the planing numbers.";
@@ -67,11 +73,13 @@ export interface PlaningRow {
   bottom: string;
 }
 
-/** The table's contents: the two column headers, the two rows, and the footnote under them. */
+/** The table's contents: the two column headers, the two rows, the footnote under them, and the
+ * thinning line printed under the footnote — null with no blank picked, so nothing is printed. */
 export interface PlaningTable {
   headers: { deck: string; bottom: string };
   rows: PlaningRow[];
   footnote: string;
+  thinning: string | null;
 }
 
 const TABLE_HEADERS = { deck: "Deck", bottom: "Bottom" };
@@ -80,6 +88,23 @@ const LABEL_PASSES = "Passes";
 /** The rail table's own "nothing here" mark (U+2014), reused so the two tables agree on what a
  * missing value looks like. */
 const NO_DATA_CELL = "—";
+
+/**
+ * Where each tip's thinning starts, measured from that tip — the line the order form prints under the
+ * PLANING footnote (Phase 14, D-12, UI-SPEC §8): Imperial `Thinning starts from the tip: nose 12", tail
+ * 25 1/2".`, Metric `Thinning starts from the tip: nose 30.5, tail 64.8 cm.` A start is a dim (CLAUDE.md
+ * Rule 2), so Metric reads centimetres to one decimal; and since this is one line of running text,
+ * Metric carries its unit once, at the end (CLAUDE.md: "a unit is carried once per line of running
+ * text") — the nose through `formatThinningStartBare`, the tail through `formatThinningStart`. Imperial
+ * keeps each value's own inch mark, as every Imperial figure does. No conversion happens here: both
+ * formatters read through `units.ts`.
+ */
+export function thinningLine(noseFromTip: Mm, tailFromTip: Mm, system: UnitsSystem): string {
+  return (
+    `Thinning starts from the tip: nose ${formatThinningStartBare(noseFromTip, system)}, ` +
+    `tail ${formatThinningStart(tailFromTip, system)}.`
+  );
+}
 
 /**
  * The founder's 2026-09-29 words, after seeing item 8's printed page: "Let's organize this like the
@@ -118,6 +143,7 @@ export function planingTable(profile: PlaningInput, planerMaxDepth: Mm, system: 
         { label: LABEL_PASSES, deck: NO_DATA_CELL, bottom: NO_DATA_CELL },
       ],
       footnote: NO_BLANK_LINE,
+      thinning: null,
     };
   }
 
@@ -136,5 +162,6 @@ export function planingTable(profile: PlaningInput, planerMaxDepth: Mm, system: 
       },
     ],
     footnote: `At the center, at ${formatMark(planerMaxDepth, system)} a pass — your Planer Max Depth.`,
+    thinning: thinningLine(blank.tips.nose.fromTip, blank.tips.tail.fromTip, system),
   };
 }

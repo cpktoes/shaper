@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { cn } from "@/lib/utils";
+import { SliderRow } from "./slider-row";
 
 /**
  * Five sidebars — TEMPLATE, ROCKER, RAILS, FINS and VOLUME — used to write out the same slider
@@ -140,5 +144,140 @@ describe("shared SliderRow (the fix for five hand-rolled slider markups)", () =>
     const moduleSource = stripComments(readFileSync(modulePath, "utf8"));
     expect(moduleSource.match(/export function SliderRow\(/g)?.length).toBe(1);
     expect(moduleSource.match(/export function sliderValue\(/g)?.length).toBe(1);
+  });
+});
+
+/**
+ * Phase 14's one new slot (14-UI-SPEC §1): the Thinning Starts rows put their Automatic button at the
+ * right end of the hint line, where `rightHint` would sit. The prop is additive — a row that does not
+ * pass it must render exactly as every row has until now, so the source contract below pins today's
+ * hint-line classes word for word, and a server render proves the same from the markup a browser gets.
+ */
+describe("SliderRow's hintAction slot (14-UI-SPEC §1)", () => {
+  const TODAY_HINT_CLASSES = "mt-0.5 flex justify-between text-xs text-surf-ink-muted font-normal";
+  const modulePath = join(REPO_ROOT, "components/design/slider-row.tsx");
+  const moduleSource = stripComments(readFileSync(modulePath, "utf8"));
+
+  it("declares one optional hintAction prop, a React node", () => {
+    expect(moduleSource).toMatch(/hintAction\?:\s*ReactNode;/);
+  });
+
+  it("draws the hint line when any of leftHint, rightHint or hintAction is present", () => {
+    expect(moduleSource).toMatch(/\(leftHint\s*\|\|\s*rightHint\s*\|\|\s*hintAction\)\s*&&/);
+  });
+
+  it("keeps today's hint-line classes, and adds items-center gap-2 only with a hintAction", () => {
+    expect(moduleSource).toContain(`"${TODAY_HINT_CLASSES}"`);
+    expect(moduleSource).toMatch(
+      /const hasAction = hintAction !== undefined && hintAction !== null && hintAction !== false;/,
+    );
+    expect(moduleSource).toMatch(/hasAction\s*&&\s*"items-center gap-2"/);
+    // The class merge leaves today's string exactly as it is when there is no action.
+    expect(cn(TODAY_HINT_CLASSES, false)).toBe(TODAY_HINT_CLASSES);
+    expect(cn(TODAY_HINT_CLASSES, "items-center gap-2")).toBe(`${TODAY_HINT_CLASSES} items-center gap-2`);
+  });
+
+  it("puts the action where the right hint goes", () => {
+    expect(moduleSource).toMatch(/hasAction\s*\?\s*hintAction\s*:\s*<span>\{rightHint\}<\/span>/);
+  });
+
+  const base = { label: "Tail Thinning Starts", value: 12, min: 6, max: 30, step: 0.5, onValueChange: () => {} };
+  const hintLine = (html: string) => html.match(/<div class="(mt-0\.5 flex[^"]*)">([\s\S]*?)<\/div>/);
+
+  it("renders a row without hintAction exactly as before", () => {
+    const html = renderToStaticMarkup(createElement(SliderRow, { ...base, leftHint: "Near the tip", rightHint: "The center" }));
+    const line = hintLine(html);
+    expect(line?.[1]).toBe(TODAY_HINT_CLASSES);
+    expect(line?.[2]).toBe("<span>Near the tip</span><span>The center</span>");
+    expect(hintLine(renderToStaticMarkup(createElement(SliderRow, base)))).toBeNull();
+  });
+
+  it("renders the action at the right end of the hint line, in place of the right hint", () => {
+    const action = createElement("button", { type: "button" }, "Automatic");
+    const html = renderToStaticMarkup(
+      createElement(SliderRow, { ...base, leftHint: "Picked automatically", rightHint: "unused", hintAction: action }),
+    );
+    const line = hintLine(html);
+    expect(line?.[1]).toBe(`${TODAY_HINT_CLASSES} items-center gap-2`);
+    expect(line?.[2]).toBe('<span>Picked automatically</span><button type="button">Automatic</button>');
+    // An action alone still draws the line.
+    const alone = hintLine(renderToStaticMarkup(createElement(SliderRow, { ...base, hintAction: action })));
+    expect(alone?.[2]).toBe('<span></span><button type="button">Automatic</button>');
+    // A caller that passes null has no action: today's line, right hint and all.
+    const none = hintLine(
+      renderToStaticMarkup(createElement(SliderRow, { ...base, leftHint: "Near the tip", rightHint: "The center", hintAction: null })),
+    );
+    expect(none?.[1]).toBe(TODAY_HINT_CLASSES);
+    expect(none?.[2]).toBe("<span>Near the tip</span><span>The center</span>");
+  });
+
+  it("treats a hintAction of false as no action: the right hint shows and no extra classes (IN-07)", () => {
+    // What `hintAction={cond && <Button />}` hands over when `cond` is false.
+    const hints = { leftHint: "Near the tip", rightHint: "The center" };
+    const withFalse = renderToStaticMarkup(createElement(SliderRow, { ...base, ...hints, hintAction: false }));
+    const line = hintLine(withFalse);
+    expect(line?.[1]).toBe(TODAY_HINT_CLASSES);
+    expect(line?.[2]).toBe("<span>Near the tip</span><span>The center</span>");
+    // The whole row is the row with no action at all.
+    expect(withFalse).toBe(renderToStaticMarkup(createElement(SliderRow, { ...base, ...hints })));
+    // With no hints either, there is no hint line.
+    expect(hintLine(renderToStaticMarkup(createElement(SliderRow, { ...base, hintAction: false })))).toBeNull();
+  });
+});
+
+/**
+ * The slider's own name and spoken value (Phase 14 code review WR-01): two additive props the two
+ * Thinning Starts rows pass, so a screen reader tells their twin sliders apart. They land on the
+ * thumb's hidden range input — the element with the slider role — and nowhere else; a row that passes
+ * neither renders exactly as it did before they existed.
+ */
+describe("SliderRow's sliderLabel and sliderValueText (WR-01)", () => {
+  const base = { label: "Tail Thinning Starts", value: 12, min: 6, max: 30, step: 0.5, onValueChange: () => {} };
+  const rangeInput = (html: string) => {
+    const inputs = html.match(/<input[^>]*type="range"[^>]*\/>/g) ?? [];
+    expect(inputs).toHaveLength(1);
+    return inputs[0];
+  };
+  // Base UI numbers each slider by React's per-render id, so two separate renders differ only there.
+  const withoutIds = (html: string) => html.replace(/ id="[^"]*"/g, "");
+
+  it("names the slider and gives its spoken value on the range input", () => {
+    const html = renderToStaticMarkup(
+      createElement(SliderRow, { ...base, sliderLabel: "Tail Thinning Starts", sliderValueText: "64.8 cm" }),
+    );
+    const input = rangeInput(html);
+    expect(input).toContain('aria-label="Tail Thinning Starts"');
+    expect(input).toContain('aria-valuetext="64.8 cm"');
+    // The name is the slider's own, not a reference to some other element.
+    expect(input).not.toContain("aria-labelledby");
+    // Only the input carries them.
+    expect(html.match(/aria-label=/g)).toHaveLength(1);
+    expect(html.match(/aria-valuetext=/g)).toHaveLength(1);
+  });
+
+  it("each prop works on its own", () => {
+    const named = rangeInput(renderToStaticMarkup(createElement(SliderRow, { ...base, sliderLabel: "Nose Thinning Starts" })));
+    expect(named).toContain('aria-label="Nose Thinning Starts"');
+    expect(named).not.toContain("aria-valuetext");
+    const spoken = rangeInput(renderToStaticMarkup(createElement(SliderRow, { ...base, sliderValueText: '25 1/2"' })));
+    expect(spoken).toContain('aria-valuetext="25 1/2&quot;"');
+    expect(spoken).not.toContain("aria-label=");
+  });
+
+  it("a row without them carries neither attribute, and renders the same as one passing them as undefined", () => {
+    for (const props of [
+      base,
+      { ...base, displayValue: '12"' },
+      { ...base, leftHint: "Near the tip", rightHint: "The center", note: "A note", density: "tight" as const },
+      { ...base, disabled: true, className: "flex-1" },
+    ]) {
+      const html = renderToStaticMarkup(createElement(SliderRow, props));
+      expect(html).not.toContain("aria-label=");
+      expect(html).not.toContain("aria-valuetext=");
+      const explicit = renderToStaticMarkup(
+        createElement(SliderRow, { ...props, sliderLabel: undefined, sliderValueText: undefined }),
+      );
+      expect(withoutIds(explicit)).toBe(withoutIds(html));
+    }
   });
 });

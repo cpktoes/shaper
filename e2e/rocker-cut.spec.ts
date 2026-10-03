@@ -1,4 +1,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { automaticButtonLabel, thicknessIntroWithBlank } from "../lib/geometry/blank-reasons";
+import { BOARD_LENGTH_RANGE_IN } from "../lib/geometry/board";
+import { formatLength, stationLabel } from "../lib/geometry/measure-display";
+import { inchesToMm } from "../lib/geometry/units";
 
 /**
  * Phase 12's ROCKER cut, proven in real browsers (12-05; 12-08 extends it): with a blank picked,
@@ -251,11 +255,13 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(pill(page, "Tip Style", "Pin deck")).toHaveAttribute("aria-pressed", "false");
     await expect(page.getByText(/^The bottom stays put and the extra comes off the deck/)).toBeVisible();
 
-    // The last 12" at each end re-derives: at least one tip reads differently...
+    // Each tip re-derives from its tip to its Thinning Starts point (Phase 14, D-07): at least one tip
+    // reads differently...
     await expect
       .poll(async () => (await row("noseTip").textContent()) !== noseTip || (await row("tailTip").textContent()) !== tailTip)
       .toBe(true);
-    // ...and nothing at the 12" stations moves (SPEC R5).
+    // ...and, on the first fitting blank, where both tips start on Automatic at the 12" station,
+    // nothing at the 12" stations moves.
     expect(await row("nose12").textContent()).toBe(nose12);
     expect(await row("tail12").textContent()).toBe(tail12);
     // Under Bottom the Deck Skin's hint says the tips take more off the deck.
@@ -275,13 +281,9 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await openRocker(page);
     await pickFirstFittingBlank(page);
 
-    // THICKNESS says how the foil now comes off (the station label is 12" in Imperial).
-    await expect(
-      page.getByText(
-        `Deck and bottom follow your blank's; the tips are thinned in the last 12". Set the tips, and fine-tune the 12" stations if you need to.`,
-        { exact: true },
-      ),
-    ).toBeVisible();
+    // THICKNESS says how the foil now comes off: each tip is thinned from its own Thinning Starts
+    // point (Phase 14, D-07) — the app's own sentence, built in Node, so no wording is typed twice.
+    await expect(page.getByText(thicknessIntroWithBlank("imperial"), { exact: true })).toBeVisible();
 
     // A new board's 12" tweaks come off the deck (D-13).
     await expect(pill(page, "Fine-tune off", "Deck")).toHaveAttribute("aria-pressed", "true");
@@ -385,6 +387,368 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(page.getByText("Tip Style", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Fine-tune off", { exact: true })).toHaveCount(0);
     await expect(page.getByText(/^Deck and bottom follow your blank's/)).toHaveCount(0);
+  });
+});
+
+/** `Nose` / `Tail` — a tip's name at the start of its Thinning Starts label. */
+type Tip = "nose" | "tail";
+const TIP_NAME: Record<Tip, string> = { nose: "Nose", tail: "Tail" };
+
+/** A Thinning Starts row's label line. */
+function startLabel(page: Page, end: Tip): Locator {
+  return page.getByText(new RegExp(`^${TIP_NAME[end]} Thinning Starts — `));
+}
+
+/** The whole `SliderRow` (label, slider, hint line) of one tip's Thinning Starts. */
+function startRow(page: Page, end: Tip): Locator {
+  return startLabel(page, end).locator("xpath=..");
+}
+
+/** The state text on the left of a Thinning Starts row's hint line. */
+function startHint(page: Page, end: Tip): Locator {
+  return startRow(page, end).locator(":scope > div:last-child > span").first();
+}
+
+/** The Automatic button on one tip's row, by the accessible name the app gives it. */
+function automaticButton(page: Page, end: Tip): Locator {
+  return page.getByRole("button", { name: automaticButtonLabel(end), exact: true });
+}
+
+/** The too-close line under one tip's row, a sibling of the row inside its wrapper. */
+function tooCloseLine(page: Page, end: Tip): Locator {
+  return startRow(page, end).locator("xpath=following-sibling::p");
+}
+
+/** The distance a label line carries after its ` — `. */
+function distanceOf(label: string): string {
+  const at = label.indexOf(" — ");
+  if (at < 0) throw new Error(`no distance in "${label}"`);
+  return label.slice(at + 3);
+}
+
+/** The station name in a `Nose @ 12" — …` / `Nose @ 30.5 cm — …` label. */
+function stationOf(label: string): string {
+  const match = label.match(/^(?:Nose|Tail) @ (.+?) — /);
+  if (!match) throw new Error(`no station in "${label}"`);
+  return match[1];
+}
+
+/** Waits for the streamed blank list to arrive and be owned by React, without navigating. */
+async function waitForLiveBlankList(page: Page) {
+  await expect(blankList(page)).toBeVisible({ timeout: 30_000 });
+  await page.waitForFunction(() => {
+    const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+    return (
+      owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
+      owned(document.querySelector('input[aria-label="Search blanks"]'))
+    );
+  });
+}
+
+/** The gear menu (desktop) or the phone top bar's Menu — whichever this project shows. */
+function menuTrigger(page: Page, projectName: string): Locator {
+  return projectName === "desktop"
+    ? page.getByRole("button", { name: "Settings", exact: true })
+    : page.getByRole("banner").getByRole("button", { name: "Menu" });
+}
+
+/** Picks Imperial or Metric in the menu, then closes it — an in-session switch, nothing reloaded. */
+async function chooseUnits(page: Page, projectName: string, label: "Imperial" | "Metric") {
+  const trigger = menuTrigger(page, projectName);
+  const item = page.getByRole("menuitemradio", { name: new RegExp(`^${label}`) });
+  await expect(async () => {
+    if (!(await item.isVisible())) await trigger.click();
+    await expect(item).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
+  await item.click();
+  await expect(item).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
+  await expect(item).toBeHidden();
+}
+
+test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-11, D-27)", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissChrome(page);
+  });
+
+  test("a picked blank shows Nose then Tail Thinning Starts after Tip Style; with no blank neither row is there", async ({
+    page,
+  }) => {
+    await openRocker(page);
+    // D-09: hidden, not disabled.
+    await expect(page.getByText(/Thinning Starts — /)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Use Automatic for the / })).toHaveCount(0);
+
+    await pickFirstFittingBlank(page);
+    await expect(startLabel(page, "nose")).toBeVisible();
+    await expect(startLabel(page, "tail")).toBeVisible();
+    // A board that stores no start reads Automatic on both tips (UI E01 Empty).
+    for (const end of ["nose", "tail"] as const) {
+      await expect(automaticButton(page, end)).toHaveAttribute("aria-pressed", "true");
+      await expect(automaticButton(page, end)).toHaveAttribute("aria-disabled", "true");
+    }
+
+    // D-10's order: Tip Style, then the nose, then the tail — the last three things in THICKNESS.
+    const top = async (locator: Locator) => {
+      const box = await locator.boundingBox();
+      if (!box) throw new Error("no bounding box");
+      return box.y;
+    };
+    const tipStyle = await top(pillGroup(page, "Tip Style"));
+    const nose = await top(startLabel(page, "nose"));
+    const tail = await top(startLabel(page, "tail"));
+    expect(nose).toBeGreaterThan(tipStyle);
+    expect(tail).toBeGreaterThan(nose);
+  });
+
+  test("a nose drag sets its start by hand with no request, and one undo puts it back", async ({ page }, testInfo) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+
+    const labelBefore = await startLabel(page, "nose").innerText();
+    const hintBefore = await startHint(page, "nose").innerText();
+    const automaticDistance = distanceOf(labelBefore);
+
+    // The same filter as the Deck Skin drag above: Clerk's fake-key boot traffic and blob: loads are
+    // not caused by a drag; anything else is named on failure.
+    const requests: string[] = [];
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.startsWith("blob:") || /clerk\.accounts\.dev|\/__clerk\//.test(url)) return;
+      requests.push(`${request.method()} ${url}`);
+    });
+
+    const slider = startRow(page, "nose").getByRole("slider");
+    await slider.focus();
+    await slider.press("ArrowRight");
+
+    await expect(startLabel(page, "nose")).not.toHaveText(labelBefore);
+    await expect(startHint(page, "nose")).toHaveText(`Automatic would be ${automaticDistance}`);
+    await expect(automaticButton(page, "nose")).toHaveAttribute("aria-pressed", "false");
+    // Each tip is its own: the tail stays on Automatic (UI E01 Partial).
+    await expect(automaticButton(page, "tail")).toHaveAttribute("aria-pressed", "true");
+    expect(requests, `requests during the drag: ${requests.join(", ")}`).toHaveLength(0);
+
+    await undoOnce(page, testInfo.project.name);
+    await expect(startLabel(page, "nose")).toHaveText(labelBefore);
+    await expect(startHint(page, "nose")).toHaveText(hintBefore);
+    await expect(automaticButton(page, "nose")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("Automatic puts a hand-set start back in one undo step, and pressing it again does nothing", async ({
+    page,
+  }, testInfo) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+
+    const automaticLabel = await startLabel(page, "nose").innerText();
+    const slider = startRow(page, "nose").getByRole("slider");
+    await slider.focus();
+    await slider.press("ArrowRight");
+    await expect(startLabel(page, "nose")).not.toHaveText(automaticLabel);
+    const handSetLabel = await startLabel(page, "nose").innerText();
+
+    const button = automaticButton(page, "nose");
+    await expect(button).toHaveText("Automatic");
+    await button.click();
+    await expect(startLabel(page, "nose")).toHaveText(automaticLabel);
+    await expect(button).toHaveAttribute("aria-pressed", "true");
+
+    // One undo step: back to the start set by hand.
+    await undoOnce(page, testInfo.project.name);
+    await expect(startLabel(page, "nose")).toHaveText(handSetLabel);
+    await expect(button).toHaveAttribute("aria-pressed", "false");
+
+    // Back to Automatic, then a second press on a tip already on Automatic: the button is inert, so
+    // the press is fired straight at it — it writes nothing and records no step.
+    await button.click();
+    await expect(startLabel(page, "nose")).toHaveText(automaticLabel);
+    await expect(button).toHaveAttribute("aria-disabled", "true");
+    await button.dispatchEvent("click");
+    await expect(startLabel(page, "nose")).toHaveText(automaticLabel);
+
+    // So the next undo still lands on the start set by hand, not on an empty step.
+    await undoOnce(page, testInfo.project.name);
+    await expect(startLabel(page, "nose")).toHaveText(handSetLabel);
+  });
+
+  test(`the fixture board: a 10'0" on the Arctic Foam 10'9" LB at the tail end starts its tail further in, and a hand-set 12" start says where it is thinnest until Automatic clears it`, async ({
+    page,
+  }) => {
+    // TEMPLATE: the longest board the app makes (10'0"), with the default 2 1/2" centre and tips.
+    await page.goto("/design/outline");
+    const tenFoot = `Board Length — ${formatLength(inchesToMm(BOARD_LENGTH_RANGE_IN.max), "imperial")}`;
+    const lengthLabel = page.getByText(/^Board Length — /);
+    const lengthSlider = lengthLabel.locator("xpath=..").getByRole("slider");
+    // Retried, because a key pressed before React owns the slider is lost.
+    await expect(async () => {
+      await lengthSlider.focus();
+      await lengthSlider.press("End");
+      await expect(lengthLabel).toHaveText(tenFoot, { timeout: 1_000 });
+    }).toPass({ timeout: 30_000 });
+
+    // ROCKER, client-side, so the board in progress comes along.
+    await page.getByRole("link", { name: "ROCKER", exact: true }).filter({ visible: true }).first().dispatchEvent("click");
+    await page.waitForURL("**/design/rocker");
+    await waitForLiveBlankList(page);
+
+    await page.getByRole("searchbox", { name: "Search blanks" }).fill(`Arctic Foam 10'9"`);
+    const arctic = blankList(page).getByRole("button", { name: /^Use Arctic Foam 10'9" LB\b/ });
+    await expect(arctic).toHaveCount(1);
+    await arctic.click();
+    await expect(pickedCard(page)).toContainText(`10'9" LB`);
+
+    // Slid to the tail end.
+    const placement = sliderUnder(page, /^Placement — /);
+    await placement.focus();
+    await placement.press("End");
+    await expect(page.getByText(/^Placement — .+ toward tail$/)).toBeVisible();
+
+    // On Automatic the tail cannot run down steadily from 12", so it starts further in.
+    await expect(startHint(page, "tail")).toHaveText(`Automatic: ${stationLabel("imperial")} is too short`);
+    await expect(automaticButton(page, "tail")).toHaveAttribute("aria-pressed", "true");
+    const automaticLabel = await startLabel(page, "tail").innerText();
+    const automaticDistance = distanceOf(automaticLabel);
+    expect(readInches(automaticDistance)).toBeGreaterThan(12);
+    // ...so the Tail @ 12" thickness belongs to the taper (D-07).
+    const tail12Row = page.getByText(/^Tail @ 12" — /).locator("xpath=..");
+    await expect(tail12Row.getByText(/^From the tip taper /)).toBeVisible();
+    await expect(tooCloseLine(page, "tail")).toHaveCount(0);
+
+    // Set the tail's start by hand to 12": all the way to the tip, then a half inch at a time.
+    const slider = startRow(page, "tail").getByRole("slider");
+    await slider.focus();
+    await slider.press("Home");
+    await expect(automaticButton(page, "tail")).toHaveAttribute("aria-pressed", "false");
+    const twelve = `Tail Thinning Starts — ${stationLabel("imperial")}`;
+    for (let step = 0; step < 40 && (await startLabel(page, "tail").innerText()) !== twelve; step++) {
+      const before = await startLabel(page, "tail").innerText();
+      await slider.press("ArrowRight");
+      await expect(startLabel(page, "tail")).not.toHaveText(before);
+    }
+    await expect(startLabel(page, "tail")).toHaveText(twelve);
+    await expect(startHint(page, "tail")).toHaveText(`Automatic would be ${automaticDistance}`);
+
+    // The thin spot is named under the row that caused it, with where Automatic would start instead.
+    const line = tooCloseLine(page, "tail");
+    await expect(line).toHaveCount(1);
+    await expect(line).toHaveText(/^The board is thinnest /);
+    await expect(line).toContainText(`Automatic would start the thinning ${automaticDistance} from the tip`);
+    // No box, no live region, no button of its own (UI-SPEC §4).
+    await expect(line).not.toHaveAttribute("role", /.+/);
+    await expect(line).not.toHaveAttribute("aria-live", /.+/);
+    await expect(line.getByRole("button")).toHaveCount(0);
+
+    await automaticButton(page, "tail").click();
+    await expect(tooCloseLine(page, "tail")).toHaveCount(0);
+    await expect(startLabel(page, "tail")).toHaveText(automaticLabel);
+  });
+
+  test("on Automatic at 12\" the nose start reads exactly the Nose @ station's name, in Metric and back in Imperial", async ({
+    page,
+  }, testInfo) => {
+    await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+
+    // The sidebar's Nose @ fine-tune row (its label carries ` — ` and the thickness), not the
+    // drawing's or the readouts' station names.
+    const nose12 = page.getByText(/^Nose @ .+ — /);
+    await expect(startHint(page, "nose")).toHaveText("Picked automatically");
+    const metricStation = stationOf(await nose12.innerText());
+    expect(metricStation).toMatch(/ cm$/);
+    expect((await startLabel(page, "nose").innerText()).endsWith(metricStation)).toBe(true);
+
+    // Switching systems rewrites nothing: the same start, read the Imperial way.
+    await chooseUnits(page, testInfo.project.name, "Imperial");
+    await expect(nose12).toHaveText(/^Nose @ \d+" — /);
+    const imperialStation = stationOf(await nose12.innerText());
+    expect((await startLabel(page, "nose").innerText()).endsWith(imperialStation)).toBe(true);
+    await expect(startHint(page, "nose")).toHaveText("Picked automatically");
+    await expect(automaticButton(page, "nose")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("each Thinning Starts slider is named for its own tip, and in Metric says the distance its label shows", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+
+    for (const end of ["nose", "tail"] as const) {
+      // Exactly one slider answers to each name, and it is the one in that tip's own row.
+      const named = page.getByRole("slider", { name: `${TIP_NAME[end]} Thinning Starts`, exact: true });
+      await expect(named).toHaveCount(1);
+      await expect(startRow(page, end).getByRole("slider", { name: `${TIP_NAME[end]} Thinning Starts`, exact: true })).toHaveCount(1);
+
+      // On Automatic, and again after a drag sets it by hand: the spoken value is the label's distance
+      // (`30.5 cm`), never the bare millimetres the slider runs on.
+      const label = startLabel(page, end);
+      await expect(label).toHaveText(/ cm$/);
+      await expect(named).toHaveAttribute("aria-valuetext", distanceOf(await label.innerText()));
+      const before = await label.innerText();
+      await named.focus();
+      await named.press("ArrowRight");
+      await expect(label).not.toHaveText(before);
+      await expect(label).toHaveText(/ cm$/);
+      await expect(named).toHaveAttribute("aria-valuetext", distanceOf(await label.innerText()));
+    }
+  });
+
+  test("↺ Reset Fine-Tune clears a 12\" tweak and leaves a start set by hand exactly where it was", async ({ page }) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+
+    // The tail's start, set by hand.
+    const tailSlider = startRow(page, "tail").getByRole("slider");
+    const atPick = await startLabel(page, "tail").innerText();
+    await tailSlider.focus();
+    await tailSlider.press("ArrowRight");
+    await expect(startLabel(page, "tail")).not.toHaveText(atPick);
+    await expect(automaticButton(page, "tail")).toHaveAttribute("aria-pressed", "false");
+    const handSet = await startLabel(page, "tail").innerText();
+
+    // A 12" tweak — down a step, which keeps the board in its blank — so ↺ Reset Fine-Tune is live.
+    const reset = page.getByRole("button", { name: "↺ Reset Fine-Tune", exact: true });
+    await expect(reset).toHaveCount(1);
+    await expect(reset).toHaveAttribute("aria-disabled", "true");
+    const nose12Row = page.getByText(/^Nose @ 12" — /).locator("xpath=..");
+    await nose12Row.getByRole("slider").focus();
+    await nose12Row.getByRole("slider").press("ArrowLeft");
+    await expect(nose12Row).not.toContainText("No tweak");
+    await expect(reset).not.toHaveAttribute("aria-disabled", /.+/);
+
+    await reset.click();
+    await expect(nose12Row).toContainText("No tweak");
+    await expect(reset).toHaveAttribute("aria-disabled", "true");
+
+    // The start is untouched: the same label, and still set by hand — its Automatic button can still be pressed.
+    await expect(startLabel(page, "tail")).toHaveText(handSet);
+    await expect(automaticButton(page, "tail")).toHaveAttribute("aria-pressed", "false");
+    await expect(automaticButton(page, "tail")).not.toHaveAttribute("aria-disabled", /.+/);
+    await expect(automaticButton(page, "tail")).toBeEnabled();
+  });
+
+  test("switching to another blank keeps a start set by hand", async ({ page }) => {
+    await openRocker(page);
+    const first = await pickFirstFittingBlank(page);
+
+    const slider = startRow(page, "nose").getByRole("slider");
+    const labelAtPick = await startLabel(page, "nose").innerText();
+    await slider.focus();
+    await slider.press("ArrowRight");
+    await expect(startLabel(page, "nose")).not.toHaveText(labelAtPick);
+    const handSet = await startLabel(page, "nose").innerText();
+
+    await page.getByRole("button", { name: "Change Blank" }).click();
+    const other = blankList(page).locator('li[data-group="fits"] button[aria-pressed="false"]').first();
+    const otherName = (await other.locator("[data-blank-name]").innerText()).trim();
+    expect(otherName).not.toBe(first);
+    await other.click();
+    await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(otherName);
+
+    await expect(startLabel(page, "nose")).toHaveText(handSet);
+    await expect(automaticButton(page, "nose")).toHaveAttribute("aria-pressed", "false");
   });
 });
 

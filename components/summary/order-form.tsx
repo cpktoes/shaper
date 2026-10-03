@@ -749,6 +749,13 @@ export function OrderForm() {
                     <p data-planing-footnote className="mt-1 text-surf-ink-muted leading-tight order-form-micro">
                       {planing.footnote}
                     </p>
+                    {/* Where each tip's thinning starts (Phase 14, D-12, UI-SPEC §8), worded by
+                        planing.ts and printed only with a blank picked, in the footnote's own type. */}
+                    {planing.thinning && (
+                      <p data-planing-thinning className="mt-1 text-surf-ink-muted leading-tight order-form-micro">
+                        {planing.thinning}
+                      </p>
+                    )}
                   </div>
                 </FormBox>
 

@@ -51,14 +51,29 @@ function useRemountThumbWhenShown(): [React.RefObject<HTMLDivElement | null>, nu
   return [controlRef, epoch]
 }
 
+/**
+ * The two thumb-only props this wrapper adds to Base UI's root props. Both land on the dot's hidden
+ * range input through `SliderPrimitive.Thumb`'s own `aria-label` and `aria-valuetext` props (Base UI
+ * 1.7.0, `SliderThumbProps`), so a screen reader hears the slider's name and the value the way the
+ * row prints it. Left out, the thumb gets neither attribute and renders exactly as before.
+ */
+interface SliderThumbA11yProps {
+  /** The slider's accessible name, on the thumb's input. */
+  thumbAriaLabel?: string
+  /** What a screen reader says for the value (e.g. `64.8 cm`), on the thumb's input. */
+  thumbAriaValueText?: string
+}
+
 function Slider({
   className,
   defaultValue,
   value,
   min = 0,
   max = 100,
+  thumbAriaLabel,
+  thumbAriaValueText,
   ...props
-}: SliderPrimitive.Root.Props) {
+}: SliderPrimitive.Root.Props & SliderThumbA11yProps) {
   const [controlRef, thumbEpoch] = useRemountThumbWhenShown()
   // Every slider in this app gets exactly one dot. It used to get two, one hidden exactly
   // underneath the other — this fallback used to build a two-entry [min, max] array whenever
@@ -113,6 +128,8 @@ function Slider({
             // The epoch in the key is what remounts the dot when its row first comes on screen
             // (see useRemountThumbWhenShown above); `index` alone would keep the stuck dot.
             key={`${index}-${thumbEpoch}`}
+            aria-label={thumbAriaLabel}
+            aria-valuetext={thumbAriaValueText}
             // The touch hit-ring override below is pointer-keyed, not width-keyed: it grows only
             // the invisible ring (8px/side to 16px/side, making a 44px target) for a finger; the
             // visible 12px dot is unchanged, and a fine-pointer mouse never sees the wider ring.

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import record from "./__fixtures__/phase14-preset-figures.json";
 import { PHASE14_TODAY } from "./__fixtures__/phase14-today";
-import { prepareBlank } from "./blank-fit";
+import { prepareBlank, thinningStartsOf } from "./blank-fit";
 import { buildBoardProfile } from "./board-profile";
 import type { FoilStationKey } from "./foil";
 import { BOARD_PRESETS, type BoardPreset } from "./presets";
@@ -32,6 +32,7 @@ function liveFigures(preset: BoardPreset) {
       deckSkin: fields.blank.deckSkin,
       tipStyle: fields.blank.tipStyle,
       fineTuneSurface: fields.blank.fineTuneSurface,
+      ...thinningStartsOf(fields.blank),
     },
   });
   return {

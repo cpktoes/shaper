@@ -48,11 +48,18 @@ import {
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, type OutlineSpec } from "./board";
 import { buildBlankProfile } from "./board-profile";
 import { FOIL_THICKNESS_RANGE_IN } from "./foil";
-import { buildOutline, sampleOutline } from "./outline";
+import { buildOutline, MEASURE_STATION_MM, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import { type PreparedPchip } from "./pchip";
 import { rockerStationPositions } from "./rocker";
 import { prepareRootCurve, type RootKind } from "./root-curve";
+import {
+  steadyTaper,
+  THINNING_START_MIN_MM,
+  THINNING_START_STEP_MM,
+  type PlanerCut,
+  type TipView,
+} from "./tip-taper";
 import { inchesToMm, mm, mmToInches, type Mm } from "./units";
 
 // Every catalogue figure below is read from the committed CSVs — through the tested reader, or as
@@ -308,8 +315,6 @@ function slopeJump(f: (s: number) => number, x: number, h: number): number {
 }
 
 describe("the phase's named geometry tests (R7)", () => {
-  const W = TIP_EASE_WINDOW_MM;
-
   it("the board's deck sits exactly the deck skin below the blank's deck at every station, on every seeded blank", () => {
     const deckSkin = inchesToMm(1 / 8);
     let checked = 0;
@@ -364,23 +369,57 @@ describe("the phase's named geometry tests (R7)", () => {
     }
   });
 
-  it("each 12\" station's thickness is the blank's thickness there less the skin and the gap", () => {
+  it(`each 12" station's thickness is the blank's less the skin and the gap, unless that tip's thinning starts further in (D-07)`, () => {
+    let planerCut = 0;
+    let taper = 0;
     for (const record of PICKABLE) {
+      const prepared = prepareBlank(record);
       for (const tipStyle of TIP_STYLES) {
         const board = cutBoard(record, { tipStyle });
-        const onBlank = boardOnBlank(prepareBlank(record), board, mm(0));
+        const onBlank = boardOnBlank(prepared, board, mm(0));
+        const L = board.length;
         const skin = board.deckSkin!;
-        for (const station of [W, board.length - W]) {
-          expect(onBlank.derivedThicknessAt(station), `${record.vendor} ${record.name} ${tipStyle}`).toBeCloseTo(
-            onBlank.blankThicknessAt(station) - skin - onBlank.centerGap,
-            9,
-          );
+        // The planer cut seen from each tip, built the way the board is cut: the blank's thickness
+        // less everything the parallel cut takes off, and the blank's own thickness slope there.
+        const drop = onBlank.blankThicknessAt(L / 2) - board.centerThickness;
+        const slopeAt = (s: number) =>
+          prepared.thickness.slopeAt(blankStationOf(mm(s), onBlank.placement, L, prepared.lengthMm));
+        const ends: { view: TipView; station: number; cut: PlanerCut; tip: Mm; d: number }[] = [
+          {
+            view: onBlank.tips.tail,
+            station: MEASURE_STATION_MM,
+            cut: { at: (d) => onBlank.blankThicknessAt(d) - drop, slopeAt: (d) => slopeAt(d) },
+            tip: board.tailTip,
+            d: MEASURE_STATION_MM,
+          },
+          {
+            view: onBlank.tips.nose,
+            station: L - MEASURE_STATION_MM,
+            cut: { at: (d) => onBlank.blankThicknessAt(L - d) - drop, slopeAt: (d) => -slopeAt(L - d) },
+            tip: board.noseTip,
+            d: L - (L - MEASURE_STATION_MM),
+          },
+        ];
+        for (const { view, station, cut, tip, d } of ends) {
+          const where = `${record.vendor} ${record.name} ${tipStyle} @ ${station}`;
+          const cutThere = onBlank.blankThicknessAt(station) - skin - onBlank.centerGap;
+          if (!view.reachesStation) {
+            planerCut++;
+            expect(onBlank.derivedThicknessAt(station), where).toBeCloseTo(cutThere, 9);
+          } else {
+            taper++;
+            expect(onBlank.derivedThicknessAt(station), where).toBe(steadyTaper(cut, tip, view.fromTip)(d));
+            expect(onBlank.derivedThicknessAt(station), where).toBeGreaterThan(cutThere);
+          }
         }
       }
     }
+    // Both kinds of tip occur in the catalogue, so neither branch is vacuous.
+    expect(planerCut).toBeGreaterThan(0);
+    expect(taper).toBeGreaterThan(0);
   });
 
-  it("changing Tip Style or a tip thickness moves no number at or inside the 12\" stations", () => {
+  it("changing Tip Style or a tip thickness moves no number at or inside each tip's Thinning Starts point", () => {
     const n = PICKABLE.length;
     const blanks = [
       findBlank(MARKO_VENDOR, M_REGULAR),
@@ -392,6 +431,10 @@ describe("the phase's named geometry tests (R7)", () => {
       { noseTip: inchesToMm(5 / 16), tailTip: inchesToMm(1 / 4) },
       { noseTip: inchesToMm(1 / 2), tailTip: inchesToMm(7 / 16) },
     ];
+    // Both starts set by hand, the same across every variation, so neither can move: the tail's
+    // further in than its 12" fine-tune, the nose's a little in from 12".
+    const tailThinningStart = mm(MEASURE_STATION_MM + 6 * THINNING_START_STEP_MM);
+    const noseThinningStart = mm(MEASURE_STATION_MM + 2 * THINNING_START_STEP_MM);
     for (const record of blanks) {
       const prepared = prepareBlank(record);
       for (const fineTuneSurface of SURFACES) {
@@ -399,16 +442,24 @@ describe("the phase's named geometry tests (R7)", () => {
           fineTuneSurface,
           nose12Offset: inchesToMm(1 / 16),
           tail12Offset: mm(-inchesToMm(1 / 16)),
+          tailThinningStart,
+          noseThinningStart,
         });
         const L = base.length;
-        const stations: number[] = [W, L - W];
-        for (let s: number = W; s <= L - W; s += inchesToMm(1 / 4)) stations.push(s);
+        const from = tailThinningStart;
+        const to = L - noseThinningStart;
+        const stations: number[] = [from, to];
+        for (let s: number = from; s <= to; s += inchesToMm(1 / 4)) stations.push(s);
         const read = (onBlank: BoardOnBlank) =>
           stations.map((s) => [onBlank.thicknessAt(s), onBlank.rockerAt(s), onBlank.deckOffAt(s), onBlank.bottomOffAt(s)]);
-        const reference = read(boardOnBlank(prepared, { ...base, tipStyle: "pinDeck", ...tips[0] }, mm(0)));
+        const first = boardOnBlank(prepared, { ...base, tipStyle: "pinDeck", ...tips[0] }, mm(0));
+        expect([first.tips.tail.fromTip, first.tips.nose.fromTip]).toEqual([tailThinningStart, noseThinningStart]);
+        const reference = read(first);
         for (const tipStyle of TIP_STYLES) {
           for (const tip of tips) {
-            const other = read(boardOnBlank(prepared, { ...base, tipStyle, ...tip }, mm(0)));
+            const onBlank = boardOnBlank(prepared, { ...base, tipStyle, ...tip }, mm(0));
+            expect([onBlank.tips.tail.fromTip, onBlank.tips.nose.fromTip]).toEqual([tailThinningStart, noseThinningStart]);
+            const other = read(onBlank);
             other.forEach((values, i) => {
               values.forEach((value, j) => {
                 expect(value, `${record.name} ${fineTuneSurface} ${tipStyle} @ ${stations[i]} [${j}]`).toBe(reference[i][j]);
@@ -420,8 +471,9 @@ describe("the phase's named geometry tests (R7)", () => {
     }
   });
 
-  it("the tip thinning joins each 12\" station with no kink", () => {
+  it("the steady taper leaves the planer cut along its own slope at each start", () => {
     const h = 1e-3;
+    let starts = 0;
     for (const record of PICKABLE) {
       const prepared = prepareBlank(record);
       for (const tipStyle of TIP_STYLES) {
@@ -430,7 +482,10 @@ describe("the phase's named geometry tests (R7)", () => {
         const onBlank = profile.blank!.onBlank;
         const view = profile.blank!;
         const where = `${record.vendor} ${record.name} ${tipStyle}`;
-        for (const x of [W, board.length - W]) {
+        // On Automatic, at every tip whose start can run down steadily.
+        const joins = [onBlank.tips.tail, onBlank.tips.nose].filter((tip) => tip.automatic && tip.automaticFound);
+        starts += joins.length;
+        for (const x of joins.map((tip) => tip.station)) {
           expect(slopeJump(onBlank.thicknessAt, x, h), `${where} thickness @ ${x}`).toBeLessThanOrEqual(
             slopeJump(onBlank.blankThicknessAt, x, h) + 1e-5,
           );
@@ -446,6 +501,7 @@ describe("the phase's named geometry tests (R7)", () => {
         }
       }
     }
+    expect(starts).toBeGreaterThan(PICKABLE.length);
   });
 });
 
@@ -875,6 +931,14 @@ function fitContext(
 /** The default outline at a given length and centre, default tips. */
 function defaultContext(lengthIn: number, centreIn: number): BoardFitContext {
   return fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(lengthIn), inchesToMm(centreIn));
+}
+
+/** The same board with both Thinning Starts set by hand at 6", the nearest to a tip a shaper may set them. */
+function startsAtSix(ctx: BoardFitContext): BoardFitContext {
+  return {
+    ...ctx,
+    board: { ...ctx.board, noseThinningStart: THINNING_START_MIN_MM, tailThinningStart: THINNING_START_MIN_MM },
+  };
 }
 
 /** The boards the property-style tests sweep: the default board at 72" and 70", and every preset. */
@@ -1477,8 +1541,18 @@ describe("a board under 1/4\" thick anywhere does not fit (D-18, raised in Phase
     expect(failed.worst.cause).toBe("tipSetting");
   });
 
+  it('D-20: on Automatic the default 72" board at a 1" centre has no runs-out verdict in the catalogue', () => {
+    const list = listBlanks(PREPARED_ALL, defaultContext(72, 1), DEFAULT_SETTINGS);
+    const verdicts = [...list.fits, ...list.wontFit];
+    expect(verdicts.length).toBeGreaterThan(0);
+    const runsOut = verdicts.filter((verdict) => verdict.worst.kind === "runsOut").map((v) => keyOf(v.prepared.record));
+    expect(runsOut).toEqual([]);
+  });
+
   it("a 1\" center on the default board runs out of foam in at least one blank, and says where by how much", () => {
-    const ctx = defaultContext(72, 1);
+    // Since Phase 14 (D-20) Automatic moves a thin board's thinning in until it runs down steadily,
+    // so the board only runs out with both starts set by hand too close to the tips.
+    const ctx = startsAtSix(defaultContext(72, 1));
     let runsOut = 0;
     for (const prepared of PREPARED_ALL) {
       if (!isPickable(prepared.record)) continue;
@@ -1523,15 +1597,19 @@ describe("a board under 1/4\" thick anywhere does not fit (D-18, raised in Phase
 });
 
 describe("the runs-out reason names its cause (Phase 13 item 4)", () => {
-  it("(a) a thin centre in a thick blank: every runs-out verdict on the default 1\" centre board carries cause thinCenter", () => {
-    const ctx = defaultContext(72, 1);
+  it("(a) a thin centre in a thick blank, both starts set by hand at 6\": every runs-out verdict on the default 1\" centre board names the start (thinningStart)", () => {
+    // Until Phase 14 this was the thinCenter case: a 1" centre in a thick blank leaves too little foam
+    // near the tips. With both starts set by hand at 6" the board runs out at the start itself, and
+    // on Automatic it does not run out anywhere (D-20) — so since D-05 the true reason is the start
+    // set too close to the tip. thinCenter stays reachable (tip-flow.test.ts, UI-SPEC §10).
+    const ctx = startsAtSix(defaultContext(72, 1));
     let runsOut = 0;
     for (const prepared of PREPARED_ALL) {
       if (!isPickable(prepared.record)) continue;
       const verdict = judgeBlank(prepared, ctx, DEFAULT_SETTINGS);
       if (verdict.fits || verdict.worst.kind !== "runsOut") continue;
       runsOut++;
-      expect(verdict.worst.cause).toBe("thinCenter");
+      expect(verdict.worst.cause).toBe("thinningStart");
     }
     expect(runsOut).toBeGreaterThan(0);
   });
@@ -1560,7 +1638,8 @@ describe("the runs-out reason names its cause (Phase 13 item 4)", () => {
   );
 
   it("(b′) a fine-tune is not blamed where the board would be under the floor without it", () => {
-    const ctx = defaultContext(72, 1);
+    // Both starts set by hand at 6" — on Automatic this board no longer runs out anywhere (D-20).
+    const ctx = startsAtSix(defaultContext(72, 1));
     let checked = 0;
     for (const prepared of PREPARED_ALL) {
       if (!isPickable(prepared.record)) continue;
@@ -1572,7 +1651,11 @@ describe("the runs-out reason names its cause (Phase 13 item 4)", () => {
         tail12Offset: mm(-inchesToMm(1 / 16)),
       };
       const onBlank = boardOnBlank(verdict.prepared, tweaked, verdict.placement);
-      expect(runsOutCause(onBlank, verdict.worst.station)).toBe("thinCenter");
+      // The tweak never takes the blame; the board keeps the reason it had without it (since Phase
+      // 14 D-05 that is the start set by hand at 6", where it was thinCenter before).
+      const cause = runsOutCause(onBlank, verdict.worst.station);
+      expect(cause).not.toBe("fineTune");
+      expect(cause).toBe(verdict.worst.cause);
       checked++;
     }
     expect(checked).toBeGreaterThan(0);
@@ -1582,7 +1665,13 @@ describe("the runs-out reason names its cause (Phase 13 item 4)", () => {
     const blank = findBlank(MARKO_VENDOR, M_REGULAR);
     const prepared = prepareBlank(blank);
     const length = mm(blank.lengthMm + inchesToMm(30));
-    const board = defaultBoard(blank, length, inchesToMm(1.5));
+    // Both starts set by hand at 6", inside the stretch that hangs off the blank (D-20: on Automatic
+    // the thinning moves in past it).
+    const board = {
+      ...defaultBoard(blank, length, inchesToMm(1.5)),
+      noseThinningStart: THINNING_START_MIN_MM,
+      tailThinningStart: THINNING_START_MIN_MM,
+    };
     const onBlank = boardOnBlank(prepared, board, mm(0));
     const result = fitAt(onBlank, narrowerBy(onBlank, inchesToMm(2)), mm(length / 2), DEFAULT_SETTINGS);
     expect(result.fits).toBe(false);

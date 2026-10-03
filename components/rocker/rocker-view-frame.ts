@@ -383,6 +383,21 @@ export const COMPACT_LEADER_WIDTH = 1.6;
 export const COMPACT_BASELINE_WIDTH = 2;
 export const COMPACT_BASELINE_DASH = "8 6";
 
+/**
+ * How far each thinning mark reaches past the board, below its bottom and above its deck, in SVG
+ * user units (Phase 14 D-12, UI-SPEC §6). The mark is a short dashed line across the board where
+ * a tip's thinning starts; across the board alone it would be almost nothing on a thin tail — a
+ * 9/16" section is about 6 units tall at this drawing's scale, shorter than one dash and one gap —
+ * so the overshoot is what keeps it legible there. `"full"` grammar only, with a blank picked.
+ */
+export const THINNING_MARK_OVERSHOOT = 6;
+/**
+ * The thinning mark's dash — the full grammar's reference-line dash, the same `4 3` its dashed
+ * baseline draws at, so "a dashed 1-unit line is a reference line" stays one grammar on this
+ * drawing (UI-SPEC §6).
+ */
+export const THINNING_MARK_DASH = "4 3";
+
 /** Cap height of a compact reading's type, in SVG user units. */
 export const COMPACT_CAP = COMPACT_VALUE_SIZE * COMPACT_CAP_RATIO;
 /** How deep the deck (thickness) band is: curve gap, one row's cap height, edge gutter. */

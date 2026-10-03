@@ -1,0 +1,26 @@
+<svg width="100%" viewBox="0 0 680 330" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>The fixture board's tail thickness: the 12 inch blend against the steady taper</title>
+<desc>Thickness over the last 32 inches of a 10 foot board on the Arctic Foam 10'9" LB, slid to the tail end. Dashed: the 12 inch blend, which dips to 0.482 inches at 9.5 inches from the tip, under the 0.625 inch tip. Solid: the steady taper from an Automatic start 26 inches in, which never goes under the tip.</desc>
+<text class="th" x="56" y="24">Tail thickness, last 32" — dashed: the 12" blend, solid: the steady taper</text>
+<text class="ts" x="56" y="42">Height stretched so the difference shows. The blend dips to 0.48" at 9.5" from the tip — thinner than the 0.625" tip itself.</text>
+<line x1="56" y1="211.2" x2="660" y2="211.2" stroke="var(--b)" stroke-width="0.5"/><text class="ts" x="48" y="215.2" text-anchor="end">1/2"</text>
+<line x1="56" y1="152.4" x2="660" y2="152.4" stroke="var(--b)" stroke-width="0.5"/><text class="ts" x="48" y="156.4" text-anchor="end">1"</text>
+<line x1="56" y1="93.5" x2="660" y2="93.5" stroke="var(--b)" stroke-width="0.5"/><text class="ts" x="48" y="97.5" text-anchor="end">1 1/2"</text>
+<line x1="56" y1="270" x2="660" y2="270" stroke="var(--t)" stroke-width="1"/>
+<line x1="56" y1="196.5" x2="660" y2="196.5" stroke="#D85A30" stroke-width="1" stroke-dasharray="2 4"/>
+<text class="ts" x="660" y="190.5" text-anchor="end">the tip setting, 5/8"</text>
+<path d="M56.0 196.5 L65.4 194.0 L74.9 192.2 L84.3 191.3 L93.8 190.9 L103.2 191.2 L112.6 191.9 L122.1 193.1 L131.5 194.6 L140.9 196.4 L150.4 198.4 L159.8 200.5 L169.3 202.7 L178.7 204.8 L188.1 206.9 L197.6 208.8 L207.0 210.5 L216.4 211.8 L225.9 212.8 L235.3 213.3 L244.8 213.2 L254.2 212.6 L263.6 211.2 L273.1 209.1 L282.5 206.2 L291.9 202.9 L301.4 199.5 L310.8 196.1 L320.3 192.7 L329.7 189.3 L339.1 185.9 L348.6 182.4 L358.0 179.0 L367.4 175.5 L376.9 172.1 L386.3 168.6 L395.8 165.1 L405.2 161.7 L414.6 158.2 L424.1 154.7 L433.5 151.3 L442.9 147.8 L452.4 144.4 L461.8 140.9 L471.3 137.5 L480.7 134.1 L490.1 130.6 L499.6 127.2 L509.0 123.9 L518.4 120.5 L527.9 117.2 L537.3 113.8 L546.8 110.5 L556.2 107.2 L565.6 103.9 L575.1 100.7 L584.5 97.5 L593.9 94.3 L603.4 91.1 L612.8 88.0 L622.3 84.8 L631.7 81.8 L641.1 78.7 L650.6 75.7 L660.0 72.7" fill="none" stroke="var(--t)" stroke-width="1.5" stroke-dasharray="6 4"/>
+<path d="M56.0 196.5 L65.4 196.4 L74.9 196.3 L84.3 196.2 L93.8 196.0 L103.2 195.7 L112.6 195.3 L122.1 194.9 L131.5 194.4 L140.9 193.9 L150.4 193.3 L159.8 192.6 L169.3 191.9 L178.7 191.1 L188.1 190.2 L197.6 189.3 L207.0 188.3 L216.4 187.2 L225.9 186.1 L235.3 185.0 L244.8 183.7 L254.2 182.4 L263.6 181.0 L273.1 179.6 L282.5 178.1 L291.9 176.6 L301.4 174.9 L310.8 173.2 L320.3 171.5 L329.7 169.7 L339.1 167.8 L348.6 165.9 L358.0 163.9 L367.4 161.8 L376.9 159.7 L386.3 157.5 L395.8 155.2 L405.2 152.9 L414.6 150.5 L424.1 148.1 L433.5 145.6 L442.9 143.0 L452.4 140.4 L461.8 137.7 L471.3 134.9 L480.7 132.1 L490.1 129.2 L499.6 126.2 L509.0 123.2 L518.4 120.1 L527.9 117.0 L537.3 113.8 L546.8 110.5 L556.2 107.2 L565.6 103.9 L575.1 100.7 L584.5 97.5 L593.9 94.3 L603.4 91.1 L612.8 88.0 L622.3 84.8 L631.7 81.8 L641.1 78.7 L650.6 75.7 L660.0 72.7" fill="none" stroke="#378ADD" stroke-width="2"/>
+<line x1="282.5" y1="70" x2="282.5" y2="270" stroke="var(--t)" stroke-width="0.5" stroke-dasharray="3 3"/>
+<text class="ts" x="282.5" y="64" text-anchor="middle">the 12" station</text>
+<line x1="546.8" y1="70" x2="546.8" y2="270" stroke="#378ADD" stroke-width="0.5" stroke-dasharray="3 3"/>
+<text class="ts" x="546.8" y="64" text-anchor="middle">Automatic starts here, 26"</text>
+<text class="ts" x="56.0" y="286" text-anchor="middle">tail tip</text>
+<text class="ts" x="169.3" y="286" text-anchor="middle">6"</text>
+<text class="ts" x="282.5" y="286" text-anchor="middle">12"</text>
+<text class="ts" x="395.8" y="286" text-anchor="middle">18"</text>
+<text class="ts" x="509.0" y="286" text-anchor="middle">24"</text>
+<text class="ts" x="622.3" y="286" text-anchor="middle">30"</text>
+<text class="ts" x="56" y="312">A 10'0" board on the Arctic Foam 10'9" LB, slid to the tail end, 2 1/2" centre. Tail 12" thickness 9/16" → 3/4"; litres 48.9 → 49.4.</text>
+<text class="ts" x="56" y="326">From the app's own maths (scripts/phase14-before-after.ts --step tips).</text>
+</svg>

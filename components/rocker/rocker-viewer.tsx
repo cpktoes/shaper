@@ -29,10 +29,13 @@
  * leftover past each tip. Both bands are the same shade on purpose — they sit on opposite sides of
  * the board's own outline, so they can never be confused. The frame then fits the whole blank rather than the board alone
  * (`rocker-view-frame.ts`'s `blankSpanIn` / `boardOffsetX`), so the board draws slightly smaller
- * inside it; the rails, cards and titles stay on the board's own five stations. Nothing else is
- * added to the drawing for a blank: a thickness failure shows as the board poking through the
- * blank's line, width failures are not drawn at all, and no warning colour appears here. The
- * Summary order form never passes a blank, so its compact box draws the board alone as before.
+ * inside it; the rails, cards and titles stay on the board's own five stations. One other thing is
+ * added for a blank (Phase 14 D-12): in the `"full"` grammar, a short dashed line across the board
+ * where each tip's thinning starts (`blank.tips.<end>.station`), in the blank's line colour, with no
+ * text — the drawing's accessible name says the two distances in words. Nothing more: a thickness
+ * failure shows as the board poking through the blank's line, width failures are not drawn at all,
+ * and no warning colour appears here. The Summary order form never passes a blank, so its compact
+ * box draws the board alone, with no thinning mark, as before.
  *
  * Nothing on the drawing is draggable any more (D-14). The three-knot Bezier that the old tip
  * handles, construction lines and drag readout card used to steer is no longer a live rocker, so
@@ -98,6 +101,7 @@ import {
   type ViewerOrientation,
 } from "@/components/viewer/callout-primitives";
 import { useUnits } from "@/components/units-provider";
+import { thinningMarksSentence } from "@/lib/geometry/blank-reasons";
 import type { BlankSideView, BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilStationKey } from "@/lib/geometry/foil";
 import { formatMark, stationLabel } from "@/lib/geometry/measure-display";
@@ -114,6 +118,8 @@ import {
   compactValueWidth,
   PAD_X,
   RAIL_LABEL_TEXTS,
+  THINNING_MARK_DASH,
+  THINNING_MARK_OVERSHOOT,
   type RockerCardType,
   type RockerCompactRow,
   type RockerViewLayoutInput,
@@ -701,8 +707,30 @@ export function RockerViewer({
       ]
     : [];
 
+  // The thinning marks (Phase 14 D-12, UI-SPEC §6): one short dashed line across the board where
+  // each tip's thinning starts, at the station the profile resolved for it (`blank.tips`, already
+  // pulled inside the slider's reach, Automatic's for a start that is not a number), from the
+  // board's bottom to its deck there — sampled exactly as the measuring points are — each end
+  // pushed `THINNING_MARK_OVERSHOOT` past the board (down below the bottom, up above the deck).
+  // `"full"` grammar with a blank only: the order form's compact box is never handed a blank.
+  const thinningMarks =
+    blank && callouts === "full"
+      ? (["nose", "tail"] as const).map((end) => {
+          const station = blank.tips[end].station;
+          const x = pxX(mmToInches(station));
+          return {
+            end,
+            x,
+            bottomY: pxY(mmToInches(profile.rockerAt(station))) + THINNING_MARK_OVERSHOOT,
+            topY: pxY(mmToInches(profile.deckAt(station))) - THINNING_MARK_OVERSHOOT,
+          };
+        })
+      : [];
+
+  // With a blank, the name also says where the two marks sit, in words (UI-SPEC Copywriting), so a
+  // screen reader hears what the marks show; the distances read through 14-11's formatter.
   const ariaLabel = blank
-    ? `Side profile of the board inside the ${blank.record.vendor} ${blank.record.name} blank, with the foam to come off the deck and the bottom shaded`
+    ? `Side profile of the board inside the ${blank.record.vendor} ${blank.record.name} blank, with the foam to come off the deck and the bottom shaded, and ${thinningMarksSentence(blank.tips.nose.fromTip, blank.tips.tail.fromTip, system)}`
     : "Side profile of the board, showing the rocker line and deck thickness";
 
   return (
@@ -765,6 +793,24 @@ export function RockerViewer({
           strokeWidth={2}
           strokeLinejoin="round"
         />
+        {/* The thinning marks (D-12), after the board and before the callouts so they cross the
+            board's own fill and turn with it in both orientations. No text: the drawing's name and
+            the sidebar carry the words. Dashed and in the blank's line colour, darker than a
+            leader's, so where a mark meets a 12" leader the two still read as different lines. */}
+        {thinningMarks.map((m) => (
+          <line
+            key={m.end}
+            data-thinning-mark={m.end}
+            x1={m.x}
+            y1={m.bottomY}
+            x2={m.x}
+            y2={m.topY}
+            stroke="var(--outline-blank-line)"
+            strokeWidth={1}
+            strokeDasharray={THINNING_MARK_DASH}
+            fill="none"
+          />
+        ))}
 
         {callouts === "full" && (
           <>

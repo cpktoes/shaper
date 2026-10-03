@@ -6,7 +6,7 @@
  * The page streams the pickable catalogue once per visit; this hook fits every blank once
  * (`prepareBlank`, memoised on the catalogue itself) and judges the whole list (`listBlanks`)
  * against the board. The verdicts depend on the board's length and outline, its centre thickness,
- * its two tips, the two 12" fine-tunes, how it is cut from the blank (Deck Skin, Tip Style,
+ * its two tips, the two 12" fine-tunes, each tip's Thinning Start (Phase 14), how it is cut from the blank (Deck Skin, Tip Style,
  * fine-tune surface — Phase 12) and the shaper's three fit rules — and on NOTHING else.
  *
  * Which blanks are judged at all is decided by the blank makers a shaper has ticked in the settings
@@ -34,6 +34,7 @@ import { DEFAULT_BLANK_CUT, type BlankCut, type BlankRecord } from "@/lib/geomet
 import {
   listBlanks,
   prepareBlank,
+  thinningStartsOf,
   type BlankListResult,
   type BoardFitContext,
   type PreparedBlank,
@@ -139,9 +140,15 @@ export function useBlankList(records: readonly BlankRecord[]): BlankListState {
   // no blank picked there is no tweak, so both read 0.
   const nose12Offset = blank?.nose12Offset ?? mm(0);
   const tail12Offset = blank?.tail12Offset ?? mm(0);
+  // Each tip's Thinning Start as the board stores it — absent means Automatic, which is decided
+  // blank by blank and placement by placement inside the fit check itself (Phase 14 D-24).
+  const noseThinningStart = blank?.noseThinningStart;
+  const tailThinningStart = blank?.tailThinningStart;
 
   // D-07: no placement in this dependency list, on purpose. The cut is in it (Pitfall 8): a new
-  // Deck Skin moves the centre floor, and a new Tip Style moves where the tips come off.
+  // Deck Skin moves the centre floor, and a new Tip Style moves where the tips come off. Both
+  // Thinning Starts are in it too (Phase 14 Pitfall 6): a start moves where each tip is thinned, so
+  // the verdicts move with it — leave one out and the list would go stale after a start changes.
   const ctx = useMemo<BoardFitContext>(
     () => ({
       board: {
@@ -154,6 +161,7 @@ export function useBlankList(records: readonly BlankRecord[]): BlankListState {
         deckSkin,
         tipStyle,
         fineTuneSurface,
+        ...thinningStartsOf({ noseThinningStart, tailThinningStart }),
       },
       halfWidthAt: (station: Mm) => sampleOutline(outlineGeometry, station),
       widePointStation: outlineGeometry.widePointStation,
@@ -169,6 +177,8 @@ export function useBlankList(records: readonly BlankRecord[]): BlankListState {
       deckSkin,
       tipStyle,
       fineTuneSurface,
+      noseThinningStart,
+      tailThinningStart,
     ],
   );
 

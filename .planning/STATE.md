@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 14 wave 4 of 10 merged (14-05 before-and-after figures + the read-only curves report; 14-06 preset record + ROCKER/VOLUME baselines re-recorded); build/vitest/tsc/lint green on main, browser suite running on port 3150; next: wave 5 = go-live 1 (14-07), the founder's checkpoint"
+stopped_at: "Phase 14 wave 9 of 10 merged (14-14 the Thinning Starts sliders + Automatic buttons on ROCKER; 14-15 the mark + DATASHEET block; 14-16 the printed line; 14-17 the blank list/flag + the tips report and figures) — the whole tips step is built; build/vitest/tsc/lint green on main, the full browser suite running on 3150; next: wave 10 = go-live 2 (14-18), the founder's checkpoint (cut line Tue 2026-10-06 evening)"
 last_updated: "2026-10-02T23:07:28.535Z"
 last_activity: 2026-10-02
-last_activity_desc: Phase 14 executing — waves 1–4 done (the whole curves step is built); go-live 1 is next, on the founder's go
+last_activity_desc: Phase 14 — go-live 1 live; the tips step is built (waves 6–9); go-live 2 (14-18) is next, on the founder's go; three screen executors were resumed after an API outage
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 31
-  completed_plans: 17
-  percent: 55
+  completed_plans: 28
+  percent: 90
 current_phase: 14
 current_phase_name: Realistic Surfboard Flow
 ---

@@ -87,6 +87,14 @@ export interface PreparedPchip {
   readonly ys: readonly number[];
   readonly slopes: readonly number[];
   sample(x: number): number;
+  /**
+   * The curve's slope at `x` — the analytic derivative of the Hermite segment containing `x`
+   * (`d00 = (6t² − 6t)/h`, `d10 = 3t² − 4t + 1`, `d01 = (−6t² + 6t)/h`, `d11 = 3t² − 2t`), so
+   * at a knot it is that knot's own slope. 0 past either end, where `sample` holds flat; 0 on a
+   * curve of fewer than two knots; 0 for a non-finite x. Arrived with the tips step of Phase 14
+   * (D-28): the steady taper leaves the planer cut along this slope.
+   */
+  slopeAt(x: number): number;
 }
 
 /**
@@ -100,6 +108,9 @@ export interface PreparedPchip {
  * `sample(x)`: exact at every knot; clamps past either end to that end's y (the same posture as
  * `sampleOutline`'s past-the-end fallback); a non-finite x returns the first knot's y rather than
  * propagating a not-a-number; an empty curve samples as 0.
+ *
+ * `slopeAt(x)`: the slope of that same curve, sharing the sampler's search for the segment (see
+ * `PreparedPchip.slopeAt`).
  */
 export function preparePchip(points: readonly SplinePoint[]): PreparedPchip {
   const xs: number[] = [];
@@ -119,13 +130,8 @@ export function preparePchip(points: readonly SplinePoint[]): PreparedPchip {
   const slopes = pchipSlopes(xs, ys);
   const n = xs.length;
 
-  function sample(x: number): number {
-    if (n === 0) return 0;
-    if (!Number.isFinite(x)) return ys[0];
-    if (n === 1 || x <= xs[0]) return ys[0];
-    if (x >= xs[n - 1]) return ys[n - 1];
-
-    // Binary search for k with xs[k] <= x < xs[k + 1].
+  /** The segment containing x: k with xs[k] <= x < xs[k + 1] (x strictly inside the knots). */
+  function segmentOf(x: number): number {
     let lo = 0;
     let hi = n - 1;
     while (hi - lo > 1) {
@@ -133,6 +139,16 @@ export function preparePchip(points: readonly SplinePoint[]): PreparedPchip {
       if (xs[mid] <= x) lo = mid;
       else hi = mid;
     }
+    return lo;
+  }
+
+  function sample(x: number): number {
+    if (n === 0) return 0;
+    if (!Number.isFinite(x)) return ys[0];
+    if (n === 1 || x <= xs[0]) return ys[0];
+    if (x >= xs[n - 1]) return ys[n - 1];
+
+    const lo = segmentOf(x);
     const width = xs[lo + 1] - xs[lo];
     const t = (x - xs[lo]) / width;
     const t2 = t * t;
@@ -144,7 +160,23 @@ export function preparePchip(points: readonly SplinePoint[]): PreparedPchip {
     return h00 * ys[lo] + h10 * width * slopes[lo] + h01 * ys[lo + 1] + h11 * width * slopes[lo + 1];
   }
 
-  return { xs, ys, slopes, sample };
+  function slopeAt(x: number) {
+    if (n < 2 || !Number.isFinite(x)) return 0;
+    if (x < xs[0] || x > xs[n - 1]) return 0;
+    if (x === xs[n - 1]) return slopes[n - 1];
+
+    const lo = segmentOf(x);
+    const width = xs[lo + 1] - xs[lo];
+    const t = (x - xs[lo]) / width;
+    const t2 = t * t;
+    const d00 = (6 * t2 - 6 * t) / width;
+    const d10 = 3 * t2 - 4 * t + 1;
+    const d01 = (-6 * t2 + 6 * t) / width;
+    const d11 = 3 * t2 - 2 * t;
+    return d00 * ys[lo] + d10 * slopes[lo] + d01 * ys[lo + 1] + d11 * slopes[lo + 1];
+  }
+
+  return { xs, ys, slopes, sample, slopeAt };
 }
 
 /** One-shot convenience: fit `points` and sample at `x`. Prefer `preparePchip` for many samples. */

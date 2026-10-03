@@ -14,7 +14,9 @@ import { mm } from "./units";
 // generated fixture by scripts/extract-phase14-today-golden.ts — never typed here (CLAUDE.md Rule 1).
 // Every blank comes from the pin itself (`pinnedBlank`, `pinnedCatalogue`), never from today's
 // catalogue, so a later catalogue correction cannot move a recorded number (D-26). Litres are recorded
-// in the pin but asserted by plan 14-05, through the named frozen rules.
+// in the pin but asserted by plan 14-05, through the named frozen rules. Every board in a blank is cut
+// with `tipRule: "blend"`, today's 12" S-blend kept by name, because that is the tip rule the pin
+// recorded (D-25); the live steady taper is proven in tip-flow.test.ts.
 
 describe("today's numbers, reproduced by today's rule kept by name (D-25, D-26)", () => {
   it("reproduces every blank's levelled bottom, thickness and width at every station and midpoint", () => {
@@ -53,6 +55,7 @@ describe("today's numbers, reproduced by today's rule kept by name (D-25, D-26)"
           deckSkin: fields.blank.deckSkin,
           tipStyle: fields.blank.tipStyle,
           fineTuneSurface: fields.blank.fineTuneSurface,
+          tipRule: "blend",
         },
       });
       expect(profile.length, preset.id).toBe(entry.boardLengthMm);
@@ -77,7 +80,7 @@ describe("today's numbers, reproduced by today's rule kept by name (D-25, D-26)"
         [stressCase.board.length, stressCase.board.centerThickness, stressCase.placement, stressCase.buildable],
         entry.label,
       ).toEqual([entry.boardLengthMm, entry.centerThicknessMm, entry.placementMm, entry.buildable]);
-      const onBlank = boardOnBlank(stressCase.prepared, stressCase.board, stressCase.placement);
+      const onBlank = boardOnBlank(stressCase.prepared, { ...stressCase.board, tipRule: "blend" }, stressCase.placement);
       for (const { key, station } of rockerStationPositions(stressCase.board.length)) {
         expect(onBlank.thicknessAt(station), `${entry.label} thickness ${key}`).toBe(entry.thicknessMm[key]);
         expect(onBlank.rockerAt(station), `${entry.label} rocker ${key}`).toBe(entry.rockerMm[key]);

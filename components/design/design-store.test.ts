@@ -125,12 +125,25 @@ describe("design-store.tsx — nothing but the shaper's own pick or removal chan
     "setFineTuneSurface",
     "setFineTune",
     "resetFineTune",
+    "setThinningStart",
+    "setThinningStartAutomatic",
     "applyPreset",
     "applyModel",
   ]);
 
   it("the blank moves each write the blank", () => {
-    for (const name of ["pickBlank", "removeBlank", "setPlacement", "setDeckSkin", "setTipStyle", "setFineTuneSurface", "setFineTune", "resetFineTune"]) {
+    for (const name of [
+      "pickBlank",
+      "removeBlank",
+      "setPlacement",
+      "setDeckSkin",
+      "setTipStyle",
+      "setFineTuneSurface",
+      "setFineTune",
+      "resetFineTune",
+      "setThinningStart",
+      "setThinningStartAutomatic",
+    ]) {
       expect(handler(name), name).toMatch(/\bblank:/);
     }
   });
@@ -233,6 +246,62 @@ describe("design-store.tsx — the board's cut rides on its blank (Phase 12, D-0
   });
 });
 
+describe("design-store.tsx — each tip's Thinning Start rides on the blank (Phase 14 D-02, D-11, D-24)", () => {
+  /** The context value object, so a move can be proven to reach the screens. */
+  function contextValue(): string {
+    const start = SOURCE.search(/const value: DesignContextValue = \{/);
+    expect(start).toBeGreaterThanOrEqual(0);
+    return balancedFrom(SOURCE, start + "const value: DesignContextValue =".length);
+  }
+
+  it("the side profile is built with the board's own starts, through thinningStartsOf (Pitfall 5)", () => {
+    const start = SOURCE.search(/const sideProfile\b[^=]*=\s*useMemo\(/);
+    const body = balancedFrom(SOURCE, SOURCE.indexOf("useMemo(", start));
+    expect(body).toMatch(/\.\.\.thinningStartsOf\(\s*state\.blank\s*\)/);
+  });
+
+  it("setThinningStart is a slider: a no-op with no blank, one coalescing key per tip", () => {
+    const body = handler("setThinningStart");
+    const guard = body.indexOf("if (!state.blank) return;");
+    expect(guard).toBeGreaterThanOrEqual(0);
+    expect(guard).toBeLessThan(body.indexOf("noteEdit("));
+    expect(body).toContain("noteEdit(`blank:thinningStart:${end}`)");
+    expect(body).toMatch(/blank:\s*\{\s*\.\.\.prev\.blank,\s*\[key\]:\s*start\s*\}/);
+  });
+
+  it("setThinningStartAutomatic removes the stored key: a no-op on Automatic, one undo step, never stores an empty value", () => {
+    const body = handler("setThinningStartAutomatic");
+    const guard = body.indexOf("if (!state.blank || state.blank[key] === undefined) return;");
+    expect(guard).toBeGreaterThanOrEqual(0);
+    expect(guard).toBeLessThan(body.indexOf("noteEdit("));
+    expect(body).toContain("noteEdit(null)");
+    expect(body).toMatch(/delete blank\[key\]/);
+    expect(body).not.toContain(": undefined");
+  });
+
+  it("a switch of blanks keeps a hand-set start; a first pick has none", () => {
+    expect(handler("pickBlank")).toMatch(/\.\.\.thinningStartsOf\(\s*prev\.blank\s*\)/);
+  });
+
+  it("↺ Reset Fine-Tune leaves both starts alone (D-06)", () => {
+    expect(handler("resetFineTune")).not.toMatch(/ThinningStart/);
+  });
+
+  it("both moves are on the context value", () => {
+    const value = contextValue();
+    expect(value).toMatch(/\n\s+setThinningStart,/);
+    expect(value).toMatch(/\n\s+setThinningStartAutomatic,/);
+  });
+
+  it("no store move is named like a hook (the hooks lint rule would read it as one)", () => {
+    const names = [...SOURCE.matchAll(/\n  const ([A-Za-z0-9_]+) = \(/g)].map((m) => m[1]);
+    expect(names).toContain("setThinningStartAutomatic");
+    for (const name of names) {
+      expect(name).not.toMatch(/^use(?:Automatic|Thinning)/);
+    }
+  });
+});
+
 describe("design-store.tsx — an untouched new board follows the live tip defaults, until its first edit (D-19)", () => {
   /** Every handler that edits the board — the first of any of them bakes the tips in. */
   const STARTS_THE_BOARD = [
@@ -254,6 +323,8 @@ describe("design-store.tsx — an untouched new board follows the live tip defau
     "setFineTuneSurface",
     "setFineTune",
     "resetFineTune",
+    "setThinningStart",
+    "setThinningStartAutomatic",
     "removeBlank",
     "toggleImportTemplateDimensions",
     "toggleImportRailThickness",

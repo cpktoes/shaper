@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,13 @@ export interface SliderRowProps {
   /** The two-ended hint line under the track. Rendered only when at least one is present. */
   leftHint?: string;
   rightHint?: string;
+  /**
+   * A control drawn at the right end of the hint line, in place of `rightHint` — Phase 14's
+   * Automatic button on the Thinning Starts rows (14-UI-SPEC §1). With it the hint line also
+   * centres its two ends (`items-center gap-2`); without it — `undefined`, `null` or `false` — the row
+   * renders exactly as before.
+   */
+  hintAction?: ReactNode;
   /** The warning-coloured line under the hints. */
   note?: string;
   /** For the flex sizing the paired two-per-line layouts need; composed with the disabled
@@ -50,6 +58,19 @@ export interface SliderRowProps {
    * changes nothing visually — the two must never be normalised to one value.
    */
   density?: "default" | "tight";
+  /**
+   * The slider's own accessible name, for a screen reader — the label line above is a plain line of
+   * text and names nothing. Given to the two Thinning Starts rows (Phase 14 code review WR-01), whose
+   * sliders are otherwise twins told apart only by nose and tail. Absent, the row renders exactly as
+   * before.
+   */
+  sliderLabel?: string;
+  /**
+   * What a screen reader says for the slider's value, worded the way the label line prints it (a
+   * Metric start reads `64.8 cm`, not the bare millimetres the slider runs on). Absent, the row
+   * renders exactly as before.
+   */
+  sliderValueText?: string;
 }
 
 export function SliderRow({
@@ -63,10 +84,15 @@ export function SliderRow({
   disabled,
   leftHint,
   rightHint,
+  hintAction,
   note,
   className,
   density = "default",
+  sliderLabel,
+  sliderValueText,
 }: SliderRowProps) {
+  // `false` counts as no action, so a caller can write `hintAction={cond && <Button />}`.
+  const hasAction = hintAction !== undefined && hintAction !== null && hintAction !== false;
   return (
     <div className={cn(className, disabled && "opacity-40")}>
       <div
@@ -85,11 +111,18 @@ export function SliderRow({
         disabled={disabled}
         onValueChange={(v) => onValueChange(sliderValue(v))}
         className="slider-accent"
+        thumbAriaLabel={sliderLabel}
+        thumbAriaValueText={sliderValueText}
       />
-      {(leftHint || rightHint) && (
-        <div className="mt-0.5 flex justify-between text-xs text-surf-ink-muted font-normal">
+      {(leftHint || rightHint || hintAction) && (
+        <div
+          className={cn(
+            "mt-0.5 flex justify-between text-xs text-surf-ink-muted font-normal",
+            hasAction && "items-center gap-2",
+          )}
+        >
           <span>{leftHint}</span>
-          <span>{rightHint}</span>
+          {hasAction ? hintAction : <span>{rightHint}</span>}
         </div>
       )}
       {note && <div className="mt-0.5 text-[10px] text-surf-warning-ink">{note}</div>}

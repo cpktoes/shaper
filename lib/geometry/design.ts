@@ -15,7 +15,7 @@
  */
 
 import type { BlankRecord, BoardBlank } from "./blank";
-import { prepareBlank, type PreparedBlank } from "./blank-fit";
+import { prepareBlank, thinningStartsOf, type PreparedBlank, type TipRule } from "./blank-fit";
 import type { OutlineSpec } from "./board";
 import { buildBoardProfile } from "./board-profile";
 import type { FoilSpec } from "./foil";
@@ -163,7 +163,8 @@ export interface DesignSummary {
  *
  * Phase 12 (D-08): the board is cut from its blank with the board's OWN cut — its Deck Skin, Tip
  * Style and fine-tune surface, carried on its blank — passed through to the one side profile
- * exactly as the store passes it, so the litres follow the new foil everywhere.
+ * exactly as the store passes it, so the litres follow the new foil everywhere. Phase 14 (D-24):
+ * the board's own stored Thinning Starts go the same way, through `thinningStartsOf`.
  *
  * This is exactly `summarizeDesignWith(fields, { prepare: prepareBlank, handSetCurve: "root" })`:
  * the live rules (Phase 14 D-13) through the one pipeline below.
@@ -184,6 +185,11 @@ export interface DesignRules {
   prepare: (record: BlankRecord) => PreparedBlank;
   /** Which rule draws a board with no blank (`BoardProfileInput.handSetCurve`). */
   handSetCurve: CurveRule;
+  /**
+   * Which tip rule cuts a board in a blank (`BoardOnBlankInput.tipRule`). Absent is the live steady
+   * taper (Phase 14 D-01); `"blend"` is the 12" S-blend the site used before, kept by name (D-25).
+   */
+  tipRule?: TipRule;
 }
 
 /**
@@ -206,6 +212,9 @@ export function summarizeDesignWith(fields: DesignSummaryFields, rules: DesignRu
           deckSkin: blank.deckSkin,
           tipStyle: blank.tipStyle,
           fineTuneSurface: blank.fineTuneSurface,
+          tipRule: rules.tipRule,
+          // The board's own stored Thinning Starts (Phase 14 D-24), through the one helper.
+          ...thinningStartsOf(blank),
         }
       : null,
     handSetCurve: rules.handSetCurve,

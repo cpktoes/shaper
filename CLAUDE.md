@@ -105,7 +105,10 @@ the app has always shown it.
 **Metric means all-metric**, length included, and it splits into two families of number decided
 by what the number *is*, not by which screen it's on. **Dims** — a board's length, widths and
 headline thickness, the numbers a shaper quotes as a size — read in centimetres to one decimal
-(`188.0 × 51.4 × 6.7 cm`). **Marks** — rail band marks, rocker heights, the five foil station
+(`188.0 × 51.4 × 6.7 cm`). Where each tip's thinning starts (a **Thinning Start**, Phase 14) is a dim
+too: it is a distance along the board, not a tape mark, so it reads in centimetres to one decimal
+(`30.5 cm`) and a start at the 12" station prints the same digits as the station's own label, never
+`305 mm`. It reads, and its slider sets it, through `lib/geometry/units.ts` like every dim. **Marks** — rail band marks, rocker heights, the five foil station
 thicknesses, and every fin placement number (a fin's distance off the tail, its distance in from
 the rail, its toe-in and its base length) — read in whole millimetres, because that's what a
 metric tape actually reads for the small stuff. So a foil's centre thickness reads `6.7` on a

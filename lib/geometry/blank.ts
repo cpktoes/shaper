@@ -102,6 +102,18 @@ export interface BoardBlank {
   tipStyle: TipStyle;
   /** The board's own fine-tune surface (Phase 12 D-13). */
   fineTuneSurface: FineTuneSurface;
+  /**
+   * Where the nose's thinning starts, in millimetres in from the nose tip (Phase 14 D-02, D-24).
+   * Absent means Automatic. Set only by the Thinning Starts slider and removed by its Automatic
+   * button. Not part of `BlankCut`, and not counted by the cut's "all three or none" rule.
+   */
+  noseThinningStart?: Mm;
+  /**
+   * Where the tail's thinning starts, in millimetres in from the tail tip (Phase 14 D-02, D-24).
+   * Absent means Automatic. Set only by the Thinning Starts slider and removed by its Automatic
+   * button. Not part of `BlankCut`, and not counted by the cut's "all three or none" rule.
+   */
+  tailThinningStart?: Mm;
 }
 
 /** The shaper's fit settings (the third account preference, D-09). */
@@ -124,15 +136,19 @@ export interface FitSettings {
  * already holds, no new geometry:
  *
  * - `thinCenter`: the blank is so much thicker than the target centre that the parallel cut leaves
- *   too little foam somewhere. The wording every runs-out had before the other three causes existed,
- *   and what a runs-out with no cause at all still reads as.
+ *   too little foam somewhere. The wording every runs-out had before the other causes existed, and
+ *   what a runs-out with no cause at all still reads as.
  * - `fineTune`: a negative 12" fine-tune — typed just now, or carried over from a Phase 11 board —
  *   took that spot under the floor when the board would have had enough foam there without it.
  * - `offBlank`: the station is past the end of the blank, where the blank reads 0 thick.
  * - `tipSetting`: that end's own tip is set under the floor — only an older saved board or a stored
  *   default can hold one now, since no control offers a thinner tip.
+ * - `thinningStart` (Phase 14 D-05): a Thinning Starts point set by hand too close to the tip took
+ *   that spot under the floor, when the tip setting itself is fine and the board would have had
+ *   enough foam there on Automatic. Not a new way to fail — the floor already refused such a board;
+ *   this only gives the refusal its true reason.
  */
-export type RunsOutCause = "thinCenter" | "fineTune" | "offBlank" | "tipSetting";
+export type RunsOutCause = "thinCenter" | "fineTune" | "offBlank" | "tipSetting" | "thinningStart";
 
 /**
  * The worst place a board sits on (or pokes out of) its blank. `station` is measured from the
