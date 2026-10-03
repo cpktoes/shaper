@@ -808,15 +808,25 @@ function fitterFor(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitS
 /**
  * True when no blank can take this board at any placement, read off the board alone: a 12"
  * fine-tune on the Deck bigger than the Deck Skin lifts the board's deck above the blank's deck at
- * that station — the fine-tune hump peaks there and, with the tip's thinning starting at 12", no
- * thinning reaches it, so the deck sits exactly `deckSkin − offset` below the blank's deck at every
- * placement on every blank — and `fitAt` samples that station. D-13 says such a tweak is honestly
- * flagged "too thin there"; this is what lets the list and the flag say so at once instead of
- * confirming it one placement at a time (a full catalogue scan ran 1.3 s in Node and about 40 s on
- * WebKit per keystroke — 12-08). One corner stays a quick refusal on purpose (Phase 14): under Tip
- * Style Bottom with a tip's start further in than 12", the taper takes extra foam off the deck at
- * the 12" station and some placements could fit; searching them costs far too much per change, so
- * the founder decides after the showing (recorded in the pending todo for retiring today's rules).
+ * that station — the fine-tune hump peaks there — and `fitAt` samples that station. D-13 says such a
+ * tweak is honestly flagged "too thin there"; this is what lets the list and the flag say so at once
+ * instead of confirming it one placement at a time (a full catalogue scan ran 1.3 s in Node and about
+ * 40 s on WebKit per keystroke — 12-08).
+ *
+ * It relies on no tip thinning coming off the deck at a 12" station, so the deck sits at most
+ * `deckSkin − offset` below the blank's deck there — above it, for a tweak over the skin — at every
+ * placement on every blank. That holds:
+ * - under Tip Style Pin deck always — the thinning comes off the bottom, never the deck;
+ * - on Automatic under either Tip Style — Automatic starts at 12" (no thinning reaches the station)
+ *   or moves a start in only where the taper adds foam at 12" rather than taking it, so the deck
+ *   there is never lowered (tested in tip-flow.test.ts, plan 14-13, on the whole stress set).
+ *
+ * It is conservative in one corner (Phase 14): Tip Style Bottom, a Deck tweak over the skin, and that
+ * tip's start set by hand further in than 12". There the taper takes extra foam off the deck at the
+ * 12" station, so some placements could fit, and this still refuses the board everywhere — because
+ * searching every placement in that corner costs about 30 s per change in Node. Recorded for the
+ * founder to decide after the showing, in the pending todo for retiring today's curve and 12" blend.
+ * Its answer never depends on the starts: it reads only the surface, the two tweaks and the skin.
  */
 export function tweakExceedsDeckSkin(board: BoardOnBlankInput): boolean {
   if (board.fineTuneSurface !== "deck") return false;

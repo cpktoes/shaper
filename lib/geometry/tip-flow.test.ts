@@ -6,12 +6,16 @@ import { DEFAULT_BLANK_CUT, type BlankRecord } from "./blank";
 import {
   blankStationOf,
   boardOnBlank,
+  clampPlacement,
   FIT_EPSILON_MM,
   fitAt,
   judgeBlank,
+  listBlanks,
   MIN_FOIL_THICKNESS_MM,
+  placementRange,
   prepareBlank,
   runsOutCause,
+  tweakExceedsDeckSkin,
   type BoardFitContext,
   type BoardOnBlank,
   type BoardOnBlankInput,
@@ -21,7 +25,7 @@ import { DEFAULT_BOARD_SPEC } from "./board";
 import { DEFAULT_FOIL_SPEC } from "./foil";
 import { buildOutline, MEASURE_STATION_MM, sampleOutline } from "./outline";
 import { rockerStationPositions } from "./rocker";
-import { automaticStart, THINNING_START_MIN_MM, type PlanerCut } from "./tip-taper";
+import { automaticStart, THINNING_START_MIN_MM, THINNING_START_STEP_MM, type PlanerCut } from "./tip-taper";
 import { inchesToMm, mm, type Mm } from "./units";
 
 // The tips step (Phase 14 D-01, D-03, D-14, D-27) proven on the stress set the research built —
@@ -619,4 +623,104 @@ describe("Automatic reads only the planer cut, and the tweak, the skin and Tip S
     expect(ends).toBeGreaterThan(0);
     expect(differ).toBeGreaterThan(0);
   }, SLOW);
+});
+
+describe("Automatic does not flicker, the list stays fast, and the deck-tweak shortcut stays honest (D-23)", () => {
+  it("sliding the placement end to end in 1/16\" steps, each tip's Automatic start never turns back and never jumps more than 1/2\" in one step", ({
+    annotate,
+  }) => {
+    // The (blank, centre) pairs whose Automatic start passes 12" at any of their three placements.
+    const pairs = new Map<string, StressCase>();
+    const qualifying = new Set<string>();
+    for (const entry of ALL) {
+      const key = `${entry.record.vendor}|${entry.record.name}|${entry.centreIn}`;
+      if (entry.place === "centre") pairs.set(key, entry);
+      const tips = boardOnBlank(entry.prepared, entry.board, entry.placement).tips;
+      if (movedIn(tips.tail.automaticStart) || movedIn(tips.nose.automaticStart)) qualifying.add(key);
+    }
+    expect(qualifying.size).toBeGreaterThan(0);
+
+    const step = inchesToMm(1 / 16);
+    const wrong: string[] = [];
+    let steps = 0;
+    let moves = 0;
+    let largest = 0;
+    for (const key of qualifying) {
+      const entry = pairs.get(key);
+      expect(entry, key).toBeDefined();
+      if (!entry) continue;
+      const { prepared, board } = entry;
+      const { min, max } = placementRange(prepared.lengthMm, board.length);
+      const placements: number[] = [];
+      for (let k = 0; min + k * step < max - 1e-9; k++) placements.push(clampPlacement(mm(min + k * step), prepared.lengthMm, board.length));
+      placements.push(max);
+      for (const end of ["tail", "nose"] as const) {
+        let previous: number | null = null;
+        let direction = 0;
+        for (const placement of placements) {
+          const view = boardOnBlank(prepared, board, mm(placement)).tips[end];
+          expect(view.automatic).toBe(true);
+          const start = view.fromTip;
+          if (previous !== null) {
+            steps++;
+            const change = start - previous;
+            largest = Math.max(largest, Math.abs(change));
+            if (Math.abs(change) > THINNING_START_STEP_MM + EXACT_MM) wrong.push(`${key} ${end} jumps ${change} at ${placement}`);
+            if (change !== 0) {
+              moves++;
+              if (direction !== 0 && Math.sign(change) !== direction) wrong.push(`${key} ${end} turns back at ${placement}`);
+              direction = Math.sign(change);
+            }
+          }
+          previous = start;
+        }
+      }
+    }
+    expect(listed(wrong)).toEqual([]);
+    expect(moves).toBeGreaterThan(0);
+    annotate(
+      `pairs ${qualifying.size}; 1/16" steps ${steps}; steps where a start moved ${moves}; ` +
+        `largest single move ${largest / inchesToMm(1)}"`,
+    );
+  }, SLOW);
+
+  it("the whole catalogue's list for the default 72\" board at 2 1/2\" on Automatic takes under a second (Phase 12's runaway was 1.3 s)", ({
+    annotate,
+  }) => {
+    const ctx = defaultContext(inchesToMm(72), inchesToMm(2.5));
+    expect(ctx.board.noseThinningStart).toBeUndefined();
+    expect(ctx.board.tailThinningStart).toBeUndefined();
+    const started = performance.now();
+    const result = listBlanks(PREPARED, ctx, STRESS_FIT_SETTINGS);
+    const elapsed = performance.now() - started;
+    expect(result.fits.length + result.wontFit.length).toBeGreaterThan(0);
+    annotate(`listBlanks on Automatic: ${elapsed.toFixed(1)} ms for ${PREPARED.length} blanks`);
+    expect(elapsed).toBeLessThan(1000);
+  }, SLOW);
+
+  it("under Bottom on Automatic no tip's thinning ever reaches the 12\" stations — the property the deck-tweak shortcut relies on", () => {
+    const over: string[] = [];
+    for (const entry of ALL) {
+      const L = entry.board.length;
+      const onBlank = boardOnBlank(entry.prepared, { ...entry.board, tipStyle: "bottom" }, entry.placement);
+      expect(onBlank.tips.tail.automatic && onBlank.tips.nose.automatic).toBe(true);
+      for (const station of [MEASURE_STATION_MM, L - MEASURE_STATION_MM]) {
+        const thinning = onBlank.tipThinningAt(station);
+        if (thinning > EXACT_MM) over.push(`${entry.label} at ${station}: ${thinning}`);
+      }
+    }
+    expect(listed(over)).toEqual([]);
+  }, SLOW);
+
+  it("the one conservative corner still refuses at once: Bottom, a Deck tweak over the skin, the nose start set by hand at 24\"", () => {
+    const { board } = defaultContext(inchesToMm(72), inchesToMm(2.5));
+    const corner: BoardOnBlankInput = {
+      ...board,
+      tipStyle: "bottom",
+      fineTuneSurface: "deck",
+      nose12Offset: mm(board.deckSkin + SIXTEENTH_MM),
+      noseThinningStart: inchesToMm(24),
+    };
+    expect(tweakExceedsDeckSkin(corner)).toBe(true);
+  });
 });
