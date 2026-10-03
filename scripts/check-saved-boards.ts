@@ -45,6 +45,17 @@
  * line above. It never prints a board, a board name, a user id or the connection string, and never
  * changes the exit code; a board the comparison cannot work out is counted, never described.
  *
+ * `--tips-report` (Phase 14 D-18, read-only, counts and maxima only): the same comparison for the
+ * second go-live, how each tip is thinned. Each board that opens is worked out twice — under the
+ * rules live after the first go-live (the new curves with today's 12" blend at the tips,
+ * `RULES_BEFORE_TIPS`) and under the live ones (the steady taper from each tip's Thinning Start,
+ * `RULES_LIVE`) — with every board's own stored starts. It prints the same summary lines for boards
+ * in a blank and for hand-set boards, plus two tips lines for the boards in a blank: how many have a
+ * tip whose thinning starts further in than 12", and the largest rise of a 12" thickness. Phase 11
+ * boards are left to the five-thicknesses line above. Like the curves report it never prints a
+ * board, a board name, a user id or the connection string, and never changes the exit code. Both
+ * flags may be given together.
+ *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
  *
@@ -58,6 +69,8 @@
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --thin-tips'
  *   production, the curves report — the founder only (plan 14-07), the same temporary-file recipe:
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --curves-report'
+ *   production, the tips report — the founder only (plan 14-18), the same temporary-file recipe:
+ *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --tips-report'
  *
  * Which env file is read is controlled by `CHECK_ENV_FILE` (default `.env.local`, resolved from the
  * current directory), exactly as scripts/check-preference-columns.ts: when the file exists, any
@@ -91,15 +104,29 @@ async function main(): Promise<void> {
   const { designSnapshotSchema, hasPhase11Blank, parseSnapshot } = await import("../lib/models/design-snapshot");
   const { summarizeDesign } = await import("../lib/geometry/design");
   const { buildBoardProfile } = await import("../lib/geometry/board-profile");
-  const { clampPlacement, FIT_EPSILON_MM, MIN_FOIL_THICKNESS_MM, nearestFittingPlacement, prepareBlank } =
-    await import("../lib/geometry/blank-fit");
+  const {
+    clampPlacement,
+    FIT_EPSILON_MM,
+    MIN_FOIL_THICKNESS_MM,
+    nearestFittingPlacement,
+    prepareBlank,
+    thinningStartsOf,
+  } = await import("../lib/geometry/blank-fit");
   const { phase11TwelveInch } = await import("../lib/geometry/phase11-foil");
   const { buildOutline, sampleOutline } = await import("../lib/geometry/outline");
   const { formatMark } = await import("../lib/geometry/measure-display");
   const { mm, UNITS_SYSTEMS } = await import("../lib/geometry/units");
   const { DEFAULT_FIT_DEFAULTS, toFitSettings } = await import("../lib/fit-defaults-preference");
-  const { boardFigures, compareFigures, movesReportLines, RULES_BEFORE_CURVES, RULES_LIVE, summarizeMoves } =
-    await import("../lib/geometry/before-after");
+  const {
+    boardFigures,
+    compareFigures,
+    movesReportLines,
+    RULES_BEFORE_CURVES,
+    RULES_BEFORE_TIPS,
+    RULES_LIVE,
+    summarizeMoves,
+    tipsReportLines,
+  } = await import("../lib/geometry/before-after");
 
   type Mm = import("../lib/geometry/units").Mm;
   type FoilStationKey = import("../lib/geometry/foil").FoilStationKey;
@@ -109,6 +136,7 @@ async function main(): Promise<void> {
   const fitSettings = toFitSettings(DEFAULT_FIT_DEFAULTS);
   const thinTipsFlag = process.argv.includes("--thin-tips");
   const curvesReportFlag = process.argv.includes("--curves-report");
+  const tipsReportFlag = process.argv.includes("--tips-report");
   const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
 
   // Read-only: one select of every saved board's id and snapshot, nothing else.
@@ -127,6 +155,9 @@ async function main(): Promise<void> {
   const blankMoves: BoardMove[] = [];
   const handSetMoves: BoardMove[] = [];
   let notCompared = 0;
+  const tipsBlankMoves: BoardMove[] = [];
+  const tipsHandSetMoves: BoardMove[] = [];
+  let tipsNotCompared = 0;
 
   for (const row of rows) {
     const version = (row.snapshot as { version?: unknown } | null)?.version;
@@ -164,6 +195,19 @@ async function main(): Promise<void> {
         (parsed.blank ? blankMoves : handSetMoves).push(move);
       } catch {
         notCompared++;
+      }
+    }
+    // --tips-report (Phase 14 D-18): the same, from the 12" blend to the steady taper. `boardFigures`
+    // reads each board's own stored Thinning Starts. Counts only, never affects the exit code.
+    if (tipsReportFlag && !phase11) {
+      try {
+        const move = compareFigures(
+          boardFigures(parsed, RULES_BEFORE_TIPS, fitSettings),
+          boardFigures(parsed, RULES_LIVE, fitSettings),
+        );
+        (parsed.blank ? tipsBlankMoves : tipsHandSetMoves).push(move);
+      } catch {
+        tipsNotCompared++;
       }
     }
     if (!phase11) continue;
@@ -212,6 +256,7 @@ async function main(): Promise<void> {
           deckSkin: carried.deckSkin,
           tipStyle: carried.tipStyle,
           fineTuneSurface: carried.fineTuneSurface,
+          ...thinningStartsOf(carried),
         },
       });
 
@@ -236,6 +281,7 @@ async function main(): Promise<void> {
           deckSkin: carried.deckSkin,
           tipStyle: carried.tipStyle,
           fineTuneSurface: carried.fineTuneSurface,
+          ...thinningStartsOf(carried),
         },
         halfWidthAt: (station: Mm) => sampleOutline(outlineGeometry, station),
         widePointStation: outlineGeometry.widePointStation,
@@ -266,6 +312,21 @@ async function main(): Promise<void> {
     }
     console.log("Phase 11 boards are covered by the five-thicknesses line above, not counted here");
     if (notCompared > 0) console.log(`boards the curves report could not compare: ${notCompared}`);
+  }
+  if (tipsReportFlag) {
+    const tipsBlank = summarizeMoves(tipsBlankMoves);
+    for (const line of movesReportLines("Boards in a blank, the 12\" blend → the steady taper", tipsBlank)) {
+      console.log(line);
+    }
+    for (const line of tipsReportLines(tipsBlank)) console.log(line);
+    for (const line of movesReportLines(
+      "Hand-set boards, the 12\" blend → the steady taper",
+      summarizeMoves(tipsHandSetMoves),
+    )) {
+      console.log(line);
+    }
+    console.log("Phase 11 boards are covered by the five-thicknesses line above, not counted here");
+    if (tipsNotCompared > 0) console.log(`boards the tips report could not compare: ${tipsNotCompared}`);
   }
 
   if (notOpened.length > 0) console.log(`boards that do not open: ${notOpened.join(", ")}`);
