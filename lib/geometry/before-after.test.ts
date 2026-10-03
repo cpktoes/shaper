@@ -28,7 +28,7 @@ import { buildOutline, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import { DEFAULT_RAIL_BAND_SPEC } from "./rail-bands";
 import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
-import { inchesToMm, mm, type Mm } from "./units";
+import { inchesToMm, mm, mmToInches, type Mm } from "./units";
 import { DEFAULT_VOLUME_SPEC } from "./volume";
 
 // Every expected number is either the live site's own output pinned by
@@ -300,11 +300,15 @@ describe("summarizeMoves", () => {
   });
 });
 
+/** A report's largest length as the report prints it: decimal inches to three places, through the
+ * one conversion in units.ts (code review IN-01). */
+const reportInches = (lengthMm: number) => `${mmToInches(mm(lengthMm)).toFixed(3)}"`;
+
 describe("movesReportLines", () => {
   const HEADING = "Boards in a blank, today's curves → the new curves";
   const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  /** An Imperial mark as `formatMark` prints one: whole inches and/or a reduced fraction, then `"`. */
-  const INCHES = String.raw`-?(?:\d+|\d+ \d+/\d+|\d+/\d+)"`;
+  /** Decimal inches to three places, then `"`. */
+  const INCHES = String.raw`\d+\.\d{3}"`;
   const PATTERNS = [
     new RegExp(`^${escape(HEADING)}: \\d+ boards compared \\(\\d+ with a blank both ways\\)$`),
     new RegExp(
@@ -332,9 +336,23 @@ describe("movesReportLines", () => {
     ];
     const report = summarizeMoves(moves);
     const text = movesReportLines(HEADING, report).join("\n");
-    expect(text).toContain(formatMark(mm(report.maxStationMoveMm), "imperial"));
+    expect(text).toContain(`largest move of any station number: ${reportInches(report.maxStationMoveMm)};`);
     expect(text).toContain(`median ${report.litresMedianPct.toFixed(2)}%`);
     expect(text).toContain(`refused before, fits now: ${report.nowFits}`);
+  });
+
+  it("prints a move under 1/32\" as its own size, never as 0\" (IN-01)", () => {
+    // The largest move the Mid-length preset made at go-live 1 was about this size; a 1/16" mark
+    // printed it as 0".
+    const small = inchesToMm(0.015);
+    const report = summarizeMoves([
+      { stationMoveMm: small, litresChange: 0, verdict: "same", startsPastStation: 0, twelveRiseMm: 0 },
+    ]);
+    const line = movesReportLines(HEADING, report)[1];
+    expect(line).toContain(`largest move of any station number: ${reportInches(small)};`);
+    expect(line).not.toContain(`number: ${formatMark(small, "imperial")};`);
+    // The two counts still read against 1/16" and 1/32", as before.
+    expect(line).toContain('boards moving more than 1/16": 0; more than 1/32": 0');
   });
 });
 
@@ -410,8 +428,8 @@ describe("the tips step: what is live after go-live 1 against what will be live 
 });
 
 describe("tipsReportLines", () => {
-  /** An Imperial mark as `formatMark` prints one: whole inches and/or a reduced fraction, then `"`. */
-  const INCHES = String.raw`-?(?:\d+|\d+ \d+/\d+|\d+/\d+)"`;
+  /** Decimal inches to three places, then `"`. */
+  const INCHES = String.raw`\d+\.\d{3}"`;
   const PATTERNS = [
     /^ {2}tips: boards with a thinning start further in than 12": \d+ of \d+ with a blank$/,
     new RegExp(`^  largest rise of a 12" thickness: ${INCHES}$`),
@@ -434,6 +452,6 @@ describe("tipsReportLines", () => {
     const report = summarizeMoves(moves);
     const text = tipsReportLines(report).join("\n");
     expect(text).toContain(`${report.boardsWithStartPastStation} of ${report.withBlank} with a blank`);
-    expect(text).toContain(formatMark(mm(report.maxTwelveRiseMm), "imperial"));
+    expect(text).toContain(`largest rise of a 12" thickness: ${reportInches(report.maxTwelveRiseMm)}`);
   });
 });

@@ -21,10 +21,9 @@ import type { FitSettings } from "./blank";
 import { buildBoardProfile, type BoardSideProfile } from "./board-profile";
 import { summarizeDesignWith, type DesignRules, type DesignSummaryFields } from "./design";
 import type { FoilStationKey } from "./foil";
-import { formatMark } from "./measure-display";
 import { buildOutline, sampleOutline } from "./outline";
 import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
-import { inchesToMm, mm, type Mm } from "./units";
+import { inchesToMm, mm, mmToInches, type Mm } from "./units";
 
 /**
  * The curves the live site drew before Phase 14, kept by name (D-25): a blank's catalogue rows
@@ -220,14 +219,23 @@ export function summarizeMoves(moves: readonly BoardMove[]): MovesReport {
 }
 
 /**
+ * A report's largest length, in decimal inches to three places (`0.015"`), through `mmToInches`. Not
+ * the shaper's 1/16" mark: the founder reads these maxima to judge how far boards move, and a mark
+ * prints every move under 1/32" as `0"` (code review IN-01).
+ */
+function reportInches(lengthMm: number): string {
+  return `${mmToInches(mm(lengthMm)).toFixed(3)}"`;
+}
+
+/**
  * The report in plain English, four lines under `heading`: counts, the largest station move in
- * Imperial (as the saved-boards check's other lines print), and percentages to two decimals.
+ * decimal inches to three places (`reportInches`), and percentages to two decimals.
  * Nothing about any one board — no blank, no name, no id.
  */
 export function movesReportLines(heading: string, report: MovesReport): string[] {
   return [
     `${heading}: ${report.boards} boards compared (${report.withBlank} with a blank both ways)`,
-    `  largest move of any station number: ${formatMark(mm(report.maxStationMoveMm), "imperial")}; ` +
+    `  largest move of any station number: ${reportInches(report.maxStationMoveMm)}; ` +
       `boards moving more than 1/16": ${report.overSixteenth}; more than 1/32": ${report.overThirtySecond}`,
     `  litres change: median ${report.litresMedianPct.toFixed(2)}%, largest ${report.litresMaxPct.toFixed(2)}%; ` +
       `boards moving more than 1%: ${report.overOnePct}`,
@@ -238,11 +246,12 @@ export function movesReportLines(heading: string, report: MovesReport): string[]
 /**
  * The tips report's two extra lines (D-18), printed after `movesReportLines`: how many boards have a
  * tip whose thinning starts further in than 12", out of those with a blank, and the largest rise of
- * a 12" thickness in Imperial. Fixed words, counts and one length — nothing about any one board.
+ * a 12" thickness in decimal inches (`reportInches`). Fixed words, counts and one length — nothing about
+ * any one board.
  */
 export function tipsReportLines(report: MovesReport): string[] {
   return [
     `  tips: boards with a thinning start further in than 12": ${report.boardsWithStartPastStation} of ${report.withBlank} with a blank`,
-    `  largest rise of a 12" thickness: ${formatMark(mm(report.maxTwelveRiseMm), "imperial")}`,
+    `  largest rise of a 12" thickness: ${reportInches(report.maxTwelveRiseMm)}`,
   ];
 }
