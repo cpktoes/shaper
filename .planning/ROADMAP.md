@@ -210,7 +210,7 @@ Plans:
 **Goal:** Every curve a shaper cuts foam to flows the way a real surfboard does: a blank's bottom, thickness and width are drawn between their printed stations by the rule that redraws real blanks most closely, a hand-set board is drawn by the same rule, and a board's thickness runs down steadily into each tip, never thinner on the way than the tip itself — built and live before the founder shows the app to a room of shapers on Saturday 2026-10-10.
 **Requirements**: R1–R9 locked in `.planning/phases/14-realistic-surfboard-flow/14-SPEC.md` (the founder's own words and their four answers of 2026-10-02), with the measured research in `.planning/todos/completed/2026-09-28-give-the-foil-and-rocker-curves-a-realistic-surfboard-flow.md`
 **Depends on:** Phase 12 (the planer cut and the tip rule it changes); runs beside Phase 13, whose rehearsal and freeze it must be ready for
-**Plans:** 13/18 plans executed in 10 waves — planned 2026-10-02 (`14-RESEARCH.md` first: both steps rebuilt in a scratch copy and every figure reproduced; the founder's three rulings and six more from the research are D-20 to D-28). Go-live 1 (the curves) is wave 5 and go-live 2 (the tips) is wave 10, each a founder checkpoint alone in its wave. No code is written before the founder approves this plan (D-15).
+**Plans:** 17/18 plans executed in 10 waves — planned 2026-10-02 (`14-RESEARCH.md` first: both steps rebuilt in a scratch copy and every figure reproduced; the founder's three rulings and six more from the research are D-20 to D-28). Go-live 1 (the curves) is wave 5 and go-live 2 (the tips) is wave 10, each a founder checkpoint alone in its wave. No code is written before the founder approves this plan (D-15).
 
 Plans:
 
@@ -253,10 +253,10 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 14-14-PLAN.md — The two Thinning Starts sliders and their Automatic buttons on ROCKER, working end to end (R6)
-- [ ] 14-15-PLAN.md — Mark each tip's start on the drawing and show it on the DATASHEET (R6)
-- [ ] 14-16-PLAN.md — Print each tip's start in the order form's PLANING box (R6)
-- [ ] 14-17-PLAN.md — Make the blank list and the fit flag judge with the board's own starts; prepare the tips report and the tips pictures' figures (R6 R8 R9)
+- [x] 14-14-PLAN.md — The two Thinning Starts sliders and their Automatic buttons on ROCKER, working end to end (R6)
+- [x] 14-15-PLAN.md — Mark each tip's start on the drawing and show it on the DATASHEET (R6)
+- [x] 14-16-PLAN.md — Print each tip's start in the order form's PLANING box (R6)
+- [x] 14-17-PLAN.md — Make the blank list and the fit flag judge with the board's own starts; prepare the tips report and the tips pictures' figures (R6 R8 R9)
 
 **Wave 10** *(blocked on Wave 9 completion — a founder step)*
 
@@ -286,4 +286,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 11. Rocker from Real Blanks | 13/13 | Complete    | 2026-09-26 |
 | 12. Foil the Way a Shaper Cuts It | 10/10 | Complete    | 2026-09-27 |
 | 13. Ready for the Shapers | 11/13 items | In progress | - |
-| 14. Realistic Surfboard Flow | 13/18 | In Progress|  |
+| 14. Realistic Surfboard Flow | 17/18 | In Progress|  |
