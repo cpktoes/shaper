@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Rehearsal (Phase 13 item 13) under way 2026-10-03: checks 1, 2, 3 and 7 passed (4 of 9, 13-UAT.md); the walk sheet is up to date with the live site (17 steps plus Phase 14's five looks; printable 13-walk-sheet.pdf). The one fault the sheet update found (on an upright phone the tail's Automatic button on ROCKER under the Redo button) is FIXED in b32dcaf (fast task 144) and proven on a production build, but NOT YET LIVE: it waits on the founder's go to publish (merge surfboard-flow into main, push, watch the deploy, re-run the live check, then take the known-fault note off the walk sheet and re-issue the PDF). Then: the founder's walks on the iPhone, a real Android phone and the Oct 10 laptop (checks 4-6), the demo account (8) and the freeze Wed 2026-10-07 evening (9). Phase 14: both go-lives are live (main 9468fd5); 14-VERIFICATION.md is written (human_needed, 8 of 9, the ninth is the walk) but not yet committed; after the walk: /gsd-verify-work 14 (its five looks ride on the walk sheet), the security check, phase complete"
-last_updated: "2026-10-03T23:08:14.321Z"
+stopped_at: "Rehearsal (Phase 13 item 13) under way 2026-10-03: checks 1, 2, 3 and 7 passed (4 of 9, 13-UAT.md). The walk sheet is up to date with the live site (17 steps plus Phase 14's five looks; printable 13-walk-sheet.pdf, issue 2). The one fault the sheet update found (on an upright phone the tail's Automatic button on ROCKER under the Redo button) is fixed and LIVE: fast task 144 (b32dcaf), published on the founder's go as main ddeae0a, Vercel deployment 6834273836, checked on the live site. Next: the founder's walks on the iPhone, a real Android phone and the Oct 10 laptop (checks 4-6), the demo account (8) and the freeze Wed 2026-10-07 evening (9). Phase 14: 14-VERIFICATION.md is written (human_needed, 8 of 9, the ninth is the walk) but not yet committed; after the walk: /gsd-verify-work 14 (its five looks ride on the walk sheet), the security check, phase complete. The branch surfboard-flow holds planning notes newer than main; they ride up with the next push"
+last_updated: "2026-10-03T23:25:00.000Z"
 last_activity: 2026-10-03
-last_activity_desc: Phase 13 item 13 — the upright-phone fault (the tail's Automatic button under the Redo button) is fixed in b32dcaf and proven on a production build; publishing it waits on the founder's go
+last_activity_desc: Phase 13 item 13 — the upright-phone fix is live (main ddeae0a) and checked on the live site; the walk sheet is re-issued (issue 2); the founder's three device walks are next
 progress:
   total_phases: 2
   completed_phases: 0
@@ -185,7 +185,6 @@ Recent decisions affecting current work:
 - [Phase 2 → Phase 13 item 2, founder step] client_secret_*.json (Google OAuth download) still sits in the repo root — gitignored so it can't be committed, but should be moved out of the working tree entirely (into a password manager)
 - [Phase 12 → Phase 13 item 4] The five verifier questions were answered on 2026-09-28 (see Decisions); their code lands as quick tasks 4a (the 1/4" floor, the tip minimum and the rewording) and 4b (Deck Skin 0–50 mm)
 - [Phase 13] Deadline: the founder shows the app to many shapers on Saturday 2026-10-10; freeze on Wednesday 2026-10-07 evening, after which only rehearsal fixes land
-- [Phase 13 item 13, the founder's go] The upright-phone fault (the tail's Automatic button on ROCKER under the Redo button, found by machine on the live site 2026-10-03) is fixed in `b32dcaf` (fast task 144): the phone's controls end with 48 dots of extra room, proved by `e2e/prod/phone-controls-clear-undo.spec.ts` on a production build; before/after pictures in `phases/13-ready-for-the-shapers/pictures/`. It is NOT live yet: publishing waits on the founder's go, and after it the walk sheet's known-fault note comes off
 
 ### Quick Tasks Completed
 
