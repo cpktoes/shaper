@@ -164,7 +164,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-8 pending (one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10):
+12 pending (four of them are Phase 14's follow-ups, added 2026-10-02; one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
@@ -174,6 +174,10 @@ Recent decisions affecting current work:
 - [minor/rocker] Custom rocker on a blank, saved as the shaper's own Custom Blank (after Oct 10) — `.planning/todos/pending/2026-09-28-custom-rocker-on-a-blank-saved-as-the-shaper-s-own-custom-bl.md`
 - [major/data] Fix the blank catalogue dims (the founder moved it up on 2026-10-01: "let's tackle the blank errors now"). All three correction rounds are live (quick 261001-v1q, 261001-www, 261002-aqu); what is left is the founder's own list — any blank they know is wrong that a check against the catalog could not see — `.planning/todos/pending/2026-10-01-fix-the-blank-catalogue-dims-the-founder-knows-are-wrong.md`
 - [minor/ui] Hold the ghost still until the control is released (the founder, 2026-10-02: on TEMPLATE the ghost moves while a slider or a draggable point is still held; it should stay on the shape from before the grab until the release. Cause measured: a half-second timer, not the release, decides where one edit ends, so a slow drag or a pause counts as several edits. No date set) — `.planning/todos/pending/2026-10-02-hold-the-ghost-still-until-the-control-is-released.md`
+- [minor/geometry] Decide what happens when a very thin board's tip sits below its own center (Phase 14 review WR-02; the founder at go-live 2: "leave it for the showing" — one blank, centers of 1 1/4" and under) — `.planning/todos/pending/2026-10-02-decide-what-happens-when-a-thin-boards-tip-sits-below-its-center.md`
+- [minor/ui] Give every slider in the app a spoken name and a spoken value (Phase 14 review WR-01's wider gap; the two Thinning Starts sliders are already named) — `.planning/todos/pending/2026-10-02-give-every-slider-a-spoken-name.md`
+- [minor/geometry] Retire today's curve and the 12" blend after the showing (kept by name for Phase 14's reports and pictures, D-25) — `.planning/todos/pending/2026-10-03-retire-todays-curve-and-12-inch-blend-after-the-showing.md`
+- [minor/geometry] Tape-check a real Arctic blank against the new bottom curve (Phase 14 D-08: after go-live, when a blank is in the bay) — `.planning/todos/pending/2026-10-02-tape-check-a-real-arctic-blank-against-the-new-curve.md`
 
 ### Blockers/Concerns
 
