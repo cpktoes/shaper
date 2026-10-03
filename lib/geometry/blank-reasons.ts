@@ -393,7 +393,17 @@ function tipName(end: TipEnd): string {
  * `formatThinningStart`.
  */
 export function thinningStartRowLabel(end: TipEnd, view: Pick<TipView, "fromTip">, system: UnitsSystem): string {
-  return `${tipName(end)} Thinning Starts — ${formatThinningStart(view.fromTip, system)}`;
+  return `${thinningStartSliderLabel(end)} — ${formatThinningStart(view.fromTip, system)}`;
+}
+
+/**
+ * A Thinning Starts slider's accessible name (Phase 14 code review WR-01): `Nose Thinning Starts` /
+ * `Tail Thinning Starts`, the row's product name without the distance — the distance is the slider's
+ * spoken value, read through `formatThinningStart` beside it, so a screen reader tells the two twin
+ * sliders apart by tip and hears the start the way the label prints it.
+ */
+export function thinningStartSliderLabel(end: TipEnd): string {
+  return `${tipName(end)} Thinning Starts`;
 }
 
 /**

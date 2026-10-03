@@ -668,6 +668,33 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
     await expect(automaticButton(page, "nose")).toHaveAttribute("aria-pressed", "true");
   });
 
+  test("each Thinning Starts slider is named for its own tip, and in Metric says the distance its label shows", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+
+    for (const end of ["nose", "tail"] as const) {
+      // Exactly one slider answers to each name, and it is the one in that tip's own row.
+      const named = page.getByRole("slider", { name: `${TIP_NAME[end]} Thinning Starts`, exact: true });
+      await expect(named).toHaveCount(1);
+      await expect(startRow(page, end).getByRole("slider", { name: `${TIP_NAME[end]} Thinning Starts`, exact: true })).toHaveCount(1);
+
+      // On Automatic, and again after a drag sets it by hand: the spoken value is the label's distance
+      // (`30.5 cm`), never the bare millimetres the slider runs on.
+      const label = startLabel(page, end);
+      await expect(label).toHaveText(/ cm$/);
+      await expect(named).toHaveAttribute("aria-valuetext", distanceOf(await label.innerText()));
+      const before = await label.innerText();
+      await named.focus();
+      await named.press("ArrowRight");
+      await expect(label).not.toHaveText(before);
+      await expect(label).toHaveText(/ cm$/);
+      await expect(named).toHaveAttribute("aria-valuetext", distanceOf(await label.innerText()));
+    }
+  });
+
   test("switching to another blank keeps a start set by hand", async ({ page }) => {
     await openRocker(page);
     const first = await pickFirstFittingBlank(page);

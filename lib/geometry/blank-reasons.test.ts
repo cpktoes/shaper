@@ -33,6 +33,7 @@ import {
   thinningStartLine,
   thinningStartRowLabel,
   thinningStartSlider,
+  thinningStartSliderLabel,
   tweakOverSkinLine,
 } from "./blank-reasons";
 import { DEFAULT_BOARD_SPEC } from "./board";
@@ -761,6 +762,19 @@ describe("Thinning Starts — the sentences (D-05, D-07, D-21)", () => {
       expect(thinningStartRowLabel("nose", { fromTip: MEASURE_STATION_MM }, "metric")).toBe("Nose Thinning Starts — 30.5 cm");
       expect(thinningStartRowLabel("tail", { fromTip: inchesToMm(25.5) }, "imperial")).toBe('Tail Thinning Starts — 25 1/2"');
       expect(thinningStartRowLabel("tail", { fromTip: inchesToMm(25.5) }, "metric")).toBe("Tail Thinning Starts — 64.8 cm");
+    });
+
+    it("names each slider for its own tip, and the row label is that name and its distance", () => {
+      expect(thinningStartSliderLabel("nose")).toBe("Nose Thinning Starts");
+      expect(thinningStartSliderLabel("tail")).toBe("Tail Thinning Starts");
+      for (const system of UNITS_SYSTEMS) {
+        for (const end of ["nose", "tail"] as const) {
+          const start = inchesToMm(25.5);
+          expect(thinningStartRowLabel(end, { fromTip: start }, system)).toBe(
+            `${thinningStartSliderLabel(end)} — ${formatThinningStart(start, system)}`,
+          );
+        }
+      }
     });
 
     it("names each Automatic button for its own tip", () => {

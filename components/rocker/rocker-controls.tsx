@@ -73,11 +73,13 @@ import { ROCKER_LIFT_RANGE_IN, type FiveStationRocker } from "@/lib/geometry/roc
 import {
   automaticButtonLabel,
   fineTuneSourceHint,
+  formatThinningStart,
   thicknessIntroWithBlank,
   thinningStartHint,
   thinningStartLine,
   thinningStartRowLabel,
   thinningStartSlider,
+  thinningStartSliderLabel,
 } from "@/lib/geometry/blank-reasons";
 import type { TipEnd, TipView } from "@/lib/geometry/tip-taper";
 import { mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
@@ -249,6 +251,8 @@ function AutomaticButton({ end, automatic, onPress }: { end: TipEnd; automatic: 
  * line's left and the Automatic button on its right — and, only for a start set by hand that is too
  * close to its tip, one sentence in warning ink under it. Everything it shows comes from the side
  * profile's per-tip view through `lib/geometry/blank-reasons.ts`; it computes and converts nothing.
+ * The slider itself carries its tip's name and speaks its value the way the label prints it, so a
+ * screen reader tells the two twin sliders apart (Phase 14 code review WR-01).
  */
 function ThinningStartRow({
   end,
@@ -277,6 +281,8 @@ function ThinningStartRow({
         step={slider.step}
         leftHint={thinningStartHint(tip, system)}
         hintAction={<AutomaticButton end={end} automatic={tip.automatic} onPress={() => onAutomatic(end)} />}
+        sliderLabel={thinningStartSliderLabel(end)}
+        sliderValueText={formatThinningStart(tip.fromTip, system)}
         onValueChange={(v) => onChange(end, slider.toMm(v))}
       />
       {line && <p className="mt-2 text-xs text-surf-warning-ink">{line}</p>}

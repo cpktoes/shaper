@@ -57,6 +57,19 @@ export interface SliderRowProps {
    * changes nothing visually — the two must never be normalised to one value.
    */
   density?: "default" | "tight";
+  /**
+   * The slider's own accessible name, for a screen reader — the label line above is a plain line of
+   * text and names nothing. Given to the two Thinning Starts rows (Phase 14 code review WR-01), whose
+   * sliders are otherwise twins told apart only by nose and tail. Absent, the row renders exactly as
+   * before.
+   */
+  sliderLabel?: string;
+  /**
+   * What a screen reader says for the slider's value, worded the way the label line prints it (a
+   * Metric start reads `64.8 cm`, not the bare millimetres the slider runs on). Absent, the row
+   * renders exactly as before.
+   */
+  sliderValueText?: string;
 }
 
 export function SliderRow({
@@ -74,6 +87,8 @@ export function SliderRow({
   note,
   className,
   density = "default",
+  sliderLabel,
+  sliderValueText,
 }: SliderRowProps) {
   const hasAction = hintAction !== undefined && hintAction !== null;
   return (
@@ -94,6 +109,8 @@ export function SliderRow({
         disabled={disabled}
         onValueChange={(v) => onValueChange(sliderValue(v))}
         className="slider-accent"
+        thumbAriaLabel={sliderLabel}
+        thumbAriaValueText={sliderValueText}
       />
       {(leftHint || rightHint || hintAction) && (
         <div
