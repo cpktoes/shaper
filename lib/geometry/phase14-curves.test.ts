@@ -93,9 +93,11 @@ describe("no stress board flips from fitting to refused at the curves step (R5)"
     expect(live.map((entry) => entry.label)).toEqual(frozen.map((entry) => entry.label));
     expect(frozen.length).toBeGreaterThan(0);
 
+    // This test is about the curves step, whose tip rule was the 12" blend: both sides keep it, so
+    // it compares today's curves with the new curves and nothing else.
     const judge = (entry: (typeof frozen)[number]) =>
       fitAt(
-        boardOnBlank(entry.prepared, entry.board, entry.placement),
+        boardOnBlank(entry.prepared, { ...entry.board, tipRule: "blend" }, entry.placement),
         entry.halfWidthAt,
         entry.widePointStation,
         STRESS_FIT_SETTINGS,
