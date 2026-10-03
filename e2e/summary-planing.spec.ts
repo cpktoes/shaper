@@ -7,8 +7,9 @@ import { FIT_DEFAULTS_RANGE_IN } from "../lib/fit-defaults-preference";
 import { finRoundingNote } from "../lib/geometry/fins";
 import { FOIL_THICKNESS_RANGE_IN } from "../lib/geometry/foil";
 import { formatMarkBare, measureSlider, planerPasses } from "../lib/geometry/measure-display";
-import { planingTable } from "../lib/geometry/planing";
-import { THINNING_START_MIN_MM } from "../lib/geometry/tip-taper";
+import { BOARD_LENGTH_RANGE_IN } from "../lib/geometry/board";
+import { planingTable, thinningLine } from "../lib/geometry/planing";
+import { THINNING_START_MIN_MM, thinningStartRange } from "../lib/geometry/tip-taper";
 import { inchesToMm, mm, parseImperial, parseMetric, type Mm, type UnitsSystem } from "../lib/geometry/units";
 
 /**
@@ -38,6 +39,12 @@ import { inchesToMm, mm, parseImperial, parseMetric, type Mm, type UnitsSystem }
  * headers, and Shaper Use Only clear of the PAGE 2 OF 2 footer. Letter and A4 are covered because the
  * computer's printed box is the smaller of the two papers on each axis and the phone sheet's shape is
  * Letter's whatever the paper, while case C and `summary-print-touch-box.spec.ts` print both papers.
+ *
+ * Phase 14 (D-12, UI-SPEC §8) added one line under the PLANING footnote with a blank picked — where
+ * each tip's thinning starts (`[data-planing-thinning]`). Case A proves it absent with no blank, case B
+ * reads it in both systems and re-words its two starts with the app's own `thinningLine`, case C
+ * prints it on Letter and A4, and case D writes the longest line any board can print into it and
+ * proves it is two lines broken before `nose` with the PLANING box still inside its own space.
  *
  * Every helper below is COPIED from another spec rather than imported, per this repo's own
  * convention that each spec carries its own: `dismissChrome`, `blankList`, `firstFittingRow`,
@@ -279,6 +286,8 @@ interface PlaningCandidateLists {
   deckPasses: string[];
   bottomPasses: string[];
   footnote: string[];
+  /** Every thinning line (`thinningLine`) a board can print — written into `[data-planing-thinning]`. */
+  thinning: string[];
 }
 
 /** What `measureAndWrite` reads back after writing the widest candidates onto the live sheet. */
@@ -342,6 +351,12 @@ interface PlaningMeasurement {
   page1MarkFontPx: number;
   /** Page 2's PageMark's computed `font-size`, in CSS px (quick 260928-vpi guard (b)). */
   page2MarkFontPx: number;
+  /** How many lines the widest thinning line drew on — distinct line tops of a `Range` over its text. */
+  thinningLineCount: number;
+  /** Whether the thinning line's second line begins at `nose` (UI-SPEC §8's predicted break). */
+  thinningBreaksBeforeNose: boolean;
+  /** The thinning line's first drawn line, as text — for the report. */
+  thinningFirstLine: string;
   widest: {
     railCell: string;
     deckFoam: string;
@@ -349,6 +364,7 @@ interface PlaningMeasurement {
     deckPasses: string;
     bottomPasses: string;
     footnote: string;
+    thinning: string;
   };
 }
 
@@ -427,6 +443,60 @@ function measureAndWrite(lists: PlaningCandidateLists): PlaningMeasurement {
   const widestDeckPasses = planingCellEls[2] ? widestOf(planingCellEls[2], lists.deckPasses) : "";
   const widestBottomPasses = planingCellEls[3] ? widestOf(planingCellEls[3], lists.bottomPasses) : "";
   const widestFootnote = planingFootnoteEl ? widestOf(planingFootnoteEl, lists.footnote) : "";
+
+  // The thinning line wraps, so its bounding box is the column's width whatever it says; the longest
+  // candidate is the one whose line boxes add up widest (the total drawn text), then it is written in
+  // and its lines are counted (Phase 14, D-12, UI-SPEC §8).
+  const thinningEl = referenceSheet.querySelector<HTMLElement>("[data-planing-thinning]");
+  if (!thinningEl) throw new Error("[data-planing-thinning] not found — the fit case must run with a blank picked");
+  const thinningRange = document.createRange();
+  const totalTextWidth = (el: HTMLElement): number => {
+    thinningRange.selectNodeContents(el);
+    return Array.from(thinningRange.getClientRects()).reduce((sum, r) => sum + r.width, 0);
+  };
+  let widestThinning = lists.thinning[0] ?? "";
+  let widestThinningPx = -1;
+  for (const s of lists.thinning) {
+    thinningEl.textContent = s;
+    const px = totalTextWidth(thinningEl);
+    if (px > widestThinningPx) {
+      widestThinningPx = px;
+      widestThinning = s;
+    }
+  }
+  thinningEl.textContent = widestThinning;
+  const thinningText = thinningEl.firstChild as Text;
+  thinningRange.selectNodeContents(thinningEl);
+  const lineTops = Array.from(thinningRange.getClientRects())
+    .filter((r) => r.width > 0)
+    .map((r) => Math.round(r.top));
+  const thinningLineCount = new Set(lineTops).size;
+  const noseAt = widestThinning.indexOf("nose");
+  const noseRange = document.createRange();
+  noseRange.setStart(thinningText, noseAt);
+  noseRange.setEnd(thinningText, noseAt + "nose".length);
+  const noseTop = Math.round(noseRange.getBoundingClientRect().top);
+  // Everything before `nose` ("Thinning starts from the tip:") sits on the first line, and `nose` does not.
+  const leadRange = document.createRange();
+  leadRange.setStart(thinningText, 0);
+  leadRange.setEnd(thinningText, widestThinning.indexOf(":") + 1);
+  const leadTops = new Set(
+    Array.from(leadRange.getClientRects())
+      .filter((r) => r.width > 0)
+      .map((r) => Math.round(r.top)),
+  );
+  const firstTop = lineTops.length > 0 ? Math.min(...lineTops) : NaN;
+  const thinningBreaksBeforeNose = leadTops.size === 1 && leadTops.has(firstTop) && noseTop > firstTop;
+  // The first line's own text, for the report: every character whose box sits on the first line.
+  const charRange = document.createRange();
+  let firstLineEnd = 0;
+  for (let i = 0; i < widestThinning.length; i++) {
+    charRange.setStart(thinningText, i);
+    charRange.setEnd(thinningText, i + 1);
+    const rect = charRange.getBoundingClientRect();
+    if (rect.width > 0 && Math.round(rect.top) === firstTop) firstLineEnd = i + 1;
+  }
+  const thinningFirstLine = widestThinning.slice(0, firstLineEnd).trim();
 
   const railBandsRow = referenceSheet.querySelector<HTMLElement>("[data-rail-bands-row]");
   if (!railBandsRow) throw new Error("[data-rail-bands-row] not found");
@@ -511,6 +581,9 @@ function measureAndWrite(lists: PlaningCandidateLists): PlaningMeasurement {
     railRowFontPx,
     page1MarkFontPx,
     page2MarkFontPx,
+    thinningLineCount,
+    thinningBreaksBeforeNose,
+    thinningFirstLine,
     widest: {
       railCell: widestRailCell,
       deckFoam: widestDeckFoam,
@@ -518,6 +591,7 @@ function measureAndWrite(lists: PlaningCandidateLists): PlaningMeasurement {
       deckPasses: widestDeckPasses,
       bottomPasses: widestBottomPasses,
       footnote: widestFootnote,
+      thinning: widestThinning,
     },
   };
 }
@@ -551,6 +625,27 @@ function assertMeasurement(result: PlaningMeasurement, label: string, mode: "com
     expect(oneLine, `${label}: a PLANING row label wrapped to two lines`).toBe(true);
   }
   expect(result.planingPanelOverflow, `${label}: the PLANING box overflowed`).toBeLessThanOrEqual(0.5);
+  // Phase 14 (D-12, UI-SPEC §8): the thinning line, at its longest, is two lines, and its opening words
+  // are never split. On the computer print it breaks before `nose`, exactly as the UI-SPEC's arithmetic
+  // predicts. On the two narrowest phone sheets (560 and 618 dots, measured 2026-10-02) page 2's own fit
+  // unit leaves room for `nose` on the first line, so the break falls one word later — still two lines,
+  // still inside the box; every wider phone sheet breaks before `nose` like the computer's.
+  expect(
+    result.thinningLineCount,
+    `${label}: the thinning line "${result.widest.thinning}" drew on ${result.thinningLineCount} lines, not two`,
+  ).toBe(2);
+  const lead = "Thinning starts from the tip:";
+  if (mode === "computer") {
+    expect(
+      result.thinningBreaksBeforeNose,
+      `${label}: the thinning line "${result.widest.thinning}" did not break before "nose" (first line "${result.thinningFirstLine}")`,
+    ).toBe(true);
+  } else {
+    expect(
+      [lead, `${lead} nose`],
+      `${label}: the thinning line's first line "${result.thinningFirstLine}" split its opening words or ran past "nose"`,
+    ).toContain(result.thinningFirstLine);
+  }
   expect(
     Math.abs(result.railCaptionBottom - result.planingCaptionBottom),
     `${label}: the two caption rows do not line up`,
@@ -687,6 +782,9 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       await expect(planingCol.locator("[data-planing-footnote]")).toHaveText(
         "Pick a blank on ROCKER for the planing numbers.",
       );
+
+      // Phase 14 (D-12): with no blank there is no thinning start to print, so no line at all.
+      await expect(page.locator("[data-planing-thinning]")).toHaveCount(0);
     });
 
     test(`with a blank picked, the PLANING table prints ROCKER's own foam off and passes, and the deck's passes worked the same way (${system})`, async ({
@@ -748,6 +846,41 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       await expect(planingCol.locator("[data-planing-footnote]")).toHaveText(
         `At the center, at ${depth} a pass — your Planer Max Depth.`,
       );
+
+      // Phase 14 (D-12, UI-SPEC §8): one more line under the footnote, where each tip's thinning starts.
+      const thinningEl = planingCol.locator("[data-planing-thinning]");
+      await expect(thinningEl).toHaveCount(1);
+      await expect(thinningEl).toBeVisible();
+      const thinningText = ((await thinningEl.textContent()) ?? "").trim();
+      expect(thinningText.startsWith("Thinning starts from the tip: nose "), `"${thinningText}"`).toBe(true);
+      expect(thinningText, `"${thinningText}"`).toContain(", tail ");
+      expect(thinningText.endsWith("."), `"${thinningText}" does not end with a full stop`).toBe(true);
+
+      const parts = thinningText.match(/^Thinning starts from the tip: nose (.+), tail (.+)\.$/);
+      expect(parts, `"${thinningText}" is not the thinning line's shape`).not.toBeNull();
+      const [, noseText, tailText] = parts!;
+      if (system === "metric") {
+        // Running text carries its unit once, at the end (CLAUDE.md Rule 2).
+        expect(thinningText.split(" cm").length - 1, `"${thinningText}": " cm" should appear exactly once`).toBe(1);
+        expect(thinningText.endsWith(" cm."), `"${thinningText}" does not end " cm."`).toBe(true);
+      } else {
+        expect(noseText.endsWith('"'), `nose "${noseText}" is not an Imperial distance`).toBe(true);
+        expect(tailText.endsWith('"'), `tail "${tailText}" is not an Imperial distance`).toBe(true);
+      }
+
+      // Read the two printed starts back and re-word them with the app's own `thinningLine`: the page
+      // must print exactly what the words module says for those starts — nothing re-typed here.
+      const readStart = (s: string): Mm | null => (system === "imperial" ? parseImperial(s) : parseMetric(s, "cm"));
+      const nose = readStart(noseText);
+      const tail = readStart(tailText);
+      expect(nose, `could not read the nose start "${noseText}"`).not.toBeNull();
+      expect(tail, `could not read the tail start "${tailText}"`).not.toBeNull();
+      expect(thinningText).toBe(thinningLine(nose!, tail!, system));
+      for (const start of [nose!, tail!]) {
+        expect(start, "a thinning start shorter than the slider's own shortest").toBeGreaterThanOrEqual(
+          THINNING_START_MIN_MM - 1,
+        );
+      }
     });
 
     test(`on paper, with a blank picked, both pages print at true size on Letter and A4 with the PLANING table on the back (${system})`, async ({
@@ -763,6 +896,8 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       const cells = page.locator("[data-planing-cell]");
       await expect(cells).toHaveCount(4);
       expect(await cells.first().textContent()).not.toBe("—");
+      // The thinning line is on the sheet, so both papers below print it (Phase 14, D-12).
+      await expect(page.locator("[data-planing-thinning]")).toHaveCount(1);
 
       // The no-blank PDF is already summary-print-size.spec.ts's first case, and that sheet now
       // carries the table and the no-blank line — nothing further to prove for it here.
@@ -884,6 +1019,20 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       ).toBe(true);
       expect(footnote.size, "footnote candidates").toBe(passDepths.length);
 
+      // Every thinning line any board can print (Phase 14, D-12): each start from the slider's
+      // shortest to the longest board's half length, both tips at the same start — the same value is
+      // the widest for the nose (bare) and the tail (with its unit), so the diagonal holds the widest
+      // line. Built by the app's own `thinningLine`, never typed.
+      const longestReach = thinningStartRange(inchesToMm(BOARD_LENGTH_RANGE_IN.max)).max;
+      const thinning = new Set<string>();
+      for (let v: number = THINNING_START_MIN_MM; v <= longestReach; v += 0.5) {
+        thinning.add(thinningLine(mm(v), mm(v), system));
+      }
+      // Non-vacuity guard: a start can print at least every half inch from 6" to 60".
+      expect(thinning.size, "thinning line candidates").toBeGreaterThan(
+        (BOARD_LENGTH_RANGE_IN.max / 2 - THINNING_START_MIN_MM / inchesToMm(1)) * 2,
+      );
+
       const lists: PlaningCandidateLists = {
         railCells: [...railCells],
         deckFoam: [...deckFoam],
@@ -891,6 +1040,7 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
         deckPasses: [...deckPasses],
         bottomPasses: [...bottomPasses],
         footnote: [...footnote],
+        thinning: [...thinning],
       };
 
       const report = (label: string, result: PlaningMeasurement) =>
@@ -899,7 +1049,9 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
         `rail content ${result.railContentHeight.toFixed(1)} vs box ${result.railBoxHeight.toFixed(1)}, ` +
         `fin content ${result.finContentHeight.toFixed(1)} vs box ${result.finBoxHeight.toFixed(1)}, ` +
         `column overflow ${result.columnOverflow.toFixed(1)}, shop-to-mark ${result.shopToMark.toFixed(1)}, ` +
-        `rail row font ${result.railRowFontPx.toFixed(3)}px, widest: ${JSON.stringify(result.widest)}`;
+        `rail row font ${result.railRowFontPx.toFixed(3)}px, thinning lines ${result.thinningLineCount} ` +
+        `(first: "${result.thinningFirstLine}"), ` +
+        `PLANING panel overflow ${result.planingPanelOverflow.toFixed(1)}, widest: ${JSON.stringify(result.widest)}`;
 
       // Every width's result and report line are collected FIRST (so a failing run shows every
       // width), and only then asserted (quick 260928-vpi).
