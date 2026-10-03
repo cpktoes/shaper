@@ -13,7 +13,7 @@
  * Pure: no React, browser API or database import (CLAUDE.md Rule 1), unit-tested in
  * before-after.test.ts.
  */
-import { fitAt, prepareBlank, prepareBlankPchip } from "./blank-fit";
+import { fitAt, prepareBlank, prepareBlankPchip, thinningStartsOf } from "./blank-fit";
 import type { FitSettings } from "./blank";
 import { buildBoardProfile, type BoardSideProfile } from "./board-profile";
 import { summarizeDesignWith, type DesignRules, type DesignSummaryFields } from "./design";
@@ -74,6 +74,7 @@ export function boardProfileWith(fields: DesignSummaryFields, rules: DesignRules
           tipStyle: blank.tipStyle,
           fineTuneSurface: blank.fineTuneSurface,
           tipRule: rules.tipRule,
+          ...thinningStartsOf(blank),
         }
       : null,
     handSetCurve: rules.handSetCurve,
