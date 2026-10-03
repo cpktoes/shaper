@@ -8,7 +8,7 @@
  * blank (D-11 — the whole `DesignState`, minus `modelId`, `boardStarted` and `dirty`, which are
  * session bookkeeping, not board design).
  *
- * Five rules govern this file:
+ * Six rules govern this file:
  *
  * 1. The branded `Mm`/`Degrees`/`Litres` types (lib/geometry/units.ts) are plain numbers at
  *    runtime, so every one of them is validated here as `z.number()` — never re-branded at the
@@ -59,6 +59,16 @@
  *    envelope's version number, because `saveModel` re-stamps whatever arrives with the current
  *    version — a tab left open across the deploy saves a Phase 11 blank stamped 5. Phase 11's
  *    proportional formula survives only in `lib/geometry/phase11-foil.ts`, for this.
+ * 6. Phase 14 (D-02, D-24) lets a blank carry where each tip's thinning starts —
+ *    `noseThinningStart` and `tailThinningStart`, millimetres in from that tip; absent means
+ *    Automatic. The version stays 5, because the reader before this rule tolerates them: it drops
+ *    unknown blank keys and accepts any version number (measured — `saved-board-open.test.ts`'s
+ *    rollback test, written on that reader). Each is read forgivingly: a value that is not a
+ *    number, or is outside 0 to `BLANK_THINNING_START_MAX_MM`, reads as Automatic and never rejects
+ *    the board, and the parsed blank then carries no key for it at all. Opening a board never
+ *    rewrites a stored start. They are independent of the cut (not counted by rule 5's "all three
+ *    or none"), the Phase 11 carry-over sets none, and no database change is needed — the saved
+ *    board is one JSON column.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -174,6 +184,16 @@ const BLANK_OFFSET_MAX_MM = 50;
  * fine-tune; the Deck Skin control itself stops far short of it. */
 export const BLANK_DECK_SKIN_MAX_MM = 50;
 
+/**
+ * The furthest in from its tip a stored thinning start may sit, in mm (~16') — a generous bound,
+ * far past any board's centre (Phase 14 D-24). Anything outside it, or anything that is not a
+ * number, reads as Automatic rather than rejecting the board.
+ */
+export const BLANK_THINNING_START_MAX_MM = 5000;
+
+/** The two thinning-start keys a blank may carry (rule 6). */
+const THINNING_START_KEYS = ["noseThinningStart", "tailThinningStart"] as const;
+
 /** The board's own copy of its blank's catalogue record (D-01): well-formed by the ONE blank shape
  * rule in `lib/blanks/catalog.ts` (`blankRecordShapeSchema` — bounded, stations strictly tail to
  * nose; the catalogue read holds every row to the same rule), and one the blank list could have
@@ -196,6 +216,11 @@ export const boardBlankSchema = z
     deckSkin: z.number().min(0).max(BLANK_DECK_SKIN_MAX_MM).optional(),
     tipStyle: z.enum(["pinDeck", "bottom"]).optional(),
     fineTuneSurface: z.enum(["deck", "bottom"]).optional(),
+    // Rule 6 (Phase 14 D-24): where each tip's thinning starts. A number inside the bound is kept as
+    // stored; absent, malformed or out of bounds reads as Automatic and never rejects the board.
+    // Independent of the cut — the refine below does not count them.
+    noseThinningStart: z.number().min(0).max(BLANK_THINNING_START_MAX_MM).optional().catch(undefined),
+    tailThinningStart: z.number().min(0).max(BLANK_THINNING_START_MAX_MM).optional().catch(undefined),
   })
   .refine(
     (blank) => {
@@ -367,6 +392,19 @@ function clampOffset(value: number): Mm {
 }
 
 /**
+ * A parsed blank with any thinning-start key that read as Automatic (`undefined` — absent,
+ * malformed or out of bounds) removed (rule 6), so a board on Automatic is identical, key for key,
+ * to one that never had a start. Returns a new object; the parsed value is never written to.
+ */
+function withoutAutomaticStarts<T extends object>(blank: T): T {
+  const copy = { ...blank } as Record<string, unknown>;
+  for (const key of THINNING_START_KEYS) {
+    if (key in copy && copy[key] === undefined) delete copy[key];
+  }
+  return copy as T;
+}
+
+/**
  * Validates and unwraps a stored (or incoming) snapshot back into usable design fields, filling
  * any field an older version omitted from the matching geometry module's own DEFAULT_* constant.
  * The rocker is always returned as five stations — a version-3 Bezier or a missing rocker is read
@@ -391,7 +429,9 @@ export function parseSnapshot(value: unknown, options: ParseSnapshotOptions = {}
   // Tolerate and migrate (WR-05): a blank on a board whose length is outside the app's own
   // range is dropped, so the board reopens hand-set rather than crashing every screen that lays
   // it on its blank (the blank maths is only built for boards in that range).
-  const kept = (design.blank && isBoardLengthInRange(outline.length) ? design.blank : null) as BoardBlank | null;
+  const kept = (
+    design.blank && isBoardLengthInRange(outline.length) ? withoutAutomaticStarts(design.blank) : null
+  ) as BoardBlank | null;
 
   // Rule 5: a blank with no cut is a Phase 11 blank — carry it over so its five station
   // thicknesses read what Phase 11 showed. It already passed the bounded, pickable schema, so
