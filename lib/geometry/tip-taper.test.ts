@@ -324,6 +324,14 @@ describe("the slider's reach, pulled on read (D-02, D-11)", () => {
     expect(view.fromTip).toBe(range.min);
   });
 
+  it("pulls every value that is not a finite number to the range's minimum, Infinity as well as NaN", () => {
+    const length = inchesToMm(70);
+    const { min } = thinningStartRange(length);
+    for (const stored of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(pullThinningStart(stored, length), String(stored)).toBe(min);
+    }
+  });
+
   it("a start set past the centre of a shortened board reads the range's end, and lengthening brings it back", () => {
     const stored = inchesToMm(34);
     const shorter = inchesToMm(60);

@@ -98,13 +98,13 @@ export function thinningStartRange(length: Mm): { min: Mm; max: Mm } {
 
 /**
  * A stored start pulled inside the range on READ — nothing is written back, so lengthening a shortened
- * board brings the stored value back (the Placement precedent). A stored value under 6" reads 6". A value
- * that is not a number reads as the range's minimum (`tipView` treats one as Automatic before it gets
- * here).
+ * board brings the stored value back (the Placement precedent). A stored value under 6" reads 6". Every
+ * value that is not a finite number — `NaN`, `Infinity` or `-Infinity` alike — reads as the range's
+ * minimum (`tipView` treats one as Automatic before it gets here, so this only guards a direct call).
  */
 export function pullThinningStart(stored: number, length: Mm): Mm {
   const { min, max } = thinningStartRange(length);
-  if (Number.isNaN(stored)) return min;
+  if (!Number.isFinite(stored)) return min;
   return mm(Math.min(max, Math.max(min, stored)));
 }
 

@@ -13,18 +13,19 @@
  *   all five stations. Rocker is typed at Nose Tip, Nose @ 12", Tail @ 12" and Tail Tip — the four
  *   hand-set stations, reversing quick task 260829-rda's read-only 12" cells — with Center a
  *   read-only 0, the flat the rocker is measured up from (Phase 4 D-06/D-07).
- * - A BLANK PICKED (D-16, Phase 12 D-06, Phase 14 D-12) — four blocks, nine rows: the blank's own Rocker, Thickness
- *   and Width under each of the board's five stations (read-only, from the board's own copy of the
- *   blank — never the blank table); YOUR BOARD's Rocker (read-only, the board's own curve, including
- *   the tip lift under Pin deck), Thickness (typed at Nose Tip, Center and Tail Tip — the values the
- *   sidebar writes — and read-only at the two 12" stations, whose fine-tune lives in the sidebar) and
- *   Width (read-only); and FOAM OFF, split by surface — Deck (the skin, plus the tip thinning under
- *   Bottom, less a Deck fine-tune) and Bottom (the centre gap, plus the tip lift under Pin deck, less
- *   a Bottom fine-tune) — with a value below zero (the board pokes out of the blank on that surface)
- *   in warning ink; and THINNING STARTS — one read-only `From tip` row with where each tip's thinning
- *   starts, in from that tip, under the NOSE TIP and TAIL TIP columns (the middle three empty), read
- *   off the profile's resolved starts and never in warning ink. Under the table: the catalogue footnote and one line per catalogue flag on the
- *   blank, verbatim.
+ * - A BLANK PICKED (D-16, Phase 12 D-06, Phase 14 D-12) — under the station header, four labelled
+ *   blocks holding nine rows (3 + 3 + 2 + 1): BLANK — the blank's own Rocker, Thickness and Width
+ *   under each of the board's five stations (read-only, from the board's own copy of the blank —
+ *   never the blank table); YOUR BOARD — the board's Rocker (read-only, the board's own curve,
+ *   including the tip lift under Pin deck), Thickness (typed at Nose Tip, Center and Tail Tip — the
+ *   values the sidebar writes — and read-only at the two 12" stations, whose fine-tune lives in the
+ *   sidebar) and Width (read-only); FOAM OFF, split by surface — Deck (the skin, plus the tip
+ *   thinning under Bottom, less a Deck fine-tune) and Bottom (the centre gap, plus the tip lift under
+ *   Pin deck, less a Bottom fine-tune) — with a value below zero (the board pokes out of the blank on
+ *   that surface) in warning ink; and THINNING STARTS — one read-only `From tip` row with where each
+ *   tip's thinning starts, in from that tip, under the NOSE TIP and TAIL TIP columns (the middle three
+ *   empty), read off the profile's resolved starts and never in warning ink. Under the table: the
+ *   catalogue footnote and one line per catalogue flag on the blank, verbatim.
  *
  * Typed cells are the app's one typed measurement control, `MeasureField`, in bare mode (D-12),
  * with its bounds taken from the matching slider's `measureSlider` range through `typedFieldBounds`

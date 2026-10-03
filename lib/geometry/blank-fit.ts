@@ -429,7 +429,8 @@ export function boardOnBlank(
   if (rule === "steady") {
     // The planer cut seen from each tip (D-23): `d` mm in from that tip, its slope the blank's own
     // thickness slope there (the drop is one constant), flipped at the nose because d runs the
-    // other way. Both read 0 where the board runs off the blank, as the thickness does.
+    // other way. Where the board runs off the blank only the slope reads 0; the planer cut there
+    // reads the blank's 0 thickness less the drop, `0 − drop`, a negative thickness.
     const blankSlopeAt = (s: number) => {
       const x = u(s);
       return onFoam(x) ? prepared.thickness.slopeAt(x) : 0;
