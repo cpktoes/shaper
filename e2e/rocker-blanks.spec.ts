@@ -454,6 +454,37 @@ test.describe("ROCKER — the DATASHEET beside a blank, one undo after Remove, a
     await expect(page.locator("[data-datasheet-thinning]")).toHaveCount(0);
   });
 
+  // Fast task, 2026-10-03 (the founder's request): the box's sideways-scroll fade covers its last
+  // 24px, and every cell is right-aligned, so the TAIL TIP column used to end under it — faded on a
+  // computer, where nothing scrolls, and on a phone even scrolled to the end. The table now ends in
+  // 24px of empty room, so with the box scrolled as far right as it goes (no scroll at all on a
+  // computer) the TAIL TIP heading and the BLANK rocker's tail-tip cell both stop where the fade
+  // starts.
+  test("the sideways fade never covers the TAIL TIP column, on a computer or scrolled to the end on a phone", async ({
+    page,
+  }) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    await page.getByRole("tab", { name: "DATASHEET" }).click();
+    const tableBox = page.locator("main .overflow-x-auto").first();
+    await expect(tableBox).toBeVisible();
+    await tableBox.evaluate((el) => {
+      el.scrollLeft = el.scrollWidth;
+    });
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+
+    const fadeStarts = await tableBox.evaluate((el) => el.getBoundingClientRect().right - 24);
+    const heading = tableBox.getByText("Tail Tip", { exact: true }).first();
+    const tailTipCell = page.locator('[data-datasheet-blank-row="rocker"] > div').last();
+    for (const [what, cell] of [
+      ["the TAIL TIP heading", heading],
+      ["the BLANK rocker's tail-tip cell", tailTipCell],
+    ] as const) {
+      const right = await cell.evaluate((el) => el.getBoundingClientRect().right);
+      expect(right, `${what} runs under the fade`).toBeLessThanOrEqual(fadeStarts + 0.5);
+    }
+  });
+
   test("Remove This Blank, then one undo, brings back the same blank, its placement and its fine-tune", async ({
     page,
   }, testInfo) => {

@@ -3,7 +3,7 @@ status: testing
 phase: 13-ready-for-the-shapers
 source: [13-SPEC.md item 13]
 started: 2026-09-30T21:31:08.000Z
-updated: 2026-10-03T22:10:38.000Z
+updated: 2026-10-03T23:15:17.000Z
 ---
 
 ## Current Test
@@ -92,15 +92,15 @@ curves and Thinning Starts all went live after the first sheet.
 
 | Check | Result |
 |---|---|
-| The live site runs the latest code | Vercel's production deployment serves `9468fd5` (Phase 14's second go-live, 2026-10-02); every newer commit is a planning note, no code |
+| The live site runs the latest code | Vercel's production deployment 6834273836 serves `ddeae0a`: the upright-phone fix (call 6), published on the founder's go on 2026-10-03, on top of Phase 14's second go-live; every newer commit is a planning note, no code |
 | Unit tests (the geometry and everything else) | 3,882 passed, 2 skipped (2026-10-03) |
 | Lint and types | 0 errors, 0 warnings (2026-10-03) |
-| Browser tests — iPhone, Android and desktop profiles, on this exact code | 623 passed, 0 failed (400 skipped by design — each test runs only on the devices it is for), run at go-live 2 on 2026-10-02 |
-| Production-build tests | 9 passed (2026-10-03) |
-| The live site walked by machine, signed out, on an emulated iPhone, Android phone and laptop (2026-10-03) | 16 of 16 steps on each phone and 15 of 15 on the laptop. The four cards read Shortboard 29.6 L · Fish 35.3 L · Mid-length 50.4 L · Longboard 75.3 L. Sign in opens Clerk with Continue with Google, an email field and the Privacy link (on a phone it is in the menu). A preset opens on TEMPLATE; one change brings the Undo and Redo pair and the ghost, and Undo puts the number back. ROCKER shows the preset's own blank; Change Blank opens the list; both Thinning Starts read 12" and "Picked automatically", with two dashed marks on the drawing; a start moved to 13" reads "Automatic would be 12"" and Automatic puts it back; the DATASHEET shows THINNING STARTS. RAILS' View Full Sized opens and closes, and Flat and Domed both press. VOLUME reads its litres; FINS has Import Template Values. The order form shows both pages, and its Planing box ends "Thinning starts from the tip: nose 12", tail 12".". Export Template offers the Overview Sheet, the Full Sized Template and the Paper Saver. Held sideways, a phone's top bar is one 48-dot line with the menu. /contact shows the form and the address; /privacy opens; a wrong address gets "We couldn't find that page". No sideways scroll on any screen. No page errors on Android or the laptop; the iPhone engine logged only aborted-request noise caused by the script's own hard page jumps |
+| Browser tests — iPhone, Android and desktop profiles, on this exact code | 623 passed, 0 failed (400 skipped by design — each test runs only on the devices it is for), 2026-10-03, with the fix |
+| Production-build tests | 13 passed (2026-10-03), including the new check that on a phone no control ends up under the Undo and Redo pair |
+| The live site walked by machine, signed out, on an emulated iPhone, Android phone and laptop (2026-10-03, and again after the fix went live) | 16 of 16 steps on each phone and 15 of 15 on the laptop. The four cards read Shortboard 29.6 L · Fish 35.3 L · Mid-length 50.4 L · Longboard 75.3 L. Sign in opens Clerk with Continue with Google, an email field and the Privacy link (on a phone it is in the menu). A preset opens on TEMPLATE; one change brings the Undo and Redo pair and the ghost, and Undo puts the number back. ROCKER shows the preset's own blank; Change Blank opens the list; both Thinning Starts read 12" and "Picked automatically", with two dashed marks on the drawing; a start moved to 13" reads "Automatic would be 12"" and Automatic puts it back; the DATASHEET shows THINNING STARTS. RAILS' View Full Sized opens and closes, and Flat and Domed both press. VOLUME reads its litres; FINS has Import Template Values. The order form shows both pages, and its Planing box ends "Thinning starts from the tip: nose 12", tail 12".". Export Template offers the Overview Sheet, the Full Sized Template and the Paper Saver. Held sideways, a phone's top bar is one 48-dot line with the menu. /contact shows the form and the address; /privacy opens; a wrong address gets "We couldn't find that page". No sideways scroll on any screen. No page errors on Android or the laptop; the iPhone engine logged only aborted-request noise caused by the script's own hard page jumps |
 | Metric, read off the live site (2026-10-03) | The cards read Shortboard 188.0 × 47.6 × 5.7 cm · Fish 172.7 × 51.4 × 6.4 cm · Mid-length 218.4 × 54.0 × 7.0 cm · Longboard 274.3 × 57.2 × 7.6 cm, with the same litres. On the Shortboard both Thinning Starts read 30.5 cm; the slider's ends are 16.0 cm and 93.0 cm; from Automatic the arrow keys step to 31.0 and 32.0 and back to 31.0, 30.0 and 29.0; the DATASHEET reads "From tip (cm) 30.5 30.5"; the Planing box ends "Thinning starts from the tip: nose 30.5, tail 30.5 cm." |
 | The first board a visitor sees (no preset picked) | VOLUME reads 30.51 L |
-| One fault found by this walk | On a phone held upright, the tail's Automatic button on ROCKER sits under the Redo button and cannot be tapped — call 6 below |
+| One fault found by this walk, fixed and live the same day | On a phone held upright, the tail's Automatic button on ROCKER sat under the Redo button and could not be tapped — call 6 below. On the live site it now sits 8 dots above the pair on the iPhone size and 9 on the Android size and takes a tap, and with every screen scrolled to its end no control is under the pair |
 | Clerk's live settings (read from Clerk's public settings for the site, 2026-10-03) | Public sign-up; Google and email both on; email sign-up confirms with a six-digit code; a password of at least 8 characters, refused if it appears in a known data breach; Cloudflare's bot check in "smart" mode (it only shows a tick box when a sign-up looks automated); a shaper can delete their own account; 10 wrong passwords lock an account for an hour; the app's name shows as "Shaper Assistant" |
 
 ## Found while preparing — your calls before the walk
@@ -140,9 +140,11 @@ curves and Thinning Starts all went live after the first sheet.
    extra button under the controls ("Copy preset values") that the live site does not. Until it is
    fixed, Undo takes a tail start back, and turning the phone sideways reaches the button. The fix is
    a small quick task: room at the end of the phone's controls so the last row clears the pair, proved
-   on a production build. Your call, ideally before the walk. **Fixed 2026-10-03 on the founder's word
-   (fast task 144, `b32dcaf`), not yet live:** the phone's controls end with 48 dots of extra room and the
-   button sits 8 to 9 dots above the pair; publishing it waits on the founder's go.
+   on a production build. Your call, ideally before the walk. **Fixed and live 2026-10-03** (fast
+   task 144, `b32dcaf`, on the founder's word; published on the founder's go as `ddeae0a`, Vercel
+   deployment 6834273836): the phone's controls end with 48 dots of extra room. Checked on the live
+   site: the button sits 8 dots above the pair on the iPhone size and 9 on the Android size, and takes a
+   tap.
 
 ## Your dashboard checks (tests 1 and 2)
 
@@ -161,7 +163,8 @@ your own account; use Google on one device and email on another.
 
 Brought up to date on 2026-10-03. Step 6 is new, and steps 1 to 5, 7, 10, 12, 13 and 16 changed: the
 card litres, where Sign in is, the ghost and the Undo and Redo pair, Change Blank, Thinning Starts, the
-Planing box's new line and the thin sideways top bar.
+Planing box's new line and the thin sideways top bar. The one fault that update found (call 6) was
+fixed and published the same day, so step 6 has no caveat.
 
 | # | Do this | Look for | iPhone | Android | Laptop |
 |---|---|---|---|---|---|
@@ -170,7 +173,7 @@ Planing box's new line and the thin sideways top bar.
 | 3 | Sign in with your own account (phones: in the menu, top right; laptop: Sign in, in the top bar) | The keyboard never hides the field you're typing in; any code arrives within a minute; you land back signed in | | | |
 | 4 | Start Shaping on a preset → TEMPLATE: drag an outline point, then Undo and Redo | The point follows your finger or mouse and the numbers update; the Undo and Redo pair appears at the bottom right and puts it back exactly; a faint line shows the shape before the change, and the ghost button in the drawing's corner hides it | | | |
 | 5 | ROCKER: press Change Blank and pick another blank, slide Placement, drag Deck Skin | The list opens, shortest first, with greyed blanks saying where they don't fit; the picked blank, the drawing, the foam-off numbers and the planer passes follow you | | | |
-| 6 | ROCKER, at the end of the controls: drag Nose Thinning Starts and Tail Thinning Starts, then press Automatic on each | The label follows the drag (12" to 13"), the hint reads "Automatic would be 12"" and the dashed mark on the drawing moves; Automatic puts it back and the hint reads "Picked automatically"; the DATASHEET tab shows THINNING STARTS. On a phone held upright the tail's Automatic is under the Redo button until call 6 is fixed | | | |
+| 6 | ROCKER, at the end of the controls: drag Nose Thinning Starts and Tail Thinning Starts, then press Automatic on each | The label follows the drag (12" to 13"), the hint reads "Automatic would be 12"" and the dashed mark on the drawing moves; Automatic puts it back and the hint reads "Picked automatically"; the DATASHEET tab shows THINNING STARTS | | | |
 | 7 | RAILS: View Full Sized, then each tab including INSTRUCTIONS, where you flip Flat / Domed | Nothing cut off; View Full Sized opens and Close shuts it | | | |
 | 8 | VOLUME: note the litres; change width or thickness on TEMPLATE; come back | The litres change and read sensibly | | | |
 | 9 | FINS: change the fin setup; tick and untick Import Template Values | The fin numbers and the drawing follow | | | |
