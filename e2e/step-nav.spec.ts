@@ -152,6 +152,37 @@ test.describe("Back and Next walk the whole board", () => {
     }
   });
 
+  test("on each of the five design screens the pair sits below the last of the screen's own controls", async ({
+    page,
+  }) => {
+    for (const screen of SCREENS.slice(0, 5)) {
+      await page.goto(screen.href);
+      await expect(stepNav(page), screen.label).toBeVisible();
+      // Every in-flow box inside the sidebar except the pair itself: none may reach down past the
+      // pair's top edge. (A control column that is as tall as its scrolling box would let the rest of
+      // the controls spill out underneath the pair — found on FINS and VOLUME.)
+      const overlap = await page.evaluate(() => {
+        const nav = document.querySelector<HTMLElement>("[data-step-nav]");
+        const aside = nav?.closest("aside");
+        if (!nav || !aside) return Number.NaN;
+        const navTop = nav.getBoundingClientRect().top;
+        let lowest = -Infinity;
+        for (const el of Array.from(aside.querySelectorAll<HTMLElement>("*"))) {
+          if (nav.contains(el)) continue;
+          const style = getComputedStyle(el);
+          if (style.position === "absolute" || style.position === "fixed") continue;
+          const box = el.getBoundingClientRect();
+          if (box.width === 0 || box.height === 0) continue;
+          lowest = Math.max(lowest, box.bottom);
+        }
+        return lowest - navTop;
+      });
+      expect(overlap, `${screen.label}: how far the screen's controls reach below the top of the pair`).toBeLessThanOrEqual(
+        0.5,
+      );
+    }
+  });
+
   test("the buttons never reach paper, on ROCKER or on SUMMARY", async ({ page }) => {
     for (const href of ["/design/rocker", "/design/summary"]) {
       await page.goto(href);
@@ -236,6 +267,10 @@ test.describe("on an upright phone, the buttons scroll clear of the floating Und
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeVisible();
 
+    // Only the two screens whose whole page scrolls (VOLUME and SUMMARY). On the other four the
+    // controls scroll in a window under the pinned drawing that is only about 57 dots tall at
+    // 390x664 on this dev server, so scrolled to its end the pair is simply out of that window;
+    // the production-build spec (e2e/prod/phone-controls-clear-undo.spec.ts) covers those.
     const stops = [
       { screen: 3, direction: "next" },
       { screen: 5, direction: "previous" },
