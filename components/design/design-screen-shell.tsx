@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { StepNav } from "@/components/design/step-nav";
 
 /**
  * The one layout every design screen (TEMPLATE, ROCKER, RAILS, VOLUME, FINS) is built on: a
@@ -241,11 +242,27 @@ export function DesignScreenShell({
       }
       <aside className={asideClassName} data-design-controls-scroll={simpleSidebar ? true : undefined}>
         {simpleSidebar ? (
-          controls
+          <>
+            {controls}
+            {
+              // The Back and Next pair, the last thing in VOLUME's controls. Its 24px of lead-in plus
+              // the aside's 40px of padding equal the scroller's 16px of padding plus the 48px end
+              // block the other screens carry, so on an upright phone `max-shell:pb-6` gives it the
+              // same 8px of daylight above the floating Undo/Redo pair. Any change to the pair's
+              // phone position must move this number together with that block.
+            }
+            <StepNav className="max-shell:pb-6" />
+          </>
         ) : (
           <>
             <div data-design-controls-scroll className={controlsScrollClassName}>
               {controls}
+              {
+                // The Back and Next pair is the end of the controls, so it lives inside the scroller:
+                // it scrolls with them, and the scroller's own end room (above) keeps it clear of the
+                // floating Undo/Redo pair on an upright phone. Never in `sidebarFooter`.
+              }
+              <StepNav />
             </div>
             {sidebarFooter}
           </>
