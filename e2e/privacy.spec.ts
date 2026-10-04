@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expectNoScreensNavigation, expectSixTilesInMenu } from "./helpers/screens";
 import { CONTACT_STAND_IN_COOKIE } from "../lib/contact/delivery";
 import { CONTACT_ADDRESS, CONTACT_COPY, CONTACT_MAILTO, CONTACT_ROUTE } from "../lib/contact/message";
 import { PRIVACY_COPY, PRIVACY_ROUTE } from "../lib/privacy/copy";
@@ -111,7 +112,8 @@ test.describe("Privacy page", () => {
     if (testInfo.project.name !== "desktop") {
       await expect(page.getByRole("banner").getByRole("button", { name: "Menu" })).toBeVisible();
       await expect(page.getByRole("button", { name: "Settings" })).toBeHidden();
-      await expect(page.getByRole("navigation", { name: "Screens" })).toBeVisible();
+      await expectNoScreensNavigation(page);
+      await expectSixTilesInMenu(page, null);
 
       const overflow = await page.locator("[data-privacy-page]").evaluate((el) => ({
         scrollWidth: el.scrollWidth,

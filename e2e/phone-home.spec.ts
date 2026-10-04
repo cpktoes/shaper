@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { SCREENS, expectNoScreensNavigation, expectSixTilesInMenu } from "./helpers/screens";
 
 /**
  * 260909-hq9's own proof: the founder reported the phone home screen ("Phone Homepage layout is
@@ -9,7 +10,6 @@ import { expect, test, type Page } from "@playwright/test";
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
-const SCREEN_LABELS = ["TEMPLATE", "ROCKER", "RAILS", "VOLUME", "FINS", "SUMMARY"];
 
 /** Matches the sibling phone specs' own approach: dismiss the sign-in banner via sessionStorage,
  * set before navigation, so its own height never confuses a layout assertion. The home screen
@@ -45,29 +45,29 @@ test.describe("phone home screen — the compact top bar", () => {
   });
 });
 
-test.describe("phone home screen — the six-tab bottom bar is hidden here, shown once a board is picked (D-07)", () => {
+test.describe("phone home screen — no bottom tab bar here or after a board is picked; ☰ holds the six tiles (quick 261003-q2f)", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "phone-only shell assertions");
     await dismissSignInBanner(page);
   });
 
-  test("the Screens navigation is absent on the home route, and present after picking a preset", async ({
+  test("no Screens navigation on the home route or after picking a preset, and ☰ shows the six tiles, none ticked at home", async ({
     page,
   }) => {
     await page.goto("/");
 
-    // The six design tabs are noise while a shaper is still choosing a board (D-07) — the bar
-    // must not just be visually hidden, it must not render at all, so the setup screen's cards
-    // get the full 56px + safe-area it was costing them.
-    await expect(page.getByRole("navigation", { name: "Screens" })).toHaveCount(0);
+    // The old bottom tab bar never rendered here (D-07), and since quick 261003-q2f it renders
+    // nowhere; the six screens are in the top bar's menu, as tiles, with none ticked on this page.
+    await expectNoScreensNavigation(page);
+    await expectSixTilesInMenu(page, null);
 
     const firstPreset = page.getByRole("button").filter({ hasText: "Start Shaping" }).first();
     await firstPreset.click();
     await page.waitForURL("**/design/outline");
 
-    // The six labels in order, the marked tab and the 44px minimums are already asserted by
-    // e2e/phone-layout.spec.ts's own six-tab test on this same route — not duplicated here.
-    await expect(page.getByRole("navigation", { name: "Screens" })).toBeVisible();
+    // The six tiles in order, the ticked tile and the 44px minimums are already asserted by
+    // e2e/phone-layout.spec.ts's own six-tile test on this same route — not duplicated here.
+    await expectNoScreensNavigation(page);
   });
 });
 
@@ -135,11 +135,11 @@ test.describe("desktop home screen — unmoved", () => {
 
     const desktopNav = page.locator("nav:not([aria-label])");
     await expect(desktopNav).toBeVisible();
-    for (const label of SCREEN_LABELS) {
-      await expect(desktopNav.getByRole("link", { name: label })).toBeVisible();
+    for (const screen of SCREENS) {
+      await expect(desktopNav.getByRole("link", { name: screen.label })).toBeVisible();
     }
 
-    await expect(page.getByRole("navigation", { name: "Screens" })).toBeHidden();
+    await expectNoScreensNavigation(page);
     await expect(page.getByRole("banner")).toBeHidden();
   });
 });

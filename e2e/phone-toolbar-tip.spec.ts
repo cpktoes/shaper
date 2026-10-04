@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { goToScreen } from "./helpers/screens";
 
 /**
  * 260909-hny's own proof: the founder's own fallback for "Can we 'hide toolbar' in the phone
@@ -113,13 +114,13 @@ test.describe("the toolbar tip's permanent dismissal", () => {
     await page.reload();
     await expect(page.locator("[data-toolbar-tip]")).not.toBeAttached();
 
-    // Once per phone, not once per screen. A client-side nav via the bottom tab bar (the same
-    // path a shaper actually uses to move between design screens on a phone), not a second hard
+    // Once per phone, not once per screen. A client-side nav via the top bar's menu and its RAILS
+    // tile (the same path a shaper uses to jump between design screens on a phone), not a second hard
     // `page.goto` — a WebKit-only dev-server quirk, reproducible on this exact describe, otherwise
     // races a hard navigation against a background Fast Refresh full reload the dev server
     // occasionally pushes right after the outline route's first paint (same root cause and fix as
     // e2e/phone-layout.spec.ts's own tablet describe, 10-05). Same assertion either way.
-    await page.getByRole("navigation", { name: "Screens" }).getByRole("link", { name: "RAILS" }).click();
+    await goToScreen(page, "RAILS");
     await expect(page.locator("[data-toolbar-tip]")).not.toBeAttached();
   });
 });

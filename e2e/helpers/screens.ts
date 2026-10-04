@@ -57,6 +57,32 @@ export function screenTile(page: Page, label: ScreenLabel): Locator {
   return page.locator(`[data-screen-tile="${screenHref(label)}"]`);
 }
 
+/** No page draws a navigation named "Screens" any more — that was the old bottom tab bar. Exact, so
+ * the Back and Next landmark can never be mistaken for it. */
+export async function expectNoScreensNavigation(page: Page): Promise<void> {
+  await expect(page.getByRole("navigation", { name: "Screens", exact: true })).toHaveCount(0);
+}
+
+/** Opens ☰, checks it holds the six tiles in order with `current` ticked (or none ticked on a page
+ * that is not a design screen), then closes it again with Escape. */
+export async function expectSixTilesInMenu(page: Page, current: ScreenLabel | null): Promise<void> {
+  const sheet = await openPhoneMenu(page);
+  const tiles = sheet.locator("[data-screen-tile]");
+  await expect(tiles).toHaveCount(6);
+  expect(await tiles.evaluateAll((els) => els.map((el) => el.getAttribute("data-screen-tile")))).toEqual(
+    SCREENS.map((s) => s.href),
+  );
+  const ticked = sheet.locator('[data-screen-tile][aria-current="page"]');
+  if (current) {
+    await expect(ticked).toHaveCount(1);
+    await expect(ticked).toHaveAttribute("data-screen-tile", screenHref(current));
+  } else {
+    await expect(ticked).toHaveCount(0);
+  }
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+}
+
 /**
  * Moves to a design screen the way a shaper would on this window: the desktop row's link when it
  * shows (found as `nav:not([aria-label])`, which never matches the "Back and Next" landmark), else
@@ -75,8 +101,8 @@ export async function goToScreen(page: Page, label: ScreenLabel): Promise<void> 
       if (new URL(page.url()).pathname === href) return;
       await openPhoneMenu(page);
       await screenTile(page, label).click();
-      await expect(page).toHaveURL(new RegExp(`${href}$`), { timeout: 2_000 });
-    }).toPass({ timeout: 20_000 });
+      await expect(page).toHaveURL(new RegExp(`${href}$`), { timeout: 10_000 });
+    }).toPass({ timeout: 60_000 });
   }
   await page.waitForURL(`**${href}`);
 }

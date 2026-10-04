@@ -1,11 +1,12 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { goToScreen } from "./helpers/screens";
 
 /**
  * Quick task 260913-k5k's own proof: a shaper who moves a slider, drags a point on the drawing, or
  * types a number can take that change back with Cmd/Ctrl+Z and put it back with
- * Shift+Cmd/Ctrl+Z — and on a phone, with a pair of round arrow buttons above the tab bar. Since
- * quick 260930-lo8 the same round pair also shows on a computer, 16px from the window's
- * bottom-right corner.
+ * Shift+Cmd/Ctrl+Z — and on a phone, with a pair of round arrow buttons in the window's bottom-right
+ * corner (above the old bottom tab bar until quick 261003-q2f removed it). Since quick 260930-lo8
+ * the same round pair also shows on a computer, 16px from the window's bottom-right corner.
  *
  * Follows `e2e/desktop-regression.spec.ts` closely for the mouse-drag pattern and
  * `e2e/touch-sizing.spec.ts` for the metric-units and banner-dismissal helpers, copied locally
@@ -355,13 +356,9 @@ test.describe("undo/redo — taking a design change back", () => {
     await page.emulateMedia({ media: "screen" });
     await expect(bar).toBeVisible();
 
-    // Walking to SUMMARY through whichever nav is visible on this project (the desktop top nav
-    // or the phone tab bar) — the pair still never prints there either.
-    await page
-      .getByRole("link", { name: "SUMMARY", exact: true })
-      .filter({ visible: true })
-      .first()
-      .click();
+    // Walking to SUMMARY the way this project's shaper would (the desktop top nav, or the phone
+    // menu's SUMMARY tile) — the pair still never prints there either.
+    await goToScreen(page, "SUMMARY");
     await expect(page).toHaveURL(/\/design\/summary$/);
     await expect(bar).toBeVisible();
     await page.emulateMedia({ media: "print" });
@@ -370,7 +367,7 @@ test.describe("undo/redo — taking a design change back", () => {
     await expect(bar).toBeVisible();
   });
 
-  test("phone: the pair sits exactly where it always has", async ({ page }, testInfo) => {
+  test("phone: the pair sits 16 dots in from the window's bottom-right corner", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "phone offset proof, iphone and android projects only");
 
     await page.goto("/design/outline");
@@ -389,16 +386,16 @@ test.describe("undo/redo — taking a design change back", () => {
     const viewport = page.viewportSize();
     if (!viewport) throw new Error("no viewport size");
     const barBox = await bar.boundingBox();
-    const tabBarBox = await page.locator('nav[aria-label="Screens"]').boundingBox();
-    if (!barBox || !tabBarBox) throw new Error("pair or tab bar has no bounding box");
+    if (!barBox) throw new Error("the pair has no bounding box");
     console.log(
       `PhoneUndoBar (${testInfo.project.name}) measured — pair bottom: ${barBox.y + barBox.height}, ` +
-        `tab bar top: ${tabBarBox.y}, viewport: ${viewport.width}x${viewport.height}`,
+        `pair right: ${barBox.x + barBox.width}, viewport: ${viewport.width}x${viewport.height}`,
     );
 
-    expect(tabBarBox.y - (barBox.y + barBox.height)).toBeCloseTo(12, 0);
+    // Quick 261003-q2f: no bottom tab bar under it any more, so the pair sits in the window's own
+    // corner — 16 dots in from the right and 16 up from the bottom (the home-bar inset is 0 here).
     expect(viewport.width - (barBox.x + barBox.width)).toBeCloseTo(16, 0);
-    expect(viewport.height - (barBox.y + barBox.height)).toBeCloseTo(68, 0);
+    expect(viewport.height - (barBox.y + barBox.height)).toBeCloseTo(16, 0);
 
     const undoButton = bar.getByRole("button", { name: "Undo" });
     const redoButton = bar.getByRole("button", { name: "Redo" });
