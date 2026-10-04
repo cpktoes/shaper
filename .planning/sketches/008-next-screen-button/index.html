@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch 008 — Next-screen button</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link id="theme-link" rel="stylesheet" href="../themes/app-slate.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--color-page); color: var(--color-text); font-family: var(--font-sans); min-height: 100vh; }
+  button { font-family: inherit; }
+
+  /* ---------- sketch chrome (not part of the design) ---------- */
+  #variant-nav { position: sticky; top: 0; z-index: 9998; display: flex; gap: 6px; align-items: center; padding: 9px 16px; background: #0d0f14; border-bottom: 1px solid #262a33; font: 13px/1.2 system-ui, sans-serif; color: #cfd5de; flex-wrap: wrap; }
+  #variant-nav .sketch-id { font-weight: 700; margin-right: 8px; color: #fff; }
+  .variant-tab { background: #1b1f27; color: #cfd5de; border: 1px solid #2c313b; border-radius: 6px; padding: 6px 10px; cursor: pointer; transition: all .15s ease; font: inherit; }
+  .variant-tab:hover { border-color: #4b5361; color: #fff; }
+  .variant-tab.active { background: #234f66; border-color: #3490bc; color: #fff; }
+  .variant-tab.baseline { font-style: italic; }
+  #stage { display: flex; gap: 28px; justify-content: center; align-items: flex-start; padding: 22px 16px 90px; flex-wrap: wrap; }
+  .notes { width: 290px; font: 14px/1.5 system-ui, sans-serif; color: var(--color-text); }
+  .notes h2 { font-size: 15px; margin: 0 0 6px; }
+  .notes p { margin: 0 0 10px; color: var(--color-text-muted); }
+  .notes .vdesc { border-left: 3px solid var(--color-accent-ink); padding: 6px 10px; background: color-mix(in srgb, var(--color-bg) 70%, transparent); border-radius: 0 6px 6px 0; color: var(--color-text); margin-bottom: 12px; }
+  .notes ul { padding-left: 18px; margin: 0 0 10px; color: var(--color-text-muted); }
+  .phone-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .phone-box { position: relative; }
+  .phone-box .phone { position: absolute; top: 0; left: 0; transform-origin: top left; }
+  @media (max-width: 1000px) { .phone-wrap { order: 0; } .notes { order: 1; } .meter { order: 2; } }
+  .phone { position: relative; border-radius: 34px; padding: 11px; background: #050608; box-shadow: 0 22px 50px rgba(0,0,0,.45), inset 0 0 0 2px #2a2e36; }
+  .phone-caption { font: 12px system-ui, sans-serif; color: var(--color-text-muted); }
+  .meter { width: 250px; font: 13px/1.45 system-ui, sans-serif; color: var(--color-text); }
+  .meter h3 { font-size: 13px; margin: 0 0 8px; letter-spacing: .04em; }
+  .stack { display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: 6px; overflow: hidden; width: 70px; float: left; margin-right: 12px; }
+  .stack div { display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--color-text-muted); }
+  .seg-top { background: color-mix(in srgb, var(--color-line) 35%, transparent); }
+  .seg-draw { background: var(--color-board); }
+  .seg-ctl { background: color-mix(in srgb, var(--color-primary) 45%, transparent); }
+  .seg-tab { background: color-mix(in srgb, var(--color-warning-ink) 35%, transparent); }
+  .meter dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 2px 10px; }
+  .meter dt { color: var(--color-text-muted); }
+  .meter dd { margin: 0; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .meter .delta { color: var(--color-accent-ink); font-weight: 700; }
+  .meter .taps { clear: both; padding-top: 12px; color: var(--color-text-muted); }
+  .meter .taps b { color: var(--color-text); }
+  #sketch-tools { position: fixed; bottom: 12px; right: 12px; z-index: 9999; font: 12px system-ui, sans-serif; background: rgba(0,0,0,0.82); color: #fff; padding: 6px 8px; border-radius: 8px; opacity: .7; transition: opacity .2s; display: flex; flex-direction: column; gap: 6px; max-width: 330px; }
+  #sketch-tools:hover, #sketch-tools.open { opacity: 1; }
+  #sketch-tools:not(.open) .row { display: none; }
+  #tools-toggle { align-self: flex-end; }
+  #sketch-tools .row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  #sketch-tools button, #sketch-tools select { font: 11px system-ui, sans-serif; background: #22262e; color: #fff; border: 1px solid #3a404b; border-radius: 4px; padding: 3px 6px; cursor: pointer; }
+  #sketch-tools button.on { background: #234f66; border-color: #3490bc; }
+
+  /* ---------- the phone page (the design) ---------- */
+  .screen { position: relative; overflow: hidden; border-radius: 24px; background: var(--color-bg); display: flex; flex-direction: column; color: var(--color-text); font-family: var(--font-sans); }
+  .topbar { height: 48px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid var(--color-border); background: var(--color-bg); position: relative; z-index: 25; }
+  .wordmark { font-size: 12px; font-weight: 800; letter-spacing: var(--tracking-architectural); color: var(--color-text); white-space: nowrap; cursor: pointer; }
+  .title-btn { display: flex; align-items: center; gap: 7px; background: none; border: 0; color: var(--color-text); font-size: 13px; font-weight: 800; letter-spacing: var(--tracking-architectural); padding: 0 8px 0 0; min-height: 44px; cursor: pointer; white-space: nowrap; }
+  .title-btn .chev { font-size: 9px; color: var(--color-text-muted); transition: transform .15s; }
+  .title-btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  .cluster { display: flex; align-items: center; gap: 12px; }
+  .save { background: var(--color-primary); color: var(--color-on-primary); border: 0; border-radius: 6px; padding: 7px 13px; font-size: 14px; font-weight: 500; cursor: pointer; transition: filter .15s; min-width: 64px; }
+  .save:hover { filter: brightness(1.15); }
+  .vsep { width: 1px; height: 16px; background: var(--color-border); }
+  .burger { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 0; background: none; color: var(--color-text-muted); border-radius: 6px; cursor: pointer; margin-right: -8px; transition: color .15s; }
+  .burger:hover, .burger[aria-expanded="true"] { color: var(--color-text); }
+  .pinned { flex: none; padding: 2px; display: flex; }
+  .card { flex: 1; border: 1px solid var(--color-border); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; background: var(--color-bg); position: relative; }
+  .card-tabs { display: flex; height: 22px; align-items: stretch; border-bottom: 1px solid var(--color-border); flex: none; }
+  .card-tab { font-size: 10px; font-weight: 800; letter-spacing: var(--tracking-architectural); padding: 0 12px; display: flex; align-items: center; color: var(--color-text-muted); border: 0; border-right: 1px solid var(--color-border); background: var(--color-canvas); cursor: pointer; }
+  .card-tab.on { color: var(--color-text); background: var(--color-bg); }
+  .drawing { flex: 1; min-height: 0; position: relative; }
+  .drawing svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .controls { flex: 1; min-height: 0; overflow-y: auto; border-top: 1px solid var(--color-border); padding: 14px 16px 0; position: relative; }
+  .controls.solo { border-top: 0; }
+  .ctl-title { font-size: 14px; font-weight: 800; letter-spacing: var(--tracking-architectural); text-transform: uppercase; margin: 0 0 4px; }
+  .ctl-sub { font-size: 13px; color: var(--color-text-muted); margin: 0 0 4px; line-height: 1.35; }
+  .ctl-section { font-size: 11px; font-weight: 800; letter-spacing: var(--tracking-architectural); text-transform: uppercase; margin: 20px 0 10px; display: flex; justify-content: space-between; color: var(--color-text); }
+  .ctl-row { margin: 0 0 14px; }
+  .ctl-label { font-size: 13px; display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .ctl-note { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; line-height: 1.35; }
+  .ctl-ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--color-text-muted); }
+  input[type=range] { width: 100%; accent-color: var(--color-accent-ink); height: 26px; margin: 0; }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill { border: 1px solid var(--color-border); border-radius: 999px; padding: 6px 11px; font-size: 12px; color: var(--color-text-muted); background: none; cursor: pointer; min-height: 34px; transition: all .15s; }
+  .pill:hover { color: var(--color-text); }
+  .pill.on { background: var(--color-primary); color: var(--color-on-primary); border-color: var(--color-primary); }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; margin-bottom: 14px; line-height: 1.3; }
+  .switch { width: 42px; height: 26px; border-radius: 13px; background: var(--color-well); border: 1px solid var(--color-border); position: relative; cursor: pointer; flex: none; transition: background .15s; padding: 0; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--color-text-muted); transition: all .15s; }
+  .switch.on { background: var(--color-primary); }
+  .switch.on::after { left: 19px; background: var(--color-on-primary); }
+  .blank-card { border: 1px solid var(--color-accent-ink); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .blank-card .bn { display: flex; justify-content: space-between; font-weight: 700; }
+  .blank-card .bs { font-size: 12px; color: var(--color-text-muted); }
+  .linkish { color: var(--color-accent-ink); font-size: 12px; font-weight: 700; margin-right: 14px; cursor: pointer; }
+  .mini-table { width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 8px; }
+  .mini-table th { text-align: left; font-size: 10px; letter-spacing: .1em; color: var(--color-text-muted); font-weight: 800; padding: 4px 0; text-transform: uppercase; }
+  .mini-table th:not(:first-child), .mini-table td:not(:first-child) { text-align: right; }
+  .mini-table td { padding: 3px 0; }
+  .mini-table td:not(:first-child) { font-weight: 700; }
+  .kv { display: flex; justify-content: space-between; font-size: 13px; }
+  .field { display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding: 7px 0; font-size: 13px; }
+  .field span:last-child { color: var(--color-text-muted); }
+  .cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin: 6px 0 10px; }
+  .cell { border: 1px solid var(--color-border); border-radius: 4px; padding: 4px 6px; font-size: 10px; color: var(--color-text-muted); }
+  .cell b { display: block; font-size: 12px; color: var(--color-text); }
+  .end-room { height: 64px; }
+  .tabbar { height: 56px; flex: none; display: flex; border-top: 1px solid var(--color-border); padding: 0 8px; background: var(--color-bg); }
+  .tab { flex: 1; min-width: fit-content; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--color-text-muted); border: 0; border-top: 2px solid transparent; cursor: pointer; padding: 0 2px; background: none; transition: color .15s; }
+  .tab:hover { color: var(--color-text); }
+  .tab.on { color: var(--color-text); border-top-color: var(--color-primary); }
+  .undo-pair { position: absolute; right: 16px; display: flex; gap: 8px; z-index: 15; transition: bottom .2s, opacity .2s; }
+  .undo-pair button { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); box-shadow: var(--shadow-lg); cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+  .toast { position: absolute; left: 50%; transform: translateX(-50%); bottom: 90px; background: var(--color-text); color: var(--color-bg); font-size: 12px; padding: 6px 12px; border-radius: 999px; z-index: 40; animation: pop .15s ease-out; white-space: nowrap; }
+  .scrim { position: absolute; inset: 48px 0 0 0; z-index: 20; }
+  .scrim.dim { background: rgba(0,0,0,.35); }
+  .popup { position: absolute; top: 56px; right: 8px; width: 264px; max-height: calc(100% - 64px); overflow-y: auto; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; box-shadow: var(--shadow-lg); padding: 6px; z-index: 30; animation: pop .1s ease-out; transform-origin: top right; }
+  .popup.left { right: auto; left: 8px; transform-origin: top left; }
+  @keyframes pop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+  .mrow { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 8px; border-radius: 6px; font-size: 14px; color: var(--color-text); cursor: pointer; transition: background .1s; }
+  .mrow:hover { background: var(--color-well); }
+  .mrow.screen-row { font-size: 12px; font-weight: 700; letter-spacing: var(--tracking-architectural); }
+  .mrow .sub { display: block; font-size: 11px; font-weight: 400; letter-spacing: 0; color: var(--color-text-muted); margin-top: 1px; }
+  .mrow .tick { margin-left: auto; color: var(--color-accent-ink); font-weight: 800; }
+  .mrow .ico { width: 18px; text-align: center; color: var(--color-text-muted); }
+  .mdiv { border-top: 1px solid var(--color-border); margin: 6px 8px; }
+  .mhead { font-size: 10px; font-weight: 800; letter-spacing: var(--tracking-architectural); color: var(--color-text-muted); padding: 8px 8px 2px; text-transform: uppercase; }
+  .signin { background: var(--color-primary); color: var(--color-on-primary); border: 0; border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; }
+  .sheet { position: absolute; left: 0; right: 0; top: 48px; bottom: 0; background: var(--color-surface); z-index: 30; overflow-y: auto; padding: 12px 12px 16px; animation: slide .18s ease-out; }
+  @keyframes slide { from { transform: translateY(-10px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .tile { border: 1px solid var(--color-border); border-radius: 10px; padding: 10px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; background: var(--color-bg); color: var(--color-text); transition: all .15s; min-height: 96px; position: relative; }
+  .tile:hover { border-color: var(--color-line); }
+  .tile.on { border-color: var(--color-accent-ink); box-shadow: inset 0 0 0 1px var(--color-accent-ink); }
+  .tile.on::after { content: "✓"; position: absolute; top: 4px; right: 7px; font-size: 11px; color: var(--color-accent-ink); font-weight: 800; }
+  .tile svg { width: 46px; height: 40px; }
+  .tile .tl { font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+  .tile .ts { font-size: 10px; color: var(--color-text-muted); text-align: center; line-height: 1.2; }
+  .sheet .rows { border-top: 1px solid var(--color-border); padding-top: 6px; }
+  .nav-block { margin: 22px 0 0; }
+  .next-btn { width: 100%; min-height: 48px; border-radius: 8px; border: 0; background: var(--color-primary); color: var(--color-on-primary); font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: filter .15s; padding: 6px 12px; }
+  .next-btn:hover { filter: brightness(1.15); }
+  .next-btn .lead { font-weight: 500; opacity: .85; }
+  .back-btn { width: 100%; min-height: 48px; border-radius: 8px; border: 1px solid var(--color-border); background: none; color: var(--color-text); font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: border-color .15s; padding: 6px 10px; }
+  .back-btn:hover { border-color: var(--color-line); }
+  .pair { display: flex; gap: 8px; }
+  .pair > * { flex: 1; }
+  .pair .back-btn { flex: 0.8; }
+  .steps { display: flex; gap: 4px; margin-bottom: 10px; }
+  .step { flex: 1; text-align: center; font-size: 9px; font-weight: 800; letter-spacing: .06em; color: var(--color-text-muted); cursor: pointer; padding: 6px 0 2px; border: 0; border-top: 3px solid var(--color-border); background: none; }
+  .step.past { border-top-color: var(--color-line); }
+  .step.on { color: var(--color-text); border-top-color: var(--color-accent-ink); }
+  .step-caption { font-size: 12px; color: var(--color-text-muted); text-align: center; margin: 0 0 10px; }
+  .last-note { font-size: 12px; color: var(--color-text-muted); text-align: center; padding: 6px 0; }
+
+  /* drawing ink */
+  .d-board { fill: var(--color-board); stroke: var(--color-text); stroke-width: 1.4; }
+  .d-ink { stroke: var(--color-text); fill: none; stroke-width: 1.2; }
+  .d-faint { stroke: var(--color-line); fill: none; stroke-width: 1; stroke-dasharray: 3 3; }
+  .d-lead { stroke: var(--color-line); fill: none; stroke-width: .8; }
+  .d-chip { fill: var(--color-bg); stroke: var(--color-border); }
+  .d-cap { fill: var(--color-text-muted); font-size: 8px; letter-spacing: .06em; font-family: var(--font-sans); }
+  .d-val { fill: var(--color-text); font-size: 10px; font-weight: 700; font-family: var(--font-sans); }
+  .d-big { fill: var(--color-text); font-weight: 800; font-family: var(--font-sans); }
+  .d-accent { stroke: var(--color-accent-ink); fill: none; stroke-width: 1.4; }
+  .d-fin { fill: var(--color-accent-ink); opacity: .85; }
+
+  /* annotation mode */
+  .annot .topbar, .annot .pinned, .annot .controls, .annot .tabbar { outline: 1px dashed #ff9670; outline-offset: -1px; }
+  .annot-tag { position: absolute; right: 6px; z-index: 50; font: 10px/1 system-ui, sans-serif; background: #ff9670; color: #12141a; padding: 2px 5px; border-radius: 3px; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="variant-nav"></div>
+<main id="stage">
+  <section class="notes" id="notes"></section>
+  <div class="phone-wrap">
+    <div class="phone-box" id="phone-box"><div class="phone" id="phone"><div class="screen" id="screen"></div></div></div>
+    <div class="phone-caption" id="caption"></div>
+  </div>
+  <aside class="meter" id="meter"></aside>
+</main>
+<div id="sketch-tools">
+  <button id="tools-toggle" type="button">⚙ Sketch tools</button>
+  <div class="row">Theme
+    <select id="theme-switcher">
+      <option value="app-slate">Dark (slate)</option>
+      <option value="app-daylight">Light (daylight)</option>
+    </select>
+  </div>
+  <div class="row" id="vp-row">Phone</div>
+  <div class="row" id="space-row">Freed space goes to</div>
+  <div class="row" id="extra-row"></div>
+</div>
+<script>
+const SKETCH = {
+  "id": "008",
+  "question": "What does the step-by-step button under the last control look like?",
+  "intro": "Each design screen ends with a way on to the next screen in the order — Template, Rocker, Rails, Volume, Fins, Summary — so a shaper can walk a whole board without opening a menu; ☰ stays for jumping around. Drawn on sketch 007's A frame (no tab bar); it fits any of 007's looks.",
+  "lookFor": [
+    "Scroll the controls to the end (toolbar, bottom right) and tap through all six screens.",
+    "Whether the button reads as 'next step' without looking like it saves or submits anything.",
+    "How it sits with the Undo and Redo pair floating in the corner (move a slider first).",
+    "What the first screen (Template) and the last (Summary) show."
+  ],
+  "variants": [
+    {
+      "id": "today",
+      "label": "Today (for comparison)",
+      "baseline": true,
+      "chrome": "today",
+      "next": null,
+      "desc": "No step button — the tab bar is the only way between screens."
+    },
+    {
+      "id": "a",
+      "label": "A · One Next button",
+      "chrome": "menuList",
+      "next": "single",
+      "desc": "One full-width button under the last control — 'Next: Rail Band Calculator →'. Going back is ☰ or the browser's own back."
+    },
+    {
+      "id": "b",
+      "label": "B · Back + Next",
+      "winner": true,
+      "chrome": "menuList",
+      "next": "pair",
+      "desc": "A pair under the last control — '← Rocker' and 'Rails →'. Template shows only Next; Summary only Back."
+    },
+    {
+      "id": "c",
+      "label": "C · Steps + Next",
+      "chrome": "menuList",
+      "next": "steps",
+      "desc": "A six-step strip showing where you are (tap any step to jump), 'Step 3 of 6', then the Next button."
+    },
+    {
+      "id": "together",
+      "label": "Together · 007-C tiles + 008-B",
+      "chrome": "tileSheet",
+      "next": "pair",
+      "desc": "The two winners on one phone: no tab bar, ☰ opens the six picture tiles for jumping around, and each screen ends with Back and Next for the usual walk through a board."
+    }
+  ]
+};
+
+/* ---------------- palettes (copies of ../themes/app-*.css, so the page also works as a snapshot) ---------------- */
+const PALETTES = {
+  "app-slate": { "--color-bg": "#12141a", "--color-surface": "#12141a", "--color-canvas": "#1a1d25", "--color-well": "#1b1f26", "--color-border": "#333842", "--color-line": "#6a707c", "--color-text": "#f2f4f7", "--color-text-muted": "#a1a8b4", "--color-primary": "#18526d", "--color-on-primary": "#f2f4f7", "--color-accent-ink": "#3490bc", "--color-board": "#1a2732", "--color-warning-ink": "#ff9670", "--color-page": "#0b0c10", "--shadow-lg": "0 10px 24px rgba(0,0,0,0.45)" },
+  "app-daylight": { "--color-bg": "#ffffff", "--color-surface": "#ffffff", "--color-canvas": "#dfdcd3", "--color-well": "#dfdcd3", "--color-border": "#897c58", "--color-line": "#897c58", "--color-text": "#1f2a3b", "--color-text-muted": "#566171", "--color-primary": "#8ec1b8", "--color-on-primary": "#1f2a3b", "--color-accent-ink": "#48605c", "--color-board": "#d9f2ed", "--color-warning-ink": "#ac3811", "--color-page": "#c9c5ba", "--shadow-lg": "0 10px 24px rgba(0,0,0,0.18)" },
+};
+const COMMON_VARS = { "--font-sans": '"Inter", Roboto, system-ui, sans-serif', "--tracking-architectural": "0.15em" };
+function applyPalette(name) {
+  const root = document.documentElement.style;
+  for (const [k, v] of Object.entries({ ...COMMON_VARS, ...PALETTES[name] })) root.setProperty(k, v);
+}
+
+/* ---------------- data ---------------- */
+const VIEWPORTS = {
+  iphone: { w: 390, h: 664, label: "iPhone 14 · Safari page area 390 × 664" },
+  small:  { w: 360, h: 640, label: "Small Android · Chrome page area 360 × 640" },
+  pixel:  { w: 412, h: 839, label: "Pixel 7 · Chrome page area 412 × 839" },
+};
+const SCREENS = [
+  { key: "outline", tab: "TEMPLATE", title: "Template Builder", short: "Outline", sub: "Design and print full sized surfboard templates", draw: "outline" },
+  { key: "rocker",  tab: "ROCKER",   title: "Rocker & Foil", short: "Rocker & foil", sub: "Pick a real blank, slide your board along it, and read the rocker and foil off the foam.", draw: "rocker" },
+  { key: "rails",   tab: "RAILS",    title: "Rail Band Calculator", short: "Rail bands", sub: "Rail band calculator for shaping consistent rails", draw: "rails" },
+  { key: "volume",  tab: "VOLUME",   title: "Volume Estimator", short: "Litres", sub: "Approximate volume of a designed board", draw: "volume" },
+  { key: "fins",    tab: "FINS",     title: "Fin Setup & Placement", short: "Fin placement", sub: "Quantitative reference · trailing-edge convention", draw: "fins" },
+  { key: "summary", tab: "SUMMARY",  title: "Board Order Form", short: "Order form", sub: "Custom Surfboard Order", draw: null },
+];
+const CONTROLS = {
+  outline: [
+    { t: "slider", id: "len", label: "Board Length", min: 60, max: 120, step: 1, value: 72, fmt: "ftin" },
+    { t: "section", label: "Nose Controls" },
+    { t: "slider", id: "na", label: "Nose Angle", min: 30, max: 80, step: 1, value: 55, fmt: "deg", ends: ["Pointy", "Round"] },
+    { t: "slider", id: "nf", label: "Fullness", min: 0, max: 100, step: 0.5, value: 25, fmt: "pct", ends: ["Thin", "Full"] },
+    { t: "section", label: "Widepoint Controls" },
+    { t: "slider", id: "ww", label: "Width", min: 16, max: 24, step: 1/16, value: 19, fmt: "in" },
+    { t: "slider", id: "wo", label: "Offset", min: -4, max: 4, step: 1/16, value: -0.5, fmt: "in", ends: ["Tail", "Nose"] },
+    { t: "slider", id: "tr", label: "Tail Rail", min: 0, max: 100, step: 1, value: 50, fmt: "pct", ends: ["Short", "Long"] },
+    { t: "slider", id: "nr", label: "Nose Rail", min: 0, max: 100, step: 1, value: 50, fmt: "pct", ends: ["Short", "Long"] },
+    { t: "section", label: "Tail Controls" },
+    { t: "pills", id: "tail", options: ["pin", "round", "diamond", "squash", "swallow"], value: "squash" },
+    { t: "slider", id: "tb", label: "Tail Block", min: 0, max: 8, step: 1/16, value: 4, fmt: "in" },
+    { t: "slider", id: "ta", label: "Tail Angle", min: 30, max: 80, step: 1, value: 60, fmt: "deg", ends: ["Pointy", "Round"] },
+    { t: "slider", id: "tf", label: "Fullness", min: 0, max: 100, step: 0.5, value: 50.5, fmt: "pct", ends: ["Thin", "Full"] },
+    { t: "section", label: "Settings" },
+    { t: "toggle", id: "cl", label: "View Construction Lines", value: false },
+  ],
+  rocker: [
+    { t: "section", label: "Center Thickness", caret: true },
+    { t: "slider", id: "ct", label: "Center Thickness", min: 1.5, max: 4, step: 1/16, value: 2.5, fmt: "in", note: "The board's one center thickness — Rails and Volume read it too." },
+    { t: "section", label: "Blank", caret: true },
+    { t: "blank" },
+    { t: "section", label: "Board on Blank", caret: true },
+    { t: "slider", id: "pl", label: "Placement", min: -10, max: 10, step: 0.5, value: 0, fmt: "place", ends: ["Toward the nose", "Toward the tail"] },
+    { t: "slider", id: "ds", label: "Deck Skin", min: 0, max: 0.5, step: 1/16, value: 0.125, fmt: "in", note: "Off the deck at every station" },
+    { t: "table", head: ["Station", "Rocker", "Off bottom"], rows: [["Nose Tip", '2 11/16"', '2 1/8"'], ['Nose @ 12"', '9/16"', '7/8"'], ["Center", '0"', '7/8"'], ['Tail @ 12"', '9/16"', '7/8"'], ["Tail Tip", '2 5/16"', '2"']] },
+    { t: "kv", k: "Planer passes at the center", v: "7 passes", note: 'At 1/8" a pass — your Planer Max Depth.' },
+    { t: "section", label: "Thickness", caret: true },
+    { t: "slider", id: "nt", label: "Nose Tip", min: 0.25, max: 2, step: 1/16, value: 0.5, fmt: "in" },
+    { t: "slider", id: "n12", label: 'Nose @ 12"', min: 1, max: 3, step: 1/16, value: 2.125, fmt: "in", note: 'From blank 2 1/8" · No tweak' },
+    { t: "slider", id: "t12", label: 'Tail @ 12"', min: 1, max: 3, step: 1/16, value: 2.125, fmt: "in", note: 'From blank 2 1/8" · No tweak' },
+    { t: "slider", id: "tt", label: "Tail Tip", min: 0.25, max: 2, step: 1/16, value: 0.625, fmt: "in" },
+    { t: "pills", id: "tipstyle", label: "Tip Style", options: ["Pin deck", "Bottom"], value: "Pin deck" },
+    { t: "slider", id: "nts", label: "Nose Thinning Starts", min: 6, max: 24, step: 0.5, value: 12, fmt: "in", note: "Picked automatically · Automatic" },
+    { t: "slider", id: "tts", label: "Tail Thinning Starts", min: 6, max: 24, step: 0.5, value: 12, fmt: "in", note: "Picked automatically · Automatic" },
+  ],
+  rails: [
+    { t: "toggle", id: "use", label: "Use Board's Rocker & Foil Thickness", value: true, note: "Thickness comes from the ROCKER screen — turn this off to type your own numbers." },
+    { t: "section", label: "Nose Rail", caret: true },
+    { t: "kv", k: 'Thickness @12"', v: '1 5/16"' },
+    { t: "slider", id: "ndp", label: "Deck Profile", min: 0, max: 100, step: 1, value: 40, fmt: "pct", ends: ["Flat", "Heavily Domed"] },
+    { t: "pills", id: "nfam", label: "Family", options: ["Boxy", "Medium", "Knifey"], value: "Medium" },
+    { t: "pills", id: "nrat", label: "Ratio", options: ["Sym", "30/70", "50/50", "60/40", "70/30"], value: "60/40" },
+    { t: "section", label: "Center Rail", caret: true },
+    { t: "kv", k: "Board Thickness", v: '2 1/2"' },
+    { t: "slider", id: "cdp", label: "Deck Profile", min: 0, max: 100, step: 1, value: 40, fmt: "pct", ends: ["Flat", "Heavily Domed"] },
+    { t: "pills", id: "cfam", label: "Family", options: ["Boxy", "Medium", "Knifey"], value: "Medium" },
+    { t: "pills", id: "crat", label: "Ratio", options: ["Sym", "30/70", "50/50", "60/40", "70/30"], value: "60/40" },
+    { t: "section", label: "Tail Rail", caret: true },
+    { t: "kv", k: 'Thickness @12"', v: '1 9/16"' },
+    { t: "slider", id: "tdp", label: "Deck Profile", min: 0, max: 100, step: 1, value: 40, fmt: "pct", ends: ["Flat", "Heavily Domed"] },
+    { t: "pills", id: "tfam", label: "Family", options: ["Boxy", "Medium", "Knifey"], value: "Medium" },
+    { t: "pills", id: "trat", label: "Ratio", options: ["Sym", "30/70", "50/50", "60/40", "70/30"], value: "60/40" },
+    { t: "toggle", id: "he", label: "Hard Edge", value: false },
+  ],
+  volume: [
+    { t: "section", label: "Primary Inputs" },
+    { t: "toggle", id: "real", label: "Measure This Board's Real Shape", value: true, note: "Off = quick estimate from board type" },
+    { t: "toggle", id: "railx", label: "Use This Board's Real Rail & Thickness Data", value: true },
+    { t: "slider", id: "vl", label: "Board Length", min: 60, max: 120, step: 1, value: 72, fmt: "ftin" },
+    { t: "slider", id: "vw", label: "Board Width", min: 16, max: 24, step: 1/16, value: 19, fmt: "in" },
+    { t: "slider", id: "vt", label: "Center Thickness", min: 1.5, max: 4, step: 1/16, value: 2.5, fmt: "in" },
+  ],
+  fins: [
+    { t: "section", label: "Inputs" },
+    { t: "toggle", id: "imp", label: "Import Template Values", value: true },
+    { t: "slider", id: "fl", label: "Board Length", min: 60, max: 120, step: 1, value: 72, fmt: "ftin" },
+    { t: "slider", id: "tw", label: 'Tail Width @ 12"', min: 10, max: 20, step: 1/16, value: 14.75, fmt: "in" },
+    { t: "pills", id: "ts", label: "Tail Shape", options: ["Pin", "Round", "Diamond", "Squash", "Swallow"], value: "Squash" },
+    { t: "section", label: "Fin Selection" },
+    { t: "pills", id: "setup", label: "Fin Setup", options: ["Single Fin", "Twin", "Thruster", "2+1", "Quad"], value: "Thruster" },
+    { t: "pills", id: "model", label: "Thruster Model", options: ["Proportional", "Basic (Half Rate)", "McKee Shortboard", "McKee Gun"], value: "Proportional" },
+    { t: "section", label: "Advanced", caret: "closed" },
+    { t: "section", label: "Settings", caret: "closed" },
+  ],
+  summary: [
+    { t: "form" },
+  ],
+};
+
+/* ---------------- state ---------------- */
+const state = {
+  variant: SKETCH.variants[0].id, screen: "rocker", vp: "iphone", spaceTo: "controls", menu: null,
+  edited: false, annotate: false, save: "Save", units: "Imperial", themeRow: "System", cardTab: "VIEWER",
+  values: {}, toast: null,
+};
+function V() { return SKETCH.variants.find((v) => v.id === state.variant); }
+function idx() { return SCREENS.findIndex((s) => s.key === state.screen); }
+function scr() { return SCREENS[idx()]; }
+
+/* ---------------- formatting ---------------- */
+function frac(x) {
+  const neg = x < 0; x = Math.abs(x);
+  let s = Math.round(x * 16); const w = Math.floor(s / 16); let r = s - w * 16; let d = 16;
+  while (r && r % 2 === 0) { r /= 2; d /= 2; }
+  const body = r ? (w ? `${w} ${r}/${d}` : `${r}/${d}`) : `${w}`;
+  return (neg && (w || r) ? "-" : "") + body + '"';
+}
+function fmt(c, v) {
+  switch (c.fmt) {
+    case "in": return frac(v);
+    case "ftin": return `${Math.floor(v / 12)}'${Math.round(v % 12)}"`;
+    case "deg": return `${Math.round(v)}°`;
+    case "pct": return `${Number.isInteger(v) ? v : v.toFixed(1)}%`;
+    case "place": return v === 0 ? "centered" : `${frac(Math.abs(v)).replace('"', '"')} toward the ${v < 0 ? "nose" : "tail"}`;
+    default: return String(v);
+  }
+}
+function val(c) { return state.values[c.id] ?? c.value; }
+
+/* ---------------- geometry of the page ---------------- */
+const TOP = 48, TAB = 56;
+function layout() {
+  const vp = VIEWPORTS[state.vp], v = V(), s = scr();
+  const tab = v.chrome === "today" ? TAB : 0;
+  const pinned = !!s.draw;
+  let draw = pinned ? Math.round(vp.h * 0.66) : 0;
+  if (pinned && v.chrome !== "today" && state.spaceTo === "drawing") draw += TAB;
+  draw = Math.min(draw, vp.h - TOP - tab - 80);
+  const ctl = vp.h - TOP - tab - draw;
+  const base = { draw: pinned ? Math.min(Math.round(vp.h * 0.66), vp.h - TOP - TAB - 80) : 0 };
+  base.ctl = vp.h - TOP - TAB - base.draw;
+  return { vp, tab, draw, ctl, base, pinned };
+}
+
+/* ---------------- drawings ---------------- */
+function chip(x, y, cap, value) {
+  return `<g><rect class="d-chip" x="${x - 26}" y="${y - 13}" width="52" height="26" rx="3"/>` +
+    `<text class="d-cap" x="${x}" y="${y - 3}" text-anchor="middle">${cap}</text>` +
+    `<text class="d-val" x="${x}" y="${y + 9}" text-anchor="middle">${value}</text></g>`;
+}
+function rockerSVG(w, h) {
+  const x0 = w * 0.09, x1 = w * 0.91, k = ((x1 - x0) / 72) * 2.2, base = h * 0.56;
+  const r = (s) => (s < 0.5 ? 2.6875 * Math.pow((0.5 - s) / 0.5, 3.6) : 2.3125 * Math.pow((s - 0.5) / 0.5, 3.6));
+  const t = (s) => (s < 0.5 ? 0.5 + 2 * (1 - Math.pow((0.5 - s) / 0.5, 4)) : 0.625 + 1.875 * (1 - Math.pow((s - 0.5) / 0.5, 4)));
+  const X = (s) => x0 + (x1 - x0) * s, YB = (s) => base - r(s) * k, YD = (s) => YB(s) - t(s) * k;
+  let top = "", bot = "";
+  for (let i = 0; i <= 80; i++) { const s = i / 80; top += `${i ? "L" : "M"}${X(s).toFixed(1)},${YD(s).toFixed(1)}`; }
+  for (let i = 80; i >= 0; i--) { const s = i / 80; bot += `L${X(s).toFixed(1)},${YB(s).toFixed(1)}`; }
+  const st = [[0, "Nose Tip", '1/2"', '2 11/16"'], [12 / 72, 'Nose @ 12"', '2 1/8"', '9/16"'], [0.5, "Center", '2 1/2"', "—"], [60 / 72, 'Tail @ 12"', '2 1/8"', '9/16"'], [1, "Tail Tip", '5/8"', '2 5/16"']];
+  const cy1 = Math.max(26, h * 0.2), cy2 = Math.min(h - 30, h * 0.8);
+  let g = "";
+  for (const [s, n, th, ro] of st) {
+    const x = Math.min(Math.max(X(s), 30), w - 30);
+    g += `<path class="d-lead" d="M${x},${cy1 + 13}V${YD(s) - 2}"/><path class="d-lead" d="M${x},${YB(s) + 2}V${cy2 - 13}"/>`;
+    g += chip(x, cy1, n, th) + chip(x, cy2, n, ro);
+  }
+  return `<svg viewBox="0 0 ${w} ${h}"><text class="d-cap" x="${w / 2}" y="${cy1 - 18}" text-anchor="middle">Thickness</text>` +
+    `<path class="d-faint" d="M${x0},${base}H${x1}"/><path class="d-board" d="${top}${bot}Z"/>${g}` +
+    `<text class="d-cap" x="${w / 2}" y="${cy2 + 24}" text-anchor="middle">Rocker</text></svg>`;
+}
+function outlinePath(cx, top, L, halfW, tailFrac) {
+  const f = (y) => (y < 0.52 ? Math.pow(Math.sin((y / 0.52) * Math.PI / 2), 0.85) : 1 - (1 - tailFrac) * Math.pow((y - 0.52) / 0.48, 2.2));
+  let left = "", right = "";
+  for (let i = 0; i <= 60; i++) { const y = i / 60; left += `${i ? "L" : "M"}${(cx - halfW * f(y)).toFixed(1)},${(top + L * y).toFixed(1)}`; }
+  for (let i = 60; i >= 0; i--) { const y = i / 60; right += `L${(cx + halfW * f(y)).toFixed(1)},${(top + L * y).toFixed(1)}`; }
+  return left + right + "Z";
+}
+function outlineSVG(w, h) {
+  const L = h * 0.82, top = h * 0.09, halfW = Math.min((L * 19) / 72 / 2, w * 0.3), cx = w / 2;
+  return `<svg viewBox="0 0 ${w} ${h}"><path class="d-faint" d="M${cx},${top - 6}V${top + L + 6}" stroke-dasharray="16 4 4 4"/>` +
+    `<path class="d-board" d="${outlinePath(cx, top, L, halfW, 0.21)}"/>` +
+    `<path class="d-faint" d="M${cx - halfW},${top + L * 0.52}H${cx + halfW}"/>` +
+    `<text class="d-val" x="${cx + halfW + 8}" y="${top + L * 0.52 + 4}">19"</text>` +
+    `<text class="d-val" x="${cx}" y="${top - 10}" text-anchor="middle">6'0"</text>` +
+    `<text class="d-cap" x="${cx + halfW * 0.21 + 8}" y="${top + L - 2}">4"</text></svg>`;
+}
+function railsSVG(w, h) {
+  const sx = w * 0.12, sy = h * 0.34, ex = w * 0.86, by = h * 0.66;
+  const d = `M${sx},${sy} C${w * 0.45},${sy - 4} ${w * 0.72},${sy + 6} ${ex - 18},${sy + (by - sy) * 0.42} C${ex + 6},${sy + (by - sy) * 0.6} ${ex},${by - 6} ${ex - 24},${by} L${sx},${by} Z`;
+  const sw = ["NOSE", "CENTER", "TAIL"].map((n, i) => `<text class="${i === 1 ? "d-val" : "d-cap"}" x="${w / 2 + (i - 1) * 64}" y="${Math.max(18, h * 0.12)}" text-anchor="middle">${n}</text>`).join("");
+  return `<svg viewBox="0 0 ${w} ${h}">${sw}<path class="d-board" d="${d}"/>` +
+    [0.55, 0.7, 0.82, 0.9].map((p, i) => `<circle cx="${sx + (ex - sx) * p}" cy="${sy + (by - sy) * (0.06 + i * 0.13)}" r="2.4" fill="var(--color-accent-ink)"/>`).join("") +
+    `<text class="d-cap" x="${sx}" y="${by + 18}">Stringer</text><text class="d-cap" x="${ex}" y="${by + 18}" text-anchor="end">Rail</text>` +
+    `<text class="d-val" x="${sx + 6}" y="${(sy + by) / 2 + 4}">2 1/2"</text></svg>`;
+}
+function volumeSVG(w, h) {
+  return `<svg viewBox="0 0 ${w} ${h}"><text class="d-big" x="${w / 2}" y="${h * 0.47}" font-size="${Math.min(64, h * 0.2)}" text-anchor="middle">30.5 L</text>` +
+    `<text class="d-cap" x="${w / 2}" y="${h * 0.47 + 26}" text-anchor="middle" font-size="11">6'0" × 19" × 2 1/2" · measured from this board's real shape</text></svg>`;
+}
+function finsSVG(w, h) {
+  const L = h * 1.5, top = h * 0.88 - L, halfW = Math.min(w * 0.33, (L * 19) / 72 / 2), cx = w / 2;
+  const fin = (x, y, a) => `<path class="d-fin" transform="translate(${x},${y}) rotate(${a})" d="M0,0 C6,-4 10,-16 4,-30 C2,-20 -2,-8 -6,0 Z"/>`;
+  return `<svg viewBox="0 0 ${w} ${h}"><path class="d-board" d="${outlinePath(cx, top, L, halfW, 0.21)}"/>` +
+    `<path class="d-faint" d="M${cx},${top}V${top + L}" stroke-dasharray="16 4 4 4"/>` +
+    fin(cx - halfW * 0.78, h * 0.5, -6) + fin(cx + halfW * 0.78, h * 0.5, 6) + fin(cx, h * 0.8, 0) +
+    `<text class="d-val" x="${cx + halfW * 0.78 + 12}" y="${h * 0.5}">11"</text>` +
+    `<text class="d-val" x="${cx + 10}" y="${h * 0.8 - 6}">3 5/16"</text></svg>`;
+}
+function drawingSVG(kind, w, h) {
+  return { rocker: rockerSVG, outline: outlineSVG, rails: railsSVG, volume: volumeSVG, fins: finsSVG }[kind](w, h);
+}
+const ICONS = {
+  outline: `<svg viewBox="0 0 46 40"><path class="d-board" d="${outlinePath(23, 2, 36, 7, 0.25)}"/></svg>`,
+  rocker: `<svg viewBox="0 0 46 40"><path class="d-board" d="M3,15 C14,25 32,25 43,17 L43,20 C32,29 14,29 3,19 Z"/></svg>`,
+  rails: `<svg viewBox="0 0 46 40"><path class="d-board" d="M6,13 C22,12 32,14 38,21 C41,25 39,28 35,29 L6,29 Z"/></svg>`,
+  volume: `<svg viewBox="0 0 46 40"><text class="d-big" x="23" y="27" font-size="15" text-anchor="middle">30.5</text></svg>`,
+  fins: `<svg viewBox="0 0 46 40"><path class="d-board" d="M8,2 C8,20 10,32 16,38 L30,38 C36,32 38,20 38,2 Z"/><path class="d-fin" d="M14,24 C17,22 18,16 16,11 Z"/><path class="d-fin" d="M32,24 C29,22 28,16 30,11 Z"/><path class="d-fin" d="M23,35 C26,33 26,28 24,23 Z"/></svg>`,
+  summary: `<svg viewBox="0 0 46 40"><rect class="d-chip" x="9" y="3" width="28" height="34" rx="2"/><path class="d-ink" d="M14,11H32M14,17H32M14,23H27M14,29H30"/></svg>`,
+};
+
+/* ---------------- controls html ---------------- */
+function controlHTML(c) {
+  switch (c.t) {
+    case "section":
+      return `<div class="ctl-section"><span>${c.label}</span>${c.caret ? `<span style="color:var(--color-text-muted)">${c.caret === "closed" ? "▸" : "▾"}</span>` : ""}</div>`;
+    case "slider": {
+      const v = val(c);
+      return `<div class="ctl-row"><div class="ctl-label"><span data-label="${c.id}">${c.label} — ${fmt(c, v)}</span></div>` +
+        `<input type="range" min="${c.min}" max="${c.max}" step="${c.step}" value="${v}" data-slider="${c.id}">` +
+        (c.ends ? `<div class="ctl-ends"><span>${c.ends[0]}</span><span>${c.ends[1]}</span></div>` : "") +
+        (c.note ? `<div class="ctl-note">${c.note}</div>` : "") + `</div>`;
+    }
+    case "pills": {
+      const v = val(c);
+      return `<div class="ctl-row">${c.label ? `<div class="ctl-label"><span>${c.label}</span></div>` : ""}<div class="pills">` +
+        c.options.map((o) => `<button class="pill ${o === v ? "on" : ""}" data-act="pill" data-id="${c.id}" data-value="${o}">${o}</button>`).join("") + `</div></div>`;
+    }
+    case "toggle": {
+      const v = val(c);
+      return `<div class="toggle-row"><span>${c.label}${c.note ? `<div class="ctl-note">${c.note}</div>` : ""}</span>` +
+        `<button class="switch ${v ? "on" : ""}" role="switch" aria-checked="${v}" data-act="switch" data-id="${c.id}"></button></div>`;
+    }
+    case "blank":
+      return `<div class="blank-card"><div class="bn"><span>9'3"Y</span><span>104.7 L</span></div><div class="bs">US Blanks · 9'3" · 3 1/2" center</div></div>` +
+        `<div style="margin-bottom:6px"><span class="linkish" data-act="toast" data-msg="Change Blank opens the blank list">Change Blank</span><span class="linkish" data-act="toast" data-msg="Remove This Blank keeps the five stations">Remove This Blank</span></div>`;
+    case "table":
+      return `<table class="mini-table"><tr>${c.head.map((x) => `<th>${x}</th>`).join("")}</tr>` + c.rows.map((r) => `<tr>${r.map((x) => `<td>${x}</td>`).join("")}</tr>`).join("") + `</table>`;
+    case "kv":
+      return `<div class="ctl-row"><div class="kv"><span>${c.k}</span><b>${c.v}</b></div>${c.note ? `<div class="ctl-note">${c.note}</div>` : ""}</div>`;
+    case "form":
+      return `<div class="ctl-section" style="margin-top:6px"><span>Custom Surfboard Order</span></div>` +
+        `<div class="ctl-note" style="margin-bottom:8px">Your shop name, town & phone — upload a logo later</div>` +
+        `<div class="ctl-section"><span>Rider Info</span></div>` +
+        ["Name", "Ph #", "Height", "Weight"].map((f) => `<div class="field"><span>${f}</span><span>tap to fill</span></div>`).join("") +
+        `<div class="ctl-section"><span>Surfboard Shape and Design</span></div><div class="cells">` +
+        [["Length", "6'0\""], ["Nose", '12"'], ["Widepoint", '19"'], ["Offset", '-1/2"'], ["Tail", '14 3/4"'], ["Thickness", '2 1/2"'], ["Volume", "30.5 L"]].map(([a, b]) => `<div class="cell">${a}<b>${b}</b></div>`).join("") + `</div>` +
+        `<div style="height:120px;position:relative;border:1px solid var(--color-border);border-radius:6px;margin-bottom:10px">${rockerSVG(330, 120)}</div>` +
+        `<div class="ctl-section"><span>Glassing</span></div><div class="field"><span>Laminating — Deck</span><span>:</span></div><div class="field"><span>Laminating — Bottom</span><span>:</span></div>` +
+        `<div class="ctl-section"><span>Fin System</span></div>` + controlHTML({ t: "pills", id: "fs", options: ["FCS II", "FCS (Original)", "Futures", "Lokbox", "Probox", "Glass-On"], value: "FCS II" }) +
+        `<div class="ctl-section"><span>Leash</span></div>` + controlHTML({ t: "pills", id: "lc", options: ["Leash Cup", "Drill Hole"], value: "Leash Cup" });
+  }
+  return "";
+}
+
+/* ---------------- next/back block (sketch 008) ---------------- */
+function navBlockHTML() {
+  const kind = V().next;
+  if (!kind) return "";
+  const i = idx(), next = SCREENS[i + 1], prev = SCREENS[i - 1];
+  const nextBtn = next ? `<button class="next-btn" data-act="go" data-screen="${next.key}"><span class="lead">Next:</span> ${next.title} →</button>` : "";
+  const backBtn = prev ? `<button class="back-btn" data-act="go" data-screen="${prev.key}">← ${prev.tab.charAt(0) + prev.tab.slice(1).toLowerCase()}</button>` : "";
+  if (kind === "single") {
+    return `<div class="nav-block">${next ? nextBtn : `<div class="last-note">That's the last screen — print or save the order form from here.</div>`}</div>`;
+  }
+  if (kind === "pair") {
+    const nextShort = next ? `<button class="next-btn" data-act="go" data-screen="${next.key}">${next.tab.charAt(0) + next.tab.slice(1).toLowerCase()} →</button>` : "";
+    return `<div class="nav-block"><div class="pair">${backBtn}${nextShort}</div></div>`;
+  }
+  if (kind === "steps") {
+    const steps = SCREENS.map((s, j) => `<button class="step ${j === i ? "on" : j < i ? "past" : ""}" data-act="go" data-screen="${s.key}" aria-current="${j === i ? "step" : "false"}">${j + 1}<br>${s.tab}</button>`).join("");
+    return `<div class="nav-block"><div class="steps">${steps}</div><p class="step-caption">Step ${i + 1} of 6 — ${scr().title}</p>${next ? nextBtn : `<div class="last-note">Last step — the order form is ready to print.</div>`}</div>`;
+  }
+  return "";
+}
+
+/* ---------------- menus ---------------- */
+function screenRows(withSub) {
+  return SCREENS.map((s) => `<div class="mrow screen-row" data-act="go" data-screen="${s.key}" role="menuitem" aria-current="${s.key === state.screen ? "page" : "false"}">` +
+    `<span>${s.tab}${withSub ? `<span class="sub">${s.title}</span>` : ""}</span>${s.key === state.screen ? `<span class="tick">✓</span>` : ""}</div>`).join("");
+}
+function restRows() {
+  const check = (on) => (on ? `<span class="tick">✓</span>` : "");
+  return `<div class="mrow" data-act="toast" data-msg="Home — back to the board cards"><span class="ico">⌂</span>Home</div>` +
+    `<div class="mrow" data-act="toast" data-msg="Contact page"><span class="ico">✉</span>Contact</div>` +
+    `<div class="mrow" data-act="toast" data-msg="Privacy page"><span class="ico">⛉</span>Privacy</div><div class="mdiv"></div>` +
+    `<div class="mhead">Units</div>` + ["Imperial", "Metric"].map((u) => `<div class="mrow" data-act="units" data-value="${u}"><span class="ico"></span>${u}${check(state.units === u)}</div>`).join("") +
+    `<div class="mhead">Theme</div>` + ["System", "Light", "Dark"].map((t) => `<div class="mrow" data-act="themeRow" data-value="${t}"><span class="ico"></span>${t}${check(state.themeRow === t)}</div>`).join("") +
+    `<div class="mdiv"></div><div class="mrow" style="cursor:default"><button class="signin" data-act="toast" data-msg="Sign in">Sign in</button></div>`;
+}
+function menuHTML() {
+  const v = V();
+  if (!state.menu) return "";
+  const scrim = `<div class="scrim ${v.chrome === "tileSheet" ? "" : ""}" data-act="close"></div>`;
+  if (state.menu === "title") {
+    return scrim + `<div class="popup left" role="menu" aria-label="Screens">${screenRows(true)}</div>`;
+  }
+  if (v.chrome === "tileSheet") {
+    const tiles = SCREENS.map((s) => `<div class="tile ${s.key === state.screen ? "on" : ""}" data-act="go" data-screen="${s.key}">${ICONS[s.key]}<span class="tl">${s.tab}</span><span class="ts">${s.short}</span></div>`).join("");
+    return `<div class="sheet" role="menu"><div class="tiles">${tiles}</div><div class="rows">${restRows()}</div></div>`;
+  }
+  const screensFirst = v.chrome === "menuList" ? screenRows(false) + `<div class="mdiv"></div>` : "";
+  return scrim + `<div class="popup" role="menu">${screensFirst}${restRows()}</div>`;
+}
+
+/* ---------------- render ---------------- */
+let lastScrollKey = null;
+function render() {
+  const v = V(), s = scr(), L = layout(), el = document.getElementById("screen");
+  const prevScroll = el.querySelector(".controls")?.scrollTop ?? 0;
+  el.style.width = L.vp.w + "px"; el.style.height = L.vp.h + "px";
+  el.classList.toggle("annot", state.annotate);
+  const leftOfBar = v.chrome === "titleDropdown"
+    ? `<button class="title-btn" data-act="title" aria-expanded="${state.menu === "title"}" aria-haspopup="menu">${s.tab}<span class="chev">▼</span></button>`
+    : `<span class="wordmark" data-act="toast" data-msg="The wordmark takes you home">SHAPER ASSISTANT</span>`;
+  const burgerOpen = state.menu === "burger";
+  const topbar = `<header class="topbar">${leftOfBar}<div class="cluster"><button class="save" data-act="save">${state.save}</button><span class="vsep"></span>` +
+    `<button class="burger" data-act="menu" aria-label="Menu" aria-expanded="${burgerOpen}">${burgerOpen && v.chrome === "tileSheet" ? "✕" : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>`}</button></div></header>`;
+  const dw = L.vp.w - 4, dh = L.draw - 4 - 22;
+  const pinned = L.pinned ? `<div class="pinned" style="height:${L.draw}px"><div class="card"><div class="card-tabs">` +
+    ["VIEWER", "DATASHEET"].map((t) => `<button class="card-tab ${state.cardTab === t ? "on" : ""}" data-act="cardTab" data-value="${t}">${t}</button>`).join("") +
+    `</div><div class="drawing">${state.cardTab === "VIEWER" ? drawingSVG(s.draw, dw, dh) : datasheetHTML()}</div></div></div>` : "";
+  const ctl = `<div class="controls ${L.pinned ? "" : "solo"}">` +
+    `<h2 class="ctl-title">${s.title}</h2><p class="ctl-sub">${s.sub}</p>` +
+    CONTROLS[s.key].map(controlHTML).join("") + navBlockHTML() + `<div class="end-room"></div></div>`;
+  const tabbar = v.chrome === "today" ? `<nav class="tabbar" aria-label="Screens">` +
+    SCREENS.map((x) => `<button class="tab ${x.key === state.screen ? "on" : ""}" data-act="go" data-screen="${x.key}">${x.tab}</button>`).join("") + `</nav>` : "";
+  const undoBottom = (v.chrome === "today" ? TAB + 12 : 16);
+  const undo = state.edited ? `<div class="undo-pair" style="bottom:${undoBottom}px"><button data-act="toast" data-msg="Undone" aria-label="Undo">↶</button><button data-act="toast" data-msg="Redone" aria-label="Redo">↷</button></div>` : "";
+  const toast = state.toast ? `<div class="toast">${state.toast}</div>` : "";
+  el.innerHTML = topbar + pinned + ctl + tabbar + undo + menuHTML() + toast;
+  const c = el.querySelector(".controls");
+  const key = state.variant + "|" + state.screen;
+  if (c && key === lastScrollKey) c.scrollTop = prevScroll;
+  lastScrollKey = key;
+  if (state.annotate) annotate(el, L);
+  renderMeter(L); renderNotes(); renderNav();
+  document.getElementById("caption").textContent = L.vp.label;
+  fitPhone(L);
+}
+function fitPhone(L) {
+  const fw = L.vp.w + 22, fh = L.vp.h + 22;
+  const scale = Math.min(1, (window.innerWidth - 24) / fw);
+  const phone = document.getElementById("phone"), box = document.getElementById("phone-box");
+  phone.style.transform = scale < 1 ? `scale(${scale})` : "";
+  box.style.width = fw * scale + "px"; box.style.height = fh * scale + "px";
+}
+window.addEventListener("resize", () => render());
+function datasheetHTML() {
+  return `<div style="position:absolute;inset:0;overflow:auto;padding:10px 12px;font-size:12px">` +
+    `<div class="ctl-note" style="margin-bottom:8px">Your blank's own numbers, as its catalog prints them, then your board's at its five stations.</div>` +
+    `<table class="mini-table"><tr><th></th><th>Nose</th><th>12"</th><th>Ctr</th><th>12"</th><th>Tail</th></tr>` +
+    `<tr><td>Rocker</td><td>4 5/16"</td><td>2 5/16"</td><td>0"</td><td>1 13/16"</td><td>3 1/4"</td></tr>` +
+    `<tr><td>Thickness</td><td>1 3/8"</td><td>2 3/8"</td><td>3 1/2"</td><td>2 3/8"</td><td>1 7/16"</td></tr></table></div>`;
+}
+function annotate(el, L) {
+  const tags = [["topbar", 0, TOP], ["pinned", TOP, L.draw], ["controls", TOP + L.draw, L.ctl], ["tabbar", TOP + L.draw + L.ctl, L.tab]];
+  for (const [name, y, hgt] of tags) {
+    if (!hgt) continue;
+    const t = document.createElement("div"); t.className = "annot-tag"; t.style.top = (y + 3) + "px";
+    t.textContent = `${name === "pinned" ? "drawing" : name === "tabbar" ? "tab bar" : name === "topbar" ? "top bar" : "controls you can see"} ${hgt}`;
+    el.appendChild(t);
+  }
+}
+function renderMeter(L) {
+  const v = V(), total = L.vp.h, sc = 300 / total;
+  const seg = (cls, h, label) => (h ? `<div class="${cls}" style="height:${Math.max(2, h * sc)}px">${h >= 40 ? label : ""}</div>` : "");
+  const dC = L.ctl - L.base.ctl, dD = L.draw - L.base.draw;
+  const delta = (d) => (d ? ` <span class="delta">${d > 0 ? "+" : ""}${d}</span>` : "");
+  let taps;
+  if (v.chrome === "today") taps = "<b>1 tap</b> on the tab bar.";
+  else if (v.chrome === "titleDropdown") taps = "<b>2 taps</b> — the screen name, then the screen.";
+  else if (v.chrome === "tileSheet") taps = "<b>2 taps</b> — ☰, then a tile.";
+  else taps = "<b>2 taps</b> — ☰, then the screen.";
+  if (v.next) taps += " The next screen is also <b>1 tap</b> on the button under the last control.";
+  document.getElementById("meter").innerHTML = `<h3>WHERE THE HEIGHT GOES</h3><div class="stack">` +
+    seg("seg-top", TOP, "bar") + seg("seg-draw", L.draw, "drawing") + seg("seg-ctl", L.ctl, "controls") + seg("seg-tab", L.tab, "tabs") + `</div>` +
+    `<dl><dt>Top bar</dt><dd>${TOP}</dd><dt>Drawing</dt><dd>${L.draw}${delta(dD)}</dd><dt>Controls you see</dt><dd>${L.ctl}${delta(dC)}</dd><dt>Tab bar</dt><dd>${L.tab}</dd><dt>Page</dt><dd>${total}</dd></dl>` +
+    `<div class="taps">Change screen: ${taps}</div>` +
+    `<div class="taps">Numbers are dots on the page, compared with today. A phone with a home-bar strip that runs the app from its home screen saves about 34 more.</div>`;
+}
+function renderNotes() {
+  const v = V();
+  document.getElementById("notes").innerHTML = `<h2>${SKETCH.question}</h2><p>${SKETCH.intro}</p>` +
+    `<div class="vdesc"><b>${v.label}</b><br>${v.desc}</div><h2>What to look for</h2><ul>${SKETCH.lookFor.map((x) => `<li>${x}</li>`).join("")}</ul>` +
+    `<p>Try it: tap ☰, change screens, move a slider (Undo/Redo appears), and switch phones in the toolbar.</p>`;
+}
+function renderNav() {
+  const nav = document.getElementById("variant-nav");
+  nav.innerHTML = `<span class="sketch-id">Sketch ${SKETCH.id}</span>` + SKETCH.variants.map((v) =>
+    `<button class="variant-tab ${v.id === state.variant ? "active" : ""} ${v.baseline ? "baseline" : ""}" data-variant="${v.id}">${v.label}${v.winner ? " ★ Selected" : ""}</button>`).join("");
+}
+
+/* ---------------- interaction ---------------- */
+function flash(msg) { state.toast = msg; render(); clearTimeout(flash.t); flash.t = setTimeout(() => { state.toast = null; render(); }, 1300); }
+document.getElementById("variant-nav").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-variant]"); if (!b) return;
+  state.variant = b.dataset.variant; state.menu = null; render();
+});
+document.getElementById("screen").addEventListener("click", (e) => {
+  const a = e.target.closest("[data-act]"); if (!a) return;
+  const act = a.dataset.act;
+  if (act === "menu") state.menu = state.menu === "burger" ? null : "burger";
+  else if (act === "title") state.menu = state.menu === "title" ? null : "title";
+  else if (act === "close") state.menu = null;
+  else if (act === "go") {
+    const was = state.screen; state.screen = a.dataset.screen; state.menu = null; lastScrollKey = null;
+    if (was === state.screen) { render(); return; }
+  }
+  else if (act === "pill") { state.values[a.dataset.id] = a.dataset.value; state.edited = true; }
+  else if (act === "switch") { state.values[a.dataset.id] = !(state.values[a.dataset.id] ?? a.classList.contains("on")); state.edited = true; }
+  else if (act === "cardTab") state.cardTab = a.dataset.value;
+  else if (act === "units") { state.units = a.dataset.value; }
+  else if (act === "themeRow") {
+    state.themeRow = a.dataset.value;
+    if (a.dataset.value !== "System") setTheme(a.dataset.value === "Light" ? "app-daylight" : "app-slate");
+  }
+  else if (act === "save") {
+    state.save = "Saving…"; render();
+    setTimeout(() => { state.save = "Saved"; render(); setTimeout(() => { state.save = "Save"; render(); }, 1400); }, 700);
+    return;
+  }
+  else if (act === "toast") { state.menu = null; flash(a.dataset.msg); return; }
+  render();
+});
+document.getElementById("screen").addEventListener("input", (e) => {
+  const id = e.target.dataset.slider; if (!id) return;
+  const c = CONTROLS[state.screen].find((x) => x.id === id);
+  state.values[id] = Number(e.target.value);
+  const lab = document.querySelector(`[data-label="${id}"]`); if (lab) lab.textContent = `${c.label} — ${fmt(c, state.values[id])}`;
+  if (!state.edited) { state.edited = true; render(); }
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.menu) { state.menu = null; render(); } });
+function setTheme(name) {
+  document.getElementById("theme-link").href = `../themes/${name}.css`;
+  applyPalette(name);
+  document.getElementById("theme-switcher").value = name;
+}
+document.getElementById("theme-switcher").addEventListener("change", (e) => setTheme(e.target.value));
+
+/* toolbar */
+const vpRow = document.getElementById("vp-row");
+for (const [k, vp] of Object.entries(VIEWPORTS)) {
+  const b = document.createElement("button"); b.textContent = `${vp.w}×${vp.h}`; b.dataset.vp = k;
+  b.onclick = () => { state.vp = k; syncTools(); render(); }; vpRow.appendChild(b);
+}
+const spaceRow = document.getElementById("space-row");
+for (const k of ["controls", "drawing"]) {
+  const b = document.createElement("button"); b.textContent = k; b.dataset.space = k;
+  b.onclick = () => { state.spaceTo = k; syncTools(); render(); }; spaceRow.appendChild(b);
+}
+const extra = document.getElementById("extra-row");
+const annBtn = document.createElement("button"); annBtn.textContent = "Show heights";
+annBtn.onclick = () => { state.annotate = !state.annotate; syncTools(); render(); }; extra.appendChild(annBtn);
+const endBtn = document.createElement("button"); endBtn.textContent = "Scroll controls to the end";
+endBtn.onclick = () => { const c = document.querySelector("#screen .controls"); if (c) c.scrollTo({ top: c.scrollHeight, behavior: "smooth" }); }; extra.appendChild(endBtn);
+const resetBtn = document.createElement("button"); resetBtn.textContent = "Reset edits";
+resetBtn.onclick = () => { state.values = {}; state.edited = false; render(); }; extra.appendChild(resetBtn);
+function syncTools() {
+  vpRow.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.vp === state.vp));
+  spaceRow.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.space === state.spaceTo));
+  annBtn.classList.toggle("on", state.annotate);
+}
+document.getElementById("tools-toggle").onclick = () => document.getElementById("sketch-tools").classList.toggle("open");
+applyPalette("app-slate");
+syncTools();
+render();
+</script>
+</body>
+</html>
