@@ -261,9 +261,13 @@ export function RockerDatasheet({
           per row, keeping every column. The trailing fade (24px, toward --surf-panel — the card
           this datasheet always sits inside, per TabbedPanel) is the "there's more, keep going"
           hint. Constant, not scroll-position-driven: on a fixed, five-station table the box
-          either scrolls or it doesn't per viewport. */}
+          either scrolls or it doesn't per viewport. The table ends in 24px of empty room the
+          same width as the fade, so the fade lands on that room and never dims the TAIL TIP
+          column — on a computer, where nothing scrolls, and on a phone scrolled to the end —
+          while mid-scroll it still covers whatever runs on past the edge (fast task, 2026-10-03).
+          The minimum width grew by the same 24px, so a phone's columns keep their 540px. */}
       <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]">
-        <div className="min-w-[540px]">
+        <div className="min-w-[564px] pr-[24px]">
           {header}
 
           {blank ? (
