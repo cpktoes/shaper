@@ -38,6 +38,9 @@ async function settingsTrigger(page: Page): Promise<{ trigger: Locator; selector
  */
 export async function openSettingsMenu(page: Page): Promise<Locator> {
   const row = appSettingsRow(page);
+  // A menu still animating shut (Base UI's `data-closed`) is not open, and its row vanishes mid-tap:
+  // wait for it to go before reading whether the row shows (the same race as screens.ts' openPhoneMenu).
+  await expect(page.locator('[role="menu"][data-closed]')).toHaveCount(0);
   await expect(async () => {
     if (await row.isVisible()) return;
     const { trigger, selector } = await settingsTrigger(page);
@@ -53,7 +56,7 @@ export async function openSettingsMenu(page: Page): Promise<Locator> {
     if (!(await row.isVisible())) await trigger.click();
     await expect(row).toBeVisible({ timeout: 1_000 });
   }).toPass({ timeout: 20_000 });
-  return page.getByRole("menu");
+  return page.locator('[role="menu"]:not([data-closed])');
 }
 
 /** Waits out a box's opening animation — a box read mid-animation is a frame short of its place. */
