@@ -40,8 +40,8 @@ needs no menu ("almost wizard like"). These two sketches use the app's own slate
 | 004 | clean-interior-svg | Where do values go once nothing may sit inside the outline? | **A — Aligned rail** | viewer, callouts, svg, refinement |
 | 005 | horizontal-board-view | What does the Template screen look like with the board horizontal, nose left? | **C — Full-bleed** (layout premise superseded by 006) | viewer, layout, callouts, svg, post-mvp |
 | 006 | orientation-switch | How does the shaper turn the board horizontal, without moving anything else? | **Rotate in place**, button in the viewer's upper-right | viewer, layout, icon, interaction, post-mvp |
-| 007 | phone-screens-in-menu | With no tab bar at the bottom, how does an upright phone show which screen you're on and take you to another? | **C — Screen tiles** (☰ sheet of six picture tiles; no bottom tab bar) | phone, layout, navigation, chrome |
-| 008 | next-screen-button | What does the step-by-step button under the last control look like? | **B — Back + Next** ("Together" tab: on 007-C) | phone, navigation, wizard |
+| 007 | phone-screens-in-menu | With no tab bar at the bottom, how does an upright phone show which screen you're on and take you to another? | **C1 — Tiles from your board** (☰ sheet of six tiles, each drawn from the current board; no bottom tab bar) | phone, layout, navigation, chrome |
+| 008 | next-screen-button | What does the step-by-step button under the last control look like? | **B — Back + Next** ("Together" tab: on 007-C1) | phone, navigation, wizard |
 
 ## Decisions These Lock In
 
@@ -63,9 +63,11 @@ needs no menu ("almost wizard like"). These two sketches use the app's own slate
    originally dots only, which read as an absence rather than a station.)
 8. **Labels are SVG `<text>`**, not absolutely-positioned HTML.
 
-9. **Phone screens move into ☰ as picture tiles** (sketch 007 C, 2026-10-03) — on an upright phone the
-   six-screen tab bar goes; ☰ opens a sheet of six tiles (the current one ticked) above Home, Contact,
-   Privacy, Units, Theme and the account. The 56 freed dots go to the controls (122 → 178 on an iPhone 14).
+9. **Phone screens move into ☰ as tiles drawn from the current board** (sketch 007 C1, round 2,
+   2026-10-03) — on an upright phone the six-screen tab bar goes; ☰ opens a sheet of six tiles (the
+   current one ticked) above Home, Contact, Privacy, Units, Theme and the account. Each tile is its
+   screen's own drawing of the board, labels left out; Volume shows the board's real litres (never a
+   made-up number). The 56 freed dots go to the controls (122 → 178 on an iPhone 14).
 10. **Each design screen ends with Back + Next** (sketch 008 B) — "← previous" and "next →" side by side
    under the last control, in the order Template, Rocker, Rails, Volume, Fins, Summary; the first screen
    has only Next, the last only Back. ☰ is for jumping around; Back + Next is the usual walk.

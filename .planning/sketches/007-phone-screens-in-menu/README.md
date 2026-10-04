@@ -2,7 +2,7 @@
 sketch: 007
 name: phone-screens-in-menu
 question: "With no tab bar at the bottom, how does an upright phone show which screen you're on and take you to another?"
-winner: "C"
+winner: "C1"
 tags: [phone, layout, navigation, chrome, menu]
 ---
 
@@ -23,7 +23,14 @@ open .planning/sketches/007-phone-screens-in-menu/index.html
   (the sideways phone's menu today). Least work: the screens group stops hiding below the shell width.
 - **B: Screen name in the top bar** — on design screens the wordmark gives way to "ROCKER ▾"; tapping
   it opens the six screens. ☰ keeps Home, Contact, Privacy, Units, Theme and the account.
-- **C: Screen tiles** — ☰ opens a sheet with the six screens as big picture tiles, the rest beneath.
+- **C: Screen tiles** — ☰ opens a sheet with the six screens as big picture tiles, the rest beneath
+  (round 1, rough pictures — the founder's pick).
+- **C1: Tiles from your board** (round 2) — each tile is that screen's own drawing of the current board,
+  labels left out: its outline lying down, its side profile in its blank, its center rail's band diagram,
+  its real litres, its tail and fins, a small order form. A Board switch (sketch tools) shows the tiles
+  following Shortboard, Fish, Mid-length and Longboard.
+- **C2: Fixed drawings** (round 2) — the same realistic drawings whatever the board (the Shortboard's),
+  with no numbers anywhere: the Volume tile is a jug and the word "Litres".
 
 ## What to Look For
 - Controls you can see without scrolling: 122 dots today against 178 with the bar gone (+56, +46%)
@@ -46,3 +53,20 @@ open .planning/sketches/007-phone-screens-in-menu/index.html
 bottom tab bar goes, and ☰ opens a sheet with the six screens as picture tiles, the current one
 ticked, and Home, Contact, Privacy, Units, Theme and the account underneath. Paired with sketch 008's
 Back + Next for the usual walk through a board; see 008's "Together" tab for the two on one phone.
+
+## Round 2 (2026-10-03)
+The founder: "The tile idea is great, but the icons need to look realistic (rocker cannot look like a U).
+Can we use current board as the art? If we can't use current board art, we'll need to design something and
+make it clear that the liters are not real, etc. (like just say Liters)."
+
+Yes — every screen already draws from the board's own numbers, so each tile can be a small, label-free
+copy of its screen's drawing. For the sketch the drawings were lifted off the real screens on the dev server
+(each preset opened, then the outline, the side profile and its blank, the three rail plots, the Volume
+screen's Estimated Volume and the fins drawing read out of the page), so C1's pictures ARE the app's.
+The app spells the word "Litres", so C2 does too. Pictures of each sheet are in `pictures/`.
+
+**Round 2 winner: C1 — Tiles from your board** (the founder, 2026-10-03). The phone's ☰ sheet draws each
+tile from the current board: label-free copies of the Template outline, the Rocker side profile in its
+blank, the center rail's band diagram, the Volume screen's real estimate, the Fins tail and fins, and a
+small order form. Built for real, the thumbnails come straight from the design store's own data (outline
+geometry, side profile, rail bands, volume, fin placement) — nothing is captured or stored.
