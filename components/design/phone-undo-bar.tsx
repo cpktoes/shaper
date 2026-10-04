@@ -21,15 +21,19 @@
  * bottom-right corner, the same look as on a phone (F-1 — one pair, mounted once, fixed to the
  * window, never a button built into any viewer card's own toolbar or corner).
  *
- * WHY IT FLOATS INSTEAD OF JOINING EITHER EXISTING PHONE BAR, ON A PHONE. `phone-top-bar.tsx`'s
- * own doc comment records, measured, that at 360px the top bar's inside width is 328px, its
- * right-hand cluster (Save plus the menu button) already runs 149.0px against a 150.3px wordmark —
- * 28.7px of clear air, nowhere near room for two 44px buttons. `phone-tab-bar.tsx`'s own comment
- * records its six tab labels fit 360px "with about 12px to spare" — same story. So this is its own
- * small floating pair instead, anchored bottom-right, sitting just above the tab bar
- * (`calc(3.5rem + env(safe-area-inset-bottom) + 0.75rem)` — 3.5rem is `PhoneTabBar`'s own `h-14`;
- * measured on real hardware, unchanged by this task: 12px above the 56px tab bar on both an
- * iPhone 14 and a Pixel 7).
+ * WHY IT FLOATS INSTEAD OF JOINING THE TOP BAR, ON A PHONE. `phone-top-bar.tsx`'s own doc comment
+ * records, measured, that at 360px the top bar's inside width is 328px, its right-hand cluster (Save
+ * plus the menu button) already runs 149.0px against a 150.3px wordmark — 28.7px of clear air,
+ * nowhere near room for two 44px buttons. So this is its own small floating pair instead, anchored
+ * bottom-right, over the end of the controls.
+ *
+ * THE UPRIGHT PHONE'S OFFSET (quick 261003-q2f): 16 dots in from the window's bottom-right corner —
+ * the computer's own 16 — plus the home-bar inset on a real iPhone
+ * (`calc(1rem + env(safe-area-inset-bottom))`). It used to sit 12 dots above the old bottom tab bar,
+ * which that quick task removed; the controls now run to the window's bottom edge, and every design
+ * screen's controls end with enough room after their last row (Back and Next) to scroll that row
+ * clear of the pair, with about 8 dots of daylight (`design-screen-shell.tsx` and the order form
+ * carry that room).
  *
  * THE COMPUTER OFFSET: a plain 16px from the window's bottom and right edges (`shell:bottom-4`
  * plus the existing `right-4`), over the drawing card's own corner (its own padding is only 12px),
@@ -41,16 +45,15 @@
  * entry ("Board Thickness") under the three plots — no bottom-right position clears it; left for
  * the founder rather than changed here.
  *
- * WHY THE OFFSET MOVED FROM AN INLINE STYLE INTO TWO WIDTH-KEYED CLASSES. An inline `style`
- * outranks every class (short of `!important`), so as long as `bottom` lived in the inline style
- * the computer could never have had its own offset. `max-shell:bottom-[calc(3.5rem+env(safe-area-
- * inset-bottom)+0.75rem)]` compiles to the exact declaration the old inline style carried, so the
- * phone's own position has not moved by a pixel; `shell:bottom-4` is the new one, applying only at
- * and above the shell breakpoint.
+ * WHY THE OFFSET LIVES IN TWO WIDTH-KEYED CLASSES, NOT AN INLINE STYLE. An inline `style` outranks
+ * every class (short of `!important`), so a `bottom` in an inline style would leave the computer no
+ * offset of its own. `max-shell:bottom-[calc(1rem+env(safe-area-inset-bottom))]` is the upright
+ * phone's; `shell:bottom-4` is the computer's (and a phone held sideways, which lands in the desktop
+ * shell), applying only at and above the shell breakpoint.
  *
  * THE THREE SWITCHES (CLAUDE.md's Layout section), applied here: width (`max-shell:`/`shell:`)
- * picks the offset, because which offset is right depends on whether a tab bar sits under it — a
- * layout fact; pointer (`coarse:`) picks a button's size, 40px for a mouse or 44px for a finger,
+ * picks the offset, because which offset is right depends on the layout — whether the controls run
+ * to the window's bottom under the pair (stacked) or the pair floats over the drawing card (desktop); pointer (`coarse:`) picks a button's size, 40px for a mouse or 44px for a finger,
  * on any width; height picks nothing here. So a touch laptop, or a phone held sideways (which
  * lands in the desktop shell), gets 44px buttons in the 16px corner, as it should.
  *
@@ -82,7 +85,7 @@ export function PhoneUndoBar() {
     <div
       data-print-hide
       data-phone-undo-bar
-      className="pointer-events-none fixed right-4 z-40 flex items-center gap-2 max-shell:bottom-[calc(3.5rem+env(safe-area-inset-bottom)+0.75rem)] shell:bottom-4 print:hidden"
+      className="pointer-events-none fixed right-4 z-40 flex items-center gap-2 max-shell:bottom-[calc(1rem+env(safe-area-inset-bottom))] shell:bottom-4 print:hidden"
     >
       <button
         type="button"

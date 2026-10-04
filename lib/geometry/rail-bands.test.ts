@@ -4,7 +4,9 @@ import {
   buildRailSegments,
   computeRailBands,
   computeRailSection,
+  DEFAULT_RAIL_BAND_SPEC,
   mergeRailDataTable,
+  railPlotDots,
   MIN_BOTTOM_TUCK_SEPARATION_IN,
   railFamilyLabel,
   type ComputeRailSectionInput,
@@ -15,6 +17,7 @@ import {
 } from "./rail-bands";
 import { type Mm, formatInchesFraction, inchesToMm, mmToInches, roundToSixteenthInch } from "./units";
 import golden from "./__fixtures__/prototype-rails-golden.json";
+import { BOARD_PRESETS } from "./presets";
 
 const TOLERANCE_IN = 1e-9;
 
@@ -491,5 +494,44 @@ describe("buildRailDataGroups row inclusion", () => {
     const railSide = flat.find((g) => g.heading === "Rail Side")!;
     expect(railSide.rows[0].label).toBe("Board Thickness");
     expect(railSide.rows.filter((r) => r.label === "Board Thickness").length).toBe(1);
+  });
+});
+
+describe("railPlotDots — which rail marks get a dot (the RAILS plot and the ☰ RAILS tile)", () => {
+  const sections = [
+    { name: "default", spec: DEFAULT_RAIL_BAND_SPEC },
+    ...BOARD_PRESETS.map((preset) => ({ name: preset.id, spec: preset.rails })),
+  ].flatMap(({ name, spec }) => {
+    const bands = computeRailBands(spec);
+    return (["nose", "center", "tail"] as const).map((key) => ({ label: `${name} ${key}`, output: bands[key] }));
+  });
+
+  for (const { label, output } of sections) {
+    it(`${label}: band ends in plot order, then the apex centre, then the dome's top`, () => {
+      const { segments, result, domed } = output;
+      const dots = railPlotDots(segments, result, domed);
+      const noDot = new Set(["boardConn", "bottomConn", "railConn", ...(result.hardEdge ? ["hardEdge"] : [])]);
+      const dotted = segments.filter((seg) => !noDot.has(seg.key));
+      const expected: { key: string; x: number; y: number }[] = [];
+      for (const seg of dotted) {
+        expected.push({ key: seg.key, x: seg.p1.x, y: seg.p1.y });
+        expected.push({ key: seg.key, x: seg.p2.x, y: seg.p2.y });
+      }
+      expected.push({ key: "apexCenter", x: 0, y: result.apexCenter });
+      const domedBand = segments.find((seg) => seg.key === "domedBand");
+      if (domed && domedBand) expected.push({ key: "domedBand", x: 0, y: domedBand.p1.y });
+      expect(dots).toEqual(expected);
+      expect(dots.some((dot) => dot.key === "boardConn" || dot.key === "bottomConn" || dot.key === "railConn")).toBe(false);
+      if (result.hardEdge) expect(dots.some((dot) => dot.key === "hardEdge")).toBe(false);
+      expect(dots.length).toBe(2 * dotted.length + 1 + (domed && domedBand ? 1 : 0));
+      expect(dots[2 * dotted.length]).toEqual({ key: "apexCenter", x: 0, y: result.apexCenter });
+    });
+  }
+
+  it("the tail of the default board has a hard edge, and it gets no dot", () => {
+    const tail = computeRailBands(DEFAULT_RAIL_BAND_SPEC).tail;
+    expect(tail.result.hardEdge).toBe(true);
+    expect(tail.segments.some((seg) => seg.key === "hardEdge")).toBe(true);
+    expect(railPlotDots(tail.segments, tail.result, tail.domed).some((dot) => dot.key === "hardEdge")).toBe(false);
   });
 });

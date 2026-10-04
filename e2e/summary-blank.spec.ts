@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { goToScreen } from "./helpers/screens";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseCsv } from "../lib/blanks/csv";
@@ -92,7 +93,7 @@ async function pickFirstFittingBlank(page: Page): Promise<string> {
 
 /** Walk to SUMMARY by the app's own link — a full page load would reset the design in memory. */
 async function goToSummary(page: Page) {
-  await page.getByRole("link", { name: "SUMMARY", exact: true }).filter({ visible: true }).first().click();
+  await goToScreen(page, "SUMMARY");
   await expect(page).toHaveURL(/\/design\/summary$/);
 }
 

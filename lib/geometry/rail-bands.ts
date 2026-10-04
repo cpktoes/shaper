@@ -564,6 +564,45 @@ export function buildRailSegments(
   }));
 }
 
+/** One dot the RAILS plot draws on a cross-section: which band (or the apex centre) it marks, and
+ * where, in the section's own millimetres (x 0 at the rail, negative toward the stringer; y up from
+ * the bottom). */
+export interface RailPlotDot {
+  key: RailSegmentKey | "apexCenter";
+  x: Mm;
+  y: Mm;
+}
+
+/** The three connector lines that close the drawing — never a mark, so never a dot. */
+const NO_DOT_KEYS: ReadonlySet<RailSegmentKey> = new Set<RailSegmentKey>(["boardConn", "bottomConn", "railConn"]);
+
+/**
+ * Which rail marks get a dot on a cross-section, in the order the RAILS plot draws them: both ends of
+ * every band except the three connector lines (and the hard edge when the section has one, which is
+ * an edge rather than a band), then the apex centre on the rail line, then — on a domed deck — the
+ * top of the dome on the rail line. The one rule for those dots, read by the RAILS plot itself and
+ * by the RAILS picture in the phone menu (quick 261003-q2f), so the two can never disagree.
+ */
+export function railPlotDots(
+  segments: readonly RailSegment[],
+  result: RailSectionResult,
+  domed: boolean,
+): RailPlotDot[] {
+  const dots: RailPlotDot[] = [];
+  for (const seg of segments) {
+    if (NO_DOT_KEYS.has(seg.key)) continue;
+    if (result.hardEdge && seg.key === "hardEdge") continue;
+    dots.push({ key: seg.key, x: seg.p1.x, y: seg.p1.y });
+    dots.push({ key: seg.key, x: seg.p2.x, y: seg.p2.y });
+  }
+  dots.push({ key: "apexCenter", x: mm(0), y: result.apexCenter });
+  if (domed) {
+    const domedBand = segments.find((seg) => seg.key === "domedBand");
+    if (domedBand) dots.push({ key: "domedBand", x: mm(0), y: domedBand.p1.y });
+  }
+  return dots;
+}
+
 export interface RailPlotBoundsOpts {
   domed: boolean;
   thickness: Mm;

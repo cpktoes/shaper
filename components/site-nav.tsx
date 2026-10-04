@@ -22,12 +22,10 @@ import { NavAuthControl } from "@/components/auth/nav-auth-control";
 import { SaveButton } from "@/components/design/save-button";
 import { PhoneTopBar } from "@/components/design/phone-top-bar";
 
-/** Exported so `components/design/phone-tab-bar.tsx` reads the same six words and order rather
- * than re-declaring them — the labels can never drift between the desktop nav and the phone tab
- * bar because there is only one copy. Since quick 260930-r8s (Phase 13 item 9d) a third reader
- * joins them: the phone menu's screens group, handed this same list as a prop by this file (see
- * the `PhoneTopBar` mount below), so a sideways phone's menu can never drift from the other two
- * either. */
+/** The six design screens, in order — the one copy every reader shares, so the labels and order can
+ * never drift: the desktop row below, the phone menu's six screen tiles (handed this same list as a
+ * prop by this file, see the `PhoneTopBar` mount below; quick 261003-q2f) and the Back and Next
+ * pair at the end of each screen's controls (`step-nav.tsx`). */
 export const NAV_LINKS = [
   { href: "/design/outline", label: "TEMPLATE" },
   { href: "/design/rocker", label: "ROCKER" },
@@ -43,9 +41,9 @@ export type NavLink = (typeof NAV_LINKS)[number];
 
 /** Below the shell breakpoint, every page the app draws uses the phone's top bar — there is no
  * fixed list of addresses this applies to, because the not-found page can sit at any address
- * (P-2, quick 260930-fjm). Each page mounts its own bottom tab bar as its own last child instead:
- * app/page.tsx, app/design/layout.tsx, the Contact and Privacy pages, app/not-found.tsx and
- * app/error.tsx. Before this change a mistyped address gave a phone the desktop link row squeezed
+ * (P-2, quick 260930-fjm). Its menu opens the six screen tiles on every page, so no page needs a
+ * bar of its own (the old bottom tab bar each page used to mount was removed in quick
+ * 261003-q2f). Before this change a mistyped address gave a phone the desktop link row squeezed
  * into its width, with no phone top bar at all (measured 2026-09-30, quick 260930-fjm).
  *
  * Since quick 260930-r8s (Phase 13 item 9d, the founder: "On horizontal phone, we need to reduce

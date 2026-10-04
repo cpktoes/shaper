@@ -1,10 +1,12 @@
 import { devices, expect, test, type Page } from "@playwright/test";
+import { SCREENS, expectNoScreensNavigation, goToScreen, openPhoneMenu, screenTile } from "./helpers/screens";
 
 /**
  * TEST-01's proof for Phase 9's tracer (09-02): TEMPLATE stacks on the iphone and android
  * projects — the drawing pinned across the full width above a controls region that alone
- * scrolls, and the six-tab bottom bar under the thumb — while the desktop project proves the
- * sidebar-beside-canvas shell and both phone bars are untouched. Later plans in this phase (top
+ * scrolls, under a compact top bar whose menu opens the six screen tiles (the old six-tab bottom
+ * bar was removed in quick 261003-q2f) — while the desktop project proves the sidebar-beside-canvas
+ * shell and the phone chrome are untouched. Later plans in this phase (top
  * bar and menu, orientation) extend this same file rather than starting a new one.
  */
 
@@ -15,7 +17,6 @@ const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
 // `-webkit-touch-callout`, a strip does not silently appear above every pinned-height and
 // bounding-box assertion in this file.
 const TOOLBAR_TIP_DISMISSAL_KEY = "shaper-toolbar-tip-dismissed";
-const SCREEN_LABELS = ["TEMPLATE", "ROCKER", "RAILS", "VOLUME", "FINS", "SUMMARY"];
 
 /** Matches desktop-baseline.spec.ts's own approach: dismiss the sign-in banner via
  * sessionStorage, set before navigation, so its own height never confuses a layout assertion. */
@@ -80,24 +81,26 @@ test.describe("phone shell — TEMPLATE stacks with the drawing pinned above the
     expect(controlsScroll.scrollHeight).toBeGreaterThan(controlsScroll.clientHeight);
   });
 
-  test("the bottom tab bar shows all six screens in order, TEMPLATE marked, every tab at least 44px", async ({
+  test("no bottom tab bar; the menu shows all six screen tiles in order, TEMPLATE ticked, every tile at least 44px", async ({
     page,
   }) => {
     await page.goto("/design/outline");
 
-    const tabBar = page.getByRole("navigation", { name: "Screens" });
-    await expect(tabBar).toBeVisible();
+    // Quick 261003-q2f: the old bottom tab bar is gone from every page.
+    await expectNoScreensNavigation(page);
 
-    const tabs = tabBar.getByRole("link");
-    await expect(tabs).toHaveCount(6);
-    expect(await tabs.allTextContents()).toEqual(SCREEN_LABELS);
+    const sheet = await openPhoneMenu(page);
+    const tiles = sheet.locator("[data-screen-tile]");
+    await expect(tiles).toHaveCount(6);
+    expect(await tiles.evaluateAll((els) => els.map((el) => el.getAttribute("data-screen-tile")))).toEqual(
+      SCREENS.map((screen) => screen.href),
+    );
+    await expect(screenTile(page, "TEMPLATE")).toHaveAttribute("aria-current", "page");
+    await expect(sheet.locator('[data-screen-tile][aria-current="page"]')).toHaveCount(1);
 
-    const templateTab = tabBar.getByRole("link", { name: "TEMPLATE" });
-    await expect(templateTab).toHaveClass(/border-surf-accent/);
-
-    for (const tab of await tabs.all()) {
-      const box = await tab.boundingBox();
-      if (!box) throw new Error("tab is missing a bounding box");
+    for (const tile of await tiles.all()) {
+      const box = await tile.boundingBox();
+      if (!box) throw new Error("tile is missing a bounding box");
       expect(box.height).toBeGreaterThanOrEqual(44);
       expect(box.width).toBeGreaterThanOrEqual(44);
     }
@@ -117,31 +120,35 @@ test.describe("phone shell — TEMPLATE stacks with the drawing pinned above the
     await expect(page.locator("[data-design-controls-scroll]").first()).toBeVisible();
   });
 
-  // Held-out overflow check (UI-SPEC "Bottom tab bar / overflow"): at these three narrow phone
-  // widths, all six labels render whole on one line — no wrap, clip or ellipsis.
+  // Held-out overflow check (once the bottom tab bar's, since quick 261003-q2f the menu's tiles):
+  // at these three narrow phone widths, every tile's name and line render whole — no clip — and
+  // the page never scrolls sideways.
   for (const width of [360, 375, 393]) {
-    test(`all six tab labels stay whole at ${width}px wide`, async ({ page }) => {
+    test(`all six tiles' names and lines stay whole at ${width}px wide`, async ({ page }) => {
       await page.setViewportSize({ width, height: 640 });
       await page.goto("/design/outline");
 
-      const tabBar = page.getByRole("navigation", { name: "Screens" });
-      const tabs = tabBar.getByRole("link");
-      await expect(tabs).toHaveCount(6);
+      const sheet = await openPhoneMenu(page);
+      const tiles = sheet.locator("[data-screen-tile]");
+      await expect(tiles).toHaveCount(6);
 
-      // The bar must fit the screen as well as keep its labels whole: a row of six unshrinkable
-      // tabs that spills past the edge makes the whole page scroll sideways (caught at 360px by
-      // 09-04's held-out ROCKER check after the wave-3 merge).
       const docScrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);
       expect(docScrollWidth, `the page scrolled sideways at ${width}px`).toBe(width);
 
-      for (const tab of await tabs.all()) {
-        const fit = await tab.evaluate((el) => ({
-          scrollWidth: el.scrollWidth,
-          clientWidth: el.clientWidth,
-        }));
-        expect(fit.scrollWidth).toBeLessThanOrEqual(fit.clientWidth);
-        const text = await tab.textContent();
-        expect(text ?? "").not.toContain("…");
+      for (const tile of await tiles.all()) {
+        const fits = await tile.evaluate((el) =>
+          Array.from(el.querySelectorAll(":scope > span:not([data-tile-picture])")).map((span) => ({
+            scrollWidth: span.scrollWidth,
+            clientWidth: span.clientWidth,
+            scrollHeight: span.scrollHeight,
+            clientHeight: span.clientHeight,
+          })),
+        );
+        expect(fits.length).toBe(2);
+        for (const fit of fits) {
+          expect(fit.scrollWidth).toBeLessThanOrEqual(fit.clientWidth);
+          expect(fit.scrollHeight).toBeLessThanOrEqual(fit.clientHeight);
+        }
       }
     });
   }
@@ -158,9 +165,9 @@ test.describe("phone compact top bar and the one menu", () => {
   }) => {
     await page.goto("/design/outline");
 
-    // The desktop screen-link row (SiteNav's own <nav>, distinguished from the phone tab bar's
-    // <nav aria-label="Screens"> by carrying no aria-label at all) is present in the tree but
-    // hidden by its own max-shell:hidden rule on a design route at phone width.
+    // The desktop screen-link row (SiteNav's own <nav>, the one <nav> carrying no aria-label at
+    // all) is present in the tree but hidden by its own max-shell:hidden rule on a design route at
+    // phone width.
     const desktopNav = page.locator("nav:not([aria-label])");
     await expect(desktopNav).toBeHidden();
 
@@ -317,13 +324,9 @@ test.describe("phone held sideways, iPhone — the rotate button stays gone, con
     // navigation against a background Fast-Refresh reload the dev server occasionally pushes
     // right after the outline route's first paint. A shaper would move between screens exactly
     // this way (the Menu's own screens group), so this is not a weaker proof of the rotate
-    // button's own rule — same assertion, a navigation path already exercised elsewhere.
-    await page.waitForFunction(() => {
-      const el = document.querySelector('header button[aria-label="Menu"]');
-      return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    });
-    await page.getByRole("banner").getByRole("button", { name: "Menu" }).click();
-    await page.getByRole("menu").getByRole("menuitem", { name: "ROCKER", exact: true }).click();
+    // button's own rule — same assertion, a navigation path already exercised elsewhere. Since
+    // quick 261003-q2f the Menu's screens are picture tiles; the shared helper taps ROCKER's.
+    await goToScreen(page, "ROCKER");
     await expect(page).toHaveURL(/\/design\/rocker$/);
     await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeHidden();
   });
@@ -357,7 +360,7 @@ test.describe("phone held sideways — the desktop shell renders under the phone
     await dismissSignInBanner(page);
   });
 
-  test("at 863 x 360 (a real Pixel 7 turned sideways) the desktop shell renders under the phone's thin bar: the desktop link row and the six-tab bottom bar are gone, the six screens are in the menu, and the rotate button is gone (a touch pointer's own job, not this switch's)", async ({
+  test("at 863 x 360 (a real Pixel 7 turned sideways) the desktop shell renders under the phone's thin bar: the desktop link row is gone, there is no bottom tab bar, the six screen tiles are in the menu, and the rotate button is gone (a touch pointer's own job, not this switch's)", async ({
     page,
   }) => {
     await page.goto("/design/outline");
@@ -393,19 +396,12 @@ test.describe("phone held sideways — the desktop shell renders under the phone
     await expect(topBar).toBeVisible();
     await expect(topBar.getByRole("button", { name: "Menu" })).toBeVisible();
 
-    const tabBar = page.getByRole("navigation", { name: "Screens" });
-    await expect(tabBar).toBeHidden();
+    await expectNoScreensNavigation(page);
 
-    // The six screens the desktop row used to show are reachable from the Menu instead.
-    await page.waitForFunction(() => {
-      const el = document.querySelector('header button[aria-label="Menu"]');
-      return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    });
-    await topBar.getByRole("button", { name: "Menu" }).click();
-    const popup = page.getByRole("menu");
-    await expect(popup).toBeVisible();
-    for (const label of SCREEN_LABELS) {
-      await expect(popup.getByRole("menuitem", { name: label, exact: true })).toBeVisible();
+    // The six screens the desktop row used to show are reachable from the Menu's tiles instead.
+    const popup = await openPhoneMenu(page);
+    for (const screen of SCREENS) {
+      await expect(screenTile(page, screen.label)).toBeVisible();
     }
     await page.keyboard.press("Escape");
     await expect(popup).toBeHidden();
@@ -431,16 +427,17 @@ test.describe("the 820px layout boundary — exactly one shell applies at each w
   });
 
   test("819px wide renders the phone stack, 820px wide renders the desktop shell", async ({ page }) => {
-    const tabBar = page.getByRole("navigation", { name: "Screens" });
+    // The phone's compact top bar (the banner) on one side, the desktop link row on the other.
+    const phoneBar = page.getByRole("banner");
     const desktopNav = page.locator("nav:not([aria-label])");
 
     await page.setViewportSize({ width: 819, height: 900 });
     await page.goto("/design/outline");
-    await expect(tabBar).toBeVisible();
+    await expect(phoneBar).toBeVisible();
     await expect(desktopNav).toBeHidden();
 
     await page.setViewportSize({ width: 820, height: 900 });
-    await expect(tabBar).toBeHidden();
+    await expect(phoneBar).toBeHidden();
     await expect(desktopNav).toBeVisible();
   });
 });
@@ -508,7 +505,7 @@ test.describe("desktop shell — unchanged", () => {
     await dismissSignInBanner(page);
   });
 
-  test("the sidebar sits left of the canvas and the phone bars are hidden", async ({ page }) => {
+  test("the sidebar sits left of the canvas and the phone chrome is hidden", async ({ page }) => {
     await page.goto("/design/outline");
 
     const sidebar = page.locator("aside");
@@ -521,8 +518,9 @@ test.describe("desktop shell — unchanged", () => {
     if (!sidebarBox || !canvasBox) throw new Error("missing bounding box");
     expect(sidebarBox.x + sidebarBox.width).toBeLessThanOrEqual(canvasBox.x + 1);
 
-    await expect(page.getByRole("navigation", { name: "Screens" })).toBeHidden();
+    await expectNoScreensNavigation(page);
     await expect(page.getByRole("banner")).toBeHidden();
+    await expect(page.locator("[data-screen-tile]")).toHaveCount(0);
   });
 
   test("the rotate button is visible and the drag targets stay hidden until the construction toggle is pressed", async ({

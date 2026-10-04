@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { goToScreen } from "./helpers/screens";
 import { readdirSync, readFileSync } from "node:fs";
 import { inflateSync } from "node:zlib";
 import { join } from "node:path";
@@ -112,7 +113,7 @@ async function pickFirstFittingBlank(page: Page): Promise<string> {
 
 /** Walk to SUMMARY by the app's own link — a full page load would reset the design in memory. */
 async function goToSummary(page: Page) {
-  await page.getByRole("link", { name: "SUMMARY", exact: true }).filter({ visible: true }).first().click();
+  await goToScreen(page, "SUMMARY");
   await expect(page).toHaveURL(/\/design\/summary$/);
 }
 
@@ -918,7 +919,7 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       await openRocker(page);
       await pickFirstFittingBlank(page);
       // A quad fills the Fin Placement box the most.
-      await page.getByRole("link", { name: "FINS", exact: true }).filter({ visible: true }).first().click();
+      await goToScreen(page, "FINS");
       await page.getByRole("button", { name: "Quad", exact: true }).first().click();
       await goToSummary(page);
 

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { goToScreen } from "./helpers/screens";
 
 /**
  * Quick task 260914-rj0's own proof: on the FINS drawing, the three off-tail height numbers —
@@ -50,8 +51,7 @@ async function navigateToMidlengthFins(page: Page): Promise<void> {
   await page.goto("/");
   await page.getByRole("button").filter({ hasText: "Mid-length" }).first().click();
   await page.waitForURL("**/design/outline");
-  await page.getByRole("link", { name: "FINS" }).click();
-  await page.waitForURL("**/design/fins");
+  await goToScreen(page, "FINS");
 
   const offTailLabels = page.locator('[data-fin-dim="off-tail"]');
 

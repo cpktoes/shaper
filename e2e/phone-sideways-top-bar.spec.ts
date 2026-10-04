@@ -1,4 +1,5 @@
 import { devices, expect, test, type Locator, type Page } from "@playwright/test";
+import { SCREENS, expectNoScreensNavigation, goToScreen, openPhoneMenu, screenTile } from "./helpers/screens";
 
 /**
  * Phase 13 item 9d (quick 260930-r8s) — the founder, having walked the live site with a phone
@@ -10,7 +11,9 @@ import { devices, expect, test, type Locator, type Page } from "@playwright/test
  * onto two lines, about 105 on the live site, which renders Clerk's real wider account button);
  * after this plan the same screen gets the phone's own 48-dot bar (item 9e, quick 260930-s23,
  * P-7, made it thinner still — 56 when this plan first shipped it), name on one line, with the
- * six screens reachable from its Menu instead of the desktop row.
+ * six screens reachable from its Menu instead of the desktop row. Since quick 261003-q2f that Menu
+ * opens a sheet whose first items are the six screen tiles (one row of six at this width), and an
+ * upright phone's Menu opens the same tiles (three by two) — there is no bottom tab bar anywhere.
  *
  * This file starts as Task 1's tracer (one Pixel 7 sideways test) and is Task 2's home for the
  * full proof: both real sideways phones, every route, the Menu's walk between all six screens,
@@ -47,9 +50,9 @@ async function waitForReactOwner(page: Page, selector: string) {
  * width-alone query that keeps the desktop SHELL underneath; the bare desktop `<nav>` is hidden;
  * the `banner` (the phone bar) is visible at (within a dot of) `--phone-top-bar-h`, 48; the name
  * inside it sits on exactly one line (a DOM Range over its text, counting the distinct rounded
- * `top` values of the Range's own client rects); the bar's Menu button is visible; the six-tab
- * bottom bar (`nav[aria-label="Screens"]`) stays hidden, since the desktop shell never shows it;
- * and the page never scrolls sideways. */
+ * `top` values of the Range's own client rects); the bar's Menu button is visible; no navigation
+ * named "Screens" exists (the old bottom tab bar, removed in quick 261003-q2f); and the page never
+ * scrolls sideways. */
 async function assertThinBar(page: Page, width: number, height: number) {
   const viewport = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
   expect(viewport.width).toBe(width);
@@ -91,7 +94,7 @@ async function assertThinBar(page: Page, width: number, height: number) {
 
   await expect(banner.getByRole("button", { name: "Menu" })).toBeVisible();
 
-  await expect(page.getByRole("navigation", { name: "Screens" })).toBeHidden();
+  await expectNoScreensNavigation(page);
 
   const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(scrollWidth).toBe(width);
@@ -109,59 +112,19 @@ async function gotoRoute(page: Page, route: string) {
   }).toPass({ timeout: 15_000 });
 }
 
-/** Opens the phone bar's Menu and returns the popup, settled past its own opening animation —
- * otherwise a bounding box read mid-animation is a frame short of its final size (the same wait
- * e2e/blank-makers.spec.ts and e2e/fit-defaults.spec.ts use). */
+/** Opens the phone bar's Menu and returns the sheet, settled past its own opening animation —
+ * the shared helper (e2e/helpers/screens.ts) since quick 261003-q2f. */
 async function openMenu(page: Page): Promise<Locator> {
-  await waitForReactOwner(page, 'header button[aria-label="Menu"]');
-  await page.getByRole("banner").getByRole("button", { name: "Menu" }).click();
-  const popup = page.getByRole("menu");
-  await expect(popup).toBeVisible();
-  await popup.evaluate(async (el) => {
-    await Promise.all(el.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => undefined)));
-  });
-  return popup;
+  return openPhoneMenu(page);
 }
-
-/** Clicks a screen row in the (already open, or freshly reopened) Menu and waits for the move to
- * land, retrying the whole open-click gesture if a click lands a frame before Base UI's anchored
- * positioning has fully settled: on this popup a too-early click still closes the menu (Base UI's
- * own default on any item click) without ever reaching the row's own `onClick`, so retrying the
- * click alone — with the menu already gone — would find nothing to click. Reopening is therefore
- * part of the retried gesture, the same "retry the whole interaction" idiom
- * e2e/blank-makers.spec.ts and e2e/contact.spec.ts use for their own popups. */
-async function navigateViaMenu(page: Page, label: string, hrefPattern: RegExp) {
-  await expect(async () => {
-    const menu = page.getByRole("menu");
-    if (!(await menu.isVisible())) {
-      await openMenu(page);
-    }
-    await page.getByRole("menu").getByRole("menuitem", { name: label, exact: true }).click();
-    await expect(page).toHaveURL(hrefPattern, { timeout: 1_000 });
-  }).toPass({ timeout: 20_000 });
-}
-
-/** The six design screens in tab order — this test file's own expectation, kept as a local
- * constant rather than imported from `components/site-nav.tsx`'s `NAV_LINKS`, the same way
- * `e2e/phone-layout.spec.ts` keeps its own `SCREEN_LABELS` rather than importing the app's list:
- * a test that reads the thing it's proving from the thing itself could pass for the wrong
- * reason. */
-const SCREENS = [
-  { label: "TEMPLATE", href: "/design/outline" },
-  { label: "ROCKER", href: "/design/rocker" },
-  { label: "RAILS", href: "/design/rails" },
-  { label: "VOLUME", href: "/design/volume" },
-  { label: "FINS", href: "/design/fins" },
-  { label: "SUMMARY", href: "/design/summary" },
-] as const;
 
 /** Every address this file proves draws the thin bar on, not only the six design screens: the
  * home screen and a mistyped address both mount `SiteNav` too (P-2, quick 260930-fjm). */
 const ROUTES = [...SCREENS.map((screen) => screen.href), "/", "/no-such-page"];
 
 /** Walks all six screens from the Menu, starting on TEMPLATE: for each screen in turn, moves
- * there via `navigateViaMenu`, confirms the move was client-side (the marker set once before the
- * walk survives every stop), confirms exactly one row in the Screens group is ticked and it is
+ * there by its tile (`goToScreen`), confirms the move was client-side (the marker set once before
+ * the walk survives every stop), confirms exactly one tile in the Screens group is ticked and it is
  * the screen just reached, then closes the menu with Escape before moving to the next screen —
  * proving the whole six-screen loop, not only one hop (T-r8s-01). */
 async function walkAllSixFromTheMenu(page: Page) {
@@ -171,43 +134,47 @@ async function walkAllSixFromTheMenu(page: Page) {
   });
 
   for (const screen of SCREENS) {
-    await navigateViaMenu(page, screen.label, new RegExp(`${screen.href}$`));
+    await goToScreen(page, screen.label);
+    await expect(page).toHaveURL(new RegExp(`${screen.href}$`));
     expect(await page.evaluate(() => (window as unknown as { __r8sMarker?: number }).__r8sMarker)).toBe(1);
 
     const popup = await openMenu(page);
     const group = popup.getByRole("group", { name: "Screens" });
     const current = group.locator('[aria-current="page"]');
     await expect(current).toHaveCount(1);
-    await expect(current).toHaveText(screen.label);
+    await expect(current).toHaveAttribute("data-screen-tile", screen.href);
+    await expect(current).toContainText(screen.label);
 
     await page.keyboard.press("Escape");
     await expect(popup).toBeHidden();
   }
 }
 
-/** Opens the menu and confirms all six screen rows sit whole inside the popup's own box — none
- * clipped by the fold — each at least 44 dots tall under a touch pointer (P-4). Logs the popup's
- * height and the last row's bottom edge for the SUMMARY. Returns the popup, left open. */
+/** Opens the menu and confirms all six screen tiles sit whole inside the sheet's own box — none
+ * clipped by the fold — in ONE row at this desktop-shell width, each at least 44 dots tall under a
+ * touch pointer. Logs the sheet's height and the tiles' bottom edge for the SUMMARY. Returns the
+ * sheet, left open. */
 async function assertAllSixInFirstView(page: Page): Promise<Locator> {
   const popup = await openMenu(page);
   const popupBox = await popup.boundingBox();
   if (!popupBox) throw new Error("popup has no bounding box");
 
-  const rows = popup.getByRole("group", { name: "Screens" }).getByRole("menuitem");
-  await expect(rows).toHaveCount(SCREENS.length);
+  const tiles = popup.getByRole("group", { name: "Screens" }).getByRole("menuitem");
+  await expect(tiles).toHaveCount(SCREENS.length);
 
-  let lastRowBottom = 0;
+  let lastTileBottom = 0;
+  const tops = new Set<number>();
   for (let index = 0; index < SCREENS.length; index += 1) {
-    const rowBox = await rows.nth(index).boundingBox();
-    if (!rowBox) throw new Error("screen row has no bounding box");
-    expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(popupBox.y + popupBox.height + 1);
-    // `coarse:min-h-11` is 44px by the token's own rem math, but the browser's own subpixel
-    // layout can round a measured box a shade under it (observed 43.99998) — half a dot of
-    // slack keeps the check honest about the real, sub-pixel-rendered height.
-    expect(rowBox.height).toBeGreaterThanOrEqual(43.5);
-    lastRowBottom = Math.max(lastRowBottom, rowBox.y + rowBox.height);
+    const tileBox = await tiles.nth(index).boundingBox();
+    if (!tileBox) throw new Error("screen tile has no bounding box");
+    expect(tileBox.y).toBeGreaterThanOrEqual(popupBox.y - 1);
+    expect(tileBox.y + tileBox.height).toBeLessThanOrEqual(popupBox.y + popupBox.height + 1);
+    expect(tileBox.height).toBeGreaterThanOrEqual(43.5);
+    tops.add(Math.round(tileBox.y));
+    lastTileBottom = Math.max(lastTileBottom, tileBox.y + tileBox.height);
   }
-  console.log(`[r8s] menu popup height ${popupBox.height}, last screen row bottom ${lastRowBottom}`);
+  expect(tops.size, "the six tiles sit in one row").toBe(1);
+  console.log(`[q2f] sideways sheet height ${popupBox.height}, tiles' bottom ${lastTileBottom}`);
 
   return popup;
 }
@@ -242,11 +209,8 @@ test.describe("a Pixel 7 held sideways gets the phone's thin bar, not the deskto
     expect(sidebarBox.x + sidebarBox.width).toBeLessThanOrEqual(canvasBox.x + 1);
 
     const popup = await openMenu(page);
-    await expect(popup.getByRole("menuitem").first()).toHaveText("TEMPLATE");
-    await expect(popup.getByRole("menuitem", { name: "TEMPLATE", exact: true })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    await expect(popup.getByRole("menuitem").first()).toHaveAttribute("data-screen-tile", "/design/outline");
+    await expect(screenTile(page, "TEMPLATE")).toHaveAttribute("aria-current", "page");
 
     // A marker that only a client-side move preserves — a hard navigation would wipe it along
     // with an unsaved board (T-r8s-02).
@@ -254,18 +218,12 @@ test.describe("a Pixel 7 held sideways gets the phone's thin bar, not the deskto
       (window as unknown as { __r8sMarker?: number }).__r8sMarker = 1;
     });
 
-    await navigateViaMenu(page, "ROCKER", /\/design\/rocker$/);
+    await goToScreen(page, "ROCKER");
     expect(await page.evaluate(() => (window as unknown as { __r8sMarker?: number }).__r8sMarker)).toBe(1);
 
-    const popupAgain = await openMenu(page);
-    await expect(popupAgain.getByRole("menuitem", { name: "ROCKER", exact: true })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    await expect(popupAgain.getByRole("menuitem", { name: "TEMPLATE", exact: true })).not.toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    await openMenu(page);
+    await expect(screenTile(page, "ROCKER")).toHaveAttribute("aria-current", "page");
+    await expect(screenTile(page, "TEMPLATE")).not.toHaveAttribute("aria-current", "page");
   });
 
   test("every screen has the thin bar", async ({ page }) => {
@@ -329,8 +287,9 @@ test.describe("a Pixel 7 held sideways gets the phone's thin bar, not the deskto
     const homePopup = await openMenu(page);
     await expect(homePopup.getByRole("menuitem", { name: "Home", exact: true })).toHaveCount(0);
     for (const screen of SCREENS) {
-      await expect(homePopup.getByRole("menuitem", { name: screen.label, exact: true })).toBeVisible();
+      await expect(screenTile(page, screen.label)).toBeVisible();
     }
+    await expect(homePopup.locator('[data-screen-tile][aria-current="page"]')).toHaveCount(0);
   });
 
   test("arrow keys start on the first screen", async ({ page }) => {
@@ -343,7 +302,7 @@ test.describe("a Pixel 7 held sideways gets the phone's thin bar, not the deskto
 
     const popup = page.getByRole("menu");
     await expect(popup).toBeVisible();
-    await expect(popup.locator("[data-highlighted]")).toHaveText("TEMPLATE");
+    await expect(popup.locator("[data-highlighted]")).toHaveAttribute("data-screen-tile", "/design/outline");
   });
 });
 
@@ -428,17 +387,18 @@ test.describe("a tall computer window keeps the desktop row; its gear menu has n
       for (const screen of SCREENS) {
         await expect(popup.getByRole("menuitem", { name: screen.label, exact: true })).toHaveCount(0);
       }
+      await expect(page.locator("[data-screen-tile]")).toHaveCount(0);
     });
   }
 });
 
-test.describe("an upright phone is unchanged: no screens group in its menu (quick 260930-r8s)", () => {
+test.describe("an upright phone's menu opens on the six screen tiles too (quick 261003-q2f)", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "phone-only: each phone project's own upright viewport");
     await dismissSignInBanner(page);
   });
 
-  test("the desktop row stays hidden, the tab bar and phone bar are unchanged, and the menu has no screens group", async ({
+  test("the desktop row stays hidden, there is no bottom tab bar, and the menu starts with the six tiles", async ({
     page,
   }, testInfo) => {
     await page.goto("/design/outline");
@@ -447,13 +407,13 @@ test.describe("an upright phone is unchanged: no screens group in its menu (quic
     expect(shortScreen).toBe(false);
 
     await expect(page.getByRole("banner")).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Screens" })).toBeVisible();
+    await expectNoScreensNavigation(page);
     await expect(page.locator("nav:not([aria-label])")).toBeHidden();
 
     const popup = await openMenu(page);
-    await expect(popup.getByRole("menuitem").first()).toHaveText("Home");
+    await expect(popup.getByRole("menuitem").first()).toHaveAttribute("data-screen-tile", "/design/outline");
     for (const screen of SCREENS) {
-      await expect(popup.getByRole("menuitem", { name: screen.label, exact: true })).toHaveCount(0);
+      await expect(screenTile(page, screen.label)).toBeVisible();
     }
 
     if (testInfo.project.name === "android") {
@@ -466,7 +426,7 @@ test.describe("an upright phone is unchanged: no screens group in its menu (quic
 
       const reopened = page.getByRole("menu");
       await expect(reopened).toBeVisible();
-      await expect(reopened.locator("[data-highlighted]")).toHaveText("Home");
+      await expect(reopened.locator("[data-highlighted]")).toHaveAttribute("data-screen-tile", "/design/outline");
     }
   });
 });
