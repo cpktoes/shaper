@@ -295,7 +295,11 @@ export function FinControls({
   const quarterInchRuleText = formatMark(inchesToMm(0.25), system);
 
   return (
-    <div className="flex h-full flex-col gap-5">
+    // No `h-full` here, on purpose: a column as tall as the scrolling box it sits in is harmless while
+    // nothing follows it, but the Back and Next pair now follows it, and then the pair lands at the
+    // box's own height with the rest of these controls (the fin model's own settings) spilling out
+    // underneath it — seen as the pair drawn over "Thruster Model" on a computer.
+    <div className="flex flex-col gap-5">
       <div>
         <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">Fin Setup &amp; Placement</div>
         <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">

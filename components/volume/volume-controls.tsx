@@ -79,7 +79,11 @@ export function VolumeControls({
   const thicknessDisabled = importingRailThickness;
 
   return (
-    <div className="flex h-full flex-col gap-5">
+    // No `h-full` here, on purpose: the column's own height used to be the whole sidebar's, which was
+    // harmless while nothing followed it. The Back and Next pair now sits right after it in the
+    // sidebar, and a full-height column would push the pair out past the sidebar's end — on a phone
+    // beyond the scrolling room reserved for it, on a computer into a scrollbar that was never needed.
+    <div className="flex flex-col gap-5">
       <div>
         <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">Volume Estimator</div>
         <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">

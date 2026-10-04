@@ -80,6 +80,7 @@ import { useOrderFormPreviewScale } from "./use-preview-scale";
 import { useOrderFormPrintFit } from "./use-print-fit";
 import { dimensionValueFitClass } from "./dimension-fit";
 import { cn } from "@/lib/utils";
+import { StepNav } from "@/components/design/step-nav";
 import { FIN_SETUPS, FIN_SYSTEMS, finRoundingNote, type FinSystem } from "@/lib/geometry/fins";
 import { planingTable } from "@/lib/geometry/planing";
 import type { RailSectionKey } from "@/lib/geometry/rail-bands";
@@ -974,6 +975,19 @@ export function OrderForm() {
           </div>
         )}
       </div>
+      {
+        // SUMMARY's Back to FINS, after the print controls and never on paper (StepNav hides itself from
+        // print). `max-w-80` is the widest the controls column's content ever gets on a computer (the
+        // 400px sidebar less its 40px padding each side) and this page centres its children, so on a
+        // computer Back sits centred under the print buttons rather than stretching across the window; on
+        // a phone it takes nearly the full width. `max-shell:pb-8` adds 32px to the page's own 32px of
+        // bottom padding: 64px under the button on an upright phone, the same room the other screens'
+        // controls end with, so Back scrolls clear of the floating Undo/Redo pair. The room is padding on
+        // this child, never more on the scroller itself (WebKit reads a scroller whose own padding
+        // outgrows its window as fully clipped — fast task 144). If the pair's phone position ever moves,
+        // this 32px must move together with the design shell's end room.
+      }
+      <StepNav className="w-full max-w-80 max-shell:pb-8" />
     </div>
   );
 }
