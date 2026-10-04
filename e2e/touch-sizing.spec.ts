@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openPhoneMenu } from "./helpers/screens";
 
 /**
  * PHON-03's proof: on the iphone and android projects, every control this plan resized —
@@ -163,13 +164,14 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     });
   }
 
-  test("every bottom tab bar tab is at least 44px tall", async ({ page }) => {
+  test("every screen tile in the menu is at least 44px tall", async ({ page }) => {
     await page.goto("/design/outline");
-    const tabs = page.getByRole("navigation", { name: "Screens" }).getByRole("link");
-    await expect(tabs.first()).toBeVisible();
-    for (const tab of await tabs.all()) {
-      const box = await tab.boundingBox();
-      if (!box) throw new Error("tab is missing a bounding box");
+    const sheet = await openPhoneMenu(page);
+    const tiles = sheet.locator("[data-screen-tile]");
+    await expect(tiles).toHaveCount(6);
+    for (const tile of await tiles.all()) {
+      const box = await tile.boundingBox();
+      if (!box) throw new Error("tile is missing a bounding box");
       expect(box.height).toBeGreaterThanOrEqual(44);
     }
   });

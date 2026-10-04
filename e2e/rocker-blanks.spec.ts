@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { goToScreen } from "./helpers/screens";
 
 /**
  * The finished ROCKER screen's browser proof (Phase 11, 11-11): pick a real blank from the list,
@@ -105,7 +106,7 @@ test.describe("ROCKER — a real blank from the list", () => {
     await expect(drawing).toHaveAttribute("aria-label", /: .+ from the nose tip and .+ from the tail tip$/);
 
     // The order form's compact drawing is never handed the blank, so it draws no mark.
-    await page.getByRole("link", { name: "SUMMARY", exact: true }).filter({ visible: true }).first().click();
+    await goToScreen(page, "SUMMARY");
     // The first visit builds the page on the test's dev server, which can take longer than 5 s.
     await expect(page).toHaveURL(/\/design\/summary/, { timeout: 30_000 });
     await expect(
@@ -287,7 +288,7 @@ test.describe("ROCKER — centre, placement, live numbers and the 12\" fine-tune
     await typeCenterThickness(page, "2 3/4");
     await expect(page.getByRole("textbox", { name: "Center Thickness" })).toHaveValue('2 3/4"');
 
-    await page.getByRole("link", { name: "RAILS", exact: true }).filter({ visible: true }).first().click();
+    await goToScreen(page, "RAILS");
     // The first visit builds the page on the test's dev server, which can take longer than 5 s.
     await expect(page).toHaveURL(/\/design\/rails/, { timeout: 30_000 });
     await expect(page.getByText('Board Thickness — 2 3/4"')).toBeVisible();

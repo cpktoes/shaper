@@ -65,8 +65,8 @@ async function dismissSignInBanner(page: Page) {
 }
 
 /** The three checks every case below makes, on the design route where `SiteNav`'s full row
- * (not `PhoneTabBar`/`PhoneTopBar`) actually renders: the document never scrolls sideways, the
- * nav element's own content never overflows its box, and the row's two end items — the wordmark
+ * (not the phone's `PhoneTopBar`; the old bottom tab bar was removed in quick 261003-q2f)
+ * actually renders: the document never scrolls sideways, the nav element's own content never overflows its box, and the row's two end items — the wordmark
  * on the left, the account-control cluster on the right — both sit inside the viewport's edges.
  * The third check is the one that proves the row is provably whole, not merely "doesn't scroll":
  * a `scrollWidth`-only check can pass even while an item visually spills past the edge if a

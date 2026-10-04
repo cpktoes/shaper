@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -104,13 +104,26 @@ describe("app/global-error.tsx's standalone frame", () => {
   });
 });
 
-describe("PhoneTabBar mounts", () => {
-  it("app/error.tsx and app/not-found.tsx each contain <PhoneTabBar /> exactly once", () => {
-    for (const path of [ERROR_SCREEN_PATH, NOT_FOUND_PATH]) {
+describe("no page mounts the old bottom tab bar (removed in quick 261003-q2f)", () => {
+  const FORMER_MOUNTS = [
+    ERROR_SCREEN_PATH,
+    NOT_FOUND_PATH,
+    join(REPO_ROOT, "app/page.tsx"),
+    join(REPO_ROOT, "app/design/layout.tsx"),
+    join(REPO_ROOT, "app/contact/page.tsx"),
+    join(REPO_ROOT, "app/privacy/page.tsx"),
+  ];
+
+  it("the error, not-found, home, design, Contact and Privacy pages neither import nor mount it", () => {
+    for (const path of FORMER_MOUNTS) {
       const stripped = readStripped(path);
-      const matches = stripped.match(/<PhoneTabBar\s*\/>/g) ?? [];
-      expect(matches.length).toBe(1);
+      expect(stripped, path).not.toContain("phone-tab-bar");
+      expect(stripped, path).not.toMatch(/<PhoneTabBar\b/);
     }
+  });
+
+  it("its file no longer exists", () => {
+    expect(existsSync(join(REPO_ROOT, "components/design/phone-tab-bar.tsx"))).toBe(false);
   });
 });
 

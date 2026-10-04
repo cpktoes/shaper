@@ -3,8 +3,8 @@
  * question the Back and Next buttons ask of it: "from this screen, which one comes before and which
  * one comes after?"
  *
- * The list of screens is passed in rather than written here, so the app's top row, phone tab bar
- * and these buttons all keep reading the one copy (`NAV_LINKS` in `components/site-nav.tsx`) and can
+ * The list of screens is passed in rather than written here, so the app's top row, the phone menu's
+ * screen tiles and these buttons all keep reading the one copy (`NAV_LINKS` in `components/site-nav.tsx`) and can
  * never disagree about the order. It never wraps round: Back on TEMPLATE or Next on SUMMARY would
  * have nowhere sensible to go, so those two ends simply have no button.
  *

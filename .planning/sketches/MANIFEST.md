@@ -74,8 +74,10 @@ needs no menu ("almost wizard like"). These two sketches use the app's own slate
 
 ## Open Questions
 
-- Phone chrome (007/008): does a phone held sideways keep its screens list in ☰ or switch to the tiles too?
-  Do Back + Next also appear on a computer, at the foot of the sidebar? Does the freed height go to the
+- Phone chrome (007/008): ~~does a phone held sideways keep its screens list in ☰ or switch to the tiles
+  too?~~ Answered: tiles too (the founder, 2026-10-03, "use on all screens that condense the top bar into a
+  menu"; built in quick 261003-q2f, one row of six sideways). Do Back + Next also appear on a computer, at
+  the foot of the sidebar? Does the freed height go to the
   controls (as sketched) or should the drawing's 66% cap grow?
 
 - If the fins diagram is ever printed standalone, its inputs lose the sidebar. Reintroduce as chips,

@@ -1,14 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
 import { BANNER_DISMISSAL_KEY } from "../../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../../lib/models/toolbar-tip";
+import { SCREENS, goToScreen } from "../helpers/screens";
 
 /**
  * Production-build proof that on a phone held upright the LAST control of every design screen can
  * be scrolled clear of the floating Undo/Redo pair (Phase 13 item 13's fix, 2026-10-03).
  *
  * The fault this spec first caught, on the live site: ROCKER's Tail Thinning Starts row is the last
- * control on the screen, and its Automatic button is right-aligned — exactly where the pair floats,
- * 12px above the tab bar. With the controls scrolled to their very end the button sat under the
+ * control on the screen, and its Automatic button is right-aligned — exactly where the pair floats.
+ * (Then it sat 12px above the old bottom tab bar; since quick 261003-q2f removed that bar it sits
+ * 16px in from the window's bottom-right corner, plus the home-bar inset on a real iPhone.) With the controls scrolled to their very end the button sat under the
  * Redo button, with nothing below it to scroll it clear, so a tap landed on Redo. The button only
  * comes alive once a start has been set by hand, and setting one is itself an edit, so the pair was
  * always there when the button was needed.
@@ -20,20 +22,12 @@ import { TOOLBAR_TIP_DISMISSAL_KEY } from "../../lib/models/toolbar-tip";
  * this same button passes whether the fault is there or not. Only a production build has the
  * layout a shaper actually gets.
  *
- * The first test is the general rule (no control on any of the six screens ends up under the pair);
- * the second is the named case, taken with a real tap.
+ * The first test is the general rule (no control on any of the six screens ends up under the pair,
+ * and every control in the pair's column — the Back and Next pair included — ends at least 7.5 dots
+ * above it, the 8 dots of daylight each screen's end room is sized for); the second is the named
+ * case, taken with a real tap. The screens are walked the way a shaper on a phone does, through the
+ * top bar's menu and its screen tiles (`e2e/helpers/screens.ts`).
  */
-
-/** `components/site-nav.tsx`'s NAV_LINKS, hand-written the way every phone spec in this suite does
- * (importing it would pull the database client into Playwright's own Node process). */
-const SCREENS = [
-  { href: "/design/outline", label: "TEMPLATE" },
-  { href: "/design/rocker", label: "ROCKER" },
-  { href: "/design/rails", label: "RAILS" },
-  { href: "/design/volume", label: "VOLUME" },
-  { href: "/design/fins", label: "FINS" },
-  { href: "/design/summary", label: "SUMMARY" },
-] as const;
 
 async function dismissPhoneBanners(page: Page) {
   await page.addInitScript((key) => window.sessionStorage.setItem(key, "true"), BANNER_DISMISSAL_KEY);
@@ -53,8 +47,7 @@ async function openAPresetWithThePairShowing(page: Page) {
 }
 
 async function openScreen(page: Page, screen: (typeof SCREENS)[number]) {
-  await page.getByRole("navigation", { name: "Screens" }).getByRole("link", { name: screen.label }).click();
-  await page.waitForURL(`**${screen.href}`);
+  await goToScreen(page, screen.label);
 }
 
 /** Sets a tip's Thinning Start by hand — the only state in which its Automatic button is live. */
@@ -77,6 +70,41 @@ async function scrollEverythingToItsEnd(page: Page) {
       }
     }
     window.scrollTo(0, document.documentElement.scrollHeight);
+  });
+}
+
+/** The smallest gap, in dots, between the pair's top edge and the bottom of any visible control whose
+ * left-to-right span overlaps the pair's — negative when one reaches below the pair's top. */
+async function smallestGapAboveThePair(page: Page): Promise<{ gap: number; control: string }> {
+  return page.evaluate(() => {
+    const pair = Array.from(document.querySelectorAll<HTMLElement>("button")).filter(
+      (button) => /^(Undo|Redo)$/.test(button.getAttribute("aria-label") ?? "") && button.getBoundingClientRect().width > 0,
+    );
+    const pairBoxes = pair.map((button) => button.getBoundingClientRect());
+    const pairLeft = Math.min(...pairBoxes.map((b) => b.left));
+    const pairRight = Math.max(...pairBoxes.map((b) => b.right));
+    const pairTop = Math.min(...pairBoxes.map((b) => b.top));
+    let best = { gap: Infinity, control: "none" };
+    const controls = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        'button, a[href], input, select, textarea, [role="slider"], [role="tab"], [role="checkbox"], [role="radio"], [role="switch"], [role="combobox"], [data-slot="slider-thumb"]',
+      ),
+    );
+    for (const el of controls) {
+      if (pair.includes(el) || el.closest("header")) continue;
+      const box = el.getBoundingClientRect();
+      if (box.width === 0 || box.height === 0) continue;
+      if (getComputedStyle(el).visibility === "hidden" || el.closest('[aria-hidden="true"]')) continue;
+      if (box.right <= pairLeft || box.left >= pairRight) continue;
+      // Scrolled out of sight above the window: nowhere near the pair.
+      if (box.bottom <= 0) continue;
+      const gap = pairTop - box.bottom;
+      if (gap < best.gap) {
+        const name = (el.getAttribute("aria-label") ?? el.textContent ?? el.tagName).replace(/\s+/g, " ").trim();
+        best = { gap, control: name.slice(0, 60) };
+      }
+    }
+    return best;
   });
 }
 
@@ -138,6 +166,11 @@ test.describe("on a phone, the last control always clears the floating Undo/Redo
       }
       await scrollEverythingToItsEnd(page);
       expect(await controlsUnderThePair(page), `${screen.label}: controls under the Undo/Redo pair`).toEqual([]);
+      const smallest = await smallestGapAboveThePair(page);
+      console.log(`[q2f] ${screen.label}: smallest gap above the pair ${smallest.gap} (${smallest.control})`);
+      expect(smallest.gap, `${screen.label}: ${smallest.control} ends at least 7.5 dots above the pair`).toBeGreaterThanOrEqual(
+        7.5,
+      );
     }
   });
 

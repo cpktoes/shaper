@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { goToScreen } from "./helpers/screens";
 import { automaticButtonLabel, thicknessIntroWithBlank } from "../lib/geometry/blank-reasons";
 import { BOARD_LENGTH_RANGE_IN } from "../lib/geometry/board";
 import { formatLength, stationLabel } from "../lib/geometry/measure-display";
@@ -588,8 +589,7 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
     }).toPass({ timeout: 30_000 });
 
     // ROCKER, client-side, so the board in progress comes along.
-    await page.getByRole("link", { name: "ROCKER", exact: true }).filter({ visible: true }).first().dispatchEvent("click");
-    await page.waitForURL("**/design/rocker");
+    await goToScreen(page, "ROCKER");
     await waitForLiveBlankList(page);
 
     await page.getByRole("searchbox", { name: "Search blanks" }).fill(`Arctic Foam 10'9"`);

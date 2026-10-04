@@ -5,8 +5,7 @@
  * spreads across three chrome pieces — the settings gear (Units, Theme) and the account control —
  * in ONE Base UI popup, stacked, not a button that opens a chooser of two menus. Built directly on
  * Base UI's `Menu` primitives, the same way `components/settings-menu.tsx` is — not any of the
- * three shadcn overlay wrappers this codebase deliberately keeps out of `components/ui/*` — and
- * styled with the identical popup class string so the two popups read as one design language.
+ * three shadcn overlay wrappers this codebase deliberately keeps out of `components/ui/*`.
  *
  * `SettingsMenuContent` is `settings-menu.tsx`'s own popup content, reused here rather than
  * copied, so the Units/Theme rows can never drift between the desktop gear menu and this one.
@@ -21,51 +20,42 @@
  * those three ever hide at once (each hides only on its own route), so the divider is always doing
  * real work separating at least one visible row from the settings below it.
  *
- * Since quick 260930-r8s (Phase 13 item 9d) this popup also carries the six design screens as its
- * very first group, ABOVE Home — a new row for each entry of `screens` (handed down from
- * `site-nav.tsx` via `PhoneTopBar`, never imported directly here, so the one `NAV_LINKS` list and
- * this menu can never form an import loop). This group is drawn ONLY at the desktop-shell width
- * (`hidden shell:block` on the group, `hidden shell:flex` on each row): below that width the
- * bottom tab bar already offers the six screens, so an upright phone's menu is unchanged. At and
- * above the shell width there is no tab bar, and — since this same quick task also hides the
- * desktop link row on a short screen — a phone held sideways has no other way between screens, so
- * this group is the only way there.
+ * Since quick 261003-q2f (sketch 007's C1; the founder: "build it now, use on all screens that
+ * condense the top bar into a menu") the popup is a SHEET whose first items are the six screen tiles
+ * (`components/design/screen-tiles.tsx`) — a small picture of the current board as each screen draws
+ * it, the screen's name and one line — wherever this menu shows: an upright phone, and any short
+ * screen such as a phone held sideways. The rows that were already here follow, unchanged. The same
+ * quick task removed the old bottom tab bar, so on a phone the tiles are how a shaper jumps between
+ * screens, and the Back and Next pair at the end of each screen's controls is the usual walk.
+ * `screens` is handed down from `site-nav.tsx` via `PhoneTopBar`, never imported directly here, so
+ * the one `NAV_LINKS` list and this menu can never form an import loop.
  *
- * Each row stays a real `Menu.Item` even while hidden by CSS, never left out of the React tree: Base
- * UI 1.7.0 treats a row that is not drawn (via the browser's own `checkVisibility()`) as
- * unavailable to arrow-key navigation and type-to-jump alike, and a `display: none` row is out of
- * the accessibility tree — so on an upright phone these six rows are simply not there for a
- * finger, a keyboard or a screen reader, with no JavaScript width check and no second copy of the
- * 820-dot shell number outside `app/globals.css` (whose compiled-CSS guard owns it). The hide sits
- * on each row itself, not only on the group, so older Safari's `display`-only fallback (no
- * `checkVisibility()`) reads the same answer.
- *
- * No visible "Screens" heading sits above the group — unlike Units or Theme below, which do have
- * one. Measured with the menu open on a sideways phone: the popup's own box is 324 dots tall on an
- * iPhone at 844x390 and 294 on a Pixel 7 at 863x360 (274 on an iPhone with Safari's own bar
- * showing, at 844x340). Six rows at 44 dots under a touch pointer, plus the popup's 6-dot top
- * padding, is 270 — enough for all six whole in the first view on all three, but a 27-dot heading
- * like Units' would push SUMMARY under the fold on two of them. So the group carries
- * `aria-label="Screens"` only (Base UI's `Menu.Group` passes it straight to its own `role="group"`
- * element) for a screen reader, with nothing drawn for a sighted shaper to read — the same shape
- * the Home/Contact/Privacy group above the settings already uses. The rest of the menu still
- * scrolls inside itself below the six rows, as it already does on a phone (quick 260926-wmf).
- *
- * The current screen's row carries a tick (`CheckIcon`, the same mark the Units and Theme rows use
- * for "this one") and `aria-current="page"`, using the same active test the desktop row and the
- * tab bar already use. Tapping a row moves with `router.push` — a client-side move that keeps an
- * unsaved board in memory, exactly like the Home row below — except tapping the current screen,
- * which only closes the menu (there is nowhere to move to).
+ * The sheet is placed by Base UI itself, with no new primitive: `Menu.Positioner` is anchored to the
+ * top bar's own `<header>` (handed in as `anchor`), on its bottom side, start-aligned, with no
+ * offset, no collision padding and no flipping or shifting — so it hangs exactly under the 48-dot
+ * bar from the window's left edge — and the popup takes Base UI's own `--anchor-width` (the bar spans
+ * the window, so the sheet does too) and `--available-height` (the room down to the window's bottom),
+ * scrolling inside itself when its rows run past that, as the menu always has on a phone (quick
+ * 260926-wmf). Arrow keys, Escape and a tap outside behave as in any menu here.
  */
 
+import type { RefObject } from "react";
 import { Menu } from "@base-ui/react/menu";
-import { CheckIcon, HouseIcon, MenuIcon } from "lucide-react";
+import { HouseIcon, MenuIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { ContactMenuItem, PrivacyMenuItem, SettingsMenuContent } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
+import { ScreenTiles } from "@/components/design/screen-tiles";
 import type { NavLink } from "@/components/site-nav";
 
-export function PhoneMenu({ screens }: { screens: readonly NavLink[] }) {
+export function PhoneMenu({
+  screens,
+  anchor,
+}: {
+  screens: readonly NavLink[];
+  /** The top bar's own header — the sheet hangs from its bottom edge and takes its width. */
+  anchor: RefObject<HTMLElement | null>;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   return (
@@ -83,37 +73,23 @@ export function PhoneMenu({ screens }: { screens: readonly NavLink[] }) {
       </Menu.Trigger>
 
       <Menu.Portal>
-        <Menu.Positioner side="bottom" align="end" sideOffset={10} className="isolate z-50">
-          {/* Height-limited to the room below the button, scrolling inside itself: on a phone the menu is taller than the screen (quick task 260926-wmf). */}
-          <Menu.Popup className="max-h-(--available-height) min-w-64 origin-(--transform-origin) overflow-y-auto rounded-lg border border-surf-line-faint bg-surf-panel p-1.5 shadow-lg outline-none duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
-            {/* The six design screens — drawn only at the desktop-shell width, where the bottom
-                tab bar is absent (quick 260930-r8s, item 9d; see the doc comment above). No
-                visible heading (P-4 above); `aria-label` names the group for a screen reader. */}
-            <Menu.Group aria-label="Screens" className="hidden shell:block">
-              {screens.map((link) => {
-                const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);
-                return (
-                  <Menu.Item
-                    key={link.href}
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => {
-                      if (!active) router.push(link.href);
-                    }}
-                    className="hidden shell:flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-surf-ink outline-none select-none coarse:min-h-11 data-highlighted:bg-surf-well"
-                  >
-                    <span aria-hidden className="size-4 shrink-0" />
-                    <span className="flex-1 text-xs font-bold tracking-architectural">{link.label}</span>
-                    {active && (
-                      <CheckIcon aria-hidden className="size-4 shrink-0 text-surf-accent-ink" />
-                    )}
-                  </Menu.Item>
-                );
-              })}
-            </Menu.Group>
-            <div
-              aria-hidden
-              className="hidden shell:block mx-2 my-1.5 border-t border-surf-line-faint"
-            />
+        <Menu.Positioner
+          anchor={anchor}
+          side="bottom"
+          align="start"
+          sideOffset={0}
+          collisionPadding={0}
+          collisionAvoidance={{ side: "none", align: "none" }}
+          className="isolate z-50"
+        >
+          {/* The sheet (see the doc comment above): the window's width under the bar, no taller than
+              the room below it, scrolling inside itself past that. The safe-area insets keep a real
+              iPhone's notch and home bar off the tiles and rows; they are 0 everywhere else. */}
+          <Menu.Popup className="max-h-(--available-height) w-(--anchor-width) overflow-y-auto overscroll-contain border-b border-surf-line-faint bg-surf-panel pt-3 pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] shadow-lg outline-none duration-150 data-open:animate-in data-open:fade-in-0 data-open:slide-in-from-top-2 data-closed:animate-out data-closed:fade-out-0 data-closed:slide-out-to-top-2">
+            {/* The six screens as pictures of the current board, first wherever this menu shows. */}
+            <ScreenTiles screens={screens} />
+            {/* Ten dots of air, no divider, between the tiles and the rows. */}
+            <div aria-hidden className="h-2.5" />
             {/* A way back to the home screen from any design screen — the phone has no
                 wordmark row to tap, so the menu carries it. Hidden on the home screen itself,
                 where it would only close the menu. router.push keeps the board in memory (a hard

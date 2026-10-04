@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectNoScreensNavigation, expectSixTilesInMenu } from "./helpers/screens";
 
 /**
  * 09-03's own proof, extending 09-02's phone-shell test file's own pattern to the three screens
@@ -16,7 +17,6 @@ const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
 // `-webkit-touch-callout`, a strip does not silently appear above every pinned-height and
 // bounding-box assertion in this file.
 const TOOLBAR_TIP_DISMISSAL_KEY = "shaper-toolbar-tip-dismissed";
-const SCREEN_LABELS = ["TEMPLATE", "ROCKER", "RAILS", "VOLUME", "FINS", "SUMMARY"];
 
 /** Matches 09-02's own test file's approach: dismiss the sign-in banner via sessionStorage,
  * set before navigation, so its own height never confuses a layout assertion. */
@@ -40,7 +40,7 @@ test.describe("phone routes — ROCKER, VOLUME and FINS never scroll sideways", 
     ["/design/volume", "VOLUME"],
     ["/design/fins", "FINS"],
   ] as const) {
-    test(`${label} (${path}): nothing scrolls sideways and its own tab is marked`, async ({ page }) => {
+    test(`${label} (${path}): nothing scrolls sideways and its own tile is ticked in the menu`, async ({ page }) => {
       await page.goto(path);
 
       const viewportSize = page.viewportSize();
@@ -48,14 +48,9 @@ test.describe("phone routes — ROCKER, VOLUME and FINS never scroll sideways", 
       const scrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);
       expect(scrollWidth).toBe(viewportSize.width);
 
-      const tabBar = page.getByRole("navigation", { name: "Screens" });
-      await expect(tabBar).toBeVisible();
-      const tabs = tabBar.getByRole("link");
-      await expect(tabs).toHaveCount(6);
-      expect(await tabs.allTextContents()).toEqual(SCREEN_LABELS);
-
-      const ownTab = tabBar.getByRole("link", { name: label });
-      await expect(ownTab).toHaveClass(/border-surf-accent/);
+      // No bottom tab bar since quick 261003-q2f: the menu's six tiles, this screen's ticked.
+      await expectNoScreensNavigation(page);
+      await expectSixTilesInMenu(page, label);
     });
   }
 });
@@ -193,7 +188,7 @@ test.describe("desktop — ROCKER, VOLUME and FINS keep the sidebar-beside-canva
   });
 
   for (const path of ["/design/rocker", "/design/volume", "/design/fins"] as const) {
-    test(`${path}: the sidebar sits left of the canvas and the phone tab bar is hidden`, async ({ page }) => {
+    test(`${path}: the sidebar sits left of the canvas, with no Menu button and no screen tiles`, async ({ page }) => {
       await page.goto(path);
 
       const sidebar = page.locator("aside");
@@ -206,7 +201,9 @@ test.describe("desktop — ROCKER, VOLUME and FINS keep the sidebar-beside-canva
       if (!sidebarBox || !canvasBox) throw new Error("missing bounding box");
       expect(sidebarBox.x + sidebarBox.width).toBeLessThanOrEqual(canvasBox.x + 1);
 
-      await expect(page.getByRole("navigation", { name: "Screens" })).toBeHidden();
+      await expectNoScreensNavigation(page);
+      await expect(page.getByRole("banner").getByRole("button", { name: "Menu" })).toBeHidden();
+      await expect(page.locator("[data-screen-tile]")).toHaveCount(0);
     });
   }
 });

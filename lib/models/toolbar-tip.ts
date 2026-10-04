@@ -6,8 +6,8 @@
  * `shouldShowToolbarTip` is a thin rule — `!dismissed` — and it stays that thin ON PURPOSE: the
  * phone-width gate and the iOS-only gate are deliberately CSS's job, not this function's, so the
  * tip's element stays in the server-rendered tree with no JavaScript width check and no flash
- * between layouts — the same argument `components/design/phone-tab-bar.tsx` already makes for
- * itself. Do not "fix" this later by pulling either CSS gate into this function.
+ * between layouts — the same argument the phone's compact top bar (`phone-top-bar.tsx`) makes for
+ * itself: the CSS alone decides what paints, so the first frame is right on every device. Do not "fix" this later by pulling either CSS gate into this function.
  *
  * Storage mirrors `lib/models/banner-dismissal.ts`'s shape — a stable key, a sentinel value, two
  * try/catch-guarded helpers — but reads and writes `localStorage`, the browser's PERMANENT

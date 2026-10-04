@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { goToScreen } from "./helpers/screens";
 
 /**
  * Phase 13 optional item 9b (quick task 260930-lia): TEMPLATE's last-edit ghost — after a drag or
@@ -463,39 +464,18 @@ test.describe("the ghost rule, on every project — O-1, off paper, off every ot
     const dOnTemplate = await ghost.getAttribute("d");
 
     // Never `page.goto` — that reloads and wipes the in-memory board, which would make this proof
-    // empty. Walk by the app's own visible links instead, the way e2e/summary-blank.spec.ts does.
-    // `dispatchEvent("click")`, not `.click()` (the same substitution e2e/phone-trip.spec.ts makes
-    // and explains at length): under `next dev` only, the `<nextjs-portal>` dev-mode indicator
-    // sits bottom-left of the viewport and can physically intercept a real pointer click at that
-    // screen position on a phone-width layout — a dev-server-only artifact, never present in the
-    // production build. `dispatchEvent` fires the DOM `click` event straight on the `<a>` itself,
-    // which is what Next's own `<Link>` listens for, so this still proves the link's own handler
-    // navigates, just without racing a dev-only overlay.
-    await page
-      .getByRole("link", { name: "SUMMARY", exact: true })
-      .filter({ visible: true })
-      .first()
-      .dispatchEvent("click");
-    await page.waitForURL(/\/design\/summary$/);
+    // empty. Walk the way a shaper does instead (the desktop nav, or the phone menu's screen
+    // tiles), the way e2e/summary-blank.spec.ts does — both are client-side moves.
+    await goToScreen(page, "SUMMARY");
     await expect(page.locator("[data-board-silhouette='outline']").first()).toBeVisible();
     await expect(page.locator("[data-outline-ghost]")).toHaveCount(0);
 
     // The board kept it: the ghost is back, with the same shape, proof its absence on SUMMARY was
     // real and not merely "the page hasn't rendered a ghost yet."
-    await page
-      .getByRole("link", { name: "TEMPLATE", exact: true })
-      .filter({ visible: true })
-      .first()
-      .dispatchEvent("click");
-    await page.waitForURL(/\/design\/outline$/);
+    await goToScreen(page, "TEMPLATE");
     await expect(page.locator("[data-outline-ghost]")).toHaveAttribute("d", dOnTemplate ?? "");
 
-    await page
-      .getByRole("link", { name: "ROCKER", exact: true })
-      .filter({ visible: true })
-      .first()
-      .dispatchEvent("click");
-    await page.waitForURL(/\/design\/rocker$/);
+    await goToScreen(page, "ROCKER");
     await expect(page.locator("[data-outline-ghost]")).toHaveCount(0);
 
     await page.locator('a[href="/"]').filter({ visible: true }).first().dispatchEvent("click");

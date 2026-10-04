@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { goToScreen } from "./helpers/screens";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_FOIL_SPEC } from "../lib/geometry/foil";
@@ -91,9 +92,7 @@ async function openLongboardDatasheet(page: Page) {
     await longboard.first().click();
     await page.waitForURL("**/design/outline", { timeout: 2_000 });
   }).toPass({ timeout: 20_000 });
-  const rockerLink = page.getByRole("link", { name: "ROCKER", exact: true }).filter({ visible: true }).first();
-  await rockerLink.dispatchEvent("click");
-  await page.waitForURL("**/design/rocker");
+  await goToScreen(page, "ROCKER");
   await page.getByRole("tab", { name: "DATASHEET" }).click();
 }
 
@@ -139,11 +138,9 @@ test.describe("a new board", () => {
       await page.waitForURL("**/design/outline", { timeout: 2_000 });
     }).toPass({ timeout: 20_000 });
 
-    // Client-side, through whichever ROCKER link this layout shows (the desktop nav or the phone
-    // tab bar); dispatchEvent sidesteps the dev server's own corner overlay (phone-trip.spec.ts).
-    const rockerLink = page.getByRole("link", { name: "ROCKER", exact: true }).filter({ visible: true }).first();
-    await rockerLink.dispatchEvent("click");
-    await page.waitForURL("**/design/rocker");
+    // Client-side, the way this layout's shaper moves (the desktop nav, or the phone menu's ROCKER
+    // tile), so the board in progress comes along.
+    await goToScreen(page, "ROCKER");
 
     await expect(page.locator("[data-blank-silhouette]").first()).toBeAttached();
 

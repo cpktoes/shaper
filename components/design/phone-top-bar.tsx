@@ -4,15 +4,15 @@
  * The phone's compact top bar (D-08): the wordmark, the Save control and the one menu button, in
  * one non-wrapping row. Mounted beside the desktop nav row in `components/site-nav.tsx`, shown
  * below the shell breakpoint (`hidden max-shell:flex`) — the two are always both in the
- * server-rendered tree, and the width variant alone decides which paints, exactly like
- * `components/design/phone-tab-bar.tsx`. Since quick 260930-r8s (Phase 13 item 9d) it is also
+ * server-rendered tree, and the width variant alone decides which paints. Since quick 260930-r8s (Phase 13 item 9d) it is also
  * shown on a short screen, 500 dots tall or less, AT ANY WIDTH — a height-alone media query
  * written inline on the header's own className below, the same inline form
  * `design-screen-shell.tsx`, RAILS and FINS already use — so a phone held sideways gets this one
  * thin line instead of the desktop row, which used to wrap SHAPER ASSISTANT onto two lines there.
  * Now 48 dots (`--phone-top-bar-h`, item 9e, quick 260930-s23, P-7 — was 56), still read from the
- * one token in `app/globals.css`; the menu it opens carries the six screens at the desktop-shell
- * width, where there is no bottom tab bar to reach them from otherwise.
+ * one token in `app/globals.css`. Wherever this bar draws, its menu opens a sheet that hangs from
+ * the bar's own bottom edge and spans the window, starting with the six screen tiles (quick
+ * 261003-q2f) — so the header hands itself to the menu as the sheet's anchor.
  *
  * `SaveButton` is reused unchanged — its own four strings (Save, Saving…, Saved, Not saved) are
  * the whole story on a phone too, no phone-specific rewording. Save has always been rendered on
@@ -26,6 +26,7 @@
  * one module-level constant precisely so those two branches can never drift apart.
  */
 
+import { useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SaveButton } from "@/components/design/save-button";
@@ -45,9 +46,12 @@ const WORDMARK_CLASS = "text-xs font-extrabold tracking-architectural text-surf-
 export function PhoneTopBar({ screens }: { screens: readonly NavLink[] }) {
   const pathname = usePathname();
   const onHomeScreen = pathname === "/";
+  // The menu's sheet hangs from this header's bottom edge and takes its width (quick 261003-q2f).
+  const headerRef = useRef<HTMLElement>(null);
 
   return (
     <header
+      ref={headerRef}
       data-print-hide
       // Item 9e (orchestrator amendment, 2026-09-30, from the planner's own P-13 finding): the
       // flat `px-4` becomes `env(safe-area-inset-left)`/`-right`-aware padding, each floored at
@@ -69,7 +73,7 @@ export function PhoneTopBar({ screens }: { screens: readonly NavLink[] }) {
       <div className="flex items-center gap-3">
         <SaveButton />
         <span aria-hidden className="h-4 w-px bg-surf-line-faint" />
-        <PhoneMenu screens={screens} />
+        <PhoneMenu screens={screens} anchor={headerRef} />
       </div>
     </header>
   );
