@@ -11,7 +11,7 @@
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { summarizeDesign, type DesignSummary } from "./design";
 import type { BoardPreset } from "./presets";
-import { formatCentimetres, formatFeetInches, formatInchesFraction, type UnitsSystem } from "./units";
+import { formatCentimetres, formatFeetInches, formatInchesFraction, type Mm, type UnitsSystem } from "./units";
 import { DEFAULT_VOLUME_SPEC } from "./volume";
 
 /**
@@ -60,6 +60,18 @@ export function formatDimsExample(summary: DesignSummary, system: UnitsSystem): 
     formatInchesFraction(summary.widePointWidth),
     formatInchesFraction(summary.centerThickness),
   ].join(" · ");
+}
+
+/**
+ * A board's length by its widest width, on one line — the TEMPLATE tile's line in the phone menu's
+ * screen pictures (quick 261003-q2f). Imperial reads `6'2" × 18 3/4"`, each value carrying its own
+ * mark as everywhere in Imperial; Metric reads `188.0 × 47.6 cm`, centimetres to one decimal with the
+ * unit once at the end (CLAUDE.md Rule 2: dims, one unit per line of running text). Built from the
+ * same formatters as `formatSummaryLine`, so the tile and the preset card never disagree.
+ */
+export function formatLengthByWidth(length: Mm, width: Mm, system: UnitsSystem): string {
+  if (system === "metric") return `${formatCentimetres(length)} × ${formatCentimetres(width)} cm`;
+  return `${formatFeetInches(length)} × ${formatInchesFraction(width)}`;
 }
 
 /**

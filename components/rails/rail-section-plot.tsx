@@ -14,7 +14,7 @@ import type { RailCallout } from "./rail-callouts";
 import { CALLOUT_CHAR_PX, CALLOUT_PX, DimensionTick, pinnedCalloutSizes, useSvgFitScale } from "@/components/viewer/callout-primitives";
 import { useUnits } from "@/components/units-provider";
 import { formatMarkBare } from "@/lib/geometry/measure-display";
-import type { RailSectionKey, RailSectionOutput, RailSegmentKey } from "@/lib/geometry/rail-bands";
+import { railPlotDots, type RailSectionKey, type RailSectionOutput, type RailSegmentKey } from "@/lib/geometry/rail-bands";
 import { inchesToMm, mm, type Mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
 
 // px per inch, matches buildPlot's default scale for all output-card plots. Exported so a caller
@@ -94,8 +94,11 @@ export const RAIL_SEGMENT_COLORS: Record<RailSegmentKey, string> = {
   railConn: "var(--color-surf-ink)",
 };
 
+/** The apex centre's own dot and key colour — exported so the RAILS picture in the phone menu draws
+ * it the same. */
+export const RAIL_APEX_CENTER_COLOR = "#a8425f";
+
 const LEGEND_HIDDEN_KEYS = new Set<RailSegmentKey>(["bottomConn", "railConn"]);
-const NO_DOT_BASE_KEYS = new Set<RailSegmentKey>(["boardConn", "bottomConn", "railConn"]);
 
 export interface RailLegendEntry {
   label: string;
@@ -105,7 +108,7 @@ export interface RailLegendEntry {
 /** Apex Center, then each segment's label except the two hidden connectors, then Tapered Rail
  * Thickness when the section is domed — built from whichever section's output is passed in. */
 export function buildRailLegend(output: RailSectionOutput): RailLegendEntry[] {
-  const legend: RailLegendEntry[] = [{ label: "Apex Center", color: "#a8425f" }];
+  const legend: RailLegendEntry[] = [{ label: "Apex Center", color: RAIL_APEX_CENTER_COLOR }];
   for (const seg of output.segments) {
     if (LEGEND_HIDDEN_KEYS.has(seg.key)) continue;
     legend.push({ label: seg.label, color: RAIL_SEGMENT_COLORS[seg.key] });
@@ -481,20 +484,13 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
     color: RAIL_SEGMENT_COLORS[seg.key],
   }));
 
-  const noDotKeys = new Set(NO_DOT_BASE_KEYS);
-  if (result.hardEdge) noDotKeys.add("hardEdge");
-  const dots: { cx: number; cy: number; color: string }[] = [];
-  segments.forEach((seg) => {
-    if (noDotKeys.has(seg.key)) return;
-    const color = RAIL_SEGMENT_COLORS[seg.key];
-    dots.push({ cx: px(mmToInches(seg.p1.x)), cy: py(mmToInches(seg.p1.y)), color });
-    dots.push({ cx: px(mmToInches(seg.p2.x)), cy: py(mmToInches(seg.p2.y)), color });
-  });
-  dots.push({ cx: px(0), cy: py(mmToInches(result.apexCenter)), color: "#a8425f" });
-  if (domed) {
-    const domedBandSeg = segments.find((s) => s.key === "domedBand");
-    if (domedBandSeg) dots.push({ cx: px(0), cy: py(mmToInches(domedBandSeg.p1.y)), color: "#6b8e4e" });
-  }
+  // Which marks get a dot, and in what order, is `railPlotDots`' one rule (lib/geometry/rail-bands.ts)
+  // — the same rule the RAILS picture in the phone menu reads (quick 261003-q2f).
+  const dots: { cx: number; cy: number; color: string }[] = railPlotDots(segments, result, domed).map((dot) => ({
+    cx: px(mmToInches(dot.x)),
+    cy: py(mmToInches(dot.y)),
+    color: dot.key === "apexCenter" ? RAIL_APEX_CENTER_COLOR : RAIL_SEGMENT_COLORS[dot.key],
+  }));
 
   // A tick's own little mark (the short perpendicular line below/beside the axis, distinct from
   // the long `gridLines` spanning the whole plot) is drawn for every 10mm step regardless of
