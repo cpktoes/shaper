@@ -6,12 +6,17 @@
    THEMING SYSTEM
    ===========================================================================
 
-   Three layers. Components only ever touch layer 3.
+   Three layers. Components only ever touch layer 3 — with one exception: the
+   App Default Settings theme tiles (components/theme-tiles.tsx) read each
+   theme's own ramp through `rampVar()` in lib/theme.ts, so every theme shows
+   at once whichever is on screen. Nothing else may.
 
      1. RAMPS      `--ramp-<theme>-<role>`
                    Raw values. Defined once at :root, inert until a theme block
-                   points at them, never referenced by a component. Adding a
-                   theme means adding a ramp — no existing value moves.
+                   points at them, never referenced by a component (the one
+                   exception: the App Default Settings theme tiles, through
+                   `rampVar()` — see above). Adding a theme means adding a ramp
+                   — no existing value moves.
 
      2. CONTRACT   `--surf-<role>`
                    Semantic role names. Every theme assigns the same contract
@@ -188,7 +193,9 @@
 }
 
 /* ---------------------------------------------------------------------------
-   LAYER 1 — RAMPS  (one per theme; raw values, never referenced by a component)
+   LAYER 1 — RAMPS  (one per theme; raw values, never referenced by a component —
+   except the App Default Settings theme tiles, always through `rampVar()` in
+   lib/theme.ts, so each tile can show its own theme whatever is on screen)
    Every ratio was computed, not eyeballed: 4.5:1 for text, 3:1 for UI boundaries.
    All four themes currently clear every pairing in the contract.
 

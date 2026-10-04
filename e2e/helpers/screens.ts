@@ -40,7 +40,12 @@ async function waitForMenuButton(page: Page) {
 /** Taps ☰ in the top bar and returns the open sheet once a tile shows, settled past its opening
  * animation (a box read mid-animation is a frame short of its final place). */
 export async function openPhoneMenu(page: Page): Promise<Locator> {
-  const menu = page.getByRole("menu");
+  // A sheet still animating shut from the last tap carries Base UI's `data-closed`: it is not open,
+  // and its tiles vanish mid-tap. Wait for it to go before deciding whether ☰ needs a tap — on a
+  // production build the next step can arrive inside that 150ms exit, and a closing sheet read as
+  // open left the tap waiting for a tile that had already gone.
+  await expect(page.locator('[role="menu"][data-closed]')).toHaveCount(0);
+  const menu = page.locator('[role="menu"]:not([data-closed])');
   if (!(await menu.isVisible())) {
     await waitForMenuButton(page);
     await page.getByRole("banner").getByRole("button", { name: "Menu" }).click();

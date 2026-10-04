@@ -18,6 +18,10 @@
  * string — a primitive, equal to itself whenever storage has not changed — and it is parsed once
  * per change, in a `useMemo`, through the untrusted-value allow-list in
  * `lib/fit-defaults-preference.ts` (T-11-23, T-11-25).
+ *
+ * It holds the values only. The pop-up where a shaper changes them — the fit part of App Default
+ * Settings — is rendered by `components/app-settings-provider.tsx`, further in, where it can also
+ * read the theme and the blank makers (quick 261003-uwi).
  */
 
 import {
@@ -27,12 +31,10 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { saveFitDefaultsPreference } from "@/app/actions/fit-defaults";
-import { FitDefaultsDialog } from "@/components/fit-defaults-dialog";
 import {
   EMPTY_FIT_DEFAULTS_PREFERENCE,
   FIT_DEFAULTS_STORAGE_KEY,
@@ -126,8 +128,6 @@ export interface FitDefaultsContextValue {
   setDefault: <K extends FitDefaultsKey>(key: K, value: FitDefaultsPreference[K]) => void;
   /** Returns all seven to "not chosen", so every one reads its default again. */
   restoreDefaults: () => void;
-  /** Opens the Fit & Tip Defaults dialog, rendered once by this provider. */
-  openDialog: () => void;
 }
 
 const FitDefaultsContext = createContext<FitDefaultsContextValue | null>(null);
@@ -270,12 +270,6 @@ export function FitDefaultsProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handoff.promoteToAccount]);
 
-  /* -- the dialog ----------------------------------------------------------------------- */
-  // Held here, not in the gear menu: the menu popup unmounts the moment it closes, and a dialog
-  // rendered inside it would vanish with it.
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const openDialog = useCallback(() => setDialogOpen(true), []);
-
   const value = useMemo<FitDefaultsContextValue>(() => {
     const defaults = resolveFitDefaults(preference);
     return {
@@ -284,16 +278,10 @@ export function FitDefaultsProvider({
       settings: toFitSettings(defaults),
       setDefault,
       restoreDefaults,
-      openDialog,
     };
-  }, [preference, setDefault, restoreDefaults, openDialog]);
+  }, [preference, setDefault, restoreDefaults]);
 
-  return (
-    <FitDefaultsContext.Provider value={value}>
-      {children}
-      <FitDefaultsDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-    </FitDefaultsContext.Provider>
-  );
+  return <FitDefaultsContext.Provider value={value}>{children}</FitDefaultsContext.Provider>;
 }
 
 export function useFitDefaults(): FitDefaultsContextValue {

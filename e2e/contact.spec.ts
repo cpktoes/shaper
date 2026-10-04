@@ -145,7 +145,7 @@ test.describe("Contact page", () => {
 
   test("the Contact row is left out on the Contact page itself", async ({ page }, testInfo) => {
     await page.goto(CONTACT_ROUTE);
-    await openMenuTo(page, testInfo.project.name, page.getByRole("menuitemradio", { name: /Imperial/ }));
+    await openMenuTo(page, testInfo.project.name, page.getByRole("menuitem", { name: /^App Default Settings/ }));
     await expect(contactRow(page)).toHaveCount(0);
   });
 

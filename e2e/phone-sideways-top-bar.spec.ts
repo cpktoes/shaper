@@ -260,18 +260,10 @@ test.describe("a Pixel 7 held sideways gets the phone's thin bar, not the deskto
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
     }
-    for (const name of [/Imperial/, /Metric/, /System/]) {
-      const row = popup.getByRole("menuitemradio", { name });
-      await row.scrollIntoViewIfNeeded();
-      await expect(row).toBeVisible();
-    }
-    const fitDefaults = popup.getByRole("menuitem", { name: /Fit & Tip Defaults/ });
-    await fitDefaults.scrollIntoViewIfNeeded();
-    await expect(fitDefaults).toBeVisible();
-
-    const checkbox = popup.getByRole("menuitemcheckbox").first();
-    await checkbox.scrollIntoViewIfNeeded();
-    await expect(checkbox).toBeVisible();
+    // Units, theme, blank makers and the fit and tip defaults all live behind this one row.
+    const appSettings = popup.getByRole("menuitem", { name: /^App Default Settings/ });
+    await appSettings.scrollIntoViewIfNeeded();
+    await expect(appSettings).toBeVisible();
 
     const account = popup.locator("[data-phone-menu-account]");
     await account.scrollIntoViewIfNeeded();

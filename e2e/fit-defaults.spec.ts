@@ -1,11 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { DEFAULT_FIT_DEFAULTS, FIT_DEFAULTS_MM_KEYS } from "../lib/fit-defaults-preference";
 import { formatMark } from "../lib/geometry/measure-display";
+import { appSettingsDialog, appSettingsRow, openAppSettings, openSettingsMenu, settled } from "./helpers/settings";
 
 /**
- * 11-08 (D-09): the gear menu's Fit & Tip Defaults row and the dialog it opens, proved in a real
- * browser on all three projects — the desktop gear (`Settings`) and the phone top bar's single
- * `Menu` both reach it, because the phone menu renders the same settings content. Phase 12 (12-03)
+ * 11-08 (D-09): the fit and tip defaults, proved in a real browser on all three projects. Since
+ * quick 261003-uwi they are the fit part of App Default Settings — the pop-up the one "App Default
+ * Settings" row opens from the desktop gear (`Settings`) or the phone top bar's single `Menu`
+ * (e2e/helpers/settings.ts reaches it either way). Phase 12 (12-03)
  * replaced Phase 11's extra-centre-thickness rule with Planer Max Depth and added Deck Skin to the
  * number rows; 12-04 added the Tip Style default (Pin deck / Bottom) as the last row.
  *
@@ -55,14 +57,6 @@ async function setMetricUnits(page: Page) {
   }, UNITS_STORAGE_KEY);
 }
 
-/** The dialog opens with a zoom-in animation; a box read mid-animation is a frame short of its
- * settled size (the same wait `phone-dialogs.spec.ts` uses). */
-async function settled(locator: Locator) {
-  await locator.evaluate(async (el) => {
-    await Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => undefined)));
-  });
-}
-
 /** A control's laid-out height. Read from `offsetHeight` rather than a bounding box: the dialog
  * is centred with a half-size translate, which can land it on a fractional pixel and read a 44px
  * field back as 43.99997px — a layout size is what "44px tall" means. */
@@ -70,35 +64,13 @@ async function layoutHeight(locator: Locator): Promise<number> {
   return locator.evaluate((el) => (el as HTMLElement).offsetHeight);
 }
 
-/** The desktop nav's gear, or the phone top bar's one Menu button — whichever this project shows. */
-function menuTrigger(page: Page, projectName: string): Locator {
-  return projectName === "desktop"
-    ? page.getByRole("button", { name: "Settings" })
-    : page.getByRole("banner").getByRole("button", { name: "Menu" });
+/** The pop-up's fit part — WHICH BLANKS FIT and NEW BOARDS START WITH — so a text lookup never
+ * matches the UNITS, THEME or BLANK MAKERS rows above it. */
+function fitPart(dialog: Locator): Locator {
+  return dialog.locator("[data-app-settings-fit]");
 }
 
-/** Opens the menu and returns the Fit & Tip Defaults row. Retried, because a click that lands
- * before the page has hydrated does nothing — and only clicked again while the menu is still
- * closed, so a retry can never toggle an open menu shut. */
-async function openMenuRow(page: Page, projectName: string): Promise<Locator> {
-  const trigger = menuTrigger(page, projectName);
-  const row = page.getByRole("menuitem", { name: /Fit & Tip Defaults/ });
-  await expect(trigger).toBeVisible();
-  await expect(async () => {
-    if (!(await row.isVisible())) await trigger.click();
-    await expect(row).toBeVisible({ timeout: 1_000 });
-  }).toPass({ timeout: 20_000 });
-  return row;
-}
-
-async function openDialog(page: Page, projectName: string): Promise<Locator> {
-  const row = await openMenuRow(page, projectName);
-  await row.click();
-  const dialog = page.getByRole("dialog", { name: "Fit & Tip Defaults" });
-  await expect(dialog).toBeVisible();
-  await settled(dialog);
-  return dialog;
-}
+const RESTORE = { name: "Restore Fit & Tip Defaults", exact: true } as const;
 
 /** The Tip Style row's two pills, found through the pair's own group name (12-UI-SPEC §4/§6). */
 function tipStylePills(dialog: Locator) {
@@ -123,41 +95,45 @@ async function expectFieldValues(dialog: Locator, values: string[]) {
   }
 }
 
-test.describe("Fit & Tip Defaults — the gear menu's BLANKS row and its dialog", () => {
+test.describe("Fit & Tip Defaults — the fit part of App Default Settings", () => {
   test.beforeEach(async ({ page }) => {
     await dismissBannerAndTip(page);
   });
 
-  test("the row opens the dialog, which shows every group, hint and default", async ({ page }, testInfo) => {
+  test("the App Default Settings row opens the pop-up, whose fit part shows every group, hint and default", async ({
+    page,
+  }) => {
     await page.goto("/design/outline");
-    const row = await openMenuRow(page, testInfo.project.name);
-    await expect(row).toContainText("Spare foam, planer, skin and tips");
+    await openSettingsMenu(page);
+    const row = appSettingsRow(page);
+    await expect(row).toContainText("Units, theme, blank makers, fit and tips");
     await row.click();
 
-    const dialog = page.getByRole("dialog", { name: "Fit & Tip Defaults" });
+    const dialog = appSettingsDialog(page);
     await expect(dialog).toBeVisible();
     // The menu closed behind it — the row is one tap, not a second menu level.
-    await expect(page.getByRole("menuitem", { name: /Fit & Tip Defaults/ })).toBeHidden();
+    await expect(appSettingsRow(page)).toBeHidden();
 
-    await expect(dialog.getByText("WHICH BLANKS FIT")).toBeVisible();
-    await expect(dialog.getByText("NEW BOARDS START WITH")).toBeVisible();
-    await expect(dialog.getByText("Boards you've already started keep their own.")).toBeVisible();
+    const fit = fitPart(dialog);
+    await expect(fit.getByText("WHICH BLANKS FIT")).toBeVisible();
+    await expect(fit.getByText("NEW BOARDS START WITH")).toBeVisible();
+    await expect(fit.getByText("Boards you've already started keep their own.")).toBeVisible();
     await expectFieldValues(dialog, IMPERIAL_DEFAULTS);
     // Tip Style is the last row of NEW BOARDS START WITH, and nothing chosen reads Pin deck (D-04).
-    await expect(dialog.getByText("Pin deck takes the tips' extra off the bottom; Bottom takes it off the deck.")).toBeVisible();
+    await expect(fit.getByText("Pin deck takes the tips' extra off the bottom; Bottom takes it off the deck.")).toBeVisible();
     await expect(tipStylePills(dialog).group).toBeVisible();
     await expectTipStyle(dialog, "Pin deck");
     // The retired rule is gone from everything a shaper can read (D-10).
     await expect(dialog.getByText("Extra Center Thickness")).toHaveCount(0);
-    await expect(dialog.getByRole("button", { name: "Restore Defaults" })).toBeVisible();
+    await expect(dialog.getByRole("button", RESTORE)).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Done" })).toBeVisible();
   });
 
-  test("a committed value applies at once, survives a reload, and Restore Defaults brings back the default", async ({
+  test("a committed value applies at once, survives a reload, and Restore Fit & Tip Defaults brings back the default", async ({
     page,
-  }, testInfo) => {
+  }) => {
     await page.goto("/design/outline");
-    let dialog = await openDialog(page, testInfo.project.name);
+    let dialog = await openAppSettings(page);
 
     const extraLength = dialog.getByRole("textbox", { name: "Extra Length", exact: true });
     await extraLength.fill("3");
@@ -176,24 +152,24 @@ test.describe("Fit & Tip Defaults — the gear menu's BLANKS row and its dialog"
     expect(JSON.parse(decodeURIComponent(cookie!.value)).extraLength).toBeCloseTo(76.2, 6);
 
     await page.reload();
-    dialog = await openDialog(page, testInfo.project.name);
+    dialog = await openAppSettings(page);
     await expect(dialog.getByRole("textbox", { name: "Extra Length", exact: true })).toHaveValue('3"');
 
-    await dialog.getByRole("button", { name: "Restore Defaults" }).click();
+    await dialog.getByRole("button", RESTORE).click();
     await expectFieldValues(dialog, IMPERIAL_DEFAULTS);
 
     // Restored means "not chosen" everywhere — a second reload still reads the default.
     await dialog.getByRole("button", { name: "Done" }).click();
     await page.reload();
-    dialog = await openDialog(page, testInfo.project.name);
+    dialog = await openAppSettings(page);
     await expectFieldValues(dialog, IMPERIAL_DEFAULTS);
   });
 
-  test("a typed Planer Max Depth and Deck Skin survive a reload, and Restore Defaults returns both to 1/8\"", async ({
+  test("a typed Planer Max Depth and Deck Skin survive a reload, and Restore Fit & Tip Defaults returns both to 1/8\"", async ({
     page,
-  }, testInfo) => {
+  }) => {
     await page.goto("/design/outline");
-    let dialog = await openDialog(page, testInfo.project.name);
+    let dialog = await openAppSettings(page);
 
     const planer = () => dialog.getByRole("textbox", { name: "Planer Max Depth", exact: true });
     const skin = () => dialog.getByRole("textbox", { name: "Deck Skin", exact: true });
@@ -207,21 +183,21 @@ test.describe("Fit & Tip Defaults — the gear menu's BLANKS row and its dialog"
     await expect(dialog).toBeHidden();
 
     await page.reload();
-    dialog = await openDialog(page, testInfo.project.name);
+    dialog = await openAppSettings(page);
     await expect(planer()).toHaveValue('3/16"');
     await expect(skin()).toHaveValue('1/4"');
 
-    await dialog.getByRole("button", { name: "Restore Defaults" }).click();
+    await dialog.getByRole("button", RESTORE).click();
     await expectFieldValues(dialog, IMPERIAL_DEFAULTS);
     await expect(planer()).toHaveValue('1/8"');
     await expect(skin()).toHaveValue('1/8"');
   });
 
-  test("Tip Style: a tap on Bottom applies at once, survives a reload, and Restore Defaults returns Pin deck", async ({
+  test("Tip Style: a tap on Bottom applies at once, survives a reload, and Restore Fit & Tip Defaults returns Pin deck", async ({
     page,
-  }, testInfo) => {
+  }) => {
     await page.goto("/design/outline");
-    let dialog = await openDialog(page, testInfo.project.name);
+    let dialog = await openAppSettings(page);
     await expectTipStyle(dialog, "Pin deck");
 
     await tipStylePills(dialog).bottom.click();
@@ -238,32 +214,43 @@ test.describe("Fit & Tip Defaults — the gear menu's BLANKS row and its dialog"
     expect(JSON.parse(decodeURIComponent(cookie!.value)).tipStyle).toBe("bottom");
 
     await page.reload();
-    dialog = await openDialog(page, testInfo.project.name);
+    dialog = await openAppSettings(page);
     await expectTipStyle(dialog, "Bottom");
 
-    await dialog.getByRole("button", { name: "Restore Defaults" }).click();
+    await dialog.getByRole("button", RESTORE).click();
     await expectTipStyle(dialog, "Pin deck");
 
     // Restored means "not chosen" — a second reload still reads Pin deck.
     await dialog.getByRole("button", { name: "Done" }).click();
     await page.reload();
-    dialog = await openDialog(page, testInfo.project.name);
+    dialog = await openAppSettings(page);
     await expectTipStyle(dialog, "Pin deck");
   });
 
-  test("in Metric every default reads in whole millimetres", async ({ page }, testInfo) => {
+  test("in Metric every default reads in whole millimetres", async ({ page }) => {
     await setMetricUnits(page);
     await page.goto("/design/outline");
-    const dialog = await openDialog(page, testInfo.project.name);
+    const dialog = await openAppSettings(page);
     await expectFieldValues(dialog, METRIC_DEFAULTS);
+
+    // Restore Fit & Tip Defaults resets only the seven fit and tip values — Metric stays chosen.
+    const extraLength = dialog.getByRole("textbox", { name: "Extra Length", exact: true });
+    await extraLength.fill("80");
+    await extraLength.press("Enter");
+    await expect(extraLength).not.toHaveValue(METRIC_DEFAULTS[0]);
+    await dialog.getByRole("button", RESTORE).click();
+    await expectFieldValues(dialog, METRIC_DEFAULTS);
+    const units = dialog.getByRole("group", { name: "Units" });
+    await expect(units.getByRole("button", { name: /^Metric/ })).toHaveAttribute("aria-pressed", "true");
+    expect(await page.evaluate(() => window.localStorage.getItem("shaper-units"))).toBe("metric");
   });
 
-  test("passing through a field without changing it stores nothing", async ({ page }, testInfo) => {
+  test("passing through a field without changing it stores nothing", async ({ page }) => {
     // Metric is the case that matters: a field only shows whole millimetres, so re-committing the
     // 2" default it shows as 51 mm would store 51 mm where nobody chose anything.
     await setMetricUnits(page);
     await page.goto("/design/outline");
-    const dialog = await openDialog(page, testInfo.project.name);
+    const dialog = await openAppSettings(page);
     for (const label of FIELD_LABELS) {
       await dialog.getByRole("textbox", { name: label, exact: true }).click();
     }
@@ -278,17 +265,18 @@ test.describe("Fit & Tip Defaults — the gear menu's BLANKS row and its dialog"
     expect(cookies.find((cookie) => cookie.name === "shaper-fit-defaults")).toBeUndefined();
   });
 
-  test("on a phone the menu row, every field, both Tip Style pills and Restore Defaults are at least 44px tall", async ({
+  test("on a phone the App Default Settings row, every field, both Tip Style pills and Restore Fit & Tip Defaults are at least 44px tall", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "touch-only sizing assertions");
     await page.goto("/design/outline");
 
-    const row = await openMenuRow(page, testInfo.project.name);
+    await openSettingsMenu(page);
+    const row = appSettingsRow(page);
     expect(await layoutHeight(row), "menu row height").toBeGreaterThanOrEqual(44);
 
     await row.click();
-    const dialog = page.getByRole("dialog", { name: "Fit & Tip Defaults" });
+    const dialog = appSettingsDialog(page);
     await expect(dialog).toBeVisible();
     await settled(dialog);
 
@@ -299,8 +287,8 @@ test.describe("Fit & Tip Defaults — the gear menu's BLANKS row and its dialog"
     const { pinDeck, bottom } = tipStylePills(dialog);
     expect(await layoutHeight(pinDeck), "Pin deck pill height").toBeGreaterThanOrEqual(44);
     expect(await layoutHeight(bottom), "Bottom pill height").toBeGreaterThanOrEqual(44);
-    const restore = dialog.getByRole("button", { name: "Restore Defaults" });
-    expect(await layoutHeight(restore), "Restore Defaults height").toBeGreaterThanOrEqual(44);
+    const restore = dialog.getByRole("button", RESTORE);
+    expect(await layoutHeight(restore), "Restore Fit & Tip Defaults height").toBeGreaterThanOrEqual(44);
 
     // Done stays reachable inside the viewport — the dialog scrolls rather than running off it.
     const done = dialog.getByRole("button", { name: "Done" });
