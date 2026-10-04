@@ -354,7 +354,7 @@ describe("formatTileLitres — VOLUME's figure", () => {
       shortboard: "29.6",
       fish: "35.3",
       midlength: "50.4",
-      longboard: "75.3",
+      longboard: "73.9",
     };
     for (const preset of BOARD_PRESETS) {
       expect(formatTileLitres(presetSummary(preset).volumeLitres)).toBe(expected[preset.id]);
@@ -367,7 +367,7 @@ describe("screenTileLines — the line under each tile's name", () => {
     shortboard: { template: `6'2" × 18 3/4"`, rocker: `On a 6'3"RP`, fins: "Thruster" },
     fish: { template: `5'8" × 20 1/4"`, rocker: `On a 5'10"RP`, fins: "Twin" },
     midlength: { template: `7'2" × 21 1/4"`, rocker: `On a 7'4"SP`, fins: "Quad" },
-    longboard: { template: `9'0" × 22 1/2"`, rocker: `On a 9'3"Y`, fins: "Single Fin" },
+    longboard: { template: `9'0" × 22 1/2"`, rocker: `On a 9'4"B`, fins: "Single Fin" },
   };
   for (const preset of BOARD_PRESETS) {
     it(`${preset.id}: its dims, its blank, its fin setup`, () => {

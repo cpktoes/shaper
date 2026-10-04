@@ -25,6 +25,7 @@ import type { FoilStationKey } from "./foil";
 import { DEFAULT_FOIL_SPEC } from "./foil";
 import { formatMark } from "./measure-display";
 import { buildOutline, sampleOutline } from "./outline";
+import { recordedPresetDesignFields } from "./__fixtures__/phase14-preset-blanks";
 import { BOARD_PRESETS } from "./presets";
 import { DEFAULT_RAIL_BAND_SPEC } from "./rail-bands";
 import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
@@ -41,6 +42,11 @@ const STATION_KEYS: readonly FoilStationKey[] = ["tailTip", "tail12", "center", 
 /** A preset as the store opens it and its card summarises it (`presetSummary`). */
 function presetFields(preset: (typeof BOARD_PRESETS)[number]): DesignSummaryFields {
   return { ...presetDesignFields(preset), railsImportFoilThickness: true, volume: DEFAULT_VOLUME_SPEC };
+}
+
+/** A preset as it opened when the Phase 14 pin was taken (the frozen go-live-2 blanks). */
+function recordedPresetFields(preset: (typeof BOARD_PRESETS)[number]): DesignSummaryFields {
+  return { ...recordedPresetDesignFields(preset), railsImportFoilThickness: true, volume: DEFAULT_VOLUME_SPEC };
 }
 
 /** The first board a visitor sees: the store's DEFAULT_DESIGN_STATE, no blank — the pin's own fields. */
@@ -66,7 +72,7 @@ describe("today's rules, kept by name, reproduce the pin (D-25, D-26)", () => {
     it(`reproduces the ${preset.name} preset's five thicknesses, five rocker numbers and litres`, () => {
       const pinned = PHASE14_TODAY.presets.find((entry) => entry.id === preset.id);
       expect(pinned, `the pin carries ${preset.id}`).toBeDefined();
-      const figures = boardFigures(presetFields(preset), RULES_BEFORE_CURVES, SETTINGS);
+      const figures = boardFigures(recordedPresetFields(preset), RULES_BEFORE_CURVES, SETTINGS);
       for (const key of STATION_KEYS) {
         expect(figures.thicknessMm[key], `thickness ${key}`).toBe(pinned!.thicknessMm[key]);
         expect(figures.rockerMm[key], `rocker ${key}`).toBe(pinned!.rockerMm[key]);

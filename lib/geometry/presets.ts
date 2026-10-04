@@ -474,9 +474,9 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
       tail: { kind: "squash", endWidth: inchesToMm(8.5) },
     },
     // Rocker and 12" foil retired (Phase 11, D-03) — they come from this preset's blank.
-    // The founder's own pick (2026-09-28, Phase 13 item 5), captured through buildRockerPresetSource.
-    // Same blank as this preset's old provisional pick — now captured as the founder's own.
-    blank: { vendor: "US Blanks", name: "9'3\"Y", placement: inchesToMm(0) },
+    // The founder's own pick, changed 2026-10-03 from the 9'3"Y (the founder's pick of 2026-09-28,
+    // Phase 13 item 5) to the 9'4"B, centred.
+    blank: { vendor: "US Blanks", name: "9'4\"B", placement: inchesToMm(0) },
     foil: {
       noseTip: inchesToMm(0.875),
       center: inchesToMm(3),

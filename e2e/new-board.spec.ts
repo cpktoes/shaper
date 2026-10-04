@@ -15,8 +15,9 @@ import { mm } from "../lib/geometry/units";
  *    change to the default leaves the board alone (D-09).
  * 2. D-03 — a preset opens sitting in its blank: after Shortboard, the ROCKER drawing shows the
  *    blank's silhouette and the DATASHEET has a `BLANK — …` group.
- * 3. Quick 261003-n52 — the Longboard's DATASHEET reads its blank's own catalogue numbers (page 60
- *    of the US Blanks catalogue), with Your Board and Foam Off unchanged.
+ * 3. Quick 261003-n52 — the Longboard's DATASHEET reads its blank's own catalogue numbers (page 61
+ *    of the US Blanks catalogue — the 9'4"B, the Longboard's blank since 2026-10-03), and its Your
+ *    Board and Foam Off rows read the app's own figures for that board.
  * 4. Quick 261003-n52 — the same BLANK rows in Metric: whole millimetres for Rocker and Thickness,
  *    centimetres to one decimal for Width.
  *
@@ -154,57 +155,60 @@ test.describe("a new board", () => {
     await openLongboardDatasheet(page);
 
     // The group label says which stations its rows are; the footnotes say what Foam Off is read
-    // under, and the dash note stays away because the 9'3"Y prints every value.
+    // under, and the dash note stays away because the 9'4"B's file holds every value (its nose-tip
+    // width is stored as 0, with the catalogue's own note that the page prints none).
     await expect(page.getByText(/^BLANK — /)).toHaveText(
-      /^BLANK — US BLANKS 9'3"Y\s*\(catalog's N0 · N12 · C · T12 · T0\)$/,
+      /^BLANK — US BLANKS 9'4"B\s*\(catalog's N0 · N12 · C · T12 · T0\)$/,
     );
     await expect(page.locator("[data-datasheet-foam-off-note]")).toBeVisible();
     await expect(page.locator("[data-datasheet-dash-note]")).toHaveCount(0);
 
-    // Page 60 of the US Blanks June 2025 catalogue (the 9'3"Y), nose tip to tail tip, as the
-    // founder reads it. This is the founder's own report and the one place the page's printed
-    // numbers are pinned: a 9'0" board centred in this blank must not move them.
+    // Page 61 of the US Blanks June 2025 catalogue (the 9'4"B), nose tip to tail tip, read by eye
+    // against the page on 2026-10-03. This began as the founder's own report (quick 261003-n52, on
+    // the 9'3"Y) and is the one place a page's printed numbers are pinned: a 9'0" board centred in
+    // this blank must not move them.
     await expect(page.locator('[data-datasheet-blank-row="rocker"] > div')).toHaveText([
       "Rocker",
-      '4 5/16"',
-      '2 5/16"',
+      '4 3/4"',
+      '2 1/2"',
       '0"',
-      '1 13/16"',
-      '3 1/4"',
+      '2 1/8"',
+      '3 1/2"',
     ]);
     await expect(page.locator('[data-datasheet-blank-row="thickness"] > div')).toHaveText([
       "Thickness",
-      '1 3/8"',
-      '2 3/8"',
-      '3 1/2"',
-      '2 3/8"',
-      '1 7/16"',
+      '1 5/16"',
+      '2"',
+      '3 5/16"',
+      '2 1/8"',
+      '1 1/2"',
     ]);
     await expect(page.locator('[data-datasheet-blank-row="width"] > div')).toHaveText([
       "Width",
-      '4"',
-      '20 5/8"',
-      '24 15/16"',
-      '17 5/8"',
-      '9 1/4"',
+      '0"',
+      '20 5/16"',
+      '24 7/8"',
+      '16 5/16"',
+      '7 1/2"',
     ]);
 
-    // Your Board and Foam Off read exactly as they did before this change.
+    // Your Board and Foam Off: the app's own figures for the 9'0" Longboard cut from the 9'4"B
+    // (worked out with the app's own functions on 2026-10-03), so a change that moves them shows here.
     await expect(page.locator('[data-datasheet-board-row="rocker"] > div')).toHaveText([
       "Rocker",
-      '4 3/16"',
-      '2 1/8"',
+      '4 5/8"',
+      '2 1/4"',
       '0"',
-      '1 11/16"',
-      '3 3/8"',
+      '1 15/16"',
+      '3 5/8"',
     ]);
     await expect(page.locator('[data-datasheet-foam-off="bottom"] > div')).toHaveText([
       "Bottom",
+      '7/16"',
+      '3/16"',
+      '3/16"',
+      '3/16"',
       '9/16"',
-      '3/8"',
-      '3/8"',
-      '3/8"',
-      '5/8"',
     ]);
   });
 
