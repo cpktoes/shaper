@@ -7,7 +7,9 @@ import {
   buildBlankProfile,
   buildBoardProfile,
   buildFallbackProfile,
+  CATALOG_STATION_LABELS,
   handSetFromProfile,
+  printedBlankStations,
   type BoardSideProfile,
 } from "./board-profile";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
@@ -288,17 +290,6 @@ describe("the blank profile — a board sitting in a real blank", () => {
     thicknessCells.forEach((cell, i) => {
       expect(view.measuredStations.thickness[i]).toBe(view.start + cell.fromTailMm);
     });
-  });
-
-  it("gives the blank's own numbers under each of the board's five stations — the DATASHEET's blank rows (D-16)", () => {
-    const Lb = prepared.lengthMm;
-    const u = (s: number) => s + (Lb - L) / 2 + view.placement;
-    expect(view.blankAtStations.center.rocker).toBe(prepared.rocker.sample(u(L / 2)));
-    for (const { key, station } of profile.stations) {
-      expect(view.blankAtStations[key].rocker).toBe(view.onBlank.blankRockerAt(station));
-      expect(view.blankAtStations[key].thickness).toBe(view.onBlank.blankThicknessAt(station));
-      expect(view.blankAtStations[key].width).toBe(view.onBlank.blankWidthAt(station));
-    }
   });
 });
 
@@ -635,5 +626,83 @@ describe("each tip's thinning start on the side profile (Phase 14 D-02, D-12, D-
     expect(tailMoved.nose.station).toBe(automatic.nose.station);
     expect(noseMoved.nose.station).not.toBe(automatic.nose.station);
     expect(noseMoved.tail.station).toBe(automatic.tail.station);
+  });
+});
+
+describe("the DATASHEET's BLANK rows read the catalogue's own printed stations (quick 261003-n52)", () => {
+  const longboardLength = BOARD_PRESETS.find((p) => p.id === "longboard")!.outline.length;
+  const record = findBlank("US Blanks", `9'3"Y`);
+  const prepared = prepareBlank(record);
+  const byLabel = (r: BlankRecord, label: string) => r.stations.find((s) => s.label === label);
+  const shorterBoard = () => boardInput({ length: mm(longboardLength - inchesToMm(12)) });
+
+  it("reads each station's own printed rocker, thickness and width, found by the catalogue's label", () => {
+    const printed = printedBlankStations(record);
+    for (const key of KEYS) {
+      const station = byLabel(record, CATALOG_STATION_LABELS[key])!;
+      expect(station, `${key} is in the record`).toBeDefined();
+      expect(printed[key].rocker).toBe(station.rockerMm);
+      expect(printed[key].thickness).toBe(station.thicknessMm);
+      expect(printed[key].width).toBe(station.widthMm);
+    }
+  });
+
+  it("names the five stations the way the catalogue does, nose tip to tail tip", () => {
+    expect(CATALOG_STATION_LABELS).toEqual({ noseTip: "N0", nose12: "N12", center: "C", tail12: "T12", tailTip: "T0" });
+  });
+
+  it("is the same on the profile for the Longboard's own length, a shorter board, and that board slid to the nose", () => {
+    const expected = printedBlankStations(prepared.record);
+    const shorter = shorterBoard();
+    const longer = boardInput({ length: longboardLength });
+    const { max } = placementRange(prepared.lengthMm, shorter.length);
+    expect(max).toBeGreaterThan(0);
+    for (const [board, placement] of [
+      [longer, mm(0)],
+      [shorter, mm(0)],
+      [shorter, max],
+    ] as const) {
+      expect(buildBlankProfile(prepared, board, placement).blank!.printed).toEqual(expected);
+    }
+  });
+
+  it("is not read from under the board: a board slid to the nose has a different blank curve under its tail tip", () => {
+    const shorter = shorterBoard();
+    const { max } = placementRange(prepared.lengthMm, shorter.length);
+    const profile = buildBlankProfile(prepared, shorter, max);
+    const view = profile.blank!;
+    const tailTipStation = profile.stations.find((s) => s.key === "tailTip")!.station;
+    expect(view.onBlank.blankRockerAt(tailTipStation)).not.toBe(view.printed.tailTip.rocker);
+  });
+
+  it("leaves a cell empty (null) where the catalogue prints no number: the 10'2\" M has no N12 or T12", () => {
+    const tenTwo = findBlank(MARKO_VENDOR, `10'2" M`);
+    const printed = printedBlankStations(tenTwo);
+    for (const key of ["nose12", "tail12"] as const) {
+      expect(printed[key]).toEqual({ rocker: null, thickness: null, width: null });
+    }
+    expect(printed.center.rocker).toBe(byLabel(tenTwo, "C")!.rockerMm);
+    expect(printed.center.rocker!).toBeGreaterThan(0);
+  });
+
+  it("leaves the 9'6\" MK's empty centre width null, and keeps its stored nose-tip width of 0", () => {
+    const mk = findBlank(MARKO_VENDOR, `9'6" MK`);
+    const printed = printedBlankStations(mk);
+    expect(printed.center.width).toBeNull();
+    expect(printed.center.rocker).not.toBeNull();
+    expect(printed.center.thickness).not.toBeNull();
+    expect(printed.noseTip.width).toBe(byLabel(mk, "N0")!.widthMm);
+    expect(printed.noseTip.width).toBe(0);
+  });
+
+  it("leaves FOAM OFF as it was: the blank's curve under the board's own five stations", () => {
+    const shorter = shorterBoard();
+    const { max } = placementRange(prepared.lengthMm, shorter.length);
+    const profile = buildBlankProfile(prepared, shorter, max);
+    const view = profile.blank!;
+    for (const { key, station } of profile.stations) {
+      expect(view.foamOffDeck[key]).toBe(view.onBlank.deckOffAt(station));
+      expect(view.foamOffBottom[key]).toBe(view.onBlank.bottomOffAt(station));
+    }
   });
 });
