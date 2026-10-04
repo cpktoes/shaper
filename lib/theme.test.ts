@@ -3,14 +3,19 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_DARK_THEME,
   DEFAULT_LIGHT_THEME,
+  SYSTEM_TILE_HALVES,
   THEMES,
   THEME_INIT_SCRIPT,
   THEME_STORAGE_KEY,
+  THEME_TILE_IDS,
+  THEME_TILE_ROLES,
   applyThemePreference,
   getTheme,
   isThemePreference,
   parseThemePreference,
+  rampVar,
   resolveTheme,
+  systemTileName,
   themeClassesFor,
 } from "./theme";
 
@@ -249,5 +254,54 @@ describe("theme registry", () => {
       for (const t of THEMES) expect(THEME_INIT_SCRIPT).toContain(t.id);
       expect(THEME_INIT_SCRIPT).toContain(JSON.stringify(THEME_STORAGE_KEY));
     });
+  });
+});
+
+/**
+ * The App Default Settings pop-up's theme tiles (quick 261003-uwi). Each tile is a small picture of
+ * one theme painted from that theme's OWN ramp, so all five show at once whichever theme is on
+ * screen. These pin the pure helpers the tiles are built from, and that the tile file paints only
+ * through them.
+ */
+describe("theme tiles", () => {
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  it("rampVar names a theme's own ramp token", () => {
+    expect(rampVar("slate", "ground")).toBe("var(--ramp-slate-ground)");
+    expect(rampVar("daylight", "ink-muted")).toBe("var(--ramp-daylight-ink-muted)");
+  });
+
+  it("every theme declares every role a tile paints, so a tile never points at a missing token", () => {
+    for (const theme of THEMES) {
+      for (const role of THEME_TILE_ROLES) {
+        expect(css, `--ramp-${theme.id}-${role} missing`).toContain(`--ramp-${theme.id}-${role}:`);
+      }
+    }
+  });
+
+  it("lists System first, then every theme in registry order", () => {
+    expect(THEME_TILE_IDS).toEqual(["system", "daylight", "chalk", "slate", "phosphor"]);
+    expect(THEME_TILE_IDS.slice(1)).toEqual(THEMES.map((t) => t.id));
+  });
+
+  it("splits System's tile between the default light and dark themes", () => {
+    expect(SYSTEM_TILE_HALVES).toEqual({ light: DEFAULT_LIGHT_THEME, dark: DEFAULT_DARK_THEME });
+    expect(getTheme(SYSTEM_TILE_HALVES.light)?.mode).toBe("light");
+    expect(getTheme(SYSTEM_TILE_HALVES.dark)?.mode).toBe("dark");
+  });
+
+  it("speaks System's tile as what the device picks right now", () => {
+    expect(systemTileName(getTheme("slate")!)).toBe("System — follows your device, Slate right now");
+    expect(systemTileName(getTheme("daylight")!)).toMatch(/Daylight right now$/);
+  });
+
+  it("the tile file paints only through rampVar — no hand-copied colour", () => {
+    const source = readFileSync(new URL("../components/theme-tiles.tsx", import.meta.url), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .map((line) => line.replace(/\/\/.*$/, ""))
+      .join("\n");
+    expect(source).toContain("rampVar(");
+    expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 });
