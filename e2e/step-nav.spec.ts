@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { devices, expect, test, type Page } from "@playwright/test";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 
@@ -49,6 +49,7 @@ async function followStep(page: Page, direction: "previous" | "next", toHref: st
 }
 
 test.describe("Back and Next end every design screen's controls", () => {
+  // (The walk, the sizes, print, wide view and the phone clearance are further down.)
   test.beforeEach(async ({ page }) => {
     await dismissBanners(page);
   });
@@ -72,6 +73,200 @@ test.describe("Back and Next end every design screen's controls", () => {
 
     await followStep(page, "previous", "/design/outline");
     await expect(stepNav(page).getByRole("link", { name: "Next screen: Rocker", exact: true })).toBeVisible();
-    void SCREENS;
+  });
+});
+
+/** Checks the pair at screen `index` of the walk: the right words, and only the buttons that screen
+ * should have (TEMPLATE has no Back, SUMMARY has no Next). */
+async function expectTheRightPair(page: Page, index: number) {
+  const before = SCREENS[index - 1];
+  const after = SCREENS[index + 1];
+  const nav = stepNav(page);
+  await expect(nav.getByRole("link")).toHaveCount((before ? 1 : 0) + (after ? 1 : 0));
+  if (before) {
+    await expect(nav.getByRole("link", { name: `Previous screen: ${before.word}`, exact: true })).toHaveText(before.word);
+  } else {
+    await expect(nav.getByRole("link", { name: /^Previous screen: / })).toHaveCount(0);
+  }
+  if (after) {
+    await expect(nav.getByRole("link", { name: `Next screen: ${after.word}`, exact: true })).toHaveText(after.word);
+  } else {
+    await expect(nav.getByRole("link", { name: /^Next screen: / })).toHaveCount(0);
+  }
+}
+
+/** Sets the Nose Thinning Start by hand (ArrowRight on its slider) and returns the label's new text. */
+async function setNoseStartByHand(page: Page): Promise<string> {
+  const label = page.getByText(/^Nose Thinning Starts — /);
+  const before = await label.innerText();
+  const slider = page.getByRole("slider", { name: "Nose Thinning Starts", exact: true });
+  await slider.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(label).not.toHaveText(before);
+  return label.innerText();
+}
+
+/** The whole walk: Next from TEMPLATE to SUMMARY, then Back to TEMPLATE, checking the pair at every
+ * stop. A Nose Thinning Start set by hand on ROCKER on the way out must read the same on the way
+ * back — proof that every move is client-side and the unsaved board survives. */
+async function walkOutAndBack(page: Page) {
+  await startTheFirstPreset(page);
+  await expectTheRightPair(page, 0);
+
+  let noseStart = "";
+  for (let i = 1; i < SCREENS.length; i += 1) {
+    await followStep(page, "next", SCREENS[i].href);
+    await expectTheRightPair(page, i);
+    if (SCREENS[i].label === "ROCKER") noseStart = await setNoseStartByHand(page);
+  }
+
+  for (let i = SCREENS.length - 2; i >= 0; i -= 1) {
+    await followStep(page, "previous", SCREENS[i].href);
+    await expectTheRightPair(page, i);
+    if (SCREENS[i].label === "ROCKER") {
+      await expect(page.getByText(/^Nose Thinning Starts — /)).toHaveText(noseStart);
+    }
+  }
+}
+
+test.describe("Back and Next walk the whole board", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissBanners(page);
+  });
+
+  test("Next walks TEMPLATE to SUMMARY and Back walks home again, keeping a hand-set Thinning Start", async ({
+    page,
+  }) => {
+    await walkOutAndBack(page);
+  });
+
+  test("both buttons are a finger's 44 dots tall on a phone and the normal 32 with a mouse", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/design/rocker");
+    const expected = testInfo.project.name === "desktop" ? 32 : 44;
+    for (const name of ["Previous screen: Template", "Next screen: Rails"]) {
+      const box = await stepNav(page).getByRole("link", { name, exact: true }).boundingBox();
+      if (!box) throw new Error(`${name} has no bounding box`);
+      expect(box.height, `${name} height`).toBeCloseTo(expected, 0);
+    }
+  });
+
+  test("the buttons never reach paper, on ROCKER or on SUMMARY", async ({ page }) => {
+    for (const href of ["/design/rocker", "/design/summary"]) {
+      await page.goto(href);
+      await expect(stepNav(page)).toBeVisible();
+      await page.emulateMedia({ media: "print" });
+      await expect(stepNav(page), `${href} printed`).toBeHidden();
+      await page.emulateMedia({ media: "screen" });
+      await expect(stepNav(page), `${href} on screen`).toBeVisible();
+    }
+  });
+
+  // One address per test: a second `goto` straight after a page that is still settling gets
+  // interrupted by that page's own navigation.
+  test("the home page has no Back or Next", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("button").filter({ hasText: "Start Shaping" }).first()).toBeVisible();
+    await expect(page.locator("[data-step-nav]")).toHaveCount(0);
+  });
+
+  test("the Contact page has no Back or Next", async ({ page }) => {
+    await page.goto("/contact");
+    await expect(page.getByRole("heading").first()).toBeVisible();
+    await expect(page.locator("[data-step-nav]")).toHaveCount(0);
+  });
+
+  test("on a computer, hiding the sidebar for a wider view hides the buttons with it", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the wide-view button is a computer's");
+    await page.goto("/design/outline");
+    await expect(stepNav(page)).toBeVisible();
+    await page.getByRole("button", { name: "Hide the sidebar for a wider view" }).click();
+    await expect(stepNav(page)).toBeHidden();
+    await page.getByRole("button", { name: "Show the sidebar" }).click();
+    await expect(stepNav(page)).toBeVisible();
+  });
+});
+
+// Dropping `defaultBrowserType` matches e2e/phone-sideways-top-bar.spec.ts: it cannot be set via
+// `test.use` inside a describe, and the android project this describe is pinned to is Chromium anyway.
+const { defaultBrowserType: pixel7LandscapeBrowserType, ...pixel7LandscapeViewport } = devices["Pixel 7 landscape"];
+void pixel7LandscapeBrowserType;
+
+test.describe("Back and Next on a Pixel 7 held sideways (863x360, the desktop shell)", () => {
+  test.use({ ...pixel7LandscapeViewport });
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "this describe supplies its own device (Pixel 7 landscape)");
+    await dismissBanners(page);
+  });
+
+  test("Next walks TEMPLATE to SUMMARY and Back walks home again", async ({ page }) => {
+    await walkOutAndBack(page);
+  });
+});
+
+/** What a thumb does to reach the end of a screen: every scrolling box, and the page, to its end. */
+async function scrollEverythingToItsEnd(page: Page) {
+  await page.evaluate(() => {
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("*"))) {
+      const overflowY = getComputedStyle(el).overflowY;
+      if ((overflowY === "auto" || overflowY === "scroll") && el.scrollHeight > el.clientHeight + 1) {
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+    window.scrollTo(0, document.documentElement.scrollHeight);
+  });
+}
+
+test.describe("on an upright phone, the buttons scroll clear of the floating Undo/Redo pair", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name === "desktop",
+      "on a computer the pair floats over the drawing's corner, never over the controls",
+    );
+    await dismissBanners(page);
+  });
+
+  test("VOLUME's Next and SUMMARY's Back end above the pair and take a tap at their centre", async ({ page }) => {
+    await startTheFirstPreset(page);
+    // One small change on TEMPLATE, so there is something to take back and the pair is showing.
+    const slider = page.getByRole("slider").filter({ visible: true }).first();
+    await slider.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeVisible();
+
+    const stops = [
+      { screen: 3, direction: "next" },
+      { screen: 5, direction: "previous" },
+    ] as const;
+    let here = 0;
+    for (const stop of stops) {
+      // Walk on, one screen at a time, to the stop.
+      while (here < stop.screen) {
+        here += 1;
+        await followStep(page, "next", SCREENS[here].href);
+      }
+      await scrollEverythingToItsEnd(page);
+
+      const link = stepNav(page).locator(`a[data-step="${stop.direction}"]`);
+      const box = await link.boundingBox();
+      const undo = await page.getByRole("button", { name: "Undo", exact: true }).boundingBox();
+      if (!box || !undo) throw new Error("the step link or the Undo button is missing a bounding box");
+      const label = SCREENS[stop.screen].label;
+      console.log(
+        `[q2c] ${label}: daylight between the ${stop.direction} button and the pair = ${undo.y - (box.y + box.height)}`,
+      );
+      expect(box.y + box.height, `${label}: the button's bottom edge is above the pair's top edge`).toBeLessThan(
+        undo.y,
+      );
+
+      const takesTheTap = await link.evaluate((el) => {
+        const rect = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        return !!hit && (hit === el || el.contains(hit));
+      });
+      expect(takesTheTap, `${label}: a tap at the button's centre lands on the button`).toBe(true);
+    }
   });
 });
