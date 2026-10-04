@@ -261,7 +261,7 @@ test.describe("every tile reads the current board", () => {
 
   const presets = [
     { name: "Fish", lines: [`5'8" × 20 1/4"`, `On a 5'10"RP`, "Twin"], litres: "35.3" },
-    { name: "Longboard", lines: [`9'0" × 22 1/2"`, `On a 9'3"Y`, "Single Fin"], litres: "75.3" },
+    { name: "Longboard", lines: [`9'0" × 22 1/2"`, `On a 9'4"B`, "Single Fin"], litres: "73.9" },
   ];
   for (const preset of presets) {
     test(`the ${preset.name}'s tiles follow its board`, async ({ page }) => {

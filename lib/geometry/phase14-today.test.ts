@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { presetDesignFields } from "@/lib/blanks/preset-blanks";
+import { recordedPresetDesignFields } from "./__fixtures__/phase14-preset-blanks";
 import { PHASE14_TODAY, pinnedBlank, pinnedCatalogue } from "./__fixtures__/phase14-today";
 import { buildStressSet, STRESS_FIT_SETTINGS } from "./__fixtures__/phase14-stress-set";
 import { boardOnBlank, fitAt, prepareBlankPchip } from "./blank-fit";
@@ -35,9 +35,10 @@ describe("today's numbers, reproduced by today's rule kept by name (D-25, D-26)"
     expect(PHASE14_TODAY.presets.map((entry) => entry.id)).toEqual(BOARD_PRESETS.map((preset) => preset.id));
     for (const preset of BOARD_PRESETS) {
       const entry = PHASE14_TODAY.presets.find((candidate) => candidate.id === preset.id)!;
-      // The preset's own blank copy, carried by value in lib/blanks/preset-blanks.generated.json —
-      // never the seed rows, which may have been corrected since the pick.
-      const fields = presetDesignFields(preset);
+      // The blank each preset opened in when the pin was taken (frozen in
+      // __fixtures__/phase14-preset-blanks.json) — never the seed rows, which may have been corrected
+      // since, and never a later pick (the Longboard moved to the 9'4"B on 2026-10-03).
+      const fields = recordedPresetDesignFields(preset);
       expect([fields.blank.copy.vendor, fields.blank.copy.name, fields.blank.placement]).toEqual([
         entry.vendor,
         entry.name,

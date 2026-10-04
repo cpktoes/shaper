@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { presetDesignFields } from "@/lib/blanks/preset-blanks";
+import { recordedPresetDesignFields } from "./__fixtures__/phase14-preset-blanks";
 import record from "./__fixtures__/phase14-preset-figures.json";
 import { PHASE14_TODAY } from "./__fixtures__/phase14-today";
 import { prepareBlank, thinningStartsOf } from "./blank-fit";
 import { buildBoardProfile } from "./board-profile";
 import type { FoilStationKey } from "./foil";
 import { BOARD_PRESETS, type BoardPreset } from "./presets";
-import { presetSummary } from "./summary-line";
+import { summarizeDesign } from "./design";
 import { inchesToMm } from "./units";
+import { DEFAULT_VOLUME_SPEC } from "./volume";
 
 /**
  * The four preset cards' figures, recorded from the app by scripts/extract-phase14-preset-figures.ts
@@ -19,7 +20,8 @@ const KEYS: readonly FoilStationKey[] = ["tailTip", "tail12", "center", "nose12"
 
 /** What a card shows today: the board clicking it opens, read the way the generator reads it. */
 function liveFigures(preset: BoardPreset) {
-  const fields = presetDesignFields(preset);
+  // The blank the preset opened in when the record was taken (a later pick must not rewrite it).
+  const fields = recordedPresetDesignFields(preset);
   const profile = buildBoardProfile({
     length: fields.outline.length,
     rocker: fields.rocker,
@@ -38,7 +40,7 @@ function liveFigures(preset: BoardPreset) {
   return {
     thicknessMm: profile.effectiveFoil,
     rockerMm: profile.stationRocker,
-    litres: presetSummary(preset).volumeLitres,
+    litres: summarizeDesign({ ...fields, railsImportFoilThickness: true, volume: DEFAULT_VOLUME_SPEC }).volumeLitres,
   };
 }
 
