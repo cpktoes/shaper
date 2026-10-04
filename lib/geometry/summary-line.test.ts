@@ -5,7 +5,7 @@ import { BOARD_PRESETS } from "./presets";
 import { summarizeDesign, type DesignSummary } from "./design";
 import { DEFAULT_VOLUME_SPEC } from "./volume";
 import { UNITS_SYSTEMS } from "./units";
-import { formatDimsExample, formatSummaryLine, presetSummary } from "./summary-line";
+import { formatDimsExample, formatLengthByWidth, formatSummaryLine, presetSummary } from "./summary-line";
 
 const shortboard = BOARD_PRESETS.find((p) => p.id === "shortboard")!;
 
@@ -165,4 +165,27 @@ describe("preset card dims line coverage (05-03)", () => {
       expect(formatSummaryLine(fromPreset, system)).toBe(formatSummaryLine(equivalent, system));
     }
   });
+});
+
+describe("formatLengthByWidth — the ☰ TEMPLATE tile's length × width line", () => {
+  const imperial: Record<string, string> = {
+    shortboard: `6'2" × 18 3/4"`,
+    fish: `5'8" × 20 1/4"`,
+    midlength: `7'2" × 21 1/4"`,
+    longboard: `9'0" × 22 1/2"`,
+  };
+  for (const preset of BOARD_PRESETS) {
+    it(`${preset.id}: Imperial reads ${imperial[preset.id]}`, () => {
+      expect(formatLengthByWidth(preset.outline.length, preset.outline.widePointWidth, "imperial")).toBe(
+        imperial[preset.id],
+      );
+    });
+    it(`${preset.id}: Metric is the card's first two numbers, then cm once`, () => {
+      const card = formatSummaryLine(presetSummary(preset), "metric");
+      const [length, width] = card.split(" cm")[0].split(" × ");
+      expect(formatLengthByWidth(preset.outline.length, preset.outline.widePointWidth, "metric")).toBe(
+        `${length} × ${width} cm`,
+      );
+    });
+  }
 });
