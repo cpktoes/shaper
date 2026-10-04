@@ -368,7 +368,7 @@ export function RockerDatasheet({
           </p>
           <p data-datasheet-foam-off-note>
             {
-              "The Foam Off rows are read off the blank right under your board's own five stations, so when your board is shorter than its blank or slid along it, it isn't simply the Blank numbers less Your Board's."
+              "The Foam Off rows are read off the blank right under your board's own five stations, so when your board is shorter than its blank or slid along it, they aren't simply the Blank numbers less Your Board's."
             }
           </p>
           {hasDash && (
