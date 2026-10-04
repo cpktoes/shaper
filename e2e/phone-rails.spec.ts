@@ -747,3 +747,40 @@ test.describe("RAILS on a desktop — unchanged (PHON-05)", () => {
     await expect(controlsHeading).toBeVisible();
   });
 });
+
+// Fast task, 2026-10-03 (the founder's request, the same fix as the ROCKER DATASHEET's): the DATA
+// table's sideways-scroll fade covers the box's last 24px, and every cell is right-aligned, so the
+// Tail column used to end under it — faded on a computer, where nothing scrolls, and on a phone even
+// scrolled to the end. The table now ends in 24px of empty room, so with the box scrolled as far
+// right as it goes (no scroll at all on a computer) the Tail heading and the first row's Tail mark
+// both stop where the fade starts. Runs on every profile.
+test.describe("RAILS DATA — the sideways fade never covers the Tail column", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissSignInBanner(page);
+    await page.goto("/design/rails");
+  });
+
+  test("on a computer, and on a phone scrolled to the end, the Tail column stops where the fade starts", async ({
+    page,
+  }) => {
+    await railsPageTabs(page).getByRole("tab", { name: "DATA" }).click();
+    const tableBox = page.locator("main .overflow-x-auto").first();
+    await expect(tableBox).toBeVisible();
+    await tableBox.evaluate((el) => {
+      el.scrollLeft = el.scrollWidth;
+    });
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+
+    const fadeStarts = await tableBox.evaluate((el) => el.getBoundingClientRect().right - 24);
+    const heading = tableBox.getByText("Tail", { exact: true }).first();
+    // The first mark row (`border-b`, not the heading's `border-b-2`), its last cell: the Tail mark.
+    const tailMark = tableBox.locator(".border-b").first().locator("> div").last();
+    for (const [what, cell] of [
+      ["the Tail heading", heading],
+      ["the first row's Tail mark", tailMark],
+    ] as const) {
+      const right = await cell.evaluate((el) => el.getBoundingClientRect().right);
+      expect(right, `${what} runs under the fade`).toBeLessThanOrEqual(fadeStarts + 0.5);
+    }
+  });
+});

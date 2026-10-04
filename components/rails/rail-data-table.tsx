@@ -112,9 +112,14 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
             "Sideways-scrolling data tables"). Constant, not scroll-position-driven — a static hint
             is enough for a fixed-column table and needs no extra scroll-tracking state; this DATA
             page's own full card only, not the `compact` Summary embed above, which deliberately
-            never scrolls at all (its own comment: a sheet of paper, not a panel). */}
+            never scrolls at all (its own comment: a sheet of paper, not a panel). The table ends in
+            24px of empty room the same width as the fade, so the fade lands on that room and never
+            dims the last section's column — on a computer, where nothing scrolls, and on a phone
+            scrolled to the end — while mid-scroll it still covers whatever runs on past the edge
+            (fast task, 2026-10-03, the same fix as the ROCKER DATASHEET's). The minimum width grew
+            by the same 24px, so a phone's columns keep their 480px. */}
         <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]">
-          <div className="min-w-[480px]">
+          <div className="min-w-[504px] pr-[24px]">
             <div className="mb-3 flex gap-2 border-b-2 border-surf-line-faint pb-2">
               <div className="min-w-0 flex-[1.4]" />
               {sections.map((s) => (
