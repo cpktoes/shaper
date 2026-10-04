@@ -14,9 +14,11 @@
  *   hand-set stations, reversing quick task 260829-rda's read-only 12" cells — with Center a
  *   read-only 0, the flat the rocker is measured up from (Phase 4 D-06/D-07).
  * - A BLANK PICKED (D-16, Phase 12 D-06, Phase 14 D-12) — under the station header, four labelled
- *   blocks holding nine rows (3 + 3 + 2 + 1): BLANK — the blank's own Rocker, Thickness and Width
- *   under each of the board's five stations (read-only, from the board's own copy of the blank —
- *   never the blank table); YOUR BOARD — the board's Rocker (read-only, the board's own curve,
+ *   blocks holding nine rows (3 + 3 + 2 + 1): BLANK — the blank's own printed Rocker, Thickness and
+ *   Width at the catalogue's N0 · N12 · C · T12 · T0 stations, whatever the board's length or
+ *   placement (quick 261003-n52, the founder's call 2026-10-03), read-only, from the board's own
+ *   copy of the blank (never the blank table), with a dash where the catalogue prints no number
+ *   (FOAM OFF below is still read under the board's own five stations); YOUR BOARD — the board's Rocker (read-only, the board's own curve,
  *   including the tip lift under Pin deck), Thickness (typed at Nose Tip, Center and Tail Tip — the
  *   values the sidebar writes — and read-only at the two 12" stations, whose fine-tune lives in the
  *   sidebar) and Width (read-only); FOAM OFF, split by surface — Deck (the skin, plus the tip
@@ -25,7 +27,8 @@
  *   that surface) in warning ink; and THINNING STARTS — one read-only `From tip` row with where each
  *   tip's thinning starts, in from that tip, under the NOSE TIP and TAIL TIP columns (the middle three
  *   empty), read off the profile's resolved starts and never in warning ink. Under the table: the
- *   catalogue footnote and one line per catalogue flag on the blank, verbatim.
+ *   catalogue footnote, the Foam Off footnote, a dash footnote when any BLANK cell is a dash, and
+ *   one line per catalogue flag on the blank, verbatim.
  *
  * Typed cells are the app's one typed measurement control, `MeasureField`, in bare mode (D-12),
  * with its bounds taken from the matching slider's `measureSlider` range through `typedFieldBounds`
@@ -43,7 +46,7 @@ import type { ReactNode } from "react";
 import { MeasureField } from "@/components/design/measure-field";
 import { useUnits } from "@/components/units-provider";
 import { formatThinningStartBare } from "@/lib/geometry/blank-reasons";
-import type { BoardSideProfile } from "@/lib/geometry/board-profile";
+import { CATALOG_STATION_LABELS, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec, type FoilStationKey } from "@/lib/geometry/foil";
 import {
   columnUnitSuffix,
@@ -242,12 +245,16 @@ export function RockerDatasheet({
   );
 
   const flagged = blank ? blank.record.stations.filter((station) => station.flag !== null) : [];
+  // Any of the 15 BLANK cells the catalogue leaves empty reads a dash, and the footnote says so.
+  const hasDash = blank
+    ? Object.values(blank.printed).some((p) => p.rocker === null || p.thickness === null || p.width === null)
+    : false;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
       <div className="text-sm text-surf-ink-muted font-normal">
         {blank
-          ? "Your blank's numbers beside your board's, at the board's five stations — take it to the supplier."
+          ? "Your blank's own numbers, as its catalog prints them, then your board's at its five stations — take it to the supplier."
           : "Your board's own blank datasheet — hold it beside a real foam blank when you order."}
       </div>
       {/* D-04: the box scrolls sideways on a narrow phone instead of re-stacking a single column
@@ -261,7 +268,11 @@ export function RockerDatasheet({
 
           {blank ? (
             <>
-              <GroupLabel>{`BLANK — ${blank.record.vendor} ${blank.record.name}`.toUpperCase()}</GroupLabel>
+              <GroupLabel>
+                {`BLANK — ${blank.record.vendor} ${blank.record.name}`.toUpperCase()}
+                {/* Which stations the rows are, in the catalogue's own spelling — not capitalised. */}
+                <span className="normal-case">{` (catalog's ${stations.map((s) => CATALOG_STATION_LABELS[s.key]).join(" · ")})`}</span>
+              </GroupLabel>
               <Row label={`Rocker${markSuffix}`} typed={false} data-datasheet-blank-row="rocker">
                 {stations.map((s) => printedCell(s.key, blank.printed[s.key].rocker, formatMarkBare))}
               </Row>
@@ -353,8 +364,16 @@ export function RockerDatasheet({
       {blank && (
         <div className="flex flex-col gap-1 text-xs text-surf-ink-muted font-normal">
           <p>
-            {`From the ${blank.record.vendor} catalog, page ${blank.record.pdfPage}. Station names are the catalog's own — T12 is 12 inches from the tail, N12 is 12 inches from the nose.`}
+            {`From the ${blank.record.vendor} catalog, page ${blank.record.pdfPage}. Station names are the catalog's own — N0 and T0 are the nose and tail tips, N12 and T12 are 12 inches in from them, and C is the center.`}
           </p>
+          <p data-datasheet-foam-off-note>
+            {
+              "The Foam Off rows are read off the blank right under your board's own five stations, so when your board is shorter than its blank or slid along it, it isn't simply the Blank numbers less Your Board's."
+            }
+          </p>
+          {hasDash && (
+            <p data-datasheet-dash-note>{"A dash (—) means the catalog prints no number there."}</p>
+          )}
           {flagged.map((station, index) => (
             <p key={`${index}-${station.label}`}>{`At ${station.label}: ${station.flag}`}</p>
           ))}
