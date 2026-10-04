@@ -97,8 +97,8 @@ to them. So every formula belongs in `lib/geometry/` — `board.ts` (types), `ou
 
 ## Rule 2 — the shaper picks the system, metric in the data either way
 
-A shaper picks **Imperial** or **Metric** from the gear menu in the top bar. Signed in, that
-choice is saved on their account and follows them to any device; signed out, the browser
+A shaper picks **Imperial** or **Metric** in App Default Settings — the gear menu in the top
+bar on a computer, the ☰ menu on a phone. Signed in, that choice is saved on their account and follows them to any device; signed out, the browser
 remembers it on its own. Until someone touches the chooser, everyone sees Imperial exactly as
 the app has always shown it.
 

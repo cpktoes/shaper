@@ -32,9 +32,12 @@
  * the ranges declared beside the defaults themselves, so an out-of-range value clamps silently.
  */
 
-import { useRef } from "react";
+import { useId, useRef } from "react";
+import { CheckIcon } from "lucide-react";
 import type { AppSettingsPlace } from "@/components/app-settings-provider";
+import { useBlankMakers } from "@/components/blank-makers-provider";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
+import { ThemeTiles } from "@/components/theme-tiles";
 import { useUnits } from "@/components/units-provider";
 import { MeasureField } from "@/components/design/measure-field";
 import { Button } from "@/components/ui/button";
@@ -54,6 +57,8 @@ import type { TipStyle } from "@/lib/geometry/blank";
 import { formatDimsExample, presetSummary } from "@/lib/geometry/summary-line";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
+import { isLastShownMaker } from "@/lib/blank-makers-preference";
+import { KNOWN_BLANK_VENDORS } from "@/lib/blanks/vendors";
 
 /** The menus' old group-label type, kept for every group heading in the pop-up. */
 const GROUP_LABEL_CLASS = "text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase";
@@ -139,7 +144,13 @@ export function AppSettingsDialog({
 }) {
   const { defaults, setDefault, restoreDefaults } = useFitDefaults();
   const { system, setSystem } = useUnits();
+  const { hidden, setMakerShown } = useBlankMakers();
   const popupRef = useRef<HTMLDivElement>(null);
+  const fitHeadingRef = useRef<HTMLHeadingElement>(null);
+  const fitHeadingId = useId();
+  const makersHintId = useId();
+  // Whether any maker is the last one ticked — then it is locked and the hint shows.
+  const makerLocked = KNOWN_BLANK_VENDORS.some((vendor) => isLastShownMaker(hidden, vendor));
 
   // A typed field also commits when it merely loses focus, so tabbing or tapping past a field
   // hands back the value it already showed. Storing that would quietly turn a setting nobody
@@ -150,13 +161,29 @@ export function AppSettingsDialog({
     setDefault(key, next);
   }
 
-  // Opened from a menu row rather than its own trigger, so Base UI can't tell a tap from a click
-  // and would focus the first field — which on a phone throws the keyboard up over the dialog
-  // before the shaper has read it. On a touch pointer focus the dialog itself; a mouse or
-  // keyboard user still lands in the first field.
+  // Opened from a menu row or a button elsewhere rather than its own trigger, so Base UI can't tell
+  // a tap from a click and would focus the first control — which on a phone can throw the keyboard
+  // up over the pop-up before the shaper has read it. On a touch pointer focus the pop-up itself; a
+  // mouse or keyboard user still lands on the first control.
+  //
+  // Opened by ROCKER's Change Fit Rules (`at="fit"`, S4): scroll the pop-up so WHICH BLANKS FIT
+  // sits at the top of its scroll area, and focus that heading — a heading never throws a keyboard
+  // up, so this applies on every pointer. The popup is fixed-position, so it is the heading's
+  // offsetParent; less the popup's 16-dot top padding puts the heading flush with the top. Set
+  // again on the next frame in case focusing scrolled it anywhere else.
   function initialFocus() {
+    const popup = popupRef.current;
+    const heading = fitHeadingRef.current;
+    if (at === "fit" && popup && heading) {
+      const place = () => {
+        popup.scrollTop = Math.max(0, heading.offsetTop - 16);
+      };
+      place();
+      requestAnimationFrame(place);
+      return heading;
+    }
     const coarse = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
-    return coarse ? popupRef.current : true;
+    return coarse ? popup : true;
   }
 
   return (
@@ -164,7 +191,6 @@ export function AppSettingsDialog({
       <DialogContent
         ref={popupRef}
         initialFocus={initialFocus}
-        data-opened-at={at ?? undefined}
         className="max-h-[calc(100dvh-2rem)] overflow-y-auto border-surf-line-faint bg-surf-panel text-surf-ink sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-surf-ink">App Default Settings</DialogTitle>
@@ -206,11 +232,63 @@ export function AppSettingsDialog({
           </div>
         </section>
 
-        <div className="flex flex-col gap-6">
-          {GROUPS.map((group) => (
+        <section className="flex flex-col gap-2" aria-label="THEME">
+          <h3 className={GROUP_LABEL_CLASS}>THEME</h3>
+          <ThemeTiles />
+        </section>
+
+        {/* Quick task 260926-wmf's tick boxes, as one row: an unticked maker's blanks leave the
+            ROCKER blank list. All ticked until a shaper chooses; the last one ticked is locked (not
+            `disabled`, so it stays readable and reachable from the keyboard) and the hint says why,
+            so the list can never be emptied. A long name wraps inside its chip on a narrow phone
+            rather than running out of it (U-5). */}
+        <section className="flex flex-col gap-2" aria-label="BLANK MAKERS">
+          <h3 className={GROUP_LABEL_CLASS}>BLANK MAKERS</h3>
+          <div role="group" aria-label="Blank Makers" className="grid grid-cols-3 gap-1.5">
+            {KNOWN_BLANK_VENDORS.map((vendor) => {
+              const shown = !hidden.includes(vendor);
+              const locked = isLastShownMaker(hidden, vendor);
+              return (
+                <button
+                  key={vendor}
+                  type="button"
+                  aria-pressed={shown}
+                  aria-disabled={locked || undefined}
+                  aria-describedby={locked ? makersHintId : undefined}
+                  onClick={() => {
+                    if (!locked) setMakerShown(vendor, !shown);
+                  }}
+                  className="focus-ring-accent flex cursor-pointer items-center gap-1.5 rounded-md border border-surf-line bg-surf-sidebar px-1.5 py-1.5 text-left coarse:min-h-11 aria-disabled:cursor-default"
+                >
+                  <span className="flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-surf-ink-muted">
+                    {shown && <CheckIcon aria-hidden className="size-3.5 text-surf-accent-ink" />}
+                  </span>
+                  <span className="min-w-0 text-[11px] leading-tight text-surf-ink">{vendor}</span>
+                </button>
+              );
+            })}
+          </div>
+          {makerLocked && (
+            <p id={makersHintId} className="text-[11px] text-surf-ink-muted">
+              Keep at least one maker ticked
+            </p>
+          )}
+        </section>
+
+        <div aria-hidden className="border-t border-surf-line-faint" />
+
+        <div data-app-settings-fit className="flex flex-col gap-6">
+          {GROUPS.map((group, index) => (
             <section key={group.label} className="flex flex-col gap-4" aria-label={group.label}>
               <div>
-                <div className={GROUP_LABEL_CLASS}>{group.label}</div>
+                {index === 0 ? (
+                  // WHICH BLANKS FIT: where Change Fit Rules lands, so it can take focus.
+                  <h3 ref={fitHeadingRef} id={fitHeadingId} tabIndex={-1} className={`${GROUP_LABEL_CLASS} outline-none`}>
+                    {group.label}
+                  </h3>
+                ) : (
+                  <h3 className={GROUP_LABEL_CLASS}>{group.label}</h3>
+                )}
                 {group.hint && <p className="mt-1 text-xs text-surf-ink-muted">{group.hint}</p>}
               </div>
               {group.rows.map((row) => {
