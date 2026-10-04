@@ -77,7 +77,8 @@
 @custom-variant coarse (@media (pointer: coarse));
 
 /* The two LAYOUT switches: `max-shell:` (the phone stack — drawing pinned above scrolling
-   controls, compact top bar, six-tab bottom bar) and `shell:` (the desktop shell — sidebar beside
+   controls, under the compact top bar whose menu opens the six screen tiles; no bottom tab bar
+   since quick 261003-q2f) and `shell:` (the desktop shell — sidebar beside
    canvas, top nav row). Written once, here, so roughly 117 call sites across the app inherit the
    rule with no edits of their own.
 

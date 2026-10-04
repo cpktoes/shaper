@@ -52,8 +52,8 @@ const EARLY_RETURN_NULL = ["return", " null"].join("");
 const DATA_PHONE_UNDO_BAR = ["data-phone", "-undo-bar"].join("");
 const EXPORT_PHONE_UNDO_BAR = ["export function", " PhoneUndoBar"].join("");
 const PHONE_OFFSET_CLASS = [
-  "max-shell:bottom-[calc(3.5rem+env(safe-area-inset-bottom)",
-  "+0.75rem)]",
+  "max-shell:bottom-[calc(1rem+env(safe-area-inset-bottom)",
+  ")]",
 ].join("");
 const SHELL_OFFSET_CLASS = ["shell:bottom", "-4"].join("");
 const STYLE_ATTR = ["sty", "le="].join("");
@@ -76,7 +76,7 @@ describe("PhoneUndoBar source contract", () => {
     expect(wrapperTokens).not.toContain(MAX_SHELL_FLEX);
   });
 
-  it("the wrapper's tokens carry both width-keyed offsets: the phone's unchanged value and the computer's 16px", () => {
+  it("the wrapper's tokens carry both width-keyed offsets: the upright phone's 16px plus the home-bar inset (quick 261003-q2f) and the computer's 16px", () => {
     const [wrapperTokens] = classNameTokenLists(barSource).filter((tokens) => tokens.includes(FIXED));
     expect(wrapperTokens).toContain(PHONE_OFFSET_CLASS);
     expect(wrapperTokens).toContain(SHELL_OFFSET_CLASS);

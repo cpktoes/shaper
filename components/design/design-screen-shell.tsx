@@ -115,13 +115,19 @@ export function DesignScreenShell({
       : nonSimpleAsideBase;
 
   // Phase 13 item 13's fix (2026-10-03, found by walking the live site by machine): on an upright
-  // phone the controls END with 48px of extra room, so the last row can always be scrolled clear of
-  // the floating Undo/Redo pair. The pair (`phone-undo-bar.tsx`) sits 12px above the tab bar and is
-  // 44px tall on a touch screen, so it covers the 56px above this box's bottom edge; the 16px of
-  // padding plus this 48px leaves the last control about 8px of daylight. Before this, ROCKER's
-  // Tail Thinning Starts row — the last control on the screen, its Automatic button right-aligned
-  // exactly where the pair floats — ended under the Redo button with nothing below it to scroll it
-  // clear, so the button could not be tapped.
+  // phone the controls END with extra room, so the last row can always be scrolled clear of the
+  // floating Undo/Redo pair. Before this, ROCKER's Tail Thinning Starts row — then the last control
+  // on the screen, its Automatic button right-aligned exactly where the pair floats — ended under
+  // the Redo button with nothing below it to scroll it clear, so the button could not be tapped.
+  // Since quick 261003-q2c the last row is the Back and Next pair, and the arithmetic is the same.
+  //
+  // The numbers since quick 261003-q2f, which removed the old bottom tab bar: this scroller now runs
+  // to the window's bottom edge, and the pair (`phone-undo-bar.tsx`) sits 16px plus the home-bar
+  // inset above that edge, 44px tall on a touch screen — so its top is 60px plus the inset up. The
+  // last row must end 68px plus the inset up, 8px of daylight: the scroller's 16px of bottom padding
+  // plus this block's 52px plus the inset (`calc(3.25rem+env(safe-area-inset-bottom))`). (It was
+  // 48px when the pair sat 12px above the old 56px tab bar.) VOLUME's simpler sidebar and the
+  // Summary's order form carry the same room their own way and move together with this one.
   //
   // The room is an empty `::after` block at the end of the scrolling content, NOT more bottom
   // padding, on purpose. `max-shell:pb-16` was tried first and failed 26 of the iPhone project's
@@ -129,16 +135,16 @@ export function DesignScreenShell({
   // dev server at 390x664, under a 66dvh drawing), and once its padding is taller than the window
   // its content box is empty — at which point WebKit treats everything inside as fully clipped and
   // `innerText` reads "" for every control in the column. A block at the end of the content adds
-  // the same 48px to the scroll and leaves the padding, and so the content box, exactly as it was.
+  // the same room to the scroll and leaves the padding, and so the content box, exactly as it was.
   //
   // It rides the width switch (`max-shell:`) because the pair's own phone position does: the same
-  // layout fact, a tab bar under a stacked column (CLAUDE.md's Layout section). On a computer, and
+  // layout fact, a stacked column running to the window's bottom (CLAUDE.md's Layout section). On a computer, and
   // on a phone held sideways (the desktop shell), the pair floats over the drawing instead and this
   // rule never applies. The dev-only `sidebarFooter` below happens to sit right where the pair
   // floats, which is why no dev-server test could ever see the fault;
   // `e2e/prod/phone-controls-clear-undo.spec.ts` proves the room on a production build.
   const controlsScrollClassName =
-    "min-h-0 flex-1 overflow-y-auto p-10 max-shell:p-4 max-shell:after:block max-shell:after:h-12 max-shell:after:content-['']";
+    "min-h-0 flex-1 overflow-y-auto p-10 max-shell:p-4 max-shell:after:block max-shell:after:h-[calc(3.25rem+env(safe-area-inset-bottom))] max-shell:after:content-['']";
 
   // 10-SWEEP-2.md: a phone held SIDEWAYS (about 844x390 on a real iPhone) clears 820px and lands
   // in this desktop branch (D-10), where a real desktop window was always tall enough that nobody
@@ -245,13 +251,16 @@ export function DesignScreenShell({
           <>
             {controls}
             {
-              // The Back and Next pair, the last thing in VOLUME's controls. Its 24px of lead-in plus
-              // the aside's 40px of padding equal the scroller's 16px of padding plus the 48px end
-              // block the other screens carry, so on an upright phone `max-shell:pb-6` gives it the
-              // same 8px of daylight above the floating Undo/Redo pair. Any change to the pair's
-              // phone position must move this number together with that block.
+              // The Back and Next pair, the last thing in VOLUME's controls. The aside's own 40px of
+              // padding plus this pair's 28px of bottom padding and the home-bar inset
+              // (`max-shell:pb-[calc(1.75rem+...)]`) give 68px plus the inset under it — the same end
+              // the other screens' scroller padding and end block give (above), so on an upright
+              // phone it scrolls 8px clear of the
+              // floating Undo/Redo pair in the window's corner (quick 261003-q2f; it was 24px when
+              // the pair sat above the old bottom tab bar). Any change to the pair's phone position
+              // must move this number together with that block.
             }
-            <StepNav className="max-shell:pb-6" />
+            <StepNav className="max-shell:pb-[calc(1.75rem+env(safe-area-inset-bottom))]" />
           </>
         ) : (
           <>

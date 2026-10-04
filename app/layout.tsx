@@ -21,10 +21,10 @@ import { PRIVACY_ROUTE } from "@/lib/privacy/copy";
 export const metadata: Metadata = SITE_METADATA;
 
 /**
- * The "cover" fit is what makes the bottom tab bar's safe-area padding
- * (`env(safe-area-inset-bottom)`) do anything at all; the resizing-widget setting keeps the
- * layout height in step with the visible viewport so a bottom-anchored bar is never left under
- * the iOS keyboard. No scale-limiting field is added here, ever: removing a shaper's ability to
+ * The "cover" fit is what lets the safe-area insets (`env(safe-area-inset-*)`) reach the page at
+ * all — the top bar's ends, the drawing column's right edge, the menu's sheet and the Undo/Redo
+ * pair's corner all read them; the resizing-widget setting keeps the layout height in step with the
+ * visible viewport so nothing anchored to the bottom is ever left under the iOS keyboard. No scale-limiting field is added here, ever: removing a shaper's ability to
  * pinch-zoom is a WCAG 2.1 1.4.4 failure, and the 16px touch-input text size is the correct and
  * sufficient cure for iOS zoom-on-focus.
  */

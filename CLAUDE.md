@@ -161,8 +161,9 @@ Three switches live in `app/globals.css` and `components/fins/fin-viewer.tsx`, a
 different question about the screen — never conflated with either of the others.
 
 **Layout — width alone.** The `max-shell`/`shell` custom variants in `app/globals.css` decide
-which LAYOUT a screen renders: stacked-and-pinned (drawing above, controls scrolling beneath, a
-compact top bar and a six-tab bottom bar) below 820 dots wide, the desktop sidebar-beside-canvas
+which LAYOUT a screen renders: stacked-and-pinned (drawing above, controls scrolling beneath,
+under a compact top bar whose ☰ opens a sheet of six screen tiles drawn from the current board — no
+bottom tab bar since quick 261003-q2f) below 820 dots wide, the desktop sidebar-beside-canvas
 shell at or above it. At exactly 820 the desktop side owns the boundary, by declaration rather
 than by source order. For one wave (10-05, 2026-09-11 to 2026-09-11) this switch read width AND
 height together, because a real iPhone held sideways — about 844 dots wide, a real Pixel 7 about
@@ -214,9 +215,9 @@ is never under 500 dots tall, so that rule can never reach a mouse. The fourth i
 (Phase 13 item 9d, 2026-09-30 — the founder's call after walking the live site sideways): on a short
 screen the phone's compact bar — wordmark, Save, the hamburger menu — replaces the desktop row at any
 width, because that row stood about 105 dots tall on a 390-dot screen with the wordmark wrapped onto
-two lines. The layout beneath it is still the desktop shell, chosen by width alone; and because the
-desktop shell has no bottom tab bar, the hamburger menu carries the six screens as its first group at
-shell widths only (hidden by width on each row), so an upright phone's menu is unchanged. `site-nav.tsx`
+two lines. The layout beneath it is still the desktop shell, chosen by width alone; and on a short screen the
+same ☰ sheet of six screen tiles opens as on an upright phone — one row of six at a desktop-shell
+width, three by two below it (width alone). `site-nav.tsx`
 and `phone-top-bar.tsx` own that rule, written inline the same way, and `e2e/phone-sideways-top-bar.spec.ts`
 proves it on a sideways Pixel 7 and iPhone and proves a tall window of any width still gets the desktop row.
 

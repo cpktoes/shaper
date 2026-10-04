@@ -4,8 +4,8 @@
  * The Back and Next pair that ends every design screen's controls — the founder's "almost wizard
  * like" (2026-10-03, sketch 008's pick B): once a shaper has finished with a screen's controls the
  * next step is right there under their thumb, so walking a board TEMPLATE, ROCKER, RAILS, VOLUME,
- * FINS, SUMMARY needs no menu. The top row (computer) and the tab bar and menu (phone) stay for
- * jumping around. TEMPLATE has only Next and SUMMARY only Back; each then fills its row.
+ * FINS, SUMMARY needs no menu. The top row (computer) and the menu's six screen tiles (phone, since
+ * quick 261003-q2f removed the old bottom tab bar) stay for jumping around. TEMPLATE has only Next and SUMMARY only Back; each then fills its row.
  *
  * They are real links (client-side moves), never a page reload: a board that has not been saved
  * lives only in the app's memory, and a full reload would throw it away.
@@ -15,8 +15,9 @@
  * `display: none` — the same reason `phone-undo-bar.tsx` carries both. Nothing here ever reaches paper.
  *
  * The navigation landmark's name, "Back and Next", is fixed on purpose. Existing browser tests find
- * the computer's top row as the one `<nav>` with no name at all and the phone's tab bar by a name
- * containing "Screens" — so this landmark needs a name, and that name must not contain that word.
+ * the computer's top row as the one `<nav>` with no name at all, and check that no navigation is
+ * named "Screens" (the old bottom tab bar's name; the menu's tiles are a group of that name) — so
+ * this landmark needs a name, and that name must not contain that word.
  * The screen order is read from `NAV_LINKS`, imported and never copied.
  */
 

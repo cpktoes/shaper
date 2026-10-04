@@ -13,8 +13,9 @@
  * Two devices, both from the UI-SPEC's own reference set: an iPhone SE (375x667, the narrowest
  * phone this app targets) and an iPhone 14 (390x844, a taller/wider one). The pinned area's own
  * height is 66% of the RAW device height — `dvh` is relative to the full viewport, not to whatever
- * space is left after the shell's compact top bar and bottom tab bar, and at both these device
- * heights 66% of the raw height is comfortably inside what those bars leave (this is cross-checked
+ * space is left after the shell's compact top bar (and, until quick 261003-q2f removed it, the
+ * old bottom tab bar), and at both these device heights 66% of the raw height is comfortably
+ * inside what the chrome leaves (this is cross-checked
  * against a second data point below the outline case: the same box-height rule, at UI-SPEC's
  * illustrative 45dvh figure, reproduces the ~181px-wide rocker drawing the UI-SPEC itself quotes for
  * a 375px iPhone SE, to within a couple of pixels). The pinned area's own width is the device width

@@ -5,7 +5,7 @@ import { prepareBlank, thinningStartsOf } from "./blank-fit";
 import { buildBoardProfile, type BoardSideProfile } from "./board-profile";
 import { deriveEffectiveRails } from "./design";
 import { computeFinPlacement, importedFinTailFromOutline, type FinMark } from "./fins";
-import { buildOutline, type OutlineGeometry } from "./outline";
+import { buildOutline } from "./outline";
 import { BOARD_PRESETS, type BoardPreset } from "./presets";
 import { computeRailBands, railPlotDots, type RailSectionOutput } from "./rail-bands";
 import {

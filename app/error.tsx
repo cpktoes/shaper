@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { PhoneTabBar } from "@/components/design/phone-tab-bar";
 import {
   RECOVERY_ACTIONS,
   RECOVERY_COLUMN,
@@ -29,6 +28,9 @@ import { ERROR_COPY, errorReference } from "@/lib/error-pages/copy";
  * `retry` (not `reset`) re-fetches and re-renders the failed segment from the server (measured,
  * P-5) — clicking "Try again" sends a fresh request for the same screen rather than merely
  * clearing React's error boundary state.
+ *
+ * The screen is its `<main>` alone: the old bottom tab bar it used to mount as its own last child
+ * was removed in quick 261003-q2f — on a phone the top bar's menu reaches every design screen.
  */
 export default function ErrorScreen({
   error,
@@ -40,31 +42,28 @@ export default function ErrorScreen({
   const reference = errorReference(error.digest);
 
   return (
-    <>
-      <main data-error-screen className={RECOVERY_MAIN}>
-        <div className={RECOVERY_COLUMN}>
-          <h1 className={RECOVERY_HEADING}>{ERROR_COPY.heading}</h1>
-          <p className={RECOVERY_LEAD}>{ERROR_COPY.lead}</p>
-          <p className={RECOVERY_HINT}>{ERROR_COPY.hint}</p>
-          <div className={RECOVERY_ACTIONS}>
-            <button type="button" onClick={() => retry()} className={RECOVERY_PRIMARY_ACTION}>
-              {ERROR_COPY.tryAgain}
-            </button>
-            <Link href="/" className={RECOVERY_SECONDARY_ACTION}>
-              {ERROR_COPY.home}
-            </Link>
-            <Link href={CONTACT_ROUTE} className={RECOVERY_SECONDARY_ACTION}>
-              {ERROR_COPY.contact}
-            </Link>
-          </div>
-          {reference !== null && (
-            <p className={RECOVERY_REFERENCE}>
-              {ERROR_COPY.referenceLead} <code data-error-reference className={RECOVERY_REFERENCE_CODE}>{reference}</code>
-            </p>
-          )}
+    <main data-error-screen className={RECOVERY_MAIN}>
+      <div className={RECOVERY_COLUMN}>
+        <h1 className={RECOVERY_HEADING}>{ERROR_COPY.heading}</h1>
+        <p className={RECOVERY_LEAD}>{ERROR_COPY.lead}</p>
+        <p className={RECOVERY_HINT}>{ERROR_COPY.hint}</p>
+        <div className={RECOVERY_ACTIONS}>
+          <button type="button" onClick={() => retry()} className={RECOVERY_PRIMARY_ACTION}>
+            {ERROR_COPY.tryAgain}
+          </button>
+          <Link href="/" className={RECOVERY_SECONDARY_ACTION}>
+            {ERROR_COPY.home}
+          </Link>
+          <Link href={CONTACT_ROUTE} className={RECOVERY_SECONDARY_ACTION}>
+            {ERROR_COPY.contact}
+          </Link>
         </div>
-      </main>
-      <PhoneTabBar />
-    </>
+        {reference !== null && (
+          <p className={RECOVERY_REFERENCE}>
+            {ERROR_COPY.referenceLead} <code data-error-reference className={RECOVERY_REFERENCE_CODE}>{reference}</code>
+          </p>
+        )}
+      </div>
+    </main>
   );
 }

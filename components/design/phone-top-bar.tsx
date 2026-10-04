@@ -4,8 +4,7 @@
  * The phone's compact top bar (D-08): the wordmark, the Save control and the one menu button, in
  * one non-wrapping row. Mounted beside the desktop nav row in `components/site-nav.tsx`, shown
  * below the shell breakpoint (`hidden max-shell:flex`) — the two are always both in the
- * server-rendered tree, and the width variant alone decides which paints, exactly like
- * `components/design/phone-tab-bar.tsx`. Since quick 260930-r8s (Phase 13 item 9d) it is also
+ * server-rendered tree, and the width variant alone decides which paints. Since quick 260930-r8s (Phase 13 item 9d) it is also
  * shown on a short screen, 500 dots tall or less, AT ANY WIDTH — a height-alone media query
  * written inline on the header's own className below, the same inline form
  * `design-screen-shell.tsx`, RAILS and FINS already use — so a phone held sideways gets this one
