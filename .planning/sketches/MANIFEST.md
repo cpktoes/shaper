@@ -15,6 +15,14 @@ these sketches land on is one where offsets are structurally constrained: dimens
 small fixed set of rails, and a new label must join a rail or define one, never land wherever it
 happens to fit.
 
+### Phone chrome (sketches 007–008, 2026-10-03)
+
+The founder's rule for phones — "phone real estate is expensive, we need to save all of it" (Phase 13 item
+9e) — applied to the six-screen tab bar: move the screens into the ☰ menu the way a sideways phone already
+works, and let each screen end with a step-by-step "next screen" button so the usual walk through a board
+needs no menu ("almost wizard like"). These two sketches use the app's own slate and daylight palettes
+(`themes/app-slate.css`, `themes/app-daylight.css`), not the drafting palette above.
+
 ## Reference Points
 
 - Traditional drafting / engineering-drawing conventions (extension lines, end ticks, value in a
@@ -32,6 +40,8 @@ happens to fit.
 | 004 | clean-interior-svg | Where do values go once nothing may sit inside the outline? | **A — Aligned rail** | viewer, callouts, svg, refinement |
 | 005 | horizontal-board-view | What does the Template screen look like with the board horizontal, nose left? | **C — Full-bleed** (layout premise superseded by 006) | viewer, layout, callouts, svg, post-mvp |
 | 006 | orientation-switch | How does the shaper turn the board horizontal, without moving anything else? | **Rotate in place**, button in the viewer's upper-right | viewer, layout, icon, interaction, post-mvp |
+| 007 | phone-screens-in-menu | With no tab bar at the bottom, how does an upright phone show which screen you're on and take you to another? | **C — Screen tiles** (☰ sheet of six picture tiles; no bottom tab bar) | phone, layout, navigation, chrome |
+| 008 | next-screen-button | What does the step-by-step button under the last control look like? | **B — Back + Next** ("Together" tab: on 007-C) | phone, navigation, wizard |
 
 ## Decisions These Lock In
 
@@ -53,7 +63,18 @@ happens to fit.
    originally dots only, which read as an absence rather than a station.)
 8. **Labels are SVG `<text>`**, not absolutely-positioned HTML.
 
+9. **Phone screens move into ☰ as picture tiles** (sketch 007 C, 2026-10-03) — on an upright phone the
+   six-screen tab bar goes; ☰ opens a sheet of six tiles (the current one ticked) above Home, Contact,
+   Privacy, Units, Theme and the account. The 56 freed dots go to the controls (122 → 178 on an iPhone 14).
+10. **Each design screen ends with Back + Next** (sketch 008 B) — "← previous" and "next →" side by side
+   under the last control, in the order Template, Rocker, Rails, Volume, Fins, Summary; the first screen
+   has only Next, the last only Back. ☰ is for jumping around; Back + Next is the usual walk.
+
 ## Open Questions
+
+- Phone chrome (007/008): does a phone held sideways keep its screens list in ☰ or switch to the tiles too?
+  Do Back + Next also appear on a computer, at the foot of the sidebar? Does the freed height go to the
+  controls (as sketched) or should the drawing's 66% cap grow?
 
 - If the fins diagram is ever printed standalone, its inputs lose the sidebar. Reintroduce as chips,
   or use sketch 002 variant B's parenthesised reference dimensions for print only. Undecided.

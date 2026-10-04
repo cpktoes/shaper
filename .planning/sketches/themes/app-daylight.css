@@ -1,0 +1,25 @@
+/* Shaper app palette, light ("daylight") — copied from app/globals.css's --ramp-daylight-* tokens
+   on 2026-10-03 for the phone-chrome sketches (007, 008). Variables only — no component styles. */
+:root {
+  --color-bg:           #ffffff;  /* --surf-ground */
+  --color-surface:      #ffffff;  /* --surf-panel */
+  --color-canvas:       #dfdcd3;  /* --surf-canvas */
+  --color-well:         #dfdcd3;  /* --surf-well */
+  --color-border:       #897c58;  /* --surf-line-faint */
+  --color-line:         #897c58;  /* --surf-line */
+  --color-text:         #1f2a3b;  /* --surf-ink */
+  --color-text-muted:   #566171;  /* --surf-ink-muted */
+  --color-primary:      #8ec1b8;  /* --surf-accent */
+  --color-on-primary:   #1f2a3b;  /* --surf-on-accent */
+  --color-accent-ink:   #48605c;  /* --surf-accent-ink */
+  --color-board:        #d9f2ed;  /* --surf-board-fill */
+  --color-warning-ink:  #ac3811;
+  --color-page:         #c9c5ba;  /* behind the phone frame (sketch only) */
+
+  --font-sans: "Inter", Roboto, system-ui, sans-serif;
+  --tracking-architectural: 0.15em;
+  --text-xs: 0.75rem; --text-sm: 0.875rem; --text-base: 1rem;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px;
+  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px; --radius-full: 9999px;
+  --shadow-lg: 0 10px 24px rgba(0,0,0,0.18);
+}
