@@ -20,36 +20,20 @@ import {
   MailIcon,
   MonitorIcon,
   MoonIcon,
-  RulerIcon,
   SettingsIcon,
   ShieldCheckIcon,
   SlidersHorizontalIcon,
   SunIcon,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { useAppSettings } from "@/components/app-settings-provider";
 import { useBlankMakers } from "@/components/blank-makers-provider";
-import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { useTheme } from "@/components/theme-provider";
-import { useUnits } from "@/components/units-provider";
 import { isLastShownMaker } from "@/lib/blank-makers-preference";
 import { KNOWN_BLANK_VENDORS, type BlankVendor } from "@/lib/blanks/vendors";
 import { CONTACT_COPY, CONTACT_ROUTE } from "@/lib/contact/message";
 import { PRIVACY_COPY, PRIVACY_ROUTE } from "@/lib/privacy/copy";
-import { formatDimsExample, presetSummary } from "@/lib/geometry/summary-line";
-import { BOARD_PRESETS } from "@/lib/geometry/presets";
-import type { UnitsSystem } from "@/lib/geometry/units";
 import { THEMES, type ThemeMode, type ThemePreference } from "@/lib/theme";
-
-/**
- * The D-06 live example board — a fixed reference (Shortboard) run through the same
- * `summarizeDesign()` pipeline the cards use, computed once at module load. Fixed rather than
- * the board in progress so the row never moves while a shaper edits (UI-SPEC's resolved
- * assumption): switching units mid-edit should not also make the menu's own example jump.
- */
-const UNITS_EXAMPLE_SUMMARY = presetSummary(
-  // Shortboard is always present in BOARD_PRESETS — see lib/geometry/presets.ts.
-  BOARD_PRESETS.find((preset) => preset.id === "shortboard")!,
-);
 
 const MODE_ICON: Record<ThemeMode, typeof SunIcon> = { light: SunIcon, dark: MoonIcon };
 const MODE_LABEL: Record<ThemeMode, string> = { light: "Light", dark: "Dark" };
@@ -112,6 +96,29 @@ export function PrivacyMenuItem() {
 }
 
 /**
+ * The one "App Default Settings" row (quick 261003-uwi) both menus carry. A plain Menu.Item, so a
+ * tap closes the menu, then opens the App Default Settings pop-up — rendered by
+ * `AppSettingsProvider`, not here, because this popup unmounts the moment it closes. The pop-up
+ * holds what the menus used to list row by row: Imperial or Metric, the theme, the blank makers and
+ * the fit and tip defaults. 44 dots tall under a touch pointer, today's height for a mouse.
+ */
+export function AppSettingsMenuItem() {
+  const { openAppSettings } = useAppSettings();
+  return (
+    <Menu.Item
+      onClick={() => openAppSettings()}
+      className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none select-none coarse:min-h-11 data-highlighted:bg-surf-well"
+    >
+      <SlidersHorizontalIcon aria-hidden className="size-4 shrink-0 text-surf-ink-muted" />
+      <span className="flex-1 leading-tight">
+        <span className="block text-sm text-surf-ink">App Default Settings</span>
+        <span className="block text-[11px] text-surf-ink-muted">Units, theme, blank makers, fit and tips</span>
+      </span>
+    </Menu.Item>
+  );
+}
+
+/**
  * The popup's own content — the Units and Theme radio groups, the Blanks row that opens the fit
  * and tip defaults dialog, and the BLANK MAKERS tick boxes (quick task 260926-wmf) — factored out of `SettingsMenu` so
  * `components/design/phone-menu.tsx` can render the exact same rows inside its own single popup
@@ -127,30 +134,10 @@ export function PrivacyMenuItem() {
  */
 export function SettingsMenuContent() {
   const { preference, setPreference, systemTheme } = useTheme();
-  const { system, setSystem } = useUnits();
-  const { openDialog } = useFitDefaults();
 
   return (
     <>
-      {/* Units sits above Theme (D-05) — a sibling Menu.RadioGroup, not nested inside it.
-          Base UI walks a RadioGroup's own children to register its items, so neither
-          group may be wrapped in an intervening element. */}
-      <Menu.RadioGroup value={system} onValueChange={(next) => setSystem(next as UnitsSystem)}>
-        <Menu.GroupLabel className="px-2 pt-1 pb-2 text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase">
-          Units
-        </Menu.GroupLabel>
-
-        <UnitsRow
-          value="imperial"
-          label="Imperial"
-          detail={formatDimsExample(UNITS_EXAMPLE_SUMMARY, "imperial")}
-        />
-        <UnitsRow
-          value="metric"
-          label="Metric"
-          detail={formatDimsExample(UNITS_EXAMPLE_SUMMARY, "metric")}
-        />
-      </Menu.RadioGroup>
+      <AppSettingsMenuItem />
 
       <Menu.RadioGroup
         value={preference}
@@ -202,28 +189,6 @@ export function SettingsMenuContent() {
           );
         })}
       </Menu.RadioGroup>
-
-      {/* D-09: the shaper's seven fit and tip defaults (Phase 12 added Planer Max Depth, Deck
-          Skin and Tip Style — hence the detail line's "planer, skin"). The row only opens a dialog — typed
-          numbers inside the menu would fight its own arrow-key and typeahead handling — and the
-          dialog is rendered by FitDefaultsProvider, not here, because this popup unmounts the
-          moment it closes. A plain Menu.Item closes the menu on click, which is what we want. */}
-      <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />
-      <Menu.Group>
-        <Menu.GroupLabel className="px-2 pt-1 pb-2 text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase">
-          Blanks
-        </Menu.GroupLabel>
-        <Menu.Item
-          onClick={openDialog}
-          className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none select-none coarse:min-h-11 data-highlighted:bg-surf-well"
-        >
-          <SlidersHorizontalIcon aria-hidden className="size-4 shrink-0 text-surf-ink-muted" />
-          <span className="flex-1 leading-tight">
-            <span className="block text-sm text-surf-ink">Fit & Tip Defaults</span>
-            <span className="block text-[11px] text-surf-ink-muted">Spare foam, planer, skin and tips</span>
-          </span>
-        </Menu.Item>
-      </Menu.Group>
 
       {/* Quick task 260926-wmf: one tick box per blank maker. An unticked maker's blanks leave the
           ROCKER blank list. All ticked until a shaper chooses; the last ticked maker is locked, so
@@ -324,40 +289,6 @@ function ThemeRow({
       <Menu.RadioItemIndicator
         // `keepMounted` is off by default, so the icon is simply absent for unselected rows —
         // the flex layout leaves the gap either way.
-        render={<span className="flex size-4 shrink-0 items-center justify-center" />}
-      >
-        <CheckIcon aria-hidden className="size-4 text-surf-accent-ink" />
-      </Menu.RadioItemIndicator>
-    </Menu.RadioItem>
-  );
-}
-
-/**
- * `ThemeRow` with the icon fixed to a ruler for both rows (D-07) instead of a per-value icon —
- * unlike Theme, where the icon varies by mode, Units has only one dimension of variation (the
- * system), so one icon suffices and a second would imply a distinction that doesn't exist.
- */
-function UnitsRow({
-  value,
-  label,
-  detail,
-}: {
-  value: UnitsSystem;
-  label: string;
-  detail: string;
-}) {
-  return (
-    <Menu.RadioItem
-      value={value}
-      closeOnClick={false}
-      className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 outline-none select-none data-highlighted:bg-surf-well"
-    >
-      <RulerIcon aria-hidden className="size-4 shrink-0 text-surf-ink-muted" />
-      <span className="flex-1 leading-tight">
-        <span className="block text-sm text-surf-ink">{label}</span>
-        <span className="block text-[11px] text-surf-ink-muted">{detail}</span>
-      </span>
-      <Menu.RadioItemIndicator
         render={<span className="flex size-4 shrink-0 items-center justify-center" />}
       >
         <CheckIcon aria-hidden className="size-4 text-surf-accent-ink" />

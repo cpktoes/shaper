@@ -11,6 +11,7 @@ import { UnitsProvider } from "@/components/units-provider";
 import { PrintInstructionsProvider } from "@/components/print-instructions-provider";
 import { FitDefaultsProvider } from "@/components/fit-defaults-provider";
 import { BlankMakersProvider } from "@/components/blank-makers-provider";
+import { AppSettingsProvider } from "@/components/app-settings-provider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { resolveUnitsHandoff } from "@/lib/units-server";
 import { resolvePrintRailInstructionsHandoff } from "@/lib/print-instructions-server";
@@ -118,8 +119,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         </head>
         <body className="flex h-dvh flex-col overflow-hidden bg-surf-ground">
           {/* Outside ThemeProvider, not nested inside it — the units value has to be available
-              to everything the nav renders, including the settings menu's Units group beside
-              its Theme group. No pre-hydration script counterpart: units renders text, and the
+              to everything the nav renders, including the Imperial | Metric pair in App Default
+              Settings beside its theme tiles. No pre-hydration script counterpart: units renders text, and the
               server snapshot above is already correct for first paint, so there is nothing to
               patch before paint the way THEME_INIT_SCRIPT patches a stale dark-theme class.
               First paint is not the whole story, though: the client's own snapshot can disagree
@@ -129,17 +130,21 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               doc comment (WR-02). */}
           <UnitsProvider handoff={unitsHandoff}>
             <PrintInstructionsProvider handoff={printInstructionsHandoff}>
-              {/* Above the design store (and the nav's gear menu, which opens its dialog) so
-                  every screen — and a brand-new board's tips — can read the shaper's defaults. */}
+              {/* Above the design store (and App Default Settings, which shows them) so every
+                  screen — and a brand-new board's tips — can read the shaper's defaults. */}
               <FitDefaultsProvider handoff={fitDefaultsHandoff}>
                 <BlankMakersProvider handoff={blankMakersHandoff}>
                   <ThemeProvider>
-                    <Provider>
-                      <div className="flex min-h-0 flex-1 flex-col">
-                        <SiteNav />
-                        {children}
-                      </div>
-                    </Provider>
+                    {/* Inside all four settings providers, so the one App Default Settings pop-up
+                        it renders can read units, fit and tip defaults, blank makers and theme. */}
+                    <AppSettingsProvider>
+                      <Provider>
+                        <div className="flex min-h-0 flex-1 flex-col">
+                          <SiteNav />
+                          {children}
+                        </div>
+                      </Provider>
+                    </AppSettingsProvider>
                   </ThemeProvider>
                 </BlankMakersProvider>
               </FitDefaultsProvider>

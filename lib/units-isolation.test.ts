@@ -222,7 +222,7 @@ describe("units isolation (UNIT-05, D-16)", () => {
   });
 
   it("every display site that already shows a design summary gets its numbers from the boundary", () => {
-    // A display site may read the boundary directly (settings-menu.tsx, preset-card.tsx) or
+    // A display site may read the boundary directly (app-settings-dialog.tsx, preset-card.tsx) or
     // through the shared CardMetadataLine component (board-rack-card.tsx since 05-03). That
     // component is itself a candidate below and must import the boundary, so the chain from every
     // card line back to lib/geometry stays pinned either way. Each candidate is checked only if
@@ -232,7 +232,7 @@ describe("units isolation (UNIT-05, D-16)", () => {
       "components/setup/card-metadata-line.tsx",
       "components/setup/board-rack-card.tsx",
       "components/setup/preset-card.tsx",
-      "components/settings-menu.tsx",
+      "components/app-settings-dialog.tsx",
     ];
     let checked = 0;
     for (const relative of candidates) {
@@ -247,8 +247,9 @@ describe("units isolation (UNIT-05, D-16)", () => {
         `${relative} shows a design summary but does not import from the units boundary or the shared CardMetadataLine`,
       ).toMatch(/@\/lib\/geometry\/(summary-line|units)|@\/components\/setup\/card-metadata-line/);
     }
-    // Must find at least the two sites this phase already converted (board-rack-card.tsx,
-    // settings-menu.tsx) — an empty candidate list would otherwise pass this test vacuously.
+    // Must find at least the two sites this phase already converted (board-rack-card.tsx, and the
+    // Units examples now in app-settings-dialog.tsx, quick 261003-uwi) — an empty candidate list
+    // would otherwise pass this test vacuously.
     expect(checked).toBeGreaterThanOrEqual(2);
   });
 
@@ -351,10 +352,11 @@ describe("the design screens read every measurement through the display boundary
     { file: "components/volume/volume-controls.tsx", converted: true },
     { file: "components/volume/volume-calculation-card.tsx", converted: true },
     { file: "components/volume/volume-estimator.tsx", converted: true },
-    // 11-08 (D-09, R15): the gear menu's Fit & Tip Defaults dialog shows five marks. It lives
-    // outside the five walked screen folders, so it has to be named here to be checked at all —
-    // listed, the loops below hold it to the same boundary every design screen reads through.
-    { file: "components/fit-defaults-dialog.tsx", converted: true },
+    // 11-08 (D-09, R15), renamed in quick 261003-uwi: the App Default Settings pop-up — the
+    // Imperial | Metric examples and the fit and tip marks. It lives outside the five walked screen
+    // folders, so it has to be named here to be checked at all — listed, the loops below hold it to
+    // the same boundary every design screen reads through.
+    { file: "components/app-settings-dialog.tsx", converted: true },
     // 11-11 (R15): the ROCKER sidebar's blank list and picked card. Every number in it arrives
     // through `lib/geometry/blank-reasons.ts`'s sentences, which print through the boundary.
     { file: "components/rocker/blank-picker.tsx", converted: true },

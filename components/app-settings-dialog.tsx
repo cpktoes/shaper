@@ -1,32 +1,39 @@
 "use client";
 
 /**
- * The Fit & Tip Defaults dialog (D-09, 11-UI-SPEC §12) — opened from the gear menu's BLANKS row,
- * and rendered once, by `FitDefaultsProvider`, rather than inside the menu: the menu popup unmounts
- * the moment it closes, and a dialog inside it would vanish with it.
+ * App Default Settings (quick 261003-uwi) — the one pop-up that holds every app-wide default a
+ * shaper sets once: Imperial or Metric, the theme, which blank makers ROCKER lists, and the seven
+ * fit and tip defaults. It grew out of the Fit & Tip Defaults dialog (D-09, 11-UI-SPEC §12), whose
+ * two groups it keeps exactly as they were, below a hairline.
  *
- * Seven settings in two groups: six typed marks and one two-way choice. WHICH BLANKS FIT holds the
- * three rules that decide whether a real blank counts as a fit for the board (Phase 11 D-04's
- * extra length, Phase 12 D-03's Planer Max Depth — which, with the board's Deck Skin, sets the
- * centre floor (D-10) — and D-05's width margin); NEW BOARDS START WITH holds the Deck Skin, the
- * nose and tail tip thickness and the Tip Style (Pin deck or Bottom, Phase 12 D-04) a brand-new
- * board begins from — a board already started keeps its own.
+ * Who opens it: the single "App Default Settings" row in the gear menu (computer) and in the ☰
+ * sheet (phone) open it at its top; ROCKER's two "Change Fit Rules" buttons open it at the fit part
+ * (`at="fit"`). It is rendered once, by `AppSettingsProvider`, rather than inside either menu: a menu
+ * popup unmounts the moment it closes, and a dialog inside it would vanish with it. That provider
+ * sits inside the theme, makers, fit-defaults and units providers, so this pop-up can read all four.
  *
- * The Tip Style pair commits on the tap itself, like the Units rows; tapping the option already
- * shown stores nothing, the same "only a real change counts" rule the typed fields follow.
+ * Everything applies at once — a tap on a Units button, a typed field on blur or Enter, the Tip
+ * Style pair on the tap — so there is no Save and no Cancel. The footer is Restore Fit & Tip
+ * Defaults (returns only the seven fit and tip values to "not chosen", never units, theme or
+ * makers) and Done, which only closes. A tap on the option already shown stores nothing, the same
+ * "only a real change counts" rule the typed fields follow.
  *
- * Every field commits on blur or Enter and takes effect at once, the same way the Units rows apply
- * as they are picked, so there is no Save and no Cancel: the footer is Restore Defaults (returns
- * every setting to "not chosen", so each reads its default again) and Done, which only closes. A
- * setting nobody chose shows its default exactly as if it had been chosen — no "default" tag.
+ * WHICH BLANKS FIT holds the three rules that decide whether a real blank counts as a fit for the
+ * board (Phase 11 D-04's extra length, Phase 12 D-03's Planer Max Depth — which, with the board's
+ * Deck Skin, sets the centre floor (D-10) — and D-05's width margin); NEW BOARDS START WITH holds
+ * the Deck Skin, the nose and tail tip thickness and the Tip Style (Pin deck or Bottom, Phase 12
+ * D-04) a brand-new board begins from — a board already started keeps its own. A setting nobody
+ * chose shows its default exactly as if it had been chosen — no "default" tag.
  *
- * Every number reads through the display boundary as a mark (`family="mark"`): whole millimetres
- * in Metric, sixteenths in Imperial (CLAUDE.md Rule 2). Each field's typed bounds come from the
- * same `measureSlider` + `typedFieldBounds` pair every other typed field uses, over the ranges
- * declared beside the defaults themselves, so an out-of-range value clamps silently to them.
+ * Every number reads through the display boundary (CLAUDE.md Rule 2): the Units examples are the
+ * Shortboard's dims through `formatDimsExample`, and every fit and tip field reads as a mark
+ * (`family="mark"`) — whole millimetres in Metric, sixteenths in Imperial. Each field's typed bounds
+ * come from the same `measureSlider` + `typedFieldBounds` pair every other typed field uses, over
+ * the ranges declared beside the defaults themselves, so an out-of-range value clamps silently.
  */
 
 import { useRef } from "react";
+import type { AppSettingsPlace } from "@/components/app-settings-provider";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { useUnits } from "@/components/units-provider";
 import { MeasureField } from "@/components/design/measure-field";
@@ -44,10 +51,28 @@ import { formatMark, measureSlider, stationLabel, typedFieldBounds } from "@/lib
 import { TwoOptionToggle } from "@/components/viewer/two-option-toggle";
 import { FIT_DEFAULTS_RANGE_IN, type FitDefaultsMmKey } from "@/lib/fit-defaults-preference";
 import type { TipStyle } from "@/lib/geometry/blank";
+import { formatDimsExample, presetSummary } from "@/lib/geometry/summary-line";
+import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
 
-/** The menu's own group-label type (settings-menu.tsx), reused for the dialog's two groups. */
+/** The menus' old group-label type, kept for every group heading in the pop-up. */
 const GROUP_LABEL_CLASS = "text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase";
+
+/**
+ * The live example board under each Units button (D-06) — a fixed reference (Shortboard) run
+ * through the same `summarizeDesign()` pipeline the cards use, computed once at module load. Fixed
+ * rather than the board in progress so the example never moves while a shaper edits (UI-SPEC's
+ * resolved assumption): switching units mid-edit should not also make the pop-up's own example jump.
+ */
+const UNITS_EXAMPLE_SUMMARY = presetSummary(
+  // Shortboard is always present in BOARD_PRESETS — see lib/geometry/presets.ts.
+  BOARD_PRESETS.find((preset) => preset.id === "shortboard")!,
+);
+
+const UNITS_OPTIONS: { system: UnitsSystem; label: string }[] = [
+  { system: "imperial", label: "Imperial" },
+  { system: "metric", label: "Metric" },
+];
 
 interface FieldCopy {
   label: string;
@@ -102,15 +127,18 @@ const GROUPS: { label: string; hint?: string; rows: DialogRow[] }[] = [
   },
 ];
 
-export function FitDefaultsDialog({
+export function AppSettingsDialog({
   open,
   onOpenChange,
+  at,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** What the pop-up was opened for: null for its top, "fit" for the fit part. */
+  at: AppSettingsPlace | null;
 }) {
   const { defaults, setDefault, restoreDefaults } = useFitDefaults();
-  const { system } = useUnits();
+  const { system, setSystem } = useUnits();
   const popupRef = useRef<HTMLDivElement>(null);
 
   // A typed field also commits when it merely loses focus, so tabbing or tapping past a field
@@ -136,14 +164,47 @@ export function FitDefaultsDialog({
       <DialogContent
         ref={popupRef}
         initialFocus={initialFocus}
+        data-opened-at={at ?? undefined}
         className="max-h-[calc(100dvh-2rem)] overflow-y-auto border-surf-line-faint bg-surf-panel text-surf-ink sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-surf-ink">Fit & Tip Defaults</DialogTitle>
+          <DialogTitle className="text-surf-ink">App Default Settings</DialogTitle>
           <DialogDescription className="text-xs text-surf-ink-muted">
-            Which blanks count as a fit, how deep your planer cuts, and what every new board starts
-            with.
+            Your defaults for this app. Changes apply at once.
           </DialogDescription>
         </DialogHeader>
+
+        <section className="flex flex-col gap-2" aria-label="UNITS">
+          <h3 className={GROUP_LABEL_CLASS}>UNITS</h3>
+          <div role="group" aria-label="Units" className="grid grid-cols-2 gap-1.5">
+            {UNITS_OPTIONS.map((option) => {
+              const active = option.system === system;
+              return (
+                <button
+                  key={option.system}
+                  type="button"
+                  aria-pressed={active}
+                  // Only a real change counts: tapping the system already shown stores nothing.
+                  onClick={() => {
+                    if (option.system !== system) setSystem(option.system);
+                  }}
+                  // TwoOptionToggle's own pressed and unpressed colours, so this pair reads as one
+                  // family with Tip Style below; the example line under the name keeps the preview
+                  // the menu's old Units rows gave.
+                  className={`focus-ring-accent flex cursor-pointer flex-col items-start gap-0.5 rounded-md border px-2 py-1.5 text-left leading-tight coarse:min-h-11 ${
+                    active
+                      ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
+                      : "border-surf-line bg-surf-sidebar text-surf-ink"
+                  }`}
+                >
+                  <span className="text-xs font-bold">{option.label}</span>
+                  <span className={`text-[11px] ${active ? "text-surf-on-accent" : "text-surf-ink-muted"}`}>
+                    {formatDimsExample(UNITS_EXAMPLE_SUMMARY, option.system)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
         <div className="flex flex-col gap-6">
           {GROUPS.map((group) => (
@@ -215,7 +276,7 @@ export function FitDefaultsDialog({
             onClick={restoreDefaults}
             className="focus-ring-accent cursor-pointer text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center"
           >
-            Restore Defaults
+            Restore Fit & Tip Defaults
           </button>
           <DialogClose render={<Button />}>Done</DialogClose>
         </DialogFooter>
