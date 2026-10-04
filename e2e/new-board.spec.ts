@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { goToScreen } from "./helpers/screens";
+import { openAppSettings } from "./helpers/settings";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_FOIL_SPEC } from "../lib/geometry/foil";
@@ -9,7 +10,7 @@ import { mm } from "../lib/geometry/units";
 /**
  * 11-10: how a new board starts.
  *
- * 1. D-19 — a brand-new board nobody has touched follows the gear menu's Fit & Tip Defaults: set
+ * 1. D-19 — a brand-new board nobody has touched follows App Default Settings' fit and tip defaults: set
  *    Nose Tip Thickness there and the ROCKER screen's Nose Tip reads it at once. The first edit
  *    (here, one keyboard nudge of the Tail Tip slider) makes the tips the board's own, so a later
  *    change to the default leaves the board alone (D-09).
@@ -38,32 +39,10 @@ async function dismissBannerAndTip(page: Page) {
   }, TOOLBAR_TIP_DISMISSAL_KEY);
 }
 
-/** The desktop nav's gear, or the phone top bar's one Menu button — whichever this project shows. */
-function menuTrigger(page: Page, projectName: string): Locator {
-  return projectName === "desktop"
-    ? page.getByRole("button", { name: "Settings" })
-    : page.getByRole("banner").getByRole("button", { name: "Menu" });
-}
-
-/** Opens Fit & Tip Defaults from the menu. The menu click is retried until the row shows, because
- * a click that lands before hydration does nothing — never clicked again while the row is open. */
-async function openFitDefaults(page: Page, projectName: string): Promise<Locator> {
-  const trigger = menuTrigger(page, projectName);
-  const row = page.getByRole("menuitem", { name: /Fit & Tip Defaults/ });
-  await expect(trigger).toBeVisible();
-  await expect(async () => {
-    if (!(await row.isVisible())) await trigger.click();
-    await expect(row).toBeVisible({ timeout: 1_000 });
-  }).toPass({ timeout: 20_000 });
-  await row.click();
-  const dialog = page.getByRole("dialog", { name: "Fit & Tip Defaults" });
-  await expect(dialog).toBeVisible();
-  return dialog;
-}
-
-/** Types a Nose Tip Thickness default, commits it with Enter, and closes the dialog with Done. */
-async function setNoseTipDefault(page: Page, projectName: string, value: string) {
-  const dialog = await openFitDefaults(page, projectName);
+/** Types a Nose Tip Thickness default in App Default Settings' fit part (opened through the shared
+ * helper, gear or ☰ whichever the window shows), commits it with Enter, and closes it with Done. */
+async function setNoseTipDefault(page: Page, value: string) {
+  const dialog = await openAppSettings(page);
   const field = dialog.getByRole("textbox", { name: "Nose Tip Thickness", exact: true });
   await field.fill(value);
   await field.press("Enter");
@@ -102,9 +81,9 @@ test.describe("a new board", () => {
     await dismissBannerAndTip(page);
   });
 
-  test("an untouched board follows the tip defaults in the gear menu, until the shaper touches it (D-19)", async ({
+  test("an untouched board follows the tip defaults in App Default Settings, until the shaper touches it (D-19)", async ({
     page,
-  }, testInfo) => {
+  }) => {
     await page.goto("/design/rocker");
     const thickness = thicknessSection(page);
     const noseTip = thickness.getByText(/^Nose Tip — /);
@@ -112,7 +91,7 @@ test.describe("a new board", () => {
     await expect(noseTip).toHaveText(`Nose Tip — ${formatMark(DEFAULT_FOIL_SPEC.noseTip, "imperial")}`);
 
     // Nobody has touched this board: a new Nose Tip default shows on it straight away.
-    await setNoseTipDefault(page, testInfo.project.name, "3/8");
+    await setNoseTipDefault(page, "3/8");
     await expect(noseTip).toHaveText('Nose Tip — 3/8"');
 
     // The first edit — one keyboard step of the Tail Tip thickness slider — starts the board.
@@ -124,7 +103,7 @@ test.describe("a new board", () => {
     // From now on the board keeps its own tips: a new default does not reach it. 3/4" is neither
     // the board's own 3/8" nor the out-of-the-box 1/2", so typing it is plainly a new choice
     // rather than a return to the default.
-    await setNoseTipDefault(page, testInfo.project.name, "3/4");
+    await setNoseTipDefault(page, "3/4");
     await expect(noseTip).toHaveText('Nose Tip — 3/8"');
   });
 

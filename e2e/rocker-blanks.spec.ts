@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { goToScreen } from "./helpers/screens";
+import { openAppSettings } from "./helpers/settings";
 
 /**
  * The finished ROCKER screen's browser proof (Phase 11, 11-11): pick a real blank from the list,
@@ -170,9 +171,9 @@ test.describe("ROCKER — a real blank from the list", () => {
     await expect(pickedCard(page)).toHaveCount(0);
   });
 
-  test("with no blank picked, the list intro quotes the Deck Skin default from Fit & Tip Defaults", async ({
+  test("with no blank picked, the list intro quotes the Deck Skin default from App Default Settings", async ({
     page,
-  }, testInfo) => {
+  }) => {
     await openRocker(page);
     const intro = page.getByText(/^Shortest first\./);
     await expect(intro).toContainText("deck skin");
@@ -180,18 +181,7 @@ test.describe("ROCKER — a real blank from the list", () => {
 
     // D-01: a board with no blank follows the live account default, and the list's words quote
     // the skin its verdicts use — so changing the default re-words the intro at once.
-    const trigger =
-      testInfo.project.name === "desktop"
-        ? page.getByRole("button", { name: "Settings" })
-        : page.getByRole("banner").getByRole("button", { name: "Menu" });
-    const row = page.getByRole("menuitem", { name: /Fit & Tip Defaults/ });
-    await expect(async () => {
-      if (!(await row.isVisible())) await trigger.click();
-      await expect(row).toBeVisible({ timeout: 1_000 });
-    }).toPass({ timeout: 20_000 });
-    await row.click();
-    const dialog = page.getByRole("dialog", { name: "Fit & Tip Defaults" });
-    await expect(dialog).toBeVisible();
+    const dialog = await openAppSettings(page);
     const skin = dialog.getByRole("textbox", { name: "Deck Skin", exact: true });
     await skin.fill("1/2");
     await skin.press("Enter");

@@ -206,7 +206,7 @@ test.describe("phone compact top bar and the one menu", () => {
     expect(gap).toBeGreaterThanOrEqual(20);
   });
 
-  test("the Menu button opens one popup holding both a units choice and the account control", async ({
+  test("the Menu button opens one popup holding both the App Default Settings row and the account control", async ({
     page,
   }) => {
     await page.goto("/design/outline");
@@ -216,8 +216,7 @@ test.describe("phone compact top bar and the one menu", () => {
 
     const popup = page.getByRole("menu");
     await expect(popup).toBeVisible();
-    await expect(popup.getByText("Imperial")).toBeVisible();
-    await expect(popup.getByText("Metric")).toBeVisible();
+    await expect(popup.getByRole("menuitem", { name: /^App Default Settings/ })).toBeVisible();
     // The account row (NavAuthControl) is the same component the desktop nav renders — located
     // by its own stable hook rather than a state-dependent label, since this suite's deliberately
     // fake Clerk credentials never settle `isLoaded` true (NavAuthControl's own documented
