@@ -16,10 +16,10 @@
  * - The offer is the fitting blank whose length is closest to this one, from the blank makers
  *   ticked in the settings menu only (never an unticked maker's), with Switch to This Blank. F5 —
  *   when no blank in those catalogues fits — says so, naming them, and offers Change Fit Rules
- *   (the gear menu's Fit & Tip Defaults dialog) instead. With the catalogue unavailable there is
+ *   (the fit part of App Default Settings) instead. With the catalogue unavailable there is
  *   no offer line at all; the flag's headline and reason never wait for the catalogue.
  * - Ahead of all of these: a 12" fine-tune on the Deck bigger than the board's Deck Skin
- *   (`tweakExceedsDeckSkin`, D-13) fits no blank anywhere, and nothing in Fit & Tip Defaults can
+ *   (`tweakExceedsDeckSkin`, D-13) fits no blank anywhere, and nothing in the fit part of App Default Settings can
  *   change that — so the flag names the fixes on ROCKER and offers ↺ Reset Fine-Tune, never
  *   Change Fit Rules. That quick refusal stays exact on Automatic and under Tip Style Pin deck, and is
  *   conservative in one corner (Phase 14): Tip Style Bottom with that tip's Thinning Start set by
@@ -42,6 +42,7 @@
 import { Suspense, use, useMemo, type ReactNode } from "react";
 import { TriangleAlertIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
+import { useAppSettings } from "@/components/app-settings-provider";
 import { useBlankMakers } from "@/components/blank-makers-provider";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { Button } from "@/components/ui/button";
@@ -104,7 +105,7 @@ function FlagBlock({
 function OfferBody({ records, current }: { records: readonly BlankRecord[]; current: BlankRecord }) {
   const { system } = useUnits();
   const { foil, pickBlank } = useDesign();
-  const { openDialog } = useFitDefaults();
+  const { openAppSettings } = useAppSettings();
   const { hidden } = useBlankMakers();
   const { list, recordOf } = useBlankList(records);
   const offer = nearestFit(current, list.fits, foil.center);
@@ -115,7 +116,7 @@ function OfferBody({ records, current }: { records: readonly BlankRecord[]; curr
     return (
       <>
         <p className="text-xs text-surf-ink">{nothingFitsSentence(catalogsPhrase(hidden))}</p>
-        <Button variant="outline" className={ACTION_CLASS} onClick={openDialog}>
+        <Button variant="outline" className={ACTION_CLASS} onClick={() => openAppSettings("fit")}>
           Change Fit Rules
         </Button>
       </>

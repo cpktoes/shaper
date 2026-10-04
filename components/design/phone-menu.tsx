@@ -2,13 +2,15 @@
 
 /**
  * D-08's "one menu": the phone top bar's single icon button that holds everything the desktop nav
- * spreads across three chrome pieces — the settings gear (Units, Theme) and the account control —
+ * spreads across three chrome pieces — the settings gear and the account control —
  * in ONE Base UI popup, stacked, not a button that opens a chooser of two menus. Built directly on
  * Base UI's `Menu` primitives, the same way `components/settings-menu.tsx` is — not any of the
  * three shadcn overlay wrappers this codebase deliberately keeps out of `components/ui/*`.
  *
- * `SettingsMenuContent` is `settings-menu.tsx`'s own popup content, reused here rather than
- * copied, so the Units/Theme rows can never drift between the desktop gear menu and this one.
+ * `AppSettingsMenuItem` is `settings-menu.tsx`'s own "App Default Settings" row (quick
+ * 261003-uwi), reused here rather than copied, so the row that opens the App Default Settings pop-up
+ * — Imperial or Metric, theme, blank makers, fit and tips — can never drift between the desktop gear
+ * menu and this one.
  * `NavAuthControl` is the same account control the desktop nav renders — either a plain "Sign in"
  * button or Clerk's own self-contained account button, both safe to mount inside another popup's
  * content. Phase 10 owns testing the account flows that open from inside it.
@@ -16,9 +18,9 @@
  * Quick 260929-u1t (P-1) adds `ContactMenuItem`, and quick 260930-03d adds `PrivacyMenuItem` right
  * after it — both the same shared rows the desktop gear menu renders — grouped with Home as this
  * popup's three "go to a page" rows: Home (hidden on `/`), Contact (hidden on `/contact`), Privacy
- * (hidden on `/privacy`), then ONE unconditional divider before the settings content. No two of
+ * (hidden on `/privacy`), then ONE unconditional divider before the App Default Settings row. No two of
  * those three ever hide at once (each hides only on its own route), so the divider is always doing
- * real work separating at least one visible row from the settings below it.
+ * real work separating at least one visible row from the settings row below it.
  *
  * Since quick 261003-q2f (sketch 007's C1; the founder: "build it now, use on all screens that
  * condense the top bar into a menu") the popup is a SHEET whose first items are the six screen tiles
@@ -43,7 +45,7 @@ import type { RefObject } from "react";
 import { Menu } from "@base-ui/react/menu";
 import { HouseIcon, MenuIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { ContactMenuItem, PrivacyMenuItem, SettingsMenuContent } from "@/components/settings-menu";
+import { AppSettingsMenuItem, ContactMenuItem, PrivacyMenuItem } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
 import { ScreenTiles } from "@/components/design/screen-tiles";
 import type { NavLink } from "@/components/site-nav";
@@ -109,7 +111,7 @@ export function PhoneMenu({
             <ContactMenuItem />
             <PrivacyMenuItem />
             <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />
-            <SettingsMenuContent />
+            <AppSettingsMenuItem />
             {/* No Menu.Separator export exists on this Base UI version's Menu module — a plain
                 divider row does the same job, matching the popup's own line token. */}
             <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />

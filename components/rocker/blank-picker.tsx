@@ -35,7 +35,7 @@ import { Suspense, use, useState } from "react";
 import { CheckIcon, SearchIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
 import { useBlankMakers } from "@/components/blank-makers-provider";
-import { useFitDefaults } from "@/components/fit-defaults-provider";
+import { useAppSettings } from "@/components/app-settings-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUnits } from "@/components/units-provider";
@@ -157,7 +157,7 @@ function BlankListBody({
 }: Omit<BlankListProps, "catalog"> & { records: readonly BlankRecord[] }) {
   const { system } = useUnits();
   const { blank, pickBlank, outline, foil } = useDesign();
-  const { openDialog } = useFitDefaults();
+  const { openAppSettings } = useAppSettings();
   const { hidden } = useBlankMakers();
   const { list, board, prepared, recordOf } = useBlankList(records);
   const rules = useCenterFloorRules();
@@ -175,7 +175,7 @@ function BlankListBody({
       <div className="flex flex-col gap-1" data-blank-list-empty>
         <div className="text-sm font-semibold text-surf-ink">{message.heading}</div>
         <div className="text-xs text-surf-ink-muted">{message.body}</div>
-        <Button variant="outline" className="mt-1 self-start max-shell:w-full max-shell:self-stretch" onClick={openDialog}>
+        <Button variant="outline" className="mt-1 self-start max-shell:w-full max-shell:self-stretch" onClick={() => openAppSettings("fit")}>
           Change Fit Rules
         </Button>
       </div>

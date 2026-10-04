@@ -7,7 +7,8 @@
  *
  * Adding, removing or renaming a theme is an edit to THEMES plus the matching ramp and
  * `:root.theme-<id>` block in globals.css. Nothing else in the app enumerates themes — the
- * settings menu, the provider and the pre-hydration script all read this list.
+ * App Default Settings pop-up's theme tiles, the provider and the pre-hydration script all read
+ * this list.
  *
  * Deliberately DOM-free. `applyThemePreference` takes a structurally-typed root rather than
  * importing `HTMLElement`, so the whole module unit-tests under Vitest's `node` environment
@@ -19,9 +20,9 @@ export type ThemeMode = "light" | "dark";
 export interface ThemeDefinition {
   /** Stable identifier: the storage value and the `theme-<id>` class suffix. */
   id: string;
-  /** What the settings menu shows. */
+  /** The theme's name, shown under its tile in App Default Settings. */
   label: string;
-  /** One line under the label, and what distinguishes two themes of the same mode. */
+  /** What distinguishes two themes of the same mode — the tile's hover title. */
   description: string;
   /** Drives `color-scheme` and decides which OS preference this theme can be the default for. */
   mode: ThemeMode;
@@ -47,6 +48,48 @@ export const DEFAULT_DARK_THEME = "slate";
 export type ThemePreference = "system" | (string & {});
 
 export const THEME_STORAGE_KEY = "shaper-theme";
+
+/* -- the App Default Settings theme tiles (quick 261003-uwi) -------------------------------- */
+
+/**
+ * The ramp roles a theme tile paints with. The App Default Settings pop-up shows every theme at
+ * once, whichever is on screen, so its tiles cannot read the live `--surf-*` contract (that is the
+ * CURRENT theme); each reads its own theme's `--ramp-<id>-<role>` tokens instead — the one
+ * documented place a component touches the ramp layer (see the header of app/globals.css).
+ * lib/theme.test.ts proves every theme declares every role listed here.
+ */
+export const THEME_TILE_ROLES = [
+  "ground",
+  "panel",
+  "canvas",
+  "ink",
+  "ink-muted",
+  "line-faint",
+  "accent",
+  "fill",
+] as const;
+
+export type ThemeTileRole = (typeof THEME_TILE_ROLES)[number];
+
+/** A theme's own ramp token for one role, as a CSS value: `var(--ramp-<id>-<role>)`. Only ever
+ * called with an id from THEME_TILE_IDS / SYSTEM_TILE_HALVES and a role from THEME_TILE_ROLES —
+ * never a stored string. */
+export function rampVar(themeId: string, role: ThemeTileRole): string {
+  return `var(--ramp-${themeId}-${role})`;
+}
+
+/** The tiles, in order: System first, then every theme in registry order. */
+export const THEME_TILE_IDS: readonly ThemePreference[] = ["system", ...THEMES.map((t) => t.id)];
+
+/** System's tile is two pictures split corner to corner: what it picks on a light device and on a
+ * dark one. */
+export const SYSTEM_TILE_HALVES = { light: DEFAULT_LIGHT_THEME, dark: DEFAULT_DARK_THEME } as const;
+
+/** System's spoken name: what it follows, and what the device picks right now (`systemTheme`, NOT
+ * the theme on screen — with a theme chosen the two differ). */
+export function systemTileName(systemTheme: ThemeDefinition): string {
+  return `System — follows your device, ${systemTheme.label} right now`;
+}
 
 /**
  * Values written by the two-theme version of this module. Mapped rather than discarded so an

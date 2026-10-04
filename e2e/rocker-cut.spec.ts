@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { goToScreen } from "./helpers/screens";
+import { openAppSettings } from "./helpers/settings";
 import { automaticButtonLabel, thicknessIntroWithBlank } from "../lib/geometry/blank-reasons";
 import { BOARD_LENGTH_RANGE_IN } from "../lib/geometry/board";
 import { formatLength, stationLabel } from "../lib/geometry/measure-display";
@@ -446,25 +447,15 @@ async function waitForLiveBlankList(page: Page) {
   });
 }
 
-/** The gear menu (desktop) or the phone top bar's Menu — whichever this project shows. */
-function menuTrigger(page: Page, projectName: string): Locator {
-  return projectName === "desktop"
-    ? page.getByRole("button", { name: "Settings", exact: true })
-    : page.getByRole("banner").getByRole("button", { name: "Menu" });
-}
-
-/** Picks Imperial or Metric in the menu, then closes it — an in-session switch, nothing reloaded. */
-async function chooseUnits(page: Page, projectName: string, label: "Imperial" | "Metric") {
-  const trigger = menuTrigger(page, projectName);
-  const item = page.getByRole("menuitemradio", { name: new RegExp(`^${label}`) });
-  await expect(async () => {
-    if (!(await item.isVisible())) await trigger.click();
-    await expect(item).toBeVisible({ timeout: 1_000 });
-  }).toPass({ timeout: 20_000 });
-  await item.click();
-  await expect(item).toHaveAttribute("aria-checked", "true");
-  await page.keyboard.press("Escape");
-  await expect(item).toBeHidden();
+/** Picks Imperial or Metric in App Default Settings, then closes it with Done — an in-session
+ * switch, nothing reloaded. */
+async function chooseUnits(page: Page, label: "Imperial" | "Metric") {
+  const dialog = await openAppSettings(page);
+  const button = dialog.getByRole("group", { name: "Units" }).getByRole("button", { name: new RegExp(`^${label}`) });
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await dialog.getByRole("button", { name: "Done" }).click();
+  await expect(dialog).toBeHidden();
 }
 
 test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-11, D-27)", () => {
@@ -646,7 +637,7 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
 
   test("on Automatic at 12\" the nose start reads exactly the Nose @ station's name, in Metric and back in Imperial", async ({
     page,
-  }, testInfo) => {
+  }) => {
     await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
     await openRocker(page);
     await pickFirstFittingBlank(page);
@@ -660,7 +651,7 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
     expect((await startLabel(page, "nose").innerText()).endsWith(metricStation)).toBe(true);
 
     // Switching systems rewrites nothing: the same start, read the Imperial way.
-    await chooseUnits(page, testInfo.project.name, "Imperial");
+    await chooseUnits(page, "Imperial");
     await expect(nose12).toHaveText(/^Nose @ \d+" — /);
     const imperialStation = stationOf(await nose12.innerText());
     expect((await startLabel(page, "nose").innerText()).endsWith(imperialStation)).toBe(true);
