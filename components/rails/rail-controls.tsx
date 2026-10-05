@@ -32,6 +32,11 @@ interface RailControlsProps {
   /** Whether the three thickness sliders read from the foil (D-09/D-10) — checked by default. */
   railsImportFoilThickness: boolean;
   onToggleRailsImportFoilThickness: () => void;
+  /** The rail the upright layout's NOSE/CENTER/TAIL switch is showing, passed only while VIEWER is
+   * open (quick 261005-big, the founder's request 2026-10-05). When set, the other two rails' groups
+   * are hidden below the shell breakpoint and untouched at or above it; left out (DATA,
+   * INSTRUCTIONS), all three show. */
+  phoneSection?: RailSectionKey;
 }
 
 const NT_THICKNESS_BOUNDS = { min: 1, max: 2.5, step: 1 / 16 };
@@ -123,6 +128,9 @@ interface RailSectionControlsProps {
    * already sitting in `spec.boardThickness` — every other control on the section is untouched. */
   thicknessDisabled: boolean;
   system: UnitsSystem;
+  /** True for the two rails the upright layout's NOSE/CENTER/TAIL switch is not showing: the whole
+   * group is display:none below the shell breakpoint (same width rule that draws the switch). */
+  hiddenOnPhone?: boolean;
 }
 
 function RailSectionControls({
@@ -138,6 +146,7 @@ function RailSectionControls({
   onToggleHardEdge,
   thicknessDisabled,
   system,
+  hiddenOnPhone,
 }: RailSectionControlsProps) {
   const isTail = sectionKey === "tail";
   const thicknessBounds = sectionKey === "center" ? CENTER_THICKNESS_BOUNDS : NT_THICKNESS_BOUNDS;
@@ -182,7 +191,7 @@ function RailSectionControls({
   };
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className={hiddenOnPhone ? "flex flex-col gap-3.5 max-shell:hidden" : "flex flex-col gap-3.5"}>
       <SectionHeading open={open} onToggle={onToggleOpen}>
         {SECTION_TITLE[sectionKey]}
       </SectionHeading>
@@ -365,6 +374,7 @@ export function RailControls({
   onToggleAdvancedOpen,
   railsImportFoilThickness,
   onToggleRailsImportFoilThickness,
+  phoneSection,
 }: RailControlsProps) {
   const { system } = useUnits();
   const { included: printRailInstructions, setIncluded: setPrintRailInstructions } = usePrintRailInstructions();
@@ -403,6 +413,7 @@ export function RailControls({
         onToggleAdvancedOpen={() => onToggleAdvancedOpen("nose")}
         thicknessDisabled={railsImportFoilThickness}
         system={system}
+        hiddenOnPhone={phoneSection !== undefined && phoneSection !== "nose"}
       />
 
       <RailSectionControls
@@ -416,6 +427,7 @@ export function RailControls({
         onToggleAdvancedOpen={() => onToggleAdvancedOpen("center")}
         thicknessDisabled={railsImportFoilThickness}
         system={system}
+        hiddenOnPhone={phoneSection !== undefined && phoneSection !== "center"}
       />
 
       <RailSectionControls
@@ -431,6 +443,7 @@ export function RailControls({
         onToggleHardEdge={onToggleHardEdge}
         thicknessDisabled={railsImportFoilThickness}
         system={system}
+        hiddenOnPhone={phoneSection !== undefined && phoneSection !== "tail"}
       />
 
       <div>
