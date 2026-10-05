@@ -58,9 +58,13 @@ export type NavLink = (typeof NAV_LINKS)[number];
  * 844x390 (a real iPhone sideways) and 863x360 (a real Pixel 7 sideways) this row drew 93 dots
  * tall in the test harness (about 105 on the live site, where Clerk's real account button is
  * wider than the harness's signed-out stand-in) with SHAPER ASSISTANT wrapped onto two lines; the
- * phone's bar draws 56 dots with the name on one line. */
+ * phone's bar draws 56 dots with the name on one line.
+ *
+ * The row's side margins are 24 dots up to 1279 wide and 48 from 1280 (`xl:px-12`). They used to
+ * widen at 1024 (`lg:px-12`); keeping them at 24 up to 1279 is what makes room for the Home house
+ * from 1024 up (see the house's own comment below; the founder, 2026-10-04). */
 const DESKTOP_NAV_CLASS =
-  "flex flex-none items-center justify-between gap-10 border-b border-surf-line-faint bg-surf-ground px-6 py-6 lg:px-12 max-shell:hidden [@media(max-height:500px)]:hidden";
+  "flex flex-none items-center justify-between gap-10 border-b border-surf-line-faint bg-surf-ground px-6 py-6 xl:px-12 max-shell:hidden [@media(max-height:500px)]:hidden";
 
 export function SiteNav() {
   const pathname = usePathname();
@@ -97,17 +101,23 @@ export function SiteNav() {
               different kind of thing without drifting away from the group. */}
           <span aria-hidden className="ml-1 h-4 w-px bg-surf-line-faint" />
           {/* A way home that isn't the wordmark, sitting beside the gear as the same kind of
-              chrome. Shown only from 1280px up: at 1024px (the touch-tablet band) the row has
-              48px of headroom and e2e/site-nav-width.spec.ts guards a 24px floor, and at a narrow
-              but tall window (820px wide, 800px or more tall) the cluster already ends at the
-              padding edge — so below 1280 the wordmark stays the way home, exactly as before. (A
-              phone held sideways no longer reaches this row at all: since quick 260930-r8s it gets
-              the phone's thin bar instead, where Home is reached through the wordmark and the
-              menu's own Home row.) */}
+              chrome. Shown from 1024px up (the founder, 2026-10-04, after an iPad 9th gen held
+              sideways showed none): an iPad held sideways is 1024 to 1194 wide — 1080 on that
+              iPad, 1133 on an iPad mini, 1024 on older models — so every iPad on its side gets
+              the house. It used to start at 1280. Held upright, that iPad is 810 wide and gets
+              the phone's top bar, whose menu has its own Home row. The room comes from the row's
+              side margins staying at 24px up to 1279 (`xl:px-12` above): at 1024 that leaves
+              SHAPER ASSISTANT on one line with 38px to spare beyond the 40px gap (measured on the
+              live site, signed out, mouse and touch alike). Below 1024 — a narrow but tall
+              window, 820 to 1023 wide, or an 11-inch iPad held upright — the wordmark stays the
+              way home, since at 820 the cluster already ends at the padding edge with the
+              wordmark wrapped onto two lines. (A phone held sideways never reaches this row:
+              since quick 260930-r8s it gets the phone's thin bar, where Home is the wordmark and
+              the menu's own Home row.) */}
           <Link
             href="/"
             aria-label="Home"
-            className="hidden xl:flex -mr-1 cursor-pointer items-center rounded-md p-1 text-surf-ink-muted transition-colors outline-none hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
+            className="hidden lg:flex -mr-1 cursor-pointer items-center rounded-md p-1 text-surf-ink-muted transition-colors outline-none hover:text-surf-ink focus-visible:ring-2 focus-visible:ring-surf-accent-ink"
           >
             <HouseIcon aria-hidden className="size-4" />
           </Link>

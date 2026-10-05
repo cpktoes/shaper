@@ -807,6 +807,18 @@
        `font-body`. Only headings opt out, with an explicit `font-display`. */
     @apply font-body;
   }
+  /* Old Safari — iPhone and iPad software before 18.4 — gave every button its own built-in
+     `align-items: flex-start` (WebKit bug 289441, fixed in Safari 18.4). Inside a button laid out
+     as a column nothing then stretched to the button's width, so the home page's board cards
+     (each card is one button) drew their board picture as an empty square about 26 dots wide: the
+     founder's iPad 9th gen, upright and sideways, 2026-10-04, while their iPhone, on newer
+     software, drew the boards whole. `normal` is what current Safari, Chrome and Firefox already
+     compute for a button, so this changes nothing there; it only undoes old Safari's rule. In the
+     base layer, so any `items-*` class a button sets still wins.
+     `e2e/old-safari-buttons.spec.ts` puts old Safari's rule back and proves nothing moves. */
+  button {
+    align-items: normal;
+  }
 }
 
 @media print {
