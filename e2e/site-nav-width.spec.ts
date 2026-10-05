@@ -111,6 +111,18 @@ async function assertNavRowFitsViewport(page: Page, width: number) {
   expect(slack).toBeGreaterThanOrEqual(24);
 }
 
+/** The Home house beside the gear, in the desktop row only (the phone bar has none). */
+function homeHouse(page: Page) {
+  return page.locator("nav:not([aria-label])").getByRole("link", { name: "Home", exact: true });
+}
+
+/** SHAPER ASSISTANT on one line: `text-sm` draws a 20px line, so two lines measure 40. */
+async function assertWordmarkOnOneLine(page: Page) {
+  const box = await page.getByRole("link", { name: "SHAPER ASSISTANT" }).boundingBox();
+  if (!box) throw new Error("missing bounding box for the wordmark");
+  expect(box.height).toBeLessThan(30);
+}
+
 test.describe("top nav row — fits without horizontal scroll, 820 to 870px wide (mouse)", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "mouse-driven desktop-shell assertions");
@@ -175,6 +187,71 @@ test.describe("top nav row — fits without horizontal scroll on a touch screen 
 
     const viewportSize = page.viewportSize();
     if (!viewportSize) throw new Error("no viewport size");
+    // 1024 wide, so the Home house is in the row too since 2026-10-04 (see the describes below).
+    await expect(homeHouse(page)).toBeVisible();
+    await assertWordmarkOnOneLine(page);
     await assertNavRowFitsViewport(page, viewportSize.width);
   });
+});
+
+/*
+ * The Home house beside the gear shows from 1024 wide up (the founder, 2026-10-04, after an iPad
+ * 9th gen held sideways showed none — it used to start at 1280). An iPad held sideways is 1024 to
+ * 1194 wide (1080 on the 9th gen, 1133 on an iPad mini, 1024 on older models), so every iPad on its
+ * side gets it; held upright, the 9th gen is 810 wide and gets the phone's top bar instead. The row
+ * keeps its 24px side margins up to 1279 to make the room (`xl:px-12` in `components/site-nav.tsx`);
+ * these cases prove the house is there, SHAPER ASSISTANT stays on one line and the row still fits,
+ * and that below 1024 the house stays away and the wordmark is the way home.
+ */
+test.describe("the Home house shows from 1024 wide up, with the row still whole (mouse)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "mouse-driven desktop-shell assertions");
+    await dismissSignInBanner(page);
+  });
+
+  test("at 1023 wide the house stays away, and SHAPER ASSISTANT is the way home", async ({ page }) => {
+    await page.setViewportSize({ width: 1023, height: 800 });
+    await page.goto("/design/outline");
+    await expect(page.locator("nav:not([aria-label])")).toBeVisible();
+    await expect(homeHouse(page)).toBeHidden();
+  });
+
+  for (const width of [1024, 1133, 1279, 1280]) {
+    test(`at ${width} wide the house shows, SHAPER ASSISTANT stays on one line, and the row fits`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto("/design/outline");
+      await expect(homeHouse(page)).toBeVisible();
+      await assertWordmarkOnOneLine(page);
+      await assertNavRowFitsViewport(page, width);
+    });
+  }
+});
+
+test.describe("the Home house on an iPad held sideways in Safari (touch, WebKit)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "Safari's own engine with a touch pointer (WebKit project)");
+    await dismissSignInBanner(page);
+  });
+
+  // Each width is the iPad's screen held sideways; each height is that screen less the status bar
+  // and Safari's own bar.
+  for (const size of [
+    { label: "an older iPad", width: 1024, height: 694 },
+    { label: "an iPad 9th gen", width: 1080, height: 736 },
+    { label: "an iPad mini", width: 1133, height: 670 },
+  ]) {
+    test(`${size.label} (${size.width}x${size.height}): the house shows, SHAPER ASSISTANT stays on one line, and the row fits`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: size.width, height: size.height });
+      await page.goto("/design/outline");
+      const coarsePointer = await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches);
+      expect(coarsePointer).toBe(true);
+      await expect(homeHouse(page)).toBeVisible();
+      await assertWordmarkOnOneLine(page);
+      await assertNavRowFitsViewport(page, size.width);
+    });
+  }
 });
