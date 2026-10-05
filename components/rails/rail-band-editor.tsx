@@ -87,7 +87,8 @@ export function RailBandEditor() {
   // D-12: which rail the phone's NOSE/CENTER/TAIL switch shows. Seeded from the same
   // firstOpenSection rule the View Full Sized dialog already uses (Nose, unless a later section is
   // open and Nose is not) rather than re-deriving it — screen state only, never saved, never in
-  // the design snapshot.
+  // the design snapshot. Since quick 261005-big it also picks which rail's controls show under the
+  // drawing on VIEWER (an upright phone shows only that rail's group).
   const [phoneSection, setPhoneSection] = useState<RailSectionKey>(() => firstOpenSection(sectionOpen));
 
   const updateSection = updateRailSection;
@@ -221,6 +222,17 @@ export function RailBandEditor() {
       phonePinned={activePage === "instructions" ? "none" : "50dvh"}
       controls={
         <div className={activePage === "instructions" ? "max-shell:hidden" : undefined}>
+          {/* Quick 261005-big (the founder's request, 2026-10-05: "on screens that put the rails on
+              individual tabs, only show the controls for that tab at a time under it"). While VIEWER
+              is open, the rail on the NOSE/CENTER/TAIL switch above is passed down, and RailControls
+              hides the other two rails' groups with the same `max-shell:` width rule that draws the
+              switch — so an upright phone (and an iPad held upright) sees only the picked rail's
+              controls under the drawing. DATA passes nothing, because its one table carries every
+              open rail; INSTRUCTIONS already hides the whole column on an upright phone (10-11,
+              above); and the desktop shell — a computer, an iPad or a phone held sideways — never
+              reads `max-shell:`, so every rail's group stays beside the stacked plots. It is decided
+              in the server's markup, so the first paint is right on every device, and it is screen
+              state only: fold state, the design and saved boards are untouched. */}
           <RailControls
             spec={effectiveRails}
             bands={bands}
@@ -232,6 +244,7 @@ export function RailBandEditor() {
             onToggleAdvancedOpen={toggleAdvancedOpen}
             railsImportFoilThickness={railsImportFoilThickness}
             onToggleRailsImportFoilThickness={toggleRailsImportFoilThickness}
+            phoneSection={activePage === "viewer" ? phoneSection : undefined}
           />
         </div>
       }

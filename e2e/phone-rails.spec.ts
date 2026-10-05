@@ -784,3 +784,137 @@ test.describe("RAILS DATA — the sideways fade never covers the Tail column", (
     }
   });
 });
+
+// Quick 261005-big (the founder's request, 2026-10-05): "on screens that put the rails on individual
+// tabs, only show the controls for that tab at a time under it (i.e. if on the nose rail, only show
+// the nose rail controls)". The only screen that does that is RAILS' VIEWER tab in the upright layout
+// (under 820 dots wide: an upright phone, and an iPad held upright). The controls under the drawing
+// used to list all three rails' groups; now only the picked rail's group shows, and the shared
+// controls (title, foil box, print box, Back/Next) always do. D-01 to D-04 and D-07 of the plan.
+
+const RAIL_NAMES = ["Nose", "Center", "Tail"] as const;
+type RailName = (typeof RAIL_NAMES)[number];
+
+/** The fold heading of one rail's control group inside the controls column (`aside`): a button whose
+ * name is the rail's title plus the little ▾/▸ glyph. `getByRole` leaves out anything display:none,
+ * so a count of 0 also proves a screen reader no longer reaches a hidden group (D-01). */
+function railGroupHeading(page: Page, rail: RailName) {
+  return page.locator("aside").getByRole("button", { name: new RegExp(`^${rail} Rail`) });
+}
+
+/** The heading's text span — it stays in the page's markup while its group is hidden, so a hidden
+ * group can be told apart from a group that was never drawn. */
+function railGroupTitle(page: Page, rail: RailName) {
+  return page.locator("aside").getByText(`${rail} Rail`, { exact: true });
+}
+
+/** Only `shown`'s group is visible; the other two are in the markup but display:none. */
+async function expectOnlyRailGroup(page: Page, shown: RailName) {
+  for (const rail of RAIL_NAMES) {
+    if (rail === shown) {
+      await expect(railGroupHeading(page, rail), `${rail} Rail's group should show`).toBeVisible();
+    } else {
+      await expect(railGroupTitle(page, rail), `${rail} Rail's title stays in the page`).toBeAttached();
+      await expect(railGroupTitle(page, rail), `${rail} Rail's group should be hidden`).toBeHidden();
+      await expect(railGroupHeading(page, rail), `${rail} Rail's heading is out of the accessibility tree`).toHaveCount(0);
+    }
+  }
+}
+
+async function expectAllRailGroups(page: Page) {
+  for (const rail of RAIL_NAMES) {
+    await expect(railGroupHeading(page, rail), `${rail} Rail's group should show`).toBeVisible();
+  }
+}
+
+/** D-03: the controls that stay wherever controls show, whichever rail is picked. */
+async function expectSharedRailControls(page: Page) {
+  const aside = page.locator("aside");
+  await expect(aside.getByText("Rail Band Calculator", { exact: true })).toBeVisible();
+  await expect(aside.getByText("Rail band calculator for shaping consistent rails")).toBeVisible();
+  await expect(aside.getByText("Use Board's Rocker & Foil Thickness")).toBeVisible();
+  await expect(aside.getByText(/^(Thickness comes from the ROCKER screen|You're typing your own thickness)/)).toBeVisible();
+  await expect(aside.getByText("Include Rail Band Instructions in Print")).toBeVisible();
+  await expect(aside.getByText("Adds a third reference page")).toBeVisible();
+  const stepNav = aside.locator("[data-step-nav]");
+  await expect(stepNav.getByRole("link", { name: "Previous screen: Rocker" })).toBeVisible();
+  await expect(stepNav.getByRole("link", { name: "Next screen: Volume" })).toBeVisible();
+}
+
+test.describe("RAILS on an upright phone — only the picked rail's controls under the drawing (quick 261005-big)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "upright-phone RAILS assertions (810 wide on a mouse is covered below)");
+    await dismissSignInBanner(page);
+    await page.goto("/design/rails");
+  });
+
+  test("NOSE, CENTER, TAIL each show only their own group; DATA shows all three; VIEWER remembers the pick", async ({
+    page,
+  }) => {
+    const switchTabs = railSwitchTabs(page);
+    await expect(switchTabs.getByRole("tab", { name: "NOSE" })).toHaveAttribute("aria-selected", "true");
+    await expectOnlyRailGroup(page, "Nose");
+    await expectSharedRailControls(page);
+
+    // Waiting for aria-selected after each tap (as the switch test above does) so a tap that landed
+    // before hydration cannot pass silently.
+    await switchTabs.getByRole("tab", { name: "CENTER" }).click();
+    await expect(switchTabs.getByRole("tab", { name: "CENTER" })).toHaveAttribute("aria-selected", "true");
+    await expectOnlyRailGroup(page, "Center");
+    await expectSharedRailControls(page);
+
+    await switchTabs.getByRole("tab", { name: "TAIL" }).click();
+    await expect(switchTabs.getByRole("tab", { name: "TAIL" })).toHaveAttribute("aria-selected", "true");
+    await expectOnlyRailGroup(page, "Tail");
+    await expect(page.locator("aside").getByText("Hard Edge", { exact: true })).toBeVisible();
+    await expectSharedRailControls(page);
+
+    await railsPageTabs(page).getByRole("tab", { name: "DATA" }).click();
+    await expectAllRailGroups(page);
+    await expectSharedRailControls(page);
+
+    await railsPageTabs(page).getByRole("tab", { name: "VIEWER" }).click();
+    await expect(railSwitchTabs(page).getByRole("tab", { name: "TAIL" })).toHaveAttribute("aria-selected", "true");
+    await expectOnlyRailGroup(page, "Tail");
+  });
+});
+
+test.describe("RAILS beside the drawing — every rail's controls stay on VIEWER (quick 261005-big)", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissSignInBanner(page);
+  });
+
+  test("a computer at 1280x800: no switch, all three groups", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "computer-only");
+    await page.goto("/design/rails");
+    await expect(railSwitchTabs(page)).toHaveCount(0);
+    await expectAllRailGroups(page);
+  });
+
+  test("a phone held sideways (844x390 iPhone, 863x360 Pixel 7): no switch, all three groups", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "phone-only");
+    await page.setViewportSize(
+      testInfo.project.name === "iphone" ? { width: 844, height: 390 } : { width: 863, height: 360 },
+    );
+    await page.goto("/design/rails");
+    await expect(railSwitchTabs(page)).toHaveCount(0);
+    await expectAllRailGroups(page);
+  });
+
+  test("a mouse window 810 wide (an iPad held upright): the one-rail rule follows width alone (D-07)", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "mouse-only — proves the rule is keyed to width, never the pointer");
+    await page.setViewportSize({ width: 810, height: 1080 });
+    await page.goto("/design/rails");
+    const switchTabs = railSwitchTabs(page);
+    await expect(switchTabs).toBeVisible();
+    await expect(switchTabs.getByRole("tab", { name: "NOSE" })).toHaveAttribute("aria-selected", "true");
+    await expectOnlyRailGroup(page, "Nose");
+    await switchTabs.getByRole("tab", { name: "CENTER" }).click();
+    await expect(switchTabs.getByRole("tab", { name: "CENTER" })).toHaveAttribute("aria-selected", "true");
+    await expectOnlyRailGroup(page, "Center");
+  });
+});
