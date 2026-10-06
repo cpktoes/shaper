@@ -255,7 +255,8 @@ test.describe("a Pixel 7 held sideways gets the phone's thin bar, not the deskto
     await expect(banner.getByRole("button", { name: "Save Board" })).toBeVisible();
 
     const popup = await openMenu(page);
-    for (const name of ["Home", "Contact", "Privacy"]) {
+    // Privacy and Terms left the menus for the footer on 2026-10-06 (quick 261006-fom); Share joined.
+    for (const name of ["Home", "Contact", "Share"]) {
       const row = popup.getByRole("menuitem", { name, exact: true });
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();

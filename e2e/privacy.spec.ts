@@ -16,7 +16,7 @@ import { PRIVACY_COPY, PRIVACY_ROUTE } from "../lib/privacy/copy";
  * from the markdown itself (`PRIVACY_HEADING`) rather than from the retired hand-typed copy. The
  * visit-counter, two-taps, left-out-on-its-own-page and Contact-note tests are unchanged.
  *
- * Task 3 of quick 260930-03d added the menu-row proofs (two taps from every screen, hidden on
+ * Task 3 of quick 260930-03d added the menu-row proofs (two taps from every screen, hidden on — since 261006-fom the Privacy link lives in every page's footer instead; the proofs below follow it there,
  * `/privacy` itself) and the Contact form's Privacy-link proof, now that `PrivacyMenuItem` and the
  * Contact-note link exist — `menuTrigger`, `openMenuTo` and `useStandIn` below are copied verbatim from
  * e2e/contact.spec.ts.
@@ -110,28 +110,25 @@ test.describe("Privacy page", () => {
     "/contact",
   ];
 
+  // Since quick 261006-fom the Privacy page is one link away on EVERY screen, in the footer at the
+  // end of the page (the end of the controls on the design screens) — the founder took the menus'
+  // Privacy row out on 2026-10-06 once the footer carried Terms and Privacy everywhere.
   for (const route of routesReachableFromTwoTaps) {
-    test(`two taps from every screen — ${route}`, async ({ page }, testInfo) => {
+    test(`one link away on every screen, in the footer — ${route}`, async ({ page }) => {
       test.setTimeout(90_000);
       await page.goto(route);
 
-      // Tap one: open the menu to the Privacy row.
-      await openMenuTo(page, testInfo.project.name, privacyRow(page));
-
-      if (testInfo.project.name !== "desktop") {
-        const height = await privacyRow(page).evaluate((el) => (el as HTMLElement).offsetHeight);
-        expect(height).toBeGreaterThanOrEqual(44);
-      }
-
-      // Tap two: the Privacy row itself.
-      await privacyRow(page).click();
+      const link = page.locator("[data-site-footer]").getByRole("link", { name: "Privacy", exact: true }).first();
+      await link.scrollIntoViewIfNeeded();
+      await expect(link).toBeVisible();
+      await link.click();
 
       await expect(page).toHaveURL(/\/privacy$/);
       await expect(page.getByRole("heading", { name: PRIVACY_HEADING, level: 1 })).toBeVisible();
     });
   }
 
-  test("the Privacy row is left out on the Privacy page itself, and Contact stays", async ({ page }, testInfo) => {
+  test("the menus carry no Privacy row (it lives in the footer), and Contact stays", async ({ page }, testInfo) => {
     await page.goto(PRIVACY_ROUTE);
     await openMenuTo(page, testInfo.project.name, contactRow(page));
     await expect(privacyRow(page)).toHaveCount(0);
