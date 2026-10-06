@@ -271,7 +271,7 @@ Cross-cutting constraints: no tips code in the curves step — no `slopeAt`, no 
 **Requirements**: R1, R2, R3, R4, R5, R6, R7, R8, R9, R10
 **Brief:** locked in `.planning/phases/15-the-board-rack/15-SPEC.md` (the founder's idea and decisions of 2026-10-05, from sketches 009–011 and the `sketch-findings-shaper` skill)
 **Depends on:** Phase 14 (the side profile the rack draws from); runs inside Phase 13's window — live before the Wednesday 2026-10-07 freeze, with a rehearsal walk after
-**Plans:** 9/13 plans executed in 7 waves — planned 2026-10-05 (`15-RESEARCH.md`, `15-PATTERNS.md`, `15-UI-SPEC.md` approved, `15-VALIDATION.md`); plan checker passed on the second pass. Founder steps: 15-10 (Tuesday's device check, decides D-11) and 15-13 (go-live before the Wednesday freeze).
+**Plans:** 10/13 plans executed in 7 waves — planned 2026-10-05 (`15-RESEARCH.md`, `15-PATTERNS.md`, `15-UI-SPEC.md` approved, `15-VALIDATION.md`); plan checker passed on the second pass. Founder steps: 15-10 (Tuesday's device check, decides D-11) and 15-13 (go-live before the Wednesday freeze).
 
 Plans:
 
@@ -299,7 +299,7 @@ Plans:
 **Wave 5** *(blocked on Wave 4 completion — 15-10 is a founder step)*
 
 - [ ] 15-10-PLAN.md — The founder tries hold-and-drag on their iPad and an Android phone and rules on D-11 (R8 R10)
-- [ ] 15-11-PLAN.md — Move boards on a computer by drag, the ⋯ menu or the keyboard, and walk the rack without a mouse (R5 R8 R9)
+- [x] 15-11-PLAN.md — Move boards on a computer by drag, the ⋯ menu or the keyboard, and walk the rack without a mouse (R5 R8 R9)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -334,4 +334,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 12. Foil the Way a Shaper Cuts It | 10/10 | Complete    | 2026-09-27 |
 | 13. Ready for the Shapers | 11/13 items | In progress | - |
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
-| 15. The Board Rack | 9/13 | In Progress|  |
+| 15. The Board Rack | 10/13 | In Progress|  |
