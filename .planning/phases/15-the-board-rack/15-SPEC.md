@@ -1,7 +1,7 @@
 # Phase 15: The Board Rack — Specification
 
 **Created:** 2026-10-05
-**Ambiguity score:** 0.12 (gate: ≤ 0.20). The requirements below are the founder's own words and picks
+**Ambiguity score:** 0.04 (gate: ≤ 0.20), after the discussion of 2026-10-05. The requirements below are the founder's own words and picks
 from the sketch session of 2026-10-05: sketches 009, 010 and 011, the last tried on the founder's own
 phone. Five smaller questions are left for the discussion (Ambiguity Report).
 **Requirements:** 10 from the founder's words and picks, plus 10 carried constraints
@@ -142,38 +142,59 @@ The founder's words are quoted; the sentence after each quote is the requirement
 
 ## Edge Coverage
 
-- **No boards:** no rack, as today. **One board:** one board, turned. **30+ boards:** rows on a computer at
-  one scale; one long swipe on a phone.
-- **Board shapes:** swallow tails (the notch appears as the turn completes); a hand-set board with no blank
-  (side profile from the five typed stations); very long boards (10'+ sets the scale); very short boards.
-- **Long names:** the vertical line shrinks to fit or truncates; the caption truncates as today.
-- **A board that can't be worked out:** dropped, as today.
-- **Narrow computer window with a mouse (< 820 dots):** the hover rack with fewer boards per row.
-  **iPad (touch at a desktop width):** the swipe rack. **Phone held sideways (short screen):** the rack
-  fits the short screen.
-- **Order edges:** a board saved for the first time; a duplicate; a deleted board; boards opened from
-  another device; two devices moving boards at once.
-- **Themes, units and motion:** light and dark; Imperial and Metric; reduced motion.
+**Coverage:** 16/16 applicable edges resolved · 0 unresolved
+
+Filled after the discussion (`15-CONTEXT.md` D-01 to D-16), the research (`15-RESEARCH.md`) and the approved
+screen contract (`15-UI-SPEC.md` §9 States and its UI Considerations). ✅ = an explicit acceptance criterion a
+test asserts; 🧪 = a backstop held out as a real-device or visual check.
+
+| Category | Requirement | Status | Resolution / Reason |
+|----------|-------------|--------|---------------------|
+| No boards, signed out, a failed or slow list | R7 | ✅ covered | No heading, no rack, no hint; the presets stand where the rack was (today's rule and Suspense fallback). Test: empty entries render nothing |
+| One board, or only the unsaved board | R1, R9 | ✅ covered | One slot, turned, with its caption (the unsaved caption has no ⋯); the hint still shows (D-08, D-09). Test on the stand-in route |
+| 30 or more boards | R2, R5, R6 | ✅ covered | Hover rack: balanced rows at one shared scale; swipe rack: one longer track at the same height. Test: every board placed once, rows balanced, one scale |
+| A swallow tail | R3 | ✅ covered | At 90° the path is the TEMPLATE silhouette with its notch. Test on the fish preset |
+| A hand-set board with no blank | R1, R3 | ✅ covered | The side profile comes from the five typed stations, as everywhere. Test with a hand-set board |
+| The longest and shortest boards | R2 | ✅ covered | The tallest sets the scale, never below a 7'0" reference. Test |
+| A long name | R1 | ✅ covered | The vertical words shrink to 10px, then the name is cut by grapheme with the numbers whole; the caption name truncates; screen readers hear the full name. Test of the fit rule |
+| A long name at the sideways-phone floor | R1 | 🧪 backstop | Check on a real phone held sideways that a cut 20-character name still reads |
+| A board whose numbers or art can't be worked out | R1 | ✅ covered | Dropped and logged by id, the rest kept (WR-05). Test |
+| A narrow computer window (mouse, under 820) | R5 | ✅ covered | Still the hover rack (D-04), fewer boards per row. Test of the layout function |
+| An iPad, a touch laptop, a phone held sideways | R5, R6 | ✅ covered | iPad: swipe rack at any width (pointer, D-04). Touch laptop: first tap turns, second opens (D-05). Sideways phone: the rack takes the short screen, presets a scroll below (D-06). Source-contract and e2e tests |
+| A board saved for the first time / a duplicate / a deleted board | R8 | ✅ covered | New board first (D-01); a duplicate right after its original, fixing the order even in an unarranged rack (D-16); a deleted board leaves the list and its id is skipped. Tests of the order functions |
+| Two devices moving boards | R8 | ✅ covered | Last write wins; a board missing from the list stands first; an unknown id is skipped; the list is never corrupt. Tests of the merge |
+| Hold-and-drag on older Safari | R8 | 🧪 backstop | Proven on the founder's iPad 9th gen and an Android phone on a dev build; if not reliable by Wednesday, D-11's switch turns on |
+| Light and dark themes, Imperial and Metric | R2, R4 | ✅ covered | Theme tokens only; height lines every foot or 50 cm; card lines through `formatSummaryLine`. Source-contract and unit tests |
+| Reduced motion and keyboard | R8 | ✅ covered | Only 0° and 90° draw under reduced motion; arrows walk, Enter opens, Alt+arrow moves, the status line speaks. e2e |
 
 ## Prohibitions (must-NOT)
 
-- Must NOT draw a board at its own scale (every board shares one scale).
-- Must NOT use a shop-rack look, a held-up big board, snap-then-turn, an Arrange mode, or ‹ Move › buttons
-  on the phone (all rejected in the sketches).
-- Must NOT put text across a board, or use the warning colour for the unsaved board.
-- Must NOT store or cache pictures of boards; everything is drawn from data.
-- Must NOT change the presets, the design screens or printing.
-- Must NOT ship the code before its migration is on production, or push anything without the founder's go.
+**Coverage:** 9/9 applicable prohibitions resolved · 0 unresolved
+
+| Prohibition (must-NOT statement) | Requirement | Status | Verification / Reason |
+|----------------------------------|-------------|--------|------------------------|
+| MUST NOT draw a board at its own scale | R2 | resolved | test: one scale for every board in every row |
+| MUST NOT use a shop-rack look, a held-up big board, snap-then-turn, an Arrange mode, or ‹ Move › buttons on the phone | R4, R6, R8 | resolved | source-contract test and review against the UI-SPEC; D-12 (no Move rows on the swipe rack unless D-11 is on) |
+| MUST NOT put text across a board | R4 | resolved | test: every vertical word sits outside the board's drawn extent |
+| MUST NOT use the warning colour for the unsaved board | R9 | resolved | source-contract test: the unsaved board's caption and words use no `--surf-warning-ink` |
+| MUST NOT store or cache pictures of boards | R1 | resolved | everything is drawn from each board's data on render; no image files, no stored art |
+| MUST NOT change the presets, the design screens or printing | Boundaries | resolved | diff check: no change under `components/{outline,rocker,rails,volume,fins,summary,template}` or the preset card |
+| MUST NOT decide which rack by width | R5, R6 | resolved | source-contract test: the rack kind is read only from the pointer (D-04) |
+| MUST NOT ship the code before its migration is on production | R10 | resolved | the plan's go-live checkpoint runs `npm run db:migrate:prod` and the column check before the push (Database rule) |
+| MUST NOT push, merge to main, deploy or run anything against production without the founder's go, and nothing lands after the Wednesday 2026-10-07 freeze | R10 | resolved | each production step is a founder checkpoint in the plan |
 
 ## Ambiguity Report
 
-| Question | Status |
-|---|---|
-| Where does a newly saved board go in the shaper's order (first, as today's newest-first, or last)? | Open: for the discussion |
-| Where does a duplicate go (next to its original, or first)? | Open: for the discussion |
-| Is the order one list on the account (follows the shaper everywhere), or a position on each board? | Open: for research and the discussion |
-| Hover rack versus swipe rack decided by pointer (a mouse hovers, touch swipes), so an iPad gets the swipe rack at any width? | Open: confirm in the discussion |
-| What the phone's caption and heading say exactly ("hold to move")? | Proposed in the sketches; confirm or adjust |
+All five open points were settled on 2026-10-05: four in the discussion (`15-CONTEXT.md`) and one by the
+research, ruled on by the founder after it.
+
+| # | Open point | Where it stands |
+|---|---|---|
+| 1 | Where a newly saved board goes | **Settled, D-01:** first, where the unsaved board stood |
+| 2 | Where a duplicate goes | **Settled, D-02 and D-16:** right after its original; duplicating fixes the order even in a rack never arranged |
+| 3 | One list on the account, or a position per board | **Settled by research (A):** one nullable `rack_order` list on the account's settings row; null means "not arranged yet" (D-03) |
+| 4 | Hover rack versus swipe rack by pointer | **Settled, D-04:** a mouse hovers, a finger swipes, at any width |
+| 5 | The hint's wording | **Settled, D-08:** always shown — `point to turn, drag to move` / `hold to move` (and `tap ⋯ to move` only under D-11) |
 
 ## Interview Log
 
