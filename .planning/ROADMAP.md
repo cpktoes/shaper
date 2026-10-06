@@ -271,7 +271,7 @@ Cross-cutting constraints: no tips code in the curves step — no `slopeAt`, no 
 **Requirements**: R1, R2, R3, R4, R5, R6, R7, R8, R9, R10
 **Brief:** locked in `.planning/phases/15-the-board-rack/15-SPEC.md` (the founder's idea and decisions of 2026-10-05, from sketches 009–011 and the `sketch-findings-shaper` skill)
 **Depends on:** Phase 14 (the side profile the rack draws from); runs inside Phase 13's window — live before the Wednesday 2026-10-07 freeze, with a rehearsal walk after
-**Plans:** 12/13 plans executed in 7 waves — planned 2026-10-05 (`15-RESEARCH.md`, `15-PATTERNS.md`, `15-UI-SPEC.md` approved, `15-VALIDATION.md`); plan checker passed on the second pass. Founder steps: 15-10 (Tuesday's device check, decides D-11) and 15-13 (go-live before the Wednesday freeze).
+**Plans:** 13/13 plans executed in 7 waves — planned 2026-10-05 (`15-RESEARCH.md`, `15-PATTERNS.md`, `15-UI-SPEC.md` approved, `15-VALIDATION.md`); plan checker passed on the second pass. Founder steps: 15-10 (Tuesday's device check, decides D-11) and 15-13 (go-live before the Wednesday freeze).
 
 Plans:
 
@@ -307,7 +307,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion — a founder step)*
 
-- [ ] 15-13-PLAN.md — Go-live: pictures, the read-only report, the production migration with the founder present, one push, a live check, then hand over the rehearsal walk (R10)
+- [x] 15-13-PLAN.md — Go-live: pictures, the read-only report, the production migration with the founder present, one push, a live check, then hand over the rehearsal walk (R10)
 
 Cross-cutting constraints: geometry pure and tested in `lib/geometry/` with no hand-typed expected number (Rule 1); every number through `units.ts` / `formatSummaryLine` (Rule 2); the rack kind read only from the pointer, never width (D-04); the unsaved board always first and never moved (R9); the order column is added on the development branch during the work and reaches production only inside 15-13 with the founder present, before the push (Database rule); the test-only `/test-rack` route 404s in production; no new package; nothing pushed without the founder's go and nothing after the Wednesday 2026-10-07 freeze.
 
@@ -334,4 +334,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 12. Foil the Way a Shaper Cuts It | 10/10 | Complete    | 2026-09-27 |
 | 13. Ready for the Shapers | 11/13 items | In progress | - |
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
-| 15. The Board Rack | 12/13 | In Progress|  |
+| 15. The Board Rack | 13/13 | In Progress|  |
