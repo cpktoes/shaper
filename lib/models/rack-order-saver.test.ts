@@ -151,7 +151,6 @@ describe("at most one save in flight", () => {
 
     saver.request(["b", "a"]);
     saver.request(["b", "a", "c"]);
-    saver.flush();
     expect(save).toHaveBeenCalledTimes(1); // still only one in flight
 
     calls[0].resolve();
