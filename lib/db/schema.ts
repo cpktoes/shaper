@@ -95,6 +95,10 @@ export const userPreferences = pgTable("user_preferences", {
   // tick boxes, as JSON text of catalogue vendor names (e.g. `["Arctic Foam"]`). Null = not chosen,
   // which means every maker is on. The allow-list lives in lib/blank-makers-preference.ts.
   hiddenBlankMakers: text("hidden_blank_makers"),
+  // Phase 15 (D-03): the shaper's own order of their saved boards on the Board Rack, as JSON text of
+  // board ids (saved boards only). Null = not arranged yet, which is today's automatic order. Read
+  // through lib/models/rack-order.ts's allow-list, so a drifted value reads as not arranged.
+  rackOrder: text("rack_order"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

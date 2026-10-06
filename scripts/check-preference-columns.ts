@@ -3,7 +3,8 @@
  * have somewhere to live: `user_preferences` holds `planer_max_depth_mm` (double precision),
  * `deck_skin_mm` (double precision) and `tip_style` (text), migration 0006 (Phase 12 D-01, D-03,
  * D-04), and `hidden_blank_makers` (text), migration 0007 (quick task 260926-wmf: the blank makers a
- * shaper switched off in the gear menu). It also reports the state of the retired
+ * shaper switched off in the gear menu), and `rack_order` (text), migration 0009 (Phase 15 D-03: the
+ * shaper's own order of their saved boards on the Board Rack). It also reports the state of the retired
  * `extra_center_thickness_mm` column — dropped by migration 0008 (quick task 260927-qrn, D-19).
  *
  * By default the retired column is expected ABSENT: from migration 0008 on, "gone" is the normal
@@ -16,11 +17,11 @@
  * when it applied nothing, so that line proves nothing on its own. This script asks the database.
  *
  * It writes nothing. It prints exactly two lines:
- *   user_preferences: planer_max_depth_mm double precision, deck_skin_mm double precision, tip_style text, hidden_blank_makers text (4 of 4 columns); extra_center_thickness_mm absent (expected absent)
+ *   user_preferences: planer_max_depth_mm double precision, deck_skin_mm double precision, tip_style text, hidden_blank_makers text, rack_order text (5 of 5 columns); extra_center_thickness_mm absent (expected absent)
  *   drizzle migrations recorded: <n>
  * with `missing` in place of any column it did not find, and the retired column's line-1 ending one
  * of `present (expected present)`, `absent (expected absent)`, `present (expected absent)` or
- * `absent (expected present)`. Exits 1 when fewer than 4 of the 4 columns match their types, or when
+ * `absent (expected present)`. Exits 1 when fewer than 5 of the 5 columns match their types, or when
  * the retired column's actual state differs from the expected one. Only column names, their types
  * and a count are ever printed — never the connection string, never row data. When the check itself
  * fails (the database can't be reached, say) it prints one fixed sentence with the error's kind and
@@ -48,6 +49,13 @@
  *     bash -c 'trap "rm -f .env.production.pull" EXIT INT TERM; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts --before-drop && MIGRATE_ENV_FILE=.env.production.pull npx --no-install drizzle-kit migrate && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts'
  *   Earlier production runs (plan 12-10, quick 260926-wmf) used the check on its own, after
  *   `npm run db:migrate:prod`.
+ *   production — Phase 15 go-live, the founder only (plan 15-13), from the main checkout. Adding
+ *   rack_order is ADDITIVE, so it runs BEFORE the push (CLAUDE.md Database): check first (expected
+ *   `rack_order missing (4 of 5 columns)`, exit 1), then migrate, then check again (expected
+ *   `rack_order text (5 of 5 columns)`, exit 0, one more migration recorded).
+ *     bash -c 'trap "rm -f .env.production.pull" EXIT INT TERM; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts'
+ *     npm run db:migrate:prod
+ *     bash -c 'trap "rm -f .env.production.pull" EXIT INT TERM; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts'
  *
  * Which env file is read is controlled by `CHECK_ENV_FILE` (default `.env.local`, resolved from the
  * current directory), mirroring `SEED_ENV_FILE` in scripts/seed-blanks.ts: when the file exists, any
@@ -59,12 +67,14 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-/** The Phase 12 columns, then quick task 260926-wmf's, and the type each must have. */
+/** The Phase 12 columns, then quick task 260926-wmf's, then Phase 15's, and the type each must have. */
 const NEW_COLUMNS = [
   { name: "planer_max_depth_mm", type: "double precision" },
   { name: "deck_skin_mm", type: "double precision" },
   { name: "tip_style", type: "text" },
   { name: "hidden_blank_makers", type: "text" },
+  // Phase 15 D-03, migration 0009: the shaper's own order of their saved boards.
+  { name: "rack_order", type: "text" },
 ] as const;
 
 /**
@@ -110,7 +120,7 @@ async function main(): Promise<void> {
     select column_name, data_type
     from information_schema.columns
     where table_name = 'user_preferences'
-      and column_name in ('planer_max_depth_mm', 'deck_skin_mm', 'tip_style', 'hidden_blank_makers', 'extra_center_thickness_mm')
+      and column_name in ('planer_max_depth_mm', 'deck_skin_mm', 'tip_style', 'hidden_blank_makers', 'rack_order', 'extra_center_thickness_mm')
   `);
   const found = new Map<string, string>();
   for (const row of columnResult.rows as Array<{ column_name: string; data_type: string }>) {
