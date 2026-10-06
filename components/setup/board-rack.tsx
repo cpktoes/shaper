@@ -28,7 +28,10 @@
  * It also owns moving a board (15-09): every move is the one pure rule (`moveInOrder` on the saved
  * boards, the unsaved board refused before it — R9), shown at once and saved in the background by
  * `useRackOrder`, and said in the status pill (`RackStatus`, the rack's one live region). On a touch
- * screen a board is held and slid (the swipe rack), only while D-11's switch leaves the hold on.
+ * screen a board is held and slid (the swipe rack), only while D-11's switch leaves the hold on. On a
+ * computer (15-11) a board is dragged, or moved one place from its ⋯ menu or with Alt + arrow
+ * (`handleMoveOneStep`, which a keyboard on either rack reaches); while a ⋯ menu is open the rack
+ * holds still, as it does under a dialog.
  */
 
 import { useCallback, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -50,6 +53,7 @@ import {
   IN_PROGRESS_KEY,
   applyStoredOrder,
   moveInOrder,
+  moveOneStep,
   rackIndexToSavedIndex,
   savedIdsInOrder,
   turnedKeyAfterRemoval,
@@ -87,6 +91,8 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   const [focusKey, setFocusKey] = useState<string | null>(null);
   /** The name of the board a finger is carrying (the swipe caption becomes the carrying line). */
   const [carrying, setCarrying] = useState<string | null>(null);
+  /** True while a caption's ⋯ menu is open: the rack holds still underneath (UI-SPEC §6). */
+  const [menuOpen, setMenuOpen] = useState(false);
   const headingId = useId();
   const sectionRef = useRef<HTMLElement>(null);
   /** UI E09: the status pill never covers the caption's controls. On the swipe rack the empty band
@@ -162,7 +168,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   if (boards.length === 0) return null;
 
   const openKey = hasInProgress ? IN_PROGRESS_KEY : modelId;
-  const frozen = renamingModel !== null || deletingModel !== null;
+  const frozen = renamingModel !== null || deletingModel !== null || menuOpen;
 
   const setTurned = (key: string) => {
     setTurnState((prev) => (prev.turned === key ? prev : { ...prev, turned: key }));
@@ -245,6 +251,33 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     return "moved";
   };
 
+  /**
+   * One place left (`-1`) or right (`1`) — ⋯ → Move left / Move right and Alt + arrow (R8): the one
+   * pure rule (`moveOneStep` on the saved boards), shown at once, saved in the background and said.
+   * The unsaved board never moves, and nothing passes in front of it (R9): Alt + ← on the first
+   * saved board behind it says so, as the unsaved board itself does. At an end of the rack it says
+   * the board is already first or last.
+   */
+  const handleMoveOneStep = (key: string, direction: -1 | 1) => {
+    if (key === IN_PROGRESS_KEY) {
+      announce(RACK_COPY.unsavedStaysFirst);
+      return;
+    }
+    const board = boards.find((candidate) => candidate.key === key);
+    if (!board) return;
+    const step = moveOneStep(savedIdsInOrder(rackEntries), key, direction);
+    if (step.outcome === "moved") {
+      commit(step.ids);
+      announce(RACK_COPY.moved(board.name));
+    } else if (step.outcome === "first") {
+      announce(hasInProgress ? RACK_COPY.unsavedStaysFirst : RACK_COPY.alreadyFirst(board.name));
+    } else if (step.outcome === "last") {
+      announce(RACK_COPY.alreadyLast(board.name));
+    }
+  };
+
+  const savedIds = savedIdsInOrder(rackEntries);
+
   const handleOpenKey = (key: string) => {
     const board = boards.find((candidate) => candidate.key === key);
     if (board) openBoard(board);
@@ -252,6 +285,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
 
   const renderCaption = (board: RackBoard) => {
     const model = board.model;
+    const savedIndex = model ? savedIds.indexOf(model.id) : -1;
     return (
       <RackCaption
         board={board}
@@ -262,6 +296,17 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
         onDelete={model ? () => setDeletingModel(model) : undefined}
         duplicateError={model ? (duplicateErrors[model.id] ?? null) : null}
         carrying={kind === "swipe" ? carrying : null}
+        moves={
+          savedIndex >= 0
+            ? {
+                canMoveLeft: savedIndex > 0,
+                canMoveRight: savedIndex < savedIds.length - 1,
+                onMoveLeft: () => handleMoveOneStep(board.key, -1),
+                onMoveRight: () => handleMoveOneStep(board.key, 1),
+              }
+            : undefined
+        }
+        onMenuOpenChange={setMenuOpen}
       />
     );
   };
@@ -302,6 +347,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
               caption={renderCaption}
               focusKey={focusKey}
               onMove={handleMove}
+              onMoveOneStep={handleMoveOneStep}
               holdEnabled={holdToMoveEnabled(kind)}
               onCarry={setCarrying}
             />
@@ -316,6 +362,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
               caption={renderCaption}
               focusKey={focusKey}
               onMove={handleMove}
+              onMoveOneStep={handleMoveOneStep}
             />
           )
         ) : (

@@ -30,11 +30,26 @@
  * opens the board. The unsaved board is never lifted and nothing lands in front of it (R9). A finger
  * on this rack never drags (D-05).
  *
+ * The keyboard (UI-SPEC §11): the boards are one group, `Boards in your rack`, with the turned board
+ * its one tab stop; the arrows walk it (across row ends, ↑ / ↓ to the row above or below), Home and
+ * End go to its ends, Enter opens, and Alt + arrow moves the focused board one place. While a ⋯ menu
+ * or a dialog is open (`frozen`) the rack ignores the pointer and the keys.
+ *
  * Every path is worked out from the board's own numbers through `lib/geometry/rack-art.ts` and every
  * position through `lib/geometry/rack-layout.ts` — both pure and tested. Nothing is a stored picture.
  */
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { useReducedMotion } from "@/components/design/use-viewer-media";
 import { useUnits } from "@/components/units-provider";
 import { RACK_COPY } from "@/components/setup/rack-config";
@@ -119,6 +134,8 @@ interface HoverRackProps {
   /** A carried board was let go at rack place `toRackIndex` (or the unsaved board was dragged, at 0):
    * the rack's owner moves it (`moved`), leaves it where it was (`same`) or refuses (`refused`). */
   onMove?: (key: string, toRackIndex: number) => MoveResult;
+  /** Alt + ← / Alt + → on a focused board: move it one place left (`-1`) or right (`1`). */
+  onMoveOneStep?: (key: string, direction: -1 | 1) => void;
 }
 
 /** The elements the frame loop writes to, one set per board. */
@@ -487,6 +504,7 @@ function stepRack(
 }
 
 const refuseMoves = (): MoveResult => "same";
+const ignoreOneStep = () => {};
 
 /** The clock the pointer handlers read (the frame loop's own clock). */
 function nowMs(): number {
@@ -503,6 +521,7 @@ export function HoverRack({
   caption,
   focusKey = null,
   onMove = refuseMoves,
+  onMoveOneStep = ignoreOneStep,
 }: HoverRackProps) {
   const { system } = useUnits();
   const reduced = useReducedMotion();
@@ -519,6 +538,10 @@ export function HoverRack({
   const markRef = useRef<SVGLineElement | null>(null);
   /** What pressed a board last (D-05): a finger's first tap turns a board, a mouse click opens it. */
   const pressedWith = useRef<RackPointerType | null>(null);
+  /** The board an Alt + arrow just moved: its button takes the focus back once the new order is
+   * drawn (a moved button can lose the focus as the page reorders it). */
+  const refocusKey = useRef<string | null>(null);
+  const instructionsId = useId();
 
   // The rack's own width, measured (it lays itself out in whatever room the page gives it).
   useLayoutEffect(() => {
@@ -598,6 +621,13 @@ export function HoverRack({
     if (width <= 0) return;
     const busy = stepRack(state, latest.current, nodes.current, markRef.current, nowMs(), { force: true, allowRest: false });
     if (busy) kick();
+    // After a keyboard move, the focus stays on the board that moved (UI-SPEC §11).
+    const refocus = refocusKey.current;
+    if (refocus !== null) {
+      refocusKey.current = null;
+      const button = nodes.current.get(refocus)?.button;
+      if (button && document.activeElement !== button) button.focus({ preventScroll: true });
+    }
   });
 
   useEffect(() => {
@@ -825,6 +855,53 @@ export function HoverRack({
     onOpen(key);
   };
 
+  /** Turns board `index` at once — a keyboard step: the 200 ms settle with no 180 ms rest wait — and
+   * moves the focus to it; the caption follows. */
+  const turnNow = (index: number) => {
+    const board = boards[index];
+    if (!board) return;
+    const state = frame.current;
+    state.settledKey = board.key;
+    state.awaitingRest = false;
+    kick();
+    if (board.key !== turnedKey) onTurn(board.key);
+    nodes.current.get(board.key)?.button?.focus({ preventScroll: true });
+  };
+
+  /**
+   * UI-SPEC §11's keyboard map on the hover rack: ← / → the previous / next board in the rack's order,
+   * across row ends; Home / End the first / last; ↑ / ↓ the nearest board in the row above / below
+   * (nothing with one row) — the focus moves and that board turns at once. Enter and Space are the
+   * focused button's own click, which opens it. Alt + ← / Alt + → move the focused board one place,
+   * with the browser's own Alt + ← (Back, on Windows and Linux) cancelled, and the focus stays on it.
+   */
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.ctrlKey || event.metaKey || frozen || frame.current.carry) return;
+    const key = (event.target as HTMLElement).getAttribute("data-rack-board");
+    const from = key === null ? -1 : boards.findIndex((board) => board.key === key);
+    if (from < 0 || key === null) return;
+    if (event.altKey) {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      refocusKey.current = key;
+      onMoveOneStep(key, event.key === "ArrowLeft" ? -1 : 1);
+      return;
+    }
+    let to: number;
+    if (event.key === "ArrowLeft") to = from - 1;
+    else if (event.key === "ArrowRight") to = from + 1;
+    else if (event.key === "Home") to = 0;
+    else if (event.key === "End") to = boards.length - 1;
+    else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      const here = positions[from];
+      const row = here.row + (event.key === "ArrowUp" ? -1 : 1);
+      if (row < 0 || row >= layout.rows) return;
+      to = hoverSlotAt(layout, here.x, row * layout.rowBlock + HOVER_ROW_TOP_ROOM + layout.rackHeight / 2);
+    } else return;
+    event.preventDefault();
+    turnNow(Math.min(boards.length - 1, Math.max(0, to)));
+  };
+
   const bindNode = (key: string, part: keyof BoardNodes) => (element: Element | null) => {
     const map = nodes.current;
     const entry = map.get(key) ?? {};
@@ -944,24 +1021,36 @@ export function HoverRack({
               style={{ stroke: "var(--surf-accent-ink)" }}
             />
           </svg>
-          {boards.map((board, k) => (
-            <button
-              key={board.key}
-              ref={bindNode(board.key, "button")}
-              type="button"
-              data-rack-board={board.key}
-              aria-label={
-                board.kind === "in-progress"
-                  ? RACK_COPY.unsavedBoardLabel(board.name, lines[k], n)
-                  : RACK_COPY.boardLabel(board.name, lines[k], k + 1, n)
-              }
-              aria-current={board.key === openKey ? "true" : undefined}
-              className="focus-ring-accent absolute cursor-pointer rounded-sm bg-transparent p-0"
-              style={{ height: layout.rackHeight }}
-              onPointerDown={(event) => handleBoardPointerDown(board.key, event)}
-              onClick={() => handleBoardClick(board.key)}
-            />
-          ))}
+          {/* The rack's group: its one tab stop is the turned board (roving tabindex), and the hidden
+              words tell a screen reader how to walk and move along it. Laid over the rack without
+              taking a pointer itself, so the caption under it stays reachable. */}
+          <div
+            role="group"
+            aria-label={RACK_COPY.groupName}
+            aria-describedby={instructionsId}
+            className="pointer-events-none absolute inset-0"
+            onKeyDown={handleKeyDown}
+          >
+            {boards.map((board, k) => (
+              <button
+                key={board.key}
+                ref={bindNode(board.key, "button")}
+                type="button"
+                data-rack-board={board.key}
+                aria-label={
+                  board.kind === "in-progress"
+                    ? RACK_COPY.unsavedBoardLabel(board.name, lines[k], n)
+                    : RACK_COPY.boardLabel(board.name, lines[k], k + 1, n)
+                }
+                aria-current={board.key === openKey ? "true" : undefined}
+                tabIndex={board.key === turnedKey || (turnedIndex < 0 && k === 0) ? 0 : -1}
+                className="focus-ring-accent pointer-events-auto absolute cursor-pointer rounded-sm bg-transparent p-0"
+                style={{ height: layout.rackHeight }}
+                onPointerDown={(event) => handleBoardPointerDown(board.key, event)}
+                onClick={() => handleBoardClick(board.key)}
+              />
+            ))}
+          </div>
           {turnedBoard && turnedPosition && !dragging && (
             <div
               className="absolute"
@@ -976,6 +1065,9 @@ export function HoverRack({
           )}
         </>
       )}
+      <span id={instructionsId} className="sr-only">
+        {RACK_COPY.hoverInstructions}
+      </span>
     </div>
   );
 }

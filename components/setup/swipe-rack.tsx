@@ -145,6 +145,9 @@ interface SwipeRackProps {
   holdEnabled?: boolean;
   /** A board was lifted (its name) or let go (null): the caption becomes the carrying line. */
   onCarry?: (name: string | null) => void;
+  /** Alt + ← / Alt + → on a focused board — an iPad with a keyboard (15-11): move it one place left
+   * (`-1`) or right (`1`). Works, but not advertised on this rack. */
+  onMoveOneStep?: (key: string, direction: -1 | 1) => void;
 }
 
 type MoveResult = "moved" | "same" | "refused";
@@ -746,6 +749,7 @@ function placeAt(scroller: HTMLDivElement, index: number, slot: number) {
 
 const refuseMoves = (): MoveResult => "same";
 const ignoreCarry = () => {};
+const ignoreOneStep = () => {};
 
 export function SwipeRack({
   boards,
@@ -759,6 +763,7 @@ export function SwipeRack({
   onMove = refuseMoves,
   holdEnabled = false,
   onCarry = ignoreCarry,
+  onMoveOneStep = ignoreOneStep,
 }: SwipeRackProps) {
   const { system } = useUnits();
   const reduced = useReducedMotion();
@@ -775,6 +780,9 @@ export function SwipeRack({
   /** True from a finger's or mouse's press on a board until its click (or cancel): the focus that
    * press brings is not a keyboard focus, so it never jumps the track. */
   const pointerPressed = useRef(false);
+  /** The board an Alt + arrow just moved: its button takes the focus back once the new order is
+   * drawn (a moved button can lose the focus as the page reorders it). */
+  const refocusKey = useRef<string | null>(null);
   const instructionsId = useId();
 
   // The scroller's own width and height, measured: its height comes from `--rack-swipe-r` in CSS,
@@ -858,6 +866,13 @@ export function SwipeRack({
       placeAt(scroller, state.settledKey === null ? 0 : keys.indexOf(state.settledKey), slot);
     }
     if (stepRack(state, latest.current, nodes, mark.current, performance.now(), true)) kickRack(refs.current);
+    // After a keyboard move, the focus stays on the board that moved (UI-SPEC §11).
+    const refocus = refocusKey.current;
+    if (refocus !== null) {
+      refocusKey.current = null;
+      const button = nodes.get(refocus)?.button;
+      if (button && document.activeElement !== button) button.focus({ preventScroll: true });
+    }
   });
 
   // One passive scroll listener: it only marks the track as moving, restarts the settle timer and
@@ -1005,13 +1020,24 @@ export function SwipeRack({
 
   /** UI-SPEC §11's keyboard map on the swipe rack: ← / → walk to the previous / next board, Home /
    * End to the first / last; focus moves, the board comes to the middle and turns at once. Enter and
-   * Space are the focused button's own click (it is the middle board, so it opens). Alt with an arrow
-   * is left alone — it moves a board (15-09). */
+   * Space are the focused button's own click (it is the middle board, so it opens). Alt + ← / Alt + →
+   * move the focused board one place (15-11 — an iPad with a keyboard; not advertised here), with the
+   * browser's own Alt + ← cancelled; the board stays in the middle and keeps the focus. */
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.ctrlKey || event.metaKey || frozen || refs.current.frame.carry) return;
     const key = (event.target as HTMLElement).getAttribute("data-rack-board");
     const from = key === null ? -1 : boards.findIndex((board) => board.key === key);
-    if (from < 0) return;
+    if (from < 0 || key === null) return;
+    if (event.altKey) {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      pointerPressed.current = false;
+      // The board being moved is the one in the middle, so the track keeps it there as it moves.
+      if (key !== refs.current.frame.settledKey) bringToMiddleNow(from);
+      refocusKey.current = key;
+      onMoveOneStep(key, event.key === "ArrowLeft" ? -1 : 1);
+      return;
+    }
     let to = from;
     if (event.key === "ArrowLeft") to = from - 1;
     else if (event.key === "ArrowRight") to = from + 1;
