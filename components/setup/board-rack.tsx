@@ -45,7 +45,7 @@ import { RACK_COPY, holdToMoveEnabled, rackHeadingLine, type RackKind } from "@/
 import { RackStatus, useRackStatus, type RackStatusAvoid } from "@/components/setup/rack-status";
 import { RenameDialog } from "@/components/setup/rename-dialog";
 import { SwipeRack } from "@/components/setup/swipe-rack";
-import { useRackBoards, type RackBoard, type RackBoardEntry } from "@/components/setup/use-rack-boards";
+import { useRackBoards, type RackBoard, type RackBoardEntry, type RackFocusRequest } from "@/components/setup/use-rack-boards";
 import { useRackOrder } from "@/components/setup/use-rack-order";
 import { DROP_STRIP } from "@/lib/geometry/rack-layout";
 import type { RackModel } from "@/lib/models/rack-models";
@@ -55,7 +55,6 @@ import {
   moveInOrder,
   moveOneStep,
   rackIndexToSavedIndex,
-  savedIdsInOrder,
   turnedKeyAfterRemoval,
   turnedKeyOnArrival,
 } from "@/lib/models/rack-order";
@@ -88,7 +87,9 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   const [renamingModel, setRenamingModel] = useState<RackModel | null>(null);
   const [deletingModel, setDeletingModel] = useState<RackModel | null>(null);
   const [duplicateErrors, setDuplicateErrors] = useState<Record<string, string>>({});
-  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const [focusRequest, setFocusRequest] = useState<RackFocusRequest | null>(null);
+  /** Puts the focus on board `key` — a new request every time, even for the board asked for last. */
+  const requestFocus = (key: string) => setFocusRequest((prev) => ({ key, n: (prev?.n ?? 0) + 1 }));
   /** The name of the board a finger is carrying (the swipe caption becomes the carrying line). */
   const [carrying, setCarrying] = useState<string | null>(null);
   /** True while a caption's ⋯ menu is open: the rack holds still underneath (UI-SPEC §6). */
@@ -113,7 +114,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   const { announce } = status;
   // The shaper's order: their newest move at once, saved in the background; a failed save puts the
   // board back (the hook does) and says so here.
-  const { order, commit, flush } = useRackOrder(rackOrder ?? null, () => announce(RACK_COPY.saveFailed));
+  const { order, commit, flushAndSettle } = useRackOrder(rackOrder ?? null, () => announce(RACK_COPY.saveFailed));
 
   // The server can't know the pointer or the width, and the rack measures its own width, so the
   // rack itself mounts on the client only (server: false, client: true).
@@ -161,7 +162,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   if (turnState.joined !== joined) {
     turnedKey = turnedKeyAfterRemoval(turnState.keys, keys, turnState.turned);
     // A turned board that left the rack (a delete) hands the turn — and the focus — to the next one.
-    if (turnState.turned !== null && !keys.includes(turnState.turned) && turnedKey !== null) setFocusKey(turnedKey);
+    if (turnState.turned !== null && !keys.includes(turnState.turned) && turnedKey !== null) requestFocus(turnedKey);
     setTurnState({ joined, keys, turned: turnedKey });
   }
 
@@ -169,6 +170,10 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
 
   const openKey = hasInProgress ? IN_PROGRESS_KEY : modelId;
   const frozen = renamingModel !== null || deletingModel !== null || menuOpen;
+  // The saved boards in the order they stand, from the boards the rack DRAWS: drop places and the
+  // Move rows are worked out against those, so a board the browser couldn't draw (left out by
+  // useRackBoards) never shifts a move by one place (code review IN-01).
+  const savedIds = boards.flatMap((board) => (board.model ? [board.model.id] : []));
 
   const setTurned = (key: string) => {
     setTurnState((prev) => (prev.turned === key ? prev : { ...prev, turned: key }));
@@ -183,10 +188,11 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     });
   };
 
-  // Before Rename, Duplicate or Delete runs, a waiting order save goes out first: Server Actions run
-  // one at a time, in order, so the order lands before the action re-reads the page (T-15-27).
+  // Before Rename, Duplicate or Delete runs, every order save — one already on its way and a move
+  // still waiting behind it — has landed (or failed) first, so the action re-reads the order the rack
+  // shows and nothing saves over it afterwards (T-15-27, code review WR-01).
   const handleRenameConfirm = async (name: string) => {
-    flush();
+    await flushAndSettle();
     if (!renamingModel) return;
     await renameModel(renamingModel.id, name);
     // The board being renamed may be the one open in the editor right now — the shared store
@@ -196,7 +202,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   };
 
   const handleDeleteConfirm = async () => {
-    flush();
+    await flushAndSettle();
     if (!deletingModel) return;
     const deleted = deletingModel;
     await deleteModel(deleted.id);
@@ -207,12 +213,13 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     // Spoken, not shown; the turn — and the focus — go to the next board in order (the previous
     // when it was last), UI E10.
     announce(RACK_COPY.deleted(deleted.name), { visible: false });
-    setFocusKey(turnedKeyAfterRemoval(keys, keys.filter((key) => key !== deleted.id), turnedKey));
+    const next = turnedKeyAfterRemoval(keys, keys.filter((key) => key !== deleted.id), turnedKey);
+    if (next !== null) requestFocus(next);
   };
 
   const handleDuplicate = async (model: RackModel) => {
-    flush();
     clearDuplicateError(model.id);
+    await flushAndSettle();
     try {
       await duplicateModel(model.id);
       // The copy stands beside its original (D-02, D-16) — said to a screen reader, no pill.
@@ -243,9 +250,8 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     }
     const board = boards.find((candidate) => candidate.key === key);
     if (!board) return "same";
-    const ids = savedIdsInOrder(rackEntries);
-    const next = moveInOrder(ids, key, rackIndexToSavedIndex(toRackIndex, hasInProgress));
-    if (next.every((id, i) => id === ids[i])) return "same";
+    const next = moveInOrder(savedIds, key, rackIndexToSavedIndex(toRackIndex, hasInProgress));
+    if (next.every((id, i) => id === savedIds[i])) return "same";
     commit(next);
     announce(RACK_COPY.moved(board.name));
     return "moved";
@@ -265,7 +271,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     }
     const board = boards.find((candidate) => candidate.key === key);
     if (!board) return;
-    const step = moveOneStep(savedIdsInOrder(rackEntries), key, direction);
+    const step = moveOneStep(savedIds, key, direction);
     if (step.outcome === "moved") {
       commit(step.ids);
       announce(RACK_COPY.moved(board.name));
@@ -275,8 +281,6 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
       announce(RACK_COPY.alreadyLast(board.name));
     }
   };
-
-  const savedIds = savedIdsInOrder(rackEntries);
 
   const handleOpenKey = (key: string) => {
     const board = boards.find((candidate) => candidate.key === key);
@@ -345,7 +349,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
               onTurn={setTurned}
               onOpen={handleOpenKey}
               caption={renderCaption}
-              focusKey={focusKey}
+              focusRequest={focusRequest}
               onMove={handleMove}
               onMoveOneStep={handleMoveOneStep}
               holdEnabled={holdToMoveEnabled(kind)}
@@ -360,7 +364,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
               onTurn={setTurned}
               onOpen={handleOpenKey}
               caption={renderCaption}
-              focusKey={focusKey}
+              focusRequest={focusRequest}
               onMove={handleMove}
               onMoveOneStep={handleMoveOneStep}
             />

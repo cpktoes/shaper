@@ -129,3 +129,64 @@ export function standInRackRows(count: number): RackRow[] {
     };
   });
 }
+
+/*
+ * The practice rack's saves (WR-04): a stand-in for the account a signed-in shaper's order is kept
+ * on, so the browser suite — signed out, with no database — can prove the order survives Back, that
+ * a failed save puts the board back and says so, and that a slow save never snaps a later move back.
+ *
+ * Honoured exactly where the practice rack itself is (`rackStandInRouteEnabled`: never in a
+ * production build, only with `SHAPER_RACK_STAND_IN` exactly "1"), and only for a signed-out caller
+ * — a signed-in shaper's save always goes to their account. Each browser test picks how its saves
+ * behave with the `shaper-rack-stand-in-save` cookie: `fail` (the save throws), `slow` (it lands
+ * after `RACK_STAND_IN_SLOW_SAVE_MS`), anything else or none at all (it lands at once — so the specs
+ * that only move boards need no cookie). The order is kept per `shaper-rack-stand-in-session`
+ * cookie, a random id each test sets so no test sees another's order; without one, every visitor
+ * shares one fixed rack (a person trying the practice rack on a phone, whose order still holds
+ * across Back).
+ */
+
+export const RACK_STAND_IN_SAVE_COOKIE = "shaper-rack-stand-in-save";
+
+export const RACK_STAND_IN_SESSION_COOKIE = "shaper-rack-stand-in-session";
+
+/** The session a visitor with no (or an unreadable) session cookie shares. */
+export const RACK_STAND_IN_SHARED_SESSION = "shared";
+
+/** How long a `slow` stand-in save takes to land. */
+export const RACK_STAND_IN_SLOW_SAVE_MS = 1500;
+
+export type RackStandInSave =
+  /** Not the practice rack's save: nothing is stored, and the caller reports that. */
+  | { kind: "off" }
+  /** The save fails (the client puts the board back and says so). */
+  | { kind: "fail" }
+  /** The order is kept for `session`, after `delayMs`. */
+  | { kind: "store"; session: string; delayMs: number };
+
+/** A session cookie's value when it is a plain id of 1 to 64 letters, digits, `-` or `_`; anything
+ * else (or no cookie) is the shared session. */
+export function rackStandInSession(raw: string | undefined): string {
+  return raw !== undefined && /^[A-Za-z0-9_-]{1,64}$/.test(raw) ? raw : RACK_STAND_IN_SHARED_SESSION;
+}
+
+/**
+ * What a rack-order save does on the practice rack: `off` unless the practice rack is switched on
+ * (`rackStandInRouteEnabled`) AND the caller is signed out; then `fail` for the `fail` cookie, a
+ * store after `RACK_STAND_IN_SLOW_SAVE_MS` for `slow`, and a store at once for anything else.
+ */
+export function resolveRackStandInSave(input: {
+  nodeEnv: string | undefined;
+  flag: string | undefined;
+  signedIn: boolean;
+  choice: string | undefined;
+  session: string | undefined;
+}): RackStandInSave {
+  if (input.signedIn || !rackStandInRouteEnabled({ nodeEnv: input.nodeEnv, flag: input.flag })) return { kind: "off" };
+  if (input.choice === "fail") return { kind: "fail" };
+  return {
+    kind: "store",
+    session: rackStandInSession(input.session),
+    delayMs: input.choice === "slow" ? RACK_STAND_IN_SLOW_SAVE_MS : 0,
+  };
+}

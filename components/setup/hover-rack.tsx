@@ -53,7 +53,8 @@ import {
 import { useReducedMotion } from "@/components/design/use-viewer-media";
 import { useUnits } from "@/components/units-provider";
 import { RACK_COPY } from "@/components/setup/rack-config";
-import type { RackBoard } from "@/components/setup/use-rack-boards";
+import { useFontsReadyCount } from "@/components/setup/use-fonts-ready";
+import type { RackBoard, RackFocusRequest } from "@/components/setup/use-rack-boards";
 import { halfExtent, spineAnchorX, stringerPath, turnedBoardPath } from "@/lib/geometry/rack-art";
 import {
   CARRY_LIFT,
@@ -129,8 +130,8 @@ interface HoverRackProps {
   onOpen: (key: string) => void;
   /** The caption to show under the turned board. */
   caption: (board: RackBoard) => ReactNode;
-  /** Focus this board's button when it changes. */
-  focusKey?: string | null;
+  /** Put the focus on this board (a new request object each time, so the same board can be asked for twice). */
+  focusRequest?: RackFocusRequest | null;
   /** A carried board was let go at rack place `toRackIndex` (or the unsaved board was dragged, at 0):
    * the rack's owner moves it (`moved`), leaves it where it was (`same`) or refuses (`refused`). */
   onMove?: (key: string, toRackIndex: number) => MoveResult;
@@ -269,10 +270,17 @@ function newFrameState(): FrameState {
 }
 
 let measureContext: CanvasRenderingContext2D | null | undefined;
+/** The `useFontsReadyCount` the measuring canvas was made for. */
+let measureContextFonts = -1;
 
-/** The browser's own text measure for the vertical words (the fit RULE is pure: `fitSpineWords`). */
-function measureWords(family: string) {
-  if (measureContext === undefined) {
+/**
+ * The browser's own text measure for the vertical words (the fit RULE is pure: `fitSpineWords`).
+ * `fontsReady` is `useFontsReadyCount`'s count: once the web fonts have loaded, a fresh canvas
+ * measures, so nothing a canvas resolved against the fallback font is reused (code review IN-03).
+ */
+function measureWords(family: string, fontsReady: number) {
+  if (measureContext === undefined || measureContextFonts !== fontsReady) {
+    measureContextFonts = fontsReady;
     measureContext = typeof document === "undefined" ? null : document.createElement("canvas").getContext("2d");
   }
   const context = measureContext;
@@ -519,7 +527,7 @@ export function HoverRack({
   onTurn,
   onOpen,
   caption,
-  focusKey = null,
+  focusRequest = null,
   onMove = refuseMoves,
   onMoveOneStep = ignoreOneStep,
 }: HoverRackProps) {
@@ -541,6 +549,8 @@ export function HoverRack({
   /** The board an Alt + arrow just moved: its button takes the focus back once the new order is
    * drawn (a moved button can lose the focus as the page reorders it). */
   const refocusKey = useRef<string | null>(null);
+  /** Stops listening for the end of the unsaved board's refused drag (WR-03), while one is listened for. */
+  const stopRefusalListener = useRef<(() => void) | null>(null);
   const instructionsId = useId();
 
   // The rack's own width, measured (it lays itself out in whatever room the page gives it).
@@ -571,12 +581,15 @@ export function HoverRack({
   );
   const positions = useMemo(() => boards.map((_, k) => hoverSlotPosition(layout, k)), [boards, layout]);
   const lines = useMemo(() => boards.map((board) => formatSummaryLine(board.summary, system)), [boards, system]);
+  // Measured again once the web font has loaded (`fontsReady`), so a long name is fitted in the font
+  // it is drawn in, not the fallback (code review IN-03).
+  const fontsReady = useFontsReadyCount();
   const fits = useMemo(() => {
-    const measure = measureWords(fontFamily);
+    const measure = measureWords(fontFamily, fontsReady);
     return boards.map((board, k) =>
       fitSpineWords({ name: board.name, line: lines[k], maxLength: layout.rackHeight - 2 * WORD_END_ROOM, baseSize: HOVER_WORD_SIZE, measure }),
     );
-  }, [boards, lines, layout.rackHeight, fontFamily]);
+  }, [boards, lines, layout.rackHeight, fontFamily, fontsReady]);
   const heightLines = useMemo(
     () => rackHeightLines(system, Math.max(0, ...boards.map((board) => board.art.length))),
     [boards, system],
@@ -632,15 +645,18 @@ export function HoverRack({
 
   useEffect(() => {
     const state = frame.current;
+    const stopRefusal = stopRefusalListener;
     return () => {
       if (state.raf) cancelAnimationFrame(state.raf);
       state.raf = 0;
+      stopRefusal.current?.();
     };
   }, []);
 
+  // Each focus request is its own object, so the same board asked for twice still takes the focus.
   useEffect(() => {
-    if (focusKey) nodes.current.get(focusKey)?.button?.focus();
-  }, [focusKey]);
+    if (focusRequest) nodes.current.get(focusRequest.key)?.button?.focus();
+  }, [focusRequest]);
 
   /** Lets go of a carried board (or, `cancelled`, puts it back): moved, it drops into its gap and
    * turns; dropped where it started, or cancelled, it goes back to its place with nothing said. */
@@ -710,6 +726,28 @@ export function HoverRack({
     return rect ? { x: clientX - rect.left, y: clientY - rect.top } : null;
   };
 
+  /** After the unsaved board's refusal: wherever the press ends (a release anywhere on the page, a
+   * cancel, or the window losing focus), the click it ends with is swallowed for
+   * `CLICK_AFTER_DROP_MS` — a finite window, as after a drop — never for good. */
+  const listenForRefusalRelease = () => {
+    stopRefusalListener.current?.();
+    const onEnd = () => {
+      stop();
+      const state = frame.current;
+      if (state.suppressClickUntil === Number.POSITIVE_INFINITY) state.suppressClickUntil = nowMs() + CLICK_AFTER_DROP_MS;
+    };
+    const stop = () => {
+      window.removeEventListener("pointerup", onEnd, true);
+      window.removeEventListener("pointercancel", onEnd, true);
+      window.removeEventListener("blur", onEnd);
+      if (stopRefusalListener.current === stop) stopRefusalListener.current = null;
+    };
+    window.addEventListener("pointerup", onEnd, true);
+    window.addEventListener("pointercancel", onEnd, true);
+    window.addEventListener("blur", onEnd);
+    stopRefusalListener.current = stop;
+  };
+
   /** The press moved past the drag threshold: the board lifts and the pointer carries it — unless it
    * is the unsaved board, which is never lifted: the rack's owner refuses it and says so. */
   const liftBoard = (press: Press, point: { x: number; y: number }) => {
@@ -724,6 +762,10 @@ export function HoverRack({
     state.suppressClickUntil = Number.POSITIVE_INFINITY;
     if (board.kind === "in-progress") {
       current.onMove(board.key, 0);
+      // No pointer capture for a refusal, so the release can come anywhere — outside the rack too,
+      // where the rack's own pointer-up never hears it and every later click (Enter on a board
+      // included) would stay swallowed. The window hears it instead (code review WR-03).
+      listenForRefusalRelease();
       return;
     }
     const rest = hoverSlotPosition(current.layout, index);

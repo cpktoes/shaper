@@ -5,6 +5,7 @@ import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { IN_PROGRESS_KEY } from "../lib/models/rack-order";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
+import { freshPracticeRack } from "./helpers/practice-rack";
 import { openAppSettings } from "./helpers/settings";
 
 /**
@@ -23,6 +24,8 @@ const STAND_INS = standInRackRows(15);
 /** Board `n` (1-based) on the practice rack. */
 const board = (n: number) => STAND_INS[n - 1];
 
+/** Every test's setup: the sign-in banner and the toolbar tip dismissed, and a practice rack of the
+ * test's own, never arranged (its saves land in the dev server's memory — e2e/helpers/practice-rack.ts). */
 async function dismissBannerAndTip(page: Page) {
   await page.addInitScript(
     ([bannerKey, tipKey]) => {
@@ -31,6 +34,7 @@ async function dismissBannerAndTip(page: Page) {
     },
     [BANNER_DISMISSAL_KEY, TOOLBAR_TIP_DISMISSAL_KEY] as const,
   );
+  await freshPracticeRack(page);
 }
 
 const boardButton = (page: Page, key: string) => page.locator(`[data-rack-board="${key}"]`);
@@ -168,7 +172,7 @@ test.describe("the Board Rack on a computer", () => {
     await openRack(page, RACK_STAND_IN_ROUTE, 15);
     const { x, y } = await centreOf(page, board(6).id);
     await page.mouse.move(x, y, { steps: 8 });
-    await page.waitForTimeout(600);
+    // Each check polls until the rest and the turn have played out — no fixed wait (IN-08).
     await expect(boardArt(page, board(6).id)).toHaveAttribute("data-turn", "90");
     await expect(boardArt(page, board(1).id)).toHaveAttribute("data-turn", "0");
     await expect(captionFor(page, board(6).name)).toBeVisible();
@@ -265,6 +269,8 @@ test.describe("the Board Rack on a computer — rows, holding still, and touch-s
     const captionBox = await captionFor(page, board(6).name).boundingBox();
     if (!captionBox) throw new Error("no box for the caption");
     await page.mouse.move(x, captionBox.y + captionBox.height / 2, { steps: 10 });
+    // A check that nothing turns: the wait outlasts the 180 ms rest and a turn, by design, so a
+    // board that wrongly turned would have had the time to (IN-08).
     await page.waitForTimeout(400);
     await expect(boardArt(page, board(6).id)).toHaveAttribute("data-turn", "90");
     await expect(boardArt(page, board(5).id)).toHaveAttribute("data-turn", "0");
@@ -373,6 +379,10 @@ function movedOrder(keys: readonly string[], key: string, to: number) {
 /** The status pill's live region. */
 const statusRegion = (page: Page) => page.locator("[data-rack-status]");
 
+/** True for the practice rack's order save: a Server Action call (a POST carrying `Next-Action`). */
+const isRackSave = (response: { request(): { method(): string; headers(): Record<string, string> } }) =>
+  response.request().method() === "POST" && "next-action" in response.request().headers();
+
 /** The height-line labels of the rack's first row, the lowest line first. */
 async function heightLabels(page: Page) {
   const labels = await page
@@ -467,6 +477,7 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     await expect(page.locator("[data-rack-caption]")).toHaveCount(0);
     await expect(page.locator("[data-drop-mark]")).toHaveAttribute("opacity", "1");
 
+    const saved = page.waitForResponse(isRackSave);
     await page.mouse.up();
     await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(second.name));
     const expected = movedOrder(before, second.id, 5);
@@ -479,9 +490,10 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     // The release at the end of the drag never opened the board.
     expect(new URL(page.url()).pathname).toBe(RACK_STAND_IN_ROUTE);
 
-    // The practice rack's save resolves quietly signed out: the order stays.
-    await page.waitForTimeout(1200);
-    expect(await rackKeys(page)).toEqual(expected);
+    // The practice rack's save lands (its stand-in account, e2e/helpers/practice-rack.ts): the order
+    // stays and nothing says it failed — waited for as the save itself, not a fixed time (IN-08).
+    await saved;
+    await expect.poll(() => rackKeys(page)).toEqual(expected);
     await expect(statusRegion(page)).not.toHaveText(RACK_COPY.saveFailed);
   });
 
@@ -506,7 +518,8 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     await page.keyboard.press("Escape");
     await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
     await expect(page.locator("[data-drop-mark]")).toHaveAttribute("opacity", "0");
-    // Letting go afterwards neither moves nor opens anything.
+    // Letting go afterwards neither moves nor opens anything. A check that nothing happens: the wait
+    // gives a wrong drop, or a wrong click's navigation, the time to show (IN-08 keeps this one).
     await page.mouse.up();
     await page.waitForTimeout(300);
     expect(await rackKeys(page)).toEqual(before);
@@ -567,6 +580,35 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     expect((await rackKeys(page))[0]).toBe(IN_PROGRESS_KEY);
   });
 
+  test("m16a. after the unsaved board is dragged and let go outside the rack, Enter on a board still opens it (code review WR-03)", async ({
+    page,
+  }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    await startABoardAndComeBack(page, 15);
+    const first = await firstSlotCentre(page);
+    await page.mouse.move(first.x, first.y, { steps: 4 });
+    await page.mouse.down();
+    await page.mouse.move(first.x + 3 * HOVER_SLOT, first.y, { steps: 8 });
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.unsavedStaysFirst);
+    // Let go well outside the rack, over the space above its heading.
+    const heading = await page.getByRole("heading", { name: RACK_COPY.heading }).boundingBox();
+    if (!heading) throw new Error("no box for the rack's heading");
+    await page.mouse.move(first.x + 3 * HOVER_SLOT, heading.y - 24, { steps: 8 });
+    await page.mouse.up();
+    // The click that ends the refused drag is swallowed for half a second (CLICK_AFTER_DROP_MS, a
+    // timer by design); a key pressed after it is a click of its own.
+    await page.waitForTimeout(600);
+
+    const saved = board(3);
+    await boardButton(page, saved.id).focus();
+    await page.keyboard.press("Enter");
+    // A board is in progress, so opening a saved one asks first — then it opens.
+    const question = page.getByRole("alertdialog", { name: "Open this board?" });
+    await expect(question).toBeVisible();
+    await question.getByRole("button", { name: "Discard & Open" }).click();
+    await page.waitForURL("**/design/outline");
+  });
+
   test("m17. ⋯ on the turned board: Move left, Move right, a line, Rename, Duplicate, Delete — and each Move is dimmed where it can't move", async ({
     page,
   }) => {
@@ -608,7 +650,9 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     await expect(menu.getByRole("menuitem", { name: RACK_COPY.moveRight })).toBeDisabled();
     await page.keyboard.press("Escape");
 
-    // Behind the unsaved board, the first saved board can't go left either.
+    // Behind the unsaved board, the first saved board can't go left either — on a fresh practice
+    // rack, since this one now keeps the Move right above.
+    await freshPracticeRack(page);
     await openRack(page, RACK_STAND_IN_ROUTE, 15);
     await startABoardAndComeBack(page, 15);
     await restOnPlace(page, 1);
@@ -687,6 +731,7 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     const first = await firstSlotCentre(page);
     await openBoardMenu(page, board(1).name);
     await page.mouse.move(first.x + 5 * HOVER_SLOT, first.y, { steps: 10 });
+    // A check that nothing turns: the wait outlasts the 180 ms rest and a turn, by design (IN-08).
     await page.waitForTimeout(600);
     await expect(boardArt(page, board(6).id)).toHaveAttribute("data-turn", "0");
     await expect(boardArt(page, board(1).id)).toHaveAttribute("data-turn", "90");
@@ -735,6 +780,104 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
   });
 });
 
+test.describe("the Board Rack on a computer — the order is kept (code review CR-01, WR-04)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the hover rack's own pointer checks are desktop-only");
+    await dismissBannerAndTip(page);
+  });
+
+  test("k1. a moved board is still moved after opening a board and pressing Back", async ({ page }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const first = board(1);
+    await boardButton(page, first.id).focus();
+    const saved = page.waitForResponse(isRackSave);
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(first.name));
+    const expected = movedOrder(before, first.id, 1);
+    await expect.poll(() => rackKeys(page)).toEqual(expected);
+    // The save has landed on the practice rack's stand-in account before the board is opened.
+    await saved;
+
+    await captionFor(page, first.name).getByRole("button", { name: RACK_COPY.open }).click();
+    await page.waitForURL("**/design/outline");
+    await page.goBack();
+    await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
+    await expect(page.locator("[data-rack-art][data-turn]")).toHaveCount(15);
+    await expect.poll(() => rackKeys(page)).toEqual(expected);
+  });
+
+  test("k2. a save that fails puts the board back where it was and says so", async ({ page }) => {
+    await freshPracticeRack(page, "fail");
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const first = board(1);
+    await boardButton(page, first.id).focus();
+    await page.keyboard.press("Alt+ArrowRight");
+    // The move shows at once ...
+    await expect.poll(() => rackKeys(page)).toEqual(movedOrder(before, first.id, 1));
+    // ... and when its save fails the rack says so and stands as it did before.
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.saveFailed);
+    await expect.poll(() => rackKeys(page)).toEqual(before);
+
+    // Nothing was kept: a reload finds the rack as it was.
+    await page.reload();
+    await expect(page.locator("[data-rack-art][data-turn]")).toHaveCount(15);
+    expect(await rackKeys(page)).toEqual(before);
+  });
+
+  test("k3. with slow saves, a second move made while the first is saving never snaps back, and both are kept", async ({
+    page,
+  }) => {
+    await freshPracticeRack(page, "slow");
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const first = board(1);
+    const afterOne = movedOrder(before, first.id, 1);
+    const afterTwo = movedOrder(afterOne, first.id, 2);
+    // Every order the rack draws from here on, in turn (the board buttons stand in the rack's order).
+    await page.evaluate(() => {
+      const drawn: string[] = [];
+      (window as unknown as { __rackOrders: string[] }).__rackOrders = drawn;
+      const record = () => {
+        const keys = Array.from(document.querySelectorAll("[data-rack-board]"))
+          .map((button) => button.getAttribute("data-rack-board") ?? "")
+          .join(",");
+        if (drawn[drawn.length - 1] !== keys) drawn.push(keys);
+      };
+      record();
+      new MutationObserver(record).observe(document.body, { childList: true, subtree: true });
+    });
+    let landed = 0;
+    page.on("requestfinished", (request) => {
+      if (request.method() === "POST" && "next-action" in request.headers()) landed += 1;
+    });
+
+    await boardButton(page, first.id).focus();
+    const firstSave = page.waitForRequest((request) => request.method() === "POST" && "next-action" in request.headers());
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect.poll(() => rackKeys(page)).toEqual(afterOne);
+    // The first save is on its way (it takes 1.5 s); the second move is made while it travels.
+    await firstSave;
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect.poll(() => rackKeys(page)).toEqual(afterTwo);
+    expect(landed, "the first save was still on its way at the second move").toBe(0);
+
+    // Both saves land, each refreshing the page; then two frames for the last refresh to draw.
+    await expect.poll(() => landed, { timeout: 15_000 }).toBe(2);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    expect(await rackKeys(page)).toEqual(afterTwo);
+    const drawn = await page.evaluate(() => (window as unknown as { __rackOrders: string[] }).__rackOrders);
+    const second = drawn.indexOf(afterTwo.join(","));
+    expect(second, JSON.stringify(drawn)).toBeGreaterThanOrEqual(0);
+    expect(drawn.slice(second), "the first save's refresh snapped the second move back").not.toContain(afterOne.join(","));
+
+    await page.reload();
+    await expect(page.locator("[data-rack-art][data-turn]")).toHaveCount(15);
+    expect(await rackKeys(page)).toEqual(afterTwo);
+  });
+});
+
 test.describe("the Board Rack on a computer — moving with reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
 
@@ -743,23 +886,36 @@ test.describe("the Board Rack on a computer — moving with reduced motion", () 
     await dismissBannerAndTip(page);
   });
 
-  test("m20. a dropped board is fully turned within 50 ms of the release — no descent, no glide", async ({ page }) => {
+  test("m20. a dropped board is fully turned within 3 frames of the release — no descent, no glide", async ({ page }) => {
     await openRack(page, RACK_STAND_IN_ROUTE, 15);
     const second = board(2);
     const start = await restOnPlace(page, 1);
     await page.mouse.down();
     await page.mouse.move(start.x + 3 * HOVER_SLOT, start.y, { steps: 8 });
     await expect(boardArt(page, second.id)).toHaveAttribute("data-carrying", "true");
-    // Times the release and the moment the board reads 90 degrees, both on the page's own clock.
+    // Counts the page's own animation frames from the release to the moment the board reads 90
+    // degrees — frames, not milliseconds, so a loaded machine's slow frames can't fail it (IN-08). A
+    // descent or a glide would take many frames (120 ms or more at 60 a second).
     await page.evaluate((key) => {
       const art = document.querySelector(`[data-rack-art="${key}"]`);
-      const marks: { up?: number; turned?: number } = {};
+      const marks: { up?: boolean; frames: number; turnedAtFrame?: number } = { frames: 0 };
       (window as unknown as { __dropMarks: typeof marks }).__dropMarks = marks;
-      window.addEventListener("pointerup", () => (marks.up ??= performance.now()), { capture: true, once: true });
+      window.addEventListener(
+        "pointerup",
+        () => {
+          marks.up = true;
+          const tick = () => {
+            marks.frames += 1;
+            if (marks.turnedAtFrame === undefined && marks.frames < 60) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        },
+        { capture: true, once: true },
+      );
       if (!art) return;
       const observer = new MutationObserver(() => {
-        if (marks.up !== undefined && art.getAttribute("data-turn") === "90") {
-          marks.turned ??= performance.now();
+        if (marks.up && art.getAttribute("data-turn") === "90") {
+          marks.turnedAtFrame ??= marks.frames;
           observer.disconnect();
         }
       });
@@ -767,10 +923,12 @@ test.describe("the Board Rack on a computer — moving with reduced motion", () 
     }, second.id);
     await page.mouse.up();
     await expect(boardArt(page, second.id)).toHaveAttribute("data-turn", "90");
-    const marks = await page.evaluate(() => (window as unknown as { __dropMarks: { up?: number; turned?: number } }).__dropMarks);
-    expect(marks.up).toBeDefined();
-    expect(marks.turned).toBeDefined();
-    expect((marks.turned ?? Infinity) - (marks.up ?? 0)).toBeLessThanOrEqual(50);
+    const marks = await page.evaluate(
+      () => (window as unknown as { __dropMarks: { up?: boolean; frames: number; turnedAtFrame?: number } }).__dropMarks,
+    );
+    expect(marks.up).toBe(true);
+    expect(marks.turnedAtFrame).toBeDefined();
+    expect(marks.turnedAtFrame ?? Infinity).toBeLessThanOrEqual(3);
     await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(second.name));
   });
 });
@@ -793,8 +951,11 @@ test.describe("the Board Rack on a computer — reduced motion", () => {
     const during = await readTurnsNextFrame(page, [board(3).id, board(4).id]);
     for (const turn of during) expect([0, 90]).toContain(turn);
 
-    await page.waitForTimeout(600);
-    const after = await Promise.all([board(3).id, board(4).id].map((key) => boardArt(page, key).getAttribute("data-turn")));
-    expect([...after].sort()).toEqual(["0", "90"]);
+    // Once the cursor rests, one of the two turns: polled until it has (IN-08).
+    await expect
+      .poll(async () =>
+        (await Promise.all([board(3).id, board(4).id].map((key) => boardArt(page, key).getAttribute("data-turn")))).sort(),
+      )
+      .toEqual(["0", "90"]);
   });
 });

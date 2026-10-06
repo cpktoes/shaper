@@ -24,11 +24,6 @@ import { RACK_COPY, movesOffered } from "@/components/setup/rack-config";
 import type { RackBoard } from "@/components/setup/use-rack-boards";
 import { cn } from "@/lib/utils";
 
-/** How a board's last touch has always been dated: `Oct 4, 2026`. */
-export function formatLastTouched(date: Date): string {
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
 interface RackCaptionProps {
   board: RackBoard;
   variant: "hover" | "swipe";
@@ -109,7 +104,7 @@ export function RackCaption({
       </span>
       {saved && board.model && (
         <span className="mt-1 text-xs leading-[1.4] text-surf-ink-muted">
-          {RACK_COPY.lastTouched(formatLastTouched(board.model.updatedAt))}
+          {RACK_COPY.lastTouched(board.model.updatedAt)}
         </span>
       )}
       <button

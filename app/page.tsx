@@ -4,8 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { SetupScreen } from "@/components/setup/setup-screen";
 import { listModels, readRackOrder } from "@/lib/db/queries";
 import { resolveCarryOverTipStyle } from "@/lib/fit-defaults-server";
-import { hasPhase11Blank } from "@/lib/models/design-snapshot";
-import { rackModelsFromRows, type RackModel } from "@/lib/models/rack-models";
+import { rackModelsFromRows, rackNeedsTipStyle, type RackModel } from "@/lib/models/rack-models";
 
 export const metadata: Metadata = {
   title: "Shaper Assistant — Start a New Board",
@@ -76,7 +75,7 @@ async function BoardRackData({ userId }: { userId: string }) {
   // the blank's shape, never the envelope's version number. The lookup fails soft to the cookie's
   // Tip Style or Pin deck (for instance before production carries the `tip_style` column), so it
   // can never take the rack down.
-  const tipStyle = rows.some((row) => hasPhase11Blank(row.snapshot)) ? await resolveCarryOverTipStyle() : undefined;
+  const tipStyle = rackNeedsTipStyle(rows) ? await resolveCarryOverTipStyle() : undefined;
   models = rackModelsFromRows(rows, undefined, { tipStyle });
   const rackOrder = await orderRead;
 

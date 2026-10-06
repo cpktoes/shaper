@@ -59,7 +59,8 @@ import {
 import { useReducedMotion } from "@/components/design/use-viewer-media";
 import { useUnits } from "@/components/units-provider";
 import { RACK_COPY } from "@/components/setup/rack-config";
-import type { RackBoard } from "@/components/setup/use-rack-boards";
+import { useFontsReadyCount } from "@/components/setup/use-fonts-ready";
+import type { RackBoard, RackFocusRequest } from "@/components/setup/use-rack-boards";
 import { halfExtent, spineAnchorX, stringerPath, turnedBoardPath } from "@/lib/geometry/rack-art";
 import {
   CARRY_LIFT,
@@ -136,8 +137,8 @@ interface SwipeRackProps {
   onOpen: (key: string) => void;
   /** The caption to show under the rack for the turned board. */
   caption: (board: RackBoard) => ReactNode;
-  /** Focus this board's button (and bring it to the middle) when it changes. */
-  focusKey?: string | null;
+  /** Put the focus on this board and bring it to the middle (a new request object each time, so the same board can be asked for twice). */
+  focusRequest?: RackFocusRequest | null;
   /** A carried board was let go at rack place `toRackIndex` (or the unsaved board was held, at 0):
    * the rack's owner moves it (`moved`), leaves it where it was (`same`) or refuses (`refused`). */
   onMove?: (key: string, toRackIndex: number) => "moved" | "same" | "refused";
@@ -382,10 +383,17 @@ function advanceCarry(frame: FrameState, latest: Latest, now: number, edgeScroll
 }
 
 let measureContext: CanvasRenderingContext2D | null | undefined;
+/** The `useFontsReadyCount` the measuring canvas was made for. */
+let measureContextFonts = -1;
 
-/** The browser's own text measure for the vertical words (the fit RULE is pure: `fitSpineWords`). */
-function measureWords(family: string) {
-  if (measureContext === undefined) {
+/**
+ * The browser's own text measure for the vertical words (the fit RULE is pure: `fitSpineWords`).
+ * `fontsReady` is `useFontsReadyCount`'s count: once the web fonts have loaded, a fresh canvas
+ * measures, so nothing a canvas resolved against the fallback font is reused (code review IN-03).
+ */
+function measureWords(family: string, fontsReady: number) {
+  if (measureContext === undefined || measureContextFonts !== fontsReady) {
+    measureContextFonts = fontsReady;
     measureContext = typeof document === "undefined" ? null : document.createElement("canvas").getContext("2d");
   }
   const context = measureContext;
@@ -759,7 +767,7 @@ export function SwipeRack({
   onTurn,
   onOpen,
   caption,
-  focusKey = null,
+  focusRequest = null,
   onMove = refuseMoves,
   holdEnabled = false,
   onCarry = ignoreCarry,
@@ -820,12 +828,15 @@ export function SwipeRack({
   );
   const floorY = SWIPE_TOP_PAD + rackHeight;
   const lines = useMemo(() => boards.map((board) => formatSummaryLine(board.summary, system)), [boards, system]);
+  // Measured again once the web font has loaded (`fontsReady`), so a long name is fitted in the font
+  // it is drawn in, not the fallback (code review IN-03).
+  const fontsReady = useFontsReadyCount();
   const fits = useMemo(() => {
-    const measure = measureWords(fontFamily);
+    const measure = measureWords(fontFamily, fontsReady);
     return boards.map((board, k) =>
       fitSpineWords({ name: board.name, line: lines[k], maxLength: rackHeight - 2 * WORD_END_ROOM, baseSize: SWIPE_WORD_SIZE, measure }),
     );
-  }, [boards, lines, rackHeight, fontFamily]);
+  }, [boards, lines, rackHeight, fontFamily, fontsReady]);
   const heightLines = useMemo(() => rackHeightLines(system, longestMm), [system, longestMm]);
 
   const n = boards.length;
@@ -934,8 +945,12 @@ export function SwipeRack({
     };
     const onPointerEnd = (cancelled: boolean) => (event: PointerEvent) => {
       const { carry, press } = rack.frame;
-      if (carry && event.pointerId === carry.pointerId) dropBoard(rack, cancelled);
-      else if (press && event.pointerId === press.pointerId) endPress(rack);
+      if (carry && event.pointerId === carry.pointerId) {
+        dropBoard(rack, cancelled);
+        // A carry ends with the finger lifted somewhere else: no click on a board comes to clear the
+        // press, and a later keyboard focus (Tab on an iPad) must bring its board to the middle (IN-07).
+        pointerPressed.current = false;
+      } else if (press && event.pointerId === press.pointerId) endPress(rack);
       releaseClick();
     };
     const onPointerUp = onPointerEnd(false);
@@ -949,8 +964,13 @@ export function SwipeRack({
       releaseClick();
     };
     const onContextMenu = (event: Event) => event.preventDefault();
+    // The window losing focus ends whatever a finger was doing: a carry goes back where it was, and a
+    // hold not yet complete never lifts a board after the finger is gone (IN-07).
     const onBlur = () => {
       if (rack.frame.carry) dropBoard(rack, true);
+      else if (rack.frame.press) endPress(rack);
+      pointerPressed.current = false;
+      releaseClick();
     };
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
@@ -972,16 +992,20 @@ export function SwipeRack({
     };
   }, []);
 
+  // A focus request (after a delete, the next board along): the board takes the focus and the track
+  // brings it to the middle — every request, even one for the board asked for last time (WR-02).
   useEffect(() => {
-    if (!focusKey) return;
+    if (!focusRequest) return;
     const rack = refs.current;
     const scroller = scrollerRef.current;
     const latest = rack.latest.current;
-    rack.nodes.get(focusKey)?.button?.focus({ preventScroll: true });
+    rack.nodes.get(focusRequest.key)?.button?.focus({ preventScroll: true });
     if (!scroller || !latest) return;
-    const index = latest.boards.findIndex((board) => board.key === focusKey);
-    if (index >= 0) placeAt(scroller, index, latest.slot);
-  }, [focusKey]);
+    const index = latest.boards.findIndex((board) => board.key === focusRequest.key);
+    if (index < 0) return;
+    placeAt(scroller, index, latest.slot);
+    kickRack(rack);
+  }, [focusRequest]);
 
   /** A tap on a board: the middle board opens; any other comes to the middle (and turns there) —
    * the browser's own smooth scroll, or a jump when the shaper asked for less motion (UI-SPEC §12). */

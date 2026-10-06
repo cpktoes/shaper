@@ -9,8 +9,11 @@
  * rack started with, which may be none — the automatic order), so the rack can put the board back
  * where it was and show `Couldn't save the new order — try again.`
  *
- * `flush()` sends a waiting order at once — the rack calls it before Rename, Duplicate and Delete
- * (each of which re-reads the order from the account) and when the rack goes away.
+ * `flush()` sends a waiting order at once — the rack calls it when the rack goes away, and before
+ * Rename, Duplicate and Delete (each of which re-reads the order from the account), where it then
+ * waits for `settled()`: a waiting order only goes out once the save already on its way lands, so
+ * sending alone would let the action run between the two and store an order that is not the one on
+ * screen (code review WR-01).
  *
  * Pure, with injected timers, like `createPreferenceWriteQueue` in `lib/preference-handoff.ts`. That
  * queue retries quietly and has no failure callback, which the rack needs, so it is not reused.
@@ -32,6 +35,10 @@ export interface RackOrderSaverDeps {
   /** Called when a save fails, with the last order that did save — or the starting order, which
    * may be `null` (never arranged, the automatic order) — so the rack can put the board back. */
   onFailed(revertTo: readonly string[] | null): void;
+  /** Called each time `pending()` changes — true once an order is waiting or on its way, false once
+   * nothing is (after a save lands or fails). The rack keeps the order it shows while this is true,
+   * whatever order the page's refresh hands it (`lib/models/rack-order-sync.ts`). */
+  onPendingChange?(pending: boolean): void;
   /** Overrides `RACK_ORDER_SAVE_DELAY_MS`. */
   delayMs?: number;
 }
@@ -42,8 +49,14 @@ export interface RackOrderSaver {
   request(ids: readonly string[]): void;
   /** Sends a waiting order now instead of after the wait (or straight after the save in flight). */
   flush(): void;
-  /** Cancels the wait and drops any waiting order; no callback runs after this, even when a save
-   * already on its way settles. Call `flush()` first to keep a waiting order. */
+  /** Resolves once nothing is waiting and nothing is on its way — after the last save lands or
+   * fails (never rejects), or at once when the saver is already idle. A waiting order still on its
+   * wait keeps it unresolved: call `flush()` first. */
+  settled(): Promise<void>;
+  /** The rack is going away: no callback runs after this, even when a save already on its way
+   * settles. A waiting order is never dropped — it goes out at once, or straight after the save
+   * already on its way lands (or fails: with no rack left to put the board back, the shaper's newest
+   * order is still tried). */
   dispose(): void;
   /** True while an order is waiting to be sent or a save is on its way. */
   pending(): boolean;
@@ -63,6 +76,29 @@ export function createRackOrderSaver(lastSaved: readonly string[] | null, deps: 
   let inFlight: string[] | null = null;
   let timer: unknown = null;
   let disposed = false;
+  /** The last `pending()` value handed to `onPendingChange`. */
+  let reportedPending = false;
+
+  function isPending() {
+    return waiting !== null || inFlight !== null;
+  }
+
+  /** Everyone waiting on `settled()`. */
+  let settleWaiters: (() => void)[] = [];
+
+  /** After every change of state: tells `onPendingChange` when `pending()` has changed since it was
+   * last told (never after `dispose`), and lets everyone waiting on `settled()` go once idle. */
+  function afterChange() {
+    const now = isPending();
+    if (!now && settleWaiters.length > 0) {
+      const waiters = settleWaiters;
+      settleWaiters = [];
+      for (const resolve of waiters) resolve();
+    }
+    if (disposed || now === reportedPending) return;
+    reportedPending = now;
+    deps.onPendingChange?.(now);
+  }
 
   function clearWait() {
     if (timer !== null) {
@@ -82,22 +118,27 @@ export function createRackOrderSaver(lastSaved: readonly string[] | null, deps: 
     }
     attempt.then(
       () => {
-        if (disposed) return;
         inFlight = null;
         saved = ids;
-        onSaved?.(ids);
+        if (!disposed) onSaved?.(ids);
         if (waiting !== null) {
           clearWait();
           if (sameIds(waiting, saved)) waiting = null;
           else send(waiting);
         }
+        afterChange();
       },
       () => {
-        if (disposed) return;
         inFlight = null;
-        clearWait();
-        waiting = null;
-        onFailed(saved);
+        if (disposed) {
+          // No rack is left to put the board back or say so: the shaper's newest order is still tried.
+          if (waiting !== null) send(waiting);
+        } else {
+          clearWait();
+          waiting = null;
+          onFailed(saved);
+        }
+        afterChange();
       },
     );
   }
@@ -113,6 +154,7 @@ export function createRackOrderSaver(lastSaved: readonly string[] | null, deps: 
       clearWait();
       if (sameIds(next, inFlight ?? saved)) {
         waiting = null;
+        afterChange();
         return;
       }
       waiting = next;
@@ -120,19 +162,29 @@ export function createRackOrderSaver(lastSaved: readonly string[] | null, deps: 
         timer = null;
         sendIfIdle();
       }, delayMs);
+      afterChange();
     },
     flush() {
       if (disposed) return;
       clearWait();
       sendIfIdle();
     },
+    settled() {
+      if (!isPending()) return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        settleWaiters.push(resolve);
+      });
+    },
     dispose() {
+      if (disposed) return;
       disposed = true;
       clearWait();
-      waiting = null;
+      // A waiting order is never dropped (code review WR-01): it goes out now, or — with a save
+      // already on its way — straight after that one lands, from the branches above.
+      sendIfIdle();
     },
     pending() {
-      return waiting !== null || inFlight !== null;
+      return isPending();
     },
   };
 }

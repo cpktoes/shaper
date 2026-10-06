@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SetupScreen } from "@/components/setup/setup-screen";
 import { rackModelsFromRows } from "@/lib/models/rack-models";
 import { rackStandInRouteEnabled, standInBoardCount, standInRackRows } from "@/lib/models/rack-stand-in";
+import { standInRackOrderForRequest } from "@/lib/rack-stand-in-server";
 
 export const metadata: Metadata = {
   title: "Shaper Assistant — Practice Rack",
@@ -40,5 +41,8 @@ export default async function TestRackPage({
   }
 
   const { boards } = await searchParams;
-  return <SetupScreen models={rackModelsFromRows(standInRackRows(standInBoardCount(boards)))} />;
+  // The order this browser's practice-rack session last saved (lib/rack-stand-in-server.ts), read
+  // the way app/page.tsx reads a shaper's own: null until a board is moved.
+  const rackOrder = await standInRackOrderForRequest();
+  return <SetupScreen models={rackModelsFromRows(standInRackRows(standInBoardCount(boards)))} rackOrder={rackOrder} />;
 }

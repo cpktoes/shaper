@@ -18,6 +18,7 @@ import {
   parseRackOrderColumn,
   parseRackOrderInput,
   rackOrderColumnValue,
+  throwUnlessSaved,
   turnedKeyAfterRemoval,
   turnedKeyOnArrival,
   type InProgressRackEntry,
@@ -318,6 +319,18 @@ describe("the stored list never reads corrupt", () => {
     expect(rackOrderColumnValue(["a", "b"])).toBe('["a","b"]');
     expect(parseRackOrderColumn(rackOrderColumnValue(["a", "b"]))).toEqual(["a", "b"]);
     expect(parseRackOrderColumn(rackOrderColumnValue([]))).toEqual([]);
+  });
+});
+
+describe("a save that stored nothing is a failed save (code review IN-02)", () => {
+  it("passes a stored order through quietly", () => {
+    expect(() => throwUnlessSaved({ saved: true })).not.toThrow();
+  });
+
+  it("throws for saved: false, or for no answer at all, so the rack puts the board back and says so", () => {
+    expect(() => throwUnlessSaved({ saved: false })).toThrow();
+    expect(() => throwUnlessSaved(undefined)).toThrow();
+    expect(() => throwUnlessSaved(null)).toThrow();
   });
 });
 
