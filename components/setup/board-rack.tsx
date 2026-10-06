@@ -91,7 +91,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   const { announce } = status;
   // The shaper's order: their newest move at once, saved in the background; a failed save puts the
   // board back (the hook does) and says so here.
-  const { order, commit } = useRackOrder(rackOrder ?? null, () => announce(RACK_COPY.saveFailed));
+  const { order, commit, flush } = useRackOrder(rackOrder ?? null, () => announce(RACK_COPY.saveFailed));
 
   // The server can't know the pointer or the width, and the rack measures its own width, so the
   // rack itself mounts on the client only (server: false, client: true).
@@ -161,7 +161,10 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     });
   };
 
+  // Before Rename, Duplicate or Delete runs, a waiting order save goes out first: Server Actions run
+  // one at a time, in order, so the order lands before the action re-reads the page (T-15-27).
   const handleRenameConfirm = async (name: string) => {
+    flush();
     if (!renamingModel) return;
     await renameModel(renamingModel.id, name);
     // The board being renamed may be the one open in the editor right now — the shared store
@@ -171,20 +174,30 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   };
 
   const handleDeleteConfirm = async () => {
+    flush();
     if (!deletingModel) return;
-    await deleteModel(deletingModel.id);
+    const deleted = deletingModel;
+    await deleteModel(deleted.id);
     // The deleted board may be the one open in the editor right now — the design stays on
     // screen exactly as it was (D-13 doesn't touch it), but modelId is cleared so the next Save
     // creates a fresh row instead of trying to write over one that no longer exists.
-    if (modelId === deletingModel.id) setModelId(null);
+    if (modelId === deleted.id) setModelId(null);
+    // Spoken, not shown; the turn — and the focus — go to the next board in order (the previous
+    // when it was last), UI E10.
+    announce(RACK_COPY.deleted(deleted.name), { visible: false });
+    setFocusKey(turnedKeyAfterRemoval(keys, keys.filter((key) => key !== deleted.id), turnedKey));
   };
 
   const handleDuplicate = async (model: RackModel) => {
+    flush();
     clearDuplicateError(model.id);
     try {
       await duplicateModel(model.id);
+      // The copy stands beside its original (D-02, D-16) — said to a screen reader, no pill.
+      announce(RACK_COPY.duplicated(model.name), { visible: false });
     } catch {
       setDuplicateErrors((prev) => ({ ...prev, [model.id]: RACK_COPY.duplicateFailed }));
+      announce(RACK_COPY.duplicateFailed, { visible: false });
     }
   };
 
@@ -232,6 +245,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
         onDuplicate={model ? () => void handleDuplicate(model) : undefined}
         onDelete={model ? () => setDeletingModel(model) : undefined}
         duplicateError={model ? (duplicateErrors[model.id] ?? null) : null}
+        carrying={kind === "swipe" ? carrying : null}
       />
     );
   };

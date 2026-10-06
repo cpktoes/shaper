@@ -96,6 +96,8 @@ import {
   SWELL_SCALE,
   SWIPE_SETTLE_MS,
   TOUCH_SWIPE_THRESHOLD,
+  edgeScrollStep,
+  swellScale,
   swipePressOutcome,
   tween,
 } from "@/lib/models/rack-gesture";
@@ -244,6 +246,9 @@ interface FrameState {
   base: Map<string, Slide>;
   /** Scroll snap is off (a carry, or a drop still settling). */
   snapOff: boolean;
+  /** The track gliding to a dropped board's place, written each frame (never a native smooth
+   * scroll, which a browser can drop at the end of a touch). */
+  glide: { from: number; to: number; start: number } | null;
   /** No board tap counts until then (the end of a carry). */
   suppressClickUntil: number;
 }
@@ -302,6 +307,7 @@ function newFrameState(): FrameState {
     viewFor: "",
     base: new Map(),
     snapOff: false,
+    glide: null,
     suppressClickUntil: 0,
   };
 }
@@ -350,9 +356,15 @@ function slideBase(frame: FrameState, key: string, index: number, target: number
 /** The carried board's place this frame: it follows the finger exactly (and the rack scrolls along
  * near the screen's edge), and the gap opens at the place it would land on — never in front of the
  * unsaved board. Returns the carried board's x along the track. */
-function advanceCarry(frame: FrameState, latest: Latest, now: number): number {
+function advanceCarry(frame: FrameState, latest: Latest, now: number, edgeScroll: boolean): number {
   const carry = frame.carry as Carry;
   const { boards, width, slot, scroller, reduced } = latest;
+  // Within `EDGE_ZONE` of the screen's left or right edge the rack scrolls along with the carried
+  // board, faster the nearer the edge, so one carry can cross a rack of thirty boards.
+  if (edgeScroll && scroller) {
+    const step = edgeScrollStep(carry.clientX - carry.scrollerLeft, width);
+    if (step !== 0) scroller.scrollLeft += step;
+  }
   const scrollLeft = scroller ? scroller.scrollLeft : 0;
   const delta = carry.clientX - carry.startClientX + (scrollLeft - carry.startScrollLeft);
   const rest = swipeSlotCentre(carry.fromIndex, width, slot);
@@ -398,7 +410,8 @@ function stepRack(
   const { boards, width, scale, slot, floorY, fits, frozen, reduced, scroller } = latest;
   let busy = false;
   const carry = frame.carry;
-  const carriedX = carry ? advanceCarry(frame, latest, now) : 0;
+  const carriedX = carry ? advanceCarry(frame, latest, now, !force) : 0;
+  const press = frame.press;
   const carriedKey = carry ? carry.key : null;
   const view = viewBoards(frame, latest);
   const fitByKey = new Map(boards.map((board, k) => [board.key, fits[k]] as const));
@@ -452,6 +465,11 @@ function stepRack(
     if (carried && carry) {
       lift = tween(0, CARRY_LIFT, now - carry.liftAt, LIFT_MS, reduced);
       swell = reduced ? 1 : SWELL_SCALE;
+    } else if (press && press.key === board.key && board.kind !== "in-progress" && !reduced) {
+      // A finger holding still: from `SWELL_FROM_MS` the board swells a little about its foot, so
+      // the hold reads as "something is about to happen". The unsaved board never swells — it never
+      // lifts — and nothing swells when the shaper asked for less motion.
+      swell = swellScale(now - press.t0);
     } else if (landing && landing.key === board.key) {
       const t = now - landing.start;
       lift = tween(landing.fromLift, 0, t, DROP_MS, reduced);
@@ -520,7 +538,7 @@ function stepRack(
     }
   }
 
-  return busy || frame.press !== null || frame.carry !== null;
+  return busy || frame.press !== null || frame.carry !== null || frame.glide !== null;
 }
 
 /** Schedules one frame (at most one is ever waiting), and keeps going while a board is gliding, a
@@ -534,6 +552,7 @@ function kickRack(refs: RackRefs) {
     if (!current || current.width <= 0) return;
     const now = performance.now();
     advancePress(refs, current, now);
+    if (advanceGlide(refs, current, now)) return;
     if (stepRack(state, current, refs.nodes, refs.mark.current, now, false)) kickRack(refs);
   });
 }
@@ -544,7 +563,7 @@ function settleRack(refs: RackRefs) {
   const state = refs.frame;
   state.settleTimer = 0;
   state.scrolling = false;
-  if (state.carry) return;
+  if (state.carry || state.glide) return;
   const current = refs.latest.current;
   if (state.snapOff && current?.scroller) {
     const exact = swipeScrollLeftFor(swipeMiddleIndex(current.scroller.scrollLeft, current.boards.length, current.slot), current.slot);
@@ -631,7 +650,7 @@ function dropBoard(refs: RackRefs, cancelled: boolean) {
   if (!carry || !latest) return;
   const now = performance.now();
   // Where the finger let go, not where the last frame saw it.
-  if (!cancelled) advanceCarry(state, latest, now);
+  if (!cancelled) advanceCarry(state, latest, now, false);
   const written = state.written.get(carry.key);
   state.carry = null;
   state.landing = { key: carry.key, start: now, fromLift: written?.lift ?? 0, fromSwell: written?.swell ?? 1 };
@@ -670,10 +689,28 @@ function dropBoard(refs: RackRefs, cancelled: boolean) {
     settleRack(refs);
     return;
   }
-  if (reduced) scroller.scrollLeft = goal;
-  else scroller.scrollTo({ left: goal, behavior: "smooth" });
-  waitForSettle(refs);
+  state.glide = { from: scroller.scrollLeft, to: goal, start: now };
+  if (reduced) advanceGlide(refs, latest, now);
   kickRack(refs);
+}
+
+/** One frame of the track's glide to a dropped board's place (instant with reduced motion); at its
+ * end the rack settles there. Returns true when the glide ended this frame and the rack settled. */
+function advanceGlide(refs: RackRefs, latest: Latest, now: number): boolean {
+  const state = refs.frame;
+  const glide = state.glide;
+  const scroller = latest.scroller;
+  if (!glide || !scroller) return false;
+  const at = tween(glide.from, glide.to, now - glide.start, SETTLE_MS, latest.reduced);
+  scroller.scrollLeft = at;
+  if (at !== glide.to) {
+    state.scrolling = true;
+    return false;
+  }
+  state.glide = null;
+  if (state.settleTimer) window.clearTimeout(state.settleTimer);
+  settleRack(refs);
+  return true;
 }
 
 /** A finger went down on a board: its hold starts now. */
@@ -832,7 +869,7 @@ export function SwipeRack({
     const onScroll = () => {
       const state = rack.frame;
       // A carried board's own edge scrolling: the board follows, nothing settles.
-      if (state.carry) {
+      if (state.carry || state.glide) {
         kickRack(rack);
         return;
       }

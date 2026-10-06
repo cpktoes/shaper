@@ -40,6 +40,10 @@ interface RackCaptionProps {
   /** Set after a Duplicate fails: shown under Open This Board until it is tried again (choosing
    * Duplicate again is the retry) or the page reloads. */
   duplicateError?: string | null;
+  /** While a finger carries a board on the swipe rack (15-09): that board's name. The caption block,
+   * at its same height, then reads `Moving {name}. Let go where you want it.` and returns to the
+   * caption on the drop. */
+  carrying?: string | null;
 }
 
 export function RackCaption({
@@ -50,8 +54,19 @@ export function RackCaption({
   onDuplicate = () => {},
   onDelete = () => {},
   duplicateError = null,
+  carrying = null,
 }: RackCaptionProps) {
   const saved = board.kind === "saved" && board.model !== null;
+
+  if (variant === "swipe" && carrying !== null) {
+    return (
+      <p data-rack-carrying className="w-full px-4 pt-2 text-xs leading-[1.4] font-normal text-surf-ink-muted">
+        {RACK_COPY.carryingPrefix}
+        <span className="font-semibold text-surf-ink">{carrying}</span>
+        {RACK_COPY.carryingSuffix}
+      </p>
+    );
+  }
 
   return (
     <div

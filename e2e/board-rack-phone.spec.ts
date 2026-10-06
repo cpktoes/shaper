@@ -491,13 +491,25 @@ test.describe("the Board Rack on a phone — hold, slide and let go (15-09, sket
     const before = await rackKeys(page);
     const { slot } = await rackFigures(page);
     const third = board(3);
+    // Bring the third board to the middle first, so three slots to the right stays clear of the
+    // screen's edge (where the rack would scroll along — case 16).
+    await tapBoard(page, "android", third.id);
+    await expect(boardArt(page, third.id)).toHaveAttribute("data-turn", "90");
+    await expect.poll(async () => (await rackFigures(page)).scrollLeft).toBe(2 * slot);
     const start = await centreOf(page, third.id);
 
     const client = await touchHold(page, start, 520);
     await expect(boardArt(page, third.id)).toHaveAttribute("data-carrying", "true");
     await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(1);
+    // While it is carried the caption becomes the carrying line.
+    await expect(page.locator("[data-rack-carrying]")).toHaveText(
+      `${RACK_COPY.carryingPrefix}${third.name}${RACK_COPY.carryingSuffix}`,
+    );
     await touchMoveTo(client, start, { x: start.x + 3 * slot, y: start.y }, 15);
+    await expect(page.locator("[data-drop-mark]")).toHaveAttribute("opacity", "1");
     await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(page.locator("[data-rack-carrying]")).toHaveCount(0);
+    await expect(page.locator("[data-drop-mark]")).toHaveAttribute("opacity", "0");
 
     await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(third.name));
     const expected = movedOrder(before, third.id, 5);
