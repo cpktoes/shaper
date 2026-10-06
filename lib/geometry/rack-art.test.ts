@@ -201,10 +201,19 @@ describe("R3: the stringer slides from the rail edge to the centre", () => {
 });
 
 describe("the room a turning board takes", () => {
-  it.each(ALL_CASES.map((c) => [c.name, c] as const))("%s: halfExtent is half the side view at rest and the outline's half-width turned", (_, c) => {
+  it.each(ALL_CASES.map((c) => [c.name, c] as const))("%s: halfExtent is half the side view at rest and the TEMPLATE outline's widest half turned", (_, c) => {
     const scale = 380 / Math.max(c.art.length, inchesToMm(84));
     expect(halfExtent(c.art, 0, scale)).toBeCloseTo((c.art.maxDeck * scale) / 2, 9);
-    expect(halfExtent(c.art, Math.PI / 2, scale)).toBeCloseTo(c.art.maxHalf * scale, 9);
+    const widest = Math.max(...silhouette(c.geometry).map(({ w }) => Math.abs(w)));
+    expect(halfExtent(c.art, Math.PI / 2, scale)).toBeCloseTo(widest * scale, 9);
+  });
+
+  it.each(ALL_CASES.map((c) => [c.name, c] as const))("%s: halfExtent is the drawn board's reach on its wider side, at every angle", (_, c) => {
+    const scale = 380 / Math.max(c.art.length, inchesToMm(84));
+    for (const theta of DEGREES) {
+      const xs = turnedBoardPoints(c.art, theta).map((p) => p.x);
+      expect(halfExtent(c.art, theta, scale)).toBe(Math.max(-Math.min(...xs), Math.max(...xs)) * scale);
+    }
   });
 
   it.each(ALL_CASES.map((c) => [c.name, c] as const))("%s: drawnSpan is the turned picture's own left and right", (_, c) => {

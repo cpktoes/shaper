@@ -4,11 +4,19 @@ import { standInRackRows } from "@/lib/models/rack-stand-in";
 import { drawnSpan, halfExtent, spineAnchorX, type RackBoardArt } from "./rack-art";
 import {
   HOVER_SLOT,
+  HOVER_WORD_SIZE,
   RACK_REFERENCE_LENGTH_MM,
+  SPINE_CLEARANCE,
+  SPINE_GLYPH_EM,
+  SPINE_HALO_WIDTH,
+  SWIPE_SLOT,
+  SWIPE_WORD_SIZE,
   boardExtra,
   hoverRackLayout,
   hoverSlotPosition,
   rackRoomOffsets,
+  rackScale,
+  spineWordColumn,
   turnAngle,
   type HoverRackLayout,
 } from "./rack-layout";
@@ -26,11 +34,14 @@ import {
 
 const HALF_TURN = Math.PI / 2;
 /** The hover rack's words at their base size — before any shrink, the widest they ever stand. */
-const WORD_SIZE = 12;
-/** A glyph never reaches further from its baseline than one font size (Inter's ascent is 0.97). */
-const GLYPH_EM = 1;
-/** The words' ground-coloured halo reaches half its 3-dot stroke beyond the glyphs. */
-const HALO_REACH = 1.5;
+const WORD_SIZE = HOVER_WORD_SIZE;
+/** The furthest a glyph reaches from the words' baseline: one whole font size (Inter's own ascent
+ * is 0.97 of it). Stated here rather than borrowed from the layout, so this check stands apart from
+ * the figure it checks. */
+const GLYPH_REACH_EM = 1;
+/** How far the words reach left of their baseline: the glyphs, plus the half of the halo's stroke
+ * (as the rack draws it) that shows beyond them. */
+const WORDS_REACH = GLYPH_REACH_EM * WORD_SIZE + SPINE_HALO_WIDTH / 2;
 /** Words this faint (`cos θ`) are as good as gone; fainter ones are not checked. */
 const VISIBLE = 0.05;
 
@@ -64,7 +75,7 @@ const CASES: RackCase[] = [
 
 /** Board k's extra room at angle `theta` — exactly as `stepRack` (hover-rack.tsx) works it out. */
 function extraAt(art: RackBoardArt, theta: number, scale: number): number {
-  return boardExtra(halfExtent(art, theta, scale), HOVER_SLOT);
+  return boardExtra(halfExtent(art, theta, scale), HOVER_SLOT, spineWordColumn(WORD_SIZE));
 }
 
 /** Every board's drawn centre for these angles: its slot centre plus the room its row opens. */
@@ -85,7 +96,7 @@ function edges(artJ: RackBoardArt, thetaJ: number, cJ: number, artK: RackBoardAr
   return {
     rightJ: cJ + drawnSpan(artJ, thetaJ).right * scale,
     leftK: cK + drawnSpan(artK, thetaK).left * scale,
-    wordsK: cK + spineAnchorX(artK, thetaK, scale, WORD_SIZE) - GLYPH_EM * WORD_SIZE - HALO_REACH,
+    wordsK: cK + spineAnchorX(artK, thetaK, scale, WORD_SIZE) - WORDS_REACH,
   };
 }
 
@@ -157,5 +168,35 @@ describe("R4: no word ever crosses a turning neighbour on the computer's rack", 
       }
     }
     expect(failing.length, `${failing.length} crossings:\n${failing.slice(0, 12).join("\n")}`).toBe(0);
+  });
+});
+
+describe("the room a board's words take is the room the rack draws them in", () => {
+  it.each(CASES)("$label: from the board's drawn edge to the far side of the words' halo, plus the clearance", (rack) => {
+    const scale = rack.layout.scale;
+    for (const art of rack.arts) {
+      for (let degrees = 0; degrees <= 90; degrees += 5) {
+        const theta = (degrees * Math.PI) / 180;
+        const farSide = spineAnchorX(art, theta, scale, WORD_SIZE) - SPINE_GLYPH_EM * WORD_SIZE - SPINE_HALO_WIDTH / 2;
+        expect(drawnSpan(art, theta).left * scale - farSide + SPINE_CLEARANCE).toBeCloseTo(spineWordColumn(WORD_SIZE), 9);
+      }
+    }
+  });
+});
+
+describe("a resting rack keeps to its slots", () => {
+  it.each(CASES)("$label: no board at rest asks for room beyond its 48-dot slot", (rack) => {
+    for (const art of rack.arts) expect(extraAt(art, 0, rack.layout.scale)).toBe(0);
+  });
+
+  it("the phone's 40-dot slots with its 11px words: no practice board at rest asks for more on a 390 × 664 phone", () => {
+    const arts = rackModelsFromRows(standInRackRows(15)).map((model) => rackBoardFigures(model.snapshot).art);
+    // The UI-SPEC's worked phone (§1, 3.19 dots per inch for this quiver) draws its tallest board 357
+    // dots tall. Not the whole phone range: from about R 384 for this quiver, and from about R 304
+    // for a quiver of boards all under 7'0", a resting side view and its 11px words are wider than
+    // a 40-dot slot, so a swipe rack passing this column opens a little even at rest.
+    const scale = rackScale(357, Math.max(...arts.map((art) => art.length)));
+    const column = spineWordColumn(SWIPE_WORD_SIZE);
+    for (const art of arts) expect(boardExtra(halfExtent(art, 0, scale), SWIPE_SLOT, column)).toBe(0);
   });
 });

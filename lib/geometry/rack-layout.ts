@@ -17,6 +17,7 @@
  * `./units` (CLAUDE.md Rule 2) — no conversion factor is typed here.
  */
 
+import { SPINE_ANCHOR_GAP, SPINE_DESCENDER_EM } from "./rack-art";
 import { centimetresToMm, inchesToMm, type Mm, type UnitsSystem } from "./units";
 
 /** The shortest "tallest board" the rack is ever scaled to: 7'0". Below it, a short quiver is drawn
@@ -58,6 +59,21 @@ export const HOVER_CAPTION_WIDTH = 272;
 export const SPINE_WORD_GAP = 8;
 /** The smallest the vertical words ever get before the name is cut. */
 export const SPINE_FLOOR_SIZE = 10;
+/** The vertical words' size on the hover rack, before any shrink to fit (UI-SPEC § Typography,
+ * "Small text"). */
+export const HOVER_WORD_SIZE = 12;
+/** The vertical words' size on the swipe rack, before any shrink to fit (UI-SPEC § Typography,
+ * "Phone words"). */
+export const SWIPE_WORD_SIZE = 11;
+/** The stroke width of the ground-coloured halo drawn behind the vertical words. Half of it shows
+ * beyond the glyphs' own edges. */
+export const SPINE_HALO_WIDTH = 3;
+/** How far a glyph reaches from the words' baseline, as a share of the font size: a whole font size,
+ * on the safe side of Inter's own ascent (0.97). */
+export const SPINE_GLYPH_EM = 1;
+/** Clear air kept between a board's ink and the halo of its neighbour's words. It also covers the
+ * outline's own ink line, half of whose 1.1-dot stroke sits outside the drawn edge. */
+export const SPINE_CLEARANCE = 2;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -247,10 +263,41 @@ export function turnAngle(distance: number, reach: number): number {
   return (Math.PI / 2) * clamp(1 - Math.abs(distance) / reach, 0, 1);
 }
 
-/** The extra width a board needs while it turns: how much wider than its slot its picture is
- * (`halfExtentPx` is half the picture's width at its current turn), and never less than nothing. */
-export function boardExtra(halfExtentPx: number, slot: number): number {
-  return Math.max(0, 2 * halfExtentPx - slot);
+/**
+ * The full width, in dots, a board's vertical words take up beside it — from the board's own drawn
+ * left edge to the far side of the words' halo, plus clear air before anything else may stand:
+ *
+ * - `SPINE_ANCHOR_GAP` (4): the gap `spineAnchorX` leaves between the board and its words;
+ * - `SPINE_DESCENDER_EM` × size (a quarter): how much further left `spineAnchorX` sets the
+ *   baseline, so descenders stay clear of the board;
+ * - `SPINE_GLYPH_EM` × size (one whole size): the glyphs themselves, reaching left from the baseline;
+ * - half of `SPINE_HALO_WIDTH` (1.5): the halo's stroke beyond the glyphs;
+ * - `SPINE_CLEARANCE` (2): air between that halo and the next board's ink.
+ *
+ * 22.5 dots for the hover rack's 12px words, 21.25 for the phone's 11px. Pass the words' base size —
+ * the largest they ever draw — so a shrunken name is never given less room than it takes.
+ */
+export function spineWordColumn(fontSize: number): number {
+  return (
+    SPINE_ANCHOR_GAP +
+    SPINE_DESCENDER_EM * fontSize +
+    SPINE_GLYPH_EM * fontSize +
+    SPINE_HALO_WIDTH / 2 +
+    SPINE_CLEARANCE
+  );
+}
+
+/**
+ * The extra width a board needs while it turns, never less than nothing: how much wider than its
+ * slot its picture plus a column of words is. `halfExtentPx` is how far the picture reaches from the
+ * board's axis at its current turn (`halfExtent`); `wordColumnPx` is `spineWordColumn` of the rack's
+ * word size. The words count because a board's neighbour stands its words in the gap beside it —
+ * the room has to hold them as well as the outline, or they cross it. On the computer's rack every
+ * board at rest, words and all, fits its 48-dot slot, so a resting rack is still spaced by its slots
+ * alone (rack-room.test.ts).
+ */
+export function boardExtra(halfExtentPx: number, slot: number, wordColumnPx: number): number {
+  return Math.max(0, 2 * halfExtentPx + wordColumnPx - slot);
 }
 
 /**
