@@ -771,6 +771,76 @@ test.describe("the Board Rack on a computer — the order is kept (code review C
     await expect(page.locator("[data-rack-art][data-turn]")).toHaveCount(15);
     await expect.poll(() => rackKeys(page)).toEqual(expected);
   });
+
+  test("k2. a save that fails puts the board back where it was and says so", async ({ page }) => {
+    await freshPracticeRack(page, "fail");
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const first = board(1);
+    await boardButton(page, first.id).focus();
+    await page.keyboard.press("Alt+ArrowRight");
+    // The move shows at once ...
+    await expect.poll(() => rackKeys(page)).toEqual(movedOrder(before, first.id, 1));
+    // ... and when its save fails the rack says so and stands as it did before.
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.saveFailed);
+    await expect.poll(() => rackKeys(page)).toEqual(before);
+
+    // Nothing was kept: a reload finds the rack as it was.
+    await page.reload();
+    await expect(page.locator("[data-rack-art][data-turn]")).toHaveCount(15);
+    expect(await rackKeys(page)).toEqual(before);
+  });
+
+  test("k3. with slow saves, a second move made while the first is saving never snaps back, and both are kept", async ({
+    page,
+  }) => {
+    await freshPracticeRack(page, "slow");
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const first = board(1);
+    const afterOne = movedOrder(before, first.id, 1);
+    const afterTwo = movedOrder(afterOne, first.id, 2);
+    // Every order the rack draws from here on, in turn (the board buttons stand in the rack's order).
+    await page.evaluate(() => {
+      const drawn: string[] = [];
+      (window as unknown as { __rackOrders: string[] }).__rackOrders = drawn;
+      const record = () => {
+        const keys = Array.from(document.querySelectorAll("[data-rack-board]"))
+          .map((button) => button.getAttribute("data-rack-board") ?? "")
+          .join(",");
+        if (drawn[drawn.length - 1] !== keys) drawn.push(keys);
+      };
+      record();
+      new MutationObserver(record).observe(document.body, { childList: true, subtree: true });
+    });
+    let landed = 0;
+    page.on("requestfinished", (request) => {
+      if (request.method() === "POST" && "next-action" in request.headers()) landed += 1;
+    });
+
+    await boardButton(page, first.id).focus();
+    const firstSave = page.waitForRequest((request) => request.method() === "POST" && "next-action" in request.headers());
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect.poll(() => rackKeys(page)).toEqual(afterOne);
+    // The first save is on its way (it takes 1.5 s); the second move is made while it travels.
+    await firstSave;
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect.poll(() => rackKeys(page)).toEqual(afterTwo);
+    expect(landed, "the first save was still on its way at the second move").toBe(0);
+
+    // Both saves land, each refreshing the page; then two frames for the last refresh to draw.
+    await expect.poll(() => landed, { timeout: 15_000 }).toBe(2);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    expect(await rackKeys(page)).toEqual(afterTwo);
+    const drawn = await page.evaluate(() => (window as unknown as { __rackOrders: string[] }).__rackOrders);
+    const second = drawn.indexOf(afterTwo.join(","));
+    expect(second, JSON.stringify(drawn)).toBeGreaterThanOrEqual(0);
+    expect(drawn.slice(second), "the first save's refresh snapped the second move back").not.toContain(afterOne.join(","));
+
+    await page.reload();
+    await expect(page.locator("[data-rack-art][data-turn]")).toHaveCount(15);
+    expect(await rackKeys(page)).toEqual(afterTwo);
+  });
 });
 
 test.describe("the Board Rack on a computer — moving with reduced motion", () => {

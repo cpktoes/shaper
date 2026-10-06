@@ -541,6 +541,46 @@ test.describe("the Board Rack on a phone — hold, slide and let go (15-09, sket
     expect.soft(rest.crossings, "at rest after the move").toEqual([]);
   });
 
+  test("13b. a board held and slid stays where it was let go after opening a board and going Back (code review CR-01)", async ({
+    page,
+  }) => {
+    test.skip(PHONE_MOVE_VIA_MENU, HOLD_OFF_REASON);
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const { slot } = await rackFigures(page);
+    const third = board(3);
+    await tapBoard(page, "android", third.id);
+    await expect(boardArt(page, third.id)).toHaveAttribute("data-turn", "90");
+    await expect.poll(async () => (await rackFigures(page)).scrollLeft).toBe(2 * slot);
+    const start = await centreOf(page, third.id);
+
+    const saved = page.waitForResponse(
+      (response) => response.request().method() === "POST" && "next-action" in response.request().headers(),
+    );
+    const client = await touchHold(page, start, 520);
+    await expect(boardArt(page, third.id)).toHaveAttribute("data-carrying", "true");
+    await touchMoveTo(client, start, { x: start.x + 3 * slot, y: start.y }, 15);
+    await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    const expected = movedOrder(before, third.id, 5);
+    await expect.poll(() => rackKeys(page)).toEqual(expected);
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(third.name));
+    // The save has landed on the practice rack's stand-in account before the board is opened.
+    await saved;
+
+    // The dropped board stands in the middle, turned: a tap on it opens it. (A tap inside the half
+    // second after a drop is swallowed as the end of the carry, so the tap is tried until it opens.)
+    await expect.poll(async () => (await rackFigures(page)).scrollLeft).toBe(5 * slot);
+    await expect(async () => {
+      await tapBoard(page, "android", third.id);
+      await page.waitForURL("**/design/outline", { timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
+
+    await page.goBack();
+    await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
+    await expect(page.locator("[data-rack-art][data-turn]")).toHaveCount(15);
+    await expect.poll(() => rackKeys(page)).toEqual(expected);
+  });
+
   test("14. a quick swipe only moves the rack: nothing lifts and the order stays", async ({ page }) => {
     test.skip(PHONE_MOVE_VIA_MENU, HOLD_OFF_REASON);
     await openRack(page, RACK_STAND_IN_ROUTE, 15);
