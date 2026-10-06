@@ -90,8 +90,8 @@ Every board turns as it crosses the middle, following your thumb, and the rack s
 fully turned, its name, dims, Open and ⋯ underneath. Snapping first and then turning (A) and the
 held-up big board (C) were not chosen.
 
-**Still open:** the look. The founder picked B without choosing between Drawing and Shop rack, so the
-look is decided in sketch 010, where the two looks are its variants.
+**The look:** the founder picked B without choosing between Drawing and Shop rack. Sketch 010 decided
+it (A, Drawing), so the phone's rack is drawn in the Drawing style too.
 
 ## Renamed (2026-10-05)
 The founder, while sketch 010 was being built: "rename it Board Rack rather than Your Boards". The rack

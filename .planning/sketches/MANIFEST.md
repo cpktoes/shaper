@@ -57,8 +57,8 @@ rack, so reordering there needs its own gesture, still to be sketched.
 | 006 | orientation-switch | How does the shaper turn the board horizontal, without moving anything else? | **Rotate in place**, button in the viewer's upper-right | viewer, layout, icon, interaction, post-mvp |
 | 007 | phone-screens-in-menu | With no tab bar at the bottom, how does an upright phone show which screen you're on and take you to another? | **C1 — Tiles from your board** (☰ sheet of six tiles, each drawn from the current board; no bottom tab bar) | phone, layout, navigation, chrome |
 | 008 | next-screen-button | What does the step-by-step button under the last control look like? | **B — Back + Next** ("Together" tab: on 007-C1) | phone, navigation, wizard |
-| 009 | phone-swipe-rack | On a phone or iPad, how does swiping along a sideways board rack feel, with the middle board turned to its outline? | **B — Turns as it passes** (look still open, decided in 010) | phone, home, board-rack, interaction, motion |
-| 010 | sideways-board-rack | On a computer, what does the Board Rack look like, and how does a board turn and move under the cursor? | pending | desktop, home, board-rack, interaction, motion, reorder |
+| 009 | phone-swipe-rack | On a phone or iPad, how does swiping along a sideways board rack feel, with the middle board turned to its outline? | **B — Turns as it passes** (in 010's Drawing look) | phone, home, board-rack, interaction, motion |
+| 010 | sideways-board-rack | On a computer, what does the Board Rack look like, and how does a board turn and move under the cursor? | **A — Drawing rack**, turn follows the cursor | desktop, home, board-rack, interaction, motion, reorder |
 
 ## Decisions These Lock In
 
@@ -92,11 +92,17 @@ rack, so reordering there needs its own gesture, still to be sketched.
    on their tails at one true scale on one floor line, name and dims running up beside each; every board turns
    to its outline as it passes the middle, following your thumb, and the rack settles with one board fully turned
    and its name, dims, Open and ⋯ underneath. The turn is worked out from the board's own rocker, thickness and
-   outline. The look (drawing or shop rack) is decided in sketch 010.
+   outline. Drawn in the Drawing look (sketch 010 A).
 12. **It's called the Board Rack, and the shaper sets its order** (the founder, 2026-10-05) — "Board Rack"
    replaces "Your Boards" as the heading, and boards can be moved within the rack. Today's automatic order
    (unsaved board first, then most recently touched) becomes the starting order only. The unsaved board stays
    first until it's saved (assumed; to confirm).
+13. **On a computer, the Board Rack is drawn and turns as the cursor passes** (sketch 010 A, 2026-10-05) — the
+   app's drafting style (board fill, ink edge, faint dashed height lines every foot or 50 cm, a floor line), all
+   boards at one scale on one floor. Boards turn as the cursor sweeps along, the rack opening around the turning
+   board; when the cursor stops, the nearest finishes turning, its name, dims, Open and ⋯ under it, and it stays
+   turned when the cursor leaves. A board is moved by pressing and dragging it (into another row too), or with
+   ⋯ → Move left / Move right, or Alt + arrow. The same Drawing look is used on the phone (009 B).
 
 ## Open Questions
 
