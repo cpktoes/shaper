@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 15 (The Board Rack) on branch board-rack: 11 of 13 plans done. 15-10 ruled 2026-10-06 on the founder's iPad 9th gen and an Android phone — keep: hold-and-drag ships, PHONE_MOVE_VIA_MENU stays false (verify re-run: 23 unit + 31 phone checks green). 15-12 (source contracts, the CLAUDE.md D-04 sentence, the walk sheet issue 3) building in a worktree off 4d4208e. Then 15-13: the go-live before the Wed 2026-10-07 freeze — show the founder today's rack beside the Board Rack, their read-only rack report, the production migration with them present, one push, the live check, the rehearsal walk."
+stopped_at: "Phase 15 (The Board Rack) on branch board-rack: 12 of 13 plans done (15-12 merged 0f4513e; the walk sheet issue 3 corrected). main's history folded in (e83ff4a, no file changes). Running the go-live gate on RACK_TIP for 15-13 Task 1; then the founder's read-only rack report + column check, their go, the production migration with them present, one push, the live check, the rehearsal walk — all before the Wed 2026-10-07 freeze."
 last_updated: "2026-10-06T05:09:58.019Z"
 last_activity: 2026-10-05
 last_activity_desc: Quick task 261005-big (RAILS on an upright phone shows only the picked rail's controls under NOSE / CENTER / TAIL) is LIVE as main ba08033, checked on the live site
@@ -11,8 +11,8 @@ progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 44
-  completed_plans: 40
-  percent: 91
+  completed_plans: 41
+  percent: 93
 current_phase: 15
 current_phase_name: The Board Rack
 ---
