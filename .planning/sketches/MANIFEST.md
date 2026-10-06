@@ -33,6 +33,11 @@ iPads swipe along the rack with the middle board turned (009, sketched first at 
 computers turn the board under the cursor (010). The turn is the board's real turn: each station's
 cross-section projected at the turn angle, from the app's own rocker, thickness and outline.
 
+Two requirements from the founder while 010 was being built (2026-10-05): the section is called **Board
+Rack** ("rename it Board Rack rather than Your Boards"), and **"the user must be able to reorder the board
+rack."** On a computer that is a drag along the rack (010). On a phone a sideways drag already swipes the
+rack, so reordering there needs its own gesture, still to be sketched.
+
 ## Reference Points
 
 - Traditional drafting / engineering-drawing conventions (extension lines, end ticks, value in a
@@ -53,7 +58,7 @@ cross-section projected at the turn angle, from the app's own rocker, thickness 
 | 007 | phone-screens-in-menu | With no tab bar at the bottom, how does an upright phone show which screen you're on and take you to another? | **C1 — Tiles from your board** (☰ sheet of six tiles, each drawn from the current board; no bottom tab bar) | phone, layout, navigation, chrome |
 | 008 | next-screen-button | What does the step-by-step button under the last control look like? | **B — Back + Next** ("Together" tab: on 007-C1) | phone, navigation, wizard |
 | 009 | phone-swipe-rack | On a phone or iPad, how does swiping along a sideways board rack feel, with the middle board turned to its outline? | **B — Turns as it passes** (look still open, decided in 010) | phone, home, board-rack, interaction, motion |
-| 010 | sideways-board-rack | On a computer, what does the sideways rack look like, and how does the board under the cursor turn? | planned | desktop, home, board-rack, interaction, motion |
+| 010 | sideways-board-rack | On a computer, what does the Board Rack look like, and how does a board turn and move under the cursor? | pending | desktop, home, board-rack, interaction, motion, reorder |
 
 ## Decisions These Lock In
 
@@ -88,6 +93,10 @@ cross-section projected at the turn angle, from the app's own rocker, thickness 
    to its outline as it passes the middle, following your thumb, and the rack settles with one board fully turned
    and its name, dims, Open and ⋯ underneath. The turn is worked out from the board's own rocker, thickness and
    outline. The look (drawing or shop rack) is decided in sketch 010.
+12. **It's called the Board Rack, and the shaper sets its order** (the founder, 2026-10-05) — "Board Rack"
+   replaces "Your Boards" as the heading, and boards can be moved within the rack. Today's automatic order
+   (unsaved board first, then most recently touched) becomes the starting order only. The unsaved board stays
+   first until it's saved (assumed; to confirm).
 
 ## Open Questions
 

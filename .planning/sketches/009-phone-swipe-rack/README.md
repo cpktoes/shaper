@@ -93,6 +93,12 @@ held-up big board (C) were not chosen.
 **Still open:** the look. The founder picked B without choosing between Drawing and Shop rack, so the
 look is decided in sketch 010, where the two looks are its variants.
 
+## Renamed (2026-10-05)
+The founder, while sketch 010 was being built: "rename it Board Rack rather than Your Boards". The rack
+variants now say **Board Rack**; the Today tab keeps the live site's "Your Boards". The founder also asked
+that **the shaper can reorder the rack**. On a phone a sideways drag already swipes it, so moving boards
+there needs its own gesture. That's a follow-up sketch, since 010 covers dragging on a computer.
+
 ## Source
 `sketch-source.tar.gz` holds the scratch files that made `index.html`: the page template, the script
 that ran the app's calculators over the quiver (run from the repo root with

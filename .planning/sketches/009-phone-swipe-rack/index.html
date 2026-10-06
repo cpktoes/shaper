@@ -333,7 +333,7 @@ class Rack {
     const marks = this.heightMarks();
     const gap = marks.length > 1 ? Math.abs(marks[0].y - marks[1].y) : 99;
     const labels = look === "drawing" && state.lines === "on" ? marks.filter((m, k) => gap >= 22 || k % 2 === 0).map((m) => `<span style="top:${m.y}px">${m.label}</span>`).join("") : "";
-    this.host.innerHTML = `<div class="rack-scroller" tabindex="0" aria-label="Your boards rack. Swipe to look along it."><div class="rack-track" style="width:${trackW}px;height:${H}px">${snaps}<svg class="rack-svg" width="${trackW}" height="${H}" viewBox="0 0 ${trackW} ${H}">${defs}${back}<g class="boards">${boardsSvg}</g>${front}${hits}</svg></div></div><div class="rack-labels">${labels}</div>${this.o.mark ? `<div class="rack-mark"></div>` : ""}`;
+    this.host.innerHTML = `<div class="rack-scroller" tabindex="0" aria-label="Board rack. Swipe to look along it."><div class="rack-track" style="width:${trackW}px;height:${H}px">${snaps}<svg class="rack-svg" width="${trackW}" height="${H}" viewBox="0 0 ${trackW} ${H}">${defs}${back}<g class="boards">${boardsSvg}</g>${front}${hits}</svg></div></div><div class="rack-labels">${labels}</div>${this.o.mark ? `<div class="rack-mark"></div>` : ""}`;
     this.scroller = this.host.querySelector(".rack-scroller");
     this.svg = this.host.querySelector(".rack-svg");
     this.groups = [...this.host.querySelectorAll("g.bd")];
@@ -531,7 +531,7 @@ function buildScreen() {
   screen.innerHTML = `
     <div class="topbar"><span class="wordmark">SHAPER ASSISTANT</span><div class="cluster"><button class="save" data-toast="Saved">Save</button><span class="tsep"></span><button class="burger" aria-label="Menu" data-toast="☰ opens the screen tiles and the rest (as today)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button></div></div>
     <div class="page" id="page">
-      <h2 class="sec">Your Boards${v === "today" ? "" : `<span class="count">${list.length} ${list.length === 1 ? "board" : "boards"}</span>`}</h2>
+      <h2 class="sec">${v === "today" ? "Your Boards" : `Board Rack<span class="count">${list.length} ${list.length === 1 ? "board" : "boards"}</span>`}</h2>
       <div id="yours"></div>
       <h1 class="sec after-rack" id="shape-new">Shape a New Board</h1>
       <div class="cards">${presetCards(cardW)}</div>
@@ -606,7 +606,7 @@ function renderNotes() {
   const V = VARIANTS.find((x) => x.id === state.variant);
   const rackOn = state.variant !== "today";
   document.getElementById("notes").innerHTML = `
-    <h2>009 · Your Boards as a rack, on a phone</h2>
+    <h2>009 · The Board Rack, on a phone</h2>
     <p>Boards stand on their tails, rail facing you, all at one true scale, so a 9'4" log stands taller than a 5'2" Mini Simmons and the rockers compare side by side. Each board's name and dims run up beside it. The board in the middle turns to show its outline.</p>
     <div class="vdesc"><b>${esc(V.label)}</b><br>${esc(V.desc)}</div>
     <h3>WHAT TO LOOK FOR</h3><ul>${V.look.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
