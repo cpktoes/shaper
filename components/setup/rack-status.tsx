@@ -71,17 +71,48 @@ export function useRackStatus(): RackStatusState {
   return { ...state, announce };
 }
 
+/** What the pill must not cover, and where it goes instead (viewport coordinates). */
+export interface RackStatusAvoid {
+  /** The boxes of the controls the pill must never sit on (the caption's Open This Board and ⋯). */
+  controls: readonly DOMRect[];
+  /** The middle of an empty band it can sit in instead, or null when there is none. */
+  centreY: number | null;
+}
+
 interface RackStatusProps {
   message: string | null;
   visible: boolean;
   fading?: boolean;
   serial?: number;
+  /** Asked each time the pill shows (UI E09): when its usual place would cover one of `controls`,
+   * it sits centred on `centreY` instead. */
+  avoid?: () => RackStatusAvoid;
 }
 
-export function RackStatus({ message, visible, fading = false, serial = 0 }: RackStatusProps) {
+export function RackStatus({ message, visible, fading = false, serial = 0, avoid }: RackStatusProps) {
   const reduced = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const shown = visible && message !== null;
+
+  // UI E09: the pill stands 24 above the screen's bottom edge — unless that would cover the
+  // caption's Open This Board (on an iPhone the phone's caption reaches that low), when it moves to
+  // the empty band the rack's owner names (on the swipe rack, between the floor and the caption).
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    element.style.top = "";
+    element.style.bottom = "";
+    if (!shown || !avoid) return;
+    const pill = element.getBoundingClientRect();
+    const { controls, centreY } = avoid();
+    const covers = controls.some(
+      (box) => box.width > 0 && box.left < pill.right && box.right > pill.left && box.top < pill.bottom && box.bottom > pill.top,
+    );
+    if (covers && centreY !== null) {
+      element.style.top = `${(centreY - pill.height / 2).toFixed(1)}px`;
+      element.style.bottom = "auto";
+    }
+  }, [shown, serial, avoid]);
 
   // The fade in, on each new visible message, and the fade out at the end of the hold — the Web
   // Animations API, so nothing per frame is React state. None at all with reduced motion.

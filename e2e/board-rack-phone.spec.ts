@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { PHONE_MOVE_VIA_MENU, RACK_COPY, rackHeadingLine } from "../components/setup/rack-config";
 import { SWIPE_SLOT } from "../lib/geometry/rack-layout";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
+import { IN_PROGRESS_KEY } from "../lib/models/rack-order";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 
@@ -534,6 +535,193 @@ test.describe("the Board Rack on a phone — hold, slide and let go (15-09, sket
     const rest = await wordsAcrossBoards(page);
     expect(rest.turns[third.id]).toBe(90);
     expect.soft(rest.crossings, "at rest after the move").toEqual([]);
+  });
+
+  test("14. a quick swipe only moves the rack: nothing lifts and the order stays", async ({ page }) => {
+    test.skip(PHONE_MOVE_VIA_MENU, HOLD_OFF_REASON);
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const start = await centreOf(page, board(2).id);
+    const client = await page.context().newCDPSession(page);
+    await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: start.x, y: start.y }] });
+    const carriedAtSomeSample: number[] = [];
+    for (let step = 1; step <= 12; step++) {
+      await client.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: start.x - 10 * step, y: start.y }] });
+      carriedAtSomeSample.push(await page.locator("[data-rack-art][data-carrying]").count());
+    }
+    await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    expect(carriedAtSomeSample.every((count) => count === 0), JSON.stringify(carriedAtSomeSample)).toBe(true);
+    // Well past the hold's time, still nothing has lifted, and the rack has moved.
+    await page.waitForTimeout(700);
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
+    expect(await rackKeys(page)).toEqual(before);
+    await expect.poll(async () => (await rackFigures(page)).scrollLeft).toBeGreaterThan(0);
+    await expect(statusRegion(page)).toHaveText("");
+  });
+
+  test("15. the unsaved board stays first: holding it never lifts it, and a board carried to the far left lands right behind it", async ({
+    page,
+  }) => {
+    test.skip(PHONE_MOVE_VIA_MENU, HOLD_OFF_REASON);
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    await expect(async () => {
+      await page.getByRole("button").filter({ hasText: "Start Shaping" }).first().click();
+      await page.waitForURL("**/design/outline", { timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
+    await page.goBack();
+    await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
+    await expect(page.locator("[data-rack-art][data-turn]")).toHaveCount(16);
+    const before = await rackKeys(page);
+    expect(before[0]).toBe(IN_PROGRESS_KEY);
+    await expect(boardArt(page, IN_PROGRESS_KEY)).toHaveAttribute("data-turn", "90");
+
+    // Holding the unsaved board: it never lifts, the pill says why, and lifting the finger opens nothing.
+    const unsaved = await centreOf(page, IN_PROGRESS_KEY);
+    const hold = await touchHold(page, unsaved, 520);
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.unsavedStaysFirst);
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
+    await hold.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await page.waitForTimeout(300);
+    expect(new URL(page.url()).pathname).toBe(RACK_STAND_IN_ROUTE);
+    expect(await rackKeys(page)).toEqual(before);
+
+    // A saved board carried to the far left lands at the second place, right behind the unsaved board,
+    // and the drop mark shows that place, never the unsaved board's.
+    const { slot, width } = await rackFigures(page);
+    const mover = before[2];
+    const start = await centreOf(page, mover);
+    const carry = await touchHold(page, start, 520);
+    await expect(boardArt(page, mover)).toHaveAttribute("data-carrying", "true");
+    await touchMoveTo(carry, start, { x: start.x - 5 * slot, y: start.y }, 15);
+    const mark = await page.locator("[data-drop-mark]").evaluate((line) => (Number(line.getAttribute("x1")) + Number(line.getAttribute("x2"))) / 2);
+    const secondPlace = (width - slot) / 2 + 1.5 * slot;
+    expect(Math.abs(mark - secondPlace)).toBeLessThanOrEqual(0.5);
+    await carry.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect.poll(() => rackKeys(page)).toEqual(movedOrder(before, mover, 1));
+    const moverName = STAND_INS.find((row) => row.id === mover)?.name ?? "";
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(moverName));
+  });
+
+  test("16. carried to the screen's edge, the rack scrolls along with the board", async ({ page }) => {
+    test.skip(PHONE_MOVE_VIA_MENU, HOLD_OFF_REASON);
+    await openRack(page, `${RACK_STAND_IN_ROUTE}?boards=30`, 30);
+    const { width } = await rackFigures(page);
+    const first = standInRackRows(30)[0];
+    const start = await centreOf(page, first.id);
+    const client = await touchHold(page, start, 520);
+    await expect(boardArt(page, first.id)).toHaveAttribute("data-carrying", "true");
+    const edge = { x: width - 20, y: start.y };
+    await touchMoveTo(client, start, edge, 10);
+    const before = (await rackFigures(page)).scrollLeft;
+    await page.waitForTimeout(600);
+    const during = (await rackFigures(page)).scrollLeft;
+    expect(during, "the rack scrolled while the board sat at the edge").toBeGreaterThan(before + 40);
+    await expect(boardArt(page, first.id)).toHaveAttribute("data-carrying", "true");
+    await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
+    // It dropped further along than the screen could show at the start, on an exact slot.
+    await expect.poll(async () => (await rackFigures(page)).scrollLeft % (await rackFigures(page)).slot).toBe(0);
+    expect((await rackKeys(page)).indexOf(first.id)).toBeGreaterThan(5);
+  });
+
+  test("17. a system cancel mid-carry puts the board back where it was, with nothing said", async ({ page }) => {
+    test.skip(PHONE_MOVE_VIA_MENU, HOLD_OFF_REASON);
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const { slot } = await rackFigures(page);
+    const second = board(2);
+    const start = await centreOf(page, second.id);
+    const client = await touchHold(page, start, 520);
+    await expect(boardArt(page, second.id)).toHaveAttribute("data-carrying", "true");
+    await touchMoveTo(client, start, { x: start.x + 2 * slot, y: start.y }, 8);
+    await client.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
+    await expect(page.locator("[data-rack-carrying]")).toHaveCount(0);
+    await page.waitForTimeout(500);
+    expect(await rackKeys(page)).toEqual(before);
+    await expect(statusRegion(page)).toHaveText("");
+    // The board stands on its own slot again (its button centred on it), and the page still scrolls.
+    const figures = await rackFigures(page);
+    expect(figures.scrollLeft % figures.slot).toBe(0);
+    const scrolling = await scroller(page).evaluate((box) => getComputedStyle(box).scrollSnapType);
+    expect(scrolling).toContain("mandatory");
+  });
+
+  test("20. on an iPhone-sized page (390 x 664) the status pill reads clear of the caption's Open This Board (UI E09)", async ({
+    page,
+  }) => {
+    test.skip(PHONE_MOVE_VIA_MENU, HOLD_OFF_REASON);
+    await page.setViewportSize({ width: 390, height: 664 });
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const { slot } = await rackFigures(page);
+    const mover = board(1);
+    const start = await centreOf(page, mover.id);
+    const client = await touchHold(page, start, 520);
+    await expect(boardArt(page, mover.id)).toHaveAttribute("data-carrying", "true");
+    await touchMoveTo(client, start, { x: start.x + 2 * slot, y: start.y }, 8);
+    await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(mover.name));
+    await expect(captionFor(page, mover.name)).toBeVisible();
+    const figures = await page.evaluate((name) => {
+      const box = (element: Element | null | undefined) => {
+        if (!element) throw new Error("missing element");
+        const rect = element.getBoundingClientRect();
+        return { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right };
+      };
+      const caption = document.querySelector("[data-rack-caption]");
+      const open = Array.from(caption?.querySelectorAll("button") ?? []).find((button) => button.textContent === name);
+      return {
+        pill: box(document.querySelector("[data-rack-status]")),
+        open: box(open),
+        controls: Array.from(caption?.querySelectorAll("button") ?? []).map((button) => box(button)),
+        firstLine: box(caption?.firstElementChild),
+        floor: box(document.querySelector("[data-rack-scroller]")).bottom - 24,
+      };
+    }, RACK_COPY.open);
+    const { pill, open, controls, firstLine, floor } = figures;
+    // The pill is one line tall and never covers any of the caption's controls (Open This Board, ⋯).
+    expect(pill.bottom - pill.top).toBeLessThanOrEqual(26);
+    for (const control of controls) {
+      const overlaps =
+        control.left < pill.right && control.right > pill.left && control.top < pill.bottom && control.bottom > pill.top;
+      expect(overlaps, `the pill (${pill.top.toFixed(1)}-${pill.bottom.toFixed(1)}) covers a caption control (${control.top.toFixed(1)}-${control.bottom.toFixed(1)})`).toBe(false);
+    }
+    // On this page its usual place (24 above the bottom edge) would sit on Open This Board, so it
+    // stands in the empty band under the floor, clear of the floor line and the caption's first line.
+    expect(pill.top).toBeGreaterThan(floor + 1);
+    expect(pill.bottom).toBeLessThan(firstLine.top);
+    console.log(
+      `E09: Open This Board's tap box ${open.top.toFixed(1)}-${open.bottom.toFixed(1)}; the usual pill place would be ${(664 - 24 - (pill.bottom - pill.top)).toFixed(1)}-${(664 - 24).toFixed(1)}; ` +
+        `the pill stands ${pill.top.toFixed(1)}-${pill.bottom.toFixed(1)}, ${(pill.top - floor).toFixed(1)} under the floor and ${(firstLine.top - pill.bottom).toFixed(1)} above the caption`,
+    );
+  });
+
+  test("18. with D-11's switch on, holding a board lifts nothing and the hint says to use ⋯", async ({ page }) => {
+    test.skip(!PHONE_MOVE_VIA_MENU, "D-11's switch is off: phones hold a board to move it");
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const start = await centreOf(page, board(2).id);
+    const client = await touchHold(page, start, 600);
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
+    await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(page.getByText(rackHeadingLine(15, "swipe"), { exact: true })).toBeVisible();
+    expect(rackHeadingLine(15, "swipe")).toBe("15 boards · tap ⋯ to move");
+  });
+});
+
+test.describe("the Board Rack on an iPhone — the status pill's live region", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "one WebKit pass of the live region");
+    await dismissBannerAndTip(page);
+  });
+
+  test("19. the rack's one live region is on the page from the start, empty, and never in the way", async ({ page }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const region = statusRegion(page);
+    await expect(region).toHaveCount(1);
+    await expect(region).toHaveAttribute("role", "status");
+    await expect(region).toHaveAttribute("aria-live", "polite");
+    await expect(region).toHaveText("");
+    await expect(page.getByRole("status")).toHaveCount(1);
   });
 });
 

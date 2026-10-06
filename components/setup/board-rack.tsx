@@ -31,7 +31,7 @@
  * screen a board is held and slid (the swipe rack), only while D-11's switch leaves the hold on.
  */
 
-import { useId, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { deleteModel, duplicateModel, renameModel } from "@/app/design/actions";
 import { useDesign } from "@/components/design/design-store";
 import { useCoarsePointer } from "@/components/design/use-viewer-media";
@@ -39,11 +39,12 @@ import { DeleteConfirmDialog } from "@/components/setup/delete-confirm-dialog";
 import { HoverRack } from "@/components/setup/hover-rack";
 import { RackCaption } from "@/components/setup/rack-caption";
 import { RACK_COPY, holdToMoveEnabled, rackHeadingLine, type RackKind } from "@/components/setup/rack-config";
-import { RackStatus, useRackStatus } from "@/components/setup/rack-status";
+import { RackStatus, useRackStatus, type RackStatusAvoid } from "@/components/setup/rack-status";
 import { RenameDialog } from "@/components/setup/rename-dialog";
 import { SwipeRack } from "@/components/setup/swipe-rack";
 import { useRackBoards, type RackBoard, type RackBoardEntry } from "@/components/setup/use-rack-boards";
 import { useRackOrder } from "@/components/setup/use-rack-order";
+import { DROP_STRIP } from "@/lib/geometry/rack-layout";
 import type { RackModel } from "@/lib/models/rack-models";
 import {
   IN_PROGRESS_KEY,
@@ -87,6 +88,21 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   /** The name of the board a finger is carrying (the swipe caption becomes the carrying line). */
   const [carrying, setCarrying] = useState<string | null>(null);
   const headingId = useId();
+  const sectionRef = useRef<HTMLElement>(null);
+  /** UI E09: the status pill never covers the caption's controls. On the swipe rack the empty band
+   * between the floor and the caption's first line is where it goes when its usual place would. */
+  const pillAvoid = useCallback((): RackStatusAvoid => {
+    const section = sectionRef.current;
+    if (!section) return { controls: [], centreY: null };
+    const controls = Array.from(section.querySelectorAll("[data-rack-caption] button")).map((control) =>
+      control.getBoundingClientRect(),
+    );
+    const scroller = section.querySelector("[data-rack-scroller]");
+    const firstLine = section.querySelector("[data-rack-caption]")?.firstElementChild;
+    if (!scroller || !firstLine) return { controls, centreY: null };
+    const floor = scroller.getBoundingClientRect().bottom - DROP_STRIP;
+    return { controls, centreY: (floor + firstLine.getBoundingClientRect().top) / 2 };
+  }, []);
   const status = useRackStatus();
   const { announce } = status;
   // The shaper's order: their newest move at once, saved in the background; a failed save puts the
@@ -253,7 +269,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   return (
     // A phone-width override brings this section's bottom gap down to 32px (the scale's step
     // for a gap between major stacked blocks), replacing the desktop's 48px.
-    <section aria-labelledby={headingId} className="mb-12 max-shell:mb-8">
+    <section ref={sectionRef} aria-labelledby={headingId} className="mb-12 max-shell:mb-8">
       {/* The count and hint sit to the right of the heading on one muted line, and wrap under it on
           a very narrow screen rather than squeezing it. */}
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
@@ -325,7 +341,9 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
         boardName={deletingModel?.name ?? ""}
         onConfirm={handleDeleteConfirm}
       />
-      <RackStatus message={status.message} visible={status.visible} fading={status.fading} serial={status.serial} />
+      <RackStatus message={status.message} visible={status.visible} fading={status.fading} serial={status.serial}
+        avoid={pillAvoid}
+      />
     </section>
   );
 }
