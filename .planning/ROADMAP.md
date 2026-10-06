@@ -271,7 +271,7 @@ Cross-cutting constraints: no tips code in the curves step — no `slopeAt`, no 
 **Requirements**: R1, R2, R3, R4, R5, R6, R7, R8, R9, R10
 **Brief:** locked in `.planning/phases/15-the-board-rack/15-SPEC.md` (the founder's idea and decisions of 2026-10-05, from sketches 009–011 and the `sketch-findings-shaper` skill)
 **Depends on:** Phase 14 (the side profile the rack draws from); runs inside Phase 13's window — live before the Wednesday 2026-10-07 freeze, with a rehearsal walk after
-**Plans:** 6/13 plans executed in 7 waves — planned 2026-10-05 (`15-RESEARCH.md`, `15-PATTERNS.md`, `15-UI-SPEC.md` approved, `15-VALIDATION.md`); plan checker passed on the second pass. Founder steps: 15-10 (Tuesday's device check, decides D-11) and 15-13 (go-live before the Wednesday freeze).
+**Plans:** 8/13 plans executed in 7 waves — planned 2026-10-05 (`15-RESEARCH.md`, `15-PATTERNS.md`, `15-UI-SPEC.md` approved, `15-VALIDATION.md`); plan checker passed on the second pass. Founder steps: 15-10 (Tuesday's device check, decides D-11) and 15-13 (go-live before the Wednesday freeze).
 
 Plans:
 
@@ -289,8 +289,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 15-07-PLAN.md — On a phone or iPad, swipe along the rack, each board turning as it passes the middle (R1 R2 R6)
-- [ ] 15-08-PLAN.md — The home page reads the stored order, new boards and copies land where the founder ruled, and the founder gets a read-only report on the real boards (R8 R10)
+- [x] 15-07-PLAN.md — On a phone or iPad, swipe along the rack, each board turning as it passes the middle (R1 R2 R6)
+- [x] 15-08-PLAN.md — The home page reads the stored order, new boards and copies land where the founder ruled, and the founder gets a read-only report on the real boards (R8 R10)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -334,4 +334,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 12. Foil the Way a Shaper Cuts It | 10/10 | Complete    | 2026-09-27 |
 | 13. Ready for the Shapers | 11/13 items | In progress | - |
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
-| 15. The Board Rack | 6/13 | In Progress|  |
+| 15. The Board Rack | 8/13 | In Progress|  |
