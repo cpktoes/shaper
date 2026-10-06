@@ -206,11 +206,13 @@ describe("units isolation (UNIT-05, D-16)", () => {
     expect(source, "design-snapshot.ts declares a units field").not.toMatch(/\bunits\s*[:?]/i);
   });
 
-  it("lib/geometry/units.ts, lib/geometry/summary-line.ts and lib/geometry/measure-display.ts stay pure (Rule 1)", () => {
+  it("lib/geometry/units.ts, summary-line.ts, measure-display.ts and the Board Rack's rack-art.ts and rack-layout.ts stay pure (Rule 1)", () => {
     for (const relative of [
       "lib/geometry/units.ts",
       "lib/geometry/summary-line.ts",
       "lib/geometry/measure-display.ts",
+      "lib/geometry/rack-art.ts",
+      "lib/geometry/rack-layout.ts",
     ]) {
       const source = readStripped(relative);
       expect(source, `${relative} imports React`).not.toMatch(/from\s+["']react["']/);
@@ -222,15 +224,18 @@ describe("units isolation (UNIT-05, D-16)", () => {
   });
 
   it("every display site that already shows a design summary gets its numbers from the boundary", () => {
-    // A display site may read the boundary directly (app-settings-dialog.tsx, preset-card.tsx) or
-    // through the shared CardMetadataLine component (board-rack-card.tsx since 05-03). That
-    // component is itself a candidate below and must import the boundary, so the chain from every
-    // card line back to lib/geometry stays pinned either way. Each candidate is checked only if
-    // it exists AND already renders a DesignSummary, so a site that gains a summary later is
-    // caught automatically with no edit required here.
+    // A display site may read the boundary directly (app-settings-dialog.tsx, preset-card.tsx, and
+    // the Board Rack's hover-rack.tsx and swipe-rack.tsx, which call formatSummaryLine for each
+    // board's line) or through the shared CardMetadataLine component (the rack's rack-caption.tsx,
+    // which replaced Phase 2's board card in Phase 15). That component is itself a candidate below
+    // and must import the boundary, so the chain from every card line back to lib/geometry stays
+    // pinned either way. Each candidate is checked only if it exists AND already shows a design
+    // summary, so a site that gains a summary later is caught automatically with no edit required here.
     const candidates = [
       "components/setup/card-metadata-line.tsx",
-      "components/setup/board-rack-card.tsx",
+      "components/setup/rack-caption.tsx",
+      "components/setup/hover-rack.tsx",
+      "components/setup/swipe-rack.tsx",
       "components/setup/preset-card.tsx",
       "components/app-settings-dialog.tsx",
     ];
@@ -239,7 +244,8 @@ describe("units isolation (UNIT-05, D-16)", () => {
       const fullPath = join(REPO_ROOT, relative);
       if (!existsSync(fullPath)) continue;
       const source = stripComments(readFileSync(fullPath, "utf8"));
-      const isDisplaySite = /summarizeDesign|DesignSummary|formatDimsExample|presetSummary/.test(source);
+      const isDisplaySite =
+        /summarizeDesign|DesignSummary|formatDimsExample|presetSummary|formatSummaryLine|CardMetadataLine/.test(source);
       if (!isDisplaySite) continue;
       checked += 1;
       expect(
@@ -247,9 +253,9 @@ describe("units isolation (UNIT-05, D-16)", () => {
         `${relative} shows a design summary but does not import from the units boundary or the shared CardMetadataLine`,
       ).toMatch(/@\/lib\/geometry\/(summary-line|units)|@\/components\/setup\/card-metadata-line/);
     }
-    // Must find at least the two sites this phase already converted (board-rack-card.tsx, and the
-    // Units examples now in app-settings-dialog.tsx, quick 261003-uwi) — an empty candidate list
-    // would otherwise pass this test vacuously.
+    // Must find at least two sites (today the rack's caption and its two racks, the shared card line,
+    // the preset cards and the Units examples in app-settings-dialog.tsx, quick 261003-uwi) — an
+    // empty candidate list would otherwise pass this test vacuously.
     expect(checked).toBeGreaterThanOrEqual(2);
   });
 
