@@ -6,8 +6,10 @@
  * parameter list never accepts a user id, owner id or Clerk id from the client — the writing
  * identity always comes from the session. Mechanically enforced by `lib/db/ownership.test.ts`.
  *
- * A signed-out caller is not an error here: it resolves quietly and writes nothing, so the practice
- * rack used by the browser tests moves boards without a database.
+ * A signed-out caller never reaches the database. On the practice rack used by the browser tests
+ * (`/test-rack`, test servers only) its save goes to the practice rack's in-memory stand-in
+ * (`lib/rack-stand-in-server.ts`), so the suite can prove what a shaper sees when a save lands, fails
+ * or is slow; anywhere else it resolves quietly and writes nothing.
  */
 
 import { auth } from "@clerk/nextjs/server";
@@ -15,6 +17,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { models, userPreferences } from "@/lib/db/schema";
 import { parseRackOrderInput, rackOrderColumnValue } from "@/lib/models/rack-order";
+import { saveStandInRackOrder } from "@/lib/rack-stand-in-server";
 
 /**
  * Upserts the shaper's whole order as one value, like Units — so the last arrangement wins across
@@ -30,7 +33,10 @@ import { parseRackOrderInput, rackOrderColumnValue } from "@/lib/models/rack-ord
  */
 export async function saveRackOrder(orderedIds: readonly string[]): Promise<void> {
   const { userId } = await auth();
-  if (!userId) return;
+  if (!userId) {
+    await saveStandInRackOrder(orderedIds);
+    return;
+  }
 
   const parsed = parseRackOrderInput(orderedIds);
   if (parsed === null) return;

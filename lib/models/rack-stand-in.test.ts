@@ -1,3 +1,6 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { inchesToMm } from "@/lib/geometry/units";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
@@ -7,8 +10,14 @@ import {
   RACK_STAND_IN_ENV,
   RACK_STAND_IN_MAX_COUNT,
   RACK_STAND_IN_ROUTE,
+  RACK_STAND_IN_SAVE_COOKIE,
+  RACK_STAND_IN_SESSION_COOKIE,
+  RACK_STAND_IN_SHARED_SESSION,
+  RACK_STAND_IN_SLOW_SAVE_MS,
   STAND_IN_LONG_NAME,
   rackStandInRouteEnabled,
+  rackStandInSession,
+  resolveRackStandInSave,
   standInBoardCount,
   standInRackRows,
 } from "./rack-stand-in";
@@ -137,5 +146,94 @@ describe("standInRackRows", () => {
     for (let i = 1; i < rows.length; i++) {
       expect(rows[i].updatedAt.getTime()).toBe(rows[i - 1].updatedAt.getTime() - 3_600_000);
     }
+  });
+});
+
+describe("the practice rack's saves (WR-04)", () => {
+  const on = { nodeEnv: "development", flag: "1", signedIn: false, session: "abc-123" };
+
+  it("names its two cookies and the slow save's wait", () => {
+    expect(RACK_STAND_IN_SAVE_COOKIE).toBe("shaper-rack-stand-in-save");
+    expect(RACK_STAND_IN_SESSION_COOKIE).toBe("shaper-rack-stand-in-session");
+    expect(RACK_STAND_IN_SLOW_SAVE_MS).toBe(1500);
+  });
+
+  it("stores at once with no save cookie, or any word but fail and slow", () => {
+    for (const choice of [undefined, "", "ok", "FAIL", "Slow"]) {
+      expect(resolveRackStandInSave({ ...on, choice })).toEqual({ kind: "store", session: "abc-123", delayMs: 0 });
+    }
+  });
+
+  it("fails for fail, and stores after the wait for slow", () => {
+    expect(resolveRackStandInSave({ ...on, choice: "fail" })).toEqual({ kind: "fail" });
+    expect(resolveRackStandInSave({ ...on, choice: "slow" })).toEqual({
+      kind: "store",
+      session: "abc-123",
+      delayMs: RACK_STAND_IN_SLOW_SAVE_MS,
+    });
+  });
+
+  it("is off for a signed-in shaper, whatever the cookies say", () => {
+    expect(resolveRackStandInSave({ ...on, signedIn: true, choice: "fail" })).toEqual({ kind: "off" });
+    expect(resolveRackStandInSave({ ...on, signedIn: true, choice: undefined })).toEqual({ kind: "off" });
+  });
+
+  it("is off wherever the practice rack is: never in production, never without the flag exactly '1'", () => {
+    for (const env of [
+      { nodeEnv: "production", flag: "1" },
+      { nodeEnv: "production", flag: undefined },
+      { nodeEnv: "development", flag: undefined },
+      { nodeEnv: "development", flag: "true" },
+      { nodeEnv: "development", flag: " 1" },
+    ]) {
+      expect(resolveRackStandInSave({ ...on, ...env, choice: "fail" })).toEqual({ kind: "off" });
+      expect(resolveRackStandInSave({ ...on, ...env, choice: undefined })).toEqual({ kind: "off" });
+    }
+  });
+
+  it("keeps a plain session id, and puts everyone else on the shared rack", () => {
+    expect(rackStandInSession("abc-123_XYZ")).toBe("abc-123_XYZ");
+    expect(rackStandInSession("a".repeat(64))).toBe("a".repeat(64));
+    for (const raw of [undefined, "", "a".repeat(65), "has space", "../etc", "a;b"]) {
+      expect(rackStandInSession(raw)).toBe(RACK_STAND_IN_SHARED_SESSION);
+    }
+    expect(resolveRackStandInSave({ ...on, session: undefined, choice: undefined })).toEqual({
+      kind: "store",
+      session: RACK_STAND_IN_SHARED_SESSION,
+      delayMs: 0,
+    });
+  });
+});
+
+describe("boundary: the practice rack's saves stay on the server and off the live site", () => {
+  const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+
+  function sourceFiles(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) return sourceFiles(full);
+      return /\.(ts|tsx)$/.test(entry.name) ? [full] : [];
+    });
+  }
+
+  it("lib/rack-stand-in-server.ts reads the literal process.env.NODE_ENV, the form Next inlines in a real build", () => {
+    const source = readFileSync(join(REPO_ROOT, "lib/rack-stand-in-server.ts"), "utf8");
+    expect(source).toContain("nodeEnv: process.env.NODE_ENV");
+    expect(source).not.toMatch(/const\s+\w+\s*=\s*process\.env\.NODE_ENV/);
+  });
+
+  it("nothing under components/ imports lib/rack-stand-in-server.ts", () => {
+    const offenders = sourceFiles(join(REPO_ROOT, "components")).filter((file) =>
+      /from\s+["'][^"']*rack-stand-in-server["']/.test(readFileSync(file, "utf8")),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("only the rack-order action and the practice rack's page import it", () => {
+    const importers = [...sourceFiles(join(REPO_ROOT, "app")), ...sourceFiles(join(REPO_ROOT, "lib"))]
+      .filter((file) => /from\s+["'][^"']*rack-stand-in-server["']/.test(readFileSync(file, "utf8")))
+      .map((file) => relative(REPO_ROOT, file).split(sep).join("/"))
+      .sort();
+    expect(importers).toEqual(["app/actions/rack-order.ts", "app/test-rack/page.tsx"]);
   });
 });

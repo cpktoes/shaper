@@ -5,6 +5,7 @@ import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { IN_PROGRESS_KEY } from "../lib/models/rack-order";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
+import { freshPracticeRack } from "./helpers/practice-rack";
 import { openAppSettings } from "./helpers/settings";
 
 /**
@@ -23,6 +24,8 @@ const STAND_INS = standInRackRows(15);
 /** Board `n` (1-based) on the practice rack. */
 const board = (n: number) => STAND_INS[n - 1];
 
+/** Every test's setup: the sign-in banner and the toolbar tip dismissed, and a practice rack of the
+ * test's own, never arranged (its saves land in the dev server's memory — e2e/helpers/practice-rack.ts). */
 async function dismissBannerAndTip(page: Page) {
   await page.addInitScript(
     ([bannerKey, tipKey]) => {
@@ -31,6 +34,7 @@ async function dismissBannerAndTip(page: Page) {
     },
     [BANNER_DISMISSAL_KEY, TOOLBAR_TIP_DISMISSAL_KEY] as const,
   );
+  await freshPracticeRack(page);
 }
 
 const boardButton = (page: Page, key: string) => page.locator(`[data-rack-board="${key}"]`);
@@ -608,7 +612,9 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     await expect(menu.getByRole("menuitem", { name: RACK_COPY.moveRight })).toBeDisabled();
     await page.keyboard.press("Escape");
 
-    // Behind the unsaved board, the first saved board can't go left either.
+    // Behind the unsaved board, the first saved board can't go left either — on a fresh practice
+    // rack, since this one now keeps the Move right above.
+    await freshPracticeRack(page);
     await openRack(page, RACK_STAND_IN_ROUTE, 15);
     await startABoardAndComeBack(page, 15);
     await restOnPlace(page, 1);
@@ -732,6 +738,38 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     await expect(dialog).toBeHidden();
     await expect.poll(async () => (await heightLabels(page)).slice(0, 2)).toEqual(["4′", "5′"]);
     await expect(cardLine).toHaveText(imperialLine);
+  });
+});
+
+/** True for the practice rack's order save: a Server Action call (a POST carrying `Next-Action`). */
+const isRackSave = (response: { request(): { method(): string; headers(): Record<string, string> } }) =>
+  response.request().method() === "POST" && "next-action" in response.request().headers();
+
+test.describe("the Board Rack on a computer — the order is kept (code review CR-01, WR-04)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the hover rack's own pointer checks are desktop-only");
+    await dismissBannerAndTip(page);
+  });
+
+  test("k1. a moved board is still moved after opening a board and pressing Back", async ({ page }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const first = board(1);
+    await boardButton(page, first.id).focus();
+    const saved = page.waitForResponse(isRackSave);
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(first.name));
+    const expected = movedOrder(before, first.id, 1);
+    await expect.poll(() => rackKeys(page)).toEqual(expected);
+    // The save has landed on the practice rack's stand-in account before the board is opened.
+    await saved;
+
+    await captionFor(page, first.name).getByRole("button", { name: RACK_COPY.open }).click();
+    await page.waitForURL("**/design/outline");
+    await page.goBack();
+    await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
+    await expect(page.locator("[data-rack-art][data-turn]")).toHaveCount(15);
+    await expect.poll(() => rackKeys(page)).toEqual(expected);
   });
 });
 

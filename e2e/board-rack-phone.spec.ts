@@ -5,6 +5,7 @@ import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { IN_PROGRESS_KEY } from "../lib/models/rack-order";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
+import { freshPracticeRack } from "./helpers/practice-rack";
 
 /**
  * The Board Rack on a phone or an iPad (Phase 15, 15-07): a finger gets the swipe rack (D-04) — the
@@ -28,6 +29,8 @@ const STAND_INS = standInRackRows(15);
 /** Board `n` (1-based) on the practice rack. */
 const board = (n: number) => STAND_INS[n - 1];
 
+/** Every test's setup: the sign-in banner and the toolbar tip dismissed, and a practice rack of the
+ * test's own, never arranged (its saves land in the dev server's memory — e2e/helpers/practice-rack.ts). */
 async function dismissBannerAndTip(page: Page) {
   await page.addInitScript(
     ([bannerKey, tipKey]) => {
@@ -36,6 +39,7 @@ async function dismissBannerAndTip(page: Page) {
     },
     [BANNER_DISMISSAL_KEY, TOOLBAR_TIP_DISMISSAL_KEY] as const,
   );
+  await freshPracticeRack(page);
 }
 
 const boardButton = (page: Page, key: string) => page.locator(`[data-rack-board="${key}"]`);

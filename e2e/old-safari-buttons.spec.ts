@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { freshPracticeRack } from "./helpers/practice-rack";
 
 /**
  * Old Safari — iPhone and iPad software before 18.4 — gave every `<button>` a built-in
@@ -135,6 +136,8 @@ test.describe("old Safari's button rule (before 18.4) no longer squashes anythin
   });
 
   test("the practice rack: the Board Rack's buttons keep their insides", async ({ page }) => {
+    // A practice rack of this test's own, never arranged (e2e/helpers/practice-rack.ts).
+    await freshPracticeRack(page);
     await page.goto("/test-rack");
     await expect(page.locator("[data-rack-board]")).toHaveCount(15);
     await expectOldSafariRuleChangesNothing(page);
