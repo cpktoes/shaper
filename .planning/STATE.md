@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 15 (The Board Rack) on branch board-rack: 10 of 13 plans merged (wave-5 full suite 824/0 at 03:03 2026-10-06). Code review 15-REVIEW.md: 1 critical (CR-01: Back reused the home page's old copy, so the next move overwrote the shaper's arrangement), 5 warnings, 8 info — a fixer is applying every finding except WR-05 (the founder's real-Safari check, added to the parked 15-10 device check). Next: merge the fixes, full suite, the founder's device check (15-10), 15-12, then 15-13 the go-live before the Wed 2026-10-07 freeze."
+stopped_at: "Phase 15 (The Board Rack) on branch board-rack: 10 of 13 plans merged, plus the code review (1 critical, 5 warnings, 8 info) fixed and merged as c58a5b0 — every finding but WR-05, which is the founder's real-Safari check. Final tree at 04:07 2026-10-06: tsc + lint clean, vitest 4,296 passed, test:e2e:prod 18 passed, full test:e2e 829 passed / 0 failed. Waiting on: 15-10, the founder's device check (.continue-here.md, 12 checks; decides D-11). Then 15-12 (autonomous) and 15-13, the go-live, before the Wed 2026-10-07 freeze."
 last_updated: "2026-10-06T05:09:58.019Z"
 last_activity: 2026-10-05
 last_activity_desc: Quick task 261005-big (RAILS on an upright phone shows only the picked rail's controls under NOSE / CENTER / TAIL) is LIVE as main ba08033, checked on the live site

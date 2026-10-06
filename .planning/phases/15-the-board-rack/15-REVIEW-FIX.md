@@ -296,3 +296,30 @@ founder's real iPhone / iPad Safari walk in 15-10.
 _Fixed: 2026-10-06T10:39:28Z_
 _Fixer: Claude (gsd-code-fixer)_
 _Iteration: 1_
+
+## Orchestrator ruling (2026-10-06, 04:10 PDT)
+
+- **Accepted, all 13 fixes**, merged into `board-rack` as c58a5b0. On the merged tree in the main checkout: `npx tsc --noEmit`
+  clean, `npm run lint` clean, `npx vitest run` 115 files / 4,296 passed, `npm run test:e2e:prod` 18 passed (the practice
+  rack still answers 404 in a production build), and the full `npm run test:e2e` **829 passed, 0 failed** (24.5 min).
+- **WR-05 — skipped by decision, not by oversight:** Playwright has no touch path into WebKit, so the Safari-specific
+  gestures (hold → lift → slide → drop with no page scroll, an abandoned hold that lifts and opens nothing, no iOS
+  callout on a long press) are items 10–12 of the founder's device check, `.continue-here.md` for plan 15-10, on the
+  iPad 9th gen (Safari < 18.4) and an iPhone if one is to hand.
+- **The practice rack's save stand-in is safe to ship.** Read in full: a signed-out save reaches the stand-in only when
+  `rackStandInRouteEnabled` sees the literal `process.env.NODE_ENV` as something other than `"production"` AND
+  `SHAPER_RACK_STAND_IN === "1"` (set only in `playwright.config.ts`'s dev-server env, stripped by
+  `playwright.prod.config.ts`); in a real build it returns `saved: false`, so a lapsed sign-in is reported as a failed
+  save rather than a kept order (IN-02). The orders live in the dev server's memory only, never a database.
+- **Deviation 1 (a fresh practice-rack session per spec):** right — the shared session would leak one spec's order into
+  the next. The shared session stays for a person on the practice rack, which is what lets the founder's device check
+  keep an order across Back.
+- **Deviation 2 (k3 alone can't catch a snap-back on this Next build):** accepted; `lib/models/rack-order-sync.test.ts`
+  proves the "keep the newer move while a save travels" rule, and k1/13b prove Back in the browser.
+- **IN-06 note:** the report reads each account's Tip Style without a browser cookie, so an account that never saved a
+  Tip Style but has one in a browser cookie is checked with Pin deck where the home page would use the cookie's. The
+  report only asks whether each board can be DRAWN, which the tip style cannot change for any catalogue blank in use,
+  so the difference cannot hide a dropped board; left as is.
+- **Still to verify by a person, signed in (no test can sign in):** move → open → Back keeps the order on the real home
+  page, a duplicate lands beside its original after a quick move, and focus lands on the next board after a delete —
+  added to the go-live walk (15-13) and the rehearsal (D-14).
