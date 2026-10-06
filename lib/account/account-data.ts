@@ -89,3 +89,19 @@ export function designsExportFileName(now: Date): string {
   const day = String(now.getDate()).padStart(2, "0");
   return `shaper-assistant-designs-${year}-${month}-${day}.json`;
 }
+
+/** The word a shaper types to confirm Delete my account (D-04). */
+export const DELETE_CONFIRMATION_WORD = "DELETE";
+
+/** True when the typed text is the confirmation word, in any case and with surrounding spaces
+ * ignored, because a phone keyboard capitalises the first letter (D-04). The page uses it to arm
+ * the final button and the server checks it again before anything is removed. */
+export function isDeleteConfirmed(typed: string): boolean {
+  return typed.trim().toUpperCase() === DELETE_CONFIRMATION_WORD;
+}
+
+/** What deleteMyAccount answers (D-03). `account-not-closed` means the boards and settings are
+ * already gone but Clerk refused to close the account; pressing again finishes the job. */
+export type DeleteMyAccountResult =
+  | { deleted: true }
+  | { deleted: false; reason: "signed-out" | "not-confirmed" | "account-not-closed" };

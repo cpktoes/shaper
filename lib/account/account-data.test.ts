@@ -1,7 +1,12 @@
 import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { userPreferences, type ModelRow, type UserPreferenceRow } from "@/lib/db/schema";
-import { buildDesignsExport, designsExportFileName } from "./account-data";
+import {
+  buildDesignsExport,
+  DELETE_CONFIRMATION_WORD,
+  designsExportFileName,
+  isDeleteConfirmed,
+} from "./account-data";
 
 /**
  * Quick 261006-g4u (2026-10-06): the file Export my designs downloads (D-02), built from fake rows —
@@ -117,5 +122,24 @@ describe("designsExportFileName (D-02)", () => {
   it("uses the shaper's own local date, zero-padded", () => {
     expect(designsExportFileName(new Date(2026, 9, 6, 23, 30))).toBe("shaper-assistant-designs-2026-10-06.json");
     expect(designsExportFileName(new Date(2026, 0, 5, 9, 0))).toBe("shaper-assistant-designs-2026-01-05.json");
+  });
+});
+
+describe("isDeleteConfirmed (D-04)", () => {
+  it("the word is DELETE", () => {
+    expect(DELETE_CONFIRMATION_WORD).toBe("DELETE");
+  });
+
+  it("accepts the word in any case, with spaces around it ignored (a phone capitalises the first letter)", () => {
+    expect(isDeleteConfirmed("DELETE")).toBe(true);
+    expect(isDeleteConfirmed(" delete ")).toBe(true);
+    expect(isDeleteConfirmed("Delete")).toBe(true);
+  });
+
+  it("refuses anything else", () => {
+    expect(isDeleteConfirmed("")).toBe(false);
+    expect(isDeleteConfirmed("DELET")).toBe(false);
+    expect(isDeleteConfirmed("DELETE ACCOUNT")).toBe(false);
+    expect(isDeleteConfirmed("delete me")).toBe(false);
   });
 });

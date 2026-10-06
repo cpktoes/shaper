@@ -153,6 +153,13 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
     expect(fns).toEqual(["saveRackOrder"]);
   });
 
+  it("app/actions/account.ts exports exactly the expected actions and no others", () => {
+    // Mirrors the assertion above for app/actions/rack-order.ts (quick 261006-g4u, D-07): the Your
+    // data page's Export my designs and Delete my account.
+    const fns = exportedAsyncFunctions(accountActionsSource).map((fn) => fn.name).sort();
+    expect(fns).toEqual(["deleteMyAccount", "exportMyDesigns"]);
+  });
+
   it("every Drizzle statement touching an owned table constrains on the owning-user column", () => {
     for (const [label, source] of [
       ["app/design/actions.ts", actionsSource],

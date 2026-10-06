@@ -85,4 +85,25 @@ describe("deleteAccountData", () => {
     await expect(deleteAccountData(testDb, "user_test")).rejects.toThrow(failure);
     batchSpy.mockRestore();
   });
+
+  it("14. run twice on the same id (Delete my account, then Clerk's later user.deleted message), the second run finds nothing and neither throws", async () => {
+    // Quick 261006-g4u (2026-10-06, D-03): the Your data page deletes the boards and settings
+    // itself before closing the account in Clerk, so Clerk's own user.deleted message arrives to
+    // an account already emptied — and a shaper pressing Delete again after a Clerk failure runs
+    // this a second time too. Both must be harmless.
+    const batchSpy = vi
+      .spyOn(testDb, "batch")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .mockResolvedValueOnce([[{ id: "a" }, { id: "b" }], [{ clerkUserId: "user_test" }]] as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .mockResolvedValueOnce([[], []] as any);
+
+    const first = await deleteAccountData(testDb, "user_test");
+    const second = await deleteAccountData(testDb, "user_test");
+
+    expect(first).toEqual({ boards: 2, settings: 1 });
+    expect(second).toEqual({ boards: 0, settings: 0 });
+    expect(batchSpy).toHaveBeenCalledTimes(2);
+    batchSpy.mockRestore();
+  });
 });

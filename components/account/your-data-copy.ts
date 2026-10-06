@@ -23,4 +23,26 @@ export const YOUR_DATA_COPY = Object.freeze({
     signedOut: "You've been signed out. Sign in again to export your designs.",
     failed: `Couldn't export your designs. Try again, or email ${CONTACT_ADDRESS}.`,
   }),
+  delete: Object.freeze({
+    title: "Delete my account",
+    body: "Permanently deletes your account, every saved board and your settings.",
+    button: "Delete my account…",
+    confirmHeading: "Delete your account for good?",
+    consequences: Object.freeze([
+      "Every saved board on your account is deleted. Use Export my designs above first if you want a copy.",
+      "Your settings are deleted: units, fit and tip defaults, blank makers and your rack order.",
+      "Your account is closed and you're signed out.",
+      "There's no undo. We can't bring any of it back.",
+    ]),
+    fieldLabel: "Type DELETE to confirm",
+    confirmButton: "Delete my account forever",
+    cancel: "Keep my account",
+    busy: "Deleting…",
+    done: "Done. Your account, saved boards and settings are deleted. Signing you out…",
+    accountNotClosed:
+      "Your saved boards and settings are deleted, but your account couldn't be closed. " +
+      `Press Delete my account forever again, or email ${CONTACT_ADDRESS}.`,
+    signedOut: "You've been signed out. Sign in again to delete your account.",
+    failed: `Something went wrong. Try again, or email ${CONTACT_ADDRESS}.`,
+  }),
 });
