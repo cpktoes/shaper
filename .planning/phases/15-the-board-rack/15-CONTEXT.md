@@ -81,6 +81,12 @@ progress).
   swipe rack still goes live, and on phones and iPads a board is moved with ⋯ → Move left / Move right until
   hold-and-drag is fixed after the showing. The plan should make this a small, prepared switch, not a
   rebuild.
+  — **Ruled on devices 2026-10-06 (plan 15-10): keep.** The founder tried swiping, hold-and-slide, the
+  edge scroll, the unsaved board, a long name sideways, the pill, the three Safari-specific gestures and
+  move → open → Back on their iPad 9th gen (Safari) and an Android phone, upright and sideways:
+  *"looks and feels great on all."* Hold-and-drag ships; `PHONE_MOVE_VIA_MENU` stays `false`; the
+  fallback is never flipped, and the deferred "make hold-and-drag reliable on older Safari" item below
+  does not arise.
 - **D-12:** **No move buttons on phones and iPads otherwise.** ⋯ keeps Move left / Move right on the hover
   rack only; the swipe rack's ⋯ is Rename, Duplicate and Delete, as today. Consequence, accepted by the
   founder: someone using a screen reader on a phone can browse and open boards but can't move them. This
