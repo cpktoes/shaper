@@ -69,7 +69,8 @@ function edgesAt(points: RackPoint[], i: number): { left: number; right: number 
 }
 
 function silhouetteAsRackPoints(geometry: OutlineGeometry): RackPoint[] {
-  return silhouette(geometry).map(({ station, w }) => ({ station, x: -w }));
+  // x = -w, written `0 - w` so a zero half-width reads as 0 rather than a negative zero.
+  return silhouette(geometry).map(({ station, w }) => ({ station, x: 0 - w }));
 }
 
 describe("R3: the rack art is read from the board's own numbers", () => {

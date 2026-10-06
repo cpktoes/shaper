@@ -81,7 +81,7 @@ export const TILE_ART_FRAME = { width: 108, height: 46 } as const;
 /** The TEMPLATE silhouette in its own millimetres, in the order TEMPLATE draws it
  * (`outline-viewer.tsx`'s `silhouettePath`): the right half tail to nose, the left half back nose to
  * tail, then the stringer point where the tail closes. (station, half-width) pairs. */
-function silhouette(geometry: OutlineGeometry): { station: number; w: number }[] {
+export function silhouette(geometry: OutlineGeometry): { station: number; w: number }[] {
   const right = geometry.points.map((p) => ({ station: p.station, w: p.halfWidth }));
   const left = geometry.points
     .slice()
@@ -113,7 +113,7 @@ const BLANK_SAMPLES = 120;
 
 /** A closed side silhouette: the bottom tail to nose, then the deck nose to tail — ROCKER's own
  * `closedProfilePath` construction — mapped nose left, deck up. */
-function sidePoints(start: number, end: number, steps: number, bottomAt: (s: Mm) => Mm, deckAt: (s: Mm) => Mm): XY[] {
+export function sidePoints(start: number, end: number, steps: number, bottomAt: (s: Mm) => Mm, deckAt: (s: Mm) => Mm): XY[] {
   const bottom: XY[] = [];
   const deck: XY[] = [];
   for (let i = 0; i <= steps; i++) {

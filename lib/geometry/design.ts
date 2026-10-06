@@ -17,7 +17,7 @@
 import type { BlankRecord, BoardBlank } from "./blank";
 import { prepareBlank, thinningStartsOf, type PreparedBlank, type TipRule } from "./blank-fit";
 import type { OutlineSpec } from "./board";
-import { buildBoardProfile } from "./board-profile";
+import { buildBoardProfile, type BoardSideProfile } from "./board-profile";
 import type { FoilSpec } from "./foil";
 import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
@@ -166,11 +166,11 @@ export interface DesignSummary {
  * exactly as the store passes it, so the litres follow the new foil everywhere. Phase 14 (D-24):
  * the board's own stored Thinning Starts go the same way, through `thinningStartsOf`.
  *
- * This is exactly `summarizeDesignWith(fields, { prepare: prepareBlank, handSetCurve: "root" })`:
- * the live rules (Phase 14 D-13) through the one pipeline below.
+ * This is exactly `summarizeDesignWith(fields, LIVE_DESIGN_RULES)`: the live rules (Phase 14 D-13)
+ * through the one pipeline below.
  */
 export function summarizeDesign(fields: DesignSummaryFields): DesignSummary {
-  return summarizeDesignWith(fields, { prepare: prepareBlank, handSetCurve: "root" });
+  return summarizeDesignWith(fields, LIVE_DESIGN_RULES);
 }
 
 /**
@@ -193,13 +193,27 @@ export interface DesignRules {
 }
 
 /**
- * `summarizeDesign`'s whole pipeline (see its comment) with the blank preparation and the hand-set
- * curve passed in — the one way to work out a board's figures under a chosen set of rules.
+ * The rules every screen uses (Phase 14 D-13): a blank's own catalogue rows prepared by
+ * `prepareBlank`, a hand-set board drawn with the square-root rule, and the live steady tip taper.
+ * `summarizeDesign` and the Board Rack (Phase 15) both read these, so the two never drift.
  */
-export function summarizeDesignWith(fields: DesignSummaryFields, rules: DesignRules): DesignSummary {
-  const outlineGeometry = buildOutline(fields.outline);
+export const LIVE_DESIGN_RULES: DesignRules = { prepare: prepareBlank, handSetCurve: "root" };
+
+/**
+ * The one recipe for a saved board's side profile — the rocker and the deck — moved here verbatim
+ * from `summarizeDesignWith` (an extraction, not a rewrite). For a board in a blank it reads the
+ * board's OWN copy of that blank through `rules.prepare`, the board's own cut (Deck Skin, Tip Style,
+ * fine-tune surface) and its own stored Thinning Starts; for a hand-set board, its five typed
+ * stations. Never the catalogue (Phase 15 SPEC constraint 3), so a later catalogue correction can
+ * never move a saved board's picture on the rack, and the rack's side view and the card's litres
+ * can never read two different profiles.
+ */
+export function designSideProfile(
+  fields: Pick<DesignSummaryFields, "outline" | "rocker" | "foil" | "blank">,
+  rules: DesignRules,
+): BoardSideProfile {
   const { blank } = fields;
-  const profile = buildBoardProfile({
+  return buildBoardProfile({
     length: fields.outline.length,
     rocker: fields.rocker ?? DEFAULT_FALLBACK_ROCKER,
     foil: fields.foil,
@@ -219,6 +233,15 @@ export function summarizeDesignWith(fields: DesignSummaryFields, rules: DesignRu
       : null,
     handSetCurve: rules.handSetCurve,
   });
+}
+
+/**
+ * `summarizeDesign`'s whole pipeline (see its comment) with the blank preparation and the hand-set
+ * curve passed in — the one way to work out a board's figures under a chosen set of rules.
+ */
+export function summarizeDesignWith(fields: DesignSummaryFields, rules: DesignRules): DesignSummary {
+  const outlineGeometry = buildOutline(fields.outline);
+  const profile = designSideProfile(fields, rules);
   const effectiveRails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
   const railBands = computeRailBands(effectiveRails);
   const templateValues = deriveTemplateValues(fields.outline, outlineGeometry);
