@@ -15,6 +15,8 @@ const PACKAGE_JSON_PATH = join(REPO_ROOT, "package.json");
 const PACKAGE_LOCK_PATH = join(REPO_ROOT, "package-lock.json");
 const NEXT_CONFIG_PATH = join(REPO_ROOT, "next.config.ts");
 const LEGAL_PAGE_PATH = join(REPO_ROOT, "components", "legal", "legal-page.tsx");
+const SIGN_IN_DIALOG_PATH = join(REPO_ROOT, "components", "auth", "sign-in-dialog.tsx");
+const LAYOUT_PATH = join(REPO_ROOT, "app", "layout.tsx");
 
 /** The registry's own integrities, read with `npm view` at plan time (2026-10-06) — see this quick
  * task's PLAN.md package legitimacy audit (T-261006-SC). */
@@ -76,5 +78,39 @@ describe("components/legal/legal-page.tsx reads the file at each visit", () => {
     const readAt = stripped.indexOf("readLegalDocument(", connectionAt);
     expect(connectionAt).toBeGreaterThanOrEqual(0);
     expect(readAt).toBeGreaterThan(connectionAt);
+  });
+});
+
+/**
+ * The consent line (quick 261006-fom, D-04, P-3). Clerk never loads on this suite's fake keys, so
+ * the dialog cannot be opened in a browser test: these source contracts, with the server render in
+ * components/auth/sign-up-consent.test.ts, are the honest proof, and the founder sees the real
+ * dialog at the review.
+ */
+describe("components/auth/sign-in-dialog.tsx draws the consent line under Clerk's card", () => {
+  const stripped = stripComments(readFileSync(SIGN_IN_DIALOG_PATH, "utf8"));
+
+  it("renders SignUpConsent exactly once, after the SignIn element", () => {
+    expect(stripped.match(/<SignUpConsent\b/g) ?? []).toHaveLength(1);
+    const signInAt = stripped.indexOf("<SignIn ");
+    expect(signInAt).toBeGreaterThanOrEqual(0);
+    expect(stripped.indexOf("<SignUpConsent")).toBeGreaterThan(signInAt);
+  });
+
+  it("keeps the one combined SignIn withSignUp, never a separate SignUp", () => {
+    expect(stripped).toContain("<SignIn routing=\"hash\" withSignUp />");
+    expect(stripped).not.toMatch(/<SignUp\b/);
+  });
+});
+
+describe("app/layout.tsx gives Clerk's card footer a Terms link beside Privacy", () => {
+  const stripped = stripComments(readFileSync(LAYOUT_PATH, "utf8"));
+
+  it("sets termsPageUrl: TERMS_ROUTE beside privacyPageUrl: PRIVACY_ROUTE", () => {
+    expect(stripped).toMatch(/options: \{ privacyPageUrl: PRIVACY_ROUTE, termsPageUrl: TERMS_ROUTE \}/);
+  });
+
+  it("imports TERMS_ROUTE from lib/legal/documents", () => {
+    expect(stripped).toContain('import { TERMS_ROUTE } from "@/lib/legal/documents"');
   });
 });

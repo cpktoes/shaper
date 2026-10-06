@@ -28,10 +28,22 @@
  * Clerk owns the form fields, their in-flight states, their inline errors, and the
  * sign-in/sign-up switching end to end — this file supplies only the surrounding chrome and
  * the fixed title from the UI-SPEC Copywriting Contract.
+ *
+ * Quick 261006-fom (D-04, P-3) adds the founder's consent line, "By creating an account you agree
+ * to our Terms of Service and Privacy Policy.", directly under Clerk's card (`SignUpConsent`). It
+ * is the app's own frame around the card, like the title above it, and never inside Clerk's form:
+ * in the installed Clerk 7.8.2 the appearance options (`termsPageUrl` / `privacyPageUrl`, set in
+ * `app/layout.tsx`) only put small "Terms" and "Privacy" links in the card's own footer, and the
+ * one consent wording Clerk has (`signUp.legalConsent.checkbox.*`) labels a must-tick checkbox
+ * that only appears when "require express consent" is switched on in the Clerk Dashboard — one
+ * Dashboard switch away if the founder ever wants a recorded tick, and not built here. The line
+ * shows on every step of the combined sign-in / sign-up card, because the sentence is conditional
+ * ("By creating an account …") and reads true on a sign-in step too.
  */
 
 import { SignIn, useUser } from "@clerk/nextjs";
 import { useEffect } from "react";
+import { SignUpConsent } from "@/components/auth/sign-up-consent";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +72,7 @@ export function SignInDialog({ open, onOpenChange }: SignInDialogProps) {
           <DialogTitle className="text-surf-ink">Sign in to save your boards</DialogTitle>
         </DialogHeader>
         <SignIn routing="hash" withSignUp />
+        <SignUpConsent />
       </DialogContent>
     </Dialog>
   );

@@ -20,7 +20,9 @@
  * popup's three "go to a page" rows: Home (hidden on `/`), Contact (hidden on `/contact`), Privacy
  * (hidden on `/privacy`), then ONE unconditional divider before the App Default Settings row. No two of
  * those three ever hide at once (each hides only on its own route), so the divider is always doing
- * real work separating at least one visible row from the settings row below it.
+ * real work separating at least one visible row from the settings row below it. Quick 261006-fom
+ * (D-06, P-4) adds the shared Share row after Privacy (components/share-menu-item.tsx), the same
+ * row the desktop gear menu carries; it never hides.
  *
  * Since quick 261003-q2f (sketch 007's C1; the founder: "build it now, use on all screens that
  * condense the top bar into a menu") the popup is a SHEET whose first items are the six screen tiles
@@ -47,6 +49,7 @@ import { HouseIcon, MenuIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { AppSettingsMenuItem, ContactMenuItem, PrivacyMenuItem } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
+import { ShareMenuItem } from "@/components/share-menu-item";
 import { ScreenTiles } from "@/components/design/screen-tiles";
 import type { NavLink } from "@/components/site-nav";
 
@@ -110,6 +113,7 @@ export function PhoneMenu({
             )}
             <ContactMenuItem />
             <PrivacyMenuItem />
+            <ShareMenuItem />
             <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />
             <AppSettingsMenuItem />
             {/* No Menu.Separator export exists on this Base UI version's Menu module — a plain

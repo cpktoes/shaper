@@ -18,6 +18,7 @@ import { resolvePrintRailInstructionsHandoff } from "@/lib/print-instructions-se
 import { resolveFitDefaultsHandoff } from "@/lib/fit-defaults-server";
 import { resolveBlankMakersHandoff } from "@/lib/blank-makers-server";
 import { PRIVACY_ROUTE } from "@/lib/privacy/copy";
+import { TERMS_ROUTE } from "@/lib/legal/documents";
 
 export const metadata: Metadata = SITE_METADATA;
 
@@ -89,7 +90,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     // asserted in the browser suite, because Clerk never actually renders its hosted UI under this
     // suite's fake keys (see e2e/phone-account.spec.ts's header); lib/privacy/wiring.test.ts guards
     // the source instead, and the founder checks the real footer link live.
-    <ClerkProvider appearance={{ options: { privacyPageUrl: PRIVACY_ROUTE } }}>
+    //
+    // Quick 261006-fom (D-04, P-3) adds `termsPageUrl` beside it, so Clerk's card footer now links
+    // Terms beside Privacy, each opening in a new tab: the "appearance options" half of the
+    // founder's consent request. The sentence itself is drawn by the app's own sign-in dialog under
+    // the card (components/auth/sign-up-consent.tsx); lib/legal/wiring.test.ts guards both.
+    <ClerkProvider appearance={{ options: { privacyPageUrl: PRIVACY_ROUTE, termsPageUrl: TERMS_ROUTE } }}>
       <html
         lang="en"
         className={`${geistMono.variable} ${inter.variable} h-dvh antialiased`}

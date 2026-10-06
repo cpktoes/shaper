@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { PRIVACY_ROUTE } from "@/lib/privacy/copy";
-import { LEGAL_DOCUMENTS, TERMS_ROUTE, legalOutline } from "./documents";
+import { LEGAL_DOCUMENTS, SIGN_UP_CONSENT, TERMS_ROUTE, legalOutline, signUpConsentText } from "./documents";
 
 /**
  * The legal pages' addresses and the outline reader (quick 261006-fom, D-01). The expected
@@ -54,5 +54,16 @@ describe("legalOutline", () => {
 
   it("gives an empty title when the text has none", () => {
     expect(legalOutline("Just words.")).toEqual({ title: "", sections: [] });
+  });
+});
+
+describe("the sign-up consent line (D-04)", () => {
+  it("reads the founder's sentence, with its full stop", () => {
+    expect(signUpConsentText()).toBe("By creating an account you agree to our Terms of Service and Privacy Policy.");
+  });
+
+  it("names the two documents exactly as their pages are titled in the sentence", () => {
+    expect(SIGN_UP_CONSENT.terms).toBe("Terms of Service");
+    expect(SIGN_UP_CONSENT.privacy).toBe("Privacy Policy");
   });
 });

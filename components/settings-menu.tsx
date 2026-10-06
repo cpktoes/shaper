@@ -10,15 +10,17 @@
  *
  * Since quick 261003-uwi the menu is short: Contact, Privacy, and ONE row, App Default Settings,
  * which opens the pop-up holding Imperial or Metric, the theme tiles, the blank makers and the fit
- * and tip defaults (components/app-settings-dialog.tsx). The phone's ☰ sheet
- * (components/design/phone-menu.tsx) renders the same three rows from here, so the two menus can
- * never drift apart.
+ * and tip defaults (components/app-settings-dialog.tsx). Quick 261006-fom (D-06, P-4) adds Share
+ * after Privacy (components/share-menu-item.tsx). The phone's ☰ sheet
+ * (components/design/phone-menu.tsx) renders the same rows from here, so the two menus can never
+ * drift apart.
  */
 
 import { Menu } from "@base-ui/react/menu";
 import { MailIcon, SettingsIcon, ShieldCheckIcon, SlidersHorizontalIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppSettings } from "@/components/app-settings-provider";
+import { ShareMenuItem } from "@/components/share-menu-item";
 import { CONTACT_COPY, CONTACT_ROUTE } from "@/lib/contact/message";
 import { PRIVACY_COPY, PRIVACY_ROUTE } from "@/lib/privacy/copy";
 
@@ -118,6 +120,7 @@ export function SettingsMenu() {
           <Menu.Popup className="max-h-(--available-height) min-w-64 origin-(--transform-origin) overflow-y-auto rounded-lg border border-surf-line-faint bg-surf-panel p-1.5 shadow-lg outline-none duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
             <ContactMenuItem />
             <PrivacyMenuItem />
+            <ShareMenuItem />
             <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />
             <AppSettingsMenuItem />
           </Menu.Popup>

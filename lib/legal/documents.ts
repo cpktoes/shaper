@@ -46,3 +46,24 @@ export function legalOutline(markdown: string): LegalOutline {
   const sections = lines.filter((line) => /^##\s/.test(line)).map((line) => line.replace(/^##\s+/, "").trim());
   return { title, sections };
 }
+
+/**
+ * The sign-up consent line under Clerk's card in the sign-in / sign-up dialog (quick 261006-fom,
+ * D-04): the founder's own words, "By creating an account you agree to our Terms of Service and
+ * Privacy Policy" — the comma that ended their quotation becomes the sentence's full stop. Split
+ * into pieces so `components/auth/sign-up-consent.tsx` can link the two names without typing a
+ * word of its own.
+ */
+export const SIGN_UP_CONSENT = {
+  lead: "By creating an account you agree to our",
+  terms: "Terms of Service",
+  joiner: "and",
+  privacy: "Privacy Policy",
+  end: ".",
+} as const;
+
+/** The consent line as one sentence, exactly as a shaper reads it. */
+export function signUpConsentText(): string {
+  const { lead, terms, joiner, privacy, end } = SIGN_UP_CONSENT;
+  return `${lead} ${terms} ${joiner} ${privacy}${end}`;
+}
