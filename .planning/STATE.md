@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 15 (The Board Rack) is LIVE (main c417257, 2026-10-06 08:45 PDT) and verified: 15-VERIFICATION.md human_needed, no gaps, 9/10 truths by test, the tenth (the stored order across a reload and a second device) for a signed-in person. Six checks in 15-UAT.md, all for the founder's rehearsal walk on the live site with their own boards (13-UAT.md, 18 steps + Phase 15's looks; sheet issue 3) before the Wed 2026-10-07 evening freeze. Next: record the walk's results in 15-UAT.md (/gsd-verify-work 15), then phase.complete 15."
-last_updated: "2026-10-06T05:09:58.019Z"
+stopped_at: "Phase 15 (The Board Rack) COMPLETE 2026-10-06: live on www.shaperassistant.com since 08:45 PDT (main c417257, deployment shaper-fi967okof), verified (15-VERIFICATION.md passed, no gaps), the founder's walk 6/6 (15-UAT.md), one follow-up todo (Option/Alt + arrow on a pointed-at board, after the showing). Freeze: Wed 2026-10-07 evening; showing Sat 2026-10-10. Next: Phase 13's remaining items (the full 18-step rehearsal walk on the live site with the sheet, issue 3; the launch prep) and Phase 14's verification paperwork (no site change); then the v1.5 close."
+last_updated: "2026-10-06T18:00:12.531Z"
 last_activity: 2026-10-06
 last_activity_desc: Phase 15, The Board Rack, went live on www.shaperassistant.com (merge c417257) on the founder's go, 2026-10-06
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 44
   completed_plans: 42
   percent: 95
 current_phase: 15
-current_phase_name: The Board Rack
+current_phase_name: Ready for the Shapers
 ---
 
 # Project State
@@ -24,7 +24,7 @@ current_phase_name: The Board Rack
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 15 — The Board Rack
+**Current focus:** Phase 13 — Ready for the Shapers (the rehearsal walk on the live site, the Wednesday-evening freeze, the Oct 10 showing); Phase 15 complete and live
 
 ## Current Position
 
@@ -34,14 +34,14 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Executing Phase 15
-Last activity: 2026-10-05 — Phase 15 execution started
+Status: Phase 15 complete and live; Phase 13's last items next
+Last activity: 2026-10-06 — Phase 15 (The Board Rack) went live on the founder's go, was verified, and passed the founder's six-check walk
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 95
+- Total plans completed: 108
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -61,6 +61,7 @@ Last activity: 2026-10-05 — Phase 15 execution started
 | 10 | 11 | - | - |
 | 11 | 13 | - | - |
 | 12 | 10 | - | - |
+| 15 | 13 | - | - |
 
 **Recent Trend:**
 
@@ -90,6 +91,15 @@ Last activity: 2026-10-05 — Phase 15 execution started
 ## Accumulated Context
 
 ### Decisions
+
+**Phase 15 — The Board Rack (2026-10-05 → 10-06, live 10-06):**
+- The pointer picks the rack (D-04): a mouse gets the hover rack, a finger the swipe rack, at any width — behaviour, never layout.
+- D-11 ruled keep on the founder's iPad 9th gen and an Android phone: hold-and-drag ships; the ⋯ → Move fallback stays a switch that is never flipped.
+- A turning board opens room for its neighbours' words as well as its outline (an orchestrator fix after the tracer; SPEC R4), and the swipe rack's slot widens just enough on tall screens so a resting rack never needs room.
+- Every rack save refreshes the home page (`revalidatePath`) and the client keeps a newer move while a save travels — the code review's CR-01, the Back-button fix.
+- Additive database change first: the live `rack_order` column went in with the founder present (4 of 5 → 5 of 5 columns), then one push.
+- The phone caption's built height (~153 against the sketches' 118) and a carried board drawn under its neighbours for ~110 ms: accepted by the founder on devices.
+
 
 - [Phase 13 item 7, 2026-09-28]: Volume accepted on the founder's own check — the four presets (29.1 / 35.0 / 50.3 / 75.3 L on their US Blanks picks) are within 1/2–1 L of what each board should have; no real-board fixtures were added (optional guard offered)
 - [Phase 13 item 4, 2026-09-28]: The founder answered Phase 12's five questions. Q1 (the thin spot near a tip): raise the floor from 1/8" to 1/4" anywhere on the board, and the lowest tip setting to 1/4" ("no boards should have a 1/8" tip anyway"), and the real fix, curve rules that never hump, is its own phase after Oct 10 (todo 2026-09-28, major). Q2 (Phase 11 boards opening greyed until Reset Fine-Tune): accept. Q3 (the floor reason line): correct it with a proper rewording by cause. Q4 (saved Deck Skin 0–50 mm vs the slider's 1/16"–1/2"): open the control up — first to the full 0–50 mm, then capped by the founder at 0–1" ("no one needs to trim more than that"); saved boards keep accepting 0–50 mm. Q5 (a tab left open across the Phase 12 deploy): accept. The 1/4" floor refuses 15 of the 1,611 stress-test boards (6 before); the milder humps stay allowed until the curve-flow phase.

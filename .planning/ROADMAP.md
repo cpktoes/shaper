@@ -63,7 +63,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 13: Ready for the Shapers** - Safe, clean, credible and ready to listen by the founder's showing to many shapers on 2026-10-10: the security patch, housekeeping, the founder's open decisions, volume proven against real boards, the order form completed, a contact page, visitor analytics and a privacy page, a friendly error screen and link preview, and a real-device rehearsal before a freeze on Oct 7
 - [ ] **Phase 14: Realistic Surfboard Flow** - A blank's bottom, thickness and width drawn between their printed stations by the square-root rule that redraws real blanks most closely, a hand-set board drawn the same way, and a steady taper into each tip from a start that is automatic and can be set by hand (6" to the board's centre) — built before the Oct 7 freeze
-- [ ] **Phase 15: The Board Rack** - "Your Boards" on the home page becomes the Board Rack: the shaper's boards stand sideways at one true scale like a shop rack, name and dims running up beside each, and the board under the cursor or in the middle of a phone's swipe turns its real turn to show its outline; the shaper sets the rack's order (drag on a computer, hold then slide on a phone) and the unsaved board stays first — live before the Oct 7 freeze
+- [x] **Phase 15: The Board Rack** - "Your Boards" on the home page becomes the Board Rack: the shaper's boards stand sideways at one true scale like a shop rack, name and dims running up beside each, and the board under the cursor or in the middle of a phone's swipe turns its real turn to show its outline; the shaper sets the rack's order (drag on a computer, hold then slide on a phone) and the unsaved board stays first — live before the Oct 7 freeze
 
 ## Phase Details
 
@@ -271,7 +271,7 @@ Cross-cutting constraints: no tips code in the curves step — no `slopeAt`, no 
 **Requirements**: R1, R2, R3, R4, R5, R6, R7, R8, R9, R10
 **Brief:** locked in `.planning/phases/15-the-board-rack/15-SPEC.md` (the founder's idea and decisions of 2026-10-05, from sketches 009–011 and the `sketch-findings-shaper` skill)
 **Depends on:** Phase 14 (the side profile the rack draws from); runs inside Phase 13's window — live before the Wednesday 2026-10-07 freeze, with a rehearsal walk after
-**Plans:** 13/13 plans executed in 7 waves — planned 2026-10-05 (`15-RESEARCH.md`, `15-PATTERNS.md`, `15-UI-SPEC.md` approved, `15-VALIDATION.md`); plan checker passed on the second pass. Founder steps: 15-10 (Tuesday's device check, decides D-11) and 15-13 (go-live before the Wednesday freeze).
+**Plans:** 13/13 plans complete
 
 Plans:
 
@@ -334,4 +334,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 12. Foil the Way a Shaper Cuts It | 10/10 | Complete    | 2026-09-27 |
 | 13. Ready for the Shapers | 11/13 items | In progress | - |
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
-| 15. The Board Rack | 13/13 | In Progress|  |
+| 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
