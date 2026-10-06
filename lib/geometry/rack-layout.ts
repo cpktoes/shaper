@@ -323,6 +323,28 @@ export function rackRoomOffsets(extras: readonly number[]): number[] {
   return offsets;
 }
 
+/**
+ * The swipe rack's slot, in whole dots, for a quiver drawn at one scale: `SWIPE_SLOT` (40), or wider
+ * when the widest board standing at rest — its side profile and the column of 11px words its
+ * neighbour stands beside it — would not fit 40. `restingHalfExtentsPx` is every board's
+ * `halfExtent(art, 0, scale)`; `wordColumnPx` is `spineWordColumn(SWIPE_WORD_SIZE)`.
+ *
+ * With the slot this wide a resting swipe rack needs no room at all (every board's `boardExtra` at
+ * rest is 0), so the boards at rest stand exactly on their slots and the scroller's snap points sit
+ * under the drawn boards. That matters on a tall phone or an iPad: with 11px words a resting board
+ * fits 40 dots only up to a drawn rack height of about 383 for the practice quiver (about 303 for a
+ * quiver of boards under 7'0", which draws at a larger scale), and the swipe rack runs up to 420.
+ * Whole dots, so every snap point and every programmatic scroll is a whole number (WebKit 160622).
+ * A reach that is not a finite number is ignored, so a bad board can never make the slot NaN.
+ */
+export function swipeSlotFor(
+  restingHalfExtentsPx: readonly number[],
+  wordColumnPx: number = spineWordColumn(SWIPE_WORD_SIZE),
+): number {
+  const widest = restingHalfExtentsPx.reduce((most, half) => (Number.isFinite(half) ? Math.max(most, half) : most), 0);
+  return Math.max(SWIPE_SLOT, Math.ceil(2 * widest + wordColumnPx));
+}
+
 /** The phone track's padding at each end, so the first and last boards can reach the middle. */
 export function swipePadding(viewportWidth: number, slot: number = SWIPE_SLOT): number {
   return (viewportWidth - slot) / 2;

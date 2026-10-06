@@ -17,6 +17,8 @@ import {
   rackRoomOffsets,
   rackScale,
   spineWordColumn,
+  swipeSlotCentre,
+  swipeSlotFor,
   turnAngle,
   type HoverRackLayout,
 } from "./rack-layout";
@@ -226,5 +228,116 @@ describe("a resting rack keeps to its slots", () => {
     const scale = rackScale(357, Math.max(...arts.map((art) => art.length)));
     const column = spineWordColumn(SWIPE_WORD_SIZE);
     for (const art of arts) expect(boardExtra(halfExtent(art, 0, scale), SWIPE_SLOT, column)).toBe(0);
+  });
+});
+
+/**
+ * The same rule on the phone's and iPad's swipe rack (15-07): one long track of slots, every board
+ * turning by its distance from the middle of the screen, the rack opening around the turning boards.
+ * Its slot is `swipeSlotFor` the quiver at that height — 40 dots, or wider where a resting board and
+ * its 11px words would not fit 40 — and the turn's reach is one slot (UI-SPEC §2). Checked at every
+ * drawn height the swipe rack can take, 220 to 420 in 20-dot steps, for the practice quiver and for a
+ * quiver of boards all under 7'0" (which the 7'0" reference draws at the larger scale).
+ */
+const SWIPE_COLUMN = spineWordColumn(SWIPE_WORD_SIZE);
+/** How far the phone's words reach left of their baseline: the glyphs and the halo beyond them. */
+const SWIPE_WORDS_REACH = GLYPH_REACH_EM * SWIPE_WORD_SIZE + SPINE_HALO_WIDTH / 2;
+/** A phone's width: the track's geometry depends on it only through the end padding. */
+const SWIPE_VIEWPORT = 390;
+const SWIPE_HEIGHTS = Array.from({ length: 11 }, (_, step) => 220 + step * 20);
+
+interface SwipeCase {
+  label: string;
+  arts: RackBoardArt[];
+}
+
+function swipeQuiver(label: string, keep: (art: RackBoardArt) => boolean = () => true): SwipeCase {
+  const arts = rackModelsFromRows(standInRackRows(15))
+    .map((model) => rackBoardFigures(model.snapshot).art)
+    .filter(keep);
+  return { label, arts };
+}
+
+const SWIPE_QUIVERS: SwipeCase[] = [
+  swipeQuiver("the practice quiver"),
+  swipeQuiver("boards all under 7'0\"", (art) => art.length < RACK_REFERENCE_LENGTH_MM),
+];
+
+/** The swipe rack's scale and slot at drawn height `rackHeight`, exactly as swipe-rack.tsx works them out. */
+function swipeGeometry(arts: readonly RackBoardArt[], rackHeight: number) {
+  const scale = rackScale(rackHeight, Math.max(...arts.map((art) => art.length)));
+  const slot = swipeSlotFor(
+    arts.map((art) => halfExtent(art, 0, scale)),
+    SWIPE_COLUMN,
+  );
+  return { scale, slot };
+}
+
+/** What crosses what on the swipe track for these angles: neighbours' bodies, and any visible words
+ * against the board to their left. Positions are the slot centres plus the room the track opens. */
+function swipeCrossings(arts: readonly RackBoardArt[], thetas: readonly number[], scale: number, slot: number): string[] {
+  const extras = arts.map((art, k) => boardExtra(halfExtent(art, thetas[k], scale), slot, SWIPE_COLUMN));
+  const offsets = rackRoomOffsets(extras);
+  const xs = arts.map((_, k) => swipeSlotCentre(k, SWIPE_VIEWPORT, slot) + offsets[k]);
+  const found: string[] = [];
+  for (let k = 1; k < arts.length; k++) {
+    const j = k - 1;
+    const rightJ = xs[j] + drawnSpan(arts[j], thetas[j]).right * scale;
+    const leftK = xs[k] + drawnSpan(arts[k], thetas[k]).left * scale;
+    const wordsK = xs[k] + spineAnchorX(arts[k], thetas[k], scale, SWIPE_WORD_SIZE) - SWIPE_WORDS_REACH;
+    if (rightJ > leftK) found.push(`boards ${j + 1} and ${k + 1} overlap by ${(rightJ - leftK).toFixed(2)}`);
+    if (Math.cos(thetas[k]) > VISIBLE && wordsK < rightJ) {
+      found.push(`board ${k + 1}'s words cross board ${j + 1} by ${(rightJ - wordsK).toFixed(2)}`);
+    }
+  }
+  return found;
+}
+
+/** The angles the swipe rack shows: each board settled in the middle alone, and the middle of the
+ * screen swept from a slot before the first board to a slot past the last, in eighth-of-a-slot steps. */
+function swipeStates(arts: readonly RackBoardArt[], slot: number): { label: string; thetas: number[] }[] {
+  const states = arts.map((_, rested) => ({
+    label: `resting on board ${rested + 1}`,
+    thetas: arts.map((__, k) => (k === rested ? HALF_TURN : 0)),
+  }));
+  const first = swipeSlotCentre(0, SWIPE_VIEWPORT, slot) - slot;
+  const last = swipeSlotCentre(arts.length - 1, SWIPE_VIEWPORT, slot) + slot;
+  for (let step = 0; first + (step * slot) / 8 <= last; step++) {
+    const middle = first + (step * slot) / 8;
+    states.push({
+      label: `the middle at ${middle.toFixed(1)}`,
+      thetas: arts.map((_, k) => turnAngle(middle - swipeSlotCentre(k, SWIPE_VIEWPORT, slot), slot)),
+    });
+  }
+  return states;
+}
+
+describe("R4 on the phone's swipe rack: no word ever crosses a board, at every height it draws", () => {
+  for (const quiver of SWIPE_QUIVERS) {
+    it.each(SWIPE_HEIGHTS)(`${quiver.label}, drawn %i tall: at rest every board keeps to its slot`, (rackHeight) => {
+      const { scale, slot } = swipeGeometry(quiver.arts, rackHeight);
+      expect(slot).toBeGreaterThanOrEqual(SWIPE_SLOT);
+      for (const art of quiver.arts) expect(boardExtra(halfExtent(art, 0, scale), slot, SWIPE_COLUMN)).toBe(0);
+    });
+
+    it.each(SWIPE_HEIGHTS)(`${quiver.label}, drawn %i tall: resting on each board, and the middle swept along the track`, (rackHeight) => {
+      const { scale, slot } = swipeGeometry(quiver.arts, rackHeight);
+      const states = swipeStates(quiver.arts, slot);
+      const failing = states.flatMap(({ label, thetas }) => {
+        const found = swipeCrossings(quiver.arts, thetas, scale, slot);
+        return found.length > 0 ? [`${label}: ${found.join("; ")}`] : [];
+      });
+      expect(failing.length, `slot ${slot}; ${failing.length} of ${states.length} states:\n${failing.slice(0, 12).join("\n")}`).toBe(0);
+    });
+  }
+
+  it("on the UI-SPEC's iPhone 14 page (drawn about 357 tall) the practice quiver keeps the 40-dot slot", () => {
+    expect(swipeGeometry(SWIPE_QUIVERS[0].arts, 357).slot).toBe(SWIPE_SLOT);
+    expect(swipeGeometry(SWIPE_QUIVERS[0].arts, 358).slot).toBe(SWIPE_SLOT);
+  });
+
+  it("at the 420 cap the slot widens past 40 rather than let a resting board crowd its neighbour's words", () => {
+    expect(swipeGeometry(SWIPE_QUIVERS[0].arts, 420).slot).toBeGreaterThan(SWIPE_SLOT);
+    expect(swipeGeometry(SWIPE_QUIVERS[1].arts, 420).slot).toBeGreaterThan(SWIPE_SLOT);
   });
 });

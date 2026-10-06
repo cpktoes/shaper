@@ -117,10 +117,13 @@ export function SetupScreen({ models, rackOrder = null }: SetupScreenProps) {
           is identical to what the old split already produced there, which is why this rewrite
           touches nothing on a desktop. The top/bottom gaps get the same treatment: the existing
           64px desktop value stays, with a phone-width override (24px above the first card, 32px
-          below the last one — the scale's section-padding and stacked-block steps). */}
+          below the last one — the scale's section-padding and stacked-block steps).
+          Phase 15 (D-06): on a short screen — a phone held sideways, by height alone — the page's
+          gutters tighten to the phone chrome's own values at any width (16 across, 8 above, 32
+          below), written inline as CLAUDE.md's short-screen rule is; never a third switch. */}
       <div
         data-setup-content
-        className="mx-auto max-w-5xl px-8 pt-16 pb-16 max-shell:px-4 max-shell:pt-6 max-shell:pb-8"
+        className="mx-auto max-w-5xl px-8 pt-16 pb-16 max-shell:px-4 max-shell:pt-6 max-shell:pb-8 [@media(max-height:500px)]:px-4 [@media(max-height:500px)]:pt-2 [@media(max-height:500px)]:pb-8"
       >
         <BoardRack
           entries={rackEntries}
