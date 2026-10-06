@@ -53,6 +53,7 @@ import {
 import { useReducedMotion } from "@/components/design/use-viewer-media";
 import { useUnits } from "@/components/units-provider";
 import { RACK_COPY } from "@/components/setup/rack-config";
+import { useFontsReadyCount } from "@/components/setup/use-fonts-ready";
 import type { RackBoard, RackFocusRequest } from "@/components/setup/use-rack-boards";
 import { halfExtent, spineAnchorX, stringerPath, turnedBoardPath } from "@/lib/geometry/rack-art";
 import {
@@ -269,10 +270,17 @@ function newFrameState(): FrameState {
 }
 
 let measureContext: CanvasRenderingContext2D | null | undefined;
+/** The `useFontsReadyCount` the measuring canvas was made for. */
+let measureContextFonts = -1;
 
-/** The browser's own text measure for the vertical words (the fit RULE is pure: `fitSpineWords`). */
-function measureWords(family: string) {
-  if (measureContext === undefined) {
+/**
+ * The browser's own text measure for the vertical words (the fit RULE is pure: `fitSpineWords`).
+ * `fontsReady` is `useFontsReadyCount`'s count: once the web fonts have loaded, a fresh canvas
+ * measures, so nothing a canvas resolved against the fallback font is reused (code review IN-03).
+ */
+function measureWords(family: string, fontsReady: number) {
+  if (measureContext === undefined || measureContextFonts !== fontsReady) {
+    measureContextFonts = fontsReady;
     measureContext = typeof document === "undefined" ? null : document.createElement("canvas").getContext("2d");
   }
   const context = measureContext;
@@ -573,12 +581,15 @@ export function HoverRack({
   );
   const positions = useMemo(() => boards.map((_, k) => hoverSlotPosition(layout, k)), [boards, layout]);
   const lines = useMemo(() => boards.map((board) => formatSummaryLine(board.summary, system)), [boards, system]);
+  // Measured again once the web font has loaded (`fontsReady`), so a long name is fitted in the font
+  // it is drawn in, not the fallback (code review IN-03).
+  const fontsReady = useFontsReadyCount();
   const fits = useMemo(() => {
-    const measure = measureWords(fontFamily);
+    const measure = measureWords(fontFamily, fontsReady);
     return boards.map((board, k) =>
       fitSpineWords({ name: board.name, line: lines[k], maxLength: layout.rackHeight - 2 * WORD_END_ROOM, baseSize: HOVER_WORD_SIZE, measure }),
     );
-  }, [boards, lines, layout.rackHeight, fontFamily]);
+  }, [boards, lines, layout.rackHeight, fontFamily, fontsReady]);
   const heightLines = useMemo(
     () => rackHeightLines(system, Math.max(0, ...boards.map((board) => board.art.length))),
     [boards, system],
