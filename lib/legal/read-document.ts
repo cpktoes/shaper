@@ -12,7 +12,19 @@ import { LEGAL_DOCUMENTS, type LegalSlug } from "./documents";
  *
  * On Vercel the files only exist beside the server code because `next.config.ts` names them under
  * `outputFileTracingIncludes` (T-261006-05).
+ *
+ * Each path is written out as a string literal rather than looked up through the map: Next's build
+ * traces the files a page needs by following literal paths, and a path it cannot read at build time
+ * ("Dynamic filesystem access") makes it ship the whole project folder with the page instead. The
+ * `satisfies` checks keep the two literals equal to the map's entries, so the one source of each
+ * file's name is still `LEGAL_DOCUMENTS` (and `lib/legal/wiring.test.ts` pins the pairing).
  */
 export async function readLegalDocument(slug: LegalSlug): Promise<string> {
-  return readFile(path.join(process.cwd(), LEGAL_DOCUMENTS[slug].file), "utf8");
+  const root = process.cwd();
+  switch (slug) {
+    case "terms":
+      return readFile(path.join(root, "content/legal/terms.md" satisfies typeof LEGAL_DOCUMENTS.terms.file), "utf8");
+    case "privacy":
+      return readFile(path.join(root, "content/legal/privacy.md" satisfies typeof LEGAL_DOCUMENTS.privacy.file), "utf8");
+  }
 }

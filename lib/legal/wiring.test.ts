@@ -114,3 +114,21 @@ describe("app/layout.tsx gives Clerk's card footer a Terms link beside Privacy",
     expect(stripped).toContain('import { TERMS_ROUTE } from "@/lib/legal/documents"');
   });
 });
+
+describe("lib/legal/read-document.ts reads each file by a literal path the build can trace", () => {
+  const READ_DOCUMENT_PATH = join(REPO_ROOT, "lib", "legal", "read-document.ts");
+  const stripped = stripComments(readFileSync(READ_DOCUMENT_PATH, "utf8"));
+
+  it("names both files as string literals, so Next packs just those two files with the pages", () => {
+    // A path looked up through the map at run time ("Dynamic filesystem access") makes the build
+    // ship the whole project folder with the page; a literal lets it trace exactly one file.
+    expect(stripped).toContain('"content/legal/terms.md"');
+    expect(stripped).toContain('"content/legal/privacy.md"');
+    expect(stripped).not.toMatch(/readFile\([^)]*LEGAL_DOCUMENTS\[/);
+  });
+
+  it("keeps each literal equal to the map's entry through a `satisfies` check", () => {
+    expect(stripped).toContain("satisfies typeof LEGAL_DOCUMENTS.terms.file");
+    expect(stripped).toContain("satisfies typeof LEGAL_DOCUMENTS.privacy.file");
+  });
+});
