@@ -761,3 +761,62 @@ test.describe("the Board Rack in a narrow computer window", () => {
     await expect(page.locator('[data-rack-kind="swipe"]')).toHaveCount(0);
   });
 });
+
+test.describe("the Board Rack on a phone — the ⋯ menu's rows and a keyboard's moves (15-11, D-12)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the swipe rack is a touch screen's (D-04)");
+    await dismissBannerAndTip(page);
+  });
+
+  test("19p. with D-11's switch off, the swipe rack's ⋯ is Rename, Duplicate and Delete — no Move rows, and no Move button anywhere", async ({
+    page,
+  }) => {
+    test.skip(PHONE_MOVE_VIA_MENU, "D-11's switch is on: the swipe rack's ⋯ offers the moves (20p)");
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    await page.getByRole("button", { name: `Board actions for ${board(1).name}` }).click();
+    const menu = page.getByRole("menu");
+    await expect(menu).toBeVisible();
+    await expect(menu.getByRole("menuitem")).toHaveText(["Rename", "Duplicate", "Delete"]);
+    await expect(menu.getByRole("separator")).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: /Move/ })).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    // No Arrange mode and no ‹ Move › buttons on the phone (the SPEC's prohibition).
+    await expect(page.getByRole("button", { name: /Move/ })).toHaveCount(0);
+  });
+
+  test("20p. with D-11's switch on, ⋯ → Move right moves the middle board one place", async ({ page }) => {
+    test.skip(!PHONE_MOVE_VIA_MENU, "D-11's switch is off: phones hold a board to move it (13)");
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const middle = board(1);
+    await page.getByRole("button", { name: `Board actions for ${middle.name}` }).click();
+    const menu = page.getByRole("menu");
+    await expect(menu.getByRole("menuitem", { name: RACK_COPY.moveLeft })).toBeDisabled();
+    await menu.getByRole("menuitem", { name: RACK_COPY.moveRight }).click();
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(middle.name));
+    await expect.poll(() => rackKeys(page)).toEqual(movedOrder(before, middle.id, 1));
+  });
+
+  test("21p. a keyboard on a touch screen: Alt + → on the focused middle board moves it one place, and it keeps the middle and the focus", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "one keyboard pass is enough; it runs on the android project");
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const third = board(3);
+    // A keyboard's focus brings the board to the middle and turns it.
+    await boardButton(page, third.id).focus();
+    await expect(boardArt(page, third.id)).toHaveAttribute("data-turn", "90");
+    await expect(captionFor(page, third.name)).toBeVisible();
+
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(third.name));
+    await expect.poll(() => rackKeys(page)).toEqual(movedOrder(before, third.id, 3));
+    await expect(boardButton(page, third.id)).toBeFocused();
+    await expect(boardArt(page, third.id)).toHaveAttribute("data-turn", "90");
+    const { slot } = await rackFigures(page);
+    await expect.poll(async () => (await rackFigures(page)).scrollLeft).toBe(3 * slot);
+    expect(new URL(page.url()).pathname).toBe(RACK_STAND_IN_ROUTE);
+  });
+});

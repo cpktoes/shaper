@@ -5,6 +5,7 @@ import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { IN_PROGRESS_KEY } from "../lib/models/rack-order";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
+import { openAppSettings } from "./helpers/settings";
 
 /**
  * The Board Rack on a computer (Phase 15, 15-06 — the phase's tracer): the shaper's boards standing
@@ -354,6 +355,423 @@ test.describe("the Board Rack on a computer — rows, holding still, and touch-s
     const secondRow = await wordsAcrossBoards(page);
     expect(secondRow.turns[rows[19].id]).toBe(90);
     expect.soft(secondRow.crossings, "thirty boards, resting on board 20 in row 2").toEqual([]);
+  });
+});
+
+/** The rack's order as the page shows it: every board button's key, in the order they stand. */
+async function rackKeys(page: Page) {
+  return page.locator("[data-rack-board]").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("data-rack-board") ?? ""));
+}
+
+/** The rack's order with `key` moved to place `to`. */
+function movedOrder(keys: readonly string[], key: string, to: number) {
+  const rest = keys.filter((other) => other !== key);
+  rest.splice(to, 0, key);
+  return rest;
+}
+
+/** The status pill's live region. */
+const statusRegion = (page: Page) => page.locator("[data-rack-status]");
+
+/** The height-line labels of the rack's first row, the lowest line first. */
+async function heightLabels(page: Page) {
+  const labels = await page
+    .locator('[data-rack-kind="hover"] svg > g:first-of-type text[text-anchor="end"]')
+    .evaluateAll((texts) => texts.map((text) => text.textContent ?? ""));
+  return labels;
+}
+
+/** One row's whole height on a rack of two or more rows: its top room, its drawing and its band. */
+const MULTI_ROW_BLOCK = HOVER_ROW_TOP_ROOM + HOVER_MULTI_ROW_HEIGHT + HOVER_ROW_BAND;
+
+/**
+ * The first board's slot centre, read while it stands on its slot — on arrival, when it is the one
+ * turned board (nothing left of it to move it), or when no board is turned. Every other slot's centre
+ * in that row is whole slots along from it.
+ */
+async function firstSlotCentre(page: Page) {
+  const keys = await rackKeys(page);
+  return centreOf(page, keys[0]);
+}
+
+/**
+ * Rests the cursor on rack place `index` (0-based) of the first row: it goes to that board's SLOT
+ * centre, whole slots along from `first` (`firstSlotCentre`), never to its drawn place — next to a
+ * turned wide board the neighbours stand up to about 25 dots off their slots, and the turn follows
+ * the slots, so the drawn place can sit nearer the next slot along. Returns that point; a board
+ * rested there stands on its own slot, so a press there is on the board's axis.
+ *
+ * A cursor exactly on a slot's centre turns that board fully while it is still moving, before the
+ * rack has rested, so the wait is for the caption: it moves under a board only once the rack has
+ * rested on it and handed it the turn.
+ */
+async function restOnPlace(page: Page, index: number, first?: { x: number; y: number }) {
+  const origin = first ?? (await firstSlotCentre(page));
+  const keys = await rackKeys(page);
+  const point = { x: origin.x + index * HOVER_SLOT, y: origin.y };
+  await page.mouse.move(point.x, point.y, { steps: 8 });
+  await expect(page.locator(`[data-rack-caption="${keys[index]}"]`)).toBeVisible();
+  await expect(boardArt(page, keys[index])).toHaveAttribute("data-turn", "90");
+  await waitForTurnsToFinish(page);
+  return point;
+}
+
+/** The turned board's ⋯ menu, opened: the trigger is reached in one cursor step from the drawing
+ * straight into the caption band, where the rack holds still. */
+async function openBoardMenu(page: Page, name: string) {
+  await page.getByRole("button", { name: `Board actions for ${name}` }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+/** Every row of an open menu in order, by its role and words: `menuitem:Rename`, `separator:`. */
+async function menuRows(page: Page) {
+  return page
+    .getByRole("menu")
+    .locator('[role="menuitem"], [role="separator"]')
+    .evaluateAll((rows) => rows.map((row) => `${row.getAttribute("role")}:${(row.textContent ?? "").trim()}`));
+}
+
+/** Puts a board in progress in front of the practice rack: Start Shaping, then Back. */
+async function startABoardAndComeBack(page: Page, count: number) {
+  await page.getByRole("button").filter({ hasText: "Start Shaping" }).first().click();
+  await page.waitForURL("**/design/outline");
+  await page.goBack();
+  await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
+  await expect(page.locator("[data-rack-board]")).toHaveCount(count + 1);
+  await expect(page.locator("[data-rack-art][data-turn]")).toHaveCount(count + 1);
+  await expect(page.locator("[data-rack-board]").first()).toHaveAttribute("data-rack-board", IN_PROGRESS_KEY);
+  await expect(boardArt(page, IN_PROGRESS_KEY)).toHaveAttribute("data-turn", "90");
+  await waitForTurnsToFinish(page);
+}
+
+test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the hover rack's own pointer checks are desktop-only");
+    await dismissBannerAndTip(page);
+  });
+
+  test("m12. press board 2 and drag it four places along: it lifts, the caption band empties, a drop mark shows the gap, and letting go puts it sixth, turned, with the pill saying so", async ({
+    page,
+  }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const second = board(2);
+    const start = await restOnPlace(page, 1);
+
+    await page.mouse.down();
+    await page.mouse.move(start.x + 4 * HOVER_SLOT, start.y, { steps: 10 });
+    await expect(boardArt(page, second.id)).toHaveAttribute("data-carrying", "true");
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(1);
+    await expect(page.locator("[data-rack-caption]")).toHaveCount(0);
+    await expect(page.locator("[data-drop-mark]")).toHaveAttribute("opacity", "1");
+
+    await page.mouse.up();
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(second.name));
+    const expected = movedOrder(before, second.id, 5);
+    await expect.poll(() => rackKeys(page)).toEqual(expected);
+    expect((await rackKeys(page)).indexOf(second.id)).toBe(5);
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
+    await expect(page.locator("[data-drop-mark]")).toHaveAttribute("opacity", "0");
+    await expect(boardArt(page, second.id)).toHaveAttribute("data-turn", "90");
+    await expect(captionFor(page, second.name)).toBeVisible();
+    // The release at the end of the drag never opened the board.
+    expect(new URL(page.url()).pathname).toBe(RACK_STAND_IN_ROUTE);
+
+    // The practice rack's save resolves quietly signed out: the order stays.
+    await page.waitForTimeout(1200);
+    expect(await rackKeys(page)).toEqual(expected);
+    await expect(statusRegion(page)).not.toHaveText(RACK_COPY.saveFailed);
+  });
+
+  test("m13. a press and release that moves under 6 dots is a click: it opens the board", async ({ page }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const start = await restOnPlace(page, 2);
+    await page.mouse.down();
+    await page.mouse.move(start.x + 3, start.y + 2, { steps: 3 });
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
+    await page.mouse.up();
+    await page.waitForURL("**/design/outline");
+  });
+
+  test("m14. Escape mid-drag puts the board back: the order is unchanged and nothing is said", async ({ page }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const start = await restOnPlace(page, 1);
+    await page.mouse.down();
+    await page.mouse.move(start.x + 3 * HOVER_SLOT, start.y, { steps: 8 });
+    await expect(boardArt(page, board(2).id)).toHaveAttribute("data-carrying", "true");
+
+    await page.keyboard.press("Escape");
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
+    await expect(page.locator("[data-drop-mark]")).toHaveAttribute("opacity", "0");
+    // Letting go afterwards neither moves nor opens anything.
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    expect(await rackKeys(page)).toEqual(before);
+    await expect(statusRegion(page)).toHaveText("");
+    expect(new URL(page.url()).pathname).toBe(RACK_STAND_IN_ROUTE);
+    // The board goes back on its own slot, and the caption comes back under the turned board.
+    await expect(captionFor(page, board(2).name)).toBeVisible();
+  });
+
+  test("m15. thirty boards: a board carried from row 1 down into row 2 lands there", async ({ page }) => {
+    const rows = standInRackRows(30);
+    await openRack(page, `${RACK_STAND_IN_ROUTE}?boards=30`, 30);
+    const before = await rackKeys(page);
+    const third = rows[2];
+    const start = await restOnPlace(page, 2);
+    await page.mouse.down();
+    await page.mouse.move(start.x, start.y + MULTI_ROW_BLOCK, { steps: 12 });
+    await expect(boardArt(page, third.id)).toHaveAttribute("data-carrying", "true");
+    await page.mouse.up();
+
+    // Row 2 starts at place 15, so the same column one row down is place 17.
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(third.name));
+    await expect.poll(() => rackKeys(page)).toEqual(movedOrder(before, third.id, 17));
+    // Once it has landed (a 120 ms descent) it stands in row 2, level with that row's last board.
+    await expect.poll(async () => {
+      const tops = await boardTops(page);
+      return tops[17] > tops[0] && tops[17] === tops[29];
+    }).toBe(true);
+    await expect(boardArt(page, third.id)).toHaveAttribute("data-turn", "90");
+    await expect(captionFor(page, third.name)).toBeVisible();
+  });
+
+  test("m16. the unsaved board can't be dragged, and a board dragged to the far left lands right behind it", async ({ page }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    await startABoardAndComeBack(page, 15);
+    const before = await rackKeys(page);
+    // The unsaved board is the one turned on arrival, standing on its own slot.
+    const first = await firstSlotCentre(page);
+
+    await page.mouse.move(first.x, first.y, { steps: 4 });
+    await page.mouse.down();
+    await page.mouse.move(first.x + 3 * HOVER_SLOT, first.y, { steps: 8 });
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.unsavedStaysFirst);
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
+    await page.mouse.up();
+    expect(await rackKeys(page)).toEqual(before);
+    expect(new URL(page.url()).pathname).toBe(RACK_STAND_IN_ROUTE);
+
+    // Back to the unsaved board first, so the slots are whole slots along from it again.
+    await restOnPlace(page, 0, first);
+    const fourth = before[4];
+    const start = await restOnPlace(page, 4, first);
+    await page.mouse.down();
+    await page.mouse.move(start.x - 7 * HOVER_SLOT, start.y, { steps: 12 });
+    await expect(boardArt(page, fourth)).toHaveAttribute("data-carrying", "true");
+    await page.mouse.up();
+    await expect.poll(() => rackKeys(page)).toEqual(movedOrder(before, fourth, 1));
+    expect((await rackKeys(page))[0]).toBe(IN_PROGRESS_KEY);
+  });
+
+  test("m17. ⋯ on the turned board: Move left, Move right, a line, Rename, Duplicate, Delete — and each Move is dimmed where it can't move", async ({
+    page,
+  }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const first = board(1);
+    let menu = await openBoardMenu(page, first.name);
+    expect(await menuRows(page)).toEqual([
+      `menuitem:${RACK_COPY.moveLeft}`,
+      `menuitem:${RACK_COPY.moveRight}`,
+      "separator:",
+      "menuitem:Rename",
+      "menuitem:Duplicate",
+      "menuitem:Delete",
+    ]);
+    // The first board can't go left; the row keeps its place, dimmed.
+    await expect(menu.getByRole("menuitem", { name: RACK_COPY.moveLeft })).toBeDisabled();
+    await expect(menu.getByRole("menuitem", { name: RACK_COPY.moveRight })).toBeEnabled();
+
+    await menu.getByRole("menuitem", { name: RACK_COPY.moveRight }).click();
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(first.name));
+    await expect.poll(() => rackKeys(page)).toEqual(movedOrder(before, first.id, 1));
+    await expect(boardArt(page, first.id)).toHaveAttribute("data-turn", "90");
+    await expect(captionFor(page, first.name)).toBeVisible();
+
+    // The last board can't go right.
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    await restOnPlace(page, 14);
+    menu = await openBoardMenu(page, board(15).name);
+    await expect(menu.getByRole("menuitem", { name: RACK_COPY.moveRight })).toBeDisabled();
+    await expect(menu.getByRole("menuitem", { name: RACK_COPY.moveLeft })).toBeEnabled();
+    await page.keyboard.press("Escape");
+
+    // One board alone is first and last: both are dimmed.
+    await openRack(page, `${RACK_STAND_IN_ROUTE}?boards=1`, 1);
+    menu = await openBoardMenu(page, board(1).name);
+    await expect(menu.getByRole("menuitem", { name: RACK_COPY.moveLeft })).toBeDisabled();
+    await expect(menu.getByRole("menuitem", { name: RACK_COPY.moveRight })).toBeDisabled();
+    await page.keyboard.press("Escape");
+
+    // Behind the unsaved board, the first saved board can't go left either.
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    await startABoardAndComeBack(page, 15);
+    await restOnPlace(page, 1);
+    menu = await openBoardMenu(page, board(1).name);
+    await expect(menu.getByRole("menuitem", { name: RACK_COPY.moveLeft })).toBeDisabled();
+    await expect(menu.getByRole("menuitem", { name: RACK_COPY.moveRight })).toBeEnabled();
+  });
+
+  test("m18. the keyboard walks the rack: Tab lands on the turned board, the arrows turn the next, Home / End, Alt + arrow moves, Enter opens", async ({
+    page,
+  }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const group = page.getByRole("group", { name: RACK_COPY.groupName });
+    await expect(group).toHaveAccessibleDescription(RACK_COPY.hoverInstructions);
+    await expect(boardButton(page, board(1).id)).toHaveAttribute("tabindex", "0");
+    await expect(boardButton(page, board(2).id)).toHaveAttribute("tabindex", "-1");
+
+    // Tab from the top of the page: the first board button it reaches is the turned one.
+    let reached: string | null = null;
+    for (let press = 0; press < 80 && reached === null; press++) {
+      await page.keyboard.press("Tab");
+      reached = await page.evaluate(() => document.activeElement?.getAttribute("data-rack-board") ?? null);
+    }
+    expect(reached).toBe(board(1).id);
+
+    await page.keyboard.press("ArrowRight");
+    await expect(boardButton(page, board(2).id)).toBeFocused();
+    await expect(boardArt(page, board(2).id)).toHaveAttribute("data-turn", "90", { timeout: 400 });
+    await expect(captionFor(page, board(2).name)).toBeVisible();
+    await expect(boardButton(page, board(2).id)).toHaveAttribute("tabindex", "0");
+
+    await page.keyboard.press("End");
+    await expect(boardButton(page, board(15).id)).toBeFocused();
+    await expect(boardArt(page, board(15).id)).toHaveAttribute("data-turn", "90");
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.alreadyLast(board(15).name));
+    await expect(boardButton(page, board(15).id)).toBeFocused();
+
+    await page.keyboard.press("Home");
+    await expect(boardButton(page, board(1).id)).toBeFocused();
+    await expect(boardArt(page, board(1).id)).toHaveAttribute("data-turn", "90");
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(board(1).name));
+    await expect.poll(() => rackKeys(page)).toEqual(movedOrder(before, board(1).id, 1));
+    await expect(boardButton(page, board(1).id)).toBeFocused();
+    await expect(boardArt(page, board(1).id)).toHaveAttribute("data-turn", "90");
+    // The browser's own Alt + arrow never fired: still on the practice rack.
+    expect(new URL(page.url()).pathname).toBe(RACK_STAND_IN_ROUTE);
+
+    await page.keyboard.press("Enter");
+    await page.waitForURL("**/design/outline");
+  });
+
+  test("m18a. with two rows, ↑ / ↓ go to the nearest board in the row above / below", async ({ page }) => {
+    const rows = standInRackRows(30);
+    await openRack(page, `${RACK_STAND_IN_ROUTE}?boards=30`, 30);
+    await boardButton(page, rows[0].id).focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await expect(boardButton(page, rows[2].id)).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(boardButton(page, rows[17].id)).toBeFocused();
+    await expect(boardArt(page, rows[17].id)).toHaveAttribute("data-turn", "90");
+    await page.keyboard.press("ArrowUp");
+    await expect(boardButton(page, rows[2].id)).toBeFocused();
+    // The end of row 1 continues at the start of row 2.
+    await page.keyboard.press("End");
+    await page.keyboard.press("Home");
+    for (let step = 0; step < 15; step++) await page.keyboard.press("ArrowRight");
+    await expect(boardButton(page, rows[15].id)).toBeFocused();
+  });
+
+  test("m19. with a ⋯ menu open, the rack holds still: the cursor over another board turns nothing", async ({ page }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const first = await firstSlotCentre(page);
+    await openBoardMenu(page, board(1).name);
+    await page.mouse.move(first.x + 5 * HOVER_SLOT, first.y, { steps: 10 });
+    await page.waitForTimeout(600);
+    await expect(boardArt(page, board(6).id)).toHaveAttribute("data-turn", "0");
+    await expect(boardArt(page, board(1).id)).toHaveAttribute("data-turn", "90");
+    await expect(page.getByRole("menu")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toHaveCount(0);
+  });
+
+  test("m21. a failed duplicate says so under that board's Open This Board", async ({ page }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const menu = await openBoardMenu(page, board(1).name);
+    // The practice rack runs signed out, so Duplicate fails.
+    await menu.getByRole("menuitem", { name: "Duplicate" }).click();
+    const caption = captionFor(page, board(1).name);
+    const error = caption.getByText(RACK_COPY.duplicateFailed, { exact: true });
+    await expect(error).toBeVisible();
+    const open = await caption.getByRole("button", { name: RACK_COPY.open }).boundingBox();
+    const said = await error.boundingBox();
+    if (!open || !said) throw new Error("no box for the caption's button or its error");
+    expect(said.y).toBeGreaterThanOrEqual(open.y + open.height - 1);
+  });
+
+  test("m22. Metric on the rack: the height lines read 150, 200 ... and the card line centimetres and litres; Imperial puts them back exactly", async ({
+    page,
+  }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const cardLine = captionFor(page, board(1).name).locator("span.font-semibold.text-surf-ink-muted");
+    const imperialLine = (await cardLine.textContent()) ?? "";
+    expect((await heightLabels(page)).slice(0, 2)).toEqual(["4′", "5′"]);
+
+    let dialog = await openAppSettings(page);
+    await dialog.getByRole("group", { name: "Units" }).getByRole("button", { name: /^Metric/ }).click();
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toBeHidden();
+    await expect.poll(async () => (await heightLabels(page)).slice(0, 2)).toEqual(["150", "200"]);
+    for (const label of await heightLabels(page)) expect(Number(label) % 50).toBe(0);
+    await expect(cardLine).toHaveText(/\d+\.\d × \d+\.\d × \d+\.\d cm/);
+    await expect(cardLine).toHaveText(/L/);
+
+    dialog = await openAppSettings(page);
+    await dialog.getByRole("group", { name: "Units" }).getByRole("button", { name: /^Imperial/ }).click();
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(dialog).toBeHidden();
+    await expect.poll(async () => (await heightLabels(page)).slice(0, 2)).toEqual(["4′", "5′"]);
+    await expect(cardLine).toHaveText(imperialLine);
+  });
+});
+
+test.describe("the Board Rack on a computer — moving with reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the hover rack's own pointer checks are desktop-only");
+    await dismissBannerAndTip(page);
+  });
+
+  test("m20. a dropped board is fully turned within 50 ms of the release — no descent, no glide", async ({ page }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const second = board(2);
+    const start = await restOnPlace(page, 1);
+    await page.mouse.down();
+    await page.mouse.move(start.x + 3 * HOVER_SLOT, start.y, { steps: 8 });
+    await expect(boardArt(page, second.id)).toHaveAttribute("data-carrying", "true");
+    // Times the release and the moment the board reads 90 degrees, both on the page's own clock.
+    await page.evaluate((key) => {
+      const art = document.querySelector(`[data-rack-art="${key}"]`);
+      const marks: { up?: number; turned?: number } = {};
+      (window as unknown as { __dropMarks: typeof marks }).__dropMarks = marks;
+      window.addEventListener("pointerup", () => (marks.up ??= performance.now()), { capture: true, once: true });
+      if (!art) return;
+      const observer = new MutationObserver(() => {
+        if (marks.up !== undefined && art.getAttribute("data-turn") === "90") {
+          marks.turned ??= performance.now();
+          observer.disconnect();
+        }
+      });
+      observer.observe(art, { attributes: true, attributeFilter: ["data-turn"] });
+    }, second.id);
+    await page.mouse.up();
+    await expect(boardArt(page, second.id)).toHaveAttribute("data-turn", "90");
+    const marks = await page.evaluate(() => (window as unknown as { __dropMarks: { up?: number; turned?: number } }).__dropMarks);
+    expect(marks.up).toBeDefined();
+    expect(marks.turned).toBeDefined();
+    expect((marks.turned ?? Infinity) - (marks.up ?? 0)).toBeLessThanOrEqual(50);
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(second.name));
   });
 });
 

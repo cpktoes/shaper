@@ -2,7 +2,8 @@
 
 /**
  * The caption under the Board Rack's turned board (Phase 15, UI-SPEC §4): the board's name, its
- * card line, when it was last touched, Open This Board and the ⋯ menu (Rename, Duplicate, Delete).
+ * card line, when it was last touched, Open This Board and the ⋯ menu (Rename, Duplicate, Delete —
+ * and, on the computer's rack, Move left / Move right above them, 15-11).
  * The unsaved board's caption is the tag `In progress — not saved`, its name, its card line and
  * Continue This Board, with no date and no ⋯ — as today's in-progress card. That tag is information,
  * never the warning colour: it tells a shaper where their board is, not that something is wrong.
@@ -18,8 +19,8 @@
  */
 
 import { CardMetadataLine } from "@/components/setup/card-metadata-line";
-import { RackCardMenu } from "@/components/setup/rack-card-menu";
-import { RACK_COPY } from "@/components/setup/rack-config";
+import { RackCardMenu, type RackCardMoves } from "@/components/setup/rack-card-menu";
+import { RACK_COPY, movesOffered } from "@/components/setup/rack-config";
 import type { RackBoard } from "@/components/setup/use-rack-boards";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,11 @@ interface RackCaptionProps {
    * at its same height, then reads `Moving {name}. Let go where you want it.` and returns to the
    * caption on the drop. */
   carrying?: string | null;
+  /** Move left / Move right for the ⋯ menu (15-11) — shown only where `movesOffered` says so: always
+   * on the computer's rack, on a phone's only with D-11's switch on (D-12). */
+  moves?: RackCardMoves;
+  /** The ⋯ menu opened or closed (the rack holds still while it is open). */
+  onMenuOpenChange?: (open: boolean) => void;
 }
 
 export function RackCaption({
@@ -55,8 +61,11 @@ export function RackCaption({
   onDelete = () => {},
   duplicateError = null,
   carrying = null,
+  moves,
+  onMenuOpenChange,
 }: RackCaptionProps) {
   const saved = board.kind === "saved" && board.model !== null;
+  const menuMoves = movesOffered(variant === "hover" ? "hover" : "swipe") ? moves : undefined;
 
   if (variant === "swipe" && carrying !== null) {
     return (
@@ -85,7 +94,14 @@ export function RackCaption({
           {board.name}
         </span>
         {saved && (
-          <RackCardMenu boardName={board.name} onRename={onRename} onDuplicate={onDuplicate} onDelete={onDelete} />
+          <RackCardMenu
+            boardName={board.name}
+            onRename={onRename}
+            onDuplicate={onDuplicate}
+            onDelete={onDelete}
+            moves={menuMoves}
+            onOpenChange={onMenuOpenChange}
+          />
         )}
       </div>
       <span className="mt-1 block">
