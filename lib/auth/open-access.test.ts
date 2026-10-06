@@ -101,6 +101,20 @@ describe("open access (D-01)", () => {
     expect(proxySource).not.toContain("createRouteMatcher");
   });
 
+  it("the Terms page is a public route (quick 261006-fom)", () => {
+    const termsPagePath = join(APP_DIR, "terms", "page.tsx");
+    expect(existsSync(termsPagePath)).toBe(true);
+
+    const stripped = stripComments(readFileSync(termsPagePath, "utf8"));
+    expect(stripped).not.toMatch(/\bredirect\s*\(/);
+    expect(stripped).not.toMatch(/\bnotFound\s*\(/);
+    expect(stripped).not.toMatch(/\.protect\s*\(/);
+    expect(stripped).not.toMatch(/RedirectToSignIn/);
+
+    const proxySource = stripComments(readFileSync(PROXY_PATH, "utf8"));
+    expect(proxySource).not.toContain("createRouteMatcher");
+  });
+
   it("the Clerk webhook is a public route guarded only by Clerk's signature (quick 260930-ckm)", () => {
     const webhookRoutePath = join(APP_DIR, "api", "webhooks", "clerk", "route.ts");
     expect(existsSync(webhookRoutePath)).toBe(true);

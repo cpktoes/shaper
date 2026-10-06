@@ -9,6 +9,15 @@ const nextConfig: NextConfig = {
   // this is the widest pattern it accepts — any dotted host name or address. Development only;
   // it has no effect on a production build.
   allowedDevOrigins: ["**.*"],
+  // The Terms and Privacy pages read the founder's markdown from disk at each visit (quick
+  // 261006-fom, D-01). Vercel only ships the files the build can see a page needs, and a file read
+  // with `fs` at request time is invisible to that check — so each one must be named here, against
+  // the page that reads it, or the live page fails to find its own words (T-261006-05).
+  // `lib/legal/wiring.test.ts` pins this mapping.
+  outputFileTracingIncludes: {
+    "/terms": ["./content/legal/terms.md"],
+    "/privacy": ["./content/legal/privacy.md"],
+  },
   experimental: {
     // Production server chunks otherwise carry a `.js.map` alongside each chunk that embeds the
     // original source text verbatim — including strings that only ever reach the client inside a

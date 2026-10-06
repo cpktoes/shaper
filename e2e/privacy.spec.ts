@@ -1,17 +1,24 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { expectNoScreensNavigation, expectSixTilesInMenu } from "./helpers/screens";
 import { CONTACT_STAND_IN_COOKIE } from "../lib/contact/delivery";
-import { CONTACT_ADDRESS, CONTACT_COPY, CONTACT_MAILTO, CONTACT_ROUTE } from "../lib/contact/message";
+import { CONTACT_COPY, CONTACT_ROUTE } from "../lib/contact/message";
+import { LEGAL_DOCUMENTS, legalOutline } from "../lib/legal/documents";
 import { PRIVACY_COPY, PRIVACY_ROUTE } from "../lib/privacy/copy";
 
 /**
  * Quick 260930-03d (Phase 13 item 11): browser proof for the `/privacy` page on all three device
  * profiles — the iPhone, the Android phone, and the desktop.
  *
- * Task 1 proves the page itself opens signed out and reads correctly, on every device profile.
- * Task 3 adds the menu-row proofs (two taps from every screen, hidden on `/privacy` itself) and
- * the Contact form's Privacy-link proof, now that `PrivacyMenuItem` and the Contact-note link
- * exist — `menuTrigger`, `openMenuTo` and `useStandIn` below are copied verbatim from
+ * Quick 261006-fom rebuilt the page from the founder's own `content/legal/privacy.md`: the test
+ * that opened the page signed out and read it through moved to e2e/legal-pages.spec.ts and was
+ * rewritten there, and every check below that waits for the page's heading now reads that heading
+ * from the markdown itself (`PRIVACY_HEADING`) rather than from the retired hand-typed copy. The
+ * visit-counter, two-taps, left-out-on-its-own-page and Contact-note tests are unchanged.
+ *
+ * Task 3 of quick 260930-03d added the menu-row proofs (two taps from every screen, hidden on
+ * `/privacy` itself) and the Contact form's Privacy-link proof, now that `PrivacyMenuItem` and the
+ * Contact-note link exist — `menuTrigger`, `openMenuTo` and `useStandIn` below are copied verbatim from
  * e2e/contact.spec.ts.
  *
  * Clerk's own footer "Privacy" link (added to `appearance.options.privacyPageUrl` in Task 2)
@@ -20,6 +27,11 @@ import { PRIVACY_COPY, PRIVACY_ROUTE } from "../lib/privacy/copy";
  * in this browser, so there is no real footer to inspect. `lib/privacy/wiring.test.ts` (Task 2)
  * proves the source wiring instead, and the founder checks the real footer link live.
  */
+
+/** The page's h1, read from the founder's markdown — the same way e2e/legal-pages.spec.ts reads it. */
+const PRIVACY_HEADING = legalOutline(
+  readFileSync(join(process.cwd(), LEGAL_DOCUMENTS.privacy.file), "utf8"),
+).title;
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
 const TOOLBAR_TIP_DISMISSAL_KEY = "shaper-toolbar-tip-dismissed";
@@ -60,7 +72,7 @@ async function useStandIn(page: Page, baseURL: string | undefined, choice: "sent
 }
 
 /** The shared Privacy row, found by its exact accessible name so it can never be confused with
- * this page's own heading (also "Privacy"). */
+ * a heading on this page. */
 function privacyRow(page: Page): Locator {
   return page.getByRole("menuitem", { name: PRIVACY_COPY.menuLabel, exact: true });
 }
@@ -73,57 +85,6 @@ function contactRow(page: Page): Locator {
 test.describe("Privacy page", () => {
   test.beforeEach(async ({ page }) => {
     await dismissBannerAndTip(page);
-  });
-
-  test("opens signed out and reads the whole page", async ({ page }, testInfo) => {
-    await page.goto(PRIVACY_ROUTE);
-
-    await expect(page.getByRole("heading", { name: PRIVACY_COPY.heading, level: 1 })).toBeVisible();
-    await expect(page.getByText(PRIVACY_COPY.lastUpdated)).toBeVisible();
-    await expect(page.getByText(PRIVACY_COPY.intro)).toBeVisible();
-
-    for (const sectionHeading of [
-      PRIVACY_COPY.keep.heading,
-      PRIVACY_COPY.browser.heading,
-      PRIVACY_COPY.handlers.heading,
-      PRIVACY_COPY.deleting.heading,
-      PRIVACY_COPY.questions.heading,
-    ]) {
-      await expect(page.getByRole("heading", { name: sectionHeading, level: 2 })).toBeVisible();
-    }
-
-    const main = page.locator("main");
-    for (const item of PRIVACY_COPY.keep.items) {
-      await expect(main).toContainText(item.text);
-    }
-    for (const service of PRIVACY_COPY.handlers.services) {
-      await expect(main).toContainText(service.name);
-    }
-
-    const addressLinks = page.getByRole("link", { name: CONTACT_ADDRESS });
-    await expect(addressLinks).toHaveCount(2);
-    for (const link of await addressLinks.all()) {
-      await expect(link).toHaveAttribute("href", CONTACT_MAILTO);
-    }
-
-    const contactLink = page.getByRole("link", { name: PRIVACY_COPY.questions.contactLinkLabel });
-    await expect(contactLink).toHaveAttribute("href", CONTACT_ROUTE);
-
-    if (testInfo.project.name !== "desktop") {
-      await expect(page.getByRole("banner").getByRole("button", { name: "Menu" })).toBeVisible();
-      await expect(page.getByRole("button", { name: "Settings" })).toBeHidden();
-      await expectNoScreensNavigation(page);
-      await expectSixTilesInMenu(page, null);
-
-      const overflow = await page.locator("[data-privacy-page]").evaluate((el) => ({
-        scrollWidth: el.scrollWidth,
-        clientWidth: el.clientWidth,
-      }));
-      expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
-    } else {
-      await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
-      await expect(page.getByRole("banner").getByRole("button", { name: "Menu" })).toBeHidden();
-    }
   });
 
   test("the visit counter is on every page, exactly once", async ({ page }) => {
@@ -166,7 +127,7 @@ test.describe("Privacy page", () => {
       await privacyRow(page).click();
 
       await expect(page).toHaveURL(/\/privacy$/);
-      await expect(page.getByRole("heading", { name: PRIVACY_COPY.heading, level: 1 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: PRIVACY_HEADING, level: 1 })).toBeVisible();
     });
   }
 
@@ -186,6 +147,6 @@ test.describe("Privacy page", () => {
     await note.getByRole("link", { name: PRIVACY_COPY.contactLineLinkLabel }).click();
 
     await expect(page).toHaveURL(/\/privacy$/);
-    await expect(page.getByRole("heading", { name: PRIVACY_COPY.heading, level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: PRIVACY_HEADING, level: 1 })).toBeVisible();
   });
 });
