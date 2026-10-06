@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BOARD_PRESETS } from "./presets";
+import { SPINE_ANCHOR_GAP, SPINE_DESCENDER_EM } from "./rack-art";
 import {
   DROP_STRIP,
   HOVER_MULTI_ROW_HEIGHT,
@@ -7,11 +8,16 @@ import {
   HOVER_ROW_BAND,
   HOVER_ROW_TOP_ROOM,
   HOVER_SLOT,
+  HOVER_WORD_SIZE,
   RACK_REFERENCE_LENGTH_MM,
+  SPINE_CLEARANCE,
   SPINE_FLOOR_SIZE,
+  SPINE_GLYPH_EM,
+  SPINE_HALO_WIDTH,
   SPINE_WORD_GAP,
   SWIPE_SLOT,
   SWIPE_TOP_PAD,
+  SWIPE_WORD_SIZE,
   boardExtra,
   fitSpineWords,
   hoverPointerZone,
@@ -27,6 +33,7 @@ import {
   swipeRackHeightFromScroller,
   swipeScrollLeftFor,
   swipeSlotAt,
+  spineWordColumn,
   swipeSlotCentre,
   swipeTrackWidth,
   turnAngle,
@@ -48,6 +55,7 @@ function layoutFor(count: number, contentWidth: number) {
     contentWidth,
     longestMm: Math.max(...lengths),
     widestHalfMm: WIDEST_HALF,
+    wordColumnPx: spineWordColumn(HOVER_WORD_SIZE),
   });
 }
 
@@ -87,6 +95,7 @@ describe("Edge: the longest and shortest boards (R2)", () => {
       contentWidth: 960,
       longestMm: inchesToMm(62),
       widestHalfMm: WIDEST_HALF,
+      wordColumnPx: spineWordColumn(HOVER_WORD_SIZE),
     });
     expect(layout.rackHeight).toBe(HOVER_ONE_ROW_HEIGHT);
     expect(inchesToMm(62) * layout.scale).toBeCloseTo((HOVER_ONE_ROW_HEIGHT * 62) / 84, 9);
@@ -263,10 +272,43 @@ describe("The rack opens around a turning board", () => {
     expect(offsets[3]).toBeGreaterThan(0);
   });
 
-  it("asks for extra room only when a turned board is wider than its slot", () => {
-    expect(boardExtra(20, 48)).toBe(0);
-    expect(boardExtra(24, 48)).toBe(0);
-    expect(boardExtra(39, 48)).toBe(30);
+  it("asks for extra room only when a board's picture and a column of words are wider than its slot", () => {
+    for (const [slot, size] of [
+      [HOVER_SLOT, HOVER_WORD_SIZE],
+      [SWIPE_SLOT, SWIPE_WORD_SIZE],
+    ]) {
+      const column = spineWordColumn(size);
+      // The widest half-picture that still leaves its slot room for a column of words.
+      const fits = (slot - column) / 2;
+      expect(boardExtra(fits - 3, slot, column)).toBe(0);
+      expect(boardExtra(fits, slot, column)).toBe(0);
+      expect(boardExtra(fits + 5, slot, column)).toBeCloseTo(2 * 5, 9);
+      expect(boardExtra(39, slot, column)).toBe(2 * 39 + column - slot);
+    }
+  });
+
+  it("will not work the room out without the word column", () => {
+    // @ts-expect-error the word column is boardExtra's required third argument
+    const forgotten = boardExtra(39, HOVER_SLOT);
+    // Were it ever let through, a missing column would not quietly count as nothing.
+    expect(forgotten).toBeNaN();
+  });
+});
+
+describe("The room a board's vertical words take", () => {
+  it("is the gap, the descender allowance, the glyphs, half the halo and the clearance", () => {
+    for (const size of [HOVER_WORD_SIZE, SWIPE_WORD_SIZE]) {
+      expect(spineWordColumn(size)).toBe(
+        SPINE_ANCHOR_GAP + SPINE_DESCENDER_EM * size + SPINE_GLYPH_EM * size + SPINE_HALO_WIDTH / 2 + SPINE_CLEARANCE,
+      );
+    }
+  });
+
+  it("grows with the words' size by the descender allowance and the glyphs alone", () => {
+    expect(spineWordColumn(HOVER_WORD_SIZE) - spineWordColumn(SWIPE_WORD_SIZE)).toBeCloseTo(
+      (SPINE_DESCENDER_EM + SPINE_GLYPH_EM) * (HOVER_WORD_SIZE - SWIPE_WORD_SIZE),
+      9,
+    );
   });
 });
 

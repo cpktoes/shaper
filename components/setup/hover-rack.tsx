@@ -32,7 +32,9 @@ import {
   HOVER_CAPTION_WIDTH,
   HOVER_ROW_TOP_ROOM,
   HOVER_SLOT,
+  HOVER_WORD_SIZE,
   LABEL_GUTTER,
+  SPINE_HALO_WIDTH,
   SPINE_WORD_GAP,
   boardExtra,
   fitSpineWords,
@@ -43,6 +45,7 @@ import {
   hoverSlotPosition,
   rackHeightLines,
   rackRoomOffsets,
+  spineWordColumn,
   turnAngle,
   type HoverRackLayout,
   type SpineFit,
@@ -52,8 +55,10 @@ import { CAPTION_GLIDE_MS, HOVER_REST_MS, SETTLE_MS, tween, type RackPointerType
 
 /** A board fully turned, showing its outline. */
 const HALF_TURN = Math.PI / 2;
-/** The vertical words' starting size on a computer, before any shrink to fit. */
-const WORD_SIZE = 12;
+/** The room a board's vertical words take beside it, at their starting size — the most they ever
+ * take, so a shrunken name is never given less. Every turning board makes this much room as well as
+ * its outline, because its neighbour stands its words in the gap beside it. */
+const WORD_COLUMN = spineWordColumn(HOVER_WORD_SIZE);
 /** The words start this far above the floor and stop this far below the rack's top (R - 8). */
 const WORD_END_ROOM = 4;
 /** The height-line labels' size and their gap from the start of the line. */
@@ -213,9 +218,10 @@ function stepRack(frame: FrameState, latest: Latest, nodes: Map<string, BoardNod
     return theta;
   });
 
-  // The room each row makes around its turning boards: neighbours step aside by half the extra.
+  // The room each row makes around its turning boards — the outline and a column of words — and
+  // the neighbours step aside by half the extra each.
   const scale = layout.scale;
-  const extras = boards.map((board, k) => boardExtra(halfExtent(board.art, thetas[k], scale), HOVER_SLOT));
+  const extras = boards.map((board, k) => boardExtra(halfExtent(board.art, thetas[k], scale), HOVER_SLOT, WORD_COLUMN));
   const offsets = new Array<number>(boards.length).fill(0);
   for (let row = 0; row < layout.rows; row++) {
     const members: number[] = [];
@@ -248,7 +254,7 @@ function stepRack(frame: FrameState, latest: Latest, nodes: Map<string, BoardNod
       node.stringer.setAttribute("opacity", Math.sin(theta).toFixed(3));
     }
     if (node.words) {
-      const fontSize = fits[k]?.fontSize ?? WORD_SIZE;
+      const fontSize = fits[k]?.fontSize ?? HOVER_WORD_SIZE;
       const anchor = spineAnchorX(board.art, theta, scale, fontSize);
       node.words.setAttribute("transform", `translate(${anchor.toFixed(2)} ${floorY - WORD_END_ROOM}) rotate(-90)`);
       node.words.setAttribute("opacity", Math.max(0, Math.cos(theta)).toFixed(3));
@@ -297,7 +303,10 @@ export function HoverRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
         count: boards.length,
         contentWidth: width,
         longestMm: Math.max(0, ...boards.map((board) => board.art.length)),
-        widestHalfMm: Math.max(0, ...boards.map((board) => board.art.maxHalf)),
+        // How far each board reaches from its axis fully turned, in millimetres (a scale of 1):
+        // the very figure the room is worked from, so the reserve holds it exactly.
+        widestHalfMm: Math.max(0, ...boards.map((board) => halfExtent(board.art, HALF_TURN, 1))),
+        wordColumnPx: WORD_COLUMN,
       }),
     [boards, width],
   );
@@ -306,7 +315,7 @@ export function HoverRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
   const fits = useMemo(() => {
     const measure = measureWords(fontFamily);
     return boards.map((board, k) =>
-      fitSpineWords({ name: board.name, line: lines[k], maxLength: layout.rackHeight - 2 * WORD_END_ROOM, baseSize: WORD_SIZE, measure }),
+      fitSpineWords({ name: board.name, line: lines[k], maxLength: layout.rackHeight - 2 * WORD_END_ROOM, baseSize: HOVER_WORD_SIZE, measure }),
     );
   }, [boards, lines, layout.rackHeight, fontFamily]);
   const heightLines = useMemo(
@@ -507,11 +516,11 @@ export function HoverRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
                 />
                 <text
                   ref={bindNode(board.key, "words")}
-                  fontSize={fits[k]?.fontSize ?? WORD_SIZE}
+                  fontSize={fits[k]?.fontSize ?? HOVER_WORD_SIZE}
                   style={{
                     paintOrder: "stroke",
                     stroke: "var(--surf-ground)",
-                    strokeWidth: 3,
+                    strokeWidth: SPINE_HALO_WIDTH,
                     strokeLinejoin: "round",
                   }}
                 >
