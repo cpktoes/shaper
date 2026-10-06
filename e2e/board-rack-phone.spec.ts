@@ -287,6 +287,108 @@ test.describe("the Board Rack on a phone — the swipe rack", () => {
     expect(Math.abs(button.x + button.width / 2 - figures.width / 2)).toBeLessThanOrEqual(1);
   });
 
+  test("5. coming home from a board finds it already in the middle, turned and marked as the open one (D-07)", async ({
+    page,
+  }, testInfo) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    await tapBoard(page, testInfo.project.name, board(5).id);
+    await expect(boardArt(page, board(5).id)).toHaveAttribute("data-turn", "90");
+    await expect(captionFor(page, board(5).name)).toBeVisible();
+    await tapBoard(page, testInfo.project.name, board(5).id);
+    await page.waitForURL("**/design/outline");
+
+    await page.goBack();
+    await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
+    await expect(page.locator("[data-rack-art][data-turn]")).toHaveCount(15);
+    // Read at once, with no wait for any animation: the board is in place from the first paint.
+    const first = await page.evaluate((key) => {
+      const root = document.querySelector("[data-rack-kind]");
+      const box = document.querySelector("[data-rack-scroller]");
+      return {
+        turn: document.querySelector(`[data-rack-art="${key}"]`)?.getAttribute("data-turn"),
+        scrollLeft: box ? box.scrollLeft : -1,
+        slot: Number(root?.getAttribute("data-rack-slot")),
+      };
+    }, board(5).id);
+    expect(first.turn).toBe("90");
+    expect(first.scrollLeft).toBe(4 * first.slot);
+    await expect(boardButton(page, board(5).id)).toHaveAttribute("aria-current", "true");
+  });
+
+  test("6. thirty boards make a longer track at the same height", async ({ page }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const fifteen = await rackFigures(page);
+    await openRack(page, `${RACK_STAND_IN_ROUTE}?boards=30`, 30);
+    const thirty = await rackFigures(page);
+    expect(thirty.drawn).toBe(fifteen.drawn);
+    expect(thirty.slot).toBe(fifteen.slot);
+    expect(thirty.trackWidth - fifteen.trackWidth).toBeCloseTo(15 * fifteen.slot, 1);
+  });
+
+  test("7. an iPad's size with a finger (1024 x 768) still swipes, drawn to the desktop shell's sum", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "the iPad's size runs on the android project's touch pointer");
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    await expect(page.locator('[data-rack-kind="swipe"]')).toHaveCount(1);
+    const { drawn } = await rackFigures(page);
+    expect(drawn).toBe(Math.min(420, Math.max(220, 768 - 419)));
+  });
+
+  for (const sideways of [
+    { width: 863, height: 360, label: "a real Pixel 7 held sideways" },
+    { width: 750, height: 340, label: "Playwright's sideways iPhone" },
+  ]) {
+    test(`8. ${sideways.label} (${sideways.width} x ${sideways.height}): the rack takes the short screen, Shape a New Board a scroll below (D-06)`, async ({
+      page,
+    }, testInfo) => {
+      test.skip(testInfo.project.name !== "android", "the sideways phone runs on the android project's touch pointer");
+      await page.setViewportSize({ width: sideways.width, height: sideways.height });
+      await openRack(page, RACK_STAND_IN_ROUTE, 15);
+      await expect(page.locator('[data-rack-kind="swipe"]')).toHaveCount(1);
+      const { drawn } = await rackFigures(page);
+      expect(drawn).toBe(Math.min(280, Math.max(220, sideways.height - 128)));
+      const gutters = await page
+        .locator("[data-setup-content]")
+        .evaluate((el) => {
+          const style = getComputedStyle(el);
+          return [style.paddingTop, style.paddingLeft, style.paddingBottom];
+        });
+      expect(gutters).toEqual(["8px", "16px", "32px"]);
+      const heading = await page.getByRole("heading", { name: "Shape a New Board" }).boundingBox();
+      if (!heading) throw new Error("no box for Shape a New Board");
+      expect(heading.y).toBeGreaterThanOrEqual(sideways.height);
+      // The page itself never scrolls sideways; only the track does.
+      expect(await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0)).toBe(sideways.width);
+    });
+  }
+
+  test("10. the keyboard walks the rack: the arrow brings the next board to the middle, turned, and Enter opens it", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "one keyboard pass is enough; it runs on the android project");
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    await expect(page.getByRole("group", { name: RACK_COPY.groupName })).toHaveAccessibleDescription(RACK_COPY.swipeInstructions);
+    await expect(boardButton(page, board(1).id)).toHaveAttribute("tabindex", "0");
+    await expect(boardButton(page, board(2).id)).toHaveAttribute("tabindex", "-1");
+    await boardButton(page, board(1).id).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(boardButton(page, board(2).id)).toBeFocused();
+    await expect(boardArt(page, board(2).id)).toHaveAttribute("data-turn", "90");
+    await expect(captionFor(page, board(2).name)).toBeVisible();
+    const { slot, scrollLeft } = await rackFigures(page);
+    expect(scrollLeft).toBe(slot);
+    await expect(boardButton(page, board(2).id)).toHaveAttribute("tabindex", "0");
+
+    await page.keyboard.press("End");
+    await expect(boardArt(page, board(15).id)).toHaveAttribute("data-turn", "90");
+    await page.keyboard.press("Home");
+    await expect(boardArt(page, board(1).id)).toHaveAttribute("data-turn", "90");
+    await page.keyboard.press("ArrowRight");
+    await expect(boardArt(page, board(2).id)).toHaveAttribute("data-turn", "90");
+    await page.keyboard.press("Enter");
+    await page.waitForURL("**/design/outline");
+  });
+
   test("12. no word ever crosses a board: on arrival, and with the middle between two boards", async ({ page }) => {
     await openRack(page, RACK_STAND_IN_ROUTE, 15);
     const arrival = await wordsAcrossBoards(page);
@@ -324,5 +426,42 @@ test.describe("the Board Rack on a phone — the swipe rack", () => {
     const eighth = await wordsAcrossBoards(page);
     expect.soft(eighth.crossings, "the middle three-eighths of the way from board 10 to board 11").toEqual([]);
     await releaseScroll(page);
+  });
+});
+
+test.describe("the Board Rack on a phone — reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "the reduced-motion swipe runs on the android project");
+    await dismissBannerAndTip(page);
+  });
+
+  test("9. a board is only ever edge-on or fully turned: swiping turns nothing in passing", async ({ page }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    await holdScrollAt(page, 2.5);
+    const during = await turnsNextFrame(page);
+    for (const turn of Object.values(during)) expect([0, 90]).toContain(turn);
+    await releaseScroll(page);
+    await page.waitForTimeout(400);
+    const after = await turnsNextFrame(page);
+    expect(Object.values(after).filter((turn) => turn === 90)).toHaveLength(1);
+    for (const turn of Object.values(after)) expect([0, 90]).toContain(turn);
+  });
+});
+
+test.describe("the Board Rack in a narrow computer window", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a mouse is the desktop project's pointer");
+    await dismissBannerAndTip(page);
+  });
+
+  test("11. a 600-dot-wide window with a mouse still gets the hover rack (D-04: the pointer decides, never the width)", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 600, height: 800 });
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    await expect(page.locator('[data-rack-kind="hover"]')).toHaveCount(1);
+    await expect(page.locator('[data-rack-kind="swipe"]')).toHaveCount(0);
   });
 });

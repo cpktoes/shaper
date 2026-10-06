@@ -214,7 +214,9 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
           <span className="hidden coarse:inline">{rackHeadingLine(boards.length, "swipe")}</span>
         </p>
       </div>
-      <div className="mt-6 max-shell:mt-4">
+      {/* On a short screen (D-06, height alone) the gap under the heading is 8, so the rack takes the
+          screen; the swipe rack's own 16-dot top room tucks up into whichever gap applies. */}
+      <div className="mt-6 max-shell:mt-4 [@media(max-height:500px)]:mt-2">
         {mounted ? (
           kind === "swipe" ? (
             <SwipeRack

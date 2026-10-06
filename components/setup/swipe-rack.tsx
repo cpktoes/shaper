@@ -33,7 +33,7 @@
  * lands on an exact slot multiple, itself a snap point (WebKit bug 160622).
  */
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { useReducedMotion } from "@/components/design/use-viewer-media";
 import { useUnits } from "@/components/units-provider";
 import { RACK_COPY } from "@/components/setup/rack-config";
@@ -310,6 +310,10 @@ export function SwipeRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
   const [fontFamily, setFontFamily] = useState("sans-serif");
 
   const refs = useRef<RackRefs>({ frame: newFrameState(), latest: { current: null }, nodes: new Map() });
+  /** True from a finger's or mouse's press on a board until its click (or cancel): the focus that
+   * press brings is not a keyboard focus, so it never jumps the track. */
+  const pointerPressed = useRef(false);
+  const instructionsId = useId();
 
   // The scroller's own width and height, measured: its height comes from `--rack-swipe-r` in CSS,
   // and the drawn height follows the scroller, never `innerHeight` (RESEARCH Pitfall 6). Measured
@@ -425,8 +429,10 @@ export function SwipeRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
     if (index >= 0) placeAt(scroller, index, latest.slot);
   }, [focusKey]);
 
-  /** A tap on a board: the middle board opens; any other comes to the middle (and turns there). */
+  /** A tap on a board: the middle board opens; any other comes to the middle (and turns there) —
+   * the browser's own smooth scroll, or a jump when the shaper asked for less motion (UI-SPEC §12). */
   const handleBoardClick = (key: string, index: number) => {
+    pointerPressed.current = false;
     if (key === turnedKey) {
       onOpen(key);
       return;
@@ -439,7 +445,52 @@ export function SwipeRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
       settleRack(refs.current);
       return;
     }
-    scroller.scrollTo({ left: target, behavior: "smooth" });
+    if (reduced) scroller.scrollLeft = target;
+    else scroller.scrollTo({ left: target, behavior: "smooth" });
+  };
+
+  /** Brings board `index` to the middle at once and turns it there (a keyboard move, a screen
+   * reader's focus): the track jumps — never a smooth scroll — and the caption follows. */
+  const bringToMiddleNow = (index: number) => {
+    const scroller = scrollerRef.current;
+    const board = boards[index];
+    if (!scroller || !board) return;
+    const rack = refs.current;
+    rack.frame.settledKey = board.key;
+    placeAt(scroller, index, slot);
+    kickRack(rack);
+    if (board.key !== turnedKey) onTurn(board.key);
+  };
+
+  /** UI-SPEC §11's keyboard map on the swipe rack: ← / → walk to the previous / next board, Home /
+   * End to the first / last; focus moves, the board comes to the middle and turns at once. Enter and
+   * Space are the focused button's own click (it is the middle board, so it opens). Alt with an arrow
+   * is left alone — it moves a board (15-09). */
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const key = (event.target as HTMLElement).getAttribute("data-rack-board");
+    const from = key === null ? -1 : boards.findIndex((board) => board.key === key);
+    if (from < 0) return;
+    let to = from;
+    if (event.key === "ArrowLeft") to = from - 1;
+    else if (event.key === "ArrowRight") to = from + 1;
+    else if (event.key === "Home") to = 0;
+    else if (event.key === "End") to = boards.length - 1;
+    else return;
+    event.preventDefault();
+    pointerPressed.current = false;
+    to = Math.min(boards.length - 1, Math.max(0, to));
+    bringToMiddleNow(to);
+    refs.current.nodes.get(boards[to].key)?.button?.focus({ preventScroll: true });
+  };
+
+  /** A board's button took the focus without a finger (Tab, a screen reader): bring it to the middle
+   * and turn it (UI-SPEC §11, "focus scrolls it to the middle and turns it"). A finger's tap leaves
+   * that to the click, which glides instead of jumping. */
+  const handleBoardFocus = (index: number) => {
+    if (pointerPressed.current) return;
+    if (boards[index]?.key === refs.current.frame.settledKey) return;
+    bringToMiddleNow(index);
   };
 
   const bindNode = (key: string, part: keyof BoardNodes) => (element: Element | null) => {
@@ -492,6 +543,10 @@ export function SwipeRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
       <div
         ref={scrollerRef}
         data-rack-scroller
+        role="group"
+        aria-label={RACK_COPY.groupName}
+        aria-describedby={instructionsId}
+        onKeyDown={handleKeyDown}
         className="relative overflow-x-auto overflow-y-hidden overscroll-x-contain select-none [scroll-snap-type:x_mandatory] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{
           height: "calc(var(--rack-swipe-r) + 40px)",
@@ -564,8 +619,17 @@ export function SwipeRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
                     : RACK_COPY.boardLabel(board.name, lines[k], k + 1, n)
                 }
                 aria-current={board.key === openKey ? "true" : undefined}
+                // Roving tabindex: the turned board is the rack's one tab stop.
+                tabIndex={board.key === turnedKey || (turnedKey === null && k === 0) ? 0 : -1}
                 className="focus-ring-accent absolute cursor-pointer rounded-sm bg-transparent p-0"
                 style={{ top: RING_ROOM, height: Math.max(0, size.height - 2 * RING_ROOM) }}
+                onPointerDown={() => {
+                  pointerPressed.current = true;
+                }}
+                onPointerCancel={() => {
+                  pointerPressed.current = false;
+                }}
+                onFocus={() => handleBoardFocus(k)}
                 onClick={() => handleBoardClick(board.key, k)}
               />
             ))}
@@ -602,6 +666,9 @@ export function SwipeRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
           ))}
         </svg>
       )}
+      <span id={instructionsId} className="sr-only">
+        {RACK_COPY.swipeInstructions}
+      </span>
       <div style={{ height: SWIPE_CAPTION_HEIGHT }}>{turnedBoard && caption(turnedBoard)}</div>
     </div>
   );
