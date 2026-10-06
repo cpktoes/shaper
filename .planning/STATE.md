@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Rehearsal (Phase 13 item 13) under way 2026-10-03: checks 1, 2, 3 and 7 passed (4 of 9, 13-UAT.md). The walk sheet is up to date with the live site (17 steps plus Phase 14's five looks; printable 13-walk-sheet.pdf, issue 2). The one fault the sheet update found (on an upright phone the tail's Automatic button on ROCKER under the Redo button) is fixed and LIVE: fast task 144 (b32dcaf), published on the founder's go as main ddeae0a, Vercel deployment 6834273836, checked on the live site. Next: the founder's walks on the iPhone, a real Android phone and the Oct 10 laptop (checks 4-6), the demo account (8) and the freeze Wed 2026-10-07 evening (9). Phase 14: 14-VERIFICATION.md is written (human_needed, 8 of 9, the ninth is the walk) but not yet committed; after the walk: /gsd-verify-work 14 (its five looks ride on the walk sheet), the security check, phase complete. The branch surfboard-flow holds planning notes newer than main; they ride up with the next push. Quick task 261003-n52 (the Datasheet's Blank rows read the catalog's own numbers, from the founder's US Blanks Y-blank report of 2026-10-03) and fast task 145 (the Datasheet's Tail Tip column clear of the scroll fade) are LIVE: published on the founder's go as main 7321575, checked on the live site. Fast task 146 (the RAILS Data table's Tail column clear of the same fade) followed as main 773b2db, also checked live"
-last_updated: "2026-10-05T18:23:23.890Z"
+stopped_at: "Phase 15 (The Board Rack) context gathered 2026-10-05 on branch board-rack: brief locked (15-SPEC.md, 10 requirements from sketches 009-011), 15 decisions in 15-CONTEXT.md (one go-live before the Wed 2026-10-07 freeze; mouse = hover rack, finger = swipe rack; order fixed at the first move). Next: /gsd-plan-phase 15, then the founder approves the plan before any code."
+last_updated: "2026-10-06T03:25:30.857Z"
 last_activity: 2026-10-05
 last_activity_desc: Quick task 261005-big (RAILS on an upright phone shows only the picked rail's controls under NOSE / CENTER / TAIL) is LIVE as main ba08033, checked on the live site
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 0
   total_plans: 31
   completed_plans: 29
@@ -470,9 +470,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-02T19:49:52.275Z
-Stopped at: Phase 14 screen design approved (14-UI-SPEC.md, 6 of 6, 43 screen states resolved); next: the plan for the founder's approval
-Resume file: .planning/phases/14-realistic-surfboard-flow/14-UI-SPEC.md
+Last session: 2026-10-06T03:25:30.772Z
+Stopped at: Phase 15 (The Board Rack) context gathered 2026-10-05 on branch board-rack: brief locked (15-SPEC.md, 10 requirements from sketches 009-011), 15 decisions in 15-CONTEXT.md (one go-live before the Wed 2026-10-07 freeze; mouse = hover rack, finger = swipe rack; order fixed at the first move). Next: /gsd-plan-phase 15, then the founder approves the plan before any code.
+Resume file: .planning/phases/15-the-board-rack/15-CONTEXT.md
 Next action: the next unticked item in 13-SPEC.md's Progress Log, as `/gsd-quick "Phase 13 item N: …"`, then stop for the founder's review
 
 ## Operator Next Steps
