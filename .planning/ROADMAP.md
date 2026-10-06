@@ -271,11 +271,45 @@ Cross-cutting constraints: no tips code in the curves step — no `slopeAt`, no 
 **Requirements**: R1, R2, R3, R4, R5, R6, R7, R8, R9, R10
 **Brief:** locked in `.planning/phases/15-the-board-rack/15-SPEC.md` (the founder's idea and decisions of 2026-10-05, from sketches 009–011 and the `sketch-findings-shaper` skill)
 **Depends on:** Phase 14 (the side profile the rack draws from); runs inside Phase 13's window — live before the Wednesday 2026-10-07 freeze, with a rehearsal walk after
-**Plans:** 0 plans
+**Plans:** 0/13 plans executed in 7 waves — planned 2026-10-05 (`15-RESEARCH.md`, `15-PATTERNS.md`, `15-UI-SPEC.md` approved, `15-VALIDATION.md`); plan checker passed on the second pass. Founder steps: 15-10 (Tuesday's device check, decides D-11) and 15-13 (go-live before the Wednesday freeze).
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 15 to break down)
+**Wave 1**
+
+- [ ] 15-01-PLAN.md — Work out each board's real turn as tested maths (side profile at rest, the TEMPLATE outline when turned, swallow notch included), and leave out any board the rack can't draw (R1 R3)
+- [ ] 15-02-PLAN.md — Lay the rack out at one true scale on one floor line, with height lines, names that shrink then cut, and every gesture timing in one place (R1 R2 R4 R5 R6)
+- [ ] 15-03-PLAN.md — The rules for the shaper's order (new boards first, a copy beside its original, the unsaved board always first), the save timing, the rack's words and the one-constant D-11 switch (R7 R8 R9)
+- [ ] 15-05-PLAN.md — A practice rack for the browser tests that never reaches the live site, and pictures of today's rack (R5 R6)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 15-04-PLAN.md — Give the order an empty place on the shaper's account (development database only) and a safe way to save it (R8)
+- [ ] 15-06-PLAN.md — TRACER: the Board Rack on the home page, drawn from real boards, turning as the cursor passes (R1 R2 R3 R4 R5 R7 R9)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 15-07-PLAN.md — On a phone or iPad, swipe along the rack, each board turning as it passes the middle (R1 R2 R6)
+- [ ] 15-08-PLAN.md — The home page reads the stored order, new boards and copies land where the founder ruled, and the founder gets a read-only report on the real boards (R8 R10)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 15-09-PLAN.md — Hold a board and slide it on a phone; the order saves and says so (R8 R9)
+
+**Wave 5** *(blocked on Wave 4 completion — 15-10 is a founder step)*
+
+- [ ] 15-10-PLAN.md — The founder tries hold-and-drag on their iPad and an Android phone and rules on D-11 (R8 R10)
+- [ ] 15-11-PLAN.md — Move boards on a computer by drag, the ⋯ menu or the keyboard, and walk the rack without a mouse (R5 R8 R9)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 15-12-PLAN.md — Standing checks of the brief's rules, the CLAUDE.md pointer sentence, and the walk and walk sheet updated for the rack (R4 R7 R10)
+
+**Wave 7** *(blocked on Wave 6 completion — a founder step)*
+
+- [ ] 15-13-PLAN.md — Go-live: pictures, the read-only report, the production migration with the founder present, one push, a live check, then hand over the rehearsal walk (R10)
+
+Cross-cutting constraints: geometry pure and tested in `lib/geometry/` with no hand-typed expected number (Rule 1); every number through `units.ts` / `formatSummaryLine` (Rule 2); the rack kind read only from the pointer, never width (D-04); the unsaved board always first and never moved (R9); the order column is added on the development branch during the work and reaches production only inside 15-13 with the founder present, before the push (Database rule); the test-only `/test-rack` route 404s in production; no new package; nothing pushed without the founder's go and nothing after the Wednesday 2026-10-07 freeze.
 
 ---
 
@@ -300,4 +334,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 12. Foil the Way a Shaper Cuts It | 10/10 | Complete    | 2026-09-27 |
 | 13. Ready for the Shapers | 11/13 items | In progress | - |
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
-| 15. The Board Rack | 0/TBD | Not started | - |
+| 15. The Board Rack | 0/13 | Planned | - |
