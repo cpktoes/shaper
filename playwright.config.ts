@@ -71,6 +71,13 @@ export default defineConfig({
       // playwright.prod.config.ts strips this whole env block, so it never reaches a production
       // server either.
       SHAPER_FORCED_ERROR: "1",
+      // Phase 15: the Board Rack's practice rack at /test-rack — the real home screen holding
+      // stand-in saved boards, since this suite runs signed out with no database and could never
+      // see a saved board otherwise. Test-only, never set in Vercel or in any env file, honoured
+      // only outside a production build (app/test-rack/page.tsx reads the literal
+      // process.env.NODE_ENV). playwright.prod.config.ts strips this whole env block, so it never
+      // reaches a production server either.
+      SHAPER_RACK_STAND_IN: "1",
     },
   },
   use: {
