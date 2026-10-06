@@ -45,7 +45,7 @@ import { RACK_COPY, holdToMoveEnabled, rackHeadingLine, type RackKind } from "@/
 import { RackStatus, useRackStatus, type RackStatusAvoid } from "@/components/setup/rack-status";
 import { RenameDialog } from "@/components/setup/rename-dialog";
 import { SwipeRack } from "@/components/setup/swipe-rack";
-import { useRackBoards, type RackBoard, type RackBoardEntry } from "@/components/setup/use-rack-boards";
+import { useRackBoards, type RackBoard, type RackBoardEntry, type RackFocusRequest } from "@/components/setup/use-rack-boards";
 import { useRackOrder } from "@/components/setup/use-rack-order";
 import { DROP_STRIP } from "@/lib/geometry/rack-layout";
 import type { RackModel } from "@/lib/models/rack-models";
@@ -88,7 +88,9 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   const [renamingModel, setRenamingModel] = useState<RackModel | null>(null);
   const [deletingModel, setDeletingModel] = useState<RackModel | null>(null);
   const [duplicateErrors, setDuplicateErrors] = useState<Record<string, string>>({});
-  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const [focusRequest, setFocusRequest] = useState<RackFocusRequest | null>(null);
+  /** Puts the focus on board `key` — a new request every time, even for the board asked for last. */
+  const requestFocus = (key: string) => setFocusRequest((prev) => ({ key, n: (prev?.n ?? 0) + 1 }));
   /** The name of the board a finger is carrying (the swipe caption becomes the carrying line). */
   const [carrying, setCarrying] = useState<string | null>(null);
   /** True while a caption's ⋯ menu is open: the rack holds still underneath (UI-SPEC §6). */
@@ -161,7 +163,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   if (turnState.joined !== joined) {
     turnedKey = turnedKeyAfterRemoval(turnState.keys, keys, turnState.turned);
     // A turned board that left the rack (a delete) hands the turn — and the focus — to the next one.
-    if (turnState.turned !== null && !keys.includes(turnState.turned) && turnedKey !== null) setFocusKey(turnedKey);
+    if (turnState.turned !== null && !keys.includes(turnState.turned) && turnedKey !== null) requestFocus(turnedKey);
     setTurnState({ joined, keys, turned: turnedKey });
   }
 
@@ -208,7 +210,8 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     // Spoken, not shown; the turn — and the focus — go to the next board in order (the previous
     // when it was last), UI E10.
     announce(RACK_COPY.deleted(deleted.name), { visible: false });
-    setFocusKey(turnedKeyAfterRemoval(keys, keys.filter((key) => key !== deleted.id), turnedKey));
+    const next = turnedKeyAfterRemoval(keys, keys.filter((key) => key !== deleted.id), turnedKey);
+    if (next !== null) requestFocus(next);
   };
 
   const handleDuplicate = async (model: RackModel) => {
@@ -346,7 +349,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
               onTurn={setTurned}
               onOpen={handleOpenKey}
               caption={renderCaption}
-              focusKey={focusKey}
+              focusRequest={focusRequest}
               onMove={handleMove}
               onMoveOneStep={handleMoveOneStep}
               holdEnabled={holdToMoveEnabled(kind)}
@@ -361,7 +364,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
               onTurn={setTurned}
               onOpen={handleOpenKey}
               caption={renderCaption}
-              focusKey={focusKey}
+              focusRequest={focusRequest}
               onMove={handleMove}
               onMoveOneStep={handleMoveOneStep}
             />

@@ -53,7 +53,7 @@ import {
 import { useReducedMotion } from "@/components/design/use-viewer-media";
 import { useUnits } from "@/components/units-provider";
 import { RACK_COPY } from "@/components/setup/rack-config";
-import type { RackBoard } from "@/components/setup/use-rack-boards";
+import type { RackBoard, RackFocusRequest } from "@/components/setup/use-rack-boards";
 import { halfExtent, spineAnchorX, stringerPath, turnedBoardPath } from "@/lib/geometry/rack-art";
 import {
   CARRY_LIFT,
@@ -129,8 +129,8 @@ interface HoverRackProps {
   onOpen: (key: string) => void;
   /** The caption to show under the turned board. */
   caption: (board: RackBoard) => ReactNode;
-  /** Focus this board's button when it changes. */
-  focusKey?: string | null;
+  /** Put the focus on this board (a new request object each time, so the same board can be asked for twice). */
+  focusRequest?: RackFocusRequest | null;
   /** A carried board was let go at rack place `toRackIndex` (or the unsaved board was dragged, at 0):
    * the rack's owner moves it (`moved`), leaves it where it was (`same`) or refuses (`refused`). */
   onMove?: (key: string, toRackIndex: number) => MoveResult;
@@ -519,7 +519,7 @@ export function HoverRack({
   onTurn,
   onOpen,
   caption,
-  focusKey = null,
+  focusRequest = null,
   onMove = refuseMoves,
   onMoveOneStep = ignoreOneStep,
 }: HoverRackProps) {
@@ -638,9 +638,10 @@ export function HoverRack({
     };
   }, []);
 
+  // Each focus request is its own object, so the same board asked for twice still takes the focus.
   useEffect(() => {
-    if (focusKey) nodes.current.get(focusKey)?.button?.focus();
-  }, [focusKey]);
+    if (focusRequest) nodes.current.get(focusRequest.key)?.button?.focus();
+  }, [focusRequest]);
 
   /** Lets go of a carried board (or, `cancelled`, puts it back): moved, it drops into its gap and
    * turns; dropped where it started, or cancelled, it goes back to its place with nothing said. */

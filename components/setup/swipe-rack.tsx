@@ -59,7 +59,7 @@ import {
 import { useReducedMotion } from "@/components/design/use-viewer-media";
 import { useUnits } from "@/components/units-provider";
 import { RACK_COPY } from "@/components/setup/rack-config";
-import type { RackBoard } from "@/components/setup/use-rack-boards";
+import type { RackBoard, RackFocusRequest } from "@/components/setup/use-rack-boards";
 import { halfExtent, spineAnchorX, stringerPath, turnedBoardPath } from "@/lib/geometry/rack-art";
 import {
   CARRY_LIFT,
@@ -136,8 +136,8 @@ interface SwipeRackProps {
   onOpen: (key: string) => void;
   /** The caption to show under the rack for the turned board. */
   caption: (board: RackBoard) => ReactNode;
-  /** Focus this board's button (and bring it to the middle) when it changes. */
-  focusKey?: string | null;
+  /** Put the focus on this board and bring it to the middle (a new request object each time, so the same board can be asked for twice). */
+  focusRequest?: RackFocusRequest | null;
   /** A carried board was let go at rack place `toRackIndex` (or the unsaved board was held, at 0):
    * the rack's owner moves it (`moved`), leaves it where it was (`same`) or refuses (`refused`). */
   onMove?: (key: string, toRackIndex: number) => "moved" | "same" | "refused";
@@ -759,7 +759,7 @@ export function SwipeRack({
   onTurn,
   onOpen,
   caption,
-  focusKey = null,
+  focusRequest = null,
   onMove = refuseMoves,
   holdEnabled = false,
   onCarry = ignoreCarry,
@@ -972,16 +972,20 @@ export function SwipeRack({
     };
   }, []);
 
+  // A focus request (after a delete, the next board along): the board takes the focus and the track
+  // brings it to the middle — every request, even one for the board asked for last time (WR-02).
   useEffect(() => {
-    if (!focusKey) return;
+    if (!focusRequest) return;
     const rack = refs.current;
     const scroller = scrollerRef.current;
     const latest = rack.latest.current;
-    rack.nodes.get(focusKey)?.button?.focus({ preventScroll: true });
+    rack.nodes.get(focusRequest.key)?.button?.focus({ preventScroll: true });
     if (!scroller || !latest) return;
-    const index = latest.boards.findIndex((board) => board.key === focusKey);
-    if (index >= 0) placeAt(scroller, index, latest.slot);
-  }, [focusKey]);
+    const index = latest.boards.findIndex((board) => board.key === focusRequest.key);
+    if (index < 0) return;
+    placeAt(scroller, index, latest.slot);
+    kickRack(rack);
+  }, [focusRequest]);
 
   /** A tap on a board: the middle board opens; any other comes to the middle (and turns there) —
    * the browser's own smooth scroll, or a jump when the shaper asked for less motion (UI-SPEC §12). */

@@ -38,6 +38,16 @@ export interface RackBoard {
 /** A rack entry as the rack receives it, already in the order it shows. */
 export type RackBoardEntry = InProgressRackEntry | (SavedRackEntry & { model: RackModel });
 
+/**
+ * "Put the focus on this board" — after a delete, the next board along (UI E10). Every request is a
+ * new object with its own count, so asking for the same board twice in a row still moves the focus
+ * (code review WR-02: the board after a second delete is often the one the first delete chose).
+ */
+export interface RackFocusRequest {
+  key: string;
+  n: number;
+}
+
 /** The board's figures, or null when they can't be worked out — logged, never thrown. */
 function figuresOrNull(label: string, fields: DesignSummaryFields): RackBoardFigures | null {
   try {
