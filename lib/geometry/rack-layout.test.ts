@@ -1,18 +1,35 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BOARD_PRESETS } from "./presets";
 import {
+  DROP_STRIP,
   HOVER_MULTI_ROW_HEIGHT,
   HOVER_ONE_ROW_HEIGHT,
   HOVER_ROW_BAND,
   HOVER_ROW_TOP_ROOM,
+  HOVER_SLOT,
   RACK_REFERENCE_LENGTH_MM,
+  SPINE_FLOOR_SIZE,
+  SPINE_WORD_GAP,
+  SWIPE_SLOT,
+  SWIPE_TOP_PAD,
+  boardExtra,
+  fitSpineWords,
   hoverPointerZone,
   hoverRackHeight,
   hoverRackLayout,
   hoverSlotAt,
   hoverSlotPosition,
   rackHeightLines,
+  rackRoomOffsets,
   rackScale,
+  swipeMiddleIndex,
+  swipePadding,
+  swipeRackHeightFromScroller,
+  swipeScrollLeftFor,
+  swipeSlotAt,
+  swipeSlotCentre,
+  swipeTrackWidth,
+  turnAngle,
 } from "./rack-layout";
 import { centimetresToMm, inchesToMm } from "./units";
 
@@ -198,5 +215,166 @@ describe("Rule 2: height lines every foot, or every 50 cm in Metric", () => {
     for (const line of rackHeightLines("metric", inchesToMm(130))) {
       expect(line.label).toMatch(/^\d+$/);
     }
+  });
+});
+
+describe("R5 / R6: the turn follows distance", () => {
+  it("turns a board fully under the cursor, halfway at half the reach, and not at all beyond it", () => {
+    expect(turnAngle(0, 48)).toBe(Math.PI / 2);
+    expect(turnAngle(24, 48)).toBe(Math.PI / 4);
+    expect(turnAngle(-24, 48)).toBe(Math.PI / 4);
+    expect(turnAngle(48, 48)).toBe(0);
+    expect(turnAngle(100, 48)).toBe(0);
+  });
+
+  it("leaves two boards at 45 degrees each with the cursor exactly between them", () => {
+    const left = turnAngle(-HOVER_SLOT / 2, HOVER_SLOT);
+    const right = turnAngle(HOVER_SLOT / 2, HOVER_SLOT);
+    expect(left).toBe(Math.PI / 4);
+    expect(right).toBe(left);
+  });
+});
+
+describe("The rack opens around a turning board", () => {
+  /** The rule, written out from the inputs: every board left of a widened board steps left by half
+   * its extra width, every board right of it steps right by the same, and it stays where it is. */
+  function expectedOffsets(extras: readonly number[]): number[] {
+    return extras.map((_, k) => {
+      let offset = 0;
+      extras.forEach((extra, j) => {
+        if (j < k) offset += extra / 2;
+        if (j > k) offset -= extra / 2;
+      });
+      return offset;
+    });
+  }
+
+  it.each([[[0, 0, 30, 0, 0]], [[10, 0, 20]], [[0]], [[12, 7, 0, 3, 40, 0]]])(
+    "moves the neighbours of %j aside by half the extra width each side",
+    (extras) => {
+      expect(rackRoomOffsets(extras)).toEqual(expectedOffsets(extras));
+    },
+  );
+
+  it("never moves the turning board itself", () => {
+    const offsets = rackRoomOffsets([0, 0, 30, 0, 0]);
+    expect(offsets[2]).toBe(0);
+    expect(offsets[1]).toBeLessThan(0);
+    expect(offsets[3]).toBeGreaterThan(0);
+  });
+
+  it("asks for extra room only when a turned board is wider than its slot", () => {
+    expect(boardExtra(20, 48)).toBe(0);
+    expect(boardExtra(24, 48)).toBe(0);
+    expect(boardExtra(39, 48)).toBe(30);
+  });
+});
+
+describe("The phone's track", () => {
+  const width = 390;
+  const count = 15;
+
+  it("pads both ends so the first and last boards can reach the middle", () => {
+    expect(swipePadding(width)).toBe((width - SWIPE_SLOT) / 2);
+    expect(swipeTrackWidth(count, width)).toBe(2 * swipePadding(width) + count * SWIPE_SLOT);
+  });
+
+  it("puts board i in the middle at its own scroll position, and finds it again", () => {
+    for (let i = 0; i < count; i++) {
+      expect(swipeSlotCentre(i, width) - swipeScrollLeftFor(i)).toBe(width / 2);
+      expect(swipeMiddleIndex(swipeScrollLeftFor(i) + 13, count)).toBe(i);
+      expect(swipeMiddleIndex(swipeScrollLeftFor(i) - 13, count)).toBe(i);
+      expect(swipeSlotAt(swipeSlotCentre(i, width), count, width)).toBe(i);
+    }
+  });
+
+  it("clamps a scroll or a tap beyond either end to the first or last board", () => {
+    expect(swipeMiddleIndex(-200, count)).toBe(0);
+    expect(swipeMiddleIndex(10_000, count)).toBe(count - 1);
+    expect(swipeSlotAt(0, count, width)).toBe(0);
+    expect(swipeSlotAt(swipeTrackWidth(count, width), count, width)).toBe(count - 1);
+  });
+
+  it("grows by one slot per board at the same drawn height", () => {
+    expect(swipeTrackWidth(16, width) - swipeTrackWidth(15, width)).toBe(SWIPE_SLOT);
+    expect(swipeTrackWidth(31, width) - swipeTrackWidth(30, width)).toBe(SWIPE_SLOT);
+  });
+
+  it("takes the rack's height from the scroller, less the top pad and the drop strip", () => {
+    expect(swipeRackHeightFromScroller(398)).toBe(398 - SWIPE_TOP_PAD - DROP_STRIP);
+    expect(swipeRackHeightFromScroller(10)).toBe(0);
+  });
+});
+
+describe("Edge: a long name (R1) — the words shrink, then cut the name, never the numbers", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function graphemes(text: string): string[] {
+    return Array.from(new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text), (s) => s.segment);
+  }
+
+  /** A stand-in for the browser's text measure: every grapheme is 0.6 of the font size wide. */
+  const measure = (text: string, fontSize: number) => graphemes(text).length * fontSize * 0.6;
+  const total = (name: string, line: string, size: number) =>
+    measure(name, size) + SPINE_WORD_GAP + measure(line, size);
+
+  const line = `6'2" x 19 3/4" · 31 L`;
+
+  it("keeps the base size when the words fit", () => {
+    const fit = fitSpineWords({ name: "Daylight", line, maxLength: 372, baseSize: 12, measure });
+    expect(fit).toEqual({ fontSize: 12, name: "Daylight", cut: false });
+  });
+
+  it("shrinks in half-point steps to the first size that fits", () => {
+    const name = "Daylight Single";
+    const maxLength = total(name, line, 11);
+    expect(total(name, line, 11.5)).toBeGreaterThan(maxLength);
+    const fit = fitSpineWords({ name, line, maxLength, baseSize: 12, measure });
+    expect(fit).toEqual({ fontSize: 11, name, cut: false });
+  });
+
+  it("cuts only the name, by whole graphemes, once the floor size still does not fit", () => {
+    const name = "The Very Long Name Of A Quad Fish";
+    const keep = 5;
+    const maxLength = measure(line, SPINE_FLOOR_SIZE) + SPINE_WORD_GAP + (keep + 1) * SPINE_FLOOR_SIZE * 0.6;
+    const fit = fitSpineWords({ name, line, maxLength, baseSize: 12, measure });
+    expect(fit.fontSize).toBe(SPINE_FLOOR_SIZE);
+    expect(fit.cut).toBe(true);
+    expect(fit.name).toBe(`${graphemes(name).slice(0, keep).join("")}…`);
+    // The card line is never part of the cut: what is left of the name plus the whole line fits.
+    expect(total(fit.name, line, SPINE_FLOOR_SIZE)).toBeLessThanOrEqual(maxLength);
+  });
+
+  it("never splits an accented letter or a surfer emoji", () => {
+    const accented = "é";
+    const surfer = String.fromCodePoint(0x1f3c4, 0x200d, 0x2642, 0xfe0f);
+    const name = `Caf${accented} ${surfer} Twin ${surfer}${accented}${accented}`;
+    const whole = graphemes(name);
+    for (let keep = 1; keep < whole.length; keep++) {
+      const maxLength = measure(line, SPINE_FLOOR_SIZE) + SPINE_WORD_GAP + (keep + 1) * SPINE_FLOOR_SIZE * 0.6;
+      const fit = fitSpineWords({ name, line, maxLength, baseSize: 12, measure });
+      expect(fit.cut).toBe(true);
+      expect(fit.name.endsWith("…")).toBe(true);
+      const kept = fit.name.slice(0, -1);
+      expect(whole.join("").startsWith(kept)).toBe(true);
+      expect(kept).toBe(whole.slice(0, keep).join(""));
+    }
+  });
+
+  it("keeps one grapheme and the ellipsis when nothing longer fits", () => {
+    const fit = fitSpineWords({ name: "Daylight", line, maxLength: 1, baseSize: 12, measure });
+    expect(fit).toEqual({ fontSize: SPINE_FLOOR_SIZE, name: "D…", cut: true });
+  });
+
+  it("cuts by code point, never inside an emoji's surrogate pair, where Intl.Segmenter is missing", () => {
+    const surfer = String.fromCodePoint(0x1f3c4);
+    const name = `${surfer}${surfer}${surfer}${surfer}`;
+    const pointMeasure = (text: string, fontSize: number) => Array.from(text).length * fontSize * 0.6;
+    const maxLength = pointMeasure(line, SPINE_FLOOR_SIZE) + SPINE_WORD_GAP + 3 * SPINE_FLOOR_SIZE * 0.6;
+    vi.stubGlobal("Intl", { ...Intl, Segmenter: undefined });
+    const fit = fitSpineWords({ name, line, maxLength, baseSize: 12, measure: pointMeasure });
+    expect(fit).toEqual({ fontSize: SPINE_FLOOR_SIZE, name: `${surfer}${surfer}…`, cut: true });
   });
 });
