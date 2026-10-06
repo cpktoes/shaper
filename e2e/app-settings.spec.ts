@@ -26,7 +26,8 @@ function firstPresetCard(page: Page) {
   return page.getByRole("button").filter({ hasText: "Start Shaping" }).first();
 }
 
-/** The menu proofs for one window: the one row, no old rows, Contact and Privacy still there. */
+/** The menu proofs for one window: the one row, no old rows, Contact still there (the legal pages
+ * live in the footer since quick 261006-fom, not in the menus). */
 async function expectOneRowMenu(page: Page, phoneSheet: boolean) {
   const menu = await openSettingsMenu(page);
   const row = appSettingsRow(page);
@@ -36,8 +37,8 @@ async function expectOneRowMenu(page: Page, phoneSheet: boolean) {
   await expect(menu.getByRole("menuitemradio", { name: /^Metric/ })).toHaveCount(0);
   await expect(menu.getByRole("menuitem", { name: /Fit & Tip Defaults/ })).toHaveCount(0);
   await expect(menu.getByRole("menuitem", { name: "Contact", exact: true })).toBeVisible();
-  await expect(menu.getByRole("menuitem", { name: "Terms", exact: true })).toBeVisible();
-  await expect(menu.getByRole("menuitem", { name: "Privacy", exact: true })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: "Terms", exact: true })).toHaveCount(0);
+  await expect(menu.getByRole("menuitem", { name: "Privacy", exact: true })).toHaveCount(0);
   // Nothing of the old settings groups is left: no radio rows, no tick-box rows, no group of them.
   await expect(menu.getByRole("menuitemradio")).toHaveCount(0);
   await expect(menu.getByRole("menuitemcheckbox")).toHaveCount(0);

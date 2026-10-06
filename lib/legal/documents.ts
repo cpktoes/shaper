@@ -18,10 +18,6 @@ import { PRIVACY_ROUTE } from "../privacy/copy";
  * one constant stays the one source for each address. */
 export const TERMS_ROUTE = "/terms";
 
-/** The Terms row's label in the gear menu and the ☰ sheet (the founder's review of quick 261006-fom:
- * "only a privacy link" — the menus now carry both legal pages, as the footer does). */
-export const TERMS_MENU_LABEL = "Terms";
-
 /** Each legal page's address, and the founder's markdown file it is drawn from (a path relative to
  * the project root — the same relative path `next.config.ts` names so Vercel ships the file). */
 export const LEGAL_DOCUMENTS = {
