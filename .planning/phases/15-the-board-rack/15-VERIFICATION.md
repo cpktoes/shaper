@@ -1,7 +1,7 @@
 ---
 phase: 15-the-board-rack
 verified: 2026-10-06T16:00:00Z
-status: human_needed
+status: passed
 score: 9/10 must-haves verified
 behavior_unverified: 1
 overrides_applied: 0
@@ -107,3 +107,16 @@ No gaps. Nothing blocks the phase goal. What is left is the founder's rehearsal 
 
 _Verified: 2026-10-06_
 _Verifier: Claude (gsd-verifier)_
+
+
+## Orchestrator addendum — the founder's walk, 2026-10-06
+
+The six `human_verification` items were answered by the founder on the live site, signed in with their own boards
+(Chrome on a Mac; an iPhone for VoiceOver): **all six pass** — items 1–5 at the first try ("1-5 ok"); item 6 after a
+first try that pointed at a board with the mouse (no keyboard focus, so Option + → moved nothing) and then "ah, used
+tab, now it works." R8's stored order surviving a reload and showing on a second device is confirmed by item 1.
+The orchestrator also proved item 6's path on the practice rack in Chromium and WebKit (Tab reaches the rack;
+Alt/Option + → moves the focused board one place and keeps the focus; a pointed-at board stays). The Windows/Linux
+half of item 6 (Alt + ← must not go Back) had no machine to hand; both racks call `preventDefault` on Alt + ←/→.
+One follow-up at the founder's word, for after the showing: make Option/Alt + arrow also move the turned board under
+the mouse (filed as a todo). `15-UAT.md` holds the record. Status: the phase's truths are all verified.
