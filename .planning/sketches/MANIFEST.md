@@ -23,6 +23,16 @@ works, and let each screen end with a step-by-step "next screen" button so the u
 needs no menu ("almost wizard like"). These two sketches use the app's own slate and daylight palettes
 (`themes/app-slate.css`, `themes/app-daylight.css`), not the drafting palette above.
 
+### Board rack (sketches 009–010, 2026-10-05)
+
+The founder's idea: hold Your Boards sideways, like a shop rack. Skinny cards with the name and dims in one
+line of vertical text and the board's rocker profile, and only the board you're on turns to its outline.
+The founder wants all three of *see the whole quiver*, *compare rockers* (every board at one scale on one
+floor line) and *fun to browse*. Show both a clean-drawing look and a real shop-rack look. Phones and
+iPads swipe along the rack with the middle board turned (009, sketched first at the founder's request);
+computers turn the board under the cursor (010). The turn is the board's real turn: each station's
+cross-section projected at the turn angle, from the app's own rocker, thickness and outline.
+
 ## Reference Points
 
 - Traditional drafting / engineering-drawing conventions (extension lines, end ticks, value in a
@@ -42,6 +52,8 @@ needs no menu ("almost wizard like"). These two sketches use the app's own slate
 | 006 | orientation-switch | How does the shaper turn the board horizontal, without moving anything else? | **Rotate in place**, button in the viewer's upper-right | viewer, layout, icon, interaction, post-mvp |
 | 007 | phone-screens-in-menu | With no tab bar at the bottom, how does an upright phone show which screen you're on and take you to another? | **C1 — Tiles from your board** (☰ sheet of six tiles, each drawn from the current board; no bottom tab bar) | phone, layout, navigation, chrome |
 | 008 | next-screen-button | What does the step-by-step button under the last control look like? | **B — Back + Next** ("Together" tab: on 007-C1) | phone, navigation, wizard |
+| 009 | phone-swipe-rack | On a phone or iPad, how does swiping along a sideways board rack feel, with the middle board turned to its outline? | **B — Turns as it passes** (look still open, decided in 010) | phone, home, board-rack, interaction, motion |
+| 010 | sideways-board-rack | On a computer, what does the sideways rack look like, and how does the board under the cursor turn? | planned | desktop, home, board-rack, interaction, motion |
 
 ## Decisions These Lock In
 
@@ -71,6 +83,11 @@ needs no menu ("almost wizard like"). These two sketches use the app's own slate
 10. **Each design screen ends with Back + Next** (sketch 008 B) — "← previous" and "next →" side by side
    under the last control, in the order Template, Rocker, Rails, Volume, Fins, Summary; the first screen
    has only Next, the last only Back. ☰ is for jumping around; Back + Next is the usual walk.
+11. **On a phone or iPad, Your Boards is a sideways rack you swipe** (sketch 009 B, 2026-10-05) — boards stand
+   on their tails at one true scale on one floor line, name and dims running up beside each; every board turns
+   to its outline as it passes the middle, following your thumb, and the rack settles with one board fully turned
+   and its name, dims, Open and ⋯ underneath. The turn is worked out from the board's own rocker, thickness and
+   outline. The look (drawing or shop rack) is decided in sketch 010.
 
 ## Open Questions
 
