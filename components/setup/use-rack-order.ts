@@ -22,7 +22,8 @@
  * The saver is created inside an effect keyed on the stored order it starts from (which only changes
  * while it is idle) and flushed, then disposed, in the effect's cleanup, so React StrictMode's
  * second mount on the dev server gets a fresh one and a waiting order still goes out when the rack
- * goes away. Leaving the page (`pagehide`) sends a waiting order at once too.
+ * goes away — even behind a save already on its way. Leaving the page (`pagehide`) sends a waiting
+ * order at once too.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -44,8 +45,9 @@ export interface RackOrderState {
   order: readonly string[] | null;
   /** Shows `next` (the rack's whole saved order) at once and saves it in the background. */
   commit(next: readonly string[]): void;
-  /** Sends a waiting order now — before Rename, Duplicate and Delete, which re-read the order. */
-  flush(): void;
+  /** Sends a waiting order now and resolves once every order has landed (or failed) — awaited
+   * before Rename, Duplicate and Delete, which re-read the order from the account (WR-01). */
+  flushAndSettle(): Promise<void>;
 }
 
 export function useRackOrder(serverOrder: readonly string[] | null, onSaveFailed: () => void): RackOrderState {
@@ -97,11 +99,14 @@ export function useRackOrder(serverOrder: readonly string[] | null, onSaveFailed
     saverRef.current?.request(ids);
   }, []);
 
-  const flush = useCallback(() => {
-    saverRef.current?.flush();
+  const flushAndSettle = useCallback(async () => {
+    const saver = saverRef.current;
+    if (!saver) return;
+    saver.flush();
+    await saver.settled();
   }, []);
 
   // With no order of its own, the rack shows the server's — the prop itself, so its identity only
   // changes when the server's order does.
-  return { order: current.local ? current.local.ids : serverOrder, commit, flush };
+  return { order: current.local ? current.local.ids : serverOrder, commit, flushAndSettle };
 }

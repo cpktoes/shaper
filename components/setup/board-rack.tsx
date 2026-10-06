@@ -113,7 +113,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   const { announce } = status;
   // The shaper's order: their newest move at once, saved in the background; a failed save puts the
   // board back (the hook does) and says so here.
-  const { order, commit, flush } = useRackOrder(rackOrder ?? null, () => announce(RACK_COPY.saveFailed));
+  const { order, commit, flushAndSettle } = useRackOrder(rackOrder ?? null, () => announce(RACK_COPY.saveFailed));
 
   // The server can't know the pointer or the width, and the rack measures its own width, so the
   // rack itself mounts on the client only (server: false, client: true).
@@ -183,10 +183,11 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     });
   };
 
-  // Before Rename, Duplicate or Delete runs, a waiting order save goes out first: Server Actions run
-  // one at a time, in order, so the order lands before the action re-reads the page (T-15-27).
+  // Before Rename, Duplicate or Delete runs, every order save — one already on its way and a move
+  // still waiting behind it — has landed (or failed) first, so the action re-reads the order the rack
+  // shows and nothing saves over it afterwards (T-15-27, code review WR-01).
   const handleRenameConfirm = async (name: string) => {
-    flush();
+    await flushAndSettle();
     if (!renamingModel) return;
     await renameModel(renamingModel.id, name);
     // The board being renamed may be the one open in the editor right now — the shared store
@@ -196,7 +197,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   };
 
   const handleDeleteConfirm = async () => {
-    flush();
+    await flushAndSettle();
     if (!deletingModel) return;
     const deleted = deletingModel;
     await deleteModel(deleted.id);
@@ -211,8 +212,8 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   };
 
   const handleDuplicate = async (model: RackModel) => {
-    flush();
     clearDuplicateError(model.id);
+    await flushAndSettle();
     try {
       await duplicateModel(model.id);
       // The copy stands beside its original (D-02, D-16) — said to a screen reader, no pill.
