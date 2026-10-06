@@ -307,6 +307,20 @@ export function fitDefaultsInsertColumns(patch: FitDefaultsPatch): FitDefaultsCo
   return columns as FitDefaultsColumnValues;
 }
 
+/**
+ * The Tip Style a board saved under Phase 11 is carried over with (Phase 12 D-14): the shaper's own,
+ * from the same browser + account handoff the first paint uses, Pin deck when nobody chose one. The
+ * one rule behind `resolveCarryOverTipStyle` (the home page's rack, the save actions) and
+ * `scripts/check-saved-boards.ts --rack-report` (code review IN-06).
+ */
+export function carryOverTipStyle(input: {
+  signedIn: boolean;
+  account: FitDefaultsPreference | null;
+  browser: FitDefaultsPreference | null;
+}): TipStyle {
+  return resolveFitDefaults(decideFitDefaultsHandoff(input).preference).tipStyle;
+}
+
 /** Fills every setting nobody chose from `DEFAULT_FIT_DEFAULTS`. */
 export function resolveFitDefaults(pref: FitDefaultsPreference): FitDefaults {
   const result: FitDefaults = { ...DEFAULT_FIT_DEFAULTS };

@@ -19,7 +19,7 @@
 import { LIVE_DESIGN_RULES, designSideProfile, summarizeDesign, type DesignSummary, type DesignSummaryFields } from "@/lib/geometry/design";
 import { buildOutline } from "@/lib/geometry/outline";
 import { buildRackBoardArt, type RackBoardArt } from "@/lib/geometry/rack-art";
-import { parseSnapshot, type DesignSnapshotFields, type ParseSnapshotOptions } from "./design-snapshot";
+import { hasPhase11Blank, parseSnapshot, type DesignSnapshotFields, type ParseSnapshotOptions } from "./design-snapshot";
 
 /** A stored board row as the rack reads it. */
 export interface RackRow {
@@ -83,6 +83,15 @@ export function rackModelsAndDrops(
     }
   });
   return { models, dropped };
+}
+
+/**
+ * Whether a rack of these rows needs the shaper's Tip Style looked up: only when some row really holds
+ * a Phase 11 blank — decided by the blank's shape, never the envelope's version number. The one
+ * test `app/page.tsx` and `--rack-report` both make before looking it up.
+ */
+export function rackNeedsTipStyle(rows: readonly { snapshot: unknown }[]): boolean {
+  return rows.some((row) => hasPhase11Blank(row.snapshot));
 }
 
 /**
