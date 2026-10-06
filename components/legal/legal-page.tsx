@@ -4,6 +4,7 @@ import { RECOVERY_COLUMN, RECOVERY_MAIN } from "@/components/error-pages/recover
 import { legalOutline, type LegalSlug } from "@/lib/legal/documents";
 import { readLegalDocument } from "@/lib/legal/read-document";
 import { SITE_NAME } from "@/lib/site/metadata";
+import { PAGE_FOOTER_FRAME, SiteFooter } from "@/components/site-footer";
 import { LegalDocument } from "./legal-document";
 
 /**
@@ -16,7 +17,8 @@ import { LegalDocument } from "./legal-document";
  *
  * The scroller and the column are exactly the old hand-typed privacy page's, shared through
  * `RECOVERY_MAIN` / `RECOVERY_COLUMN` with the Contact and recovery screens, so all of them keep
- * the same width and margins on a phone and a computer.
+ * the same width and margins on a phone and a computer. The site footer follows the column, the
+ * last thing in the page's scroller (D-03).
  */
 export async function LegalPage({ slug }: { slug: LegalSlug }) {
   await connection();
@@ -26,6 +28,9 @@ export async function LegalPage({ slug }: { slug: LegalSlug }) {
     <main data-legal-page={slug} className={RECOVERY_MAIN}>
       <div className={RECOVERY_COLUMN}>
         <LegalDocument markdown={markdown} />
+      </div>
+      <div className={PAGE_FOOTER_FRAME}>
+        <SiteFooter className="mt-0" />
       </div>
     </main>
   );

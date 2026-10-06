@@ -18,6 +18,17 @@
 /** The catalogue makers, in the order their catalogue files are read. */
 export const KNOWN_BLANK_VENDORS = ["US Blanks", "Arctic Foam", "Marko Foam"] as const;
 
+/**
+ * The note at the end of ROCKER's blank picker (the founder's own sentence, 2026-10-06, quick
+ * 261006-fom, D-05): where the numbers come from, that real blanks vary, and whose trademarks the
+ * makers' names are. Deliberately the same whatever makers a shaper has switched off in Settings —
+ * it is a notice about whose catalogs and trademarks these are, not a list of what is shown — and
+ * the test checks it names every maker above, so a fourth maker fails it until the founder's note
+ * is updated too. The apostrophe in "manufacturers'" is straight, as the founder typed it.
+ */
+export const BLANK_CATALOG_NOTE =
+  "Blank dimensions are from manufacturers' published catalogs and may vary in production. Verify before you cut. US Blanks, Arctic Foam and Marko Foam are trademarks of their owners.";
+
 /** One of the catalogue makers, spelled exactly as its catalogue spells it. */
 export type BlankVendor = (typeof KNOWN_BLANK_VENDORS)[number];
 

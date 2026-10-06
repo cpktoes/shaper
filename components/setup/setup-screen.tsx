@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BoardRack, type BoardRackEntry } from "@/components/setup/board-rack";
 import { PresetCard } from "@/components/setup/preset-card";
 import { ReplaceBoardDialog } from "@/components/setup/replace-board-dialog";
+import { SiteFooter } from "@/components/site-footer";
 import { useDesign } from "@/components/design/design-store";
 import { BOARD_PRESETS, type BoardPreset } from "@/lib/geometry/presets";
 import type { RackModel } from "@/lib/models/rack-models";
@@ -146,6 +147,12 @@ export function SetupScreen({ models, rackOrder = null }: SetupScreenProps) {
             <PresetCard key={preset.id} preset={preset} onSelect={handleSelectPreset} />
           ))}
         </div>
+      </div>
+      {/* The site footer (quick 261006-fom, D-02/D-03): the last thing in the home page's scroller,
+          in the column's own width and side padding (including the short-screen gutter), so its
+          faint rule lines up with the cards above it. */}
+      <div className="mx-auto max-w-5xl px-8 pb-8 max-shell:px-4 max-shell:pb-6 [@media(max-height:500px)]:px-4">
+        <SiteFooter className="mt-0" />
       </div>
       <ReplaceBoardDialog
         open={confirmOpen}

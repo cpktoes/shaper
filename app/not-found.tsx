@@ -10,6 +10,7 @@ import {
   RECOVERY_PRIMARY_ACTION,
   RECOVERY_SECONDARY_ACTION,
 } from "@/components/error-pages/recovery-styles";
+import { PAGE_FOOTER_FRAME, SiteFooter } from "@/components/site-footer";
 import { CONTACT_ROUTE } from "@/lib/contact/message";
 import { NOT_FOUND_COPY } from "@/lib/error-pages/copy";
 
@@ -44,6 +45,9 @@ export default function NotFound() {
             {NOT_FOUND_COPY.contact}
           </Link>
         </div>
+      </div>
+      <div className={PAGE_FOOTER_FRAME}>
+        <SiteFooter className="mt-0" />
       </div>
     </main>
   );

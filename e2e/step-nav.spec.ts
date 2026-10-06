@@ -169,6 +169,8 @@ test.describe("Back and Next walk the whole board", () => {
         let lowest = -Infinity;
         for (const el of Array.from(aside.querySelectorAll<HTMLElement>("*"))) {
           if (nav.contains(el)) continue;
+          // The site footer is meant to follow Back + Next (D-03, quick 261006-fom).
+          if (el.closest("[data-site-footer]")) continue;
           const style = getComputedStyle(el);
           if (style.position === "absolute" || style.position === "fixed") continue;
           const box = el.getBoundingClientRect();

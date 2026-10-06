@@ -13,6 +13,7 @@ import {
   RECOVERY_REFERENCE_CODE,
   RECOVERY_SECONDARY_ACTION,
 } from "@/components/error-pages/recovery-styles";
+import { PAGE_FOOTER_FRAME, SiteFooter } from "@/components/site-footer";
 import { CONTACT_ROUTE } from "@/lib/contact/message";
 import { ERROR_COPY, errorReference } from "@/lib/error-pages/copy";
 
@@ -63,6 +64,9 @@ export default function ErrorScreen({
             {ERROR_COPY.referenceLead} <code data-error-reference className={RECOVERY_REFERENCE_CODE}>{reference}</code>
           </p>
         )}
+      </div>
+      <div className={PAGE_FOOTER_FRAME}>
+        <SiteFooter className="mt-0" />
       </div>
     </main>
   );

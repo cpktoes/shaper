@@ -39,7 +39,7 @@ import { useAppSettings } from "@/components/app-settings-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUnits } from "@/components/units-provider";
-import { blankMakersNote, catalogsPhrase } from "@/lib/blanks/vendors";
+import { BLANK_CATALOG_NOTE, blankMakersNote, catalogsPhrase } from "@/lib/blanks/vendors";
 import type { BlankCatalogResult } from "@/lib/db/blanks";
 import type { BlankRecord } from "@/lib/geometry/blank";
 import { catalogueExtremes, type BlankVerdict } from "@/lib/geometry/blank-fit";
@@ -304,6 +304,19 @@ function BlankBrowser({ catalog, onPicked }: { catalog: Promise<BlankCatalogResu
   );
 }
 
+/**
+ * The founder's catalog note (quick 261006-fom, D-05, P-5): shown ONCE, at the very end of the
+ * picker, in every state — no blank picked, the list open, a blank picked — because a picked
+ * blank's numbers come from the same catalogs. Small muted type, the footer's size.
+ */
+function BlankCatalogNote() {
+  return (
+    <p data-blank-catalog-note className="text-[11px] leading-snug text-surf-ink-muted">
+      {BLANK_CATALOG_NOTE}
+    </p>
+  );
+}
+
 export function BlankPicker({ catalog }: { catalog: Promise<BlankCatalogResult> }) {
   const { system } = useUnits();
   const { blank, removeBlank } = useDesign();
@@ -311,7 +324,12 @@ export function BlankPicker({ catalog }: { catalog: Promise<BlankCatalogResult> 
   const [listOpen, setListOpen] = useState(false);
 
   if (!blank) {
-    return <BlankBrowser catalog={catalog} onPicked={() => setListOpen(false)} />;
+    return (
+      <div className="flex flex-col gap-2">
+        <BlankBrowser catalog={catalog} onPicked={() => setListOpen(false)} />
+        <BlankCatalogNote />
+      </div>
+    );
   }
 
   return (
@@ -352,6 +370,7 @@ export function BlankPicker({ catalog }: { catalog: Promise<BlankCatalogResult> 
       </div>
 
       {listOpen && <BlankBrowser catalog={catalog} onPicked={() => setListOpen(false)} />}
+      <BlankCatalogNote />
     </div>
   );
 }

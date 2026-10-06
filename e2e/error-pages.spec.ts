@@ -37,10 +37,22 @@ async function expectShell(page: Page, projectName: string, screen: string): Pro
     }));
     expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
 
-    const heights = await page.locator(`${screen} a, ${screen} button`).evaluateAll((elements) =>
-      elements.map((el) => (el as HTMLElement).offsetHeight),
-    );
+    // The site footer's two small links (quick 261006-fom, D-03) keep their line small and carry
+    // their 44-dot finger box as an invisible block over the line instead, so they are measured by
+    // that block rather than by their own height.
+    const heights = await page
+      .locator(`${screen} a, ${screen} button`)
+      .evaluateAll((elements) =>
+        elements.filter((el) => !el.closest("[data-site-footer]")).map((el) => (el as HTMLElement).offsetHeight),
+      );
     for (const height of heights) {
+      expect(height).toBeGreaterThanOrEqual(44);
+    }
+    const footerBoxes = await page
+      .locator(`${screen} [data-site-footer] a`)
+      .evaluateAll((elements) => elements.map((el) => parseFloat(getComputedStyle(el, "::after").height)));
+    expect(footerBoxes).toHaveLength(2);
+    for (const height of footerBoxes) {
       expect(height).toBeGreaterThanOrEqual(44);
     }
 

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { StepNav } from "@/components/design/step-nav";
+import { SiteFooter } from "@/components/site-footer";
 
 /**
  * The one layout every design screen (TEMPLATE, ROCKER, RAILS, VOLUME, FINS) is built on: a
@@ -119,7 +120,9 @@ export function DesignScreenShell({
   // floating Undo/Redo pair. Before this, ROCKER's Tail Thinning Starts row — then the last control
   // on the screen, its Automatic button right-aligned exactly where the pair floats — ended under
   // the Redo button with nothing below it to scroll it clear, so the button could not be tapped.
-  // Since quick 261003-q2c the last row is the Back and Next pair, and the arithmetic is the same.
+  // Since quick 261003-q2c the last row was the Back and Next pair; since quick 261006-fom (D-03) it
+  // is the site footer under that pair — the copyright line with its Terms and Privacy links — and
+  // the arithmetic is the same: whatever is last, it ends 68px plus the inset up.
   //
   // The numbers since quick 261003-q2f, which removed the old bottom tab bar: this scroller now runs
   // to the window's bottom edge, and the pair (`phone-undo-bar.tsx`) sits 16px plus the home-bar
@@ -250,28 +253,33 @@ export function DesignScreenShell({
         {simpleSidebar ? (
           <>
             {controls}
+            <StepNav />
             {
-              // The Back and Next pair, the last thing in VOLUME's controls. The aside's own 40px of
-              // padding plus this pair's 28px of bottom padding and the home-bar inset
+              // The site footer, the last thing in VOLUME's controls, right after the Back and Next
+              // pair (quick 261006-fom, D-03 — it used to be the pair itself, and the room below
+              // moved from the pair onto the footer unchanged). The aside's own 40px of padding plus
+              // the footer's 28px of bottom padding and the home-bar inset
               // (`max-shell:pb-[calc(1.75rem+...)]`) give 68px plus the inset under it — the same end
               // the other screens' scroller padding and end block give (above), so on an upright
-              // phone it scrolls 8px clear of the
-              // floating Undo/Redo pair in the window's corner (quick 261003-q2f; it was 24px when
-              // the pair sat above the old bottom tab bar). Any change to the pair's phone position
-              // must move this number together with that block.
+              // phone it scrolls 8px clear of the floating Undo/Redo pair in the window's corner
+              // (quick 261003-q2f; it was 24px when the pair sat above the old bottom tab bar). Any
+              // change to the pair's phone position must move this number together with that block.
             }
-            <StepNav className="max-shell:pb-[calc(1.75rem+env(safe-area-inset-bottom))]" />
+            <SiteFooter className="max-shell:pb-[calc(1.75rem+env(safe-area-inset-bottom))]" />
           </>
         ) : (
           <>
             <div data-design-controls-scroll className={controlsScrollClassName}>
               {controls}
               {
-                // The Back and Next pair is the end of the controls, so it lives inside the scroller:
-                // it scrolls with them, and the scroller's own end room (above) keeps it clear of the
-                // floating Undo/Redo pair on an upright phone. Never in `sidebarFooter`.
+                // The Back and Next pair, then the site footer (quick 261006-fom, D-03), are the end
+                // of the controls, so both live inside the scroller: they scroll with them, and the
+                // scroller's own end room (above) keeps the footer's links clear of the floating
+                // Undo/Redo pair on an upright phone. Never in `sidebarFooter`, never pinned, never
+                // in the drawing column.
               }
               <StepNav />
+              <SiteFooter />
             </div>
             {sidebarFooter}
           </>

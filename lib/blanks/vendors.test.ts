@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readSeedCatalog } from "./seed-files";
 import {
+  BLANK_CATALOG_NOTE,
   KNOWN_BLANK_VENDORS,
   blankMakersNote,
   catalogsPhrase,
@@ -94,5 +95,19 @@ describe("catalogsPhrase", () => {
     expect(catalogsPhrase(["Arctic Foam"])).toBe("the US Blanks and Marko Foam catalogs");
     expect(catalogsPhrase(["Arctic Foam", "Marko Foam"])).toBe("the US Blanks catalog");
     expect(catalogsPhrase(["Marko Foam", "US Blanks"])).toBe("the Arctic Foam catalog");
+  });
+});
+
+describe("the catalog note under ROCKER's blank picker (quick 261006-fom, D-05)", () => {
+  it("is the founder's sentence, exactly", () => {
+    expect(BLANK_CATALOG_NOTE).toBe(
+      "Blank dimensions are from manufacturers' published catalogs and may vary in production. Verify before you cut. US Blanks, Arctic Foam and Marko Foam are trademarks of their owners.",
+    );
+  });
+
+  it("names every maker the app knows, so a fourth maker fails here until the note is updated", () => {
+    for (const vendor of KNOWN_BLANK_VENDORS) {
+      expect(BLANK_CATALOG_NOTE).toContain(vendor);
+    }
   });
 });

@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { goToScreen } from "./helpers/screens";
 import { openAppSettings } from "./helpers/settings";
+import { BLANK_CATALOG_NOTE } from "../lib/blanks/vendors";
 
 /**
  * The finished ROCKER screen's browser proof (Phase 11, 11-11): pick a real blank from the list,
@@ -190,6 +191,19 @@ test.describe("ROCKER — a real blank from the list", () => {
     await expect(dialog).toBeHidden();
 
     await expect(intro).toContainText('1/2" deck skin');
+  });
+
+  test("the founder's catalog note ends the picker once, with no blank and with one picked (quick 261006-fom)", async ({
+    page,
+  }) => {
+    await openRocker(page);
+    const note = page.locator("[data-blank-catalog-note]");
+    await expect(note).toHaveCount(1);
+    await expect(note).toHaveText(BLANK_CATALOG_NOTE);
+
+    await pickFirstFittingBlank(page);
+    await expect(note).toHaveCount(1);
+    await expect(note).toHaveText(BLANK_CATALOG_NOTE);
   });
 });
 

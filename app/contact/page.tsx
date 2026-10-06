@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ContactAddressLink, ContactForm } from "@/components/contact/contact-form";
+import { PAGE_FOOTER_FRAME, SiteFooter } from "@/components/site-footer";
 import { contactFormAvailableForRequest, resolveContactPrefill } from "@/lib/contact-server";
 import { CONTACT_COPY } from "@/lib/contact/message";
 
@@ -44,6 +45,9 @@ export default async function ContactPage() {
             </p>
           </div>
         )}
+      </div>
+      <div className={PAGE_FOOTER_FRAME}>
+        <SiteFooter className="mt-0" />
       </div>
     </main>
   );
