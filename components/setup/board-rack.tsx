@@ -315,6 +315,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
               onOpen={handleOpenKey}
               caption={renderCaption}
               focusKey={focusKey}
+              onMove={handleMove}
             />
           )
         ) : (

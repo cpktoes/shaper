@@ -357,6 +357,76 @@ test.describe("the Board Rack on a computer — rows, holding still, and touch-s
   });
 });
 
+/** The rack's order as the page shows it: every board button's key, in the order they stand. */
+async function rackKeys(page: Page) {
+  return page.locator("[data-rack-board]").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("data-rack-board") ?? ""));
+}
+
+/** The rack's order with `key` moved to place `to`. */
+function movedOrder(keys: readonly string[], key: string, to: number) {
+  const rest = keys.filter((other) => other !== key);
+  rest.splice(to, 0, key);
+  return rest;
+}
+
+/** The status pill's live region. */
+const statusRegion = (page: Page) => page.locator("[data-rack-status]");
+
+/**
+ * Rests the cursor on board `n` of a freshly opened practice rack, where only board 1 is turned: it
+ * goes to board n's SLOT centre (whole slots along from board 1's), never to its drawn place — next
+ * to a turned wide board the neighbours stand up to about 25 dots off their slots, and the turn
+ * follows the slots, so the drawn place can sit nearer the next slot along. Returns that point.
+ */
+async function restOnSlot(page: Page, n: number) {
+  const first = await centreOf(page, board(1).id);
+  const point = { x: first.x + (n - 1) * HOVER_SLOT, y: first.y };
+  await page.mouse.move(point.x, point.y, { steps: 8 });
+  await expect(boardArt(page, board(n).id)).toHaveAttribute("data-turn", "90");
+  await waitForTurnsToFinish(page);
+  return point;
+}
+
+test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the hover rack's own pointer checks are desktop-only");
+    await dismissBannerAndTip(page);
+  });
+
+  test("m12. press board 2 and drag it four places along: it lifts, the caption band empties, a drop mark shows the gap, and letting go puts it sixth, turned, with the pill saying so", async ({
+    page,
+  }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const second = board(2);
+    const start = await restOnSlot(page, 2);
+
+    await page.mouse.down();
+    await page.mouse.move(start.x + 4 * HOVER_SLOT, start.y, { steps: 10 });
+    await expect(boardArt(page, second.id)).toHaveAttribute("data-carrying", "true");
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(1);
+    await expect(page.locator("[data-rack-caption]")).toHaveCount(0);
+    await expect(page.locator("[data-drop-mark]")).toHaveAttribute("opacity", "1");
+
+    await page.mouse.up();
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(second.name));
+    const expected = movedOrder(before, second.id, 5);
+    await expect.poll(() => rackKeys(page)).toEqual(expected);
+    expect((await rackKeys(page)).indexOf(second.id)).toBe(5);
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
+    await expect(page.locator("[data-drop-mark]")).toHaveAttribute("opacity", "0");
+    await expect(boardArt(page, second.id)).toHaveAttribute("data-turn", "90");
+    await expect(captionFor(page, second.name)).toBeVisible();
+    // The release at the end of the drag never opened the board.
+    expect(new URL(page.url()).pathname).toBe(RACK_STAND_IN_ROUTE);
+
+    // The practice rack's save resolves quietly signed out: the order stays.
+    await page.waitForTimeout(1200);
+    expect(await rackKeys(page)).toEqual(expected);
+    await expect(statusRegion(page)).not.toHaveText(RACK_COPY.saveFailed);
+  });
+});
+
 test.describe("the Board Rack on a computer — reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
 
