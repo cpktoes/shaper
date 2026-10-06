@@ -105,7 +105,7 @@ test.describe("the whole trip, walked once by machine before the founder is hand
     // Still no bottom tab bar on the home route, and the in-progress board this trip just walked
     // now shows up in the rack (autosave, this signed-out session's own local board).
     await expectNoScreensNavigation(page);
-    await expect(page.getByRole("heading", { name: "Your Boards" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Board Rack" })).toBeVisible();
     await expect(
       page.getByRole("button").filter({ hasText: "Continue This Board" }).first(),
     ).toBeVisible();

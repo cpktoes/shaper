@@ -113,7 +113,7 @@ test.describe("phone home screen — the round trip proves both bars navigate", 
     await page.getByRole("banner").getByRole("link", { name: "SHAPER ASSISTANT" }).click();
     await page.waitForURL("/");
 
-    await expect(page.getByRole("heading", { name: "Your Boards" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Board Rack" })).toBeVisible();
 
     const scrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);
     const viewportSize = page.viewportSize();
@@ -219,7 +219,7 @@ test.describe("phone home screen — margins, headings and thumb-sized cards", (
     }
   });
 
-  test("after the preset round trip, the rack heading is one line and the in-progress card matches a preset card's row", async ({
+  test("after the preset round trip, the Board Rack heading is one line, the unsaved board's caption shows, and the rack lines up with the presets", async ({
     page,
   }) => {
     await page.goto("/");
@@ -230,7 +230,7 @@ test.describe("phone home screen — margins, headings and thumb-sized cards", (
     await page.getByRole("banner").getByRole("link", { name: "SHAPER ASSISTANT" }).click();
     await page.waitForURL("/");
 
-    const rackHeading = page.getByRole("heading", { name: "Your Boards" });
+    const rackHeading = page.getByRole("heading", { name: "Board Rack" });
     await expect(rackHeading).toBeVisible();
     const headingFit = await rackHeading.evaluate((el) => {
       const lineHeight = parseFloat(getComputedStyle(el).lineHeight);
@@ -239,13 +239,15 @@ test.describe("phone home screen — margins, headings and thumb-sized cards", (
     });
     expect(headingFit.height).toBeLessThanOrEqual(headingFit.lineHeight * 1.5);
 
+    // The unsaved board stands alone on the rack, turned, with its caption's Continue This Board.
+    await expect(page.getByRole("button", { name: "Continue This Board" })).toBeVisible();
+
+    // The rack's heading starts on the same left edge as the preset cards below it.
     const presetCard = page.getByRole("button").filter({ hasText: "Start Shaping" }).first();
-    const rackCard = page.getByRole("button").filter({ hasText: "Continue This Board" }).first();
     const presetBox = await presetCard.boundingBox();
-    const rackBox = await rackCard.boundingBox();
-    if (!presetBox || !rackBox) throw new Error("missing bounding box");
-    expect(rackBox.x).toBeCloseTo(presetBox.x, 0);
-    expect(rackBox.width).toBeCloseTo(presetBox.width, 0);
+    const headingBox = await rackHeading.boundingBox();
+    if (!presetBox || !headingBox) throw new Error("missing bounding box");
+    expect(headingBox.x).toBeCloseTo(presetBox.x, 0);
 
     const scrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);
     const viewportSize = page.viewportSize();
