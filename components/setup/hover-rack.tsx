@@ -23,6 +23,7 @@
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useReducedMotion } from "@/components/design/use-viewer-media";
 import { useUnits } from "@/components/units-provider";
 import { RACK_COPY } from "@/components/setup/rack-config";
 import type { RackBoard } from "@/components/setup/use-rack-boards";
@@ -47,7 +48,7 @@ import {
   type SpineFit,
 } from "@/lib/geometry/rack-layout";
 import { formatSummaryLine } from "@/lib/geometry/summary-line";
-import { HOVER_REST_MS, SETTLE_MS, tween } from "@/lib/models/rack-gesture";
+import { CAPTION_GLIDE_MS, HOVER_REST_MS, SETTLE_MS, tween, type RackPointerType } from "@/lib/models/rack-gesture";
 
 /** A board fully turned, showing its outline. */
 const HALF_TURN = Math.PI / 2;
@@ -127,6 +128,8 @@ interface Latest {
   positions: ReturnType<typeof hoverSlotPosition>[];
   fits: SpineFit[];
   frozen: boolean;
+  /** The shaper asked their device for less motion: only 0 and 90 degrees ever draw. */
+  reduced: boolean;
   onTurn: (key: string) => void;
 }
 
@@ -177,11 +180,13 @@ function restOnNearest(frame: FrameState, latest: Latest) {
  * all to the elements. Returns whether another frame is needed.
  */
 function stepRack(frame: FrameState, latest: Latest, nodes: Map<string, BoardNodes>, now: number, options: { force: boolean; allowRest: boolean }): boolean {
-  const { boards, layout, positions, fits, frozen } = latest;
+  const { boards, layout, positions, fits, frozen, reduced } = latest;
   if (options.allowRest && !frozen && frame.awaitingRest && now - frame.lastMove >= HOVER_REST_MS) {
     restOnNearest(frame, latest);
   }
-  const following = !frozen && frame.awaitingRest && frame.pointer !== null;
+  // With reduced motion a board is either its side profile or its outline, never between:
+  // sweeping changes nothing until the cursor rests (UI-SPEC §12).
+  const following = !frozen && !reduced && frame.awaitingRest && frame.pointer !== null;
   const followRow = following && frame.pointer ? hoverPointerZone(layout, frame.pointer.y).row : -1;
   let busy = following;
 
@@ -202,7 +207,7 @@ function stepRack(frame: FrameState, latest: Latest, nodes: Map<string, BoardNod
       turn = { from: current, to: target, start: now, duration: SETTLE_MS };
       frame.turn.set(board.key, turn);
     }
-    const theta = tween(turn.from, turn.to, now - turn.start, turn.duration, false);
+    const theta = tween(turn.from, turn.to, now - turn.start, turn.duration, reduced);
     if (theta !== turn.to) busy = true;
     frame.theta.set(board.key, theta);
     return theta;
@@ -262,6 +267,7 @@ function stepRack(frame: FrameState, latest: Latest, nodes: Map<string, BoardNod
 
 export function HoverRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, caption, focusKey = null }: HoverRackProps) {
   const { system } = useUnits();
+  const reduced = useReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [fontFamily, setFontFamily] = useState("sans-serif");
@@ -269,6 +275,8 @@ export function HoverRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
   const nodes = useRef(new Map<string, BoardNodes>());
   const frame = useRef<FrameState>(newFrameState());
   const latest = useRef<Latest | null>(null);
+  /** What pressed a board last (D-05): a finger's first tap turns a board, a mouse click opens it. */
+  const pressedWith = useRef<RackPointerType | null>(null);
 
   // The rack's own width, measured (it lays itself out in whatever room the page gives it).
   useLayoutEffect(() => {
@@ -323,7 +331,7 @@ export function HoverRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
   // rack (a removal, a tap), and redraw everything at once so nothing paints stale.
   useLayoutEffect(() => {
     const state = frame.current;
-    latest.current = { boards, layout, positions, fits, frozen, onTurn };
+    latest.current = { boards, layout, positions, fits, frozen, reduced, onTurn };
     if (!state.started) {
       state.started = true;
       state.settledKey = turnedKey;
@@ -390,6 +398,23 @@ export function HoverRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
     // Leaving the rack counts as a rest.
     state.lastMove = Number.NEGATIVE_INFINITY;
     kick();
+  };
+
+  // D-05, a touch-screen laptop: on this rack a finger turns and opens, never drags. Its first tap on
+  // a board turns it and shows its caption without opening; a second tap on the turned board (or
+  // Open This Board) opens it. A mouse or pen click — or Enter on a focused board — opens at once.
+  const handleBoardClick = (key: string) => {
+    const pressed = pressedWith.current;
+    pressedWith.current = null;
+    if (pressed === "touch" && key !== turnedKey) {
+      const state = frame.current;
+      state.settledKey = key;
+      state.awaitingRest = false;
+      kick();
+      onTurn(key);
+      return;
+    }
+    onOpen(key);
   };
 
   const bindNode = (key: string, part: keyof BoardNodes) => (element: Element | null) => {
@@ -514,7 +539,10 @@ export function HoverRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
               aria-current={board.key === openKey ? "true" : undefined}
               className="focus-ring-accent absolute cursor-pointer rounded-sm bg-transparent p-0"
               style={{ top: positions[k].topY, height: layout.rackHeight }}
-              onClick={() => onOpen(board.key)}
+              onPointerDown={(event) => {
+                pressedWith.current = event.pointerType === "touch" || event.pointerType === "pen" ? event.pointerType : "mouse";
+              }}
+              onClick={() => handleBoardClick(board.key)}
             />
           ))}
           {turnedBoard && turnedPosition && (
@@ -523,7 +551,7 @@ export function HoverRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
               style={{
                 top: turnedPosition.floorY + CAPTION_DROP,
                 left: captionLeft,
-                transition: "left 160ms ease-out",
+                transition: reduced ? "none" : `left ${CAPTION_GLIDE_MS}ms ease-out`,
               }}
             >
               {caption(turnedBoard)}
