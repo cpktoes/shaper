@@ -55,7 +55,6 @@ import {
   moveInOrder,
   moveOneStep,
   rackIndexToSavedIndex,
-  savedIdsInOrder,
   turnedKeyAfterRemoval,
   turnedKeyOnArrival,
 } from "@/lib/models/rack-order";
@@ -171,6 +170,10 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
 
   const openKey = hasInProgress ? IN_PROGRESS_KEY : modelId;
   const frozen = renamingModel !== null || deletingModel !== null || menuOpen;
+  // The saved boards in the order they stand, from the boards the rack DRAWS: drop places and the
+  // Move rows are worked out against those, so a board the browser couldn't draw (left out by
+  // useRackBoards) never shifts a move by one place (code review IN-01).
+  const savedIds = boards.flatMap((board) => (board.model ? [board.model.id] : []));
 
   const setTurned = (key: string) => {
     setTurnState((prev) => (prev.turned === key ? prev : { ...prev, turned: key }));
@@ -247,9 +250,8 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     }
     const board = boards.find((candidate) => candidate.key === key);
     if (!board) return "same";
-    const ids = savedIdsInOrder(rackEntries);
-    const next = moveInOrder(ids, key, rackIndexToSavedIndex(toRackIndex, hasInProgress));
-    if (next.every((id, i) => id === ids[i])) return "same";
+    const next = moveInOrder(savedIds, key, rackIndexToSavedIndex(toRackIndex, hasInProgress));
+    if (next.every((id, i) => id === savedIds[i])) return "same";
     commit(next);
     announce(RACK_COPY.moved(board.name));
     return "moved";
@@ -269,7 +271,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     }
     const board = boards.find((candidate) => candidate.key === key);
     if (!board) return;
-    const step = moveOneStep(savedIdsInOrder(rackEntries), key, direction);
+    const step = moveOneStep(savedIds, key, direction);
     if (step.outcome === "moved") {
       commit(step.ids);
       announce(RACK_COPY.moved(board.name));
@@ -279,8 +281,6 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
       announce(RACK_COPY.alreadyLast(board.name));
     }
   };
-
-  const savedIds = savedIdsInOrder(rackEntries);
 
   const handleOpenKey = (key: string) => {
     const board = boards.find((candidate) => candidate.key === key);
