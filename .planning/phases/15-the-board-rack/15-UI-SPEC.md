@@ -92,6 +92,7 @@ point the CONTEXT discretion note lets be tuned on a real device):
 | Tallest board's drawn height, `R` | **380** for one row, **288** for two or more | **leftover of the first screen, clamped 220 to 420** (§3) |
 | Caption width | **272**, centred under the turned board, clamped inside the rack | the screen's width less 32 (padding 16 each side) |
 | Caption band under each floor line | **116** = 24 drop-mark strip + 92 caption | caption block **118** (its CTA is 44 tall) under a 24 strip |
+| *Built (15-07, 15-09) and judged on devices (15-10, 2026-10-06)* | — | *the phone caption measures about **153** (a 44-tall name row beside the 44-square ⋯, then the line, the date and the 44-tall CTA); Open This Board's tap box reaches ~3 dots into the Shape a New Board line and the words keep ~16 apart; the founder: fine as is — the 118 stays as the sketches' figure, the build's 153 is the record* |
 | Lift of a carried board | 12 | 12 |
 
 **Interaction thresholds** (distances and times, not spacing; the sketch values, kept): drag starts after
