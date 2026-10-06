@@ -535,12 +535,16 @@ function buildApp() {
     if (!rackOrder || rackOrder.length !== list.length) rackOrder = null;
     rack = new Rack(yours, list, { CW, look: v === "a" ? "drawing" : "shop", mode: state.turn, order: rackOrder, onFrame: scheduleMeasure });
   }
-  wireApp(app, list);
+  currentList = list;
+  if (!app._wired) { wireApp(app); app._wired = true; }
+  document.getElementById("dpage").addEventListener("scroll", scheduleMeasure, { passive: true });
   fitWin(sz);
   scheduleMeasure();
 }
-function wireApp(app, list) {
+let currentList = [];
+function wireApp(app) {
   app.addEventListener("click", (e) => {
+    const list = currentList;
     const more = e.target.closest("[data-more]");
     if (more) { e.stopPropagation(); const m = app.querySelector(`[data-menu="${more.dataset.more}"]`); if (m) m.classList.toggle("open"); return; }
     const mv = e.target.closest("[data-move]");
@@ -549,7 +553,6 @@ function wireApp(app, list) {
     const t = e.target.closest("[data-toast]"); if (t) { toast(t.dataset.toast); return; }
     const o = e.target.closest("[data-open]"); if (o) openBoard(list[+o.dataset.open]);
   });
-  document.getElementById("dpage").addEventListener("scroll", scheduleMeasure, { passive: true });
 }
 function openBoard(b) { toast(b.inProgress ? `Would continue ${b.name} on TEMPLATE` : `Would open ${b.name} on TEMPLATE`); }
 let toastTimer = 0;

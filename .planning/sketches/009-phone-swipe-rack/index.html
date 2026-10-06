@@ -568,12 +568,15 @@ function buildScreen() {
     });
     held.shown = 0; held.want = 0; held.f = 0; held.kick();
   }
-  wireScreen(screen, list);
+  currentList = list;
+  if (!screen._wired) { wireScreen(screen); screen._wired = true; }
   fitPhone();
   renderMeter();
 }
-function wireScreen(screen, list) {
+let currentList = [];
+function wireScreen(screen) {
   screen.addEventListener("click", (e) => {
+    const list = currentList;
     const more = e.target.closest("[data-more]");
     if (more) { e.stopPropagation(); const m = screen.querySelector(`[data-menu="${more.dataset.more}"]`); if (m) { m.classList.toggle("open"); return; } toast("Rename, Duplicate, Delete (as today)"); return; }
     screen.querySelectorAll(".menu.open").forEach((m) => { if (!m.contains(e.target)) m.classList.remove("open"); });
