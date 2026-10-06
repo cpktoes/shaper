@@ -107,8 +107,8 @@ chosen.
 
 This also answers the look 009 left open: **the phone's rack is drawn in this Drawing style too.**
 
-**Still to confirm:** whether the unsaved board stays first until it's saved. The founder didn't say, so
-it stays an assumption. Moving boards on a phone is sketch 011.
+**Confirmed later the same day (in sketch 011):** the unsaved board stays first until it's saved. Moving
+boards on a phone is sketch 011's hold and drag.
 
 ## Source
 `sketch-source.tar.gz` holds the scratch files behind `index.html` and `pictures/`: the page template,

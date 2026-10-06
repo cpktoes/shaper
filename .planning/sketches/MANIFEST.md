@@ -36,7 +36,7 @@ cross-section projected at the turn angle, from the app's own rocker, thickness 
 Two requirements from the founder while 010 was being built (2026-10-05): the section is called **Board
 Rack** ("rename it Board Rack rather than Your Boards"), and **"the user must be able to reorder the board
 rack."** On a computer that is a drag along the rack (010). On a phone a sideways drag already swipes the
-rack, so reordering there needs its own gesture, still to be sketched.
+rack, so a board is held until it lifts and then slid along (011).
 
 ## Reference Points
 
@@ -59,6 +59,7 @@ rack, so reordering there needs its own gesture, still to be sketched.
 | 008 | next-screen-button | What does the step-by-step button under the last control look like? | **B — Back + Next** ("Together" tab: on 007-C1) | phone, navigation, wizard |
 | 009 | phone-swipe-rack | On a phone or iPad, how does swiping along a sideways board rack feel, with the middle board turned to its outline? | **B — Turns as it passes** (in 010's Drawing look) | phone, home, board-rack, interaction, motion |
 | 010 | sideways-board-rack | On a computer, what does the Board Rack look like, and how does a board turn and move under the cursor? | **A — Drawing rack**, turn follows the cursor | desktop, home, board-rack, interaction, motion, reorder |
+| 011 | phone-rack-reorder | On a phone, where a sideways drag already swipes the rack, how does a shaper move a board to a new place? | **A — Hold and drag** (tried on a phone) | phone, home, board-rack, reorder, interaction |
 
 ## Decisions These Lock In
 
@@ -96,13 +97,17 @@ rack, so reordering there needs its own gesture, still to be sketched.
 12. **It's called the Board Rack, and the shaper sets its order** (the founder, 2026-10-05) — "Board Rack"
    replaces "Your Boards" as the heading, and boards can be moved within the rack. Today's automatic order
    (unsaved board first, then most recently touched) becomes the starting order only. The unsaved board stays
-   first until it's saved (assumed; to confirm).
+   first and can't be moved until it's saved (confirmed by the founder, 2026-10-05).
 13. **On a computer, the Board Rack is drawn and turns as the cursor passes** (sketch 010 A, 2026-10-05) — the
    app's drafting style (board fill, ink edge, faint dashed height lines every foot or 50 cm, a floor line), all
    boards at one scale on one floor. Boards turn as the cursor sweeps along, the rack opening around the turning
    board; when the cursor stops, the nearest finishes turning, its name, dims, Open and ⋯ under it, and it stays
    turned when the cursor leaves. A board is moved by pressing and dragging it (into another row too), or with
    ⋯ → Move left / Move right, or Alt + arrow. The same Drawing look is used on the phone (009 B).
+14. **On a phone or iPad, a board is moved by holding it until it lifts, then sliding it** (sketch 011 A,
+   2026-10-05, tried on the founder's phone) — a quick swipe still moves the rack; a held board turns blue and
+   follows the thumb, the others slide over, a mark shows the gap, and near the screen's edge the rack scrolls
+   along; the dropped board comes to the middle and turns. The heading reads "hold to move".
 
 ## Open Questions
 
