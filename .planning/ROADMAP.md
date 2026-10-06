@@ -271,16 +271,16 @@ Cross-cutting constraints: no tips code in the curves step — no `slopeAt`, no 
 **Requirements**: R1, R2, R3, R4, R5, R6, R7, R8, R9, R10
 **Brief:** locked in `.planning/phases/15-the-board-rack/15-SPEC.md` (the founder's idea and decisions of 2026-10-05, from sketches 009–011 and the `sketch-findings-shaper` skill)
 **Depends on:** Phase 14 (the side profile the rack draws from); runs inside Phase 13's window — live before the Wednesday 2026-10-07 freeze, with a rehearsal walk after
-**Plans:** 0/13 plans executed in 7 waves — planned 2026-10-05 (`15-RESEARCH.md`, `15-PATTERNS.md`, `15-UI-SPEC.md` approved, `15-VALIDATION.md`); plan checker passed on the second pass. Founder steps: 15-10 (Tuesday's device check, decides D-11) and 15-13 (go-live before the Wednesday freeze).
+**Plans:** 4/13 plans executed in 7 waves — planned 2026-10-05 (`15-RESEARCH.md`, `15-PATTERNS.md`, `15-UI-SPEC.md` approved, `15-VALIDATION.md`); plan checker passed on the second pass. Founder steps: 15-10 (Tuesday's device check, decides D-11) and 15-13 (go-live before the Wednesday freeze).
 
 Plans:
 
 **Wave 1**
 
-- [ ] 15-01-PLAN.md — Work out each board's real turn as tested maths (side profile at rest, the TEMPLATE outline when turned, swallow notch included), and leave out any board the rack can't draw (R1 R3)
-- [ ] 15-02-PLAN.md — Lay the rack out at one true scale on one floor line, with height lines, names that shrink then cut, and every gesture timing in one place (R1 R2 R4 R5 R6)
-- [ ] 15-03-PLAN.md — The rules for the shaper's order (new boards first, a copy beside its original, the unsaved board always first), the save timing, the rack's words and the one-constant D-11 switch (R7 R8 R9)
-- [ ] 15-05-PLAN.md — A practice rack for the browser tests that never reaches the live site, and pictures of today's rack (R5 R6)
+- [x] 15-01-PLAN.md — Work out each board's real turn as tested maths (side profile at rest, the TEMPLATE outline when turned, swallow notch included), and leave out any board the rack can't draw (R1 R3)
+- [x] 15-02-PLAN.md — Lay the rack out at one true scale on one floor line, with height lines, names that shrink then cut, and every gesture timing in one place (R1 R2 R4 R5 R6)
+- [x] 15-03-PLAN.md — The rules for the shaper's order (new boards first, a copy beside its original, the unsaved board always first), the save timing, the rack's words and the one-constant D-11 switch (R7 R8 R9)
+- [x] 15-05-PLAN.md — A practice rack for the browser tests that never reaches the live site, and pictures of today's rack (R5 R6)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -334,4 +334,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 12. Foil the Way a Shaper Cuts It | 10/10 | Complete    | 2026-09-27 |
 | 13. Ready for the Shapers | 11/13 items | In progress | - |
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
-| 15. The Board Rack | 0/13 | Planned | - |
+| 15. The Board Rack | 4/13 | In Progress|  |
