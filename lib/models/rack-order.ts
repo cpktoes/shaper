@@ -270,6 +270,22 @@ export function parseRackOrderInput(value: unknown): string[] | null {
   return [...value];
 }
 
+/**
+ * What `saveRackOrder` reports back (code review IN-02): `saved: true` only when the order was
+ * stored — on the shaper's account, or on the practice rack's stand-in. A lapsed sign-in or a list
+ * the strict reader rejects stores nothing and says `saved: false`, which the rack treats exactly as
+ * a failed save: the board goes back and the rack says the order couldn't be saved — never "The rack
+ * keeps your order" for an order nobody kept.
+ */
+export interface RackOrderSaveResult {
+  saved: boolean;
+}
+
+/** Turns a save that stored nothing into a failed save, the one path the rack's saver reports. */
+export function throwUnlessSaved(result: RackOrderSaveResult | null | undefined): void {
+  if (result?.saved !== true) throw new Error("The rack's order was not stored");
+}
+
 // ---------------------------------------------------------------------------------------------
 // Phase 15 — which board stands turned.
 // ---------------------------------------------------------------------------------------------

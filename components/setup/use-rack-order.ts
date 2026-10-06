@@ -28,6 +28,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { saveRackOrder } from "@/app/actions/rack-order";
+import { throwUnlessSaved } from "@/lib/models/rack-order";
 import { createRackOrderSaver, type RackOrderSaver } from "@/lib/models/rack-order-saver";
 import {
   basisOf,
@@ -73,7 +74,8 @@ export function useRackOrder(serverOrder: readonly string[] | null, onSaveFailed
 
   useEffect(() => {
     const saver = createRackOrderSaver(orderFromBasis(base), {
-      save: (ids) => saveRackOrder(ids),
+      // A save that stored nothing (a lapsed sign-in, a rejected list) is a failed save (IN-02).
+      save: async (ids) => throwUnlessSaved(await saveRackOrder(ids)),
       setTimer: (callback, delayMs) => window.setTimeout(callback, delayMs),
       clearTimer: (handle) => window.clearTimeout(handle as number),
       onFailed: (revertTo) => {
