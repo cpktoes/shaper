@@ -86,6 +86,14 @@ progress).
   founder: someone using a screen reader on a phone can browse and open boards but can't move them. This
   narrows the brief's constraint 8 for touch screens; computers keep the keyboard way (Alt + arrow) and ⋯.
 
+### Ruled after the discussion (2026-10-05)
+- **D-16:** **Duplicating fixes the order, with the copy next to its original — even in a rack never
+  arranged.** The founder's answer to the gap the research and the UI contract both found (D-02 against
+  D-03): in a still-automatic rack a fresh duplicate would otherwise sort first as the most recently
+  touched. Instead the copy is inserted right after its original in the then-current automatic order, and
+  that order is stored, exactly as a move fixes it (D-03). — **Reversibility:** reversible — a rule in the
+  pure order module and the duplicate action.
+
 ### Carried forward from Phase 14 (the same go-live pattern)
 - **D-13:** **A read-only report on the real saved boards before the push** (14 D-18). The founder runs
   one command in their own terminal, as with earlier production steps, and it only reads. For every saved

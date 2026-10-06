@@ -1,7 +1,8 @@
 ---
 phase: 15
 slug: the-board-rack
-status: draft
+status: approved
+reviewed_at: 2026-10-05
 shadcn_initialized: true
 preset: base-nova (components.json — baseColor neutral, cssVariables true, iconLibrary lucide, registries {})
 created: 2026-10-05
@@ -50,8 +51,8 @@ created: 2026-10-05
 **What the rack builds from, all of it existing:**
 
 - **`RackCardMenu`** (`components/setup/rack-card-menu.tsx`), the Base UI `Menu` with today's shell, rows and
-  `coarse:min-h-11`. It gains **two optional rows** at the top, Move left and Move right (§5), and the
-  ellipsis on Rename… and Delete… The saved-board-only trigger label `Board actions for {name}` is unchanged.
+  `coarse:min-h-11`. It gains **two optional rows** at the top, Move left and Move right (§5); its existing rows keep
+  today's words exactly (`Rename`, `Duplicate`, `Delete`). The saved-board-only trigger label `Board actions for {name}` is unchanged.
 - **`RenameDialog`, `DeleteConfirmDialog`, `ReplaceBoardDialog`** exactly as they are (§13).
 - **`CardMetadataLine`'s typography** (12px, 600, muted) and the card-text styles in `board-rack-card.tsx:126-166`
   for the caption (§4).
@@ -80,7 +81,7 @@ Declared values for this phase's surfaces. All are multiples of 4.
 | 2xl | 48px | Slot width on the hover rack; rack → Shape a New Board on a computer (today's `mb-12`) |
 | 3xl | 64px | A computer's top padding (today's `pt-16`) |
 
-**Rack geometry, not spacing** (declared so the planner has the numbers; each is a multiple of 4 and a start
+**Rack geometry, not spacing** (declared so the planner has the numbers; most are multiples of 4; the rest (the 40 slot, the 14/26 words column, the 118 caption block, the 220–420 clamp, the 25 pill, the 12 lift) are measured or sketch figures, not grid values, and each is a start
 point the CONTEXT discretion note lets be tuned on a real device):
 
 | Figure | Hover rack | Swipe rack |
@@ -155,9 +156,9 @@ around it: the drawing is the object (sketch 010 A).
 | Role | Value | Usage |
 |------|-------|-------|
 | Dominant (60%) | `--surf-ground` | The page and the rack's whole field |
-| Secondary (30%) | `--surf-board-fill` (a board's wash), `--surf-line-faint` (height lines), `--surf-line` (floor line, the stringer), `--surf-ink-muted` (the numbers, hint, card line, labels) | Everything the rack draws that is not the accent |
+| Secondary (30%) | `--surf-board-fill` (a board's wash), `--surf-line-faint` (height lines), `--surf-line` (floor line), `--surf-ink-muted` (the numbers, hint, card line, labels) | Everything the rack draws that is not the accent |
 | Accent (10%) | `--surf-accent-ink` | Only the uses listed below |
-| Warning (informational, not destructive) | `--surf-warning-ink` | The duplicate error line and the Delete… menu row, both as today. **Never the unsaved board** (SPEC prohibition) |
+| Warning (informational, not destructive) | `--surf-warning-ink` | The duplicate error line and the Delete menu row, both as today. **Never the unsaved board** (SPEC prohibition) |
 
 **Accent reserved for** (and nothing else on the rack):
 
@@ -177,15 +178,16 @@ lines, the status pill, the hint, the unsaved tag. A turned board is told apart 
 |------|-------|---------------|
 | Board fill | `--surf-board-fill` | solid |
 | Board edge | `--surf-ink` | 1.1, drawn on the outline, no vector-effect scaling |
-| Stringer | `--surf-line` | 1, dash `16 4 4 4` (`--outline-stringer-dash`), opacity = `sin(turn)` so it fades in as the board turns |
+| Stringer | `--outline-station-line` | 1, dash `16 4 4 4` (`--outline-stringer-dash`), opacity = `sin(turn)` so it fades in as the board turns |
 | Height lines | `--surf-line-faint` | 1, dash `5 4`, one every foot from 4′ (Metric: every 50 cm from 150 cm), as far as the tallest board or the 7′ reference |
 | Floor line | `--surf-line` | 1, solid, the full width of the rack's row |
 | Labels | `--surf-ink-muted` | 10px / 600, halo in `--surf-ground` |
 | Carried board edge, drop mark | `--surf-accent-ink` | 1.8 / 3 |
 
-The stringer takes `--surf-line` because that is what the founder saw in sketches 009–011. The app's other
-viewers draw theirs in `--outline-station-line` (36% muted ink). It is a one-token swap if the founder wants
-the home page's stringer to match the viewers' exactly (Open item 6).
+The stringer takes `--outline-station-line` (36% muted ink), the token every other board drawing uses for its
+stringer: the sketches' MANIFEST decision 4 makes reference lines identical on every page, and the sketches only
+drew it in `--surf-line` because their palette had no outline tokens (orchestrator ruling, 2026-10-05). Like the
+viewers' stringer it is a deliberately faint reference line, not a line a shaper must read against a 3:1 bar.
 
 **Legibility** (computed 2026-10-05 from the ramps in `app/globals.css`; Daylight / Chalk / Slate / Phosphor):
 
@@ -198,7 +200,7 @@ the home page's stringer to match the viewers' exactly (Open item 6).
 | Status pill text (`--surf-ground` on an `--surf-ink` fill) | 14.46 / 14.46 / 16.71 / 9.71 | 4.5 ✓ |
 | Board edge (ink) on the board fill | 12.30 / 11.76 / 13.81 / 7.84 | 3 graphic ✓ |
 | Floor line on ground | 4.13 / 4.13 / 3.70 / 3.80 | 3 graphic ✓ |
-| Stringer (`--surf-line`) over the board fill | 3.51 / 3.36 / 3.06 / 3.07 | 3 graphic ✓ |
+| Stringer (`--outline-station-line`, decorative like the viewers') over the board fill | 3.51 / 3.36 / 3.06 / 3.07 | 3 graphic ✓ |
 | Carried edge (accent ink) over the board fill / over ground | 5.76 / 8.60 / 4.25 / 5.65 · 6.77 / 10.57 / 5.14 / 7.00 | 3 graphic ✓ |
 | Height lines on ground | 4.13 / 4.13 / **1.56** / 3.80 | decorative, see below |
 | Board fill against ground | 1.17 / 1.23 / 1.21 / 1.24 | not relied on, see below |
@@ -243,7 +245,7 @@ shaper's system, never a component's arithmetic:
 | Empty state heading | **None.** With no boards (and nothing in progress) the whole rack section, heading included, does not exist, as today (SPEC Edge Coverage; `board-rack.tsx:50`). The preset screen is the empty state. |
 | Empty state body | None. "Shape a New Board" is already the next step, directly where the rack would have been. |
 | Error state | **`Couldn't save the new order — try again.`** (new, §5) when saving a move fails: the rack puts the board back where it was and says this in the status pill. The existing `Couldn't duplicate — try again.` stays (§13). Rename and Delete errors stay in their dialogs. |
-| Destructive confirmation | **Delete…** → today's dialog, unchanged: title `Delete "{name}"?`, body `This can't be undone.`, actions `Cancel` and `Delete Board`. Nothing else on the rack is destructive; a move is reversible and says so (the board is simply moved again). |
+| Destructive confirmation | **Delete** → today's dialog, unchanged: title `Delete "{name}"?`, body `This can't be undone.`, actions `Cancel` and `Delete Board`. Nothing else on the rack is destructive; a move is reversible and says so (the board is simply moved again). |
 
 ### The section heading and its line
 
@@ -287,15 +289,15 @@ the rack, not a promise about the next click.
 | `Move left` | yes | no (D-12) | yes |
 | `Move right` | yes | no (D-12) | yes |
 | *(a 1px `--surf-line-faint` divider, 4 above and below)* | yes | none | yes |
-| `Rename…` | yes | yes | yes |
+| `Rename` | yes | yes | yes |
 | `Duplicate` | yes | yes | yes |
-| `Delete…` | yes, in warning ink as today | same | same |
+| `Delete` | yes, in warning ink as today | same | same |
 
 `Move left` is **dimmed and inert** (Base UI `disabled`) on the first saved board when an unsaved board
 stands before it, and on the first board when there is no unsaved board; `Move right` the same on the last
-board. A disabled row keeps its place so the menu never reshuffles. The ellipsis follows the convention that
-the row opens a dialog; today's rows read `Rename` and `Delete` without it, so this is a visible wording
-change to two existing rows, made so the menu is one grammar. Row text stays sentence case (`text-sm`).
+board. A disabled row keeps its place so the menu never reshuffles. Today's rows keep their exact words
+(`Rename`, `Duplicate`, `Delete`, no ellipsis) — the brief keeps them "as today" (orchestrator ruling,
+2026-10-05). Row text stays sentence case (`text-sm`).
 
 ### Words that appear while something happens (the status pill and the carrying line)
 
@@ -339,9 +341,8 @@ to trust.
   "toast" are unrelated preference files). The two persistent live regions that exist are the Save button's
   `aria-live="polite"` text (`save-button.tsx:113-152`) and the blank flag's `role="status"`
   (`blank-flag.tsx:93`). The status pill is a **new local component** (§10), not a shadcn one.
-- **Today's menu rows read `Rename`, `Duplicate`, `Delete`** with no ellipsis (`rack-card-menu.tsx:56-66`).
-  The ellipsis on two of them is a deliberate wording change (Copywriting). Any e2e step that finds a row by
-  its exact text needs updating (CONTEXT lists the four specs that walk the home page).
+- **Today's menu rows read `Rename`, `Duplicate`, `Delete`** with no ellipsis (`rack-card-menu.tsx:56-66`),
+  and they keep those exact words; only the two Move rows are new.
 - **The card has `gap-2` (8) between every line** (`board-rack-card.tsx:79`). The caption deliberately
   tightens that to 4 between name, card line and last touched, 8 above the CTA. That tighter stack is what
   measures to about 90 on a computer and 118 on a phone with its 44-dot CTA, the "~118" the sketches measured.
@@ -597,7 +598,7 @@ One constant (e.g. `PHONE_MOVE_VIA_MENU`) and nothing else switches it, so it is
 rebuild. **On:** hold-and-slide is disabled (the 420 ms timer never starts and the board never swells); the
 swipe rack's ⋯ gains `Move left` and `Move right` above a divider, as the hover rack's has (§ Copywriting);
 the swipe hint reads `{n} boards · tap ⋯ to move`; everything else, including tap-to-centre and the turn, is
-unchanged. **Off** (the default): D-12's menu (Rename…, Duplicate, Delete…).
+unchanged. **Off** (the default): D-12's menu (Rename, Duplicate, Delete).
 
 ### 9. States (question B)
 
@@ -611,7 +612,7 @@ unchanged. **Off** (the default): D-12's menu (Rename…, Duplicate, Delete…).
 | **30 boards, 100 boards** | Hover: balanced rows (15 + 15 at 960; 10 × 3 at 756 and 568), each reserving its band. Swipe: one longer track, the same height. | §3 |
 | **A long name** | Words shrink to 10px, then the name is cut with `…` and the numbers stay whole; the caption name truncates on one line; the accessible name is the full name. | § Typography |
 | **Metric** | Card line in centimetres and litres; height lines every 50 cm from 150, bare numbers. Nothing else differs. | Rule 2 |
-| **Light themes** (Daylight, Chalk) | Ink edge on a pale wash on white; Daylight's stringer and floor read khaki, Chalk's too (shared `--surf-line`). | § Color |
+| **Light themes** (Daylight, Chalk) | Ink edge on a pale wash on white; Daylight's floor reads khaki, Chalk's too (shared `--surf-line`); the stringer is the viewers' faint line. | § Color |
 | **Dark themes** (Slate, Phosphor) | Ink edge on a dark wash; Slate's height lines nearly vanish (1.56:1, by design); in Phosphor every ink is a green, so the carried board's lift and weight carry it. | § Color |
 | **Resting** | One board turned (θ 90°), the rest side-on (θ 0°), words at full strength, the caption under the turned one. | |
 | **Mid-sweep** (hover) | Boards near the pointer part-turned by distance; the rack open around them; the caption stays under the last turned board; no fade. | §2 |
@@ -620,10 +621,10 @@ unchanged. **Off** (the default): D-12's menu (Rename…, Duplicate, Delete…).
 | **Drop gap** | One slot wide at the landing place; the accent drop mark under the floor, centred on it; never at the unsaved board's place. | §5 |
 | **After the drop** | The board descends 12, turns, caption under it; the pill says `Moved …`. | §5 |
 | **⋯ menu open** | Rack frozen and inert; menu as today with the Move rows on the hover rack. | §6 |
-| **Rename… dialog** | Today's dialog. On save the vertical words, the caption and the screen-reader name re-fit to the new name at once (the words re-run their fit). | §13 |
+| **Rename dialog** | Today's dialog. On save the vertical words, the caption and the screen-reader name re-fit to the new name at once (the words re-run their fit). | §13 |
 | **Duplicate…** | No dialog. A copy appears right after its original (D-02); the original stays turned; the new board does not take the turn. `Duplicated {name}. The copy stands next to it.` is spoken. | D-02 |
 | **Duplicate error** | `Couldn't duplicate — try again.` in warning ink under that board's `OPEN THIS BOARD`, whenever that board is the turned one, until it is tried again or the page reloads. Choosing Duplicate again is the retry. | §13 |
-| **Delete… dialog** | Today's dialog. After a delete the board leaves; if it was the turned one the turned board becomes the next in order (the previous if it was last), and focus lands on that board's button. `Deleted {name}.` is spoken. | §13 |
+| **Delete dialog** | Today's dialog. After a delete the board leaves; if it was the turned one the turned board becomes the next in order (the previous if it was last), and focus lands on that board's button. `Deleted {name}.` is spoken. | §13 |
 | **A save failed** | The board slides back; `Couldn't save the new order — try again.` | §5 |
 | **Keyboard focus** | `.focus-ring-accent` (a 3-dot accent-ink ring) on the focused board's whole button (a tall, thin box the board's width), turning it. | §11 |
 | **Reduced motion** | Only two angles ever draw: 0° and 90°. The board nearest a *resting* pointer or middle turns; sweeping and swiping change nothing until they rest. Slots jump, the carried board follows exactly, drops land without descent, no swell, the caption moves without a glide, smooth scroll is instant. | §12 |
@@ -686,8 +687,8 @@ stays first…`, `Couldn't save the new order…`, `Duplicated…`, `Deleted…`
 itself is not announced (the board button's name already says everything the turn shows).
 
 **Touch screen readers (D-12, accepted by the founder).** On a phone or iPad a VoiceOver or TalkBack user can
-reach every board (focus scrolls it to the middle and turns it), open it, and use Rename…, Duplicate and
-Delete…. They **cannot move a board** (no Move rows on the swipe rack). An iPad with a keyboard can, with Alt +
+reach every board (focus scrolls it to the middle and turns it), open it, and use Rename, Duplicate and
+Delete. They **cannot move a board** (no Move rows on the swipe rack). An iPad with a keyboard can, with Alt +
 arrow. D-11 gives the menu rows back for everyone if it is switched on.
 
 **Contrast** is in § Color: every text pairing clears 4.5:1 in all four themes (the smallest is accent ink on
@@ -782,7 +783,7 @@ grid or to match what the app's own text really measures.
 | Caption band | 96 | **116** | The app's caption stack (name 24, three 12px lines, gaps 4 / 4 / 8) is 90, plus the 24 drop-mark strip. 96 only held the text above the strip |
 | Gap in the words | 7 | **8** | On the scale |
 | Numbers' weight | 500 | **400** | Keeps two weights (600 and 400); at 11 and 12px the difference is not visible |
-| Stringer colour | `--surf-line` | `--surf-line` (**kept**) | The app's viewers use `--outline-station-line`; see Open item 6 |
+| Stringer colour | `--surf-line` | `--outline-station-line` | Matches every other board drawing (MANIFEST decision 4); orchestrator ruling |
 | Heading → rack on a phone | 16 | 16 (**kept**), but it is the scroller's own top padding | So the lift is never clipped |
 
 ---
@@ -795,7 +796,9 @@ None blocks the plan. Each is a place this contract made a call, or needs a chec
    "unsaved first, then most recently touched", and a fresh duplicate is the most recently touched, so it
    would sort first, not "right after its original". Recommend treating **the first Duplicate as the moment
    the order is fixed** (it is a placing by the shaper, like a move): the copy is inserted after its original
-   in the then-current automatic order and that order is stored. The planner confirms.
+   in the then-current automatic order and that order is stored. **Resolved by the founder, 2026-10-05:**
+   "Next to its original" — the copy lands right after its original and duplicating fixes the order from
+   then on, as a move does (CONTEXT D-16).
 2. **The pointer hook and first paint.** The reserved box and the hint are CSS (`coarse:`), the rack mounts
    after hydration from a `matchMedia('(pointer: coarse)')` hook with a server snapshot of "hover". Check
    there is no visible swap on a real iPhone (the box height is right from the first paint, so none is
@@ -806,8 +809,8 @@ None blocks the plan. Each is a place this contract made a call, or needs a chec
    tolerable; a spoken variant is a later pass.
 5. **One-board and unsaved-only hint.** D-08 and D-09 keep `point to turn, drag to move` even when nothing
    can be dragged. Accepted as the decisions read; revisit only if the founder objects at the rehearsal.
-6. **The stringer's token.** `--surf-line` (what the founder saw) or `--outline-station-line` (what the
-   viewers draw). One token; ask the founder if they want the home page to match the viewers.
+6. **The stringer's token.** *Resolved 2026-10-05:* `--outline-station-line`, as on every viewer (MANIFEST
+   decision 4).
 7. **Metric labels are bare numbers.** `150`, `200`… with `cm` carried by every board's own numbers. If it
    reads oddly beside `4′` in a screenshot, the top label alone can carry ` cm`.
 8. **Words at the 220 floor** (a sideways phone). A 20-character name plus its numbers is about 260 at 11px,
@@ -820,14 +823,135 @@ None blocks the plan. Each is a place this contract made a call, or needs a chec
 
 ## UI Considerations
 
-> Populated by the ui-phase UI-consideration probe (Step 9.5) after this contract is written; the probe and
-> the approval write-back are the orchestrator's. This section is intentionally empty until then.
+**42 considerations across 11 surfaces — 42 resolved, 0 open** (39 answered explicitly by this contract, 3 held out as a real-device check).
 
-Applicable state considerations resolved: pending (the probe has not run)
+Produced by `gsd-core/bin/lib/ui-consideration-probe.cjs` from the eleven surfaces below (E01–E11), with element kinds
+authored deliberately rather than inferred from prose (recorded under each heading). These are state-coverage questions for
+the people who build the rack, so, following the workflow's `--auto` convention as the Phase 9, 11, 12 and 14 contracts did,
+the orchestrator confirmed the kinds and resolved every row itself instead of putting 42 question cards to the founder. Each
+row is either **✅ covered** (this contract answers it outright — lifted as a truth) or **🧪 backstop** (it has to be seen on a
+real device — lifted as `{ statement, verification: backstop }`). **Nothing was dismissed** and nothing is left ⚠ unresolved;
+every row is a real answer the founder can revisit and overrule. Empty- and error-state COPY is not restated here: the rows
+point at the Copywriting Contract and §5, §9 and §10.
 
-| Category | Element(s) | Status | Resolution / Reason |
-|----------|------------|--------|---------------------|
-| — | — | — | Pending the probe. The States table in §9 and the Edge Coverage in `15-SPEC.md` hold the states it will resolve (empty, one, many, long text, error, reduced motion, the touch-laptop first-tap). |
+### E01 — Section heading line
+
+_Kinds: static-content_
+
+| State | How it resolves | |
+|---|---|---|
+| **Overflow / truncation** | The count and hint sit on one muted 12px line to the right of the heading (`flex-wrap gap-x-4`, baseline aligned); on a very narrow screen the line wraps under the heading rather than squeezing it. Nothing is clipped. | ✅ covered |
+| **Long text** | The line is fixed text plus a number: `{n} boards · point to turn, drag to move`, `· hold to move`, or `· tap ⋯ to move` (D-11). One board reads `1 board · …`. The longest is the hover hint, which wraps under the heading below about 420 dots. | ✅ covered |
+
+### E02 — Hover rack
+
+_Kinds: list-collection, interactive-control_
+
+| State | How it resolves | |
+|---|---|---|
+| **Empty / no data** | No boards, signed out, a failed or slow list: no heading, no rack, no hint; the presets stand where the rack was (today's `board-rack.tsx:50` rule and the Suspense fallback). There is no empty-rack design. | ✅ covered |
+| **Loading / in-flight** | The server renders the heading, the count and a reserved box of the right height per pointer (E11); the rack draws into it on mount from data already on the page. No spinner and no network wait after first paint; turning is pure drawing (no requests). | ✅ covered |
+| **Error / failure** | A board whose numbers or art can't be worked out is dropped (not drawn, not counted, no gap) and logged, at any of three points (server, card summary, art builder) — WR-05. A failed order save slides the board back and says `Couldn't save the new order — try again.` | ✅ covered |
+| **Populated** | Boards stand at one scale on one floor line in balanced rows (one row of 15 at 1280–1440; 8+7 at 820 and below; 15+15 at 960 for 30); the cursor turns boards as it passes and the rack opens around the turning board; one board is always turned with its caption under it (§2, §3, §4). | ✅ covered |
+| **Partial / incomplete** | Only the unsaved board: one slot, turned, the unsaved caption (tag, name, card line, Continue This Board, no ⋯), hint still shown. A stored order missing a board puts it first behind the unsaved board; an id with no board is skipped (D-01, D-03). | ✅ covered |
+| **Overflow / truncation** | Never scrolls sideways: a row holds as many boards as fit beside the reserve for the widest turned outline, and further boards wrap into balanced rows, each with its caption band. Rows re-balance on resize; the turned board stays turned. | ✅ covered |
+| **Zero / one / many** | 0: no rack (E02 empty). 1: one slot turned, both Move rows dimmed. 2: one turned, Move enabled toward the other. 15 / 30 / 100: balanced rows at one shared scale (290→288 two-row height) — the same rack at any count (D-09). | ✅ covered |
+| **Long text** | Names and numbers are E04's fit rule (shrink to 10px, then cut the name only, by grapheme); the caption name truncates on one line; screen readers get the full name. | ✅ covered |
+
+### E03 — Swipe rack
+
+_Kinds: list-collection, interactive-control_
+
+| State | How it resolves | |
+|---|---|---|
+| **Empty / no data** | As E02 empty: no rack at all with no boards; presets only. | ✅ covered |
+| **Loading / in-flight** | As E02 loading, plus on arrival the scroller is placed with an instant `scrollTo` so the board being worked on is in the middle before first paint (D-07); never a visible smooth scroll. | ✅ covered |
+| **Error / failure** | As E02 error (WR-05 drops, the failed-save message). A system touch cancel during a carry returns the board to where it was. | ✅ covered |
+| **Populated** | One edge-to-edge track snapping a board to the middle; every board turns as it passes the middle following the thumb; it settles with one board turned and its caption under it; Shape a New Board stays on the first screen of an iPhone 14 page (R ≈ 357, `clamp(220, 100dvh − 306, 420)`). | ✅ covered |
+| **Partial / incomplete** | As E02 partial: the unsaved board alone sits in the middle, turned, with its unsaved caption; the hint still shows. | ✅ covered |
+| **Overflow / truncation** | The track scrolls sideways inside its own scroller (it bleeds past the 16px gutters on purpose); the page itself never scrolls sideways. A phone held sideways gives the rack the short screen (`clamp(220, 100dvh − 128, 280)`), Shape a New Board a scroll below (D-06). | ✅ covered |
+| **Zero / one / many** | 0: no rack. 1: one board centred and turned. Many: one longer track at the same height; about 5 boards show at the start and 9 across mid-rack on an iPhone 14; 30 or 100 boards only lengthen the swipe. | ✅ covered |
+| **Long text** | As E02 long-text, at 11px with the same 10px floor and grapheme-safe cut. | ✅ covered |
+
+### E04 — A board's vertical words
+
+_Kinds: static-content_
+
+| State | How it resolves | |
+|---|---|---|
+| **Overflow / truncation** | The words may run as long as the rack height minus 8; longer lines shrink in 0.5 steps to 10px, then the name is cut with `…` and the numbers stay whole. A ground-coloured halo keeps dashed height lines from cutting letters. | ✅ covered |
+| **Long text** | Long names (20+ characters) at the sideways-phone floor (R 220) are cut; check on a real sideways phone that the cut name still reads, and in VoiceOver that the full name is announced. | 🧪 backstop |
+
+### E05 — The caption under the turned board
+
+_Kinds: static-content, interactive-control_
+
+| State | How it resolves | |
+|---|---|---|
+| **Loading / in-flight** | The caption never waits: it shows the turned board's own data already on the page; it glides to a newly turned board in 160 ms (hover) and swaps words at once, staying under the last turned board during a sweep (no flicker). | ✅ covered |
+| **Error / failure** | The duplicate error `Couldn't duplicate — try again.` shows in warning ink under that board's Open This Board while it is the turned board, until retried or reloaded (today's behaviour, moved into the caption). | ✅ covered |
+| **Overflow / truncation** | Hover caption is 272 wide, centred under the turned board and clamped inside the rack's ends; swipe caption is full width, 118 tall. The name truncates on one line before the ⋯ trigger with 8 of air. | ✅ covered |
+| **Long text** | Name truncates (CSS, never a code slice); card line and date are fixed-format and fit 272; the CTA is a fixed string. Screen readers get the full name. | ✅ covered |
+
+### E06 — The board actions menu
+
+_Kinds: interactive-control_
+
+| State | How it resolves | |
+|---|---|---|
+| **Loading / in-flight** | Menu actions start at once: Move is optimistic (the board moves, the save runs behind); Rename and Delete open today's dialogs; Duplicate inserts the copy right after its original when the action returns (D-02, D-16). | ✅ covered |
+| **Error / failure** | Move left is dimmed and inert on the first saved board (or the first board), Move right on the last; a disabled row keeps its place. A failed move save slides the board back with the failed-save message; a failed duplicate shows the duplicate error. | ✅ covered |
+| **Long text** | Rows are fixed words: Move left, Move right (hover rack only, D-12), a divider, Rename, Duplicate, Delete (today's exact words). The trigger's accessible name `Board actions for {name}` carries the full name. | ✅ covered |
+
+### E07 — Moving a board on a computer
+
+_Kinds: interactive-control_
+
+| State | How it resolves | |
+|---|---|---|
+| **Loading / in-flight** | The new order shows at once and saves in the background; a burst of moves saves once (actions run one at a time, in order). | ✅ covered |
+| **Error / failure** | A failed save slides the board back and says `Couldn't save the new order — try again.` Escape or a pointer cancel puts a carried board back with no message; dropping where it started does nothing. The unsaved board can't be lifted and says `The unsaved board stays first until it's saved`. | ✅ covered |
+| **Long text** | Messages are fixed strings with the board's name: `Moved {name}. The rack keeps your order.`; the pill wraps to two lines at most within the viewport less 32. | ✅ covered |
+
+### E08 — Moving a board on a touch screen
+
+_Kinds: interactive-control_
+
+| State | How it resolves | |
+|---|---|---|
+| **Loading / in-flight** | Hold 420 ms (swell from 120 ms), then lift; the order shows at once on the drop and saves in the background, as E07. | ✅ covered |
+| **Error / failure** | Hold-and-drag must be proven on the founder's iPad (Safari before 18.4) and an Android phone: the lift must not start a page scroll, and a system cancel must return the board. If it is not reliable by Wednesday, D-11's switch turns on (⋯ → Move left / Move right on touch). | 🧪 backstop |
+| **Long text** | While a board is carried the swipe caption is replaced by the carrying line `Moving {name}. Let go where you want it.`, which returns to the caption on the drop. | ✅ covered |
+
+### E09 — The status pill and live region
+
+_Kinds: static-content_
+
+| State | How it resolves | |
+|---|---|---|
+| **Overflow / truncation** | The pill is fixed bottom-centre 24 above the edge (plus the safe-area inset) and may briefly overlap Shape a New Board's heading on a phone, as sketch 011 showed; check it reads on an iPhone and does not cover the swipe caption's Open This Board. | 🧪 backstop |
+| **Long text** | Messages are short fixed strings with one board name; the pill is `max-w-[calc(100vw-32px)]` and wraps to two lines at most; it never takes focus and is the one `role=status` live region (always in the DOM). | ✅ covered |
+
+### E10 — Rename and Delete dialogs, duplicate error
+
+_Kinds: form_
+
+| State | How it resolves | |
+|---|---|---|
+| **Empty / no data** | Rename keeps today's dialog and validation (an empty name is refused as today); nothing about the dialogs changes. | ✅ covered |
+| **Loading / in-flight** | Today's dialogs keep their pending states; after a rename the vertical words, caption and accessible name re-fit at once. | ✅ covered |
+| **Error / failure** | Today's dialog error handling is unchanged; the duplicate error is E05's caption line. | ✅ covered |
+| **Partial / incomplete** | After a delete the board leaves; if it was turned, the next board in order (the previous if it was last) turns and takes focus; `Deleted {name}.` is spoken (not shown). | ✅ covered |
+| **Long text** | Today's dialogs show the board's name as they do now (`Delete "{name}"?`); unchanged. | ✅ covered |
+
+### E11 — The reserved first-paint box
+
+_Kinds: static-content_
+
+| State | How it resolves | |
+|---|---|---|
+| **Overflow / truncation** | The box is exactly the rack's first-paint height per pointer, set in CSS (`h-[520px] coarse:h-(--rack-swipe-h)`), so a phone never jumps; on a computer with more than one row it grows once after mount, below the fold. | ✅ covered |
+| **Long text** | The box holds no text; the heading and both hint phrasings are in the markup, shown by `coarse:hidden` / `hidden coarse:inline`, so even the words are right on first paint. | ✅ covered |
 
 ---
 
@@ -844,11 +968,11 @@ nothing to run on and is trivially satisfied.
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS (FLAG: today's dialog buttons `Cancel` / `Save` stay generic, out of scope)
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS (FLAG: 10/11/12px sit close; 11px kept for the phone words the founder tried on a phone)
+- [x] Dimension 5 Spacing: PASS (FLAG fixed: the rack-geometry note no longer claims every figure is on the 4 grid)
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-10-05 (gsd-ui-checker: 3 PASS, 3 non-blocking FLAGs; orchestrator rulings on menu wording and the stringer token; the founder's D-16 on duplicates; the UI-consideration probe 42/42 resolved)
