@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 15 (The Board Rack) on branch board-rack: 10 of 13 plans merged, plus the code review (1 critical, 5 warnings, 8 info) fixed and merged as c58a5b0 — every finding but WR-05, which is the founder's real-Safari check. Final tree at 04:07 2026-10-06: tsc + lint clean, vitest 4,296 passed, test:e2e:prod 18 passed, full test:e2e 829 passed / 0 failed. Waiting on: 15-10, the founder's device check (.continue-here.md, 12 checks; decides D-11). Then 15-12 (autonomous) and 15-13, the go-live, before the Wed 2026-10-07 freeze."
+stopped_at: "Phase 15 (The Board Rack) on branch board-rack: 11 of 13 plans done. 15-10 ruled 2026-10-06 on the founder's iPad 9th gen and an Android phone — keep: hold-and-drag ships, PHONE_MOVE_VIA_MENU stays false (verify re-run: 23 unit + 31 phone checks green). 15-12 (source contracts, the CLAUDE.md D-04 sentence, the walk sheet issue 3) building in a worktree off 4d4208e. Then 15-13: the go-live before the Wed 2026-10-07 freeze — show the founder today's rack beside the Board Rack, their read-only rack report, the production migration with them present, one push, the live check, the rehearsal walk."
 last_updated: "2026-10-06T05:09:58.019Z"
 last_activity: 2026-10-05
 last_activity_desc: Quick task 261005-big (RAILS on an upright phone shows only the picked rail's controls under NOSE / CENTER / TAIL) is LIVE as main ba08033, checked on the live site
@@ -11,8 +11,8 @@ progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 44
-  completed_plans: 39
-  percent: 89
+  completed_plans: 40
+  percent: 91
 current_phase: 15
 current_phase_name: The Board Rack
 ---
