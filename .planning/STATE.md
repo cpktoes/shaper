@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 15 (The Board Rack) is LIVE: merged to main as c417257 on 2026-10-06 08:30 PDT on the founder's go, after the live database received its rack_order column with them present (5 of 5 columns, 10 migrations); deployment shaper-fi967okof Ready 08:45; live check passed 08:52. 13 of 13 plans done. Next: the verifier's 15-VERIFICATION.md, then /gsd-verify-work 15; the founder's rehearsal walk (13-UAT.md, 18 steps, sheet issue 3) on the live site before the Wed 2026-10-07 evening freeze."
+stopped_at: "Phase 15 (The Board Rack) is LIVE (main c417257, 2026-10-06 08:45 PDT) and verified: 15-VERIFICATION.md human_needed, no gaps, 9/10 truths by test, the tenth (the stored order across a reload and a second device) for a signed-in person. Six checks in 15-UAT.md, all for the founder's rehearsal walk on the live site with their own boards (13-UAT.md, 18 steps + Phase 15's looks; sheet issue 3) before the Wed 2026-10-07 evening freeze. Next: record the walk's results in 15-UAT.md (/gsd-verify-work 15), then phase.complete 15."
 last_updated: "2026-10-06T05:09:58.019Z"
 last_activity: 2026-10-06
 last_activity_desc: Phase 15, The Board Rack, went live on www.shaperassistant.com (merge c417257) on the founder's go, 2026-10-06
