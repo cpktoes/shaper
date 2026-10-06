@@ -19,6 +19,7 @@ import {
   type FitDefaultsPreference,
 } from "@/lib/fit-defaults-preference";
 import { parseHiddenBlankMakersColumn } from "@/lib/blank-makers-preference";
+import { parseRackOrderColumn } from "@/lib/models/rack-order";
 import type { BlankVendor } from "@/lib/blanks/vendors";
 import type { UnitsSystem } from "@/lib/geometry/units";
 
@@ -138,4 +139,23 @@ export async function readBlankMakersPreference(clerkId: string): Promise<BlankV
     .from(userPreferences)
     .where(eq(userPreferences.clerkUserId, clerkId));
   return parseHiddenBlankMakersColumn(row?.hiddenBlankMakers ?? null);
+}
+
+/**
+ * The shaper's own order of their saved boards on the Board Rack (Phase 15, D-03), or `null` when
+ * the row is missing or they have never arranged it — which the rack shows as today's automatic
+ * order. The column's JSON text is run through `parseRackOrderColumn`'s allow-list, so a drifted or
+ * hand-edited value keeps only well-formed ids, and malformed text reads as "not arranged".
+ *
+ * Selects exactly this one column and nothing else, so the reads above never ask for it and this
+ * one never asks for theirs.
+ *
+ * Read-only contract, same register as `listModels`: one `select`, no counters, no last-seen
+ * stamp, no write of any kind.
+ */
+export async function readRackOrder(clerkId: string): Promise<string[] | null> {
+  const [row] = await db.select({ rackOrder: userPreferences.rackOrder })
+    .from(userPreferences)
+    .where(eq(userPreferences.clerkUserId, clerkId));
+  return parseRackOrderColumn(row?.rackOrder ?? null);
 }
