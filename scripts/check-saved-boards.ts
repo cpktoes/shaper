@@ -56,6 +56,19 @@
  * board, a board name, a user id or the connection string, and never changes the exit code. Both
  * flags may be given together.
  *
+ * `--rack-report` (Phase 15 D-13, read-only, counts and board ids only): the founder's check before
+ * the Board Rack goes live that the rack can draw every board saved on the site. Every saved board
+ * is run through exactly what the home page runs (`rackModelsAndDrops`, its parse and its rack
+ * picture), and three more lines are printed:
+ *   saved boards: N; the rack can draw: k of N
+ *   accounts with saved boards: A; boards per account: n1, n2, ...
+ *   boards the rack would leave out: <ids>        (or: none)
+ * The boards-per-account counts are sorted from most to fewest and carry no ids: the owner column is
+ * read only to count, and is never printed. It never prints a board name, a snapshot, a user id or
+ * the connection string, and the rack's own per-board log is silenced. It exits 1 only when a board
+ * that opens in the check above is left out by the rack — a board that already does not open is
+ * that check's failure, not this one's.
+ *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
  *
@@ -71,6 +84,8 @@
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --curves-report'
  *   production, the tips report — the founder only (plan 14-18), the same temporary-file recipe:
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --tips-report'
+ *   production, the rack report — the founder only (plan 15-13), the same temporary-file recipe:
+ *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --rack-report'
  *
  * Which env file is read is controlled by `CHECK_ENV_FILE` (default `.env.local`, resolved from the
  * current directory), exactly as scripts/check-preference-columns.ts: when the file exists, any
@@ -127,6 +142,7 @@ async function main(): Promise<void> {
     summarizeMoves,
     tipsReportLines,
   } = await import("../lib/geometry/before-after");
+  const { rackModelsAndDrops } = await import("../lib/models/rack-models");
 
   type Mm = import("../lib/geometry/units").Mm;
   type FoilStationKey = import("../lib/geometry/foil").FoilStationKey;
@@ -137,10 +153,13 @@ async function main(): Promise<void> {
   const thinTipsFlag = process.argv.includes("--thin-tips");
   const curvesReportFlag = process.argv.includes("--curves-report");
   const tipsReportFlag = process.argv.includes("--tips-report");
+  const rackReportFlag = process.argv.includes("--rack-report");
   const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
 
-  // Read-only: one select of every saved board's id and snapshot, nothing else.
-  const rows = await db.select({ id: models.id, snapshot: models.snapshot }).from(models);
+  // Read-only: one select of every saved board's id, owner and snapshot, nothing else. The owner
+  // column is read only so `--rack-report` can count boards per account; it is never printed.
+  const rows = await db.select({ id: models.id, clerkUserId: models.clerkUserId, snapshot: models.snapshot })
+    .from(models);
 
   const versions = new Map<number, number>();
   let opened = 0;
@@ -329,9 +348,30 @@ async function main(): Promise<void> {
     if (tipsNotCompared > 0) console.log(`boards the tips report could not compare: ${tipsNotCompared}`);
   }
 
+  // --rack-report (Phase 15 D-13): ONE call of the home page's own path. The name is never read (an
+  // empty one is passed) and the rack's per-board log is silenced, so nothing about a board but its
+  // id can reach this terminal.
+  let rackLeavesOutAnOpeningBoard = false;
+  if (rackReportFlag) {
+    const { models: drawn, dropped } = rackModelsAndDrops(
+      rows.map((row) => ({ id: row.id, name: "", snapshot: row.snapshot, updatedAt: new Date(0) })),
+      () => {},
+    );
+    const perAccount = new Map<string, number>();
+    for (const row of rows) perAccount.set(row.clerkUserId, (perAccount.get(row.clerkUserId) ?? 0) + 1);
+    const counts = [...perAccount.values()].sort((a, b) => b - a);
+    console.log(`saved boards: ${rows.length}; the rack can draw: ${drawn.length} of ${rows.length}`);
+    console.log(
+      `accounts with saved boards: ${perAccount.size}; boards per account: ${counts.length > 0 ? counts.join(", ") : "none"}`,
+    );
+    console.log(`boards the rack would leave out: ${dropped.length > 0 ? dropped.join(", ") : "none"}`);
+    const didNotOpen = new Set(notOpened);
+    rackLeavesOutAnOpeningBoard = dropped.some((id) => !didNotOpen.has(id));
+  }
+
   if (notOpened.length > 0) console.log(`boards that do not open: ${notOpened.join(", ")}`);
   if (moved.length > 0) console.log(`Phase 11 boards whose five thicknesses moved: ${moved.join(", ")}`);
-  if (opened < rows.length || kept < phase11Boards) process.exitCode = 1;
+  if (opened < rows.length || kept < phase11Boards || rackLeavesOutAnOpeningBoard) process.exitCode = 1;
 }
 
 /**
