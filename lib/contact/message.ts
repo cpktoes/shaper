@@ -54,6 +54,10 @@ export const CONTACT_COPY = {
   sentReplyLead: "We'll reply to",
   failedLead:
     "That didn't send, sorry. Your message is still in the box below. Copy it and email us at",
+  // Shown in the failure line's place, followed by the address link, when one visitor has sent
+  // five messages within the hour (quick 261006-g5q; the limit lives in ./rate-limit.ts).
+  limitedLead:
+    "That's a few messages in a short time. Please try again in about an hour, or email us at",
   menuLabel: "Contact",
 } as const;
 
@@ -70,7 +74,7 @@ export type ContactMessage = { message: string; email: string; name: string };
 export type ContactFieldErrors = Partial<Record<"message" | "email" | "name", string>>;
 export type ContactValues = { message: string; email: string; name: string };
 export type ContactFormState = {
-  status: "idle" | "invalid" | "failed" | "sent";
+  status: "idle" | "invalid" | "failed" | "limited" | "sent";
   errors: ContactFieldErrors;
   values: ContactValues;
   replyTo: string;

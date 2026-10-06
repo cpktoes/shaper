@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CONTACT_ADDRESS,
+  CONTACT_COPY,
   CONTACT_EMAIL_PATTERN,
   CONTACT_ERRORS,
   CONTACT_LIMITS,
@@ -394,5 +395,13 @@ describe("initialContactFormState", () => {
 describe("CONTACT_EMAIL_PATTERN", () => {
   it("is exported and usable directly", () => {
     expect(CONTACT_EMAIL_PATTERN.test("jane@example.com")).toBe(true);
+  });
+});
+
+describe("CONTACT_COPY.limitedLead", () => {
+  it("is the exact line a visitor sees on a sixth message within the hour, before the address link", () => {
+    expect(CONTACT_COPY.limitedLead).toBe(
+      "That's a few messages in a short time. Please try again in about an hour, or email us at",
+    );
   });
 });

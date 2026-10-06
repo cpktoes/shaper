@@ -2,7 +2,8 @@
  * The Contact form's delivery switch (quick 260929-u1t, Task 1; the sender reworked for Resend in
  * quick 260929-w2k, Task 1): the production-guarded stand-in (P-3), the Resend HTTP call, and
  * `submitContact` — the one function the Server Action calls, which decides between honeypot,
- * validation, availability and delivery in that order.
+ * validation, availability, the per-visitor limit (quick 261006-g5q, `./rate-limit.ts`) and
+ * delivery in that order. The limit is asked only for an attempt that would really reach delivery.
  *
  * Pure except for the injectable `fetch` — server-side only by convention, never by React or
  * Next import: nothing under `components/` may import this file (the boundary test in
@@ -164,15 +165,20 @@ function safePreviousAttempt(previous: ContactFormState | undefined): number {
 
 /**
  * The one function `app/actions/contact.ts` calls. Order: attempt, then honeypot, then
- * validation, then availability, then deliver inside try/catch — a filled honeypot short-circuits
- * everything after it (still answering "sent", so a bot learns nothing), an invalid field never
- * reaches delivery, and a missing delivery path never calls the injected `deliver`.
+ * validation, then availability, then the per-visitor limit, then deliver — the last two inside
+ * try/catch. A filled honeypot short-circuits everything after it (still answering "sent", so a
+ * bot learns nothing), an invalid field never reaches delivery, and a missing delivery path never
+ * calls the injected `deliver`. The injected `allowSend` (quick 261006-g5q) is asked only for an
+ * attempt that would really reach delivery, so spam, mistakes and a server with no way to send
+ * never use up a send; when it answers false the shaper gets "limited" with what they typed kept,
+ * and when it throws they get "failed" the same way. Omitted, every send is allowed.
  */
 export async function submitContact(input: {
   fields: ContactFields;
   delivery: ContactDelivery;
   previous: ContactFormState | undefined;
   deliver?: (body: ResendSendBody, delivery: ContactDelivery) => Promise<{ ok: boolean }>;
+  allowSend?: () => boolean | Promise<boolean>;
 }): Promise<ContactFormState> {
   const attempt = safePreviousAttempt(input.previous) + 1;
 
@@ -211,6 +217,15 @@ export async function submitContact(input: {
   const deliver = input.deliver ?? deliverContactMessage;
   try {
     const body = buildResendRequest(validated.value);
+    if (input.allowSend && !(await input.allowSend())) {
+      return {
+        status: "limited",
+        errors: {},
+        values: echoValues(input.fields),
+        replyTo: "",
+        attempt,
+      };
+    }
     const result = await deliver(body, input.delivery);
     if (result.ok) {
       return {

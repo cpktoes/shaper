@@ -475,6 +475,92 @@ describe("submitContact", () => {
   });
 });
 
+describe("submitContact — the per-visitor limit (quick 261006-g5q)", () => {
+  it("allowSend resolving false answers limited, keeps what was typed, and never delivers", async () => {
+    const deliver = vi.fn().mockResolvedValue({ ok: true });
+    const allowSend = vi.fn().mockResolvedValue(false);
+    const result = await submitContact({
+      fields: validFields,
+      delivery: { kind: "resend", apiKey: "k" },
+      previous: undefined,
+      deliver,
+      allowSend,
+    });
+    expect(result.status).toBe("limited");
+    expect(result.errors).toEqual({});
+    expect(result.replyTo).toBe("");
+    expect(result.values).toEqual({ message: "Hello there", email: "jane@example.com", name: "Jane Smith" });
+    expect(deliver).not.toHaveBeenCalled();
+  });
+
+  it("allowSend resolving true is asked once, before delivery, and the message sends", async () => {
+    const deliver = vi.fn().mockResolvedValue({ ok: true });
+    const allowSend = vi.fn().mockResolvedValue(true);
+    const result = await submitContact({
+      fields: validFields,
+      delivery: { kind: "resend", apiKey: "k" },
+      previous: undefined,
+      deliver,
+      allowSend,
+    });
+    expect(result.status).toBe("sent");
+    expect(allowSend).toHaveBeenCalledTimes(1);
+    expect(deliver).toHaveBeenCalledTimes(1);
+    expect(allowSend.mock.invocationCallOrder[0]).toBeLessThan(deliver.mock.invocationCallOrder[0]);
+  });
+
+  it("a filled honeypot never asks the limit", async () => {
+    const allowSend = vi.fn().mockResolvedValue(true);
+    await submitContact({
+      fields: { ...validFields, honeypot: "https://spam.example" },
+      delivery: { kind: "resend", apiKey: "k" },
+      previous: undefined,
+      deliver: vi.fn(),
+      allowSend,
+    });
+    expect(allowSend).not.toHaveBeenCalled();
+  });
+
+  it("a form with mistakes never asks the limit", async () => {
+    const allowSend = vi.fn().mockResolvedValue(true);
+    await submitContact({
+      fields: { message: "", email: "not-an-email", name: "", honeypot: "" },
+      delivery: { kind: "resend", apiKey: "k" },
+      previous: undefined,
+      deliver: vi.fn(),
+      allowSend,
+    });
+    expect(allowSend).not.toHaveBeenCalled();
+  });
+
+  it("a server with no way to send never asks the limit", async () => {
+    const allowSend = vi.fn().mockResolvedValue(true);
+    await submitContact({
+      fields: validFields,
+      delivery: { kind: "none" },
+      previous: undefined,
+      deliver: vi.fn(),
+      allowSend,
+    });
+    expect(allowSend).not.toHaveBeenCalled();
+  });
+
+  it("allowSend throwing answers failed with what was typed, and never delivers", async () => {
+    const deliver = vi.fn().mockResolvedValue({ ok: true });
+    const allowSend = vi.fn().mockRejectedValue(new Error("boom"));
+    const result = await submitContact({
+      fields: validFields,
+      delivery: { kind: "resend", apiKey: "k" },
+      previous: undefined,
+      deliver,
+      allowSend,
+    });
+    expect(result.status).toBe("failed");
+    expect(result.values).toEqual({ message: "Hello there", email: "jane@example.com", name: "Jane Smith" });
+    expect(deliver).not.toHaveBeenCalled();
+  });
+});
+
 /**
  * Boundary block, the open-access.test.ts idiom: reads real source files and asserts structural
  * properties that guard the key's isolation mechanically, rather than by review.
