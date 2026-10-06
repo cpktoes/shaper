@@ -945,8 +945,12 @@ export function SwipeRack({
     };
     const onPointerEnd = (cancelled: boolean) => (event: PointerEvent) => {
       const { carry, press } = rack.frame;
-      if (carry && event.pointerId === carry.pointerId) dropBoard(rack, cancelled);
-      else if (press && event.pointerId === press.pointerId) endPress(rack);
+      if (carry && event.pointerId === carry.pointerId) {
+        dropBoard(rack, cancelled);
+        // A carry ends with the finger lifted somewhere else: no click on a board comes to clear the
+        // press, and a later keyboard focus (Tab on an iPad) must bring its board to the middle (IN-07).
+        pointerPressed.current = false;
+      } else if (press && event.pointerId === press.pointerId) endPress(rack);
       releaseClick();
     };
     const onPointerUp = onPointerEnd(false);
@@ -960,8 +964,13 @@ export function SwipeRack({
       releaseClick();
     };
     const onContextMenu = (event: Event) => event.preventDefault();
+    // The window losing focus ends whatever a finger was doing: a carry goes back where it was, and a
+    // hold not yet complete never lifts a board after the finger is gone (IN-07).
     const onBlur = () => {
       if (rack.frame.carry) dropBoard(rack, true);
+      else if (rack.frame.press) endPress(rack);
+      pointerPressed.current = false;
+      releaseClick();
     };
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
