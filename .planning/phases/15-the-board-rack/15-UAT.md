@@ -51,8 +51,8 @@ reported: "6 doesn't work" — then, on Tabbing to the board first: "ah, used ta
 notes: |
   The founder's first try pointed at a board with the mouse, which turns it but gives it no keyboard focus, so the
   keys found nothing to move — a friendliness gap, not a fault: the design (UI-SPEC §11) moves the FOCUSED board.
-  The founder chose to leave it for after the showing; filed as a todo (make Option/Alt + arrow move the turned board
-  under the mouse too). The orchestrator also proved the path on the practice rack in Chromium and WebKit: Tab
+  A follow-up todo was filed, then withdrawn the same afternoon: the founder confirmed Option + arrow moves the
+  board for them as built (Tab to a board, then the keys), so no change is wanted. The orchestrator also proved the path on the practice rack in Chromium and WebKit: Tab
   reaches the rack, Alt/Option + → moves the focused board one place and keeps the focus, a pointed-at board stays.
   The Windows/Linux part (Alt + ← must not go Back): no such machine to hand — blocked_by: physical-device; both racks
   call preventDefault on Alt + ←/→, the instruction that stops that browser shortcut.
@@ -62,4 +62,4 @@ notes: |
 total: 6
 passed: 6
 issues: 0
-follow-ups: 1 (Option/Alt + arrow on a pointed-at board — a todo for after the showing, the founder's choice)
+follow-ups: 0 (the Option + arrow note was withdrawn at the founder's word — it works as built)
