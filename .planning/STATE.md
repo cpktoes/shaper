@@ -6,7 +6,7 @@ status: executing
 stopped_at: "Phase 15 (The Board Rack) COMPLETE 2026-10-06: live on www.shaperassistant.com since 08:45 PDT (main c417257, deployment shaper-fi967okof), verified (15-VERIFICATION.md passed, no gaps), the founder's walk 6/6 (15-UAT.md), one follow-up todo (Option/Alt + arrow on a pointed-at board, after the showing). Freeze: Wed 2026-10-07 evening; showing Sat 2026-10-10. Next: Phase 13's remaining items (the full 18-step rehearsal walk on the live site with the sheet, issue 3; the launch prep) and Phase 14's verification paperwork (no site change); then the v1.5 close."
 last_updated: "2026-10-06T18:00:12.531Z"
 last_activity: 2026-10-06
-last_activity_desc: Quick tasks 261006-fom, g4u and g5q — legal pages, footer, consent line, blank note, Share, Export/Delete my account, the Contact send limit — reviewed by the founder, ready to push
+last_activity_desc: Quick tasks 261006-fom, g4u and g5q (legal pages, footer, consent line, blank note, Share, Export/Delete my account, the Contact send limit) reviewed by the founder and LIVE on www.shaperassistant.com since 2026-10-06 16:05 PDT (main 578e0d5, deployment shaper-bbpz16yva; live check 7/7)
 progress:
   total_phases: 3
   completed_phases: 1
