@@ -29,6 +29,8 @@ test.describe("the practice rack (test servers only)", () => {
       const response = await page.goto(`${RACK_STAND_IN_ROUTE}?boards=${boards}`);
       expect(response?.status()).toBe(200);
       await expect(page.getByRole("heading", { name: "Shape a New Board" })).toBeAttached();
+      // The rack really holds the number asked for, so a `?boards=` that was ignored would fail here.
+      await expect(page.locator("[data-rack-board]")).toHaveCount(boards);
     });
   }
 });
