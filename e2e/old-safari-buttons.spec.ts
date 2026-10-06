@@ -3,11 +3,16 @@ import { expect, test, type Page } from "@playwright/test";
 /**
  * Old Safari — iPhone and iPad software before 18.4 — gave every `<button>` a built-in
  * `align-items: flex-start` (WebKit bug 289441, fixed in Safari 18.4). The home page's board cards
- * are whole buttons laid out as a column, so on that Safari nothing inside them stretched to the
+ * were whole buttons laid out as a column, so on that Safari nothing inside them stretched to the
  * card's width and each board picture collapsed to an empty square about 26 dots wide: what the
  * founder's iPad 9th gen showed on 2026-10-04, upright and sideways, while their iPhone, on newer
  * software, drew the boards whole. `app/globals.css` undoes the rule for every button in its base
  * layer.
+ *
+ * Since Phase 15 the board cards on the home page are the preset cards only; the shaper's own boards
+ * stand on the Board Rack, whose buttons (a transparent one over each board, and the caption's Open
+ * This Board) are covered by the two rack tests below — the unsaved board on `/`, and fifteen saved
+ * boards on the practice rack (`/test-rack`).
  *
  * No test browser carries the old rule any more (Playwright's WebKit is already fixed), so each
  * test puts it back: a stylesheet placed ahead of every other one, in a cascade layer of its own,
@@ -118,15 +123,21 @@ test.describe("old Safari's button rule (before 18.4) no longer squashes anythin
     for (const share of await boardPictureWidths(page, "Start Shaping")) expect(share).toBeGreaterThan(0.85);
   });
 
-  test("the home page with a board in progress: its card keeps its picture too", async ({ page }) => {
+  test("the home page with a board in progress: the Board Rack's buttons keep their insides", async ({ page }) => {
     await page.goto("/");
     await page.locator("button").filter({ hasText: "Start Shaping" }).first().click();
     await page.waitForURL("**/design/outline");
     await page.getByRole("link", { name: "SHAPER ASSISTANT" }).filter({ visible: true }).first().click();
     await page.waitForURL((url) => url.pathname === "/");
     await expect(page.locator("button").filter({ hasText: "Continue This Board" })).toBeVisible();
+    await expect(page.locator("[data-rack-board]")).not.toHaveCount(0);
     await expectOldSafariRuleChangesNothing(page);
-    for (const share of await boardPictureWidths(page, "Continue This Board")) expect(share).toBeGreaterThan(0.85);
+  });
+
+  test("the practice rack: the Board Rack's buttons keep their insides", async ({ page }) => {
+    await page.goto("/test-rack");
+    await expect(page.locator("[data-rack-board]")).toHaveCount(15);
+    await expectOldSafariRuleChangesNothing(page);
   });
 
   for (const path of ["/design/outline", "/design/rocker", "/design/rails", "/design/volume", "/design/fins", "/design/summary"]) {

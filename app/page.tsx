@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { SetupScreen } from "@/components/setup/setup-screen";
-import type { SavedModel } from "@/components/setup/board-rack-card";
 import { listModels } from "@/lib/db/queries";
 import { resolveCarryOverTipStyle } from "@/lib/fit-defaults-server";
 import { hasPhase11Blank } from "@/lib/models/design-snapshot";
-import { rackModelsFromRows } from "@/lib/models/rack-models";
+import { rackModelsFromRows, type RackModel } from "@/lib/models/rack-models";
 
 export const metadata: Metadata = {
   title: "Shaper Assistant — Start a New Board",
@@ -44,7 +43,7 @@ export default async function Home() {
 }
 
 async function BoardRackData({ userId }: { userId: string }) {
-  let models: SavedModel[] = [];
+  let models: RackModel[] = [];
 
   let rows: Awaited<ReturnType<typeof listModels>> = [];
   try {
