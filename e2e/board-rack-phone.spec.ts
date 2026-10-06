@@ -114,6 +114,7 @@ async function releaseScroll(page: Page) {
 async function touchTap(page: Page, point: { x: number; y: number }) {
   const client = await page.context().newCDPSession(page);
   await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: point.x, y: point.y }] });
+  // How long a finger rests on the glass for a tap — a gesture's own timing, by design (IN-08).
   await page.waitForTimeout(50);
   await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
 }
@@ -252,10 +253,21 @@ test.describe("the Board Rack on a phone — the swipe rack", () => {
     await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     expect(partTurned, "some board near the middle was part-way through its turn mid-swipe").toBe(true);
 
-    await page.waitForTimeout(800);
+    // Polled until the rack has come to rest — the track still for two frames on a snap point, one
+    // board turned, the one on that point — rather than a fixed wait (IN-08).
     await expect
-      .poll(async () => Object.values(await turnsNextFrame(page)).filter((turn) => turn === 90).length)
-      .toBe(1);
+      .poll(
+        async () => {
+          const first = await rackFigures(page);
+          const turnsNow = await turnsNextFrame(page);
+          const second = await rackFigures(page);
+          const turned = STAND_INS.filter((row) => turnsNow[row.id] === 90);
+          if (first.scrollLeft !== second.scrollLeft || first.scrollLeft % first.slot !== 0 || turned.length !== 1) return false;
+          return turned[0].id === STAND_INS[first.scrollLeft / first.slot]?.id;
+        },
+        { timeout: 10_000 },
+      )
+      .toBe(true);
     const turns = await turnsNextFrame(page);
     const settled = STAND_INS.find((row) => turns[row.id] === 90);
     if (!settled) throw new Error("no board settled");
@@ -445,6 +457,10 @@ async function rackKeys(page: Page) {
 /** The status pill's live region. */
 const statusRegion = (page: Page) => page.locator("[data-rack-status]");
 
+/** True for the practice rack's order save: a Server Action call (a POST carrying `Next-Action`). */
+const isRackSave = (response: { request(): { method(): string; headers(): Record<string, string> } }) =>
+  response.request().method() === "POST" && "next-action" in response.request().headers();
+
 /** A board's button centre on the screen. */
 async function centreOf(page: Page, key: string) {
   const box = await boardButton(page, key).boundingBox();
@@ -457,6 +473,7 @@ async function centreOf(page: Page, key: string) {
 async function touchHold(page: Page, point: { x: number; y: number }, holdMs: number) {
   const client = await page.context().newCDPSession(page);
   await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: point.x, y: point.y }] });
+  // The finger held still through the 420 ms hold — the gesture's own timer, by design (IN-08).
   await page.waitForTimeout(holdMs);
   return client;
 }
@@ -512,6 +529,7 @@ test.describe("the Board Rack on a phone — hold, slide and let go (15-09, sket
     );
     await touchMoveTo(client, start, { x: start.x + 3 * slot, y: start.y }, 15);
     await expect(page.locator("[data-drop-mark]")).toHaveAttribute("opacity", "1");
+    const saved = page.waitForResponse(isRackSave);
     await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await expect(page.locator("[data-rack-carrying]")).toHaveCount(0);
     await expect(page.locator("[data-drop-mark]")).toHaveAttribute("opacity", "0");
@@ -530,9 +548,10 @@ test.describe("the Board Rack on a phone — hold, slide and let go (15-09, sket
     // The tap at the end of the carry never opened the board.
     expect(new URL(page.url()).pathname).toBe(RACK_STAND_IN_ROUTE);
 
-    // The practice rack's save resolves quietly signed out: the order stays, nothing says it failed.
-    await page.waitForTimeout(1200);
-    expect(await rackKeys(page)).toEqual(expected);
+    // The practice rack's save lands (its stand-in account, e2e/helpers/practice-rack.ts): the order
+    // stays and nothing says it failed — waited for as the save itself, not a fixed time (IN-08).
+    await saved;
+    await expect.poll(() => rackKeys(page)).toEqual(expected);
     await expect(statusRegion(page)).not.toHaveText(RACK_COPY.saveFailed);
 
     // The resting rack after the move: still no word across any board.
@@ -554,9 +573,7 @@ test.describe("the Board Rack on a phone — hold, slide and let go (15-09, sket
     await expect.poll(async () => (await rackFigures(page)).scrollLeft).toBe(2 * slot);
     const start = await centreOf(page, third.id);
 
-    const saved = page.waitForResponse(
-      (response) => response.request().method() === "POST" && "next-action" in response.request().headers(),
-    );
+    const saved = page.waitForResponse(isRackSave);
     const client = await touchHold(page, start, 520);
     await expect(boardArt(page, third.id)).toHaveAttribute("data-carrying", "true");
     await touchMoveTo(client, start, { x: start.x + 3 * slot, y: start.y }, 15);
@@ -595,7 +612,8 @@ test.describe("the Board Rack on a phone — hold, slide and let go (15-09, sket
     }
     await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     expect(carriedAtSomeSample.every((count) => count === 0), JSON.stringify(carriedAtSomeSample)).toBe(true);
-    // Well past the hold's time, still nothing has lifted, and the rack has moved.
+    // Well past the hold's time, still nothing has lifted, and the rack has moved. The wait outlasts
+    // the 420 ms hold timer by design: a board that wrongly lifted would have had the time to (IN-08).
     await page.waitForTimeout(700);
     await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
     expect(await rackKeys(page)).toEqual(before);
@@ -625,6 +643,8 @@ test.describe("the Board Rack on a phone — hold, slide and let go (15-09, sket
     await expect(statusRegion(page)).toHaveText(RACK_COPY.unsavedStaysFirst);
     await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
     await hold.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    // A check that nothing happens: the wait gives a wrong tap's navigation the time to show (IN-08
+    // keeps this one — there is nothing to wait for when the rack is right).
     await page.waitForTimeout(300);
     expect(new URL(page.url()).pathname).toBe(RACK_STAND_IN_ROUTE);
     expect(await rackKeys(page)).toEqual(before);
@@ -657,9 +677,10 @@ test.describe("the Board Rack on a phone — hold, slide and let go (15-09, sket
     const edge = { x: width - 20, y: start.y };
     await touchMoveTo(client, start, edge, 10);
     const before = (await rackFigures(page)).scrollLeft;
-    await page.waitForTimeout(600);
-    const during = (await rackFigures(page)).scrollLeft;
-    expect(during, "the rack scrolled while the board sat at the edge").toBeGreaterThan(before + 40);
+    // Polled until the rack has scrolled along under the board held at the edge (IN-08).
+    await expect
+      .poll(async () => (await rackFigures(page)).scrollLeft, { message: "the rack scrolled while the board sat at the edge" })
+      .toBeGreaterThan(before + 40);
     await expect(boardArt(page, first.id)).toHaveAttribute("data-carrying", "true");
     await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
@@ -681,12 +702,14 @@ test.describe("the Board Rack on a phone — hold, slide and let go (15-09, sket
     await client.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
     await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
     await expect(page.locator("[data-rack-carrying]")).toHaveCount(0);
-    await page.waitForTimeout(500);
+    // The board stands on its own slot again (its button centred on it) — polled until the track has
+    // settled there rather than a fixed wait (IN-08) — and the page still scrolls.
+    await expect.poll(async () => {
+      const { scrollLeft, slot: settledSlot } = await rackFigures(page);
+      return scrollLeft % settledSlot;
+    }).toBe(0);
     expect(await rackKeys(page)).toEqual(before);
     await expect(statusRegion(page)).toHaveText("");
-    // The board stands on its own slot again (its button centred on it), and the page still scrolls.
-    const figures = await rackFigures(page);
-    expect(figures.scrollLeft % figures.slot).toBe(0);
     const scrolling = await scroller(page).evaluate((box) => getComputedStyle(box).scrollSnapType);
     expect(scrolling).toContain("mandatory");
   });
@@ -783,7 +806,8 @@ test.describe("the Board Rack on a phone — reduced motion", () => {
     const during = await turnsNextFrame(page);
     for (const turn of Object.values(during)) expect([0, 90]).toContain(turn);
     await releaseScroll(page);
-    await page.waitForTimeout(400);
+    // Polled until the rack has settled one board turned, rather than a fixed wait (IN-08).
+    await expect.poll(async () => Object.values(await turnsNextFrame(page)).filter((turn) => turn === 90).length).toBe(1);
     const after = await turnsNextFrame(page);
     expect(Object.values(after).filter((turn) => turn === 90)).toHaveLength(1);
     for (const turn of Object.values(after)) expect([0, 90]).toContain(turn);

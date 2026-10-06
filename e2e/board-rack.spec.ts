@@ -172,7 +172,7 @@ test.describe("the Board Rack on a computer", () => {
     await openRack(page, RACK_STAND_IN_ROUTE, 15);
     const { x, y } = await centreOf(page, board(6).id);
     await page.mouse.move(x, y, { steps: 8 });
-    await page.waitForTimeout(600);
+    // Each check polls until the rest and the turn have played out — no fixed wait (IN-08).
     await expect(boardArt(page, board(6).id)).toHaveAttribute("data-turn", "90");
     await expect(boardArt(page, board(1).id)).toHaveAttribute("data-turn", "0");
     await expect(captionFor(page, board(6).name)).toBeVisible();
@@ -269,6 +269,8 @@ test.describe("the Board Rack on a computer — rows, holding still, and touch-s
     const captionBox = await captionFor(page, board(6).name).boundingBox();
     if (!captionBox) throw new Error("no box for the caption");
     await page.mouse.move(x, captionBox.y + captionBox.height / 2, { steps: 10 });
+    // A check that nothing turns: the wait outlasts the 180 ms rest and a turn, by design, so a
+    // board that wrongly turned would have had the time to (IN-08).
     await page.waitForTimeout(400);
     await expect(boardArt(page, board(6).id)).toHaveAttribute("data-turn", "90");
     await expect(boardArt(page, board(5).id)).toHaveAttribute("data-turn", "0");
@@ -377,6 +379,10 @@ function movedOrder(keys: readonly string[], key: string, to: number) {
 /** The status pill's live region. */
 const statusRegion = (page: Page) => page.locator("[data-rack-status]");
 
+/** True for the practice rack's order save: a Server Action call (a POST carrying `Next-Action`). */
+const isRackSave = (response: { request(): { method(): string; headers(): Record<string, string> } }) =>
+  response.request().method() === "POST" && "next-action" in response.request().headers();
+
 /** The height-line labels of the rack's first row, the lowest line first. */
 async function heightLabels(page: Page) {
   const labels = await page
@@ -471,6 +477,7 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     await expect(page.locator("[data-rack-caption]")).toHaveCount(0);
     await expect(page.locator("[data-drop-mark]")).toHaveAttribute("opacity", "1");
 
+    const saved = page.waitForResponse(isRackSave);
     await page.mouse.up();
     await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(second.name));
     const expected = movedOrder(before, second.id, 5);
@@ -483,9 +490,10 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     // The release at the end of the drag never opened the board.
     expect(new URL(page.url()).pathname).toBe(RACK_STAND_IN_ROUTE);
 
-    // The practice rack's save resolves quietly signed out: the order stays.
-    await page.waitForTimeout(1200);
-    expect(await rackKeys(page)).toEqual(expected);
+    // The practice rack's save lands (its stand-in account, e2e/helpers/practice-rack.ts): the order
+    // stays and nothing says it failed — waited for as the save itself, not a fixed time (IN-08).
+    await saved;
+    await expect.poll(() => rackKeys(page)).toEqual(expected);
     await expect(statusRegion(page)).not.toHaveText(RACK_COPY.saveFailed);
   });
 
@@ -510,7 +518,8 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     await page.keyboard.press("Escape");
     await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
     await expect(page.locator("[data-drop-mark]")).toHaveAttribute("opacity", "0");
-    // Letting go afterwards neither moves nor opens anything.
+    // Letting go afterwards neither moves nor opens anything. A check that nothing happens: the wait
+    // gives a wrong drop, or a wrong click's navigation, the time to show (IN-08 keeps this one).
     await page.mouse.up();
     await page.waitForTimeout(300);
     expect(await rackKeys(page)).toEqual(before);
@@ -722,6 +731,7 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     const first = await firstSlotCentre(page);
     await openBoardMenu(page, board(1).name);
     await page.mouse.move(first.x + 5 * HOVER_SLOT, first.y, { steps: 10 });
+    // A check that nothing turns: the wait outlasts the 180 ms rest and a turn, by design (IN-08).
     await page.waitForTimeout(600);
     await expect(boardArt(page, board(6).id)).toHaveAttribute("data-turn", "0");
     await expect(boardArt(page, board(1).id)).toHaveAttribute("data-turn", "90");
@@ -769,10 +779,6 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     await expect(cardLine).toHaveText(imperialLine);
   });
 });
-
-/** True for the practice rack's order save: a Server Action call (a POST carrying `Next-Action`). */
-const isRackSave = (response: { request(): { method(): string; headers(): Record<string, string> } }) =>
-  response.request().method() === "POST" && "next-action" in response.request().headers();
 
 test.describe("the Board Rack on a computer — the order is kept (code review CR-01, WR-04)", () => {
   test.beforeEach(async ({ page }, testInfo) => {
@@ -880,23 +886,36 @@ test.describe("the Board Rack on a computer — moving with reduced motion", () 
     await dismissBannerAndTip(page);
   });
 
-  test("m20. a dropped board is fully turned within 50 ms of the release — no descent, no glide", async ({ page }) => {
+  test("m20. a dropped board is fully turned within 3 frames of the release — no descent, no glide", async ({ page }) => {
     await openRack(page, RACK_STAND_IN_ROUTE, 15);
     const second = board(2);
     const start = await restOnPlace(page, 1);
     await page.mouse.down();
     await page.mouse.move(start.x + 3 * HOVER_SLOT, start.y, { steps: 8 });
     await expect(boardArt(page, second.id)).toHaveAttribute("data-carrying", "true");
-    // Times the release and the moment the board reads 90 degrees, both on the page's own clock.
+    // Counts the page's own animation frames from the release to the moment the board reads 90
+    // degrees — frames, not milliseconds, so a loaded machine's slow frames can't fail it (IN-08). A
+    // descent or a glide would take many frames (120 ms or more at 60 a second).
     await page.evaluate((key) => {
       const art = document.querySelector(`[data-rack-art="${key}"]`);
-      const marks: { up?: number; turned?: number } = {};
+      const marks: { up?: boolean; frames: number; turnedAtFrame?: number } = { frames: 0 };
       (window as unknown as { __dropMarks: typeof marks }).__dropMarks = marks;
-      window.addEventListener("pointerup", () => (marks.up ??= performance.now()), { capture: true, once: true });
+      window.addEventListener(
+        "pointerup",
+        () => {
+          marks.up = true;
+          const tick = () => {
+            marks.frames += 1;
+            if (marks.turnedAtFrame === undefined && marks.frames < 60) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        },
+        { capture: true, once: true },
+      );
       if (!art) return;
       const observer = new MutationObserver(() => {
-        if (marks.up !== undefined && art.getAttribute("data-turn") === "90") {
-          marks.turned ??= performance.now();
+        if (marks.up && art.getAttribute("data-turn") === "90") {
+          marks.turnedAtFrame ??= marks.frames;
           observer.disconnect();
         }
       });
@@ -904,10 +923,12 @@ test.describe("the Board Rack on a computer — moving with reduced motion", () 
     }, second.id);
     await page.mouse.up();
     await expect(boardArt(page, second.id)).toHaveAttribute("data-turn", "90");
-    const marks = await page.evaluate(() => (window as unknown as { __dropMarks: { up?: number; turned?: number } }).__dropMarks);
-    expect(marks.up).toBeDefined();
-    expect(marks.turned).toBeDefined();
-    expect((marks.turned ?? Infinity) - (marks.up ?? 0)).toBeLessThanOrEqual(50);
+    const marks = await page.evaluate(
+      () => (window as unknown as { __dropMarks: { up?: boolean; frames: number; turnedAtFrame?: number } }).__dropMarks,
+    );
+    expect(marks.up).toBe(true);
+    expect(marks.turnedAtFrame).toBeDefined();
+    expect(marks.turnedAtFrame ?? Infinity).toBeLessThanOrEqual(3);
     await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(second.name));
   });
 });
@@ -930,8 +951,11 @@ test.describe("the Board Rack on a computer — reduced motion", () => {
     const during = await readTurnsNextFrame(page, [board(3).id, board(4).id]);
     for (const turn of during) expect([0, 90]).toContain(turn);
 
-    await page.waitForTimeout(600);
-    const after = await Promise.all([board(3).id, board(4).id].map((key) => boardArt(page, key).getAttribute("data-turn")));
-    expect([...after].sort()).toEqual(["0", "90"]);
+    // Once the cursor rests, one of the two turns: polled until it has (IN-08).
+    await expect
+      .poll(async () =>
+        (await Promise.all([board(3).id, board(4).id].map((key) => boardArt(page, key).getAttribute("data-turn")))).sort(),
+      )
+      .toEqual(["0", "90"]);
   });
 });
