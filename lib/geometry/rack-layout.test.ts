@@ -33,6 +33,7 @@ import {
   swipeRackHeightFromScroller,
   swipeScrollLeftFor,
   swipeSlotAt,
+  swipeSlotFor,
   spineWordColumn,
   swipeSlotCentre,
   swipeTrackWidth,
@@ -345,6 +346,42 @@ describe("The phone's track", () => {
   it("takes the rack's height from the scroller, less the top pad and the drop strip", () => {
     expect(swipeRackHeightFromScroller(398)).toBe(398 - SWIPE_TOP_PAD - DROP_STRIP);
     expect(swipeRackHeightFromScroller(10)).toBe(0);
+  });
+});
+
+describe("The phone's slot: 40 dots, or as wide as the widest board at rest and its words", () => {
+  const column = spineWordColumn(SWIPE_WORD_SIZE);
+
+  it("stays 40 while every resting board and its 11px words fit 40 dots", () => {
+    expect(swipeSlotFor([5, 8, 9.3])).toBe(SWIPE_SLOT);
+    expect(swipeSlotFor([(SWIPE_SLOT - column) / 2])).toBe(SWIPE_SLOT);
+    expect(swipeSlotFor([])).toBe(SWIPE_SLOT);
+  });
+
+  it("widens to the widest resting board plus its column of words, in whole dots", () => {
+    const half = 10.2;
+    const slot = swipeSlotFor([4, half, 7]);
+    expect(slot).toBe(Math.ceil(2 * half + column));
+    expect(Number.isInteger(slot)).toBe(true);
+    expect(slot).toBeGreaterThan(SWIPE_SLOT);
+  });
+
+  it("is wide enough that no board at rest asks for room: boardExtra at rest is exactly 0", () => {
+    for (const half of [3, 9.37, 10.01, 12.5, 17.9]) {
+      const slot = swipeSlotFor([half], column);
+      expect(boardExtra(half, slot, column)).toBe(0);
+      // And never wider than 40, or one whole dot past what that board needs.
+      expect(slot - Math.max(SWIPE_SLOT, 2 * half + column)).toBeLessThan(1);
+    }
+  });
+
+  it("uses the word column it is given", () => {
+    expect(swipeSlotFor([12], 30)).toBe(Math.ceil(24 + 30));
+  });
+
+  it("ignores a reach that is not a finite number, so a bad board never makes the slot NaN", () => {
+    expect(swipeSlotFor([Number.NaN, 6])).toBe(SWIPE_SLOT);
+    expect(swipeSlotFor([Number.POSITIVE_INFINITY, 11])).toBe(Math.ceil(22 + column));
   });
 });
 

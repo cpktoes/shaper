@@ -29,11 +29,13 @@
 import { useId, useMemo, useState, useSyncExternalStore } from "react";
 import { deleteModel, duplicateModel, renameModel } from "@/app/design/actions";
 import { useDesign } from "@/components/design/design-store";
+import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import { DeleteConfirmDialog } from "@/components/setup/delete-confirm-dialog";
 import { HoverRack } from "@/components/setup/hover-rack";
 import { RackCaption } from "@/components/setup/rack-caption";
-import { RACK_COPY, rackHeadingLine } from "@/components/setup/rack-config";
+import { RACK_COPY, rackHeadingLine, type RackKind } from "@/components/setup/rack-config";
 import { RenameDialog } from "@/components/setup/rename-dialog";
+import { SwipeRack } from "@/components/setup/swipe-rack";
 import { useRackBoards, type RackBoard, type RackBoardEntry } from "@/components/setup/use-rack-boards";
 import type { RackModel } from "@/lib/models/rack-models";
 import { IN_PROGRESS_KEY, applyStoredOrder, turnedKeyAfterRemoval, turnedKeyOnArrival } from "@/lib/models/rack-order";
@@ -76,6 +78,11 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     () => true,
     () => false,
   );
+  // D-04: a mouse hovers, a finger swipes — the pointer decides which rack, never the window's width
+  // (CLAUDE.md Layout: the `coarse` pointer switch's new job). A touch screen of any size gets the
+  // swipe rack; a mouse at any width, the hover rack. `turnedKey` lives here, so a device that turns
+  // from one kind to the other keeps the same board turned.
+  const kind: RackKind = useCoarsePointer() ? "swipe" : "hover";
 
   // The rack's order: the one rule in lib/models/rack-order.ts, never re-derived here.
   const rackEntries: RackBoardEntry[] = useMemo(
@@ -176,7 +183,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     return (
       <RackCaption
         board={board}
-        variant="hover"
+        variant={kind}
         onOpen={() => openBoard(board)}
         onRename={model ? () => setRenamingModel(model) : undefined}
         onDuplicate={model ? () => void handleDuplicate(model) : undefined}
@@ -209,18 +216,35 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
       </div>
       <div className="mt-6 max-shell:mt-4">
         {mounted ? (
-          <HoverRack
-            boards={boards}
-            turnedKey={turnedKey}
-            openKey={openKey}
-            frozen={frozen}
-            onTurn={setTurned}
-            onOpen={handleOpenKey}
-            caption={renderCaption}
-            focusKey={focusKey}
-          />
+          kind === "swipe" ? (
+            <SwipeRack
+              boards={boards}
+              turnedKey={turnedKey}
+              openKey={openKey}
+              frozen={frozen}
+              onTurn={setTurned}
+              onOpen={handleOpenKey}
+              caption={renderCaption}
+              focusKey={focusKey}
+            />
+          ) : (
+            <HoverRack
+              boards={boards}
+              turnedKey={turnedKey}
+              openKey={openKey}
+              frozen={frozen}
+              onTurn={setTurned}
+              onOpen={handleOpenKey}
+              caption={renderCaption}
+              focusKey={focusKey}
+            />
+          )
         ) : (
-          <div aria-hidden="true" className="h-[520px]" />
+          // The first-paint box, the rack's own height for each pointer, chosen in CSS because the
+          // server can't know the pointer (UI-SPEC E11): one hover row on a computer, the swipe rack's
+          // whole box on a touch screen — its 16-dot top room tucked into the gap, as the rack does —
+          // so a phone's "Shape a New Board" never jumps when the rack draws in.
+          <div aria-hidden="true" className="h-[520px] coarse:-mt-4 coarse:h-(--rack-swipe-h)" />
         )}
       </div>
       <RenameDialog
