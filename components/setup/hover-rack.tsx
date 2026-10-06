@@ -541,6 +541,8 @@ export function HoverRack({
   /** The board an Alt + arrow just moved: its button takes the focus back once the new order is
    * drawn (a moved button can lose the focus as the page reorders it). */
   const refocusKey = useRef<string | null>(null);
+  /** Stops listening for the end of the unsaved board's refused drag (WR-03), while one is listened for. */
+  const stopRefusalListener = useRef<(() => void) | null>(null);
   const instructionsId = useId();
 
   // The rack's own width, measured (it lays itself out in whatever room the page gives it).
@@ -632,9 +634,11 @@ export function HoverRack({
 
   useEffect(() => {
     const state = frame.current;
+    const stopRefusal = stopRefusalListener;
     return () => {
       if (state.raf) cancelAnimationFrame(state.raf);
       state.raf = 0;
+      stopRefusal.current?.();
     };
   }, []);
 
@@ -711,6 +715,28 @@ export function HoverRack({
     return rect ? { x: clientX - rect.left, y: clientY - rect.top } : null;
   };
 
+  /** After the unsaved board's refusal: wherever the press ends (a release anywhere on the page, a
+   * cancel, or the window losing focus), the click it ends with is swallowed for
+   * `CLICK_AFTER_DROP_MS` — a finite window, as after a drop — never for good. */
+  const listenForRefusalRelease = () => {
+    stopRefusalListener.current?.();
+    const onEnd = () => {
+      stop();
+      const state = frame.current;
+      if (state.suppressClickUntil === Number.POSITIVE_INFINITY) state.suppressClickUntil = nowMs() + CLICK_AFTER_DROP_MS;
+    };
+    const stop = () => {
+      window.removeEventListener("pointerup", onEnd, true);
+      window.removeEventListener("pointercancel", onEnd, true);
+      window.removeEventListener("blur", onEnd);
+      if (stopRefusalListener.current === stop) stopRefusalListener.current = null;
+    };
+    window.addEventListener("pointerup", onEnd, true);
+    window.addEventListener("pointercancel", onEnd, true);
+    window.addEventListener("blur", onEnd);
+    stopRefusalListener.current = stop;
+  };
+
   /** The press moved past the drag threshold: the board lifts and the pointer carries it — unless it
    * is the unsaved board, which is never lifted: the rack's owner refuses it and says so. */
   const liftBoard = (press: Press, point: { x: number; y: number }) => {
@@ -725,6 +751,10 @@ export function HoverRack({
     state.suppressClickUntil = Number.POSITIVE_INFINITY;
     if (board.kind === "in-progress") {
       current.onMove(board.key, 0);
+      // No pointer capture for a refusal, so the release can come anywhere — outside the rack too,
+      // where the rack's own pointer-up never hears it and every later click (Enter on a board
+      // included) would stay swallowed. The window hears it instead (code review WR-03).
+      listenForRefusalRelease();
       return;
     }
     const rest = hoverSlotPosition(current.layout, index);

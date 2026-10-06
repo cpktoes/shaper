@@ -571,6 +571,35 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     expect((await rackKeys(page))[0]).toBe(IN_PROGRESS_KEY);
   });
 
+  test("m16a. after the unsaved board is dragged and let go outside the rack, Enter on a board still opens it (code review WR-03)", async ({
+    page,
+  }) => {
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    await startABoardAndComeBack(page, 15);
+    const first = await firstSlotCentre(page);
+    await page.mouse.move(first.x, first.y, { steps: 4 });
+    await page.mouse.down();
+    await page.mouse.move(first.x + 3 * HOVER_SLOT, first.y, { steps: 8 });
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.unsavedStaysFirst);
+    // Let go well outside the rack, over the space above its heading.
+    const heading = await page.getByRole("heading", { name: RACK_COPY.heading }).boundingBox();
+    if (!heading) throw new Error("no box for the rack's heading");
+    await page.mouse.move(first.x + 3 * HOVER_SLOT, heading.y - 24, { steps: 8 });
+    await page.mouse.up();
+    // The click that ends the refused drag is swallowed for half a second (CLICK_AFTER_DROP_MS, a
+    // timer by design); a key pressed after it is a click of its own.
+    await page.waitForTimeout(600);
+
+    const saved = board(3);
+    await boardButton(page, saved.id).focus();
+    await page.keyboard.press("Enter");
+    // A board is in progress, so opening a saved one asks first — then it opens.
+    const question = page.getByRole("alertdialog", { name: "Open this board?" });
+    await expect(question).toBeVisible();
+    await question.getByRole("button", { name: "Discard & Open" }).click();
+    await page.waitForURL("**/design/outline");
+  });
+
   test("m17. ⋯ on the turned board: Move left, Move right, a line, Rename, Duplicate, Delete — and each Move is dimmed where it can't move", async ({
     page,
   }) => {
