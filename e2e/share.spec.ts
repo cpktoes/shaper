@@ -73,9 +73,9 @@ test.describe("Share", () => {
     expect(await page.evaluate(() => typeof (navigator as { share?: unknown }).share)).toBe("undefined");
 
     await openMenuTo(page, testInfo.project.name, shareRow(page));
-    // The rows read Contact, Privacy, Share, then App Default Settings.
+    // The rows read Contact, Terms, Privacy, Share, then App Default Settings.
     const rows = page.getByRole("menuitem");
-    await expect(rows.nth(2)).toHaveAccessibleName(SHARE_COPY.label);
+    await expect(rows.nth(3)).toHaveAccessibleName(SHARE_COPY.label);
 
     await shareRow(page).click();
     await expect(shareLabel(page)).toHaveText(SHARE_COPY.copied);

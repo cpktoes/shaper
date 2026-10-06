@@ -36,6 +36,7 @@ async function expectOneRowMenu(page: Page, phoneSheet: boolean) {
   await expect(menu.getByRole("menuitemradio", { name: /^Metric/ })).toHaveCount(0);
   await expect(menu.getByRole("menuitem", { name: /Fit & Tip Defaults/ })).toHaveCount(0);
   await expect(menu.getByRole("menuitem", { name: "Contact", exact: true })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: "Terms", exact: true })).toBeVisible();
   await expect(menu.getByRole("menuitem", { name: "Privacy", exact: true })).toBeVisible();
   // Nothing of the old settings groups is left: no radio rows, no tick-box rows, no group of them.
   await expect(menu.getByRole("menuitemradio")).toHaveCount(0);

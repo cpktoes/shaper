@@ -47,7 +47,7 @@ import type { RefObject } from "react";
 import { Menu } from "@base-ui/react/menu";
 import { HouseIcon, MenuIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { AppSettingsMenuItem, ContactMenuItem, PrivacyMenuItem } from "@/components/settings-menu";
+import { AppSettingsMenuItem, ContactMenuItem, PrivacyMenuItem, TermsMenuItem } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
 import { ShareMenuItem } from "@/components/share-menu-item";
 import { ScreenTiles } from "@/components/design/screen-tiles";
@@ -112,6 +112,7 @@ export function PhoneMenu({
               </Menu.Item>
             )}
             <ContactMenuItem />
+            <TermsMenuItem />
             <PrivacyMenuItem />
             <ShareMenuItem />
             <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />
