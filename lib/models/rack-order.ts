@@ -206,3 +206,105 @@ export function orderWithNewBoardFirst(
 export function rackIndexToSavedIndex(rackIndex: number, pinnedFirst: boolean): number {
   return Math.max(0, rackIndex - (pinnedFirst ? 1 : 0));
 }
+
+// ---------------------------------------------------------------------------------------------
+// Phase 15 — how the order is written on the account (copies `lib/blank-makers-preference.ts`'s
+// trio: a lenient column read, the column value, a strict save input).
+// ---------------------------------------------------------------------------------------------
+
+/** The most ids a stored order holds — far more boards than any shaper keeps, small enough that a
+ * list can never be used to fill the account's row. */
+export const RACK_ORDER_MAX_IDS = 500;
+
+/** The longest id a stored order holds. A board's id is a 36-character UUID; anything past 64 is
+ * not a board's id. */
+export const RACK_ORDER_MAX_ID_LENGTH = 64;
+
+function isRackOrderId(value: unknown): value is string {
+  return typeof value === "string" && value.length >= 1 && value.length <= RACK_ORDER_MAX_ID_LENGTH;
+}
+
+/**
+ * Reads the account column (the JSON text `rackOrderColumnValue` wrote). Lenient, and never throws,
+ * so a list written by another device or edited by hand can never break the rack: an empty column,
+ * junk text, malformed JSON or anything that is not a list reads `null` (the automatic order); in a
+ * list, only ids of 1 to 64 characters are kept, the first occurrence of each wins, and at most the
+ * first 500 are read.
+ */
+export function parseRackOrderColumn(text: string | null | undefined): string[] | null {
+  if (!text) return null;
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(value)) return null;
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (ids.length >= RACK_ORDER_MAX_IDS) break;
+    if (isRackOrderId(item) && !seen.has(item)) {
+      ids.push(item);
+      seen.add(item);
+    }
+  }
+  return ids;
+}
+
+/** The JSON text written to the account column. */
+export function rackOrderColumnValue(ids: readonly string[]): string {
+  return JSON.stringify(ids);
+}
+
+/**
+ * The save's strict reader, all-or-nothing: `null` — write nothing — when the value is not a list,
+ * holds more than 500 items, holds anything that is not an id of 1 to 64 characters, or names an id
+ * twice. Never trims a list to fit. Otherwise a copy of the list.
+ */
+export function parseRackOrderInput(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  if (value.length > RACK_ORDER_MAX_IDS) return null;
+  if (!value.every(isRackOrderId)) return null;
+  if (new Set(value).size !== value.length) return null;
+  return [...value];
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 15 — which board stands turned.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The board shown turned when the home page opens (D-07): the board the shaper is working on. That
+ * is the unsaved board when there is one (and it is on the rack), else the open saved board when it
+ * is on the rack, else the first board, else nothing (an empty rack).
+ */
+export function turnedKeyOnArrival(
+  keys: readonly string[],
+  openModelId: string | null,
+  hasInProgress: boolean,
+): string | null {
+  if (hasInProgress && keys.includes(IN_PROGRESS_KEY)) return IN_PROGRESS_KEY;
+  if (openModelId !== null && keys.includes(openModelId)) return openModelId;
+  return keys[0] ?? null;
+}
+
+/**
+ * The board turned after boards leave the rack (UI-SPEC §9, Delete): the turned board when it is
+ * still there; else the next board after it in the old order that is still there; else the nearest
+ * one before it; else the first board, or nothing once the rack is empty.
+ */
+export function turnedKeyAfterRemoval(
+  previousKeys: readonly string[],
+  nextKeys: readonly string[],
+  turnedKey: string | null,
+): string | null {
+  if (turnedKey !== null && nextKeys.includes(turnedKey)) return turnedKey;
+  const remaining = new Set(nextKeys);
+  const at = turnedKey === null ? -1 : previousKeys.indexOf(turnedKey);
+  if (at !== -1) {
+    for (let i = at + 1; i < previousKeys.length; i += 1) if (remaining.has(previousKeys[i])) return previousKeys[i];
+    for (let i = at - 1; i >= 0; i -= 1) if (remaining.has(previousKeys[i])) return previousKeys[i];
+  }
+  return nextKeys[0] ?? null;
+}
