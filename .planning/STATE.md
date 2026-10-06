@@ -13,7 +13,7 @@ progress:
   total_plans: 44
   completed_plans: 42
   percent: 95
-current_phase: 15
+current_phase: 13
 current_phase_name: Ready for the Shapers
 ---
 
