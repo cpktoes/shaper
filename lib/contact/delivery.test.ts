@@ -629,6 +629,11 @@ describe("boundary: the key never crosses where it shouldn't", () => {
     );
   });
 
+  it("(e) app/actions/contact.ts hands the per-visitor limit to submitContact", () => {
+    const source = readFileSync(join(REPO_ROOT, "app/actions/contact.ts"), "utf8");
+    expect(stripComments(source)).toContain("allowSend: takeContactSendSlotForRequest");
+  });
+
   it("(d) the non-test files in lib/contact/ import nothing from react, next, next/*, or @clerk/", () => {
     const contactDir = join(REPO_ROOT, "lib/contact");
     const offenders: string[] = [];

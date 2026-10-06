@@ -8,12 +8,15 @@
  * any other row a shaper owns. It reads only the untrusted `formData` a public visitor posts and
  * the server-only delivery switch, so there is no ownership boundary here to enforce.
  *
+ * A signed-out visitor's sends are limited per visitor before delivery (quick 261006-g5q; see
+ * `lib/contact/rate-limit.ts`) — this is the only signed-out path in the app that costs anything.
+ *
  * The one function below returns only `ContactFormState` — never the `ContactDelivery` object,
  * never the Resend key — so the client component this feeds can hold nothing more sensitive
  * than what the shaper themself just typed.
  */
 
-import { resolveContactDeliveryForRequest } from "@/lib/contact-server";
+import { resolveContactDeliveryForRequest, takeContactSendSlotForRequest } from "@/lib/contact-server";
 import { readContactFields, type ContactFormState } from "@/lib/contact/message";
 import { submitContact } from "@/lib/contact/delivery";
 
@@ -25,5 +28,6 @@ export async function sendContactMessage(
     fields: readContactFields(formData),
     delivery: await resolveContactDeliveryForRequest(),
     previous,
+    allowSend: takeContactSendSlotForRequest,
   });
 }

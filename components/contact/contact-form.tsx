@@ -177,9 +177,10 @@ export function ContactForm({ prefill }: { prefill: { name: string; email: strin
         />
       </div>
 
-      {state.status === "failed" && (
+      {(state.status === "failed" || state.status === "limited") && (
         <p role="alert" className="text-sm text-surf-ink">
-          {CONTACT_COPY.failedLead} <ContactAddressLink />.
+          {state.status === "limited" ? CONTACT_COPY.limitedLead : CONTACT_COPY.failedLead}{" "}
+          <ContactAddressLink />.
         </p>
       )}
 

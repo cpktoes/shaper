@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectNoScreensNavigation, expectSixTilesInMenu } from "./helpers/screens";
 import { CONTACT_STAND_IN_COOKIE } from "../lib/contact/delivery";
@@ -8,6 +9,7 @@ import {
   CONTACT_MAILTO,
   CONTACT_ROUTE,
 } from "../lib/contact/message";
+import { CONTACT_SEND_LIMIT } from "../lib/contact/rate-limit";
 
 /**
  * Quick 260929-u1t (Phase 13 item 10; the sender became Resend in quick 260929-w2k): browser
@@ -77,9 +79,24 @@ async function useStandIn(page: Page, baseURL: string | undefined, choice: "sent
   ]);
 }
 
+/** A fresh visitor address in the IPv6 documentation range (RFC 3849) — never a real visitor's. */
+function freshVisitorAddress(): string {
+  const hex = randomUUID().replace(/-/g, "").slice(0, 8);
+  return `2001:db8::${hex.slice(0, 4)}:${hex.slice(4, 8)}`;
+}
+
+/** Makes every request this page sends from now on — the Contact send included — arrive as a
+ * brand-new visitor, so the per-visitor limit (quick 261006-g5q) counts it on its own. */
+async function becomeNewVisitor(page: Page): Promise<void> {
+  await page.setExtraHTTPHeaders({ "x-forwarded-for": freshVisitorAddress() });
+}
+
 test.describe("Contact page", () => {
   test.beforeEach(async ({ page }) => {
     await dismissBannerAndTip(page);
+    // Every test is its own visitor: the three device projects share one dev server, and a reused
+    // server keeps its memory between runs, so one shared address would add up past the limit.
+    await becomeNewVisitor(page);
   });
 
   test("opens signed out and shows only the address while there's no way to send", async ({ page }, testInfo) => {
@@ -227,6 +244,40 @@ test.describe("Contact page", () => {
 
     await page.getByRole("button", { name: CONTACT_COPY.send }).click();
 
+    await expect(page.getByText(CONTACT_COPY.sentHeading)).toBeVisible();
+  });
+
+  test("a sixth message within the hour is turned away kindly, the typed message stays, and another visitor can still send", async ({ page, baseURL }) => {
+    test.setTimeout(90_000);
+    await useStandIn(page, baseURL, "sent");
+
+    for (let n = 1; n <= CONTACT_SEND_LIMIT; n += 1) {
+      await page.goto(CONTACT_ROUTE);
+      await page.getByLabel(CONTACT_COPY.messageLabel).fill(`Question number ${n} about my fins`);
+      await page.getByLabel(CONTACT_COPY.emailLabel).fill("jane@example.com");
+      await page.getByRole("button", { name: CONTACT_COPY.send }).click();
+      await expect(page.getByText(CONTACT_COPY.sentHeading)).toBeVisible();
+    }
+
+    // One more from the same visitor, still within the hour.
+    await page.goto(CONTACT_ROUTE);
+    await page.getByLabel(CONTACT_COPY.messageLabel).fill("One more question about my fins");
+    await page.getByLabel(CONTACT_COPY.emailLabel).fill("jane@example.com");
+    await page.getByRole("button", { name: CONTACT_COPY.send }).click();
+
+    // Scoped to <main> for the same reason as the failed-send test above.
+    const alert = page.locator("main").getByRole("alert");
+    await expect(alert).toContainText(CONTACT_COPY.limitedLead);
+    await expect(alert.getByRole("link", { name: CONTACT_ADDRESS })).toHaveAttribute("href", CONTACT_MAILTO);
+    await expect(page.getByLabel(CONTACT_COPY.messageLabel)).toHaveValue("One more question about my fins");
+    await expect(page.getByText(CONTACT_COPY.sentHeading)).toHaveCount(0);
+
+    // A different visitor is never held back by the first one's limit.
+    await becomeNewVisitor(page);
+    await page.goto(CONTACT_ROUTE);
+    await page.getByLabel(CONTACT_COPY.messageLabel).fill("Hello from another shaper");
+    await page.getByLabel(CONTACT_COPY.emailLabel).fill("kai@example.com");
+    await page.getByRole("button", { name: CONTACT_COPY.send }).click();
     await expect(page.getByText(CONTACT_COPY.sentHeading)).toBeVisible();
   });
 });
