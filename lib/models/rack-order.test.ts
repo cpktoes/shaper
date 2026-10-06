@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { sortRackEntries, type RackEntry } from "./rack-order";
 import {
   IN_PROGRESS_KEY,
@@ -12,6 +13,13 @@ import {
   rackEntryKey,
   rackIndexToSavedIndex,
   savedIdsInOrder,
+  RACK_ORDER_MAX_IDS,
+  RACK_ORDER_MAX_ID_LENGTH,
+  parseRackOrderColumn,
+  parseRackOrderInput,
+  rackOrderColumnValue,
+  turnedKeyAfterRemoval,
+  turnedKeyOnArrival,
   type InProgressRackEntry,
   type SavedRackEntry,
 } from "./rack-order";
@@ -270,5 +278,134 @@ describe("two devices: the stored list is only read through the merge", () => {
     expect(entries.map(rackEntryKey)).toEqual(["b", IN_PROGRESS_KEY, "a"]);
     expect(stored).toEqual(["a", "b"]);
     expect(ids).toEqual(["a", "b", "c"]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Phase 15 — how the order is written on the account, and which board is turned.
+// ---------------------------------------------------------------------------------------------
+
+describe("the stored list never reads corrupt", () => {
+  it("reads an empty column, junk text and anything that is not a list as no order", () => {
+    expect(parseRackOrderColumn(null)).toBeNull();
+    expect(parseRackOrderColumn(undefined)).toBeNull();
+    expect(parseRackOrderColumn("")).toBeNull();
+    expect(parseRackOrderColumn("not json")).toBeNull();
+    expect(parseRackOrderColumn("{}")).toBeNull();
+    expect(parseRackOrderColumn("42")).toBeNull();
+    expect(parseRackOrderColumn("null")).toBeNull();
+    expect(parseRackOrderColumn('"a"')).toBeNull();
+    expect(parseRackOrderColumn("[1, 2")).toBeNull();
+  });
+
+  it("keeps string ids, first occurrence wins, dropping anything else", () => {
+    expect(parseRackOrderColumn('["a","b","a",3,""]')).toEqual(["a", "b"]);
+    expect(parseRackOrderColumn(JSON.stringify(["a", null, { id: "b" }, ["c"], "x".repeat(65), "d"]))).toEqual([
+      "a",
+      "d",
+    ]);
+    expect(parseRackOrderColumn("[]")).toEqual([]);
+  });
+
+  it("caps a long list at its first 500 ids", () => {
+    const ids = Array.from({ length: 600 }, (_, i) => `id-${i}`);
+    const read = parseRackOrderColumn(JSON.stringify(ids));
+    expect(read).toHaveLength(RACK_ORDER_MAX_IDS);
+    expect(read).toEqual(ids.slice(0, 500));
+  });
+
+  it("writes the list as JSON text that reads back the same", () => {
+    expect(rackOrderColumnValue(["a", "b"])).toBe('["a","b"]');
+    expect(parseRackOrderColumn(rackOrderColumnValue(["a", "b"]))).toEqual(["a", "b"]);
+    expect(parseRackOrderColumn(rackOrderColumnValue([]))).toEqual([]);
+  });
+});
+
+describe("the strict input: a save takes the whole list or nothing", () => {
+  it("accepts a list of distinct ids, as a copy", () => {
+    const input = ["a", "b"];
+    const parsed = parseRackOrderInput(input);
+    expect(parsed).toEqual(["a", "b"]);
+    expect(parsed).not.toBe(input);
+    expect(parseRackOrderInput([])).toEqual([]);
+  });
+
+  it("accepts exactly 500 ids and an id of exactly 64 characters", () => {
+    expect(parseRackOrderInput(Array.from({ length: 500 }, (_, i) => `id-${i}`))).toHaveLength(500);
+    expect(parseRackOrderInput(["x".repeat(RACK_ORDER_MAX_ID_LENGTH)])).toEqual(["x".repeat(64)]);
+  });
+
+  it("rejects anything that is not a list", () => {
+    expect(parseRackOrderInput("a")).toBeNull();
+    expect(parseRackOrderInput(null)).toBeNull();
+    expect(parseRackOrderInput(undefined)).toBeNull();
+    expect(parseRackOrderInput({ 0: "a", length: 1 })).toBeNull();
+  });
+
+  it("rejects a non-string or empty id", () => {
+    expect(parseRackOrderInput([1])).toBeNull();
+    expect(parseRackOrderInput(["a", null])).toBeNull();
+    expect(parseRackOrderInput([""])).toBeNull();
+  });
+
+  it("rejects a repeated id", () => {
+    expect(parseRackOrderInput(["a", "a"])).toBeNull();
+  });
+
+  it("rejects 501 ids and an id of 65 characters rather than trimming them", () => {
+    expect(parseRackOrderInput(Array.from({ length: 501 }, (_, i) => `id-${i}`))).toBeNull();
+    expect(parseRackOrderInput(["x".repeat(65)])).toBeNull();
+  });
+});
+
+describe("D-07: the board shown turned when the home page opens", () => {
+  it("is the unsaved board when there is one", () => {
+    expect(turnedKeyOnArrival([IN_PROGRESS_KEY, "a", "b"], null, true)).toBe(IN_PROGRESS_KEY);
+    expect(turnedKeyOnArrival([IN_PROGRESS_KEY, "a", "b"], "b", true)).toBe(IN_PROGRESS_KEY);
+  });
+
+  it("is the open board when it is on the rack", () => {
+    expect(turnedKeyOnArrival(["a", "b"], "b", false)).toBe("b");
+  });
+
+  it("is the first board otherwise, and nothing on an empty rack", () => {
+    expect(turnedKeyOnArrival(["a", "b"], "gone", false)).toBe("a");
+    expect(turnedKeyOnArrival(["a", "b"], null, false)).toBe("a");
+    expect(turnedKeyOnArrival([], null, false)).toBeNull();
+  });
+});
+
+describe("after a delete: the turn passes to a neighbour", () => {
+  it("passes to the next board in the old order", () => {
+    expect(turnedKeyAfterRemoval(["a", "b", "c"], ["a", "c"], "b")).toBe("c");
+  });
+
+  it("passes to the previous board when the deleted board was last", () => {
+    expect(turnedKeyAfterRemoval(["a", "b", "c"], ["a", "b"], "c")).toBe("b");
+  });
+
+  it("skips neighbours that went too", () => {
+    expect(turnedKeyAfterRemoval(["a", "b", "c", "d"], ["a", "d"], "b")).toBe("d");
+    expect(turnedKeyAfterRemoval(["a", "b", "c", "d"], ["a"], "c")).toBe("a");
+  });
+
+  it("is nothing once the rack is empty", () => {
+    expect(turnedKeyAfterRemoval(["a"], [], "a")).toBeNull();
+  });
+
+  it("leaves a turned board that is still there alone", () => {
+    expect(turnedKeyAfterRemoval(["a", "b", "c"], ["a", "b"], "a")).toBe("a");
+  });
+
+  it("falls back to the first board when nothing was turned or the turned key is unknown", () => {
+    expect(turnedKeyAfterRemoval(["a", "b"], ["b"], null)).toBe("b");
+    expect(turnedKeyAfterRemoval(["a", "b"], ["b"], "zzz")).toBe("b");
+  });
+});
+
+describe("the order rules stay pure", () => {
+  it("imports no React, browser API or database", () => {
+    const source = readFileSync(new URL("./rack-order.ts", import.meta.url), "utf8");
+    expect(source).not.toMatch(/from "react"|window\.|document\.|@\/lib\/db/);
   });
 });
