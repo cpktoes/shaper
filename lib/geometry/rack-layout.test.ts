@@ -55,6 +55,7 @@ function layoutFor(count: number, contentWidth: number) {
     contentWidth,
     longestMm: Math.max(...lengths),
     widestHalfMm: WIDEST_HALF,
+    wordColumnPx: spineWordColumn(HOVER_WORD_SIZE),
   });
 }
 
@@ -94,6 +95,7 @@ describe("Edge: the longest and shortest boards (R2)", () => {
       contentWidth: 960,
       longestMm: inchesToMm(62),
       widestHalfMm: WIDEST_HALF,
+      wordColumnPx: spineWordColumn(HOVER_WORD_SIZE),
     });
     expect(layout.rackHeight).toBe(HOVER_ONE_ROW_HEIGHT);
     expect(inchesToMm(62) * layout.scale).toBeCloseTo((HOVER_ONE_ROW_HEIGHT * 62) / 84, 9);

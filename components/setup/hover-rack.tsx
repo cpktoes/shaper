@@ -303,7 +303,10 @@ export function HoverRack({ boards, turnedKey, openKey, frozen, onTurn, onOpen, 
         count: boards.length,
         contentWidth: width,
         longestMm: Math.max(0, ...boards.map((board) => board.art.length)),
-        widestHalfMm: Math.max(0, ...boards.map((board) => board.art.maxHalf)),
+        // How far each board reaches from its axis fully turned, in millimetres (a scale of 1):
+        // the very figure the room is worked from, so the reserve holds it exactly.
+        widestHalfMm: Math.max(0, ...boards.map((board) => halfExtent(board.art, HALF_TURN, 1))),
+        wordColumnPx: WORD_COLUMN,
       }),
     [boards, width],
   );

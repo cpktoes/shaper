@@ -99,7 +99,8 @@ export interface HoverRackLayout {
   rackHeight: number;
   /** The ONE scale every board of every row is drawn at, in dots per millimetre. */
   scale: number;
-  /** Room kept free beside each row so the widest board can turn fully without leaving the rack. */
+  /** Room kept free beside each row so the widest board can turn fully — its outline and the column
+   * of words it makes room for — without leaving the rack: half at each end of the row. */
   reserve: number;
   /** One board's width at rest. */
   slot: number;
@@ -114,22 +115,26 @@ export interface HoverRackLayout {
 /**
  * Lays the hover rack out: one row at the 380-dot height if every board fits, else balanced rows
  * at the 288-dot height (30 boards make 15 + 15, never 19 + 11). A row holds as many 48-dot slots
- * as fit beside the label gutter and the room the widest board needs to turn fully.
+ * as fit beside the label gutter and the room the widest board needs to turn fully — exactly the
+ * `boardExtra` it opens fully turned, so `widestHalfMm` is how far the widest board reaches from its
+ * axis turned (`halfExtent` at a full turn, in millimetres) and `wordColumnPx` is the
+ * `spineWordColumn` the rack opens around every turning board.
  */
 export function hoverRackLayout(input: {
   count: number;
   contentWidth: number;
   longestMm: number;
   widestHalfMm: number;
+  wordColumnPx: number;
 }): HoverRackLayout {
-  const { contentWidth, longestMm, widestHalfMm } = input;
+  const { contentWidth, longestMm, widestHalfMm, wordColumnPx } = input;
   const count = Math.max(0, Math.floor(input.count));
   const slot = HOVER_SLOT;
   const gutter = LABEL_GUTTER;
 
   const fit = (rackHeight: number) => {
     const scale = rackScale(rackHeight, longestMm);
-    const reserve = Math.max(0, 2 * widestHalfMm * scale - slot);
+    const reserve = boardExtra(widestHalfMm * scale, slot, wordColumnPx);
     const cap = Math.max(1, Math.floor((contentWidth - gutter - reserve) / slot));
     return { rackHeight, scale, reserve, cap };
   };

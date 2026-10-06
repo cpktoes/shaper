@@ -57,11 +57,13 @@ function rackCase(label: string, count: number, keep: (art: RackBoardArt) => boo
   const arts = rackModelsFromRows(standInRackRows(count))
     .map((model) => rackBoardFigures(model.snapshot).art)
     .filter(keep);
+  // Laid out exactly as hover-rack.tsx lays it out, in the 960 dots a wide window gives the rack.
   const layout = hoverRackLayout({
     count: arts.length,
     contentWidth: 960,
     longestMm: Math.max(...arts.map((art) => art.length)),
-    widestHalfMm: Math.max(...arts.map((art) => art.maxHalf)),
+    widestHalfMm: Math.max(...arts.map((art) => halfExtent(art, HALF_TURN, 1))),
+    wordColumnPx: spineWordColumn(WORD_SIZE),
   });
   return { label, arts, layout, positions: arts.map((_, k) => hoverSlotPosition(layout, k)) };
 }
@@ -181,6 +183,32 @@ describe("the room a board's words take is the room the rack draws them in", () 
         expect(drawnSpan(art, theta).left * scale - farSide + SPINE_CLEARANCE).toBeCloseTo(spineWordColumn(WORD_SIZE), 9);
       }
     }
+  });
+});
+
+describe("a rack resting on any board stays inside its rack", () => {
+  it.each(CASES)("$label: every board's room runs from the label gutter to the end of its row, never past", (rack) => {
+    const { layout } = rack;
+    // Where each row's own slots and reserve end.
+    const rowEnd = rack.positions.map(
+      ({ row }) => layout.gutter + layout.reserve + rack.positions.filter((position) => position.row === row).length * layout.slot,
+    );
+    const outside: string[] = [];
+    rack.arts.forEach((_, rested) => {
+      const thetas = rack.arts.map((__, k) => (k === rested ? HALF_TURN : 0));
+      const xs = centres(rack, thetas);
+      rack.arts.forEach((art, k) => {
+        // A board's room — the button laid over it — is its slot plus the extra it opens, centred.
+        const half = (HOVER_SLOT + extraAt(art, thetas[k], layout.scale)) / 2;
+        if (xs[k] - half < layout.gutter - 1e-9) {
+          outside.push(`resting on ${rested + 1}: board ${k + 1} reaches ${(layout.gutter - (xs[k] - half)).toFixed(2)} into the label gutter`);
+        }
+        if (xs[k] + half > rowEnd[k] + 1e-9) {
+          outside.push(`resting on ${rested + 1}: board ${k + 1} reaches ${(xs[k] + half - rowEnd[k]).toFixed(2)} past its row`);
+        }
+      });
+    });
+    expect(outside, outside.slice(0, 12).join("\n")).toEqual([]);
   });
 });
 
