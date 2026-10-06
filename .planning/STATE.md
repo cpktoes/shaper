@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 15 (The Board Rack) context gathered 2026-10-05 on branch board-rack: brief locked (15-SPEC.md, 10 requirements from sketches 009-011), 15 decisions in 15-CONTEXT.md (one go-live before the Wed 2026-10-07 freeze; mouse = hover rack, finger = swipe rack; order fixed at the first move). Next: /gsd-plan-phase 15, then the founder approves the plan before any code."
-last_updated: "2026-10-06T03:25:30.857Z"
+stopped_at: "Phase 15 UI-SPEC approved 2026-10-05 (42/42 states resolved; D-16 ruled); research done; next: the plan (gsd-planner), then the founder approves it before any code"
+last_updated: "2026-10-06T03:52:11.728Z"
 last_activity: 2026-10-05
 last_activity_desc: Quick task 261005-big (RAILS on an upright phone shows only the picked rail's controls under NOSE / CENTER / TAIL) is LIVE as main ba08033, checked on the live site
 progress:
@@ -470,9 +470,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-06T03:25:30.772Z
-Stopped at: Phase 15 (The Board Rack) context gathered 2026-10-05 on branch board-rack: brief locked (15-SPEC.md, 10 requirements from sketches 009-011), 15 decisions in 15-CONTEXT.md (one go-live before the Wed 2026-10-07 freeze; mouse = hover rack, finger = swipe rack; order fixed at the first move). Next: /gsd-plan-phase 15, then the founder approves the plan before any code.
-Resume file: .planning/phases/15-the-board-rack/15-CONTEXT.md
+Last session: 2026-10-06T03:52:11.678Z
+Stopped at: Phase 15 UI-SPEC approved 2026-10-05 (42/42 states resolved; D-16 ruled); research done; next: the plan (gsd-planner), then the founder approves it before any code
+Resume file: .planning/phases/15-the-board-rack/15-UI-SPEC.md
 Next action: the next unticked item in 13-SPEC.md's Progress Log, as `/gsd-quick "Phase 13 item N: …"`, then stop for the founder's review
 
 ## Operator Next Steps
