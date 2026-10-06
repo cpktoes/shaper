@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 15 (The Board Rack) building on branch board-rack: wave 1 merged 2026-10-05 (15-01 turn maths, 15-02 layout + timings, 15-03 order rules + words, 15-05 practice rack + before pictures; unit tests 4,174 green). Wave 2 next (15-04 the order on the account, development database only; 15-06 the rack on the home page, the tracer). Founder steps still ahead: 15-10 (Tue 2026-10-06 device check) and 15-13 (go-live before the Wed 2026-10-07 freeze)."
+stopped_at: "Phase 15 (The Board Rack) building on branch board-rack: waves 1-2 merged 2026-10-05 (6 of 13 plans: turn maths, layout + timings, order rules + words, practice rack, the order on the account — development database migrated, production untouched — and the hover rack on the home page). Next: wave 3 (15-07 the swipe rack for phones and iPads, 15-08 the page reads the stored order + the read-only rack report). Founder steps: 15-10 (Tue 2026-10-06 device check of hold-and-drag, decides D-11) and 15-13 (go-live before the Wed 2026-10-07 freeze)."
 last_updated: "2026-10-06T05:09:58.019Z"
 last_activity: 2026-10-05
 last_activity_desc: Quick task 261005-big (RAILS on an upright phone shows only the picked rail's controls under NOSE / CENTER / TAIL) is LIVE as main ba08033, checked on the live site
@@ -11,8 +11,8 @@ progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 44
-  completed_plans: 33
-  percent: 75
+  completed_plans: 35
+  percent: 80
 current_phase: 15
 current_phase_name: The Board Rack
 ---
