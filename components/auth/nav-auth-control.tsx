@@ -16,6 +16,9 @@
 
 import { useState } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
+import { FolderOpen } from "lucide-react";
+import { YOUR_DATA_COPY } from "@/components/account/your-data-copy";
+import { YourDataPage } from "@/components/account/your-data-page";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
 
 export function NavAuthControl() {
@@ -59,7 +62,23 @@ export function NavAuthControl() {
     // opinion about size. Playwright cannot render this signed-in on this suite's fake Clerk
     // keys (see nav-auth-control.test.ts's own header); the compiled-CSS case in that file
     // proves the class itself outranks an ordinary rule, which is the half a machine can settle.
-    return <UserButton appearance={{ elements: { userButtonTrigger: "coarse:p-2!" } }} />;
+    //
+    // Quick 261006-g4u (2026-10-06, D-01): the account panel gains one page of the app's own, Your
+    // data (Export my designs and Delete my account, the two things the Privacy Policy promises),
+    // and the avatar menu gains a Your data row that opens the panel straight to it, between
+    // Clerk's own Manage account and Sign out. Clerk only finds these when they are DIRECT
+    // children of the avatar button — inside a fragment or a wrapper component they would vanish
+    // silently. The `return <UserButton` opening below keeps its one line and its exact padding class.
+    return <UserButton appearance={{ elements: { userButtonTrigger: "coarse:p-2!" } }}>
+      <UserButton.MenuItems>
+        <UserButton.Action label="manageAccount" />
+        <UserButton.Action label={YOUR_DATA_COPY.pageLabel} labelIcon={<FolderOpen className="size-4" />} open="your-data" />
+        <UserButton.Action label="signOut" />
+      </UserButton.MenuItems>
+      <UserButton.UserProfilePage label={YOUR_DATA_COPY.pageLabel} url="your-data" labelIcon={<FolderOpen className="size-4" />}>
+        <YourDataPage />
+      </UserButton.UserProfilePage>
+    </UserButton>;
   }
 
   return (

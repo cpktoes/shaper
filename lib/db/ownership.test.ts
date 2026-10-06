@@ -18,6 +18,7 @@ const PRINT_INSTRUCTIONS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/print-instr
 const FIT_DEFAULTS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/fit-defaults.ts");
 const BLANK_MAKERS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/blank-makers.ts");
 const RACK_ORDER_ACTIONS_PATH = join(REPO_ROOT, "app/actions/rack-order.ts");
+const ACCOUNT_ACTIONS_PATH = join(REPO_ROOT, "app/actions/account.ts");
 const BLANKS_READ_PATH = join(REPO_ROOT, "lib/db/blanks.ts");
 const SCHEMA_PATH = join(REPO_ROOT, "lib/db/schema.ts");
 
@@ -70,6 +71,8 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
   const fitDefaultsActionsSource = stripComments(readFileSync(FIT_DEFAULTS_ACTIONS_PATH, "utf8"));
   const blankMakersActionsSource = stripComments(readFileSync(BLANK_MAKERS_ACTIONS_PATH, "utf8"));
   const rackOrderActionsSource = stripComments(readFileSync(RACK_ORDER_ACTIONS_PATH, "utf8"));
+  // Quick 261006-g4u (2026-10-06, D-07): the Your data page's Export and Delete actions.
+  const accountActionsSource = stripComments(readFileSync(ACCOUNT_ACTIONS_PATH, "utf8"));
 
   it("every exported async function in app/design/actions.ts, app/actions/units.ts, app/actions/print-instructions.ts, app/actions/fit-defaults.ts, app/actions/blank-makers.ts and app/actions/rack-order.ts awaits auth() before any database call", () => {
     const fns = [
@@ -79,6 +82,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
       ...exportedAsyncFunctions(fitDefaultsActionsSource),
       ...exportedAsyncFunctions(blankMakersActionsSource),
       ...exportedAsyncFunctions(rackOrderActionsSource),
+      ...exportedAsyncFunctions(accountActionsSource),
     ];
     expect(fns.length).toBeGreaterThan(0);
     for (const fn of fns) {
@@ -103,6 +107,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
       ...exportedFunctionSignatures(fitDefaultsActionsSource),
       ...exportedFunctionSignatures(blankMakersActionsSource),
       ...exportedFunctionSignatures(rackOrderActionsSource),
+      ...exportedFunctionSignatures(accountActionsSource),
     ];
     expect(signatures.length).toBeGreaterThan(0);
     const offenders = signatures.filter((fn) => /userId|ownerId|clerkUserId/.test(fn.params));
@@ -157,6 +162,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
       ["app/actions/fit-defaults.ts", fitDefaultsActionsSource],
       ["app/actions/blank-makers.ts", blankMakersActionsSource],
       ["app/actions/rack-order.ts", rackOrderActionsSource],
+      ["app/actions/account.ts", accountActionsSource],
     ] as const) {
       // Split on each db.<verb>( call so every statement is inspected against the text between
       // it and the NEXT db call (or end of source) — the statement's own where/values clause.
