@@ -352,7 +352,8 @@ describe("Edge: a long name (R1) — the words shrink, then cut the name, never 
     const surfer = String.fromCodePoint(0x1f3c4, 0x200d, 0x2642, 0xfe0f);
     const name = `Caf${accented} ${surfer} Twin ${surfer}${accented}${accented}`;
     const whole = graphemes(name);
-    for (let keep = 1; keep < whole.length; keep++) {
+    // Room for `keep` letters plus the ellipsis; at whole.length - 1 the whole name would fit uncut.
+    for (let keep = 1; keep < whole.length - 1; keep++) {
       const maxLength = measure(line, SPINE_FLOOR_SIZE) + SPINE_WORD_GAP + (keep + 1) * SPINE_FLOOR_SIZE * 0.6;
       const fit = fitSpineWords({ name, line, maxLength, baseSize: 12, measure });
       expect(fit.cut).toBe(true);
