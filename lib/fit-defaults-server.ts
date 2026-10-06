@@ -23,14 +23,19 @@ import { readFitDefaultsPreference } from "./db/queries";
 import { DEFAULT_BLANK_CUT, type TipStyle } from "./geometry/blank";
 import {
   FIT_DEFAULTS_COOKIE_NAME,
+  carryOverTipStyle,
   decideFitDefaultsHandoff,
   parseFitDefaultsCookieValue,
-  resolveFitDefaults,
   type FitDefaultsHandoff,
   type FitDefaultsPreference,
 } from "./fit-defaults-preference";
 
-export async function resolveFitDefaultsHandoff(): Promise<FitDefaultsHandoff> {
+/** The request's three inputs to the handoff: signed in or not, the account's row, the cookie. */
+async function fitDefaultsInputs(): Promise<{
+  signedIn: boolean;
+  account: FitDefaultsPreference | null;
+  browser: FitDefaultsPreference | null;
+}> {
   const { userId } = await auth();
   const cookieStore = await cookies();
   const browser = parseFitDefaultsCookieValue(cookieStore.get(FIT_DEFAULTS_COOKIE_NAME)?.value ?? null);
@@ -47,7 +52,11 @@ export async function resolveFitDefaultsHandoff(): Promise<FitDefaultsHandoff> {
     }
   }
 
-  return decideFitDefaultsHandoff({ signedIn: userId !== null, account, browser });
+  return { signedIn: userId !== null, account, browser };
+}
+
+export async function resolveFitDefaultsHandoff(): Promise<FitDefaultsHandoff> {
+  return decideFitDefaultsHandoff(await fitDefaultsInputs());
 }
 
 /**
@@ -65,7 +74,7 @@ export async function resolveFitDefaultsHandoff(): Promise<FitDefaultsHandoff> {
  */
 export async function resolveCarryOverTipStyle(): Promise<TipStyle> {
   try {
-    return resolveFitDefaults((await resolveFitDefaultsHandoff()).preference).tipStyle;
+    return carryOverTipStyle(await fitDefaultsInputs());
   } catch (error) {
     // The account read inside the handoff already degrades on its own; this outer guard is for
     // anything else (the cookie store, the session) so reopening an old board can never fail

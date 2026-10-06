@@ -56,6 +56,25 @@
  * board, a board name, a user id or the connection string, and never changes the exit code. Both
  * flags may be given together.
  *
+ * `--rack-report` (Phase 15 D-13, read-only, counts and board ids only): the founder's check before
+ * the Board Rack goes live that the rack can draw every board saved on the site. Every account's
+ * boards are run through exactly what the home page runs for that shaper (`rackReport` in
+ * lib/models/rack-report.ts: `rackModelsAndDrops`, its parse and its rack picture), with the
+ * shaper's own Tip Style for a rack holding a Phase 11 board — read from their account and resolved
+ * by the page's own rule (`carryOverTipStyle`; code review IN-06). The one input the page has that
+ * this cannot is the shaper's browser cookie, so a Tip Style picked signed out and never saved to the
+ * account reads as the account has it. Three more lines are printed:
+ *   saved boards: N; the rack can draw: k of N
+ *   accounts with saved boards: A; boards per account: n1, n2, ...
+ *   boards the rack would leave out: <ids>        (or: none)
+ * and, only when an account's Tip Style could not be read (the page then falls back the same way):
+ *   Tip Styles that could not be read (Pin deck used): n
+ * The boards-per-account counts are sorted from most to fewest and carry no ids: the owner column is
+ * read only to group and count, and is never printed. It never prints a board name, a snapshot, a user id or
+ * the connection string, and the rack's own per-board log is silenced. It exits 1 only when a board
+ * that opens in the check above is left out by the rack — a board that already does not open is
+ * that check's failure, not this one's.
+ *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
  *
@@ -71,6 +90,8 @@
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --curves-report'
  *   production, the tips report — the founder only (plan 14-18), the same temporary-file recipe:
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --tips-report'
+ *   production, the rack report — the founder only (plan 15-13), the same temporary-file recipe:
+ *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --rack-report'
  *
  * Which env file is read is controlled by `CHECK_ENV_FILE` (default `.env.local`, resolved from the
  * current directory), exactly as scripts/check-preference-columns.ts: when the file exists, any
@@ -116,7 +137,8 @@ async function main(): Promise<void> {
   const { buildOutline, sampleOutline } = await import("../lib/geometry/outline");
   const { formatMark } = await import("../lib/geometry/measure-display");
   const { mm, UNITS_SYSTEMS } = await import("../lib/geometry/units");
-  const { DEFAULT_FIT_DEFAULTS, toFitSettings } = await import("../lib/fit-defaults-preference");
+  const { DEFAULT_FIT_DEFAULTS, carryOverTipStyle, toFitSettings } = await import("../lib/fit-defaults-preference");
+  const { readFitDefaultsPreference } = await import("../lib/db/queries");
   const {
     boardFigures,
     compareFigures,
@@ -127,8 +149,11 @@ async function main(): Promise<void> {
     summarizeMoves,
     tipsReportLines,
   } = await import("../lib/geometry/before-after");
+  const { accountsNeedingTipStyle, rackReport } = await import("../lib/models/rack-report");
 
   type Mm = import("../lib/geometry/units").Mm;
+  type TipStyle = import("../lib/geometry/blank").TipStyle;
+  type FitDefaultsPreference = import("../lib/fit-defaults-preference").FitDefaultsPreference;
   type FoilStationKey = import("../lib/geometry/foil").FoilStationKey;
   type BoardBlank = import("../lib/geometry/blank").BoardBlank;
 
@@ -137,10 +162,13 @@ async function main(): Promise<void> {
   const thinTipsFlag = process.argv.includes("--thin-tips");
   const curvesReportFlag = process.argv.includes("--curves-report");
   const tipsReportFlag = process.argv.includes("--tips-report");
+  const rackReportFlag = process.argv.includes("--rack-report");
   const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
 
-  // Read-only: one select of every saved board's id and snapshot, nothing else.
-  const rows = await db.select({ id: models.id, snapshot: models.snapshot }).from(models);
+  // Read-only: one select of every saved board's id, owner and snapshot, nothing else. The owner
+  // column is read only so `--rack-report` can count boards per account; it is never printed.
+  const rows = await db.select({ id: models.id, clerkUserId: models.clerkUserId, snapshot: models.snapshot })
+    .from(models);
 
   const versions = new Map<number, number>();
   let opened = 0;
@@ -329,9 +357,38 @@ async function main(): Promise<void> {
     if (tipsNotCompared > 0) console.log(`boards the tips report could not compare: ${tipsNotCompared}`);
   }
 
+  // --rack-report (Phase 15 D-13): the home page's own path, account by account, with each account's
+  // own Tip Style (code review IN-06). The name is never read (an empty one is passed) and the rack's
+  // per-board log is silenced, so nothing about a board but its id can reach this terminal; an
+  // account id is only ever a key in the Tip Style lookup, never printed.
+  let rackLeavesOutAnOpeningBoard = false;
+  if (rackReportFlag) {
+    const tipStyles = new Map<string, TipStyle>();
+    let tipStylesUnread = 0;
+    for (const account of accountsNeedingTipStyle(rows)) {
+      let saved: FitDefaultsPreference | null = null;
+      try {
+        saved = await readFitDefaultsPreference(account);
+      } catch {
+        // As on the page: a failed read falls back (here, with no cookie, to Pin deck).
+        tipStylesUnread += 1;
+      }
+      tipStyles.set(account, carryOverTipStyle({ signedIn: true, account: saved, browser: null }));
+    }
+    const report = rackReport(rows, tipStyles);
+    console.log(`saved boards: ${report.saved}; the rack can draw: ${report.drawn} of ${report.saved}`);
+    console.log(
+      `accounts with saved boards: ${report.perAccount.length}; boards per account: ${report.perAccount.length > 0 ? report.perAccount.join(", ") : "none"}`,
+    );
+    console.log(`boards the rack would leave out: ${report.dropped.length > 0 ? report.dropped.join(", ") : "none"}`);
+    if (tipStylesUnread > 0) console.log(`Tip Styles that could not be read (Pin deck used): ${tipStylesUnread}`);
+    const didNotOpen = new Set(notOpened);
+    rackLeavesOutAnOpeningBoard = report.dropped.some((id) => !didNotOpen.has(id));
+  }
+
   if (notOpened.length > 0) console.log(`boards that do not open: ${notOpened.join(", ")}`);
   if (moved.length > 0) console.log(`Phase 11 boards whose five thicknesses moved: ${moved.join(", ")}`);
-  if (opened < rows.length || kept < phase11Boards) process.exitCode = 1;
+  if (opened < rows.length || kept < phase11Boards || rackLeavesOutAnOpeningBoard) process.exitCode = 1;
 }
 
 /**

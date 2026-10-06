@@ -26,6 +26,22 @@
         "3005"
       ],
       "port": 3005
+    },
+    {
+      "name": "practice-rack-wifi",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "SHAPER_RACK_STAND_IN=1",
+        "npm",
+        "run",
+        "dev",
+        "--",
+        "-H",
+        "0.0.0.0",
+        "-p",
+        "3005"
+      ],
+      "port": 3005
     }
   ]
 }

@@ -3,7 +3,7 @@ status: testing
 phase: 13-ready-for-the-shapers
 source: [13-SPEC.md item 13]
 started: 2026-09-30T21:31:08.000Z
-updated: 2026-10-03T23:15:17.000Z
+updated: 2026-10-06T14:40:00.000Z
 ---
 
 ## Current Test
@@ -97,7 +97,7 @@ curves and Thinning Starts all went live after the first sheet.
 | Lint and types | 0 errors, 0 warnings (2026-10-03) |
 | Browser tests — iPhone, Android and desktop profiles, on this exact code | 623 passed, 0 failed (400 skipped by design — each test runs only on the devices it is for), 2026-10-03, with the fix |
 | Production-build tests | 13 passed (2026-10-03), including the new check that on a phone no control ends up under the Undo and Redo pair |
-| The live site walked by machine, signed out, on an emulated iPhone, Android phone and laptop (2026-10-03, and again after the fix went live) | 16 of 16 steps on each phone and 15 of 15 on the laptop. The four cards read Shortboard 29.6 L · Fish 35.3 L · Mid-length 50.4 L · Longboard 75.3 L. Sign in opens Clerk with Continue with Google, an email field and the Privacy link (on a phone it is in the menu). A preset opens on TEMPLATE; one change brings the Undo and Redo pair and the ghost, and Undo puts the number back. ROCKER shows the preset's own blank; Change Blank opens the list; both Thinning Starts read 12" and "Picked automatically", with two dashed marks on the drawing; a start moved to 13" reads "Automatic would be 12"" and Automatic puts it back; the DATASHEET shows THINNING STARTS. RAILS' View Full Sized opens and closes, and Flat and Domed both press. VOLUME reads its litres; FINS has Import Template Values. The order form shows both pages, and its Planing box ends "Thinning starts from the tip: nose 12", tail 12".". Export Template offers the Overview Sheet, the Full Sized Template and the Paper Saver. Held sideways, a phone's top bar is one 48-dot line with the menu. /contact shows the form and the address; /privacy opens; a wrong address gets "We couldn't find that page". No sideways scroll on any screen. No page errors on Android or the laptop; the iPhone engine logged only aborted-request noise caused by the script's own hard page jumps |
+| The live site walked by machine, signed out, on an emulated iPhone, Android phone and laptop (2026-10-03, and again after the fix went live) | 16 of 16 steps on each phone and 15 of 15 on the laptop. The four cards read Shortboard 29.6 L · Fish 35.3 L · Mid-length 50.4 L · Longboard 73.9 L. Sign in opens Clerk with Continue with Google, an email field and the Privacy link (on a phone it is in the menu). A preset opens on TEMPLATE; one change brings the Undo and Redo pair and the ghost, and Undo puts the number back. ROCKER shows the preset's own blank; Change Blank opens the list; both Thinning Starts read 12" and "Picked automatically", with two dashed marks on the drawing; a start moved to 13" reads "Automatic would be 12"" and Automatic puts it back; the DATASHEET shows THINNING STARTS. RAILS' View Full Sized opens and closes, and Flat and Domed both press. VOLUME reads its litres; FINS has Import Template Values. The order form shows both pages, and its Planing box ends "Thinning starts from the tip: nose 12", tail 12".". Export Template offers the Overview Sheet, the Full Sized Template and the Paper Saver. Held sideways, a phone's top bar is one 48-dot line with the menu. /contact shows the form and the address; /privacy opens; a wrong address gets "We couldn't find that page". No sideways scroll on any screen. No page errors on Android or the laptop; the iPhone engine logged only aborted-request noise caused by the script's own hard page jumps |
 | Metric, read off the live site (2026-10-03) | The cards read Shortboard 188.0 × 47.6 × 5.7 cm · Fish 172.7 × 51.4 × 6.4 cm · Mid-length 218.4 × 54.0 × 7.0 cm · Longboard 274.3 × 57.2 × 7.6 cm, with the same litres. On the Shortboard both Thinning Starts read 30.5 cm; the slider's ends are 16.0 cm and 93.0 cm; from Automatic the arrow keys step to 31.0 and 32.0 and back to 31.0, 30.0 and 29.0; the DATASHEET reads "From tip (cm) 30.5 30.5"; the Planing box ends "Thinning starts from the tip: nose 30.5, tail 30.5 cm." |
 | The first board a visitor sees (no preset picked) | VOLUME reads 30.51 L |
 | One fault found by this walk, fixed and live the same day | On a phone held upright, the tail's Automatic button on ROCKER sat under the Redo button and could not be tapped — call 6 below. On the live site it now sits 8 dots above the pair on the iPhone size and 9 on the Android size and takes a tap, and with every screen scrolled to its end no control is under the pair |
@@ -161,15 +161,20 @@ curves and Thinning Starts all went live after the first sheet.
 The same trip on each device, on **www.shaperassistant.com** — about 25 minutes each. Sign in with
 your own account; use Google on one device and email on another.
 
-Brought up to date on 2026-10-03. Step 6 is new, and steps 1 to 5, 7, 10, 12, 13 and 16 changed: the
-card litres, where Sign in is, the ghost and the Undo and Redo pair, Change Blank, Thinning Starts, the
-Planing box's new line and the thin sideways top bar. The one fault that update found (call 6) was
-fixed and published the same day, so step 6 has no caveat.
+Brought up to date on 2026-10-06 for the Board Rack (Phase 15), which now holds your saved boards on the
+home page: step 12 opens the board from the Board Rack, and step 13 is new — look along the rack and move a
+board, written for hold-and-slide on phones, which you kept after trying it on your iPad and an Android
+phone. The old steps 13 to 17 are now 14 to 18. Four of the rack's own looks are below, after Phase 14's.
+
+Before that, on 2026-10-03, step 6 was new, and steps 1 to 5, 7, 10, 12, 14 and 17 (then numbered 13 and
+16) changed: the card litres, where Sign in is, the ghost and the Undo and Redo pair, Change Blank,
+Thinning Starts, the Planing box's new line and the thin sideways top bar. The one fault that update found
+(call 6) was fixed and published the same day, so step 6 has no caveat.
 
 | # | Do this | Look for | iPhone | Android | Laptop |
 |---|---|---|---|---|---|
 | 1 | Text yourself www.shaperassistant.com and tap the link (laptop: type the address) | The preview card with the board picture and "Shaper Assistant — Surfboard Shaping and Design"; the home screen opens | | | |
-| 2 | Read the four preset cards | Shortboard 6'2" · 18 3/4" · 2 1/4" · 29.6 L — Fish 5'8" · 20 1/4" · 2 1/2" · 35.3 L — Mid-length 7'2" · 21 1/4" · 2 3/4" · 50.4 L — Longboard 9'0" · 22 1/2" · 3" · 75.3 L | | | |
+| 2 | Read the four preset cards | Shortboard 6'2" · 18 3/4" · 2 1/4" · 29.6 L — Fish 5'8" · 20 1/4" · 2 1/2" · 35.3 L — Mid-length 7'2" · 21 1/4" · 2 3/4" · 50.4 L — Longboard 9'0" · 22 1/2" · 3" · 73.9 L | | | |
 | 3 | Sign in with your own account (phones: in the menu, top right; laptop: Sign in, in the top bar) | The keyboard never hides the field you're typing in; any code arrives within a minute; you land back signed in | | | |
 | 4 | Start Shaping on a preset → TEMPLATE: drag an outline point, then Undo and Redo | The point follows your finger or mouse and the numbers update; the Undo and Redo pair appears at the bottom right and puts it back exactly; a faint line shows the shape before the change, and the ghost button in the drawing's corner hides it | | | |
 | 5 | ROCKER: press Change Blank and pick another blank, slide Placement, drag Deck Skin | The list opens, shortest first, with greyed blanks saying where they don't fit; the picked blank, the drawing, the foam-off numbers and the planer passes follow you | | | |
@@ -179,12 +184,13 @@ fixed and published the same day, so step 6 has no caveat.
 | 9 | FINS: change the fin setup; tick and untick Import Template Values | The fin numbers and the drawing follow | | | |
 | 10 | SUMMARY: read the order form, then Print Order Form — print for real or save as a PDF | Both pages complete and legible. Page 2's Planing box ends "Thinning starts from the tip: nose …, tail …." inside its box. On the iPhone, page 2's rail markings and fin numbers each sit inside their own box (item 8b's last check) | | | |
 | 11 | SUMMARY: Export Template → Overview Sheet → Download PDF | A PDF of the board opens or downloads | | | |
-| 12 | Save (top bar) with a name → tap the wordmark for home → open the board from Your Boards → rename it, duplicate it, delete the copy | The same board comes back, with its blank and any Thinning Start you set by hand; Cancel is easy to hit on the delete question | | | |
-| 13 | Menu (gear on the laptop) → Metric; look at ROCKER and SUMMARY; switch back to Imperial | Centimetres for sizes, millimetres for marks; Thinning Starts read in centimetres (30.5 cm for 12"); back in Imperial every number is exactly what it was | | | |
-| 14 | Menu → Contact, then Privacy. Send one Contact message from one device only | Both pages open; the message reaches support@ in Zoho | | | |
-| 15 | Type a wrong address, e.g. www.shaperassistant.com/xyz | "We couldn't find that page", with a way home | | | |
-| 16 | Phones: turn sideways on a design screen, then upright again (laptop: N/A) | Sideways the top bar stays one thin line (wordmark, Save, menu) with the six screens in the menu, and the controls sit beside the board; no sideways scrolling; upright stacks them again | | | N/A |
-| 17 | Sign out, then sign back in | Your boards are all still there | | | |
+| 12 | Save (top bar) with a name → tap the wordmark for home → open the board from the Board Rack → rename it, duplicate it, delete the copy | The same board comes back, with its blank and any Thinning Start you set by hand; Cancel is easy to hit on the delete question | | | |
+| 13 | Board Rack, at home: look along the rack (laptop: move the mouse along it and rest on a board; phones: swipe along it), then move a board (laptop: drag it, or ⋯ → Move right; phones: hold it until it lifts, then slide it), reload, then open the home page on another device | Each board turns to show its outline as you pass, with its name and numbers under the one that's turned; the board moves where you put it and a small note says "Moved … The rack keeps your order."; after the reload, and on your other device, the order is the same; the unsaved board always stands first | | | |
+| 14 | App Default Settings (the gear on a laptop, ☰ on a phone) → Metric; look at ROCKER and SUMMARY; switch back to Imperial | Centimetres for sizes, millimetres for marks; Thinning Starts read in centimetres (30.5 cm for 12"); back in Imperial every number is exactly what it was | | | |
+| 15 | Menu → Contact, then Privacy. Send one Contact message from one device only | Both pages open; the message reaches support@ in Zoho | | | |
+| 16 | Type a wrong address, e.g. www.shaperassistant.com/xyz | "We couldn't find that page", with a way home | | | |
+| 17 | Phones: turn sideways on a design screen, then upright again (laptop: N/A) | Sideways the top bar stays one thin line (wordmark, Save, menu) with the six screens in the menu, and the controls sit beside the board; no sideways scrolling; upright stacks them again | | | N/A |
+| 18 | Sign out, then sign back in | Your boards are all still there | | | |
 
 **Laptop extras:** use the browser you'll present from; if a projector or TV will be used, walk at
 least steps 2–10 on it and pick the theme that reads best from the back of the room; print one order
@@ -203,6 +209,19 @@ Phase 14's check.
 | C | Both phones | With Change Blank's list open, drag a Thinning Starts slider, slide Placement end to end and change a tip setting | The list and the fit flag keep up; no stutter or freeze |
 | D | The laptop | In each of the four themes, look at ROCKER's drawing with a blank picked and both starts at 12" | The faint dashed mark can be picked out where it meets the 12" line. At go-live 2 you found it hard to pick out on a computer and asked for no change; confirm that still stands for the showing |
 | E | The laptop | In a private window open www.shaperassistant.com/design/volume, then ROCKER: the first board a visitor sees. Then the thin-board corner you saw at go-live 2 | VOLUME reads 30.51 L and the curves read the way a board flows. The thin-board corner (a 1" to 1 1/4" center on the Arctic Foam 7'9" SBF, its tail reading below the center) is still what you want to leave for the showing |
+
+## Phase 15's looks (same sitting)
+
+These belong to Phase 15's own sign-off (the Board Rack), not to the nine tests above. They need the same
+devices, so do them in the same sitting as the walk and report them with it; they are recorded in Phase 15's
+check.
+
+| Look | On | Do this | What good is |
+|---|---|---|---|
+| A | A phone held sideways (the iPhone, then the Android) | Give a board a long name — 20 letters or more, e.g. "Ocean Beach Winter Step-Up" — and look along the rack | The long name is cut with "…" and what's left still reads; its numbers stay whole and nothing runs into the next board |
+| B | The iPhone | Move a board, then look at the bottom of the screen while the small note shows | The note "Moved … The rack keeps your order." reads in full and doesn't cover Open This Board under the turned board |
+| C | The iPhone, with VoiceOver on (Settings → Accessibility → VoiceOver) | Swipe through two boards on the rack | Each board's full name is read out, even a long one that is cut on screen, and the way its numbers are spoken (the inch marks) is tolerable to listen to |
+| D | The laptop, in Chrome | Click a board on the rack, then hold Alt and press ← | The board moves one place left and the browser never goes Back to the previous page |
 
 ## The demo account (test 8)
 

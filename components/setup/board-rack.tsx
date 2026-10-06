@@ -1,53 +1,183 @@
 "use client";
 
 /**
- * D-06's saved-boards section — rendered ABOVE the preset grid on `/` for a signed-in shaper with
- * an in-progress board and/or saved boards. Takes an already-ordered list of entries (the caller
- * — `setup-screen.tsx` — runs `sortRackEntries` before handing them here; this component still
- * only renders that order, never re-derives it) and renders one card per entry in the same wrap
- * the preset grid uses (UI-SPEC board-rack "overflow"): many boards wrap to more rows, never
- * scroll or clip.
+ * The Board Rack (Phase 15) — the home page's section for the shaper's boards, above "Shape a New
+ * Board" for anyone with saved boards or a board in progress. It replaces Phase 2's "Your Boards"
+ * card grid: every board stands on its tail at one scale on one floor line, the unsaved board
+ * first, and the board being looked at turns to show its outline with its caption under it.
  *
- * Renders nothing at all when it has no entries to show (UI-SPEC board-rack "empty": there is no
- * empty-rack state to design, because the rack simply doesn't render). That same `null` return is
- * also what a slow-loading query degrades into: `app/page.tsx` wraps its board-listing Server
- * Component (`BoardRackData`) in `<Suspense fallback={<SetupScreen models={[]} />}>`, and an empty
- * `models` array produces an empty entries list here — so a slow board-list read shows the plain
- * preset screen for a moment rather than a spinner (UI-SPEC board-rack "loading").
+ * The heading reads `Board Rack`, with the count and a hint beside it, always shown (D-08) — both
+ * phrasings of the hint are in the markup and the pointer picks which shows (`coarse:`), so even
+ * the words are right on the first paint. The order is worked out here through `applyStoredOrder`,
+ * the one ordering rule (`lib/models/rack-order.ts`): the unsaved board first, then the shaper's own
+ * order if they have arranged the rack, else the most recently touched first (D-01 to D-03).
  *
- * This component also owns D-13's Rename/Duplicate/Delete behavior — a single `RenameDialog` and
- * a single `DeleteConfirmDialog` instance for the whole rack, following the same lifted-state
- * convention `setup-screen.tsx` uses for the replace-board confirm, rather than one dialog pair
- * per card. Duplicate is instant with no dialog, so its failure state lives per-card instead
- * (`duplicateErrors`, keyed by row id) — a visible, retryable error beside that one card, never a
- * silent no-op (UI-SPEC rack-card-menu "error").
+ * This section owns which board is turned (`turnedKey`): on arrival, the board open in the editor
+ * (or the first board) — D-07 — and when a board leaves the rack, the next one along. It also owns
+ * D-13's Rename / Duplicate / Delete, unchanged from the old card grid: one `RenameDialog` and one
+ * `DeleteConfirmDialog` for the whole rack, with the lifted state, and the per-board duplicate
+ * error, now shown in the turned board's caption. While a dialog is open the rack holds still.
+ *
+ * Renders nothing at all with no boards: no heading, no rack, no hint (signed out, a failed or slow
+ * board list, or simply no boards — `app/page.tsx`'s Suspense fallback passes `models={[]}`), so the
+ * presets stand where the rack would have been. Before the rack mounts, the server renders the
+ * heading, the line and an empty box of the rack's first-paint height, and the rack draws into it
+ * from data already on the page — no spinner, no network wait. No notice, banner or "what's new"
+ * announces the change (D-15).
+ *
+ * It also owns moving a board (15-09): every move is the one pure rule (`moveInOrder` on the saved
+ * boards, the unsaved board refused before it — R9), shown at once and saved in the background by
+ * `useRackOrder`, and said in the status pill (`RackStatus`, the rack's one live region). On a touch
+ * screen a board is held and slid (the swipe rack), only while D-11's switch leaves the hold on. On a
+ * computer (15-11) a board is dragged, or moved one place from its ⋯ menu or with Alt + arrow
+ * (`handleMoveOneStep`, which a keyboard on either rack reaches); while a ⋯ menu is open the rack
+ * holds still, as it does under a dialog.
  */
 
-import { useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { deleteModel, duplicateModel, renameModel } from "@/app/design/actions";
 import { useDesign } from "@/components/design/design-store";
-import { BoardRackCard, type SavedModel } from "@/components/setup/board-rack-card";
+import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import { DeleteConfirmDialog } from "@/components/setup/delete-confirm-dialog";
+import { HoverRack } from "@/components/setup/hover-rack";
+import { RackCaption } from "@/components/setup/rack-caption";
+import { RACK_COPY, holdToMoveEnabled, rackHeadingLine, type RackKind } from "@/components/setup/rack-config";
+import { RackStatus, useRackStatus, type RackStatusAvoid } from "@/components/setup/rack-status";
 import { RenameDialog } from "@/components/setup/rename-dialog";
+import { SwipeRack } from "@/components/setup/swipe-rack";
+import { useRackBoards, type RackBoard, type RackBoardEntry, type RackFocusRequest } from "@/components/setup/use-rack-boards";
+import { useRackOrder } from "@/components/setup/use-rack-order";
+import { DROP_STRIP } from "@/lib/geometry/rack-layout";
+import type { RackModel } from "@/lib/models/rack-models";
+import {
+  IN_PROGRESS_KEY,
+  applyStoredOrder,
+  moveInOrder,
+  moveOneStep,
+  rackIndexToSavedIndex,
+  turnedKeyAfterRemoval,
+  turnedKeyOnArrival,
+} from "@/lib/models/rack-order";
 
-export type BoardRackEntry = { kind: "in-progress" } | { kind: "saved"; model: SavedModel };
+export type BoardRackEntry = { kind: "in-progress" } | { kind: "saved"; model: RackModel };
 
 interface BoardRackProps {
   entries: BoardRackEntry[];
-  onSelectModel: (model: SavedModel) => void;
+  /** The shaper's stored order (D-03): saved board ids, or null / absent for the automatic order. */
+  rackOrder?: readonly string[] | null;
+  onSelectModel: (model: RackModel) => void;
   onContinue: () => void;
 }
 
-export function BoardRack({ entries, onSelectModel, onContinue }: BoardRackProps) {
+const subscribeToNothing = () => () => {};
+
+/** Which board is turned, and the keys it was worked out against (React's "adjust state while
+ * rendering" pattern: when the keys change, the turned board is worked out again during render). */
+interface TurnState {
+  joined: string;
+  keys: readonly string[];
+  turned: string | null;
+}
+
+export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue }: BoardRackProps) {
   // Read for delete (see handleDeleteConfirm below) and for rename (see handleRenameConfirm) —
   // renaming the board currently open in the editor changes the store's label too, or the next
   // autosave would silently write the old name back over the rename.
   const { modelId, setModelId, setBoardName } = useDesign();
-  const [renamingModel, setRenamingModel] = useState<SavedModel | null>(null);
-  const [deletingModel, setDeletingModel] = useState<SavedModel | null>(null);
+  const [renamingModel, setRenamingModel] = useState<RackModel | null>(null);
+  const [deletingModel, setDeletingModel] = useState<RackModel | null>(null);
   const [duplicateErrors, setDuplicateErrors] = useState<Record<string, string>>({});
+  const [focusRequest, setFocusRequest] = useState<RackFocusRequest | null>(null);
+  /** Puts the focus on board `key` — a new request every time, even for the board asked for last. */
+  const requestFocus = (key: string) => setFocusRequest((prev) => ({ key, n: (prev?.n ?? 0) + 1 }));
+  /** The name of the board a finger is carrying (the swipe caption becomes the carrying line). */
+  const [carrying, setCarrying] = useState<string | null>(null);
+  /** True while a caption's ⋯ menu is open: the rack holds still underneath (UI-SPEC §6). */
+  const [menuOpen, setMenuOpen] = useState(false);
+  const headingId = useId();
+  const sectionRef = useRef<HTMLElement>(null);
+  /** UI E09: the status pill never covers the caption's controls. On the swipe rack the empty band
+   * between the floor and the caption's first line is where it goes when its usual place would. */
+  const pillAvoid = useCallback((): RackStatusAvoid => {
+    const section = sectionRef.current;
+    if (!section) return { controls: [], centreY: null };
+    const controls = Array.from(section.querySelectorAll("[data-rack-caption] button")).map((control) =>
+      control.getBoundingClientRect(),
+    );
+    const scroller = section.querySelector("[data-rack-scroller]");
+    const firstLine = section.querySelector("[data-rack-caption]")?.firstElementChild;
+    if (!scroller || !firstLine) return { controls, centreY: null };
+    const floor = scroller.getBoundingClientRect().bottom - DROP_STRIP;
+    return { controls, centreY: (floor + firstLine.getBoundingClientRect().top) / 2 };
+  }, []);
+  const status = useRackStatus();
+  const { announce } = status;
+  // The shaper's order: their newest move at once, saved in the background; a failed save puts the
+  // board back (the hook does) and says so here.
+  const { order, commit, flushAndSettle } = useRackOrder(rackOrder ?? null, () => announce(RACK_COPY.saveFailed));
 
-  if (entries.length === 0) return null;
+  // The server can't know the pointer or the width, and the rack measures its own width, so the
+  // rack itself mounts on the client only (server: false, client: true).
+  const mounted = useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  );
+  // D-04: a mouse hovers, a finger swipes — the pointer decides which rack, never the window's width
+  // (CLAUDE.md Layout: the `coarse` pointer switch's new job). A touch screen of any size gets the
+  // swipe rack; a mouse at any width, the hover rack. `turnedKey` lives here, so a device that turns
+  // from one kind to the other keeps the same board turned.
+  const kind: RackKind = useCoarsePointer() ? "swipe" : "hover";
+
+  // The rack's order: the one rule in lib/models/rack-order.ts, never re-derived here.
+  const rackEntries: RackBoardEntry[] = useMemo(
+    () =>
+      applyStoredOrder(
+        entries.map((entry) =>
+          entry.kind === "in-progress"
+            ? { kind: "in-progress" as const }
+            : {
+                kind: "saved" as const,
+                id: entry.model.id,
+                name: entry.model.name,
+                updatedAt: entry.model.updatedAt,
+                model: entry.model,
+              },
+        ),
+        order,
+      ),
+    [entries, order],
+  );
+  const boards = useRackBoards(rackEntries);
+
+  const keys = boards.map((board) => board.key);
+  const joined = keys.join("\n");
+  const hasInProgress = keys.includes(IN_PROGRESS_KEY);
+  const [turnState, setTurnState] = useState<TurnState>(() => ({
+    joined,
+    keys,
+    turned: turnedKeyOnArrival(keys, modelId, hasInProgress),
+  }));
+  let turnedKey = turnState.turned;
+  if (turnState.joined !== joined) {
+    turnedKey = turnedKeyAfterRemoval(turnState.keys, keys, turnState.turned);
+    // A turned board that left the rack (a delete) hands the turn — and the focus — to the next one.
+    if (turnState.turned !== null && !keys.includes(turnState.turned) && turnedKey !== null) requestFocus(turnedKey);
+    setTurnState({ joined, keys, turned: turnedKey });
+  }
+
+  if (boards.length === 0) return null;
+
+  const openKey = hasInProgress ? IN_PROGRESS_KEY : modelId;
+  const frozen = renamingModel !== null || deletingModel !== null || menuOpen;
+  // The saved boards in the order they stand, from the boards the rack DRAWS: drop places and the
+  // Move rows are worked out against those, so a board the browser couldn't draw (left out by
+  // useRackBoards) never shifts a move by one place (code review IN-01).
+  const savedIds = boards.flatMap((board) => (board.model ? [board.model.id] : []));
+
+  const setTurned = (key: string) => {
+    setTurnState((prev) => (prev.turned === key ? prev : { ...prev, turned: key }));
+  };
 
   const clearDuplicateError = (id: string) => {
     setDuplicateErrors((prev) => {
@@ -58,7 +188,11 @@ export function BoardRack({ entries, onSelectModel, onContinue }: BoardRackProps
     });
   };
 
+  // Before Rename, Duplicate or Delete runs, every order save — one already on its way and a move
+  // still waiting behind it — has landed (or failed) first, so the action re-reads the order the rack
+  // shows and nothing saves over it afterwards (T-15-27, code review WR-01).
   const handleRenameConfirm = async (name: string) => {
+    await flushAndSettle();
     if (!renamingModel) return;
     await renameModel(renamingModel.id, name);
     // The board being renamed may be the one open in the editor right now — the shared store
@@ -68,50 +202,179 @@ export function BoardRack({ entries, onSelectModel, onContinue }: BoardRackProps
   };
 
   const handleDeleteConfirm = async () => {
+    await flushAndSettle();
     if (!deletingModel) return;
-    await deleteModel(deletingModel.id);
+    const deleted = deletingModel;
+    await deleteModel(deleted.id);
     // The deleted board may be the one open in the editor right now — the design stays on
     // screen exactly as it was (D-13 doesn't touch it), but modelId is cleared so the next Save
     // creates a fresh row instead of trying to write over one that no longer exists.
-    if (modelId === deletingModel.id) setModelId(null);
+    if (modelId === deleted.id) setModelId(null);
+    // Spoken, not shown; the turn — and the focus — go to the next board in order (the previous
+    // when it was last), UI E10.
+    announce(RACK_COPY.deleted(deleted.name), { visible: false });
+    const next = turnedKeyAfterRemoval(keys, keys.filter((key) => key !== deleted.id), turnedKey);
+    if (next !== null) requestFocus(next);
   };
 
-  const handleDuplicate = async (model: SavedModel) => {
+  const handleDuplicate = async (model: RackModel) => {
     clearDuplicateError(model.id);
+    await flushAndSettle();
     try {
       await duplicateModel(model.id);
+      // The copy stands beside its original (D-02, D-16) — said to a screen reader, no pill.
+      announce(RACK_COPY.duplicated(model.name), { visible: false });
     } catch {
-      setDuplicateErrors((prev) => ({ ...prev, [model.id]: "Couldn't duplicate — try again." }));
+      setDuplicateErrors((prev) => ({ ...prev, [model.id]: RACK_COPY.duplicateFailed }));
+      announce(RACK_COPY.duplicateFailed, { visible: false });
     }
+  };
+
+  /** Opens a board exactly as the old cards did: the saved board through the setup screen's
+   * `handleSelectModel` (with its replace-board check), the unsaved one straight to the editor. */
+  const openBoard = (board: RackBoard) => {
+    if (board.model) onSelectModel(board.model);
+    else onContinue();
+  };
+
+  /**
+   * A board let go at rack place `toRackIndex` (R8, R9): the one pure rule moves it among the saved
+   * boards — a place in front of the unsaved board becomes the first place behind it — the rack shows
+   * the new order at once, saves it in the background and says so. The unsaved board itself is
+   * refused, with the words saying why. Dropping a board where it already stands says nothing.
+   */
+  const handleMove = (key: string, toRackIndex: number): "moved" | "same" | "refused" => {
+    if (key === IN_PROGRESS_KEY) {
+      announce(RACK_COPY.unsavedStaysFirst);
+      return "refused";
+    }
+    const board = boards.find((candidate) => candidate.key === key);
+    if (!board) return "same";
+    const next = moveInOrder(savedIds, key, rackIndexToSavedIndex(toRackIndex, hasInProgress));
+    if (next.every((id, i) => id === savedIds[i])) return "same";
+    commit(next);
+    announce(RACK_COPY.moved(board.name));
+    return "moved";
+  };
+
+  /**
+   * One place left (`-1`) or right (`1`) — ⋯ → Move left / Move right and Alt + arrow (R8): the one
+   * pure rule (`moveOneStep` on the saved boards), shown at once, saved in the background and said.
+   * The unsaved board never moves, and nothing passes in front of it (R9): Alt + ← on the first
+   * saved board behind it says so, as the unsaved board itself does. At an end of the rack it says
+   * the board is already first or last.
+   */
+  const handleMoveOneStep = (key: string, direction: -1 | 1) => {
+    if (key === IN_PROGRESS_KEY) {
+      announce(RACK_COPY.unsavedStaysFirst);
+      return;
+    }
+    const board = boards.find((candidate) => candidate.key === key);
+    if (!board) return;
+    const step = moveOneStep(savedIds, key, direction);
+    if (step.outcome === "moved") {
+      commit(step.ids);
+      announce(RACK_COPY.moved(board.name));
+    } else if (step.outcome === "first") {
+      announce(hasInProgress ? RACK_COPY.unsavedStaysFirst : RACK_COPY.alreadyFirst(board.name));
+    } else if (step.outcome === "last") {
+      announce(RACK_COPY.alreadyLast(board.name));
+    }
+  };
+
+  const handleOpenKey = (key: string) => {
+    const board = boards.find((candidate) => candidate.key === key);
+    if (board) openBoard(board);
+  };
+
+  const renderCaption = (board: RackBoard) => {
+    const model = board.model;
+    const savedIndex = model ? savedIds.indexOf(model.id) : -1;
+    return (
+      <RackCaption
+        board={board}
+        variant={kind}
+        onOpen={() => openBoard(board)}
+        onRename={model ? () => setRenamingModel(model) : undefined}
+        onDuplicate={model ? () => void handleDuplicate(model) : undefined}
+        onDelete={model ? () => setDeletingModel(model) : undefined}
+        duplicateError={model ? (duplicateErrors[model.id] ?? null) : null}
+        carrying={kind === "swipe" ? carrying : null}
+        moves={
+          savedIndex >= 0
+            ? {
+                canMoveLeft: savedIndex > 0,
+                canMoveRight: savedIndex < savedIds.length - 1,
+                onMoveLeft: () => handleMoveOneStep(board.key, -1),
+                onMoveRight: () => handleMoveOneStep(board.key, 1),
+              }
+            : undefined
+        }
+        onMenuOpenChange={setMenuOpen}
+      />
+    );
   };
 
   return (
     // A phone-width override brings this section's bottom gap down to 32px (the scale's step
     // for a gap between major stacked blocks), replacing the desktop's 48px.
-    <div className="mb-12 max-shell:mb-8">
-      {/* The phone-width heading size below is one step smaller than the headline's own
-          phone-width size in setup-screen.tsx, keeping the two sizes' order — both already
-          exist in the app. */}
-      <h2 className="text-xl max-shell:text-base leading-[1.2] font-display text-surf-ink uppercase tracking-architectural font-bold">
-        Your Boards
-      </h2>
-      {/* Same width-keyed 16px gap above and between cards as the preset grid, and the same
-          untouched column rule. */}
-      <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 max-shell:mt-4 max-shell:gap-4">
-        {entries.map((entry) =>
-          entry.kind === "in-progress" ? (
-            <BoardRackCard key="in-progress" variant="in-progress" onSelect={onContinue} />
-          ) : (
-            <BoardRackCard
-              key={entry.model.id}
-              model={entry.model}
-              onSelect={onSelectModel}
-              onRename={() => setRenamingModel(entry.model)}
-              onDuplicate={() => void handleDuplicate(entry.model)}
-              onDelete={() => setDeletingModel(entry.model)}
-              duplicateError={duplicateErrors[entry.model.id] ?? null}
+    <section ref={sectionRef} aria-labelledby={headingId} className="mb-12 max-shell:mb-8">
+      {/* The count and hint sit to the right of the heading on one muted line, and wrap under it on
+          a very narrow screen rather than squeezing it. */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+        {/* The phone-width heading size below is one step smaller than the headline's own
+            phone-width size in setup-screen.tsx, keeping the two sizes' order — both already
+            exist in the app. */}
+        <h2
+          id={headingId}
+          className="text-xl max-shell:text-base leading-[1.2] font-display text-surf-ink uppercase tracking-architectural font-bold"
+        >
+          {RACK_COPY.heading}
+        </h2>
+        <p className="text-xs leading-[1.4] font-semibold text-surf-ink-muted">
+          <span className="coarse:hidden">{rackHeadingLine(boards.length, "hover")}</span>
+          <span className="hidden coarse:inline">{rackHeadingLine(boards.length, "swipe")}</span>
+        </p>
+      </div>
+      {/* On a short screen (D-06, height alone) the gap under the heading is 8, so the rack takes the
+          screen; the swipe rack's own 16-dot top room tucks up into whichever gap applies. */}
+      <div className="mt-6 max-shell:mt-4 [@media(max-height:500px)]:mt-2">
+        {mounted ? (
+          kind === "swipe" ? (
+            <SwipeRack
+              boards={boards}
+              turnedKey={turnedKey}
+              openKey={openKey}
+              frozen={frozen}
+              onTurn={setTurned}
+              onOpen={handleOpenKey}
+              caption={renderCaption}
+              focusRequest={focusRequest}
+              onMove={handleMove}
+              onMoveOneStep={handleMoveOneStep}
+              holdEnabled={holdToMoveEnabled(kind)}
+              onCarry={setCarrying}
             />
-          ),
+          ) : (
+            <HoverRack
+              boards={boards}
+              turnedKey={turnedKey}
+              openKey={openKey}
+              frozen={frozen}
+              onTurn={setTurned}
+              onOpen={handleOpenKey}
+              caption={renderCaption}
+              focusRequest={focusRequest}
+              onMove={handleMove}
+              onMoveOneStep={handleMoveOneStep}
+            />
+          )
+        ) : (
+          // The first-paint box, the rack's own height for each pointer, chosen in CSS because the
+          // server can't know the pointer (UI-SPEC E11): one hover row on a computer, the swipe rack's
+          // whole box on a touch screen — its 16-dot top room tucked into the gap, as the rack does —
+          // so a phone's "Shape a New Board" never jumps when the rack draws in.
+          <div aria-hidden="true" className="h-[520px] coarse:-mt-4 coarse:h-(--rack-swipe-h)" />
         )}
       </div>
       <RenameDialog
@@ -130,6 +393,9 @@ export function BoardRack({ entries, onSelectModel, onContinue }: BoardRackProps
         boardName={deletingModel?.name ?? ""}
         onConfirm={handleDeleteConfirm}
       />
-    </div>
+      <RackStatus message={status.message} visible={status.visible} fading={status.fading} serial={status.serial}
+        avoid={pillAvoid}
+      />
+    </section>
   );
 }

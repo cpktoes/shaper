@@ -5,13 +5,18 @@
  * identity from `await auth()` before touching the database and never accepts a client-supplied
  * owner field (RESEARCH.md Pattern 2, Pitfall 3) — lib/db/ownership.test.ts holds both of those
  * properties mechanically.
+ *
+ * Phase 15 (the Board Rack): a brand-new board stands first in a rack the shaper has arranged
+ * (D-01), and a copy stands right after its original — which fixes the rack's order, even in a rack
+ * never arranged (D-02, D-16). Renaming and every autosave never move a board (D-03), and deleting
+ * one writes nothing to the order: the rack simply skips an id that has no board.
  */
 
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
-import { models } from "@/lib/db/schema";
+import { models, userPreferences } from "@/lib/db/schema";
 import { resolveCarryOverTipStyle } from "@/lib/fit-defaults-server";
 import {
   buildSnapshot,
@@ -19,6 +24,47 @@ import {
   parseSnapshot,
   type DesignSnapshotFields,
 } from "@/lib/models/design-snapshot";
+import {
+  orderAfterDuplicate,
+  orderWithNewBoardFirst,
+  parseRackOrderColumn,
+  rackOrderColumnValue,
+  type SavedRackEntry,
+} from "@/lib/models/rack-order";
+
+// ---------------------------------------------------------------------------------------------
+// Phase 15 — where a new board or a copy stands in the rack. Module-private: each takes the owner
+// only from an exported action below that has already awaited `auth()`, and every statement is
+// scoped to that owner (T-15-21).
+// ---------------------------------------------------------------------------------------------
+
+/** The order the shaper set on their rack (D-03), or `null` when they never arranged it. */
+async function readStoredRackOrder(clerkId: string): Promise<string[] | null> {
+  const [row] = await db.select({ rackOrder: userPreferences.rackOrder })
+    .from(userPreferences)
+    .where(eq(userPreferences.clerkUserId, clerkId));
+  return parseRackOrderColumn(row?.rackOrder ?? null);
+}
+
+/** The shaper's saved boards as the rack's automatic order reads them — newest first, by the
+ * three fields that order needs (D-01, D-16). */
+async function listRackEntries(clerkId: string): Promise<SavedRackEntry[]> {
+  const rows = await db.select({ id: models.id, name: models.name, updatedAt: models.updatedAt })
+    .from(models)
+    .where(eq(models.clerkUserId, clerkId));
+  return rows.map((row) => ({ kind: "saved", id: row.id, name: row.name, updatedAt: row.updatedAt }));
+}
+
+/** Writes the whole rack order onto the shaper's own account row (D-01, D-16). */
+async function storeRackOrder(clerkId: string, ids: readonly string[]): Promise<void> {
+  const value = rackOrderColumnValue(ids);
+  await db.insert(userPreferences)
+    .values({ clerkUserId: clerkId, rackOrder: value })
+    .onConflictDoUpdate({
+      target: userPreferences.clerkUserId,
+      set: { rackOrder: value, updatedAt: new Date() },
+    });
+}
 
 export interface SaveModelResult {
   id: string;
@@ -68,6 +114,19 @@ export async function saveModel(
     const [row] = await db.insert(models)
       .values({ clerkUserId: userId, name: trimmed, snapshot: envelope })
       .returning({ id: models.id });
+
+    // D-01: in a rack the shaper has arranged, the new board stands first — right where the unsaved
+    // board stood. With no stored order nothing is written: the automatic order already puts the
+    // newest board first. A failed placement is logged and never fails the save.
+    try {
+      const stored = await readStoredRackOrder(userId);
+      if (stored !== null) {
+        await storeRackOrder(userId, orderWithNewBoardFirst(await listRackEntries(userId), stored, row.id));
+      }
+    } catch (error) {
+      console.error("Shaper: couldn't place the new board first in the rack", error);
+    }
+
     revalidatePath("/");
     return { id: row.id };
   }
@@ -136,9 +195,12 @@ export interface DuplicateModelResult {
  * shape now that Save writes over the board that was opened. Reads the source row through an
  * ownership-scoped select, so a row id that is not this shaper's reads nothing and the action
  * refuses rather than copying someone else's board (T-02-12): the snapshot written into the new
- * row always comes from that read, never from anything the client passed in. The copy gets fresh
- * created/updated stamps, which is what floats it to the top of the last-touched-first rack; the
- * source row is left untouched.
+ * row always comes from that read, never from anything the client passed in. The source row is
+ * left untouched.
+ *
+ * The copy no longer floats to the top of the rack: it stands right after its original, and that
+ * fixes the rack's order — even in a rack the shaper never arranged — so the copy stays beside its
+ * original from then on (Phase 15 D-02, D-16).
  */
 export async function duplicateModel(modelId: string): Promise<DuplicateModelResult> {
   const { userId } = await auth();
@@ -161,6 +223,19 @@ export async function duplicateModel(modelId: string): Promise<DuplicateModelRes
   const [row] = await db.insert(models)
     .values({ clerkUserId: userId, name: copyName, snapshot: envelope })
     .returning({ id: models.id });
+
+  // D-02 / D-16: the copy stands right after its original, and the whole rack order is stored. A
+  // failed placement is logged and never fails the duplicate — the copy simply stands first, where
+  // the rack puts any board it has no place for.
+  try {
+    await storeRackOrder(
+      userId,
+      orderAfterDuplicate(await listRackEntries(userId), await readStoredRackOrder(userId), modelId, row.id),
+    );
+  } catch (error) {
+    console.error("Shaper: couldn't place the copy beside its original in the rack", error);
+  }
+
   revalidatePath("/");
   return { id: row.id };
 }

@@ -2,11 +2,9 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { SetupScreen } from "@/components/setup/setup-screen";
-import type { SavedModel } from "@/components/setup/board-rack-card";
-import { listModels } from "@/lib/db/queries";
+import { listModels, readRackOrder } from "@/lib/db/queries";
 import { resolveCarryOverTipStyle } from "@/lib/fit-defaults-server";
-import { hasPhase11Blank } from "@/lib/models/design-snapshot";
-import { rackModelsFromRows } from "@/lib/models/rack-models";
+import { rackModelsFromRows, rackNeedsTipStyle, type RackModel } from "@/lib/models/rack-models";
 
 export const metadata: Metadata = {
   title: "Shaper Assistant — Start a New Board",
@@ -44,7 +42,17 @@ export default async function Home() {
 }
 
 async function BoardRackData({ userId }: { userId: string }) {
-  let models: SavedModel[] = [];
+  let models: RackModel[] = [];
+
+  // Phase 15 D-03: the shaper's own rack order, kept on their account so the rack stands the same
+  // way on every device they sign in on. Read beside the board list rather than after it, with its
+  // failure handled at once so it can never go unhandled while the list loads: a failed read (for
+  // instance before production carries the `rack_order` column) shows today's automatic order —
+  // newest first — never a broken page.
+  const orderRead: Promise<string[] | null> = readRackOrder(userId).catch((error) => {
+    console.error("Shaper: failed to read the rack order", error);
+    return null;
+  });
 
   let rows: Awaited<ReturnType<typeof listModels>> = [];
   try {
@@ -67,8 +75,9 @@ async function BoardRackData({ userId }: { userId: string }) {
   // the blank's shape, never the envelope's version number. The lookup fails soft to the cookie's
   // Tip Style or Pin deck (for instance before production carries the `tip_style` column), so it
   // can never take the rack down.
-  const tipStyle = rows.some((row) => hasPhase11Blank(row.snapshot)) ? await resolveCarryOverTipStyle() : undefined;
+  const tipStyle = rackNeedsTipStyle(rows) ? await resolveCarryOverTipStyle() : undefined;
   models = rackModelsFromRows(rows, undefined, { tipStyle });
+  const rackOrder = await orderRead;
 
-  return <SetupScreen models={models} />;
+  return <SetupScreen models={models} rackOrder={rackOrder} />;
 }

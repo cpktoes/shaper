@@ -1,16 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
+import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_BLANK_CUT } from "@/lib/geometry/blank";
 import { DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
-import { summarizeDesign } from "@/lib/geometry/design";
+import { LIVE_DESIGN_RULES, designSideProfile, summarizeDesign, type DesignSummaryFields } from "@/lib/geometry/design";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC } from "@/lib/geometry/foil";
+import { buildOutline } from "@/lib/geometry/outline";
+import { BOARD_PRESETS } from "@/lib/geometry/presets";
+import { buildRackBoardArt } from "@/lib/geometry/rack-art";
 import { DEFAULT_RAIL_BAND_SPEC } from "@/lib/geometry/rail-bands";
 import { DEFAULT_FALLBACK_ROCKER } from "@/lib/geometry/rocker";
 import { inchesToMm, mm } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
 import { buildSnapshot, type DesignSnapshotFields } from "./design-snapshot";
-import { rackModelsFromRows, type RackRow } from "./rack-models";
+import { rackBoardFigures, rackModelsAndDrops, rackModelsFromRows, type RackRow } from "./rack-models";
 
 /** WR-05: one saved board that can't be drawn drops only its own rack card, never the page. */
 
@@ -107,5 +111,45 @@ describe("rackModelsFromRows", () => {
       expect(withNothing.snapshot).toEqual(FIELDS);
       expect(withBottom.snapshot.blank?.tipStyle).toBe("pinDeck");
     });
+  });
+});
+
+/** Phase 15: a row also needs its rack art, worked out by the one function the browser and the
+ * go-live report (D-13) use, so a board the rack can't draw is dropped by the same rule everywhere. */
+describe("rackBoardFigures", () => {
+  const PRESET_FIELDS: [string, DesignSummaryFields][] = BOARD_PRESETS.map((preset) => [
+    preset.name,
+    { ...presetDesignFields(preset), volume: DEFAULT_VOLUME_SPEC, railsImportFoilThickness: true },
+  ]);
+  const CASES: [string, DesignSummaryFields][] = [...PRESET_FIELDS, ["a hand-set board", { ...FIELDS, blank: null }]];
+
+  it.each(CASES)("%s: the card's numbers and the rack art, from the board's own pipeline", (_, fields) => {
+    const figures = rackBoardFigures(fields);
+    expect(figures.summary).toEqual(summarizeDesign(fields));
+    expect(figures.art).toEqual(buildRackBoardArt(designSideProfile(fields, LIVE_DESIGN_RULES), buildOutline(fields.outline)));
+  });
+
+  it("throws for the crafted 500 mm board in a blank", () => {
+    expect(() => rackBoardFigures({ ...FIELDS, outline: { ...FIELDS.outline, length: mm(500) } })).toThrow();
+  });
+});
+
+describe("rackModelsAndDrops", () => {
+  const crafted = () => row("crafted", { ...FIELDS, outline: { ...FIELDS.outline, length: mm(500) } });
+  const notASnapshot = (): RackRow => ({ id: "junk", name: "junk", snapshot: { nope: true }, updatedAt: new Date(0) });
+
+  it("keeps the good boards and names every dropped board by id, in the order they came", () => {
+    const log = vi.fn();
+    const result = rackModelsAndDrops([row("before", FIELDS), crafted(), notASnapshot(), row("after", FIELDS)], log);
+    expect(result.models.map((model) => model.id)).toEqual(["before", "after"]);
+    expect(result.dropped).toEqual(["crafted", "junk"]);
+    expect(log).toHaveBeenCalledTimes(2);
+    expect(String(log.mock.calls[0][0])).toContain("crafted");
+    expect(String(log.mock.calls[1][0])).toContain("junk");
+  });
+
+  it("rackModelsFromRows hands back exactly its models", () => {
+    const rows = [row("before", FIELDS), crafted(), notASnapshot(), row("hand-set", { ...FIELDS, blank: null }), row("after", FIELDS)];
+    expect(rackModelsFromRows(rows, vi.fn())).toEqual(rackModelsAndDrops(rows, vi.fn()).models);
   });
 });

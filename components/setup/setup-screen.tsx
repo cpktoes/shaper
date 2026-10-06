@@ -3,22 +3,25 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BoardRack, type BoardRackEntry } from "@/components/setup/board-rack";
-import type { SavedModel } from "@/components/setup/board-rack-card";
 import { PresetCard } from "@/components/setup/preset-card";
 import { ReplaceBoardDialog } from "@/components/setup/replace-board-dialog";
 import { useDesign } from "@/components/design/design-store";
 import { BOARD_PRESETS, type BoardPreset } from "@/lib/geometry/presets";
-import { sortRackEntries, type InProgressRackEntry, type SavedRackEntry } from "@/lib/models/rack-order";
+import type { RackModel } from "@/lib/models/rack-models";
 
 interface SetupScreenProps {
   /** Saved boards for the signed-in shaper (MODL-03), already validated by `app/page.tsx` — a
    * signed-out visitor or one with no saved boards gets an empty array, which `BoardRack`
    * renders as nothing at all (D-06). */
-  models: SavedModel[];
+  models: RackModel[];
+  /** The shaper's stored rack order (Phase 15, D-03): their saved board ids in the order they
+   * arranged them. Null or absent means they never have, and the rack keeps today's automatic
+   * order. Read in `app/page.tsx` from 15-08; `BoardRack` applies it through `applyStoredOrder`. */
+  rackOrder?: readonly string[] | null;
 }
 
 /** Either kind of thing D-07/D-10's shared confirm can be about to replace the board with. */
-type PendingReplacement = { kind: "preset"; preset: BoardPreset } | { kind: "model"; model: SavedModel };
+type PendingReplacement = { kind: "preset"; preset: BoardPreset } | { kind: "model"; model: RackModel };
 
 /**
  * The setup screen — `/`'s entire content (D-05/D-06). Reads `applyPreset`/`applyModel` and
@@ -32,7 +35,7 @@ type PendingReplacement = { kind: "preset"; preset: BoardPreset } | { kind: "mod
  * `outline-editor.tsx` convention of view-only state staying local and never lifted into the
  * shared store (D-07/D-10's confirm gate is a view concern, not design data).
  */
-export function SetupScreen({ models }: SetupScreenProps) {
+export function SetupScreen({ models, rackOrder = null }: SetupScreenProps) {
   const { applyPreset, applyModel, hasBoardInProgress, modelId } = useDesign();
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -41,18 +44,11 @@ export function SetupScreen({ models }: SetupScreenProps) {
   const goToEditor = () => router.push("/design/outline");
 
   // Compose one list — the in-progress entry (from the design store) plus one entry per saved
-  // row (from props) — and run it through the single ordering rule (D-06/D-07) before handing
-  // ordered `BoardRackEntry`s to `BoardRack`, which only renders (see that file's doc comment).
+  // row (from props). `BoardRack` puts them in order through `applyStoredOrder`, the one ordering
+  // rule (Phase 15: the unsaved board first, then the shaper's own order or the automatic one), so
+  // nothing is sorted here.
   const rackEntries: BoardRackEntry[] = useMemo(() => {
-    type SortableEntry = InProgressRackEntry | (SavedRackEntry & { model: SavedModel });
-
-    const entries: SortableEntry[] = models.map((model) => ({
-      kind: "saved" as const,
-      id: model.id,
-      name: model.name,
-      updatedAt: model.updatedAt,
-      model,
-    }));
+    const entries: BoardRackEntry[] = models.map((model) => ({ kind: "saved" as const, model }));
     // Only a board with no saved home yet gets the "in progress — not saved" card. Once the
     // shaper saves it, modelId points at a row and the board is autosaving — its rack presence
     // is its own saved card (revalidated on every save), and a second card claiming "not saved"
@@ -60,12 +56,7 @@ export function SetupScreen({ models }: SetupScreenProps) {
     if (hasBoardInProgress && modelId === null) {
       entries.push({ kind: "in-progress" as const });
     }
-
-    return sortRackEntries(entries).map((entry) =>
-      entry.kind === "in-progress"
-        ? { kind: "in-progress" as const }
-        : { kind: "saved" as const, model: entry.model },
-    );
+    return entries;
   }, [models, hasBoardInProgress, modelId]);
 
   const handleSelectPreset = (preset: BoardPreset) => {
@@ -78,7 +69,7 @@ export function SetupScreen({ models }: SetupScreenProps) {
     setConfirmOpen(true);
   };
 
-  const handleSelectModel = (model: SavedModel) => {
+  const handleSelectModel = (model: RackModel) => {
     // The board that is already open in the design store: just continue it. Re-applying the
     // stored row here would silently roll the shaper back to the last-saved snapshot, losing
     // any edit newer than the last autosave flush — and confirming "replace your in-progress
@@ -126,12 +117,20 @@ export function SetupScreen({ models }: SetupScreenProps) {
           is identical to what the old split already produced there, which is why this rewrite
           touches nothing on a desktop. The top/bottom gaps get the same treatment: the existing
           64px desktop value stays, with a phone-width override (24px above the first card, 32px
-          below the last one — the scale's section-padding and stacked-block steps). */}
+          below the last one — the scale's section-padding and stacked-block steps).
+          Phase 15 (D-06): on a short screen — a phone held sideways, by height alone — the page's
+          gutters tighten to the phone chrome's own values at any width (16 across, 8 above, 32
+          below), written inline as CLAUDE.md's short-screen rule is; never a third switch. */}
       <div
         data-setup-content
-        className="mx-auto max-w-5xl px-8 pt-16 pb-16 max-shell:px-4 max-shell:pt-6 max-shell:pb-8"
+        className="mx-auto max-w-5xl px-8 pt-16 pb-16 max-shell:px-4 max-shell:pt-6 max-shell:pb-8 [@media(max-height:500px)]:px-4 [@media(max-height:500px)]:pt-2 [@media(max-height:500px)]:pb-8"
       >
-        <BoardRack entries={rackEntries} onSelectModel={handleSelectModel} onContinue={goToEditor} />
+        <BoardRack
+          entries={rackEntries}
+          rackOrder={rackOrder}
+          onSelectModel={handleSelectModel}
+          onContinue={goToEditor}
+        />
         {/* The phone-width headline size below is already an app size (the rack heading and
             every card name use it) — no new size introduced. At the desktop size, with the app's
             wide all-caps tracking, "Shape a New Board" doesn't fit one line on a 360px phone. */}

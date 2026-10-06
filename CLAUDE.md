@@ -192,7 +192,7 @@ correctly on either side of this switch, including through the one wave it brief
 decides how BIG a control draws, on any width a touch device happens to be, and, for the viewer's
 Rotate button alone, whether it draws at all — since turning a touch device already turns the
 board. Pointer never decides a LAYOUT; the layout switch above reads width alone, and this variant
-is never reached for to move one.
+is never reached for to move one. Since Phase 15 (D-04) the pointer also decides which Board Rack the home page draws — a mouse or trackpad gets the hover rack and a finger gets the swipe rack, at any width — which changes how the rack behaves, never the page's layout, so width still picks the layout around it and height still picks the short-screen rules.
 
 **Short screen — height alone.** How SHORT the screen is decides four separate things, all written
 inline as `[@media(max-height:500px)]` rather than a named variant, and all deliberately not tied
@@ -233,3 +233,9 @@ pins the bands on all four phone sizes and the 44-dot touch boxes.
 
 Width picks the layout, pointer picks the sizing, height picks whether a short screen scrolls and
 which top bar it gets (and, on FINS only, beside-or-beneath) — and none of the three is ever conflated with another.
+
+## Design findings
+
+- **Sketch findings for shaper** (design decisions, CSS patterns, visual direction) → `Skill("sketch-findings-shaper")`
+  — the viewers' drafting grammar, rotating the board in place, the phone's screen tiles and Back + Next, and the
+  Board Rack (sketches 001–011, wrapped 2026-10-05; the sketches themselves are in `.planning/sketches/`).

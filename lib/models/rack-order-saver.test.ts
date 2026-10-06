@@ -1,0 +1,423 @@
+import { describe, expect, it, vi } from "vitest";
+import { RACK_ORDER_SAVE_DELAY_MS, createRackOrderSaver, type RackOrderSaverDeps } from "./rack-order-saver";
+
+/** Flushes as many microtask turns as the saver's `.then` chains need to settle. */
+async function flushMicrotasks(): Promise<void> {
+  for (let i = 0; i < 4; i++) {
+    await Promise.resolve();
+  }
+}
+
+/** A fake `setTimer`/`clearTimer` pair that records scheduled callbacks instead of waiting —
+ * the same recording scheduler `lib/preference-handoff.test.ts` uses. */
+function createFakeScheduler() {
+  interface Handle {
+    cb: () => void;
+    delay: number;
+  }
+  const scheduled: Handle[] = [];
+  const setTimer = vi.fn((cb: () => void, delay: number): Handle => {
+    const handle: Handle = { cb, delay };
+    scheduled.push(handle);
+    return handle;
+  });
+  const clearTimer = vi.fn((handle: unknown) => {
+    const index = scheduled.indexOf(handle as Handle);
+    if (index !== -1) scheduled.splice(index, 1);
+  });
+  async function runNext(): Promise<void> {
+    const handle = scheduled.shift();
+    if (!handle) throw new Error("no timer was scheduled");
+    handle.cb();
+    await flushMicrotasks();
+  }
+  return { setTimer, clearTimer, scheduled, runNext };
+}
+
+/** A `save` whose calls each wait until the test settles them, in order. */
+function createControlledSave() {
+  const calls: { ids: string[]; resolve: () => void; reject: (error: unknown) => void }[] = [];
+  const save = vi.fn(
+    (ids: string[]) =>
+      new Promise<void>((resolve, reject) => {
+        calls.push({ ids, resolve, reject });
+      }),
+  );
+  return { save, calls };
+}
+
+function setup(lastSaved: readonly string[] | null = null, extra: Partial<RackOrderSaverDeps> = {}) {
+  const scheduler = createFakeScheduler();
+  const controlled = createControlledSave();
+  const onFailed = vi.fn();
+  const onSaved = vi.fn();
+  const saver = createRackOrderSaver(lastSaved, {
+    save: controlled.save,
+    setTimer: scheduler.setTimer,
+    clearTimer: scheduler.clearTimer,
+    onFailed,
+    onSaved,
+    ...extra,
+  });
+  return { saver, ...scheduler, ...controlled, onFailed, onSaved };
+}
+
+describe("a burst of moves saves once", () => {
+  it("waits the delay after the last request, then saves the last list once", async () => {
+    const { saver, save, scheduled, runNext } = setup();
+
+    saver.request(["b", "a", "c"]);
+    saver.request(["b", "c", "a"]);
+    saver.request(["c", "b", "a"]);
+
+    expect(save).not.toHaveBeenCalled();
+    expect(scheduled).toHaveLength(1);
+    expect(scheduled[0].delay).toBe(RACK_ORDER_SAVE_DELAY_MS);
+    expect(saver.pending()).toBe(true);
+
+    await runNext();
+
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save).toHaveBeenCalledWith(["c", "b", "a"]);
+  });
+
+  it("uses the delay the caller hands in", () => {
+    const { saver, scheduled } = setup(null, { delayMs: 50 });
+    saver.request(["a"]);
+    expect(scheduled[0].delay).toBe(50);
+  });
+
+  it("saves nothing for a list equal to the last saved one", () => {
+    const { saver, save, scheduled } = setup(["a", "b"]);
+    saver.request(["a", "b"]);
+    expect(scheduled).toHaveLength(0);
+    expect(save).not.toHaveBeenCalled();
+    expect(saver.pending()).toBe(false);
+  });
+
+  it("a move and its move back inside the delay save nothing", () => {
+    const { saver, save, scheduled } = setup(["a", "b"]);
+    saver.request(["b", "a"]);
+    saver.request(["a", "b"]);
+    expect(scheduled).toHaveLength(0);
+    expect(save).not.toHaveBeenCalled();
+    expect(saver.pending()).toBe(false);
+  });
+
+  it("never holds on to the caller's array", async () => {
+    const { saver, save, runNext } = setup();
+    const ids = ["a", "b"];
+    saver.request(ids);
+    ids.reverse();
+    await runNext();
+    expect(save).toHaveBeenCalledWith(["a", "b"]);
+  });
+
+  it("reports a landed save and forgets it is pending", async () => {
+    const { saver, calls, runNext, onSaved } = setup();
+    saver.request(["a", "b"]);
+    await runNext();
+    expect(saver.pending()).toBe(true);
+    calls[0].resolve();
+    await flushMicrotasks();
+    expect(onSaved).toHaveBeenCalledWith(["a", "b"]);
+    expect(saver.pending()).toBe(false);
+  });
+});
+
+describe("flush sends a pending list at once", () => {
+  it("saves straight away, without waiting for the delay", () => {
+    const { saver, save, scheduled } = setup();
+    saver.request(["a", "b"]);
+    saver.flush();
+    expect(save).toHaveBeenCalledWith(["a", "b"]);
+    expect(scheduled).toHaveLength(0);
+  });
+
+  it("does nothing when nothing is pending", () => {
+    const { saver, save } = setup(["a"]);
+    saver.flush();
+    expect(save).not.toHaveBeenCalled();
+  });
+});
+
+describe("at most one save in flight", () => {
+  it("sends the newest list right after the in-flight save lands", async () => {
+    const { saver, save, calls, runNext } = setup();
+
+    saver.request(["a", "b"]);
+    await runNext();
+    expect(save).toHaveBeenCalledTimes(1);
+
+    saver.request(["b", "a"]);
+    saver.request(["b", "a", "c"]);
+    expect(save).toHaveBeenCalledTimes(1); // still only one in flight
+
+    calls[0].resolve();
+    await flushMicrotasks();
+
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save).toHaveBeenLastCalledWith(["b", "a", "c"]);
+  });
+
+  it("a delay that runs out during a save waits for it to land", async () => {
+    const { saver, save, calls, runNext } = setup();
+    saver.request(["a", "b"]);
+    await runNext();
+    saver.request(["b", "a"]);
+    await runNext();
+    expect(save).toHaveBeenCalledTimes(1);
+    calls[0].resolve();
+    await flushMicrotasks();
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save).toHaveBeenLastCalledWith(["b", "a"]);
+  });
+
+  it("moving back to the stored list during a save still saves it after the save lands", async () => {
+    const { saver, save, calls, runNext } = setup(["a", "b"]);
+    saver.request(["b", "a"]);
+    await runNext();
+    saver.request(["a", "b"]);
+    saver.flush();
+    calls[0].resolve();
+    await flushMicrotasks();
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save).toHaveBeenLastCalledWith(["a", "b"]);
+  });
+
+  it("drops a pending list that equals what just landed", async () => {
+    const { saver, save, calls, runNext } = setup();
+    saver.request(["a", "b"]);
+    await runNext();
+    saver.request(["b", "a"]);
+    saver.request(["a", "b"]);
+    saver.flush();
+    calls[0].resolve();
+    await flushMicrotasks();
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(saver.pending()).toBe(false);
+  });
+});
+
+describe("a failed save is reported so the rack can put the board back", () => {
+  it("hands back the starting list when nothing has saved yet (possibly none)", async () => {
+    const { saver, calls, runNext, onFailed } = setup(null);
+    saver.request(["b", "a"]);
+    await runNext();
+    calls[0].reject(new Error("offline"));
+    await flushMicrotasks();
+    expect(onFailed).toHaveBeenCalledTimes(1);
+    expect(onFailed).toHaveBeenCalledWith(null);
+  });
+
+  it("hands back the last list that did save, and drops anything pending", async () => {
+    const { saver, save, calls, runNext, onFailed, scheduled } = setup(["a", "b", "c"]);
+
+    saver.request(["b", "a", "c"]);
+    await runNext();
+    calls[0].resolve();
+    await flushMicrotasks();
+
+    saver.request(["b", "c", "a"]);
+    await runNext();
+    saver.request(["c", "b", "a"]); // pending behind the save about to fail
+
+    calls[1].reject(new Error("offline"));
+    await flushMicrotasks();
+
+    expect(onFailed).toHaveBeenCalledWith(["b", "a", "c"]);
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(scheduled).toHaveLength(0);
+    expect(saver.pending()).toBe(false);
+  });
+
+  it("a save that throws straight away is reported the same way", async () => {
+    const scheduler = createFakeScheduler();
+    const onFailed = vi.fn();
+    const saver = createRackOrderSaver(["a"], {
+      save: () => {
+        throw new Error("boom");
+      },
+      setTimer: scheduler.setTimer,
+      clearTimer: scheduler.clearTimer,
+      onFailed,
+    });
+    saver.request(["b", "a"]);
+    saver.flush();
+    await flushMicrotasks();
+    expect(onFailed).toHaveBeenCalledWith(["a"]);
+  });
+});
+
+describe("settled() waits until nothing is waiting and nothing is on its way (code review WR-01)", () => {
+  /** Whether `promise` has resolved yet, after the microtask turns the saver needs. */
+  async function hasResolved(promise: Promise<void>): Promise<boolean> {
+    let done = false;
+    void promise.then(() => {
+      done = true;
+    });
+    await flushMicrotasks();
+    return done;
+  }
+
+  it("resolves at once when the saver is idle", async () => {
+    const { saver } = setup(["a", "b"]);
+    expect(await hasResolved(saver.settled())).toBe(true);
+  });
+
+  it("with a save on its way and a newer move waiting: resolves only after BOTH have landed", async () => {
+    const { saver, save, calls, runNext } = setup(["a", "b", "c"]);
+    saver.request(["b", "a", "c"]);
+    await runNext();
+    saver.request(["b", "c", "a"]); // waits behind the save in flight
+    saver.flush(); // sends nothing yet: one save at a time
+    expect(save).toHaveBeenCalledTimes(1);
+
+    const settled = saver.settled();
+    expect(await hasResolved(settled)).toBe(false);
+
+    calls[0].resolve();
+    await flushMicrotasks();
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(await hasResolved(settled)).toBe(false);
+
+    calls[1].resolve();
+    expect(await hasResolved(settled)).toBe(true);
+    expect(saver.pending()).toBe(false);
+  });
+
+  it("resolves (never rejects) when the save fails, after the rack has been told", async () => {
+    const { saver, calls, runNext, onFailed } = setup(["a", "b"]);
+    saver.request(["b", "a"]);
+    await runNext();
+    const settled = saver.settled();
+    calls[0].reject(new Error("offline"));
+    expect(await hasResolved(settled)).toBe(true);
+    expect(onFailed).toHaveBeenCalledWith(["a", "b"]);
+  });
+
+  it("a waiting order still on its wait keeps it unresolved until it is flushed and lands", async () => {
+    const { saver, calls } = setup(["a", "b"]);
+    saver.request(["b", "a"]);
+    const settled = saver.settled();
+    expect(await hasResolved(settled)).toBe(false);
+    saver.flush();
+    calls[0].resolve();
+    expect(await hasResolved(settled)).toBe(true);
+  });
+
+  it("resolves when a move back cancels the only waiting order", async () => {
+    const { saver } = setup(["a", "b"]);
+    saver.request(["b", "a"]);
+    const settled = saver.settled();
+    saver.request(["a", "b"]);
+    expect(await hasResolved(settled)).toBe(true);
+  });
+});
+
+describe("onPendingChange tells the rack when a save is waiting or travelling (code review CR-01)", () => {
+  it("true at the first move, still true across a save handing on to the next, false once all have landed", async () => {
+    const onPendingChange = vi.fn();
+    const { saver, calls, runNext } = setup(["a", "b"], { onPendingChange });
+
+    saver.request(["b", "a"]);
+    saver.request(["b", "a"]); // the same order again: still waiting, no second report
+    expect(onPendingChange.mock.calls).toEqual([[true]]);
+
+    await runNext();
+    saver.request(["a", "b"]); // a move back while the first save travels: waits behind it
+    calls[0].resolve();
+    await flushMicrotasks();
+    expect(onPendingChange.mock.calls).toEqual([[true]]);
+
+    calls[1].resolve();
+    await flushMicrotasks();
+    expect(onPendingChange.mock.calls).toEqual([[true], [false]]);
+    expect(saver.pending()).toBe(false);
+  });
+
+  it("false after a failure, and false again when a move back cancels the only waiting save", async () => {
+    const onPendingChange = vi.fn();
+    const { saver, calls, runNext } = setup(["a", "b"], { onPendingChange });
+    saver.request(["b", "a"]);
+    await runNext();
+    calls[0].reject(new Error("offline"));
+    await flushMicrotasks();
+    expect(onPendingChange.mock.calls).toEqual([[true], [false]]);
+
+    saver.request(["b", "a"]);
+    saver.request(["a", "b"]);
+    expect(onPendingChange.mock.calls).toEqual([[true], [false], [true], [false]]);
+  });
+
+  it("says nothing after dispose", async () => {
+    const onPendingChange = vi.fn();
+    const { saver, calls, runNext } = setup(null, { onPendingChange });
+    saver.request(["a"]);
+    await runNext();
+    saver.dispose();
+    calls[0].resolve();
+    await flushMicrotasks();
+    expect(onPendingChange.mock.calls).toEqual([[true]]);
+  });
+});
+
+describe("dispose", () => {
+  it("cancels the delay and runs no callback, but a waiting order still goes out once the save on its way lands (WR-01)", async () => {
+    const { saver, save, calls, runNext, onFailed, onSaved, scheduled } = setup();
+
+    saver.request(["a", "b"]);
+    await runNext();
+    saver.request(["b", "a"]);
+    saver.dispose();
+    expect(scheduled).toHaveLength(0);
+    expect(save).toHaveBeenCalledTimes(1);
+
+    calls[0].resolve();
+    await flushMicrotasks();
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(calls[1].ids).toEqual(["b", "a"]);
+
+    calls[1].resolve();
+    await flushMicrotasks();
+    expect(saver.pending()).toBe(false);
+
+    saver.request(["c"]);
+    saver.flush();
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(onFailed).not.toHaveBeenCalled();
+  });
+
+  it("sends a waiting order at once when nothing is on its way", () => {
+    const { saver, save, scheduled } = setup();
+    saver.request(["b", "a"]);
+    saver.dispose();
+    expect(scheduled).toHaveLength(0);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save).toHaveBeenCalledWith(["b", "a"]);
+  });
+
+  it("after a failure with no rack left, still tries the shaper's newest order, quietly", async () => {
+    const { saver, save, calls, runNext, onFailed } = setup();
+    saver.request(["a", "b"]);
+    await runNext();
+    saver.request(["b", "a"]);
+    saver.dispose();
+    calls[0].reject(new Error("offline"));
+    await flushMicrotasks();
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(calls[1].ids).toEqual(["b", "a"]);
+    expect(onFailed).not.toHaveBeenCalled();
+  });
+
+  it("runs no failure callback after dispose", async () => {
+    const { saver, calls, runNext, onFailed } = setup();
+    saver.request(["a"]);
+    await runNext();
+    saver.dispose();
+    calls[0].reject(new Error("offline"));
+    await flushMicrotasks();
+    expect(onFailed).not.toHaveBeenCalled();
+  });
+});

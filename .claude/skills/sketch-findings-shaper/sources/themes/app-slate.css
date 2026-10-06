@@ -1,0 +1,25 @@
+/* Shaper app palette, dark ("slate") — copied from app/globals.css's --ramp-slate-* tokens on
+   2026-10-03 for the phone-chrome sketches (007, 008). Variables only — no component styles. */
+:root {
+  --color-bg:           #12141a;  /* --surf-ground */
+  --color-surface:      #12141a;  /* --surf-panel */
+  --color-canvas:       #1a1d25;  /* --surf-canvas */
+  --color-well:         #1b1f26;  /* --surf-well */
+  --color-border:       #333842;  /* --surf-line-faint */
+  --color-line:         #6a707c;  /* --surf-line */
+  --color-text:         #f2f4f7;  /* --surf-ink */
+  --color-text-muted:   #a1a8b4;  /* --surf-ink-muted */
+  --color-primary:      #18526d;  /* --surf-accent */
+  --color-on-primary:   #f2f4f7;  /* --surf-on-accent */
+  --color-accent-ink:   #3490bc;  /* --surf-accent-ink */
+  --color-board:        #1a2732;  /* --surf-board-fill */
+  --color-warning-ink:  #ff9670;
+  --color-page:         #0b0c10;  /* behind the phone frame (sketch only) */
+
+  --font-sans: "Inter", Roboto, system-ui, sans-serif;
+  --tracking-architectural: 0.15em;
+  --text-xs: 0.75rem; --text-sm: 0.875rem; --text-base: 1rem;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px;
+  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px; --radius-full: 9999px;
+  --shadow-lg: 0 10px 24px rgba(0,0,0,0.45);
+}
