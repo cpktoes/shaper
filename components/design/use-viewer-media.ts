@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Two hooks that read a CSS media query as React state, in exactly the shape
+ * Three hooks that read a CSS media query as React state, in exactly the shape
  * `components/auth/sign-in-banner.tsx` already uses for its own browser-only read: a subscribe
  * function, a client snapshot, and a fixed server snapshot, so the server render stays
  * deterministic and the client corrects itself on the very next render after hydration — no
@@ -15,7 +15,11 @@
  * CSS-only — the `max-shell`/`shell` custom variants declared directly in `app/globals.css`, a
  * single width test (D-10, 10-SWEEP-2.md, 2026-09-11: the shaper's own decision, reverting a
  * width-and-height version 10-05 tried and withdrew) — and this standing rule is unchanged by any
- * of that: nobody should reach for either hook below to move a layout.
+ * of that: nobody should reach for any hook below to move a layout.
+ *
+ * Phase 15 D-04: the home page's Board Rack reads `useCoarsePointer` to pick the hover rack (a
+ * mouse) or the swipe rack (a finger), which changes how the rack behaves, never which page
+ * layout draws.
  */
 
 import * as React from "react";
@@ -46,6 +50,7 @@ function useMediaQueryMatch(query: string, serverSnapshot: boolean): boolean {
 
 const COARSE_POINTER_QUERY = "(pointer: coarse)";
 const PORTRAIT_QUERY = "(orientation: portrait)";
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 /**
  * True on a touch (coarse) pointer device — never for a desktop mouse, at any viewport width.
@@ -64,4 +69,14 @@ export function useCoarsePointer(): boolean {
  */
 export function usePortraitViewport(): boolean {
   return useMediaQueryMatch(PORTRAIT_QUERY, true);
+}
+
+/**
+ * True when the shaper has asked their device for less motion. The Board Rack then swaps a board
+ * straight between its side profile and its outline, and drops a carried board without the glide
+ * (SPEC constraint 8). Server snapshot: `false` — the rack's first frame is a still picture either
+ * way, and the real preference is read on the very next render.
+ */
+export function useReducedMotion(): boolean {
+  return useMediaQueryMatch(REDUCED_MOTION_QUERY, false);
 }
