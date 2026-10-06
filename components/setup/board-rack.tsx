@@ -24,6 +24,11 @@
  * heading, the line and an empty box of the rack's first-paint height, and the rack draws into it
  * from data already on the page — no spinner, no network wait. No notice, banner or "what's new"
  * announces the change (D-15).
+ *
+ * It also owns moving a board (15-09): every move is the one pure rule (`moveInOrder` on the saved
+ * boards, the unsaved board refused before it — R9), shown at once and saved in the background by
+ * `useRackOrder`, and said in the status pill (`RackStatus`, the rack's one live region). On a touch
+ * screen a board is held and slid (the swipe rack), only while D-11's switch leaves the hold on.
  */
 
 import { useId, useMemo, useState, useSyncExternalStore } from "react";
@@ -33,12 +38,22 @@ import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import { DeleteConfirmDialog } from "@/components/setup/delete-confirm-dialog";
 import { HoverRack } from "@/components/setup/hover-rack";
 import { RackCaption } from "@/components/setup/rack-caption";
-import { RACK_COPY, rackHeadingLine, type RackKind } from "@/components/setup/rack-config";
+import { RACK_COPY, holdToMoveEnabled, rackHeadingLine, type RackKind } from "@/components/setup/rack-config";
+import { RackStatus, useRackStatus } from "@/components/setup/rack-status";
 import { RenameDialog } from "@/components/setup/rename-dialog";
 import { SwipeRack } from "@/components/setup/swipe-rack";
 import { useRackBoards, type RackBoard, type RackBoardEntry } from "@/components/setup/use-rack-boards";
+import { useRackOrder } from "@/components/setup/use-rack-order";
 import type { RackModel } from "@/lib/models/rack-models";
-import { IN_PROGRESS_KEY, applyStoredOrder, turnedKeyAfterRemoval, turnedKeyOnArrival } from "@/lib/models/rack-order";
+import {
+  IN_PROGRESS_KEY,
+  applyStoredOrder,
+  moveInOrder,
+  rackIndexToSavedIndex,
+  savedIdsInOrder,
+  turnedKeyAfterRemoval,
+  turnedKeyOnArrival,
+} from "@/lib/models/rack-order";
 
 export type BoardRackEntry = { kind: "in-progress" } | { kind: "saved"; model: RackModel };
 
@@ -69,7 +84,14 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   const [deletingModel, setDeletingModel] = useState<RackModel | null>(null);
   const [duplicateErrors, setDuplicateErrors] = useState<Record<string, string>>({});
   const [focusKey, setFocusKey] = useState<string | null>(null);
+  /** The name of the board a finger is carrying (the swipe caption becomes the carrying line). */
+  const [carrying, setCarrying] = useState<string | null>(null);
   const headingId = useId();
+  const status = useRackStatus();
+  const { announce } = status;
+  // The shaper's order: their newest move at once, saved in the background; a failed save puts the
+  // board back (the hook does) and says so here.
+  const { order, commit } = useRackOrder(rackOrder ?? null, () => announce(RACK_COPY.saveFailed));
 
   // The server can't know the pointer or the width, and the rack measures its own width, so the
   // rack itself mounts on the client only (server: false, client: true).
@@ -99,9 +121,9 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
                 model: entry.model,
               },
         ),
-        rackOrder,
+        order,
       ),
-    [entries, rackOrder],
+    [entries, order],
   );
   const boards = useRackBoards(rackEntries);
 
@@ -173,6 +195,27 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     else onContinue();
   };
 
+  /**
+   * A board let go at rack place `toRackIndex` (R8, R9): the one pure rule moves it among the saved
+   * boards — a place in front of the unsaved board becomes the first place behind it — the rack shows
+   * the new order at once, saves it in the background and says so. The unsaved board itself is
+   * refused, with the words saying why. Dropping a board where it already stands says nothing.
+   */
+  const handleMove = (key: string, toRackIndex: number): "moved" | "same" | "refused" => {
+    if (key === IN_PROGRESS_KEY) {
+      announce(RACK_COPY.unsavedStaysFirst);
+      return "refused";
+    }
+    const board = boards.find((candidate) => candidate.key === key);
+    if (!board) return "same";
+    const ids = savedIdsInOrder(rackEntries);
+    const next = moveInOrder(ids, key, rackIndexToSavedIndex(toRackIndex, hasInProgress));
+    if (next.every((id, i) => id === ids[i])) return "same";
+    commit(next);
+    announce(RACK_COPY.moved(board.name));
+    return "moved";
+  };
+
   const handleOpenKey = (key: string) => {
     const board = boards.find((candidate) => candidate.key === key);
     if (board) openBoard(board);
@@ -228,6 +271,9 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
               onOpen={handleOpenKey}
               caption={renderCaption}
               focusKey={focusKey}
+              onMove={handleMove}
+              holdEnabled={holdToMoveEnabled(kind)}
+              onCarry={setCarrying}
             />
           ) : (
             <HoverRack
@@ -265,6 +311,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
         boardName={deletingModel?.name ?? ""}
         onConfirm={handleDeleteConfirm}
       />
+      <RackStatus message={status.message} visible={status.visible} fading={status.fading} serial={status.serial} />
     </section>
   );
 }

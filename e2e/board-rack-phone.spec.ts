@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { RACK_COPY, rackHeadingLine } from "../components/setup/rack-config";
+import { PHONE_MOVE_VIA_MENU, RACK_COPY, rackHeadingLine } from "../components/setup/rack-config";
 import { SWIPE_SLOT } from "../lib/geometry/rack-layout";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
@@ -426,6 +426,102 @@ test.describe("the Board Rack on a phone — the swipe rack", () => {
     const eighth = await wordsAcrossBoards(page);
     expect.soft(eighth.crossings, "the middle three-eighths of the way from board 10 to board 11").toEqual([]);
     await releaseScroll(page);
+  });
+});
+
+/** D-11: with the prepared switch on, phones move boards from the ⋯ menu and never by holding. */
+const HOLD_OFF_REASON = "D-11 fallback on: phones move boards with ⋯";
+
+/** The board keys in the rack's order, as the page lists them. */
+async function rackKeys(page: Page) {
+  return page.locator("[data-rack-board]").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("data-rack-board") ?? ""));
+}
+
+/** The status pill's live region. */
+const statusRegion = (page: Page) => page.locator("[data-rack-status]");
+
+/** A board's button centre on the screen. */
+async function centreOf(page: Page, key: string) {
+  const box = await boardButton(page, key).boundingBox();
+  if (!box) throw new Error(`no box for board ${key}`);
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+/** A real finger, held still on `point` for `holdMs` (a CDP touch session, android only). Returns the
+ * session so the caller can go on moving, lifting or cancelling the same touch. */
+async function touchHold(page: Page, point: { x: number; y: number }, holdMs: number) {
+  const client = await page.context().newCDPSession(page);
+  await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: point.x, y: point.y }] });
+  await page.waitForTimeout(holdMs);
+  return client;
+}
+
+/** Moves a touch already down from `from` to `to` in `steps` even steps. */
+async function touchMoveTo(
+  client: Awaited<ReturnType<typeof touchHold>>,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  steps: number,
+) {
+  for (let step = 1; step <= steps; step++) {
+    const x = from.x + ((to.x - from.x) * step) / steps;
+    const y = from.y + ((to.y - from.y) * step) / steps;
+    await client.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y }] });
+  }
+}
+
+/** The rack's order with `key` moved to place `to`. */
+function movedOrder(keys: readonly string[], key: string, to: number) {
+  const rest = keys.filter((other) => other !== key);
+  rest.splice(to, 0, key);
+  return rest;
+}
+
+test.describe("the Board Rack on a phone — hold, slide and let go (15-09, sketch 011 A)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "real touch input is only available on the android (Chromium) project");
+    await dismissBannerAndTip(page);
+  });
+
+  test("13. hold a board until it lifts, slide it three places and let go: the new order shows at once, it comes to the middle turned, and the pill says so", async ({
+    page,
+  }) => {
+    test.skip(PHONE_MOVE_VIA_MENU, HOLD_OFF_REASON);
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    const before = await rackKeys(page);
+    const { slot } = await rackFigures(page);
+    const third = board(3);
+    const start = await centreOf(page, third.id);
+
+    const client = await touchHold(page, start, 520);
+    await expect(boardArt(page, third.id)).toHaveAttribute("data-carrying", "true");
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(1);
+    await touchMoveTo(client, start, { x: start.x + 3 * slot, y: start.y }, 15);
+    await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    await expect(statusRegion(page)).toHaveText(RACK_COPY.moved(third.name));
+    const expected = movedOrder(before, third.id, 5);
+    await expect.poll(() => rackKeys(page)).toEqual(expected);
+    await expect(page.locator("[data-rack-art][data-carrying]")).toHaveCount(0);
+    await expect(boardArt(page, third.id)).toHaveAttribute("data-turn", "90");
+    await expect(captionFor(page, third.name)).toBeVisible();
+    await expect.poll(async () => (await rackFigures(page)).scrollLeft).toBe(5 * slot);
+    const figures = await rackFigures(page);
+    expect(figures.scrollLeft % figures.slot).toBe(0);
+    const middle = await centreOf(page, third.id);
+    expect(Math.abs(middle.x - figures.width / 2)).toBeLessThanOrEqual(1);
+    // The tap at the end of the carry never opened the board.
+    expect(new URL(page.url()).pathname).toBe(RACK_STAND_IN_ROUTE);
+
+    // The practice rack's save resolves quietly signed out: the order stays, nothing says it failed.
+    await page.waitForTimeout(1200);
+    expect(await rackKeys(page)).toEqual(expected);
+    await expect(statusRegion(page)).not.toHaveText(RACK_COPY.saveFailed);
+
+    // The resting rack after the move: still no word across any board.
+    const rest = await wordsAcrossBoards(page);
+    expect(rest.turns[third.id]).toBe(90);
+    expect.soft(rest.crossings, "at rest after the move").toEqual([]);
   });
 });
 
