@@ -268,7 +268,8 @@ Cross-cutting constraints: no tips code in the curves step — no `slopeAt`, no 
 ### Phase 15: The Board Rack
 
 **Goal:** A shaper sees their whole quiver at once on the home page and enjoys browsing it: "Your Boards" becomes the Board Rack, every board standing sideways at one true scale on one floor line with its name and dims running up beside it, the board under the cursor (or passing the middle of a phone's swipe) turning its real turn — worked out from its own rocker, thickness and outline — to show its outline, and the rack kept in the order the shaper sets.
-**Requirements**: locked in `.planning/phases/15-the-board-rack/15-SPEC.md` (the founder's idea and decisions of 2026-10-05, from sketches 009–011 and the `sketch-findings-shaper` skill)
+**Requirements**: R1, R2, R3, R4, R5, R6, R7, R8, R9, R10
+**Brief:** locked in `.planning/phases/15-the-board-rack/15-SPEC.md` (the founder's idea and decisions of 2026-10-05, from sketches 009–011 and the `sketch-findings-shaper` skill)
 **Depends on:** Phase 14 (the side profile the rack draws from); runs inside Phase 13's window — live before the Wednesday 2026-10-07 freeze, with a rehearsal walk after
 **Plans:** 0 plans
 

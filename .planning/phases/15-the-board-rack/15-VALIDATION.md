@@ -64,6 +64,26 @@ created: 2026-10-05
 
 ---
 
+## Per-Task Verification Map (from the plans, 2026-10-05)
+
+| Plan / Task | Wave | Automated Command | Status |
+|-------------|------|-------------------|--------|
+| 15-01 T1 / T2 | 1 | `npx vitest run lib/geometry/rack-art.test.ts` / `npx vitest run lib/models/rack-models.test.ts` | ⬜ pending |
+| 15-02 T1, T2 / T3 | 1 | `npx vitest run lib/geometry/rack-layout.test.ts` / `npx vitest run lib/models/rack-gesture.test.ts` | ⬜ pending |
+| 15-03 T1, T2 / T3 | 1 | `npx vitest run lib/models/rack-order.test.ts` / `npx vitest run lib/models/rack-order-saver.test.ts components/setup/rack-config.test.ts` | ⬜ pending |
+| 15-05 T1 / T2 / T3 | 1 | `npx vitest run lib/models/rack-stand-in.test.ts` and `PW_PORT=3121 npx playwright test e2e/test-rack.spec.ts` / the pictures exist / `npx tsc --noEmit` (orchestrator: `npm run test:e2e:prod` after the merge) | ⬜ pending |
+| 15-04 T1 / T2 | 2 | migration-file checks and the development column check (`scripts/check-preference-columns.ts`) / `npx vitest run lib/db/ownership.test.ts` | ⬜ pending |
+| 15-06 T1, T2 / T3 | 2 | `PW_PORT=3122 npx playwright test e2e/board-rack.spec.ts --project=desktop` / the specs that visit the home page, all projects | ⬜ pending |
+| 15-07 T1, T2 / T3 | 3 | `PW_PORT=3123 npx playwright test e2e/board-rack-phone.spec.ts` / `npx vitest run components/setup/rack-source.test.ts` | ⬜ pending |
+| 15-08 T1 / T2 | 3 | `npx vitest run lib/db/ownership.test.ts lib/models/rack-order.test.ts` / `--rack-report` on the development branch | ⬜ pending |
+| 15-09 T1–T3 | 4 | `PW_PORT=3125 npx playwright test e2e/board-rack-phone.spec.ts` (android, CDP touch) | ⬜ pending |
+| 15-10 T2 | 5 | `npx vitest run components/setup/rack-config.test.ts` and the phone spec (after the founder's device ruling) | ⬜ pending |
+| 15-11 T1–T3 | 5 | `PW_PORT=3127 npx playwright test e2e/board-rack.spec.ts e2e/board-rack-phone.spec.ts` | ⬜ pending |
+| 15-12 T1 / T2 / T3 | 6 | `npx vitest run components/setup/rack-source.test.ts lib/units-isolation.test.ts` / CLAUDE.md check / walk-sheet check | ⬜ pending |
+| 15-13 | 7 | full gate on the go-live commit: `npm test`, `tsc`, `npm run lint`, `npm run build`, `npm run test:e2e`, `npm run test:e2e:prod` | ⬜ pending |
+
+---
+
 ## Wave 0 Requirements
 
 - [ ] `lib/geometry/rack-art.test.ts`, `lib/geometry/rack-layout.test.ts` — R1, R2, R3, Rule 2

@@ -425,19 +425,23 @@ Model hold, drag threshold, edge scroll and drop as reducers in `lib/models/rack
 | A6 | Per-account counts in the D-13 report are printed as an anonymous list (no Clerk user ids), consistent with the existing script header "Never a snapshot, a board name, a user id or the connection string" | Q H | Low: D-13 says "counts per account"; confirm anonymous is acceptable |
 | A7 | Phone CPU is slower than this Mac by an unmeasured factor, but 30 boards x 0.25 ms leaves a wide margin | Q C | Low: only the first computation per list change runs the maths |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does a duplicate in an un-arranged rack sit beside its original?**
    - What we know: D-02 says right after its original; D-03 says automatic order (copy first) until the first move.
    - What's unclear: whether the founder wants D-02 to override D-03 for the very first duplicate.
    - Recommendation: implement D-03 literally (no list written); mention it in the plan and ask at the UAT walk.
+   - RESOLVED: the founder ruled 2026-10-05 (CONTEXT D-16): the copy lands right after its original and duplicating fixes the order even in an unarranged rack; built in 15-03 (`orderAfterDuplicate`) and 15-08 (the `duplicateModel` hook).
 
 2. **Anonymous per-account counts in the report (D-13)?**
    - Recommendation: print counts sorted descending with no ids ("accounts: 9; boards per account: 31, 12, 7, ..."), reusing the script's no-ids convention; board ids only for dropped boards.
+   - RESOLVED: as recommended (D-13, matching Phase 14's D-18 counts-only reports); built in 15-08 (`--rack-report`).
 
 3. **Is hold-and-drag reliable on the founder's iPad 9th gen?** Unknown until a device run. Schedule it early (right after the swipe rack is on a dev server reachable from the iPad; `allowedDevOrigins "**.*"` from project memory) so D-11 is decided Tuesday, not Wednesday night.
+   - RESOLVED (as a plan step): plan 15-10 is the founder's device check on Tuesday 2026-10-06 against the `/test-rack` stand-in; if hold-and-drag isn't reliable, D-11's prepared one-constant switch (`PHONE_MOVE_VIA_MENU`) turns on.
 
 4. **UI-SPEC.** There is no `15-UI-SPEC.md` in the phase folder (only CONTEXT, DISCUSSION-LOG, SPEC). `workflow.ui_phase` is true in `.planning/config.json`. Exact pixel values for captions and the vertical words fall back on the sketches' figures; the orchestrator decides whether to run `/gsd-ui-phase` first.
+   - RESOLVED: `15-UI-SPEC.md` was written and approved 2026-10-05 (checker 6/6 with three non-blocking flags; 42/42 UI considerations resolved).
 
 ## Environment Availability
 
