@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { RACK_COPY, rackHeadingLine } from "../components/setup/rack-config";
-import { HOVER_MULTI_ROW_HEIGHT, HOVER_ROW_BAND, HOVER_ROW_TOP_ROOM } from "../lib/geometry/rack-layout";
+import { HOVER_MULTI_ROW_HEIGHT, HOVER_ROW_BAND, HOVER_ROW_TOP_ROOM, HOVER_SLOT } from "../lib/geometry/rack-layout";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { IN_PROGRESS_KEY } from "../lib/models/rack-order";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
@@ -86,6 +86,59 @@ async function readTurnsNextFrame(page: Page, keys: string[]) {
 async function vertexCount(page: Page, key: string) {
   const d = (await boardArt(page, key).locator("path").first().getAttribute("d")) ?? "";
   return (d.match(/[ML]/g) ?? []).length;
+}
+
+/** Waits until no board is part-way through a turn (every drawing reads 0 or 90 degrees). */
+async function waitForTurnsToFinish(page: Page) {
+  await expect
+    .poll(async () =>
+      page
+        .locator("[data-rack-art]")
+        .evaluateAll((groups) => groups.filter((group) => !["0", "90"].includes(group.getAttribute("data-turn") ?? "")).length),
+    )
+    .toBe(0);
+}
+
+/**
+ * Two frames after the last cursor move: every place a board's vertical words (any still visible,
+ * opacity above 0.05) cross ANOTHER board's drawn body — each words' box against each body's box,
+ * crossing when they share more than half a dot both across and up — and every board's turn at that
+ * same moment, so a check can prove it measured the state it meant to. Each crossing names the two
+ * boards and how far they cross, so a failure says exactly what touched what.
+ */
+async function wordsAcrossBoards(page: Page) {
+  return page.evaluate(
+    () =>
+      new Promise<{ crossings: string[]; turns: Record<string, number> }>((resolve) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            const drawings = Array.from(document.querySelectorAll<SVGGElement>("[data-rack-art]"));
+            const bodies = drawings.map((group) => ({
+              key: group.getAttribute("data-rack-art") ?? "",
+              box: group.querySelector("path")?.getBoundingClientRect() ?? null,
+            }));
+            const crossings: string[] = [];
+            const turns: Record<string, number> = {};
+            for (const group of drawings) {
+              const key = group.getAttribute("data-rack-art") ?? "";
+              turns[key] = Number(group.getAttribute("data-turn"));
+              const words = group.querySelector("text");
+              if (!words || Number(getComputedStyle(words).opacity) <= 0.05) continue;
+              const box = words.getBoundingClientRect();
+              for (const body of bodies) {
+                if (body.key === key || !body.box) continue;
+                const across = Math.min(box.right, body.box.right) - Math.max(box.left, body.box.left);
+                const up = Math.min(box.bottom, body.box.bottom) - Math.max(box.top, body.box.top);
+                if (across > 0.5 && up > 0.5) {
+                  crossings.push(`${key}'s words cross ${body.key}'s board by ${across.toFixed(1)} dots across, ${up.toFixed(1)} up`);
+                }
+              }
+            }
+            resolve({ crossings, turns });
+          }),
+        ),
+      ),
+  );
 }
 
 test.describe("the Board Rack on a computer", () => {
@@ -260,6 +313,47 @@ test.describe("the Board Rack on a computer — rows, holding still, and touch-s
     await expect(question).toBeHidden();
     expect(new URL(page.url()).pathname).toBe(RACK_STAND_IN_ROUTE);
     await expect(page.locator("[data-rack-board]").first()).toHaveAttribute("data-rack-board", IN_PROGRESS_KEY);
+  });
+
+  test("12. no word ever crosses a board: resting, mid-sweep, and on a second row", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openRack(page, RACK_STAND_IN_ROUTE, 15);
+    // On arrival only board 1 is turned, and a turned board stands on its own slot's centre with
+    // nothing left of it to move it — so every slot's centre is whole slots along from board 1's.
+    const first = await centreOf(page, board(1).id);
+    const slotCentre = (n: number) => first.x + (n - 1) * HOVER_SLOT;
+
+    const arrival = await wordsAcrossBoards(page);
+    expect(arrival.turns[board(1).id]).toBe(90);
+    expect.soft(arrival.crossings, "on arrival, board 1 turned").toEqual([]);
+
+    await restOn(page, board(6).id);
+    await waitForTurnsToFinish(page);
+    const rested = await wordsAcrossBoards(page);
+    expect(rested.turns[board(6).id]).toBe(90);
+    expect.soft(rested.crossings, "resting on board 6").toEqual([]);
+
+    // Exactly between two slots both boards are half-turned (UI-SPEC §2); a quarter of the way
+    // along, 67.5 and 22.5 degrees. Both read before the cursor's rest, within a degree or two of
+    // a cursor position the browser may round to a whole dot.
+    const near = (turn: number, degrees: number) => Math.abs(turn - degrees) <= 2;
+    await page.mouse.move((slotCentre(3) + slotCentre(4)) / 2, first.y, { steps: 4 });
+    const between = await wordsAcrossBoards(page);
+    expect(near(between.turns[board(3).id], 45) && near(between.turns[board(4).id], 45), JSON.stringify(between.turns)).toBe(true);
+    expect.soft(between.crossings, "the cursor midway between boards 3 and 4").toEqual([]);
+
+    await page.mouse.move(slotCentre(7) + HOVER_SLOT / 4, first.y, { steps: 4 });
+    const quarter = await wordsAcrossBoards(page);
+    expect(near(quarter.turns[board(7).id], 67.5) && near(quarter.turns[board(8).id], 22.5), JSON.stringify(quarter.turns)).toBe(true);
+    expect.soft(quarter.crossings, "the cursor a quarter of the way from board 7 to board 8").toEqual([]);
+
+    const rows = standInRackRows(30);
+    await openRack(page, `${RACK_STAND_IN_ROUTE}?boards=30`, 30);
+    await restOn(page, rows[19].id);
+    await waitForTurnsToFinish(page);
+    const secondRow = await wordsAcrossBoards(page);
+    expect(secondRow.turns[rows[19].id]).toBe(90);
+    expect.soft(secondRow.crossings, "thirty boards, resting on board 20 in row 2").toEqual([]);
   });
 });
 
