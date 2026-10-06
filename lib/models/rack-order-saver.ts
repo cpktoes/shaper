@@ -32,6 +32,10 @@ export interface RackOrderSaverDeps {
   /** Called when a save fails, with the last order that did save — or the starting order, which
    * may be `null` (never arranged, the automatic order) — so the rack can put the board back. */
   onFailed(revertTo: readonly string[] | null): void;
+  /** Called each time `pending()` changes — true once an order is waiting or on its way, false once
+   * nothing is (after a save lands or fails). The rack keeps the order it shows while this is true,
+   * whatever order the page's refresh hands it (`lib/models/rack-order-sync.ts`). */
+  onPendingChange?(pending: boolean): void;
   /** Overrides `RACK_ORDER_SAVE_DELAY_MS`. */
   delayMs?: number;
 }
@@ -63,6 +67,21 @@ export function createRackOrderSaver(lastSaved: readonly string[] | null, deps: 
   let inFlight: string[] | null = null;
   let timer: unknown = null;
   let disposed = false;
+  /** The last `pending()` value handed to `onPendingChange`. */
+  let reportedPending = false;
+
+  function isPending() {
+    return waiting !== null || inFlight !== null;
+  }
+
+  /** Tells `onPendingChange` when `pending()` has changed since it was last told. */
+  function reportPending() {
+    if (disposed) return;
+    const now = isPending();
+    if (now === reportedPending) return;
+    reportedPending = now;
+    deps.onPendingChange?.(now);
+  }
 
   function clearWait() {
     if (timer !== null) {
@@ -91,6 +110,7 @@ export function createRackOrderSaver(lastSaved: readonly string[] | null, deps: 
           if (sameIds(waiting, saved)) waiting = null;
           else send(waiting);
         }
+        reportPending();
       },
       () => {
         if (disposed) return;
@@ -98,6 +118,7 @@ export function createRackOrderSaver(lastSaved: readonly string[] | null, deps: 
         clearWait();
         waiting = null;
         onFailed(saved);
+        reportPending();
       },
     );
   }
@@ -113,6 +134,7 @@ export function createRackOrderSaver(lastSaved: readonly string[] | null, deps: 
       clearWait();
       if (sameIds(next, inFlight ?? saved)) {
         waiting = null;
+        reportPending();
         return;
       }
       waiting = next;
@@ -120,6 +142,7 @@ export function createRackOrderSaver(lastSaved: readonly string[] | null, deps: 
         timer = null;
         sendIfIdle();
       }, delayMs);
+      reportPending();
     },
     flush() {
       if (disposed) return;
@@ -132,7 +155,7 @@ export function createRackOrderSaver(lastSaved: readonly string[] | null, deps: 
       waiting = null;
     },
     pending() {
-      return waiting !== null || inFlight !== null;
+      return isPending();
     },
   };
 }

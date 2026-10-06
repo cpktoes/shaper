@@ -249,6 +249,53 @@ describe("a failed save is reported so the rack can put the board back", () => {
   });
 });
 
+describe("onPendingChange tells the rack when a save is waiting or travelling (code review CR-01)", () => {
+  it("true at the first move, still true across a save handing on to the next, false once all have landed", async () => {
+    const onPendingChange = vi.fn();
+    const { saver, calls, runNext } = setup(["a", "b"], { onPendingChange });
+
+    saver.request(["b", "a"]);
+    saver.request(["b", "a"]); // the same order again: still waiting, no second report
+    expect(onPendingChange.mock.calls).toEqual([[true]]);
+
+    await runNext();
+    saver.request(["a", "b"]); // a move back while the first save travels: waits behind it
+    calls[0].resolve();
+    await flushMicrotasks();
+    expect(onPendingChange.mock.calls).toEqual([[true]]);
+
+    calls[1].resolve();
+    await flushMicrotasks();
+    expect(onPendingChange.mock.calls).toEqual([[true], [false]]);
+    expect(saver.pending()).toBe(false);
+  });
+
+  it("false after a failure, and false again when a move back cancels the only waiting save", async () => {
+    const onPendingChange = vi.fn();
+    const { saver, calls, runNext } = setup(["a", "b"], { onPendingChange });
+    saver.request(["b", "a"]);
+    await runNext();
+    calls[0].reject(new Error("offline"));
+    await flushMicrotasks();
+    expect(onPendingChange.mock.calls).toEqual([[true], [false]]);
+
+    saver.request(["b", "a"]);
+    saver.request(["a", "b"]);
+    expect(onPendingChange.mock.calls).toEqual([[true], [false], [true], [false]]);
+  });
+
+  it("says nothing after dispose", async () => {
+    const onPendingChange = vi.fn();
+    const { saver, calls, runNext } = setup(null, { onPendingChange });
+    saver.request(["a"]);
+    await runNext();
+    saver.dispose();
+    calls[0].resolve();
+    await flushMicrotasks();
+    expect(onPendingChange.mock.calls).toEqual([[true]]);
+  });
+});
+
 describe("dispose", () => {
   it("cancels the delay and runs no callback even when an earlier save settles", async () => {
     const { saver, save, calls, runNext, onFailed, onSaved, scheduled } = setup();

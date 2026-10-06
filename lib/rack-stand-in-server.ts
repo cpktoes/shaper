@@ -15,9 +15,11 @@
  * gives them separate copies of this module, and so it survives a hot reload.
  */
 
+import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { parseRackOrderInput } from "./models/rack-order";
 import {
+  RACK_STAND_IN_ROUTE,
   RACK_STAND_IN_SAVE_COOKIE,
   RACK_STAND_IN_SESSION_COOKIE,
   rackStandInRouteEnabled,
@@ -55,6 +57,8 @@ export async function saveStandInRackOrder(orderedIds: readonly string[]): Promi
   if (parsed === null) return false;
   if (decision.delayMs > 0) await new Promise((resolve) => setTimeout(resolve, decision.delayMs));
   practiceRackOrders().set(decision.session, [...parsed]);
+  // The practice rack's own page refreshed, exactly as the real save refreshes the home page.
+  revalidatePath(RACK_STAND_IN_ROUTE);
   return true;
 }
 

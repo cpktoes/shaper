@@ -14,6 +14,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { models, userPreferences } from "@/lib/db/schema";
 import { parseRackOrderInput, rackOrderColumnValue } from "@/lib/models/rack-order";
@@ -28,8 +29,14 @@ import { saveStandInRackOrder } from "@/lib/rack-stand-in-server";
  * anything is written (`parseRackOrderInput`): if it is not a list, holds more than 500 ids, holds
  * anything that is not an id of 1 to 64 characters, or names an id twice, nothing is written at all.
  * Then only ids of the shaper's OWN boards are kept, in the order given — a board id belonging to
- * someone else, or to nothing, never reaches the column. No `revalidatePath` — the rack already
- * shows the new order before this is called.
+ * someone else, or to nothing, never reaches the column.
+ *
+ * Then the home page is refreshed (`revalidatePath("/")`, as the board actions in
+ * `app/design/actions.ts` do). The rack already shows the new order, but the copy of the page Next
+ * keeps for the browser's Back button still holds the order from before the move: without this, a
+ * shaper who moves a board, opens one and presses Back sees the old order — and their next move
+ * saves over the arrangement they lost (code review CR-01). The refresh also reaches the rack while
+ * it is open; `useRackOrder` keeps a newer move on screen while that move is still saving.
  */
 export async function saveRackOrder(orderedIds: readonly string[]): Promise<void> {
   const { userId } = await auth();
@@ -53,4 +60,5 @@ export async function saveRackOrder(orderedIds: readonly string[]): Promise<void
       target: userPreferences.clerkUserId,
       set: { rackOrder: value, updatedAt: new Date() },
     });
+  revalidatePath("/");
 }

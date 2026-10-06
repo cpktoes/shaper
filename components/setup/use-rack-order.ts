@@ -11,35 +11,32 @@
  * order). A failed save puts the order back to the last one that did save (or to the automatic
  * order, when nothing ever did) and the rack says so.
  *
- * A fresh order from the server — after a duplicate puts its copy beside the original (D-16), or a
- * rename or delete re-reads the page — replaces the local one: the local order is kept only while
- * the server's order is the one it was made against (`basis`), worked out while rendering (React's
- * "adjust state while rendering" pattern), never set from an effect.
+ * Every save refreshes the page (code review CR-01), so Back never brings back an order from before
+ * a move. Each refresh hands this hook the stored order again, and which order the rack then shows
+ * is one pure rule (`rackOrderViewOnArrival`, lib/models/rack-order-sync.ts): while the saver has a
+ * move waiting or on its way the rack keeps what it shows — an older save's refresh never snaps a
+ * later move back — and with the saver idle it takes the stored order (a copy placed beside its
+ * original after a Duplicate, a rename or delete re-reading the page, another device). Worked out
+ * while rendering (React's "adjust state while rendering" pattern), never set from an effect.
  *
- * The saver is created inside an effect keyed on that basis and flushed, then disposed, in the
- * effect's cleanup, so React StrictMode's second mount on the dev server gets a fresh one and a
- * waiting order still goes out when the rack goes away. Leaving the page (`pagehide`) sends a
- * waiting order at once too.
+ * The saver is created inside an effect keyed on the stored order it starts from (which only changes
+ * while it is idle) and flushed, then disposed, in the effect's cleanup, so React StrictMode's
+ * second mount on the dev server gets a fresh one and a waiting order still goes out when the rack
+ * goes away. Leaving the page (`pagehide`) sends a waiting order at once too.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { saveRackOrder } from "@/app/actions/rack-order";
 import { createRackOrderSaver, type RackOrderSaver } from "@/lib/models/rack-order-saver";
-
-/** The local order and the server order it was made against (JSON of that order). */
-interface LocalOrder {
-  basis: string;
-  ids: readonly string[] | null;
-}
-
-function basisOf(order: readonly string[] | null): string {
-  return JSON.stringify(order);
-}
-
-function orderFromBasis(basis: string): readonly string[] | null {
-  const parsed: unknown = JSON.parse(basis);
-  return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : null;
-}
+import {
+  basisOf,
+  orderFromBasis,
+  rackOrderViewAfterFailure,
+  rackOrderViewAfterMove,
+  rackOrderViewFrom,
+  rackOrderViewOnArrival,
+  type RackOrderView,
+} from "@/lib/models/rack-order-sync";
 
 export interface RackOrderState {
   /** The order the rack shows: the shaper's newest move, else the order stored on their account
@@ -52,15 +49,19 @@ export interface RackOrderState {
 }
 
 export function useRackOrder(serverOrder: readonly string[] | null, onSaveFailed: () => void): RackOrderState {
-  const basis = basisOf(serverOrder);
-  const [local, setLocal] = useState<LocalOrder>({ basis, ids: null });
+  const incoming = basisOf(serverOrder);
+  const [view, setView] = useState<RackOrderView>(() => rackOrderViewFrom(incoming));
+  /** True while the saver has an order waiting or on its way (its `onPendingChange`). */
+  const [saverBusy, setSaverBusy] = useState(false);
 
-  // A fresh server order replaces the local one (adjusted while rendering, no effect).
-  let current = local;
-  if (local.basis !== basis) {
-    current = { basis, ids: null };
-    setLocal(current);
+  // A stored order arriving from the server: kept out while a save is waiting or travelling, taken
+  // when the saver is idle (adjusted while rendering, no effect).
+  let current = view;
+  if (view.seen !== incoming) {
+    current = rackOrderViewOnArrival(view, incoming, !saverBusy);
+    setView(current);
   }
+  const base = current.base;
 
   const saverRef = useRef<RackOrderSaver | null>(null);
   const failedRef = useRef(onSaveFailed);
@@ -69,14 +70,15 @@ export function useRackOrder(serverOrder: readonly string[] | null, onSaveFailed
   });
 
   useEffect(() => {
-    const saver = createRackOrderSaver(orderFromBasis(basis), {
+    const saver = createRackOrderSaver(orderFromBasis(base), {
       save: (ids) => saveRackOrder(ids),
       setTimer: (callback, delayMs) => window.setTimeout(callback, delayMs),
       clearTimer: (handle) => window.clearTimeout(handle as number),
       onFailed: (revertTo) => {
-        setLocal({ basis, ids: revertTo === null ? null : [...revertTo] });
+        setView((prev) => rackOrderViewAfterFailure(prev, revertTo));
         failedRef.current();
       },
+      onPendingChange: setSaverBusy,
     });
     saverRef.current = saver;
     const onPageHide = () => saver.flush();
@@ -87,20 +89,19 @@ export function useRackOrder(serverOrder: readonly string[] | null, onSaveFailed
       saver.dispose();
       if (saverRef.current === saver) saverRef.current = null;
     };
-  }, [basis]);
+  }, [base]);
 
-  const commit = useCallback(
-    (next: readonly string[]) => {
-      const ids = [...next];
-      setLocal({ basis, ids });
-      saverRef.current?.request(ids);
-    },
-    [basis],
-  );
+  const commit = useCallback((next: readonly string[]) => {
+    const ids = [...next];
+    setView((prev) => rackOrderViewAfterMove(prev, ids));
+    saverRef.current?.request(ids);
+  }, []);
 
   const flush = useCallback(() => {
     saverRef.current?.flush();
   }, []);
 
-  return { order: current.ids ?? serverOrder, commit, flush };
+  // With no order of its own, the rack shows the server's — the prop itself, so its identity only
+  // changes when the server's order does.
+  return { order: current.local ? current.local.ids : serverOrder, commit, flush };
 }
