@@ -221,7 +221,10 @@
   --rack-swipe-h: calc(var(--rack-swipe-r) + 16px + 24px + 118px);
 }
 
-@media (width >= 820px) and (height > 500px) {
+/* The desktop-shell width, the very boundary `shell:` owns (820 and over), written in the `min-width`
+   form on purpose: `components/design/shell-variant.css.test.ts` compiles this whole file and reads
+   any `(width >= 820px)` outside the two layout variants as a width leak into the Hide Toolbar tip. */
+@media (min-width: 820px) and (height > 500px) {
   :root {
     --rack-swipe-r: clamp(var(--rack-swipe-min-h), calc(100dvh - var(--rack-swipe-chrome-shell)), var(--rack-swipe-max-h));
   }
