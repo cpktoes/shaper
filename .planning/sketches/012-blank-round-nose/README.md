@@ -89,8 +89,7 @@ wide is the parabola from the tip inside the last printed station, applied under
 `buildBlankTopView` adds 24 samples per tip spaced evenly in √(distance from the tip) so the drawn line stays within
 0.15 mm of the curve; the sketch's own `curves.js` is kept at `reference/sketches/012-round-nose-curves.js` and a
 golden generated from it (`scripts/extract-round-nose-golden.ts`) checks the app on all 43 affected blanks. Before and
-after pictures of the real screen are in the task folder's `pictures/`. Merged locally on main (1687852); the push
-waits for the founder's word.
+after pictures of the real screen are in the task folder's `pictures/`. Merged on main (1687852) and pushed on the founder's word the same day.
 
 ## Pictures
 `pictures/`: `a-today-slate.png`, `b-control-point-slate.png` (and `-daylight`), `c-parabola-slate.png`,
