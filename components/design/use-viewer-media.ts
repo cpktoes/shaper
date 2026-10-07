@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Three hooks that read a CSS media query as React state, in exactly the shape
+ * Hooks that read a CSS media query as React state, in exactly the shape
  * `components/auth/sign-in-banner.tsx` already uses for its own browser-only read: a subscribe
  * function, a client snapshot, and a fixed server snapshot, so the server render stays
  * deterministic and the client corrects itself on the very next render after hydration — no
@@ -20,6 +20,15 @@
  * Phase 15 D-04: the home page's Board Rack reads `useCoarsePointer` to pick the hover rack (a
  * mouse) or the swipe rack (a finger), which changes how the rack behaves, never which page
  * layout draws.
+ *
+ * Quick 261006-qfm (2026-10-06): ROCKER reads `useBelowShellWidth` and `useShortScreen` to decide
+ * two pieces of React STATE — whether the blank seen from above draws as a small drawing in the
+ * corner of the VIEWER panel, and whether a third TOP VIEW tab exists to hold it instead. Neither
+ * moves a layout: the stacked-versus-desktop layout stays the CSS `max-shell`/`shell` switch, and a
+ * short screen's own layout rules stay the inline `[@media(max-height:500px)]` ones. Both read the
+ * same lines those CSS rules draw, so the corner drawing and the tab can never both be missing or
+ * both be drawn. Their server snapshot is a computer (`false`), corrected on the first render after
+ * hydration — the same posture `boardOrientation` has on ROCKER, and no hydration mismatch.
  */
 
 import * as React from "react";
@@ -51,6 +60,15 @@ function useMediaQueryMatch(query: string, serverSnapshot: boolean): boolean {
 const COARSE_POINTER_QUERY = "(pointer: coarse)";
 const PORTRAIT_QUERY = "(orientation: portrait)";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+/**
+ * Below the shell breakpoint (820 dots). `app/globals.css` writes the `max-shell` variant as
+ * `(width < 820px)`, but the built stylesheet ships it as `not all and (min-width: 820px)` (read
+ * off the built CSS on 2026-10-06, quick 261006-qfm D-10) — the same widths exactly, in the form
+ * older Safari understands (the range form needs Safari 16.4). Written here the way it ships.
+ */
+const BELOW_SHELL_WIDTH_QUERY = "not all and (min-width: 820px)";
+/** A short screen: the inline short-screen rule's own text (CLAUDE.md's Layout section). */
+const SHORT_SCREEN_QUERY = "(max-height: 500px)";
 
 /**
  * True on a touch (coarse) pointer device — never for a desktop mouse, at any viewport width.
@@ -79,4 +97,23 @@ export function usePortraitViewport(): boolean {
  */
 export function useReducedMotion(): boolean {
   return useMediaQueryMatch(REDUCED_MOTION_QUERY, false);
+}
+
+/**
+ * True below the shell breakpoint — an upright phone, or any window narrower than 820 dots — the
+ * same widths the `max-shell` CSS variant matches. Server snapshot: `false` (a computer). ROCKER
+ * reads it to put the blank seen from above in its own TOP VIEW tab rather than in the VIEWER
+ * panel's corner (quick 261006-qfm); never read it to move a layout.
+ */
+export function useBelowShellWidth(): boolean {
+  return useMediaQueryMatch(BELOW_SHELL_WIDTH_QUERY, false);
+}
+
+/**
+ * True on a short screen, 500 dots tall or less — a phone held sideways, at any width. Server
+ * snapshot: `false` (a computer). ROCKER reads it for the same TOP VIEW tab as above (quick
+ * 261006-qfm), because a short screen has no room for a corner drawing beside the side view.
+ */
+export function useShortScreen(): boolean {
+  return useMediaQueryMatch(SHORT_SCREEN_QUERY, false);
 }

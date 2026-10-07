@@ -370,6 +370,9 @@ describe("the design screens read every measurement through the display boundary
     { file: "components/rocker/blank-flag.tsx", converted: true },
     // 11-11 (R3, R4, R15): the placement slider and the live rocker / foam-off readouts.
     { file: "components/rocker/board-on-blank.tsx", converted: true },
+    // Quick 261006-qfm: ROCKER's top view — the blank seen from above. It prints no number, but
+    // its spoken name names the 12" marks through `stationLabel`, so it reads the boundary too.
+    { file: "components/rocker/rocker-top-view.tsx", converted: true },
   ];
 
   const OUT_OF_SCOPE_UNITS_FILES: { file: string; reason: string }[] = [

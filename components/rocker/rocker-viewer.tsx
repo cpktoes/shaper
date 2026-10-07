@@ -108,6 +108,7 @@ import { formatMark, stationLabel } from "@/lib/geometry/measure-display";
 import { ROCKER_LIFT_RANGE_IN } from "@/lib/geometry/rocker";
 import { mm, type Mm, mmToInches } from "@/lib/geometry/units";
 import {
+  BLANK_LINE_PX,
   cardPinScale,
   COMPACT_BASELINE_DASH,
   COMPACT_BASELINE_WIDTH,
@@ -116,6 +117,7 @@ import {
   COMPACT_VALUE_SIZE,
   compactRailReadingXs,
   compactValueWidth,
+  KNOT_DOT_PX,
   PAD_X,
   RAIL_LABEL_TEXTS,
   THINNING_MARK_DASH,
@@ -125,16 +127,6 @@ import {
   type RockerViewLayoutInput,
   rockerViewLayout,
 } from "./rocker-view-frame";
-
-/**
- * Measuring-point dot radius, in CSS pixels — a marker is a UI affordance, not board geometry, so
- * it holds a constant on-screen size rather than scaling with the drawing (the same size the
- * construction overlay's plain knot dots always drew at). Divided by the live fit scale at render.
- */
-const KNOT_DOT_PX = 3;
-/** The blank silhouette's outline, in CSS pixels — screen-pinned like the dots above, so the
- * blank's line stays a faint hairline behind the board's own 2-unit outline at any panel size. */
-const BLANK_LINE_PX = 1;
 
 /** Board sampling density — enough to read as smooth at this frame's scale, well past the five
  * stations the profile's curves are built through. A drawing parameter only (R15). */
