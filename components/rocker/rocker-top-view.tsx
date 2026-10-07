@@ -254,13 +254,15 @@ export function RockerTopView({ topView, length, blank, orientation, showMeasuri
  *
  * - The top-LEFT corner, because the toolbar row owns the top-right. Positioned like that row
  *   (`absolute top-0`): the panel card's own padding is the inset, so no further offset.
- * - An opaque plate — the toolbar button's own border, ground and padding — so the side view's
- *   lines never run under the little drawing.
+ * - An opaque plate — the toolbar button's own ground and padding, with no border since the founder's
+ *   review (2026-10-06: "lose the border around the mini board") — so the side view's lines never run
+ *   under the little drawing while nothing frames it; on every theme the ground matches the panel.
  * - `pointer-events-none`: it is a picture, so it never takes a click, a drag or a long press meant
  *   for the drawing beneath it.
- * - 36% of the panel's width (at most 360 dots) nose-left; 45% of its height (at most 450) nose-up,
- *   standing in the free column beside the upright side view. Inside the plate a `relative` box
- *   carries the frame's own aspect ratio, so the drawing fills it with no wasted plate.
+ * - 43% of the panel's width (at most 432 dots) nose-left; 54% of its height (at most 540) nose-up,
+ *   standing in the free column beside the upright side view — 20% up from the 36% / 45% it first
+ *   shipped at, at the founder's review (2026-10-06: "make it 20% bigger"). Inside the plate a
+ *   `relative` box carries the frame's own aspect ratio, so the drawing fills it with no wasted plate.
  * - On a very wide, short window it may overlap the side view's nose-tip card, the way the toolbar
  *   may overlap the top-right. That is accepted; it is what the toggle is for.
  * - Fallback if a browser ever collapses the nose-up box's width (its width comes from its height
@@ -274,8 +276,8 @@ export function TopViewInset(props: RockerTopViewProps) {
     <div
       data-top-view-inset
       className={cn(
-        "pointer-events-none absolute top-0 left-0 z-10 rounded-md border border-surf-line bg-surf-ground p-1",
-        vertical ? "h-[45%] max-h-[450px]" : "w-[36%] max-w-[360px]",
+        "pointer-events-none absolute top-0 left-0 z-10 bg-surf-ground p-1",
+        vertical ? "h-[54%] max-h-[540px]" : "w-[43%] max-w-[432px]",
       )}
     >
       <div

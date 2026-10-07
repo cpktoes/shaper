@@ -195,8 +195,8 @@ test.describe("ROCKER on a computer: a mini display of the blank from above (qui
     const toolbar = await box(page.locator("[data-viewer-toolbar]"));
     expect(Math.abs(plate.x - content.x)).toBeLessThanOrEqual(16);
     expect(Math.abs(plate.y - content.y)).toBeLessThanOrEqual(16);
-    expect(plate.width).toBeLessThanOrEqual(content.width * 0.36 + 2);
-    expect(plate.width).toBeLessThanOrEqual(362);
+    expect(plate.width).toBeLessThanOrEqual(content.width * 0.43 + 2);
+    expect(plate.width).toBeLessThanOrEqual(434);
     const intersects =
       plate.x < toolbar.x + toolbar.width &&
       toolbar.x < plate.x + plate.width &&
@@ -259,8 +259,8 @@ test.describe("ROCKER on a computer: a mini display of the blank from above (qui
       .toBe(true);
     const plate = await box(inset(page));
     const content = await box(viewerContent(page));
-    expect(plate.height).toBeLessThanOrEqual(content.height * 0.45 + 2);
-    expect(plate.height).toBeLessThanOrEqual(452);
+    expect(plate.height).toBeLessThanOrEqual(content.height * 0.54 + 2);
+    expect(plate.height).toBeLessThanOrEqual(542);
     // D-18's collapse check: the width comes from the height through aspect-ratio.
     expect(plate.width).toBeGreaterThanOrEqual(30);
     expect(plate.height).toBeGreaterThanOrEqual(100);
