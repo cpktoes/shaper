@@ -72,6 +72,9 @@ import {
   ViewerOrientationProvider,
   type ViewerOrientation,
 } from "@/components/viewer/callout-primitives";
+import { useViewerZoom, zoomDashToken } from "@/components/viewer/zoom-viewport";
+import { parseViewBox, rectInContentFrame } from "@/components/viewer/zoom-math";
+import { ZoomGrid } from "@/components/viewer/zoom-grid";
 
 const VIEW_W = 340;
 const VIEW_H = 620;
@@ -551,14 +554,14 @@ export function OutlineViewer({
    * point already picked starts a remote drag on it (D-03); empty canvas with nothing picked does
    * nothing at all; and takes no pointer capture — exactly as it always has (D-05).
    */
-  function handlePointerDown(event: ReactPointerEvent<SVGElement>) {
-    if (!onOutlineDrag) return;
+  function handlePointerDown(event: ReactPointerEvent<SVGElement>): boolean {
+    if (!onOutlineDrag) return false;
     const boardPoint = toBoardPoint(event);
-    if (!boardPoint) return;
+    if (!boardPoint) return false;
     const hit = nearestOutlineDragTarget(dragPointsAt, boardPoint, hitRadiusMm);
 
     if (event.pointerType !== "touch") {
-      if (!hit) return;
+      if (!hit) return false;
       event.preventDefault();
       draggingRef.current = {
         target: hit,
@@ -569,11 +572,11 @@ export function OutlineViewer({
         maxTravelPx: 0,
       };
       event.currentTarget.setPointerCapture(event.pointerId);
-      return;
+      return true;
     }
 
     const decision = nextSelection({ selected: selectedTarget, mode: "idle" }, { type: "touchDown", hit });
-    if (decision.mode === "idle" || decision.selected === null) return;
+    if (decision.mode === "idle" || decision.selected === null) return true;
 
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -596,6 +599,7 @@ export function OutlineViewer({
     setSelectedTarget(decision.selected);
     setTouchDragTarget(decision.selected);
     setTouchFingerBoard(boardPoint);
+    return true;
   }
 
   /**
@@ -606,8 +610,22 @@ export function OutlineViewer({
    * reaches `nextSelection` (PHON-05).
    */
   function handleDragEnd(event: ReactPointerEvent<SVGElement>, cancelled: boolean) {
+    finishGesture(cancelled, event.pointerType === "touch");
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  /**
+   * `handleDragEnd`'s own body, minus the pointer capture — split out (quick 261007-fnz, plan 02,
+   * 2026-10-07) so a pinch that begins while a finger is dragging can end that drag exactly the
+   * way a `pointercancel` does (D6, Q7): the pick stays where it was, the readout card goes, and
+   * the board keeps the shape the finger had reached. A pinch is only ever two fingers, so it ends
+   * a touch gesture.
+   */
+  function finishGesture(cancelled: boolean, touch: boolean) {
     const gesture = draggingRef.current;
-    if (gesture && event.pointerType === "touch") {
+    if (gesture && touch) {
       const dragEvent: DragSelectionEvent<OutlineDragTarget> = cancelled
         ? { type: "cancel" }
         : { type: "touchUp", travelPx: gesture.maxTravelPx };
@@ -620,9 +638,6 @@ export function OutlineViewer({
     draggingRef.current = null;
     if (touchDragTarget !== null) setTouchDragTarget(null);
     if (touchFingerBoard !== null) setTouchFingerBoard(null);
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
   }
 
   /**
@@ -757,14 +772,39 @@ export function OutlineViewer({
   const vbW = horizontal ? horizW : baseW;
   const vbH = horizontal ? horizH : baseH;
   const fitScale = useSvgFitScale(svgRef, vbW, vbH);
+  // Quick 261007-fnz, plan 02 (2026-10-07): TEMPLATE zooms like ROCKER, through the one shared
+  // zoom (`components/viewer/zoom-viewport.tsx`, D2) — this drawing only hands it its frame. The
+  // level lives in `outline-editor.tsx`'s provider; outside one (the order form's two template
+  // windows, the preset-card thumbnails, the printed pages) `zoom` is 1 and `shownViewBox` IS
+  // `viewBox`, untouched, so every one of them draws exactly as before (D11). `touch: "viewer"`:
+  // one finger stays TEMPLATE's own at every zoom — it picks and drags a point, on it or from
+  // afar — and only two fingers reach the zoom (D6); a pinch that lands mid-drag ends the drag.
+  const {
+    zoom,
+    zoomUnit,
+    viewBox: shownViewBox,
+    view,
+    svgProps: zoomSvgProps,
+    isPinching,
+  } = useViewerZoom(svgRef, viewBox, {
+    touch: "viewer",
+    onPinchStart: () => {
+      if (draggingRef.current) finishGesture(true, true);
+    },
+  });
+  /** Screen pixels per drawing unit as drawn now: the fit, times the zoom (D4, P1). Every size
+   * below that was pinned to the fit is pinned to this, so it holds its screen size at any zoom. */
+  const shownFit = fitScale * zoom;
   // The svg's own rendered client size (quick task 260909-oge): measured the same way
   // `fitScale` is, in a `useLayoutEffect` rather than read off the ref during render, so the
   // drag readout chip's placement bounds below can use a plain number. Called unconditionally,
   // every render, even though it is only ever READ inside the touch-drag block further down.
   const svgClientSize = useSvgClientSize(svgRef);
-  const calloutSizes = pinCalloutText ? pinnedCalloutSizes(fitScale) : UNPINNED_CALLOUT_SIZES;
-  /** User units per CSS pixel — what the px-denominated handle sizes above are drawn in. */
-  const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
+  const calloutSizes = pinCalloutText ? pinnedCalloutSizes(shownFit) : UNPINNED_CALLOUT_SIZES;
+  /** User units per CSS pixel — what the px-denominated handle sizes above are drawn in. Zoomed
+   * in, a handle, its ring, its grab reach and the readout card keep their screen size, so the
+   * reach is finer on the board and never harder to hit. */
+  const handleUnit = shownFit > 0 ? 1 / shownFit : 1;
 
   /**
    * One hit radius drives both what is drawn (the hit circles below) and what the delegated pick
@@ -807,7 +847,11 @@ export function OutlineViewer({
     const heightPx = lines.length * READOUT_ROW_PX + READOUT_PAD_PX * 2;
     const width = widthPx * handleUnit;
     const height = heightPx * handleUnit;
-    const [vbMinX, vbMinY, vbWidth, vbHeight] = viewBox.split(" ").map(Number);
+    // What is on screen: the base frame at 1x, the zoomed window above it — so the card is kept
+    // inside what the shaper can see, not inside a frame mostly off screen.
+    const [vbMinX, vbMinY, vbWidth, vbHeight] = view
+      ? [view.x, view.y, view.width, view.height]
+      : viewBox.split(" ").map(Number);
     const fingerCx = pxX(CONSTRUCTION_SIDE * mmToInches(touchFingerBoard.halfWidth));
     const fingerCy = lenToY(mmToInches(touchFingerBoard.station));
     const anchor = toViewBoxPoint(fingerCx, fingerCy);
@@ -857,9 +901,9 @@ export function OutlineViewer({
     // bounds calculation only ever matters while a finger is actually down on a touch device.
     // Falls back to the four viewBox numbers if the element or the scale is not yet readable.
     let placementBounds: ReadoutRect = { x: vbMinX, y: vbMinY, width: vbWidth, height: vbHeight };
-    if (fitScale > 0 && svgClientSize.width > 0 && svgClientSize.height > 0) {
-      const drawnW = svgClientSize.width / fitScale;
-      const drawnH = svgClientSize.height / fitScale;
+    if (shownFit > 0 && svgClientSize.width > 0 && svgClientSize.height > 0) {
+      const drawnW = svgClientSize.width / shownFit;
+      const drawnH = svgClientSize.height / shownFit;
       const vbCenterX = vbMinX + vbWidth / 2;
       const vbCenterY = vbMinY + vbHeight / 2;
       placementBounds = {
@@ -891,19 +935,49 @@ export function OutlineViewer({
   // `chipW` wide across that axis, and the vertical step is a chip HEIGHT. Move it one row
   // further OUT from the board instead, at the same station: the honest reading of "directly
   // beneath" once the rail itself has turned 90 degrees.
+  //
+  // Both steps are gaps between two cards, so zoomed in they follow the zoom unit and the pair
+  // stays together on screen (261007-fnz, D4); times exactly 1 at 1x, so nothing moves there.
   const wpOffsetChipX = horizontal
-    ? frame.chipRightX - calloutSizes.chipH - CHIP_STACK_GAP
+    ? frame.chipRightX - calloutSizes.chipH - CHIP_STACK_GAP * zoomUnit
     : frame.chipRightX;
   const wpOffsetChipY = horizontal
     ? widepointChipY
-    : widepointChipY + OUTLINE_CHIP_HEIGHT + CHIP_STACK_GAP;
+    : widepointChipY + OUTLINE_CHIP_HEIGHT * zoomUnit + CHIP_STACK_GAP * zoomUnit;
+
+  // The pointer, shared (261007-fnz, D6). TEMPLATE's own handlers stay first: a mouse or pen
+  // press within a drag point's reach drags that point exactly as before, at any zoom; a press
+  // anywhere else — or any press while the construction lines are off, when TEMPLATE has no drag
+  // of its own — goes to the shared zoom, which pans the drawing once zoomed in and does nothing
+  // at 1x (so a 1x drag on empty canvas is still nothing at all). A finger never pans: one finger
+  // is TEMPLATE's, two are the zoom's, and while two are down TEMPLATE ignores the pointer.
+  const baseRect = parseViewBox(viewBox);
+  const contentRotation = horizontal ? -90 : 0;
+  function onSvgPointerDown(event: ReactPointerEvent<SVGSVGElement>) {
+    if (isPinching()) return;
+    if (showConstruction && onOutlineDrag && handlePointerDown(event)) return;
+    if (event.pointerType !== "touch") zoomSvgProps.onPointerDown?.(event);
+  }
+  function onSvgPointerMove(event: ReactPointerEvent<SVGSVGElement>) {
+    if (isPinching()) return;
+    if (draggingRef.current) {
+      handleDragMove(event);
+      return;
+    }
+    zoomSvgProps.onPointerMove?.(event);
+  }
+  function onSvgPointerEnd(event: ReactPointerEvent<SVGSVGElement>, cancelled: boolean) {
+    if (onOutlineDrag) handleDragEnd(event, cancelled);
+    if (cancelled) zoomSvgProps.onPointerCancel?.(event);
+    else zoomSvgProps.onPointerUp?.(event);
+  }
 
   return (
     <CalloutSizeProvider value={calloutSizes}>
     <ViewerOrientationProvider value={orientation}>
     <svg
       ref={svgRef}
-      viewBox={viewBox}
+      viewBox={shownViewBox}
       preserveAspectRatio="xMidYMid meet"
       // No width/height attributes: they give the svg an intrinsic size, which makes a percentage
       // width resolve the height from the viewBox ratio instead of from the box it is in. On the
@@ -922,11 +996,12 @@ export function OutlineViewer({
       // Pitfall 3): the SVG text drawn near a drag point can start a selection too, not only the
       // hit circles themselves — both places get the same suppression.
       className="absolute inset-0 block h-full w-full select-none touch-none"
-      style={{ WebkitTouchCallout: "none" }}
-      onPointerDown={showConstruction && onOutlineDrag ? handlePointerDown : undefined}
-      onPointerMove={onOutlineDrag ? handleDragMove : undefined}
-      onPointerUp={onOutlineDrag ? (event) => handleDragEnd(event, false) : undefined}
-      onPointerCancel={onOutlineDrag ? (event) => handleDragEnd(event, true) : undefined}
+      style={{ WebkitTouchCallout: "none", ...zoomSvgProps.style }}
+      onPointerDown={onSvgPointerDown}
+      onPointerMove={onSvgPointerMove}
+      onPointerUp={(event) => onSvgPointerEnd(event, false)}
+      onPointerCancel={(event) => onSvgPointerEnd(event, true)}
+      onDoubleClick={zoomSvgProps.onDoubleClick}
     >
       {/* Every child below is drawn in the canonical (vertical) coordinate space, untouched —
           the rotation lives on this ONE group, so every projector (pxX, lenToY) and its ~40
@@ -935,6 +1010,21 @@ export function OutlineViewer({
           `app/globals.css` has no `svg` descendant selectors, so an extra group cannot change
           what any existing consumer draws either way. */}
       <g ref={contentRef} transform={horizontal ? "rotate(-90)" : undefined}>
+      {/* The grid (261007-fnz, D5, P8): drawn first, so it sits behind the board and shows around
+          it; only above 1x, so it never reaches a 1x screen or paper. Counted from the tail tip
+          along the board and from the stringer across it, in this group's own (nose-up) frame —
+          so it turns with the board. */}
+      {baseRect && (
+        <ZoomGrid
+          zoom={zoom}
+          fitScale={fitScale}
+          unitsPerInch={scale}
+          anchor={{ x: centerlineX, y: tailPy }}
+          bounds={rectInContentFrame(baseRect, contentRotation)}
+          visible={view ? rectInContentFrame(view, contentRotation) : null}
+          system={system}
+        />
+      )}
       {/* P-5 (quick 260930-lia): the board's fill is opaque, so a ghost drawn before this path
           would vanish wherever the old shape lies inside the new one. So, only while a ghost is
           drawn, this hooked path keeps its `d`/fill/strokeWidth and paints the fill alone
@@ -948,7 +1038,7 @@ export function OutlineViewer({
         d={outlinePath}
         fill="var(--outline-board-fill)"
         stroke={ghostPath ? "none" : "var(--outline-ink)"}
-        strokeWidth={2}
+        strokeWidth={2 * zoomUnit}
       />
       {ghostPath && (
         <>
@@ -957,7 +1047,7 @@ export function OutlineViewer({
             d={ghostPath}
             fill="none"
             stroke="var(--outline-ghost)"
-            strokeWidth={GHOST_STROKE_WIDTH}
+            strokeWidth={GHOST_STROKE_WIDTH * zoomUnit}
             pointerEvents="none"
             aria-hidden
           />
@@ -966,7 +1056,7 @@ export function OutlineViewer({
             d={outlinePath}
             fill="none"
             stroke="var(--outline-ink)"
-            strokeWidth={2}
+            strokeWidth={2 * zoomUnit}
             pointerEvents="none"
             aria-hidden
           />
@@ -987,8 +1077,8 @@ export function OutlineViewer({
             x2={centerlineX}
             y2={tailPy + STRINGER_OVERHANG}
             stroke="var(--outline-station-line)"
-            strokeWidth={1}
-            strokeDasharray="var(--outline-stringer-dash)"
+            strokeWidth={zoomUnit}
+            strokeDasharray={zoomDashToken("--outline-stringer-dash", zoomUnit)}
           />
           <line
             x1={pxX(-midHalfWidthIn)}
@@ -996,8 +1086,8 @@ export function OutlineViewer({
             x2={pxX(midHalfWidthIn)}
             y2={lenToY(lengthIn / 2)}
             stroke="var(--outline-station-line)"
-            strokeWidth={1}
-            strokeDasharray="var(--outline-stringer-dash)"
+            strokeWidth={zoomUnit}
+            strokeDasharray={zoomDashToken("--outline-stringer-dash", zoomUnit)}
           />
           <line
             x1={pxX(-noseHalfWidthIn)}
@@ -1005,8 +1095,8 @@ export function OutlineViewer({
             x2={pxX(noseHalfWidthIn)}
             y2={lenToY(noseStationIn)}
             stroke="var(--outline-station-line)"
-            strokeWidth={1}
-            strokeDasharray="var(--outline-station-dash)"
+            strokeWidth={zoomUnit}
+            strokeDasharray={zoomDashToken("--outline-station-dash", zoomUnit)}
           />
           <line
             x1={pxX(-tailHalfWidthIn)}
@@ -1014,8 +1104,8 @@ export function OutlineViewer({
             x2={pxX(tailHalfWidthIn)}
             y2={lenToY(tailStationIn)}
             stroke="var(--outline-station-line)"
-            strokeWidth={1}
-            strokeDasharray="var(--outline-station-dash)"
+            strokeWidth={zoomUnit}
+            strokeDasharray={zoomDashToken("--outline-station-dash", zoomUnit)}
           />
           <line
             x1={pxX(-wpHalfWidthIn)}
@@ -1023,18 +1113,18 @@ export function OutlineViewer({
             x2={pxX(wpHalfWidthIn)}
             y2={lenToY(wpYIn)}
             stroke="var(--outline-widepoint-line)"
-            strokeWidth={1}
-            strokeDasharray="var(--outline-widepoint-dash)"
+            strokeWidth={zoomUnit}
+            strokeDasharray={zoomDashToken("--outline-widepoint-dash", zoomUnit)}
           />
-          <circle cx={pxX(-wpHalfWidthIn)} cy={lenToY(wpYIn)} r={2.6} fill="var(--outline-widepoint-knot)" />
-          <circle cx={pxX(wpHalfWidthIn)} cy={lenToY(wpYIn)} r={2.6} fill="var(--outline-widepoint-knot)" />
+          <circle cx={pxX(-wpHalfWidthIn)} cy={lenToY(wpYIn)} r={2.6 * zoomUnit} fill="var(--outline-widepoint-knot)" />
+          <circle cx={pxX(wpHalfWidthIn)} cy={lenToY(wpYIn)} r={2.6 * zoomUnit} fill="var(--outline-widepoint-knot)" />
         </>
       )}
 
       {showConstruction && (
         <>
           {constructionLines.map((cl, i) => (
-            <line key={i} x1={cl.x1} y1={cl.y1} x2={cl.x2} y2={cl.y2} stroke={cl.color} strokeWidth={1.5} />
+            <line key={i} x1={cl.x1} y1={cl.y1} x2={cl.x2} y2={cl.y2} stroke={cl.color} strokeWidth={1.5 * zoomUnit} />
           ))}
           {constructionDots.map((dt, i) => (
             <circle key={i} cx={dt.cx} cy={dt.cy} r={KNOT_DOT_PX * handleUnit} fill={dt.color} />
@@ -1106,10 +1196,10 @@ export function OutlineViewer({
               x2={fm.x2}
               y2={fm.y2}
               stroke="var(--color-surf-accent-ink)"
-              strokeWidth={2}
+              strokeWidth={2 * zoomUnit}
             />
-            <circle cx={fm.x1} cy={fm.y1} r={3.5} fill="var(--outline-ink)" />
-            <circle cx={fm.x2} cy={fm.y2} r={3.5} fill="var(--outline-ink)" />
+            <circle cx={fm.x1} cy={fm.y1} r={3.5 * zoomUnit} fill="var(--outline-ink)" />
+            <circle cx={fm.x2} cy={fm.y2} r={3.5 * zoomUnit} fill="var(--outline-ink)" />
           </g>
         ))}
 

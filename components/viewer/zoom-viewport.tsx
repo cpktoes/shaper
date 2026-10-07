@@ -71,6 +71,7 @@ import {
   parseViewBox,
   PINCH_WHEEL_RATE,
   pinchState,
+  scaleDash,
   snapZoom,
   stepZoom,
   wheelStep,
@@ -506,6 +507,23 @@ export function ScreenSizeGroup({ x, y, children }: { x: number; y: number; chil
       <ViewerZoomUnitProvider value={1}>{children}</ViewerZoomUnitProvider>
     </g>
   );
+}
+
+/**
+ * A dash pattern that lives in a CSS token — `--outline-stringer-dash`, `--outline-station-dash`,
+ * `--outline-widepoint-dash` in `app/globals.css` — at the zoom unit, so its dashes keep their
+ * screen length while the drawing grows (D4). Added in plan 02 (2026-10-07) for TEMPLATE and
+ * FINS, which draw their reference lines with these tokens: `scaleDash` needs the numbers, and a
+ * `var()` cannot be multiplied in place. At exactly 1 it is the `var()` itself, character for
+ * character, so every 1x drawing and every printed page carry the attribute they always did.
+ * Above 1 (which only ever happens in a browser, after the shaper zooms) the token's numbers are
+ * read off the page's own stylesheet, so the token stays the one place the pattern is written.
+ */
+export function zoomDashToken(token: `--${string}`, zoomUnit: number): string {
+  const literal = `var(${token})`;
+  if (zoomUnit === 1 || typeof document === "undefined") return literal;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  return value ? (scaleDash(value, zoomUnit) ?? literal) : literal;
 }
 
 /**

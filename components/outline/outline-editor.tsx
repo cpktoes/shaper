@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { RotateBoardIcon, ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
+import { ViewerZoomControl, ViewerZoomProvider } from "@/components/viewer/zoom-viewport";
 import { ExportPreviewDialog } from "@/components/template/export-preview-dialog";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import * as ViewerMedia from "@/components/design/use-viewer-media";
@@ -118,6 +119,12 @@ export function OutlineEditor() {
     // panel title (the mockup had it there and the founder explicitly corrected this) and
     // not inline with the VIEWER tab. `TabbedPanel` itself is untouched.
     <div className="relative flex min-h-0 flex-1 items-stretch justify-center gap-6">
+      {/* Quick 261007-fnz, plan 02 (2026-10-07): the drawing zooms exactly as ROCKER's does — the
+          wheel, a trackpad or two-finger pinch, a drag to pan once zoomed in, double-click or
+          double-tap back to 1x, and the zoom row under the icons. The level lives in this provider
+          only, never saved (D2), keyed on the board's orientation so turning the board starts again
+          at 1x (P9). A provider renders no element, so the panel's layout is untouched. */}
+      <ViewerZoomProvider key={boardOrientation}>
       <ViewerToolbar>
         <ViewerToolbarButton
           onClick={() => setOrientation((o) => (o === "vertical" ? "horizontal" : "vertical"))}
@@ -203,6 +210,8 @@ export function OutlineEditor() {
           </ViewerToolbarButton>
         )}
       </ViewerToolbar>
+      {/* The zoom level and its buttons, in their own row under the icons (P2). */}
+      <ViewerZoomControl />
       <div className="flex min-h-0 max-h-full min-w-[340px] flex-1 flex-col items-center">
         <div className="relative flex min-h-0 w-full flex-1 justify-center">
           {/* A plain filled box — the drawing sizes itself inside it via preserveAspectRatio.
@@ -227,6 +236,7 @@ export function OutlineEditor() {
           </div>
         </div>
       </div>
+      </ViewerZoomProvider>
     </div>
   );
 
