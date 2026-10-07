@@ -45,6 +45,14 @@
  * set under 1") has Placement disabled at centre with a note, and still shows everything below it.
  *
  * Every number goes through `lib/geometry/measure-display.ts` (CLAUDE.md Rule 2).
+ *
+ * Quick 261006-v20 (2026-10-06): the sidebar follows the tab in view. The `live` prop says whether the
+ * Placement slider (in each of its three states) and the Deck Skin slider are live on the tab on screen
+ * — Placement on VIEWER and TOP VIEW, Deck Skin on VIEWER only (`rocker-live-controls.ts`). A slider that
+ * is not live stays where it is, dimmed and inert, inside the one `Live` wrapper (`live.tsx`). The
+ * section's heading, the readouts grid, the planer-passes line and the Planer Max Depth note are text,
+ * not controls, and stay undimmed on every tab (D-02). Both default to live, so a caller that passes
+ * nothing gets the section exactly as before.
  */
 
 import { useDesign } from "@/components/design/design-store";
@@ -58,6 +66,7 @@ import type { FoilStationKey } from "@/lib/geometry/foil";
 import { formatMark, formatPasses, measureSlider, planerPasses, stationLabel } from "@/lib/geometry/measure-display";
 import { mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { cn } from "@/lib/utils";
+import { Live } from "./live";
 
 /** The five stations, nose to tail — the order every list and table on this screen reads in. */
 const STATIONS_NOSE_TO_TAIL: readonly FoilStationKey[] = ["noseTip", "nose12", "center", "tail12", "tailTip"];
@@ -95,7 +104,12 @@ const IDLE_RANGE = { value: 0, min: -1, max: 1, step: 1 };
 /** The Deck Skin slider's range — the one constant the Fit & Tip Defaults dialog shares (D-01). */
 const DECK_SKIN_RANGE_IN = FIT_DEFAULTS_RANGE_IN.deckSkin;
 
-export function BoardOnBlankSection() {
+export function BoardOnBlankSection({
+  live = { placement: true, deckSkin: true },
+}: {
+  /** Which of the two sliders the tab in view leaves live (quick 261006-v20). */
+  live?: { placement: boolean; deckSkin: boolean };
+}) {
   const { system } = useUnits();
   const { defaults } = useFitDefaults();
   const { blank, sideProfile, outline, setPlacement, setDeckSkin } = useDesign();
@@ -103,14 +117,16 @@ export function BoardOnBlankSection() {
 
   if (!blank || !view) {
     return (
-      <SliderRow
-        label="Placement — pick a blank first"
-        {...IDLE_RANGE}
-        disabled
-        leftHint="Toward the nose"
-        rightHint="Toward the tail"
-        onValueChange={() => {}}
-      />
+      <Live on={live.placement}>
+        <SliderRow
+          label="Placement — pick a blank first"
+          {...IDLE_RANGE}
+          disabled
+          leftHint="Toward the nose"
+          rightHint="Toward the tail"
+          onValueChange={() => {}}
+        />
+      </Live>
     );
   }
 
@@ -127,43 +143,49 @@ export function BoardOnBlankSection() {
     <div className="flex flex-col">
       <div className="flex flex-col gap-3.5">
         {noRoom ? (
-          <SliderRow
-            label="Placement — centered"
-            {...IDLE_RANGE}
-            disabled
-            leftHint="Toward the nose"
-            rightHint="Toward the tail"
-            note="This blank is too short to slide your board along it."
-            onValueChange={() => {}}
-          />
+          <Live on={live.placement}>
+            <SliderRow
+              label="Placement — centered"
+              {...IDLE_RANGE}
+              disabled
+              leftHint="Toward the nose"
+              rightHint="Toward the tail"
+              note="This blank is too short to slide your board along it."
+              onValueChange={() => {}}
+            />
+          </Live>
         ) : (
           (() => {
             // The clamped placement the side profile actually uses (stored as given, clamped on read).
             const slider = placementSlider(view.placement, range, system);
             return (
-              <SliderRow
-                label={`Placement — ${formatPlacement(view.placement, system)}`}
-                value={slider.value}
-                min={slider.min}
-                max={slider.max}
-                step={slider.step}
-                leftHint="Toward the nose"
-                rightHint="Toward the tail"
-                onValueChange={(v) => setPlacement(slider.toMm(v))}
-              />
+              <Live on={live.placement}>
+                <SliderRow
+                  label={`Placement — ${formatPlacement(view.placement, system)}`}
+                  value={slider.value}
+                  min={slider.min}
+                  max={slider.max}
+                  step={slider.step}
+                  leftHint="Toward the nose"
+                  rightHint="Toward the tail"
+                  onValueChange={(v) => setPlacement(slider.toMm(v))}
+                />
+              </Live>
             );
           })()
         )}
 
-        <SliderRow
-          label={`Deck Skin — ${formatDeckSkin(view.cut.deckSkin, system)}`}
-          value={skinSlider.value}
-          min={skinSlider.min}
-          max={skinSlider.max}
-          step={skinSlider.step}
-          leftHint={skinHint}
-          onValueChange={(v) => setDeckSkin(skinSlider.toMm(v))}
-        />
+        <Live on={live.deckSkin}>
+          <SliderRow
+            label={`Deck Skin — ${formatDeckSkin(view.cut.deckSkin, system)}`}
+            value={skinSlider.value}
+            min={skinSlider.min}
+            max={skinSlider.max}
+            step={skinSlider.step}
+            leftHint={skinHint}
+            onValueChange={(v) => setDeckSkin(skinSlider.toMm(v))}
+          />
+        </Live>
       </div>
 
       <div data-readouts className="mt-3 grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-1">
