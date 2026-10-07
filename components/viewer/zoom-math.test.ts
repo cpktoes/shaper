@@ -6,7 +6,10 @@ import {
   formatViewBox,
   formatZoomLevel,
   normaliseWheelDelta,
+  panBy,
   parseViewBox,
+  pinchState,
+  scaleDash,
   snapZoom,
   stepZoom,
   WHEEL_BURST_GAP_MS,
@@ -14,6 +17,7 @@ import {
   wheelStep,
   zoomAt,
   zoomedView,
+  zoomUnitTransform,
   type ClientSize,
   type ViewRect,
   type ZoomState,
@@ -253,5 +257,98 @@ describe("wheel feel", () => {
     const back = wheelStep({ sum: 0, lastMs: 0 }, 2 * WHEEL_STEP_PX + 5, 10);
     expect(back.steps).toBe(-2);
     expect(back.acc.sum).toBe(5);
+  });
+});
+
+describe("panBy", () => {
+  const fit = 804 / 900;
+  const mid: ZoomState = { zoom: 3, center: { x: 450, y: 176 } };
+
+  it("moves the centre against the drag by its length in drawing units", () => {
+    const moved = panBy(ROCKER_BASE, ROCKER_CLIENT, mid, 30, -12);
+    expect(moved.zoom).toBe(3);
+    expect(moved.center?.x).toBeCloseTo(450 - 30 / (fit * 3), 9);
+    expect(moved.center?.y).toBeCloseTo(176 + 12 / (fit * 3), 9);
+  });
+
+  it("stops at the frame's edge", () => {
+    const far = panBy(ROCKER_BASE, ROCKER_CLIENT, mid, 10_000, 10_000);
+    const view = zoomedView(ROCKER_BASE, ROCKER_CLIENT, far);
+    expect(view.x).toBe(ROCKER_BASE.x);
+    expect(view.y).toBe(ROCKER_BASE.y);
+    // …and leaves no dead zone: the first drag back moves the view straight away.
+    const back = zoomedView(ROCKER_BASE, ROCKER_CLIENT, panBy(ROCKER_BASE, ROCKER_CLIENT, far, -10, 0));
+    expect(back.x).toBeCloseTo(10 / (fit * 3), 9);
+  });
+
+  it("does nothing at 1x", () => {
+    expect(panBy(ROCKER_BASE, ROCKER_CLIENT, ONE, 50, 50)).toBe(ONE);
+  });
+});
+
+describe("pinchState", () => {
+  const start: ZoomState = { zoom: 2, center: { x: 450, y: 176 } };
+  const startMid = { x: 400, y: 300 };
+
+  it("doubles the level when the fingers spread to twice the distance, holding the point between them", () => {
+    const p = clientToUser(zoomedView(ROCKER_BASE, ROCKER_CLIENT, start), ROCKER_CLIENT, startMid.x, startMid.y);
+    const mid = { x: 380, y: 310 };
+    const next = pinchState(ROCKER_BASE, ROCKER_CLIENT, start, startMid, 100, mid, 200, 10);
+    expect(next.zoom).toBe(4);
+    const now = clientToUser(zoomedView(ROCKER_BASE, ROCKER_CLIENT, next), ROCKER_CLIENT, mid.x, mid.y);
+    expect(Math.abs(now.x - p.x)).toBeLessThan(1e-9);
+    expect(Math.abs(now.y - p.y)).toBeLessThan(1e-9);
+  });
+
+  it("pans like panBy when both fingers move together", () => {
+    const next = pinchState(ROCKER_BASE, ROCKER_CLIENT, start, startMid, 100, { x: 425, y: 290 }, 100, 10);
+    const panned = panBy(ROCKER_BASE, ROCKER_CLIENT, start, 25, -10);
+    expect(next.zoom).toBe(2);
+    expect(next.center?.x).toBeCloseTo(panned.center?.x ?? Number.NaN, 9);
+    expect(next.center?.y).toBeCloseTo(panned.center?.y ?? Number.NaN, 9);
+  });
+
+  it("snaps to half steps and stops at the maximum", () => {
+    expect(pinchState(ROCKER_BASE, ROCKER_CLIENT, start, startMid, 100, startMid, 130, 10).zoom).toBe(2.5);
+    expect(pinchState(ROCKER_BASE, ROCKER_CLIENT, start, startMid, 100, startMid, 1000, 10).zoom).toBe(10);
+    expect(pinchState(ROCKER_BASE, ROCKER_CLIENT, start, startMid, 100, startMid, 1000, 4).zoom).toBe(4);
+    expect(pinchState(ROCKER_BASE, ROCKER_CLIENT, start, startMid, 100, startMid, 10, 10)).toEqual({ zoom: 1, center: null });
+  });
+
+  it("ignores a starting distance under a pixel", () => {
+    expect(pinchState(ROCKER_BASE, ROCKER_CLIENT, start, startMid, 0.5, startMid, 200, 10)).toBe(start);
+  });
+});
+
+describe("zoomUnitTransform / scaleDash", () => {
+  /** Applies `translate(a b) scale(s) translate(c d)` to a point. */
+  function apply(transform: string, p: { x: number; y: number }) {
+    const m = /^translate\(([-\d.e]+) ([-\d.e]+)\) scale\(([-\d.e]+)\) translate\(([-\d.e]+) ([-\d.e]+)\)$/.exec(transform);
+    if (!m) throw new Error(`unexpected transform ${transform}`);
+    const [a, b, s, c, d] = m.slice(1).map(Number);
+    return { x: a + s * (p.x + c), y: b + s * (p.y + d) };
+  }
+
+  it("writes nothing at exactly 1, so the 1x markup is unchanged", () => {
+    expect(zoomUnitTransform(10, 20, 1)).toBeUndefined();
+  });
+
+  it("shrinks about its own anchor", () => {
+    const t = zoomUnitTransform(10, 20, 0.25);
+    expect(t).toBeDefined();
+    const anchor = apply(t as string, { x: 10, y: 20 });
+    expect(anchor.x).toBeCloseTo(10, 9);
+    expect(anchor.y).toBeCloseTo(20, 9);
+    const away = apply(t as string, { x: 14, y: 20 });
+    expect(away.x).toBeCloseTo(11, 9);
+    expect(away.y).toBeCloseTo(20, 9);
+  });
+
+  it("scales a dash pattern, and leaves it untouched at 1", () => {
+    expect(scaleDash("4 3", 1)).toBe("4 3");
+    expect(scaleDash(undefined, 1)).toBeUndefined();
+    expect(scaleDash(undefined, 0.5)).toBeUndefined();
+    expect(scaleDash("4 3", 0.5)).toBe("2 1.5");
+    expect(scaleDash("16,4,4,4", 0.25)).toBe("4 1 1 1");
   });
 });

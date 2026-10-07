@@ -126,4 +126,369 @@ test.describe("261007-fnz ROCKER zoom — computer", () => {
     expect(Math.hypot(end.x - expected.x, end.y - expected.y)).toBeLessThan(1.5);
     expect(await pageStillness(page)).toEqual(before);
   });
+
+  test("a trackpad pinch (ctrl+wheel) zooms the drawing, never the page", async ({ page }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    const box = await svgBox(page);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.keyboard.down("Control");
+    for (let i = 0; i < 12; i++) await page.mouse.wheel(0, -15);
+    await page.keyboard.up("Control");
+    await expect.poll(async () => levelNumber(page)).toBeGreaterThan(1.5);
+    expect(await page.evaluate(() => ({ dpr: window.devicePixelRatio, scale: window.visualViewport?.scale }))).toEqual({
+      dpr: 1,
+      scale: 1,
+    });
+  });
+
+  test("zoom in, zoom out and reset, from 1x to 10x and back, and a double-click goes back to 1x", async ({ page }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    const svg = sideView(page);
+    const baseViewBox = (await svg.getAttribute("viewBox")) ?? "";
+    await expect(zoomOutButton(page)).toBeDisabled();
+    await expect(resetButton(page)).toBeDisabled();
+    await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("1.5x");
+    await zoomOutButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await expect(zoomOutButton(page)).toBeDisabled();
+    await expect(resetButton(page)).toBeDisabled();
+    for (let i = 0; i < 18; i++) {
+      if (await zoomInButton(page).isDisabled()) break;
+      await zoomInButton(page).click();
+    }
+    await expect(zoomLevel(page)).toHaveText("10x");
+    await expect(zoomInButton(page)).toBeDisabled();
+    await resetButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await expect(svg).toHaveAttribute("viewBox", baseViewBox);
+
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("3x");
+    const box = await svgBox(page);
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await expect(svg).toHaveAttribute("viewBox", baseViewBox);
+  });
+
+  test("above 1x a drag pans the drawing, never past its edge; at 1x a drag changes nothing", async ({ page }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    const svg = sideView(page);
+    const base = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    const box = await svgBox(page);
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+
+    // At 1x: nothing.
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + 120, cy + 40, { steps: 6 });
+    await page.mouse.up();
+    expect(parseBox((await svg.getAttribute("viewBox")) ?? "")).toEqual(base);
+
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("3x");
+    const before = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    const unitsPerPx = before.width / box.width;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + 60, cy, { steps: 6 });
+    await page.mouse.up();
+    const after = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    // The drawing moved right with the pointer: the view moved left by 60 px of drawing.
+    expect(after.x).toBeCloseTo(before.x - 60 * unitsPerPx, 1);
+    expect(after.y).toBeCloseTo(before.y, 3);
+
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + 3000, cy + 3000, { steps: 10 });
+    await page.mouse.up();
+    const far = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    expect(far.x).toBeCloseTo(base.x, 3);
+    expect(far.y).toBeCloseTo(base.y, 3);
+    await expect(zoomLevel(page)).toHaveText("3x");
+  });
+
+  for (const orientation of ["nose left", "nose up"] as const) {
+    test(`lines, dots and words keep their screen size at 6x (${orientation})`, async ({ page }) => {
+      await dismissChrome(page);
+      await openRocker(page);
+      await pickFirstFittingBlank(page);
+      await page.getByRole("button", { name: "Show measuring points" }).click();
+      if (orientation === "nose up") await page.getByRole("button", { name: "Rotate the board" }).click();
+      await expect(zoomLevel(page)).toHaveText("1x");
+      await page.waitForTimeout(300);
+      const atOne = await screenSizes(page);
+      for (let i = 0; i < 10; i++) await zoomInButton(page).click();
+      await expect(zoomLevel(page)).toHaveText("6x");
+      await page.waitForTimeout(300);
+      const atSix = await screenSizes(page);
+      for (const key of Object.keys(atOne) as (keyof typeof atOne)[]) {
+        expect(atOne[key], `${key} at 1x`).toBeGreaterThan(0);
+        expect(Math.abs(atSix[key] - atOne[key]), `${key}: ${atOne[key]} px at 1x, ${atSix[key]} px at 6x`).toBeLessThan(0.05);
+      }
+    });
+  }
+
+  test("nothing about the zoom is saved: no storage key, and a reload is 1x", async ({ page }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("3x");
+    const keys = await page.evaluate(() => [...Object.keys(window.localStorage), ...Object.keys(window.sessionStorage)]);
+    expect(keys.filter((key) => /zoom/i.test(key))).toEqual([]);
+    const values = await page.evaluate(() =>
+      [...Object.values(window.localStorage), ...Object.values(window.sessionStorage)].join("\n"),
+    );
+    expect(values).not.toMatch(/zoom/i);
+    await page.reload();
+    await expect(zoomLevel(page)).toHaveText("1x");
+  });
+
+  test("the placement slider still slides the board along the blank while zoomed in", async ({ page }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("3x");
+    const readings = async () => (await sideView(page).locator("text").allTextContents()).join("|");
+    const before = await readings();
+    const slider = page.getByText(/^Placement — /).locator("xpath=..").getByRole("slider");
+    const b = await slider.boundingBox();
+    if (!b) throw new Error("no placement slider");
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2 - 40, b.y + b.height / 2, { steps: 8 });
+    await page.mouse.up();
+    await expect(page.getByText(/^Placement — .+ toward nose$/)).toBeVisible();
+    await expect.poll(readings).not.toBe(before);
+    await expect(zoomLevel(page)).toHaveText("3x");
+  });
 });
+
+test.describe("261007-fnz ROCKER zoom — touch screens", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "a phone");
+  });
+
+  test("at 1x the zoom control is not drawn and the toolbar row is unchanged", async ({ page }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    await expect(page.locator("[data-viewer-zoom]")).toBeHidden();
+    await expect(page.locator("[data-viewer-toolbar]:visible")).toHaveCount(1);
+    // An upright phone's row holds the measuring-points button alone (viewer-toolbar.spec.ts).
+    await expect(page.locator("[data-viewer-toolbar]:visible button:visible")).toHaveCount(1);
+  });
+});
+
+test.describe("261007-fnz ROCKER zoom — fingers (Android, real touch input)", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "CDP touch input is Chromium's");
+  });
+
+  test("two fingers pinch the drawing in, the page never zooms, and a double-tap goes back to 1x", async ({ page }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    const cdp = await page.context().newCDPSession(page);
+    const box = await svgBox(page);
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await pinch(cdp, cx, cy, 40, 160);
+    await expect.poll(async () => levelNumber(page)).toBeGreaterThan(1);
+    expect(await page.evaluate(() => window.visualViewport?.scale ?? 1)).toBe(1);
+    await expect(zoomLevel(page)).toBeVisible();
+    await expect(resetButton(page)).toBeVisible();
+    await expect(zoomInButton(page)).toBeHidden();
+    await expect(zoomOutButton(page)).toBeHidden();
+
+    for (let i = 0; i < 2; i++) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: cx, y: cy, id: 0 }] });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    }
+    await expect(zoomLevel(page)).toBeHidden();
+    await expect(page.locator("[data-viewer-zoom]")).toHaveAttribute("data-at-one", "");
+  });
+
+  test("once zoomed in one finger pans the drawing, clamped; after reset one finger is the browser's again", async ({
+    page,
+  }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    const svg = sideView(page);
+    const base = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    const box = await svgBox(page);
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+
+    // 3x through the wheel, dispatched on the drawing: the zoom buttons are not drawn on a touch
+    // screen, and a pinch would not land on an exact level.
+    await svg.evaluate((el, at) => {
+      for (let i = 0; i < 4; i++) {
+        el.dispatchEvent(new WheelEvent("wheel", { deltaY: -100, clientX: at.x, clientY: at.y, bubbles: true, cancelable: true }));
+      }
+    }, { x: cx, y: cy });
+    await expect(zoomLevel(page)).toHaveText("3x");
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve(null))));
+    expect(await svg.evaluate((el) => getComputedStyle(el).touchAction)).toBe("none");
+
+    const cdp = await page.context().newCDPSession(page);
+    const scrolls = () =>
+      page.evaluate(() => ({
+        main: document.querySelector("main")?.scrollTop ?? 0,
+        window: window.scrollY,
+        scale: window.visualViewport?.scale ?? 1,
+      }));
+    const scrollBefore = await scrolls();
+    const before = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    await swipe(cdp, cx, cy, cx + 80, cy + 90, 6);
+    const after = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    expect(after.x + after.y).toBeLessThan(before.x + before.y);
+    expect(after.x).toBeLessThanOrEqual(before.x);
+    expect(after.y).toBeLessThanOrEqual(before.y);
+    expect(await scrolls()).toEqual(scrollBefore);
+
+    // A long drag ends on the frame's edge.
+    await swipe(cdp, cx, cy, cx + 600, cy + 600, 10);
+    const far = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    expect(far.x).toBeCloseTo(base.x, 3);
+    expect(far.y).toBeCloseTo(base.y, 3);
+
+    // A pinch that ends with one finger still down hands over to that finger without a jump.
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [
+        { x: cx - 40, y: cy, id: 0 },
+        { x: cx + 40, y: cy, id: 1 },
+      ],
+    });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [
+        { x: cx - 50, y: cy, id: 0 },
+        { x: cx + 50, y: cy, id: 1 },
+      ],
+    });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: cx + 50, y: cy, id: 1 }] });
+    const handed = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: cx + 51, y: cy, id: 1 }] });
+    const nudged = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    const pxPerUnit = box.width / nudged.width;
+    expect(Math.hypot(nudged.x - handed.x, nudged.y - handed.y) * pxPerUnit).toBeLessThan(2);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    // Reset: the whole drawing, and one finger is the browser's again.
+    await resetButton(page).click();
+    await expect(page.locator("[data-viewer-zoom]")).toHaveAttribute("data-at-one", "");
+    const reset = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    expect(reset).toEqual(base);
+    expect(await svg.evaluate((el) => getComputedStyle(el).touchAction)).toBe("pan-x pan-y");
+    const atOneScroll = await scrolls();
+    await swipe(cdp, cx, cy, cx + 80, cy - 120, 6);
+    expect(parseBox((await svg.getAttribute("viewBox")) ?? "")).toEqual(base);
+    expect(await scrolls()).toEqual(atOneScroll);
+  });
+});
+
+function zoomInButton(page: Page): Locator {
+  return page.locator("[data-viewer-zoom]").getByRole("button", { name: "Zoom in" });
+}
+
+function zoomOutButton(page: Page): Locator {
+  return page.locator("[data-viewer-zoom]").getByRole("button", { name: "Zoom out" });
+}
+
+function resetButton(page: Page): Locator {
+  return page.locator("[data-viewer-zoom]").getByRole("button", { name: "Back to 1x — the whole drawing" });
+}
+
+async function levelNumber(page: Page): Promise<number> {
+  return Number(await zoomLevel(page).getAttribute("data-zoom-level"));
+}
+
+async function svgBox(page: Page) {
+  const b = await sideView(page).boundingBox();
+  if (!b) throw new Error("the side view has no box");
+  return b;
+}
+
+function parseBox(s: string) {
+  const [x, y, width, height] = s.trim().split(/[\s,]+/).map(Number);
+  return { x, y, width, height };
+}
+
+/**
+ * Every ROCKER line, dot and word the zoom must hold at one size, measured on screen: a stroke's
+ * width or a text's font size times the element's own screen scale (`getScreenCTM`).
+ */
+async function screenSizes(page: Page) {
+  return page.evaluate(() => {
+    const svg = document.querySelector('svg:has([data-board-silhouette="profile"])');
+    if (!svg) throw new Error("no side view");
+    const scaleOf = (el: Element) => {
+      const m = (el as SVGGraphicsElement).getScreenCTM();
+      if (!m) throw new Error("no screen matrix");
+      return Math.hypot(m.a, m.b);
+    };
+    const stroke = (el: Element | null | undefined) => {
+      if (!el) throw new Error("missing element");
+      return Number.parseFloat(getComputedStyle(el).strokeWidth) * scaleOf(el);
+    };
+    const font = (el: Element | null | undefined) => {
+      if (!el) throw new Error("missing text");
+      return Number.parseFloat(getComputedStyle(el).fontSize) * scaleOf(el);
+    };
+    const top = svg.querySelector(":scope > g");
+    const dot = svg.querySelector("[data-measuring-points] circle") as SVGCircleElement | null;
+    if (!dot) throw new Error("no measuring dot");
+    const cardTexts = svg.querySelectorAll("g:has(> rect) > text");
+    const readingTexts = svg.querySelectorAll('g[transform^="translate(0,"]:not(:has(> rect)) > text');
+    const title = [...svg.querySelectorAll("text")].find((t) => t.textContent === "Thickness");
+    return {
+      outline: stroke(svg.querySelector('[data-board-silhouette="profile"]')),
+      baseline: stroke(top?.querySelector(":scope > line")),
+      // A station card's leader: a station-line stroke that is neither the baseline (a child of
+      // the top group) nor a grid line.
+      leader: stroke(
+        [...svg.querySelectorAll('line[stroke="var(--outline-station-line)"]')].find(
+          (line) => line.parentElement !== top && !line.closest("[data-zoom-grid]"),
+        ),
+      ),
+      blankLine: stroke(svg.querySelector("[data-blank-silhouette]")),
+      dotRadius: dot.r.baseVal.value * scaleOf(dot),
+      cardName: font(cardTexts[0]),
+      cardValue: font(cardTexts[1]),
+      readingValue: font(readingTexts[0]),
+      title: font(title),
+    };
+  });
+}
+
+type Cdp = Awaited<ReturnType<ReturnType<Page["context"]>["newCDPSession"]>>;
+
+/** Two fingers landing `from` px apart about (cx, cy) and spreading to `to` px. */
+async function pinch(cdp: Cdp, cx: number, cy: number, from: number, to: number) {
+  const points = (d: number) => [
+    { x: cx - d / 2, y: cy, id: 0 },
+    { x: cx + d / 2, y: cy, id: 1 },
+  ];
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: points(from) });
+  for (let i = 1; i <= 8; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: points(from + ((to - from) * i) / 8) });
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+}
+
+/** One finger from (x0, y0) to (x1, y1). */
+async function swipe(cdp: Cdp, x0: number, y0: number, x1: number, y1: number, steps: number) {
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: x0, y: y0, id: 0 }] });
+  for (let i = 1; i <= steps; i++) {
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: x0 + ((x1 - x0) * i) / steps, y: y0 + ((y1 - y0) * i) / steps, id: 0 }],
+    });
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+}

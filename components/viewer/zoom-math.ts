@@ -205,6 +205,66 @@ export function zoomAt(
   return { ...next, anchor: { px, py, x: p.x, y: p.y } };
 }
 
+/**
+ * Drags the drawing by (dx, dy) box pixels: the view moves the other way by the same distance in
+ * drawing units, and stops at the frame's edge (D3). Nothing moves at 1x.
+ */
+export function panBy(base: ViewRect, client: ClientSize, state: ZoomState, dxPx: number, dyPx: number): ZoomState {
+  if (!(state.zoom > MIN_ZOOM)) return state;
+  const scale = baseFit(base, client) * state.zoom;
+  if (!(scale > 0)) return state;
+  const c = centerOf(zoomedView(base, client, state));
+  return settled(base, client, state.zoom, { x: c.x - dxPx / scale, y: c.y - dyPx / scale });
+}
+
+/**
+ * Two fingers (D6): the level follows the spread of the fingers from where the pinch started,
+ * snapped to half steps (P5) and kept inside [1, maxZoom], and the drawing point that was between
+ * the fingers when they landed stays between them — so moving both fingers together pans. Always
+ * worked out from the pinch's start, never step by step, so nothing drifts over a long pinch. A
+ * starting distance under a pixel is ignored.
+ */
+export function pinchState(
+  base: ViewRect,
+  client: ClientSize,
+  start: ZoomState,
+  startMid: { x: number; y: number },
+  startDist: number,
+  mid: { x: number; y: number },
+  dist: number,
+  maxZoom: number,
+): ZoomState {
+  if (!(startDist >= 1) || !Number.isFinite(dist)) return start;
+  const zoom = snapZoom((start.zoom * dist) / startDist, maxZoom);
+  if (!(zoom > MIN_ZOOM)) return { zoom: MIN_ZOOM, center: null };
+  const fit = baseFit(base, client);
+  if (fit <= 0) return start;
+  const p = clientToUser(zoomedView(base, client, start), client, startMid.x, startMid.y);
+  return settled(base, client, zoom, centreHolding(client, fit * zoom, p, mid.x, mid.y));
+}
+
+/**
+ * The transform that keeps a symbol (a card, a reading, a title) at its own screen size about its
+ * anchor (x, y) while the drawing around it is zoomed: scale by the zoom unit (`1 / zoom`) about
+ * that point. `undefined` at exactly 1, so the 1x markup — and every printed drawing — carries no
+ * transform attribute at all (P1).
+ */
+export function zoomUnitTransform(x: number, y: number, zoomUnit: number): string | undefined {
+  if (zoomUnit === 1) return undefined;
+  return `translate(${fmt(x)} ${fmt(y)}) scale(${fmt(zoomUnit)}) translate(${fmt(-x)} ${fmt(-y)})`;
+}
+
+/** A dash pattern at the zoom unit, so its dashes keep their screen length; the same string (or
+ * `undefined`) at exactly 1 (P1). */
+export function scaleDash(dash: string | undefined, zoomUnit: number): string | undefined {
+  if (dash === undefined || zoomUnit === 1) return dash;
+  return dash
+    .trim()
+    .split(/[\s,]+/)
+    .map((part) => fmt(Number(part) * zoomUnit))
+    .join(" ");
+}
+
 /** A wheel delta in pixels: lines are 16 px, pages the page's height. */
 export function normaliseWheelDelta(deltaY: number, deltaMode: number, pageHeightPx: number): number {
   if (deltaMode === 1) return deltaY * 16;
