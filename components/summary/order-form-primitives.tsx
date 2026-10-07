@@ -203,14 +203,16 @@ export function LogoBlock() {
         Shaper Assistant
       </div>
       <div className="h-px w-2/3 bg-surf-ink" />
-      <div className="font-bold text-surf-ink uppercase leading-tight order-form-value">
-        Custom Surfboard Order
-      </div>
-      <div className="font-normal text-surf-ink-muted leading-tight order-form-micro">
-        Your shop name, town &amp; phone
-        <br />
-        go here — upload a logo later
-      </div>
+      {/* The founder's default title (fast task 153, 2026-10-07): the wordmark, its line, and the site's
+          address under it — no "Custom Surfboard Order" line and no shop placeholder. A plain link:
+          the preflight gives it the form's ink and no underline, so it prints as the address and
+          stays clickable in a PDF. */}
+      <a
+        href="https://www.ShaperAssistant.com"
+        className="font-bold text-surf-ink leading-tight order-form-value"
+      >
+        www.ShaperAssistant.com
+      </a>
     </div>
   );
 }

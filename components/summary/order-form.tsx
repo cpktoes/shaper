@@ -164,7 +164,10 @@ function PageMark({ page, of, title }: { page: number; of: number; title: string
   return (
     <div className="flex flex-none items-baseline justify-between gap-2 pt-0.5 text-surf-ink-muted order-form-micro">
       <span className="font-display font-extrabold tracking-architectural uppercase">{title}</span>
-      <span>Page {page} of {of}</span>
+      {/* The site's address to the left of every page number (fast task 153, 2026-10-07). */}
+      <span>
+        <a href="https://www.ShaperAssistant.com">www.ShaperAssistant.com</a> · Page {page} of {of}
+      </span>
     </div>
   );
 }
