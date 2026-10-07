@@ -609,6 +609,11 @@ test.describe("ROCKER DATASHEET on a phone — the same sideways-scrolling box (
   test("the DATASHEET box scrolls sideways at 360px while the document does not", async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 700 });
     await page.goto("/design/rocker");
+    // Quick 261006-qfm: on a phone the tab strip settles only after hydration, when the TOP VIEW tab
+    // slides in between VIEWER and DATASHEET (the founder's order). A click before then lands on the
+    // server-rendered strip — lost, or on the wrong tab as it shifts — so wait for the third tab first,
+    // the same way the rest of the suite waits for React to own what it taps.
+    await page.getByRole("tab", { name: "TOP VIEW" }).waitFor({ timeout: 30_000 });
     await page.getByRole("tab", { name: "DATASHEET" }).click();
 
     const docScrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);

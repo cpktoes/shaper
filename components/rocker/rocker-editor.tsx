@@ -100,11 +100,13 @@ const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
   { id: "datasheet", label: "DATASHEET" },
 ];
 /** On an upright phone, a phone held sideways, or a narrow or short window, the blank seen from
- * above has no room beside the side view, so it gets a third tab, after DATASHEET so VIEWER and
- * DATASHEET keep their places (quick 261006-qfm, D-04, D-09). */
+ * above has no room beside the side view, so it gets its own tab, between VIEWER and DATASHEET — the
+ * two drawings first, then the table (the founder's order at their review, 2026-10-06; quick
+ * 261006-qfm, D-04). Every browser test finds a tab by its name, never by its place. */
 const ROCKER_TABS_SMALL_SCREEN: readonly PanelTab<RockerTab>[] = [
-  ...ROCKER_TABS,
+  { id: "viewer", label: "VIEWER" },
   { id: "topView", label: "TOP VIEW" },
+  { id: "datasheet", label: "DATASHEET" },
 ];
 
 export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }) {
