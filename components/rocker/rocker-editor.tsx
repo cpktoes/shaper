@@ -394,13 +394,22 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
             // one, filling the panel the way VIEWER's side view does, standing up or lying flat
             // with the board. No toolbar of its own; the measuring points follow VIEWER's toggle.
             <div className="relative flex min-h-0 flex-1 items-center justify-center">
-              <RockerTopView
-                topView={topView}
-                length={sideProfile.length}
-                blank={sideProfile.blank ?? undefined}
-                orientation={boardOrientation}
-                showMeasuringPoints={showMeasuringPoints}
-              />
+              {/* Quick 261007-fnz, plan 02 (2026-10-07; D9, R2, R4): the tab's drawing zooms like
+                  the side view — its own provider, keyed on the board's orientation so turning the
+                  board starts again at 1x, and its zoom row in the tab's top-right corner (no icon
+                  row here), drawn on a touch screen only once zoomed in. The computer's corner
+                  picture above never zooms. */}
+              <ViewerZoomProvider key={boardOrientation}>
+                <ViewerZoomControl placement="corner" />
+                <RockerTopView
+                  zoomable
+                  topView={topView}
+                  length={sideProfile.length}
+                  blank={sideProfile.blank ?? undefined}
+                  orientation={boardOrientation}
+                  showMeasuringPoints={showMeasuringPoints}
+                />
+              </ViewerZoomProvider>
             </div>
           ) : (
             <RockerDatasheet

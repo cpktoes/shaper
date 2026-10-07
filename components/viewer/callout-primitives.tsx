@@ -609,7 +609,9 @@ export function OutputRail({ edgeX, y, value, station, valueX = OUTLINE_OUTPUT_V
       <UprightAt x={valueX} y={y}>
         <text
           x={valueX}
-          y={horizontal ? y - sizes.name * 1.15 : y - 2}
+          // The 2-unit lift off the extension line is a gap, not a size, so it follows the zoom unit
+          // too (quick 261007-fnz plan 02): exactly 2 at 1x, the same 2 screen-scaled units zoomed.
+          y={horizontal ? y - sizes.name * 1.15 : y - 2 * u}
           textAnchor={horizontal ? "middle" : undefined}
           style={{ fontSize: sizes.value, fontWeight: 700, fontFamily: "var(--font-body)" }}
           fill="var(--outline-ink)"

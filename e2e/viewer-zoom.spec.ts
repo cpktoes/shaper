@@ -613,3 +613,739 @@ async function swipe(cdp: Cdp, x0: number, y0: number, x1: number, y1: number, s
   }
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
 }
+
+/* ── Plan 02 (2026-10-07): the same zoom on TEMPLATE, each RAILS plot, FINS and the TOP VIEW tab ── */
+
+/** TEMPLATE's drawing — the one svg carrying the board's outline silhouette. */
+function templateSvg(page: Page): Locator {
+  return page.locator('svg:has([data-board-silhouette="outline"])');
+}
+
+/** Opens TEMPLATE once React owns the drawing's toolbar (a click before hydration is lost). */
+async function openTemplate(page: Page) {
+  await page.goto("/design/outline");
+  await expect(templateSvg(page)).toBeVisible({ timeout: 30_000 });
+  await page.waitForFunction(() => {
+    const el = document.querySelector("[data-viewer-toolbar] button");
+    return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+  });
+}
+
+/** A drag point's centre on screen and its grab reach in screen pixels (the hit circle's radius
+ * times the circle's own screen scale). */
+async function dragPoint(page: Page, target: string) {
+  return page.locator(`[data-drag-target="${target}"]`).evaluate((el) => {
+    const circle = el as SVGCircleElement;
+    const m = circle.getScreenCTM();
+    if (!m) throw new Error("no screen matrix");
+    const r = circle.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, reach: circle.r.baseVal.value * Math.hypot(m.a, m.b) };
+  });
+}
+
+/** Every slider's value, read the way a screen reader reads it. */
+async function sliderValues(page: Page): Promise<string[]> {
+  return page.getByRole("slider").evaluateAll((els) => els.map((el) => el.getAttribute("aria-valuenow") ?? ""));
+}
+
+/** TEMPLATE's lines, dots and words at their on-screen size: a stroke's width, a dot's radius or a
+ * text's font size times the element's own screen scale. */
+async function templateScreenSizes(page: Page) {
+  return page.evaluate(() => {
+    const svg = document.querySelector('svg:has([data-board-silhouette="outline"])');
+    if (!svg) throw new Error("no TEMPLATE drawing");
+    const scaleOf = (el: Element) => {
+      const m = (el as SVGGraphicsElement).getScreenCTM();
+      if (!m) throw new Error("no screen matrix");
+      return Math.hypot(m.a, m.b);
+    };
+    const stroke = (el: Element | null | undefined, what: string) => {
+      if (!el) throw new Error(`missing ${what}`);
+      return Number.parseFloat(getComputedStyle(el).strokeWidth) * scaleOf(el);
+    };
+    const font = (el: Element | null | undefined, what: string) => {
+      if (!el) throw new Error(`missing ${what}`);
+      return Number.parseFloat(getComputedStyle(el).fontSize) * scaleOf(el);
+    };
+    const radius = (el: Element | null | undefined, what: string) => {
+      if (!el) throw new Error(`missing ${what}`);
+      return (el as SVGCircleElement).r.baseVal.value * scaleOf(el);
+    };
+    const notGrid = (els: Iterable<Element>) => [...els].find((el) => !el.closest("[data-zoom-grid]"));
+    return {
+      outline: stroke(svg.querySelector('[data-board-silhouette="outline"]'), "outline"),
+      stationLine: stroke(notGrid(svg.querySelectorAll('line[stroke="var(--outline-station-line)"]')), "station line"),
+      constructionLine: stroke(svg.querySelector('line[stroke="var(--outline-construction)"]'), "construction line"),
+      dimensionTick: stroke(svg.querySelector("[data-output-rail] line:nth-of-type(2)"), "dimension tick"),
+      chipText: font(svg.querySelector("[data-callout-chip] text"), "chip text"),
+      outputValue: font(svg.querySelector("[data-output-rail] text"), "output value"),
+      knotDot: radius(svg.querySelector('circle[fill="var(--outline-widepoint-knot)"]'), "widepoint knot"),
+      dragPoint: radius(svg.querySelector("[data-drag-target]"), "drag point"),
+    };
+  });
+}
+
+/** A point over the board's tail half (no construction lines, so no drag point under it). */
+async function overTheTailHalf(page: Page) {
+  const b = await page.locator('[data-board-silhouette="outline"]').boundingBox();
+  if (!b) throw new Error("no outline");
+  return { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height * 0.7) };
+}
+
+test.describe("261007-fnz TEMPLATE zoom — computer", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a mouse and its wheel");
+  });
+
+  test("tracer: TEMPLATE zooms and a drag point still drags", async ({ page }) => {
+    await dismissChrome(page);
+    await openTemplate(page);
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+    const svg = templateSvg(page);
+    await expect(zoomLevel(page)).toHaveText("1x");
+    const atOne = await dragPoint(page, "widepoint");
+
+    // Over the tail half of the board, a little below and inboard of the widepoint, so the
+    // widepoint stays on screen at 3x.
+    await page.mouse.move(Math.round(atOne.x + 40), Math.round(atOne.y + 60));
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(200);
+      await page.mouse.wheel(0, -100);
+    }
+    await expect(zoomLevel(page)).toHaveText("3x");
+    const atThree = await dragPoint(page, "widepoint");
+    // The same reach on screen at any zoom: finer on the board, never harder to grab.
+    expect(Math.abs(atThree.reach - atOne.reach)).toBeLessThan(0.5);
+
+    // The widepoint's drag moves WP Offset along the board (lib/geometry/outline-drag.ts's
+    // "widepoint" case; Width is slider-only), exactly as desktop-regression.spec.ts proves at 1x.
+    const offset = page.getByText(/^Offset — /);
+    const before = await offset.textContent();
+    const viewBox = await svg.getAttribute("viewBox");
+    await page.mouse.move(atThree.x, atThree.y);
+    await page.mouse.down();
+    await page.mouse.move(atThree.x, atThree.y - 20, { steps: 4 });
+    await page.mouse.move(atThree.x, atThree.y - 40, { steps: 4 });
+    await page.mouse.up();
+    // The solver ran, and the drawing did not pan under the point.
+    await expect(offset).not.toHaveText(before ?? "");
+    await expect(svg).toHaveAttribute("viewBox", viewBox ?? "");
+    await expect(zoomLevel(page)).toHaveText("3x");
+  });
+
+  test("a drag away from every drag point pans at 3x and changes no slider; at 1x it changes nothing", async ({ page }) => {
+    await dismissChrome(page);
+    await openTemplate(page);
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+    const svg = templateSvg(page);
+    const box = await svg.boundingBox();
+    if (!box) throw new Error("no TEMPLATE box");
+    // Right of the board, between the output rail's readings: no drag point within reach.
+    const at = { x: box.x + box.width * 0.85, y: box.y + box.height * 0.62 };
+    const sliders = await sliderValues(page);
+    const base = parseBox((await svg.getAttribute("viewBox")) ?? "");
+
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    await page.mouse.move(at.x - 60, at.y - 30, { steps: 6 });
+    await page.mouse.up();
+    expect(parseBox((await svg.getAttribute("viewBox")) ?? "")).toEqual(base);
+    expect(await sliderValues(page)).toEqual(sliders);
+
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("3x");
+    const before = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    const unitsPerPx = before.height / box.height;
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    await page.mouse.move(at.x, at.y - 60, { steps: 6 });
+    await page.mouse.up();
+    const after = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    // The drawing followed the pointer up: the view moved down by 60 px of drawing.
+    expect(after.y).toBeCloseTo(before.y + 60 * unitsPerPx, 1);
+    expect(await sliderValues(page)).toEqual(sliders);
+  });
+
+  for (const orientation of ["nose up", "turned flat"] as const) {
+    test(`lines, dots, chips and words keep their screen size at 6x (${orientation})`, async ({ page }) => {
+      await dismissChrome(page);
+      await openTemplate(page);
+      await page.getByRole("button", { name: "Show construction lines" }).click();
+      if (orientation === "turned flat") {
+        await page.getByRole("button", { name: "Rotate the board to horizontal" }).click();
+      }
+      await expect(zoomLevel(page)).toHaveText("1x");
+      await page.waitForTimeout(300);
+      const atOne = await templateScreenSizes(page);
+      for (let i = 0; i < 10; i++) await zoomInButton(page).click();
+      await expect(zoomLevel(page)).toHaveText("6x");
+      await page.waitForTimeout(300);
+      const atSix = await templateScreenSizes(page);
+      for (const key of Object.keys(atOne) as (keyof typeof atOne)[]) {
+        expect(atOne[key], `${key} at 1x`).toBeGreaterThan(0);
+        expect(Math.abs(atSix[key] - atOne[key]), `${key}: ${atOne[key]} px at 1x, ${atSix[key]} px at 6x`).toBeLessThan(
+          0.05,
+        );
+      }
+    });
+  }
+
+  test('the grid: none at 1x; at 3x the 1" lines, counted from the tail tip and the stringer', async ({ page }) => {
+    await dismissChrome(page);
+    await openTemplate(page);
+    const grid = page.locator("[data-zoom-grid]");
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await expect(grid).toHaveCount(0);
+    const at = await overTheTailHalf(page);
+    await page.mouse.move(at.x, at.y);
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(200);
+      await page.mouse.wheel(0, -100);
+    }
+    await expect(zoomLevel(page)).toHaveText("3x");
+    await expect(grid).toHaveCount(1);
+    const read = await page.evaluate(() => {
+      const svg = document.querySelector('svg:has([data-board-silhouette="outline"])');
+      const outline = svg?.querySelector('[data-board-silhouette="outline"]') as SVGPathElement | null;
+      const stringer = [...(svg?.querySelectorAll('line[stroke="var(--outline-station-line)"]') ?? [])].find(
+        (l) => !l.closest("[data-zoom-grid]") && l.getAttribute("x1") === l.getAttribute("x2"),
+      );
+      const lines = [...document.querySelectorAll("[data-zoom-grid] line")] as SVGLineElement[];
+      if (!outline || !stringer || lines.length === 0) throw new Error("no grid");
+      const n = (l: Element, a: string) => Number(l.getAttribute(a));
+      const bbox = outline.getBBox();
+      const tailY = bbox.y + bbox.height;
+      const stringerX = n(stringer, "x1");
+      const across = lines.filter((l) => n(l, "x1") === n(l, "x2")).sort((a, b) => n(a, "x1") - n(b, "x1"));
+      const along = lines.filter((l) => n(l, "y1") === n(l, "y2")).sort((a, b) => n(a, "y1") - n(b, "y1"));
+      const step = n(across[1], "x1") - n(across[0], "x1");
+      const isWhole = (v: number) => Math.abs(v - Math.round(v)) < 1e-3;
+      const screen = across.map((l) => l.getBoundingClientRect().left);
+      const gaps = screen.slice(1).map((x, i) => x - screen[i]);
+      return {
+        spacingPx: gaps.reduce((a, b) => a + b, 0) / gaps.length,
+        allMajor: lines.every((l) => l.hasAttribute("data-major")),
+        anchoredAcross: across.every((l) => isWhole((n(l, "x1") - stringerX) / step)),
+        anchoredAlong: along.length > 0 && along.every((l) => isWhole((n(l, "y1") - tailY) / step)),
+      };
+    });
+    // M5: 7.66 px per inch at 1x on 1280×800, so about 23 px at 3x — the 1" rung, every line a 1" line.
+    expect(read.spacingPx).toBeGreaterThan(20);
+    expect(read.spacingPx).toBeLessThan(26);
+    expect(read.allMajor).toBe(true);
+    expect(read.anchoredAcross).toBe(true);
+    expect(read.anchoredAlong).toBe(true);
+  });
+});
+
+test.describe("261007-fnz TEMPLATE zoom — fingers (Android, real touch input)", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "CDP touch input is Chromium's");
+  });
+
+  test("a pinch zooms TEMPLATE; a finger still picks and drags a point, on it and from afar; a second finger ends the drag", async ({
+    page,
+  }) => {
+    await dismissChrome(page);
+    await openTemplate(page);
+    const cdp = await page.context().newCDPSession(page);
+    const offset = page.getByText(/^Offset — /);
+    const readout = page.locator("svg text").filter({ hasText: /^Offset — / });
+    const widepoint = page.locator('[data-drag-target="widepoint"]');
+    await expect(widepoint).toBeVisible();
+
+    // Two fingers about the widepoint itself, so it stays where it is while the drawing grows.
+    const w0 = await dragPoint(page, "widepoint");
+    await pinch(cdp, w0.x, w0.y, 60, 120);
+    await expect.poll(async () => levelNumber(page)).toBeGreaterThan(1);
+    const level = await levelNumber(page);
+
+    // One finger on the point: it is picked and dragged, exactly as at 1x.
+    const w1 = await dragPoint(page, "widepoint");
+    const before = await offset.textContent();
+    await swipe(cdp, w1.x, w1.y, w1.x, w1.y - 30, 4);
+    await expect(offset).not.toHaveText(before ?? "");
+    await expect(widepoint).toHaveAttribute("data-selected", "true");
+    expect(await levelNumber(page)).toBe(level);
+
+    // A finger well away from every point drags the picked point from afar (260909-ktq), and
+    // never pans the drawing.
+    const box = await templateSvg(page).boundingBox();
+    if (!box) throw new Error("no TEMPLATE box");
+    const viewBox = await templateSvg(page).getAttribute("viewBox");
+    const far = { x: box.x + box.width - 20, y: box.y + box.height * 0.8 };
+    const beforeRemote = await offset.textContent();
+    await swipe(cdp, far.x, far.y, far.x, far.y - 30, 4);
+    await expect(offset).not.toHaveText(beforeRemote ?? "");
+    await expect(templateSvg(page)).toHaveAttribute("viewBox", viewBox ?? "");
+    expect(await levelNumber(page)).toBe(level);
+
+    // A second finger landing mid-drag ends the drag: the board keeps the shape it reached, and
+    // the two fingers zoom instead.
+    const w2 = await dragPoint(page, "widepoint");
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: w2.x, y: w2.y, id: 0 }] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: w2.x, y: w2.y - 12, id: 0 }] });
+    await expect(readout).toBeVisible();
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [
+        { x: w2.x, y: w2.y - 12, id: 0 },
+        { x: w2.x + 60, y: w2.y - 12, id: 1 },
+      ],
+    });
+    await expect(readout).toHaveCount(0);
+    const reached = await offset.textContent();
+    for (let i = 1; i <= 6; i++) {
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [
+          { x: w2.x - 10 * i, y: w2.y - 12 - 6 * i, id: 0 },
+          { x: w2.x + 60 + 10 * i, y: w2.y - 12, id: 1 },
+        ],
+      });
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    expect(await offset.textContent()).toBe(reached);
+    await expect.poll(async () => levelNumber(page)).toBeGreaterThan(level);
+  });
+});
+
+/* ── Plan 02: RAILS (each plot its own zoom) and FINS (up to 4x) ───────────────────────────── */
+
+type RailKey = "nose" | "center" | "tail";
+
+/** One RAILS plot on the computer's plot row (a phone held sideways lands there too). */
+function railPlot(page: Page, key: RailKey): Locator {
+  return page.locator(`[data-rail-plot-row="desktop"] svg[data-rail-section-plot="${key}"]`);
+}
+
+/** That plot's own zoom level, read off its own zoom row (at the right end of its title line). */
+function railLevel(page: Page, key: RailKey): Locator {
+  return page.locator(`[data-rail-zoom-host="${key}"] [data-viewer-zoom] [data-zoom-level]`);
+}
+
+async function openRails(page: Page) {
+  await page.goto("/design/rails");
+  await expect(page.locator('[data-rail-plot-row="desktop"][data-rail-plot-fit="measured"]')).toBeAttached({
+    timeout: 30_000,
+  });
+}
+
+/** `steps` wheel notches toward the reader, dispatched on the drawing itself at (x, y): the way the
+ * phone tests reach an exact level (Playwright has no wheel on a mobile WebKit, and a pinch does
+ * not land on an exact level). */
+async function wheelOn(target: Locator, at: { x: number; y: number }, steps: number) {
+  await target.evaluate(
+    (el, { at, steps }) => {
+      for (let i = 0; i < steps; i++) {
+        el.dispatchEvent(
+          new WheelEvent("wheel", { deltaY: -100, clientX: at.x, clientY: at.y, bubbles: true, cancelable: true }),
+        );
+      }
+    },
+    { at, steps },
+  );
+}
+
+/** A RAILS plot's axis numbers, dots and lines at their on-screen size. */
+async function railScreenSizes(plot: Locator) {
+  return plot.evaluate((svg) => {
+    const scaleOf = (el: Element) => {
+      const m = (el as SVGGraphicsElement).getScreenCTM();
+      if (!m) throw new Error("no screen matrix");
+      return Math.hypot(m.a, m.b);
+    };
+    const number = svg.querySelector("text");
+    const dot = svg.querySelector("circle") as SVGCircleElement | null;
+    const tick = [...svg.querySelectorAll('line[stroke="var(--color-surf-ink-muted)"]')][0] as SVGLineElement | undefined;
+    if (!number || !dot || !tick) throw new Error("missing plot parts");
+    return {
+      axisNumber: Number.parseFloat(getComputedStyle(number).fontSize) * scaleOf(number),
+      dot: dot.r.baseVal.value * scaleOf(dot),
+      tickLength: Math.hypot(
+        tick.x2.baseVal.value - tick.x1.baseVal.value,
+        tick.y2.baseVal.value - tick.y1.baseVal.value,
+      ) * scaleOf(tick),
+    };
+  });
+}
+
+test.describe("261007-fnz RAILS zoom — computer", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a mouse and its wheel");
+  });
+
+  test("each plot zooms on its own: NOSE to 3x leaves CENTER and TAIL at 1x, with a finer grid and RAILS's own grid kept", async ({
+    page,
+  }) => {
+    await dismissChrome(page);
+    await openRails(page);
+    const nose = railPlot(page, "nose");
+    for (const key of ["nose", "center", "tail"] as const) await expect(railLevel(page, key)).toHaveText("1x");
+    await expect(page.locator("[data-zoom-grid]")).toHaveCount(0);
+    await page.waitForTimeout(300);
+    const atOne = await railScreenSizes(nose);
+    const ownLinesAtOne = await nose.evaluate(
+      (svg) =>
+        [...svg.querySelectorAll("line")].filter(
+          (l) => !l.closest("[data-zoom-grid]") && (l.getAttribute("stroke") ?? "").includes("12%"),
+        ).length,
+    );
+
+    const box = await nose.boundingBox();
+    if (!box) throw new Error("no NOSE plot");
+    await page.mouse.move(Math.round(box.x + box.width * 0.8), Math.round(box.y + box.height * 0.6));
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(200);
+      await page.mouse.wheel(0, -100);
+    }
+    await expect(railLevel(page, "nose")).toHaveText("3x");
+    await expect(railLevel(page, "center")).toHaveText("1x");
+    await expect(railLevel(page, "tail")).toHaveText("1x");
+    await page.waitForTimeout(300);
+
+    const read = await nose.evaluate((svg) => {
+      const n = (l: Element, a: string) => Number(l.getAttribute(a));
+      const apex = svg.querySelector('line[stroke-dasharray="2 3"]');
+      if (!apex) throw new Error("no apex line");
+      const apexX = n(apex, "x1");
+      const fine = [...svg.querySelectorAll("[data-zoom-grid] line")];
+      const own = [...svg.querySelectorAll("line")].filter(
+        (l) => !l.closest("[data-zoom-grid]") && (l.getAttribute("stroke") ?? "").includes("12%"),
+      );
+      const fineAcross = fine.filter((l) => n(l, "x1") === n(l, "x2")).map((l) => n(l, "x1")).sort((a, b) => a - b);
+      const ownAcross = own.filter((l) => n(l, "x1") === n(l, "x2")).map((l) => n(l, "x1"));
+      const isWholeInch = (x: number) => Math.abs((x - apexX) / 56 - Math.round((x - apexX) / 56)) < 1e-6;
+      return {
+        fineStep: fineAcross[1] - fineAcross[0],
+        fineOnAWholeInch: fineAcross.some(isWholeInch),
+        ownCount: own.length,
+        ownAcrossUnique: new Set(ownAcross).size === ownAcross.length,
+      };
+    });
+    // M5: about 59.6 px per inch at 1x, so 179 at 3x — the 1/8" rung (7 drawing units at 56 per inch).
+    expect(read.fineStep).toBeCloseTo(7, 6);
+    expect(read.fineOnAWholeInch).toBe(false);
+    expect(read.ownCount).toBe(ownLinesAtOne);
+    expect(read.ownAcrossUnique).toBe(true);
+
+    const atThree = await railScreenSizes(nose);
+    for (const key of Object.keys(atOne) as (keyof typeof atOne)[]) {
+      expect(Math.abs(atThree[key] - atOne[key]), `${key}: ${atOne[key]} px at 1x, ${atThree[key]} px at 3x`).toBeLessThan(
+        0.05,
+      );
+    }
+  });
+});
+
+test.describe("261007-fnz RAILS zoom — a phone held sideways (Android, real touch input)", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "CDP touch input is Chromium's");
+  });
+
+  test("at 1x a thumb scrolls the drawing column; zoomed in it pans the plot instead; after reset it scrolls again", async ({
+    page,
+  }) => {
+    await dismissChrome(page);
+    await page.setViewportSize({ width: 844, height: 340 });
+    await openRails(page);
+    const main = page.locator("main");
+    const plot = railPlot(page, "center");
+    const cdp = await page.context().newCDPSession(page);
+    const scrollTop = () => main.evaluate((el) => el.scrollTop);
+    // Back to the top once any fling from the last swipe has run out.
+    const toTop = async () => {
+      await expect
+        .poll(
+          async () => {
+            await main.evaluate((el) => {
+              el.scrollTop = 0;
+            });
+            await page.waitForTimeout(250);
+            return scrollTop();
+          },
+          { timeout: 10_000 },
+        )
+        .toBe(0);
+    };
+    // Where to put a thumb on the CENTER plot: the middle of the part of it the column shows.
+    const thumbSpot = async () => {
+      const m = await main.boundingBox();
+      const b = await plot.boundingBox();
+      if (!m || !b) throw new Error("no column or plot");
+      const top = Math.max(b.y, m.y);
+      const bottom = Math.min(b.y + b.height, m.y + m.height);
+      expect(bottom - top, "the CENTER plot is on screen").toBeGreaterThan(20);
+      return { x: b.x + b.width * 0.5, y: bottom - 6 };
+    };
+    // Proof this column can scroll at all (phone-rails.spec.ts proves the same at this size).
+    expect(await main.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+
+    // 1x: the browser's — the column scrolls and the plot stays put.
+    expect(await plot.evaluate((el) => getComputedStyle(el).touchAction)).toBe("pan-x pan-y");
+    const base = await plot.getAttribute("viewBox");
+    let at = await thumbSpot();
+    await swipe(cdp, at.x, at.y, at.x, at.y - 120, 8);
+    await expect.poll(scrollTop).toBeGreaterThan(0);
+    await expect(plot).toHaveAttribute("viewBox", base ?? "");
+
+    // 3x on that plot alone: one finger pans the plot and the column stays where it is.
+    await toTop();
+    at = await thumbSpot();
+    await wheelOn(plot, at, 4);
+    await expect(railLevel(page, "center")).toHaveText("3x");
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve(null))));
+    expect(await plot.evaluate((el) => getComputedStyle(el).touchAction)).toBe("none");
+    const before = parseBox((await plot.getAttribute("viewBox")) ?? "");
+    await swipe(cdp, at.x, at.y, at.x - 40, at.y - 120, 8);
+    const after = parseBox((await plot.getAttribute("viewBox")) ?? "");
+    // The finger went up and left, so the drawing did: the view moved down and right (clamped).
+    expect(after.y).toBeGreaterThan(before.y);
+    expect(after.x).toBeGreaterThanOrEqual(before.x);
+    await page.waitForTimeout(300);
+    expect(await scrollTop()).toBe(0);
+
+    // Reset: 1x again, and the thumb is the browser's again.
+    const reset = page
+      .locator('[data-rail-zoom-host="center"]')
+      .getByRole("button", { name: "Back to 1x — the whole drawing" });
+    await reset.click();
+    await expect(plot).toHaveAttribute("viewBox", base ?? "");
+    expect(await plot.evaluate((el) => getComputedStyle(el).touchAction)).toBe("pan-x pan-y");
+    await toTop();
+    at = await thumbSpot();
+    await swipe(cdp, at.x, at.y, at.x, at.y - 120, 8);
+    await expect.poll(scrollTop).toBeGreaterThan(0);
+    await expect(plot).toHaveAttribute("viewBox", base ?? "");
+  });
+});
+
+/** FINS's tail diagram. */
+function finsSvg(page: Page): Locator {
+  return page.locator("[data-fin-plot] svg").first();
+}
+
+async function openFins(page: Page) {
+  await page.goto("/design/fins");
+  await expect(finsSvg(page)).toBeVisible({ timeout: 30_000 });
+  await page.waitForFunction(() => {
+    const el = document.querySelector("[data-viewer-zoom] button");
+    return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+  });
+}
+
+/** FINS's lines, dots and words at their on-screen size. */
+async function finScreenSizes(page: Page) {
+  return finsSvg(page).evaluate((svg) => {
+    const scaleOf = (el: Element) => {
+      const m = (el as SVGGraphicsElement).getScreenCTM();
+      if (!m) throw new Error("no screen matrix");
+      return Math.hypot(m.a, m.b);
+    };
+    const stroke = (el: Element | null | undefined, what: string) => {
+      if (!el) throw new Error(`missing ${what}`);
+      return Number.parseFloat(getComputedStyle(el).strokeWidth) * scaleOf(el);
+    };
+    const label = svg.querySelector("[data-fin-dim]");
+    const dot = svg.querySelector('circle[fill="var(--outline-ink)"]') as SVGCircleElement | null;
+    if (!label || !dot) throw new Error("missing label or dot");
+    return {
+      outline: stroke(svg.querySelector('path[stroke="var(--outline-ink)"]'), "outline"),
+      centreline: stroke(
+        [...svg.querySelectorAll('line[stroke="var(--outline-station-line)"]')].find((l) => !l.closest("[data-zoom-grid]")),
+        "centreline",
+      ),
+      dimensionLine: stroke(svg.querySelector('line[stroke="var(--outline-dim-ink)"]'), "dimension line"),
+      finMark: stroke(svg.querySelector('line[stroke="var(--color-surf-accent-ink)"]'), "fin mark"),
+      label: Number.parseFloat(getComputedStyle(label).fontSize) * scaleOf(label),
+      dot: dot.r.baseVal.value * scaleOf(dot),
+    };
+  });
+}
+
+test.describe("261007-fnz FINS zoom — computer", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a mouse and its wheel");
+  });
+
+  test("FINS stops at 4x — zoom in, and the wheel — with the 1/2\" grid at 3x and lines and labels at their 1x size", async ({
+    page,
+  }) => {
+    await dismissChrome(page);
+    await openFins(page);
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await page.waitForTimeout(300);
+    const atOne = await finScreenSizes(page);
+
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("3x");
+    const grid = await finsSvg(page).evaluate((svg) => {
+      const n = (l: Element, a: string) => Number(l.getAttribute(a));
+      const lines = [...svg.querySelectorAll("[data-zoom-grid] line")];
+      const across = lines.filter((l) => n(l, "x1") === n(l, "x2")).map((l) => n(l, "x1")).sort((a, b) => a - b);
+      const along = lines.filter((l) => n(l, "y1") === n(l, "y2")).map((l) => n(l, "y1"));
+      const whole = (v: number) => Math.abs(v - Math.round(v)) < 1e-6;
+      return {
+        step: across[1] - across[0],
+        // Counted from the stringer (x 260) and the tail tip (y 320), 7 drawing units to the 1/2".
+        anchored: across.every((x) => whole((x - 260) / 7)) && along.length > 0 && along.every((y) => whole((y - 320) / 7)),
+      };
+    });
+    expect(grid.step).toBeCloseTo(7, 6);
+    expect(grid.anchored).toBe(true);
+
+    await zoomInButton(page).click();
+    await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("4x");
+    await expect(zoomInButton(page)).toBeDisabled();
+    await page.waitForTimeout(300);
+    const atFour = await finScreenSizes(page);
+    for (const key of Object.keys(atOne) as (keyof typeof atOne)[]) {
+      expect(Math.abs(atFour[key] - atOne[key]), `${key}: ${atOne[key]} px at 1x, ${atFour[key]} px at 4x`).toBeLessThan(
+        0.05,
+      );
+    }
+
+    const box = await finsSvg(page).boundingBox();
+    if (!box) throw new Error("no FINS box");
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(200);
+      await page.mouse.wheel(0, -100);
+    }
+    await expect(zoomLevel(page)).toHaveText("4x");
+  });
+});
+
+test.describe("261007-fnz FINS zoom — fingers (Android, real touch input)", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "CDP touch input is Chromium's");
+  });
+
+  test("at 3x one finger drags the diagram around and scrolls nothing", async ({ page }) => {
+    await dismissChrome(page);
+    await openFins(page);
+    const svg = finsSvg(page);
+    const box = await svg.boundingBox();
+    if (!box) throw new Error("no FINS box");
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await wheelOn(svg, at, 4);
+    await expect(zoomLevel(page)).toHaveText("3x");
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve(null))));
+    expect(await svg.evaluate((el) => getComputedStyle(el).touchAction)).toBe("none");
+    const scrolls = () =>
+      page.evaluate(() => ({ main: document.querySelector("main")?.scrollTop ?? 0, window: window.scrollY }));
+    const scrollBefore = await scrolls();
+    const before = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    const cdp = await page.context().newCDPSession(page);
+    await swipe(cdp, at.x, at.y, at.x + 50, at.y + 60, 6);
+    const after = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    expect(after.x).toBeLessThan(before.x);
+    expect(after.y).toBeLessThan(before.y);
+    await page.waitForTimeout(300);
+    expect(await scrolls()).toEqual(scrollBefore);
+  });
+});
+
+/* ── Plan 02: the TOP VIEW tab zooms; the computer's corner picture never does ─────────────── */
+
+/** The blank seen from above — the TOP VIEW tab's drawing on a phone, the corner picture on a computer. */
+function topViewSvg(page: Page): Locator {
+  return page.locator('svg[aria-label^="The board\'s outline seen from above"]').first();
+}
+
+async function openTopViewTab(page: Page) {
+  await openRocker(page);
+  await pickFirstFittingBlank(page);
+  await page.getByRole("tab", { name: "TOP VIEW" }).click();
+  await expect(topViewSvg(page)).toBeVisible();
+}
+
+test.describe("261007-fnz the TOP VIEW tab — fingers (Android, real touch input)", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "CDP touch input is Chromium's");
+  });
+
+  test("a pinch zooms the TOP VIEW tab; at 3x one finger moves it and scrolls nothing; reset gives the finger back", async ({
+    page,
+  }) => {
+    await dismissChrome(page);
+    await openTopViewTab(page);
+    const svg = topViewSvg(page);
+    const base = (await svg.getAttribute("viewBox")) ?? "";
+    await expect(page.locator("[data-viewer-zoom]")).toBeHidden();
+    const box = await svg.boundingBox();
+    if (!box) throw new Error("no TOP VIEW box");
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    const cdp = await page.context().newCDPSession(page);
+    await pinch(cdp, at.x, at.y, 40, 120);
+    await expect.poll(async () => levelNumber(page)).toBeGreaterThan(1);
+    await expect(zoomLevel(page)).toBeVisible();
+    await resetButton(page).click();
+    await expect(svg).toHaveAttribute("viewBox", base);
+
+    await wheelOn(svg, at, 4);
+    await expect(zoomLevel(page)).toHaveText("3x");
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve(null))));
+    expect(await svg.evaluate((el) => getComputedStyle(el).touchAction)).toBe("none");
+    const scrolls = () =>
+      page.evaluate(() => ({ main: document.querySelector("main")?.scrollTop ?? 0, window: window.scrollY }));
+    const scrollBefore = await scrolls();
+    const before = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    await swipe(cdp, at.x, at.y, at.x + 40, at.y + 60, 6);
+    const after = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeGreaterThan(0);
+    expect(after.y).toBeLessThanOrEqual(before.y);
+    await page.waitForTimeout(300);
+    expect(await scrolls()).toEqual(scrollBefore);
+
+    await resetButton(page).click();
+    await expect(svg).toHaveAttribute("viewBox", base);
+    expect(await svg.evaluate((el) => getComputedStyle(el).touchAction)).toBe("pan-x pan-y");
+  });
+});
+
+test.describe("261007-fnz the TOP VIEW tab — iPhone", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "an iPhone");
+  });
+
+  test("the TOP VIEW tab zooms in and its zoom row appears; at 1x nothing new is drawn", async ({ page }) => {
+    await dismissChrome(page);
+    await openTopViewTab(page);
+    const svg = topViewSvg(page);
+    await expect(page.locator("[data-viewer-zoom]")).toBeHidden();
+    await expect(page.locator("[data-zoom-grid]")).toHaveCount(0);
+    const box = await svg.boundingBox();
+    if (!box) throw new Error("no TOP VIEW box");
+    await wheelOn(svg, { x: box.x + box.width / 2, y: box.y + box.height * 0.2 }, 4);
+    await expect(zoomLevel(page)).toHaveText("3x");
+    await expect(resetButton(page)).toBeVisible();
+  });
+});
+
+test.describe("261007-fnz the computer's corner picture of the blank never zooms", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a mouse and its wheel");
+  });
+
+  test("the wheel over the corner picture leaves it exactly as it was", async ({ page }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    const inset = page.locator("[data-top-view-inset] svg");
+    await expect(inset).toBeVisible();
+    const viewBox = (await inset.getAttribute("viewBox")) ?? "";
+    const box = await inset.boundingBox();
+    if (!box) throw new Error("no corner picture");
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(200);
+      await page.mouse.wheel(0, -100);
+    }
+    await expect(inset).toHaveAttribute("viewBox", viewBox);
+    await expect(page.locator("[data-top-view-inset] [data-zoom-grid]")).toHaveCount(0);
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(inset).toHaveAttribute("viewBox", viewBox);
+  });
+});

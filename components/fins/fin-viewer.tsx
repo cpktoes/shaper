@@ -32,6 +32,9 @@ import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "@/lib/geo
 import { formatDim, formatLength, formatMark } from "@/lib/geometry/measure-display";
 import type { Point2D } from "@/lib/geometry/board";
 import { CALLOUT_FONT_VALUE, CALLOUT_PX, DimensionTick, useSvgFitScale } from "@/components/viewer/callout-primitives";
+import { useViewerZoom, ViewerZoomControl, zoomDashToken } from "@/components/viewer/zoom-viewport";
+import { scaleDash } from "@/components/viewer/zoom-math";
+import { ZoomGrid } from "@/components/viewer/zoom-grid";
 import { useUnits } from "@/components/units-provider";
 import { layoutFinLabelBaselines, type FinLabelBox } from "./fin-label-layout";
 
@@ -39,6 +42,21 @@ const SCALE = 14;
 const ORIGIN_X = 260;
 const TAIL_Y = 320;
 const VIEW_TOP_MARGIN = 0.6;
+
+/**
+ * How far FINS zooms in (quick 261007-fnz, plan 02, 2026-10-07; D9, R3): 4x, not the 10x every
+ * other drawing reaches. The tail diagram is already drawn large — about 18.66 screen pixels to the
+ * inch at 1x on a 1280 × 800 computer — so at 4x a shaper reads it against the 1/2" grid, and
+ * there is nothing finer on a fin's placement to look at. `fin-placement-editor.tsx` hands it to
+ * this drawing's zoom provider.
+ */
+export const FINS_MAX_ZOOM = 4;
+
+/** A label's halo at the zoom unit (261007-fnz, D4): the same blur on screen at any zoom, and the
+ * very string it always was at 1x. */
+function haloShadow(radii: readonly number[], zoomUnit: number): string {
+  return radii.map((r) => `0 0 ${zoomUnit === 1 ? r : Number((r * zoomUnit).toFixed(4))}px ${HALO}`).join(", ");
+}
 
 /**
  * The drawing frame.
@@ -227,8 +245,16 @@ function dimsForMark(
   maxLeftTier: number,
   system: UnitsSystem,
   importedTail: ImportedFinTail | null,
+  /**
+   * The zoom unit (261007-fnz, D4): every small gap below that places a dimension's line, its
+   * ticks' extensions or its words off the fin it measures is a distance on screen, not on the
+   * board, so it is multiplied by this — exactly 1 at 1x, where every number is the one it was.
+   * The tail's own shape and the tier layout across it are the drawing itself and stay put.
+   */
+  u: number,
 ): FinDim[] {
   const { mark, teX, teY, leX, leY } = geom;
+  const nudge = LABEL_BASELINE_NUDGE * u;
   const dims: FinDim[] = [];
   const offTailIn = mmToInches(mark.offTail);
   const w12In = mmToInches(tailWidth12);
@@ -241,7 +267,7 @@ function dimsForMark(
 
   if (mark.side === dimsSide || mark.side === 0) {
     const tier = tierRank[mark.lateralKind] ?? 0;
-    const GAP = 4;
+    const GAP = 4 * u;
     let boundaryPx = sharedBoundaryPx + tier * leftTierStackPx;
     if (offTailIn >= 9 && offTailIn <= 15) {
       boundaryPx = Math.min(
@@ -257,7 +283,7 @@ function dimsForMark(
     // Offsetting around the tier set's own midpoint keeps the multi-tier anti-overlap stagger
     // (still +/-20px apart at the extremes) while landing perfectly centered when there is
     // only one tier.
-    const midY = (TAIL_Y + teY) / 2 + (tier - maxLeftTier / 2) * 20;
+    const midY = (TAIL_Y + teY) / 2 + (tier - maxLeftTier / 2) * 20 * u;
     const topEdgeXIn = mmToInches(tailHalfWidthAt(tailShape, tailWidth12, mm(0), importedTail));
     const topEdgeX = ORIGIN_X - topEdgeXIn * SCALE;
     const botEdgeXIn = mmToInches(tailHalfWidthAt(tailShape, tailWidth12, mark.offTail, importedTail));
@@ -275,30 +301,30 @@ function dimsForMark(
       extBotX1: dimX,
       extBotX2: Math.max(dimX, botEdgeX),
       extBotY: teY,
-      labelX: dimX - 4,
-      labelY: midY + LABEL_BASELINE_NUDGE,
+      labelX: dimX - 4 * u,
+      labelY: midY + nudge,
       labelAnchor: "end",
       text: offTailDisplay,
     });
   }
 
   if (mark.lateralKind === "stringer" && mark.side === -1 && toeDisplay) {
-    const aboveRowY = Math.min(teY, leY) - 16;
+    const aboveRowY = Math.min(teY, leY) - 16 * u;
     const midXAbove = (teX + leX) / 2;
     dims.push({
       kind: "below",
       measure: "toe",
       extLeftX: teX,
-      extLeftY1: teY - 3,
-      extLeftY2: aboveRowY - 4,
+      extLeftY1: teY - 3 * u,
+      extLeftY2: aboveRowY - 4 * u,
       extRightX: leX,
-      extRightY1: leY - 3,
-      extRightY2: aboveRowY - 4,
+      extRightY1: leY - 3 * u,
+      extRightY2: aboveRowY - 4 * u,
       dimX1: teX,
       dimX2: leX,
       dimY: aboveRowY,
       labelX: midXAbove,
-      labelY: aboveRowY - 13 + LABEL_BASELINE_NUDGE,
+      labelY: aboveRowY - 13 * u + nudge,
       labelAnchor: "middle",
       text: toeDisplay,
     });
@@ -307,7 +333,7 @@ function dimsForMark(
   if (mark.lateralKind === "stringer" && mark.side === 1) {
     // dimRowOffset is always 38 in the prototype: it's only ever passed for the quad rear pair,
     // the sole role whose lateralKind is 'stringer'.
-    const rowY = TAIL_Y + 38;
+    const rowY = TAIL_Y + 38 * u;
     const midX = (ORIGIN_X + teX) / 2;
     const edgeOffTailRightIn = mmToInches(tailOffTailAtHalfWidth(tailShape, tailWidth12, mark.lateral, importedTail));
     const edgeYRight = TAIL_Y - edgeOffTailRightIn * SCALE;
@@ -316,37 +342,37 @@ function dimsForMark(
       measure: "spread",
       extLeftX: ORIGIN_X,
       extLeftY1: TAIL_Y,
-      extLeftY2: rowY + 4,
+      extLeftY2: rowY + 4 * u,
       extRightX: teX,
       extRightY1: edgeYRight,
-      extRightY2: rowY + 4,
+      extRightY2: rowY + 4 * u,
       dimX1: ORIGIN_X,
       dimX2: teX,
       dimY: rowY,
       labelX: midX,
-      labelY: rowY - 13 + LABEL_BASELINE_NUDGE,
+      labelY: rowY - 13 * u + nudge,
       labelAnchor: "middle",
       text: lateralValueDisplay,
     });
   }
 
   if (mark.lateralKind === "rail" && mark.side === -1 && toeDisplay) {
-    const aboveRowY = Math.min(teY, leY) - 16;
+    const aboveRowY = Math.min(teY, leY) - 16 * u;
     const midXAbove = (teX + leX) / 2;
     dims.push({
       kind: "below",
       measure: "toe",
       extLeftX: teX,
-      extLeftY1: teY - 3,
-      extLeftY2: aboveRowY - 4,
+      extLeftY1: teY - 3 * u,
+      extLeftY2: aboveRowY - 4 * u,
       extRightX: leX,
-      extRightY1: leY - 3,
-      extRightY2: aboveRowY - 4,
+      extRightY1: leY - 3 * u,
+      extRightY2: aboveRowY - 4 * u,
       dimX1: teX,
       dimX2: leX,
       dimY: aboveRowY,
       labelX: midXAbove,
-      labelY: aboveRowY - 13 + LABEL_BASELINE_NUDGE,
+      labelY: aboveRowY - 13 * u + nudge,
       labelAnchor: "middle",
       text: toeDisplay,
     });
@@ -356,7 +382,7 @@ function dimsForMark(
     const edgeHwIn = mmToInches(tailHalfWidthAt(tailShape, tailWidth12, mark.offTail, importedTail));
     const edgeHwPx = edgeHwIn * SCALE;
     const railEdgeX = ORIGIN_X + edgeHwPx;
-    const GAP2 = 4;
+    const GAP2 = 4 * u;
     const STACK2 = 14;
     let railEnd = ORIGIN_X + edgeHwPx + GAP2;
     if (offTailIn >= 9 && offTailIn <= 15) {
@@ -371,10 +397,10 @@ function dimsForMark(
       x2b: teX,
       extAX: railEdgeX,
       extBX: teX,
-      extY1: teY - 4,
-      extY2: teY + 4,
-      labelX: railEnd + 4,
-      labelY: teY + LABEL_BASELINE_NUDGE,
+      extY1: teY - 4 * u,
+      extY2: teY + 4 * u,
+      labelX: railEnd + 4 * u,
+      labelY: teY + nudge,
       labelAnchor: "start",
       text: lateralValueDisplay,
     });
@@ -457,9 +483,21 @@ export function FinViewer({
   // same size as the data in the tables. Compact keeps the summary scale the print-fit needs.
   const svgRef = useRef<SVGSVGElement>(null);
   const fitScale = useSvgFitScale(svgRef, VIEW_WIDTH, VIEW_HEIGHT);
+  // Quick 261007-fnz, plan 02 (2026-10-07): the tail diagram zooms like ROCKER's side view, through
+  // the one shared zoom (D2), up to `FINS_MAX_ZOOM` — the provider is `fin-placement-editor.tsx`'s;
+  // outside one `zoom` is 1 and `viewBox` is the base string. `touch: "pan"`: one finger is the
+  // browser's at 1x and drags the diagram around once zoomed in (D6). The value labels are pinned
+  // to the fit times the zoom, and every raw width, dash, dot and label gap follows `zoomUnit`
+  // (exactly 1 at 1x), so the words and lines keep their screen size at any zoom (D4).
+  const { zoom, zoomUnit, viewBox, view, svgProps } = useViewerZoom(
+    svgRef,
+    `0 ${VIEW_MIN_Y} ${VIEW_WIDTH} ${VIEW_HEIGHT}`,
+    { touch: "pan" },
+  );
+  const shownFit = fitScale * zoom;
   const valueFontSize = compact
     ? "var(--summary-font-callout, 10px)"
-    : (fitScale > 0 ? CALLOUT_PX.value / fitScale : CALLOUT_FONT_VALUE);
+    : (shownFit > 0 ? CALLOUT_PX.value / shownFit : CALLOUT_FONT_VALUE);
 
   const marksWithDims = useMemo(
     () =>
@@ -475,9 +513,10 @@ export function FinViewer({
           maxLeftTier,
           system,
           importedTail ?? null,
+          zoomUnit,
         ),
       })),
-    [marksGeom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier, system, importedTail],
+    [marksGeom, tailShape, tailWidth12, tierRank, sharedBoundaryPx, leftTierStackPx, maxLeftTier, system, importedTail, zoomUnit],
   );
 
   /**
@@ -593,12 +632,24 @@ export function FinViewer({
       >
         <svg
           ref={svgRef}
-          viewBox={`0 ${VIEW_MIN_Y} ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
+          viewBox={viewBox}
           preserveAspectRatio="xMidYMid meet"
           className="absolute inset-0 block h-full w-full"
+          {...svgProps}
         >
+            {/* The grid (261007-fnz, D5): only above 1x, drawn first so it sits behind the tail,
+                counted from the tail tip along the board and the stringer across it. */}
+            <ZoomGrid
+              zoom={zoom}
+              fitScale={fitScale}
+              unitsPerInch={SCALE}
+              anchor={{ x: ORIGIN_X, y: TAIL_Y }}
+              bounds={{ x: 0, y: VIEW_MIN_Y, width: VIEW_WIDTH, height: VIEW_HEIGHT }}
+              visible={view}
+              system={system}
+            />
             <path d={filled} fill="var(--outline-board-fill)" stroke="none" />
-            <path d={open} fill="none" stroke="var(--outline-ink)" strokeWidth={2} />
+            <path d={open} fill="none" stroke="var(--outline-ink)" strokeWidth={2 * zoomUnit} />
             {/* Reference lines: the centreline is static (stringer dash); the tail-width-12"
                 line is a derived station (station dash) — the input value itself lives in the
                 sidebar, not repeated here (outputs only, sketch 002). */}
@@ -608,8 +659,8 @@ export function FinViewer({
               x2={ORIGIN_X}
               y2={TAIL_Y}
               stroke="var(--outline-station-line)"
-              strokeWidth={1}
-              strokeDasharray="var(--outline-stringer-dash)"
+              strokeWidth={zoomUnit}
+              strokeDasharray={zoomDashToken("--outline-stringer-dash", zoomUnit)}
             />
             <line
               x1={w12LineX1}
@@ -617,8 +668,8 @@ export function FinViewer({
               x2={w12LineX2}
               y2={w12LineY}
               stroke="var(--outline-station-line)"
-              strokeWidth={1}
-              strokeDasharray="var(--outline-station-dash)"
+              strokeWidth={zoomUnit}
+              strokeDasharray={zoomDashToken("--outline-station-dash", zoomUnit)}
             />
 
             {marksWithAdjustedDims.map(({ geom, dims }, mi) => (
@@ -629,13 +680,15 @@ export function FinViewer({
                   x2={geom.leX}
                   y2={geom.leY}
                   stroke="var(--color-surf-accent-ink)"
-                  strokeWidth={2.5}
+                  strokeWidth={2.5 * zoomUnit}
                   // Not a "leader line" — this is the fin mark itself. Its dash keys the same
                   // Front/Rear/Center grouping as `result.legend`'s dash-per-role swatches below
                   // the diagram, so it stays even though every callout leader/extension/dimension
                   // line above has collapsed to the two shared reference-line dash tokens.
                   strokeDasharray={
-                    geom.mark.lateralKind === "none" ? "none" : geom.mark.lateralKind === "stringer" ? "2 3" : "8 4"
+                    geom.mark.lateralKind === "none"
+                      ? "none"
+                      : scaleDash(geom.mark.lateralKind === "stringer" ? "2 3" : "8 4", zoomUnit)
                   }
                 />
                 {showCallouts &&
@@ -643,21 +696,21 @@ export function FinViewer({
                     if (d.kind === "railV") {
                       return (
                         <g key={di}>
-                          <line x1={d.x1} y1={d.y1} x2={d.x2a} y2={d.y1} stroke="var(--outline-dim-ink)" strokeWidth={1} />
-                          <line x1={d.x1} y1={d.y1} x2={d.x2b} y2={d.y1} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+                          <line x1={d.x1} y1={d.y1} x2={d.x2a} y2={d.y1} stroke="var(--outline-dim-ink)" strokeWidth={zoomUnit} />
+                          <line x1={d.x1} y1={d.y1} x2={d.x2b} y2={d.y1} stroke="var(--outline-dim-ink)" strokeWidth={zoomUnit} />
                           <DimensionTick x={d.x2a} y={d.y1} />
                           <DimensionTick x={d.x2b} y={d.y1} />
-                          <line x1={d.extAX} y1={d.extY1} x2={d.extAX} y2={d.extY2} stroke="var(--outline-dim-ink)" strokeWidth={1} />
-                          <line x1={d.extBX} y1={d.extY1} x2={d.extBX} y2={d.extY2} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+                          <line x1={d.extAX} y1={d.extY1} x2={d.extAX} y2={d.extY2} stroke="var(--outline-dim-ink)" strokeWidth={zoomUnit} />
+                          <line x1={d.extBX} y1={d.extY1} x2={d.extBX} y2={d.extY2} stroke="var(--outline-dim-ink)" strokeWidth={zoomUnit} />
                         </g>
                       );
                     }
                     if (d.kind === "below") {
                       return (
                         <g key={di}>
-                          <line x1={d.extLeftX} y1={d.extLeftY1} x2={d.extLeftX} y2={d.extLeftY2} stroke="var(--outline-dim-ink)" strokeWidth={1} />
-                          <line x1={d.extRightX} y1={d.extRightY1} x2={d.extRightX} y2={d.extRightY2} stroke="var(--outline-dim-ink)" strokeWidth={1} />
-                          <line x1={d.dimX1} y1={d.dimY} x2={d.dimX2} y2={d.dimY} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+                          <line x1={d.extLeftX} y1={d.extLeftY1} x2={d.extLeftX} y2={d.extLeftY2} stroke="var(--outline-dim-ink)" strokeWidth={zoomUnit} />
+                          <line x1={d.extRightX} y1={d.extRightY1} x2={d.extRightX} y2={d.extRightY2} stroke="var(--outline-dim-ink)" strokeWidth={zoomUnit} />
+                          <line x1={d.dimX1} y1={d.dimY} x2={d.dimX2} y2={d.dimY} stroke="var(--outline-dim-ink)" strokeWidth={zoomUnit} />
                           <DimensionTick x={d.dimX1} y={d.dimY} />
                           <DimensionTick x={d.dimX2} y={d.dimY} />
                         </g>
@@ -665,16 +718,16 @@ export function FinViewer({
                     }
                     return (
                       <g key={di}>
-                        <line x1={d.x1} y1={d.y1} x2={d.x2} y2={d.y2} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+                        <line x1={d.x1} y1={d.y1} x2={d.x2} y2={d.y2} stroke="var(--outline-dim-ink)" strokeWidth={zoomUnit} />
                         <DimensionTick x={d.x1} y={d.y1} />
                         <DimensionTick x={d.x2} y={d.y2} />
-                        <line x1={d.extTopX1} y1={d.extTopY} x2={d.extTopX2} y2={d.extTopY} stroke="var(--outline-dim-ink)" strokeWidth={1} />
-                        <line x1={d.extBotX1} y1={d.extBotY} x2={d.extBotX2} y2={d.extBotY} stroke="var(--outline-dim-ink)" strokeWidth={1} />
+                        <line x1={d.extTopX1} y1={d.extTopY} x2={d.extTopX2} y2={d.extTopY} stroke="var(--outline-dim-ink)" strokeWidth={zoomUnit} />
+                        <line x1={d.extBotX1} y1={d.extBotY} x2={d.extBotX2} y2={d.extBotY} stroke="var(--outline-dim-ink)" strokeWidth={zoomUnit} />
                       </g>
                     );
                   })}
-                <circle cx={geom.teX} cy={geom.teY} r={3.5} fill="var(--outline-ink)" />
-                <circle cx={geom.leX} cy={geom.leY} r={3.5} fill="var(--outline-ink)" />
+                <circle cx={geom.teX} cy={geom.teY} r={3.5 * zoomUnit} fill="var(--outline-ink)" />
+                <circle cx={geom.leX} cy={geom.leY} r={3.5 * zoomUnit} fill="var(--outline-ink)" />
               </g>
             ))}
 
@@ -686,10 +739,13 @@ export function FinViewer({
                 y={svgTopY - 6}
                 textAnchor="middle"
                 style={{
-                  fontSize: "var(--summary-font-label, 12px)",
+                  fontSize:
+                    zoomUnit === 1
+                      ? "var(--summary-font-label, 12px)"
+                      : `calc(var(--summary-font-label, 12px) * ${zoomUnit})`,
                   fontWeight: 800,
                   fill: "var(--outline-ink)",
-                  textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}`,
+                  textShadow: haloShadow([3, 3], zoomUnit),
                 }}
               >
                 {`${formatLength(boardLength, system)} · ${formatDim(tailWidth12, system)} tail`}
@@ -709,7 +765,7 @@ export function FinViewer({
                       fontSize: valueFontSize,
                       fontWeight: 700,
                       fill: "var(--outline-ink)",
-                      textShadow: `0 0 3px ${HALO}, 0 0 3px ${HALO}, 0 0 5px ${HALO}`,
+                      textShadow: haloShadow([3, 3, 5], zoomUnit),
                     }}
                   >
                     {d.text}
@@ -717,6 +773,9 @@ export function FinViewer({
                 )),
               )}
         </svg>
+        {/* The zoom row (D8, R2): FINS has no icon row, so it sits in this box's top-right
+            corner; on a touch screen only once zoomed in (P3). Nothing outside a provider. */}
+        <ViewerZoomControl placement="corner" />
       </div>
       {!compact && (
         <div
