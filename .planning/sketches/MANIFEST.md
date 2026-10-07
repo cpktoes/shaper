@@ -38,6 +38,16 @@ Rack** ("rename it Board Rack rather than Your Boards"), and **"the user must be
 rack."** On a computer that is a drag along the rack (010). On a phone a sideways drag already swipes the
 rack, so a board is held until it lifts and then slid along (011).
 
+### A nose printed 0 wide (sketch 012, 2026-10-07)
+
+The founder: "For blanks with a 0 N0 value, the nose should have maximum roundness. i.e. The spline control
+point would be perpendicular to the stringer, so that the spline essentially starts totally perpendicular to
+the stringer before curving through the next data points." Today ROCKER's top view runs the square-root width
+curve straight into the 0 at the tip, so 43 of the catalogue's 162 blanks draw a pointed nose where the foam is
+round. The sketch draws the live curve (A), the founder's control point across the stringer (B, with the handle
+length to feel) and a parabola from the tip fixed by the printed numbers alone (C), on five real blanks — one
+each for the catalogue's 3", 6" and 12" last printed segments — in the app's own top-view strokes.
+
 ## Reference Points
 
 - Traditional drafting / engineering-drawing conventions (extension lines, end ticks, value in a
@@ -60,6 +70,7 @@ rack, so a board is held until it lifts and then slid along (011).
 | 009 | phone-swipe-rack | On a phone or iPad, how does swiping along a sideways board rack feel, with the middle board turned to its outline? | **B — Turns as it passes** (in 010's Drawing look) | phone, home, board-rack, interaction, motion |
 | 010 | sideways-board-rack | On a computer, what does the Board Rack look like, and how does a board turn and move under the cursor? | **A — Drawing rack**, turn follows the cursor | desktop, home, board-rack, interaction, motion, reorder |
 | 011 | phone-rack-reorder | On a phone, where a sideways drag already swipes the rack, how does a shaper move a board to a new place? | **A — Hold and drag** (tried on a phone) | phone, home, board-rack, reorder, interaction |
+| 012 | blank-round-nose | When a blank prints its nose tip 0 wide, how should its outline reach the tip on ROCKER's top view? | — (for the founder's pick) | viewer, rocker, top-view, blank, geometry |
 
 ## Decisions These Lock In
 
@@ -124,3 +135,5 @@ rack, so a board is held until it lifts and then slid along (011).
 
 `components/outline/outline-viewer.tsx`, `components/fins/fin-viewer.tsx`, and their consumers
 `outline-editor.tsx`, `fin-placement-editor.tsx`, `board-summary.tsx`, `preset-card.tsx`.
+Sketch 012: `lib/geometry/root-curve.ts` / `blank-fit.ts` (the width curve the fit check and the top view
+share), `lib/geometry/blank-top-view.ts`, `components/rocker/rocker-top-view.tsx`.

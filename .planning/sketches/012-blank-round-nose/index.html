@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch 012 — A nose printed 0 wide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link id="theme-link" rel="stylesheet" href="../themes/app-slate.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--color-page); color: var(--color-text); font-family: var(--font-sans); min-height: 100vh; }
+  button, input { font-family: inherit; }
+
+  /* ---------- sketch chrome (not part of the design) ---------- */
+  #chrome { position: sticky; top: 0; z-index: 9998; }
+  #variant-nav { display: flex; gap: 6px; align-items: center; padding: 8px 16px; background: #0d0f14; border-bottom: 1px solid #262a33; font: 13px/1.2 system-ui, sans-serif; color: #cfd5de; flex-wrap: wrap; }
+  #variant-nav .sketch-id { font-weight: 700; margin-right: 8px; color: #fff; }
+  .variant-tab { background: #1b1f27; color: #cfd5de; border: 1px solid #2c313b; border-radius: 6px; padding: 6px 10px; cursor: pointer; transition: all .15s ease; font: inherit; }
+  .variant-tab:hover { border-color: #4b5361; color: #fff; }
+  .variant-tab.active { background: #234f66; border-color: #3490bc; color: #fff; }
+  .variant-tab.baseline { font-style: italic; }
+  .variant-tab.winner { border-color: #c9a227; }
+  .variant-tab.winner.active { background: #4a3d10; border-color: #e0b52c; }
+  .notes-btn { margin-left: auto; }
+  #sketch-bar { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 7px 16px; background: #14171d; border-bottom: 1px solid #262a33; font: 12px/1.3 system-ui, sans-serif; color: #aeb5c0; }
+  #sketch-bar .desc { flex: 1 1 360px; color: #dfe3ea; }
+  #sketch-bar .grp { display: flex; align-items: center; gap: 6px; }
+  #sketch-bar .seg { display: inline-flex; border: 1px solid #2f343e; border-radius: 6px; overflow: hidden; }
+  #sketch-bar .seg button { background: transparent; color: #aeb5c0; border: 0; padding: 4px 8px; font: 12px system-ui, sans-serif; cursor: pointer; transition: all .15s ease; }
+  #sketch-bar .seg button + button { border-left: 1px solid #2f343e; }
+  #sketch-bar .seg button:hover { color: #fff; background: #222731; }
+  #sketch-bar .seg button.on { background: #234f66; color: #fff; }
+  #sketch-bar input[type=range] { width: 150px; accent-color: #3490bc; }
+  #sketch-bar .meas { color: #cfd5de; font-variant-numeric: tabular-nums; }
+  #sketch-bar .meas b { color: #7cc4e8; }
+  #sketch-bar .legend { display: inline-flex; gap: 12px; align-items: center; }
+  #sketch-bar .legend i { display: inline-block; width: 22px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
+  #notes-panel { display: none; position: absolute; right: 12px; top: calc(100% + 6px); width: 420px; max-height: 72vh; overflow-y: auto; background: #12151b; color: #dfe3ea; border: 1px solid #2c313b; border-radius: 10px; box-shadow: 0 18px 40px rgba(0,0,0,.5); padding: 14px 16px; font: 13.5px/1.5 system-ui, sans-serif; }
+  #notes-panel.open { display: block; }
+  #notes-panel h2 { font-size: 14px; margin: 0 0 6px; color: #fff; }
+  #notes-panel h3 { font-size: 12px; margin: 12px 0 4px; letter-spacing: .05em; color: #fff; text-transform: uppercase; }
+  #notes-panel p { margin: 0 0 8px; color: #aeb5c0; }
+  #notes-panel ul { margin: 0 0 8px; padding-left: 18px; color: #aeb5c0; }
+  #notes-panel b { color: #dfe3ea; }
+  #sketch-tools { position: fixed; bottom: 12px; right: 12px; z-index: 9999; font: 12px system-ui, sans-serif; background: rgba(0,0,0,0.82); color: #fff; padding: 6px 8px; border-radius: 8px; opacity: .7; transition: opacity .2s; display: flex; flex-direction: column; gap: 6px; }
+  #sketch-tools:hover, #sketch-tools.open { opacity: 1; }
+  #sketch-tools:not(.open) .row { display: none; }
+  #tools-toggle { align-self: flex-end; }
+  #sketch-tools .row { display: flex; gap: 4px; align-items: center; }
+  #sketch-tools .row > span:first-child { width: 84px; color: #aeb5c0; }
+  #sketch-tools button { font: 11px system-ui, sans-serif; background: #22262e; color: #fff; border: 1px solid #3a404b; border-radius: 4px; padding: 3px 6px; cursor: pointer; }
+  #sketch-tools button.on { background: #234f66; border-color: #3490bc; }
+
+  /* ---------- the drawing (the design) — the app's top view, as ROCKER draws it ---------- */
+  :root {
+    --outline-foam-shade: color-mix(in srgb, var(--color-text-muted) 24%, transparent);
+    --outline-blank-line: color-mix(in srgb, var(--color-text-muted) 60%, transparent);
+    --outline-station-line: color-mix(in srgb, var(--color-text-muted) 36%, transparent);
+    --outline-board-fill: var(--color-board);
+    --outline-ink: var(--color-text);
+  }
+  #stage { padding: 20px 16px 60px; }
+  .intro { max-width: 1100px; margin: 0 auto 14px; font-size: 14px; line-height: 1.5; color: var(--color-text-muted); }
+  .intro b { color: var(--color-text); font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 16px; max-width: 1400px; margin: 0 auto; }
+  .cell { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .cell h3 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; color: var(--color-text-muted); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .cell h3 span { font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .cell .name { font-size: 20px; font-weight: 600; line-height: 1.2; }
+  .cell .pair { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+  .cell .plate { background: var(--color-bg); }
+  .cell svg { display: block; overflow: visible; }
+  .cell svg.zoom { overflow: hidden; }
+  .cell .cap { font-size: 12px; line-height: 1.45; color: var(--color-text-muted); max-width: 520px; }
+  .cell .cap b { color: var(--color-text); font-weight: 600; }
+  .lbl { font-family: var(--font-sans); font-size: 10px; font-weight: 600; fill: var(--color-text-muted); letter-spacing: .04em; }
+  .stage-note { max-width: 1100px; margin: 18px auto 0; font-size: 12px; color: var(--color-text-muted); line-height: 1.5; }
+  @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } .cell .pair { gap: 10px; } }
+</style>
+</head>
+<body>
+<div id="chrome">
+  <div id="variant-nav"></div>
+  <div id="sketch-bar"></div>
+  <div id="notes-panel"></div>
+</div>
+<main id="stage"></main>
+<div id="sketch-tools">
+  <button id="tools-toggle" type="button">⚙ Sketch tools</button>
+  <div class="row"><span>Theme</span><span id="t-theme"></span></div>
+  <div class="row"><span>Mini width</span><span id="t-mini"></span></div>
+</div>
+<script>
+/* Every blank below is a real catalogue blank, read from db/seed/blanks/*.csv through the app's own
+   reader, and the two boards are the Mid-length and Longboard presets exactly as ROCKER lays them on
+   their blanks (lib/geometry — buildOutline, silhouette, buildBlankProfile, buildBlankTopView).
+   Nothing here was typed by hand. Inches throughout: the app converts its millimetres once, at the edge. */
+const DATA = {"presets":[{"id":"midlength","name":"Mid-length","blankStartIn":-1.8445,"blankEndIn":87.8445,"board":[[0,0],[0.006803,0.17205],[0.027228,0.345403],[0.061298,0.519973],[0.109036,0.69567],[0.170466,0.872406],[0.245611,1.050092],[0.334494,1.228641],[0.437138,1.407964],[0.553567,1.587973],[0.683803,1.768579],[0.827871,1.949694],[0.985793,2.131229],[1.157593,2.313096],[1.343293,2.495208],[1.542918,2.677474],[1.75649,2.859808],[1.984033,3.04212],[2.22557,3.224323],[2.481124,3.406328],[2.750718,3.588046],[3.034376,3.769389],[3.332121,3.95027],[3.643977,4.130598],[3.969965,4.310287],[4.310111,4.489248],[4.664436,4.667392],[5.032965,4.844631],[5.41572,5.020877],[5.812725,5.196041],[6.224003,5.370035],[6.649577,5.54277],[7.089471,5.714159],[7.543707,5.884113],[8.01231,6.052543],[8.495302,6.219361],[8.992707,6.384478],[9.504547,6.547808],[10.030846,6.70926],[10.571628,6.868747],[11.126915,7.02618],[11.696731,7.181471],[12.2811,7.334531],[12.880043,7.485273],[13.493586,7.633607],[14.12175,7.779446],[14.764559,7.922701],[15.422037,8.063284],[16.094206,8.201106],[16.781091,8.336079],[17.482713,8.468115],[18.199097,8.597124],[18.930266,8.72302],[19.676242,8.845713],[20.43705,8.965116],[21.212712,9.081139],[22.003252,9.193695],[22.808693,9.302694],[23.629059,9.408049],[24.464371,9.509672],[25.314655,9.607474],[26.179932,9.701366],[27.060227,9.79126],[27.955562,9.877068],[28.865961,9.958702],[29.791447,10.036073],[30.732044,10.109092],[31.687774,10.177672],[32.658661,10.241724],[33.644727,10.30116],[34.645998,10.355891],[35.662494,10.405829],[36.694241,10.450885],[37.741261,10.490971],[38.803577,10.526],[39.881213,10.555882],[40.974191,10.580529],[42.082536,10.599852],[43.20627,10.613764],[44.345417,10.622176],[45.5,10.625],[46.457953,10.6235],[47.402469,10.618991],[48.333625,10.611462],[49.251498,10.6009],[50.156166,10.587294],[51.047704,10.57063],[51.926191,10.550897],[52.791702,10.528083],[53.644316,10.502175],[54.484108,10.473162],[55.311157,10.441031],[56.125538,10.40577],[56.927329,10.367367],[57.716608,10.32581],[58.49345,10.281086],[59.257932,10.233184],[60.010133,10.182091],[60.750128,10.127795],[61.477995,10.070285],[62.193811,10.009547],[62.897653,9.94557],[63.589597,9.878341],[64.269721,9.807849],[64.938101,9.734081],[65.594815,9.657025],[66.239939,9.576669],[66.873551,9.493001],[67.495728,9.406009],[68.106546,9.31568],[68.706082,9.222002],[69.294414,9.124963],[69.871618,9.024552],[70.437771,8.920755],[70.992951,8.813562],[71.537234,8.702958],[72.070698,8.588933],[72.593418,8.471475],[73.105473,8.35057],[73.606939,8.226208],[74.097893,8.098375],[74.578413,7.96706],[75.048574,7.83225],[75.508455,7.693934],[75.958131,7.552099],[76.397681,7.406733],[76.82718,7.257824],[77.246707,7.10536],[77.656337,6.949328],[78.056149,6.789717],[78.446218,6.626514],[78.826622,6.459707],[79.197438,6.289284],[79.558743,6.115233],[79.910614,5.937541],[80.253127,5.756198],[80.58636,5.571189],[80.91039,5.382504],[81.225293,5.190129],[81.531147,4.994054],[81.828029,4.794266],[82.116015,4.590752],[82.395183,4.3835],[82.665609,4.172499],[82.927371,3.957736],[83.180546,3.739199],[83.425209,3.516876],[83.66144,3.290754],[83.889313,3.060822],[84.108907,2.827068],[84.320299,2.589479],[84.523564,2.348042],[84.718781,2.102747],[84.906026,1.85358],[85.085377,1.600531],[85.25691,1.343585],[85.420701,1.082732],[85.576829,0.817959],[85.72537,0.549254],[85.866402,0.276605],[86,0],[86,0],[85.866402,-0.276605],[85.72537,-0.549254],[85.576829,-0.817959],[85.420701,-1.082732],[85.25691,-1.343585],[85.085377,-1.600531],[84.906026,-1.85358],[84.718781,-2.102747],[84.523564,-2.348042],[84.320299,-2.589479],[84.108907,-2.827068],[83.889313,-3.060822],[83.66144,-3.290754],[83.425209,-3.516876],[83.180546,-3.739199],[82.927371,-3.957736],[82.665609,-4.172499],[82.395183,-4.3835],[82.116015,-4.590752],[81.828029,-4.794266],[81.531147,-4.994054],[81.225293,-5.190129],[80.91039,-5.382504],[80.58636,-5.571189],[80.253127,-5.756198],[79.910614,-5.937541],[79.558743,-6.115233],[79.197438,-6.289284],[78.826622,-6.459707],[78.446218,-6.626514],[78.056149,-6.789717],[77.656337,-6.949328],[77.246707,-7.10536],[76.82718,-7.257824],[76.397681,-7.406733],[75.958131,-7.552099],[75.508455,-7.693934],[75.048574,-7.83225],[74.578413,-7.96706],[74.097893,-8.098375],[73.606939,-8.226208],[73.105473,-8.35057],[72.593418,-8.471475],[72.070698,-8.588933],[71.537234,-8.702958],[70.992951,-8.813562],[70.437771,-8.920755],[69.871618,-9.024552],[69.294414,-9.124963],[68.706082,-9.222002],[68.106546,-9.31568],[67.495728,-9.406009],[66.873551,-9.493001],[66.239939,-9.576669],[65.594815,-9.657025],[64.938101,-9.734081],[64.269721,-9.807849],[63.589597,-9.878341],[62.897653,-9.94557],[62.193811,-10.009547],[61.477995,-10.070285],[60.750128,-10.127795],[60.010133,-10.182091],[59.257932,-10.233184],[58.49345,-10.281086],[57.716608,-10.32581],[56.927329,-10.367367],[56.125538,-10.40577],[55.311157,-10.441031],[54.484108,-10.473162],[53.644316,-10.502175],[52.791702,-10.528083],[51.926191,-10.550897],[51.047704,-10.57063],[50.156166,-10.587294],[49.251498,-10.6009],[48.333625,-10.611462],[47.402469,-10.618991],[46.457953,-10.6235],[45.5,-10.625],[44.345417,-10.622176],[43.20627,-10.613764],[42.082536,-10.599852],[40.974191,-10.580529],[39.881213,-10.555882],[38.803577,-10.526],[37.741261,-10.490971],[36.694241,-10.450885],[35.662494,-10.405829],[34.645998,-10.355891],[33.644727,-10.30116],[32.658661,-10.241724],[31.687774,-10.177672],[30.732044,-10.109092],[29.791447,-10.036073],[28.865961,-9.958702],[27.955562,-9.877068],[27.060227,-9.79126],[26.179932,-9.701366],[25.314655,-9.607474],[24.464371,-9.509672],[23.629059,-9.408049],[22.808693,-9.302694],[22.003252,-9.193695],[21.212712,-9.081139],[20.43705,-8.965116],[19.676242,-8.845713],[18.930266,-8.72302],[18.199097,-8.597124],[17.482713,-8.468115],[16.781091,-8.336079],[16.094206,-8.201106],[15.422037,-8.063284],[14.764559,-7.922701],[14.12175,-7.779446],[13.493586,-7.633607],[12.880043,-7.485273],[12.2811,-7.334531],[11.696731,-7.181471],[11.126915,-7.02618],[10.571628,-6.868747],[10.030846,-6.70926],[9.504547,-6.547808],[8.992707,-6.384478],[8.495302,-6.219361],[8.01231,-6.052543],[7.543707,-5.884113],[7.089471,-5.714159],[6.649577,-5.54277],[6.224003,-5.370035],[5.812725,-5.196041],[5.41572,-5.020877],[5.032965,-4.844631],[4.664436,-4.667392],[4.310111,-4.489248],[3.969965,-4.310287],[3.643977,-4.130598],[3.332121,-3.95027],[3.034376,-3.769389],[2.750718,-3.588046],[2.481124,-3.406328],[2.22557,-3.224323],[1.984033,-3.04212],[1.75649,-2.859808],[1.542918,-2.677474],[1.343293,-2.495208],[1.157593,-2.313096],[0.985793,-2.131229],[0.827871,-1.949694],[0.683803,-1.768579],[0.553567,-1.587973],[0.437138,-1.407964],[0.334494,-1.228641],[0.245611,-1.050092],[0.170466,-0.872406],[0.109036,-0.69567],[0.061298,-0.519973],[0.027228,-0.345403],[0.006803,-0.17205],[0,0],[0,0]],"marks":[{"label":"T12","stationIn":10.1555,"halfWidthIn":8.75},{"label":"C","stationIn":43,"halfWidthIn":12.031509},{"label":"N12","stationIn":75.8445,"halfWidthIn":10.187}],"record":{"vendor":"US Blanks","name":"7'4\"SP","lengthIn":89.689,"stations":[{"label":"T0","fromTailIn":0,"widthIn":7.5},{"label":"T6","fromTailIn":6,"widthIn":14},{"label":"T12","fromTailIn":12,"widthIn":17.5},{"label":"T18","fromTailIn":18,"widthIn":19.874},{"label":"T24","fromTailIn":24,"widthIn":21.437},{"label":"T36","fromTailIn":36,"widthIn":23.374},{"label":"C","fromTailIn":44.844,"widthIn":24.063},{"label":"N36","fromTailIn":53.689,"widthIn":24.189},{"label":"N24","fromTailIn":65.689,"widthIn":23.311},{"label":"N18","fromTailIn":71.689,"widthIn":22.189},{"label":"N12","fromTailIn":77.689,"widthIn":20.374},{"label":"N6","fromTailIn":83.689,"widthIn":17.252},{"label":"N0","fromTailIn":89.689,"widthIn":0}]}},{"id":"longboard","name":"Longboard","blankStartIn":-1.75,"blankEndIn":109.75,"board":[[0,4.25],[0.203006,4.36335],[0.420878,4.47756],[0.653546,4.59257],[0.900939,4.708324],[1.162989,4.824761],[1.439626,4.941826],[1.73078,5.059458],[2.036383,5.1776],[2.356363,5.296194],[2.690653,5.415181],[3.039181,5.534504],[3.401879,5.654104],[3.778678,5.773922],[4.169507,5.893902],[4.574297,6.013983],[4.992978,6.134109],[5.425481,6.25422],[5.871737,6.37426],[6.331675,6.494169],[6.805227,6.613889],[7.292322,6.733362],[7.792891,6.852531],[8.306865,6.971335],[8.834174,7.089719],[9.374749,7.207622],[9.928519,7.324988],[10.495416,7.441757],[11.075369,7.557872],[11.66831,7.673274],[12.274168,7.787905],[12.892875,7.901707],[13.52436,8.014622],[14.168554,8.126592],[14.825388,8.237557],[15.494792,8.347461],[16.176696,8.456245],[16.87103,8.56385],[17.577726,8.670218],[18.296714,8.775292],[19.027924,8.879012],[19.771286,8.981322],[20.526732,9.082162],[21.294191,9.181474],[22.073594,9.2792],[22.864871,9.375282],[23.667953,9.469662],[24.48277,9.562281],[25.309254,9.653082],[26.147333,9.742005],[26.996939,9.828993],[27.858002,9.913988],[28.730452,9.996931],[29.61422,10.077764],[30.509237,10.156429],[31.415433,10.232868],[32.332738,10.307022],[33.261082,10.378834],[34.200397,10.448244],[35.150613,10.515196],[36.111659,10.57963],[37.083467,10.641488],[38.065967,10.700713],[39.059089,10.757245],[40.062765,10.811027],[41.076923,10.862001],[42.101495,10.910108],[43.136412,10.95529],[44.181603,10.997489],[45.236999,11.036646],[46.302531,11.072704],[47.378128,11.105605],[48.463723,11.135289],[49.559244,11.161699],[50.664622,11.184776],[51.779788,11.204463],[52.904672,11.220701],[54.039205,11.233432],[55.183317,11.242598],[56.336938,11.24814],[57.5,11.25],[58.882061,11.249082],[60.241928,11.246287],[61.579725,11.24155],[62.895572,11.234807],[64.189594,11.225995],[65.461912,11.21505],[66.712649,11.201908],[67.941928,11.186505],[69.149871,11.168778],[70.3366,11.148662],[71.502238,11.126094],[72.646908,11.101011],[73.770732,11.073347],[74.873833,11.04304],[75.956333,11.010026],[77.018355,10.97424],[78.060021,10.935619],[79.081454,10.8941],[80.082777,10.849618],[81.064111,10.802109],[82.02558,10.751511],[82.967305,10.697758],[83.88941,10.640787],[84.792017,10.580535],[85.675249,10.516937],[86.539228,10.44993],[87.384076,10.37945],[88.209916,10.305433],[89.016871,10.227815],[89.805063,10.146533],[90.574615,10.061523],[91.32565,9.97272],[92.058288,9.880061],[92.772655,9.783483],[93.468871,9.682921],[94.147059,9.578312],[94.807343,9.469591],[95.449843,9.356696],[96.074684,9.239562],[96.681987,9.118125],[97.271876,8.992322],[97.844471,8.862088],[98.399897,8.727361],[98.938276,8.588076],[99.459729,8.444169],[99.964381,8.295576],[100.452352,8.142235],[100.923766,7.98408],[101.378746,7.821048],[101.817413,7.653076],[102.239891,7.480099],[102.646301,7.302054],[103.036767,7.118877],[103.41141,6.930504],[103.770355,6.736871],[104.113722,6.537915],[104.441634,6.333571],[104.754215,6.123776],[105.051586,5.908467],[105.33387,5.687578],[105.60119,5.461047],[105.853668,5.228809],[106.091427,4.990802],[106.314589,4.74696],[106.523276,4.49722],[106.717612,4.241519],[106.897719,3.979793],[107.063719,3.711977],[107.215735,3.438008],[107.353889,3.157822],[107.478304,2.871356],[107.589103,2.578545],[107.686408,2.279326],[107.770341,1.973635],[107.841025,1.661407],[107.898583,1.342581],[107.943137,1.01709],[107.974809,0.684873],[107.993723,0.345864],[108,0],[108,0],[107.993723,-0.345864],[107.974809,-0.684873],[107.943137,-1.01709],[107.898583,-1.342581],[107.841025,-1.661407],[107.770341,-1.973635],[107.686408,-2.279326],[107.589103,-2.578545],[107.478304,-2.871356],[107.353889,-3.157822],[107.215735,-3.438008],[107.063719,-3.711977],[106.897719,-3.979793],[106.717612,-4.241519],[106.523276,-4.49722],[106.314589,-4.74696],[106.091427,-4.990802],[105.853668,-5.228809],[105.60119,-5.461047],[105.33387,-5.687578],[105.051586,-5.908467],[104.754215,-6.123776],[104.441634,-6.333571],[104.113722,-6.537915],[103.770355,-6.736871],[103.41141,-6.930504],[103.036767,-7.118877],[102.646301,-7.302054],[102.239891,-7.480099],[101.817413,-7.653076],[101.378746,-7.821048],[100.923766,-7.98408],[100.452352,-8.142235],[99.964381,-8.295576],[99.459729,-8.444169],[98.938276,-8.588076],[98.399897,-8.727361],[97.844471,-8.862088],[97.271876,-8.992322],[96.681987,-9.118125],[96.074684,-9.239562],[95.449843,-9.356696],[94.807343,-9.469591],[94.147059,-9.578312],[93.468871,-9.682921],[92.772655,-9.783483],[92.058288,-9.880061],[91.32565,-9.97272],[90.574615,-10.061523],[89.805063,-10.146533],[89.016871,-10.227815],[88.209916,-10.305433],[87.384076,-10.37945],[86.539228,-10.44993],[85.675249,-10.516937],[84.792017,-10.580535],[83.88941,-10.640787],[82.967305,-10.697758],[82.02558,-10.751511],[81.064111,-10.802109],[80.082777,-10.849618],[79.081454,-10.8941],[78.060021,-10.935619],[77.018355,-10.97424],[75.956333,-11.010026],[74.873833,-11.04304],[73.770732,-11.073347],[72.646908,-11.101011],[71.502238,-11.126094],[70.3366,-11.148662],[69.149871,-11.168778],[67.941928,-11.186505],[66.712649,-11.201908],[65.461912,-11.21505],[64.189594,-11.225995],[62.895572,-11.234807],[61.579725,-11.24155],[60.241928,-11.246287],[58.882061,-11.249082],[57.5,-11.25],[56.336938,-11.24814],[55.183317,-11.242598],[54.039205,-11.233432],[52.904672,-11.220701],[51.779788,-11.204463],[50.664622,-11.184776],[49.559244,-11.161699],[48.463723,-11.135289],[47.378128,-11.105605],[46.302531,-11.072704],[45.236999,-11.036646],[44.181603,-10.997489],[43.136412,-10.95529],[42.101495,-10.910108],[41.076923,-10.862001],[40.062765,-10.811027],[39.059089,-10.757245],[38.065967,-10.700713],[37.083467,-10.641488],[36.111659,-10.57963],[35.150613,-10.515196],[34.200397,-10.448244],[33.261082,-10.378834],[32.332738,-10.307022],[31.415433,-10.232868],[30.509237,-10.156429],[29.61422,-10.077764],[28.730452,-9.996931],[27.858002,-9.913988],[26.996939,-9.828993],[26.147333,-9.742005],[25.309254,-9.653082],[24.48277,-9.562281],[23.667953,-9.469662],[22.864871,-9.375282],[22.073594,-9.2792],[21.294191,-9.181474],[20.526732,-9.082162],[19.771286,-8.981322],[19.027924,-8.879012],[18.296714,-8.775292],[17.577726,-8.670218],[16.87103,-8.56385],[16.176696,-8.456245],[15.494792,-8.347461],[14.825388,-8.237557],[14.168554,-8.126592],[13.52436,-8.014622],[12.892875,-7.901707],[12.274168,-7.787905],[11.66831,-7.673274],[11.075369,-7.557872],[10.495416,-7.441757],[9.928519,-7.324988],[9.374749,-7.207622],[8.834174,-7.089719],[8.306865,-6.971335],[7.792891,-6.852531],[7.292322,-6.733362],[6.805227,-6.613889],[6.331675,-6.494169],[5.871737,-6.37426],[5.425481,-6.25422],[4.992978,-6.134109],[4.574297,-6.013983],[4.169507,-5.893902],[3.778678,-5.773922],[3.401879,-5.654104],[3.039181,-5.534504],[2.690653,-5.415181],[2.356363,-5.296194],[2.036383,-5.1776],[1.73078,-5.059458],[1.439626,-4.941826],[1.162989,-4.824761],[0.900939,-4.708324],[0.653546,-4.59257],[0.420878,-4.47756],[0.203006,-4.36335],[0,-4.25],[0,0]],"marks":[{"label":"T12","stationIn":10.25,"halfWidthIn":8.1555},{"label":"C","stationIn":54,"halfWidthIn":12.437},{"label":"N12","stationIn":97.75,"halfWidthIn":10.1555}],"record":{"vendor":"US Blanks","name":"9'4\"B","lengthIn":111.5,"stations":[{"label":"T0","fromTailIn":0,"widthIn":7.5},{"label":"T6","fromTailIn":6,"widthIn":13.252},{"label":"T12","fromTailIn":12,"widthIn":16.311},{"label":"T18","fromTailIn":18,"widthIn":18.563},{"label":"T24","fromTailIn":24,"widthIn":20.252},{"label":"T36","fromTailIn":36,"widthIn":22.626},{"label":"T48","fromTailIn":48,"widthIn":24.126},{"label":"C","fromTailIn":55.75,"widthIn":24.874},{"label":"N48","fromTailIn":63.5,"widthIn":25.063},{"label":"N36","fromTailIn":75.5,"widthIn":24.811},{"label":"N24","fromTailIn":87.5,"widthIn":23.437},{"label":"N18","fromTailIn":93.5,"widthIn":22.189},{"label":"N12","fromTailIn":99.5,"widthIn":20.311},{"label":"N6","fromTailIn":105.5,"widthIn":17},{"label":"N0","fromTailIn":111.5,"widthIn":0}]}}],"blanks":[{"record":{"vendor":"Arctic Foam","name":"9'3\" LB","lengthIn":111.25,"stations":[{"label":"T0","fromTailIn":0,"widthIn":8.875},{"label":"T12","fromTailIn":12,"widthIn":17.125},{"label":"C","fromTailIn":55.625,"widthIn":24.75},{"label":"N12","fromTailIn":99.25,"widthIn":20.75},{"label":"N3","fromTailIn":108.25,"widthIn":13.6875},{"label":"N0","fromTailIn":111.25,"widthIn":0}]}},{"record":{"vendor":"Marko Foam","name":"9'1\" Machine All","lengthIn":109.68,"stations":[{"label":"T0","fromTailIn":0,"widthIn":8.18},{"label":"T12","fromTailIn":12,"widthIn":16.2},{"label":"T24","fromTailIn":24,"widthIn":20.25},{"label":"T36","fromTailIn":36,"widthIn":22.46},{"label":"C","fromTailIn":54.84,"widthIn":24.29},{"label":"N48","fromTailIn":61.68,"widthIn":24.41},{"label":"N36","fromTailIn":73.68,"widthIn":24.07},{"label":"N24","fromTailIn":85.68,"widthIn":22.92},{"label":"N12","fromTailIn":97.68,"widthIn":19.86},{"label":"N0","fromTailIn":109.68,"widthIn":0}]}},{"record":{"vendor":"US Blanks","name":"11'2\"C","lengthIn":134.5,"stations":[{"label":"T0","fromTailIn":0,"widthIn":10.5},{"label":"T12","fromTailIn":12,"widthIn":18.689},{"label":"T24","fromTailIn":24,"widthIn":22.374},{"label":"T36","fromTailIn":36,"widthIn":24.374},{"label":"T48","fromTailIn":48,"widthIn":25.563},{"label":"C","fromTailIn":67.25,"widthIn":26.374},{"label":"N48","fromTailIn":86.5,"widthIn":26.063},{"label":"N36","fromTailIn":98.5,"widthIn":25.374},{"label":"N24","fromTailIn":110.5,"widthIn":24},{"label":"N12","fromTailIn":122.5,"widthIn":21.252},{"label":"N0","fromTailIn":134.5,"widthIn":0}]}}]};
+
+/* Sketch 012 — the width curves, in inches. `today` is a line-for-line port of the app's
+   lib/geometry/pchip.ts + root-curve.ts ("fall"), checked against the app's own samples by check012.mjs. */
+function pchipSlopes(xs, ys) {
+  const n = xs.length;
+  if (n === 0) return [];
+  if (n === 1) return [0];
+  const h = [], delta = [];
+  for (let k = 0; k < n - 1; k++) { h.push(xs[k + 1] - xs[k]); delta.push((ys[k + 1] - ys[k]) / h[k]); }
+  if (n === 2) return [delta[0], delta[0]];
+  const slopes = new Array(n).fill(0);
+  for (let k = 1; k < n - 1; k++) {
+    const before = delta[k - 1], after = delta[k];
+    if (before === 0 || after === 0 || (before > 0) !== (after > 0)) continue;
+    const w1 = 2 * h[k] + h[k - 1], w2 = h[k] + 2 * h[k - 1];
+    slopes[k] = (w1 + w2) / (w1 / before + w2 / after);
+  }
+  const endSlope = (h0, h1, d0, d1) => {
+    const slope = ((2 * h0 + h1) * d0 - h0 * d1) / (h0 + h1);
+    if (Math.sign(slope) !== Math.sign(d0)) return 0;
+    if (Math.sign(d0) !== Math.sign(d1) && Math.abs(slope) > Math.abs(3 * d0)) return 3 * d0;
+    return slope;
+  };
+  slopes[0] = endSlope(h[0], h[1], delta[0], delta[1]);
+  slopes[n - 1] = endSlope(h[n - 2], h[n - 3], delta[n - 2], delta[n - 3]);
+  return slopes;
+}
+function preparePchip(points) {
+  const xs = points.map((p) => p.x), ys = points.map((p) => p.y);
+  const slopes = pchipSlopes(xs, ys), n = xs.length;
+  const segmentOf = (x) => { let lo = 0, hi = n - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (xs[mid] <= x) lo = mid; else hi = mid; } return lo; };
+  const sample = (x) => {
+    if (n === 0) return 0;
+    if (!Number.isFinite(x)) return ys[0];
+    if (n === 1 || x <= xs[0]) return ys[0];
+    if (x >= xs[n - 1]) return ys[n - 1];
+    const lo = segmentOf(x), width = xs[lo + 1] - xs[lo], t = (x - xs[lo]) / width, t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * ys[lo] + (t3 - 2 * t2 + t) * width * slopes[lo] + (-2 * t3 + 3 * t2) * ys[lo + 1] + (t3 - t2) * width * slopes[lo + 1];
+  };
+  const slopeAt = (x) => {
+    if (n < 2 || !Number.isFinite(x) || x < xs[0] || x > xs[n - 1]) return 0;
+    if (x === xs[n - 1]) return slopes[n - 1];
+    const lo = segmentOf(x), width = xs[lo + 1] - xs[lo], t = (x - xs[lo]) / width, t2 = t * t;
+    return ((6 * t2 - 6 * t) / width) * ys[lo] + (3 * t2 - 4 * t + 1) * slopes[lo] + ((-6 * t2 + 6 * t) / width) * ys[lo + 1] + (3 * t2 - 2 * t) * slopes[lo + 1];
+  };
+  return { xs, ys, slopes, sample, slopeAt };
+}
+/* The app's square-root "fall": high − g², g the pchip through ±√(high − yᵢ), negative before the widest station. */
+function prepareRootFall(points) {
+  const printed = preparePchip(points);
+  const { xs, ys } = printed, n = xs.length;
+  if (n < 2) return printed;
+  const anchor = Math.max(...ys), first = ys.indexOf(anchor);
+  const g = preparePchip(xs.map((x, i) => ({ x, y: (i < first ? -1 : 1) * Math.sqrt(Math.abs(ys[i] - anchor)) })));
+  const sample = (x) => {
+    if (!Number.isFinite(x) || x <= xs[0]) return ys[0];
+    if (x >= xs[n - 1]) return ys[n - 1];
+    let lo = 0, hi = n - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (xs[mid] <= x) lo = mid; else hi = mid; }
+    if (xs[lo] === x) return ys[lo];
+    const r = g.sample(x); return anchor - r * r;
+  };
+  const slopeAt = (x) => (!Number.isFinite(x) || x < xs[0] || x > xs[n - 1]) ? 0 : -2 * g.sample(x) * g.slopeAt(x);
+  const slopes = g.ys.map((root, k) => -2 * root * g.slopes[k]);
+  return { xs, ys, slopes, sample, slopeAt };
+}
+
+/* ---- The three ways to reach a nose printed 0 wide. Each returns half-width samples [x, hw] in
+   the blank's own inches (x from the tail tip), tail to nose, dense enough to draw. ---- */
+function printedWidths(record) { return record.stations.filter((s) => s.widthIn !== null).map((s) => ({ x: s.fromTailIn, y: s.widthIn })); }
+function noseSegment(record) {
+  const pts = printedWidths(record);
+  const tip = pts[pts.length - 1], last = pts[pts.length - 2];
+  return { tip, last, zeroNose: tip.y === 0 && last.y > 0, D: tip.x - last.x };
+}
+function sampleXs(record, step) {
+  const L = record.lengthIn, xs = [];
+  for (let x = 0; x < L; x += step) xs.push(x);
+  xs.push(L);
+  for (const p of printedWidths(record)) xs.push(p.x);
+  xs.sort((a, b) => a - b);
+  return xs.filter((x, i) => i === 0 || x - xs[i - 1] > 1e-9);
+}
+/* A — today: the square-root fall through every printed width, straight to the 0 tip. */
+function todayCurve(record) { return prepareRootFall(printedWidths(record)); }
+function variantA(record, step = 0.25) { const c = todayCurve(record); return sampleXs(record, step).map((x) => [x, c.sample(x) / 2]); }
+
+/* B — the founder's control point: today's curve up to the last printed station, then one cubic
+   Bezier to the tip whose first handle lies along today's own slope and whose tip handle points
+   straight across the stringer (perpendicular). Handles are `k` × the chord between the two points. */
+function variantB(record, k = 1 / 3, step = 0.25, kTip = k) {
+  const c = todayCurve(record), seg = noseSegment(record);
+  if (!seg.zeroNose) return variantA(record, step);
+  const x0 = seg.last.x, y0 = seg.last.y / 2, m = c.slopeAt(x0) / 2;  // dhw/dx at the station (negative toward the nose)
+  const x3 = seg.tip.x, y3 = 0;
+  const chord = Math.hypot(x3 - x0, y3 - y0);
+  const dir = Math.hypot(1, m);
+  const p1 = [x0 + (k * chord) / dir, y0 + (k * chord * m) / dir];
+  const p2 = [x3, y3 + kTip * chord];
+  const out = sampleXs(record, step).filter((x) => x <= x0 + 1e-9).map((x) => [x, c.sample(x) / 2]);
+  const N = 48;
+  for (let i = 1; i <= N; i++) {
+    const t = i / N, u = 1 - t;
+    const x = u * u * u * x0 + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * x3;
+    const y = u * u * u * y0 + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * y3;
+    out.push([x, Math.max(0, y)]);
+  }
+  return out;
+}
+function variantBHandles(record, k = 1 / 3, kTip = k) {
+  const c = todayCurve(record), seg = noseSegment(record);
+  const x0 = seg.last.x, y0 = seg.last.y / 2, m = c.slopeAt(x0) / 2, x3 = seg.tip.x;
+  const chord = Math.hypot(x3 - x0, y0), dir = Math.hypot(1, m);
+  return { p0: [x0, y0], p1: [x0 + (k * chord) / dir, y0 + (k * chord * m) / dir], p2: [x3, kTip * chord], p3: [x3, 0], chord, m };
+}
+
+/* C — a parabola from the tip: inside the last printed station the half-width is a·√d + b·d, d the
+   distance in from the tip — the shape every round nose has at its very tip (its tangent is across
+   the stringer) — with a and b chosen so it meets the station at the printed width AND at today's
+   own slope there. Nothing to tune; the printed numbers decide it. Falls back to today's curve when
+   the data is more pointed than a straight line to the tip (a ≤ 0). */
+function parabolaCoefficients(record) {
+  const c = todayCurve(record), seg = noseSegment(record);
+  if (!seg.zeroNose) return null;
+  const D = seg.D, hw = seg.last.y / 2, mk = -c.slopeAt(seg.last.x) / 2;  // dhw/dd, positive
+  const a = (2 * (hw - D * mk)) / Math.sqrt(D), b = 2 * mk - hw / D;
+  return { D, hw, mk, a, b, tipRadius: (a * a) / 2, pointed: a <= 0 };
+}
+function variantC(record, step = 0.25) {
+  const c = todayCurve(record), seg = noseSegment(record), co = parabolaCoefficients(record);
+  if (!co || co.pointed) return variantA(record, step);
+  const x0 = seg.last.x, x3 = seg.tip.x;
+  const out = sampleXs(record, step).filter((x) => x <= x0 + 1e-9).map((x) => [x, c.sample(x) / 2]);
+  const N = 48;
+  for (let i = 1; i <= N; i++) {
+    // Even steps in √d, so the samples crowd toward the tip where the curve turns fastest.
+    const u = (1 - i / N) * Math.sqrt(co.D), d = u * u;
+    out.push([x3 - d, Math.max(0, co.a * u + co.b * d)]);
+  }
+  return out;
+}
+
+const PALETTES = {
+  slate: { "--color-bg": "#12141a", "--color-surface": "#12141a", "--color-canvas": "#1a1d25", "--color-well": "#1b1f26", "--color-border": "#333842", "--color-line": "#6a707c", "--color-text": "#f2f4f7", "--color-text-muted": "#a1a8b4", "--color-primary": "#18526d", "--color-on-primary": "#f2f4f7", "--color-accent-ink": "#3490bc", "--color-board": "#1a2732", "--color-warning-ink": "#ff9670", "--color-page": "#0b0c10", "--compare-b": "#4aa8de" },
+  daylight: { "--color-bg": "#ffffff", "--color-surface": "#ffffff", "--color-canvas": "#dfdcd3", "--color-well": "#dfdcd3", "--color-border": "#897c58", "--color-line": "#897c58", "--color-text": "#1f2a3b", "--color-text-muted": "#566171", "--color-primary": "#8ec1b8", "--color-on-primary": "#1f2a3b", "--color-accent-ink": "#48605c", "--color-board": "#d9f2ed", "--color-warning-ink": "#ac3811", "--color-page": "#c9c5ba", "--compare-b": "#1d6fa5" },
+};
+const COMMON_VARS = { "--font-sans": '"Inter", Roboto, system-ui, sans-serif', "--tracking-architectural": "0.15em" };
+
+const VARIANTS = [
+  { id: "a", label: "A: Today — a point", baseline: true },
+  { id: "b", label: "B: Control point across the stringer" },
+  { id: "c", label: "C: Parabola from the tip" },
+  { id: "x", label: "Side by side" },
+];
+const DEFAULTS = { variant: "b", theme: "slate", board: "on", points: "on", k: 0.333, handles: "on", mini: "432" };
+let state = { ...DEFAULTS };
+try { Object.assign(state, JSON.parse(localStorage.getItem("sketch012") || "{}")); } catch (e) {}
+function save() { try { localStorage.setItem("sketch012", JSON.stringify(state)); } catch (e) {} }
+
+/* ---- the five blanks: the two preset blanks with their boards, and one more per span of the last printed segment ---- */
+const ITEMS = [
+  ...DATA.presets.map((p) => ({ key: p.id, record: p.record, board: p.board, startIn: p.blankStartIn, marks: p.marks, tag: `with the ${p.name} preset on it, where ROCKER puts it` })),
+  ...DATA.blanks.map((b) => ({ key: b.record.name, record: b.record, board: null, startIn: null, marks: null, tag: "the blank alone" })),
+];
+
+/* ---- numbers for the captions ---- */
+function frac(v, denom = 8) {
+  const neg = v < 0; v = Math.abs(v);
+  let whole = Math.floor(v), n = Math.round((v - whole) * denom), d = denom;
+  if (n === denom) { whole += 1; n = 0; }
+  while (n > 0 && n % 2 === 0) { n /= 2; d /= 2; }
+  const f = n ? `${whole ? whole + " " : ""}${n}/${d}` : `${whole}`;
+  return (neg ? "−" : "") + f + '"';
+}
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;"); }
+
+function curveFor(record, variant) {
+  if (variant === "a") return variantA(record);
+  if (variant === "b") return variantB(record, state.k);
+  return variantC(record);
+}
+
+/* ---- drawing, pinned to screen pixels like the app's mini display ---- */
+const STRINGER_DASH = "16 4 4 4", STATION_DASH = "5 4";
+function pathOf(pts, toX, toY, close) {
+  const up = pts.map(([x, hw], i) => `${i ? "L" : "M"} ${toX(x).toFixed(2)} ${toY(-hw).toFixed(2)}`);
+  const down = pts.slice().reverse().map(([x, hw]) => `L ${toX(x).toFixed(2)} ${toY(hw).toFixed(2)}`);
+  return [...up, ...down, close ? "Z" : ""].join(" ");
+}
+function boardPath(item, toX, toY) {
+  if (!item.board) return "";
+  return item.board.map(([station, w], i) => `${i ? "L" : "M"} ${toX(station - item.startIn).toFixed(2)} ${toY(-w).toFixed(2)}`).join(" ") + " Z";
+}
+function marksOf(item, pts) {
+  const L = item.record.lengthIn;
+  const hwAt = (x) => { let best = pts[0]; for (const p of pts) if (Math.abs(p[0] - x) < Math.abs(best[0] - x)) best = p; return best[1]; };
+  return [["T12", 12], ["C", L / 2], ["N12", L - 12]].map(([label, x]) => ({ label, x, hw: hwAt(x) }));
+}
+
+/* The whole blank at the mini display's size (nose left), exactly the strokes ROCKER uses. */
+function miniSvg(item, variant) {
+  const rec = item.record, L = rec.lengthIn, pts = curveFor(rec, variant);
+  const hwMax = Math.max(...pts.map((p) => p[1]), ...(item.board && state.board === "on" ? item.board.map((p) => Math.abs(p[1])) : [0]));
+  const W = Number(state.mini), pad = 8, scale = (W - 2 * pad) / L, H = Math.ceil(2 * hwMax * scale + 2 * pad);
+  const toX = (x) => pad + (L - x) * scale, toY = (y) => H / 2 + y * scale;
+  const dots = rec.stations.filter((s) => s.widthIn !== null && s.widthIn > 0);
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <path d="${pathOf(pts, toX, toY, true)}" fill="var(--outline-foam-shade)" stroke="var(--outline-blank-line)" stroke-width="1" stroke-linejoin="round"/>
+    ${item.board && state.board === "on" ? `<path d="${boardPath(item, toX, toY)}" fill="var(--outline-board-fill)" stroke="var(--outline-ink)" stroke-width="1.5" stroke-linejoin="round"/>` : ""}
+    <line x1="${toX(0)}" y1="${H / 2}" x2="${toX(L)}" y2="${H / 2}" stroke="var(--outline-station-line)" stroke-width="1" stroke-dasharray="${STRINGER_DASH}"/>
+    ${marksOf(item, pts).map((m) => `<line x1="${toX(m.x).toFixed(2)}" y1="${toY(-m.hw).toFixed(2)}" x2="${toX(m.x).toFixed(2)}" y2="${toY(m.hw).toFixed(2)}" stroke="var(--outline-station-line)" stroke-width="1" stroke-dasharray="${m.label === "C" ? STRINGER_DASH : STATION_DASH}"/>`).join("")}
+    ${state.points === "on" ? dots.map((s) => `<circle cx="${toX(s.fromTailIn).toFixed(2)}" cy="${toY(-s.widthIn / 2).toFixed(2)}" r="3" fill="var(--outline-blank-line)"/><circle cx="${toX(s.fromTailIn).toFixed(2)}" cy="${toY(s.widthIn / 2).toFixed(2)}" r="3" fill="var(--outline-blank-line)"/>`).join("") : ""}
+  </svg>`;
+}
+
+/* The last 30" of the nose, 4× closer: the same strokes, plus the printed stations named. */
+const ZOOM_IN = 30, ZOOM_SCALE = 11;
+function zoomSvg(item, variants) {
+  const rec = item.record, L = rec.lengthIn;
+  const curves = variants.map((v) => ({ v, pts: curveFor(rec, v) }));
+  const win = (pts) => pts.filter(([x]) => x >= L - ZOOM_IN - 1e-9);
+  const hwMax = Math.max(...curves.map((c) => Math.max(...win(c.pts).map((p) => p[1]))));
+  const drawHandles = variants.includes("b") && state.handles === "on";
+  const padL = drawHandles ? 86 : 14, padR = 34, padY = 16;
+  const W = ZOOM_IN * ZOOM_SCALE + padL + padR, H = Math.ceil(2 * hwMax * ZOOM_SCALE + 2 * padY);
+  const toX = (x) => padL + (L - x) * ZOOM_SCALE, toY = (y) => H / 2 + y * ZOOM_SCALE;
+  const many = variants.length > 1;
+  const ink = (v) => v === "a" ? "var(--color-text-muted)" : v === "b" ? "var(--compare-b)" : "var(--outline-ink)";
+  const stations = rec.stations.filter((s) => s.widthIn !== null && s.fromTailIn >= L - ZOOM_IN);
+  let out = `<svg class="zoom" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+  if (!many) {
+    const pts = win(curves[0].pts);
+    out += `<path d="${pathOf(pts, toX, toY, false)}" fill="var(--outline-foam-shade)" stroke="none"/>`;
+    out += `<path d="${pathOf(pts, toX, toY, false)}" fill="none" stroke="var(--outline-blank-line)" stroke-width="1" stroke-linejoin="round"/>`;
+    if (item.board && state.board === "on") out += `<path d="${boardPath(item, toX, toY)}" fill="var(--outline-board-fill)" stroke="var(--outline-ink)" stroke-width="1.5" stroke-linejoin="round"/>`;
+  }
+  out += `<line x1="${toX(L - ZOOM_IN)}" y1="${H / 2}" x2="${toX(L)}" y2="${H / 2}" stroke="var(--outline-station-line)" stroke-width="1" stroke-dasharray="${STRINGER_DASH}"/>`;
+  for (const s of stations) {
+    const x = toX(s.fromTailIn).toFixed(2);
+    if (s.widthIn > 0) out += `<line x1="${x}" y1="${toY(-s.widthIn / 2).toFixed(2)}" x2="${x}" y2="${toY(s.widthIn / 2).toFixed(2)}" stroke="var(--outline-station-line)" stroke-width="1" stroke-dasharray="${STATION_DASH}"/>`;
+    out += `<text class="lbl" x="${x}" y="${(H - 3).toFixed(2)}" text-anchor="middle">${esc(s.label)}</text>`;
+  }
+  if (many) {
+    for (const c of curves) {
+      const pts = win(c.pts);
+      out += `<path d="${pathOf(pts, toX, toY, false)}" fill="none" stroke="${ink(c.v)}" stroke-width="${c.v === "a" ? 1.5 : 2}" ${c.v === "a" ? 'stroke-dasharray="4 3"' : ""} stroke-linejoin="round"/>`;
+    }
+  }
+  if (drawHandles) {
+    const h = variantBHandles(rec, state.k);
+    const seg = (p, q) => `<line x1="${toX(p[0]).toFixed(2)}" y1="${toY(-p[1]).toFixed(2)}" x2="${toX(q[0]).toFixed(2)}" y2="${toY(-q[1]).toFixed(2)}" stroke="var(--compare-b)" stroke-width="1" stroke-dasharray="2 3"/>`;
+    const box = (p) => `<rect x="${(toX(p[0]) - 3).toFixed(2)}" y="${(toY(-p[1]) - 3).toFixed(2)}" width="6" height="6" fill="var(--color-bg)" stroke="var(--compare-b)" stroke-width="1.2"/>`;
+    out += seg(h.p0, h.p1) + seg(h.p3, h.p2) + box(h.p1) + box(h.p2);
+    out += `<text class="lbl" x="${(toX(h.p2[0]) - 7).toFixed(2)}" y="${(toY(-h.p2[1]) + 3.5).toFixed(2)}" text-anchor="end" style="fill:var(--compare-b)">control point</text>`;
+  }
+  if (state.points === "on") for (const s of stations) if (s.widthIn > 0) { out += `<circle cx="${toX(s.fromTailIn).toFixed(2)}" cy="${toY(-s.widthIn / 2).toFixed(2)}" r="3" fill="var(--outline-blank-line)"/><circle cx="${toX(s.fromTailIn).toFixed(2)}" cy="${toY(s.widthIn / 2).toFixed(2)}" r="3" fill="var(--outline-blank-line)"/>`; }
+  return out + `</svg>`;
+}
+
+function caption(item, variant) {
+  const rec = item.record, seg = noseSegment(rec), today = todayCurve(rec);
+  const D = seg.D, last = seg.last;
+  const lastLabel = rec.stations.find((s) => s.fromTailIn === last.x).label;
+  const printed = `<b>${esc(lastLabel)}</b> prints ${frac(last.y)} wide, ${frac(D)} in from a nose printed 0.`;
+  if (variant === "a") {
+    const deg = Math.atan(Math.abs(today.slopeAt(seg.tip.x) / 2)) * 180 / Math.PI;
+    return `${printed} Today's curve runs from there straight into the tip, each rail meeting the stringer at about <b>${deg.toFixed(0)}°</b> — a point, not a round.`;
+  }
+  if (variant === "b") {
+    const h = variantBHandles(rec, state.k);
+    return `${printed} One curve from ${esc(lastLabel)} to the tip: it leaves ${esc(lastLabel)} along today's own slope and arrives <b>straight across the stringer</b>. Both handles ${frac(h.chord * state.k)}, ${Math.round(state.k * 100)}% of the ${frac(h.chord)} chord.`;
+  }
+  const co = parabolaCoefficients(rec);
+  return `${printed} Inside ${esc(lastLabel)} the nose is a parabola with its point at the tip — the shape a round nose has there — bent to meet ${esc(lastLabel)} at the printed width and at today's own slope. At the very tip it rounds like a circle of radius <b>${frac(co.tipRadius, 2)}</b>. Nothing to set.`;
+}
+
+function cellHtml(item, variant) {
+  const rec = item.record;
+  const many = variant === "x";
+  const zoom = zoomSvg(item, many ? ["a", "b", "c"] : [variant]);
+  return `<section class="cell" data-blank="${esc(rec.name)}">
+    <h3><span style="font-weight:700;letter-spacing:var(--tracking-architectural);text-transform:uppercase">${esc(rec.vendor)}</span><span>${esc(item.tag)}</span></h3>
+    <div class="name">${esc(rec.name)} <span style="font-size:12px;font-weight:600;color:var(--color-text-muted)">· ${frac(rec.lengthIn)} tip to tip</span></div>
+    ${many ? `<div class="plate">${zoom}</div><div class="cap">${caption(item, "a").split(" Today")[0]} Dotted: today. Blue: B, the control point (handles at ${Math.round(state.k * 100)}% of the chord). Solid: C, the parabola.</div>`
+           : `<div class="pair"><div class="plate">${miniSvg(item, variant)}</div><div class="plate">${zoom}</div></div><div class="cap">${caption(item, variant)}</div>`}
+  </section>`;
+}
+
+const INTROS = {
+  a: "<b>Today.</b> The blank's outline is the square-root curve through every printed width, run straight to the 0 at the tip — so it reaches the stringer at an angle and the nose is a point. The small drawing is the mini display at its size on a computer; beside it, the last 30 inches of the nose four times closer.",
+  b: "<b>B — the founder's idea.</b> From the last printed station the outline is one curve whose handle at the tip sits straight across the stringer, so it arrives perpendicular and turns through the printed widths from there. The handle length sets how full the round is: drag the slider.",
+  c: "<b>C — a parabola from the tip.</b> Inside the last printed station the nose is a parabola with its point at the tip (every round nose is one there: the tangent across the stringer), bent so it meets that station at its printed width and at today's own slope. The printed numbers decide it; there is nothing to set.",
+  x: "<b>All three on one nose.</b> Dotted is today, blue is B with the slider's handle length, solid is C. Only the last printed segment differs; everything from that station back is the same curve in all three.",
+};
+
+function renderNav() {
+  const nav = document.getElementById("variant-nav");
+  nav.innerHTML = `<span class="sketch-id">Sketch 012</span>` + VARIANTS.map((v) => `<button class="variant-tab${v.baseline ? " baseline" : ""}${v.winner ? " winner" : ""}${v.id === state.variant ? " active" : ""}" data-variant="${v.id}">${esc(v.label)}</button>`).join("") + `<button class="variant-tab notes-btn" data-notes="1">${document.getElementById("notes-panel").classList.contains("open") ? "Close notes" : "Notes"}</button>`;
+}
+function seg(key, options) {
+  return `<span class="seg">${options.map(([v, label]) => `<button data-set="${key}" data-v="${v}" class="${String(state[key]) === String(v) ? "on" : ""}">${label}</button>`).join("")}</span>`;
+}
+function renderBar() {
+  const bar = document.getElementById("sketch-bar");
+  const b = state.variant === "b" || state.variant === "x";
+  bar.innerHTML = `<span class="desc">A blank printed <b>0 wide at its nose tip</b> — 43 of the 162 in the catalogue — on ROCKER's top view: how should its outline reach the tip?</span>
+    <span class="grp"><span>Board</span>${seg("board", [["on", "Show"], ["off", "Hide"]])}</span>
+    <span class="grp"><span>Measuring points</span>${seg("points", [["on", "On"], ["off", "Off"]])}</span>
+    ${b ? `<span class="grp"><span>B handles</span><input type="range" id="k" min="0.15" max="0.6" step="0.0167" value="${state.k}"><span class="meas"><b>${Math.round(state.k * 100)}%</b> of the chord${Math.abs(state.k - 1 / 3) < 0.01 ? " (⅓, the usual)" : ""}</span>${seg("handles", [["on", "Draw them"], ["off", "Hide"]])}</span>` : ""}`;
+  const k = document.getElementById("k");
+  if (k) k.addEventListener("input", (e) => { state.k = Number(e.target.value); save(); renderBar(); renderStage(); });
+}
+function renderStage() {
+  const stage = document.getElementById("stage");
+  stage.innerHTML = `<p class="intro">${INTROS[state.variant]}</p><div class="grid">${ITEMS.map((item) => cellHtml(item, state.variant)).join("")}</div>
+    <p class="stage-note">Every blank is a real catalogue blank through the app's own reader; the two boards are the Mid-length and Longboard presets where ROCKER places them. In the catalogue the last printed width before a 0 nose sits 3" in on Arctic Foam's eight such blanks, 6" in on twenty-one of US Blanks' twenty-three, and 12" in on all twelve of Marko's and on US Blanks' 11'2"C and 11'8"C — one of each span is here. No blank prints a 0-wide tail.</p>`;
+}
+function renderNotes() {
+  document.getElementById("notes-panel").innerHTML = `
+    <h2>Sketch 012 — a nose printed 0 wide</h2>
+    <p>The founder, 2026-10-07: "For blanks with a 0 N0 value, the nose should have maximum roundness. i.e. the spline control point would be perpendicular to the stringer, so that the spline essentially starts totally perpendicular to the stringer before curving through the next data points."</p>
+    <h3>What is drawn</h3>
+    <ul>
+      <li><b>A (today):</b> the live square-root curve through every printed width, to the 0 at the tip. It meets the stringer at about 57–73° per rail on these five blanks — a point.</li>
+      <li><b>B (control point):</b> today's curve up to the last printed station, then one cubic curve to the tip. Its handle at the station lies along today's slope there, so nothing kinks; its handle at the tip points straight across the stringer. Both handles are the slider's share of the chord between the two points; a third is the usual default for a curve like this.</li>
+      <li><b>C (parabola):</b> inside the last printed station, half-width = a·√d + b·d, d the distance in from the tip. At the tip that is a parabola with its point on the stringer — the same shape a circle has at its end — and a and b are fixed by two facts: the printed width at the station, and today's slope there. Falls back to today's curve on a blank whose printed widths are more pointed than a straight line to the tip (none in the catalogue is).</li>
+    </ul>
+    <h3>What to look for</h3>
+    <ul>
+      <li>Which nose looks like the foam? Arctic's 3" span, US Blanks' 6" and Marko's 12" are all here, and the rule has to look right on all three.</li>
+      <li>On B, does one handle share suit all three spans, or does the 12" span want a different one?</li>
+      <li>On the Longboard, the board's own nose sits inside the blank's: does the room to the rail read right?</li>
+      <li>In the side-by-side view, how far apart are B at ⅓ and C? If they are close, C is the simpler build (no number to pick).</li>
+    </ul>
+    <h3>If it gets built</h3>
+    <ul>
+      <li>The width curve lives in <b>lib/geometry</b> and is read by the fit check as well as this drawing: a rounder nose means more foam beside the stringer near the tip, so a board flagged "too wide" within the last printed station could come to fit. Saved boards would redraw. Golden fixtures and tests come with it.</li>
+      <li>Only the last printed segment changes, and only when the tip prints 0 and the station before it prints more. Everything from that station back is today's curve, exactly.</li>
+      <li>The same rule would apply to a 0-wide tail, though no catalogue blank prints one.</li>
+    </ul>`;
+}
+function renderTools() {
+  document.getElementById("t-theme").innerHTML = ["slate", "daylight"].map((t) => `<button data-tool="theme" data-v="${t}" class="${state.theme === t ? "on" : ""}">${t[0].toUpperCase() + t.slice(1)}</button>`).join("");
+  document.getElementById("t-mini").innerHTML = ["340", "432", "560"].map((w) => `<button data-tool="mini" data-v="${w}" class="${state.mini === w ? "on" : ""}">${w} px</button>`).join("");
+}
+function applyTheme() {
+  const root = document.documentElement.style;
+  for (const [k, v] of Object.entries({ ...COMMON_VARS, ...PALETTES[state.theme] })) root.setProperty(k, v);
+  const link = document.getElementById("theme-link"); if (link) link.href = `../themes/app-${state.theme}.css`;
+}
+function renderAll() { applyTheme(); renderNav(); renderBar(); renderNotes(); renderTools(); renderStage(); }
+
+document.getElementById("variant-nav").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.notes) { document.getElementById("notes-panel").classList.toggle("open"); renderNav(); return; }
+  state.variant = b.dataset.variant; save(); renderAll();
+});
+document.getElementById("sketch-bar").addEventListener("click", (e) => { const b = e.target.closest("[data-set]"); if (!b) return; state[b.dataset.set] = b.dataset.v; save(); renderBar(); renderStage(); });
+document.getElementById("sketch-tools").addEventListener("click", (e) => { const b = e.target.closest("[data-tool]"); if (!b) return; state[b.dataset.tool] = b.dataset.v; save(); renderAll(); });
+document.getElementById("tools-toggle").onclick = () => document.getElementById("sketch-tools").classList.toggle("open");
+renderAll();
+</script>
+</body>
+</html>
