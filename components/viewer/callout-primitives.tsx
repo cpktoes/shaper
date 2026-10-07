@@ -20,6 +20,17 @@ import {
  * 001's README) is that arbitrary placement is the enemy — a new label must join a rail or define
  * one, never land at a per-call offset. That is why the rail/gutter positions below are module
  * CONSTANTS, not props: nothing in this file accepts an arbitrary x/y gutter offset as an argument.
+ *
+ * Zoom (quick 261007-fnz, 2026-10-07): a viewer can now be zoomed in, and a drafting tick, a leader
+ * or a card's hairline must keep its size on screen while the drawing grows under it (D4). So every
+ * stroke width, tick size, corner radius and value gap the primitives below draw in raw drawing
+ * units is multiplied by `useViewerZoomUnit()` — `1 / zoom` inside a zoom provider
+ * (`zoom-viewport.tsx`), and exactly 1 everywhere else. At 1 every number is the one it always was
+ * and no new attribute is written, so TEMPLATE, FINS, RAILS and every print path draw byte for byte
+ * as before until a viewer is given a zoom provider. Text and chip sizes that come from
+ * `CalloutSizes` are left alone: those are already pinned by the caller's own fit. The context is
+ * declared here, not in `zoom-viewport.tsx`, so the import runs one way only (that module imports
+ * this one, never the reverse).
  */
 
 /**
@@ -205,6 +216,22 @@ export function useSvgClientSize(ref: RefObject<SVGSVGElement | null>): { width:
   return size;
 }
 
+const ViewerZoomUnitContext = createContext(1);
+
+/**
+ * Supplies the zoom unit (`1 / zoom`) to every primitive below (quick 261007-fnz, P1). Only
+ * `zoom-viewport.tsx` renders this — its `ViewerZoomProvider` with the live value, and its
+ * `ScreenSizeGroup` with 1 inside a symbol it already holds at screen size, so nothing is shrunk
+ * twice.
+ */
+export const ViewerZoomUnitProvider = ViewerZoomUnitContext.Provider;
+
+/** What a raw drawing size is multiplied by to keep its screen size: `1 / zoom` inside a zoom
+ * provider, 1 outside one. */
+export function useViewerZoomUnit(): number {
+  return useContext(ViewerZoomUnitContext);
+}
+
 /** Half-length of a `DimensionTick`'s 45-degree slash, in SVG user units. */
 export const CALLOUT_TICK_SIZE = 4;
 /** Gap left between an extension line's far end and where its value text begins. */
@@ -343,16 +370,9 @@ export function DimensionTick({
   y: number;
   color?: string;
 }) {
-  return (
-    <line
-      x1={x - CALLOUT_TICK_SIZE}
-      y1={y + CALLOUT_TICK_SIZE}
-      x2={x + CALLOUT_TICK_SIZE}
-      y2={y - CALLOUT_TICK_SIZE}
-      stroke={color}
-      strokeWidth={1.1}
-    />
-  );
+  const u = useViewerZoomUnit();
+  const tick = CALLOUT_TICK_SIZE * u;
+  return <line x1={x - tick} y1={y + tick} x2={x + tick} y2={y - tick} stroke={color} strokeWidth={1.1 * u} />;
 }
 
 export interface DimensionLineProps {
@@ -387,9 +407,10 @@ export function DimensionLine({
   haloColor,
 }: DimensionLineProps) {
   const sizes = useCalloutSizes();
+  const u = useViewerZoomUnit();
   return (
     <g>
-      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={1} />
+      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={u} />
       <DimensionTick x={x1} y={y1} color={color} />
       <DimensionTick x={x2} y={y2} color={color} />
       {value !== undefined && labelX !== undefined && labelY !== undefined && (
@@ -458,15 +479,19 @@ export interface CalloutChipFrameProps {
  * stay with each caller, so extracting this cannot change either drawing's own math.
  */
 export function CalloutChipFrame({ x, y, width, height }: CalloutChipFrameProps) {
+  const u = useViewerZoomUnit();
   return (
     <rect
       x={x}
       y={y}
       width={width}
       height={height}
-      rx={CALLOUT_CHIP_RADIUS}
+      rx={CALLOUT_CHIP_RADIUS * u}
       fill="var(--outline-page-bg)"
       stroke="var(--border)"
+      // The hairline is the SVG default width of 1, written out only when zoomed, so the 1x markup
+      // carries no new attribute.
+      strokeWidth={u === 1 ? undefined : u}
     />
   );
 }
@@ -507,6 +532,7 @@ export function CalloutChip({ x, y, name, value, nameColor = "var(--outline-call
   const rectY = horizontal ? y : y - sizes.chipH / 2;
   const centerX = horizontal ? x : x - sizes.chipW / 2;
   const centerY = horizontal ? y + sizes.chipH / 2 : y;
+  const u = useViewerZoomUnit();
   return (
     // Quick 260930-fjm, Task 4: no stable hook for "a named data card" existed before this —
     // `scripts/capture-link-preview.ts` unions every `data-callout-chip`'s bounding box (with
@@ -514,7 +540,7 @@ export function CalloutChip({ x, y, name, value, nameColor = "var(--outline-call
     // picture's crop box, so the board and its cards are kept and the site nav and toolbar aren't.
     <g data-callout-chip={name}>
       {leaderToX !== undefined && (
-        <line x1={x} y1={y} x2={leaderToX} y2={y} stroke="var(--outline-station-line)" strokeWidth={1} />
+        <line x1={x} y1={y} x2={leaderToX} y2={y} stroke="var(--outline-station-line)" strokeWidth={u} />
       )}
       <UprightAt x={x} y={y}>
         <CalloutChipFrame x={rectX} y={rectY} width={sizes.chipW} height={sizes.chipH} />
@@ -571,13 +597,14 @@ export interface OutputRailProps {
 export function OutputRail({ edgeX, y, value, station, valueX = OUTLINE_OUTPUT_VALUE_X }: OutputRailProps) {
   const sizes = useCalloutSizes();
   const horizontal = useViewerOrientation() === "horizontal";
-  const reachX = valueX - CALLOUT_VALUE_GAP;
+  const u = useViewerZoomUnit();
+  const reachX = valueX - CALLOUT_VALUE_GAP * u;
   return (
     // Quick 260930-fjm, Task 4: no stable hook for "a station read-out" existed before this — see
     // the `data-callout-chip` note on `CalloutChip` above; this is the same crop-box union's other
     // half, the three Nose/Center/Tail labels.
     <g data-output-rail={station}>
-      <line x1={edgeX} y1={y} x2={reachX} y2={y} stroke="var(--outline-station-line)" strokeWidth={1} />
+      <line x1={edgeX} y1={y} x2={reachX} y2={y} stroke="var(--outline-station-line)" strokeWidth={u} />
       <DimensionTick x={edgeX} y={y} color="var(--outline-dim-ink)" />
       <UprightAt x={valueX} y={y}>
         <text

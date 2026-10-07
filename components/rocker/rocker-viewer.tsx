@@ -98,9 +98,13 @@ import {
   CalloutChipFrame,
   DimensionTick,
   useSvgFitScale,
+  useViewerZoomUnit,
   type ViewerOrientation,
 } from "@/components/viewer/callout-primitives";
 import { useUnits } from "@/components/units-provider";
+import { ScreenSizeGroup, useViewerZoom } from "@/components/viewer/zoom-viewport";
+import { parseViewBox, rectInContentFrame, scaleDash } from "@/components/viewer/zoom-math";
+import { ZoomGrid } from "@/components/viewer/zoom-grid";
 import { thinningMarksSentence } from "@/lib/geometry/blank-reasons";
 import type { BlankSideView, BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilStationKey } from "@/lib/geometry/foil";
@@ -252,35 +256,40 @@ function StationCard({
   valueColor?: string;
 }) {
   const cardX = x - cardWidth / 2;
+  const zoomUnit = useViewerZoomUnit();
   return (
     <g>
-      <line x1={x} y1={tickEnd} x2={x} y2={curveY} stroke="var(--outline-station-line)" strokeWidth={1} />
-      <Upright x={x} y={rail} vertical={vertical}>
-        {/* `cardDy` (0 in horizontal, a no-op) shifts the card along the rotated station axis in
-            vertical, centring it on the station it names — the outer composition is a pure
-            translation (finding 4), so this inner `translate(0, dy)` lands exactly there. */}
-        <g transform={`translate(0, ${cardDy.toFixed(2)})`}>
-          <CalloutChipFrame x={cardX} y={rail} width={cardWidth} height={cardHeight} />
-          <text
-            x={x}
-            y={rail + type.cardNameDy}
-            textAnchor="middle"
-            style={{ fontSize: type.nameSize, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
-            fill="var(--outline-callout-label)"
-          >
-            {name}
-          </text>
-          <text
-            x={x}
-            y={rail + type.cardValueDy}
-            textAnchor="middle"
-            style={{ fontSize: type.valueSize, fontWeight: 700, fontFamily: "var(--font-body)" }}
-            fill={valueColor}
-          >
-            {value}
-          </text>
-        </g>
-      </Upright>
+      <line x1={x} y1={tickEnd} x2={x} y2={curveY} stroke="var(--outline-station-line)" strokeWidth={zoomUnit} />
+      {/* Quick 261007-fnz (D4, P1): zoomed in, the card keeps its screen size, held about the end of
+          its own leader — the card's near edge in both orientations. At 1x this adds nothing. */}
+      <ScreenSizeGroup x={x} y={tickEnd}>
+        <Upright x={x} y={rail} vertical={vertical}>
+          {/* `cardDy` (0 in horizontal, a no-op) shifts the card along the rotated station axis in
+              vertical, centring it on the station it names — the outer composition is a pure
+              translation (finding 4), so this inner `translate(0, dy)` lands exactly there. */}
+          <g transform={`translate(0, ${cardDy.toFixed(2)})`}>
+            <CalloutChipFrame x={cardX} y={rail} width={cardWidth} height={cardHeight} />
+            <text
+              x={x}
+              y={rail + type.cardNameDy}
+              textAnchor="middle"
+              style={{ fontSize: type.nameSize, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
+              fill="var(--outline-callout-label)"
+            >
+              {name}
+            </text>
+            <text
+              x={x}
+              y={rail + type.cardValueDy}
+              textAnchor="middle"
+              style={{ fontSize: type.valueSize, fontWeight: 700, fontFamily: "var(--font-body)" }}
+              fill={valueColor}
+            >
+              {value}
+            </text>
+          </g>
+        </Upright>
+      </ScreenSizeGroup>
     </g>
   );
 }
@@ -317,32 +326,36 @@ function StationReadout({
   type: RockerCardType;
   valueColor?: string;
 }) {
+  const zoomUnit = useViewerZoomUnit();
   return (
     <g>
-      <line x1={x} y1={tickEnd} x2={x} y2={curveY} stroke="var(--outline-station-line)" strokeWidth={1} />
+      <line x1={x} y1={tickEnd} x2={x} y2={curveY} stroke="var(--outline-station-line)" strokeWidth={zoomUnit} />
+      {/* The tick keeps its own screen size through the zoom unit (callout-primitives.tsx). */}
       <DimensionTick x={x} y={curveY} />
-      <Upright x={x} y={rail} vertical={vertical}>
-        <g transform={`translate(0, ${cardDy.toFixed(2)})`}>
-          <text
-            x={x}
-            y={rail + type.readoutValueDy}
-            textAnchor="middle"
-            style={{ fontSize: type.valueSize, fontWeight: 700, fontFamily: "var(--font-body)" }}
-            fill={valueColor}
-          >
-            {value}
-          </text>
-          <text
-            x={x}
-            y={rail + type.readoutNameDy}
-            textAnchor="middle"
-            style={{ fontSize: type.nameSize, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
-            fill="var(--outline-callout-label)"
-          >
-            {name}
-          </text>
-        </g>
-      </Upright>
+      <ScreenSizeGroup x={x} y={tickEnd}>
+        <Upright x={x} y={rail} vertical={vertical}>
+          <g transform={`translate(0, ${cardDy.toFixed(2)})`}>
+            <text
+              x={x}
+              y={rail + type.readoutValueDy}
+              textAnchor="middle"
+              style={{ fontSize: type.valueSize, fontWeight: 700, fontFamily: "var(--font-body)" }}
+              fill={valueColor}
+            >
+              {value}
+            </text>
+            <text
+              x={x}
+              y={rail + type.readoutNameDy}
+              textAnchor="middle"
+              style={{ fontSize: type.nameSize, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
+              fill="var(--outline-callout-label)"
+            >
+              {name}
+            </text>
+          </g>
+        </Upright>
+      </ScreenSizeGroup>
     </g>
   );
 }
@@ -389,17 +402,20 @@ function RailTitle({
   text: string;
 }) {
   return (
-    <Upright x={x} y={y} vertical={vertical}>
-      <text
-        x={x}
-        y={y}
-        textAnchor="middle"
-        style={{ fontSize: size, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
-        fill="var(--outline-callout-label)"
-      >
-        {text}
-      </text>
-    </Upright>
+    // Quick 261007-fnz (D4): zoomed in, the title keeps its screen size about its own anchor.
+    <ScreenSizeGroup x={x} y={y}>
+      <Upright x={x} y={y} vertical={vertical}>
+        <text
+          x={x}
+          y={y}
+          textAnchor="middle"
+          style={{ fontSize: size, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.08em" }}
+          fill="var(--outline-callout-label)"
+        >
+          {text}
+        </text>
+      </Upright>
+    </ScreenSizeGroup>
   );
 }
 
@@ -675,9 +691,22 @@ export function RockerViewer({
   // The viewBox string comes straight off the layout — the one place this drawing's frame is
   // decided. The vertical frame is built from its own rotated content, NOT a transposition of the
   // horizontal frame — the defect quick task 260825-w8d fixed on the outline viewer.
-  const { viewBox } = layout;
-  /** User units per CSS pixel — what the px-denominated dot radius and blank line are drawn in. */
-  const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
+  const { viewBox: baseViewBox } = layout;
+  // Quick 261007-fnz: the zoom (wheel, pinch, drag, the zoom control) turns the layout's own frame
+  // into the part of it on screen. At 1x, and always outside ROCKER's own zoom provider (the
+  // Summary order form's box), `viewBox` IS the layout's string, untouched (D11).
+  // One finger is left to the browser at 1x and pans the drawing once zoomed in (`touch: "pan"`,
+  // D6 as revised): ROCKER has nothing to drag.
+  const { viewBox, view, zoom, zoomUnit, svgProps } = useViewerZoom(svgRef, baseViewBox, { touch: "pan" });
+  // The zoom's grid (D5) is drawn inside the turned content group, so the frame and the part of it
+  // on screen are turned into that group's own frame first.
+  const contentRotation = vertical ? 90 : 0;
+  const baseRect = parseViewBox(baseViewBox);
+  /** User units per CSS pixel — what the px-denominated dot radius and blank line are drawn in. The
+   * zoom is folded in, so a dot and the blank's line keep their screen size at every zoom (D4);
+   * `cardPinScale` above still reads the BASE fit, so every card, rail and frame position is the
+   * same at every zoom. */
+  const handleUnit = fitScale > 0 ? 1 / (fitScale * zoom) : 1;
 
   // The measuring points: the board's five stations on its bottom and its deck, and with a blank,
   // every station the catalogue measured — rocker stations on the blank's bottom, thickness
@@ -740,8 +769,13 @@ export function RockerViewer({
       // should let a thumb scroll a short screen's drawing column like any other picture.
       // `select-none` and the iOS long-press callout suppression stay: a long press on the
       // drawing's labels should not start a text selection.
+      // Quick 261007-fnz: inside ROCKER's zoom provider the zoom's own handlers and its
+      // `touch-action` (`pan-x pan-y` at 1x, so a thumb still scrolls exactly as before; `none`
+      // once zoomed in, so one finger pans the drawing) join in here. Outside one (the order form)
+      // `svgProps` is empty and this svg is exactly what it was.
+      {...svgProps}
       className="absolute inset-0 block h-full w-full select-none"
-      style={{ WebkitTouchCallout: "none" }}
+      style={{ WebkitTouchCallout: "none", ...svgProps.style }}
       role="img"
       aria-label={ariaLabel}
     >
@@ -750,6 +784,21 @@ export function RockerViewer({
           drawing the layout they always drew. React omits an `undefined` attribute, so in
           horizontal this is a plain pass-through container with no transform. */}
       <g transform={vertical ? "rotate(90)" : undefined}>
+        {/* Quick 261007-fnz (D5, P8): zoomed in, a grid behind everything, counted from the board's
+            tail tip along the board and from the rocker baseline across it — ROCKER's side view has
+            no stringer, and the baseline is its zero line, the flat surface the board sits on.
+            Nothing at 1x (P7), and never in the order form's compact grammar. */}
+        {callouts === "full" && baseRect && (
+          <ZoomGrid
+            zoom={zoom}
+            fitScale={fitScale}
+            unitsPerInch={scale}
+            anchor={{ x: tailX, y: baselineY }}
+            bounds={rectInContentFrame(baseRect, contentRotation)}
+            visible={view ? rectInContentFrame(view, contentRotation) : null}
+            system={system}
+          />
+        )}
         {/* The flat surface the board sits on — the rocker's own zero reference, bottom-up — drawn
             faint and dashed, spanning only the drawn board's own length. Compact draws it at its
             own heavier stroke and longer dash (`COMPACT_BASELINE_*`): the 1-unit line washes out
@@ -761,8 +810,10 @@ export function RockerViewer({
           x2={noseX}
           y2={baselineY}
           stroke="var(--outline-station-line)"
-          strokeWidth={callouts === "compact" ? COMPACT_BASELINE_WIDTH : 1}
-          strokeDasharray={callouts === "compact" ? COMPACT_BASELINE_DASH : "4 3"}
+          // Quick 261007-fnz (D4): times the zoom unit, so the line and its dashes keep their
+          // screen size when zoomed in; exactly today's 1 and "4 3" at 1x.
+          strokeWidth={callouts === "compact" ? COMPACT_BASELINE_WIDTH : zoomUnit}
+          strokeDasharray={callouts === "compact" ? COMPACT_BASELINE_DASH : scaleDash("4 3", zoomUnit)}
         />
         {/* The blank (D-15), after the baseline and before the board: the faint foam wash inside a
             solid 1px line. The board paints over it next, so only the foam to come off stays
@@ -782,7 +833,7 @@ export function RockerViewer({
           d={boardPath}
           fill={boardFill ? "var(--outline-board-fill)" : "none"}
           stroke="var(--outline-ink)"
-          strokeWidth={2}
+          strokeWidth={2 * zoomUnit}
           strokeLinejoin="round"
         />
         {/* The thinning marks (D-12), after the board and before the callouts so they cross the
@@ -798,8 +849,8 @@ export function RockerViewer({
             x2={m.x}
             y2={m.topY}
             stroke="var(--outline-blank-line)"
-            strokeWidth={1}
-            strokeDasharray={THINNING_MARK_DASH}
+            strokeWidth={zoomUnit}
+            strokeDasharray={scaleDash(THINNING_MARK_DASH, zoomUnit)}
             fill="none"
           />
         ))}
