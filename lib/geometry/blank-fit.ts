@@ -4,6 +4,9 @@
  * today's pchip inside it), the rocker levelled so its low point reads zero, the board's rocker and
  * foil read off the blank at any placement, and the check that the board fits inside the foam.
  * Today's rule — pchip straight through the printed values — survives only as `prepareBlankPchip`.
+ * On the live rule the width's 0-wide tips are round, not pointed (sketch 012 C, `round-tip.ts`,
+ * quick 261007-c3h): inside the last printed station before such a tip the width is a parabola from
+ * the tip, so the drawing and the fit check both see the foam a real round nose has.
  *
  * How a board sits on a blank (D-08): board station `s` (0 = the board's tail tip) lies at blank
  * station u(s) = Lb/2 + p + s − L/2, where L is the board's length, Lb the blank's, and p the
@@ -45,6 +48,7 @@ import { MEASURE_STATION_MM } from "./outline";
 import { pchipMinimum, preparePchip, type PreparedPchip } from "./pchip";
 import { rockerStationPositions } from "./rocker";
 import { prepareRootCurve, type CurveRule, type RootKind } from "./root-curve";
+import { roundZeroTips } from "./round-tip";
 import { thinningStartRange, tipView, type PlanerCut, type TipView } from "./tip-taper";
 import { inchesToMm, mm, type Mm } from "./units";
 
@@ -116,7 +120,11 @@ export interface PreparedBlank {
   /** Bottom rocker, levelled over [0, Lb] so its lowest point reads exactly 0. */
   rocker: LevelledCurve;
   thickness: PreparedPchip;
-  /** Full width (not half-width). */
+  /**
+   * Full width (not half-width). On the live rule a tip printed 0 wide is round — the parabola
+   * from the tip inside the last printed station (sketch 012 C, `round-tip.ts`); everywhere else it
+   * is the square-root fall through the printed widths, and every printed width reads exactly.
+   */
   width: PreparedPchip;
 }
 
@@ -158,13 +166,16 @@ function prepareBlankWith(record: BlankRecord, rule: CurveRule): PreparedBlank {
     throw new Error(`${copy.vendor} ${copy.name} has no thickness at its centre station`);
   }
   const rockerCurve = attributeCurve(copy.stations, (station) => station.rockerMm, rule, "rise");
+  const widthCurve = attributeCurve(copy.stations, (station) => station.widthMm, rule, "fall");
   return {
     record: copy,
     lengthMm: copy.lengthMm,
     centerThicknessMm: centre.thicknessMm,
     rocker: levelCurve(rockerCurve, 0, copy.lengthMm),
     thickness: attributeCurve(copy.stations, (station) => station.thicknessMm, rule, "fall"),
-    width: attributeCurve(copy.stations, (station) => station.widthMm, rule, "fall"),
+    // A tip printed 0 wide is drawn round on the live rule only (D3): the "pchip" rule stays as it
+    // was, for the boards recorded before Phase 14.
+    width: rule === "root" ? roundZeroTips(widthCurve) : widthCurve,
   };
 }
 

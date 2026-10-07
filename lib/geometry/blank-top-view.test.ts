@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PRESET_BLANKS } from "@/lib/blanks/preset-blanks";
 import { DEFAULT_BLANK_CUT, type BlankRecord } from "./blank";
 import { placementRange, prepareBlank, type BoardOnBlankInput } from "./blank-fit";
-import { buildBlankTopView } from "./blank-top-view";
+import { buildBlankTopView, TIP_SEGMENT_SAMPLES } from "./blank-top-view";
 import { DEFAULT_BOARD_SPEC } from "./board";
 import { buildBlankProfile, type BlankSideView } from "./board-profile";
 import { DEFAULT_FOIL_SPEC } from "./foil";
@@ -22,6 +22,23 @@ function findPresetBlank(vendor: string, name: string): BlankRecord {
 
 const RP_5_10 = findPresetBlank("US Blanks", `5'10"RP`);
 const SP_7_4 = findPresetBlank("US Blanks", `7'4"SP`);
+const B_9_4 = findPresetBlank("US Blanks", `9'4"B`);
+
+// Drawing tolerances, not geometry answers (quick 261007-c3h D6; measured at plan time, F9): the
+// drawn line may stray this far from the true curve at a tip — 24 steps measured 0.074 mm and
+// 0.073 mm on these two blanks — and a round tip's first step in from the tip must leave the
+// stringer steeper than this (88.8 and 88.7 degrees measured; today's curve leaves at about 68).
+const DRAWN_LINE_TOLERANCE_MM = 0.5;
+const ROUND_TIP_LEAVES_STRINGER_AT_DEG = 85;
+
+/** The shortest distance from point p to the straight segment a–b. */
+function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lengthSquared = dx * dx + dy * dy;
+  const t = lengthSquared === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lengthSquared));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
 
 const BOARD_LENGTH = inchesToMm(70);
 const GEOMETRY = buildOutline({ ...DEFAULT_BOARD_SPEC.outline, length: BOARD_LENGTH });
@@ -134,12 +151,66 @@ describe("buildBlankTopView — the blank's outline through its printed widths (
     expect(view.blankOutline[view.blankOutline.length - 1].halfWidth).toBeCloseTo(n0.widthMm! / 2, 6);
   });
 
-  it("draws the 7'4\"SP pointed at its nose, where the catalogue prints 0", () => {
-    const blank = sideView(SP_7_4);
-    const view = topViewOf(blank);
-    const n0 = SP_7_4.stations[SP_7_4.stations.length - 1];
-    expect(view.blankOutline[view.blankOutline.length - 1].halfWidth).toBeCloseTo(n0.widthMm! / 2, 9);
-    expect(view.blankOutline[view.blankOutline.length - 1].halfWidth).toBe(0);
+  it("draws the 7'4\"SP and the 9'4\"B round at the nose, where the catalogue prints 0 (quick 261007-c3h, D6)", () => {
+    for (const record of [SP_7_4, B_9_4]) {
+      const blank = sideView(record);
+      const view = topViewOf(blank);
+      const n0 = record.stations[record.stations.length - 1];
+      const outline = view.blankOutline;
+      const tip = outline[outline.length - 1];
+      expect(tip.halfWidth).toBeCloseTo(n0.widthMm! / 2, 9);
+      // The tip sits on the stringer...
+      expect(tip.halfWidth).toBe(0);
+      // ...and the outline leaves it nearly straight across the board, not along a point's slanted sides.
+      const first = outline[outline.length - 2];
+      const angle = (Math.atan2(first.halfWidth, tip.station - first.station) * 180) / Math.PI;
+      expect(angle, `${record.name}'s first step in from the nose tip`).toBeGreaterThan(
+        ROUND_TIP_LEAVES_STRINGER_AT_DEG,
+      );
+    }
+  });
+
+  it("follows the blank's outline within half a millimetre at both tips, on the 7'4\"SP and the 9'4\"B (quick 261007-c3h, D6)", () => {
+    for (const record of [SP_7_4, B_9_4]) {
+      const blank = sideView(record);
+      const view = topViewOf(blank);
+      const printed = record.stations.filter((station) => station.widthMm !== null);
+      const trueHalfWidth = (station: number) => blank.onBlank.blankWidthAt(mm(station)) / 2;
+      const tips = [
+        { tip: blank.start + printed[0].fromTailMm, inner: blank.start + printed[1].fromTailMm },
+        {
+          tip: blank.start + printed[printed.length - 1].fromTailMm,
+          inner: blank.start + printed[printed.length - 2].fromTailMm,
+        },
+      ];
+      let worst = 0;
+      let pairs = 0;
+      for (const { tip, inner } of tips) {
+        const lo = Math.min(tip, inner);
+        const hi = Math.max(tip, inner);
+        const inside = view.blankOutline.filter((s) => s.station >= lo - 1e-6 && s.station <= hi + 1e-6);
+        for (let i = 0; i + 1 < inside.length; i++) {
+          pairs++;
+          const [a, b] = [inside[i], inside[i + 1]];
+          // 50 points of the true curve between the two neighbours, evenly in the square root of the
+          // distance from this tip — the spacing a round tip turns in.
+          const ra = Math.sqrt(Math.abs(a.station - tip));
+          const rb = Math.sqrt(Math.abs(b.station - tip));
+          for (let j = 0; j <= 50; j++) {
+            const r = ra + ((rb - ra) * j) / 50;
+            const station = tip + Math.sign(inner - tip) * r * r;
+            worst = Math.max(
+              worst,
+              distanceToSegment(station, trueHalfWidth(station), a.station, a.halfWidth, b.station, b.halfWidth),
+            );
+          }
+        }
+      }
+      expect(pairs, `${record.name} has samples inside both tip segments`).toBeGreaterThan(TIP_SEGMENT_SAMPLES);
+      expect(worst, `${record.name}'s drawn line strays at most this far (mm)`).toBeLessThanOrEqual(
+        DRAWN_LINE_TOLERANCE_MM,
+      );
+    }
   });
 });
 

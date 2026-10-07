@@ -17,9 +17,11 @@
  * - The blank's outline runs through the catalogue's printed widths. Every half-width is
  *   `onBlank.blankWidthAt(s) / 2` — the same square-root width curve the fit check reads — sampled
  *   evenly from the blank's tail tip to its nose tip AND at every station whose width is printed, so
- *   the outline passes exactly through each printed number. A tip printed 0 wide comes to a point; a
- *   tip printed wider closes square. One half-width per station: mirror-symmetric about the
- *   stringer by construction.
+ *   the outline passes exactly through each printed number. A tip printed 0 wide is drawn ROUND, by
+ *   the width curve's own rule (sketch 012 C, `round-tip.ts`, quick 261007-c3h) — which turns fastest
+ *   right at the tip, so each tip's last printed segment gets extra samples (`TIP_SEGMENT_SAMPLES`)
+ *   and the drawn line follows the round right up to the stringer; a tip printed wider still closes
+ *   square. One half-width per station: mirror-symmetric about the stringer by construction.
  * - The board's outline is TEMPLATE's own silhouette (`silhouette`, the shape the phone's TEMPLATE
  *   tile and the Board Rack draw), notch and all, so a swallow shows its crotch and a diamond its
  *   point. The board never moves in its own coordinates; the Placement slider moves the blank.
@@ -96,6 +98,19 @@ export interface BlankTopViewInput {
  * tips, and a duplicate would only add a zero-length segment. */
 const SAME_STATION_MM = 1e-6;
 
+/**
+ * How many extra samples each tip's last printed segment gets (quick 261007-c3h, D6), spaced evenly
+ * in the SQUARE ROOT of the distance from the tip. A round nose is a parabola from the tip, and a
+ * parabola turns fastest right at its tip, so even steps in the square root crowd the samples exactly
+ * where the curve needs them. Measured on the blank's own outline (perpendicular distance from the
+ * true curve to the drawn line): with 24 steps the line strays 0.074 mm on the 7'4"SP, 0.073 mm on
+ * the 9'4"B and 0.145 mm at worst over every rounded blank a shaper can pick; 16 would be 0.17 mm,
+ * 12 would be 0.29 mm, and the old even spacing alone left a visible flat facet of 5 to 8 mm. A
+ * drawing parameter only, always on at both tips: on a square or a pointed tip the extra points just
+ * sit on the curve and change nothing a shaper can see.
+ */
+export const TIP_SEGMENT_SAMPLES = 24;
+
 /** A corrupt width (NaN, ∞, or below zero) reads as no foam there, never a broken path. */
 function halfWidthOf(fullWidth: number): Mm {
   const half = fullWidth / 2;
@@ -130,6 +145,19 @@ export function buildBlankTopView({ blank, geometry, length, samples }: BlankTop
   const candidates: number[] = [];
   for (let i = 0; i <= steps; i++) candidates.push(i === steps ? end : start + ((end - start) * i) / steps);
   for (const station of printed) candidates.push(start + station.fromTailMm);
+  if (printed.length >= 2) {
+    // The last printed segment at each tip, closer together toward the tip (D6): the round nose is a
+    // parabola from the tip, so even steps in √(distance from the tip) follow it closely.
+    const tail = printed[0].fromTailMm;
+    const tailReach = printed[1].fromTailMm - tail;
+    const nose = printed[printed.length - 1].fromTailMm;
+    const noseReach = nose - printed[printed.length - 2].fromTailMm;
+    for (let i = 1; i < TIP_SEGMENT_SAMPLES; i++) {
+      const d = (i / TIP_SEGMENT_SAMPLES) ** 2;
+      candidates.push(start + tail + d * tailReach);
+      candidates.push(start + nose - d * noseReach);
+    }
+  }
   candidates.sort((a, b) => a - b);
   const stations: number[] = [];
   for (const s of candidates) {
