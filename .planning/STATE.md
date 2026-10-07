@@ -6,7 +6,7 @@ status: executing
 stopped_at: "Phase 15 (The Board Rack) COMPLETE 2026-10-06: live on www.shaperassistant.com since 08:45 PDT (main c417257, deployment shaper-fi967okof), verified (15-VERIFICATION.md passed, no gaps), the founder's walk 6/6 (15-UAT.md), one follow-up todo (Option/Alt + arrow on a pointed-at board, after the showing). Freeze: Wed 2026-10-07 evening; showing Sat 2026-10-10. Next: Phase 13's remaining items (the full 18-step rehearsal walk on the live site with the sheet, issue 3; the launch prep) and Phase 14's verification paperwork (no site change); then the v1.5 close."
 last_updated: "2026-10-06T18:00:12.531Z"
 last_activity: 2026-10-06
-last_activity_desc: Quick task 261006-qfm (the blank seen from above on ROCKER — a mini reference drawing in the VIEWER's corner on a computer with a button to hide it, a TOP VIEW tab on a phone or a short screen) built, merged locally (main 2151779) and awaiting the founder's review of the pictures and the local site before the push
+last_activity_desc: Quick task 261006-qfm (the blank seen from above on ROCKER) plus fast task 150 (the founder's review: no border, 20% bigger, tabs VIEWER / TOP VIEW / DATASHEET) built and merged locally (main 946a31a), the full browser suite green under Turbopack; awaiting the founder's word before the push
 progress:
   total_phases: 3
   completed_phases: 1
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-06 — Quick task 261006-qfm (the blank seen from above on ROCKER — a mini reference drawing in the VIEWER's corner on a computer with a button to hide it, a TOP VIEW tab on a phone or a short screen) built, merged locally (main 2151779) and awaiting the founder's review of the pictures and the local site before the push
+Last activity: 2026-10-06 — Quick task 261006-qfm (the blank seen from above on ROCKER) plus fast task 150 (the founder's review: no border, 20% bigger, tabs VIEWER / TOP VIEW / DATASHEET) built and merged locally (main 946a31a), the full browser suite green under Turbopack; awaiting the founder's word before the push
 
 ## Performance Metrics
 
@@ -358,6 +358,7 @@ Recent decisions affecting current work:
 | 261006-g4u | A "Your data" page in Clerk's account panel (and an avatar-menu row): Export my designs downloads every saved board and the account's settings as one JSON file exactly as stored; Delete my account (typed DELETE, checked on the server) removes the boards and settings from Neon in one step, then the Clerk user, then signs out to the home page. The browser suite cannot sign in; founder-verified with a throwaway account on the development database. | 2026-10-06 | 78d5f6b | [261006-g4u-export-my-designs-and-delete-my-account-](./quick/261006-g4u-export-my-designs-and-delete-my-account-/) |
 | 261006-g5q | The Contact form's send is limited to five messages per visitor per hour (counted only when a message would really go out; kept in the server's memory, never logged or saved); a sixth shows a kind try-again-later line with the support address in the failed-send line's place. The signed-out entry points are listed in lib/contact/rate-limit.ts with why nothing else needs a limit; the blank list stays as it is. | 2026-10-06 | f89e541 | [261006-g5q-a-per-visitor-limit-on-the-contact-form-](./quick/261006-g5q-a-per-visitor-limit-on-the-contact-form-/) |
 | 261006-qfm | ROCKER shows the picked blank from above — its outline through the catalogue's printed widths, its stringer, centre mark and 12" marks, with the board's own TEMPLATE outline on it where Placement puts it: a mini reference drawing on its own plate over the VIEWER's top-left corner on a computer (a fourth toolbar button hides it; it turns with Rotate), and a third TOP VIEW tab on an upright phone, a phone held sideways or any narrow or short window; the board alone with no blank; nothing printed or saved changes; the ROCKER desktop reference picture re-recorded on purpose. Merged locally, awaiting the founder's review before the push | 2026-10-06 | 2151779 | [261006-qfm-show-the-blank-from-above-on-rocker-a-to](./quick/261006-qfm-show-the-blank-from-above-on-rocker-a-to/) |
+| 150 | The founder's review of quick 261006-qfm: the mini blank/board drawing on ROCKER loses its border and grows 20% (43% of the panel's width, at most 432 dots, nose-left; 54% of its height, at most 540, nose-up; the ROCKER reference picture re-recorded), and on a phone the tabs run VIEWER, TOP VIEW, DATASHEET; the narrow-phone DATASHEET test waits for the strip to settle after hydration. Still local, awaiting the founder's word before the push | 2026-10-06 | 946a31a | fast (no directory) |
 
 ## Deferred Items
 
