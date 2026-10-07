@@ -137,3 +137,14 @@ Proof:
   default board, which had no blank picked when Phase 11 recorded it. It changes only if the miniature shows
   without a blank or takes room from the side view either way. If it changes, re-record that one on purpose;
   every other screen's must hold.
+
+Done as quick 261006-qfm (2026-10-06; commits 2d5ffcd, d5830d1, 24c47f3, e78f8b7, 0d9e973, merged 2151779).
+
+The founder's choices, 2026-10-06: a mini display, reference only, not at the side view's scale ("The blank/board
+top view does not need to be the same scale. It can be a mini display, it's really just for reference only"); on
+a computer a small drawing on its own plate over the VIEWER's top-left corner, with a fourth toolbar button to
+hide and show it ("can be turned on/off by another button"); on a phone or a short sideways screen its own TOP
+VIEW tab ("let's make a new viewer tab"). The marks are the two 12" marks and the centre, with the stringer tip
+to tip; the board is drawn in TEMPLATE's own shape, notch and all, with no marks of its own; with no blank picked
+it is the board alone; nothing printed or saved changes. The ROCKER desktop reference picture was re-recorded on
+purpose. Pictures are in the quick task's folder. Awaiting the founder's review before the push.

@@ -6,7 +6,7 @@ status: executing
 stopped_at: "Phase 15 (The Board Rack) COMPLETE 2026-10-06: live on www.shaperassistant.com since 08:45 PDT (main c417257, deployment shaper-fi967okof), verified (15-VERIFICATION.md passed, no gaps), the founder's walk 6/6 (15-UAT.md), one follow-up todo (Option/Alt + arrow on a pointed-at board, after the showing). Freeze: Wed 2026-10-07 evening; showing Sat 2026-10-10. Next: Phase 13's remaining items (the full 18-step rehearsal walk on the live site with the sheet, issue 3; the launch prep) and Phase 14's verification paperwork (no site change); then the v1.5 close."
 last_updated: "2026-10-06T18:00:12.531Z"
 last_activity: 2026-10-06
-last_activity_desc: Quick tasks 261006-fom, g4u and g5q (legal pages, footer, consent line, blank note, Share, Export/Delete my account, the Contact send limit) reviewed by the founder and LIVE on www.shaperassistant.com since 2026-10-06 16:05 PDT (main 578e0d5, deployment shaper-bbpz16yva; live check 7/7)
+last_activity_desc: Quick task 261006-qfm (the blank seen from above on ROCKER — a mini reference drawing in the VIEWER's corner on a computer with a button to hide it, a TOP VIEW tab on a phone or a short screen) built, merged locally (main 2151779) and awaiting the founder's review of the pictures and the local site before the push
 progress:
   total_phases: 3
   completed_phases: 1
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-06 — Phase 15 (The Board Rack) went live on the founder's go, was verified, and passed the founder's six-check walk
+Last activity: 2026-10-06 — Quick task 261006-qfm (the blank seen from above on ROCKER — a mini reference drawing in the VIEWER's corner on a computer with a button to hide it, a TOP VIEW tab on a phone or a short screen) built, merged locally (main 2151779) and awaiting the founder's review of the pictures and the local site before the push
 
 ## Performance Metrics
 
@@ -357,6 +357,7 @@ Recent decisions affecting current work:
 | 261006-fom | Terms and Privacy pages drawn from the founder's own markdown (react-markdown + remark-gfm, read at each visit, packed by literal path); a copyright footer with Terms and Privacy links on every page (end of the controls on the design screens, a faint rule above); the sign-up consent line under Clerk's card with Clerk's own Terms link beside Privacy; the blank-picker catalog note on ROCKER; a Share row in the gear menu and the ☰ sheet (share sheet, or copy the address). Founder-reviewed on the local server; on review the menus first gained a Terms row and then dropped both legal rows, since the footer carries them. | 2026-10-06 | ed7d419 | [261006-fom-legal-pages-from-markdown-a-site-footer-](./quick/261006-fom-legal-pages-from-markdown-a-site-footer-/) |
 | 261006-g4u | A "Your data" page in Clerk's account panel (and an avatar-menu row): Export my designs downloads every saved board and the account's settings as one JSON file exactly as stored; Delete my account (typed DELETE, checked on the server) removes the boards and settings from Neon in one step, then the Clerk user, then signs out to the home page. The browser suite cannot sign in; founder-verified with a throwaway account on the development database. | 2026-10-06 | 78d5f6b | [261006-g4u-export-my-designs-and-delete-my-account-](./quick/261006-g4u-export-my-designs-and-delete-my-account-/) |
 | 261006-g5q | The Contact form's send is limited to five messages per visitor per hour (counted only when a message would really go out; kept in the server's memory, never logged or saved); a sixth shows a kind try-again-later line with the support address in the failed-send line's place. The signed-out entry points are listed in lib/contact/rate-limit.ts with why nothing else needs a limit; the blank list stays as it is. | 2026-10-06 | f89e541 | [261006-g5q-a-per-visitor-limit-on-the-contact-form-](./quick/261006-g5q-a-per-visitor-limit-on-the-contact-form-/) |
+| 261006-qfm | ROCKER shows the picked blank from above — its outline through the catalogue's printed widths, its stringer, centre mark and 12" marks, with the board's own TEMPLATE outline on it where Placement puts it: a mini reference drawing on its own plate over the VIEWER's top-left corner on a computer (a fourth toolbar button hides it; it turns with Rotate), and a third TOP VIEW tab on an upright phone, a phone held sideways or any narrow or short window; the board alone with no blank; nothing printed or saved changes; the ROCKER desktop reference picture re-recorded on purpose. Merged locally, awaiting the founder's review before the push | 2026-10-06 | 2151779 | [261006-qfm-show-the-blank-from-above-on-rocker-a-to](./quick/261006-qfm-show-the-blank-from-above-on-rocker-a-to/) |
 
 ## Deferred Items
 

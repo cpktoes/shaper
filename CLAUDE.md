@@ -221,6 +221,16 @@ width, three by two below it (width alone). `site-nav.tsx`
 and `phone-top-bar.tsx` own that rule, written inline the same way, and `e2e/phone-sideways-top-bar.spec.ts`
 proves it on a sideways Pixel 7 and iPhone and proves a tall window of any width still gets the desktop row.
 
+The fifth is ROCKER's top view (quick 261006-qfm, 2026-10-06 — the founder: "it can be a mini display, it's
+really just for reference only"): the picked blank seen from above with the board's outline on it, a small
+drawing on its own plate over the VIEWER panel's top-left corner on a computer, hidden and shown by a fourth
+toolbar button. On a short screen it has no room beside the side view, so it becomes a third tab, TOP VIEW —
+and on a narrow one too, by width alone, the same 820 line the layout reads. Both reads happen in JavaScript
+(`use-viewer-media.ts`'s `useBelowShellWidth` and `useShortScreen`, written to the exact queries the CSS
+rules ship with) because a tab list and an SVG cannot read a CSS variant; they decide React state, never a
+layout, and the active tab is derived, so a window crossing the line while TOP VIEW is open lands on VIEWER.
+`e2e/rocker-top-view.spec.ts` proves all of it on a computer, an upright phone and a sideways one.
+
 **Phone chrome is tightened under both rules, never a third.** Phase 13 item 9e (2026-09-30, the founder's rule:
 "phone real estate is expensive, we need to save all of it" — a computer has room to spare and is untouched)
 shrinks every band and gutter around the drawing — the drawing column's paddings, the card frame, the
@@ -232,7 +242,8 @@ read for padding (an iPad or a touch laptop keeps its room). A real iPhone's not
 pins the bands on all four phone sizes and the 44-dot touch boxes.
 
 Width picks the layout, pointer picks the sizing, height picks whether a short screen scrolls and
-which top bar it gets (and, on FINS only, beside-or-beneath) — and none of the three is ever conflated with another.
+which top bar it gets (and, on FINS only, beside-or-beneath; and, on ROCKER, whether the blank seen from above is a
+corner drawing or its own TOP VIEW tab) — and none of the three is ever conflated with another.
 
 ## Design findings
 
